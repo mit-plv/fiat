@@ -494,8 +494,19 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     match goal with
     | [  |- context[find ?k (add ?k ?v ?m)] ] => rewrite (@add_eq_o _ m k k v eq_refl) by reflexivity
     | [ H: context[find ?k (add ?k ?v ?m)] |- _ ] => rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
-    | [ H: ?k <> ?k' |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
+    | [ H: ?k <> ?k'    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
     | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+    | [ H: ?k' <> ?k    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
+    | [ H: ?k' <> ?k, H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+
+    | [ |-  context[remove ?k (add ?k ?v ?m)] ]     => rewrite (@remove_trickle _ k k v m eq_refl) by congruence
+    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
+    | [ H: ?k' <> ?k    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
+    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H by congruence
+    | [ H: ?k <> ?k'    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
+    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H by congruence
+    | [ H': ?k ∉ ?m   |- context[remove ?k ?m] ]     => rewrite (remove_notIn_Equal H') by congruence
+    | [ H': ?k ∉ ?m, H: context[remove ?k ?m] |- _ ] => rewrite (remove_notIn_Equal H') in H by congruence
 
     | [ H: Equal ?st ?st |- _ ] => clear dependent H
     | [ H: Equal ?st ?st', H': context[?st] |- _ ] => rewrite_in H H'
@@ -507,8 +518,8 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ H: MapsTo ?k ?v (add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
     | [ H: MapsTo ?k ?v (add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (add_3 H' H)
 
-    | [ |- context[remove ?k (add ?k ?v ?m)] ] => rewrite (remove_trickle (k := k) (k' := k) v m eq_refl)
-    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite_in (remove_trickle (k := k) (k' := k) v m eq_refl) H
+    (* | [ |- context[remove ?k (add ?k ?v ?m)] ] => rewrite (remove_trickle (k := k) (k' := k) v m eq_refl) *)
+    (* | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite_in (remove_trickle (k := k) (k' := k) v m eq_refl) H *)
 
     | [ H: find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
     | [ H: find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H
@@ -1727,17 +1738,8 @@ Lemma SameValues_add_SCA:
     (StringMap.add k (SCA av v) st) ≲ tel ∪ ext.
 Proof.
   induction tel;
-  repeat match goal with
-         | _ => progress t_Morphism
-         | _ => progress SameValues_Facade_t
-         end.
-
-  rewrite remove_add_comm by congruence.
-  apply H; eauto.
-  repeat match goal with
-         | _ => progress t_Morphism
-         | _ => progress SameValues_Facade_t
-         end.
+  repeat (t_Morphism || SameValues_Facade_t).
+  apply H; repeat (t_Morphism || SameValues_Facade_t).
 Qed.
 
 Definition AlwaysComputesToSCA {av} (v: Comp (Value av)) :=
@@ -2252,6 +2254,12 @@ Ltac spec_t :=
                    | [ H: exists t, _ |- _ ] => destruct H
                    end; intuition).
 
+Ltac head_constant expr :=
+  match expr with
+  | ?f _ => head_constant f
+  | ?f => f
+  end.
+
 Ltac facade_cleanup_call :=
   match goal with
   | _ => progress cbv beta iota delta [add_remove_many] in *
@@ -2259,6 +2267,8 @@ Ltac facade_cleanup_call :=
   | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
   | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
   | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
+  | [  |- PreCond (?f _) _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]  
+  | [ H: WeakEq (StringMap.add ?k _ _) _ |- _ ] => learn (WeakEq_remove k H)
   | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
   | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
   | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a
@@ -2266,6 +2276,7 @@ Ltac facade_cleanup_call :=
   | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; try subst; clear H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
+  | _ => progress simpl
   | _ => solve [eauto with call_helpers_db]
   end.
 
@@ -2295,7 +2306,6 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         | _ => unfold FacadeImplementationWW; simpl
          end.
 Qed.
 
@@ -2317,7 +2327,6 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         | _ => unfold FacadeImplementationWW; simpl
          end.
 Qed.
 
@@ -2474,12 +2483,6 @@ Ltac compile_read value ext :=
   let location := find_fast value ext in
   match location with
   | Some ?k => apply (CompileRead (var := k))
-  end.
-
-Ltac head_constant expr :=
-  match expr with
-  | ?f _ => head_constant f
-  | ?f => f
   end.
 
 Ltac translate_op gallina_op :=
@@ -2676,13 +2679,13 @@ Ltac compile_rewrite :=
   | [  |- appcontext[?f (if ?b then ?x else ?y)] ] => is_pushable_head_constant f; setoid_rewrite (push_if f x y b)
   end.
 
-Definition IsFacadeProgramImplementing cmp env prog :=
-  {{ @Nil unit }}
+Definition IsFacadeProgramImplementing {av} cmp env prog :=
+  {{ @Nil av }}
     prog
   {{ [[`"ret" <~~ cmp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env.
 
-Definition FacadeProgramImplementing cmp env :=
-  sigT (IsFacadeProgramImplementing cmp env).
+Definition FacadeProgramImplementing {av} cmp env :=
+  sigT (@IsFacadeProgramImplementing av cmp env).
 
 Notation "'Facade' 'program' 'implementing' cmp 'with' env" :=
   (FacadeProgramImplementing cmp env) (at level 0).
@@ -2787,7 +2790,7 @@ Hint Immediate Random_caracterization : call_helpers_db.
 Set Implicit Arguments.
 
 Lemma CompileCallRandom:
-  forall env : GLabelMap.t (FuncSpec ()),
+  forall {av} (env : GLabelMap.t (FuncSpec av)),
   forall fpointer,
     GLabelMap.MapsTo fpointer (Axiomatic FRandom) env ->
     forall var ext,
@@ -2803,12 +2806,11 @@ Proof.
          end.
 Qed.
 
-
 Ltac compile_random :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
-                       | (Nil, Cons ?s (WrapComp_W Random) (fun _ => Nil)) =>
-                         let fpointer := find_function_in_env (Axiomatic (@FRandom unit)) env in
+                       | (Nil, Cons ?s (@WrapComp_W ?av Random) (fun _ => Nil)) =>
+                         let fpointer := find_function_in_env (Axiomatic (@FRandom av)) env in
                          apply (CompileCallRandom (fpointer := fpointer))
                        end).
 
@@ -2818,9 +2820,9 @@ Example random_sample :
     sigT (fun prog =>
             {{ @Nil unit }}
               prog
-              {{ [[`"ret" <~~ ( x <- Random;
-                                y <- Random;
-                                ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
+            {{ [[`"ret" <~~ ( x <- Random;
+                              y <- Random;
+                              ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
 Proof.
   econstructor; repeat (compile_step || compile_random).
 Defined.
@@ -2849,13 +2851,13 @@ Example random_test :
   Facade program implementing ( x <- Random;
                                 y <- Random;
                                 z <- Random;
-                                ret (SCA _ (if IL.weqb x y then
-                                              (Word.wplus z z)
-                                            else
-                                              if IL.wltb x y then
-                                                z
-                                              else
-                                                (Square z)))) with MyEnv.
+                                ret (SCA unit (if IL.weqb x y then
+                                                 (Word.wplus z z)
+                                               else
+                                                 if IL.wltb x y then
+                                                   z
+                                                 else
+                                                   (Square z)))) with MyEnv.
 Proof.
   repeat (compile_step || compile_random).
 Defined.
@@ -2880,13 +2882,13 @@ Example random_test_with_cube :
   Facade program implementing ( x <- Random;
                                 y <- Random;
                                 z <- Random;
-                                ret (SCA _ (if IL.weqb x y then
-                                              (Word.wplus z z)
-                                            else
-                                              if IL.wltb x y then
-                                                z
-                                              else
-                                                (Cube z)))) with MyEnvV.
+                                ret (SCA unit (if IL.weqb x y then
+                                                 (Word.wplus z z)
+                                               else
+                                                 if IL.wltb x y then
+                                                   z
+                                                 else
+                                                   (Cube z)))) with MyEnvV.
 Proof.
   repeat (compile_step || compile_random).
 Defined.
