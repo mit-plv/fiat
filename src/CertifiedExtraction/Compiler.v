@@ -568,11 +568,19 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
            | [  |- _ ∉ (add _ _ _) ] => rewrite add_in_iff
            end.
 
+  Ltac reduce_or_fallback term continuation fallback :=
+    match nat with
+    | _ => let term' := (eval red in term) in let res := continuation term' in constr:(res)
+    | _ => constr:(fallback)
+    end.
+
   Ltac find_fast value fmap :=
     match fmap with
-    | add ?k value _ => constr:(Some k)
-    | add ?k _ ?tail => find_fast value tail
-    | _ => constr:(@None string)
+    | @empty _       => constr:(None)
+    | add ?k value _ => constr:(Some k) (* FIXME should check whether terms are convertible instead of asking for equality *)
+    | add ?k _ ?tail => let ret := find_fast value tail in constr:(ret)
+    | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) (@None string) in
+                       constr:(ret)
     end.
 End WUtils_fun.
 
