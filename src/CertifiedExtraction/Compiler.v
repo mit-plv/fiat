@@ -1824,29 +1824,29 @@ Proof.
   unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
 Qed.
 
-Lemma SameSCAs_remove_SCA:
-  forall av (var : StringMap.key) (initial_state : State av),
-    var ∉ initial_state ->
-    SameSCAs initial_state (StringMap.remove var initial_state).
-Proof.
-  unfold SameSCAs; intros; rewrite remove_notIn_Equal; eauto.
-Qed.
+(* Lemma SameSCAs_remove_SCA: *)
+(*   forall av (var : StringMap.key) (initial_state : State av), *)
+(*     var ∉ initial_state -> *)
+(*     SameSCAs initial_state (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold SameSCAs; intros; rewrite remove_notIn_Equal; eauto. *)
+(* Qed. *)
 
-Lemma SameADTs_remove_SCA:
-  forall av (var : StringMap.key) (initial_state : State av),
-    var ∉ initial_state ->
-    SameADTs initial_state (StringMap.remove var initial_state).
-Proof.
-  unfold SameADTs; intros; rewrite remove_notIn_Equal; eauto using iff_refl.
-Qed.
+(* Lemma SameADTs_remove_SCA: *)
+(*   forall av (var : StringMap.key) (initial_state : State av), *)
+(*     var ∉ initial_state -> *)
+(*     SameADTs initial_state (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold SameADTs; intros; rewrite remove_notIn_Equal; eauto using iff_refl. *)
+(* Qed. *)
 
-Lemma WeakEq_remove_SCA:
-  forall av (var : StringMap.key) (initial_state : State av),
-    var ∉ initial_state ->
-    WeakEq initial_state (StringMap.remove var initial_state).
-Proof.
-  unfold WeakEq; intuition (eauto using SameADTs_remove_SCA, SameSCAs_remove_SCA).
-Qed.
+(* Lemma WeakEq_remove_SCA: *)
+(*   forall av (var : StringMap.key) (initial_state : State av), *)
+(*     var ∉ initial_state -> *)
+(*     WeakEq initial_state (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold WeakEq; intuition (eauto using SameADTs_remove_SCA, SameSCAs_remove_SCA). *)
+(* Qed. *)
 
 Lemma WeakEq_remove_notIn:
   forall av (k : StringMap.key) (st1 st2 : State av),
@@ -1924,104 +1924,104 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
-Lemma CompileBinopB_util:
-  forall {T} k1 k2 k3 {v1 v2 v3} (fmap: StringMap.t T),
-    k1 <> k2 -> k2 <> k3 -> k1 <> k3 ->
-    StringMap.Equal ([k3 <-- v3] ::[k2 <-- v2]::[k1 <-- v1]::fmap)
-                    ([k1 <-- v1] ::[k2 <-- v2]::[k3 <-- v3]::fmap).
-Proof.
-  unfold StringMap.Equal; intros;
-  destruct (StringMap.E.eq_dec y k1);
-  destruct (StringMap.E.eq_dec y k2);
-  destruct (StringMap.E.eq_dec y k3);
-  SameValues_Facade_t.
-Qed.
+(* Lemma CompileBinopB_util: *)
+(*   forall {T} k1 k2 k3 {v1 v2 v3} (fmap: StringMap.t T), *)
+(*     k1 <> k2 -> k2 <> k3 -> k1 <> k3 -> *)
+(*     StringMap.Equal ([k3 <-- v3] ::[k2 <-- v2]::[k1 <-- v1]::fmap) *)
+(*                     ([k1 <-- v1] ::[k2 <-- v2]::[k3 <-- v3]::fmap). *)
+(* Proof. *)
+(*   unfold StringMap.Equal; intros; *)
+(*   destruct (StringMap.E.eq_dec y k1); *)
+(*   destruct (StringMap.E.eq_dec y k2); *)
+(*   destruct (StringMap.E.eq_dec y k3); *)
+(*   SameValues_Facade_t. *)
+(* Qed. *)
 
-Lemma CompileBinopB_util2:
-  forall {av : Type} (var1 var2 var3 : StringMap.key)
-    (val1 val2 val3 : _) (ext : StringMap.t (Value av)),
-    var1 <> var2 ->
-    var2 <> var3 ->
-    var1 <> var3 ->
-    var1 ∉ ext ->
-    var2 ∉ ext ->
-    var3 ∉ ext ->
-    [var1 <-- val1]
-      ::[var2 <-- val2]
-      ::[var3 <-- val3]::ext
-      ≲ [[var1 <-- val1 as _]]
-      ::[[var2 <-- val2 as _]]
-      ::[[var3 <-- val3 as _]]::Nil ∪ ext.
-Proof.
-  intros.
-  repeat apply Cons_PopExt; try decide_not_in.
-  rewrite CompileBinopB_util by assumption.
-  apply SameValues_Nil_always.
-Qed.
+(* Lemma CompileBinopB_util2: *)
+(*   forall {av : Type} (var1 var2 var3 : StringMap.key) *)
+(*     (val1 val2 val3 : _) (ext : StringMap.t (Value av)), *)
+(*     var1 <> var2 -> *)
+(*     var2 <> var3 -> *)
+(*     var1 <> var3 -> *)
+(*     var1 ∉ ext -> *)
+(*     var2 ∉ ext -> *)
+(*     var3 ∉ ext -> *)
+(*     [var1 <-- val1] *)
+(*       ::[var2 <-- val2] *)
+(*       ::[var3 <-- val3]::ext *)
+(*       ≲ [[var1 <-- val1 as _]] *)
+(*       ::[[var2 <-- val2 as _]] *)
+(*       ::[[var3 <-- val3 as _]]::Nil ∪ ext. *)
+(* Proof. *)
+(*   intros. *)
+(*   repeat apply Cons_PopExt; try decide_not_in. *)
+(*   rewrite CompileBinopB_util by assumption. *)
+(*   apply SameValues_Nil_always. *)
+(* Qed. *)
 
-Lemma CompileBinop_with_dealloc_USELESS:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2 p3,
-    name ∉ ext ->
-    var1 ∉ ext ->
-    var2 ∉ ext ->
-    var1 <> var2 ->
-    var1 <> name ->
-    var2 <> name ->
-    {{ Nil }}
-      p1
-    {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ [[var1 <-- SCA _ val1 as _]]::Nil }}
-      p2
-    {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }}
-      p3
-    {{ [[ret (SCA _ val1) as _]]::[[ret (SCA _ val2) as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ Nil }}
-      (Seq p1 (Seq p2 (Seq (Assign name (Binop op (Var var1) (Var var2))) p3)))
-    {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
-Proof.
-  Time SameValues_Facade_t;
+(* Lemma CompileBinop_with_dealloc_USELESS: *)
+(*   forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2 p3, *)
+(*     name ∉ ext -> *)
+(*     var1 ∉ ext -> *)
+(*     var2 ∉ ext -> *)
+(*     var1 <> var2 -> *)
+(*     var1 <> name -> *)
+(*     var2 <> name -> *)
+(*     {{ Nil }} *)
+(*       p1 *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} *)
+(*       p2 *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} *)
+(*       p3 *)
+(*     {{ [[ret (SCA _ val1) as _]]::[[ret (SCA _ val2) as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ Nil }} *)
+(*       (Seq p1 (Seq p2 (Seq (Assign name (Binop op (Var var1) (Var var2))) p3))) *)
+(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   Time SameValues_Facade_t; *)
+(*  *)
+(*   assert ([name <-- SCA av (IL.evalBinop op val1 val2)]::st'0 *)
+(*         ≲ [[var1 <-- SCA av val1 as _]] *)
+(*           ::[[var2 <-- SCA av val2 as _]] *)
+(*             ::[[name <-- SCA av (eval_binop (inl op) val1 val2) as _]]::Nil *)
+(*             ∪ ext) by (repeat apply Cons_PopExt; *)
+(*                         try decide_not_in; *)
+(*                         simpl; *)
+(*                         SameValues_Facade_t); *)
+(*  *)
+(*   SameValues_Facade_t. *)
+(* Qed. *)
 
-  assert ([name <-- SCA av (IL.evalBinop op val1 val2)]::st'0
-        ≲ [[var1 <-- SCA av val1 as _]]
-          ::[[var2 <-- SCA av val2 as _]]
-            ::[[name <-- SCA av (eval_binop (inl op) val1 val2) as _]]::Nil
-            ∪ ext) by (repeat apply Cons_PopExt;
-                        try decide_not_in;
-                        simpl;
-                        SameValues_Facade_t);
-
-  SameValues_Facade_t.
-Qed.
-
-Lemma CompileBinop_left:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p2,
-    name ∉ ext ->
-    StringMap.MapsTo var1 (SCA av val1) ext ->
-    var2 ∉ ext ->
-    var1 <> var2 ->
-    var2 <> name ->
-    {{ Nil }}
-      p2
-    {{ [[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ Nil }}
-      (Seq p2 (Assign name (Binop op (Var var1) (Var var2))))
-    {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
-Proof.
-  Time SameValues_Facade_t.
-
-  rewrite (add_redundant_cancel H0) in H19; SameValues_Facade_t.
-  apply Cons_PopExt; [ SameValues_Facade_t | ].
-
-  cut (st' ≲ Nil ∪ ext);
-  repeat match goal with
-         | _ => reflexivity
-         | _ => solve [simpl; SameValues_Facade_t]
-         | _ => apply WeakEq_pop_SCA; [decide_not_in|]
-         | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H
-         | _ => progress simpl
-         end.
-Qed.
+(* Lemma CompileBinop_left: *)
+(*   forall {av} name var1 var2 (val1 val2: W) env ext op p2, *)
+(*     name ∉ ext -> *)
+(*     StringMap.MapsTo var1 (SCA av val1) ext -> *)
+(*     var2 ∉ ext -> *)
+(*     var1 <> var2 -> *)
+(*     var2 <> name -> *)
+(*     {{ Nil }} *)
+(*       p2 *)
+(*     {{ [[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ Nil }} *)
+(*       (Seq p2 (Assign name (Binop op (Var var1) (Var var2)))) *)
+(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   Time SameValues_Facade_t. *)
+(*  *)
+(*   rewrite (add_redundant_cancel H0) in H19; SameValues_Facade_t. *)
+(*   apply Cons_PopExt; [ SameValues_Facade_t | ]. *)
+(*  *)
+(*   cut (st' ≲ Nil ∪ ext); *)
+(*   repeat match goal with *)
+(*          | _ => reflexivity *)
+(*          | _ => solve [simpl; SameValues_Facade_t] *)
+(*          | _ => apply WeakEq_pop_SCA; [decide_not_in|] *)
+(*          | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H *)
+(*          | _ => progress simpl *)
+(*          end. *)
+(* Qed. *)
 
 Lemma CompileBinopOrTest_left:
   forall {av} name var1 var2 (val1 val2: W) env ext op p2,
@@ -2053,34 +2053,34 @@ Proof.
          end.
 Qed.
 
-Lemma CompileBinop_right:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p2,
-    name ∉ ext ->
-    var1 ∉ ext ->
-    StringMap.MapsTo var2 (SCA av val2) ext ->
-    var1 <> var2 ->
-    var1 <> name ->
-    {{ Nil }}
-      p2
-    {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ Nil }}
-      (Seq p2 (Assign name (Binop op (Var var1) (Var var2))))
-    {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
-Proof.
-  Time SameValues_Facade_t.
-
-  rewrite (add_redundant_cancel H1) in H19; SameValues_Facade_t.
-  apply Cons_PopExt; [ SameValues_Facade_t | ].
-
-  cut (st' ≲ Nil ∪ ext);
-  repeat match goal with
-         | _ => reflexivity
-         | _ => solve [simpl; SameValues_Facade_t]
-         | _ => apply WeakEq_pop_SCA; [decide_not_in|]
-         | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H
-         | _ => progress simpl
-         end.
-Qed.
+(* Lemma CompileBinop_right: *)
+(*   forall {av} name var1 var2 (val1 val2: W) env ext op p2, *)
+(*     name ∉ ext -> *)
+(*     var1 ∉ ext -> *)
+(*     StringMap.MapsTo var2 (SCA av val2) ext -> *)
+(*     var1 <> var2 -> *)
+(*     var1 <> name -> *)
+(*     {{ Nil }} *)
+(*       p2 *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ Nil }} *)
+(*       (Seq p2 (Assign name (Binop op (Var var1) (Var var2)))) *)
+(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   Time SameValues_Facade_t. *)
+(*  *)
+(*   rewrite (add_redundant_cancel H1) in H19; SameValues_Facade_t. *)
+(*   apply Cons_PopExt; [ SameValues_Facade_t | ]. *)
+(*  *)
+(*   cut (st' ≲ Nil ∪ ext); *)
+(*   repeat match goal with *)
+(*          | _ => reflexivity *)
+(*          | _ => solve [simpl; SameValues_Facade_t] *)
+(*          | _ => apply WeakEq_pop_SCA; [decide_not_in|] *)
+(*          | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H *)
+(*          | _ => progress simpl *)
+(*          end. *)
+(* Qed. *)
 
 Lemma CompileBinopOrTest_right:
   forall {av} name var1 var2 (val1 val2: W) env ext op p2,
@@ -2114,36 +2114,36 @@ Proof.
          end.
 Qed.
 
-Lemma CompileBinop_full:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2,
-    name ∉ ext ->
-    var1 ∉ ext ->
-    var2 ∉ ext ->
-    var1 <> var2 ->
-    var1 <> name ->
-    var2 <> name ->
-    {{ Nil }}
-      p1
-    {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ [[var1 <-- SCA _ val1 as _]]::Nil }}
-      p2
-    {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env ->
-    {{ Nil }}
-      (Seq p1 (Seq p2 (Assign name (Binop op (Var var1) (Var var2)))))
-    {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env.
-Proof.
-  Time SameValues_Facade_t.
-  apply Cons_PopExt; [ SameValues_Facade_t | ].
-
-  cut (st'0 ≲ Nil ∪ ext);
-  repeat match goal with
-         | _ => reflexivity
-         | _ => solve [simpl; SameValues_Facade_t]
-         | _ => apply WeakEq_pop_SCA; [decide_not_in|]
-         | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H
-         | _ => progress simpl
-         end.
-Qed.
+(* Lemma CompileBinop_full: *)
+(*   forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2, *)
+(*     name ∉ ext -> *)
+(*     var1 ∉ ext -> *)
+(*     var2 ∉ ext -> *)
+(*     var1 <> var2 -> *)
+(*     var1 <> name -> *)
+(*     var2 <> name -> *)
+(*     {{ Nil }} *)
+(*       p1 *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} *)
+(*       p2 *)
+(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ Nil }} *)
+(*       (Seq p1 (Seq p2 (Assign name (Binop op (Var var1) (Var var2))))) *)
+(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   Time SameValues_Facade_t. *)
+(*   apply Cons_PopExt; [ SameValues_Facade_t | ]. *)
+(*  *)
+(*   cut (st'0 ≲ Nil ∪ ext); *)
+(*   repeat match goal with *)
+(*          | _ => reflexivity *)
+(*          | _ => solve [simpl; SameValues_Facade_t] *)
+(*          | _ => apply WeakEq_pop_SCA; [decide_not_in|] *)
+(*          | [ H: WeakEq ?a ?st |- ?st ≲ _ ∪ _ ] => rewrite <- H *)
+(*          | _ => progress simpl *)
+(*          end. *)
+(* Qed. *)
 
 Lemma CompileBinopOrTest_full:
   forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2,
