@@ -502,9 +502,9 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ |-  context[remove ?k (add ?k ?v ?m)] ]     => rewrite (@remove_trickle _ k k v m eq_refl) by congruence
     | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
     | [ H: ?k' <> ?k    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H by congruence
+    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
     | [ H: ?k <> ?k'    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H by congruence
+    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
     | [ H': ?k ∉ ?m   |- context[remove ?k ?m] ]     => rewrite (remove_notIn_Equal H') by congruence
     | [ H': ?k ∉ ?m, H: context[remove ?k ?m] |- _ ] => rewrite (remove_notIn_Equal H') in H by congruence
 
@@ -2269,6 +2269,12 @@ Ltac head_constant expr :=
   | ?f => f
   end.
 
+Ltac learn_all_WeakEq_remove hyp lhs :=
+  match lhs with
+  | StringMap.add ?k _ ?lhs' => try learn (WeakEq_remove k hyp); learn_all_WeakEq_remove hyp lhs'
+  | _ => idtac
+  end.
+
 Ltac facade_cleanup_call :=
   match goal with
   | _ => progress cbv beta iota delta [add_remove_many] in *
@@ -2276,8 +2282,8 @@ Ltac facade_cleanup_call :=
   | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
   | [ H: PreCond _ _ _ |- _ ] => progress simpl in H
   | [ H: PostCond _ _ _ |- _ ] => progress simpl in H
-  | [  |- PreCond (?f _) _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]  
-  | [ H: WeakEq (StringMap.add ?k _ _) _ |- _ ] => learn (WeakEq_remove k H)
+  | [  |- PreCond (?f _) _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]
+  | [ H: WeakEq ?lhs _ |- _ ] => progress learn_all_WeakEq_remove H lhs
   | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
   | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
   | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a
@@ -2793,7 +2799,7 @@ Proof.
 Qed.
 
 Hint Immediate Random_caracterization : call_helpers_db.
-(* Hint Resolve WeakEq_empty_remove : call_helpers_db. *)
+Hint Resolve WeakEq_empty_remove : call_helpers_db.
 
 Set Implicit Arguments.
 
@@ -2918,6 +2924,13 @@ Definition FacadeImplementationOfConstructor av (fAA: av) : AxiomaticSpec av.
     |}; spec_t.
 Defined.
 
+Definition FacadeImplementationOfCopy av : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => exists x, args = (ADT x) :: nil;
+      PostCond := fun args ret => exists x, args = (ADT x, Some x) :: nil /\ ret = (ADT x)
+    |}; spec_t.
+Defined.
+
 Definition FacadeImplementationOfDestructor av (fAA: av) : AxiomaticSpec av.
   refine {|
       PreCond := fun args => exists x, args = (ADT x) :: nil;
@@ -2963,6 +2976,36 @@ Lemma CompileCallFacadeImplementationOfConstructor:
       {{ Nil }}
         (Call vret fpointer nil)
       {{ [[ vret <-- @ADT av adt as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Lemma WeakEq_add_MapsTo :
+  forall {av} k v m1 m2,
+    StringMap.MapsTo k v m1 ->
+    WeakEq (StringMap.add k v m1) m2 ->
+    @WeakEq av m1 m2.
+Proof.
+  intros; rewrite add_redundant_cancel; eassumption.
+Qed.
+
+Hint Resolve WeakEq_add_MapsTo : call_helpers_db.
+Hint Resolve WeakEq_add : call_helpers_db.
+
+Lemma CompileCallFacadeImplementationOfCopy:
+  forall {av} {env},
+  forall fpointer vsrc,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfCopy av)) env ->
+    forall vret adt ext,
+      vret <> vsrc ->
+      vret ∉ ext ->
+      StringMap.MapsTo vsrc (ADT adt) ext ->
+      {{ Nil }}
+        (Call vret fpointer (vsrc :: nil))
+      {{ [[ vret <-- ADT adt as _]] :: Nil }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
