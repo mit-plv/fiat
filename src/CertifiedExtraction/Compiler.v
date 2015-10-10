@@ -546,7 +546,7 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
              | [  |- ?a <> ?b ] => discriminate
              | [ H: ?a = ?b |- context[?a] ] => rewrite H
              | [ H: ?k <> ?k' |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_mapsto_iff
-             | [  |- MapsTo ?k ?v (add ?k' ?v ?m) ] => apply add_1; try reflexivity
+             | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_1; reflexivity
              | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_2
              | [  |- find ?k ?m = Some ?v ] => apply find_1
              end).
@@ -577,7 +577,8 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
   Ltac find_fast value fmap :=
     match fmap with
     | @empty _       => constr:(None)
-    | add ?k value _ => constr:(Some k) (* FIXME should check whether terms are convertible instead of asking for equality *)
+    | add ?k ?v _    => let eq := constr:(eq_refl v : v = value) in
+                       constr:(Some k)
     | add ?k _ ?tail => let ret := find_fast value tail in constr:(ret)
     | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) (@None string) in
                        constr:(ret)
@@ -2773,7 +2774,6 @@ Proof.
   econstructor; repeat compile_step.
 Defined.
 
-
 Require Import Program List.
 
 Definition Random := { x: W | True }%comp.
@@ -2974,7 +2974,7 @@ Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("std", "cons") (Axiomatic (FacadeImplementationOfMutation cons)))
-          (GLabelMap.empty (FuncSpec (list W))))).
+          (GLabelMap.empty _))).
 
 Example random_test_with_adt :
   Facade program implementing ( x <- Random;
