@@ -1736,6 +1736,37 @@ Proof.
   intuition eauto using SameSCAs_pop_SCA', SameADTs_pop_SCA'.
 Qed.
 
+
+Lemma SameSCAs_pop_SCA_left :
+  forall {av} k v m1 m2,
+    k ∉ m1 ->
+    SameSCAs (StringMap.add k (SCA av v) m1) m2 ->
+    SameSCAs m1 m2.
+Proof.
+  unfold SameSCAs; intros; eauto using MapsTo_NotIn_inv, StringMap.add_2.
+Qed.
+
+Lemma SameADTs_pop_SCA_left :
+  forall {av} k v m1 m2,
+    k ∉ m1 ->
+    SameADTs (StringMap.add k (SCA av v) m1) m2 ->
+    SameADTs m1 m2.
+Proof.
+  unfold SameADTs; split; intros; rewrite <- H0 in *.
+  - eauto using MapsTo_NotIn_inv, StringMap.add_2.
+  - destruct (StringMap.E.eq_dec k k0); subst;
+    StringMap_t; congruence.
+Qed.
+
+Lemma WeakEq_pop_SCA_left :
+  forall {av} k v m1 m2,
+    k ∉ m1 ->
+    WeakEq (StringMap.add k (SCA av v) m1) m2 ->
+    WeakEq m1 m2.
+Proof.
+  unfold WeakEq; intuition eauto using SameADTs_pop_SCA_left, SameSCAs_pop_SCA_left.
+Qed.
+
 Hint Resolve SameADTs_pop_SCA : SameValues_db.
 Hint Resolve SameSCAs_pop_SCA : SameValues_db.
 Hint Resolve WeakEq_pop_SCA : SameValues_db.
@@ -2299,6 +2330,7 @@ Hint Resolve WeakEq_Refl : call_helpers_db.
 Hint Resolve WeakEq_Trans : call_helpers_db.
 Hint Resolve WeakEq_remove_notIn : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA : call_helpers_db.
+Hint Resolve WeakEq_pop_SCA_left : call_helpers_db.
 
 Definition FacadeImplementationWW av (fWW: W -> W) : AxiomaticSpec av.
   refine {|
@@ -2959,6 +2991,54 @@ Lemma CompileCallFacadeImplementationOfMutation:
       {{ [[ varg <-- SCA _ SCAarg as _]] :: [[ vret <-- ADT ADTarg as _]] :: Nil }} ∪ {{ ext }} // env ->
       {{ Nil }}
         Seq pSCA (Seq pADT (Call vtmp fpointer (varg :: vret :: nil)))
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutationB:
+  forall {av} {env} fADT,
+  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+    forall vret ext pSCA,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+        pSCA
+      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+        Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutationC:
+  forall {av} {env} fADT,
+  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+    forall vret ext pSCA,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+        pSCA
+      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+        Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
       {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
