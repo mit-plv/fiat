@@ -1971,29 +1971,29 @@ Ltac empty_remove_t :=
 
 Notation "∅" := (StringMap.empty _).
 
-Lemma SameSCAs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameSCAs ∅ initial_state ->
-    SameSCAs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameSCAs; empty_remove_t.
-Qed.
+(* Lemma SameSCAs_empty_remove: *)
+(*   forall av (var : string) (initial_state : State av), *)
+(*     SameSCAs ∅ initial_state -> *)
+(*     SameSCAs ∅ (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold SameSCAs; empty_remove_t. *)
+(* Qed. *)
 
-Lemma SameADTs_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    SameADTs ∅ initial_state ->
-    SameADTs ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold SameADTs; empty_remove_t.
-Qed.
+(* Lemma SameADTs_empty_remove: *)
+(*   forall av (var : string) (initial_state : State av), *)
+(*     SameADTs ∅ initial_state -> *)
+(*     SameADTs ∅ (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold SameADTs; empty_remove_t. *)
+(* Qed. *)
 
-Lemma WeakEq_empty_remove:
-  forall av (var : string) (initial_state : State av),
-    WeakEq ∅ initial_state ->
-    WeakEq ∅ (StringMap.remove var initial_state).
-Proof.
-  unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove.
-Qed.
+(* Lemma WeakEq_empty_remove: *)
+(*   forall av (var : string) (initial_state : State av), *)
+(*     WeakEq ∅ initial_state -> *)
+(*     WeakEq ∅ (StringMap.remove var initial_state). *)
+(* Proof. *)
+(*   unfold WeakEq; intuition eauto using SameADTs_empty_remove, SameSCAs_empty_remove. *)
+(* Qed. *)
 
 (* Lemma SameSCAs_remove_SCA: *)
 (*   forall av (var : StringMap.key) (initial_state : State av), *)
@@ -2944,7 +2944,7 @@ Proof.
 Qed.
 
 Hint Immediate Random_caracterization : call_helpers_db.
-Hint Resolve WeakEq_empty_remove : call_helpers_db.
+(* Hint Resolve WeakEq_empty_remove : call_helpers_db. *)
 
 Set Implicit Arguments.
 
