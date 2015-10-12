@@ -2440,7 +2440,7 @@ Ltac facade_cleanup_call :=
   end.
 
 Hint Resolve WeakEq_Refl : call_helpers_db.
-Hint Resolve WeakEq_Trans : call_helpers_db.
+(* Hint Resolve WeakEq_Trans : call_helpers_db. *)
 Hint Resolve WeakEq_remove_notIn : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA_left : call_helpers_db.
