@@ -1587,12 +1587,11 @@ Ltac SameValues_Facade_t_step :=
   | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2 (* Learn MapsTo instances *)
 
   | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
-
-  | _ => solve [eauto 4 with SameValues_db]
   end.
 
 Ltac SameValues_Facade_t :=
-  repeat SameValues_Facade_t_step.
+  repeat SameValues_Facade_t_step;
+  try solve [eauto 4 with SameValues_db].
 
 Add Parametric Morphism {A} ext : (@Cons A)
     with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelEq ext) ==> (TelEq ext))
@@ -2443,7 +2442,7 @@ Proof.
          | _ => SameValues_Facade_t_step
          | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
          | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
-         | _ => solve [eauto using isTrueExpr_is_false, isTrueExpr_is_true]
+         | _ => solve [eauto using isTrueExpr_is_false, isTrueExpr_is_true with SameValues_db]
          end.
 Qed.
 
@@ -2500,13 +2499,14 @@ Ltac facade_cleanup_call :=
   | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
   | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
   | [ H: combine ?a ?b = _, H': length ?a = length ?b |- _ ] => learn (combine_inv a b H' H)
+  | [ |-  context[split (cons _ _)] ] => simpl
   | [ H: context[split (cons _ _)] |- _ ] => may_touch H; simpl in H
   (* | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a *)
   | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; try subst; clear H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   (* | _ => progress simpl *)
-  | _ => solve [eauto with call_helpers_db]
+  | _ => solve [eauto with call_helpers_db SameValues_db]
   end.
 
 Hint Resolve WeakEq_Refl : call_helpers_db.
@@ -2751,9 +2751,15 @@ Ltac compile_binop av facade_op lhs rhs ext :=
     apply (CompileBinopOrTest_full (var1 := vlhs) (var2 := vrhs) facade_op)
   end.
 
+Ltac decide_NotInTelescope :=
+  repeat match goal with
+         | [  |- NotInTelescope _ Nil ] => reflexivity
+         end.
+
 Ltac compile_do_side_conditions :=
   match goal with
   | _ => abstract decide_not_in
+  | _ => abstract decide_NotInTelescope
   | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
   | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
   | [  |- GLabelMap.MapsTo _ _ _ ] => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
@@ -2827,7 +2833,7 @@ Ltac compile_simple name cmp :=
   autorewrite with compile_simple_db;
   (* Recapture cmp after rewriting *)
   lazymatch goal with
-  | [  |- {{ Nil }} ?prog {{ Cons ?s ?cmp (fun _ => Nil) }} ∪ {{ ?ext }} // ?env ] => compile_simple_internal env cmp ext
+  | [  |- {{ ?tenv }} ?prog {{ Cons ?s ?cmp (fun _ => ?tenv) }} ∪ {{ ?ext }} // ?env ] => compile_simple_internal env cmp ext
   end.
 
 Ltac compile_skip :=
@@ -2868,9 +2874,9 @@ Ltac compile_ProgOk p pre post ext env :=
   | (Cons (Some ?k) ?cmp _, Cons None ?cmp _,                            _) => first [compile_dealloc k cmp | fail ]
   | (_,                     Cons None ?cmp ?tl,                          _) => first [compile_do_alloc cmp tl | fail ]
   | (_,                     Cons ?k (Bind ?compA ?compB) ?tl,            _) => first [compile_do_bind k compA compB tl | fail ]
-  | (Nil,                   Cons (Some ?k) ?cmp (fun _ => Nil),             _) => first [compile_simple k cmp | fail ]
-  | (Nil,                   Cons ?k ?cmp ?tl,                            _) => first [compile_do_cons | fail ]
-  | (Nil,                   Nil,                                         _) => first [compile_skip | fail ]
+  | (?tenv,                 Cons (Some ?k) ?cmp (fun _ => ?tenv),           _) => first [compile_simple k cmp | fail ]
+  | (?tenv,                 Cons ?k ?cmp ?tl,                            _) => first [compile_do_cons | fail ] (* FIXME *)
+  | (?tenv,                 ?tenv,                                       _) => first [compile_skip | fail ]
   end.
 
 (* Ltac debug_match_ProgOk := *)
@@ -3021,7 +3027,7 @@ Hint Immediate Random_caracterization : call_helpers_db.
 
 Set Implicit Arguments.
 
-Lemma CompileCallRandom_Strong:
+Lemma CompileCallRandom:
   forall {av} (env : GLabelMap.t (FuncSpec av)),
   forall fpointer tenv,
     GLabelMap.MapsTo fpointer (Axiomatic FRandom) env ->
@@ -3158,9 +3164,93 @@ Defined.
 
 Hint Resolve WeakEq_pop_SCA' : call_helpers_db.
 
+
+(* FIXME: Why is this needed? *)
+Lemma urgh : (subrelation eq (flip impl)).
+Proof.
+  repeat red; intros; subst; assumption.
+Qed.
+
+Hint Resolve urgh : typeclass_instances.
+
+(* Lemma Bug: *)
+(*   forall k1 k2 (st: StringMap.t nat) (x : nat), *)
+(*     StringMap.MapsTo k1 x st -> *)
+(*     match StringMap.find k2 ([k2 <-- x]::[k1 <-- x]::st) with *)
+(*     | Some _ => True *)
+(*     | None => True *)
+(*     end. *)
+(* Proof. *)
+(*   intros ** H. *)
+(*   setoid_rewrite <- (add_redundant_cancel H). *)
+(*   (* Inifinite loop unless `urgh' is added as a hint *) *)
+(* Abort. *)
+
+Lemma SameValues_Mutation_helper:
+  forall (av : Type) (vsrc vret : StringMap.key)
+    (ext : StringMap.t (Value av)) (tenv : Telescope av)
+    (initial_state : State av) (x : av),
+    vret <> vsrc ->
+    vret ∉ ext ->
+    NotInTelescope vret tenv ->
+    StringMap.MapsTo vsrc (ADT x) initial_state ->
+    initial_state ≲ tenv ∪ ext ->
+    [vsrc <-- ADT x]::M.remove vret initial_state ≲ tenv ∪ ext.
+Proof.
+  intros.
+  repeat match goal with
+         | _ => rewrite <- remove_add_comm by congruence
+         | [ H: StringMap.MapsTo ?k ?v ?st |- context[StringMap.add ?k ?v ?st] ] => rewrite <- (add_redundant_cancel H)
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Hint Resolve SameValues_Mutation_helper : call_helpers_db.
+
+Lemma CompileCallFacadeImplementationOfCopy:
+  forall {av} {env},
+  forall fpointer vsrc,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfCopy av)) env ->
+    forall vret adt ext tenv,
+      vret <> vsrc ->
+      vret ∉ ext ->
+      NotInTelescope vret tenv ->
+      StringMap.MapsTo vsrc (ADT adt) ext ->
+      {{ tenv }}
+        (Call vret fpointer (vsrc :: nil))
+      {{ [[ vret <-- ADT adt as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+Qed.
+
+Lemma Cons_PushExt':
+  forall {av} key tenv ext v (st: State av),
+    st ≲ Cons (Some key) (ret v) (fun _ => tenv) ∪ ext ->
+    st ≲ tenv ∪ [key <-- v] :: ext.
+Proof.
+  intros; change tenv with ((fun _ => tenv) v); eauto using Cons_PushExt.
+Qed.
+
+Hint Resolve Cons_PushExt' : SameValues_db.
+
+Lemma SameValues_add_SCA_notIn_ext :
+  forall {av} k v st tenv ext,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    st ≲ tenv ∪ ext ->
+    StringMap.add k (SCA av v) st ≲ tenv ∪ ext.
+Proof.
+  eauto with SameValues_db.
+Qed.
+
+Hint Resolve SameValues_add_SCA_notIn_ext : SameValues_db.
+
 Lemma CompileCallFacadeImplementationOfMutation:
   forall {av} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) ADTarg,
+  forall fpointer varg vtmp (SCAarg: W) ADTarg tenv,
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
     forall vret ext pSCA pADT,
       vret <> varg ->
@@ -3169,25 +3259,39 @@ Lemma CompileCallFacadeImplementationOfMutation:
       vret ∉ ext ->
       vtmp ∉ ext ->
       varg ∉ ext ->
-      {{ @Nil av }}
+      @NotInTelescope av vret tenv ->
+      @NotInTelescope av vtmp tenv ->
+      @NotInTelescope av varg tenv ->
+      {{ tenv }}
         pSCA
-      {{ [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
-      {{ [[ varg <-- SCA _ SCAarg as _]] :: Nil }}
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: tenv }}
         pADT
-      {{ [[ varg <-- SCA _ SCAarg as _]] :: [[ vret <-- ADT ADTarg as _]] :: Nil }} ∪ {{ ext }} // env ->
-      {{ Nil }}
+      {{ [[ varg <-- SCA _ SCAarg as _]] :: [[ vret <-- ADT ADTarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ tenv }}
         Seq pSCA (Seq pADT (Call vtmp fpointer (varg :: vret :: nil)))
-      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         end.
+  repeat match goal with | _ => SameValues_Facade_t_step | _ => facade_cleanup_call end.
 Qed.
+
+Ltac wipe :=
+  repeat match goal with
+         | [ H: ?a = ?a |- _ ] => clear dependent H
+         | [ H: forall _, _ |- _ ] => clear dependent H
+         | [ H: ?h |- _ ] =>
+           let hd := head_constant h in
+           match hd with
+           | @Learnt => clear dependent H
+           | @Safe => clear dependent H
+           | @ProgOk => clear dependent H
+           | @M.Equal => clear dependent H
+           end
+         end.
 
 Lemma CompileCallFacadeImplementationOfMutationB:
   forall {av} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av),
+  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av) tenv,
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
     forall vret ext pSCA,
       vret <> varg ->
@@ -3196,12 +3300,15 @@ Lemma CompileCallFacadeImplementationOfMutationB:
       vret ∉ ext ->
       vtmp ∉ ext ->
       varg ∉ ext ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+      NotInTelescope vret tenv ->
+      NotInTelescope vtmp tenv ->
+      NotInTelescope varg tenv ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
         pSCA
-      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
         Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
-      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env.
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -3211,7 +3318,7 @@ Qed.
 
 Lemma CompileCallFacadeImplementationOfMutationC:
   forall {av} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av),
+  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av) tenv,
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
     forall vret ext pSCA,
       vret <> varg ->
@@ -3220,12 +3327,15 @@ Lemma CompileCallFacadeImplementationOfMutationC:
       vret ∉ ext ->
       vtmp ∉ ext ->
       varg ∉ ext ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+      NotInTelescope vret tenv ->
+      NotInTelescope vtmp tenv ->
+      NotInTelescope varg tenv ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
         pSCA
-      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: Nil }} ∪ {{ ext }} // env ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }}
+      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
         Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
-      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -3279,7 +3389,6 @@ Proof.
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
          end.
-  
 Qed.
 
 Definition MyEnvW :=
