@@ -3413,6 +3413,43 @@ Defined.
 
 Eval simpl in (proj1_sig random_test_with_adt).
 
+(* Lemma CompileSeq : *)
+(*   forall {av} (tenv1 tenv1' tenv2: Telescope av) ext env p1 p2, *)
+(*     {{ tenv1 }} *)
+(*       p1 *)
+(*       {{ tenv1' }} ∪ {{ ext }} // env -> *)
+(*     {{ tenv1' }} *)
+(*       p2 *)
+(*       {{ tenv2 }} ∪ {{ ext }} // env -> *)
+(*     {{ tenv1 }} *)
+(*       (Seq p1 p2) *)
+(*       {{ tenv2 }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   SameValues_Facade_t. *)
+(* Qed. *)
+
+Example test_with_adt :
+    sigT (fun prog => forall tail, {{ [[`"ret" <~~ ret (ADT tail) as _ ]] :: Nil }}
+                             prog
+                           {{ [[`"ret" <~~ ( x <- Random;
+                                             ret (ADT (x :: tail))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+Proof.
+  econstructor; unfold MyEnvW; intros.
+  compile_step.
+  compile_step.
+  2:repeat compile_step.
+
+  apply ProgOk_Transitivity_Cons.
+  eapply CompileCallRandom; try compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply (CompileCallFacadeImplementationOfMutationC (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
+Defined.
+
+Eval simpl in (proj1_sig test_with_adt).
+Print Assumptions test_with_adt.
+
 Lemma CompileCallFacadeImplementationOfMutation:
   forall {av} {env} fADT,
   forall fpointer varg vtmp (SCAarg: W) ADTarg,
