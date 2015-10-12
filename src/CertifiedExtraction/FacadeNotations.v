@@ -27,7 +27,7 @@ Notation "x <- y" := (Assign x y) (at level 90) : facade_scope.
 Notation "y <- f . g ()" := (Call y (f, g) nil)
                              (at level 90, no associativity, format "y  '<-'  f '.' g '()'") : facade_scope.
 Notation "y <- f . g ( x1 .. xn )" := (Call y (f, g) (cons x1 .. (cons xn nil) ..))
-                                       (at level 90, no associativity, format "y  '<-'  f '.' g '(' x1 .. xn ')'") : facade_scope.
+                                       (at level 90, no associativity, format "y  '<-'  f '.' g '(' x1  ..  xn ')'") : facade_scope.
 
 Notation "A < B" := (TestE IL.Lt A B) : facade_scope.
 Notation "A <= B" := (TestE IL.Le A B) : facade_scope.
