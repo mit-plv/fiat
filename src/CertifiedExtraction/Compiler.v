@@ -2753,7 +2753,9 @@ Ltac compile_binop av facade_op lhs rhs ext :=
 
 Ltac decide_NotInTelescope :=
   repeat match goal with
+         | _ => cleanup
          | [  |- NotInTelescope _ Nil ] => reflexivity
+         | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
          end.
 
 Ltac compile_do_side_conditions :=
@@ -3272,7 +3274,10 @@ Lemma CompileCallFacadeImplementationOfMutation:
         Seq pSCA (Seq pADT (Call vtmp fpointer (varg :: vret :: nil)))
       {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with | _ => SameValues_Facade_t_step | _ => facade_cleanup_call end.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
 Qed.
 
 Ltac wipe :=
@@ -3372,30 +3377,29 @@ Qed.
 Hint Resolve WeakEq_add_MapsTo : call_helpers_db.
 Hint Resolve WeakEq_add : call_helpers_db.
 
-Lemma CompileCallFacadeImplementationOfCopy:
-  forall {av} {env} tenv,
-  forall fpointer vsrc,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfCopy av)) env ->
-    forall vret adt ext,
-      vret <> vsrc ->
-      vret ∉ ext ->
-      NotInTelescope vret tenv ->
-      StringMap.MapsTo vsrc (ADT adt) ext ->
-      {{ tenv }}
-        (Call vret fpointer (vsrc :: nil))
-      {{ [[ vret <-- ADT adt as _]] :: tenv }} ∪ {{ ext }} // env.
-Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         end.
-Qed.
-
 Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("std", "cons") (Axiomatic (FacadeImplementationOfMutation cons)))
           (GLabelMap.empty _))).
+
+Ltac compile_mutation :=
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(pre, post) with
+                       | (?tenv, Cons ?s (ret (ADT (?f _ _))) (fun _ => ?tenv)) =>
+                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfMutation f)) env in
+                         let adt := gensym "adt" in
+                         let sca := gensym "sca" in
+                         apply (CompileCallFacadeImplementationOfMutation (fpointer := fpointer) (varg := adt) (vtmp := sca))
+                       end).
+
+Ltac compile_constructor :=
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(pre, post) with
+                       | (?tenv, Cons ?s (ret (ADT ?adt)) (fun _ => ?tenv)) =>
+                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfConstructor adt)) env in
+                         apply (CompileCallFacadeImplementationOfConstructor tenv (fpointer := fpointer))
+                       end).
 
 Example random_test_with_adt :
   Facade program implementing ( x <- Random;
@@ -3404,11 +3408,7 @@ Example random_test_with_adt :
                                           else
                                             x :: nil))) with MyEnvW.
 Proof.
-  repeat (compile_step || compile_random).
-  apply (CompileCallFacadeImplementationOfMutation (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
-  apply CompileCallFacadeImplementationOfConstructor; repeat compile_step.
-  apply (CompileCallFacadeImplementationOfMutation (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
-  apply CompileCallFacadeImplementationOfConstructor; repeat compile_step.
+  repeat (compile_step || compile_random || compile_constructor || compile_mutation).
 Defined.
 
 Eval simpl in (proj1_sig random_test_with_adt).
