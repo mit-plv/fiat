@@ -498,6 +498,8 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
     | [ H: ?k' <> ?k    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
     | [ H: ?k' <> ?k, H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+    | [ H: ?k <> ?k' |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
+    | [ H: ?k' <> ?k |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
 
     | [ |-  context[remove ?k (add ?k ?v ?m)] ]     => rewrite (@remove_trickle _ k k v m eq_refl) by congruence
     | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
@@ -528,6 +530,10 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | [ H: ?k ∉ ?m, H': MapsTo ?k _ ?m |- _ ] => learn (MapsTo_In H')
     | [ H: ?k ∉ ?m, H': MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
     | [ H: ?k ∉ ?st |- ?k ∉ (remove ?k' ?st) ] => eapply (In_remove_inv H); solve [eauto]
+
+    | [ H: MapsTo ?k ?v (remove ?k' _) |- _ ] => learn (remove_3 H)
+    | [ H: ?k ∉ (remove ?k' ?m), H': ?k' <> ?k |- _ ] => rewrite remove_neq_in_iff in H by congruence
+    | [ H: ?k ∉ (remove ?k' ?m), H': ?k <> ?k' |- _ ] => rewrite remove_neq_in_iff in H by congruence
     end.
 
   Ltac repeat_rec tac :=
@@ -587,6 +593,13 @@ End WUtils_fun.
 
 Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
 
+Lemma Some_neq :
+  forall A (x y: A),
+    Some x <> Some y <-> x <> y.
+Proof.
+  split; red; intros ** H; subst; try inversion H; intuition eauto.
+Qed.
+
 Ltac cleanup :=
   match goal with
   | _ => tauto
@@ -596,6 +609,8 @@ Ltac cleanup :=
   | [ |- ?a <-> ?b ] => split
   | [  |- ?a /\ ?b ] => split
   | [ H: ?a /\ ?b |- _ ] => destruct H
+  | [ H: exists _, _ |- _ ] => destruct H
+  | [ H: Some _ <> Some _ |- _ ] => rewrite Some_neq in H
   end.
 
 Ltac t_SameValues_Morphism :=
@@ -1035,7 +1050,6 @@ Ltac SameValues_Fiat_t :=
   repeat (idtac "step";
            match goal with
            | _ => cleanup
-           | [ H: exists _, _ |- _ ] => destruct H
 
            | [  |- _ ≲ Cons _ _ _ ∪ _ ] => simpl
            | [ H: _ ≲ Cons _ _ _ ∪ _ |- _ ] => simpl in H
@@ -1445,6 +1459,56 @@ Qed.
 Hint Resolve SameValues_Add_Cons : SameValues_db.
 Hint Resolve WeakEq_add : SameValues_db.
 
+Set Implicit Arguments.
+
+Fixpoint NotInTelescope {av} k (tenv: Telescope av) :=
+  match tenv with
+  | Nil => True
+  | Cons key val tail => Some k <> key /\ (forall v, val ↝ v -> NotInTelescope k (tail v))
+  end.
+
+Lemma NotInTelescope_not_eq_head:
+  forall (av : Type) (key : string) (val : Comp (Value av))
+    (tail : Value av -> Telescope av) (var : StringMap.key),
+    NotInTelescope var ([[` key <~~ val as kk]]::tail kk) ->
+    key <> var.
+Proof.
+  simpl; intros; repeat cleanup; eauto.
+Qed.
+
+Lemma NotInTelescope_not_in_tail:
+  forall (av : Type) s (val : Comp (Value av))
+    (tail : Value av -> Telescope av) (var : StringMap.key)
+    (v : Value av),
+    val ↝ v ->
+    NotInTelescope var ([[ s <~~ val as kk]]::tail kk) ->
+    NotInTelescope var (tail v).
+Proof.
+  simpl; intros.
+  intuition eauto.
+Qed.
+
+Lemma SameValues_Cons_unfold_Some :
+  forall av k (st: State av) val ext tail,
+    st ≲ (Cons (Some k) val tail) ∪ ext ->
+    exists v, StringMap.MapsTo k v st /\ val ↝ v /\ StringMap.remove k st ≲ tail v ∪ ext.
+Proof.
+  simpl; intros;
+  repeat match goal with
+         | _ => exfalso; assumption
+         | [ H: match ?x with Some _ => _ | None => False end |- _ ] => destruct x eqn:eq
+         | _ => intuition eauto using StringMap.find_2
+         end.
+Qed.
+
+Lemma SameValues_Cons_unfold_None :
+  forall av (st: State av) val ext tail,
+    st ≲ (Cons None val tail) ∪ ext ->
+    exists v, val ↝ v /\ st ≲ tail v ∪ ext.
+Proof.
+  simpl; intros; assumption.
+Qed.
+
 Inductive Learnt_FromWeakEq {A} (F1 F2: StringMap.t A) :=
 | LearntFromWeakEq: Learnt_FromWeakEq F1 F2.
 
@@ -1509,10 +1573,18 @@ Ltac SameValues_Facade_t_step :=
   | [ H: ?st ≲ Cons (Some _) _ _ ∪ _ |- _ ] => learn (Cons_PushExt _ _ _ _ _ H)
   | [ H: ?st ≲ Cons None _ _ ∪ _ |- _ ] => learn (Cons_PopAnonymous H)
   | [ H: ?st ≲ (fun _ => _) _ ∪ _ |- _ ] => progress cbv beta in H
+  | [ H: ?st ≲ (Cons (Some ?k) ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_Some k st val ext tail H)
+  | [ H: ?st ≲ (Cons None ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_None H)
+  (* Cleanup NotInTelescope *)
+  | [ H: NotInTelescope ?k (Cons None _ _) |- _ ] => simpl in H
+  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail) |- _ ] => learn (NotInTelescope_not_eq_head _ H)
+  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail), H': ?v ↝ _ |- _ ] => learn (NotInTelescope_not_in_tail _ _ H' H)
 
+  (* FIXME are these still useful? *)
   | [ H: ?st ≲ Nil ∪ ?ext |- _ ] => learn (SameValues_Nil H)
   | [ H: WeakEq _ ?st |- not_mapsto_adt _ ?st = _ ] => rewrite <- H
   | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2 (* Learn MapsTo instances *)
+
   | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
 
   | _ => solve [eauto 3 with SameValues_db]
@@ -1771,6 +1843,72 @@ Hint Resolve SameADTs_pop_SCA : SameValues_db.
 Hint Resolve SameSCAs_pop_SCA : SameValues_db.
 Hint Resolve WeakEq_pop_SCA : SameValues_db.
 
+Lemma not_mapsto_adt_neq_remove:
+  forall (av : Type) (s : string) (k : StringMap.key)
+    (st : StringMap.t (Value av)),
+    k <> s ->
+    not_mapsto_adt k (StringMap.remove (elt:=Value av) s st) = true ->
+    not_mapsto_adt k st = true.
+Proof.
+  not_mapsto_adt_t; SameValues_Facade_t.
+Qed.
+
+Hint Resolve not_mapsto_adt_neq_remove : SameValues_db.
+
+Lemma not_In_Telescope_not_in_Ext_not_mapsto_adt :
+  forall {av} tenv k st ext,
+    k ∉ ext ->
+    @NotInTelescope av k tenv ->
+    st ≲ tenv ∪ ext ->
+    not_mapsto_adt k st = true.
+Proof.
+  induction tenv; SameValues_Facade_t.
+  destruct key; SameValues_Facade_t.
+Qed.
+
+Unset Printing Implicit Defensive.
+
+Lemma WeakEq_remove_notIn:
+  forall av (k : StringMap.key) (st1 st2 : State av),
+    k ∉ st1 ->
+    WeakEq st1 st2 ->
+    WeakEq st1 (StringMap.remove k st2).
+Proof.
+  intros. rewrite <- (remove_notIn_Equal (k := k)  (m := st1)) by assumption.
+  eauto using WeakEq_remove.
+Qed.
+
+Hint Resolve WeakEq_remove_notIn : SameValues_db.
+
+Lemma SameValues_not_In_Telescope_not_in_Ext_remove:
+  forall {av} (tenv : Telescope av) (var : StringMap.key)
+    (ext : StringMap.t (Value av)) (initial_state : State av),
+    var ∉ ext ->
+    NotInTelescope var tenv ->
+    initial_state ≲ tenv ∪ ext ->
+    StringMap.remove var initial_state ≲ tenv ∪ ext.
+Proof.
+  induction tenv; intros;
+  simpl in *; SameValues_Fiat_t; SameValues_Facade_t.
+  rewrite remove_remove_comm by congruence; SameValues_Facade_t.
+Qed.
+
+Lemma SameValues_add_to_ext:
+  forall {av} (k : string) (cmp : Comp (Value av)) val
+    (tmp : StringMap.key) (ext : StringMap.t (Value av))
+    (final_state : State av),
+    tmp ∉ ext ->
+    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ [tmp <-- SCA _ val]::ext ->
+    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ ext.
+Proof.
+  simpl; intros. SameValues_Fiat_t.
+  eauto using WeakEq_pop_SCA, WeakEq_refl, WeakEq_Trans.
+Qed.
+
+Hint Resolve not_In_Telescope_not_in_Ext_not_mapsto_adt : SameValues_db.
+Hint Resolve SameValues_not_In_Telescope_not_in_Ext_remove : SameValues_db.
+Hint Resolve SameValues_add_to_ext : SameValues_db.
+
 Lemma SameValues_add_SCA:
   forall av tel st k ext v,
     k ∉ st ->
@@ -1780,6 +1918,7 @@ Proof.
   induction tel;
   repeat (t_Morphism || SameValues_Facade_t).
   apply H; repeat (t_Morphism || SameValues_Facade_t).
+  eexists; SameValues_Facade_t.
 Qed.
 
 Definition AlwaysComputesToSCA {av} (v: Comp (Value av)) :=
@@ -1879,18 +2018,6 @@ Qed.
 (* Proof. *)
 (*   unfold WeakEq; intuition (eauto using SameADTs_remove_SCA, SameSCAs_remove_SCA). *)
 (* Qed. *)
-
-Lemma WeakEq_remove_notIn:
-  forall av (k : StringMap.key) (st1 st2 : State av),
-    k ∉ st1 ->
-    WeakEq st1 st2 ->
-    WeakEq st1 (StringMap.remove k st2).
-Proof.
-  intros. rewrite <- (remove_notIn_Equal (k := k)  (m := st1)) by assumption.
-  eauto using WeakEq_remove.
-Qed.
-
-Hint Resolve WeakEq_remove_notIn : SameValues_db.
 
 Lemma CompileConstant:
   forall {av} name env w ext,
@@ -2209,20 +2336,6 @@ Proof.
          | _ => progress simpl
          end.
 Qed.
-
-Lemma SameValues_add_to_ext:
-  forall {av} (k : string) (cmp : Comp (Value av)) val
-    (tmp : StringMap.key) (ext : StringMap.t (Value av))
-    (final_state : State av),
-    tmp ∉ ext ->
-    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ [tmp <-- SCA _ val]::ext ->
-    final_state ≲ [[ ` k <~~ cmp as _]]::Nil ∪ ext.
-Proof.
-  simpl; intros. SameValues_Fiat_t.
-  eauto using WeakEq_pop_SCA, WeakEq_refl, WeakEq_Trans.
-Qed.
-
-Hint Resolve SameValues_add_to_ext : SameValues_db.
 
 Set Implicit Arguments.
 
