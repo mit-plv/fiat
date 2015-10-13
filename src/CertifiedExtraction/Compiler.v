@@ -277,6 +277,12 @@ Proof.
          end.
 Qed.
 
+Ltac head_constant expr :=
+  match expr with
+  | ?f _ => head_constant f
+  | ?f => f
+  end.
+
 Require Import FMaps.
 Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
   Module Export BasicFacts := WFacts_fun E M.
@@ -545,16 +551,26 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
   Ltac decide_mapsto :=
     map_iff; intuition congruence.
 
+  Ltac unfold_head_until term target :=
+    let hd := head_constant term in
+    match hd with
+    | target => constr:term
+    | _ => let reduced := (eval cbv beta iota delta [hd] in term) in
+          unfold_head_until reduced target
+    end.
+
   Ltac decide_mapsto_maybe_instantiate :=
     Repeat (idtac;
              match goal with (* Recursive repeat for things that are only solvable after instantiating properly *)
              | _ => eassumption
+             | _ => progress autounfold with MapUtils_unfold_db
              | [  |- ?a <> ?b ] => discriminate
              | [ H: ?a = ?b |- context[?a] ] => rewrite H
-             | [ H: ?k <> ?k' |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_mapsto_iff
+             | [  |- find ?k ?m = Some ?v ] => apply find_1
              | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_1; reflexivity
              | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_2
-             | [  |- find ?k ?m = Some ?v ] => apply find_1
+             | [  |- MapsTo ?k ?v ?m ] => let reduced := unfold_head_until m @add in
+                                        change m with reduced
              end).
 
   Lemma not_or : forall (A B: Prop), not A /\ not B -> not (A \/ B).
@@ -566,6 +582,7 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     (* map_iff; intuition congruence. *)
     repeat match goal with
            | _                      => assumption
+           | _                      => progress autounfold with MapUtils_unfold_db
            | [  |- _ /\ _ ]           => split
            | [  |- _ <> _ ]           => abstract congruence
            | [  |- not False ]           => intro; assumption
@@ -2454,12 +2471,6 @@ Ltac spec_t :=
                    | [ H: exists t, _ |- _ ] => destruct H
                    end; intuition).
 
-Ltac head_constant expr :=
-  match expr with
-  | ?f _ => head_constant f
-  | ?f => f
-  end.
-
 Ltac learn_all_WeakEq_remove hyp lhs :=
   match lhs with
   | StringMap.add ?k _ ?lhs' => try learn (WeakEq_remove k hyp); learn_all_WeakEq_remove hyp lhs'
@@ -2934,8 +2945,7 @@ Notation "'Facade' 'program' 'implementing' cmp 'with' env" :=
 Ltac start_compiling :=
   match goal with
   | [  |- FacadeProgramImplementing _ ?env ] =>
-    let env_hd := head_constant env in
-    unfold FacadeProgramImplementing, IsFacadeProgramImplementing; try unfold env_hd; econstructor
+    unfold FacadeProgramImplementing, IsFacadeProgramImplementing; econstructor
   end.
 
 Ltac compile_step :=
