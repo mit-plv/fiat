@@ -102,8 +102,11 @@ Section refine_rules.
       destruct (List.nth n table None) as [idx|].
       { edestruct Htable as [[Htable0 Htable1] _]; clear Htable; [ reflexivity | ].
         left.
-        destruct (Compare_dec.lt_eq_lt_dec idx idx') as [[?|?]|?]; [ | assumption | ];
-        exfalso.
+        destruct (Compare_dec.lt_eq_lt_dec idx idx') as [[?|?]|?];
+          [
+          | subst; apply Min.min_r; rewrite substring_take_drop, take_length; assumption
+          | ];
+          exfalso.
         { (** idx < idx'; this contradicts the paren-balanced-hiding
           assumption about [nt], because we have a character in the
           middle of the string of length idx', where the prefix is

@@ -182,6 +182,8 @@ Section IndexedImpl.
                              | _ => rewrite Nat.add_sub
                              | _ => rewrite <- Nat.sub_min_distr_r
                              | _ => progress simpl
+                             | [ |- context[min ?x ?x] ]
+                               => rewrite (Min.min_idempotent x)
                              | [ |- context[min ?x ?y] ]
                                => match goal with
                                     | [ |- context[min y x] ]
@@ -200,6 +202,9 @@ Section IndexedImpl.
                              | _ => intro
                              | _ => progress subst
                              | [ |- List.In ?x [?y] ] => left
+                             | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+                             | [ |- context[min ?x ?x] ]
+                               => rewrite (Min.min_idempotent x)
                              | _ => reflexivity
                              | [ H : parse_of_production _ _ nil |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
                              | [ H : parse_of_production _ _ (_::_) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
@@ -210,10 +215,15 @@ Section IndexedImpl.
                              | _ => progress rewrite ?drop_length, ?take_length, ?substring_length, ?Nat.add_sub, ?Minus.minus_diag, ?Nat.sub_0_r, ?sub_plus by omega
                              | [ H : context[(_ ~= [ _ ])%string_like] |- _ ]
                                => apply length_singleton in H
+                             | [ H : ?x <= ?y |- context[min ?x ?y] ]
+                               => rewrite (Min.min_l x y H)
+                             | [ H : ?y <= ?x |- context[min ?x ?y] ]
+                               => rewrite (Min.min_r x y H)
                              | [ |- context[min ?x (?y + ?z) - ?z] ]
                                => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
                              | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
                                => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+                             | [ |- context[min ?x (?x - 1)] ] => rewrite (Min.min_r x (x - 1)) by (clear; omega)
                              | [ H : min ?x ?y = 1 |- _ ] => is_var x; revert H; apply (Min.min_case_strong x y)
                              | [ |- context[0 + ?x] ] => change (0 + x) with x
                              | [ |- context[?x - S ?y] ]

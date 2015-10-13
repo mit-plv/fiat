@@ -435,4 +435,21 @@ Section String.
              | [ H : context[min _ _] |- _ ] => revert H; apply Min.min_case_strong; intros
            end.
   Qed.
+
+  Lemma take_min_length (str : String) n
+  : take n str =s take (min (length str) n) str.
+  Proof.
+    apply Min.min_case_strong; [ | reflexivity ].
+    intro H.
+    rewrite !take_long by (assumption || reflexivity).
+    reflexivity.
+  Qed.
+
+  Lemma drop_min_length (str : String) n
+  : drop n str =s drop (min (length str) n) str.
+  Proof.
+    apply Min.min_case_strong; [ | reflexivity ].
+    intro H.
+    apply bool_eq_empty; rewrite drop_length; omega.
+  Qed.
 End String.
