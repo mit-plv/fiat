@@ -3148,8 +3148,8 @@ Eval simpl in (extract_facade random_test_with_cube).
 (* Weak version: should talk about injecting in and projecting out of the main type *)
 Definition FacadeImplementationOfMutation av (fAA: W -> av -> av) : AxiomaticSpec av.
   refine {|
-      PreCond := fun args => exists w x, args = (SCA _ w) :: (ADT x) :: nil;
-      PostCond := fun args ret => exists w x, args = (SCA _ w, None) :: (ADT x, Some (fAA w x)) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
+      PreCond := fun args => exists w x, args = (ADT x) :: (SCA _ w) :: nil;
+      PostCond := fun args ret => exists w x, args = (ADT x, Some (fAA w x)) :: (SCA _ w, None) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
     |}; spec_t.
 Defined.
 
@@ -3260,7 +3260,7 @@ Qed.
 
 Hint Resolve SameValues_add_SCA_notIn_ext : SameValues_db.
 
-Lemma CompileCallFacadeImplementationOfMutation:
+Lemma CompileCallFacadeImplementationOfMutation_Alloc:
   forall {av} {env} fADT,
   forall fpointer varg vtmp (SCAarg: W) ADTarg tenv,
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
@@ -3281,7 +3281,7 @@ Lemma CompileCallFacadeImplementationOfMutation:
         pADT
       {{ [[ varg <-- SCA _ SCAarg as _]] :: [[ vret <-- ADT ADTarg as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
-        Seq pSCA (Seq pADT (Call vtmp fpointer (varg :: vret :: nil)))
+        Seq pSCA (Seq pADT (Call vtmp fpointer (vret :: varg :: nil)))
       {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
@@ -3304,34 +3304,34 @@ Ltac wipe :=
            end
          end.
 
-Lemma CompileCallFacadeImplementationOfMutationB:
-  forall {av} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) (ADTarg: av) tenv,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
-    forall vret ext pSCA,
-      vret <> varg ->
-      vtmp <> varg ->
-      vtmp <> vret ->
-      vret ∉ ext ->
-      vtmp ∉ ext ->
-      varg ∉ ext ->
-      NotInTelescope vret tenv ->
-      NotInTelescope vtmp tenv ->
-      NotInTelescope varg tenv ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
-        pSCA
-      {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
-        Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
-      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env.
-Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         end.
-Qed.
+(* Lemma CompileCallFacadeImplementationOfMutationB: *)
+(*   forall {av} {env} fADT, *)
+(*   forall fpointer varg vtmp (SCAarg: W) (ADTarg: av) tenv, *)
+(*     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env -> *)
+(*     forall vret ext pSCA, *)
+(*       vret <> varg -> *)
+(*       vtmp <> varg -> *)
+(*       vtmp <> vret -> *)
+(*       vret ∉ ext -> *)
+(*       vtmp ∉ ext -> *)
+(*       varg ∉ ext -> *)
+(*       NotInTelescope vret tenv -> *)
+(*       NotInTelescope vtmp tenv -> *)
+(*       NotInTelescope varg tenv -> *)
+(*       {{ [[ vret <-- ADT ADTarg as _]] :: tenv }} *)
+(*         pSCA *)
+(*       {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env -> *)
+(*       {{ [[ vret <-- ADT ADTarg as _]] :: tenv }} *)
+(*         Seq pSCA (Call vtmp fpointer (vret :: varg :: nil)) *)
+(*       {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   repeat match goal with *)
+(*          | _ => SameValues_Facade_t_step *)
+(*          | _ => facade_cleanup_call *)
+(*          end. *)
+(* Qed. *)
 
-Lemma CompileCallFacadeImplementationOfMutationC:
+Lemma CompileCallFacadeImplementationOfMutation_Replace:
   forall {av} {env} fADT,
   forall fpointer varg vtmp (SCAarg: W) (ADTarg: av) tenv,
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
@@ -3349,7 +3349,7 @@ Lemma CompileCallFacadeImplementationOfMutationC:
         pSCA
       {{ [[ vret <-- ADT ADTarg as _]] :: [[ varg <-- SCA _ SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ [[ vret <-- ADT ADTarg as _]] :: tenv }}
-        Seq pSCA (Call vtmp fpointer (varg :: vret :: nil))
+        Seq pSCA (Call vtmp fpointer (vret :: varg :: nil))
       {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
@@ -3390,17 +3390,29 @@ Hint Resolve WeakEq_add : call_helpers_db.
 Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
-       ((GLabelMap.add ("std", "cons") (Axiomatic (FacadeImplementationOfMutation cons)))
+       ((GLabelMap.add ("std", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
           (GLabelMap.empty _))).
 
-Ltac compile_mutation :=
+Hint Unfold DummyArgument : MapUtils_unfold_db.
+
+Ltac compile_mutation_alloc :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
                        | (?tenv, Cons ?s (ret (ADT (?f _ _))) (fun _ => ?tenv)) =>
                          let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfMutation f)) env in
-                         let adt := gensym "adt" in
-                         let sca := gensym "sca" in
-                         apply (CompileCallFacadeImplementationOfMutation (fpointer := fpointer) (varg := adt) (vtmp := sca))
+                         let arg := gensym "arg" in
+                         let tmp := gensym "tmp" in
+                         apply (CompileCallFacadeImplementationOfMutation_Alloc (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
+                       end).
+
+Ltac compile_mutation_replace :=
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(pre, post) with
+                       | ([[?s <-- ADT ?adt as _]] :: ?tenv, [[?s <-- ADT (?f _ ?adt) as _]] :: ?tenv) =>
+                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfMutation f)) env in
+                         let arg := gensym "arg" in
+                         let tmp := gensym "tmp" in
+                         apply (CompileCallFacadeImplementationOfMutation_Replace (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
                        end).
 
 Ltac compile_constructor :=
@@ -3411,6 +3423,7 @@ Ltac compile_constructor :=
                          apply (CompileCallFacadeImplementationOfConstructor tenv (fpointer := fpointer))
                        end).
 
+
 Example random_test_with_adt :
   Facade program implementing ( x <- Random;
                                 ret (ADT (if IL.weqb x 0 then
@@ -3418,7 +3431,7 @@ Example random_test_with_adt :
                                           else
                                             x :: nil))) with MyEnvW.
 Proof.
-  repeat (compile_step || compile_random || compile_constructor || compile_mutation).
+  repeat (compile_step || compile_random || compile_constructor || compile_mutation_alloc).
 Defined.
 
 Eval simpl in (proj1_sig random_test_with_adt).
