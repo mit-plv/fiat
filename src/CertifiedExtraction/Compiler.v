@@ -3457,75 +3457,21 @@ Example test_with_adt :
                            {{ [[`"ret" <~~ ( x <- Random;
                                              ret (ADT (x :: tail))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
 Proof.
-  econstructor; unfold MyEnvW; intros.
-  compile_step.
-  compile_step.
-  2:repeat compile_step.
-
-  apply ProgOk_Transitivity_Cons.
-  eapply CompileCallRandom; try compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  apply (CompileCallFacadeImplementationOfMutationC (varg := "arg") (vtmp := "tmp")); try repeat compile_step.
+  econstructor; intros.
+  repeat (compile_random || compile_mutation_replace || compile_step). (* FIXME: The tricky part here is the dependency on the order of these lemmas *)
 Defined.
 
 Eval simpl in (proj1_sig test_with_adt).
-Print Assumptions test_with_adt.
 
-Lemma CompileCallFacadeImplementationOfMutation:
-  forall {av} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) ADTarg,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
-    forall vret ext pADT,
-      vret <> varg ->
-      vtmp <> varg ->
-      vtmp <> vret ->
-      vret ∉ ext ->
-      vtmp ∉ ext ->
-      StringMap.MapsTo varg (SCA av SCAarg) ext ->
-      {{ Nil }}
-        pADT
-      {{ [[ vret <-- ADT ADTarg as _]] :: Nil }} ∪ {{ ext }} // env ->
-      {{ Nil }}
-        Seq pADT (Call vtmp fpointer (varg :: vret :: nil))
-      {{ [[ vret <-- ADT (fADT SCAarg ADTarg) as _]] :: Nil }} ∪ {{ ext }} // env.
+Example other_test_with_adt :
+    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret (ADT seq) as _ ]] :: Nil }}
+                            prog
+                          {{ [[`"ret" <~~ ( x <- Random;
+                                          y <- Random;
+                                          ret (ADT ((if IL.wltb x y then x else y) :: seq))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
 Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         | _ => unfold FacadeImplementationWW; simpl
-         end.
+  econstructor; intros.
+  repeat (compile_random || compile_mutation_replace || compile_step).
+Defined.
 
-  - assert (StringMap.MapsTo varg (SCA av SCAarg) st') by admit.
-    SameValues_Facade_t.
-
-  - assert (StringMap.MapsTo varg (SCA av SCAarg) st') by admit.
-    SameValues_Facade_t.
-    simpl combine in H12.
-    destruct output; [ discriminate | ].
-    destruct output; [ discriminate | ].
-    inversion H12; try subst.
-    cbv beta iota delta [wrap_output StringMapFacts.option_map map] in *.
-    rewrite add_4 by congruence.
-    rewrite add_eq_o by congruence.
-
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         | _ => unfold FacadeImplementationWW; simpl
-         end.
-
-  rewrite remove_add_comm by congruence.
-  rewrite remove_trickle by congruence.
-
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         | _ => unfold FacadeImplementationWW; simpl
-         end.
-  destruct ret.
-  apply WeakEq_pop_SCA; [ | admit ].
-  admit.
-Qed.
-
+Eval simpl in (proj1_sig other_test_with_adt).
