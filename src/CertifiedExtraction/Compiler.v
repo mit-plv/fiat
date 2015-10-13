@@ -2734,8 +2734,8 @@ Ltac translate_op gallina_op :=
   end.
 
 Ltac compile_binop av facade_op lhs rhs ext :=
-  let vlhs := find_fast (SCA unit lhs) ext in
-  let vrhs := find_fast (SCA unit rhs) ext in
+  let vlhs := find_fast (SCA av lhs) ext in
+  let vrhs := find_fast (SCA av rhs) ext in
   lazymatch constr:(vlhs, vrhs) with
   | (Some ?vlhs, Some ?vrhs) =>
     apply (CompileBinopOrTest (var1 := vlhs) (var2 := vrhs) facade_op)
@@ -3049,7 +3049,7 @@ Qed.
 Ltac compile_random :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
-                       | (Nil, Cons ?s (@WrapComp_W ?av Random) (fun _ => Nil)) =>
+                       | (?tenv, Cons ?s (@WrapComp_W ?av Random) (fun _ => ?tenv)) =>
                          let fpointer := find_function_in_env (Axiomatic (@FRandom av)) env in
                          apply (CompileCallRandom (fpointer := fpointer))
                        end).
