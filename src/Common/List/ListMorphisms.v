@@ -254,3 +254,40 @@ Proof.
   - eapply Permutation_in. eapply Permutation_sym. apply H. apply H2. auto.
   - apply H2. eapply Permutation_in. apply H. auto.
 Qed.
+
+Global Instance list_rect_Proper {A P}
+: Proper (eq ==> (forall_relation (fun _ => forall_relation (fun _ => pointwise_relation _ eq))) ==> forall_relation (fun _ => eq))
+         (@list_rect A P).
+Proof.
+  intros ????? H ls.
+  subst.
+  induction ls; simpl; [ reflexivity | rewrite H, IHls; reflexivity ].
+Qed.
+
+Lemma list_rect_ext
+      {A P}
+      P0 P0'
+      Pc Pc'
+      ls
+      (H0 : P0 = P0')
+      (Hc : forall a l Pl, Pc a l Pl = Pc' a l Pl)
+: @list_rect A P P0 Pc ls = @list_rect A P P0' Pc' ls.
+Proof.
+  apply list_rect_Proper; lazy; assumption.
+Qed.
+
+
+Global Instance list_rect_Proper_forall_nondep
+       {A T}
+: Proper (eq
+            ==> forall_relation (fun a => forall_relation (fun l => pointwise_relation _ eq))
+            ==> eq
+            ==> eq)
+         (@list_rect A (fun _ => T)).
+Proof.
+  intros ? x ??? H ? ls' ?; subst.
+  revert x; induction ls' as [|l' ls' IHls']; intros; simpl.
+  { reflexivity. }
+  { rewrite IHls'.
+    apply H. }
+Qed.

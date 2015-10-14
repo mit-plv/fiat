@@ -18,6 +18,15 @@ Fixpoint take {A} (n : nat) (ls : list A) : list A
        | S n', x::xs => x::take n' xs
      end.
 
+Definition drop_all_but {A} (n : nat) (ls : list A) : list A
+  := drop (List.length ls - n) ls.
+
+Definition rev_nth {A} (n : nat) (ls : list A) : A -> A
+  := List.nth (List.length ls - n) ls.
+
+Arguments drop_all_but : simpl never.
+Arguments rev_nth : simpl never.
+
 Fixpoint enumerate {A} (ls : list A) (start : nat) : list (nat * A)
   := match ls with
        | nil => nil
@@ -114,3 +123,27 @@ Proof.
   rewrite Bool.andb_comm; simpl.
   eapply list_in_lb; eauto.
 Defined.
+
+Fixpoint first_index_error {A} (f : A -> bool) (ls : list A) : option nat
+  := match ls with
+       | nil => None
+       | x::xs => if f x then Some 0 else option_map S (first_index_error f xs)
+     end.
+
+Fixpoint first_index {A} (f : A -> bool) (ls : list A) : nat
+  := match ls with
+       | nil => 0
+       | x::xs => if f x then 0 else S (first_index f xs)
+     end.
+
+Fixpoint first_index_recr {A B R} (f : A -> B -> option R) (ls : list A) (ls' : list B)
+: option (nat * R)
+  := match ls, ls' with
+       | nil, _ => None
+       | _, nil => None
+       | x::xs, y::ys =>
+         match f x y with
+           | None => option_map (fun ab => (S (fst ab), snd ab)) (first_index_recr f xs ys)
+           | Some r => Some (0, r)
+         end
+     end.

@@ -531,6 +531,16 @@ Section ListFacts.
     revert n H; induction ls; drop_take_t.
   Qed.
 
+  Lemma drop_all_iff {A n} {ls : list A}
+  : (List.length ls <= n) <-> drop n ls = nil.
+  Proof.
+    split; [ apply drop_all | ].
+    revert n; induction ls; [ simpl; intros; omega | ].
+    intros [|n]; simpl.
+    { intro; discriminate. }
+    { intro; auto with arith. }
+  Qed.
+
   Lemma take_append {A n} {ls ls' : list A}
   : take n (ls ++ ls') = take n ls ++ take (n - List.length ls) ls'.
   Proof.
@@ -616,4 +626,128 @@ Section ListFacts.
   Proof.
     apply in_map_iffT, NPeano.Nat.eq_dec.
   Defined.
+
+  Lemma nth_take_1_drop {A} (ls : list A) n a
+  : nth n ls a = match take 1 (drop n ls) with
+                   | nil => a
+                   | x::_ => x
+                 end.
+  Proof.
+    revert n.
+    induction ls as [|x xs IHxs]; simpl; intros.
+    { destruct n; reflexivity. }
+    { destruct n; simpl; trivial; [].
+      rewrite IHxs; simpl; reflexivity. }
+  Qed.
+
+  Lemma drop_drop {A} x y (ls : list A)
+  : drop x (drop y ls) = drop (y + x) ls.
+  Proof.
+    revert x y.
+    induction ls as [|l ls IHls].
+    { intros [|x] [|y]; reflexivity. }
+    { intros x [|y]; simpl.
+      { reflexivity. }
+      { apply IHls. } }
+  Defined.
+
+  Lemma drop_dropS {A} y (ls : list A)
+  : drop 1 (drop y ls) = drop (S y) ls.
+  Proof.
+    rewrite drop_drop.
+    rewrite NPeano.Nat.add_1_r.
+    reflexivity.
+  Qed.
+
+  Lemma map_S_seq {A} (f : nat -> A) x y
+  : map (fun i => f (S i)) (seq x y) = map f (seq (S x) y).
+  Proof.
+    clear; revert x; induction y; intros.
+    { reflexivity. }
+    { simpl.
+      rewrite IHy; reflexivity. }
+  Qed.
+
+  Lemma length_drop {A} (n : nat) (ls : list A)
+  : List.length (Operations.drop n ls) = List.length ls - n.
+  Proof.
+    revert ls; induction n; simpl; intros.
+    { auto with arith. }
+    { destruct ls; simpl; [ reflexivity | ].
+      apply IHn. }
+  Qed.
+
+  Lemma drop_non_empty {A} (n : nat) (ls : list A)
+        (H : ls <> nil)
+  : Operations.drop (List.length ls - S n) ls <> nil.
+  Proof.
+    intro H'.
+    apply (f_equal (@List.length _)) in H'.
+    simpl in H'.
+    rewrite length_drop in H'.
+    destruct ls.
+    { apply H; reflexivity. }
+    { simpl length in H'.
+      omega. }
+  Qed.
+
+  Lemma drop_S_non_empty {A} (n : nat) (ls : list A)
+        (H : n < List.length ls)
+  : Operations.drop (List.length ls - S n) ls <> nil.
+  Proof.
+    intro H'.
+    apply (f_equal (@List.length _)) in H'.
+    simpl in H'.
+    rewrite length_drop in H'.
+    omega.
+  Qed.
+
+  Lemma seq_S (start len : nat)
+  : seq (S start) len = map S (seq start len).
+  Proof.
+    revert start; induction len; [ reflexivity | ].
+    simpl in *; intros.
+    rewrite IHlen; reflexivity.
+  Qed.
+
+  Lemma seq_0 (start len : nat)
+  : seq start len = map (fun x => start + x) (seq 0 len).
+  Proof.
+    revert start; induction len; simpl; intros.
+    { reflexivity. }
+    { rewrite IHlen; simpl.
+      rewrite seq_S.
+      rewrite map_map.
+      apply f_equal2.
+      { omega. }
+      { apply map_ext; intro; omega. } }
+  Qed.
+
+  Lemma seq_alt (start len : nat)
+  : seq start len = match len with
+                      | 0 => nil
+                      | S len' => start :: map S (seq start len')
+                    end.
+  Proof.
+    destruct len; simpl.
+    { reflexivity. }
+    { apply f_equal2.
+      { reflexivity. }
+      { rewrite seq_S.
+        reflexivity. } }
+  Qed.
+
+  Lemma In_S_seq {start len x} (Hsmall : start <= x) (H : In (S x) (seq start len))
+  : In x (seq start len).
+  Proof.
+    generalize dependent start; generalize x; induction len; intros; simpl in *.
+    { assumption. }
+    { destruct H as [H|H].
+      { exfalso; omega. }
+      { simpl in *.
+        destruct (lt_eq_lt_dec start x0) as [[H' | H'] | H'];
+          [ right; apply IHlen; assumption
+          | left; assumption
+          | exfalso; omega ]. } }
+  Qed.
 End ListFacts.
