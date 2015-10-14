@@ -14,6 +14,7 @@ Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Common.
 Require Export Fiat.ADTNotation.BuildADTSig.
+Require Export Fiat.Parsers.Refinement.ReductionTactics.
 
 Require Import Fiat.Parsers.ContextFreeGrammarEquality.
 Require Import Fiat.Common.Equality.

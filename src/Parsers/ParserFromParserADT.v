@@ -72,7 +72,7 @@ Section parser.
                     (adt_based_StringLike_lite splitter_impl)
                     constT varT}.
 
-  Definition parser : Parser G string_stringlike.
+  Definition parser' : Parser G string_stringlike.
   Proof.
     refine (@parser ls (adt_based_splitter splitter_impl)
                     (adt_based_StringLike_lite splitter_impl)
@@ -83,16 +83,48 @@ Section parser.
                     _ _ strC);
     abstract (
         split;
-        first [ (intros ????);
-                simpl;
-                erewrite mis_char_eq; intros; eassumption
-              | (intros ???);
-                simpl;
-                erewrite mlength_eq; intros; eassumption
-              | intros; apply mtake_R; assumption
-              | intros; refine (mdrop_R _ _); assumption ]
+        unfold flip, length, take, drop, is_char, adt_based_splitter, string_type, adt_based_StringLike, string_stringlike, proj1_sig, String;
+        (lazymatch goal with
+        | [ |- appcontext[mis_char] ]
+          => ((intros ????); erewrite mis_char_eq; intros; eassumption)
+        | [ |- appcontext[mlength] ]
+          => ((intros ???); erewrite mlength_eq; intros; eassumption)
+        | [ |- appcontext[mtake] ]
+          => (intros; apply mtake_R; assumption)
+        | [ |- appcontext[mdrop] ]
+          => (intros; refine (mdrop_R _ _); assumption)
+         end)
       ).
   Defined.
 End parser.
 
-Global Arguments parser {ls} splitter_impl {constT varT strC}.
+Definition parser''
+           {ls}
+           splitter_impl
+           {constT varT strC}
+           val (H : val = has_parse (@parser' ls splitter_impl constT varT strC))
+: Parser (list_to_grammar (nil::nil) ls) string_stringlike.
+Proof.
+  refine {| has_parse := val |};
+  abstract (subst val; apply parser').
+Defined.
+
+Definition parser
+           {ls : list (string * productions Ascii.ascii)}
+           (splitter_impl : FullySharpened (string_spec (list_to_grammar (nil::nil) ls)))
+           {constT varT}
+           {strC : @BooleanRecognizerOptimized.str_carrier
+                     Ascii.ascii
+                     (adt_based_StringLike_lite splitter_impl)
+                     constT varT}
+: Parser (list_to_grammar (nil::nil) ls) string_stringlike.
+Proof.
+  let term := (eval cbv beta delta [parser''] in (@parser'' ls splitter_impl constT varT strC)) in
+  refine (term _ _).
+  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite mlength mtake mdrop mis_char mget mto_string msplits pdata data' adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R].
+  match goal with
+    | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
+  end.
+Defined.
+
+Global Arguments parser {ls} splitter_impl {constT varT strC} / .

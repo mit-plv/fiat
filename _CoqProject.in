@@ -259,6 +259,7 @@ src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
+src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
 src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v

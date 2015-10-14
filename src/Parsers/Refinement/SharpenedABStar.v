@@ -24,21 +24,21 @@ Section IndexedImpl.
   Lemma ComputationalSplitter
   : FullySharpened (string_spec ab_star_grammar).
   Proof.
-    let impl := (eval simpl in (projT1 ComputationalSplitter')) in
+    let impl := (splitter_red (projT1 ComputationalSplitter')) in
     refine (existT _ impl _).
     abstract (exact (projT2 ComputationalSplitter')).
   Defined.
 
 End IndexedImpl.
 
-Global Arguments ComputationalSplitter / .
-
 Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
-Time Definition ab_star_parser (str : String.string) : bool
-  := Eval simpl in has_parse (parser ComputationalSplitter) str.
+Definition ab_star_parser (str : String.string) : bool.
+Proof.
+  Time make_parser ComputationalSplitter. (* 0.6 s *)
+Defined.
 
 Print ab_star_parser.
 
