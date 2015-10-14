@@ -57,6 +57,6 @@ Section brute_force_splitter.
                   | left; reflexivity
                   | apply bool_eq_empty; rewrite drop_length; omega ]. } }
     { exists n; simpl; repeat split; try assumption.
-      right; apply in_up_to; assumption. }
+      right; apply List.in_map, in_up_to; assumption. }
   Qed.
 End brute_force_splitter.

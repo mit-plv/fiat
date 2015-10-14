@@ -32,7 +32,7 @@ Section interface.
                    (pits : parse_of_production G (drop n str) its),
               Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
               -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-              -> List.In n splits.
+              -> List.In n (List.map (min (length str)) splits).
 
   Record Splitter :=
     {

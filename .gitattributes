@@ -1,4 +1,7 @@
 *.v text eol=lf
+Makefile text eol=lf
+_CoqProject text eol=lf
+_CoqProject.in text eol=lf
 
 /Overview export-ignore
 /paper export-ignore

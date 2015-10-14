@@ -339,7 +339,7 @@ Section IndexedImpl.
                    (pits : parse_of_production G (drop n str) its),
               Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
               -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-              -> List.In n splits.
+              -> List.In n (List.map (min (length str)) splits).
   Definition expanded_fallback_list_case
     := expanded_fallback_list' split_list_is_complete_case.
 
@@ -351,7 +351,7 @@ Section IndexedImpl.
                        (pits : parse_of_production G (drop n str) its),
                   Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
                   -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-                  -> List.In n splits).
+                  -> List.In n (List.map (min (length str)) splits)).
 
   Definition expanded_fallback_list_alt
     := expanded_fallback_list' (fun str it its _ _ => split_list_is_complete_alt str it its).
@@ -500,6 +500,8 @@ Section IndexedImpl.
                          | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
                          | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
+                         | [ |- context[min ?x ?x] ]
+                           => rewrite (Min.min_idempotent x)
                          | _ => reflexivity
                          | _ => rewrite substring_substring
                          | _ => rewrite Nat.sub_0_r
@@ -527,6 +529,9 @@ Section IndexedImpl.
                          | _ => intro
                          | _ => progress subst
                          | [ |- List.In ?x [?y] ] => left
+                         | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+                         | [ |- context[min ?x ?x] ]
+                           => rewrite (Min.min_idempotent x)
                          | _ => reflexivity
                          | [ H : parse_of_production _ _ nil |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
                          | [ H : parse_of_production _ _ (_::_) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
@@ -544,6 +549,7 @@ Section IndexedImpl.
                            => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
                          | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
                            => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+                         | [ |- context[min ?x (?x - 1)] ] => rewrite (Min.min_r x (x - 1)) by (clear; omega)
                          | [ H : min ?x ?y = 1 |- _ ] => is_var x; revert H; apply (Min.min_case_strong x y)
                          | [ H : min ?x ?y = 1 |- _ ] => is_var y; revert H; apply (Min.min_case_strong x y)
                          | [ H : min ?x ?y = 0 |- _ ] => is_var x; revert H; apply (Min.min_case_strong x y)
@@ -554,6 +560,10 @@ Section IndexedImpl.
                            => not constr_eq y 0; rewrite !(Nat.sub_succ_r x y), !Minus.pred_of_minus
                          | [ H : ?x = 1 |- context[?x] ] => rewrite H
                          | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
+                         | [ H : ?x <= ?y |- context[min ?x ?y] ]
+                           => rewrite (Min.min_l x y H)
+                         | [ H : ?y <= ?x |- context[min ?x ?y] ]
+                           => rewrite (Min.min_r x y H)
                          | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by (clear -H; omega)
                          | [ H : context[?x - ?y], H' : ?x <= ?y |- _ ]
                            => rewrite (proj2 (@Nat.sub_0_le x y)) in H by exact H'
@@ -684,6 +694,9 @@ Section IndexedImpl.
                        | _ => progress computes_to_inv
                        | _ => progress subst
                        | [ |- In _ [_] ] => left
+                       | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+                       | [ |- context[min ?x ?x] ]
+                         => rewrite (Min.min_idempotent x)
                        | [ H : collapse_length_result ?e = Some _ |- _ ]
                          => (revert H; case_eq e; simpl)
                        | [ H : Some _ = Some _ |- _ ]
@@ -694,17 +707,17 @@ Section IndexedImpl.
                          => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
                        | _ => erewrite <- has_only_terminals_length by eassumption
                        | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
-                       | [ H : _ |- _ ] => generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
-                                                                 | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
-                                                                 | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
-                                                                 | [ |- context[min ?x (?y + ?z) - ?z] ]
-                                                                   => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                                                                 | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
-                                                                   => generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                                                                                            | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
-                                                                                            | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
-                                                                                            | _ => omega
-                                                                                            | _ => solve [ eauto ]
+                       | [ H : _ |- _ ] => (generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus)
+                       | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
+                       | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
+                       | [ |- context[min ?x (?y + ?z) - ?z] ]
+                         => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
+                       | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
+                         => (generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z))
+                       | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
+                       | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
+                       | _ => omega
+                       | _ => solve [ eauto ]
                      end
             ). } }
   Qed.

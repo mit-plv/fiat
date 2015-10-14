@@ -4,6 +4,8 @@ Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
 
 Unset Implicit Arguments.
 
+Local Notation iffT A B := ((A -> B) * (B -> A))%type.
+
 Section ListFacts.
 
   Lemma map_id :
@@ -578,4 +580,40 @@ Section ListFacts.
       { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
       { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. } }
   Qed.
+
+  Lemma in_map_iffT' {A B}
+        (f : A -> B) (ls : list A) (y : B)
+        (eq_dec : forall y', {y = y'} + {y <> y'})
+  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+  Proof.
+    split; [ | intros [x H]; apply in_map_iff; exists x; assumption ].
+    induction ls as [|l ls IHls].
+    { simpl; intros []. }
+    { simpl.
+      intro H.
+      destruct (eq_dec (f l)) as [e|e].
+      { exists l; split.
+        { clear -e; abstract (subst; reflexivity). }
+        { left. reflexivity. } }
+      { destruct IHls as [x H'].
+        { clear -H e.
+          abstract (destruct H; congruence). }
+        { eexists.
+          split; [ apply H' | right; apply H' ]. } } }
+  Defined.
+
+  Lemma in_map_iffT {A B}
+        (eq_dec : forall y y' : B, {y = y'} + {y <> y'})
+        (f : A -> B) (ls : list A) (y : B)
+  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+  Proof.
+    apply in_map_iffT', eq_dec.
+  Defined.
+
+  Lemma in_map_iffT_nat {A}
+        (f : A -> nat) (ls : list A) (y : nat)
+  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+  Proof.
+    apply in_map_iffT, NPeano.Nat.eq_dec.
+  Defined.
 End ListFacts.

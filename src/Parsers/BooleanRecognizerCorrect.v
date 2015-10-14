@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Common Fiat.Common.Wf.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammarValid Fiat.Parsers.ContextFreeGrammarValidProperties.
 Require Import Coq.Logic.Eqdep_dec.
@@ -231,8 +232,13 @@ Section sound.
                    | [ H : forall (v : nonterminals_listT) (x : @?a v), @?b v x |- _ ]
                      => pose proof (H valid); pose proof (H initial_nonterminals_data); clear H
                    | [ |- is_true (fold_right orb false (map _ _)) ] => apply fold_right_orb_map_sig2
-                   | [ H : minimal_parse_of_item _ _ _ _ |- _ ] => inversion H; clear H; subst
                    | [ |- is_true (beq_nat _ _) ] => apply beq_nat_true_iff
+                   | [ H : minimal_parse_of_item _ _ _ _ |- _ ] => inversion H; clear H; subst
+                   | [ H : minimal_parse_of_nonterminal _ _ (take ?n ?str) _ |- _ ]
+                     => is_var n; unique pose proof (expand_minimal_parse_of_nonterminal_beq (take_min_length _ _) H)
+                   | [ H : minimal_parse_of_production _ _ (drop ?n ?str) _ |- _ ]
+                     => is_var n; unique pose proof (expand_minimal_parse_of_production_beq (drop_min_length _ _) H)
+                   | [ H : In (min _ _) (map (min _) _) |- _ ] => apply in_map_iffT_nat in H
                  end;
           (lazymatch goal with
             | [ H : In ?n (split_string_for_production ?it ?prod ?str)
@@ -244,22 +250,37 @@ Section sound.
                    | [ |- (_ && _)%bool = true ] => apply Bool.andb_true_iff
                    | [ |- (_ =s _) = true ] => apply bool_eq_correct
                    | [ |- In _ (combine_sig _) ] => apply In_combine_sig
-                   | [ IHprod : _ |- _ ] => eapply IHprod; try eassumption; rewrite ?drop_length, ?take_length; omega
+                   | _ => progress unfold is_true in *
+                   | [ H : (take ?x ?str ~= [?ch]) = true,
+                           H' : min (length ?str) ?x' = min (length ?str) ?x
+                       |- (take ?x' ?str ~= [?ch]) = true ]
+                     => rewrite take_min_length in H |- *; rewrite H'; exact H
+                   | [ H : min ?x ?y = min ?x ?y', H' : context[drop (min ?x ?y') _] |- _ ]
+                     => rewrite <- H in H'
+                   | [ H : min ?x ?y = min ?x ?y', H' : context[take (min ?x ?y') _] |- _ ]
+                     => rewrite <- H in H'
+                   | [ IHprod : _ |- _ ]
+                     => eapply IHprod; try eassumption; rewrite ?drop_length, ?take_length;
+                        solve [ omega
+                              | eauto using expand_minimal_parse_of_production_beq, (fun x y => symmetry (drop_min_length x y)) with nocore ]
                  end;
           [].
-          eapply parse_nonterminal_complete; [..| eassumption ]; simpl;
-          repeat match goal with
-                   | _ => eassumption
-                   | _ => reflexivity
-                   | _ => rewrite drop_length
-                   | _ => rewrite take_length
-                   | _ => omega
-                   | [ |- Pv _ _ _ ] => eapply Hinit; [ .. | eassumption ]
-                   | _ => etransitivity; [ | eassumption ];
-                          solve [ apply str_le_take
-                                | apply str_le_drop ]
-                   | _ => apply Min.min_case_strong
-                 end.
+          eapply parse_nonterminal_complete;
+            [ ..
+            | solve [ eauto using expand_minimal_parse_of_nonterminal_beq, (fun x y => symmetry (take_min_length x y)) with nocore ] ];
+            simpl;
+            repeat match goal with
+                     | _ => eassumption
+                     | _ => reflexivity
+                     | _ => rewrite drop_length
+                     | _ => rewrite take_length
+                     | _ => omega
+                     | [ |- Pv _ _ _ ] => eapply Hinit; [ .. | eassumption ]
+                     | _ => etransitivity; [ | eassumption ];
+                            solve [ apply str_le_take
+                                  | apply str_le_drop ]
+                     | _ => apply Min.min_case_strong
+                   end.
         Qed.
       End production.
 
@@ -820,7 +841,7 @@ Section convenience.
     revert H_reachable; refine (In_InT _); intro H_reachable.
     intro H.
     eapply (@parse_production_complete'
-              _ _ _ G _ (length str) _
+              _ _ _ G _ _ (length str) _
               initial_nonterminals_data); trivial;
     [
     |
@@ -880,7 +901,7 @@ Section convenience.
     destruct H_reachable as [nt [prefix [Hnt H_reachable]]].
     intro H.
     eapply (@parse_productions_complete'
-              _ _ _ G _ (length str) _
+              _ _ _ G _ _ (length str) _
               initial_nonterminals_data); trivial;
     [
     |

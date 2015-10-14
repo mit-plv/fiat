@@ -50,7 +50,9 @@ Proof.
   pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
-  destruct_head or; destruct_head and; subst; omega.
+  destruct_head or; destruct_head and; subst;
+  rewrite ?Min.min_r by assumption;
+  omega.
 Qed.
 
 Definition search_for_not_condition (G : grammar Ascii.ascii) str nt its n
@@ -85,7 +87,9 @@ Proof.
   pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
-  destruct_head or; destruct_head and; subst; omega.
+  destruct_head or; destruct_head and; subst;
+  rewrite ?Min.min_r by assumption;
+  omega.
 Qed.
 
 Lemma find_first_char_such_that'_short {Char HSL}

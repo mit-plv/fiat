@@ -20,7 +20,7 @@ Section general.
               & (minimal_parse_of_item (G := G) (predata := data) len0 valid (take n str) it)
                 * (minimal_parse_of_production (G := G) len0 valid (drop n str) its) }%type)
        -> ({ n : nat
-                 & (In n split_list)
+                 & (In (min (length str) n) (map (min (length str)) split_list))
                    * (minimal_parse_of_item (G := G) len0 valid (take n str) it)
                    * (minimal_parse_of_production (G := G) len0 valid (drop n str) its) }%type).
 

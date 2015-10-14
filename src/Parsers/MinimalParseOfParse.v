@@ -352,6 +352,45 @@ Section cfg.
       := @expand_minimal_parse_of_item' (@expand_minimal_parse_of).
   End expand.
 
+  Section expand_beq.
+    Definition expand_minimal_parse_of_beq
+             {len0 valid str str' pats}
+             (Hstr : str =s str')
+             (p : minimal_parse_of (G := G) len0 valid str pats)
+    : minimal_parse_of (G := G) len0 valid str' pats.
+    Proof.
+      eapply expand_minimal_parse_of; try (eassumption || reflexivity || left; reflexivity).
+    Defined.
+
+    Definition expand_minimal_parse_of_production_beq
+               {len0 valid str str' pat}
+               (Hstr : str =s str')
+               (p : minimal_parse_of_production (G := G) len0 valid str pat)
+    : minimal_parse_of_production (G := G) len0 valid str' pat.
+    Proof.
+      eapply expand_minimal_parse_of_production; try (eassumption || reflexivity || left; reflexivity).
+    Defined.
+
+    Definition expand_minimal_parse_of_nonterminal_beq
+               {len0 valid str str' nonterminal}
+               (Hstr : str =s str')
+               (p : minimal_parse_of_nonterminal (G := G) len0 valid str nonterminal)
+    : minimal_parse_of_nonterminal (G := G) len0 valid str' nonterminal.
+    Proof.
+      eapply expand_minimal_parse_of_nonterminal; try (eassumption || reflexivity || left; reflexivity).
+    Defined.
+
+    Definition expand_minimal_parse_of_item_beq
+               {len0 valid str str' it}
+               (Hstr : str =s str')
+               (p : minimal_parse_of_item (G := G) len0 valid str it)
+    : minimal_parse_of_item (G := G) len0 valid str' it.
+    Proof.
+      eapply expand_minimal_parse_of_item; try (eassumption || reflexivity || left; reflexivity).
+    Defined.
+  End expand_beq.
+
+
   Section contract.
     Local Hint Constructors MinimalParse.minimal_parse_of_nonterminal.
 
