@@ -26,7 +26,7 @@ Delimit Scope methSig_scope with methSig.
 
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
   {| methID := id;
-     methDom := cons dom1%type .. (cons domn%type (@nil Type)) ..;
+     methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) ..;
      methCod := None |}
     (id at level 0, dom1 at level 0,
      domn at level 0, at level 93)

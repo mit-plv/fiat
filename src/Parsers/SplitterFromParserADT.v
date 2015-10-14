@@ -1,4 +1,4 @@
-(** Reference implementation of a splitter and parser based on that splitter *)
+(*Reference implementation of a splitter and parser based on that splitter *)
 Require Import Coq.Strings.String.
 Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
 Require Import ADT.ComputationalADT.
@@ -11,6 +11,7 @@ Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
+Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.ADTNotation.BuildComputationalADT.
 
 Set Implicit Arguments.
@@ -23,134 +24,195 @@ Section parser.
   Context (G : grammar Ascii.ascii).
   Context (splitter_impl : FullySharpened (string_spec G)).
 
-  Lemma fst_cMethods_ex {method arg}
-        (st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r })
-  : exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods (projT1 splitter_impl) method (proj1_sig st) arg)).
-  Proof.
-    destruct st as [st [ orig H ] ].
-    pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''.
-    computes_to_inv.
-    match goal with
-      | [ H : (_, _) = _ |- _ ]
-        => pose proof (f_equal (@fst _ _) H);
-          pose proof (f_equal (@snd _ _) H);
-          clear H
-    end.
-    destruct_head' prod.
-    simpl @fst in *.
-    simpl @snd in *.
-    subst.
-    esplit; eassumption.
-  Qed.
+  (* Lemma fst_cMethods_ex {method} *)
+  (*       (st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }) *)
+  (*   : *)
+  (*     @Lift_cMethodP _ _ _ *)
+  (*                    (fun _ cMeth => *)
+  (*                       exists orig, AbsR (projT2 splitter_impl) orig (fst cMeth)) *)
+  (*                    (fun cMeth => *)
+  (*                       exists orig, AbsR (projT2 splitter_impl) orig cMeth) *)
+  (*                    (cMethods (projT1 splitter_impl) method (proj1_sig st)). *)
+  (* Proof. *)
+  (*   destruct st as [st [ orig H ] ]. *)
+  (*   generalize  (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ H). *)
+  (*   revert st orig H; pattern method. *)
+  (*   eapply (Lookup_Iterate_Dep_Type); repeat split; simpl; intros. *)
+  (*   abstract (intros; specialize (H0 _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
+  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
+  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
+  (*   abstract (intros; specialize (H0 _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
+  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; eassumption). *)
+  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; eassumption). *)
+  (*   abstract (intros; specialize (H0 t t0 _ (ReturnComputes _)); computes_to_inv; *)
+  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
+  (* Qed. *)
 
-  Lemma fst_cMethods_comp {method st arg v retv}
-        (H0 : Methods (string_spec G) method v arg = ret retv)
-        (H1 : AbsR (projT2 splitter_impl) v st)
-  : AbsR (projT2 splitter_impl) (fst retv) (fst (cMethods (projT1 splitter_impl) method st arg)).
-  Proof.
-    pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''.
-    rewrite H0 in H''; clear H0.
-    computes_to_inv.
-    match goal with
-      | [ H : (_, _) = _ |- _ ]
-        => pose proof (f_equal (@fst _ _) H);
-          pose proof (f_equal (@snd _ _) H);
-          clear H
-    end.
-    subst.
-    destruct_head' prod.
-    simpl @fst in *.
-    simpl @snd in *.
-    subst.
-    assumption.
-  Qed.
+  (* Lemma fst_cMethods_comp {method st arg v retv} *)
+  (*       (H0 : Methods (string_spec G) method v arg = ret retv) *)
+  (*       (H1 : AbsR (projT2 splitter_impl) v st) *)
+  (* : AbsR (projT2 splitter_impl) (fst retv) (fst (cMethods (projT1 splitter_impl) method st arg)). *)
+  (* Proof. *)
+  (*   pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''. *)
+  (*   rewrite H0 in H''; clear H0. *)
+  (*   computes_to_inv. *)
+  (*   match goal with *)
+  (*     | [ H : (_, _) = _ |- _ ] *)
+  (*       => pose proof (f_equal (@fst _ _) H); *)
+  (*         pose proof (f_equal (@snd _ _) H); *)
+  (*         clear H *)
+  (*   end. *)
+  (*   subst. *)
+  (*   destruct_head' prod. *)
+  (*   simpl @fst in *. *)
+  (*   simpl @snd in *. *)
+  (*   subst. *)
+  (*   assumption. *)
+  (* Qed. *)
 
-  Lemma snd_cMethods_comp {method st arg v retv}
-        (H0 : Methods (string_spec G) method v arg = ret retv)
-        (H1 : AbsR (projT2 splitter_impl) v st)
-  : snd (cMethods (projT1 splitter_impl) method st arg) = snd retv.
-  Proof.
-    pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''.
-    rewrite H0 in H''; clear H0.
-    computes_to_inv.
-    match goal with
-      | [ H : (_, _) = _ |- _ ]
-        => pose proof (f_equal (@fst _ _) H);
-          pose proof (f_equal (@snd _ _) H);
-          clear H
-    end.
-    subst.
-    destruct_head' prod.
-    simpl @fst in *.
-    simpl @snd in *.
-    subst.
-    reflexivity.
-  Qed.
+  (* Lemma snd_cMethods_comp {method st arg v retv} *)
+  (*       (H0 : Methods (string_spec G) method v arg = ret retv) *)
+  (*       (H1 : AbsR (projT2 splitter_impl) v st) *)
+  (* : snd (cMethods (projT1 splitter_impl) method st arg) = snd retv. *)
+  (* Proof. *)
+  (*   pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''. *)
+  (*   rewrite H0 in H''; clear H0. *)
+  (*   computes_to_inv. *)
+  (*   match goal with *)
+  (*     | [ H : (_, _) = _ |- _ ] *)
+  (*       => pose proof (f_equal (@fst _ _) H); *)
+  (*         pose proof (f_equal (@snd _ _) H); *)
+  (*         clear H *)
+  (*   end. *)
+  (*   subst. *)
+  (*   destruct_head' prod. *)
+  (*   simpl @fst in *. *)
+  (*   simpl @snd in *. *)
+  (*   subst. *)
+  (*   reflexivity. *)
+  (* Qed. *)
 
-  Local Ltac snd_cMethods_comp' :=
-    idtac;
-    match goal with
-      | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ]
-        => let G' := context G[snd (cMethods impl meth st arg)] in
-           progress change G'
-      | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ]
-        => let G' := context G[snd (cMethods impl meth st arg)] in
-           progress change G' in H
-      | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ]
-        => erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity);
-          simpl @snd in H
-      | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ]
-        => erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity);
-          simpl @snd
-    end.
-  Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'.
+  (* Local Ltac snd_cMethods_comp' := *)
+  (*   idtac; *)
+  (*   match goal with *)
+  (*     | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ] *)
+  (*       => let G' := context G[snd (cMethods impl meth st arg)] in *)
+  (*          progress change G' *)
+  (*     | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ] *)
+  (*       => let G' := context G[snd (cMethods impl meth st arg)] in *)
+  (*          progress change G' in H *)
+  (*     | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ] *)
+  (*       => erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity); *)
+  (*         simpl @snd in H *)
+  (*     | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ] *)
+  (*       => erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity); *)
+  (*         simpl @snd *)
+  (*   end. *)
+  (* Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'. *)
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
-  Local Notation mcall0 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+  Local Notation mcall0 proj s := (fun st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st)) (only parsing).
+
+  Local Notation mcall1 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n)) (only parsing).
 
-  Local Notation mcall1 s := (mcall0 fst s) (only parsing).
-  Local Notation mcall2 s := (mcall0 snd s) (only parsing).
+  Local Notation mcall2 proj s := (fun n n' st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n n')) (only parsing).
 
-  Definition mto_string := Eval simpl in mcall2 "to_string".
-  Definition mis_char := Eval simpl in mcall2 "is_char".
-  Definition mget := Eval simpl in mcall2 "get".
-  Definition mlength := Eval simpl in mcall2 "length".
-  Definition mtake := Eval simpl in mcall1 "take".
-  Definition mdrop := Eval simpl in mcall1 "drop".
+  Local Notation mcall01 s := (mcall0 (fun x => x) s) (only parsing).
+  Local Notation mcall02 s := (mcall0 snd s) (only parsing).
+  Local Notation mcall11 s := (mcall1 (fun x => x) s) (only parsing).
+  Local Notation mcall12 s := (mcall1 snd s) (only parsing).
+  Local Notation mcall21 s := (mcall2 (fun x => x) s) (only parsing).
+  Local Notation mcall22 s := (mcall2 snd s) (only parsing).
+  
 
+  Definition mto_string := Eval simpl in mcall02 "to_string".
+  Definition mis_char := Eval simpl in mcall12 "is_char".
+  Definition mget := Eval simpl in mcall12 "get".
+  Definition mlength := Eval simpl in mcall02 "length".
+  Definition mtake := Eval simpl in mcall11 "take".
+  Definition mdrop := Eval simpl in mcall11 "drop".
+  
   Definition premsplits := Eval simpl in (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
-  Definition msplits := Eval simpl in mcall2 "splits".
+  Definition msplits := Eval simpl in mcall22 "splits".
 
-  Local Notation mcall1_R meth st arg str H :=
+  (*Local Notation mcall1_R meth st arg str H :=
     (@fst_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
       (only parsing).
 
   Local Notation mcall2_eq meth st arg str H :=
     (@snd_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
-      (only parsing).
+      (only parsing). *)
 
-  Definition mto_string_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : mto_string arg st = str
-    := mcall2_eq "to_string" st arg str H.
+  Definition to_strings := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "to_string" _ )).
+
+  Ltac prove_string_eq :=
+    match goal with
+      |- ?z _ = _ => unfold z;
+        match goal with
+          H : ?str ≃ ?st
+          |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st) = _ =>
+          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H) as [? [? ?]]; simpl in *;
+          computes_to_inv; injections; eauto
+        end
+    | |- ?z _ _ = _ => unfold z;
+        match goal with
+          H : ?str ≃ ?st
+          |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1) = _ =>
+          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1) as [? [? ?]]; simpl in *;
+          computes_to_inv; injections; eauto
+        end
+    | |- ?z _ _ = _ => unfold z;
+        match goal with
+          H : ?str ≃ ?st
+          |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1 ?arg2) = _ =>
+          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1 arg2) as [? [? ?]]; simpl in *;
+          computes_to_inv; injections; eauto
+        end
+    end.
+  
+  Definition mto_string_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
+    : mto_string st = str.
+  Proof. prove_string_eq.  Qed.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : mis_char arg st = string_beq _ _
-    := mcall2_eq "is_char" st arg str H.
+    : mis_char arg st = string_beq str (String.String arg "").
+  Proof. prove_string_eq. Qed.
   Definition mget_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : mget arg st = get _ _
-    := mcall2_eq "get" st arg str H.
-  Definition mlength_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : mlength arg st = String.length str
-    := mcall2_eq "length" st arg str H.
+  : mget arg st = get arg str.
+  Proof. prove_string_eq. Qed.
+  Definition mlength_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
+    : mlength st = String.length str.
+  Proof. prove_string_eq. Qed.
+
+  Ltac prove_string_AbsR :=
+    match goal with
+      |- _ ≃ ?z _ _ => unfold z;
+        match goal with
+          H : ?str ≃ ?st
+          |- _ ≃ callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg =>
+          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg) as [? [? ?]];
+            simpl in *; computes_to_inv; subst; eauto
+        end
+    end.
+  
   Definition mtake_R {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : AbsR (projT2 splitter_impl) (take arg str) (mtake arg st)
-    := mcall1_R "take" st arg str H.
+  : AbsR (projT2 splitter_impl) (take arg str) (mtake arg st).
+  Proof. prove_string_AbsR. Qed.
+    
   Definition mdrop_R {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : AbsR (projT2 splitter_impl) (drop arg str) (mdrop arg st)
-    := mcall1_R "drop" st arg str H.
+  : AbsR (projT2 splitter_impl) (drop arg str) (mdrop arg st).
+  Proof. prove_string_AbsR. Qed.
 
   Create HintDb parser_adt_method_db discriminated.
   Hint Resolve @mtake_R @mdrop_R : parser_adt_method_db.
@@ -158,8 +220,8 @@ Section parser.
   Local Ltac handle_rep :=
     repeat intro; simpl;
     repeat match goal with
-             | [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
-               => refine (@fst_cMethods_ex method arg st)
+             (*| [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
+               => refine (@fst_cMethods_ex method arg st) *)
              | [ |- exists orig, AbsR (projT2 splitter_impl) orig (?f ?arg ?st)  ]
                => unfold f, callcADTMethod
            end;
@@ -172,27 +234,30 @@ Section parser.
              | [ H : _ |- _ ] => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mget_eq, ?@mlength_eq in H by eauto with parser_adt_method_db
            end.
 
-  Local Obligation Tactic := handle_rep.
-
   Local Instance adt_based_StringLike_lite : StringLike Ascii.ascii
     := { String := StringT_lite;
          take n str := mtake n str;
          drop n str := mdrop n str;
-         length str := mlength tt str;
+         length str := mlength str;
          is_char str ch := mis_char ch str;
          get n str := mget n str;
-         bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
-
+         bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
 
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
     := { String := StringT;
          take n str := mtake n str;
          drop n str := mdrop n str;
-         length str := mlength tt str;
+         length str := mlength str;
          is_char str ch := mis_char ch str;
          get n str := mget n str;
-         bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
-
+         bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
+  Next Obligation.
+    eauto with parser_adt_method_db.
+  Qed.
+  Next Obligation.
+    eauto with parser_adt_method_db.
+  Qed.
+    
   Local Ltac t'' H meth :=
     pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
     simpl in H; unfold beq in H; simpl in H;
@@ -203,64 +268,69 @@ Section parser.
       eapply H; clear H; simpl.
   Local Ltac t meth := t' meth; eassumption.
 
+  Local Opaque mtake mdrop mto_string mget mlength mis_char.
+  
+  Local Obligation Tactic := intros.
   Local Program Instance adt_based_StringLikeProperties : @StringLikeProperties Ascii.ascii adt_based_StringLike
     := { bool_eq_Equivalence := {| Equivalence_Reflexive := _ |} }.
-  Next Obligation. t @singleton_unique. Qed.
+  Next Obligation. handle_rep; t @singleton_unique. Qed.
   Next Obligation.
-  Proof.
+  Proof. handle_rep.
     let H := fresh in
     t'' H (@singleton_exists);
       edestruct H; try (eexists; erewrite mis_char_eq); intuition eauto.
   Qed.
-  Next Obligation. t @get_0. Qed.
-  Next Obligation. t @get_S. Qed.
-  Next Obligation. t @length_singleton. Qed.
-  Next Obligation. t @bool_eq_char. Qed.
-  Next Obligation. t @is_char_Proper. Qed.
-  Next Obligation. t @length_Proper. Qed.
-  Next Obligation. t @take_Proper. Qed.
-  Next Obligation. t @drop_Proper. Qed.
-  Next Obligation. t @bool_eq_Equivalence. Qed.
-  Next Obligation. t @bool_eq_Equivalence. Qed.
-  Next Obligation. t (fun x y z => @Equivalence_Transitive _ _ (@bool_eq_Equivalence x y z)). Qed.
-  Next Obligation. t @bool_eq_empty. Qed.
-  Next Obligation. t @take_short_length. Qed.
-  Next Obligation. t @take_long. Qed.
-  Next Obligation. t @take_take. Qed.
-  Next Obligation. t @drop_length. Qed.
-  Next Obligation. t @drop_0. Qed.
-  Next Obligation. t @drop_drop. Qed.
-  Next Obligation. t @drop_take. Qed.
-  Next Obligation. t @take_drop. Qed.
+  Next Obligation. handle_rep; t @get_0. Qed.
+  Next Obligation. handle_rep; t @get_S. Qed.
+  Next Obligation. handle_rep; t @length_singleton. Qed.
+  Next Obligation. handle_rep; t @bool_eq_char. Qed.
+  Next Obligation. handle_rep; t @is_char_Proper. Qed.
+  Next Obligation. handle_rep; t @length_Proper. Qed.
+  Next Obligation. handle_rep; t @take_Proper. Qed.
+  Next Obligation. handle_rep; t @drop_Proper. Qed.
+  Next Obligation. handle_rep; t @bool_eq_Equivalence. Qed.
+  Next Obligation. handle_rep; t @bool_eq_Equivalence. Qed.
+  Next Obligation. handle_rep; t (fun x y z => @Equivalence_Transitive _ _ (@bool_eq_Equivalence x y z)). Qed.
+  Next Obligation. handle_rep; t @bool_eq_empty. Qed.
+  Next Obligation. handle_rep; t @take_short_length. Qed.
+  Next Obligation. handle_rep; t @take_long. Qed.
+  Next Obligation. handle_rep; t @take_take. Qed.
+  Next Obligation. handle_rep; t @drop_length. Qed.
+  Next Obligation. handle_rep; t @drop_0. Qed.
+  Next Obligation. handle_rep; t @drop_drop. Qed.
+  Next Obligation. handle_rep; t @drop_take. Qed.
+  Next Obligation. handle_rep; t @take_drop. Qed.
 
+  Definition splits :=
+    ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
+  
   Lemma adt_based_splitter_splits_for_complete
   : forall (str : String) (it : item Ascii.ascii)
            (its : production Ascii.ascii),
-      split_list_is_complete G str it its (msplits (it, its) (` str)).
+      split_list_is_complete G str it its (msplits it its (` str)).
   Proof.
     repeat intro.
     destruct_head_hnf sig.
     destruct_head ex.
     erewrite @mlength_eq in * by eassumption.
-    Definition splits := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
     lazymatch goal with
       | [ H : AbsR ?Ok ?str ?st
-          |- appcontext[msplits ?arg ?st] ]
-        => let T := type of Ok in
+          |- appcontext[msplits ?arg1 ?arg2 ?st] ]
+        => let T := type of Ok in 
            let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
            let H' := fresh in
-           pose proof (ADTRefinementPreservesMethods Ok splits _ _ arg H ((cMethods impl splits st arg)) (ReturnComputes _)) as H';
-             change (msplits arg st) with (snd (premsplits st arg));
+           pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 arg2 ((cMethods impl splits st arg1 arg2)) (ReturnComputes _)) as H';
+             change (msplits arg1 arg2 st) with (snd (premsplits st arg1 arg2));
              match type of H' with
-               | appcontext G[cMethods _ splits ?st ?arg]
-                 => let G' := context G[premsplits st arg] in
+               | appcontext G[cMethods _ splits ?st ?arg1 ?arg2]
+                 => let G' := context G[premsplits st arg1 arg2] in
                     change G' in H'
              end
     end.
     simpl in *.
     computes_to_inv; subst; simpl in *.
     match goal with
-      | [ H : ?x = premsplits _ _ |- _ ] => rewrite <- H; clear H; simpl
+      | [ H : ?x = premsplits _ _ _ |- _ ] => rewrite <- H; clear H; simpl
     end.
     lazymatch goal with
       | [ H : split_list_is_complete _ _ _ _ _, H' : ?n <= _,
@@ -289,18 +359,20 @@ Section parser.
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
                              H0'' _ _ _ _ H1' p1 p1H));
           apply H; clear H p0H p1H p0 p1; try assumption; simpl
-    end; [ split | | ];
-    handle_rep;
-    eauto with parser_adt_method_db.
-    { pose proof (@mdrop_R).
-      simpl in *; eauto. }
-    { pose proof (@mdrop_R).
-      simpl in *; eauto. }
+    end; [ split | | ].
+    - handle_rep;  eauto with parser_adt_method_db.
+    - handle_rep;  eauto with parser_adt_method_db.
+    - handle_rep;  eauto with parser_adt_method_db.
+    - handle_rep;  eauto with parser_adt_method_db.
+      pose proof (@mdrop_R); simpl in *; eauto.
+    - handle_rep;  eauto with parser_adt_method_db.
+    - handle_rep;  eauto with parser_adt_method_db.
+      pose proof (@mdrop_R); simpl in *; eauto.
   Qed.
 
   Definition adt_based_splitter : Splitter G
     := {| string_type := adt_based_StringLike;
           string_type_properties := adt_based_StringLikeProperties;
-          splits_for str it its := msplits (it, its) (` str);
+          splits_for str it its := msplits it its (` str);
           splits_for_complete := adt_based_splitter_splits_for_complete |}.
 End parser.

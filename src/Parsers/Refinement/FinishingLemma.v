@@ -20,27 +20,27 @@ Lemma finish_Sharpening_SplitterADT'
 : { e : _
   & refineADT
    (ADTRep repT
-    { Def Constructor "new" (s: string) : rep :=
+    { Def Constructor1 "new" (s: string) : rep :=
         ret (fnew s),
-      Def Method "to_string" (s : rep, _ : unit) : string :=
+      Def Method0 "to_string" (s : rep) : rep * string :=
         ret (fto_string s),
-      Def Method "is_char" (s : rep, ch : Ascii.ascii) : bool :=
+      Def Method1 "is_char" (s : rep) (ch : Ascii.ascii) : rep * bool :=
         ret (fis_char s ch),
-      Def Method "get" (s : rep, n : nat) : (option Ascii.ascii) :=
+      Def Method1 "get" (s : rep) (n : nat) : rep * (option Ascii.ascii) :=
         ret (fget s n),
-      Def Method "length" (s : rep, _ : unit) : nat :=
+      Def Method0 "length" (s : rep) : rep * nat :=
         ret (flength s),
-      Def Method "take" (s : rep, n : nat) : unit :=
+      Def Method1 "take" (s : rep) (n : nat) : rep * unit :=
         ret (ftake s n),
-      Def Method "drop" (s : rep, n : nat) : unit :=
+      Def Method1 "drop" (s : rep) (n : nat) : rep * unit :=
         ret (fdrop s n),
-      Def Method "splits" (s : rep, p : (item Ascii.ascii * production Ascii.ascii)) :
-      (list nat) :=
-        ret (fsplits s p) })%ADT
+      Def Method2 "splits" (s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) :
+      rep * (list nat) :=
+        ret (fsplits s i p) })%ADTParsing
    (ComputationalADT.LiftcADT e) }.
 Proof.
   eexists.
-  finish_SharpeningADT_WithoutDelegation.
+  simpl; finish_SharpeningADT_WithoutDelegation.
 Defined.
 
 Definition finish_Sharpening_SplitterADT

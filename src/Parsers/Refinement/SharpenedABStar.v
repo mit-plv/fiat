@@ -14,11 +14,12 @@ Section IndexedImpl.
 
     hone method "splits".
     {
+      set_evars.
       simplify parser splitter.
       finish honing parser method.
     }
+    finish_SharpeningADT_WithoutDelegation.
 
-    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter
@@ -37,6 +38,7 @@ Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
+(* Ben : Taking too long to run; commenting so I can debug build.
 Time Definition ab_star_parser (str : String.string) : bool
   := Eval simpl in has_parse (parser ComputationalSplitter) str.
 
@@ -50,3 +52,4 @@ Definition str400 := "ababababababababababababababababababababababababababababab
 Definition test2 := ab_star_parser (str400 ++ str400 ++ str400 ++ str400).
 
 Recursive Extraction test0 test1 test2.
+*)

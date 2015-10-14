@@ -26,23 +26,22 @@ Typeclasses Opaque If_Then_Else.
     start honing parser using indexed representation.
 
     hone method "splits".
-    {
+    { set_evars.
       simplify parser splitter.
       setoid_rewrite refine_disjoint_search_for; [ | reflexivity.. ].
       simpl.
       finish honing parser method.
     }
-
-    finish_Sharpening_SplitterADT.
+    finish_SharpeningADT_WithoutDelegation.
   Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec plus_expr_grammar).
+    : FullySharpened (string_spec plus_expr_grammar).
   Proof.
     let impl := (eval simpl in (projT1 ComputationalSplitter')) in
     refine (existT _ impl _).
     abstract (exact (projT2 ComputationalSplitter')).
-  Defined.
+  Defined. 
 
 End IndexedImpl.
 

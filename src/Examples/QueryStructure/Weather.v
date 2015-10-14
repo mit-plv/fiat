@@ -48,36 +48,38 @@ Definition LocalMax := "LocalMax".
 
 Definition WeatherSig : ADTSig :=
   ADTsignature {
-      Constructor Init           : unit                               -> rep,
-      Method AddCell        : rep x (WeatherSchema#CELLS)        -> rep x bool,
-      Method AddMeasurement : rep x (WeatherSchema#MEASUREMENTS) -> rep x bool,
-      Method CountCells     : rep x AreaCode                        -> rep x nat,
-      Method LocalMax       : rep x (AreaCode * MeasurementType)    -> rep x option Z
+      Constructor Init      : rep,
+      Method AddCell        : rep * (WeatherSchema#CELLS)        -> rep * bool,
+      Method AddMeasurement : rep * (WeatherSchema#MEASUREMENTS) -> rep * bool,
+      Method CountCells     : rep * AreaCode                        -> rep * nat,
+      Method LocalMax       : rep * AreaCode * MeasurementType    -> rep * (option Z)
     }.
 
 Definition WeatherSpec : ADT WeatherSig :=
   Eval simpl in
     QueryADTRep WeatherSchema {
-    Def Constructor Init (_ : unit) : rep := empty,
+    Def Constructor0 Init : rep := empty,
 
-    update AddCell (r : rep, cell : WeatherSchema#CELLS) : bool :=
+    Def Method1 AddCell (r : rep) (cell : WeatherSchema#CELLS) : rep * bool :=
       Insert cell into r!CELLS,
 
-    update AddMeasurement (r : rep, measurement : WeatherSchema#MEASUREMENTS) : bool :=
+    Def Method1 AddMeasurement (r : rep) (measurement : WeatherSchema#MEASUREMENTS) : rep * bool :=
       Insert measurement into r!MEASUREMENTS,
 
-    query CountCells (r : rep, area : AreaCode) : nat :=
-      Count (For (cell in r!CELLS)
-             Where (area = cell!AREA_CODE)
-             Return 1),
+    Def Method1 CountCells (r : rep) (area : AreaCode) : rep * nat :=
+      cnt <- Count (For (cell in r!CELLS)
+                        Where (area = cell!AREA_CODE)
+                        Return 1);
+    ret (r, cnt),
 
-    query LocalMax (r : rep, params: AreaCode * MeasurementType) : option Z :=
-      MaxZ (For (cell in r!CELLS) (measurement in r!MEASUREMENTS)
-            Where (cell!AREA_CODE = fst params)
-            Where (measurement!MEASUREMENT_TYPE = snd params)
+    Def Method2 LocalMax (r : rep) (areaC : AreaCode) (measType : MeasurementType) : rep * (option Z) :=
+      max <- MaxZ (For (cell in r!CELLS) (measurement in r!MEASUREMENTS)
+            Where (cell!AREA_CODE = areaC)
+            Where (measurement!MEASUREMENT_TYPE = measType)
             Where (cell!CELL_ID = measurement!CELL_ID)
-            Return measurement!VALUE)
-}.
+            Return measurement!VALUE);
+    ret (r, max)
+}%methDefParsing.
 
 Definition SharpenedWeatherStation :
   FullySharpened WeatherSpec.

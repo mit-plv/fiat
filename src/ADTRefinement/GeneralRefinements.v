@@ -270,7 +270,127 @@ Proof.
     eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
 Qed.
 
-(*Definition SharpenFully {Sig}
+Fixpoint Lift_Constructor1P RepType (dom : list Type)
+  (P : constructorType RepType [] -> Prop)
+  : constructorType RepType dom -> Prop :=
+  match dom with
+  | nil => fun c => P c
+  | d :: dom' => fun c => forall (t : d), Lift_Constructor1P dom' P (c t)
+  end.
+
+Fixpoint Lift_Constructor2P RepType RepType' (dom : list Type)
+         (P : constructorType RepType []
+              -> cConstructorType RepType' []
+              -> Prop)
+  : constructorType RepType dom
+    -> cConstructorType RepType' dom
+    -> Prop :=
+  match dom with
+  | nil => fun c c' => P c c'
+  | d :: dom' => fun c c' => forall (t : d), Lift_Constructor2P dom' P (c t) (c' t)
+  end.
+
+Fixpoint Lift_Method2P RepType RepType'
+         (dom : list Type)
+         (cod : option Type)
+         (P : forall cod,
+             methodType' RepType [] (Some cod)
+             -> cMethodType' RepType' [] (Some cod)
+             -> Prop)
+         (P' : methodType' RepType [] None
+              -> cMethodType' RepType' [] None
+              -> Prop)
+  : methodType' RepType dom cod
+    -> cMethodType' RepType' dom cod
+    -> Prop :=
+  match dom with
+  | nil => match cod with
+           | Some cod' => fun c c' => P cod' c c'
+           | None => fun c c' => P' c c'
+           end
+  | d :: dom' => fun c c' => forall (t : d), Lift_Method2P dom' cod P P' (c t) (c' t)
+  end.
+
+  Fixpoint Lift_cMethodP RepType
+           (dom : list Type)
+           (cod : option Type)
+           (P : forall cod,
+               cMethodType' RepType [] (Some cod)
+               -> Prop)
+           (P' : cMethodType' RepType [] None
+                 -> Prop)
+    : cMethodType' RepType dom cod
+      -> Prop :=
+    match dom with
+    | nil => match cod with
+             | Some cod' => fun c => P cod' c
+             | None => fun c => P' c
+             end
+    | d :: dom' => fun c => forall (t : d), Lift_cMethodP dom' cod P P' (c t)
+    end.
+
+  Definition Lift_Method2P_ind RepType RepType'
+         (dom : list Type)
+         (cod : option Type)
+         (P : forall cod,
+             methodType' RepType [] (Some cod)
+             -> cMethodType' RepType' [] (Some cod)
+             -> Prop)
+         (P' : methodType' RepType [] None
+              -> cMethodType' RepType' [] None
+              -> Prop)
+         (P'' : forall dom cod,
+             methodType' RepType dom cod
+             -> cMethodType' RepType' dom cod
+             -> Prop)
+         meth cMeth
+         (H : forall meth' cMeth',
+             P'' _ _ meth' cMeth'
+             -> Lift_Method2P [] cod P P' meth' cMeth')
+         (IH : forall d d' meth' cMeth',
+             (forall t, P'' d' cod (meth' t) (cMeth' t)
+              -> Lift_Method2P d' cod P P' (meth' t) (cMeth' t))
+             -> P'' (d :: d') cod meth' cMeth'
+             -> Lift_Method2P (d :: d') cod P P' meth' cMeth')
+    : P'' _ _ meth cMeth
+      -> Lift_Method2P dom cod P P' meth cMeth.
+  Proof.
+    induction dom; simpl in *; eauto.
+    destruct cod; eauto.
+  Qed.
+
+  Lemma cMethods_AbsR {Sig} {spec : ADT Sig}
+        (impl : FullySharpened spec)
+        midx
+        (o_r : Rep spec)
+        (n_r : cRep (projT1 impl))
+        (Abs : AbsR (projT2 impl) o_r n_r)
+    :
+      @Lift_Method2P _ _ _ _
+                      (fun _ Meth cMeth =>
+                         exists o_r',
+                           computes_to Meth (o_r', (snd cMeth))
+                           /\ AbsR (projT2 impl) o_r' (fst cMeth))
+                      (fun Meth cMeth =>
+                         exists o_r',
+                           computes_to Meth (o_r')
+                           /\ AbsR (projT2 impl) o_r' cMeth)
+                      (Methods spec midx o_r)
+                      (cMethods (projT1 impl) midx n_r).
+  Proof.
+    simpl in *.
+    generalize  (ADTRefinementPreservesMethods (projT2 impl) midx _ _ Abs).
+    intro.
+    eapply Lift_Method2P_ind with
+    (P'' := fun dom cod meth (cMeth : cMethodType' _ dom cod) => refineMethod' (AbsR (projT2 impl)) meth (LiftcMethod' _ dom cod cMeth)) ; simpl; intros; eauto.
+    - revert H0; clear;  destruct (MethodDomCod Sig midx) as [? [? |] ];
+      simpl; intros;
+      specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
+      eexists; split; simpl; try destruct v; simpl; eauto.
+      simpl; eauto.
+  Qed.
+
+  (*Definition SharpenFully {Sig}
     (spec : ADT Sig)
     (DelegateIDs : list string)
     (DelegateSigs : Fin.t DelegateIDs -> ADTSig)

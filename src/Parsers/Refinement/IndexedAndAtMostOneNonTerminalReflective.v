@@ -444,32 +444,34 @@ Section IndexedImpl.
   Qed.
 
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
+  Open Scope ADTParsing_scope.
 
-  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii) := ADTRep T {
-    Def Constructor "new"(s : String.string) : rep :=
+  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii) :=
+    ADTRep T {
+    Def Constructor1 "new" (s : String.string) : rep :=
       ret (s, (0, String.length s)),
 
-    Def Method "to_string"(s : rep, x : unit) : String.string :=
+    Def Method0 "to_string"(s : rep) : rep * String.string :=
       ret (s, string_of_indexed s),
 
-    Def Method "is_char"(s : rep, ch : Ascii.ascii) : bool  :=
+    Def Method1 "is_char"(s : rep) (ch : Ascii.ascii) : rep * bool  :=
       ret (s, string_beq (string_of_indexed s) (String.String ch "")),
 
-    Def Method "get"(s : rep, n : nat) : option Ascii.ascii  :=
+    Def Method1 "get"(s : rep) (n : nat) : rep * (option Ascii.ascii)  :=
       ret (s, iget n s),
 
-    Def Method "length"(s : rep, x : unit) : nat :=
+    Def Method0 "length"(s : rep) : rep * nat :=
       ret (s, ilength s),
 
-    Def Method "take"(s : rep, n : nat) : unit :=
-      ret ((fst s, (fst (snd s), min (snd (snd s)) n)), tt),
+    Def Method1 "take"(s : rep) (n : nat) : rep :=
+      ret ((fst s, (fst (snd s), min (snd (snd s)) n))),
 
-    Def Method "drop"(s : rep, n : nat) : unit :=
-      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr)), tt),
+    Def Method1 "drop"(s : rep) (n : nat) : rep :=
+      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr))),
 
-    Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
+    Def Method2 "splits"(s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) : rep * (list nat) :=
       dummy <- { ls : list nat | True };
-      expanded_fallback_list' P s (fst p) (snd p) dummy
+      expanded_fallback_list' P s i p dummy
   }.
 
   Definition rindexed_spec : ADT (string_rep Ascii.ascii)

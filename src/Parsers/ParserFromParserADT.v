@@ -56,7 +56,7 @@ Section parser.
       (adt_based_splitter splitter_impl)
       (adt_based_StringLike_lite splitter_impl)
       (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
-      (fun it its str => msplits splitter_impl (it, its) str)
+      (fun it its str => msplits splitter_impl it its str)
     := { proj := @proj1_sig _ _ }.
   Proof.
     reflexivity.

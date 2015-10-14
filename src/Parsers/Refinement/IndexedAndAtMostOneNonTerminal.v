@@ -92,7 +92,7 @@ Section IndexedImpl.
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
   (** TODO: should we replace
 
-       [string_dec (string_of_indexed s) (String.String ch "") : bool]
+       [string_dec (string_of_indexed s) (String.String ch "") : rep * bool]
 
       with something fancier and maybe more efficient, like
 
@@ -101,49 +101,49 @@ Section IndexedImpl.
   ch)))%bool] *)
 
   Definition indexed_spec : ADT (string_rep Ascii.ascii) := ADTRep T {
-    Def Constructor "new"(s : String.string) : rep :=
+    Def Constructor1 "new"(s : String.string) : rep :=
       ret (s, (0, String.length s)),
 
-    Def Method "to_string"(s : rep, x : unit) : String.string :=
+    Def Method0 "to_string"(s : rep) : rep * String.string :=
       ret (s, string_of_indexed s),
 
-    Def Method "is_char"(s : rep, ch : Ascii.ascii) : bool  :=
+    Def Method1 "is_char"(s : rep) (ch : Ascii.ascii) : rep * bool  :=
       ret (s, string_beq (string_of_indexed s) (String.String ch "")),
 
-    Def Method "get"(s : rep, n : nat) : option Ascii.ascii  :=
+    Def Method1 "get"(s : rep) (n : nat) : rep * option Ascii.ascii  :=
       ret (s, iget n s),
 
-    Def Method "length"(s : rep, x : unit) : nat :=
+    Def Method0 "length"(s : rep) : rep * nat :=
       ret (s, ilength s),
 
-    Def Method "take"(s : rep, n : nat) : unit :=
-      ret ((fst s, (fst (snd s), min (snd (snd s)) n)), tt),
+    Def Method1 "take"(s : rep) (n : nat) : rep :=
+      ret ((fst s, (fst (snd s), min (snd (snd s)) n))),
 
-    Def Method "drop"(s : rep, n : nat) : unit :=
-      ret ((fst s, (fst (snd s) + n, snd (snd s) - n)), tt),
+    Def Method1 "drop"(s : rep) (n : nat) : rep :=
+      ret ((fst s, (fst (snd s) + n, snd (snd s) - n))),
 
-    Def Method "splits"(s : rep, p : item Ascii.ascii * production Ascii.ascii) : list nat :=
+    Def Method2 "splits"(s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) : rep * list nat :=
       fallback_ls <- { ls : list nat
-                     | match fst p with
+                     | match i with
                          | Terminal _
                            => True
                          | NonTerminal _
-                           => if has_only_terminals (snd p)
+                           => if has_only_terminals p
                               then True
-                              else split_list_is_complete G (string_of_indexed s) (fst p) (snd p) ls
+                              else split_list_is_complete G (string_of_indexed s) i p ls
                        end };
-      let ls := (match snd p, fst p with
+      let ls := (match p, i with
                    | nil, _
                      => [ilength s]
                    | _::_, Terminal _
                      => [1]
                    | _::_, NonTerminal _
-                     => if has_only_terminals (snd p)
-                        then [ilength s - List.length (snd p)]
+                     => if has_only_terminals p
+                        then [ilength s - List.length p]
                         else fallback_ls
                  end) in
       ret (s, ls)
-  }.
+  }%ADTParsing.
 
   Lemma FirstStep
   : refineADT (string_spec G) indexed_spec.

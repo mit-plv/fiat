@@ -26,11 +26,12 @@ Section IndexedImpl.
 
     hone method "splits".
     {
+      set_evars.
       simplify parser splitter.
       finish honing parser method.
     }
 
-    finish_Sharpening_SplitterADT.
+    finish_SharpeningADT_WithoutDelegation.
   Defined.
 
   Lemma ComputationalSplitter

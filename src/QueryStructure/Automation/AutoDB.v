@@ -174,26 +174,6 @@ Definition CallBagImplConstructor
            idx cidx :=
   ComputationalADT.pcConstructors (DelegateImpls idx) cidx.
 
-Fixpoint Lift_Constructor1P RepType (dom : list Type)
-  (P : constructorType RepType [] -> Prop)
-  : constructorType RepType dom -> Prop :=
-  match dom with
-  | nil => fun c => P c
-  | d :: dom' => fun c => forall (t : d), Lift_Constructor1P dom' P (c t)
-  end.
-
-Fixpoint Lift_Constructor2P RepType RepType' (dom : list Type)
-         (P : constructorType RepType []
-              -> cConstructorType RepType' []
-              -> Prop)
-  : constructorType RepType dom
-    -> cConstructorType RepType' dom
-    -> Prop :=
-  match dom with
-  | nil => fun c c' => P c c'
-  | d :: dom' => fun c c' => forall (t : d), Lift_Constructor2P dom' P (c t) (c' t)
-  end.
-
 Lemma refine_BagImplConstructor
       {n}
       {schemas : Vector.t RawSchema n}
@@ -231,27 +211,6 @@ Proof.
     unfold CallBagConstructor; simpl; computes_to_econstructor.
   - eapply H'.
 Qed.
-
-Fixpoint Lift_Method2P RepType RepType'
-         (dom : list Type)
-         (cod : option Type)
-         (P : forall cod,
-             methodType' RepType [] (Some cod)
-             -> cMethodType' RepType' [] (Some cod)
-             -> Prop)
-         (P' : methodType' RepType [] None
-              -> cMethodType' RepType' [] None
-              -> Prop)
-  : methodType' RepType dom cod
-    -> cMethodType' RepType' dom cod
-    -> Prop :=
-  match dom with
-  | nil => match cod with
-           | Some cod' => fun c c' => P cod' c c'
-           | None => fun c c' => P' c c'
-           end
-  | d :: dom' => fun c c' => forall (t : d), Lift_Method2P dom' cod P P' (c t) (c' t)
-  end.
 
 Lemma refine_BagImplMethods
       {qs_schema : RawQueryStructureSchema}
@@ -309,7 +268,7 @@ Proof.
     repeat computes_to_econstructor; eauto.
   - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0'; simpl in *. 
+    unfold cMethods in H0'; simpl in *.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
