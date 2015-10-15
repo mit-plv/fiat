@@ -14,7 +14,7 @@ Require Export
         FiatToFacade.Compiler.ADTs.ListsInversion
         FiatToFacade.Compiler.ADTs.FiniteSets.
 
-Require Export Common.
+Require Export Fiat.Common.
 Require Export Cito.StringMap.
 Require Export Cito.GLabelMap.
 Require Export Facade.Facade.
