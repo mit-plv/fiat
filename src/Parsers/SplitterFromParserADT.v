@@ -153,7 +153,7 @@ Section parser.
     := mcall1_R "drop" st arg str H.
 
   Local Ltac handle_rep0 :=
-    repeat intro;
+    repeat intro; cbv beta;
     repeat match goal with
              | [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
                => refine (@fst_cMethods_ex method arg st)
