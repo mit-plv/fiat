@@ -58,7 +58,7 @@ Notation "'Method' id : 'rep' '->' 'rep' '*' cod " :=
 Notation "'Constructor' id ':' 'rep'" :=
   {| consID := id;
      consDom := @nil Type |}
-    (id at level 0, dom1 at level 0, domn at level 0, at level 93)
+    (id at level 0, at level 93)
   : consSig_scope.
 
 Notation "'Constructor' id ':' dom1 '*' .. '*' domn '->' 'rep'" :=
