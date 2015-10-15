@@ -164,18 +164,18 @@ Section ListFacts.
   Proof.
     induction seq; simpl; intros.
 
-    exists (@nil A) (@nil A); simpl.
+    exists (@nil A); exists (@nil A); simpl.
     apply app_eq_nil in H; intuition.
 
     destruct l1.
     rewrite app_nil_l in H.
-    exists (@nil A) (a :: seq); simpl; intuition.
+    exists (@nil A); exists (a :: seq); simpl; intuition.
 
     rewrite <- app_comm_cons in H.
     inversion H.
     specialize (IHseq _ _ _ H2).
     destruct IHseq as [l1' [l2' (seq_eq_app & l1l1' & l2l2') ] ].
-    exists (a :: l1') (l2'); subst; intuition.
+    exists (a :: l1'); exists (l2'); subst; intuition.
   Qed.
 
   Lemma cons_map_inv :
@@ -187,7 +187,7 @@ Section ListFacts.
     intros * _eq.
     destruct seq as [ | x1' l2' ]; simpl in *; try discriminate.
     inversion _eq.
-    exists x1' l2'; subst; intuition.
+    exists x1'; exists l2'; subst; intuition.
   Qed.
 
   Lemma map_eq_nil_inv :
