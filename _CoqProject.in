@@ -38,6 +38,7 @@ src/BinEncoders/Pair.v
 src/BinEncoders/Sum.v
 src/BinEncoders/Unary.v
 src/CertifiedExtraction/Compiler.v
+src/CertifiedExtraction/FacadeNotations.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
