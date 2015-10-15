@@ -1,6 +1,7 @@
 Require Import
         Coq.Strings.String
         Fiat.Common.StringBound
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
@@ -18,56 +19,6 @@ Ltac psearch n z :=
     match n with
     | 0 => fail
     | S ?n' => z ltac:(psearch n' z)
-    end.
-
-Ltac fold_string_hyps :=
-  repeat
-    match goal with
-    | H' := String ?R ?R' : _ |- _ => progress (fold H')
-    (* | H' := @BoundedIndex ?A ?Bound : _ |- _ => progress (fold H')
-    | H' := @Build_BoundedIndex ?A ?Bound ?idx ?bnd : _ |- _ => progress (fold H')
-    | H' := ``(?R) : _ |- _ => progress(fold H') *)
-    end.
-
-Ltac fold_string_hyps_in H :=
-  repeat
-    match goal with
-    | H' := String ?R ?R' : _ |- _ =>
-      match type of H with
-      | context [String R R'] => fold H' in H
-      end
-
-    (*| H' := @BoundedIndex ?A ?Bound : _ |- _ =>
-              match type of H with
-                | context [@BoundedIndex A Bound ] => fold H' in H
-              end
-
-      | H' := @Build_BoundedIndex ?A ?Bound ?idx ?bnd : _ |- _ =>
-              match type of H with
-                | context [@Build_BoundedIndex A Bound idx bnd ] => fold H' in H
-              end
-      | H' := ``(?R) : _ |- _ =>
-              match type of H with
-                | context [``(R)] => fold H' in H
-              end *)
-    end.
-
-Ltac pose_string_hyps :=
-  fold_string_hyps;
-  repeat
-    match goal with
-    | |- context [String ?R ?R'] =>
-      let str := fresh "StringId" in
-      set (String R R') as str in *
-    (*| |- context [@BoundedIndex ?A ?Bound] =>
-        let idx := fresh "BStringId" in
-        set (@BoundedIndex A Bound) as idx in *
-      | |- context [ ``(?R) ] =>
-        let idx := fresh "BStringId" in
-        set ``(R) as idx in *
-      | |- context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
-        let idx := fresh "BStringId" in
-        set (@Build_BoundedIndex A Bound idx bnd) as idx in *  *)
     end.
 
 Ltac fold_heading_hyps :=

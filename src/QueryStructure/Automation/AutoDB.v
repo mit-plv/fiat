@@ -7,6 +7,7 @@ Require Export Fiat.Common.DecideableEnsembles
         Fiat.Common.List.FlattenList
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.SearchTerms.ListInclusion
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix

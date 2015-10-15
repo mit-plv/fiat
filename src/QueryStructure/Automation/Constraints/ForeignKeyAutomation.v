@@ -3,6 +3,7 @@ Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.St
         Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Operations.FlattenCompList
         Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements

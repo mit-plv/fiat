@@ -1,8 +1,10 @@
-Require Import Coq.Sorting.Mergesort Coq.Structures.Orders
+Require Import Coq.Sorting.Mergesort
+        Coq.Structures.Orders
         Coq.Arith.Arith
         Coq.Structures.OrderedType Coq.Structures.OrderedTypeEx
         Coq.Strings.String Coq.FSets.FMapAVL
         Fiat.Common.String_as_OT
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Implementation.Operations
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation
@@ -672,7 +674,7 @@ Ltac GenerateIndexesForOne FindAttributeUses idx k :=
       (BuildADT refined_consDefs refined_methDefs).
 Proof.
   eauto using refineADT_BuildADT_Rep_refine_All.
-Qed. 
+Qed.
 
 Global Opaque IndexSearchTerm.
 Global Opaque IndexUpdateTerm.

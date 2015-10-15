@@ -5,6 +5,7 @@ Require Import Coq.Strings.String Coq.Lists.List Coq.Sorting.Permutation
         Fiat.Common.List.ListFacts
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.DecideableEnsembles
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
         Fiat.ADTRefinement.BuildADTRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema

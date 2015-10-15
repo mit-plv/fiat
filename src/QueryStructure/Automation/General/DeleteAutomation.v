@@ -1,6 +1,7 @@
 Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.FunctionalExtensionality Coq.Sets.Ensembles
         Fiat.Common.List.ListFacts
         Fiat.Computation
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.ADT
         Fiat.ADTRefinement Fiat.ADTNotation
         Fiat.QueryStructure.Specification.Representation.Schema

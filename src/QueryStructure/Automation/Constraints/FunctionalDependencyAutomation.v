@@ -8,6 +8,7 @@ Require Import Coq.Lists.List
         Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Operations.FlattenCompList
         Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements

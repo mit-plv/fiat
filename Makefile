@@ -91,11 +91,13 @@ FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
+TACTICS := src/Common/Tactics/transparent_abstract_plugin.ml4 \
+	src/Common/Tactics/hint_db_extra_plugin.ml4
 
-FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
+FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO) $(TACTICS)
 
 fiat: $(FIAT_VO)
-fiat-core: $(FIAT_CORE_VO)
+fiat-core: $(FIAT_CORE_VO) $(TACTICS)
 querystructures: $(QUERYSTRUCTURES_VO)
 parsers: $(PARSERS_VO)
 parsers-all: $(PARSERS_ALL_VO)
@@ -136,7 +138,7 @@ install-fiat install-fiat-core install-querystructures install-parsers install-f
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-arg -dont-load-proofs'; find src -name "*.v" -a ! -wholename '$(COMPATIBILITY_FILE)' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)') > _CoqProject.in
+	(echo '-R src Fiat'; echo '-arg -dont-load-proofs'; find src -name "*.v" -a ! -wholename '$(COMPATIBILITY_FILE)' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; echo '$(TACTICS)') > _CoqProject.in
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"

@@ -9,6 +9,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Fiat.QueryStructure.Specification.Representation.QueryStructure
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Operations.Insert
         Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
