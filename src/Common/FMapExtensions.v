@@ -174,7 +174,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     apply in_elements_mapsto in in_elements;
     rewrite map_mapsto_iff in in_elements;
     destruct in_elements as [e_pred (is_pred, maps_to)];
-    exists k e_pred;
+    exists k; exists e_pred;
     subst; intuition.
   Qed.
 

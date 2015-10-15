@@ -332,7 +332,7 @@ Section ConstraintCheckRefinements.
     computes_to_inv; subst.
     - simpl in H0; intuition.
     - apply in_app_or in H0; intuition.
-      exists a v; intuition; try eapply H; eauto.
+      exists a; exists v; intuition; try eapply H; eauto.
       inversion H3; subst.
       destruct (IHx (fun tup => tup <> a /\ i tup) _ _ H1 H''); eauto.
       unfold Ensembles.In; intros; intuition; subst; eauto.
