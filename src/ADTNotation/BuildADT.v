@@ -38,7 +38,6 @@ Delimit Scope consDef_scope with consDef.
 Notation "'Def' 'Constructor0' id : 'rep' := bod" :=
   (Build_consDef _ {| consID := id; consDom := [] |} ((bod%comp : constructorType rep [ ]) ))
     (no associativity, at level 94, id at level 0,
-     x1 closed binder, xn closed binder,
      format "'Def'  'Constructor0'  id  :  'rep'  :=  '/' '[  '   bod ']' " ) :
     consDef_scope.
 
