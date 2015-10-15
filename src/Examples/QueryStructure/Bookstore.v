@@ -55,13 +55,13 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 (* So, first let's give the type signatures of the methods. *)
 Definition BookStoreSig : ADTSig :=
   ADTsignature {
-      Constructor "Init" : unit -> rep,
-      Method "PlaceOrder" : rep x Order -> rep x bool,
-      Method "DeleteOrder" : rep x nat -> rep x list Order,
-      Method "AddBook" : rep x Book -> rep x bool,
-      Method "DeleteBook" : rep x nat -> rep x list Book,
-      Method "GetTitles" : rep x string -> rep x list string,
-      Method "NumOrders" : rep x string -> rep x nat
+      Constructor "Init" : rep,
+      Method "PlaceOrder" : rep * Order -> rep * bool,
+      Method "DeleteOrder" : rep * nat -> rep * (list Order),
+      Method "AddBook" : rep * Book -> rep * bool,
+      Method "DeleteBook" : rep * nat -> rep * (list Book),
+      Method "GetTitles" : rep * string -> rep * (list string),
+      Method "NumOrders" : rep * string -> rep * nat
     }.
 
 (* Now we write what the methods should actually do. *)
@@ -69,39 +69,41 @@ Definition BookStoreSig : ADTSig :=
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
     QueryADTRep BookStoreSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor0 "Init" : rep := empty,
 
-    update "PlaceOrder" ( r : rep , o : Order ) : bool :=
+    Def Method1 "PlaceOrder" ( r : rep) (o : Order ) : rep * bool :=
         Insert o into r!sORDERS,
 
-    update "DeleteOrder" (r : rep, oid : nat ) : list Order :=
+    Def Method1 "DeleteOrder" (r : rep) (oid : nat) : rep * list Order :=
        Delete o from r!sORDERS where o!sISBN = oid,
 
-    update "AddBook" (r : rep, b : Book ) : bool :=
+    Def Method1 "AddBook" (r : rep) (b : Book ) : rep * bool :=
         Insert b into r!sBOOKS ,
 
-    update "DeleteBook" ( r : rep, id : nat ) : list Book :=
+    Def Method1 "DeleteBook" ( r : rep) (id : nat ) : rep * list Book :=
         Delete book from r!sBOOKS where book!sISBN = id,
 
-    query "GetTitles" (r : rep, author : string ) : list string :=
-      For (b in r ! sBOOKS)
-      Where (author = b!sAUTHOR)
-      Return (b!sTITLE),
+    Def Method1 "GetTitles" (r : rep) (author : string) : rep * list string :=
+        titles <- For (b in r ! sBOOKS)
+               Where (author = b!sAUTHOR)
+               Return (b!sTITLE);
+    ret (r, titles),
 
-    query "NumOrders" (r : rep, author : string ) : nat :=
-      Count (For (o in r!sORDERS) (b in r!sBOOKS)
-                 Where (author = b!sAUTHOR)
-                 Where (o!sISBN = b!sISBN)
-                 Return ())
-}.
+    Def Method1 "NumOrders" (r : rep) (author : string ) : rep * nat :=
+      count <- Count (For (o in r!sORDERS) (b in r!sBOOKS)
+                              Where (author = b!sAUTHOR)
+                              Where (o!sISBN = b!sISBN)
+                              Return ());
+      ret (r, count)
+}%methDefParsing.
 
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
 
   master_plan EqIndexTactics.
- 
-  (* Uncomment this to see the mostly sharpened implementation *)
+
+    (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
 
 Time Defined.

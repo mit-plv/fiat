@@ -113,13 +113,7 @@ Section ilist.
 
   (* Looking up the ith value, returning None for indices not in the Vector.t *)
 
-  Definition ith_body
-             (ith : forall
-                      {m : nat}
-                      {As : Vector.t A m}
-                      (il : ilist As)
-                      (n : Fin.t m),
-                      B (Vector.nth As n))
+  Fixpoint ith
              {m : nat}
              {As : Vector.t A m}
              (il : ilist As)
@@ -142,17 +136,6 @@ Section ilist.
                         (fun h n t m il => ith (ilist_tl il) m)
                         As n'
     end As il.
-
-
-
-  Fixpoint ith
-           {m : nat}
-           {As : Vector.t A m}
-           (il : ilist As)
-           (n : Fin.t m)
-           {struct n}
-    : B (Vector.nth As n) :=
-  @ith_body (@ith) m As il n.
 
   Lemma ilist_invert {n} (As : Vector.t A n) (il : ilist As) :
     match As as As' return ilist As' -> Prop with

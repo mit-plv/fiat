@@ -409,6 +409,7 @@ Ltac prove_extensional_eq :=
 
 Ltac createTerm f fds tail fs EarlyIndex LastIndex k :=
   match fs with
+  | [ ] => k tail
   | [{| KindIndexKind := ?kind;
         KindIndexIndex := ?s|} ] =>
     (* *)
@@ -953,7 +954,7 @@ Ltac convert_filter_to_find' :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
 
-    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
+    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n;
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                       (Build_single_Tuple_list (snd l))) ?resultComp] =>
     match f with
@@ -964,7 +965,7 @@ Ltac convert_filter_to_find' :=
     end
 
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n ();
+    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n;
                 l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) ?cl;
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                       l') ?resultComp] =>
@@ -975,7 +976,7 @@ Ltac convert_filter_to_find' :=
         simpl in b; setoid_rewrite b;
         [ clear b
         | match goal with
-          | |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
+          | |- context [CallBagMethod ?idx' BagEnumerate _] =>
             intros; eapply (realizeable_Enumerate (r_o := r_o) (r_n := r_n) idx' H)
           | |- context [CallBagMethod ?idx' BagFind _ _] =>
             intros; eapply (realizeable_Find (r_o := r_o) (r_n := r_n) idx' H)
@@ -986,7 +987,7 @@ Ltac convert_filter_to_find' :=
     |- context[l <- CallBagMethod ?idx BagFind ?r_n ?st;
                 l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l))
                    (fun _ : ilist (@RawTuple) [?heading] =>
-                      l <- CallBagMethod ?idx' BagEnumerate ?r_n ();
+                      l <- CallBagMethod ?idx' BagEnumerate ?r_n;
                     ret (snd l));
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a) l') ?resultComp] =>
     match f with
@@ -1362,21 +1363,29 @@ Proof.
 Qed.
 
 Ltac Implement_Bound_Bag_Call :=
-  match goal with
-  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                               ?ValidImpls ?r_o ?r_n
-    |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?d) ?k) _ =>
     let r_o' := fresh "r_o'" in
     let AbsR_r_o' := fresh "AbsR_r_o'" in
     let refines_r_o' := fresh "refines_r_o'" in
-    pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx d k H) as refines_r_o';
+    match goal with
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg1 ?arg2) ?k) _ =>
+      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg1 arg2 k) as refines_r_o'
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg) ?k) _ =>
+      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg k) as refines_r_o'
+    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                                 ?ValidImpls ?r_o ?r_n
+      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o) ?k) _ =>
+      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H k) as refines_r_o'
+    end;
       simpl in refines_r_o';
       fold_string_hyps_in refines_r_o'; fold_heading_hyps_in refines_r_o';
       etransitivity;
-      [ eapply refines_r_o'; cbv beta; simpl in *; intros | ]
-  end.
+      [ eapply refines_r_o'; cbv beta; simpl in *; intros | ].
 
-Ltac implement_bag_methods :=
+    Ltac implement_bag_methods :=
   etransitivity;
   [ repeat first [
              simpl; simplify with monad laws
@@ -1406,7 +1415,7 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
   let cRep' := constr:(@Build_IndexedQueryStructure_Impl_cRep _ (qschemaSchemas qs_schema) Index) in
   let cAbsR' := constr:(@Build_IndexedQueryStructure_Impl_AbsR qs_schema Index) in
   let ValidRefinements := fresh in
-  let FullySharpenedImpl := fresh in
+  let FullySharpenedImpl := fresh "FullySharpenedImpl" in
   match goal with
     |- @FullySharpenedUnderDelegates _ (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
     ilist_of_dep_evar n
@@ -1447,11 +1456,11 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
                                                                              (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                                                                Iterate_Dep_Type_BoundedIndex
                                                                  (fun idx =>
-                                                                    @refineConstructor
-                                                                      _ (cRep' DelegateReps) (cAbsR' _ _ ValidImpls)
-                                                                      (consDom (Vector.nth consSigs idx))
-                                                                      (getConsDef consDefs idx)
-                                                                      (fun d => ret (ith (cCons DelegateReps DelegateImpls) idx d))))
+                                                                    @refineConstructor _
+                                                                      (cRep' DelegateReps) (cAbsR' _ _ ValidImpls)
+                                                  (consDom (Vector.nth consSigs idx))
+                                                  (getConsDef consDefs idx)
+                                                  (ComputationalADT.LiftcConstructor _ _ (ith  (cCons DelegateReps DelegateImpls) idx))))
                                                            * (forall
                                                                  (DelegateReps : Fin.t (numRawQSschemaSchemas qs_schema) -> Type)
                                                                  (DelegateImpls : forall idx,
@@ -1468,7 +1477,7 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
                                                                         (methDom (Vector.nth methSigs idx))
                                                                         (methCod (Vector.nth methSigs idx))
                                                                         (getMethDef methDefs idx)
-                                                                        (fun r_n d => ret (ith (cMeths DelegateReps DelegateImpls) idx r_n d))))) as ValidRefinements;
+                                                                        (ComputationalADT.LiftcMethod (ith (cMeths DelegateReps DelegateImpls) idx))))) as ValidRefinements;
                                                       [ |
                                                         pose proof (@Notation_Friendly_SharpenFully'
                                                                       _
@@ -1737,7 +1746,7 @@ Ltac find_equiv_tl a As f g :=
 Ltac Realize_CallBagMethods :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-    |- context [CallBagMethod ?idx' BagEnumerate _ _] =>
+    |- context [CallBagMethod ?idx' BagEnumerate _] =>
     generalize H; clear;
     intros; eapply (@realizeable_Enumerate qs_schema BagIndexKeys r_n r_o idx' H)
 
@@ -1879,7 +1888,7 @@ Ltac convert_filter_search_term_to_find :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
     |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                 (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n ();
+                 (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n;
                   ret (snd l')) ?f;
                _) _ =>
     match f with

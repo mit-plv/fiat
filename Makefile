@@ -72,6 +72,8 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
 	src/Examples/QueryStructure/CodeLookup.vo \
+	src/Examples/QueryStructure/SearchTest.vo \
+	src/Examples/SearchTest.vo \
 	src/Examples/Ics/WaterTankExtract.vo
 
 

@@ -26,39 +26,41 @@ Definition AlbumSchema :=
 Definition AlbumSig : ADTSig :=
   ADTsignature {
       Constructor "Init"
-           : unit                             -> rep,
+           : rep,
       Method "AddPhoto"
-           : rep x (AlbumSchema#PHOTOS)       -> rep x bool,
+           : rep * (AlbumSchema#PHOTOS)       -> rep * bool,
       Method "AddEvent"
-           : rep x (AlbumSchema#EVENTS)       -> rep x bool,
+           : rep * (AlbumSchema#EVENTS)       -> rep * bool,
       Method "PhotosByDateRange"
-           : rep x (nat * nat)                -> rep x list (AlbumSchema#PHOTOS),
+           : rep * nat * nat                -> rep * (list (AlbumSchema#PHOTOS)),
       Method "PhotosByPersons"
-           : rep x list string                -> rep x list (AlbumSchema#PHOTOS)
+           : rep * (list string)                -> rep * (list (AlbumSchema#PHOTOS))
     }.
 
 Definition AlbumSpec : ADT AlbumSig :=
   QueryADTRep AlbumSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor0 "Init" : rep := empty,
 
-    update "AddPhoto" (r : rep, photo : AlbumSchema#PHOTOS) : bool :=
+    Def Method1 "AddPhoto" (r : rep) (photo : AlbumSchema#PHOTOS) : rep * bool :=
       Insert photo into r!PHOTOS,
 
-    update "AddEvent" (r : rep, event : AlbumSchema#EVENTS) : bool :=
+    Def Method1 "AddEvent" (r : rep) (event : AlbumSchema#EVENTS) : rep * bool :=
       Insert event into r!EVENTS,
 
-    query "PhotosByDateRange" (r : rep, range : nat * nat) : list (AlbumSchema#PHOTOS) :=
-      For (photo in r!PHOTOS)
-          (event in r!EVENTS)
-          Where (event!EVENT_NAME = photo!EVENT_NAME)
-          Where (fst range <= event!DATE <= snd range)
-          Return photo,
+    Def Method2 "PhotosByDateRange" (r : rep) (startDate : nat) (endDate : nat) : rep * list (AlbumSchema#PHOTOS) :=
+      photos <- For (photo in r!PHOTOS)
+             (event in r!EVENTS)
+             Where (event!EVENT_NAME = photo!EVENT_NAME)
+             Where (startDate <= event!DATE <= endDate)
+             Return photo;
+    ret (r, photos),
 
-    query "PhotosByPersons" (r : rep, persons : list string) : list (AlbumSchema#PHOTOS) :=
-      For (photo in r!PHOTOS)
-          Where (IncludedIn persons photo!PERSONS)
-          Return photo
-}.
+    Def Method1 "PhotosByPersons" (r : rep) (persons : list string) : rep * list (AlbumSchema#PHOTOS) :=
+      photos <- For (photo in r!PHOTOS)
+             Where (IncludedIn persons photo!PERSONS)
+             Return photo;
+    ret (r, photos)
+}%methDefParsing.
 
 Definition SharpenedAlbum :
   FullySharpened AlbumSpec.

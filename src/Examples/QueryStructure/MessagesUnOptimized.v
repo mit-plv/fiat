@@ -26,40 +26,41 @@ Definition MessagesSchema :=
 Definition MessagesSig : ADTSig :=
   ADTsignature {
       Constructor "Init"
-           : unit                             -> rep,
+           : rep,
       Method "AddMessage"
-           : rep x (MessagesSchema#MESSAGES)  -> rep x bool,
+           : rep * (MessagesSchema#MESSAGES)  -> rep * bool,
       Method "AddContact"
-           : rep x (MessagesSchema#CONTACTS) -> rep x bool,
+           : rep * (MessagesSchema#CONTACTS) -> rep * bool,
       Method "ContactMessages"
-           : rep x string                     -> rep x list MessageT,
+           : rep * string                     -> rep * (list MessageT),
       Method "RelevantMessages"
-           : rep x list string                -> rep x list MessageT
+           : rep * (list string)                -> rep * (list MessageT)
     }.
 
 Definition MessagesSpec : ADT MessagesSig :=
   QueryADTRep MessagesSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor0 "Init" : rep := empty,
 
-    update "AddMessage" (r : rep, message : MessagesSchema#MESSAGES) : bool :=
+    Def Method1 "AddMessage" (r : rep) (message : MessagesSchema#MESSAGES) : rep * bool :=
       Insert message into r ! MESSAGES,
 
-    update "AddContact" (r : rep, contact : MessagesSchema#CONTACTS) : bool :=
+    Def Method1 "AddContact" (r : rep) (contact : MessagesSchema#CONTACTS) : rep * bool :=
       Insert contact into r ! CONTACTS,
 
-    query "ContactMessages" (r : rep, name : string) : list MessageT :=
-      For (contact in r ! CONTACTS)
-          (messages in r ! MESSAGES)
-          Where (contact!NAME = name)
-          Where (messages!PHONE_NUMBER = contact!PHONE_NUMBER)
-          Return messages!MESSAGE,
+    Def Method1 "ContactMessages" (r : rep) (name : string) : rep * list MessageT :=
+      msgs <- For (contact in r ! CONTACTS)
+           (messages in r ! MESSAGES)
+           Where (contact!NAME = name)
+           Where (messages!PHONE_NUMBER = contact!PHONE_NUMBER)
+           Return messages!MESSAGE;
+    ret (r, msgs),
 
-     query "RelevantMessages" (r : rep, search_terms : list string) : list MessageT :=
-       For (message in r ! MESSAGES)
+     Def Method1 "RelevantMessages" (r : rep) (search_terms : list string) : rep * list MessageT :=
+      msgs <- For (message in r ! MESSAGES)
            Where (IncludedIn search_terms message!MESSAGE)
-           Return message!MESSAGE
-
-}.
+           Return message!MESSAGE;
+    ret (r, msgs)
+              }%methDefParsing.
 
 Definition SharpenedMessages :
   FullySharpened MessagesSpec.

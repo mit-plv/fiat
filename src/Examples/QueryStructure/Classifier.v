@@ -82,26 +82,27 @@ Section ADT.
 
   Definition ClassifierSig : ADTSig :=
   ADTsignature {
-      Constructor "Init" : unit -> rep,
-      Method "AddRule" : rep x RuleRecord -> rep x bool,
-      Method "Classify" : rep x Packet -> rep x list RuleRecord
+      Constructor "Init" : rep,
+      Method "AddRule" : rep * RuleRecord -> rep * bool,
+      Method "Classify" : rep * Packet -> rep * (list RuleRecord)
     }.
 
   Definition ClassifierSpec : ADT ClassifierSig :=
   QueryADTRep ClassifierSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor0 "Init" : rep := empty,
 
-    update "AddRule" (r : rep, rule : RuleRecord) : bool :=
+    Def Method1 "AddRule" (r : rep) (rule : RuleRecord) : rep * bool :=
       Insert rule into r!RULES,
 
-    query "Classify" (r : rep, p : Packet) : list RuleRecord :=
-      For (rule in r!RULES)
+    Def Method1 "Classify" (r : rep) (p : Packet) : rep * list RuleRecord :=
+      rules <- For (rule in r!RULES)
             (* the rule's ip must be a prefix of the packet's ip *)
             Where (IsPrefix rule!DESTINATION (destination p) /\
             (* the rule's protocol must match the packet's protocol *)
                    FollowPolicy rule!PROTOCOL (protocol p))
-            Return rule
-  }.
+            Return rule;
+      ret (r, rules)
+  }%methDefParsing.
 
   Theorem SharpenedClassifier :
     FullySharpened ClassifierSpec.

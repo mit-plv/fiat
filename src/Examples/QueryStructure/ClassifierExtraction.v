@@ -35,7 +35,7 @@ Arguments callcADTMethod / .
 Arguments ComputationalADT.cMethods / .
 Arguments ComputationalADT.pcMethods / .
 Definition InitClassifier : ComputationalADT.cRep ClassifierImpl :=
-  Eval simpl in (CallConstructor ClassifierImpl InitS tt).
+  Eval simpl in (CallConstructor ClassifierImpl InitS).
 Definition AddRule (priority : nat) (destination : list nat) (policy : Policy Protocol)
            (action : bool)
            (r : ComputationalADT.cRep ClassifierImpl)

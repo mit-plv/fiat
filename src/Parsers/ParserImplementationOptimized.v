@@ -78,7 +78,7 @@ Section implementation.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
-  Definition parser : Parser G string_stringlike.
+  Definition parser' : Parser G string_stringlike.
   Proof.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
@@ -94,4 +94,13 @@ Section implementation.
                             (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ HSLPr _ _))
               R R_make _ _).
   Defined.
+
+  Definition parser : Parser G string_stringlike.
+  Proof.
+    let impl0 := constr:(has_parse parser') in
+    let impl1 := eval cbv beta iota delta [proj of_string to_string StringLike.length has_parse parser' transfer_parser] in impl0 in
+        pose impl1.
+    Locate length.
+
+
 End implementation.

@@ -48,7 +48,7 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
   start_honing_QueryStructure';
   finish_planning' ltac:(fun makeIndex =>
                            GenerateIndexesForAll FindAttributeUses ltac:(fun attrlist =>
-                                                         let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist'))
+                                                         let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in makeIndex attrlist'))
                    BuildEarlyIndex BuildLastIndex
                    IndexUse createEarlyTerm createLastTerm
                    IndexUse_dep createEarlyTerm_dep createLastTerm_dep

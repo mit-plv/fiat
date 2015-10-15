@@ -290,6 +290,24 @@ Fixpoint Lift_Constructor2P RepType RepType' (dom : list Type)
   | d :: dom' => fun c c' => forall (t : d), Lift_Constructor2P dom' P (c t) (c' t)
   end.
 
+Fixpoint Lift_Method1P RepType
+         (dom : list Type)
+         (cod : option Type)
+         (P : forall cod,
+             methodType' RepType [] (Some cod)
+             -> Prop)
+         (P' : methodType' RepType [] None
+              -> Prop)
+  : methodType' RepType dom cod
+    -> Prop :=
+  match dom with
+  | nil => match cod with
+           | Some cod' => fun c => P cod' c
+           | None => fun c => P' c
+           end
+  | d :: dom' => fun c => forall (t : d), Lift_Method1P dom' cod P P' (c t)
+  end.
+
 Fixpoint Lift_Method2P RepType RepType'
          (dom : list Type)
          (cod : option Type)

@@ -38,50 +38,54 @@ Definition StocksSchema :=
 
 Definition StocksSig : ADTSig :=
   ADTsignature {
-      Constructor "Init"               : unit                              -> rep,
-      Method "AddStock"           : rep x (StocksSchema#STOCKS)       -> rep x bool,
-      Method "AddTransaction"     : rep x (StocksSchema#TRANSACTIONS) -> rep x bool,
-      Method "TotalVolume"        : rep x (StockCode * Date)          -> rep x N,
-      Method "MaxPrice"           : rep x (StockCode * Date)          -> rep x option N,
-      Method "TotalActivity"      : rep x (StockCode * Date)          -> rep x nat,
-      Method "LargestTransaction" : rep x (StockType * Date)          -> rep x option N
+      Constructor "Init"               : rep,
+      Method "AddStock"           : rep * (StocksSchema#STOCKS)       -> rep * bool,
+      Method "AddTransaction"     : rep * (StocksSchema#TRANSACTIONS) -> rep * bool,
+      Method "TotalVolume"        : rep * StockCode * Date          -> rep * N,
+      Method "MaxPrice"           : rep * StockCode * Date          -> rep * (option N),
+      Method "TotalActivity"      : rep * StockCode * Date          -> rep * nat,
+      Method "LargestTransaction" : rep * StockType * Date          -> rep * (option N)
     }.
 
 Definition StocksSpec : ADT StocksSig :=
   QueryADTRep StocksSchema {
-    Def Constructor "Init" (_: unit) : rep := empty,
+    Def Constructor0 "Init" : rep := empty,
 
-    update "AddStock" (r : rep, stock: StocksSchema#STOCKS) : bool :=
+    Def Method1 "AddStock" (r : rep) (stock: StocksSchema#STOCKS) : rep * bool :=
         Insert stock into r!STOCKS,
 
-    update "AddTransaction" (r : rep, transaction : StocksSchema#TRANSACTIONS) : bool :=
+    Def Method1 "AddTransaction" (r : rep) (transaction : StocksSchema#TRANSACTIONS) : rep * bool :=
         Insert transaction into r!TRANSACTIONS,
 
-    query "TotalVolume" (r : rep, params: StockCode * Date) : N :=
-      SumN (For (transaction in r!TRANSACTIONS)
-            Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = snd params)
-            Return transaction!VOLUME),
+    Def Method2 "TotalVolume" (r : rep) (code : StockCode) (date : Date) : rep * N :=
+          sum <- SumN (For (transaction in r!TRANSACTIONS)
+                           Where (transaction!STOCK_CODE = code)
+                           Where (transaction!DATE = date)
+                           Return transaction!VOLUME);
+    ret (r, sum),
 
-    query "MaxPrice" (r : rep, params: StockCode * Date) : option N :=
-      MaxN (For (transaction in r!TRANSACTIONS)
-            Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = snd params)
-            Return transaction!PRICE),
+    Def Method2 "MaxPrice" (r : rep) (code : StockCode) (date : Date) : rep * option N :=
+      max <- MaxN (For (transaction in r!TRANSACTIONS)
+                       Where (transaction!STOCK_CODE = code)
+                       Where (transaction!DATE = date)
+                       Return transaction!PRICE);
+     ret (r, max),
 
-    query "TotalActivity" (r : rep, params: StockCode * Date) : nat :=
-      Count (For (transaction in r!TRANSACTIONS)
-            Where (transaction!STOCK_CODE = fst params)
-            Where (transaction!DATE = snd params)
-            Return ()),
+    Def Method2 "TotalActivity" (r : rep) (code : StockCode) (date : Date) : rep * nat :=
+       count <- Count (For (transaction in r!TRANSACTIONS)
+                           Where (transaction!STOCK_CODE = code)
+                           Where (transaction!DATE = date)
+                           Return ());
+     ret (r, count),
 
-    query "LargestTransaction" (r : rep, params: StockType * Date) : option N :=
-      MaxN (For (stock in r!STOCKS) (transaction in r!TRANSACTIONS)
-            Where (stock!TYPE = fst params)
-            Where (transaction!DATE = snd params)
-            Where (stock!STOCK_CODE = transaction!STOCK_CODE)
-            Return (N.mul transaction!PRICE transaction!VOLUME))
-}.
+    Def Method2 "LargestTransaction" (r : rep) (type : StockType) (date : Date) : rep * option N :=
+        max <- MaxN (For (stock in r!STOCKS) (transaction in r!TRANSACTIONS)
+                         Where (stock!TYPE = type)
+                         Where (transaction!DATE = date)
+                         Where (stock!STOCK_CODE = transaction!STOCK_CODE)
+                         Return (N.mul transaction!PRICE transaction!VOLUME));
+     ret (r, max)
+}%methDefParsing.
 
 
 Definition SharpenedStocks :

@@ -35,7 +35,7 @@ Arguments ComputationalADT.pcConstructors / .
 Arguments callcADTMethod / .
 Arguments ComputationalADT.cMethods / .
 Arguments ComputationalADT.pcMethods / .
-Definition InitAlbum : ComputationalADT.cRep AlbumImpl := Eval simpl in (CallConstructor AlbumImpl InitS tt).
+Definition InitAlbum : ComputationalADT.cRep AlbumImpl := Eval simpl in (CallConstructor AlbumImpl InitS).
 Definition AddPhoto (data : list ascii) (persons : list string) (event : string)
            (r : ComputationalADT.cRep AlbumImpl)
   : ComputationalADT.cRep AlbumImpl * bool :=
@@ -58,7 +58,7 @@ Definition AddEvent (name : string) (date : nat)
                            |}.
 Definition PhotosByDateRange (startT endT : nat) (r : ComputationalADT.cRep AlbumImpl)
   : ComputationalADT.cRep AlbumImpl * (list (AlbumSchema#PHOTOS)) :=
-  Eval simpl in CallMethod AlbumImpl PhotosByDateRangeS r (startT, endT).
+  Eval simpl in CallMethod AlbumImpl PhotosByDateRangeS r startT endT.
 Definition PhotosByPersons (names : list string) (r : ComputationalADT.cRep AlbumImpl)
   : ComputationalADT.cRep AlbumImpl * (list (AlbumSchema#PHOTOS)) :=
   Eval simpl in CallMethod AlbumImpl PhotosByPersonsS r names.

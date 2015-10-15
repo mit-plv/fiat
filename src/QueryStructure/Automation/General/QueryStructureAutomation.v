@@ -24,16 +24,20 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         Fiat.QueryStructure.Automation.General.DeleteAutomation.
 
 Ltac start_honing_QueryStructure' :=
-  eapply SharpenStep;
+    eapply SharpenStep;
   [ match goal with
         |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
         eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
           [ repeat (first [eapply refine_Constructors_nil
                           | eapply refine_Constructors_cons;
-                            [ intros;
+                            [ simpl; intros;
                               match goal with
-                                |  |- refine _ (?E _) => let H := fresh in set (H := E)
-                                | _ => idtac
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
                               end;
                               (* Drop constraints from empty *)
                               try apply Constructor_DropQSConstraints;
@@ -41,10 +45,14 @@ Ltac start_honing_QueryStructure' :=
                             | ] ])
           | repeat (first [eapply refine_Methods_nil
                           | eapply refine_Methods_cons;
-                            [ intros;
+                            [ simpl; intros;
                               match goal with
-                                |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                                | _ => idtac
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
                               end;
                               cbv delta [GetAttribute] beta; simpl;
                               match goal with
