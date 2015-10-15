@@ -17,15 +17,14 @@ Section IndexedImpl.
     start sharpening ADT.
     start honing parser using indexed representation.
 
-    hone method "splits".
+    Time hone method "splits".
     {
       simplify parser splitter.
       setoid_rewrite refine_binop_table; [ presimpl_after_refine_binop_table | reflexivity.. ].
-      simpl.
       finish honing parser method.
     }
 
-    finish_Sharpening_SplitterADT.
+    finish_SharpeningADT_WithoutDelegation.
   Defined.
 
   Lemma ComputationalSplitter

@@ -57,8 +57,8 @@ Section BuildADTRefinements.
             (idx : @Fin.t n)
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
-  :
-    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
+    :
+    (let H := consBody newDef in refineConstructor eq (consBody (ith consDefs idx)) H)
     -> refineADT (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
@@ -79,8 +79,8 @@ Section BuildADTRefinements.
             (idx : @Fin.t n)
             (newDef : consDef (Vector.nth consSigs idx))
             adt''
-  :
-    (refineConstructor eq (consBody (ith consDefs idx)) (consBody newDef))
+    :
+      (let H := consBody newDef in refineConstructor eq (consBody (ith consDefs idx)) H)
     -> FullySharpenedUnderDelegates (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> FullySharpenedUnderDelegates (BuildADT consDefs methDefs) adt''.
   Proof.
@@ -231,10 +231,10 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (idx : @Fin.t n')
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
-  :
-    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
-    -> refineADT (ADTReplaceMethDef consDefs methDefs idx newDef) adt''
-    -> refineADT (BuildADT consDefs methDefs) adt''.
+    :
+      (let H := methBody newDef in refineMethod eq (methBody (ith methDefs idx)) newDef)
+      -> refineADT (ADTReplaceMethDef consDefs methDefs idx newDef) adt''
+      -> refineADT (BuildADT consDefs methDefs) adt''.
   Proof.
     intros; eapply SharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
@@ -252,14 +252,14 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         (idx : @Fin.t n')
         (newDef : methDef (Vector.nth methSigs idx))
         adt''
-  :
-    (refineMethod eq (methBody (ith methDefs idx)) (methBody newDef))
-    -> FullySharpenedUnderDelegates
-      (ADTReplaceMethDef consDefs methDefs idx newDef)
-      adt''
-    -> FullySharpenedUnderDelegates
-         (BuildADT consDefs methDefs)
-         adt''.
+    :
+      (let H := methBody newDef in refineMethod eq (methBody (ith methDefs idx)) newDef)
+      -> FullySharpenedUnderDelegates
+           (ADTReplaceMethDef consDefs methDefs idx newDef)
+           adt''
+      -> FullySharpenedUnderDelegates
+           (BuildADT consDefs methDefs)
+           adt''.
   Proof.
     intros; eapply FullySharpenStep.
     eapply refineADT_BuildADT_ReplaceMethod with (AbsR := eq);
@@ -708,15 +708,15 @@ Tactic Notation "finish" "honing" :=
   | |- ?R _ (?H _ _ _ _ _) =>
     try subst H; higher_order_reflexivity
   | |- ?R _ (?H _ _ _ _ ) =>
-      try subst H; higher_order_reflexivity
-    | |- ?R _ (?H _ _ _ ) =>
-      try subst H; higher_order_reflexivity
-    | |- ?R _ (?H _ _) =>
-      try subst H; higher_order_reflexivity
-    | |- ?R _ (?H _ ) =>
-      try subst H; higher_order_reflexivity
-    | |- ?R _ (?H ) =>
-      try subst H; higher_order_reflexivity
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H _ _ _ ) =>
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H _ _) =>
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H _ ) =>
+    try subst H; higher_order_reflexivity
+  | |- ?R _ (?H ) =>
+    try subst H; higher_order_reflexivity
   end.
 
 Ltac makeEvar T k :=

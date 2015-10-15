@@ -179,7 +179,7 @@ Section HoneRepresentation.
              (refined_constr_body : @constructorType newRep (consDom consSig))
              (consDefs : ilist (B := @consDef oldRep) consSigs)
              (refined_consDefs : ilist (B := @consDef newRep) consSigs),
-        (refineConstructor AbsR constr_body refined_constr_body)
+        (let H := refined_constr_body in refineConstructor AbsR constr_body H)
         -> refine_Constructors consDefs refined_consDefs
         -> @refine_Constructors
              _
@@ -218,7 +218,7 @@ Section HoneRepresentation.
              (refined_meth_body : @methodType newRep (methDom methSig) (methCod methSig))
              (methDefs : ilist (B := @methDef oldRep) methSigs)
              (refined_methDefs : ilist (B := @methDef newRep) methSigs),
-        (refineMethod AbsR meth_body refined_meth_body)
+        (let H := refined_meth_body in refineMethod AbsR meth_body H)
         -> refine_Methods methDefs refined_methDefs
         -> @refine_Methods
              _
@@ -328,8 +328,16 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
              ));
     [ intros; simpl in *;
       match goal with
-        |  |- refine _ (?E ?d) => is_evar E; let H := fresh in set (H := E)
-        | _ => idtac
+      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ ?E => is_evar E; let H := fresh in set (H := E)
+      | _ => idtac
       end;
       match goal with
         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
@@ -383,10 +391,18 @@ Arguments DecADTSig : simpl never.
                                |}
                                _
                               ));
-    [ intros; simpl in *;
+    [ simpl refineMethod; intros; simpl in *;
       match goal with
-        |  |- refine _ (?E ?nr ?d) => is_evar E; let H := fresh in set (H := E)
-        | _ => idtac
+      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _) => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ ?E => is_evar E; let H := fresh in set (H := E)
+      | _ => idtac
       end;
       match goal with
         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
@@ -406,16 +422,31 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
   [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
-                      [ simpl; intros;
+                      [ intros; simpl; intros;
                         match goal with
-                          |  |- refine _ (?E _) => let H := fresh in set (H := E)
-                          | _ => idtac
+                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E) => is_evar E; let H := fresh in set (H := E)
+                        | _ => idtac
                         end | ] ])
     | repeat (first [eapply refine_Methods_nil
                     | eapply refine_Methods_cons;
-                      [ simpl; intros;
+                      [ intros; simpl; intros;
                         match goal with
-                          |  |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in set (H := E)
+                        |  |- refine _ (?E _) => is_evar E; let H := fresh in set (H := E)
                           | _ => idtac
                         end | ]
                     ])]

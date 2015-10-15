@@ -529,9 +529,9 @@ Section SharpenedBagImplementation.
       simpl in *.
       destruct (bdelete_correct r_n d H2).
       rewrite partition_filter_eq in H3.
-      rewrite partition_filter_neq in H.
-      symmetry in H; symmetry in H3.
-      destruct (permutation_filter _ _ _ H) as [l [l_eq Perm_l]].
+      rewrite partition_filter_neq in H0.
+      symmetry in H0; symmetry in H3.
+      destruct (permutation_filter _ _ _ H0) as [l [l_eq Perm_l]].
       destruct (permutation_filter _ _ _ H3) as [l' [l'_eq Perm_l']].
       refine pick val l'.
       simplify with monad laws; simpl.
@@ -551,7 +551,7 @@ Section SharpenedBagImplementation.
       etransitivity.
       apply refine_if with (b:=CheckUpdatePlus d0).
       intros; apply CheckUpdatePlusValid in H3; simpl.
-      pose proof (H H3); destruct H4.
+      pose proof (H0 H3); destruct H4.
       rewrite partition_filter_eq in H5; symmetry in H5.
       destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
       refine pick val l.
@@ -577,7 +577,6 @@ Section SharpenedBagImplementation.
       apply RepInv_fold.
       apply binsert_RepInv. apply bdelete_RepInv; assumption.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
-      unfold H0.
       finish honing.
     }
 
