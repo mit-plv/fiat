@@ -38,6 +38,7 @@ src/BinEncoders/Pair.v
 src/BinEncoders/Sum.v
 src/BinEncoders/Unary.v
 src/CertifiedExtraction/Compiler.v
+src/CertifiedExtraction/FacadeNotations.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
@@ -263,6 +264,7 @@ src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
+src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
 src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v

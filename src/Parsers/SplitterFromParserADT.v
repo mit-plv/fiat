@@ -119,11 +119,16 @@ Section parser.
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
+<<<<<<< HEAD
   Local Notation mcall0 proj s := (fun st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st)) (only parsing).
 
   Local Notation mcall1 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n)) (only parsing).
+=======
+  Local Notation mcall0 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n)) (only parsing).
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
 
   Local Notation mcall2 proj s := (fun n n' st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n n')) (only parsing).
@@ -144,8 +149,13 @@ Section parser.
   Definition mdrop := Eval simpl in mcall11 "drop".
   
   Definition premsplits := Eval simpl in (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
+<<<<<<< HEAD
                                                   (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
   Definition msplits := Eval simpl in mcall22 "splits".
+=======
+                                                         (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
+  Definition msplits := Eval simpl in mcall2 "splits".
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
 
   (*Local Notation mcall1_R meth st arg str H :=
     (@fst_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
@@ -214,26 +224,20 @@ Section parser.
   : AbsR (projT2 splitter_impl) (drop arg str) (mdrop arg st).
   Proof. prove_string_AbsR. Qed.
 
-  Create HintDb parser_adt_method_db discriminated.
-  Hint Resolve @mtake_R @mdrop_R : parser_adt_method_db.
-
-  Local Ltac handle_rep :=
-    repeat intro; simpl;
+  Local Ltac handle_rep0 :=
+    repeat intro; cbv beta;
     repeat match goal with
              (*| [ st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type |- exists orig, AbsR (projT2 splitter_impl) orig (fst (cMethods ?impl ?method _ ?arg)) ]
                => refine (@fst_cMethods_ex method arg st) *)
              | [ |- exists orig, AbsR (projT2 splitter_impl) orig (?f ?arg ?st)  ]
                => unfold f, callcADTMethod
-           end;
-    destruct_head_hnf' sig;
-    destruct_head_hnf' ex;
-    unfold beq in *;
-    simpl in *;
-    repeat match goal with
-             | _ => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mget_eq, ?@mlength_eq by eauto with parser_adt_method_db
-             | [ H : _ |- _ ] => progress erewrite ?@mto_string_eq, ?@mis_char_eq, ?@mget_eq, ?@mlength_eq in H by eauto with parser_adt_method_db
            end.
 
+<<<<<<< HEAD
+=======
+  Local Obligation Tactic := handle_rep0.
+
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
   Local Instance adt_based_StringLike_lite : StringLike Ascii.ascii
     := { String := StringT_lite;
          take n str := mtake n str;
@@ -250,6 +254,7 @@ Section parser.
          length str := mlength str;
          is_char str ch := mis_char ch str;
          get n str := mget n str;
+<<<<<<< HEAD
          bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
   Next Obligation.
     eauto with parser_adt_method_db.
@@ -258,6 +263,56 @@ Section parser.
     eauto with parser_adt_method_db.
   Qed.
     
+=======
+         bool_eq s1 s2 := string_beq (mto_string tt s1) (mto_string tt s2) }.
+
+  Create HintDb parser_adt_method_db discriminated.
+  (** We would like to just do
+<<
+  Hint Resolve @mtake_R @mdrop_R : parser_adt_method_db.
+>>
+
+  But [Hint Resolve] only resolves on the head symbol, so this will
+  try to unify [mtake] with [mdrop], which is slow.  We have a choice:
+  either we can make them [Opaque], or we can use an explicit [Hint
+  Extern] for matching.  The latter is about 3x faster (0.015s vs
+  0.047s), so we use that one, rather than
+<<
+  Hint Resolve @mtake_R @mdrop_R : parser_adt_method_db.
+  Local Opaque mtake mdrop.
+>>
+   *)
+  Hint Extern 1 (_ ≃ mtake _ _) => apply @mtake_R : parser_adt_method_db.
+  Hint Extern 1 (_ ≃ mdrop _ _) => apply @mdrop_R : parser_adt_method_db.
+
+  Local Ltac match_erewrite_by match_term lem tac :=
+    idtac;
+    match goal with
+      | [ |- appcontext[match_term] ] => erewrite !lem by tac
+      | [ H : appcontext[match_term] |- _ ] => erewrite !lem in H by tac
+    end.
+
+  Local Ltac match_erewrite2_by match_term lem tac :=
+    idtac;
+    match goal with
+      | [ |- context[match_term ?x ?y] ] => erewrite !lem by tac
+      | [ H : context[match_term ?x ?y] |- _ ] => erewrite !lem in H by tac
+    end.
+
+  Local Ltac match_erewrite_by_eauto match_term lem :=
+    match_erewrite_by match_term lem ltac:(eauto with nocore parser_adt_method_db).
+
+  Local Ltac handle_rep :=
+    repeat intro;
+    destruct_head_hnf' sig;
+    destruct_head_hnf' ex;
+    unfold beq, bool_eq, adt_based_StringLike, proj1_sig, take, drop, is_char, length, get in *;
+    repeat first [ match_erewrite_by_eauto (@mto_string) (@mto_string_eq)
+                 | match_erewrite_by_eauto (@mis_char) (@mis_char_eq)
+                 | match_erewrite_by_eauto (@mget) (@mget_eq)
+                 | match_erewrite_by_eauto (@mlength) (@mlength_eq) ].
+
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
   Local Ltac t'' H meth :=
     pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
     simpl in H; unfold beq in H; simpl in H;
@@ -268,9 +323,14 @@ Section parser.
       eapply H; clear H; simpl.
   Local Ltac t meth := t' meth; eassumption.
 
+<<<<<<< HEAD
   Local Opaque mtake mdrop mto_string mget mlength mis_char.
   
   Local Obligation Tactic := intros.
+=======
+  Local Obligation Tactic := handle_rep.
+
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
   Local Program Instance adt_based_StringLikeProperties : @StringLikeProperties Ascii.ascii adt_based_StringLike
     := { bool_eq_Equivalence := {| Equivalence_Reflexive := _ |} }.
   Next Obligation. handle_rep; t @singleton_unique. Qed.
@@ -301,19 +361,35 @@ Section parser.
   Next Obligation. handle_rep; t @drop_take. Qed.
   Next Obligation. handle_rep; t @take_drop. Qed.
 
+<<<<<<< HEAD
   Definition splits :=
     ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
   
+=======
+  Definition splits := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
+
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
   Lemma adt_based_splitter_splits_for_complete
   : forall (str : String) (it : item Ascii.ascii)
            (its : production Ascii.ascii),
       split_list_is_complete G str it its (msplits it its (` str)).
   Proof.
     repeat intro.
+<<<<<<< HEAD
     destruct_head_hnf sig.
     destruct_head ex.
     erewrite @mlength_eq in * by eassumption.
     lazymatch goal with
+=======
+    destruct_head_hnf' sig.
+    destruct_head' ex.
+    unfold length, take, drop, adt_based_StringLike, proj1_sig in *.
+    (* if we use [match_erewrite_by], it picks up [mlength] inside of
+    a [StringLike] type, under binders, and the rewrite fails
+    (slowly). *)
+    repeat match_erewrite2_by (@mlength) (@mlength_eq) ltac:eassumption.
+    match goal with
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
       | [ H : AbsR ?Ok ?str ?st
           |- appcontext[msplits ?arg1 ?arg2 ?st] ]
         => let T := type of Ok in 
@@ -327,10 +403,15 @@ Section parser.
                     change G' in H'
              end
     end.
-    simpl in *.
-    computes_to_inv; subst; simpl in *.
+    simpl Methods in *.
+    computes_to_inv; subst.
+    simpl @fst in *. simpl @snd in *.
     match goal with
+<<<<<<< HEAD
       | [ H : ?x = premsplits _ _ _ |- _ ] => rewrite <- H; clear H; simpl
+=======
+      | [ H : ?x = premsplits _ _ |- _ ] => rewrite <- H; clear H; simpl @snd
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
     end.
     lazymatch goal with
       | [ H : split_list_is_complete _ _ _ _ _, H' : ?n <= _,
@@ -358,6 +439,7 @@ Section parser.
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
                              H0'' _ _ _ _ H1' p1 p1H));
+<<<<<<< HEAD
           apply H; clear H p0H p1H p0 p1; try assumption; simpl
     end; [ split | | ].
     - handle_rep;  eauto with parser_adt_method_db.
@@ -368,6 +450,12 @@ Section parser.
     - handle_rep;  eauto with parser_adt_method_db.
     - handle_rep;  eauto with parser_adt_method_db.
       pose proof (@mdrop_R); simpl in *; eauto.
+=======
+          apply H; clear H p0H p1H p0 p1; try assumption
+     end; [ split | | ];
+    handle_rep;
+    eauto with parser_adt_method_db.
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
   Qed.
 
   Definition adt_based_splitter : Splitter G

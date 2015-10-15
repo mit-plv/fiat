@@ -10,6 +10,13 @@ Global Generalizable All Variables.
 
 Global Coercion is_true : bool >-> Sortclass.
 Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
+Coercion bool_of_sum {A B} (b : sum A B) : bool := if b then true else false.
+
+Lemma bool_of_sum_distr_match {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
+: bool_of_sum (match x with inl k => inl (c k) | inr k => inr (d k) end) = bool_of_sum x.
+Proof.
+  destruct x; reflexivity.
+Qed.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
@@ -327,6 +334,8 @@ Ltac set_evars :=
   repeat match goal with
          | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
          end.
+
+Tactic Notation "eunify" open_constr(A) open_constr(B) := unify A B.
 
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
 Proof.
@@ -1434,6 +1443,12 @@ Fixpoint Forall_tails {T} (P : list T -> Type) (ls : list T) : Type
   := match ls with
      | nil => P nil
      | x::xs => (P (x::xs) * Forall_tails P xs)%type
+     end.
+
+Fixpoint Forall_tailsP {T} (P : list T -> Prop) (ls : list T) : Prop
+  := match ls with
+     | nil => P nil
+     | x::xs => (P (x::xs) /\ Forall_tailsP P xs)%type
      end.
 
 Fixpoint ForallT_all {T} {P : T -> Type} (p : forall t, P t) {ls}

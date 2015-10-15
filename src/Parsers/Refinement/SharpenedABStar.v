@@ -25,6 +25,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter
   : FullySharpened (string_spec ab_star_grammar).
   Proof.
+<<<<<<< HEAD
     let impl := (eval simpl in (projT1 ComputationalSplitter')) in
     pose impl.
     exfalso.
@@ -33,17 +34,20 @@ Section IndexedImpl.
 
     idtac.
 
+=======
+    let impl := (splitter_red (projT1 ComputationalSplitter')) in
+    refine (existT _ impl _).
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
     abstract (exact (projT2 ComputationalSplitter')).
   Defined.
 
 End IndexedImpl.
 
-Global Arguments ComputationalSplitter / .
-
 Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
+<<<<<<< HEAD
 (* Ben : Taking too long to run; commenting so I can debug build. *)
 Time Definition ab_star_parser (str : String.string) : bool.
   pose (has_parse (parser ComputationalSplitter) str).
@@ -140,6 +144,14 @@ Time Definition ab_star_parser (str : String.string) : bool.
   Print ilist.ith.
   Locate "cADTRep".
   Print ab_star_parser.
+=======
+Definition ab_star_parser (str : String.string) : bool.
+Proof.
+  Time make_parser ComputationalSplitter. (* 0.6 s *)
+Defined.
+
+Print ab_star_parser.
+>>>>>>> 142d2bd70e382e9e075492bab696fc6ccc517bf1
 
 Recursive Extraction ab_star_parser.
 

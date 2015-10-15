@@ -1,6 +1,7 @@
 *#*#
 *.a
 *.aux
+*.bak
 *.bbl
 *.blg
 *.cm*
@@ -12,9 +13,11 @@
 *.synctex.gz
 *.toc
 *.v.d
+*.vio
 *.vo
 *~
 .#*
+.coq-native
 .coq-version
 .DS_Store
 /_CoqProject
@@ -73,5 +76,6 @@
 /time-worked
 ADT-Synthesis-Submitted.tiff
 artifact
+bug_*.v
 Overview
 web

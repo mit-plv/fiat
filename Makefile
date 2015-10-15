@@ -46,8 +46,7 @@ CORE_UNMADE_VO := \
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
-PARSERS_UNMADE_VO := \
-	src/Parsers/Refinement/SharpenedExpressionPlusParen.vo
+PARSERS_UNMADE_VO :=
 
 FIAT4MONITORS_UNMADE_VO := \
 	src/Fiat4Monitors/HelloWorld/%.vo \

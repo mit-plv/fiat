@@ -3112,7 +3112,7 @@ Proof.
   repeat (compile_step || compile_random).
 Defined.
 
-Require Import FacadeNotations.
+Require Import Fiat.CertifiedExtraction.FacadeNotations.
 Definition extract_facade := proj1_sig.
 
 Eval simpl in (extract_facade (simple_binop EmptyEnv)).

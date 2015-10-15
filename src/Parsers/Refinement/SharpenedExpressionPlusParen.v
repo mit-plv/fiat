@@ -1,17 +1,6 @@
 (** Sharpened ADT for an expression grammar with + and () *)
-Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
-Require Import Coq.Lists.List.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
-Require Import Fiat.Computation.Refinements.General.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Common.
-Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.Wf.
-Require Import Fiat.Parsers.Splitters.RDPList.
-Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
@@ -25,6 +14,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar).
   Proof.
+    start sharpening ADT.
     start honing parser using indexed representation.
 
     hone method "splits".
@@ -41,20 +31,22 @@ Section IndexedImpl.
   Lemma ComputationalSplitter
   : FullySharpened (string_spec plus_expr_grammar).
   Proof.
-    let impl := (eval simpl in (projT1 ComputationalSplitter')) in
+    let impl := (splitter_red (projT1 ComputationalSplitter')) in
     refine (existT _ impl _).
     abstract (exact (projT2 ComputationalSplitter')).
   Defined.
 
 End IndexedImpl.
 
-Global Arguments ComputationalSplitter / .
-
 Require Import Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ExtrOcamlParsers.
 Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Definition paren_expr_parser (str : String.string) : bool.
+Proof.
+  Time make_parser ComputationalSplitter. (* 20 s *)
+(*  Show Proof.
+
   pose (has_parse (parser ComputationalSplitter) str) as p.
   Timeout 5 cbv beta iota zeta delta [has_parse parser ParserImplementationOptimized.parser transfer_parser projT1 projT2] in p.
   Timeout 5 simpl map in p.
@@ -92,13 +84,13 @@ end.
                                change splitsv with (Let_In c1 splitsv'') in p
   end.
   Timeout 20 cbv beta in p.
-  let pbody := (eval unfold p in p) in exact pbody.
+  let pbody := (eval unfold p in p) in exact pbody.*)
 Defined.
-Opaque Let_In.
+(*Opaque Let_In.
 Definition paren_expr_parser' (str : String.string) : bool
   := Eval hnf in paren_expr_parser str.
-Transparent Let_In.
+Transparent Let_In.*)
 
-Print paren_expr_parser'.
+Print paren_expr_parser.
 
-Recursive Extraction paren_expr_parser'.
+Recursive Extraction paren_expr_parser.

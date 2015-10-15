@@ -2,9 +2,10 @@ Require Import ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotatio
 Require Import ADTRefinement.GeneralRefinements Fiat.Common.ilist.
 Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import ADT.ComputationalADT.
-Require Import Core.
+(*What was this importing?*)
+(*Require Import Core.*)
 Require Import ADTRefinement.GeneralBuildADTRefinements.
-Require Import ADT.ComputationalADT Core ADTRefinement.GeneralBuildADTRefinements.
+Require Import ADT.ComputationalADT ADTRefinement.GeneralBuildADTRefinements.
 
 Require Import Bool ZArith.
 
@@ -133,13 +134,13 @@ Ltac extract impl :=
     exact Impl.
 
 Ltac extractConstructor impl name :=
-  let new := eval simpl in (CallConstructor impl name) in 
+  let new := eval simpl in (CallConstructor impl name) in
   let new := eval unfold cConstructors in new in
   let new := eval simpl in new in
     exact new.
 
 Ltac extractMethod impl name :=
-  let new := eval simpl in (CallMethod impl name) in 
+  let new := eval simpl in (CallMethod impl name) in
   let new := eval unfold cMethods in new in
   let new := eval simpl in new in
     exact new.

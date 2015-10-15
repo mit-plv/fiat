@@ -390,3 +390,12 @@ Section In.
   : List.In a ls -> list_bin eq_A a ls = true.
   Proof. induction ls; t. Qed.
 End In.
+
+Lemma option_rect_ext {A P} Ps Ps' Pn Pn' x
+      (Hs : forall k, Ps k = Ps' k)
+      (Hn : Pn = Pn')
+: @option_rect A P Ps Pn x = @option_rect A P Ps' Pn' x.
+Proof.
+  destruct x; simpl;
+  rewrite ?Hs, ?Hn; reflexivity.
+Defined.
