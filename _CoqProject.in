@@ -257,6 +257,7 @@ src/Parsers/Reachable/ParenBalancedHiding/OfParse.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/DisjointRules.v
+src/Parsers/Refinement/ExtractSharpenedABStar.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v

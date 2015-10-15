@@ -20,6 +20,8 @@
 .coq-native
 .coq-version
 .DS_Store
+/src/Parsers/Refinement/Testing/ab10*
+/src/Parsers/Refinement/Testing/test_*
 /_CoqProject
 /ADT-Synthesis-Submitted.tiff
 /all.pdf

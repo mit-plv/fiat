@@ -4,7 +4,8 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 .PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
 	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
-	pdf doc clean-doc
+	pdf doc clean-doc \
+	test-parsers
 
 submodule-update: .gitmodules
 	git submodule sync && \
@@ -37,6 +38,9 @@ clean-doc::
 	rm -rf html
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
+
+test-parsers: src/Parsers/Refinement/ExtractSharpenedABStar.vo
+	$(MAKE) -C src/Parsers/Refinement/Testing
 
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
