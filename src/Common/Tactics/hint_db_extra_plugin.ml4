@@ -1,8 +1,3 @@
-(*i camlp4deps: "parsing/grammar.cma" i*)
-(*i camlp4use: "pa_extend.cmp" i*)
-
-DECLARE PLUGIN "hint_db_extra_plugin"
-
 module WITH_DB =
 struct
 
