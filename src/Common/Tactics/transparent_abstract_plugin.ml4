@@ -99,7 +99,7 @@ struct
 end
 
   TACTIC EXTEND abstracttermas
-  | [ "cache_term" constr(term) "run" tactic(tacK) "as" ident(name)]  ->
+  | [ "cache_term" constr(term) "as" ident(name) "run" tactic(tacK)]  ->
      [ fun gl -> TRANSPARENT_ABSTRACT.tclABSTRACTTERM (Some name) term tacK gl ]
        END
 

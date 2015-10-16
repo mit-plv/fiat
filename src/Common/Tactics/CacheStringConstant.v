@@ -15,8 +15,9 @@ Ltac pose_string_hyps :=
   repeat match goal with
          | |- context [String ?R ?R'] =>
            let str := fresh "StringId" in
-           cache_term (String R R') run (fun id => fold id in *;
-                                         add id to stringCache) as str
+           cache_term (String R R') as str
+                                         run (fun id => fold id in *;
+                                                add id to stringCache)
          end.
 
 Ltac pose_string_hyps_in H :=
@@ -26,6 +27,7 @@ Ltac pose_string_hyps_in H :=
          match H' with
          | context [String ?R ?R'] =>
            let str := fresh "StringId" in
-           cache_term (String R R') run (fun id => fold id in *;
-                                         add id to stringCache) as str
+           cache_term (String R R') as str
+                                         run (fun id => fold id in *;
+                                                add id to stringCache)
          end).

@@ -312,44 +312,34 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                       heading AttrList'
                       BuildEarlyBags BuildLastBags
                       ltac:(fun BagCorrect =>
-                              match type of BagCorrect with
-                              | CorrectBag _ _ ?Bag =>
-                                let str := fresh "BagRep" in
-                                cache_term
-                                  Bag
-                                  run (fun Bag' =>
-                                         let str' := fresh "BagOps" in
-                                         let BagImpl := eval simpl in (projT2 (BagADTImpl (fun _ => false) Bag')) in
-                                             cache_term
-                                               BagImpl
-                                               run (fun BagImpl' =>
-                                                      let str'' := fresh "BagImpl" in
-                                                      cache_term (existT _ _ BagImpl') run
-                                                                 (fun BagADT' =>
-                                           k (i3cons2
-                                                (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
-                                                         FullySharpened
-                                                                    (@BagSpec (@RawTuple sch)
-                                                                              (BagSearchTermType SearchTerm)
-                                                                          (BagUpdateTermType SearchTerm)
-                                                                          (BagMatchSearchTerm SearchTerm)
-                                                                          (BagApplyUpdateTerm SearchTerm))))
-                                                     (b := SearchTerm)
-                                                     (existT _ BagADT'
-                                                             (@SharpenedBagImpl_subproof
-                                                                _ _ _ _ _ _
-                                                                (fun _ => false) _
-                                                                BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags)) as str'') as str') as str
-                              end))
-  | inil3 => k (i3nil2
-                  (C := fun heading (SearchTerm : SearchUpdateTerms heading) =>
-                          FullySharpened
-                            (@BagSpec (@RawTuple heading)
-                                      (BagSearchTermType SearchTerm)
-                                      (BagUpdateTermType SearchTerm)
-                                      (BagMatchSearchTerm SearchTerm)
-                                      (BagApplyUpdateTerm SearchTerm))))
-  end.
+                              abstractADTImpl
+                                (@SharpenedBagImpl _ _ _ _ _ _
+                                                   (fun _ => false) _
+                                                   BagCorrect (fun a b => ValidUpdateCorrect _ b))
+                                ltac:(fun BagADT' =>
+                                        k (i3cons2
+                                             (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
+                                                      FullySharpened
+                                                        (@BagSpec (@RawTuple sch)
+                                                                  (BagSearchTermType SearchTerm)
+                                                                  (BagUpdateTermType SearchTerm)
+                                                                  (BagMatchSearchTerm SearchTerm)
+                                                                  (BagApplyUpdateTerm SearchTerm))))
+                                             (b := SearchTerm)
+                                             (existT _ BagADT'
+                                                     (@SharpenedBagImpl_subproof
+                                                        _ _ _ _ _ _
+                                                        (fun _ => false) _
+                                                        BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags))))
+    | inil3 => k (i3nil2
+                    (C := fun heading (SearchTerm : SearchUpdateTerms heading) =>
+                            FullySharpened
+                              (@BagSpec (@RawTuple heading)
+                                        (BagSearchTermType SearchTerm)
+                                        (BagUpdateTermType SearchTerm)
+                                        (BagMatchSearchTerm SearchTerm)
+                                        (BagApplyUpdateTerm SearchTerm))))
+    end.
 
 Ltac BuildQSIndexedBags' BuildEarlyBags BuildLastBags :=
   repeat match goal with

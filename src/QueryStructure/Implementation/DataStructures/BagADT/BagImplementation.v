@@ -587,11 +587,13 @@ Section SharpenedBagImplementation.
   Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
     Eval simpl in projT1 SharpenedBagImpl'.
 
+  Require Import TransparentAbstract.
+
   Definition SharpenedBagImpl
   : FullySharpened (@BagSpec (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus
                              bfind_matcher bupdate_transform).
-  eexists BagADTImpl.
-  abstract (exact (projT2 SharpenedBagImpl')).
+  Proof.
+    AbstractADT SharpenedBagImpl'.
   Defined.
 
 End SharpenedBagImplementation.
