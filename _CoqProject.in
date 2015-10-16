@@ -100,6 +100,7 @@ src/Computation/Refinements/Tactics.v
 src/ComputationalEnsembles/Core.v
 src/ComputationalEnsembles/Laws.v
 src/ComputationalEnsembles/Morphisms.v
+src/Examples/FacadeTest.v
 src/Examples/CacheADT/CacheADT.v
 src/Examples/CacheADT/CacheRefinements.v
 src/Examples/CacheADT/CacheSig.v
@@ -353,4 +354,5 @@ src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
 src/Common/Coq__8_4__8_5__Compat.v
-src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/hint_db_extra_plugin.ml4
+src/Common/Tactics/transparent_abstract_plugin.ml4
+src/Common/Tactics/hint_db_extra_plugin.ml4
