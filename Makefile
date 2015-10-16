@@ -39,6 +39,8 @@ clean-doc::
 	rm -f all.pdf Overview/library.pdf Overview/ProjectOverview.pdf Overview/coqdoc.sty coqdoc.sty
 	rm -f $(shell find Overview -name "*.log" -o -name "*.aux" -o -name "*.bbl" -o -name "*.blg" -o -name "*.synctex.gz" -o -name "*.out" -o -name "*.toc")
 
+HASNATDYNLINK = true
+
 test-parsers: src/Parsers/Refinement/ExtractSharpenedABStar.vo
 	$(MAKE) -C src/Parsers/Refinement/Testing
 
@@ -95,13 +97,11 @@ FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
-TACTICS := src/Common/Tactics/transparent_abstract_plugin.ml4 \
-	src/Common/Tactics/hint_db_extra_plugin.ml4
+FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
+TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
 
-FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO) $(TACTICS)
-
-fiat: $(FIAT_VO)
-fiat-core: $(FIAT_CORE_VO) $(TACTICS)
+fiat: $(FIAT_VO) $(TACTICS_TARGETS)
+fiat-core: $(FIAT_CORE_VO) $(TACTICS_TARGETS)
 querystructures: $(QUERYSTRUCTURES_VO)
 parsers: $(PARSERS_VO)
 parsers-all: $(PARSERS_ALL_VO)
@@ -113,8 +113,8 @@ ics: $(ICS_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
 examples:  $(EXAMPLES_VO)
 
-fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO)))
-fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO)))
+fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO))) $(TACTICS_TARGETS)
+fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO))) $(TACTICS_TARGETS)
 querystructures-quick: $(addsuffix .vio,$(basename $(QUERYSTRUCTURES_VO)))
 parsers-quick: $(addsuffix .vio,$(basename $(PARSERS_VO)))
 parsers-all-quick: $(addsuffix .vio,$(basename $(PARSERS_ALL_VO)))
