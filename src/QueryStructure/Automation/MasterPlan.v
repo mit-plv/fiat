@@ -25,7 +25,9 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
       end
     | simpl; pose_string_ids; pose_headings_all;
       pose_search_term;  pose_SearchUpdateTerms;
-
+      match goal with
+        |- context [@Build_IndexedQueryStructure_Impl_Sigs _ ?indices ?SearchTerms _] => try unfold SearchTerms
+      end;
       BuildQSIndexedBags' BuildEarlyBag BuildLastBag
     | cbv zeta; pose_string_ids; pose_headings_all;
       pose_search_term;  pose_SearchUpdateTerms;
@@ -90,7 +92,7 @@ Ltac EqIndexTactics f :=
     EqExpressionAttributeCounter
     ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
     ltac:(LastCombineCase5 BuildLastEqualityIndex)
-    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
     EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep
     BuildEarlyEqualityBag BuildLastEqualityBag
     f.

@@ -496,7 +496,7 @@ Ltac find_simple_search_term
                                                                                            simpl; intro; try prove_extensional_eq
                       )) end.
 
-Ltac implement_QSDeletedTuples find_search_term :=
+  Ltac implement_QSDeletedTuples find_search_term :=
   match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
@@ -504,8 +504,7 @@ Ltac implement_QSDeletedTuples find_search_term :=
         let idx_search_update_term := eval simpl in (ith3 indices idx) in
             let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                 let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                    let search_term_type := eval unfold search_term_type' in search_term_type' in
-                        makeEvar search_term_type
+                        makeEvar search_term_type'
                                  ltac: (fun search_term =>
                                           let eqv := fresh in
                                           assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
@@ -527,9 +526,7 @@ Ltac implement_EnsembleDelete_AbsR find_search_term :=
         let idx_search_update_term := eval simpl in (ith3 indices idx) in
             let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                 let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                    let search_term_type := eval unfold search_term_type' in search_term_type' in
-
-                        makeEvar search_term_type
+                    makeEvar search_term_type'
                                  ltac:(fun search_term =>
                                          let eqv := fresh in
                                          assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
