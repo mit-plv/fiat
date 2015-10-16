@@ -21,89 +21,58 @@ Ltac psearch n z :=
     | S ?n' => z ltac:(psearch n' z)
     end.
 
+Create HintDb headingCache.
+
 Ltac fold_heading_hyps :=
-  repeat
-    match goal with
-    | [H' := @Build_RawHeading _ _ :  _ |- _ ] => progress (fold H')
-    | [H' := @Build_RawSchema ?heading ?TupleConstr ?RelConstr |- _ ]=> progress (fold H')
-    | [H' := @Build_RawQueryStructureSchema _ ?qs_schema ?CrossConstr |- _ ] => progress (fold H')
-    end.
+  (repeat foreach [ headingCache ] run (fun id => progress fold id in *)).
 
 Ltac fold_heading_hyps_in H :=
-  repeat match goal with
-         | [H' := @Build_RawHeading ?n ?heading :  _ |- _] =>
-           match type of H with
-           | context [@Build_RawHeading n heading] => fold H' in H
-           end
-         | [H' := @Build_RawSchema ?heading ?TupleConstr ?RelConstr |- _ ] =>
-           match type of H with
-           | context [@Build_RawSchema heading TupleConstr RelConstr] =>
-             fold H' in H
-           end
-         | [H' := @Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr |- _ ] =>
-           match type of H with
-           | context [@Build_QueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
-             fold H' in H
-           end
-         end.
+  repeat foreach [ headingCache ] run (fun id => progress fold id in H).
 
 Ltac pose_heading_hyps :=
   fold_heading_hyps;
-  repeat match goal with
-         (*| |- context[@Build_RawHeading ?n ?attrlist] =>
-             let heading := fresh "heading" in
-             set (@Build_RawHeading n attrlist) as heading in * *)
-
-         | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
-           let sch := fresh "schma" in
-           set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
-
-         | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
-           let qs_sch := fresh "qs_schma" in
-           set (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
-
-         end.
-
-
-Ltac subst_all :=
-  repeat match goal with H : _ |- _ => subst H end.
-
-Ltac pose_string_hyps_in H :=
-  fold_string_hyps_in H;
   repeat
-    (let H' := eval unfold H in H in
-         match H' with
-         | context [String ?R ?R'] =>
-           let str := fresh "StringId" in
-           set (String R R') as str in *
-         (*| context [@BoundedIndex ?A ?Bound] =>
-             let idx := fresh "BStringId" in
-             set (@BoundedIndex A Bound) as idx in *
-           | context [ ``(?R) ] =>
-             let idx := fresh "BStringId" in
-             set ``(R) as idx in *
-           | context [@Build_BoundedIndex ?A ?Bound ?idx ?bnd] =>
-             let idx := fresh "BStringId" in
-             set (@Build_BoundedIndex A Bound idx bnd) as idx in * *)
-         end).
+    match goal with
+    | |- context[@Build_RawHeading ?n ?attrlist] =>
+      let heading := fresh "heading" in
+      cache_term (@Build_RawHeading n attrlist)
+                 run (fun id => fold id in *;
+                        add id to headingCache) as heading
+    | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
+      let str := fresh "schema" in
+      cache_term (@Build_RawSchema heading TupleConstr RelConstr)
+                 run (fun id => fold id in *;
+                        add id to headingCache) as str
+    | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
+      let str := fresh "qs_schema" in
+      cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) run (fun id => fold id in *;
+                                                                                 add id to headingCache) as str
+    end.
 
 Ltac pose_heading_hyps_in H :=
   fold_heading_hyps_in H;
   repeat
     (let H' := eval unfold H in H in
          match H' with
-         (* | context[Build_RawHeading ?n ?attrlist] =>
-             let heading := fresh "heading" in
-             set (@Build_RawHeading n attrlist) as heading in * *)
-
+         | context[@Build_RawHeading ?n ?attrlist] =>
+           let heading := fresh "heading" in
+           cache_term (@Build_RawHeading n attrlist)
+                      run (fun id => fold id in *;
+                             add id to headingCache) as heading
          | context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
-           let sch := fresh "schma" in
-           set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
-
+           let str := fresh "schema" in
+           cache_term (@Build_RawSchema heading TupleConstr RelConstr)
+                      run (fun id => fold id in *;
+                             add id to headingCache) as str
          | context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
-           let qs_sch := fresh "qs_schma" in
-           set (@Build_QueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
+           let str := fresh "qs_schema" in
+           cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) run (fun id => fold id in *;
+                                                                                      add id to headingCache) as str
          end).
+
+Ltac pose_headings_all := pose_heading_hyps.
+
+Create HintDb search_term_Cache.
 
 Ltac pose_search_term_in H :=
   repeat
@@ -111,8 +80,22 @@ Ltac pose_search_term_in H :=
          match H' with
          | context[BuildIndexSearchTerm ?Indexes] =>
            let search_term := fresh "SearchTerm" in
-           set (BuildIndexSearchTerm Indexes) as search_term in *
+           cache_term (BuildIndexSearchTerm Indexes)
+                      run (fun id => fold id in *;
+                        add id to search_term_Cache) as search_term
          end).
+
+Ltac pose_search_term :=
+  repeat
+    ( match goal with
+        |- context[BuildIndexSearchTerm ?Indexes] =>
+        let search_term := fresh "SearchTerm" in
+        cache_term (BuildIndexSearchTerm Indexes)
+                      run (fun id => fold id in *;
+                        add id to search_term_Cache) as search_term
+      end).
+
+Create HintDb SearchUpdateTermCache.
 
 Ltac pose_SearchUpdateTerms_in H :=
   repeat
@@ -123,18 +106,13 @@ Ltac pose_SearchUpdateTerms_in H :=
                       ?search_term ?matcher
                       ?update_term ?applier] =>
            let search_update_term := fresh "SearchUpdateTerm" in
-           set (@Build_SearchUpdateTerms heading search_term
-                                         matcher update_term applier)
-             as search_update_term in *
+           cache_term (@Build_SearchUpdateTerms
+                         heading search_term
+                         matcher update_term applier)
+                      run (fun id => fold id in *;
+                             add id to SearchUpdateTermCache) as
+               search_update_term
          end).
-
-Ltac pose_search_term :=
-  repeat
-    ( match goal with
-        |- context[BuildIndexSearchTerm ?Indexes] =>
-        let search_term := fresh "SearchTerm" in
-        set (BuildIndexSearchTerm Indexes) as search_term in *
-      end).
 
 Ltac pose_SearchUpdateTerms :=
   repeat
@@ -144,28 +122,16 @@ Ltac pose_SearchUpdateTerms :=
                      ?search_term ?matcher
                      ?update_term ?applier] =>
        let search_update_term := fresh "SearchUpdateTerm" in
-       set (@Build_SearchUpdateTerms heading search_term
-                                     matcher update_term applier)
-         as search_update_term in *
+       cache_term (@Build_SearchUpdateTerms
+                     heading search_term
+                     matcher update_term applier)
+                  run (fun id => fold id in *;
+                         add id to SearchUpdateTermCache) as
+           search_update_term
      end).
 
-Ltac pose_headings_all :=
-  fold_heading_hyps;
-  repeat match goal with
-         | |- context[@Build_RawHeading ?n ?attrlist] =>
-           let heading := fresh "heading" in
-           set (@Build_RawHeading n attrlist) as heading in *
-
-         | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
-           let sch := fresh "schma" in
-           set (@Build_RawSchema heading TupleConstr RelConstr) as sch in *
-
-         | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
-           let qs_sch := fresh "qs_schma" in
-           set (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as qs_schema in *
-         end.
-
-
+Ltac subst_all := idtac.
+(*repeat match goal with H : _ |- _ => subst H end.*)
 
 Ltac zeta_expand id H :=
   revert id H;
