@@ -1,4 +1,4 @@
-.PHONY: all test
+.PHONY: all test test-reference
 
 all: test_ab_star test_ab_star_reference
 
@@ -35,5 +35,16 @@ test: ab10.0.0.0.0.0 test_ab_star test_ab_star_reference
 	echo; \
 	echo "coq"; \
 	$(shell which time) -f "coq       $$FMT" ./test_ab_star $$F; \
+	echo $$?; \
+	done
+
+test-reference: ab10.0.0.0.0.0 test_ab_star_reference
+	for F in ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0; do \
+	FMT="$(call make_fmt, $$F)"; \
+	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
+	echo $$?; \
+	echo; \
+	echo "reference"; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference $$F; \
 	echo $$?; \
 	done
