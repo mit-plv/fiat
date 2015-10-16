@@ -279,7 +279,7 @@ Notation "'Def' 'Method5' id r .. xn : 'rep' := bod" :=
 (* Again, pretty printing involves fewer rules. *)
 Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' '*' cod := bod" :=
   (Build_methDef {| methID := id; methDom := [] ; methCod := Some cod |} (fun r => bod%comp ))
-    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder,
+    (no associativity, id at level 0, r at level 0,
      cod at level 0,
      at level 94,
      format "'Def'  'Method'  id  ( r  :  'rep' )  :  'rep'  '*'  cod  :=  '/' '[  '   bod ']' ")
@@ -295,7 +295,7 @@ Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' := bod" :=
   (Build_methDef {| methID := id; methDom := [] ; methCod := None |} (fun r => bod%comp ))
-    (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder,
+    (no associativity, id at level 0, r at level 0,
      at level 94,
      format "'Def'  'Method'  id  ( r  :  'rep' )  :  'rep'  :=  '/' '[  '   bod ']' ")
   : methDef_scope.

@@ -32,9 +32,9 @@ Section IndexedImpl.
 
 End IndexedImpl.
 
-Require Import Fiat.Parsers.ParserFromParserADT.
-Require Import Fiat.Parsers.ExtrOcamlParsers.
-Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
+Require Export Fiat.Parsers.ParserFromParserADT.
+Require Export Fiat.Parsers.ExtrOcamlParsers.
+Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Definition ab_star_parser (str : String.string) : bool.
 Proof.
@@ -45,9 +45,53 @@ Print ab_star_parser.
 
 Recursive Extraction ab_star_parser.
 
+Definition main_ab_star := premain ab_star_parser.
+
+Parameter reference_ab_star_parser : Coq.Strings.String.string -> bool.
+Extract Constant reference_ab_star_parser
+=> "fun str ->
+  let needs_b : bool Pervasives.ref = Pervasives.ref false in
+  try
+    (List.iter (fun ch ->
+       match ch, !needs_b with
+       | 'a', false -> needs_b := true; ()
+       | 'b', true  -> needs_b := false; ()
+       | _, _       -> raise Not_found)
+       str;
+     true)
+  with
+   | Not_found -> false".
+
+Definition main_ab_star_reference := premain reference_ab_star_parser.
+
+(*
+(* val needs_b : bool Pervasives.ref;; *)
+let needs_b = Pervasives.ref false;;
+
+let chan = match Array.length Sys.argv with
+| 0 | 1 -> Pervasives.stdin
+| 2 -> let chan = Pervasives.open_in Sys.argv.(1)
+       in Pervasives.at_exit (fun () -> Pervasives.close_in chan);
+	  chan
+| argc -> Pervasives.exit argc;;
+
+(* val line : string;; *)
+let line = Pervasives.input_line chan;;
+
+String.iter (fun ch ->
+  match ch, !needs_b with
+  | 'a', false -> needs_b := true; ()
+  | 'b', true  -> needs_b := false; ()
+  | _, _       -> Pervasives.exit 1)
+  line;;
+
+Pervasives.exit 0;;
+*)
+(*
 Definition test0 := ab_star_parser "".
 Definition test1 := ab_star_parser "ab".
 Definition str400 := "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab".
 Definition test2 := ab_star_parser (str400 ++ str400 ++ str400 ++ str400).
 
 Recursive Extraction test0 test1 test2.
+*)

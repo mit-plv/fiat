@@ -1,3 +1,8 @@
+(*i camlp4deps: "parsing/grammar.cma" i*)
+(*i camlp4use: "pa_extend.cmp" i*)
+
+DECLARE PLUGIN "transparent_abstract_plugin"
+
 module TRANSPARENT_ABSTRACT =
 struct
 
