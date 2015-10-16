@@ -154,6 +154,11 @@ Definition Build_IndexedQueryStructure_Impl_AbsR
     AbsR (ValidImpls idx)
          (GetIndexedRelation r_o idx) (GetIndexedQueryStructureRelation r_n idx).
 
+(* These are opaque aliases for pcConstructors and pcMethods which we use to *)
+(* prevent Bag methods from being aggressively inlined in the final implementation. *)
+Definition callConstructor := ComputationalADT.pcConstructors.
+Definition callMethod := ComputationalADT.pcMethods.
+
 Definition CallBagImplMethod
            {n}
            {schemas : Vector.t RawSchema n}
@@ -163,7 +168,7 @@ Definition CallBagImplMethod
                ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
            idx midx
            (r_n : Build_IndexedQueryStructure_Impl_cRep Index DelegateReps) :=
-  ComputationalADT.pcMethods (DelegateImpls idx) midx (GetIndexedQueryStructureRelation r_n idx).
+  callMethod (DelegateImpls idx) midx (GetIndexedQueryStructureRelation r_n idx).
 
 Definition CallBagImplConstructor
            {n}
@@ -173,7 +178,7 @@ Definition CallBagImplConstructor
            (DelegateImpls : forall idx,
                ComputationalADT.pcADT (Build_IndexedQueryStructure_Impl_Sigs Index idx) (DelegateReps idx))
            idx cidx :=
-  ComputationalADT.pcConstructors (DelegateImpls idx) cidx.
+  callConstructor (DelegateImpls idx) cidx.
 
 Lemma refine_BagImplConstructor
       {n}
@@ -257,13 +262,13 @@ Proof.
     simpl in *; intuition.
   - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    unfold cMethods, callMethod in *; simpl in *; rewrite <- H0''; simpl.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
   - specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    unfold cMethods, callMethod in *; simpl in *; rewrite <- H0''; simpl.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
@@ -275,19 +280,19 @@ Proof.
     repeat computes_to_econstructor; eauto.
   - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    unfold cMethods, callMethod in *; simpl in *; rewrite <- H0''; simpl.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
   - specialize (H0 t _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    unfold cMethods, callMethod in *; simpl in *; rewrite <- H0''; simpl.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
   - specialize (H0 t t0 _ (ReturnComputes _)); computes_to_inv; subst;
     unfold CallBagImplMethod, CallBagMethod in *; simpl in *.
-    unfold cMethods in H0''; simpl in *; rewrite <- H0''; simpl.
+    unfold cMethods, callMethod in *; simpl in *; rewrite <- H0''; simpl.
     eexists; split; eauto.
     intros v Comp_v; computes_to_inv; subst.
     repeat computes_to_econstructor; eauto.
@@ -2213,3 +2218,6 @@ Arguments ilist2_hd : simpl never.
 Arguments ilist3 : simpl never.
 Arguments ilist3_tl : simpl never.
 Arguments ilist3_hd : simpl never.
+
+Global Opaque callMethod.
+Global Opaque callConstructor.

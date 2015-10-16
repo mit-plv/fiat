@@ -113,6 +113,48 @@ Section i3list2.
 
 End i3list2.
 
+Fixpoint i3map2
+         {A : Type}
+         {B : A -> Type}
+         {C C' : forall a, B a ->  Type}
+         (f : forall a b, C a b -> C' a b)
+         {m : nat}
+         {As : Vector.t A m}
+         {Bs : ilist3 As}
+         (i3l : i3list2 C Bs)
+  : i3list2 C' Bs :=
+  match As return
+        forall (Bs : ilist3 As),
+          i3list2 C Bs
+          -> i3list2 C' Bs with
+  | Vector.nil => fun _ _ => tt
+  | Vector.cons a _ l' => fun Bs Cs => {| prim_fst := f a _ (prim_fst Cs);
+                                          prim_snd := i3map2 f (prim_snd Cs) |}
+  end Bs i3l.
+
+Lemma i3th2_i3map2 {A : Type}
+      {B : A -> Type}
+      {C C' : forall a, B a ->  Type}
+  : forall (f : forall a b, C a b -> C' a b)
+           {m : nat}
+           (n : Fin.t m)
+           {As : Vector.t A m}
+           {Bs : ilist3 As}
+           (i3l : i3list2 C Bs),
+    f _ _ (i3th2 C i3l n) = i3th2 C' (i3map2 f i3l) n.
+Proof.
+  induction n; intro.
+  - eapply Vector.caseS with (v := As); intros; simpl in *; destruct i3l; reflexivity.
+  - revert n0 IHn.
+    pattern n, As.
+    match goal with
+      |- ?P n As =>
+      simpl; eapply (@Vector.rectS _ P); intros
+    end.
+    + inversion n0.
+    + eapply IHn.
+Qed.
+
 Arguments i3cons2 [_ _ _ _ _ _ _ _] _ _.
 Arguments i3nil2 [_ _ _].
 Arguments i3th2 [_ _ _ _ _ _] _ _.

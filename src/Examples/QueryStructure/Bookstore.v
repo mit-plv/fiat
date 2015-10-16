@@ -100,8 +100,9 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
+
   master_plan EqIndexTactics.
-    (* Uncomment this to see the mostly sharpened implementation *)
+      (* Uncomment this to see the mostly sharpened implementation *)
   (* partial_master_plan EqIndexTactics. *)
 
 Time Defined.

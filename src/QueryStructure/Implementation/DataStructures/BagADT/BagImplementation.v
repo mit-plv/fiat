@@ -452,7 +452,7 @@ Section SharpenedBagImplementation.
       apply IHl. apply H. apply H; apply H0.
   Qed.
 
-  Definition SharpenedBagImpl
+  Definition SharpenedBagImpl'
   : FullySharpened (@BagSpec (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus
                              bfind_matcher bupdate_transform).
   Proof.
@@ -585,7 +585,14 @@ Section SharpenedBagImplementation.
   Defined.
 
   Time Definition BagADTImpl : ComputationalADT.cADT (BagSig (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus) :=
-    Eval simpl in projT1 SharpenedBagImpl.
+    Eval simpl in projT1 SharpenedBagImpl'.
+
+  Definition SharpenedBagImpl
+  : FullySharpened (@BagSpec (@RawTuple heading) SearchTermTypePlus UpdateTermTypePlus
+                             bfind_matcher bupdate_transform).
+  eexists BagADTImpl.
+  abstract (exact (projT2 SharpenedBagImpl')).
+  Defined.
 
 End SharpenedBagImplementation.
 

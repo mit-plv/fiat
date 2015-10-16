@@ -70,7 +70,30 @@ Proof.
   - intro schemas; revert idx IHidx;
     pattern n, schemas; eapply Vector.caseS.
     intros; eapply IHidx.
-Defined.
+Qed.
+
+Definition LookupQSDelegateImpls'' {n}
+           {schemas : Vector.t RawSchema n}
+           (SearchTerms : ilist3 (B := fun sch => SearchUpdateTerms (rawSchemaHeading sch)) schemas)
+           (DelegateImpls :
+              i3list2
+                (fun sch (SearchTerm : SearchUpdateTerms (rawSchemaHeading sch)) =>
+                   FullySharpened
+                     (@BagSpec (@RawTuple (rawSchemaHeading sch))
+                               (BagSearchTermType SearchTerm)
+                               (BagUpdateTermType SearchTerm)
+                               (BagMatchSearchTerm SearchTerm)
+                               (BagApplyUpdateTerm SearchTerm)))
+                SearchTerms)
+  : forall (idx : Fin.t n),
+    refineADT
+      (Build_IndexedQueryStructure_Impl_Specs SearchTerms idx)
+      (ComputationalADT.LiftcADT (i3th2 (i3map2 (fun sch SearchTerm c => projT1 c) DelegateImpls) idx)).
+Proof.
+  intro.
+  rewrite <- i3th2_i3map2.
+  eapply LookupQSDelegateImpls'.
+Qed.
 
 Ltac BuildQSDelegateSigs QSImpl :=
   let p := eval unfold QSImpl in QSImpl in
@@ -273,31 +296,51 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
          (IndexedTreebupdate_transform heading))
   end.
 
-Ltac BuildQSIndexedBags SearchTerms BuildEarlyBags BuildLastBags k :=
-  match SearchTerms with
-  | @icons3 _ _ ?heading _ ?headings' ?SearchTerm
-            ?SeachTerms'
-    =>
-    let BagSearchTermType' := eval simpl in (BagSearchTermType SearchTerm) in
-        let AttrList' := match BagSearchTermType' with
-                         | BuildIndexSearchTerm ?AttrList => AttrList
-                         end in
-        BuildQSIndexedBags
-          SeachTerms' BuildEarlyBags BuildLastBags
-          ltac:(fun Bags =>
-                  BuildQSIndexedBag
-                    heading AttrList'
-                    BuildEarlyBags BuildLastBags
-                    ltac:(fun Bag => k (i3cons2
-                                          (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
-                                                   FullySharpened
-                                                     (@BagSpec (@RawTuple sch)
-                                                               (BagSearchTermType SearchTerm)
-                                                               (BagUpdateTermType SearchTerm)
-                                                               (BagMatchSearchTerm SearchTerm)
-                                                               (BagApplyUpdateTerm SearchTerm))))
-                                          (b := SearchTerm)
-                                          (@SharpenedBagImpl _ _ _ _ _ _ (fun _ => false) _ Bag (fun a b => ValidUpdateCorrect _ b)) Bags)))
+  Ltac BuildQSIndexedBags SearchTerms BuildEarlyBags BuildLastBags k :=
+    match SearchTerms with
+    | @icons3 _ _ ?heading _ ?headings' ?SearchTerm
+              ?SeachTerms'
+      =>
+      let BagSearchTermType' := eval simpl in (BagSearchTermType SearchTerm) in
+          let AttrList' := match BagSearchTermType' with
+                           | BuildIndexSearchTerm ?AttrList => AttrList
+                           end in
+          BuildQSIndexedBags
+            SeachTerms' BuildEarlyBags BuildLastBags
+            ltac:(fun Bags =>
+                    BuildQSIndexedBag
+                      heading AttrList'
+                      BuildEarlyBags BuildLastBags
+                      ltac:(fun BagCorrect =>
+                              match type of BagCorrect with
+                              | CorrectBag _ _ ?Bag =>
+                                let str := fresh "BagRep" in
+                                cache_term
+                                  Bag
+                                  run (fun Bag' =>
+                                         let str' := fresh "BagOps" in
+                                         let BagImpl := eval simpl in (projT2 (BagADTImpl (fun _ => false) Bag')) in
+                                             cache_term
+                                               BagImpl
+                                               run (fun BagImpl' =>
+                                                      let str'' := fresh "BagImpl" in
+                                                      cache_term (existT _ _ BagImpl') run
+                                                                 (fun BagADT' =>
+                                           k (i3cons2
+                                                (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
+                                                         FullySharpened
+                                                                    (@BagSpec (@RawTuple sch)
+                                                                              (BagSearchTermType SearchTerm)
+                                                                          (BagUpdateTermType SearchTerm)
+                                                                          (BagMatchSearchTerm SearchTerm)
+                                                                          (BagApplyUpdateTerm SearchTerm))))
+                                                     (b := SearchTerm)
+                                                     (existT _ BagADT'
+                                                             (@SharpenedBagImpl_subproof
+                                                                _ _ _ _ _ _
+                                                                (fun _ => false) _
+                                                                BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags)) as str'') as str') as str
+                              end))
   | inil3 => k (i3nil2
                   (C := fun heading (SearchTerm : SearchUpdateTerms heading) =>
                           FullySharpened
@@ -318,7 +361,7 @@ Ltac BuildQSIndexedBags' BuildEarlyBags BuildLastBags :=
       SearchTerms BuildEarlyBags BuildLastBags
       ltac:(fun Bags =>
               let Impls := fresh in
-              pose proof (@LookupQSDelegateImpls' _ indices SearchTerms Bags) as Impls; unfold  Update_Build_IndexedQueryStructure_Impl_cRep,
+              pose proof (@LookupQSDelegateImpls'' _ indices SearchTerms Bags) as Impls; unfold  Update_Build_IndexedQueryStructure_Impl_cRep,
                                                                                         Update_Iterate_Dep_Type in Impls; simpl in Impls;
             apply Impls
            )
