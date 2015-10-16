@@ -1,3 +1,5 @@
+DECLARE PLUGIN "transparent_abstract_plugin"
+
 module TRANSPARENT_ABSTRACT =
 struct
 

@@ -1,3 +1,5 @@
+DECLARE PLUGIN "hint_db_extra_plugin"
+
 module WITH_DB =
 struct
 
