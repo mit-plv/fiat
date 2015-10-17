@@ -1,5 +1,5 @@
-Require Import QueryStructureNotations.
-Require Import ListImplementation.
+Require Import Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
+Require Import Fiat.QueryStructure.Implementation.ListImplementation.
 Require Import ComputationalADT AddCache ADTCache CacheADT.
 
 Definition MySchema :=

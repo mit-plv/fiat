@@ -1,13 +1,13 @@
-Require Import ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
-Require Import ADTRefinement.GeneralRefinements Fiat.Common.ilist.
-Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import ADT.ComputationalADT.
+Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildComputationalADT Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.ADTRefinement.GeneralRefinements Fiat.Common.ilist.
+Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.ADT.ComputationalADT.
 (*What was this importing?*)
 (*Require Import Core.*)
-Require Import ADTRefinement.GeneralBuildADTRefinements.
-Require Import ADT.ComputationalADT ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.ADT.ComputationalADT Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
-Require Import Bool ZArith.
+Require Import Coq.Bool.Bool Coq.ZArith.ZArith.
 
 Export ADTNotation.BuildADT ADTNotation.BuildComputationalADT ADTNotation.BuildADTSig.
 Export ADTRefinement.GeneralRefinements ADT.ComputationalADT Core.

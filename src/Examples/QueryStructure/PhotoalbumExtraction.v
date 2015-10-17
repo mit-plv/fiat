@@ -1,5 +1,5 @@
-Require Import Bool Coq.Strings.String String_as_OT OrderedTypeEx.
-Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlZInt ExtrOcamlString.
+Require Import Coq.Bool.Bool Coq.Strings.String Fiat.Common.String_as_OT Coq.Structures.OrderedTypeEx.
+Require Import Coq.extraction.ExtrOcamlBasic Coq.extraction.ExtrOcamlNatInt Coq.extraction.ExtrOcamlZInt Coq.extraction.ExtrOcamlString.
 
 Require Import Fiat.QueryStructure.Automation.MasterPlan
         Fiat.Examples.QueryStructure.Photoalbum.
