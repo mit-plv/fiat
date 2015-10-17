@@ -58,7 +58,7 @@ Extract Constant reference_ab_star_parser
        | 'b', true  -> needs_b := false; ()
        | _, _       -> raise Not_found)
        str;
-     true)
+     if !needs_b then false else true)
   with
    | Not_found -> false".
 
