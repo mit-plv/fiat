@@ -25,9 +25,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter
   : FullySharpened (string_spec ab_star_grammar).
   Proof.
-    let impl := (splitter_red (projT1 ComputationalSplitter')) in
-    refine (existT _ impl _).
-    abstract (exact (projT2 ComputationalSplitter')).
+    make_simplified_splitter ComputationalSplitter'.
   Defined.
 
 End IndexedImpl.
