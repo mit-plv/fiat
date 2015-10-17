@@ -994,14 +994,6 @@ Proof.
   reflexivity.
 Qed.
 
-Global Add Parametric Morphism {A B} : (@List.fold_right A B)
-    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
-      as fold_right_f_eq_mor.
-Proof.
-  destruct_head sig; intros; subst; f_equal.
-  repeat (apply functional_extensionality; intros); eapply H.
-Defined.
-
 Fixpoint combine_sig_helper {T} {P : T -> Prop} (ls : list T) : (forall x, In x ls -> P x) -> list (sig P).
 Proof.
   refine match ls with
