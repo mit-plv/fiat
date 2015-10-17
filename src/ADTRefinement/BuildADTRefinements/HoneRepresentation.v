@@ -8,7 +8,7 @@ Require Import Coq.Lists.List Fiat.Common
         Fiat.ADTNotation.BuildADT
         Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements
-        Fiat.ADTRefinement.GeneralBuildADTRefinements
+        Fiat.ADTRefinement.GeneralPreBuildADTRefinements
         Fiat.ADTRefinement.Refinements.HoneRepresentation
         Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 

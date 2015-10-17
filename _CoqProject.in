@@ -20,6 +20,7 @@ src/ADTRefinement/BuildADTRefinements.v
 src/ADTRefinement/BuildADTSetoidMorphisms.v
 src/ADTRefinement/Core.v
 src/ADTRefinement/GeneralBuildADTRefinements.v
+src/ADTRefinement/GeneralPreBuildADTRefinements.v
 src/ADTRefinement/GeneralRefinements.v
 src/ADTRefinement/Refinements.v
 src/ADTRefinement/SetoidMorphisms.v
