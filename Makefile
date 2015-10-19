@@ -142,9 +142,6 @@ install-fiat install-fiat-core install-querystructures install-parsers install-f
 $(UPDATE_COQPROJECT_TARGET):
 	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; echo '-arg -dont-load-proofs'; find src -name "*.v" -a ! -wholename '$(COMPATIBILITY_FILE)' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; find src -name "*.ml4" | $(SORT_COQPROJECT)) > _CoqProject.in
 
-_CoqProject.in:
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; echo '-arg -dont-load-proofs'; find src -name "*.v" -a ! -wholename '$(COMPATIBILITY_FILE)' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; find src -name "*.ml4" | $(SORT_COQPROJECT)) > _CoqProject.in
-
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
 	$(Q)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
