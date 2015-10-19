@@ -888,7 +888,7 @@ Ltac find_equivalent_search_term_pair build_search_term_dep :=
                                                                                                                                                                 let idx_search_update_term := eval simpl in (ith3 indices idx) in
                                                                                                                                                                     let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                                                                                                                         let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                                                                                                                                                                            let search_term_type := eval unfold search_term_type' in search_term_type' in
+                                                                                                                                                                            let search_term_type := search_term_type' in
                                                                                                                                                                                 makeEvar (dom -> search_term_type)
                                                                                                                                                                                          ltac: (fun search_term =>
                                                                                                                                                                                                   let eqv := fresh in
@@ -927,7 +927,7 @@ Ltac find_equivalent_search_term build_search_term :=
                                                                  let idx_search_update_term := eval simpl in (ith3 indices idx) in
                                                                      let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                          let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                                                                             let search_term_type := eval unfold search_term_type' in search_term_type' in
+                                                                             let search_term_type := search_term_type' in
                                                                                  makeEvar (search_term_type)
                                                                                           ltac:(fun search_term =>
 
