@@ -1,4 +1,4 @@
-Require Import Base.
+Require Import Fiat.BinEncoders.Base.
 
 Section Unary.
 

@@ -76,6 +76,14 @@ Tactic Notation "unique" "pose" constr(defn) :=
 Tactic Notation "has" "body" hyp(H) :=
   test (let H' := fresh in pose H as H'; unfold H in H').
 
+Tactic Notation "etransitivity" open_constr(v) := transitivity v.
+Tactic Notation "etransitivity_rev" open_constr(v)
+  := match goal with
+       | [ |- ?R ?LHS ?RHS ]
+         => refine ((fun q p => @transitivity _ R _ LHS v RHS p q) _ _)
+     end.
+Tactic Notation "etansitivity_rev" := etransitivity_rev _.
+
 (** find the head of the given expression *)
 Ltac head expr :=
   match expr with
@@ -993,14 +1001,6 @@ Proof.
   erewrite IHls; simpl.
   reflexivity.
 Qed.
-
-Global Add Parametric Morphism {A B} : (@List.fold_right A B)
-    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
-      as fold_right_f_eq_mor.
-Proof.
-  destruct_head sig; intros; subst; f_equal.
-  repeat (apply functional_extensionality; intros); eapply H.
-Defined.
 
 Fixpoint combine_sig_helper {T} {P : T -> Prop} (ls : list T) : (forall x, In x ls -> P x) -> list (sig P).
 Proof.

@@ -291,3 +291,21 @@ Proof.
   { rewrite IHls'.
     apply H. }
 Qed.
+
+Global Add Parametric Morphism {A B} : (@List.fold_right A B)
+    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
+      as fold_right_f_eq_mor.
+Proof.
+  intros ?? H k ls; revert k; lazy in H.
+  induction ls; intros; simpl; trivial.
+  rewrite IHls, H; reflexivity.
+Defined.
+
+Global Add Parametric Morphism {A B} : (@List.fold_left A B)
+    with signature pointwise_relation _ (pointwise_relation _ eq) ==> eq ==> eq ==> eq
+      as fold_left_f_eq_mor.
+Proof.
+  intros ?? H ls k; revert k; lazy in H.
+  induction ls; intros; simpl; trivial.
+  rewrite IHls, H; reflexivity.
+Defined.

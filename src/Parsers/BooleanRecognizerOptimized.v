@@ -12,6 +12,7 @@ Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
 Require Export Fiat.Common.SetoidInstances.
+Require Export Fiat.Common.List.ListMorphisms.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

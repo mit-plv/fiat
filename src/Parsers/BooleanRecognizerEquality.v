@@ -58,7 +58,7 @@ Section transfer.
     = @parse_production' _ HSL_heavy _ len0 parse_nonterminal' str len pf prod.
   Proof.
     revert len str pf; induction prod; simpl; intros.
-    { rewrite length_proj; reflexivity. }
+    { reflexivity. }
     { f_equal; [].
       rewrite split_string_for_production_proj.
       apply map_Proper_eq; trivial; [].

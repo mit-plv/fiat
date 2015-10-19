@@ -9,17 +9,17 @@ Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.ContextFreeGrammarEquality.
 Require Import Fiat.Parsers.ContextFreeGrammarProperties.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
-Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
-Require Import ADT.ComputationalADT.
+Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.Common.StringBound Fiat.Common.ilist.
-Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.List.FlattenList.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.NatFacts.
-Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.ADTRefinement.GeneralPreBuildADTRefinements.
 Require Import Fiat.Computation.SetoidMorphisms.
 
 Set Implicit Arguments.

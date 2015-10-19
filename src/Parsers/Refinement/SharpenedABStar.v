@@ -25,9 +25,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter
   : FullySharpened (string_spec ab_star_grammar).
   Proof.
-    let impl := (splitter_red (projT1 ComputationalSplitter')) in
-    refine (existT _ impl _).
-    abstract (exact (projT2 ComputationalSplitter')).
+    make_simplified_splitter ComputationalSplitter'.
   Defined.
 
 End IndexedImpl.
@@ -58,7 +56,7 @@ Extract Constant reference_ab_star_parser
        | 'b', true  -> needs_b := false; ()
        | _, _       -> raise Not_found)
        str;
-     true)
+     if !needs_b then false else true)
   with
    | Not_found -> false".
 

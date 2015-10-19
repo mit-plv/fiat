@@ -1,4 +1,4 @@
-Require Import AutoDB BagADT.
+Require Import Fiat.QueryStructure.Automation.AutoDB Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Definition UUID := nat.
 Definition Data := String.

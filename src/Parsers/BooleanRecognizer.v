@@ -37,21 +37,25 @@ Section recursive_descent_parser.
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
-        Fixpoint parse_production'
+        Definition parse_production'
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
                  (prod : production Char)
         : bool.
         Proof.
+          revert str len pf.
           refine
-            match prod with
-              | nil =>
-                (** 0-length production, only accept empty *)
-                beq_nat (length str) 0
-              | it::its
-                => let parse_production' := fun str len pf => parse_production' str len pf its in
-                   fold_left
+            (list_rect
+               (fun _ =>
+                  forall (str : String)
+                         (len : nat)
+                         (pf : len <= len0),
+                    bool)
+               ((** 0-length production, only accept empty *)
+                 fun str len _ => beq_nat len 0)
+               (fun it its parse_production' str len pf
+                => fold_left
                      orb
                      (map (fun n =>
                              (parse_item'
@@ -60,8 +64,8 @@ Section recursive_descent_parser.
                                 it)
                                && parse_production' (drop n str) (len - n) _)%bool
                           (split_string_for_production it its str))
-                     false
-            end;
+                     false)
+               prod);
           clear -pf;
           abstract (try apply Min.min_case_strong; omega).
         Defined.

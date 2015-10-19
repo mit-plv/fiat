@@ -6,15 +6,15 @@ Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.
-Require Import ADTNotation.BuildADT ADTNotation.BuildADTSig.
-Require Import ADT.ComputationalADT.
+Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.Common.StringBound Fiat.Common.ilist.
-Require Import ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminal.
-Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.ADTRefinement.GeneralPreBuildADTRefinements.
 Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.ADTNotation.BuildADTSig.
 

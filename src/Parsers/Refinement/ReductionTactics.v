@@ -49,3 +49,12 @@ Ltac make_parser splitter :=
   let b := constr:(ParserInterface.has_parse (ParserFromParserADT.parser splitter) str) in
   let b' := parser_red b in
   exact b'.
+
+Ltac make_simplified_splitter' splitter :=
+  idtac;
+  let impl := (splitter_red (projT1 splitter)) in
+  refine (existT _ impl _).
+
+Ltac make_simplified_splitter splitter :=
+  make_simplified_splitter' splitter;
+  abstract (exact (projT2 splitter)).
