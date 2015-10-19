@@ -22,6 +22,8 @@ SUPER_FAST_TARGETS += submodule-update
 
 Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
+STRICT_COQDEP ?= 1
+
 include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 include etc/coq-scripts/Makefile.coq.common
