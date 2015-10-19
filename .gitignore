@@ -21,6 +21,7 @@
 .coq-version
 .DS_Store
 /_CoqProject
+/_CoqProject.in
 /ADT-Synthesis-Submitted.tiff
 /all.pdf
 /classifier.ml
