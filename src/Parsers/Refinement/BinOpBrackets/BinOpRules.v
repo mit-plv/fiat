@@ -40,6 +40,54 @@ Set Implicit Arguments.
 
 Local Opaque string_stringlike.
 
+Section helper_lemmas.
+  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {pdata : paren_balanced_hiding_dataT Char}.
+
+  Lemma paren_balanced_hiding'_prefix__index_points_to_binop
+        (str : StringLike.String)
+        (n idx len : nat)
+        (H_hiding : paren_balanced_hiding' (take len (drop n str)) 0)
+        (H_points_to : index_points_to_binop n idx str)
+        (H_pre_hiding : paren_balanced' (take idx (drop n str)) 0)
+        (H_small : idx < min len (StringLike.length (drop n str)))
+  : False.
+  Proof.
+    unfold index_points_to_binop in *.
+    repeat match goal with
+             | [ H : context[StringLike.get ?n ?str] |- _ ]
+               => not constr_eq n 0;
+                 let H' := fresh in
+                 revert H;
+                   case_eq (StringLike.get n str);
+                   rewrite get_drop; intros
+             | _ => progress destruct_head ex
+             | _ => progress split_and
+             | [ H : StringLike.get 0 _ = Some _ |- _ ] => apply get_0 in H
+             | [ H : forall x, Some _ = Some x -> _ |- _ ] => specialize (H _ eq_refl)
+             | [ H : ?idx < _, H' : context[drop (?n + ?idx) _] |- _ ]
+               => replace (n + idx) with (idx + n) in H' by omega
+             | [ H : ?idx < _, H' : context[drop (?idx + _) _] |- _ ]
+               => rewrite <- drop_drop in H'
+             | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length in H
+             | [ H : context[take _ (drop _ (take _ _))] |- _ ] => rewrite drop_take in H
+             | [ H : is_true (take _ (take _ _) ~= [ _ ]) |- _ ] => rewrite take_take in H
+             | [ H : is_true (_ ~= [ _ ]) |- _ ] => progress apply take_n_1_singleton in H
+             | [ H : FirstChar.for_first_char _ _, H' : _ < _, H'' : _ < _ |- _ ]
+               => apply FirstChar.for_first_char_exists in H;
+                 [
+                     | rewrite !drop_length; clear -H' H''; omega ]
+             | [ H : _ < min _ _ |- _ ] => apply NPeano.Nat.min_glb_lt_iff in H
+           end.
+    eapply (paren_balanced_hiding'_prefix);
+      [ exact H_hiding
+      | exact H_pre_hiding
+      | eassumption
+      | eassumption
+      | assumption ].
+  Qed.
+End helper_lemmas.
+
 Section refine_rules.
   Context {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
@@ -112,39 +160,10 @@ Section refine_rules.
           middle of the string of length idx', where the prefix is
           paren-balanced-hiding at level 0, and the character is a
           bin-op. *)
-          (** cleanup and reorganization *)
-          unfold index_points_to_binop in *.
           apply paren_balanced_hiding_impl_paren_balanced' in Htable1; [ | exact _ .. ].
-          repeat match goal with
-                   | [ H : context[StringLike.get ?n ?str] |- _ ]
-                     => not constr_eq n 0;
-                       let H' := fresh in
-                       revert H;
-                         case_eq (StringLike.get n str);
-                         rewrite get_drop; intros
-                   | _ => progress destruct_head ex
-                   | _ => progress split_and
-                   | [ H : StringLike.get 0 _ = Some _ |- _ ] => apply get_0 in H
-                   | [ H : forall x, Some _ = Some x -> _ |- _ ] => specialize (H _ eq_refl)
-                   | [ H : ?idx < _, H' : context[drop (?n + ?idx) _] |- _ ]
-                     => replace (n + idx) with (idx + n) in H' by omega
-                   | [ H : ?idx < _, H' : context[drop (?idx + _) _] |- _ ]
-                     => rewrite <- drop_drop in H'
-                   | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length in H
-                   | [ H : context[take _ (drop _ (take _ _))] |- _ ] => rewrite drop_take in H
-                   | [ H : is_true (take _ (take _ _) ~= [ _ ]) |- _ ] => rewrite take_take in H
-                   | [ H : is_true (_ ~= [ _ ]) |- _ ] => progress apply take_n_1_singleton in H
-                   | [ H : FirstChar.for_first_char _ _, H' : _ < _ |- _ ]
-                     => apply FirstChar.for_first_char_exists in H;
-                       [
-                       | rewrite !drop_length; revert Hsmall; clear -H'; apply Min.min_case_strong; intros; omega ]
-                 end.
-          { eapply (paren_balanced_hiding'_prefix);
-            [ exact H_nt_hiding
-            | exact Htable1
-            | eassumption
-            | eassumption
-            | assumption ]. } }
+          eapply paren_balanced_hiding'_prefix__index_points_to_binop; try eassumption.
+          revert Hsmall.
+          repeat apply Min.min_case_strong; intros; try assumption; omega. }
         { (** idx' < idx; this contradicts the paren-balanced-hiding
           assumption about the string of length idx, because we have a
           string parsing as a valid nt, with an unhidden bin-op right
