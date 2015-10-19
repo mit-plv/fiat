@@ -19,6 +19,7 @@ Section TupleADT.
   Open Scope methSig.
   Open Scope consSig.
   Open Scope cMethDef.
+  Open Scope cMethDefParsing.
   Open Scope cConsDef.
 
   Variable heading : Heading.   (* The heading of the tuple. *)
@@ -77,13 +78,13 @@ Section TupleADT.
     Def Method _ (msg : rep) 
     : rep * (Vector.nth (AttrList heading) attr) :=
       (msg, ith2 msg attr).
-
+  
   Definition SetTupleDef
              (attr : Fin.t (NumAttr heading)) :
     cMethDef (Rep := @Tuple heading) (SetTupleSig (Vector.nth (HeadingNames heading) attr)
                                                   (Vector.nth (AttrList heading) attr)) :=
-    Def Method _ (msg : rep) (val : Vector.nth (AttrList heading) attr) : rep :=
-      replace_Index2 _ msg attr val.
+    (Def Method1 _ (msg : @Tuple heading) (val : Vector.nth (AttrList heading) attr) : rep :=
+      replace_Index2 _ msg attr val)%cMethDefParsing.
 
   Definition TupleDefs'
            {n'}

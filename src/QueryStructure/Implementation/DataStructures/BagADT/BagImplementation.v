@@ -13,10 +13,11 @@ Require Import Coq.Bool.Bool Coq.Strings.String
         Fiat.Common.DecideableEnsembles
         Fiat.Common.Ensembles.IndexedEnsembles
         Fiat.Common.Ensembles.EnsembleListEquivalence
+        Fiat.ADTRefinement.GeneralBuildADTTactics
+        Fiat.Common.List.PermutationFacts
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
-        Fiat.Common.List.PermutationFacts
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT.
 
 Section SharpenedBagImplementation.

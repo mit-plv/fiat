@@ -1,7 +1,9 @@
 (* Tactics for extracting Query Structure Implementations. *)
 Require Import Coq.Strings.String
+Fiat.ADTRefinement.GeneralBuildADTTactics
 Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
-Fiat.QueryStructure.Specification.Representation.QueryStructureNotations   Fiat.QueryStructure.Automation.AutoDB.
+Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+Fiat.QueryStructure.Automation.AutoDB.
 Require Export Fiat.Common.ilist3_pair
         Fiat.Common.ilist3
         Fiat.Common.i3list2.

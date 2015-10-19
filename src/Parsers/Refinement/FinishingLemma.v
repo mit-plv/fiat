@@ -1,4 +1,4 @@
-Require Import Fiat.ADTRefinement.GeneralPreBuildADTRefinements.
+Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.ADTNotation.BuildADT.

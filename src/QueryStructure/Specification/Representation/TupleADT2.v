@@ -19,7 +19,7 @@ Section TupleADT2.
   Open Scope string.
   Open Scope methSig.
   Open Scope consSig.
-  Open Scope cMethDef.
+  Open Scope cMethDefParsing.
   Open Scope cConsDef.
 
   Variable heading : Heading2.   (* The heading of the tuple. *)
@@ -37,7 +37,7 @@ Section TupleADT2.
   Definition InitTuple2Def :=
     let _ := {| rep := Tuple2 |} in
     Def Constructor1 Tuple2_Init (inits : InitTuple2Dom) : rep :=
-      ret (InitTuple2 inits).
+      InitTuple2 inits.
 
   (* Getters and Setters for Tuple2s *)
 
@@ -70,7 +70,7 @@ Section TupleADT2.
              (attr : Fin.t (NumAttr2 heading)) :
     cMethDef (Rep := @Tuple2 heading) (GetTuple2Sig (Vector.nth (HeadingNames2 heading) attr)
                                                   (Vector.nth (AttrList2 heading) attr)) :=
-    Def Method _ (msg : rep)
+    Def Method0 _ (msg : @Tuple2 heading)
     : rep * (Vector.nth (AttrList2 heading) attr) :=
       (msg, ith2 msg attr).
 
@@ -78,7 +78,7 @@ Section TupleADT2.
              (attr : Fin.t (NumAttr2 heading)) :
     cMethDef (Rep := @Tuple2 heading) (SetTuple2Sig (Vector.nth (HeadingNames2 heading) attr)
                                                   (Vector.nth (AttrList2 heading) attr)) :=
-    Def Method _ (msg : rep) (val : Vector.nth (AttrList2 heading) attr) : rep :=
+    Def Method1 _ (msg : @Tuple2 heading) (val : Vector.nth (AttrList2 heading) attr) : rep :=
       replace_Index2 _ msg attr val.
 
   Definition Tuple2Defs'

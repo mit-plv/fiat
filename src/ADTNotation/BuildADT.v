@@ -159,7 +159,7 @@ Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -171,7 +171,7 @@ Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [ _ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -183,7 +183,7 @@ Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -195,7 +195,7 @@ Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -207,7 +207,7 @@ Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -219,7 +219,7 @@ Notation "'Def' 'Method5' id r .. xn : 'rep' '*' cod := bod" :=
      {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod : Type) |}
      (fun r => .. (fun xn =>
                      let _ := {| codHint := Some (cod : Type) |} in
-                     (bod%comp : methodType' rep [ ] codHint )) ..))
+                     (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -229,7 +229,7 @@ Notation "'Def' 'Method5' id r .. xn : 'rep' '*' cod := bod" :=
 (* Variant Notations for methods that don't return a value. *)
 
 Notation "'Def' 'Method0' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -237,7 +237,7 @@ Notation "'Def' 'Method0' id r .. xn : 'rep' := bod" :=
   : methDefParsing_scope.
 
 Notation "'Def' 'Method1' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [_ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [_ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -245,7 +245,7 @@ Notation "'Def' 'Method1' id r .. xn : 'rep' := bod" :=
   : methDefParsing_scope.
 
 Notation "'Def' 'Method2' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [_; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [_; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -253,7 +253,7 @@ Notation "'Def' 'Method2' id r .. xn : 'rep' := bod" :=
   : methDefParsing_scope.
 
 Notation "'Def' 'Method3' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [_; _; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [_; _; _ ] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -261,7 +261,7 @@ Notation "'Def' 'Method3' id r .. xn : 'rep' := bod" :=
   : methDefParsing_scope.
 
 Notation "'Def' 'Method4' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [_; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [_; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,
@@ -269,7 +269,7 @@ Notation "'Def' 'Method4' id r .. xn : 'rep' := bod" :=
   : methDefParsing_scope.
 
 Notation "'Def' 'Method5' id r .. xn : 'rep' := bod" :=
-  (Build_methDef {| methID := id; methDom := [_; _; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' rep [ ] codHint )) ..))
+  (Build_methDef {| methID := id; methDom := [_; _; _; _; _] ; methCod := None |} (fun r => .. (fun xn => let _ := {| codHint := None |} in (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
      at level 94,

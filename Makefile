@@ -81,8 +81,6 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/SearchTest.vo \
 	src/Examples/Ics/WaterTankExtract.vo
 
-
-
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 

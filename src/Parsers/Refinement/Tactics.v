@@ -6,7 +6,7 @@ Require Export Fiat.Parsers.ContextFreeGrammar.
 Require Export Fiat.Parsers.ContextFreeGrammarNotations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
-Require Export Fiat.ADTRefinement.GeneralPreBuildADTRefinements.
+Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Export Fiat.Computation.Core.
 Require Export Coq.Program.Program.
 Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
