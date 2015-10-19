@@ -9,7 +9,7 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
-Require Import Fiat.Common Fiat.Common.Equality.
+Require Import Fiat.Common Fiat.Common.Equality Fiat.Common.StringFacts.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.Common.StringBound Fiat.Common.ilist.
 Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.

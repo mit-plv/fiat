@@ -19,6 +19,7 @@ Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.List.FlattenList.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.NatFacts.
+Require Import Fiat.Common.StringFacts.
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Computation.SetoidMorphisms.
 

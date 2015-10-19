@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
+Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.Wf.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
