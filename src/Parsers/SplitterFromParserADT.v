@@ -134,14 +134,14 @@ Section parser.
   Local Notation mcall12 s := (mcall1 snd s) (only parsing).
   Local Notation mcall21 s := (mcall2 (fun x => x) s) (only parsing).
   Local Notation mcall22 s := (mcall2 snd s) (only parsing).
-  
+
   Definition mto_string := Eval simpl in mcall02 "to_string".
   Definition mis_char := Eval simpl in mcall12 "is_char".
   Definition mget := Eval simpl in mcall12 "get".
   Definition mlength := Eval simpl in mcall02 "length".
   Definition mtake := Eval simpl in mcall11 "take".
   Definition mdrop := Eval simpl in mcall11 "drop".
-  
+
   Definition premsplits :=
     Eval simpl in (callcADTMethod
                      (projT1 splitter_impl) (fun idx => ibound (indexb idx))
@@ -158,34 +158,43 @@ Section parser.
 
   Definition to_strings := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "to_string" _ )).
 
+  Local Ltac destruct_twice_faster term :=
+    let H' := fresh in
+    pose proof term as H';
+      hnf in H'; destruct H' as [? H'];
+      hnf in H'; destruct H'.
+
   Ltac prove_string_eq :=
     match goal with
       |- ?z _ = _ => unfold z;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st) = _ =>
-          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H) as [? [? ?]]; simpl in *;
-          computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H);
+            simpl Methods in *;
+            computes_to_inv; injections; eauto
         end
     | |- ?z _ _ = _ => unfold z;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1) = _ =>
-          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1) as [? [? ?]]; simpl in *;
-          computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1);
+            simpl Methods in *;
+            computes_to_inv; injections; eauto
         end
     | |- ?z _ _ = _ => unfold z;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1 ?arg2) = _ =>
-          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1 arg2) as [? [? ?]]; simpl in *;
-          computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1 arg2);
+            simpl Methods in *;
+            computes_to_inv; injections; eauto
         end
     end.
-  
+
   Definition mto_string_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
     : mto_string st = str.
-  Proof. prove_string_eq.  Qed.
+  Proof. prove_string_eq. Qed.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
     : mis_char arg st = string_beq str (String.String arg "").
   Proof. prove_string_eq. Qed.
@@ -202,15 +211,16 @@ Section parser.
         match goal with
           H : ?str ≃ ?st
           |- _ ≃ callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg =>
-          destruct (cMethods_AbsR splitter_impl (proj idx) _ _ H arg) as [? [? ?]];
-            simpl in *; computes_to_inv; subst; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg);
+            simpl Methods in *;
+            computes_to_inv; subst; eauto
         end
     end.
-  
+
   Definition mtake_R {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : AbsR (projT2 splitter_impl) (take arg str) (mtake arg st).
   Proof. prove_string_AbsR. Qed.
-    
+
   Definition mdrop_R {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : AbsR (projT2 splitter_impl) (drop arg str) (mdrop arg st).
   Proof. prove_string_AbsR. Qed.
@@ -252,7 +262,7 @@ Section parser.
          is_char str ch := mis_char ch str;
          get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
-    
+
   Create HintDb parser_adt_method_db discriminated.
   (** We would like to just do
 <<
@@ -343,7 +353,7 @@ Section parser.
 
   Definition splits :=
     ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
-  
+
   Lemma adt_based_splitter_splits_for_complete
   : forall (str : String) (it : item Ascii.ascii)
            (its : production Ascii.ascii),
@@ -360,7 +370,7 @@ Section parser.
     match goal with
       | [ H : AbsR ?Ok ?str ?st
           |- appcontext[msplits ?arg1 ?arg2 ?st] ]
-        => let T := type of Ok in 
+        => let T := type of Ok in
            let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
            let H' := fresh in
            pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 arg2 ((cMethods impl splits st arg1 arg2)) (ReturnComputes _)) as H';
