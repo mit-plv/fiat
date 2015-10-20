@@ -290,6 +290,53 @@ Fixpoint Lift_Constructor2P RepType RepType' (dom : list Type)
   | d :: dom' => fun c c' => forall (t : d), Lift_Constructor2P dom' P (c t) (c' t)
   end.
 
+Definition Lift_Constructor2P_ind RepType RepType'
+           (dom : list Type)
+           (P : constructorType RepType []
+               -> cConstructorType RepType' []
+               -> Prop)
+           (P' : forall dom,
+               constructorType RepType dom
+               -> cConstructorType RepType' dom
+               -> Prop)
+           con cCon
+           (H : forall con' cCon',
+               P' _ con' cCon'
+               -> Lift_Constructor2P [] P con' cCon')
+           (IH : forall d d' con' cCon',
+               (forall t, P' d' (con' t) (cCon' t)
+                          -> Lift_Constructor2P d' P (con' t) (cCon' t))
+               -> P' (d :: d') con' cCon'
+               -> Lift_Constructor2P (d :: d') P con' cCon')
+  : P' _ con cCon
+    -> Lift_Constructor2P dom P con cCon.
+Proof.
+  induction dom; simpl in *; eauto.
+Qed.
+
+Lemma cConstructors_AbsR {Sig} {spec : ADT Sig}
+      (impl : FullySharpened spec)
+      midx
+  :
+    @Lift_Constructor2P _ _ _
+                   (fun Cons cCons =>
+                      exists o_r',
+                        computes_to Cons (o_r')
+                        /\ AbsR (projT2 impl) o_r' cCons)
+                   (Constructors spec midx)
+                   (cConstructors (projT1 impl) midx).
+Proof.
+  simpl in *.
+  generalize  (ADTRefinementPreservesConstructors (projT2 impl) midx).
+  intro.
+  eapply Lift_Constructor2P_ind with
+  (P' := fun dom meth (cCons : cConstructorType _ dom) => refineConstructor (AbsR (projT2 impl)) meth (LiftcConstructor _ dom cCons)) ; simpl; intros; eauto.
+  - revert H0; clear -midx;  destruct (ConstructorDom Sig midx) as [|];
+    simpl; intros;
+    specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
+    eexists; split; simpl; try destruct v; simpl; eauto.
+Qed.
+
 Fixpoint Lift_Method1P RepType
          (dom : list Type)
          (cod : option Type)
