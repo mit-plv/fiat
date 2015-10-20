@@ -1,5 +1,5 @@
 Require Export Vector.
-Require Import Base BinNums BinNat Omega.
+Require Import Fiat.BinEncoders.Base BinNums BinNat Omega.
 
 Section FixInt.
 

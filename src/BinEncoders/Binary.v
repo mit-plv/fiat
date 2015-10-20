@@ -1,4 +1,4 @@
-Require Import BinNums Unary Base.
+Require Import BinNums Unary Fiat.BinEncoders.Base.
 
 Section Binary.
 

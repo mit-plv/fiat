@@ -1,4 +1,4 @@
-Require Import FixInt Ascii BinNat Omega Base.
+Require Import FixInt Ascii BinNat Omega Fiat.BinEncoders.Base.
 
 Section Char.
 
