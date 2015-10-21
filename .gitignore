@@ -7,6 +7,7 @@
 *.cm*
 *.glob
 *.log
+*.ml4.d
 *.o
 *.out
 *.swp
@@ -37,10 +38,9 @@
 /parsing-parses.tar.gz
 /src/Bellmania
 /src/Common/Coq__8_4__8_5__Compat.v
-/src/Common/Tactics/hint_db_extra_plugin.ml4.d
+/src/Common/Tactics/hint_db_extra_plugin.ml4
 /src/Common/Tactics/Makefile
-/src/Common/Tactics/transparent_abstract_plugin.ml4.d
-/src/Common/Tactics/with_hint_db_plugin.ml4.d
+/src/Common/Tactics/transparent_abstract_plugin.ml4
 /src/Computation/State.v
 /src/Examples/*coq*
 /src/Examples/ADTExamples/PLLunch.v

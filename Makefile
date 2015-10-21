@@ -142,7 +142,26 @@ install-fiat install-fiat-core install-querystructures install-parsers install-f
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; echo '-arg -dont-load-proofs'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT)) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; echo '-arg -dont-load-proofs'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4') | $(SORT_COQPROJECT)) > _CoqProject.in
+
+ifeq ($(IS_FAST),0)
+# >= 8.5 if it exists
+NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
+
+ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
+EXPECTED_EXT:=.v84
+ML_DESCRIPTION := "Coq v8.4"
+else
+EXPECTED_EXT:=.v85
+ML_DESCRIPTION := "Coq v8.5"
+endif
+
+# see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.ml4,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.ml4,$(EXPECTED_EXT)))
+
+endif
+
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
 	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
