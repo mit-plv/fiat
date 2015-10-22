@@ -1,6 +1,7 @@
 Require Import Coq.Lists.List.
 Require Import Fiat.Common.
 Require Import Fiat.Computation.Core.
+Require Import Fiat.Computation.Monad.
 
 (** General Lemmas about the parametric morphism behavior of
     [computes_to], [refine], and [refineEquiv]. *)
@@ -216,5 +217,29 @@ Proof.
   unfold pointwise_relation in *.
   apply H0, IHls; assumption.
 Qed.
+
+Lemma equiv_refl {A} :
+  Reflexive (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+Lemma equiv_sym {A} :
+  Symmetric (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+Lemma equiv_trans {A} :
+  Transitive (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+Add Parametric Relation {A} : _ (@Monad.equiv A)
+    reflexivity proved by equiv_refl
+    symmetry proved by equiv_sym
+    transitivity proved by equiv_trans
+      as MonadEquivRel.
 
 Typeclasses Opaque If_Then_Else.

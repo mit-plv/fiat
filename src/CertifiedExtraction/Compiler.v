@@ -2,28 +2,21 @@
 (* Require Export Bedrock.Platform.Facade.Notations. *)
 Require Export Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.StringMapFacts Bedrock.Platform.Cito.SyntaxExpr Bedrock.Memory.
 Require Export Bedrock.Platform.Facade.DFacade.
-(* Require Export FacadeNotations. *)
-(* Require Import FiatToFacade.Compiler. *)
-
-(* Require Import Superset. *)
-
-(* Require Import BedrockUtilities. *)
-(* Require Import Utf8. *)
 
 Require Import Computation.Core.
 Require Import ADTRefinement.
 Require Import ADTRefinement.GeneralRefinements.
 
-(* Definition ADTEquiv s A B (r: @refineADT s A B) v v' := @AbsR _ A B r v v'. *)
-
-(* Inductive ValueComp av := *)
-(* | SCAComp : Comp W  -> ValueComp av *)
-(* | ADTComp : Comp av -> ValueComp av. *)
-(* | ADTComp : Comp av (* Set of admissible values *) ->  *)
-(*             c: Comp av | forall x, c computesto x -> \exists x', x = wrapper x' (* Actual value *) -> ValueComp av. *)
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.Program.Program Coq.Lists.List.
 
 Require Import Coq.Strings.String.
 Local Open Scope string.
+
+Require Import CertifiedExtraction.Utils.
+Require Import CertifiedExtraction.FMapUtils.
+
+Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
 
 Inductive Telescope av : Type :=
 | Nil : Telescope av
@@ -161,58 +154,6 @@ Proof.
   eexists; intuition eauto.
 Qed.
 
-Ltac no_duplicates :=
-  match goal with
-  | [ H: ?P, H': ?P' |- _ ] =>
-    match type of P with
-    | Prop => unify P P'; fail 2 "Duplicates found:" H "and" H' ":" P
-    | _ => fail
-    end
-  | _ => idtac
-  end.
-
-Ltac deduplicate :=
-  repeat match goal with
-         | [ H: ?P, H': ?P' |- _ ] =>
-           match type of P with
-           | Prop => unify P P'; clear H' (* Fixme don't set evars? *)
-           | _ => fail
-           end
-         | _ => idtac
-         end.
-
-(* Inductive Learnt : Prop -> Type := *)
-(*   | AlreadyKnown : forall A, Learnt A. *)
-
-(* Ltac learn fact := *)
-(*   let type := type of fact in *)
-(*   match goal with *)
-(*   | [ H: Learnt type |- _ ] => fail 1 fact "of type" type "is already known" *)
-(*   | _ => pose proof (AlreadyKnown type); pose proof fact *)
-(*   end. *)
-
-(* Definition Learnt {A} (a: A) := *)
-(*   True. *)
-
-(* Ltac learn fact := *)
-(*   match goal with *)
-(*   | [ H: Learnt fact |- _ ] => fail 1 fact "is already known" *)
-(*   | _ => assert (Learnt fact) by exact I; pose proof fact *)
-(*   end. *)
-
-Inductive Learnt {A: Type} (a: A) :=
-  | AlreadyKnown : Learnt a.
-
-Ltac learn fact :=
-  lazymatch goal with
-  | [ H: Learnt fact |- _ ] => fail 0 "fact" fact "has already been learnt"
-  | _ => let type := type of fact in
-        lazymatch goal with
-        | [ H: @Learnt type _ |- _ ] => fail 0 "fact" fact "of type" type "was already learnt through" H
-        | _ => pose proof (AlreadyKnown fact); pose proof fact
-        end
-  end.
-
 Ltac step :=
   match goal with
   | _ => progress intros; simpl in *
@@ -277,357 +218,26 @@ Proof.
          end.
 Qed.
 
-Ltac head_constant expr :=
-  match expr with
-  | ?f _ => head_constant f
-  | ?f => f
-  end.
+Lemma urgh : (subrelation eq (Basics.flip Basics.impl)).
+Proof.
+  repeat red; intros; subst; assumption.
+Qed.
 
-Require Import FMaps.
-Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
-  Module Export BasicFacts := WFacts_fun E M.
-  Module Export BasicProperties := WProperties_fun E M.
+(* FIXME: Why is this needed? *)
+Hint Resolve urgh : typeclass_instances.
 
-  Notation "A ∈ B" := (In A B) (at level 10, no associativity) : map_scope.
-  Notation "A ∉ B" := (not (In A B)) (at level 10, no associativity) : map_scope.
-  Notation "[ k <-- v ] :: m" :=
-    (add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
-  Local Open Scope map_scope.
-
-  Lemma MapsTo_In :
-    forall {A: Type} key (val: A) tree,
-      MapsTo key val tree -> In key tree.
-  Proof.
-    intros; eexists; eassumption.
-  Qed.
-
-  Lemma In_MapsTo :
-    forall A m key,
-      In key m ->
-      exists (value: A), MapsTo key value m.
-  Proof.
-    intros A m key H;
-    apply in_find_iff in H.
-    destruct (find key m) as [value | ] eqn:eq_option;
-    try rewrite <- find_mapsto_iff in eq_option;
-    intuition eauto.
-  Qed.
-
-  Lemma add_remove_cancel:
-    forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
-      k = k' -> Equal ([k <-- v] :: remove k' m) ([k <-- v] :: m).
-  Proof.
-    intros.
-    rewrite Equal_mapsto_iff.
-    intros *; map_iff; intuition (subst; tauto).
-  Qed.
-
-  Ltac msubst :=
-    subst;
-    repeat match goal with
-           | [ H: E.eq ?k ?k', H': E.eq ?k' ?k |- _ ] => clear H
-           | [ H: E.eq ?k ?k' |- MapsTo ?k _ _ ] => rewrite H
-           | [ H: E.eq ?k ?k', H': MapsTo ?k _ _ |- _ ] => rewrite H in H'
-           | [ H: E.eq ?k ?k' |- In ?k _ ] => rewrite H
-           | [ H: E.eq ?k ?k', H': not (In ?k _) |- _ ] => rewrite H in H'
-           | [ H: E.eq ?k ?k', H': (In ?k _ -> False) |- _ ] => rewrite H in H'
-           | [ H: E.eq ?k ?k |- _ ] => clear H
-           end.
-
-  Ltac map_iff_in H :=
-    repeat match goal with
-           | _ => rewrite add_mapsto_iff in H
-           | _ => rewrite add_in_iff in H
-           | _ => rewrite remove_mapsto_iff in H
-           | _ => rewrite remove_in_iff in H
-           | _ => rewrite empty_mapsto_iff in H
-           | _ => rewrite empty_in_iff in H
-           | _ => rewrite map_mapsto_iff in H
-           | _ => rewrite map_in_iff in H
-           | _ => rewrite mapi_in_iff in H
-           end.
-
-  Lemma remove_notIn_Equal :
-    forall (elt : Type) (k : key) (m : t elt),
-      k ∉ m -> Equal (remove k m) m.
-  Proof.
-    intros.
-    rewrite Equal_mapsto_iff.
-    intros *; map_iff;
-      repeat match goal with
-             | _ => progress msubst
-             | _ => progress intuition
-             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
-             end.
-  Qed.
-
-  Lemma remove_redundant_cancel : (* FIXME duplicate of remove_notIn_Equal *)
-    forall elt k fmap,
-      k ∉ fmap ->
-      Equal (elt:=elt) (remove k fmap) fmap.
-  Proof.
-    intros ** k'; rewrite remove_o.
-    destruct (E.eq_dec k k').
-    rewrite <- e; symmetry; rewrite <- not_find_in_iff; assumption.
-    reflexivity.
-  Qed.
-
-  Lemma remove_add_cancel:
-    forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
-      k ∉ m ->
-      k = k' ->
-      Equal (remove k' ([k <-- v] :: m)) m.
-  Proof.
-    intros.
-    rewrite Equal_mapsto_iff.
-    intros *; map_iff.
-    destruct (E.eq_dec k' k0); msubst;
-    intuition subst;
-      repeat match goal with
-             | _ => progress msubst
-             | _ => progress intuition
-             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
-             end.
-  Qed.
-
-  Lemma add_redundant_cancel:
-    forall (elt : Type) (k : key) (v : elt) (m : t elt),
-      MapsTo k v m -> Equal m ([k <-- v] :: m).
-  Proof.
-    intros.
-    rewrite Equal_mapsto_iff.
-    intros *; map_iff.
-
-    match goal with
-    | [ k: key, k': key |- _ ] => destruct (E.eq_dec k k')
-    end;
-    repeat match goal with
-           | _ => congruence
-           | _ => progress msubst
-           | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
-           | _ => intuition
-           end.
-  Qed.
-
-  Lemma remove_remove_redundant :
-    forall elt k fmap,
-      Equal (@remove elt k (remove k fmap)) (remove k fmap).
-  Proof.
-    intros; apply remove_redundant_cancel.
-    eauto using remove_1, E.eq_refl.
-  Qed.
-
-  Lemma MapsTo_remove :
-    forall {av} k k' v (m: t av),
-      MapsTo k v (remove k' m) -> MapsTo k v m.
-  Proof.
-    intros * H; map_iff_in H.
-    intuition eauto using MapsTo_In.
-  Qed.
-
-  Lemma In_remove :
-    forall {av} k k' (m: t av),
-      k ∈ (remove k' m) -> k ∈ m.
-  Proof.
-    intros * H; apply In_MapsTo in H; destruct H; eauto using MapsTo_remove, MapsTo_In.
-  Qed.
-
-  Lemma In_add :
-    forall {av} k k' v (m: t av),
-      k = k' ->
-      k ∈ (add k' v m).
-  Proof.
-    intros; subst; map_iff; eauto.
-  Qed.
-
-  Lemma In_remove_neq: forall {av} k k' m,
-      k ∈ (@remove av k' m) ->
-      k <> k'.
-  Proof.
-    intros * H; apply In_MapsTo in H; destruct H; map_iff_in H.
-    intuition. rewrite H0 in *; intuition.
-  Qed.
-
-  Lemma MapsTo_add_eq_inv :
-    forall T {k v v' m},
-      @MapsTo T k v' (add k v m) ->
-      v = v'.
-  Proof.
-    intros *.
-    map_iff; intros.
-    intuition.
-  Qed.
-
-  Lemma MapsTo_NotIn_inv :
-    forall T {k k' v m},
-      not (In k m) ->
-      @MapsTo T k' v m ->
-      k <> k'.
-  Proof.
-    intros * ? maps_to;
-    destruct (E.eq_dec k k'); subst;
-    apply MapsTo_In in maps_to;
-    msubst; congruence.
-  Qed.
-
-  Lemma In_remove_inv:
-    forall {av : Type} {k k' : key} {m : t av},
-      k ∉ m -> k ∉ (@remove av k' m).
-  Proof.
-    intros; red; intros h; apply In_remove in h; congruence.
-  Qed.
-
-  Lemma NotIn_add :
-    forall {elt k k'} {v: elt} {m},
-      k ∉ (add k' v m) -> k ∉ m.
-  Proof.
-    intros.
-    rewrite add_in_iff in H.
-    tauto.
-  Qed.
-
-  Lemma MapsTo_add_remove :
-    forall {elt k} {v: elt} {m},
-      MapsTo k v m ->
-      Equal m (add k v (remove k m)).
-  Proof.
-    intros; rewrite Equal_mapsto_iff;
-    intros k' v'; destruct (E.eq_dec k k'); msubst; map_iff; split; intros;
-    try assert (v = v') by eauto using MapsTo_fun; subst;
-    map_iff; intuition; subst; eauto.
-  Qed.
-
-  Lemma remove_trickle :
-    forall {elt : Type} (k k' : M.key) (v' : elt) (m : M.t elt),
-      k = k' ->
-      Equal (remove k ([k' <-- v']::m)) (remove k m).
-  Proof.
-    intros.
-    rewrite Equal_mapsto_iff; intros; map_iff.
-    intuition (subst; congruence).
-  Qed.
-
-  Ltac rewrite_in equality target :=
-  (*! TODO is this still needed? !*)
-  let h := fresh in
-  pose proof target as h;
-    setoid_rewrite equality in h;
-    clear dependent target;
-    rename h into target.
-
-  Ltac normalize :=
-    match goal with
-    | [  |- context[find ?k (add ?k ?v ?m)] ] => rewrite (@add_eq_o _ m k k v eq_refl) by reflexivity
-    | [ H: context[find ?k (add ?k ?v ?m)] |- _ ] => rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
-    | [ H: ?k <> ?k'    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
-    | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
-    | [ H: ?k' <> ?k    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
-    | [ H: ?k' <> ?k, H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
-    | [ H: ?k <> ?k' |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
-    | [ H: ?k' <> ?k |- context[StringMap.find ?k (StringMap.remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
-
-    | [ |-  context[remove ?k (add ?k ?v ?m)] ]     => rewrite (@remove_trickle _ k k v m eq_refl) by congruence
-    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
-    | [ H: ?k' <> ?k    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
-    | [ H: ?k <> ?k'    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
-    | [ H': ?k ∉ ?m   |- context[remove ?k ?m] ]     => rewrite (remove_notIn_Equal H') by congruence
-    | [ H': ?k ∉ ?m, H: context[remove ?k ?m] |- _ ] => rewrite (remove_notIn_Equal H') in H by congruence
-
-    | [ H: Equal ?st ?st |- _ ] => clear dependent H
-    | [ H: Equal ?st ?st', H': context[?st] |- _ ] => rewrite_in H H'
-    | [ H: Equal ?st ?st' |- context[?st] ] => rewrite H
-    | [ H: find ?k ?m = Some ?v |- _ ] => apply find_2 in H
-    | [ H: MapsTo ?k ?v ?m |- context[find ?k ?m] ] => rewrite (find_1 H)
-    | [ H: MapsTo ?k ?v ?m, H': context[find ?k ?m] |- _ ] => rewrite_in (find_1 H) H'
-    | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H'); clear dependent H'
-    | [ H: MapsTo ?k ?v (add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
-    | [ H: MapsTo ?k ?v (add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (add_3 H' H)
-
-    (* | [ |- context[remove ?k (add ?k ?v ?m)] ] => rewrite (remove_trickle (k := k) (k' := k) v m eq_refl) *)
-    (* | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite_in (remove_trickle (k := k) (k' := k) v m eq_refl) H *)
-
-    | [ H: find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
-    | [ H: find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H
-
-    | [ H: ?k ∉ (add _ _ _) |- _ ] => learn (NotIn_add H)
-    | [ H: ?k ∉ ?m, H': MapsTo ?k _ ?m |- _ ] => learn (MapsTo_In H')
-    | [ H: ?k ∉ ?m, H': MapsTo ?k' _ ?m |- _ ] => learn (MapsTo_NotIn_inv H H')
-    | [ H: ?k ∉ ?st |- ?k ∉ (remove ?k' ?st) ] => eapply (In_remove_inv H); solve [eauto]
-
-    | [ H: MapsTo ?k ?v (remove ?k' _) |- _ ] => learn (remove_3 H)
-    | [ H: ?k ∉ (remove ?k' ?m), H': ?k' <> ?k |- _ ] => rewrite remove_neq_in_iff in H by congruence
-    | [ H: ?k ∉ (remove ?k' ?m), H': ?k <> ?k' |- _ ] => rewrite remove_neq_in_iff in H by congruence
-    end.
-
-  Ltac repeat_rec tac :=
-    (progress repeat tac); try (repeat_rec tac).
-
-  Tactic Notation "Repeat" tactic(tac) :=
-    repeat_rec tac.
-
-  Ltac decide_mapsto :=
-    map_iff; intuition congruence.
-
-  Ltac unfold_head_until term target :=
-    let hd := head_constant term in
-    match hd with
-    | target => constr:term
-    | _ => let reduced := (eval cbv beta iota delta [hd] in term) in
-          unfold_head_until reduced target
-    end.
-
-  Ltac decide_mapsto_maybe_instantiate :=
-    Repeat (idtac;
-             match goal with (* Recursive repeat for things that are only solvable after instantiating properly *)
-             | _ => eassumption
-             | _ => progress autounfold with MapUtils_unfold_db
-             | [  |- ?a <> ?b ] => discriminate
-             | [ H: ?a = ?b |- context[?a] ] => rewrite H
-             | [  |- find ?k ?m = Some ?v ] => apply find_1
-             | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_1; reflexivity
-             | [  |- MapsTo ?k ?v (add ?k' ?v' ?m) ] => apply add_2
-             | [  |- MapsTo ?k ?v ?m ] => let reduced := unfold_head_until m @add in
-                                        change m with reduced
-             end).
-
-  Lemma not_or : forall (A B: Prop), not A /\ not B -> not (A \/ B).
-  Proof.
-    tauto.
-  Qed.
-
-  Ltac decide_not_in :=
-    (* map_iff; intuition congruence. *)
-    repeat match goal with
-           | _                      => assumption
-           | _                      => progress autounfold with MapUtils_unfold_db
-           | [  |- _ /\ _ ]           => split
-           | [  |- _ <> _ ]           => abstract congruence
-           | [  |- not False ]           => intro; assumption
-           | [  |- not (_ \/ _) ]     => apply not_or
-           | [  |- _ ∉ (empty _) ]   => rewrite empty_in_iff
-           | [  |- _ ∉ (add _ _ _) ] => rewrite add_in_iff
-           end.
-
-  Ltac reduce_or_fallback term continuation fallback :=
-    match nat with
-    | _ => let term' := (eval red in term) in let res := continuation term' in constr:(res)
-    | _ => constr:(fallback)
-    end.
-
-  Ltac find_fast value fmap :=
-    match fmap with
-    | @empty _       => constr:(None)
-    | add ?k ?v _    => let eq := constr:(eq_refl v : v = value) in
-                       constr:(Some k)
-    | add ?k _ ?tail => let ret := find_fast value tail in constr:(ret)
-    | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) (@None string) in
-                       constr:(ret)
-    end.
-End WUtils_fun.
-
-Module StringMapUtils := WUtils_fun (StringMap.E) (StringMap).
+(* Lemma Bug: *)
+(*   forall k1 k2 (st: StringMap.t nat) (x : nat), *)
+(*     StringMap.MapsTo k1 x st -> *)
+(*     match StringMap.find k2 (StringMap.add k2 x (StringMap.add k1 x st)) with *)
+(*     | Some _ => True *)
+(*     | None => True *)
+(*     end. *)
+(* Proof. *)
+(*   intros ** H. *)
+(*   setoid_rewrite <- (StringMapUtils.add_redundant_cancel H). *)
+(*   (* Inifinite loop unless `urgh' is added as a hint *) *)
+(* Abort. *)
 
 Lemma Some_neq :
   forall A (x y: A),
@@ -666,8 +276,6 @@ Ltac t_SameValues_Morphism :=
          | [ H: exists v, _ |- exists v, _ ] => destruct H; eexists
          | _ => progress (intuition eauto)
          end.
-
-Require Import Setoid.
 
 Ltac rewriteP hyp := first [rewrite hyp | setoid_rewrite hyp].
 Ltac rewriteP_in hyp target := first [rewrite hyp in target | setoid_rewrite hyp in target].
@@ -1115,6 +723,20 @@ Proof.
   SameValues_Fiat_t.
 Qed.
 
+Lemma Cons_PushAnonymous:
+  forall {av : Type} val tail (ext : StringMap.t (Value av)) (state : StringMap.t (Value av)),
+    (exists v, val ↝ v) ->
+    state ≲ tail ∪ ext ->
+    state ≲ [[val as _]]::tail ∪ ext.
+Proof.
+  SameValues_Fiat_t.
+Qed.
+
+Create HintDb SameValues discriminated.
+
+Hint Resolve Cons_PopAnonymous : SameValues_db.
+Hint Resolve Cons_PushAnonymous : SameValues_db.
+
 Lemma SameValues_Nil:
   forall {A} state ext,
     state ≲ (@Nil A) ∪ ext ->
@@ -1129,8 +751,6 @@ Lemma SameValues_Nil_always:
 Proof.
   simpl; firstorder.
 Qed.
-
-Require Import Setoid Coq.Classes.Morphisms.
 
 Add Parametric Morphism {av} {env} {prog} : (@Safe av env prog)
     with signature (StringMap.Equal ==> iff)
@@ -1190,7 +810,7 @@ Proof.
   firstorder.
 Qed.
 
-Lemma not_in_adts_not_mapsto_adt :
+Lemma NotIn_not_mapsto_adt :
   forall {av} var (state: StringMap.t (Value av)),
     var ∉ state ->
     not_mapsto_adt var state = true.
@@ -1198,6 +818,19 @@ Proof.
   unfold not_mapsto_adt, is_mapsto_adt, is_some_p; intros.
   rewrite not_in_find; tauto.
 Qed.
+
+Hint Resolve NotIn_not_mapsto_adt : SameValues_db.
+
+Lemma MapsTo_SCA_not_mapsto_adt :
+  forall {av} k w fmap,
+    StringMap.MapsTo k (SCA av w) fmap ->
+    not_mapsto_adt k fmap = true.
+Proof.
+  intros; unfold not_mapsto_adt, is_mapsto_adt, is_some_p.
+  StringMapUtils.normalize; reflexivity.
+Qed.
+
+Hint Resolve MapsTo_SCA_not_mapsto_adt : SameValues_db.
 
 Lemma SameValues_Fiat_Bind_TelEq :
   forall {av} key compA compB tail ext,
@@ -1246,8 +879,6 @@ Add Parametric Morphism {av} : (@not_mapsto_adt av)
 Proof.
   intros * H; unfold not_mapsto_adt; rewrite H; reflexivity.
 Qed.
-
-Hint Resolve not_in_adts_not_mapsto_adt : SameValues_db.
 
 Lemma eval_AssignVar_MapsTo:
   forall (av : Type) (var : StringMap.key) (val : W) (state : State av),
@@ -1298,7 +929,7 @@ Ltac facade_cleanup :=
   | [ H: context[match Some _ with _ => _ end] |- _ ] => simpl in H
   | [ H: ?k <> ?k' |- context[not_mapsto_adt ?k (StringMap.add ?k' _ _)] ] => rewrite not_mapsto_adt_add by congruence
   | [ H: ?k' <> ?k |- context[not_mapsto_adt ?k (StringMap.add ?k' _ _)] ] => rewrite not_mapsto_adt_add by congruence
-  | [ H: ?k ∉ ?m |- context[not_mapsto_adt ?k ?m] ] => rewrite not_in_adts_not_mapsto_adt by assumption
+  | [ H: ?k ∉ ?m |- context[not_mapsto_adt ?k ?m] ] => rewrite NotIn_not_mapsto_adt by assumption
   end.
 
 Ltac unfold_and_subst :=       (* Work around https://coq.inria.fr/bugs/show_bug.cgi?id=3259 *)
@@ -1678,11 +1309,10 @@ Ltac SameValues_Facade_t_step :=
   | [ H: NotInTelescope ?k (Cons None _ _) |- _ ] => simpl in H
   | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail) |- _ ] => learn (NotInTelescope_not_eq_head _ H)
   | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail), H': ?v ↝ _ |- _ ] => learn (NotInTelescope_not_in_tail _ _ H' H)
-
-  (* FIXME are these still useful? *)
+  (* Learn MapsTo instances from WeakEqs *)
   | [ H: ?st ≲ Nil ∪ ?ext |- _ ] => learn (SameValues_Nil H)
   | [ H: WeakEq _ ?st |- not_mapsto_adt _ ?st = _ ] => rewrite <- H
-  | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2 (* Learn MapsTo instances *)
+  | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2
 
   (* Cleanup not_mapsto_adt *)
   | [ H: ?k <> ?s |- not_mapsto_adt ?k (StringMap.add ?s _ _) = true ] => apply not_mapsto_adt_neq_remove'; [ congruence | ]
@@ -1843,7 +1473,7 @@ Lemma WeakEq_pop_SCA:
     WeakEq ext ([k <-- SCA av v]::st).
 Proof.
   unfold WeakEq;
-  intuition eauto using SameSCAs_pop_SCA, SameADTs_pop_SCA, not_in_adts_not_mapsto_adt.
+  intuition eauto using SameSCAs_pop_SCA, SameADTs_pop_SCA, NotIn_not_mapsto_adt.
 Qed.
 
 Lemma SameADTs_pop_SCA':
@@ -1892,6 +1522,7 @@ Proof.
   intuition eauto using SameSCAs_pop_SCA', SameADTs_pop_SCA'.
 Qed.
 
+Hint Resolve WeakEq_pop_SCA' : call_helpers_db.
 
 Lemma SameSCAs_pop_SCA_left :
   forall {av} k v m1 m2,
@@ -1977,7 +1608,7 @@ Proof.
   rewrite remove_remove_comm by congruence; SameValues_Facade_t.
 Qed.
 
-Lemma SameValues_add_to_ext:
+Lemma SameValues_forget_Ext_helper:
   forall {av} (k : string) (cmp : Comp (Value av)) val
     (tmp : StringMap.key) (ext : StringMap.t (Value av))
     (final_state : State av),
@@ -1991,7 +1622,7 @@ Qed.
 
 Hint Resolve not_In_Telescope_not_in_Ext_not_mapsto_adt : SameValues_db.
 Hint Resolve SameValues_not_In_Telescope_not_in_Ext_remove : SameValues_db.
-Hint Resolve SameValues_add_to_ext : SameValues_db.
+Hint Resolve SameValues_forget_Ext_helper : SameValues_db.
 
 Lemma SameValues_add_SCA:
   forall av tel st k ext v,
@@ -2551,7 +2182,7 @@ Ltac learn_all_WeakEq_remove hyp lhs :=
 
 Lemma combine_inv :
   forall A B input output combined,
-    length input = length output ->
+    List.length input = List.length output ->
     @combine A B input output = combined ->
     input = fst (split combined) /\ output = snd (split combined).
 Proof.
@@ -2581,11 +2212,11 @@ Ltac facade_cleanup_call :=
   | [ H: WeakEq ?lhs _ |- _ ] => progress learn_all_WeakEq_remove H lhs
   | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
   | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
-  | [ H: combine ?a ?b = _, H': length ?a = length ?b |- _ ] => learn (combine_inv a b H' H)
+  | [ H: combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
   | [ |-  context[split (cons _ _)] ] => simpl
   | [ H: context[split (cons _ _)] |- _ ] => may_touch H; simpl in H
   (* | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a *)
-  | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; try subst; clear H
+  | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   (* | _ => progress simpl *)
@@ -2593,6 +2224,7 @@ Ltac facade_cleanup_call :=
   end.
 
 Ltac facade_eauto :=
+  eauto 3 with call_helpers_db SameValues_db;
   eauto with call_helpers_db SameValues_db.
 
 Hint Resolve WeakEq_Refl : call_helpers_db.
@@ -2620,7 +2252,7 @@ Lemma CompileCallFacadeImplementationWW:
         Call vret fpointer (varg :: nil)
       {{ [[ vret <-- SCA av (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
+  Time repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
          end; facade_eauto.
@@ -2643,7 +2275,7 @@ Lemma CompileCallFacadeImplementationWW_full:
         Seq p (Call vret fpointer (varg :: nil))
       {{ [[ vret <-- SCA av (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
+  Time repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
          end; facade_eauto.
@@ -2714,47 +2346,7 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
-Section GenSym.
-  Require Import NPeano String Coq.Arith.Lt Coq.Arith.Compare_dec.
-  Local Open Scope string.
-
-  Lemma digitLtBase m {n} : not (m + n < m).
-  Proof.
-    red; intros; eapply Le.le_Sn_n; eauto using Le.le_trans, Plus.le_plus_l.
-  Qed.
-
-  Definition DigitToString (n: {n | n < 10}) :=
-    match n with
-    | exist 0 _ => "0" | exist 1 _ => "1" | exist 2 _ => "2" | exist 3 _ => "3" | exist 4 _ => "4"
-    | exist 5 _ => "5" | exist 6 _ => "6" | exist 7 _ => "7" | exist 8 _ => "8" | exist 9 _ => "9"
-    | exist n pr => False_rect _ (digitLtBase 10 pr)
-    end.
-
-  Fixpoint NumberToString_rec (fuel: nat) (n: nat) :=
-    match fuel with
-    | O => ""
-    | S fuel =>
-      match (lt_dec n 10) with
-      | left pr  => DigitToString (exist _ n pr)
-      | right pr => NumberToString_rec fuel (n / 10) ++ NumberToString_rec fuel (n mod 10)
-      end
-    end.
-
-  Definition NumberToString (n: nat) :=
-    NumberToString_rec (S n) n.
-End GenSym.
-
-Ltac gensym_rec base start :=
-  let name := (eval compute in (base ++ NumberToString start)%string) in
-  lazymatch goal with
-  | |- context[name] => gensym_rec base (S start)
-  | H : context[name] |- _ => gensym_rec base (S start)
-  | H := context[name] |- _ => gensym_rec base (S start)
-  | _ => constr:(name)
-  end.
-
-Ltac gensym base :=
-  gensym_rec base 0.
+Require Import Fiat.CertifiedExtraction.Gensym.
 
 Tactic Notation "debug" constr(msg) :=
   idtac msg.
@@ -3048,9 +2640,6 @@ Ltac compile_step :=
   | _ => match_ProgOk compile_ProgOk
   end.
 
-
-Require Import Program List.
-
 Set Implicit Arguments.
 
 (* Weak version: should talk about injecting in and projecting out of the main type *)
@@ -3081,30 +2670,6 @@ Definition FacadeImplementationOfDestructor av (fAA: av) : AxiomaticSpec av.
       PostCond := fun args ret => exists x, args = (ADT x, None) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
     |}; spec_t.
 Defined.
-
-Hint Resolve WeakEq_pop_SCA' : call_helpers_db.
-
-
-(* FIXME: Why is this needed? *)
-Lemma urgh : (subrelation eq (flip impl)).
-Proof.
-  repeat red; intros; subst; assumption.
-Qed.
-
-Hint Resolve urgh : typeclass_instances.
-
-(* Lemma Bug: *)
-(*   forall k1 k2 (st: StringMap.t nat) (x : nat), *)
-(*     StringMap.MapsTo k1 x st -> *)
-(*     match StringMap.find k2 ([k2 <-- x]::[k1 <-- x]::st) with *)
-(*     | Some _ => True *)
-(*     | None => True *)
-(*     end. *)
-(* Proof. *)
-(*   intros ** H. *)
-(*   setoid_rewrite <- (add_redundant_cancel H). *)
-(*   (* Inifinite loop unless `urgh' is added as a hint *) *)
-(* Abort. *)
 
 Lemma SameValues_Mutation_helper:
   forall (av : Type) (vsrc vret : StringMap.key)
@@ -3719,12 +3284,35 @@ Ltac LiftPropertyToTelescope_t :=
   | [ H: LiftPropertyToTelescope ?ext _ ?tenv, H': ?st ≲ ?tenv ∪ ?ext |- _ ] => learn (H st H')
   end.
 
+Ltac TelEq_morphism_t :=
+  match goal with
+  | _ => cleanup
+  | [ H: forall _, _ -> _, H': _ |- _ ] => learn (H _ H')
+  | [ H: forall _, _ <-> _ |- _ ] => rewrite H
+  | [ H: forall _, _ <-> _, H': _ |- _ ] => setoid_rewrite H in H'
+  end.
+
+Add Parametric Morphism {A} ext : (@LiftPropertyToTelescope A ext)
+    with signature (pointwise_relation _ iff ==> TelEq ext ==> iff)
+      as Liftpropertytotelescope_TelEq_morphism.
+Proof.
+  unfold LiftPropertyToTelescope, pointwise_relation;
+  repeat match goal with
+         | _ => TelEq_morphism_t
+         | [ H': TelEq ?ext ?t1 _ |- context[_ ≲ ?t1 ∪ ?ext] ]        => setoid_rewrite H'
+         | [ H': TelEq ?ext ?t1 _,  H: context[_ ≲ ?t1 ∪ ?ext] |- _ ] => setoid_rewrite H' in H
+         end.
+Qed.
+
 Lemma CompileWhileFalse:
   forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
-    (tenv : Telescope (list W)) test body,
+    (tenv : Telescope (list W)) tenv' test body,
+    TelEq ext tenv tenv' ->
     (LiftPropertyToTelescope ext (fun st => is_false st test) tenv) ->
-    {{ tenv }} (DFacade.While test body) {{ tenv }} ∪ {{ ext }} // env.
+    {{ tenv }} (DFacade.While test body) {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
+  intros * H **.
+  rewrite <- H; clear H.
   repeat match goal with
          | [ H: forall st, st ≲ _ ∪ _ -> _, H': ?st ≲ _ ∪ _ |- _ ] => learn (H _ H')
          | [ H: is_true ?t ?st, H': is_false ?t ?st |- _ ] => exfalso; exact (is_true_is_false_contradiction H H')
@@ -3758,16 +3346,19 @@ Qed.
 Lemma CompileWhileFalse_Loop:
   forall (vtest : StringMap.key) 
     (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W))) 
-    (tenv : Telescope (list W)) body,
+    (tenv : Telescope (list W)) tenv' body,
+    TelEq ext tenv tenv' ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     {{ [[vtest <-- SCA (list W) (Word.natToWord 32 1) as _]]::tenv }}
       (DFacade.While (TestE IL.Eq vtest O) body)
-    {{ tenv }} ∪ {{ ext }} // env.
+    {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
-  intros.
+  intros * H **.
+  rewrite <- H.
   apply CompileDeallocSCA_discretely; eauto.
   apply CompileWhileFalse.
+  reflexivity.
   unfold LiftPropertyToTelescope;
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -3775,31 +3366,6 @@ Proof.
          | _ => progress unfold is_true, is_false, eval_bool, eval; simpl
          end.
 Qed.
-
-Lemma equiv_refl {A} :
-  Reflexive (@Monad.equiv A).
-Proof.
-  firstorder.
-Qed.
-
-Lemma equiv_sym {A} :
-  Symmetric (@Monad.equiv A).
-Proof.
-  firstorder.
-Qed.
-
-Lemma equiv_trans {A} :
-  Transitive (@Monad.equiv A).
-Proof.
-  firstorder.
-Qed.
-
-(* FIXME move to SetoidMorphisms.v *)
-Add Parametric Relation {A} : _ (@Monad.equiv A)
-    reflexivity proved by equiv_refl
-    symmetry proved by equiv_sym
-    transitivity proved by equiv_trans
-      as MonadEquivRel.
 
 (* setoid_rewrite (TelEq_swap (k := vhead) (k' := vlst)). *)
 (* lazymatch goal with *)
@@ -3915,6 +3481,229 @@ Proof.
   facade_eauto.
 Qed.
 
+Lemma DropName_Cons_Some_neq :
+  forall {av} k k' v (tail: Value av -> Telescope av),
+    k <> k' ->
+    (DropName k (Cons (Some k') v tail)) = (Cons (Some k') v (fun vv => DropName k (tail vv))).
+Proof.
+  intros; simpl.
+  destruct (string_dec _ _); (congruence || reflexivity).
+Qed.
+
+Lemma DropName_Cons_Some_eq :
+  forall {av} k k' v (tail: Value av -> Telescope av),
+    k = k' ->
+    (DropName k (Cons (Some k') v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+Proof.
+  intros; simpl.
+  destruct (string_dec _ _); (congruence || reflexivity).
+Qed.
+
+Lemma DropName_Cons_None :
+  forall {av} k v (tail: Value av -> Telescope av),
+    (DropName k (Cons None v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+Proof.
+  intros; simpl; reflexivity.
+Qed.
+
+Inductive TelStrongEq {A} : (Telescope A) -> (Telescope A) -> Prop :=
+| StrongEqNil : TelStrongEq Nil Nil
+| StrongEqCons : forall k v1 v2 t1 t2, Monad.equiv v1 v2 ->
+                                  (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
+                                  TelStrongEq (Cons k v1 t1) (Cons k v2 t2).
+
+Ltac TelStrongEq_t :=
+  match goal with
+  | [ H: Monad.equiv ?b _ |- ?b ↝ ?B ] => apply (proj2 (H B))
+  | [ H: Monad.equiv ?a _, H': ?a ↝ _ |- _ ] => learn (proj1 (H _) H')
+  | [ H: Monad.equiv _ ?a, H': ?a ↝ _ |- _ ] => learn (proj2 (H _) H')
+  | [ H: TelStrongEq _ _ |- _ ] => first [ inversion' H; fail | inversion' H; [idtac] ]
+  end.
+
+Ltac TelStrongEq_morphism_t :=
+  red; intro tel; induction tel;
+  repeat match goal with
+         | _ => constructor
+         | _ => progress intros
+         | _ => TelStrongEq_t
+         end.
+
+Lemma TelStrongEq_refl {A} :
+  Reflexive (@TelStrongEq A).
+Proof.
+  TelStrongEq_morphism_t; eauto with typeclass_instances.
+Qed.
+
+Lemma TelStrongEq_sym {A} :
+  Symmetric (@TelStrongEq A).
+Proof.
+  TelStrongEq_morphism_t; eauto.
+Qed.
+
+Lemma TelStrongEq_trans {A} :
+  Transitive (@TelStrongEq A).
+Proof.
+  TelStrongEq_morphism_t; eauto.
+Qed.
+
+Add Parametric Relation {A} : _ (@TelStrongEq A)
+    reflexivity proved by TelStrongEq_refl
+    symmetry proved by TelStrongEq_sym
+    transitivity proved by TelStrongEq_trans
+      as TelStrongEqRel.
+
+Lemma DropName_NotInTelescope :
+  forall {av} (tenv: Telescope av) k,
+    NotInTelescope k tenv ->
+    TelStrongEq (DropName k tenv) tenv.
+Proof.
+  induction tenv; intros; simpl.
+  - reflexivity.
+  - destruct key; simpl in *; cleanup;
+    [ destruct (string_dec _ _); subst; cleanup | ];
+    constructor; eauto with typeclass_instances.
+Qed.
+
+Add Parametric Morphism {A} : (@Cons A)
+    with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
+      as Cons_MonadEquiv_TelStrongEq_morphism.
+Proof.
+  unfold pointwise_relation; intros.
+  constructor; eauto.
+Qed.
+
+Lemma SameValues_TelStrongEq_1 :
+  forall {A} ext (tenv1 tenv2 : Telescope A) st,
+    TelStrongEq tenv1 tenv2 ->
+    (st ≲ tenv1 ∪ ext <->
+     st ≲ tenv2 ∪ ext).
+Proof.
+  induction tenv1; destruct tenv2;
+  repeat match goal with
+         | _ => cleanup
+         | _ => TelStrongEq_t
+         | [ H: Monad.equiv ?a _, H': context[?a] |- _ ] => rewrite H in H'
+         | _ => SameValues_Fiat_t
+         end.
+  rewrite <- H; eauto.
+  rewrite <- H; eauto.
+  rewrite -> H; eauto.
+  rewrite -> H; eauto.
+Qed.
+
+Ltac TelStrongEq_SameValue_Morphism_t :=
+  repeat match goal with
+         | _ => progress TelEq_morphism_t
+         | [ H': TelStrongEq ?t1 _ |- context[_ ≲ ?t1 ∪ ?ext] ]        => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H')
+         | [ H': TelStrongEq ?t1 _,  H: context[_ ≲ ?t1 ∪ ?ext] |- _ ] => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H') in H
+         end.
+
+Add Parametric Morphism {A} ext : (@ProgOk A ext)
+    with signature (eq ==> eq ==> (TelStrongEq) ==> (TelStrongEq) ==> iff)
+      as ProgOk_TelStrongEq_morphism.
+Proof.
+  unfold ProgOk; TelStrongEq_SameValue_Morphism_t.
+Qed.
+
+Add Parametric Morphism {A} ext : (@TelEq A ext)
+    with signature ((TelStrongEq) ==> (TelStrongEq) ==> iff)
+      as TelEq_TelStrongEq_morphism.
+Proof.
+  unfold TelEq; TelStrongEq_SameValue_Morphism_t.
+Qed.
+
+
+Add Parametric Morphism {A} : (@DropName A)
+    with signature (eq ==> TelStrongEq ==> TelStrongEq)
+      as DropName_TelStrongEq_morphism.
+Proof.
+  induction x; destruct y0;
+  repeat match goal with
+         | _ => cleanup
+         | _ => TelStrongEq_t
+         | _ => SameValues_Fiat_t
+         end.
+  constructor; eauto.
+Qed.
+
+Lemma TelEq_chomp_head :
+  forall {av} k v ext tenv tenv',
+    @PointWise_TelEq av ext v tenv tenv' ->
+    TelEq ext (Cons k v tenv) (Cons k v tenv').
+Proof.
+  intros * H; rewrite H; reflexivity.
+Qed.
+
+Lemma TelEq_chomp_None_right :
+  forall {av} v ext tenv tenv',
+    (exists vv, v ↝ vv) ->
+    @PointWise_TelEq av ext v (fun _ => tenv) tenv' ->
+    TelEq ext tenv (Cons None v tenv').
+Proof.
+  intros * ? H; rewrite <- H; red.
+  split; eauto with SameValues_db.
+Qed.
+
+Lemma TelEq_chomp_None_left :
+  forall {av} v ext tenv tenv',
+    (exists vv, v ↝ vv) ->
+    @PointWise_TelEq av ext v tenv (fun _ => tenv') ->
+    TelEq ext (Cons None v tenv) tenv'.
+Proof.
+  intros * ? H; rewrite H; red.
+  split; eauto with SameValues_db.
+Qed.
+
+Lemma TelStrongEq_Stronger :
+  forall {A} ext tenv tenv',
+    @TelStrongEq A tenv tenv' ->
+    TelEq ext tenv tenv'.
+Proof.
+  induction tenv; destruct tenv';
+  repeat match goal with
+         | _ => cleanup
+         | _ => TelStrongEq_t
+         | _ => SameValues_Fiat_t
+         end.
+  reflexivity.
+  rewrite <- H3.
+  apply TelEq_chomp_head; red; intros; eauto.
+Qed.
+
+Ltac is_dirty_telescope term :=
+  match term with
+  | appcontext[DropName] => idtac
+  | _ => fail 1
+  end.
+
+Ltac decide_TelEq_instantiate :=
+  repeat match goal with
+         | [  |- TelEq _ ?from _ ] =>
+           match from with
+           | _ => rewrite DropName_Cons_Some_eq by congruence
+           | _ => rewrite DropName_Cons_Some_neq by congruence
+           | Cons None _ _ => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
+           | Cons _    _ _ => apply TelEq_chomp_head; red; intros
+           | context[DropName ?k ?tenv] => first [is_dirty_telescope tenv; fail 1 | rewrite (@DropName_NotInTelescope _ tenv k) by eauto]
+           | _ => apply TelEq_refl
+           end
+         end; fail.
+
+Ltac clean_telescope tel ext :=
+  let clean := fresh in
+  let type := type of tel in
+  evar (clean: type);
+    setoid_replace tel with clean using relation (@TelEq _ ext);
+    unfold clean;
+    clear clean;
+    [ | decide_TelEq_instantiate ].
+
+Ltac clean_DropName_in_ProgOk :=
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       try (is_dirty_telescope pre; clean_telescope pre ext);
+                       try (is_dirty_telescope post; clean_telescope post ext)).
+
+
 Lemma CompileLoop :
   forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty,
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
@@ -3944,8 +3733,6 @@ Lemma CompileLoop :
       (Seq facadeInit (Fold vhead vtest vlst fpop fempty facadeBody))
     {{ [[vlst <-- ADT [] as _]] :: [[vret <-- SCA _ (fold_left (@Word.wplus 32) lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  Remove Hints trans_eq_bool.
-
   intros.
   eapply CompileSeq; eauto.
 
@@ -3957,15 +3744,27 @@ Proof.
   Hint Extern 2 (_ ∉ _) => decide_not_in : SameValues_db.
   Hint Extern 2 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
 
-  eapply CompileCallEmpty; eauto with SameValues_db.
+  eapply CompileCallEmpty'; facade_eauto.
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
+          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
+            [ | | eassumption ];
+            [ decide_not_in | decide_NotInTelescope ];
+            fail ].
+  
+  clean_DropName_in_ProgOk.
 
   clear dependent facadeInit.
   generalize dependent init.
   induction lst; simpl; intros.
 
-  (* FIXME SameValues_forget_Ext supersedes SameValues_add_to_ext *)
-
-  apply CompileWhileFalse_Loop; eauto with SameValues_db.
+  apply CompileWhileFalse_Loop; facade_eauto; reflexivity.
 
   eapply CompileWhileTrue.
 
@@ -3976,8 +3775,6 @@ Proof.
 
   eapply CompileSeq.
   eapply CompileCallPop'; eauto with SameValues_db.
-  (* instantiate (1 := lst). *)
-  (* instantiate (1 := a). *)
 
   red; intros;
   repeat (SameValues_Facade_t_step || facade_cleanup_call).
@@ -3986,280 +3783,37 @@ Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call).
 
   (* FIXME eauto *)
-  eapply not_In_Telescope_not_in_Ext_not_mapsto_adt.
-  3:exact H15.
-  decide_not_in.
-  decide_NotInTelescope.
-
+  
+  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
+          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
+            [ | | eassumption ];
+            [ decide_not_in | decide_NotInTelescope ];
+            fail ].
+  
   eapply CompileSeq.
 
-  
-  setoid_replace (DropName vlst (DropName vhead
-                                          ([[vtest <-- SCA (list W) (Word.natToWord 32 0) as _]]
-                                             ::[[vlst <-- ADT (a :: lst) as _]]::[[vret <-- SCA (list W) init as _]]::tenv)))
-  with ([[vtest <-- SCA (list W) (Word.natToWord 32 0) as _]]::[[vret <-- SCA (list W) init as _]]::tenv)
-         using relation (TelEq ext).
-  Focus 2.
-
-  Lemma DropName_Cons_Some_neq :
-    forall {av} k k' v (tail: Value av -> Telescope av),
-      k <> k' ->
-      (DropName k (Cons (Some k') v tail)) = (Cons (Some k') v (fun vv => DropName k (tail vv))).
-  Proof.
-    intros; simpl.
-    destruct (string_dec _ _); (congruence || reflexivity).
-  Qed.
-
-  Lemma DropName_Cons_Some_eq :
-    forall {av} k k' v (tail: Value av -> Telescope av),
-      k = k' ->
-      (DropName k (Cons (Some k') v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
-  Proof.
-    intros; simpl.
-    destruct (string_dec _ _); (congruence || reflexivity).
-  Qed.
-
-  Lemma DropName_Cons_None :
-    forall {av} k v (tail: Value av -> Telescope av),
-      (DropName k (Cons None v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
-  Proof.
-    intros; simpl; reflexivity.
-  Qed.
-
-  Inductive TelStrongEq {A} : (Telescope A) -> (Telescope A) -> Prop :=
-  | StrongEqNil : TelStrongEq Nil Nil
-  | StrongEqCons : forall k v1 v2 t1 t2, Monad.equiv v1 v2 ->
-                                    (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
-                                    TelStrongEq (Cons k v1 t1) (Cons k v2 t2).
-
-  Ltac TelStrongEq_t :=
-    match goal with
-    | [ H: Monad.equiv ?b _ |- ?b ↝ ?B ] => apply (proj2 (H B))
-    | [ H: Monad.equiv ?a _, H': ?a ↝ _ |- _ ] => learn (proj1 (H _) H')
-    | [ H: Monad.equiv _ ?a, H': ?a ↝ _ |- _ ] => learn (proj2 (H _) H')
-    | [ H: TelStrongEq _ _ |- _ ] => first [ inversion' H; fail | inversion' H; [idtac] ]
-    end.
-
-  Ltac TelStrongEq_morphism_t :=
-    red; intro tel; induction tel;
-    repeat match goal with
-           | _ => constructor
-           | _ => progress intros
-           | _ => TelStrongEq_t
-           end.
-
-  Lemma TelStrongEq_refl {A} :
-    Reflexive (@TelStrongEq A).
-  Proof.
-    TelStrongEq_morphism_t; eauto with typeclass_instances.
-  Qed.
-
-  Lemma TelStrongEq_sym {A} :
-    Symmetric (@TelStrongEq A).
-  Proof.
-    TelStrongEq_morphism_t; eauto.
-  Qed.
-
-  Lemma TelStrongEq_trans {A} :
-    Transitive (@TelStrongEq A).
-  Proof.
-    TelStrongEq_morphism_t; eauto.
-  Qed.
-
-  (* FIXME move to SetoidMorphisms.v *)
-  Add Parametric Relation {A} : _ (@TelStrongEq A)
-      reflexivity proved by TelStrongEq_refl
-      symmetry proved by TelStrongEq_sym
-      transitivity proved by TelStrongEq_trans
-        as TelStrongEqRel.
-
-  Lemma DropName_NotInTelescope :
-    forall {av} (tenv: Telescope av) k,
-      NotInTelescope k tenv ->
-      TelStrongEq (DropName k tenv) tenv.
-  Proof.
-    induction tenv; intros; simpl.
-    - reflexivity.
-    - destruct key; simpl in *; cleanup;
-      [ destruct (string_dec _ _); subst; cleanup | ];
-      constructor; eauto with typeclass_instances.
-  Qed.
-
-  Add Parametric Morphism {A} : (@Cons A)
-      with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
-        as Cons_MonadEquiv_TelStrongEq_morphism.
-  Proof.
-    unfold pointwise_relation; intros.
-    constructor; eauto.
-  Qed.
-
-  Lemma SameValues_TelStrongEq_1 :
-    forall {A} ext (tenv1 tenv2 : Telescope A) st,
-      TelStrongEq tenv1 tenv2 ->
-      (st ≲ tenv1 ∪ ext <->
-       st ≲ tenv2 ∪ ext).
-  Proof.
-    induction tenv1; destruct tenv2;
-    repeat match goal with
-           | _ => cleanup
-           | _ => TelStrongEq_t
-           | [ H: Monad.equiv ?a _, H': context[?a] |- _ ] => rewrite H in H'
-           | _ => SameValues_Fiat_t
-           end.
-    rewrite <- H; eauto.
-    rewrite <- H; eauto.
-    rewrite -> H; eauto.
-    rewrite -> H; eauto.
-  Qed.
-
-  Ltac TelStrongEq_SameValue_Morphism_t :=
-    repeat match goal with
-           | _ => cleanup
-           | [ H: forall _, _ -> _, H': _ |- _ ] => learn (H _ H')
-           | [ H: forall _, _ <-> _ |- _ ] => rewrite H
-           | [ H: forall _, _ <-> _, H': _ |- _ ] => setoid_rewrite H in H'
-           | [ H': TelStrongEq ?t1 _ |- context[_ ≲ ?t1 ∪ ?ext] ]        => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H')
-           | [ H': TelStrongEq ?t1 _,  H: context[_ ≲ ?t1 ∪ ?ext] |- _ ] => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H') in H
-           end.
-  
-  Add Parametric Morphism {A} ext : (@ProgOk A ext)
-      with signature (eq ==> eq ==> (TelStrongEq) ==> (TelStrongEq) ==> iff)
-        as ProgOk_TelStrongEq_morphism.
-  Proof.
-    unfold ProgOk; TelStrongEq_SameValue_Morphism_t.
-  Qed.
-
-  Add Parametric Morphism {A} ext : (@TelEq A ext)
-      with signature ((TelStrongEq) ==> (TelStrongEq) ==> iff)
-        as TelEq_TelStrongEq_morphism.
-  Proof.
-    unfold TelEq; TelStrongEq_SameValue_Morphism_t.
-  Qed.
-
-  
-  Add Parametric Morphism {A} : (@DropName A)
-      with signature (eq ==> TelStrongEq ==> TelStrongEq)
-        as DropName_TelStrongEq_morphism.
-  Proof.
-    induction x; destruct y0;
-    repeat match goal with
-           | _ => cleanup
-           | _ => TelStrongEq_t
-           | _ => SameValues_Fiat_t
-           end.
-    constructor; eauto.
-  Qed.
-
-  Lemma TelEq_chomp_head :
-    forall {av} k v ext tenv tenv',
-      @PointWise_TelEq av ext v tenv tenv' ->
-      TelEq ext (Cons k v tenv) (Cons k v tenv').
-  Proof.
-    intros * H; rewrite H; reflexivity.
-  Qed.
-
-  (* FIXME move with Cons_PopAnonymous *)
-  Lemma Cons_PushAnonymous:
-    forall {av : Type} val tail (ext : StringMap.t (Value av)) (state : StringMap.t (Value av)),
-      (exists v, val ↝ v) ->
-      state ≲ tail ∪ ext ->
-      state ≲ [[val as _]]::tail ∪ ext.
-  Proof.
-    SameValues_Fiat_t.
-  Qed.
-
-  Hint Resolve Cons_PopAnonymous : SameValues_db.
-  Hint Resolve Cons_PushAnonymous : SameValues_db.
-
-  Lemma TelEq_chomp_None_right :
-    forall {av} v ext tenv tenv',
-      (exists vv, v ↝ vv) ->
-      @PointWise_TelEq av ext v (fun _ => tenv) tenv' ->
-      TelEq ext tenv (Cons None v tenv').
-  Proof.
-    intros * ? H; rewrite <- H; red.
-    split; eauto with SameValues_db.
-  Qed.
-
-  Lemma TelEq_chomp_None_left :
-    forall {av} v ext tenv tenv',
-      (exists vv, v ↝ vv) ->
-      @PointWise_TelEq av ext v tenv (fun _ => tenv') ->
-      TelEq ext (Cons None v tenv) tenv'.
-  Proof.
-    intros * ? H; rewrite H; red.
-    split; eauto with SameValues_db.
-  Qed.
-
-  Lemma TelStrongEq_Stronger :
-    forall {A} ext tenv tenv',
-      @TelStrongEq A tenv tenv' ->
-      TelEq ext tenv tenv'.
-  Proof.
-    induction tenv; destruct tenv';
-    repeat match goal with
-           | _ => cleanup
-           | _ => TelStrongEq_t
-           | _ => SameValues_Fiat_t
-           end.
-    reflexivity.
-    rewrite <- H3.
-    apply TelEq_chomp_head; red; intros; eauto.
-  Qed.
-
-  repeat ((rewrite DropName_Cons_Some_neq by congruence) || (rewrite DropName_Cons_Some_eq by congruence)).
-
-  apply TelEq_chomp_head; red; intros.
-  apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ].
-  apply TelEq_chomp_head; red; intros.
-
-  rewrite (@DropName_NotInTelescope _ tenv vhead); eauto.
-  rewrite (@DropName_NotInTelescope _ tenv vlst); eauto.
-  reflexivity.
-
+  clean_DropName_in_ProgOk.
   eauto.
 
-  apply CompileCallEmpty'; decide_NotInTelescope; decide_not_in; try congruence.
+  apply CompileCallEmpty'; facade_eauto.
 
   red; intros;
   repeat (SameValues_Facade_t_step || facade_cleanup_call).
 
   red; intros;
   repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
+          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
+            [ | | eassumption ];
+            [ decide_not_in | decide_NotInTelescope ];
+            fail ].
 
   (* FIXME eauto *)
-  wipe.
-  Lemma MapsTo_SCA_not_mapsto_adt :
-    forall {av} k w fmap,
-      StringMap.MapsTo k (SCA av w) fmap ->
-      not_mapsto_adt k fmap = true.
-  Proof.
-    intros; unfold not_mapsto_adt, is_mapsto_adt, is_some_p.
-    StringMap_t; reflexivity.
-  Qed.
 
-  Hint Resolve MapsTo_SCA_not_mapsto_adt : SameValues_db.
-  eauto 2 with SameValues_db.
+  clean_DropName_in_ProgOk.
 
-  setoid_replace (DropName vtest
-                           ([[vlst <-- ADT lst as _]]
-                              ::[[vtest <-- SCA (list W) (bool2w false) as _]]::[[vret <-- SCA (list W) (Word.wplus init a) as _]]::tenv))
-  with ([[vlst <-- ADT lst as _]]
-          ::[[vret <-- SCA (list W) (Word.wplus init a) as _]]::tenv)
-         using relation (TelEq ext).
-
-  Focus 2.
-
-  repeat ((rewrite DropName_Cons_Some_neq by congruence) || (rewrite DropName_Cons_Some_eq by congruence)).
-
-  apply TelEq_chomp_head; red; intros.
-  apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ].
-  apply TelEq_chomp_head; red; intros.
-
-  rewrite (@DropName_NotInTelescope _ tenv vtest); eauto.
-  reflexivity.
-
-  apply IHlst.
+  eauto.
 Qed.
 
 Print Assumptions CompileLoop.
@@ -4273,9 +3827,6 @@ Proof.
 
 
   
-
-Require Import List.
-
 
 Example other_test_with_adt'' :
     sigT (fun prog => forall seq seq', {{ [["arg1" <-- ADT seq as _ ]] :: [["arg2" <--  ADT seq' as _]] :: Nil }}
