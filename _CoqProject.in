@@ -48,7 +48,10 @@ src/BinEncoders/take3/List2.v
 src/BinEncoders/take3/Prod.v
 src/BinEncoders/take3/Vector.v
 src/CertifiedExtraction/Compiler.v
+src/CertifiedExtraction/FMapUtils.v
 src/CertifiedExtraction/FacadeNotations.v
+src/CertifiedExtraction/Gensym.v
+src/CertifiedExtraction/Utils.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
