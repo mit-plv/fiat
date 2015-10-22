@@ -361,6 +361,17 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
              end.
   Qed.
 
+  Lemma remove_redundant_cancel : (* FIXME duplicate of remove_notIn_Equal *)
+    forall elt k fmap,
+      k ∉ fmap ->
+      Equal (elt:=elt) (remove k fmap) fmap.
+  Proof.
+    intros ** k'; rewrite remove_o.
+    destruct (E.eq_dec k k').
+    rewrite <- e; symmetry; rewrite <- not_find_in_iff; assumption.
+    reflexivity.
+  Qed.
+
   Lemma remove_add_cancel:
     forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
       k ∉ m ->
@@ -396,6 +407,14 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
            | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
            | _ => intuition
            end.
+  Qed.
+
+  Lemma remove_remove_redundant :
+    forall elt k fmap,
+      Equal (@remove elt k (remove k fmap)) (remove k fmap).
+  Proof.
+    intros; apply remove_redundant_cancel.
+    eauto using remove_1, E.eq_refl.
   Qed.
 
   Lemma MapsTo_remove :
@@ -1079,6 +1098,8 @@ Ltac SameValues_Fiat_t :=
            | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
            | [ H: forall a, TelEq _ (?x a) (?y a) |- _ ≲ (?x _) ∪ _ ] => red in H; rewrite H
            | [ H: forall a, TelEq _ (?x a) (?y a), H': _ ≲ (?x _) ∪ _ |- _ ] => red in H; rewrite H in H'
+           | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _ |- _ ≲ (?x _) ∪ _ ] => unfold TelEq in H; rewrite (H _ H'')
+           | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _, H': _ ≲ (?x _) ∪ _ |- _ ] => unfold TelEq in H; rewrite (H _ H'') in H'
            | [ H: Monad.equiv ?b ?a |- ?b ↝ ?A ] => red in H; rewrite H
            | [ H: Monad.equiv ?a ?b, H': ?a ↝ ?A |- _ ] => red in H; rewrite H in H'
 
@@ -1141,15 +1162,14 @@ Ltac isDeterministicStmtConstructor stmt :=
   | _ => fail 1 "This statement has multiple RunsTo and Safe constructors"
   end.
 
-Ltac isStmtConstructor stmt :=
+Ltac isSafelyInvertibleStmtConstructor stmt :=
   match stmt with
   | Skip => idtac
   | Seq _ _ => idtac
   | If _ _ _ => idtac
-  | While _ _ => idtac
   | Call _ _ _ => idtac
   | Assign _ _ => idtac
-  | _ => fail 1 "No constructor found"
+  | _ => fail 1 "Not a safely invertible constructor"
   end.
 
 Lemma SameSCAs_refl:
@@ -1289,8 +1309,8 @@ Ltac unfold_and_subst :=       (* Work around https://coq.inria.fr/bugs/show_bug
 Ltac facade_inversion :=
   (*! TODO Why does inversion_clear just delete RunsTo Skip a b? !*)
   progress match goal with
-  | [ H: Safe _ ?p _ |- _ ]     => isStmtConstructor p; inversion H; unfold_and_subst; clear H
-  | [ H: RunsTo _ ?p _ _ |- _ ] => isStmtConstructor p; inversion H; unfold_and_subst; clear H
+  | [ H: Safe _ ?p _ |- _ ]     => isSafelyInvertibleStmtConstructor p; inversion H; unfold_and_subst; clear H
+  | [ H: RunsTo _ ?p _ _ |- _ ] => isSafelyInvertibleStmtConstructor p; inversion H; unfold_and_subst; clear H
   | [ H: Some _ = Some _ |- _ ] => inversion H; unfold_and_subst; clear H
   | [ H: SCA _ _ = SCA _ _ |- _ ] => inversion H; unfold_and_subst; clear H
   end.
@@ -1568,79 +1588,6 @@ Proof.
   intros * H; unfold not_mapsto_adt; rewrite H; reflexivity.
 Qed.
 
-Ltac SameValues_Facade_t_step :=
-  match goal with
-  | _ => cleanup
-  | _ => facade_cleanup
-  | _ => facade_inversion
-  | _ => facade_construction
-
-  | [ |- @ProgOk _ _ _ _ _ _ ] => red
-
-  | _ => StringMap_t
-  | _ => progress subst
-
-  | [ H: TelEq _ ?x _ |- context[?st ≲ ?x ∪ _] ] => rewrite (H st)
-  | [ H: TelEq _ ?x _, H': context[?st ≲ ?x ∪ _] |- _ ] => rewrite_in (H st) H'
-
-  (* Specialize ProgOk *)
-  | [ H: ProgOk ?ext _ _ ?tel _, H': ?st ≲ ?tel ∪ ?ext |- _ ] => learn (H st H')
-  | [ H: forall st : State _, RunsTo ?env ?p ?ext st -> _, H': RunsTo ?env ?p ?ext ?st |- _ ] => learn (H st H')
-  (* Cleanup Cons *)
-  | [ H: ?st ≲ Cons (Some _) _ _ ∪ _ |- _ ] => learn (Cons_PushExt _ _ _ _ _ H)
-  | [ H: ?st ≲ Cons None _ _ ∪ _ |- _ ] => learn (Cons_PopAnonymous H)
-  | [ H: ?st ≲ (fun _ => _) _ ∪ _ |- _ ] => progress cbv beta in H
-  | [ H: ?st ≲ (Cons (Some ?k) ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_Some k st val ext tail H)
-  | [ H: ?st ≲ (Cons None ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_None H)
-  | [ H: StringMap.MapsTo ?k ?v ?ext, H': ?st ≲ ?tenv ∪ ?ext |- _ ] => learn (SameValues_MapsTo_Ext_State H' H)
-  (* Cleanup NotInTelescope *)
-  | [ H: NotInTelescope ?k (Cons None _ _) |- _ ] => simpl in H
-  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail) |- _ ] => learn (NotInTelescope_not_eq_head _ H)
-  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail), H': ?v ↝ _ |- _ ] => learn (NotInTelescope_not_in_tail _ _ H' H)
-
-  (* FIXME are these still useful? *)
-  | [ H: ?st ≲ Nil ∪ ?ext |- _ ] => learn (SameValues_Nil H)
-  | [ H: WeakEq _ ?st |- not_mapsto_adt _ ?st = _ ] => rewrite <- H
-  | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2 (* Learn MapsTo instances *)
-
-  | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
-  end.
-
-Ltac SameValues_Facade_t :=
-  repeat SameValues_Facade_t_step;
-  try solve [eauto 4 with SameValues_db].
-
-Add Parametric Morphism {A} ext : (@Cons A)
-    with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelEq ext) ==> (TelEq ext))
-      as Cons_MonadEquiv_morphism.
-Proof.
-  unfold pointwise_relation; intros; unfold TelEq;
-  SameValues_Fiat_t.
-Qed.
-
-Add Parametric Morphism {A} ext : (fun x y z t => @ProgOk A ext x y z t)
-    with signature (eq ==> eq ==> (TelEq ext) ==> (TelEq ext) ==> iff)
-      as ProgOk_TelEq_morphism.
-Proof.
-  unfold ProgOk; repeat match goal with
-                        | [ H: ?a -> _, H': ?a |- _ ] => learn (H H')
-                        | _ => SameValues_Facade_t_step
-                        end.
-Qed.
-
-Lemma SameADTs_find_iff {av} m1 m2 :
-  SameADTs m1 m2 <->
-  (forall k v, StringMap.find k m1 = Some (@ADT av v) <-> StringMap.find k m2 = Some (@ADT av v)).
-Proof.
-  unfold SameADTs; setoid_rewrite find_mapsto_iff; reflexivity.
-Qed.
-
-Lemma SameSCAs_find_iff {av} m1 m2 :
-  SameSCAs m1 m2 <->
-  (forall k v, StringMap.find k m1 = Some (@SCA av v) -> StringMap.find k m2 = Some (@SCA av v)).
-Proof.
-  unfold SameSCAs; setoid_rewrite find_mapsto_iff; reflexivity.
-Qed.
 
 Ltac not_mapsto_adt_t :=
   unfold not_mapsto_adt, is_mapsto_adt, is_some_p, is_adt;
@@ -1691,6 +1638,104 @@ Proof.
   | [ H: StringMap.MapsTo ?k (ADT ?v) ?m |- _ ] =>  learn (MapsTo_ADT_not_mapsto_adt_true H2)
   end.
   congruence.
+Qed.
+
+Lemma not_mapsto_adt_neq_remove' :
+  forall {av} (s : string) (k : StringMap.key) v (st : StringMap.t (Value av)),
+    k <> s ->
+    not_mapsto_adt k st = true ->
+    not_mapsto_adt k (StringMap.add s v st) = true.
+Proof.
+  not_mapsto_adt_t.
+Qed.
+
+Ltac SameValues_Facade_t_step :=
+  match goal with
+  | _ => cleanup
+  | _ => facade_cleanup
+  | _ => facade_inversion
+  | _ => facade_construction
+
+  | [ |- @ProgOk _ _ _ _ _ _ ] => red
+
+  | _ => StringMap_t
+  | _ => progress subst
+
+  | [ H: TelEq _ ?x _ |- context[?st ≲ ?x ∪ _] ] => rewrite (H st)
+  | [ H: TelEq _ ?x _, H': context[?st ≲ ?x ∪ _] |- _ ] => rewrite_in (H st) H'
+
+  (* Specialize ProgOk *)
+  | [ H: ProgOk ?ext _ _ ?tel _, H': ?st ≲ ?tel ∪ ?ext |- _ ] => learn (H st H')
+  | [ H: forall st : State _, RunsTo ?env ?p ?ext st -> _, H': RunsTo ?env ?p ?ext ?st |- _ ] => learn (H st H')
+  (* Cleanup Cons *)
+  | [ H: ?st ≲ Cons (Some _) _ _ ∪ _ |- _ ] => learn (Cons_PushExt _ _ _ _ _ H)
+  | [ H: ?st ≲ Cons None _ _ ∪ _ |- _ ] => learn (Cons_PopAnonymous H)
+  | [ H: ?st ≲ (fun _ => _) _ ∪ _ |- _ ] => progress cbv beta in H
+  | [ H: ?st ≲ (Cons (Some ?k) ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_Some k st val ext tail H)
+  | [ H: ?st ≲ (Cons None ?val ?tail) ∪ ?ext |- _ ] => learn (SameValues_Cons_unfold_None H)
+  | [ H: StringMap.MapsTo ?k ?v ?ext, H': ?st ≲ ?tenv ∪ ?ext |- _ ] => learn (SameValues_MapsTo_Ext_State H' H)
+  (* Cleanup NotInTelescope *)
+  | [ H: NotInTelescope ?k (Cons None _ _) |- _ ] => simpl in H
+  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail) |- _ ] => learn (NotInTelescope_not_eq_head _ H)
+  | [ H: NotInTelescope ?k (Cons (Some ?k') ?v ?tail), H': ?v ↝ _ |- _ ] => learn (NotInTelescope_not_in_tail _ _ H' H)
+
+  (* FIXME are these still useful? *)
+  | [ H: ?st ≲ Nil ∪ ?ext |- _ ] => learn (SameValues_Nil H)
+  | [ H: WeakEq _ ?st |- not_mapsto_adt _ ?st = _ ] => rewrite <- H
+  | [ H: WeakEq ?st1 ?st2 |- _ ] => learn_from_WeakEq H st1 st2 (* Learn MapsTo instances *)
+
+  (* Cleanup not_mapsto_adt *)
+  | [ H: ?k <> ?s |- not_mapsto_adt ?k (StringMap.add ?s _ _) = true ] => apply not_mapsto_adt_neq_remove'; [ congruence | ]
+  | [ H: ?s <> ?k |- not_mapsto_adt ?k (StringMap.add ?s _ _) = true ] => apply not_mapsto_adt_neq_remove'; [ congruence | ]
+
+  | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
+  end.
+
+Ltac SameValues_Facade_t :=
+  repeat SameValues_Facade_t_step;
+  try solve [eauto 4 with SameValues_db].
+
+Add Parametric Morphism {A} ext : (@Cons A)
+    with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelEq ext) ==> (TelEq ext))
+      as Cons_MonadEquiv_morphism.
+Proof.
+  unfold pointwise_relation; intros; unfold TelEq;
+  SameValues_Fiat_t.
+Qed.
+
+Definition PointWise_TelEq {A} ext v t1 t2 :=
+  forall vv: Value A, v ↝ vv -> @TelEq A ext (t1 vv) (t2 vv).
+
+Add Parametric Morphism {A} ext k cmp : (@Cons A k cmp)
+    with signature ((PointWise_TelEq ext cmp) ==> (TelEq ext))
+      as Cons_TelEq_pointwise_morphism.
+Proof.
+  unfold PointWise_TelEq; intros; unfold TelEq;
+  SameValues_Fiat_t.
+Qed.
+
+Add Parametric Morphism {A} ext : (fun x y z t => @ProgOk A ext x y z t)
+    with signature (eq ==> eq ==> (TelEq ext) ==> (TelEq ext) ==> iff)
+      as ProgOk_TelEq_morphism.
+Proof.
+  unfold ProgOk; repeat match goal with
+                        | [ H: ?a -> _, H': ?a |- _ ] => learn (H H')
+                        | _ => SameValues_Facade_t_step
+                        end.
+Qed.
+
+Lemma SameADTs_find_iff {av} m1 m2 :
+  SameADTs m1 m2 <->
+  (forall k v, StringMap.find k m1 = Some (@ADT av v) <-> StringMap.find k m2 = Some (@ADT av v)).
+Proof.
+  unfold SameADTs; setoid_rewrite find_mapsto_iff; reflexivity.
+Qed.
+
+Lemma SameSCAs_find_iff {av} m1 m2 :
+  SameSCAs m1 m2 <->
+  (forall k v, StringMap.find k m1 = Some (@SCA av v) -> StringMap.find k m2 = Some (@SCA av v)).
+Proof.
+  unfold SameSCAs; setoid_rewrite find_mapsto_iff; reflexivity.
 Qed.
 
 Lemma ProgOk_Chomp_lemma :
@@ -2379,11 +2424,10 @@ Lemma CompileBinopOrTest_full:
 Proof.
   Time SameValues_Facade_t;
   destruct op;
-  SameValues_Facade_t.
+  repeat SameValues_Facade_t_step.
 
   Hint Extern 3 (_ ∉ _) => decide_not_in : SameValues_db.
 
-  SameValues_Facade_t.
   apply SameValues_Pop_Both; eauto 2.
   apply SameValues_not_In_Telescope_not_in_Ext_remove; eauto 2.
   eapply SameValues_forget_Ext.
@@ -2391,7 +2435,6 @@ Proof.
   eauto with SameValues_db.
   eauto with SameValues_db.
 
-  SameValues_Facade_t.
   apply SameValues_Pop_Both; eauto 2.
   apply SameValues_not_In_Telescope_not_in_Ext_remove; eauto 2.
   eapply SameValues_forget_Ext.
@@ -2438,6 +2481,13 @@ Proof.
   destruct gallinaTest; SameValues_Facade_t.
 Qed.
 
+Ltac facade_if_helper :=
+  match goal with
+  | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
+  | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
+  | _ => solve [eauto using isTrueExpr_is_false, isTrueExpr_is_true with SameValues_db]
+  end.
+
 Lemma CompileIf :
   forall {av} k (gallinaTest: bool) gallinaT gallinaF tmp facadeTest facadeT facadeF env (ext: StringMap.t (Value av)) tenv,
     tmp ∉ ext ->
@@ -2457,9 +2507,31 @@ Lemma CompileIf :
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
-         | [ H: is_true ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_true_isTrueExpr H H')
-         | [ H: is_false ?st (isTrueExpr ?k), H': StringMap.MapsTo ?k (bool2val ?test) ?st |- _ ] => learn (is_false_isTrueExpr H H')
-         | _ => solve [eauto using isTrueExpr_is_false, isTrueExpr_is_true with SameValues_db]
+         | _ => facade_if_helper
+         end.
+Qed.
+
+
+Lemma CompileIf_InPlace :
+  forall {av} k (gallinaTest: bool) oldK gallinaT gallinaF tmp facadeTest facadeT facadeF env (ext: StringMap.t (Value av)) tenv,
+    tmp ∉ ext ->
+    NotInTelescope tmp tenv ->
+    {{ [[`k <~~ oldK as kk]] :: tenv }}
+      facadeTest
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
+      facadeT
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
+      facadeF
+    {{ [[tmp <-- (bool2val gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`k <~~ oldK as _]] :: tenv }}
+      (Seq facadeTest (DFacade.If (isTrueExpr tmp) facadeT facadeF))
+    {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_if_helper
          end.
 Qed.
 
@@ -2517,8 +2589,11 @@ Ltac facade_cleanup_call :=
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   (* | _ => progress simpl *)
-  | _ => solve [eauto with call_helpers_db SameValues_db]
+  (* | _ => solve [eauto with call_helpers_db SameValues_db] *)
   end.
+
+Ltac facade_eauto :=
+  eauto with call_helpers_db SameValues_db.
 
 Hint Resolve WeakEq_Refl : call_helpers_db.
 (* Hint Resolve WeakEq_Trans : call_helpers_db. *)
@@ -2548,7 +2623,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Lemma CompileCallFacadeImplementationWW_full:
@@ -2571,7 +2646,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Lemma CompileDeallocSCA:
@@ -2765,6 +2840,7 @@ Ltac compile_binop av facade_op lhs rhs ext :=
 Ltac decide_NotInTelescope :=
   repeat match goal with
          | _ => cleanup
+         | _ => congruence
          | [  |- NotInTelescope _ Nil ] => reflexivity
          | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
          end.
@@ -2805,6 +2881,11 @@ Ltac compile_if t tp fp :=
   let test_var := gensym "test" in
   apply (CompileIf (tmp := test_var)).
 
+Ltac compile_if_in_place t tp fp :=
+  is_comp tp; is_comp fp;
+  let test_var := gensym "test" in
+  apply (CompileIf_InPlace (tmp := test_var)).
+
 Ltac find_function_in_env function env :=
   match goal with
   | [ H: GLabelMap.MapsTo ?k function env |- _ ] => constr:(k)
@@ -2825,6 +2906,12 @@ Ltac compile_external_call_SCA av env fWW arg ext :=
     apply (CompileCallFacadeImplementationWW_full (fpointer := fpointer) (varg := varg))
   end.
 
+Ltac match_ProgOk continuation :=
+  lazymatch goal with
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext env | fail]
+  | _ => fail "Goal does not look like a ProgOk statement"
+  end.
+
 Ltac compile_simple_internal env cmp ext :=
   match cmp with
   | ret (SCA ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
@@ -2836,18 +2923,27 @@ Ltac compile_simple_internal env cmp ext :=
   | (if ?t then ?tp else ?fp) => compile_if t tp fp
   end.
 
-(* Hint Extern 1 => solve [decide_not_in] : compile_simple_db. *)
-(* Hint Extern 1 => solve [decide_mapsto_maybe_instantiate] : compile_simple_db. *)
-(* Hint Extern 1 ({{ Nil }} _ {{ [[ `?s <~~ ?cmp as _ ]] :: Nil }} ∪ {{ ext }} // _) => compile_simple_defaults cmp ext : compile_simple_db. *)
-
 Ltac compile_simple name cmp :=
   debug "Compiling simple pattern";
-  (* Rewrite using user-provided lemmas *)
-  autorewrite with compile_simple_db;
-  (* Recapture cmp after rewriting *)
-  lazymatch goal with
-  | [  |- {{ ?tenv }} ?prog {{ Cons ?s ?cmp (fun _ => ?tenv) }} ∪ {{ ?ext }} // ?env ] => compile_simple_internal env cmp ext
+  autorewrite with compile_simple_db;  (* Rewrite using user-provided lemmas *)
+  match_ProgOk ltac:(fun prog pre post ext env => (* Recapture cmp after rewriting *)
+                       match constr:(pre, post) with
+                       | (?tenv, Cons ?s ?cmp (fun _ => ?tenv)) => compile_simple_internal env cmp ext
+                       end).
+
+Ltac compile_simple_in_place_internal env cmp cmp' tenv ext :=
+  match cmp' with
+  | (if ?t then ?tp else ?fp) => compile_if_in_place t tp fp
+  | _ => fail "compile_simple_internal can't compile this:" cmp cmp' tenv ext
   end.
+
+Ltac compile_simple_in_place name cmp cmp' :=
+  debug "Compiling simple pattern";
+  autorewrite with compile_simple_db;  (* Rewrite using user-provided lemmas *)
+  match_ProgOk ltac:(fun prog pre post ext env => (* Recapture cmp after rewriting *)
+                       match constr:(pre, post) with
+                       | ([[`?k <~~ ?cmp as _]] :: ?tenv, [[`?k <~~ ?cmp' as _]] :: ?tenv) => compile_simple_in_place_internal env cmp cmp' tenv ext
+                       end).
 
 Ltac compile_skip :=
   debug "Compiling empty program";
@@ -2882,14 +2978,15 @@ Ltac compile_do_unwrap type wrapper key cmp tail val :=
 Ltac compile_ProgOk p pre post ext env :=
   is_evar p;
   lazymatch constr:(pre, post, ext) with
-  | (_,                     (@WrappedCons _ ?T ?wrapper ?k ?cmp ?tl) ?v, _) => first [compile_do_unwrap T wrapper k cmp tl v | fail ]
-  | (Cons ?k ?cmp _,        Cons ?k ?cmp _,                              _) => first [compile_do_chomp k | fail ]
-  | (Cons (Some ?k) ?cmp _, Cons None ?cmp _,                            _) => first [compile_dealloc k cmp | fail ]
-  | (_,                     Cons None ?cmp ?tl,                          _) => first [compile_do_alloc cmp tl | fail ]
-  | (_,                     Cons ?k (Bind ?compA ?compB) ?tl,            _) => first [compile_do_bind k compA compB tl | fail ]
-  | (?tenv,                 Cons (Some ?k) ?cmp (fun _ => ?tenv),           _) => first [compile_simple k cmp | fail ]
-  | (?tenv,                 Cons ?k ?cmp ?tl,                            _) => first [compile_do_cons | fail ] (* FIXME *)
-  | (?tenv,                 ?tenv,                                       _) => first [compile_skip | fail ]
+  | (_,                           (@WrappedCons _ ?T ?wrapper ?k ?cmp ?tl) ?v, _) => first [compile_do_unwrap T wrapper k cmp tl v | fail ]
+  | (Cons ?k ?cmp _,              Cons ?k ?cmp _,                              _) => first [compile_do_chomp k | fail ]
+  | (Cons (Some ?k) ?cmp _,       Cons None ?cmp _,                            _) => first [compile_dealloc k cmp | fail ]
+  | (_,                           Cons None ?cmp ?tl,                          _) => first [compile_do_alloc cmp tl | fail ]
+  | (_,                           Cons ?k (Bind ?compA ?compB) ?tl,            _) => first [compile_do_bind k compA compB tl | fail ]
+  | (?tenv,                       Cons (Some ?k) ?cmp (fun _ => ?tenv),           _) => first [compile_simple k cmp | fail ]
+  | ([[`?k <~~ ?cmp as _]] :: ?tenv, [[`?k <~~ ?cmp' as _]] :: ?tenv,                _) => first [compile_simple_in_place k cmp cmp' | fail ]
+  | (?tenv,                       Cons ?k ?cmp ?tl,                            _) => first [compile_do_cons | fail ] (* FIXME *)
+  | (?tenv,                       ?tenv,                                       _) => first [compile_skip | fail ]
   end.
 
 (* Ltac debug_match_ProgOk := *)
@@ -2898,12 +2995,6 @@ Ltac compile_ProgOk p pre post ext env :=
 (*     pose prog as debug_prog; pose post as debug_post; pose ext as debug_ext; pose env as debug_env; pose pre as debug_pre *)
 (*   | _ => fail "Goal does not look like a ProgOk statement" *)
 (*   end. *)
-
-Ltac match_ProgOk continuation :=
-  lazymatch goal with
-  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext env | fail]
-  | _ => fail "Goal does not look like a ProgOk statement"
-  end.
 
 Lemma push_if :
   forall {A B} (f: A -> B) (x y: A) (b: bool),
@@ -2957,193 +3048,10 @@ Ltac compile_step :=
   | _ => match_ProgOk compile_ProgOk
   end.
 
-Example simple :
-  forall env,
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-            {{ [[`"ret" <~~ (x <- ret (SCA unit (Word.natToWord 32 1));
-                             y <- ret (SCA unit (Word.natToWord 32 5));
-                             ret (SCA _ (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
-Proof.
-  intros; econstructor.
-  repeat compile_step.
-Defined.
-
-Definition EmptyEnv : Env unit := (GLabelMap.GLabelMap.empty (FuncSpec unit)).
-
-Opaque Word.natToWord.
-Eval simpl in (proj1_sig (simple EmptyEnv)).
-
-(* Definition ExtractSCA (cmp: Comp W) `(v: Value av) (H: WrapComp_W cmp ↝ v) : W. *)
-(* Proof. *)
-(*   destruct v. *)
-(*   - exact w. *)
-(*   - exfalso; exact H. *)
-(* Defined. *)
-
-(* Lemma ExtractSCA_correct (cmp: Comp W) `(v: Value av): *)
-(*   forall (H: WrapComp_W cmp ↝ v), *)
-(*     cmp ↝ ExtractSCA cmp v H. *)
-(* Proof. *)
-(*   intros; destruct v; [ | exfalso ]; exact H. *)
-(* Qed. *)
-
-Example simple_binop :
-  forall env,
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-            {{ [[`"ret" <~~ (x <- ret (Word.natToWord 32 1);
-                             y <- ret (Word.natToWord 32 5);
-                             ret (SCA _ (Word.wplus x y)))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
-Proof.
-  intros; econstructor;
-  repeat compile_step.
-Defined.
-
-Example harder_binop :
-  forall env,
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-            {{ [[`"ret" <~~ (x <- ret (Word.natToWord 32 1);
-                             y <- ret (Word.natToWord 32 5);
-                             z <- ret (Word.natToWord 32 8);
-                             t <- ret (Word.natToWord 32 12);
-                             ret (SCA _ (Word.wplus x (Word.wplus z (Word.wminus y t)))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
-Proof.
-  econstructor; repeat compile_step.
-Defined.
 
 Require Import Program List.
 
-Definition Random := { x: W | True }%comp.
-
-Definition FRandom {av} : AxiomaticSpec av.
-Proof.
-  refine {|
-      PreCond := fun args => args = nil;
-      PostCond := fun args ret => args = nil /\ exists w, ret = SCA av w
-    |}; spec_t.
-Defined.
-
-Lemma Random_caracterization {av}:
-  forall x : W, WrapComp_W Random ↝ SCA av x.
-Proof.
-  constructor.
-Qed.
-
-Hint Immediate Random_caracterization : call_helpers_db.
-(* Hint Resolve WeakEq_empty_remove : call_helpers_db. *)
-
 Set Implicit Arguments.
-
-Lemma CompileCallRandom:
-  forall {av} (env : GLabelMap.t (FuncSpec av)),
-  forall fpointer tenv,
-    GLabelMap.MapsTo fpointer (Axiomatic FRandom) env ->
-    forall var ext,
-      var ∉ ext ->
-      NotInTelescope var tenv ->
-      {{ tenv }}
-        Call var fpointer []
-      {{ [[ ` var <~~ WrapComp_W Random as _]] :: tenv }} ∪ {{ ext }} // env.
-Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         end.
-Qed.
-
-Ltac compile_random :=
-  match_ProgOk ltac:(fun prog pre post ext env =>
-                       match constr:(pre, post) with
-                       | (?tenv, Cons ?s (@WrapComp_W ?av Random) (fun _ => ?tenv)) =>
-                         let fpointer := find_function_in_env (Axiomatic (@FRandom av)) env in
-                         apply (CompileCallRandom (fpointer := fpointer))
-                       end).
-
-Example random_sample :
-  forall env,
-    GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) env ->
-    sigT (fun prog =>
-            {{ @Nil unit }}
-              prog
-            {{ [[`"ret" <~~ ( x <- Random;
-                              y <- Random;
-                              ret (SCA _ (Word.wminus (Word.wplus x x) (Word.wplus y y))))%comp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env).
-Proof.
-  econstructor; repeat (compile_step || compile_random).
-Defined.
-
-Definition Square x :=
-  @Word.wmult 32 x x.
-
-Definition MyEnv {av} :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
-       (GLabelMap.empty (FuncSpec av))).
-
-Lemma myenv_random :
-  forall {av}, GLabelMap.MapsTo ("std", "rand") (Axiomatic FRandom) (@MyEnv av).
-Proof.
-  intros; unfold MyEnv; GLabelMapUtils.decide_mapsto.
-Qed.
-
-Lemma myenv_square :
-  forall {av}, GLabelMap.MapsTo ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)) (@MyEnv av).
-Proof.
-  intros; unfold MyEnv; GLabelMapUtils.decide_mapsto.
-Qed.
-
-Example random_test :
-  Facade program implementing ( x <- Random;
-                                y <- Random;
-                                z <- Random;
-                                ret (SCA unit (if IL.weqb x y then
-                                                 (Word.wplus z z)
-                                               else
-                                                 if IL.wltb x y then
-                                                   z
-                                                 else
-                                                   (Square z)))) with MyEnv.
-Proof.
-  repeat (compile_step || compile_random).
-Defined.
-
-Require Import Fiat.CertifiedExtraction.FacadeNotations.
-Definition extract_facade := proj1_sig.
-
-Eval simpl in (extract_facade (simple_binop EmptyEnv)).
-Eval simpl in (extract_facade (harder_binop EmptyEnv)).
-Eval simpl in (extract_facade (random_sample myenv_random)).
-Eval simpl in (extract_facade random_test).
-
-Definition Cube (x: W) := (Word.wmult x (Word.wmult x x)).
-
-Definition MyEnvV {av} :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
-       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW av Cube)))
-          (GLabelMap.empty (FuncSpec av)))).
-
-Example random_test_with_cube :
-  Facade program implementing ( x <- Random;
-                                y <- Random;
-                                z <- Random;
-                                ret (SCA unit (if IL.weqb x y then
-                                                 (Word.wplus z z)
-                                               else
-                                                 if IL.wltb x y then
-                                                   z
-                                                 else
-                                                   (Cube z)))) with MyEnvV.
-Proof.
-  repeat (compile_step || compile_random).
-Defined.
-
-Eval simpl in (extract_facade random_test_with_cube).
 
 (* Weak version: should talk about injecting in and projecting out of the main type *)
 Definition FacadeImplementationOfMutation av (fAA: W -> av -> av) : AxiomaticSpec av.
@@ -3214,7 +3122,7 @@ Proof.
          | _ => rewrite <- remove_add_comm by congruence
          | [ H: StringMap.MapsTo ?k ?v ?st |- context[StringMap.add ?k ?v ?st] ] => rewrite <- (add_redundant_cancel H)
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Hint Resolve SameValues_Mutation_helper : call_helpers_db.
@@ -3235,7 +3143,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Lemma Cons_PushExt':
@@ -3287,20 +3195,19 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Ltac wipe :=
   repeat match goal with
          | [ H: ?a = ?a |- _ ] => clear dependent H
-         | [ H: forall _, _ |- _ ] => clear dependent H
+         | [ H: forall _: State _, _ |- _ ] => clear dependent H
          | [ H: ?h |- _ ] =>
            let hd := head_constant h in
            match hd with
            | @Learnt => clear dependent H
            | @Safe => clear dependent H
            | @ProgOk => clear dependent H
-           | @M.Equal => clear dependent H
            end
          end.
 
@@ -3355,7 +3262,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Lemma CompileCallFacadeImplementationOfConstructor:
@@ -3372,7 +3279,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         end.
+         end; facade_eauto.
 Qed.
 
 Lemma WeakEq_add_MapsTo :
@@ -3387,42 +3294,223 @@ Qed.
 Hint Resolve WeakEq_add_MapsTo : call_helpers_db.
 Hint Resolve WeakEq_add : call_helpers_db.
 
+Require Import Fiat.CertifiedExtraction.FacadeNotations.
+Hint Unfold DummyArgument : MapUtils_unfold_db.
+
+Definition extract_facade := proj1_sig.
+
+Opaque Word.natToWord.
+
+Definition EmptyEnv : Env unit := (GLabelMap.GLabelMap.empty (FuncSpec unit)).
+
+Example simple :
+  Facade program implementing ( x <- ret (SCA unit (Word.natToWord 32 1));
+                                y <- ret (SCA unit (Word.natToWord 32 5));
+                                ret (SCA _ (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5)))) with EmptyEnv.
+Proof.
+  repeat compile_step.
+Defined.
+
+Eval simpl in (extract_facade simple).
+
+(******************************************************************************)
+(*+ First example: sum two constants! *)
+
+Example simple_binop :
+  Facade program implementing ( x <- ret (Word.natToWord 32 1);
+                                y <- ret (Word.natToWord 32 5);
+                                ret (SCA _ (Word.wplus x y))) with EmptyEnv.
+Proof.
+  repeat compile_step.
+Defined.
+
+Eval simpl in (extract_facade simple_binop).
+
+(******************************************************************************)
+(*+ More constants! *)
+
+Example harder_binop :
+  Facade program implementing
+         ( x <- ret (Word.natToWord 32 1);
+           y <- ret (Word.natToWord 32 5);
+           z <- ret (Word.natToWord 32 8);
+           t <- ret (Word.natToWord 32 12);
+           ret (SCA _ (Word.wplus x (Word.wplus z (Word.wminus y t)))))
+with EmptyEnv.
+Proof.
+  repeat compile_step.
+Defined.
+
+Eval simpl in (extract_facade harder_binop).
+
+(******************************************************************************)
+(*+ We can extend the engine to call
+    external functions *)
+
+Definition Random := { x: W | True }%comp.
+
+Definition FRandom {av} : AxiomaticSpec av.
+Proof. refine {|
+      PreCond := fun args => args = nil;
+      PostCond := fun args ret => args = nil /\ exists w, ret = SCA av w
+    |}; spec_t. Defined.
+
+Lemma Random_characterization {av}:
+  forall x : W, WrapComp_W Random ↝ SCA av x.
+Proof. constructor. Qed.
+
+Hint Immediate Random_characterization : call_helpers_db.
+
+Lemma CompileCallRandom:
+  forall {av} (env : GLabelMap.t (FuncSpec av)),
+  forall fpointer tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic FRandom) env ->
+    forall var ext,
+      var ∉ ext ->
+      NotInTelescope var tenv ->
+      {{ tenv }}
+        Call var fpointer []
+      {{ [[ ` var <~~ WrapComp_W Random as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end; facade_eauto.
+Qed.
+
+Ltac compile_random :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?tenv, Cons ?s (@WrapComp_W ?av Random) (fun _ => ?tenv)) =>
+              let fpointer := find_function_in_env
+                               (Axiomatic (@FRandom av)) env in
+              apply (CompileCallRandom (fpointer := fpointer))
+            end).
+
+(*! We then tell compiler that the definition is available: *)
+
+Definition BasicEnv :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    (GLabelMap.empty (FuncSpec unit)).
+
+(*! And we can now compile programs using that function! *)
+
+Example random_sample :
+  Facade program implementing ( x <- Random;
+                                y <- Random;
+                                ret (SCA _ (Word.wminus (Word.wplus x x)
+                                                        (Word.wplus y y))))
+with BasicEnv.
+Proof.
+  repeat (compile_step || compile_random).
+Defined.
+
+Eval simpl in (extract_facade random_sample).
+
+(******************************************************************************)
+(*+ We also have support for conditionals,
+    and external scalar functions *)
+
+Definition Square x :=
+  @Word.wmult 32 x x.
+
+Definition EnvWithSquare {av} :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
+       (GLabelMap.empty (FuncSpec av))).
+
+Example random_test :
+  Facade program implementing ( x <- Random;
+                                y <- Random;
+                                z <- Random;
+                                ret (SCA unit (if IL.weqb x y then
+                                                 (Word.wplus z z)
+                                               else
+                                                 if IL.wltb x y then
+                                                   z
+                                                 else
+                                                   (Square z)))) with EnvWithSquare.
+Proof.
+  repeat (compile_step || compile_random).
+Defined.
+
+Eval simpl in (extract_facade random_test).
+
+(******************************************************************************)
+(*+ And we can easily add more functions *)
+
+Definition Cube (x: W) := (Word.wmult x (Word.wmult x x)).
+
+Definition EnvWithCubeAsWell {av} :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
+       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW av Cube)))
+          (GLabelMap.empty (FuncSpec av)))).
+
+Example random_test_with_cube :
+  Facade program implementing ( x <- Random;
+                                y <- Random;
+                                z <- Random;
+                                ret (SCA unit (if IL.weqb x y then
+                                                 (Word.wplus z z)
+                                               else
+                                                 if IL.wltb x y then
+                                                   z
+                                                 else
+                                                   (Cube z)))) with EnvWithCubeAsWell.
+Proof.
+  repeat (compile_step || compile_random).
+Defined.
+
+Eval simpl in (extract_facade random_test_with_cube).
+
+(******************************************************************************)
+(*+ To conclude, a bit of ADT stuff: *)
+
 Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("std", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
           (GLabelMap.empty _))).
 
-Hint Unfold DummyArgument : MapUtils_unfold_db.
-
 Ltac compile_mutation_alloc :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
                        | (?tenv, Cons ?s (ret (ADT (?f _ _))) (fun _ => ?tenv)) =>
-                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfMutation f)) env in
+                         let fpointer := find_function_in_env
+                                          (Axiomatic (FacadeImplementationOfMutation f)) env in
                          let arg := gensym "arg" in
                          let tmp := gensym "tmp" in
-                         apply (CompileCallFacadeImplementationOfMutation_Alloc (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
+                         apply (CompileCallFacadeImplementationOfMutation_Alloc
+                                  (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
                        end).
 
 Ltac compile_mutation_replace :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
                        | ([[?s <-- ADT ?adt as _]] :: ?tenv, [[?s <-- ADT (?f _ ?adt) as _]] :: ?tenv) =>
-                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfMutation f)) env in
+                         let fpointer := find_function_in_env
+                                          (Axiomatic (FacadeImplementationOfMutation f)) env in
                          let arg := gensym "arg" in
                          let tmp := gensym "tmp" in
-                         apply (CompileCallFacadeImplementationOfMutation_Replace (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
+                         apply (CompileCallFacadeImplementationOfMutation_Replace
+                                  (fpointer := fpointer) (varg := arg) (vtmp := (DummyArgument tmp)))
                        end).
 
 Ltac compile_constructor :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
                        | (?tenv, Cons ?s (ret (ADT ?adt)) (fun _ => ?tenv)) =>
-                         let fpointer := find_function_in_env (Axiomatic (FacadeImplementationOfConstructor adt)) env in
-                         apply (CompileCallFacadeImplementationOfConstructor tenv (fpointer := fpointer))
+                         let fpointer := find_function_in_env
+                                          (Axiomatic (FacadeImplementationOfConstructor adt)) env in
+                         apply (CompileCallFacadeImplementationOfConstructor
+                                  tenv (fpointer := fpointer))
                        end).
 
+(******************************************************************************)
+(*+ This example returns a list containing
+    a semi-random number > 0 *)
 
 Example random_test_with_adt :
   Facade program implementing ( x <- Random;
@@ -3434,44 +3522,791 @@ Proof.
   repeat (compile_step || compile_random || compile_constructor || compile_mutation_alloc).
 Defined.
 
-Eval simpl in (proj1_sig random_test_with_adt).
+Eval simpl in (extract_facade random_test_with_adt).
 
-(* Lemma CompileSeq : *)
-(*   forall {av} (tenv1 tenv1' tenv2: Telescope av) ext env p1 p2, *)
-(*     {{ tenv1 }} *)
-(*       p1 *)
-(*       {{ tenv1' }} ∪ {{ ext }} // env -> *)
-(*     {{ tenv1' }} *)
-(*       p2 *)
-(*       {{ tenv2 }} ∪ {{ ext }} // env -> *)
-(*     {{ tenv1 }} *)
-(*       (Seq p1 p2) *)
-(*       {{ tenv2 }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   SameValues_Facade_t. *)
-(* Qed. *)
+(******************************************************************************)
 
 Example test_with_adt :
-    sigT (fun prog => forall tail, {{ [[`"ret" <~~ ret (ADT tail) as _ ]] :: Nil }}
+    sigT (fun prog => forall tail, {{ [[`"ret"  <~~  ret (ADT tail) as _ ]] :: Nil }}
                              prog
-                           {{ [[`"ret" <~~ ( x <- Random;
-                                             ret (ADT (x :: tail))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+                           {{ [[`"ret"  <~~  ( x <- Random;
+                                             ret (ADT (x :: tail))) as _]] :: Nil }} ∪ {{ ∅ }}
+                           // MyEnvW).
 Proof.
   econstructor; intros.
-  repeat (compile_random || compile_mutation_replace || compile_step). (* FIXME: The tricky part here is the dependency on the order of these lemmas *)
+  repeat (compile_random || compile_mutation_replace || compile_step).
 Defined.
 
-Eval simpl in (proj1_sig test_with_adt).
+Eval simpl in (extract_facade test_with_adt).
+
+(******************************************************************************)
+(*+ Most exciting example yet:
+    - Sample two numbers,
+    - take the smallest one,
+    - push it into a list *)
 
 Example other_test_with_adt :
     sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret (ADT seq) as _ ]] :: Nil }}
                             prog
                           {{ [[`"ret" <~~ ( x <- Random;
                                           y <- Random;
-                                          ret (ADT ((if IL.wltb x y then x else y) :: seq))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+                                          ret (ADT ((if IL.wltb x y then x else y) :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
 Proof.
   econstructor; intros.
   repeat (compile_random || compile_mutation_replace || compile_step).
 Defined.
 
-Eval simpl in (proj1_sig other_test_with_adt).
+Eval simpl in (extract_facade other_test_with_adt).
+
+(******************************************************************************)
+Example other_test_with_adt' :
+    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret (ADT seq) as _ ]] :: Nil }}
+                            prog
+                          {{ [[`"ret" <~~ ( x <- Random;
+                                          y <- Random;
+                                          ret (ADT (if IL.wltb x y then x :: seq else y :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
+Proof.
+  econstructor; intros.
+  repeat (compile_random || compile_mutation_replace || compile_step).
+Defined.
+
+Eval simpl in (extract_facade other_test_with_adt').
+
+(* FIXME: The tricky part here is the dependency on the order of the lemmas *)
+
+Lemma CompileSeq :
+  forall {av} (tenv1 tenv1' tenv2: Telescope av) ext env p1 p2,
+    {{ tenv1 }}
+      p1
+    {{ tenv1' }} ∪ {{ ext }} // env ->
+    {{ tenv1' }}
+      p2
+    {{ tenv2 }} ∪ {{ ext }} // env ->
+    {{ tenv1 }}
+      (Seq p1 p2)
+    {{ tenv2 }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Definition List_pop : AxiomaticSpec (list W).
+  refine {|
+      PreCond := fun args =>
+                   exists h t,
+                     args = (ADT (cons h t)) :: nil;
+      PostCond := fun args ret =>
+                    exists h t,
+                      args = (ADT (cons h t), Some t) :: nil /\
+                      ret = SCA (list W) h
+    |}; spec_t.
+Defined.
+
+Definition List_empty : AxiomaticSpec (list W).
+  refine {|
+      PreCond := fun args =>
+                   exists l,
+                     args = (ADT l) :: nil;
+      PostCond := fun args ret =>
+                    exists l,
+                      args = (ADT l, Some l) :: nil /\
+                      exists w, ret = SCA _ w /\ w = bool2w (match l with
+                                                       | nil => true
+                                                       | _ => false
+                                                       end)
+    |}; spec_t.
+Defined.
+
+Lemma SameValues_PopExt':
+  forall (av : Type) (key : StringMap.key) (tail : Telescope av)
+    (v0 : Value av) (ext initial_state : StringMap.t (Value av)),
+    key ∉ ext ->
+    initial_state ≲ tail ∪ [key <-- v0]::ext ->
+    StringMap.remove key initial_state ≲ tail ∪ ext.
+Proof.
+  intros.
+  change tail with ((fun (_: Value av) => tail) v0).
+  eauto using SameValues_PopExt.
+Qed.
+
+Hint Resolve SameValues_PopExt' : SameValues_db.
+
+Lemma CompileCallEmpty:
+  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
+    (fempty : GLabelMap.key) (lst : list W),
+    vlst <> vtest ->
+    vtest ∉ ext ->
+    NotInTelescope vtest tenv ->
+    vlst ∉ ext ->
+    NotInTelescope vlst tenv ->
+    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    {{ [[vlst <-- ADT lst as _]]::tenv }}
+      Call vtest fempty [vlst]
+      {{ [[vtest <-- SCA (list W) (bool2w match lst with
+                                        | nil => true
+                                        | _ :: _ => false
+                                        end) as _]]::[[vlst <-- ADT lst as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call); facade_eauto.
+Qed.
+
+Lemma TelEq_swap :
+  forall {av} {ext} k k' v v' (tenv: Telescope av),
+    k <> k' ->
+    k ∉ ext ->
+    k' ∉ ext ->
+    TelEq ext ([[k <-- v as _]]::[[k' <-- v' as _]]::tenv) ([[k' <-- v' as _]]::[[k <-- v as _]]::tenv).
+Proof.
+  intros; unfold TelEq; intros; SameValues_Facade_t;
+  eapply Cons_PopExt; try decide_not_in;
+  eapply Cons_PopExt; try decide_not_in;
+  erewrite SameValues_Morphism;
+  try rewrite add_add_comm;
+  try reflexivity;
+  auto.
+Qed.
+
+Hint Unfold is_true is_false eval_bool eval eval_binop_m eval_binop IL.evalTest : facade_db.
+
+Lemma is_true_eq_MapsTo :
+  forall av st var val,
+    is_true st (TestE IL.Eq (Var var) (Const val)) ->
+    StringMap.MapsTo var (SCA av val) st.
+Proof.
+  intros.
+  Transparent Word.natToWord.
+  repeat autounfold with facade_db in *.
+
+  repeat match goal with
+         | _ => cleanup
+         | _ => StringMapUtils.normalize
+         | [ H: context[StringMap.find ?k ?v] |- _ ] => destruct (StringMap.find k v) eqn:eq0
+         | [ H: context[IL.weqb ?a ?b] |- _ ] => destruct (IL.weqb a b) eqn:eq1
+         | [ H: Value _ |- _ ] => destruct H
+         | [ H: _ = Some _ |- _ ] => compute in H
+         end.
+
+  replace val with w by admit; assumption. (* ask Perry *)
+  (* replace (IL.weqb val val) with true by admit; reflexivity. *)
+  Opaque Word.natToWord.
+Qed.
+
+Lemma is_true_is_false_contradiction :
+  forall av expr st,
+    @is_true av expr st ->
+    @is_false av expr st ->
+    False.
+Proof.
+  unfold is_true, is_false; intros; congruence.
+Qed.
+
+Lemma CompileDeallocSCA_discretely :
+  forall {av} tenv tenv' ext env k v prog,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    {{ [[k <-- SCA av v as _]] :: tenv }} prog {{ [[k <-- SCA av v as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[k <-- SCA av v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+(* FIXME CompileDeallocSCA_discretely is enough to get rid of most SKIPs when deallocating SCAs *)
+
+Definition LiftPropertyToTelescope {av} ext (property: _ -> Prop) : Telescope av -> Prop :=
+  fun tenv => forall st, st ≲ tenv ∪ ext -> property st.
+
+Ltac LiftPropertyToTelescope_t :=
+  match goal with
+  | [ H: LiftPropertyToTelescope ?ext _ ?tenv, H': ?st ≲ ?tenv ∪ ?ext |- _ ] => learn (H st H')
+  end.
+
+Lemma CompileWhileFalse:
+  forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
+    (tenv : Telescope (list W)) test body,
+    (LiftPropertyToTelescope ext (fun st => is_false st test) tenv) ->
+    {{ tenv }} (DFacade.While test body) {{ tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | [ H: forall st, st ≲ _ ∪ _ -> _, H': ?st ≲ _ ∪ _ |- _ ] => learn (H _ H')
+         | [ H: is_true ?t ?st, H': is_false ?t ?st |- _ ] => exfalso; exact (is_true_is_false_contradiction H H')
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => LiftPropertyToTelescope_t
+         | _ => apply SafeWhileFalse
+         | [ H: RunsTo _ (DFacade.While _ _) _ _ |- _ ] => inversion H; unfold_and_subst; clear H
+         end.
+Qed.
+
+Lemma CompileWhileTrue:
+  forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
+    (tenv : Telescope (list W)) tenv' tenv'' test body,
+    (LiftPropertyToTelescope ext (fun st => is_true st test) tenv) ->
+    {{ tenv }}  body                      {{ tenv' }}  ∪ {{ ext }} // env ->
+    {{ tenv' }} (DFacade.While test body) {{ tenv'' }} ∪ {{ ext }} // env ->
+    {{ tenv }}  (DFacade.While test body) {{ tenv'' }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | [ H: forall st, st ≲ _ ∪ _ -> _, H': ?st ≲ _ ∪ _ |- _ ] => learn (H _ H')
+         | [ H: is_true ?t ?st, H': is_false ?t ?st |- _ ] => exfalso; exact (is_true_is_false_contradiction H H')
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => LiftPropertyToTelescope_t
+         | _ => apply SafeWhileTrue
+         | [ H: RunsTo _ (DFacade.While _ _) _ _ |- _ ] => inversion H; unfold_and_subst; clear H
+         end.
+Qed.
+
+Lemma CompileWhileFalse_Loop:
+  forall (vtest : StringMap.key) 
+    (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W))) 
+    (tenv : Telescope (list W)) body,
+    vtest ∉ ext ->
+    NotInTelescope vtest tenv ->
+    {{ [[vtest <-- SCA (list W) (Word.natToWord 32 1) as _]]::tenv }}
+      (DFacade.While (TestE IL.Eq vtest O) body)
+    {{ tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  apply CompileDeallocSCA_discretely; eauto.
+  apply CompileWhileFalse.
+  unfold LiftPropertyToTelescope;
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         | _ => progress unfold is_true, is_false, eval_bool, eval; simpl
+         end.
+Qed.
+
+Lemma equiv_refl {A} :
+  Reflexive (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+Lemma equiv_sym {A} :
+  Symmetric (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+Lemma equiv_trans {A} :
+  Transitive (@Monad.equiv A).
+Proof.
+  firstorder.
+Qed.
+
+(* FIXME move to SetoidMorphisms.v *)
+Add Parametric Relation {A} : _ (@Monad.equiv A)
+    reflexivity proved by equiv_refl
+    symmetry proved by equiv_sym
+    transitivity proved by equiv_trans
+      as MonadEquivRel.
+
+(* setoid_rewrite (TelEq_swap (k := vhead) (k' := vlst)). *)
+(* lazymatch goal with *)
+(* | [ |- context[ [[?k <-- _ as _]] :: [[vlst <-- _ as _]] :: _ ] ] => setoid_rewrite (TelEq_swap (k := k) (k' := vlst)) *)
+(* end. *)
+
+Add Parametric Morphism {A} ext : (fun key comp tail => @Cons A key comp (fun _ => tail))
+    with signature (eq ==> Monad.equiv ==> TelEq ext ==> (TelEq ext))
+      as Cons_MonadEquiv_morphism_simple.
+Proof.
+  intros; apply Cons_MonadEquiv_morphism; try red; eauto.
+Qed.
+
+Fixpoint DropName {A} k (t: Telescope A) :=
+  match t with
+  | Nil => Nil
+  | Cons key val tail => Cons (match key with 
+                              | Some _key => if string_dec _key k then None else key
+                              | None => key
+                              end) val (fun v => (DropName k (tail v)))
+  end.
+
+Ltac inversion' H :=
+  inversion H; subst; clear H.
+
+(* Inductive AlwaysMapsTo {A} (k: StringMap.key) v : (Telescope A) -> Prop := *)
+(* | AlwaysMapsToTop : forall cmp tail, (forall vv, cmp ↝ vv -> vv = v) -> AlwaysMapsTo k v (Cons (Some k) cmp tail) *)
+(* | AlwaysMapsToRec : forall k' cmp tail, k' <> Some k -> (exists vv, cmp ↝ vv) -> (forall vv, cmp ↝ vv -> AlwaysMapsTo k v (tail vv)) -> AlwaysMapsTo k v (Cons k' cmp tail). *)
+
+(* Ltac AlwaysMapsTo_t := *)
+(*   match goal with *)
+(*   | [ H: AlwaysMapsTo _ _ Nil |- _ ] => inversion' H *)
+(*   | [ H: AlwaysMapsTo _ _ (Cons _ _ _) |- _ ] => inversion' H *)
+(*   | [ H: forall vv, ?v ↝ vv -> _, H': ?v ↝ _ |- _ ] => learn (H _ H') *)
+(*   end. *)
+
+(* Lemma SameValues_AlwaysMapsTo_MapsTo : *)
+(*   forall {av} (tenv: Telescope av) k v ext st, *)
+(*     AlwaysMapsTo k v tenv -> *)
+(*     st ≲ tenv ∪ ext -> *)
+(*     StringMap.MapsTo k v st. *)
+(* Proof. *)
+(*   Time induction tenv; *)
+(*   repeat match goal with *)
+(*          | _ => AlwaysMapsTo_t || SameValues_Facade_t_step (* FIXME why is this faster than two empty patterns? *) *)
+(*          | [ H: ?key <> Some _ |- _ ] => destruct key *)
+(*          end; eauto using MapsTo_remove. *)
+(* Qed. *)
+
+Lemma DropName_remove :
+  forall {av} (tenv: Telescope av) k ext st,
+    k ∉ ext ->
+    st ≲ tenv ∪ ext ->
+    StringMap.remove k st ≲ (DropName k tenv) ∪ ext.
+Proof.
+  induction tenv;
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | [ key: option string |- _ ] => destruct key
+         | [  |- context[string_dec ?x ?y] ] => destruct (string_dec x y)
+         | _ => progress simpl
+         | [  |- exists _, _ ] => eexists
+         end;
+  try solve [simpl; eauto using M.remove_2 with SameValues_db];
+  [ rewrite <- remove_remove_redundant | rewrite remove_remove_comm ];
+  eauto using M.remove_2.
+Qed.
+
+Hint Resolve DropName_remove : SameValues_db.
+
+Lemma CompileCallEmpty':
+  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
+    (fempty : GLabelMap.key) (lst : list W),
+    vlst <> vtest ->
+    vtest ∉ ext ->
+    LiftPropertyToTelescope ext (StringMap.MapsTo vlst (ADT lst)) tenv ->
+    LiftPropertyToTelescope ext (fun map => not_mapsto_adt vtest map = true) tenv ->
+    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    {{ tenv }}
+      Call vtest fempty [vlst]
+    {{ [[vtest <-- SCA (list W) (bool2w match lst with
+                                      | nil => true
+                                      | _ :: _ => false
+                                      end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ =>  SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t
+         end.
+  facade_eauto.
+  facade_eauto.
+  rewrite <- remove_add_comm by congruence.
+  apply DropName_remove.
+  eauto.
+  rewrite <- add_redundant_cancel; eauto.
+Qed.
+
+Lemma CompileCallPop':
+  forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
+    (fpop : GLabelMap.key) head (tail : list W),
+    vlst <> vhead ->
+    vhead ∉ ext ->
+    vlst ∉ ext ->
+    LiftPropertyToTelescope ext (StringMap.MapsTo vlst (ADT (head :: tail))) tenv ->
+    LiftPropertyToTelescope ext (fun map => not_mapsto_adt vhead map = true) tenv ->
+    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    {{ tenv }}
+      Call vhead fpop [vlst]
+    {{ [[vhead <-- SCA (list W) head as _]]::[[vlst <-- ADT tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ =>  SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t
+         end;
+  facade_eauto.
+Qed.
+
+Lemma CompileLoop :
+  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty,
+    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    vtest ∉ ext ->
+    NotInTelescope vtest tenv ->
+    vlst ∉ ext ->
+    NotInTelescope vlst tenv ->
+    vret ∉ ext ->
+    NotInTelescope vret tenv ->
+    vhead ∉ ext ->
+    NotInTelescope vhead tenv ->
+    vtest <> vret ->
+    vtest <> vlst ->
+    vtest <> vhead ->
+    vret <> vlst ->
+    vret <> vhead ->
+    vlst <> vhead ->
+    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+      facadeInit
+    {{ [[vret <-- SCA _ init as _]] :: [[vlst <-- ADT lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head acc s,
+        {{ [[vhead <-- SCA _ head as _]] :: [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ acc as _]] :: tenv }}
+          facadeBody
+        {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (@Word.wplus 32 acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+      (Seq facadeInit (Fold vhead vtest vlst fpop fempty facadeBody))
+    {{ [[vlst <-- ADT [] as _]] :: [[vret <-- SCA _ (fold_left (@Word.wplus 32) lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  Remove Hints trans_eq_bool.
+
+  intros.
+  eapply CompileSeq; eauto.
+
+  unfold Fold.
+  eapply CompileSeq; eauto.
+
+  rewrite TelEq_swap by congruence.
+
+  Hint Extern 2 (_ ∉ _) => decide_not_in : SameValues_db.
+  Hint Extern 2 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
+
+  eapply CompileCallEmpty; eauto with SameValues_db.
+
+  clear dependent facadeInit.
+  generalize dependent init.
+  induction lst; simpl; intros.
+
+  (* FIXME SameValues_forget_Ext supersedes SameValues_add_to_ext *)
+
+  apply CompileWhileFalse_Loop; eauto with SameValues_db.
+
+  eapply CompileWhileTrue.
+
+  (* LiftPropertyToTelescope *)
+  red; intros;
+  unfold is_true, is_false, eval_bool, eval; simpl;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  eapply CompileSeq.
+  eapply CompileCallPop'; eauto with SameValues_db.
+  (* instantiate (1 := lst). *)
+  (* instantiate (1 := a). *)
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  (* FIXME eauto *)
+  eapply not_In_Telescope_not_in_Ext_not_mapsto_adt.
+  3:exact H15.
+  decide_not_in.
+  decide_NotInTelescope.
+
+  eapply CompileSeq.
+
+  
+  setoid_replace (DropName vlst (DropName vhead
+                                          ([[vtest <-- SCA (list W) (Word.natToWord 32 0) as _]]
+                                             ::[[vlst <-- ADT (a :: lst) as _]]::[[vret <-- SCA (list W) init as _]]::tenv)))
+  with ([[vtest <-- SCA (list W) (Word.natToWord 32 0) as _]]::[[vret <-- SCA (list W) init as _]]::tenv)
+         using relation (TelEq ext).
+  Focus 2.
+
+  Lemma DropName_Cons_Some_neq :
+    forall {av} k k' v (tail: Value av -> Telescope av),
+      k <> k' ->
+      (DropName k (Cons (Some k') v tail)) = (Cons (Some k') v (fun vv => DropName k (tail vv))).
+  Proof.
+    intros; simpl.
+    destruct (string_dec _ _); (congruence || reflexivity).
+  Qed.
+
+  Lemma DropName_Cons_Some_eq :
+    forall {av} k k' v (tail: Value av -> Telescope av),
+      k = k' ->
+      (DropName k (Cons (Some k') v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+  Proof.
+    intros; simpl.
+    destruct (string_dec _ _); (congruence || reflexivity).
+  Qed.
+
+  Lemma DropName_Cons_None :
+    forall {av} k v (tail: Value av -> Telescope av),
+      (DropName k (Cons None v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+  Proof.
+    intros; simpl; reflexivity.
+  Qed.
+
+  Inductive TelStrongEq {A} : (Telescope A) -> (Telescope A) -> Prop :=
+  | StrongEqNil : TelStrongEq Nil Nil
+  | StrongEqCons : forall k v1 v2 t1 t2, Monad.equiv v1 v2 ->
+                                    (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
+                                    TelStrongEq (Cons k v1 t1) (Cons k v2 t2).
+
+  Ltac TelStrongEq_t :=
+    match goal with
+    | [ H: Monad.equiv ?b _ |- ?b ↝ ?B ] => apply (proj2 (H B))
+    | [ H: Monad.equiv ?a _, H': ?a ↝ _ |- _ ] => learn (proj1 (H _) H')
+    | [ H: Monad.equiv _ ?a, H': ?a ↝ _ |- _ ] => learn (proj2 (H _) H')
+    | [ H: TelStrongEq _ _ |- _ ] => first [ inversion' H; fail | inversion' H; [idtac] ]
+    end.
+
+  Ltac TelStrongEq_morphism_t :=
+    red; intro tel; induction tel;
+    repeat match goal with
+           | _ => constructor
+           | _ => progress intros
+           | _ => TelStrongEq_t
+           end.
+
+  Lemma TelStrongEq_refl {A} :
+    Reflexive (@TelStrongEq A).
+  Proof.
+    TelStrongEq_morphism_t; eauto with typeclass_instances.
+  Qed.
+
+  Lemma TelStrongEq_sym {A} :
+    Symmetric (@TelStrongEq A).
+  Proof.
+    TelStrongEq_morphism_t; eauto.
+  Qed.
+
+  Lemma TelStrongEq_trans {A} :
+    Transitive (@TelStrongEq A).
+  Proof.
+    TelStrongEq_morphism_t; eauto.
+  Qed.
+
+  (* FIXME move to SetoidMorphisms.v *)
+  Add Parametric Relation {A} : _ (@TelStrongEq A)
+      reflexivity proved by TelStrongEq_refl
+      symmetry proved by TelStrongEq_sym
+      transitivity proved by TelStrongEq_trans
+        as TelStrongEqRel.
+
+  Lemma DropName_NotInTelescope :
+    forall {av} (tenv: Telescope av) k,
+      NotInTelescope k tenv ->
+      TelStrongEq (DropName k tenv) tenv.
+  Proof.
+    induction tenv; intros; simpl.
+    - reflexivity.
+    - destruct key; simpl in *; cleanup;
+      [ destruct (string_dec _ _); subst; cleanup | ];
+      constructor; eauto with typeclass_instances.
+  Qed.
+
+  Add Parametric Morphism {A} : (@Cons A)
+      with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
+        as Cons_MonadEquiv_TelStrongEq_morphism.
+  Proof.
+    unfold pointwise_relation; intros.
+    constructor; eauto.
+  Qed.
+
+  Lemma SameValues_TelStrongEq_1 :
+    forall {A} ext (tenv1 tenv2 : Telescope A) st,
+      TelStrongEq tenv1 tenv2 ->
+      (st ≲ tenv1 ∪ ext <->
+       st ≲ tenv2 ∪ ext).
+  Proof.
+    induction tenv1; destruct tenv2;
+    repeat match goal with
+           | _ => cleanup
+           | _ => TelStrongEq_t
+           | [ H: Monad.equiv ?a _, H': context[?a] |- _ ] => rewrite H in H'
+           | _ => SameValues_Fiat_t
+           end.
+    rewrite <- H; eauto.
+    rewrite <- H; eauto.
+    rewrite -> H; eauto.
+    rewrite -> H; eauto.
+  Qed.
+
+  Ltac TelStrongEq_SameValue_Morphism_t :=
+    repeat match goal with
+           | _ => cleanup
+           | [ H: forall _, _ -> _, H': _ |- _ ] => learn (H _ H')
+           | [ H: forall _, _ <-> _ |- _ ] => rewrite H
+           | [ H: forall _, _ <-> _, H': _ |- _ ] => setoid_rewrite H in H'
+           | [ H': TelStrongEq ?t1 _ |- context[_ ≲ ?t1 ∪ ?ext] ]        => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H')
+           | [ H': TelStrongEq ?t1 _,  H: context[_ ≲ ?t1 ∪ ?ext] |- _ ] => setoid_rewrite (fun st => SameValues_TelStrongEq_1 ext st H') in H
+           end.
+  
+  Add Parametric Morphism {A} ext : (@ProgOk A ext)
+      with signature (eq ==> eq ==> (TelStrongEq) ==> (TelStrongEq) ==> iff)
+        as ProgOk_TelStrongEq_morphism.
+  Proof.
+    unfold ProgOk; TelStrongEq_SameValue_Morphism_t.
+  Qed.
+
+  Add Parametric Morphism {A} ext : (@TelEq A ext)
+      with signature ((TelStrongEq) ==> (TelStrongEq) ==> iff)
+        as TelEq_TelStrongEq_morphism.
+  Proof.
+    unfold TelEq; TelStrongEq_SameValue_Morphism_t.
+  Qed.
+
+  
+  Add Parametric Morphism {A} : (@DropName A)
+      with signature (eq ==> TelStrongEq ==> TelStrongEq)
+        as DropName_TelStrongEq_morphism.
+  Proof.
+    induction x; destruct y0;
+    repeat match goal with
+           | _ => cleanup
+           | _ => TelStrongEq_t
+           | _ => SameValues_Fiat_t
+           end.
+    constructor; eauto.
+  Qed.
+
+  Lemma TelEq_chomp_head :
+    forall {av} k v ext tenv tenv',
+      @PointWise_TelEq av ext v tenv tenv' ->
+      TelEq ext (Cons k v tenv) (Cons k v tenv').
+  Proof.
+    intros * H; rewrite H; reflexivity.
+  Qed.
+
+  (* FIXME move with Cons_PopAnonymous *)
+  Lemma Cons_PushAnonymous:
+    forall {av : Type} val tail (ext : StringMap.t (Value av)) (state : StringMap.t (Value av)),
+      (exists v, val ↝ v) ->
+      state ≲ tail ∪ ext ->
+      state ≲ [[val as _]]::tail ∪ ext.
+  Proof.
+    SameValues_Fiat_t.
+  Qed.
+
+  Hint Resolve Cons_PopAnonymous : SameValues_db.
+  Hint Resolve Cons_PushAnonymous : SameValues_db.
+
+  Lemma TelEq_chomp_None_right :
+    forall {av} v ext tenv tenv',
+      (exists vv, v ↝ vv) ->
+      @PointWise_TelEq av ext v (fun _ => tenv) tenv' ->
+      TelEq ext tenv (Cons None v tenv').
+  Proof.
+    intros * ? H; rewrite <- H; red.
+    split; eauto with SameValues_db.
+  Qed.
+
+  Lemma TelEq_chomp_None_left :
+    forall {av} v ext tenv tenv',
+      (exists vv, v ↝ vv) ->
+      @PointWise_TelEq av ext v tenv (fun _ => tenv') ->
+      TelEq ext (Cons None v tenv) tenv'.
+  Proof.
+    intros * ? H; rewrite H; red.
+    split; eauto with SameValues_db.
+  Qed.
+
+  Lemma TelStrongEq_Stronger :
+    forall {A} ext tenv tenv',
+      @TelStrongEq A tenv tenv' ->
+      TelEq ext tenv tenv'.
+  Proof.
+    induction tenv; destruct tenv';
+    repeat match goal with
+           | _ => cleanup
+           | _ => TelStrongEq_t
+           | _ => SameValues_Fiat_t
+           end.
+    reflexivity.
+    rewrite <- H3.
+    apply TelEq_chomp_head; red; intros; eauto.
+  Qed.
+
+  repeat ((rewrite DropName_Cons_Some_neq by congruence) || (rewrite DropName_Cons_Some_eq by congruence)).
+
+  apply TelEq_chomp_head; red; intros.
+  apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ].
+  apply TelEq_chomp_head; red; intros.
+
+  rewrite (@DropName_NotInTelescope _ tenv vhead); eauto.
+  rewrite (@DropName_NotInTelescope _ tenv vlst); eauto.
+  reflexivity.
+
+  eauto.
+
+  apply CompileCallEmpty'; decide_NotInTelescope; decide_not_in; try congruence.
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  red; intros;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  (* FIXME eauto *)
+  wipe.
+  Lemma MapsTo_SCA_not_mapsto_adt :
+    forall {av} k w fmap,
+      StringMap.MapsTo k (SCA av w) fmap ->
+      not_mapsto_adt k fmap = true.
+  Proof.
+    intros; unfold not_mapsto_adt, is_mapsto_adt, is_some_p.
+    StringMap_t; reflexivity.
+  Qed.
+
+  Hint Resolve MapsTo_SCA_not_mapsto_adt : SameValues_db.
+  eauto 2 with SameValues_db.
+
+  setoid_replace (DropName vtest
+                           ([[vlst <-- ADT lst as _]]
+                              ::[[vtest <-- SCA (list W) (bool2w false) as _]]::[[vret <-- SCA (list W) (Word.wplus init a) as _]]::tenv))
+  with ([[vlst <-- ADT lst as _]]
+          ::[[vret <-- SCA (list W) (Word.wplus init a) as _]]::tenv)
+         using relation (TelEq ext).
+
+  Focus 2.
+
+  repeat ((rewrite DropName_Cons_Some_neq by congruence) || (rewrite DropName_Cons_Some_eq by congruence)).
+
+  apply TelEq_chomp_head; red; intros.
+  apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ].
+  apply TelEq_chomp_head; red; intros.
+
+  rewrite (@DropName_NotInTelescope _ tenv vtest); eauto.
+  reflexivity.
+
+  apply IHlst.
+Qed.
+
+Print Assumptions CompileLoop.
+
+Example other_test_with_adt'' :
+    sigT (fun prog => forall seq, {{ [["arg1" <-- ADT seq as _ ]] :: Nil }}
+                            prog
+                          {{ [["ret" <-- SCA _ (fold_left (@Word.wplus 32) seq (Word.wordToNat 0)) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+Proof.
+  econstructor; intros.
+
+
+  
+
+Require Import List.
+
+
+Example other_test_with_adt'' :
+    sigT (fun prog => forall seq seq', {{ [["arg1" <-- ADT seq as _ ]] :: [["arg2" <--  ADT seq' as _]] :: Nil }}
+                                 prog
+                               {{ [["arg1" <-- ADT (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+Proof.
+  econstructor; intros.
+
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_random.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_random.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  
+
+  compile_step.
+  Fail fail.
+Abort.
+
