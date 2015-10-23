@@ -2,6 +2,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
+Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Common.Equality.
 

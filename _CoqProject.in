@@ -247,6 +247,7 @@ src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
+src/Parsers/Grammars/Tests.v
 src/Parsers/Grammars/Trivial.v
 src/Parsers/Reachable/All/MinimalReachable.v
 src/Parsers/Reachable/All/MinimalReachableOfReachable.v

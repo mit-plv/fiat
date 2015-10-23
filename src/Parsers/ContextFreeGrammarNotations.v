@@ -1,7 +1,10 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Common.Equality.
+
+Export Coq.Strings.Ascii.
+Export Coq.Strings.String.
+Export Fiat.Parsers.ContextFreeGrammar.
 
 Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with
@@ -57,3 +60,6 @@ Notation "<< x | .. | y >>" :=
 
 Notation "$< x $ .. $ y >$" := (item_ascii_cons x .. (item_ascii_cons y nil) .. ) : production_scope.
 Notation "# c" := (c%char) (at level 0, only parsing) : production_scope.
+
+Global Open Scope grammar_scope.
+Global Open Scope string_scope.

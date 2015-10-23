@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ContextFreeGrammarNotations.
 Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
 Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 

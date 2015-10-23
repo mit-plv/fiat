@@ -1,5 +1,5 @@
 (** * Properties about Context Free Grammars *)
-Require Import Fiat.Parsers.StringLike Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Parsers.ContextFreeGrammar.
 
 Local Coercion is_true : bool >-> Sortclass.
 
