@@ -10,6 +10,7 @@ Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFounde
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammarValid Fiat.Parsers.ContextFreeGrammarValidProperties.
 Require Import Coq.Logic.Eqdep_dec.
 

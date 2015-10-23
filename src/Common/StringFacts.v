@@ -1,6 +1,8 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Fiat.Common.List.Operations.
+Require Import Fiat.Common.StringOperations.
 
 Global Set Implicit Arguments.
 
@@ -168,4 +170,51 @@ Proof.
   setoid_rewrite Nat.sub_0_r in H'.
   setoid_rewrite Min.min_comm in H'.
   rewrite <- !H', H; reflexivity.
+Qed.
+
+Lemma get_string_of_list str n
+: String.get n (string_of_list str) = List.nth_error str n.
+Proof.
+  revert n; induction str as [|ch str IHstr]; intros;
+  destruct n as [|n]; simpl in *; auto.
+Qed.
+
+Lemma length_list_of_string str
+: List.length (list_of_string str) = String.length str.
+Proof.
+  induction str; simpl; rewrite ?IHstr; reflexivity.
+Qed.
+
+Lemma length_string_of_list ls
+: String.length (string_of_list ls) = List.length ls.
+Proof.
+  induction ls; simpl; rewrite ?IHls; reflexivity.
+Qed.
+
+Lemma list_of_string_substring n m str
+: StringOperations.list_of_string (String.substring n m str) = Operations.take m (Operations.drop n (StringOperations.list_of_string str)).
+Proof.
+  revert n m; induction str as [|?? IHstr];
+  intros [|?] [|?];
+  simpl;
+  rewrite ?IHstr;
+  reflexivity.
+Qed.
+
+Lemma list_of_string_of_list ls
+: list_of_string (string_of_list ls) = ls.
+Proof.
+  induction ls; simpl; rewrite ?IHls; reflexivity.
+Qed.
+
+Lemma string_of_list_of_string str
+: string_of_list (list_of_string str) = str.
+Proof.
+  induction str; simpl; rewrite ?IHstr; reflexivity.
+Qed.
+
+Lemma get_list_of_string str n
+: List.nth_error (list_of_string str) n = String.get n str.
+Proof.
+  rewrite <- get_string_of_list, string_of_list_of_string; reflexivity.
 Qed.

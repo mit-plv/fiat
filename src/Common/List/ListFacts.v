@@ -591,6 +591,17 @@ Section ListFacts.
       { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. } }
   Qed.
 
+  Lemma nth_error_drop {A} x y (ls : list A)
+  : nth_error (drop y ls) x = nth_error ls (x + y).
+  Proof.
+    revert x y; induction ls; simpl; intros.
+    { destruct x, y; reflexivity. }
+    { destruct y; simpl.
+      { destruct x; simpl; repeat (f_equal; []); try reflexivity; omega. }
+      { rewrite IHls; destruct x; simpl; repeat (f_equal; []); try reflexivity.
+        rewrite NPeano.Nat.add_succ_r; reflexivity. } }
+  Qed.
+
   Lemma in_map_iffT' {A B}
         (f : A -> B) (ls : list A) (y : B)
         (eq_dec : forall y', {y = y'} + {y <> y'})

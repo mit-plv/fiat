@@ -72,6 +72,7 @@ src/Common/SetEqProperties.v
 src/Common/SetoidInstances.v
 src/Common/StringBound.v
 src/Common/StringFacts.v
+src/Common/StringOperations.v
 src/Common/String_as_OT.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
@@ -275,11 +276,9 @@ src/Parsers/Refinement/DisjointRules.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
-src/Parsers/Refinement/IndexedAndAtMostOneNonTerminal.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
 src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
-src/Parsers/Refinement/SharpenedAtMostOneNonTerminal.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v
