@@ -761,4 +761,64 @@ Section ListFacts.
           | left; assumption
           | exfalso; omega ]. } }
   Qed.
+
+  Lemma uniquize_idempotent {A} (beq : A -> A -> bool) (ls : list A)
+  : uniquize beq (uniquize beq ls) = uniquize beq ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; trivial.
+    destruct (Equality.list_bin beq x (uniquize beq xs)) eqn:H;
+      simpl;
+      rewrite ?IHxs, ?H; reflexivity.
+  Qed.
+
+  Lemma uniquize_NoDupA {A} (beq : A -> A -> bool) (ls : list A)
+  : NoDupA (fun x y => beq y x) (uniquize beq ls).
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; [ solve [ constructor ] | ].
+    destruct (Equality.list_bin beq x (uniquize beq xs)) eqn:H; trivial.
+    constructor; trivial.
+    intro H'.
+    apply Equality.list_inA_lb in H'.
+    congruence.
+  Qed.
+
+  Lemma uniquize_NoDup {A} (beq : A -> A -> bool) (beq_lb : forall x y, x = y -> beq x y = true) (ls : list A)
+  : NoDup (uniquize beq ls).
+  Proof.
+    eapply NoDupA_NoDup; [ | apply uniquize_NoDupA ].
+    repeat intro; eauto.
+  Qed.
+
+  Lemma NoDupA_uniquize {A} (beq : A -> A -> bool) (ls : list A) (H : NoDupA (fun x y => beq y x) ls)
+  : uniquize beq ls = ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; [ solve [ constructor ] | ].
+    inversion H; subst.
+    rewrite IHxs by assumption; clear IHxs.
+    destruct (Equality.list_bin beq x xs) eqn:H'; trivial.
+    exfalso.
+    apply Equality.list_inA_bl in H'.
+    tauto.
+  Qed.
+
+  Lemma NoDup_NoDupA {A} (R : relation A) (ls : list A) (R_eq : forall x y, R x y -> x = y) (H : NoDup ls)
+  : NoDupA R ls.
+  Proof.
+    induction ls; [ solve [ constructor ] | ].
+    inversion H; subst.
+    constructor; auto.
+    rewrite InA_alt.
+    intros [y [H' H'']].
+    match goal with
+      | [ H : _ |- _ ] => apply R_eq in H; subst
+    end.
+    tauto.
+  Qed.
+
+  Lemma NoDup_uniquize {A} (beq : A -> A -> bool) (beq_bl : forall x y, beq x y = true -> x = y) (ls : list A) (H : NoDup ls)
+  : uniquize beq ls = ls.
+  Proof.
+    apply NoDupA_uniquize, NoDup_NoDupA; trivial; intros.
+    symmetry; eauto.
+  Qed.
 End ListFacts.

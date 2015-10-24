@@ -372,7 +372,9 @@ Section In.
              | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
              | [ |- orb _ _ = true ] => apply Bool.orb_true_iff
              | [ H : ?eqA _ _ = true, H_eqA : forall x y, ?eqA _ _ = true -> _ |- _ ] => apply H_eqA in H
+             | [ H : SetoidList.InA _ _ nil |- _ ] => solve [ inversion H ]
              | _ => progress subst
+             | [ H : SetoidList.InA _ _ (_::_) |- _ ] => inversion H; clear H
              | [ |- ?x = ?x \/ _ ] => left; reflexivity
              | [ |- _ \/ ?x = ?x ] => right; reflexivity
              | [ |- _ \/ _ ] => right; assumption
@@ -381,6 +383,8 @@ Section In.
              | [ H : False |- _ ] => destruct H
              | [ H_eqA : forall x y, x = y -> ?eqA x y = true |- context[?eqA ?x ?x] ] => rewrite (H_eqA x x eq_refl)
              | [ H : _ \/ _ |- _ ] => destruct H
+             | _ => left; assumption
+             | _ => right; assumption
            end.
 
   Lemma list_in_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {a ls}
@@ -388,6 +392,13 @@ Section In.
   Proof. induction ls; t. Qed.
   Lemma list_in_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {a ls}
   : List.In a ls -> list_bin eq_A a ls = true.
+  Proof. induction ls; t. Qed.
+
+  Lemma list_inA_bl {A eq_A} {a ls}
+  : list_bin eq_A a ls = true -> SetoidList.InA (fun x y : A => eq_A y x) a ls.
+  Proof. induction ls; t. Qed.
+  Lemma list_inA_lb {A eq_A} {a ls}
+  : SetoidList.InA (fun x y : A => is_true (eq_A y x)) a ls -> list_bin eq_A a ls = true.
   Proof. induction ls; t. Qed.
 End In.
 
