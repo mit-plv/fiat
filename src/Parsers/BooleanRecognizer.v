@@ -3,7 +3,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.Arith.EqNat.
 Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common Fiat.Common.Wf.

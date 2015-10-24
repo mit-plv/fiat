@@ -1,6 +1,6 @@
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Coq.Strings.String.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.ADTNotation.BuildADT.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.Computation.Core.

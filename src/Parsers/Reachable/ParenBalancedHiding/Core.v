@@ -1,6 +1,6 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 Require Export Coq.Classes.RelationPairs.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Common.

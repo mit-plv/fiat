@@ -1,10 +1,10 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Common.Equality.
 
 Export Coq.Strings.Ascii.
 Export Coq.Strings.String.
-Export Fiat.Parsers.ContextFreeGrammar.
+Export Fiat.Parsers.ContextFreeGrammar.Core.
 
 Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with

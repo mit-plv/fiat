@@ -1,5 +1,5 @@
 (** * Definition of grammar for regular expression [(ab)*] *)
-Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 Definition ab_star_grammar : grammar ascii :=
   [[[ ("(ab)*" ::== << nil

@@ -2,8 +2,8 @@ Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Export Fiat.Parsers.ParserADTSpecification.
 Require Export Fiat.ADTRefinement.
 Require Export Fiat.ADTNotation.BuildADT.
-Require Export Fiat.Parsers.ContextFreeGrammar.
-Require Export Fiat.Parsers.ContextFreeGrammarNotations.
+Require Export Fiat.Parsers.ContextFreeGrammar.Core.
+Require Export Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
 Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
@@ -16,7 +16,7 @@ Require Export Fiat.Common.
 Require Export Fiat.ADTNotation.BuildADTSig.
 Require Export Fiat.Parsers.Refinement.ReductionTactics.
 
-Require Import Fiat.Parsers.ContextFreeGrammarEquality.
+Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.Refinement.FinishingLemma.

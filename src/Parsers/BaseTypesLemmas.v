@@ -2,7 +2,7 @@
 Require Import Coq.Classes.RelationClasses Coq.Setoids.Setoid.
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Arith.Wf_nat Coq.Init.Wf Coq.Strings.String.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 
 Set Implicit Arguments.

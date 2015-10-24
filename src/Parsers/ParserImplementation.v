@@ -1,7 +1,7 @@
 (** * Implementation of simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ParserInterface.
-Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.

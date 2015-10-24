@@ -1,6 +1,6 @@
 (** * A general [fold] over grammars *)
 Require Import Coq.Lists.List.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.StringLike.Core.

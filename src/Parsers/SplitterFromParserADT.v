@@ -6,8 +6,8 @@ Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
-Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
+Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
@@ -391,8 +391,8 @@ Section parser.
       | [ H : split_list_is_complete _ _ _ _ _, H' : ?n <= _,
           p0 : parse_of_item _ _ _, p1 : parse_of_production _ _ _,
           H'' : production_is_reachable _ _,
-          p0H : ContextFreeGrammarProperties.Forall_parse_of_item _ _,
-          p1H : ContextFreeGrammarProperties.Forall_parse_of_production _ _
+          p0H : ContextFreeGrammar.Properties.Forall_parse_of_item _ _,
+          p1H : ContextFreeGrammar.Properties.Forall_parse_of_production _ _
           |- List.In ?n ?v ]
         => hnf in H;
           specialize (fun H0'' H0' H1' =>

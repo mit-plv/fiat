@@ -18,9 +18,9 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedGrammar.
 (*Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.*)
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.ContextFreeGrammarValid.
-Require Import Fiat.Parsers.ContextFreeGrammarValidProperties.
-Require Import Fiat.Parsers.ContextFreeGrammarValidReflective.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Export Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Refinement.Tactics.

@@ -6,8 +6,8 @@ Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.ContextFreeGrammarEquality.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
@@ -498,8 +498,8 @@ Section IndexedImpl.
            end;
     try solve [ rewrite substring_correct3'; reflexivity
               | repeat match goal with
-                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
-                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_production] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | [ |- context[min ?x ?x] ]
                            => rewrite (Min.min_idempotent x)
@@ -525,8 +525,8 @@ Section IndexedImpl.
                          | _ => apply substring_correct4; omega
                        end
               | repeat match goal with
-                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_production] |- _ ] => clear H
-                         | [ H : appcontext[ContextFreeGrammarProperties.Forall_parse_of_item] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_production] |- _ ] => clear H
+                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | _ => progress subst
                          | [ |- List.In ?x [?y] ] => left

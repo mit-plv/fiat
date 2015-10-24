@@ -1,5 +1,5 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
-Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.

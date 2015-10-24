@@ -1,5 +1,5 @@
 (** * Definition of grammar for expressions involving parentheses *)
-Require Import Fiat.Parsers.ContextFreeGrammarNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 Definition paren_expr_grammar : grammar Ascii.ascii :=
   [[[ ("expr" ::== << $< "number" >$

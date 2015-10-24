@@ -2,8 +2,8 @@
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.ContextFreeGrammarEquality.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
@@ -23,12 +23,12 @@ Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.FoldGrammar.
 Require Import Fiat.Parsers.BaseTypesLemmas.
-Require Import Fiat.Parsers.ContextFreeGrammarValid.
-Require Import Fiat.Parsers.ContextFreeGrammarValidProperties.
-Require Import Fiat.Parsers.ContextFreeGrammarValidReflective.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Fiat.Parsers.Reachable.All.MinimalReachable.
 Require Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
 Require Fiat.Parsers.Reachable.All.ReachableParse.

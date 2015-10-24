@@ -1,10 +1,10 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 Require Export Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.ContextFreeGrammarValid.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

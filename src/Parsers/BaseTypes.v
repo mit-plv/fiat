@@ -1,6 +1,6 @@
 (** * Definition of the common part of the interface of the CFG parser *)
 Require Import Coq.Lists.List Coq.Arith.Wf_nat Coq.Init.Wf Coq.Strings.String.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 
 Set Implicit Arguments.
 

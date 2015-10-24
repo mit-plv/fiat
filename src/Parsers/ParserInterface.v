@@ -1,6 +1,6 @@
 (** * Simply-typed interface of the parser *)
-Require Export Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties.
+Require Export Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 
 Set Implicit Arguments.
 

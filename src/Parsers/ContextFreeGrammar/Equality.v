@@ -1,6 +1,6 @@
 (** * Decidable/boolean equality for context free grammars *)
 Require Import Coq.Strings.String Coq.Setoids.Setoid.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 
 Set Implicit Arguments.

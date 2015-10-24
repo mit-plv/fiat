@@ -2,7 +2,7 @@
 Require Import Coq.Classes.RelationClasses.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.BooleanRecognizer.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 
 Set Implicit Arguments.

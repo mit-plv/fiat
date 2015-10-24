@@ -3,7 +3,7 @@ Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.ContextFreeGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Coq.Program.Equality.
 Require Import Fiat.Common.

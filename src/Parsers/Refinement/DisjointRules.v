@@ -11,7 +11,7 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.ContextFreeGrammarValidReflective.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.StringLike.Core.

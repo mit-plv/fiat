@@ -4,9 +4,9 @@ Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.BooleanRecognizerOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
-Require Import Fiat.Parsers.ContextFreeGrammarNotations.
-Require Import Fiat.Parsers.ContextFreeGrammarTransfer.
-Require Import Fiat.Parsers.ContextFreeGrammarTransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
+Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
 

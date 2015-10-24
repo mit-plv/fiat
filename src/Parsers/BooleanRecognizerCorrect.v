@@ -1,17 +1,17 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Arith.Compare_dec Coq.Classes.RelationClasses Coq.Strings.String.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.BooleanRecognizer Fiat.Parsers.MinimalParse.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.BooleanRecognizer Fiat.Parsers.MinimalParse.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.ContextFreeGrammarValid Fiat.Parsers.ContextFreeGrammarValidProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 Require Import Coq.Logic.Eqdep_dec.
 
 Local Hint Extern 0 =>

@@ -2,7 +2,7 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
 Require Import Coq.omega.Omega.
 Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
-Require Import Fiat.Parsers.ContextFreeGrammar Fiat.Parsers.ContextFreeGrammarProperties Fiat.Parsers.WellFoundedParse.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BaseTypesLemmas.
