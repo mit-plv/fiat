@@ -40,6 +40,6 @@ Section general.
 
   Class boolean_parser_correctness_dataT :=
     { data :> boolean_parser_dataT;
-      rdata' :> parser_removal_dataT';
+      rdata' :> @parser_removal_dataT' _ G _;
       cdata' :> boolean_parser_completeness_dataT' }.
 End general.

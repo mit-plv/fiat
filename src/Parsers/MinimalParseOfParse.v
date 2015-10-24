@@ -18,7 +18,7 @@ Local Notation "f ∘ g" := (fun x => f (g x)).
 Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {predata : parser_computational_predataT}
-          {rdata' : @parser_removal_dataT' predata}.
+          {rdata' : @parser_removal_dataT' _ G predata}.
   Context (nonterminals_listT_R_respectful : forall x y,
                                         sub_nonterminals_listT x y
                                         -> x <> y
@@ -132,7 +132,7 @@ Section cfg.
   with signature sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT
     as remove_nonterminal_mor.
   Proof.
-    intros; apply (@remove_nonterminal_mor); try assumption; reflexivity.
+    intros; apply (@remove_nonterminal_mor _ G); try assumption; reflexivity.
   Qed.
 
   Local Ltac clear_not_beq
@@ -945,7 +945,7 @@ Section cfg.
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_parse_of_productions__of__parse_of_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit') (snd H_forall)) as [p'|p'].
                 { left.
                   exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (fst H_forall) Hvalid (projT1 p')).
                   simpl in *.

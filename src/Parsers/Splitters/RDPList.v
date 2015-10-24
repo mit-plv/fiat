@@ -13,6 +13,11 @@ Section recursive_descent_parser_list.
   Definition rdp_list_nonterminals_listT : Type := list String.string.
   Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
     := fun ls nt => list_bin string_beq nt ls.
+  Definition rdp_list_initial_nonterminals_correct
+  : forall nt,
+      is_true (rdp_list_is_valid_nonterminal (Valid_nonterminals G) nt) <-> List.In nt (Valid_nonterminals G)
+    := fun nt => conj (list_in_bl (@string_bl)) (list_in_lb (@string_lb)).
+
   Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> String.string -> rdp_list_nonterminals_listT
     := fun ls nt =>
          filter (fun x => negb (string_beq nt x)) ls.
@@ -142,9 +147,10 @@ Section recursive_descent_parser_list.
          (*remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;*)
          (*ntl_wf := rdp_list_ntl_wf*) }.
 
-  Global Instance rdp_list_rdata' : @parser_removal_dataT' rdp_list_predata
+  Global Instance rdp_list_rdata' : @parser_removal_dataT' _ G rdp_list_predata
     := { remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
          remove_nonterminal_noninc := rdp_list_remove_nonterminal_noninc;
+         initial_nonterminals_correct := rdp_list_initial_nonterminals_correct;
          remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
          remove_nonterminal_2 := rdp_list_remove_nonterminal_2 }.
 End recursive_descent_parser_list.

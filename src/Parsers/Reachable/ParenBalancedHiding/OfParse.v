@@ -21,7 +21,7 @@ Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
           {predata : parser_computational_predataT}
-          {rdata' : @parser_removal_dataT' predata}.
+          {rdata' : @parser_removal_dataT' _ G predata}.
 
   Fixpoint paren_balanced_hiding_pbh_parse_of_productions
              {valid00 valid0 pats}

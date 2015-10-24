@@ -26,6 +26,8 @@ Section recursive_descent_parser.
                                  -> nonterminals_listT_R (remove_nonterminal ls nonterminal) ls;
       remove_nonterminal_noninc : forall ls nonterminal,
                                     ~nonterminals_listT_R ls (remove_nonterminal ls nonterminal);
+      initial_nonterminals_correct : forall nonterminal,
+                                       is_valid_nonterminal initial_nonterminals_data nonterminal <-> List.In nonterminal (Valid_nonterminals G);
       ntl_wf : well_founded nonterminals_listT_R
       := well_founded_ltof _ _;
       remove_nonterminal_1

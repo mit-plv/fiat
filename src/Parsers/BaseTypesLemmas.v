@@ -14,7 +14,7 @@ Local Coercion is_true : bool >-> Sortclass.
 Section recursive_descent_parser.
   Context {Char} {HSL : StringLike Char} {G : grammar Char}
           {predata : parser_computational_predataT}
-          {rdata' : parser_removal_dataT'}.
+          {rdata' : @parser_removal_dataT' _ G _}.
 
   Lemma remove_nonterminal_3
         {ls ps ps'} (H0 : is_valid_nonterminal ls ps = false)

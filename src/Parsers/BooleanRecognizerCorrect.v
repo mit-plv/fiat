@@ -27,7 +27,7 @@ Section sound.
     Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} (G : grammar Char).
     Context {data : @boolean_parser_dataT Char _}
             {cdata : @boolean_parser_completeness_dataT' Char _ G data}
-            {rdata : @parser_removal_dataT' predata}.
+            {rdata : @parser_removal_dataT' _ G predata}.
 
     Let P : String.string -> Prop
       := fun p => is_valid_nonterminal initial_nonterminals_data p.
@@ -743,7 +743,7 @@ Section convenience.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {data : @boolean_parser_dataT Char _}
           {cdata : @boolean_parser_completeness_dataT' Char _ G data}
-          {rdata : @parser_removal_dataT' predata}.
+          {rdata : @parser_removal_dataT' _ G predata}.
 
   Definition parse_item_sound
              (str : String) (it : item Char)
@@ -938,7 +938,7 @@ Section convenience_valid.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {data : @boolean_parser_dataT Char _}
           {cdata : @boolean_parser_completeness_dataT' Char _ G data}
-          {rdata : @parser_removal_dataT' predata}
+          {rdata : @parser_removal_dataT' _ G predata}
           (Hvalid : grammar_valid G).
 
   Lemma parse_nonterminal_completev
