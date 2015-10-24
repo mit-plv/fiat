@@ -18,6 +18,12 @@ Fixpoint take {A} (n : nat) (ls : list A) : list A
        | S n', x::xs => x::take n' xs
      end.
 
+Definition uniquize {A} (beq : A -> A -> bool) (ls : list A) : list A
+  := fold_right
+       (fun x xs => if list_bin beq x xs then xs else x::xs)
+       nil
+       ls.
+
 Definition drop_all_but {A} (n : nat) (ls : list A) : list A
   := drop (List.length ls - n) ls.
 
