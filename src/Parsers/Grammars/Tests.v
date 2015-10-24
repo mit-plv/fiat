@@ -38,7 +38,7 @@ Section ab_star.
       { refine (ParseTerminal _ _ _ _); reflexivity. }
       { apply ParseProductionCons with (n := 2); simpl;
         try solve [ repeat (simpl; constructor) ].
-        constructor.
+        constructor; simpl; try tauto.
         apply ab_star_parses_ab. } }
   Defined.
 End ab_star.
@@ -70,6 +70,7 @@ Section num_paren.
        (*| [ |- context[StringLike.length _] ] => (progress rewrite ?take_length, ?drop_length, ?of_string_length; simpl List.length; simpl minus)*)
        (*| [ |- context[StringLike.get _ _] ] => (progress repeat rewrite ?take_of_string, ?drop_of_string; simpl; rewrite get_of_string; reflexivity)*)
        | _ => progress simpl
+       | _ => tauto
      end).
 
   Local Ltac fin :=
@@ -115,7 +116,8 @@ Section num_plus.
                  | apply ParseProductionNil
                  | apply ParseTerminal
                  | apply ParseNonTerminal
-                 | progress simpl ].
+                 | progress simpl
+                 | tauto ].
 
   Local Ltac fin' := idtac; fin'0 fin'.
 
@@ -178,19 +180,19 @@ Section num_plus_paren.
     apply ParseProductionCons with (n := 1); [ solve [ fin ] | simpl ].
     apply ParseProductionCons with (n := 1); [ solve [ fin ] | simpl ].
     apply ParseProductionCons with (n := 9); [ | solve [ fin ] ].
-    constructor; simpl.
+    constructor; simpl; try tauto.
     apply ParseTail, ParseHead.
     apply ParseProductionCons with (n := 5); simpl.
-    { constructor; simpl.
+    { constructor; simpl; try tauto.
       apply ParseTail, ParseHead.
       apply ParseProductionCons with (n := 1); [ solve [ fin ] | simpl ].
       apply ParseProductionCons with (n := 3); simpl; [ | solve [ fin ] ].
-      constructor; simpl.
+      constructor; simpl; try tauto.
       apply ParseTail, ParseHead; fin.
       apply ParseProductionCons with (n := 1); fin. }
     { apply ParseProductionCons with (n := 1); simpl; [ solve [ fin ] | ].
       apply ParseProductionCons with (n := 3); simpl; [ | solve [ fin ] ].
-      constructor; simpl.
+      constructor; simpl; try tauto.
       apply ParseTail, ParseHead; fin.
       apply ParseProductionCons with (n := 1); fin. }
   Defined.

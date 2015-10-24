@@ -395,9 +395,7 @@ Section parser.
     lazymatch goal with
       | [ H : split_list_is_complete _ _ _ _ _, H' : ?n <= _,
           p0 : parse_of_item _ _ _, p1 : parse_of_production _ _ _,
-          H'' : production_is_reachable _ _,
-          p0H : ContextFreeGrammar.Properties.Forall_parse_of_item _ _,
-          p1H : ContextFreeGrammar.Properties.Forall_parse_of_production _ _
+          H'' : production_is_reachable _ _
           |- List.In ?n ?v ]
         => hnf in H;
           specialize (fun H0'' H0' H1' =>
@@ -409,18 +407,10 @@ Section parser.
                           (@transfer_parse_of_production
                              Ascii.ascii adt_based_StringLike string_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0'' _ _ _ H1' p1)
-                          (@transfer_forall_parse_of_item
-                             Ascii.ascii adt_based_StringLike string_stringlike G
-                             (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0'' _ _ _ _ H0' p0 p0H)
-                          (@transfer_forall_parse_of_production
-                             Ascii.ascii adt_based_StringLike string_stringlike G
-                             (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
-                             H0'' _ _ _ _ H1' p1 p1H));
-          apply H; clear H p0H p1H p0 p1; try assumption; simpl
+                             H0'' _ _ _ H1' p1));
+          apply H; clear H p0 p1; try assumption; simpl
     end; [ split | | ];
-    handle_rep;  eauto with parser_adt_method_db.
+    handle_rep; eauto with parser_adt_method_db.
     exact (@mdrop_R n _ _ a).
   Qed.
 

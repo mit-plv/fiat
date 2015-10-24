@@ -23,57 +23,63 @@ Section cfg.
   Definition parse_empty_maybe_empty_parse_of_item'
              (parse_empty_maybe_empty_parse_of_productions
               : forall valid0 pats
+                       (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
                        (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
                        (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p),
                   maybe_empty_productions G valid0 pats)
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : maybe_empty_item G valid0 it.
   Proof.
-    destruct p as [ | nt p ].
+    destruct p as [ | nt ? p ].
     { exfalso.
       erewrite length_singleton in Hlen by eassumption; omega. }
-    { specialize (parse_empty_maybe_empty_parse_of_productions valid0 (G nt) str Hlen p (snd Hforall)).
+    { specialize (parse_empty_maybe_empty_parse_of_productions valid0 (G nt) Hsub str Hlen p (snd Hforall)).
       constructor; simpl in *; [ exact (fst Hforall) | assumption ]. }
   Defined.
 
   Fixpoint parse_empty_maybe_empty_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
              {struct p}
   : maybe_empty_productions G valid0 pats
   with parse_empty_maybe_empty_parse_of_production
          {valid0 pat}
+         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
          (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
          (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
          {struct p}
        : maybe_empty_production G valid0 pat.
   Proof.
     { destruct p as [ ?? p | ?? p ]; simpl in *.
-      { pose proof (parse_empty_maybe_empty_parse_of_production valid0 _ _ Hlen p Hforall).
+      { pose proof (parse_empty_maybe_empty_parse_of_production valid0 _ Hsub _ Hlen p Hforall).
         left; assumption. }
-      { pose proof (parse_empty_maybe_empty_parse_of_productions valid0 _ _ Hlen p Hforall).
+      { pose proof (parse_empty_maybe_empty_parse_of_productions valid0 _ Hsub _ Hlen p Hforall).
         right; assumption. } }
     { destruct p as [ | ?? p ]; simpl in *.
       { constructor. }
       { constructor.
-        { apply (fun k => @parse_empty_maybe_empty_parse_of_item' parse_empty_maybe_empty_parse_of_productions valid0 _ _ k _ (fst Hforall)).
+        { apply (fun k => @parse_empty_maybe_empty_parse_of_item' parse_empty_maybe_empty_parse_of_productions valid0 _ Hsub _ k _ (fst Hforall)).
           rewrite take_length, Hlen, Min.min_0_r; reflexivity. }
-        { apply (fun k => @parse_empty_maybe_empty_parse_of_production valid0 _ _ k _ (snd Hforall)).
+        { apply (fun k => @parse_empty_maybe_empty_parse_of_production valid0 _ Hsub _ k _ (snd Hforall)).
           rewrite drop_length, Hlen; reflexivity. } } }
   Defined.
 
   Definition parse_empty_maybe_empty_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : maybe_empty_item G valid0 it
-    := @parse_empty_maybe_empty_parse_of_item' (@parse_empty_maybe_empty_parse_of_productions) valid0 it str Hlen p Hforall.
+    := @parse_empty_maybe_empty_parse_of_item' (@parse_empty_maybe_empty_parse_of_productions) valid0 it Hsub str Hlen p Hforall.
 
   Definition parse_empty_minimal_maybe_empty_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : minimal_maybe_empty_item (G := G) valid0 it.
@@ -84,6 +90,7 @@ Section cfg.
 
   Definition parse_empty_minimal_maybe_empty_parse_of_production
              {valid0 pat}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of_production G str pat)
              (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : minimal_maybe_empty_production (G := G) valid0 pat.
@@ -94,6 +101,7 @@ Section cfg.
 
   Definition parse_empty_minimal_maybe_empty_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : minimal_maybe_empty_productions (G := G) valid0 pats.
@@ -105,11 +113,13 @@ Section cfg.
   Definition parse_empty_from_maybe_empty_parse_of_item'
              (parse_empty_from_maybe_empty_parse_of_productions
               : forall valid0 pats
+                       (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
                        (str : String) (Hlen : length str = 0),
                   maybe_empty_productions G valid0 pats
                   -> { p : parse_of G str pats
                            & Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p })
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : maybe_empty_item G valid0 it)
   : { p : parse_of_item G str it
@@ -117,12 +127,15 @@ Section cfg.
   Proof.
     destruct p as [ nt H p ].
     eapply parse_empty_from_maybe_empty_parse_of_productions in p; [ | eassumption.. ].
-    exists (ParseNonTerminal _ (projT1 p)).
+    eexists (ParseNonTerminal _ _ (projT1 p)).
     exact (H, projT2 p).
+    Grab Existential Variables.
+    apply initial_nonterminals_correct, Hsub; assumption.
   Defined.
 
   Fixpoint parse_empty_from_maybe_empty_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : maybe_empty_productions G valid0 pats)
              {struct p}
@@ -130,6 +143,7 @@ Section cfg.
           & Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p }
   with parse_empty_from_maybe_empty_parse_of_production
          {valid0 pat}
+         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
          (str : String) (Hlen : length str = 0)
          (p: maybe_empty_production G valid0 pat)
          {struct p}
@@ -137,16 +151,16 @@ Section cfg.
                & Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p }.
   Proof.
     { destruct p as [ ?? p | ?? p ]; simpl in *.
-      { pose proof (parse_empty_from_maybe_empty_parse_of_production valid0 _ _ Hlen p) as p'.
+      { pose proof (parse_empty_from_maybe_empty_parse_of_production valid0 _ Hsub _ Hlen p) as p'.
         eexists (ParseHead _ (projT1 p')).
         exact (projT2 p'). }
-      { pose proof (parse_empty_from_maybe_empty_parse_of_productions valid0 _ _ Hlen p) as p'.
+      { pose proof (parse_empty_from_maybe_empty_parse_of_productions valid0 _ Hsub _ Hlen p) as p'.
         eexists (ParseTail _ (projT1 p')).
         exact (projT2 p'). } }
     { destruct p as [ | ?? p0 p1 ]; simpl in *.
       { exists (ParseProductionNil G _ Hlen). constructor. }
-      { eapply (@parse_empty_from_maybe_empty_parse_of_item' parse_empty_from_maybe_empty_parse_of_productions) in p0.
-        eapply (@parse_empty_from_maybe_empty_parse_of_production) in p1.
+      { eapply (@parse_empty_from_maybe_empty_parse_of_item' parse_empty_from_maybe_empty_parse_of_productions) in p0; try assumption.
+        eapply (@parse_empty_from_maybe_empty_parse_of_production) in p1; try assumption.
         { eexists (ParseProductionCons _ 0 (projT1 p0) (projT1 p1)).
           exact (projT2 p0, projT2 p1). }
         { rewrite ?take_length, ?drop_length, Hlen; reflexivity. }
@@ -155,14 +169,16 @@ Section cfg.
 
   Definition parse_empty_from_maybe_empty_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : maybe_empty_item G valid0 it)
   : { p : parse_of_item G str it
           & Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p }
-    := @parse_empty_from_maybe_empty_parse_of_item' (@parse_empty_from_maybe_empty_parse_of_productions) valid0 it str Hlen p.
+    := @parse_empty_from_maybe_empty_parse_of_item' (@parse_empty_from_maybe_empty_parse_of_productions) valid0 it Hsub str Hlen p.
 
   Definition parse_empty_from_minimal_maybe_empty_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : minimal_maybe_empty_item (G := G) valid0 it)
   : { p : parse_of_item G str it
@@ -174,6 +190,7 @@ Section cfg.
 
   Definition parse_empty_from_minimal_maybe_empty_parse_of_production
              {valid0 pat}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : minimal_maybe_empty_production (G := G) valid0 pat)
   : { p : parse_of_production G str pat
@@ -185,6 +202,7 @@ Section cfg.
 
   Definition parse_empty_from_minimal_maybe_empty_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (Hlen : length str = 0)
              (p : minimal_maybe_empty_productions (G := G) valid0 pats)
   : { p : parse_of G str pats

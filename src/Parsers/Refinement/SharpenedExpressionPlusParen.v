@@ -1,8 +1,6 @@
 (** Sharpened ADT for an expression grammar with + and () *)
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
-Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
-Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)

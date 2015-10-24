@@ -25,18 +25,20 @@ Section cfg.
   Definition for_first_char_reachable_from_parse_of_item'
              (for_first_char_reachable_from_parse_of_productions
               : forall valid0 pats
+                       (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
                        (str : String) (p : parse_of G str pats)
                        (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p),
                   for_first_char str (fun ch => inhabited (reachable_from_productions G ch valid0 pats)))
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : for_first_char str (fun ch => inhabited (reachable_from_item G ch valid0 it)).
   Proof.
-    destruct p as [ | nt p ].
+    destruct p as [ | nt ? p ].
     { rewrite <- for_first_char_singleton by eassumption.
       repeat constructor. }
-    { specialize (for_first_char_reachable_from_parse_of_productions valid0 (G nt) str p (snd Hforall)).
+    { specialize (for_first_char_reachable_from_parse_of_productions valid0 (G nt) Hsub str p (snd Hforall)).
       revert for_first_char_reachable_from_parse_of_productions.
       apply for_first_char_Proper; [ reflexivity | intros ? [H'] ].
       constructor.
@@ -45,48 +47,53 @@ Section cfg.
 
   Fixpoint for_first_char_reachable_from_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
              {struct p}
   : for_first_char str (fun ch => inhabited (reachable_from_productions G ch valid0 pats))
   with for_first_char_reachable_from_parse_of_production
          {valid0 pat}
+         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
          (str : String) (p : parse_of_production G str pat)
          (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
          {struct p}
        : for_first_char str (fun ch => inhabited (reachable_from_production G ch valid0 pat)).
   Proof.
     { destruct p as [ ?? p | ?? p ]; simpl in *.
-      { generalize (for_first_char_reachable_from_parse_of_production valid0 _ _ p Hforall).
+      { generalize (for_first_char_reachable_from_parse_of_production valid0 _ Hsub _ p Hforall).
         apply for_first_char_Proper; [ reflexivity | intros ? [H']; constructor ].
         left; assumption. }
-      { generalize (for_first_char_reachable_from_parse_of_productions valid0 _ _ p Hforall).
+      { generalize (for_first_char_reachable_from_parse_of_productions valid0 _ Hsub _ p Hforall).
         apply for_first_char_Proper; [ reflexivity | intros ? [H']; constructor ].
         right; assumption. } }
     { destruct p as [ | [|n] ? p ]; simpl in *.
       { apply for_first_char_nil; assumption. }
       { rewrite <- drop_0.
-        generalize (@for_first_char_reachable_from_parse_of_production valid0 _ _ _ (snd Hforall)).
+        generalize (@for_first_char_reachable_from_parse_of_production valid0 _ Hsub _ _ (snd Hforall)).
           apply for_first_char_Proper; [ reflexivity | intros ? [H']; constructor ].
           right; try assumption; [].
           eapply maybe_empty_item__of__minimal_maybe_empty_item, parse_empty_minimal_maybe_empty_parse_of_item;
-            [ reflexivity | | exact (fst Hforall) ];
+            [ reflexivity | .. ]; try assumption;
+            [ | exact (fst Hforall) ];
             rewrite take_length; reflexivity. }
       { rewrite (for_first_char__take n str).
-        generalize (@for_first_char_reachable_from_parse_of_item' for_first_char_reachable_from_parse_of_productions valid0 _ _ _ (fst Hforall)).
+        generalize (@for_first_char_reachable_from_parse_of_item' for_first_char_reachable_from_parse_of_productions valid0 _ Hsub _ _ (fst Hforall)).
         apply for_first_char_Proper; [ reflexivity | intros ? [H']; constructor ].
         left; assumption. } }
   Defined.
 
   Definition for_first_char_reachable_from_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : for_first_char str (fun ch => inhabited (reachable_from_item G ch valid0 it))
-    := @for_first_char_reachable_from_parse_of_item' (@for_first_char_reachable_from_parse_of_productions) valid0 it str p Hforall.
+    := @for_first_char_reachable_from_parse_of_item' (@for_first_char_reachable_from_parse_of_productions) valid0 it Hsub str p Hforall.
 
   Definition for_first_char_minimal_reachable_from_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_item (G := G) valid0 ch valid0 it)).
@@ -97,6 +104,7 @@ Section cfg.
 
   Definition for_first_char_minimal_reachable_from_parse_of_production
              {valid0 pat}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_production G str pat)
              (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_production (G := G) valid0 ch valid0 pat)).
@@ -107,6 +115,7 @@ Section cfg.
 
   Definition for_first_char_minimal_reachable_from_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of G str pats)
              (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_productions (G := G) valid0 ch valid0 pats)).

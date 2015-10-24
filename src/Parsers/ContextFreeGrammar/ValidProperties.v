@@ -70,3 +70,27 @@ Section cfg.
   : Forall_parse_of_item (fun _ nt' => P nt') p
     := @Forall_parse_of_item_valid' (@Forall_parse_of_valid) str it Hit p.
 End cfg.
+
+Section app.
+  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
+          {predata : parser_computational_predataT}.
+
+  Lemma production_valid_cons
+        (it : item Char)
+        (its : production Char)
+        (H : production_valid (it :: its))
+  : production_valid its.
+  Proof.
+    unfold production_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
+  Lemma production_valid_app
+        (pat pat' : production Char)
+        (H : production_valid (pat ++ pat'))
+  : production_valid pat'.
+  Proof.
+    induction pat; simpl in *; trivial.
+    eapply IHpat, production_valid_cons; eassumption.
+  Qed.
+End app.

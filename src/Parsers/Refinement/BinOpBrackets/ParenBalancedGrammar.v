@@ -123,7 +123,7 @@ Section specific.
           { specialize (fun hiding level H_p => paren_balanced_production_correct hiding level _ H_p _ p1); clear p1.
             unfold paren_balanced''_production in *.
             simpl in *.
-            destruct p0 as [| ? p0 ].
+            destruct p0 as [| ? ? p0 ].
             { clear paren_balanced_productions_correct.
               unfold paren_balanced''_production_step at 1 in H_p.
               apply Bool.andb_true_iff in H_p;

@@ -33,7 +33,7 @@ Section rel.
        : size_of_parse_item p = size_of_parse_item (parse_of_item_respectful H p)
        := match p with
             | ParseTerminal _ _ => eq_refl
-            | ParseNonTerminal _ p' => f_equal S (size_of_parse_respectful H p')
+            | ParseNonTerminal _ H' p' => f_equal S (size_of_parse_respectful H p')
           end.
 
   Global Instance size_of_parse_ProperD {pats}

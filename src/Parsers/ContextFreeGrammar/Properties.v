@@ -18,7 +18,7 @@ Section cfg.
   : parse_of_item G str2 it
     := match p in (parse_of_item _ _ it) return parse_of_item G str2 it with
          | ParseTerminal ch pf => ParseTerminal G str2 ch (transitivity (eq_sym (is_char_Proper H eq_refl)) pf)
-         | ParseNonTerminal nt p' => ParseNonTerminal _ (parse_of_respectful H p')
+         | ParseNonTerminal nt H' p' => ParseNonTerminal _ H' (parse_of_respectful H p')
           end.
 
   Fixpoint parse_of_respectful {str1 str2} (H : str1 =s str2) {pats} (p : parse_of G str1 pats) : parse_of G str2 pats
@@ -51,7 +51,7 @@ Section cfg.
   with parse_of_item_respectful_refl {str pf it} (p : parse_of_item G str it) : parse_of_item_respectful pf p = p
        := match p return parse_of_item_respectful pf p = p with
             | ParseTerminal ch pf => f_equal (ParseTerminal _ _ _) (dec_eq_uip (Bool.bool_dec _) _ _)
-            | ParseNonTerminal nt p' => f_equal (ParseNonTerminal _) (parse_of_respectful_refl p')
+            | ParseNonTerminal nt H' p' => f_equal (ParseNonTerminal _ H') (parse_of_respectful_refl p')
           end.
 
   (*Global Instance parse_of_Proper : Proper (beq ==> eq ==> iff) (parse_of G).
@@ -86,7 +86,7 @@ Section cfg.
                {str it} (p : parse_of_item G str it)
       := match p return Type with
            | ParseTerminal ch pf => unit
-           | ParseNonTerminal nt p'
+           | ParseNonTerminal nt H' p'
              => (P str nt * Forall_parse_of p')%type
          end.
 

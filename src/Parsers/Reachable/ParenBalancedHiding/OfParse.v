@@ -71,16 +71,18 @@ Section cfg.
         let p := fresh in
         rename p0 into p;
           dependent destruction p.
-        specialize (fun str p H (H' : is_valid_nonterminal _ _ * Forall_parse_of _ (parse_of_respectful (symmetry (take_take str n n)) p) * unit)
+        specialize (fun H'' str p H (H' : is_valid_nonterminal _ _ * Forall_parse_of _ (parse_of_respectful (symmetry (take_take str n n)) p) * unit)
                     => paren_balanced_hiding_pbh_parse_of_productions
                          (take n str)
                          (ParseProductionCons
                             _ n
                             (ParseNonTerminal
                                _
+                               H''
                                (parse_of_respectful (symmetry (take_take str n n)) p))
                             (ParseProductionNil _ _ H))
                          H').
+        specialize_by assumption.
         specialize (fun x H p H1 H0
                     => paren_balanced_hiding_pbh_parse_of_productions
                          str p H (H0, expand_forall_parse_of (str' := take (min n n) str) (P := fun _ nt => is_valid_nonterminal valid00 nt) x (reflexivity _) _ _ H1, tt)).

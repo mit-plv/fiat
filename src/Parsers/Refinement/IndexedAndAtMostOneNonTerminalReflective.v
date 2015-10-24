@@ -336,11 +336,9 @@ Section IndexedImpl.
     := forall n,
          n <= length str
          -> production_is_reachable G (it'::its')
-         -> forall (pit : parse_of_item G (take n str) it)
-                   (pits : parse_of_production G (drop n str) its),
-              Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
-              -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-              -> List.In n (List.map (min (length str)) splits).
+         -> parse_of_item G (take n str) it
+         -> parse_of_production G (drop n str) its
+         -> List.In n (List.map (min (length str)) splits).
   Definition expanded_fallback_list_case
     := expanded_fallback_list' split_list_is_complete_case.
 
@@ -348,11 +346,9 @@ Section IndexedImpl.
     := (fun str it its splits
         => forall n,
              n <= length str
-             -> forall (pit : parse_of_item G (take n str) it)
-                       (pits : parse_of_production G (drop n str) its),
-                  Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
-                  -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-                  -> List.In n (List.map (min (length str)) splits)).
+             -> parse_of_item G (take n str) it
+             -> parse_of_production G (drop n str) its
+             -> List.In n (List.map (min (length str)) splits)).
 
   Definition expanded_fallback_list_alt
     := expanded_fallback_list' (fun str it its _ _ => split_list_is_complete_alt str it its).
@@ -498,8 +494,6 @@ Section IndexedImpl.
            end;
     try solve [ rewrite substring_correct3'; reflexivity
               | repeat match goal with
-                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_production] |- _ ] => clear H
-                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | [ |- context[min ?x ?x] ]
                            => rewrite (Min.min_idempotent x)
@@ -525,8 +519,6 @@ Section IndexedImpl.
                          | _ => apply substring_correct4; omega
                        end
               | repeat match goal with
-                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_production] |- _ ] => clear H
-                         | [ H : appcontext[ContextFreeGrammar.Properties.Forall_parse_of_item] |- _ ] => clear H
                          | _ => intro
                          | _ => progress subst
                          | [ |- List.In ?x [?y] ] => left

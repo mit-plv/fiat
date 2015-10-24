@@ -33,7 +33,7 @@ Section cfg.
          -> @Forall_parse_of_item' Char HSL2 G (fun _ => P) (@Forall_parse_of _ _ _ (fun _ => P)) str2 it (transfer_parse_of_item HR p))
       with
         | ParseTerminal _ _ => fun x => x
-        | ParseNonTerminal _ p' => fun xy => (fst xy, transfer_forall_parse_of _ _ _ _ p' (snd xy))
+        | ParseNonTerminal _ H' p' => fun xy => (fst xy, transfer_forall_parse_of _ _ _ _ p' (snd xy))
       end.
 
   Fixpoint transfer_forall_parse_of

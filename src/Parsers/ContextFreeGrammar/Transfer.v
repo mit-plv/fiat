@@ -40,6 +40,6 @@ Section cfg.
   : @parse_of_item Char HSL2 G str2 it
        := match p in (parse_of_item _ _ it) return parse_of_item _ _ it with
             | ParseTerminal _ pf => ParseTerminal _ _ _ (@is_char_respectful _ _ _ _ H pf)
-            | ParseNonTerminal _ p' => ParseNonTerminal _ (@transfer_parse_of _ _ _ H p')
+            | ParseNonTerminal _ H' p' => ParseNonTerminal _ H' (@transfer_parse_of _ _ _ H p')
           end.
 End cfg.

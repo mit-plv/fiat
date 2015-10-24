@@ -46,7 +46,8 @@ Ltac parser_red term :=
 Ltac make_parser splitter :=
   idtac;
   let str := match goal with str : String.string |- _ => constr:str end in
-  let b := constr:(ParserInterface.has_parse (ParserFromParserADT.parser splitter) str) in
+  let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
+  let b := constr:(b0 eq_refl) in
   let b' := parser_red b in
   exact b'.
 

@@ -125,7 +125,7 @@ Section refine_rules.
       computes_to_inv; subst.
       apply PickComputes.
       specialize (Htable n).
-      intros idx' Hsmall Hreachable pit pits Hpit Hpits; simpl.
+      intros idx' Hsmall Hreachable pit pits; simpl.
       specialize (H_nt_hiding _ pit).
       rewrite substring_take_drop in H_nt_hiding.
       unfold paren_balanced_hiding in *.
