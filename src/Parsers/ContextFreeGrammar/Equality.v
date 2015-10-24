@@ -7,39 +7,15 @@ Set Implicit Arguments.
 
 Scheme Equality for item.
 
-Section beq_bl_lb.
-  Local Ltac t rew_t :=
-    let x := match goal with
-               | [ |- _ -> ?beq ?x ?y = true ] => constr:x
-               | [ |- _ -> ?x = ?y ] => constr:x
-             end in
-    let y := match goal with
-               | [ |- _ -> ?beq ?x ?y = true ] => constr:y
-               | [ |- _ -> ?x = ?y ] => constr:y
-             end in
-    revert y; induction x; intro y; destruct y;
-    simpl in *;
-    subst;
-    repeat match goal with
-             | _ => progress subst
-             | _ => congruence
-             | _ => setoid_rewrite Bool.andb_true_iff
-             | [ H : forall y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ : impl _ _)
-             | [ H : forall y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ : impl _ _)
-             | [ H : forall x y, _ -> _ = true |- _ ] => setoid_rewrite <- (H _ _ : impl _ _)
-             | [ H : forall x y, _ = true -> _ = _ |- _ ] => setoid_rewrite (H _ _ : impl _ _)
-             | [ H : _ /\ _ |- _ ] => destruct H
-             | [ |- _ /\ _ ] => split
-             | _ => progress rew_t
-           end.
+Definition item_bl
+: forall {Char eq_Char} (Char_bl : forall x y : Char, eq_Char x y = true -> x = y) {x y},
+    item_beq eq_Char x y = true -> x = y
+  := internal_item_dec_bl.
 
-  Lemma item_bl {Char eq_Char} (Char_bl : forall x y : Char, eq_Char x y = true -> x = y) {x y}
-  : item_beq eq_Char x y = true -> x = y.
-  Proof. t ltac:(setoid_rewrite (string_bl : impl _ _)). Qed.
-  Lemma item_lb {Char eq_Char} (Char_lb : forall x y : Char, x = y -> eq_Char x y = true) {x y}
-  : x = y -> item_beq eq_Char x y = true.
-  Proof. t ltac:(setoid_rewrite <- (string_lb : impl _ _)). Qed.
-End beq_bl_lb.
+Definition item_lb
+: forall {Char eq_Char} (Char_lb : forall x y : Char, x = y -> eq_Char x y = true) {x y},
+    x = y -> item_beq eq_Char x y = true
+  := internal_item_dec_lb.
 
 Section beq_correct.
   Local Ltac t rew_t :=
