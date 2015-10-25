@@ -314,7 +314,7 @@ Section recursive_descent_parser.
           apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@bool_rect A));
           repeat intro
       | [ |- _ = fold_right orb false _ ]
-        => rewrite !(fun ls => eq_sym (@fold_symmetric _ orb Bool.orb_assoc Bool.orb_comm false ls))
+        => rewrite <- !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ]
       | [ |- _ = @fold_left ?A ?B orb _ false ]
         => refine (_ : fold_left orb _ false = _);
           apply (_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B)); repeat intro
