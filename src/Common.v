@@ -76,7 +76,6 @@ Tactic Notation "unique" "pose" constr(defn) :=
 Tactic Notation "has" "body" hyp(H) :=
   test (let H' := fresh in pose H as H'; unfold H in H').
 
-Tactic Notation "etransitivity" open_constr(v) := transitivity v.
 Tactic Notation "etransitivity_rev" open_constr(v)
   := match goal with
        | [ |- ?R ?LHS ?RHS ]
