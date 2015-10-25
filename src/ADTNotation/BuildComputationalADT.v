@@ -187,7 +187,6 @@ Record cConsDef {Rep : Type} (Sig : consSig) :=
 Notation "'Def' 'Constructor0' id : 'rep' := bod" :=
   (Build_cConsDef _ {| consID := id; consDom := [] |} ((bod%comp : cConstructorType rep [ ]) ))
     (no associativity, at level 94, id at level 0,
-     x1 closed binder, xn closed binder,
      format "'Def'  'Constructor0'  id  :  'rep'  :=  '/' '[  '   bod ']' " ) :
     cConsDef_scope.
 
