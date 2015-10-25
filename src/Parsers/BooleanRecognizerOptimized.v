@@ -417,21 +417,21 @@ Section recursive_descent_parser.
              = list_rect
                  ?P
                  ?N
-                 (fun it its parse_production' str0 len pf
+                 (fun it its parse_production' str0' len pf
                   => ?fold_orb
                       (map
                          ((fun n
                            => match it with
                                 | Terminal ch
                                   => is_char
-                                       (to_string (fst (of_string ?str),
-                                                   snd (of_string (take n (to_string (fst (of_string ?str), str0))))))
+                                       (to_string (fst (of_string ?str'),
+                                                   snd (of_string (take n (to_string (fst (of_string ?str'), str0'))))))
                                        ch
                                 | NonTerminal nt0
-                                  => @?a5 it its parse_production' str0 len pf n nt0
+                                  => @?a5 it its parse_production' str0' len pf n nt0
                               end
-                                && parse_production' (@?rest0 it its parse_production' str0 len pf n) (len - n) (@?rest1 it its parse_production' str0 len pf n))%bool)
-                         (@?ls it its parse_production' str0 len pf))
+                                && parse_production' (@?rest0 it its parse_production' str0' len pf n) (len - n) (@?rest1 it its parse_production' str0' len pf n))%bool)
+                         (@?ls it its parse_production' str0' len pf))
                       ?false)
                  ?a ?b ?c ?d ]
         => idtac;
@@ -439,20 +439,20 @@ Section recursive_descent_parser.
                constr:(
                  list_rect
                    P N
-                   (fun it its parse_production' str0 len pf
+                   (fun it its parse_production' str0' len pf
                     => fold_orb
                          (map
                             ((fun n
                               => match it with
                                    | Terminal ch
                                      => is_char
-                                          (take n (to_string (fst (of_string str), str0)))
+                                          (take n (to_string (fst (of_string str'), str0')))
                                           ch
                                    | NonTerminal nt0
-                                     => a5 it its parse_production' str0 len pf n nt0
+                                     => a5 it its parse_production' str0' len pf n nt0
                                  end
-                                   && parse_production' (rest0 it its parse_production' str0 len pf n) (len - n)(*%natr*) ((*match eq_sym (minusr_minus len n) with eq_refl => *)rest1 it its parse_production' str0 len pf n(* end*)))%bool)
-                            (ls it its parse_production' str0 len pf))
+                                   && parse_production' (rest0 it its parse_production' str0' len pf n) (len - n)(*%natr*) ((*match eq_sym (minusr_minus len n) with eq_refl => *)rest1 it its parse_production' str0' len pf n(* end*)))%bool)
+                            (ls it its parse_production' str0' len pf))
                          false)
                    a b c d) in
            etransitivity;
