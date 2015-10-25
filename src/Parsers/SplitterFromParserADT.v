@@ -284,10 +284,15 @@ Section parser.
 
   Local Ltac match_erewrite_by match_term lem tac :=
     idtac;
-    match goal with
-      | [ |- appcontext[match_term] ] => erewrite !lem by tac
-      | [ H : appcontext[match_term] |- _ ] => erewrite !lem in H by tac
-    end.
+    (* work around bug https://coq.inria.fr/bugs/show_bug.cgi?id=4388 *)
+    progress (
+        try match goal with
+              | [ |- appcontext[match_term] ] => erewrite !lem by tac
+            end;
+        try match goal with
+              | [ H : appcontext[match_term] |- _ ] => erewrite !lem in H by tac
+            end
+      ).
 
   Local Ltac match_erewrite2_by match_term lem tac :=
     idtac;
