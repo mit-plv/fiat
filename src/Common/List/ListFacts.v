@@ -821,4 +821,24 @@ Section ListFacts.
     apply NoDupA_uniquize, NoDup_NoDupA; trivial; intros.
     symmetry; eauto.
   Qed.
+
+  Lemma fold_right_bool_rect {T} t b init ls' bv
+  : fold_right (fun (x : T) (acc : bool -> bool)
+                => bool_rect
+                     (fun _ => bool -> bool)
+                     (t x)
+                     acc
+                     (b x))
+               init ls' bv
+    = fold_right (fun (x : T) (acc : bool)
+                  => bool_rect
+                       (fun _ => bool)
+                       (t x bv)
+                       acc
+                       (b x)) (init bv) ls'.
+  Proof.
+    induction ls' as [|x xs IHxs]; simpl;
+    [ | destruct (b x); simpl; rewrite ?IHxs ];
+    reflexivity.
+  Qed.
 End ListFacts.
