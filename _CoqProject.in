@@ -100,6 +100,7 @@ src/Common/List/ListMorphisms.v
 src/Common/List/Operations.v
 src/Common/List/PermutationFacts.v
 src/Common/List/UpperBound.v
+src/Common/Sigma.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
