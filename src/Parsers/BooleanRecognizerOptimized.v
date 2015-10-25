@@ -13,6 +13,7 @@ Require Import Fiat.Common.Equality.
 Require Export Fiat.Common.SetoidInstances.
 Require Export Fiat.Common.List.ListMorphisms.
 Require Export Fiat.Common.OptionFacts.
+Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Common.Sigma.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
@@ -24,31 +25,6 @@ Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
 Global Arguments parse_production' _ _ _ _ _ _ _ _ !_.
 Global Arguments parse_production _ _ _ _ _ !_.
-
-Lemma parse_production'_respectful {Char HSL predata A B C}
-      {f g : forall (a : _ * A) (b : B a) (c : C a b) (str : @String Char HSL) (len : nat), len <= (fst a) -> String.string -> bool}
-      (H : forall a b c d e h i, f a b c d e h i = g a b c d e h i)
-      str0 a b c str len pf
-: pointwise_relation
-    _ eq
-    (@parse_production' Char HSL predata str0 (f (str0, a) b c) str len pf)
-    (@parse_production' Char HSL predata str0 (g (str0, a) b c) str len pf).
-Proof.
-  intro ls.
-  revert str0 a b c str len pf; induction ls; simpl; trivial; intros.
-  setoid_rewrite IHls.
-  f_equal.
-  apply map_Proper_eq; trivial; repeat intro.
-  f_equal.
-  unfold parse_item'.
-  destruct a; trivial.
-Qed.
-
-Local Ltac simpl_setoid_rewrite lem :=
-  let H := fresh in
-  pose proof lem as H;
-    setoid_rewrite H;
-    clear H.
 
 Section recursive_descent_parser.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
@@ -213,6 +189,8 @@ Section recursive_descent_parser.
              | [ H : snd ?x = _ |- _ ] => is_var x; destruct x
              | _ => progress simpl negb in *
              | [ H : false = true |- _ ] => inversion H
+             | [ |- ?f _ (match ?p with eq_refl => ?k end) = ?f' _ ?k ]
+               => destruct p
            end.
 
   Local Ltac t_reduce_list :=
@@ -326,6 +304,7 @@ Section recursive_descent_parser.
   Local Ltac step_opt' :=
     idtac;
     match goal with
+      | _ => rewrite <- !minusr_minus
       | [ |- _ = @option_rect ?A ?B (fun s => _) _ _ ]
         => refine (_ : @option_rect A B (fun s => _) _ _ = _);
           apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _ ==> eq) (@option_rect A B));
@@ -433,7 +412,7 @@ Section recursive_descent_parser.
     step_opt'.
     step_opt'.
     step_opt'.
-    match goal with
+    lazymatch goal with
       | [ |- _
              = list_rect
                  ?P
@@ -451,11 +430,12 @@ Section recursive_descent_parser.
                                 | NonTerminal nt0
                                   => @?a5 it its parse_production' str0 len pf n nt0
                               end
-                                && @?rest it its parse_production' str0 len pf n)%bool)
+                                && parse_production' (@?rest0 it its parse_production' str0 len pf n) (len - n) (@?rest1 it its parse_production' str0 len pf n))%bool)
                          (@?ls it its parse_production' str0 len pf))
                       ?false)
                  ?a ?b ?c ?d ]
-        => let lhs' :=
+        => idtac;
+          let lhs' :=
                constr:(
                  list_rect
                    P N
@@ -471,7 +451,7 @@ Section recursive_descent_parser.
                                    | NonTerminal nt0
                                      => a5 it its parse_production' str0 len pf n nt0
                                  end
-                                   && rest it its parse_production' str0 len pf n)%bool)
+                                   && parse_production' (rest0 it its parse_production' str0 len pf n) (len - n)(*%natr*) ((*match eq_sym (minusr_minus len n) with eq_refl => *)rest1 it its parse_production' str0 len pf n(* end*)))%bool)
                             (ls it its parse_production' str0 len pf))
                          false)
                    a b c d) in
