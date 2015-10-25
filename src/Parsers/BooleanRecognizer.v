@@ -112,35 +112,40 @@ Section recursive_descent_parser.
           : bool.
           Proof.
             refine
-              (parse_productions'
+              (option_rect
+                 (fun _ => bool)
+                 (fun parse_nonterminal
+                  => parse_productions'
+                       parse_nonterminal
+                       str
+                       (len := len)
+                       (sumbool_rect
+                          (fun b => len <= (if b then len else len0))
+                          (fun _ => le_n _)
+                          (fun _ => _)
+                          (lt_dec len len0))
+                       (Lookup G nt))
+                 false
                  (sumbool_rect
-                    (fun b => forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> String.string -> bool)
+                    (fun b => option (forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> String.string -> bool))
                     (fun _ => (** [str] got smaller, so we reset the valid nonterminals list *)
-                       @parse_nonterminal
-                         (len, nonterminals_length initial_nonterminals_data)
-                         (or_introl _)
-                         initial_nonterminals_data)
+                       Some (@parse_nonterminal
+                               (len, nonterminals_length initial_nonterminals_data)
+                               (or_introl _)
+                               initial_nonterminals_data))
                     (fun _ => (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
                        sumbool_rect
-                         (fun _ => forall (str' : String) (len' : nat), len' <= len0 -> String.string -> bool)
+                         (fun _ => option (forall (str' : String) (len' : nat), len' <= len0 -> String.string -> bool))
                          (fun is_valid => (** It was valid, so we can remove it *)
-                            @parse_nonterminal
-                              (len0, pred valid_len)
-                              (or_intror (conj eq_refl _))
-                              (remove_nonterminal valid nt))
+                            Some (@parse_nonterminal
+                                    (len0, pred valid_len)
+                                    (or_intror (conj eq_refl _))
+                                    (remove_nonterminal valid nt)))
 
-                         (fun _ _ _ _ _ => (** oops, we already saw this nonterminal in the past.  ABORT! *)
-                            false)
+                         (fun _ => (** oops, we already saw this nonterminal in the past.  ABORT! *)
+                            None)
                          (Sumbool.sumbool_of_bool (negb (EqNat.beq_nat valid_len 0) && is_valid_nonterminal valid nt)))
-                    (lt_dec len len0))
-                 str
-                 (len := len)
-                 (sumbool_rect
-                    (fun b => len <= (if b then len else len0))
-                    (fun _ => le_n _)
-                    (fun _ => _)
-                    (lt_dec len len0))
-                 (Lookup G nt));
+                    (lt_dec len len0)));
             first [ assumption
                   | simpl;
                     generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid));

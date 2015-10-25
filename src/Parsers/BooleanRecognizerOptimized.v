@@ -4,8 +4,6 @@ Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
@@ -14,6 +12,10 @@ Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
 Require Export Fiat.Common.SetoidInstances.
 Require Export Fiat.Common.List.ListMorphisms.
+Require Export Fiat.Common.OptionFacts.
+Require Export Fiat.Common.Sigma.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -81,213 +83,420 @@ Section recursive_descent_parser.
 
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
 
+  Definition stringlike_lite (constV : constT) : StringLike Char
+    := {| String := varT;
+          is_char s := is_char (to_string (constV, s));
+          length s := length (to_string (constV, s));
+          take n s := snd (of_string (take n (to_string (constV, s))));
+          drop n s := snd (of_string (drop n (to_string (constV, s))));
+          get n s := get n (to_string (constV, s));
+          bool_eq s s' := bool_eq (to_string (constV, s)) (to_string (constV, s')) |}.
+
+  Local Ltac contract_drop_take_t' :=
+    idtac;
+    match goal with
+      | [ |- context[to_string (?x, snd ?y)] ]
+        => replace (x, snd y) with y
+          by (
+              etransitivity; [ apply surjective_pairing | ]; apply f_equal2; trivial;
+              rewrite ?take_const, ?drop_const, of_to; reflexivity
+            );
+          rewrite to_of
+    end.
+
+  Local Ltac contract_drop_take_t :=
+    idtac;
+    match goal with
+      | _ => contract_drop_take_t'
+      | [ H : is_true (bool_eq ?x ?y) |- _ ] => change (beq x y) in H
+      | [ H : context[is_true (bool_eq ?x ?y)] |- _ ] => change (is_true (bool_eq x y)) with (beq x y) in H
+      | [ |- context[is_true (bool_eq ?x ?y)] ] => change (is_true (bool_eq x y)) with (beq x y)
+      | _ => progress subst
+      | [ H : beq _ _ |- _ ] => rewrite !H; clear H
+      | [ |- _ = _ ] => reflexivity
+      | [ |- beq _ _ ] => reflexivity
+      | [ |- Equivalence _ ] => split; repeat intro
+    end.
+
+  Lemma stringlikeproperties_lite (constV : constT) : @StringLikeProperties Char (stringlike_lite constV).
+  Proof.
+    destruct HSLP;
+    split; simpl;
+    unfold Proper, respectful, beq; simpl;
+    repeat first [ progress contract_drop_take_t
+                 | intro
+                 | eauto with nocore ].
+  Qed.
+
+  Definition data_lite (constV : constT) : @boolean_parser_dataT _ (stringlike_lite constV)
+    := {| predata := data;
+          split_string_for_production it its s := split_string_for_production it its (to_string (constV, s)) |}.
+
+  Inductive take_or_drop := take_of (n : nat) | drop_of (n : nat).
+
+  Definition make_drops (ls : list take_or_drop) (str : String)
+    := fold_right
+         (fun td s => match td with
+                        | take_of n => take n s
+                        | drop_of n => drop n s
+                      end)
+         str
+         ls.
+
+  Arguments make_drops : simpl never.
+
+  Lemma make_drops_eta ls' str
+  : (fst (of_string str), snd (of_string (make_drops ls' str))) = of_string (make_drops ls' str).
+  Proof.
+    revert str; unfold make_drops; induction ls' as [|x xs IHxs]; simpl; intros.
+    { rewrite <- surjective_pairing; reflexivity. }
+    { etransitivity; [ | symmetry; apply surjective_pairing ].
+      destruct x; simpl.
+      { rewrite take_const, <- IHxs; reflexivity. }
+      { rewrite drop_const, <- IHxs; reflexivity. } }
+  Qed.
+
+  Lemma make_drops_eta' ls' ls'' str
+  : (fst (of_string (make_drops ls' str)), snd (of_string (make_drops ls'' str))) = of_string (make_drops ls'' str).
+  Proof.
+    etransitivity; [ | apply make_drops_eta ].
+    f_equal.
+    unfold make_drops.
+    induction ls' as [|x xs IHxs]; simpl; intros; trivial.
+    destruct x; rewrite ?take_const, ?drop_const, IHxs; reflexivity.
+  Qed.
+
+  Lemma make_drops_eta'' ls' str strv
+  : (fst (of_string str), snd (of_string (make_drops ls' (to_string (fst (of_string str), strv))))) = of_string (make_drops ls' (to_string (fst (of_string str), strv))).
+  Proof.
+    etransitivity; [ | apply make_drops_eta ]; simpl.
+    rewrite of_to; simpl; reflexivity.
+  Qed.
+
+  Local Ltac t_reduce_fix :=
+    repeat match goal with
+             | _ => progress simpl sumbool_rect
+             | _ => progress simpl option_rect
+             | [ |- context[lt_dec ?x ?y] ]
+               => destruct (lt_dec x y)
+             | [ |- context[dec ?x] ]
+               => destruct (dec x)
+             | [ |- @fold_right ?A ?B ?f ?x ?ls = @fold_right ?A ?B ?f ?x ?ls' ]
+               => apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_right A B))
+             | [ |- @fold_left ?A ?B ?f ?ls ?x = @fold_left ?A ?B ?f ?ls' ?x ]
+               => apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_left A B))
+             | [ |- @map ?A ?B ?f ?ls = @map ?A ?B ?f' ?ls' ]
+               => apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map A B))
+             | _ => intro
+             | [ |- ?x = ?x ] => reflexivity
+             | [ |- andb _ _ = andb _ _ ] => apply f_equal2
+             | [ |- orb _ _ = orb _ _ ] => apply f_equal2
+             | [ |- match ?it with Terminal _ => _ | _ => _ end = match ?it with _ => _ end ] => is_var it; destruct it
+             | [ |- context[(fst ?x, snd ?x)] ] => rewrite <- !surjective_pairing
+             | _ => contract_drop_take_t'
+             | _ => rewrite make_drops_eta
+             | _ => rewrite make_drops_eta'
+             | _ => rewrite make_drops_eta''
+             | [ |- context[to_string (of_string _)] ] => rewrite !to_of
+             | [ |- context[take ?x (make_drops ?ls ?str)] ]
+               => change (take x (make_drops ls str)) with (make_drops (take_of x :: ls) str)
+             | [ |- context[drop ?x (make_drops ?ls ?str)] ]
+               => change (drop x (make_drops ls str)) with (make_drops (drop_of x :: ls) str)
+             | _ => solve [ auto with nocore ]
+             | [ |- prod_relation lt lt _ _ ] => hnf; simpl; omega
+             | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
+             | [ H : _ = in_left |- _ ] => clear H
+             | [ H : _ /\ _ |- _ ] => destruct H
+             | [ H : context[negb (EqNat.beq_nat ?x ?y)] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
+             | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
+             | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+             | [ H : snd ?x = _ |- _ ] => is_var x; destruct x
+             | _ => progress simpl negb in *
+             | [ H : false = true |- _ ] => inversion H
+           end.
+
+  Local Ltac t_reduce_list :=
+    idtac;
+    match goal with
+      | [ |- list_rect ?P ?n ?c ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls (make_drops ?l ?str) ?x ?y ]
+        => let n0 := fresh in
+           let c0 := fresh in
+           let n1 := fresh in
+           let c1 := fresh in
+           set (n0 := n);
+             set (n1 := n');
+             set (c0 := c);
+             set (c1 := c');
+             refine (list_rect
+                       (fun ls' => forall x' y' l', list_rect P n0 c0 ls' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' (make_drops l' str) x' y')
+                       _
+                       _
+                       ls
+                       x y l);
+             simpl list_rect;
+             [ subst n0 c0 n1 c1; cbv beta
+             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
+      | [ |- list_rect ?P ?n ?c ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y ]
+        => let n0 := fresh in
+           let c0 := fresh in
+           let n1 := fresh in
+           let c1 := fresh in
+           set (n0 := n);
+             set (n1 := n');
+             set (c0 := c);
+             set (c1 := c');
+             refine (list_rect
+                       (fun ls' => forall x' y' l', list_rect P n0 c0 ls' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' (snd (of_string (make_drops l' str))) x' y')
+                       _
+                       _
+                       ls
+                       x y l);
+             simpl list_rect;
+             [ subst n0 c0 n1 c1; cbv beta
+             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
+    end.
+
+  Definition parse_nonterminal_opt0
+             (str : String)
+             (nt : String.string)
+  : { b : bool | b = parse_nonterminal (G := G) str nt }.
+  Proof.
+    exists (@parse_nonterminal _ _ G (data_lite (fst (of_string str))) (snd (of_string str)) nt).
+    unfold parse_nonterminal, parse_nonterminal_or_abort.
+    simpl.
+    rewrite <- !surjective_pairing, !to_of.
+    change str with (make_drops nil str).
+    lazymatch goal with
+      | [ |- Fix ?rwf _ ?P0 ?a ?b ?c ?d ?e ?f = Fix _ _ ?P1 _ _ ?str _ _ _ ]
+        => set (a' := a); set (P0' := P0); set (P1' := P1); generalize f; generalize e; change (d <= d) with (d <= (fst a')); generalize d; generalize b; clearbody a';
+           generalize (@nil take_or_drop); induction (rwf a') as [?? IH]; intros
+    end.
+    rewrite !Fix5_eq by (intros; apply parse_nonterminal_step_ext; assumption).
+    unfold P0' at 1, P1' at 1, parse_nonterminal_step, parse_productions', parse_production', parse_item'.
+    t_reduce_fix;
+    t_reduce_list;
+    t_reduce_fix.
+    { apply IH; t_reduce_fix. }
+    { apply IH; t_reduce_fix. }
+  Defined.
+
+  Local Ltac refine_Fix5_Proper_eq :=
+    idtac;
+    (lazymatch goal with
+    | [ |- context[_ = @Fix ?A ?R ?Rwf ?T (fun a0 b0 c0 d0 e0 h0 i0 => @?f a0 b0 c0 d0 e0 h0 i0) ?a ?b ?c ?d ?e ?h] ]
+      => (lazymatch T with
+         | (fun a' : ?A => forall (b' :@?B a') (c' : @?C a' b') (d' : @?D a' b' c') (e' : @?E a' b' c' d') (h' : @?H a' b' c' d' e'), @?P a' b' c' d' e' h')
+           => let H' := fresh in
+              (*refine (_ : @Fix A R Rwf T (fun a0 b0 c0 d0 e0 h0 i0 => _) a b c d e h = _);
+                 let f' := match goal with |- @Fix _ _ _ _ ?f' _ _ _ _ _ _ = _ => constr:f' end in*)
+              pose proof ((fun f' H0 => @Fix5_Proper_eq A B C D E H R Rwf P f' f H0 a b c d e h)) as H';
+          cbv beta in H';
+          (lazymatch type of H' with
+          | forall f' : ?f'T, @?H'T f' -> _
+            => let H'' := fresh in
+               let f'' := fresh in
+               assert (H'' : { f' : f'T & H'T f' });
+           [ clear H'
+           | destruct H'' as [f'' H''];
+             specialize (H' f'' H'');
+             clear H''; eexists; exact H' ]
+           end)
+          end)
+     end);
+    unfold forall_relation, pointwise_relation, respectful;
+    cbv beta;
+    eexists (fun a0 b0 c0 d0 e0 h0 i0 => _); intros.
+
+  Local Ltac fin_step_opt :=
+    repeat match goal with
+             | [ |- _ = true ] => reflexivity
+             | [ |- _ = false ] => reflexivity
+             | [ |- ?x = ?x ] => reflexivity
+             | [ |- _ = ?x ] => is_var x; reflexivity
+             | [ |- _ = (_::_) ] => apply f_equal2
+             | [ |- _ = nil ] => reflexivity
+             | [ |- _ = 0 ] => reflexivity
+             | [ |- _ = 1 ] => reflexivity
+             | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
+             | [ |- _ = string_beq _ _ ] => apply f_equal2
+             | [ |- _ = fst ?x ] => is_var x; reflexivity
+             | [ |- _ = snd ?x ] => is_var x; reflexivity
+           end.
+
+  Local Ltac step_opt' :=
+    idtac;
+    match goal with
+      | [ |- _ = @option_rect ?A ?B (fun s => _) _ _ ]
+        => refine (_ : @option_rect A B (fun s => _) _ _ = _);
+          apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _ ==> eq) (@option_rect A B));
+          repeat intro
+      | [ |- _ = @bool_rect ?A _ _ _ ]
+        => refine (_ : @bool_rect A _ _ _ = _);
+          apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@bool_rect A));
+          repeat intro
+      | [ |- _ = fold_right orb false _ ]
+        => rewrite !(fun ls => eq_sym (@fold_symmetric _ orb Bool.orb_assoc Bool.orb_comm false ls))
+      | [ |- _ = @fold_left ?A ?B orb _ false ]
+        => refine (_ : fold_left orb _ false = _);
+          apply (_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B)); repeat intro
+      | [ |- _ = @fold_right ?A ?B (fun x y => _) _ _ ]
+        => refine (_ : fold_right (fun x y => _) _ _ = _);
+          apply (_ : Proper (_ ==> _ ==> _ ==> _) (@fold_right A B)); repeat intro
+      | [ |- _ = @map ?A ?B _ _ ]
+        => refine (_ : @map A B (fun x => _) _ = _);
+          apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _) (@map A B)); repeat intro
+    end;
+    fin_step_opt.
+
+  Local Ltac step_opt := repeat step_opt'.
+
+  Local Ltac sigL_transitivity term :=
+    idtac;
+    (lazymatch goal with
+    | [ |- ?sig (fun x : ?T => @?A x = ?B) ]
+      => (let H := fresh in
+          let H' := fresh in
+          assert (H : sig (fun x : T => A x = term));
+          [
+          | assert (H' : term = B);
+            [
+            | let x' := fresh in
+              destruct H as [x' H];
+                exists x'; transitivity term; [ exact H | exact H' ] ] ])
+     end).
+
+  Local Ltac fix_trans_helper RHS x y :=
+    match RHS with
+      | appcontext G[y] => let RHS' := context G[x] in
+                           fix_trans_helper RHS' x y
+      | _ => constr:RHS
+    end.
+
+  Local Ltac fix_trans :=
+    match goal with
+      | [ H : forall a0 a1 a2 a3 a4 a5 a6, ?x a0 a1 a2 a3 a4 a5 a6 = ?y a0 a1 a2 a3 a4 a5 a6 |- _ = ?RHS ]
+        => let RHS' := fix_trans_helper RHS x y
+           in transitivity RHS'; [ clear H y | ]
+    end.
+
+  Local Ltac t_reduce_list_more :=
+    idtac;
+    (lazymatch goal with
+    | [ str : String |- list_rect ?P ?n ?c ?ls ?str' ?x ?y = list_rect ?P' ?n' ?c' ?ls ?str' ?x ?y ]
+      => (change str' with (snd (fst (of_string str), str'));
+          rewrite <- (of_to (fst (of_string str), str'));
+          change (to_string (fst (of_string str), str')) with (make_drops nil (to_string (fst (of_string str), str')));
+          t_reduce_list)
+     end).
+
   Definition parse_nonterminal_opt'
              (str : String)
              (nt : String.string)
   : { b : bool | b = parse_nonterminal (G := G) str nt }.
   Proof.
+    let c := constr:(parse_nonterminal_opt0 str nt) in
+    let h := head c in
+    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
     let G := match goal with |- context[_ = parse_nonterminal (G := ?G) _ _] => constr:G end in
     let G' := head G in
-    try unfold G'.
+    unfold G'.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
-    eexists.
-    let L := match goal with |- ?L = _ => constr:L end in
-    let e := fresh "e" in
-    let e' := fresh "e" in
-    let pp := fresh "pp" in
-    set (e := L);
-      etransitivity;
+    refine_Fix5_Proper_eq.
+    unfold parse_production', parse_item'.
+    fix_trans;
       [
-      | match goal with
-          | [ |- _ = @Fix ?A ?R ?Rwf (fun a : ?A => forall (b :@?B a) (c : @?C a b) (d : @?D a b c) (e : @?E a b c d) (h : @?H a b c d e), @?P a b c d e h) ?f ?a ?b ?c ?d ?e ?h ]
-            => refine ((fun H0 => @Fix5_Proper_eq A B C D E H R Rwf P _ f H0 a b c d e h) _)
-        end;
-        unfold forall_relation, pointwise_relation, respectful;
-        let H' := fresh in
-        (intros ??? H' ?????);
-          let L := match goal with |- ?L = ?R => constr:L end in
-          let R := match goal with |- ?L = ?R => constr:R end in
-          set (e' := L);
-            let R' := match type of H' with
-                        | forall a0 a1 a2 a3 a4 a5 a6, ?x a0 a1 a2 a3 a4 a5 a6 = ?y a0 a1 a2 a3 a4 a5 a6
-                          => let Rp := (eval pattern y in R) in
-                             match Rp with
-                               | ?R' y => (eval cbv beta in (R' x))
-                             end
-                      end in
-            transitivity R';
-              [ clear H';
-                unfold parse_production;
-                try match goal with
-                      | [ |- appcontext[@parse_production' ?a ?b ?c ?d ?e ?f ?g ?h] ]
-                        => set (pp := @parse_production' a b c d e f g h)
-                    end
-              | clear -H'; unfold sumbool_rect;
-                unfold parse_production;
-                repeat match goal with
-                         | _ => reflexivity
-                         | [ |- appcontext[match ?e with left _ => _ | right _ => _ end] ]
-                           => destruct e
-                       end;
-                setoid_rewrite (parse_production'_respectful H');
-                reflexivity ] ];
-      [
-      | repeat match goal with
-                 | _ => progress simpl
-                 | _ => setoid_rewrite (fun ls => eq_sym (@fold_symmetric _ orb Bool.orb_assoc Bool.orb_comm false ls))
-                 | _ => setoid_rewrite Bool.orb_false_r
-                 | [ |- appcontext[fold_right (fun str_t else_case s => bool_rect (fun _ => ?T) (@?a str_t) (else_case s) (@?b str_t s))] ]
-                   => simpl_setoid_rewrite (@fold_right_fun _ _ _ (fun str_t else_cases s => bool_rect (fun _ => T) (a str_t) else_cases (b str_t s)))
-                 | [ |- appcontext[?f (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls) ?x] ]
-                   => simpl_setoid_rewrite (fun init => @f_fold_right_bool_rect _ _ _ (fun k => f k x) init ls)
-                 | [ |- appcontext[?f (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
-                   => simpl_setoid_rewrite (fun init => @f_fold_right_bool_rect _ _ _ f init ls)
-                 | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
-                   => simpl_setoid_rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
-               end;
-        try subst pp; simpl;
-        subst e'; instantiate; reflexivity ];
-      cbv beta iota zeta delta [bool_rect sumbool_rect];
-      simpl;
-      subst e; instantiate.
+      | solve [ t_reduce_fix;
+                t_reduce_list_more;
+                t_reduce_fix ] ].
+    step_opt'; [ | reflexivity ].
+    step_opt'.
+    etransitivity_rev _.
+    { step_opt'.
+      match goal with
+        | [ |- appcontext[fold_right (fun str_t else_case s => bool_rect (fun _ => ?T) (@?a str_t) (else_case s) (@?b str_t s))] ]
+          => rewrite (@fold_right_fun _ _ _ (fun str_t else_cases s => bool_rect (fun _ => T) (a str_t) else_cases (b str_t s)))
+      end.
+      match goal with
+        | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
+          => rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
+      end.
+      reflexivity. }
+    match goal with
+      | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
+        => rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
+    end.
+    simpl.
+    rewrite fold_right_bool_rect; simpl.
+    step_opt'.
+    step_opt'.
+    step_opt'.
+    step_opt'.
+    match goal with
+      | [ |- _
+             = list_rect
+                 ?P
+                 ?N
+                 (fun it its parse_production' str0 len pf
+                  => ?fold_orb
+                      (map
+                         ((fun n
+                           => match it with
+                                | Terminal ch
+                                  => is_char
+                                       (to_string (fst (of_string ?str),
+                                                   snd (of_string (take n (to_string (fst (of_string ?str), str0))))))
+                                       ch
+                                | NonTerminal nt0
+                                  => @?a5 it its parse_production' str0 len pf n nt0
+                              end
+                                && @?rest it its parse_production' str0 len pf n)%bool)
+                         (@?ls it its parse_production' str0 len pf))
+                      ?false)
+                 ?a ?b ?c ?d ]
+        => let lhs' :=
+               constr:(
+                 list_rect
+                   P N
+                   (fun it its parse_production' str0 len pf
+                    => fold_orb
+                         (map
+                            ((fun n
+                              => match it with
+                                   | Terminal ch
+                                     => is_char
+                                          (take n (to_string (fst (of_string str), str0)))
+                                          ch
+                                   | NonTerminal nt0
+                                     => a5 it its parse_production' str0 len pf n nt0
+                                 end
+                                   && rest it its parse_production' str0 len pf n)%bool)
+                            (ls it its parse_production' str0 len pf))
+                         false)
+                   a b c d) in
+           etransitivity;
+             [
+             | refine (_ : lhs' = _); cbv beta;
+               t_reduce_list_more;
+               solve [ t_reduce_fix ] ];
+             cbv beta
+    end.
     reflexivity.
   Defined.
-
-  Lemma take_drop_helper n ms x
-  : take n (fold_right drop (to_string x) ms)
-    = to_string (fst x,
-                 snd (of_string (take n (fold_right drop (to_string x) ms)))).
-  Proof.
-    rewrite <- (rev_involutive ms).
-    rewrite fold_left_rev_right.
-    generalize (rev ms); clear ms; intro ms.
-    revert n x; induction ms; intros n [x y]; simpl.
-    { match goal with
-        | [ |- ?x = ?y ]
-          => etransitivity;
-            [ symmetry; exact (to_of x)
-            | etransitivity; [ | exact (to_of y) ] ]
-      end.
-      apply f_equal.
-      apply injective_projections.
-      { rewrite take_const, !of_to; reflexivity. }
-      { rewrite !of_to; simpl; reflexivity. } }
-    { pose proof (IHms n (of_string (drop a (to_string (x, y))))) as IHms'.
-      rewrite to_of in IHms'.
-      rewrite IHms'; clear IHms'.
-      rewrite drop_const, !of_to; simpl.
-      reflexivity. }
-  Qed.
 
   Definition parse_nonterminal_opt''
              (str : String)
              (nt : String.string)
   : { b : bool | b = parse_nonterminal (G := G) str nt }.
   Proof.
+    let c := constr:(parse_nonterminal_opt' str nt) in
+    let h := head c in
+    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
     eexists.
-    transitivity (proj1_sig (parse_nonterminal_opt' str nt)); [ | exact (proj2_sig (parse_nonterminal_opt' str nt)) ].
-    cbv beta iota zeta delta [parse_nonterminal_opt' proj1_sig].
-    lazymatch goal with
-      | [ |- ?e = Fix
-                    ?wf
-                    (fun (a : ?T0) => ?T1 -> String -> ?T2)
-                    (fun (a' : ?T0)
-                         (x : forall a'' : ?T0,
-                                ?R a'' a'
-                                -> ?T1 -> String -> @?T2' a'')
-                         (y : ?T1)
-                         (z : String)
-                     => @?f a' x y z)
-                    ?v1 ?v2 ?str ?v4 ?v5 ?v6 ]
-        => let f' := constr:(fun const_str
-                                 (a' : T0)
-                                 (x_new : forall a'' : T0, R a'' a' -> T1 -> varT -> T2' a'')
-                                 (y : T1)
-                                 (z : varT)
-                             => f a' (fun a'' rwf t1 str'
-                                      => x_new a'' rwf t1 (snd (of_string str')))
-                                  y (to_string (const_str, z))) in
-           let vstr' := constr:(snd (of_string str)) in
-           let f'h := fresh "f0" in
-           let fh := fresh "f1" in
-           set (f'h := f');
-             set (fh := f);
-             let GT := constr:(Fix
-                                 wf
-                                 (fun (a : T0) => T1 -> varT -> T2)
-                                 (f'h (fst (of_string str)))
-                                 v1 v2 vstr' v4 v5 v6
-                               = Fix
-                                   wf
-                                   (fun (a : T0) => T1 -> String -> T2)
-                                   fh
-                                   v1 v2 str v4 v5 v6) in
-             refine (_ : GT); change GT;
-             let H := fresh in
-             assert (H : forall a b vstr'' d e' f0',
-                           Fix wf (fun (a : T0) => T1 -> varT -> T2) (f'h (fst (of_string str))) a b vstr'' d e' f0'
-                           = Fix wf (fun (a : T0) => T1 -> String -> T2) fh a b (to_string (fst (of_string str), vstr'')) d e' f0');
-               [ let a := fresh in intro a; induction (wf a) as [?? IH]
-               | specialize (fun a b => H a b (snd (of_string str)));
-                 rewrite <- surjective_pairing in H;
-                 rewrite to_of in H;
-                 rewrite <- H;
-                 reflexivity ]
-    end.
-    intros.
-    rewrite !Fix5_eq;
-      [ unfold f0 at 1, f1 at 1
-      | unfold f0, f1
-      | unfold f0, f1 ];
-      repeat match goal with
-               | _ => progress intros
-               | [ |- ?x = ?x ] => reflexivity
-               | [ |- fold_right _ _ _ = fold_right _ _ _ ]
-                 => apply fold_right_f_eq_mor; [ intros ?? | | ]
-               | [ |- (match ?x with _ => _ end) = (match ?x with _ => _ end) ]
-                 => destruct x eqn:?
-               | [ |- (match ?x with _ => _ end) _ _ _ _ = (match ?x with _ => _ end) _ _ _ _ ]
-                 => destruct x eqn:?
-               | [ H : fst (of_string _) = ?x |- context[?x] ] => rewrite <- H
-               | [ |- fold_left _ _ _ = fold_left _ _ _ ]
-                 => rewrite <- !fold_left_rev_right
-               | [ |- rev _ = rev _ ]
-                 => apply f_equal
-               | [ |- map _ ?ls = map _ ?ls ]
-                 => apply map_ext; intro
-               | [ |- EqNat.beq_nat ?x ?y = EqNat.beq_nat ?x' ?y ]
-                 => apply f_equal2
-               | [ |- context[(fst ?x, snd ?x)] ]
-                 => rewrite <- surjective_pairing
-               | [ |- context[to_string (of_string _)] ]
-                 => rewrite to_of
-               | [ |- context[of_string (to_string _)] ]
-                 => rewrite of_to
-               | [ H : context[(fst ?x, snd ?x)] |- _ ]
-                 => rewrite <- surjective_pairing in H
-               | [ H : context[to_string (of_string _)] |- _ ]
-                 => rewrite to_of in H
-               | [ |- parse_production' _ _ _ _ = parse_production' _ _ _ _ ]
-                 => apply parse_production_drop_ext with (ms := nil); intros
-               | [ |- _ = Fix _ _ _ _ _ (take ?n (fold_right drop (?f ?x) ?ms)) _ _ _ ]
-                 => rewrite (take_drop_helper n ms x : take n (fold_right drop (f x) ms) = _)
-               | _ => progress simpl in *
-               | _ => congruence
-               | [ |- Fix _ _ _ ?a ?b ?c ?d ?e ?f = _ ]
-                 => specialize (fun H' => IH a H' b c d e f);
-                   try match goal with
-                         | [ H : _ |- _ ] => specialize (IH (or_introl H))
-                       end;
-                   try apply IH
-               | [ |- prod_relation _ _ _ _ ] => hnf
-               | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
-               | [ H : _ = in_left |- _ ] => clear H
-               | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : context[negb (EqNat.beq_nat ?x ?y)] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
-               | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
-               | [ |- _ \/ _ ] => right; split; [ reflexivity | omega ]
-             end.
+    rewrite <- !surjective_pairing, !to_of.
+    reflexivity.
   Defined.
 
   Definition parse_nonterminal_opt
@@ -295,9 +504,11 @@ Section recursive_descent_parser.
              (nt : String.string)
   : { b : bool | b = parse_nonterminal (G := G) str nt }.
   Proof.
-    let impl := (eval cbv beta iota zeta delta [parse_nonterminal_opt'' proj1_sig] in (proj1_sig (parse_nonterminal_opt'' str nt))) in
-    (exists impl).
-    abstract (exact (proj2_sig (parse_nonterminal_opt'' str nt))).
+    let c := constr:(parse_nonterminal_opt'' str nt) in
+    let h := head c in
+    let impl := (eval cbv beta iota zeta delta [h proj1_sig] in (proj1_sig c)) in
+    (exists impl);
+      abstract (exact (proj2_sig c)).
   Defined.
 End recursive_descent_parser.
 
