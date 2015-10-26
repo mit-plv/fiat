@@ -424,8 +424,8 @@ Section recursive_descent_parser.
                            => match it with
                                 | Terminal ch
                                   => is_char
-                                       (to_string (fst (of_string ?str'),
-                                                   snd (of_string (take n (to_string (fst (of_string ?str'), str0'))))))
+                                       (to_string (fst (?of_string_str'),
+                                                   snd (of_string (take n (to_string (fst (?of_string_str'), str0'))))))
                                        ch
                                 | NonTerminal nt0
                                   => @?a5 it its parse_production' str0' len pf n nt0
@@ -446,7 +446,7 @@ Section recursive_descent_parser.
                               => match it with
                                    | Terminal ch
                                      => is_char
-                                          (take n (to_string (fst (of_string str'), str0')))
+                                          (take n (to_string (fst (of_string_str'), str0')))
                                           ch
                                    | NonTerminal nt0
                                      => a5 it its parse_production' str0' len pf n nt0
