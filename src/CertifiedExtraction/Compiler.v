@@ -2664,7 +2664,7 @@ Definition FacadeImplementationOfCopy av : AxiomaticSpec av.
     |}; spec_t.
 Defined.
 
-Definition FacadeImplementationOfDestructor av (fAA: av) : AxiomaticSpec av.
+Definition FacadeImplementationOfDestructor av : AxiomaticSpec av.
   refine {|
       PreCond := fun args => exists x, args = (ADT x) :: nil;
       PostCond := fun args ret => exists x, args = (ADT x, None) :: nil /\ ret = SCA _ (Word.natToWord 32 0)
@@ -2840,6 +2840,25 @@ Lemma CompileCallFacadeImplementationOfConstructor:
       {{ tenv }}
         (Call vret fpointer nil)
       {{ [[ vret <-- @ADT av adt as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end; facade_eauto.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfDestructor:
+  forall {av} {env} fpointer vtmp adt tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor av)) env ->
+    forall vadt ext,
+      vtmp <> vadt ->
+      vtmp ∉ ext ->
+      NotInTelescope vtmp tenv ->
+      vadt ∉ ext ->
+      NotInTelescope vadt tenv ->
+      {{ [[ vadt <-- @ADT av adt as _]] :: tenv }}
+        (Call vtmp fpointer (vadt :: nil))
+      {{ tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -3279,9 +3298,25 @@ Qed.
 Definition LiftPropertyToTelescope {av} ext (property: _ -> Prop) : Telescope av -> Prop :=
   fun tenv => forall st, st ≲ tenv ∪ ext -> property st.
 
+Definition Lifted_not_mapsto_adt {av} ext tenv k :=
+  @LiftPropertyToTelescope av ext (fun map => not_mapsto_adt k map = true) tenv.
+
+Definition Lifted_MapsTo {av} ext tenv k v :=
+  @LiftPropertyToTelescope av ext (StringMap.MapsTo k v) tenv.
+
+Definition Lifted_is_true {av} ext tenv test :=
+  @LiftPropertyToTelescope av ext (fun st => is_true st test) tenv.
+
+Definition Lifted_is_false {av} ext tenv test :=
+  @LiftPropertyToTelescope av ext (fun st => is_false st test) tenv.
+
 Ltac LiftPropertyToTelescope_t :=
   match goal with
   | [ H: LiftPropertyToTelescope ?ext _ ?tenv, H': ?st ≲ ?tenv ∪ ?ext |- _ ] => learn (H st H')
+  | [ H: context[@Lifted_not_mapsto_adt] |- _ ] => unfold Lifted_not_mapsto_adt in H
+  | [ H: context[@Lifted_MapsTo] |- _ ] => unfold Lifted_MapsTo in H
+  | [ H: context[@Lifted_is_true] |- _ ] => unfold Lifted_is_true in H
+  | [ H: context[@Lifted_is_false] |- _ ] => unfold Lifted_is_false in H
   end.
 
 Ltac TelEq_morphism_t :=
@@ -3294,7 +3329,7 @@ Ltac TelEq_morphism_t :=
 
 Add Parametric Morphism {A} ext : (@LiftPropertyToTelescope A ext)
     with signature (pointwise_relation _ iff ==> TelEq ext ==> iff)
-      as Liftpropertytotelescope_TelEq_morphism.
+      as LiftPropertyToTelescope_TelEq_morphism.
 Proof.
   unfold LiftPropertyToTelescope, pointwise_relation;
   repeat match goal with
@@ -3304,11 +3339,39 @@ Proof.
          end.
 Qed.
 
+Add Parametric Morphism {A} ext : (@Lifted_not_mapsto_adt A ext)
+    with signature (TelEq ext ==> eq ==> iff)
+      as Lifted_not_mapsto_adt_TelEq_morphism.
+Proof.
+  eauto using LiftPropertyToTelescope_TelEq_morphism with typeclass_instances.
+Qed.
+
+Add Parametric Morphism {A} ext : (@Lifted_MapsTo A ext)
+    with signature (TelEq ext ==> eq ==> eq ==> iff)
+      as Lifted_MapsTo_TelEq_morphism.
+Proof.
+  eauto using LiftPropertyToTelescope_TelEq_morphism with typeclass_instances.
+Qed.
+
+Add Parametric Morphism {A} ext : (@Lifted_is_true A ext)
+    with signature (TelEq ext ==> eq ==> iff)
+      as Lifted_is_true_TelEq_morphism.
+Proof.
+  eauto using LiftPropertyToTelescope_TelEq_morphism with typeclass_instances.
+Qed.
+
+Add Parametric Morphism {A} ext : (@Lifted_is_false A ext)
+    with signature (TelEq ext ==> eq ==> iff)
+      as Lifted_is_false_TelEq_morphism.
+Proof.
+  eauto using LiftPropertyToTelescope_TelEq_morphism with typeclass_instances.
+Qed.
+
 Lemma CompileWhileFalse:
   forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
     (tenv : Telescope (list W)) tenv' test body,
     TelEq ext tenv tenv' ->
-    (LiftPropertyToTelescope ext (fun st => is_false st test) tenv) ->
+    Lifted_is_false ext tenv test ->
     {{ tenv }} (DFacade.While test body) {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros * H **.
@@ -3327,7 +3390,7 @@ Qed.
 Lemma CompileWhileTrue:
   forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
     (tenv : Telescope (list W)) tenv' tenv'' test body,
-    (LiftPropertyToTelescope ext (fun st => is_true st test) tenv) ->
+    Lifted_is_true ext tenv test ->
     {{ tenv }}  body                      {{ tenv' }}  ∪ {{ ext }} // env ->
     {{ tenv' }} (DFacade.While test body) {{ tenv'' }} ∪ {{ ext }} // env ->
     {{ tenv }}  (DFacade.While test body) {{ tenv'' }} ∪ {{ ext }} // env.
@@ -3359,18 +3422,13 @@ Proof.
   apply CompileDeallocSCA_discretely; eauto.
   apply CompileWhileFalse.
   reflexivity.
-  unfold LiftPropertyToTelescope;
+  unfold Lifted_is_false, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
-         | _ => progress unfold is_true, is_false, eval_bool, eval; simpl
+         | _ => progress simpl
          end.
 Qed.
-
-(* setoid_rewrite (TelEq_swap (k := vhead) (k' := vlst)). *)
-(* lazymatch goal with *)
-(* | [ |- context[ [[?k <-- _ as _]] :: [[vlst <-- _ as _]] :: _ ] ] => setoid_rewrite (TelEq_swap (k := k) (k' := vlst)) *)
-(* end. *)
 
 Add Parametric Morphism {A} ext : (fun key comp tail => @Cons A key comp (fun _ => tail))
     with signature (eq ==> Monad.equiv ==> TelEq ext ==> (TelEq ext))
@@ -3390,30 +3448,6 @@ Fixpoint DropName {A} k (t: Telescope A) :=
 
 Ltac inversion' H :=
   inversion H; subst; clear H.
-
-(* Inductive AlwaysMapsTo {A} (k: StringMap.key) v : (Telescope A) -> Prop := *)
-(* | AlwaysMapsToTop : forall cmp tail, (forall vv, cmp ↝ vv -> vv = v) -> AlwaysMapsTo k v (Cons (Some k) cmp tail) *)
-(* | AlwaysMapsToRec : forall k' cmp tail, k' <> Some k -> (exists vv, cmp ↝ vv) -> (forall vv, cmp ↝ vv -> AlwaysMapsTo k v (tail vv)) -> AlwaysMapsTo k v (Cons k' cmp tail). *)
-
-(* Ltac AlwaysMapsTo_t := *)
-(*   match goal with *)
-(*   | [ H: AlwaysMapsTo _ _ Nil |- _ ] => inversion' H *)
-(*   | [ H: AlwaysMapsTo _ _ (Cons _ _ _) |- _ ] => inversion' H *)
-(*   | [ H: forall vv, ?v ↝ vv -> _, H': ?v ↝ _ |- _ ] => learn (H _ H') *)
-(*   end. *)
-
-(* Lemma SameValues_AlwaysMapsTo_MapsTo : *)
-(*   forall {av} (tenv: Telescope av) k v ext st, *)
-(*     AlwaysMapsTo k v tenv -> *)
-(*     st ≲ tenv ∪ ext -> *)
-(*     StringMap.MapsTo k v st. *)
-(* Proof. *)
-(*   Time induction tenv; *)
-(*   repeat match goal with *)
-(*          | _ => AlwaysMapsTo_t || SameValues_Facade_t_step (* FIXME why is this faster than two empty patterns? *) *)
-(*          | [ H: ?key <> Some _ |- _ ] => destruct key *)
-(*          end; eauto using MapsTo_remove. *)
-(* Qed. *)
 
 Lemma DropName_remove :
   forall {av} (tenv: Telescope av) k ext st,
@@ -3441,8 +3475,8 @@ Lemma CompileCallEmpty':
     (fempty : GLabelMap.key) (lst : list W),
     vlst <> vtest ->
     vtest ∉ ext ->
-    LiftPropertyToTelescope ext (StringMap.MapsTo vlst (ADT lst)) tenv ->
-    LiftPropertyToTelescope ext (fun map => not_mapsto_adt vtest map = true) tenv ->
+    Lifted_MapsTo ext tenv vlst (ADT lst) ->
+    Lifted_not_mapsto_adt ext tenv vtest ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
     {{ tenv }}
       Call vtest fempty [vlst]
@@ -3468,8 +3502,8 @@ Lemma CompileCallPop':
     vlst <> vhead ->
     vhead ∉ ext ->
     vlst ∉ ext ->
-    LiftPropertyToTelescope ext (StringMap.MapsTo vlst (ADT (head :: tail))) tenv ->
-    LiftPropertyToTelescope ext (fun map => not_mapsto_adt vhead map = true) tenv ->
+    Lifted_MapsTo ext tenv vlst (ADT (head :: tail)) ->
+    Lifted_not_mapsto_adt ext tenv vhead ->
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     {{ tenv }}
       Call vhead fpop [vlst]
@@ -3703,9 +3737,85 @@ Ltac clean_DropName_in_ProgOk :=
                        try (is_dirty_telescope pre; clean_telescope pre ext);
                        try (is_dirty_telescope post; clean_telescope post ext)).
 
+Lemma Lifted_MapsTo_eq:
+  forall {av} ext k v tail,
+    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k v.
+Proof.
+  unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
+  SameValues_Facade_t.
+Qed.
+
+Lemma Lifted_MapsTo_neq:
+  forall {av} ext k v tail k' v',
+    k <> k' ->
+    v <> v' ->
+    @Lifted_MapsTo av ext (tail v) k' v' ->
+    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k' v'.
+Proof.
+  unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
+  SameValues_Facade_t.
+  eauto using StringMap.remove_3.
+Qed.
+
+Lemma Lifted_not_mapsto_adt_eq:
+  forall {av} ext k v tail,
+    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret (SCA _ v)) tail) k.
+Proof.
+  unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
+  SameValues_Facade_t.
+Qed.
+
+Lemma Lifted_not_mapsto_adt_neq:
+  forall {av} ext k v tail k',
+    k <> k' ->
+    @Lifted_not_mapsto_adt av ext (tail v) k' ->
+    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret v) tail) k'.
+Proof.
+  unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
+  SameValues_Facade_t.
+Qed.
+
+Lemma Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt:
+  forall {av} ext k tenv,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    @Lifted_not_mapsto_adt av ext tenv k.
+Proof.
+  unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
+  eauto using not_In_Telescope_not_in_Ext_not_mapsto_adt.
+Qed.
+
+Lemma Lifted_is_true_eq_MapsTo :
+  forall {av} ext tenv var v,
+    Lifted_MapsTo ext tenv var (SCA av v) ->
+    Lifted_is_true ext tenv (var = v)%facade.
+Proof.
+  unfold Lifted_is_true, Lifted_MapsTo, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;
+  repeat match goal with
+         | _ => progress simpl
+         | _ => SameValues_Facade_t_step
+         | [ H: forall _, _ -> _, H': _ |- _ ] => specialize (H _ H')
+         | [  |- context[IL.weqb ?v ?v] ] => replace (IL.weqb v v) with true by admit (* FIXME ask Perry *)
+         end.
+Qed.
+
+Ltac Lifted_t :=
+  repeat match goal with
+         | _ => congruence
+         | [  |- _ ∉ _ ] => decide_not_in
+         | [  |- StringMap.MapsTo _ _ _ ] => decide_mapsto
+         | [  |- NotInTelescope _ _ ] => decide_NotInTelescope
+         | [  |- TelEq _ _ _ ] => reflexivity
+         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
+         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | congruence | ]
+         | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
+         | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
+         | [  |- Lifted_not_mapsto_adt _ _ _ ] => apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; [ decide_not_in | decide_NotInTelescope ]
+         | [  |- Lifted_is_true _ _ _ ] => apply Lifted_is_true_eq_MapsTo (* Coercions make precise matching hard *)
+         end.
 
 Lemma CompileLoop :
-  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty,
+  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty f,
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
     vtest ∉ ext ->
@@ -3728,105 +3838,92 @@ Lemma CompileLoop :
     (forall head acc s,
         {{ [[vhead <-- SCA _ head as _]] :: [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ acc as _]] :: tenv }}
           facadeBody
-        {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (@Word.wplus 32 acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+        {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
     {{ [[vlst <-- ADT lst as _]] :: tenv }}
       (Seq facadeInit (Fold vhead vtest vlst fpop fempty facadeBody))
-    {{ [[vlst <-- ADT [] as _]] :: [[vret <-- SCA _ (fold_left (@Word.wplus 32) lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[vlst <-- ADT [] as _]] :: [[vret <-- SCA _ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
-  eapply CompileSeq; eauto.
+  eapply CompileSeq; eauto; clear dependent facadeInit.
 
   unfold Fold.
-  eapply CompileSeq; eauto.
+  eapply CompileSeq.
 
-  rewrite TelEq_swap by congruence.
+  rewrite TelEq_swap by congruence;
+    eapply CompileCallEmpty'; Lifted_t.
 
-  Hint Extern 2 (_ ∉ _) => decide_not_in : SameValues_db.
-  Hint Extern 2 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
-
-  eapply CompileCallEmpty'; facade_eauto.
-
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
-          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
-            [ | | eassumption ];
-            [ decide_not_in | decide_NotInTelescope ];
-            fail ].
-  
   clean_DropName_in_ProgOk.
 
-  clear dependent facadeInit.
-  generalize dependent init.
+  generalize dependent init;
   induction lst; simpl; intros.
 
-  apply CompileWhileFalse_Loop; facade_eauto; reflexivity.
+  apply CompileWhileFalse_Loop; Lifted_t.
 
-  eapply CompileWhileTrue.
-
-  (* LiftPropertyToTelescope *)
-  red; intros;
-  unfold is_true, is_false, eval_bool, eval; simpl;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+  eapply CompileWhileTrue; Lifted_t.
 
   eapply CompileSeq.
-  eapply CompileCallPop'; eauto with SameValues_db.
-
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  (* FIXME eauto *)
-  
-  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
-          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
-            [ | | eassumption ];
-            [ decide_not_in | decide_NotInTelescope ];
-            fail ].
-  
-  eapply CompileSeq.
-
+  eapply CompileCallPop'; Lifted_t.
   clean_DropName_in_ProgOk.
-  eauto.
 
-  apply CompileCallEmpty'; facade_eauto.
+  eapply CompileSeq; eauto.
 
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  red; intros;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call).
-
-  first [ eapply MapsTo_SCA_not_mapsto_adt; eassumption |
-          eapply not_In_Telescope_not_in_Ext_not_mapsto_adt;
-            [ | | eassumption ];
-            [ decide_not_in | decide_NotInTelescope ];
-            fail ].
-
-  (* FIXME eauto *)
-
+  apply CompileCallEmpty'; Lifted_t.
   clean_DropName_in_ProgOk.
 
   eauto.
 Qed.
 
-Print Assumptions CompileLoop.
+Lemma CompileBinopOrTest_right_inPlace:
+  forall {av} op name var2 (val1 val2: W) env ext tenv,
+    name ∉ ext ->
+    NotInTelescope name tenv ->
+    StringMap.MapsTo var2 (SCA av val2) ext ->
+    {{ [[name <-- SCA _ val1 as _]]::tenv }}
+      (Assign name (WrapOpInExpr op (Var name) (Var var2)))
+    {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  Time SameValues_Facade_t;
+  destruct op; SameValues_Facade_t.
+Qed.
+
+Definition MyEnvLists :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
+       ((GLabelMap.add ("list", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
+          ((GLabelMap.add ("list", "pop") (Axiomatic List_pop))
+             ((GLabelMap.add ("list", "delete") (Axiomatic (FacadeImplementationOfDestructor _)))
+                ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
+                   (GLabelMap.empty _)))))).
 
 Example other_test_with_adt'' :
     sigT (fun prog => forall seq, {{ [["arg1" <-- ADT seq as _ ]] :: Nil }}
                             prog
-                          {{ [["ret" <-- SCA _ (fold_left (@Word.wplus 32) seq (Word.wordToNat 0)) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+                          {{ [["ret" <-- SCA _ (fold_left (@Word.wplus 32) seq (Word.wordToNat 0)) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
 Proof.
   econstructor; intros.
-
-
   
+  eapply CompileSeq with ([["arg1" <-- ADT nil as _]]::[["ret" <-- SCA (list W) (fold_left (Word.wplus (sz:=32)) seq (Word.wordToNat 0)) as _]]::Nil).
+  let vhead := gensym "head" in
+  let vtest := gensym "test" in
+  apply (CompileLoop (vhead := vhead) (vtest := vtest)); try compile_do_side_conditions.
+  compile_step.
+  intros;
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  repeat compile_step.
+  subst.
+
+  let fop := translate_op Word.wplus in
+  apply (CompileBinopOrTest_right_inPlace fop); compile_do_side_conditions.
+
+  unfold MyEnvLists.
+  let vtmp := gensym "tmp" in
+  let fpointer := find_function_in_env (Axiomatic (@FacadeImplementationOfDestructor (list W))) MyEnvLists in
+  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fpointer) (vtmp := vtmp)); try compile_do_side_conditions.
+Defined.
+
+Print Assumptions other_test_with_adt''.
+
+Eval cbv beta iota zeta delta [extract_facade Fold proj1_sig sig_of_sigT other_test_with_adt'' WrapOpInExpr] in (extract_facade other_test_with_adt'').
 
 Example other_test_with_adt'' :
     sigT (fun prog => forall seq seq', {{ [["arg1" <-- ADT seq as _ ]] :: [["arg2" <--  ADT seq' as _]] :: Nil }}

@@ -250,7 +250,7 @@ Section recursive_descent_parser.
            generalize (@nil take_or_drop); induction (rwf a') as [?? IH]; intros
     end.
     rewrite !Fix5_eq by (intros; apply parse_nonterminal_step_ext; assumption).
-    unfold P0' at 1, P1' at 1, parse_nonterminal_step, parse_productions', parse_production', parse_item'.
+    unfold P0' at 1, P1' at 1, parse_nonterminal_step, parse_productions', parse_production', parse_production'_for, parse_item'.
     t_reduce_fix;
     t_reduce_list;
     t_reduce_fix.
@@ -383,7 +383,7 @@ Section recursive_descent_parser.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
     refine_Fix5_Proper_eq.
-    unfold parse_production', parse_item'.
+    unfold parse_production', parse_production'_for, parse_item'.
     fix_trans;
       [
       | solve [ t_reduce_fix;
@@ -424,8 +424,8 @@ Section recursive_descent_parser.
                            => match it with
                                 | Terminal ch
                                   => is_char
-                                       (to_string (fst (of_string ?str'),
-                                                   snd (of_string (take n (to_string (fst (of_string ?str'), str0'))))))
+                                       (to_string (fst (?of_string_str'),
+                                                   snd (of_string (take n (to_string (fst (?of_string_str'), str0'))))))
                                        ch
                                 | NonTerminal nt0
                                   => @?a5 it its parse_production' str0' len pf n nt0
@@ -446,7 +446,7 @@ Section recursive_descent_parser.
                               => match it with
                                    | Terminal ch
                                      => is_char
-                                          (take n (to_string (fst (of_string str'), str0')))
+                                          (take n (to_string (fst (of_string_str'), str0')))
                                           ch
                                    | NonTerminal nt0
                                      => a5 it its parse_production' str0' len pf n nt0

@@ -292,6 +292,28 @@ Section for_first_char.
 
   Global Opaque first_char_in.
 
+  Definition first_char_in__iff__for_first_char' {str ls} {P : _ -> Prop}
+             (H : forall ch, P ch <-> List.In ch ls)
+  : first_char_in str ls <-> for_first_char str P.
+  Proof.
+    split_iff.
+    split; first [ apply for_first_char__impl__first_char_in | apply first_char_in__impl__for_first_char ];
+    assumption.
+  Qed.
+
+  Definition first_char_in__iff__for_first_char {str ls}
+  : first_char_in str ls <-> for_first_char str (fun ch => List.In ch ls).
+  Proof.
+    apply first_char_in__iff__for_first_char'; reflexivity.
+  Qed.
+
+  Lemma first_char_in_exists (str : String) ls (H : length str >= 1)
+  : first_char_in str ls <-> (exists ch, take 1 str ~= [ ch ] /\ List.In ch ls).
+  Proof.
+    erewrite first_char_in__iff__for_first_char, for_first_char_exists by assumption.
+    reflexivity.
+  Qed.
+
   Lemma forall_chars__impl__for_first_char (str : String) P (H : forall_chars str P)
   : for_first_char str P.
   Proof.
