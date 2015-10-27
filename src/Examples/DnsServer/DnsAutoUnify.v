@@ -86,7 +86,9 @@ Proof.
   start sharpening ADT.
   simpl; pose_string_hyps; pose_heading_hyps.
   hone method "Process".
-  { (* Stepping through doAnyAll. *)
+  { (* Stepping through doAnyAll. Uncomment the below line and *)
+    (* comment the up until start_honing_QueryStructure' to see the *)
+    (* automated tactic work it's magic. *)
     (* Time doAnyAll. *)
     repeat_and_simplify srewrite_each_all.
     do_and_simplify drills_each_all.
@@ -115,7 +117,11 @@ Proof.
   }
   start_honing_QueryStructure'.
   hone method "AddData".
-  { repeat_and_simplify srewrite_each_all.
+  { (* Stepping through doAnyAll. Uncomment the below line and *)
+    (* comment the up until start_honing_QueryStructure' to see the *)
+    (* automated tactic work it's magic. *)
+    (* Time doAnyAll. *)
+    repeat_and_simplify srewrite_each_all.
     do_and_simplify drills_each_all.
     { repeat_and_simplify srewrite_each_all.
       repeat_and_simplify finish_each_all. }
@@ -140,8 +146,8 @@ Proof.
       { repeat_and_simplify rewrite_each_all.
         repeat_and_simplify finish_each_all. }
       { repeat_and_simplify rewrite_each_all.
-        repeat_and_simplify finish_each_all. }
-
+        repeat_and_simplify finish_each_all. } }
+  simpl.
   (* Still need to update master_plan with some search instances. *)
   master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
