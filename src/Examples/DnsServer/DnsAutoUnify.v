@@ -5,6 +5,8 @@ Require Import Coq.Vectors.Vector
         Coq.Lists.List.
 
 Require Import
+        Fiat.Common.Tactics.CacheStringConstant
+        Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Automation.MasterPlan
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
@@ -25,8 +27,6 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
-Open Scope ADTParsing.
-
 Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" : rep := empty,
@@ -37,7 +37,7 @@ Definition DnsSpec : ADT DnsSig :=
     Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
       Insert t into this!sCOLLECTIONS,
 
-    Def Method1 "Process" (this : rep) (p : packet) : rep * packet := 
+    Def Method1 "Process" (this : rep) (p : packet) : rep * packet :=
         Repeat 1 initializing n with p!"questions"!"qname"
                defaulting rec with (ret (buildempty p))
          {{ rs <- For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
@@ -49,8 +49,8 @@ Definition DnsSpec : ADT DnsSig :=
             Else                (* TODO: this does not filter by matching QTYPE *)
               (bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
               b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
-              if b                (* If the record's QNAME is an exact match  *)
-              then
+              If b                (* If the record's QNAME is an exact match  *)
+              Then
                 unique b,                         (* only one match (unique / otherwise) *)
                 List.In b bfrs /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
                                /\ p!"questions"!"qtype" <> CNAME ->>      (* and the query did not request a CNAME *)
@@ -59,11 +59,11 @@ Definition DnsSpec : ADT DnsSig :=
                 otherwise ->>     (* Copy the records into the answer section of an empty response *)
                 (* multiple matches -- add them all as answers in the packet *)
                   ret (List.fold_left add_answer bfrs (buildempty p))
-              else              (* prefix but record's QNAME not an exact match *)
+              Else              (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records --
                  ask the authoritative servers *) (* TODO does this return one, or return all? *)
-                bfrs' <- [[x in bfrs | x!sTYPE = NS]];
-                ret (List.fold_left add_ns bfrs' (buildempty p)))
+                (bfrs' <- [[x in bfrs | x!sTYPE = NS]];
+                ret (List.fold_left add_ns bfrs' (buildempty p))))
           }} >>= fun p => ret (this, p)}%methDefParsing.
 
 Ltac hone_Dns :=
@@ -77,11 +77,73 @@ Ltac hone_Dns :=
                                  GenerateIndexesForOne "Process" ltac:(fun attrlist =>
                                                                          let attrlist' := eval compute in (PickIndexes (CountAttributes' attrlist)) in makeIndex attrlist')).
 
+(* Making fold_list Opaque greatly speeds up setoid_rewriting. *)
+Opaque fold_left.
+
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof.
+  start sharpening ADT.
+  simpl; pose_string_hyps; pose_heading_hyps.
+  hone method "Process".
+  { (* Stepping through doAnyAll. *)
+    (* Time doAnyAll. *)
+    repeat_and_simplify srewrite_each_all.
+    do_and_simplify drills_each_all.
+    { repeat_and_simplify srewrite_each_all.
+      repeat_and_simplify finish_each_all. }
+    { repeat_and_simplify srewrite_each_all.
+      do_and_simplify drills_each_all.
+      { repeat_and_simplify srewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      { repeat_and_simplify srewrite_each_all.
+        do_and_simplify drills_each_all.
+        { repeat_and_simplify srewrite_each_all.
+          do_and_simplify drills_each_all.
+          { repeat_and_simplify srewrite_each_all.
+            repeat_and_simplify finish_each_all. }
+          { repeat_and_simplify srewrite_each_all.
+            repeat_and_simplify finish_each_all. }
+        }
+        { repeat_and_simplify srewrite_each_all.
+          repeat_and_simplify finish_each_all. }
+      }
+      repeat_and_simplify finish_each_all.
+      repeat_and_simplify finish_each_all.
+      repeat_and_simplify finish_each_all.
+    }
+  }
+  start_honing_QueryStructure'.
+  hone method "AddData".
+  { repeat_and_simplify srewrite_each_all.
+    do_and_simplify drills_each_all.
+    { repeat_and_simplify srewrite_each_all.
+      repeat_and_simplify finish_each_all. }
+    repeat_and_simplify srewrite_each_all.
+    do_and_simplify drills_each_all.
+    { repeat_and_simplify srewrite_each_all.
+      do_and_simplify drills_each_all.
+      { repeat_and_simplify srewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      do_and_simplify drills_each_all.
+      { repeat_and_simplify srewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      do_and_simplify drills_each_all.
+      { repeat_and_simplify srewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      { repeat_and_simplify rewrite_each_all.
+        repeat_and_simplify finish_each_all. } }
+    do_and_simplify drills_each_all.
+      { repeat_and_simplify srewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      do_and_simplify drills_each_all.
+      { repeat_and_simplify rewrite_each_all.
+        repeat_and_simplify finish_each_all. }
+      { repeat_and_simplify rewrite_each_all.
+        repeat_and_simplify finish_each_all. }
 
-  hone_Dns.
+  (* Still need to update master_plan with some search instances. *)
+  master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
 Time Defined.
 

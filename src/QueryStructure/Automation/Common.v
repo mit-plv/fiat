@@ -38,6 +38,11 @@ Ltac pose_heading_hyps :=
       cache_term (@Build_RawHeading n attrlist) as heading
                  run (fun id => fold id in *;
                         add id to headingCache)
+    | |- context[ @BuildHeading ?n ?attrlist ] =>
+      let heading := fresh "heading" in
+      cache_term (@BuildHeading n attrlist) as heading
+                 run (fun id => fold id in *;
+                        add id to headingCache)
     | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
       let str := fresh "schema" in
       cache_term (@Build_RawSchema heading TupleConstr RelConstr) as str

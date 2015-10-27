@@ -1,6 +1,5 @@
 Require Export Coq.Bool.Bool Coq.Strings.String Coq.Strings.Ascii.
 Require Export Fiat.Common.DecideableEnsembles
-        Fiat.Common.List.ListMorphisms
         Fiat.Common.List.ListFacts
         Fiat.Common.BoolFacts
         Fiat.Common.LogicFacts
@@ -404,7 +403,7 @@ Ltac fields storage :=
 Ltac prove_extensional_eq :=
   clear;
   unfold ExtensionalEq;
-  destruct_ifs; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
+  find_if_inside; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
 (* Default tactics for handling *)
 

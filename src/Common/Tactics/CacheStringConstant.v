@@ -1,6 +1,8 @@
-Require Import Fiat.Common.Tactics.HintDbExtra
-        Fiat.Common.Tactics.TransparentAbstract
-        Coq.Strings.String.
+Require Import
+        Coq.Strings.String
+        Fiat.Common.BoundedLookup
+        Fiat.Common.Tactics.HintDbExtra
+        Fiat.Common.Tactics.TransparentAbstract.
 
 Create HintDb stringCache.
 
@@ -18,6 +20,11 @@ Ltac pose_string_hyps :=
            cache_term (String R R') as str
                                          run (fun id => fold id in *;
                                                 add id to stringCache)
+         | |- context [ @Build_BoundedIndex ?A ?n ?Bound ?bindex' ?indexb' ] =>
+           let str := fresh "BStringId" in
+           cache_term (@Build_BoundedIndex A n Bound bindex' indexb') as str
+                                         run (fun id => fold id in *;
+                                                add id to stringCache)
          end.
 
 Ltac pose_string_hyps_in H :=
@@ -28,6 +35,11 @@ Ltac pose_string_hyps_in H :=
          | context [String ?R ?R'] =>
            let str := fresh "StringId" in
            cache_term (String R R') as str
+                                         run (fun id => fold id in *;
+                                                add id to stringCache)
+         | context [ @Build_BoundedIndex ?A ?n ?Bound ?bindex' ?indexb' ] =>
+           let str := fresh "BStringId" in
+           cache_term (@Build_BoundedIndex A n Bound bindex' indexb') as str
                                          run (fun id => fold id in *;
                                                 add id to stringCache)
          end).

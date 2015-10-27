@@ -7,8 +7,10 @@ Require Import Coq.Lists.List Coq.Arith.Arith
         Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
         Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core Fiat.ADTRefinement.GeneralRefinements
-        Fiat.ADTRefinement.SetoidMorphisms Fiat.ADTRefinement.BuildADTSetoidMorphisms.
+        Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.GeneralRefinements
+        Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* Notation-friendly versions of the honing tactics in GeneralRefinements. *)
 

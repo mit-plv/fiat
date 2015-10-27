@@ -342,7 +342,7 @@ Proof.
         computes_to_inv; subst; simpl; rewrite dec_a'; reflexivity.
         apply Decides_false in dec__a; apply H0 in dec__a; subst; reflexivity.
   - refine pick val _; auto; subst.
-    apply filter_permutation_morphism; [ reflexivity | assumption ].
+    apply List.ListMorphisms.filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
 
 (* uses refine_forall_to_exists; refines x2 in AddData

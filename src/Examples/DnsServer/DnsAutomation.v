@@ -135,15 +135,16 @@ All chains must end with tac, not top (because then there'd be no progress made 
         simpl in *;
         try simplify with monad laws.
 
-Ltac srewrite_each_all :=
-    first [
-           (* Process *)
-            setoid_rewrite (@refine_find_upperbound resourceRecord _ _) |
-            setoid_rewrite (@refine_decides_forall_In' _ _ _ _) |
-            setoid_rewrite refine_check_one_longest_prefix_s |
-            setoid_rewrite refine_if_If |
-            setoid_rewrite refine_check_one_longest_prefix_CNAME |
-            setoid_rewrite (@refine_filtered_list _ _ _ _) |
+      Ltac srewrite_each_all :=
+        first [
+            (* Process *)
+            setoid_rewrite refine_pick_eq' |
+            rewrite (@refine_find_upperbound resourceRecord _ _) |
+            rewrite (@refine_decides_forall_In' _ _ _ _) |
+            rewrite refine_check_one_longest_prefix_s |
+            rewrite refine_if_If |
+            rewrite refine_check_one_longest_prefix_CNAME |
+            rewrite (@refine_filtered_list _ _ _ _) |
             setoid_rewrite refine_bind_unit |
             (* AddData *)
             (* Why does adding these rewrites prevent other rewrites? *)
@@ -162,14 +163,18 @@ Ltac srewrite_each_all :=
            (* set_evars; setoid_rewrite refine_if_If *) (* can be done later *)
           ].
 
+Ltac subst_all' :=
+  repeat match goal with H : _ |- _ => subst H end.
+
 Ltac drills_each_all :=
   first [
-      subst_all; apply refine_under_bind_both; try intros |
-      apply refine_If_Then_Else
+      subst_all'; apply refine_under_bind_both; try intros; set_evars |
+      subst_all'; apply refine_If_Then_Else; set_evars
     ].
 
 Ltac finish_each_all :=
   first [
+      progress subst_all' |
       (eapply tuples_in_relation_satisfy_constraint_specific; eauto) |
       solve [eapply For_computes_to_In; eauto using IsPrefix_string_dec] |
       reflexivity |
