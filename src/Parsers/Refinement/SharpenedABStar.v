@@ -14,7 +14,6 @@ Section IndexedImpl.
 
     hone method "splits".
     {
-      set_evars.
       simplify parser splitter.
       finish honing parser method.
     }
