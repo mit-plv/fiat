@@ -37,7 +37,8 @@ Section recursive_descent_parser.
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
-        Definition parse_production'
+        Definition parse_production'_for
+                 (splits : item Char -> production Char -> String -> list nat)
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
@@ -63,12 +64,20 @@ Section recursive_descent_parser.
                                 (take n str)
                                 it)
                                && parse_production' (drop n str) (len - n) _)%bool
-                          (split_string_for_production it its str))
+                          (splits it its str))
                      false)
                prod);
           clear -pf;
           abstract (try apply Min.min_case_strong; omega).
         Defined.
+
+        Definition parse_production'
+                 (str : String)
+                 (len : nat)
+                 (pf : len <= len0)
+                 (prod : production Char)
+        : bool
+          := parse_production'_for split_string_for_production str pf prod.
       End production.
 
       Section productions.

@@ -217,6 +217,7 @@ src/Parsers/BaseTypesLemmas.v
 src/Parsers/BooleanRecognizer.v
 src/Parsers/BooleanRecognizerCorrect.v
 src/Parsers/BooleanRecognizerEquality.v
+src/Parsers/BooleanRecognizerExt.v
 src/Parsers/BooleanRecognizerFull.v
 src/Parsers/BooleanRecognizerOptimized.v
 src/Parsers/BooleanRecognizerTests.v
