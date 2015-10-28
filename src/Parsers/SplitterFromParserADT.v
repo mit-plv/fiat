@@ -164,8 +164,6 @@ Section parser.
     (@snd_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
       (only parsing). *)
 
-  Definition to_strings := ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "to_string" _ )).
-
   Local Ltac destruct_twice_faster term :=
     let H' := fresh in
     pose proof term as H';
@@ -272,6 +270,8 @@ Section parser.
          is_char str ch := mis_char ch str;
          get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
+  Local Instance adt_based_StringIso_lite : @StringIso Ascii.ascii adt_based_StringLike_lite
+    := { of_string str := cnew (string_of_list str) }.
 
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
     := { String := StringT;
@@ -281,6 +281,9 @@ Section parser.
          is_char str ch := mis_char ch str;
          get n str := mget n str;
          bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
+
+  Local Program Instance adt_based_StringIso : @StringIso Ascii.ascii adt_based_StringLike
+    := { of_string str := cnew (string_of_list str) }.
 
   Create HintDb parser_adt_method_db discriminated.
   (** We would like to just do
@@ -328,16 +331,17 @@ Section parser.
     repeat intro;
     destruct_head_hnf' sig;
     destruct_head_hnf' ex;
-    unfold beq, bool_eq, adt_based_StringLike, proj1_sig, take, drop, is_char, length, get in *;
+    unfold beq, bool_eq, adt_based_StringIso, adt_based_StringLike, proj1_sig, take, drop, is_char, length, get, of_string in *;
     repeat first [ match_erewrite_by_eauto (@mto_string) (@mto_string_eq)
                  | match_erewrite_by_eauto (@mis_char) (@mis_char_eq)
                  | match_erewrite_by_eauto (@mget) (@mget_eq)
                  | match_erewrite_by_eauto (@mlength) (@mlength_eq) ].
 
   Local Ltac t'' H meth :=
-    pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H;
+    first [ pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H
+          | pose proof (meth Ascii.ascii string_stringlike string_stringiso string_stringiso_properties) as H ];
     simpl in H; unfold beq in H; simpl in H;
-    unfold take, drop; simpl.
+    unfold take, drop, of_string; simpl.
   Local Ltac t' meth :=
     let H := fresh in
     t'' H meth;
@@ -381,6 +385,10 @@ Section parser.
     t'' H (@bool_eq_from_get);
       apply H; intro; erewrite <- !mget_eq by eassumption; trivial.
   Qed.
+
+  Local Program Instance adt_based_StringIsoProperties : @StringIsoProperties Ascii.ascii adt_based_StringLike _
+    := { }.
+  Next Obligation. t (@get_of_string). Qed.
 
   Definition splits :=
     ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).

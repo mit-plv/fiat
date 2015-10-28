@@ -19,9 +19,10 @@ Global Instance string_stringlike : StringLike Ascii.ascii
        get := String.get;
        bool_eq := string_beq }.
 
-Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
-Proof.
-  split;
+Global Instance string_stringiso : StringIso Ascii.ascii
+  := { of_string := string_of_list }.
+
+Local Ltac t :=
   repeat match goal with
            | _ => intro
            | [ |- _ = _ ] => reflexivity
@@ -81,7 +82,12 @@ Proof.
            | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
            | [ H : forall n, String.get n _ = String.get n _ |- _ ] => apply get_correct in H
          end.
-Qed.
+
+Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
+Proof. split; t. Qed.
+
+Global Instance string_stringiso_properties : StringIsoProperties Ascii.ascii.
+Proof. split; t. Qed.
 
 Lemma substring_take_drop (str : String) n m
 : String.substring n m str = take m (drop n str).

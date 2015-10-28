@@ -27,7 +27,15 @@ Module Export StringLike.
       beq : relation String := fun x y => bool_eq x y
     }.
 
+  Class StringIso {Char} {HSL : @StringLike Char} :=
+    {
+      of_string : list Char -> String
+    }.
+
+  Coercion StringLike_of_StringIso {Char} {HSL : @StringLike Char} (x : @StringIso Char HSL) := HSL.
+
   Arguments StringLike : clear implicits.
+  Arguments StringIso Char {HSL}.
   Bind Scope string_like_scope with String.
   Delimit Scope string_like_scope with string_like.
   Infix "=s" := (@beq _ _) (at level 70, no associativity) : type_scope.
@@ -93,9 +101,15 @@ Module Export StringLike.
       bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str'
     }.
 
+  Class StringIsoProperties {Char} {HSL : @StringLike Char} {HSI : @StringIso Char HSL} :=
+    {
+      get_of_string : forall n str, get n (of_string str) = List.nth_error str n
+    }.
+
   Global Existing Instance Equivalence_Reflexive.
   Global Existing Instance Equivalence_Symmetric.
   Global Existing Instance Equivalence_Transitive.
 
   Arguments StringLikeProperties Char {_}.
+  Arguments StringIsoProperties Char {_ _}.
 End StringLike.

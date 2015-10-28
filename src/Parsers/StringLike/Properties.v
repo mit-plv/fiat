@@ -3,12 +3,14 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Common.List.ListFacts.
-Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.
+Require Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
+
+Local Open Scope list_scope.
 
 Set Implicit Arguments.
 
@@ -675,3 +677,133 @@ Section String.
     Qed.
   End substring.
 End String.
+
+Section Iso.
+  Context {Char} {HSL : StringLike Char} {HSI : StringIso Char}
+          {HSLP : StringLikeProperties Char} {HSIP : StringIsoProperties Char}.
+
+  Lemma length_of_string_nil
+  : length (of_string nil) = 0.
+  Proof.
+    apply no_first_char_empty.
+    rewrite get_of_string; reflexivity.
+  Qed.
+
+  Lemma drop_of_string (n : nat) str
+  : drop n (of_string str) =s of_string (Operations.drop n str).
+  Proof.
+    apply bool_eq_from_get.
+    intro n'; rewrite get_drop', !get_of_string, nth_error_drop.
+    reflexivity.
+  Qed.
+
+  Lemma take_of_string (n : nat) str
+  : take n (of_string str) =s of_string (Operations.take n str).
+  Proof.
+    revert str; induction n; intros; simpl.
+    { apply bool_eq_empty; rewrite ?take_length, ?drop_length; trivial.
+      apply length_of_string_nil. }
+    { apply bool_eq_from_get.
+      intros [].
+      { destruct str as [|ch str]; simpl;
+        repeat match goal with
+                 | _ => progress simpl
+                 | _ => reflexivity
+                 | _ => progress rewrite ?get_take_lt, ?get_of_string, ?take_length, ?length_of_string_nil
+                       by (reflexivity || omega)
+               end. }
+      { intro n'; rewrite !get_S.
+        rewrite drop_take, !drop_of_string; simpl.
+        rewrite NPeano.Nat.sub_0_r.
+        destruct str; simpl;
+        rewrite !IHn; simpl; trivial.
+        destruct n; reflexivity. } }
+  Qed.
+
+  Lemma of_string_length str
+  : length (of_string str) = List.length str.
+  Proof.
+    induction str as [|ch str IHstr].
+    { apply no_first_char_empty.
+      rewrite get_of_string; reflexivity. }
+    { simpl; rewrite <- IHstr; clear IHstr.
+      assert (H : of_string str =s drop 1 (of_string (ch :: str))) by (rewrite drop_of_string; reflexivity).
+      rewrite H, drop_length.
+      destruct (length (of_string (ch::str))) eqn:H'.
+      { apply has_first_char_nonempty in H'.
+        rewrite get_of_string in H'; simpl in H'.
+        inversion H'. }
+      { omega. } }
+  Qed.
+
+  Lemma is_char_of_string str ch
+  : is_true (is_char (of_string str) ch) <-> str = (ch::nil).
+  Proof.
+    split; intro H;
+    [ pose proof (length_singleton _ _ H) as H';
+      rewrite of_string_length in H'
+    | ];
+    (destruct str as [|ch' [|ch'' str]];
+     simpl in *; try discriminate);
+    change (ch' :: nil) with (Operations.take 1 (ch'::nil)) in *;
+    repeat match goal with
+             | [ H : _ |- _ ] => progress rewrite <- ?take_of_string, ?get_of_string in H
+             | _ => progress rewrite <- ?take_of_string, ?get_of_string
+             | _ => progress simpl in *
+             | [ H : is_true (is_char _ _) |- _ ] => apply get_0 in H
+             | [ |- is_true (is_char _ _) ] => apply get_0
+             | _ => progress unfold value in *
+             | [ H : Some _ = Some _ |- _ ] => inversion_clear H
+             | [ H : _::_ = _::_ |- _ ] => inversion_clear H
+             | _ => reflexivity
+           end.
+  Qed.
+
+  Lemma substring_of_string {n m str}
+  : substring n m (of_string str) =s of_string (Operations.take m (Operations.drop n str)).
+  Proof.
+    rewrite <- take_of_string, <- drop_of_string; reflexivity.
+  Qed.
+
+  Lemma to_of_string str
+  : to_string (of_string str) = str.
+  Proof.
+    induction str.
+    { unfold fold, fold'.
+      rewrite of_string_length; simpl.
+      reflexivity. }
+    { rewrite fold_recr.
+      rewrite get_of_string; simpl.
+      rewrite drop_of_string; simpl.
+      rewrite IHstr.
+      reflexivity. }
+  Qed.
+
+  Lemma of_to_string str
+  : of_string (to_string str) =s str.
+  Proof.
+    remember (length str) as n eqn:H.
+    revert str H; induction n; intros.
+    { unfold fold.
+      apply bool_eq_empty; rewrite <- H, ?of_string_length; reflexivity. }
+    { rewrite fold_recr.
+      apply bool_eq_from_get.
+      intros [|n'].
+      { destruct (get 0 str) eqn:H'.
+        { rewrite get_of_string; reflexivity. }
+        { apply no_first_char_empty in H'; congruence. } }
+      { rewrite !get_S.
+        rewrite <- (IHn (drop 1 str)) by (rewrite drop_length; omega).
+        rewrite drop_of_string.
+        destruct (get 0 str) eqn:H'; simpl.
+        { reflexivity. }
+        { apply no_first_char_empty in H'; congruence. } } }
+  Qed.
+
+  Lemma beq_of_string {s s'}
+  : of_string s =s of_string s' <-> s = s'.
+  Proof.
+    rewrite <- beq_to_string, !to_of_string.
+    reflexivity.
+  Qed.
+End Iso.
