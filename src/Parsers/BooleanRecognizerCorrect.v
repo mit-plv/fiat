@@ -697,7 +697,7 @@ Section convenience.
               (length str) initial_nonterminals_data);
       [
       |
-      | exact (projT1
+      | exact (proj1_sig
                  (alt_all_elim
                     (@minimal_parse_of_item__of__parse_of_item
                        _ _ G _ _ (length str) (S (size_of_parse_item p))
@@ -772,7 +772,7 @@ Section convenience.
     [
     |
     |
-    | exact (projT1
+    | exact (proj1_sig
                (alt_all_elim
                   (@minimal_parse_of_production__of__parse_of_production
                      _ _ _ G _ _ (length str) (S (size_of_parse_production p))
@@ -829,7 +829,7 @@ Section convenience.
     [
     |
     |
-    | exact (projT1
+    | exact (proj1_sig
                (alt_all_elim
                   (@minimal_parse_of_productions__of__parse_of_productions
                      _ _ _ G _ _ (length str) (S (size_of_parse p))
