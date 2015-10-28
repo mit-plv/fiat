@@ -3,6 +3,8 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
+Require Import Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.
@@ -400,17 +402,22 @@ Section String.
     setoid_subst_rel beq; reflexivity.
   Qed.
 
+  Lemma add_take_1_singleton (str : String) ch (H : str ~= [ ch ])
+  : take 1 str ~= [ ch ].
+  Proof.
+    rewrite take_long; [ assumption | ].
+    apply length_singleton in H; rewrite H; reflexivity.
+  Qed.
+
   Lemma take_n_1_singleton (str : String) n ch (H : take n str ~= [ ch ])
   : take 1 str ~= [ ch ].
   Proof.
-    assert (H' : take 1 (take n str) ~= [ ch ])
-      by (rewrite take_long; [ assumption | ];
-          apply length_singleton in H; rewrite H; reflexivity).
-    rewrite (take_take str 1 n) in H'.
-    destruct n; simpl min in H'.
-    { apply length_singleton in H'; rewrite take_length in H'.
-      simpl in H'; congruence. }
-    { exact H'. }
+    apply add_take_1_singleton in H.
+    rewrite (take_take str 1 n) in H.
+    destruct n; simpl min in H.
+    { apply length_singleton in H; rewrite take_length in H.
+      simpl in H; congruence. }
+    { exact H. }
   Qed.
 
   Lemma get_take_lt (str : String) n m (Hle : n < m)
@@ -452,4 +459,219 @@ Section String.
     intro H.
     apply bool_eq_empty; rewrite drop_length; omega.
   Qed.
+
+  Local Ltac induction_to_string str IHlen :=
+    let H := fresh "H" in
+    let len := fresh "len" in
+    unfold fold;
+      generalize dependent str; intro str;
+      remember (length str) as len eqn:H;
+      revert str H;
+      induction len as [|len IHlen]; simpl; intros;
+      [
+      | specialize (IHlen (drop 1 str));
+        rewrite drop_length in IHlen;
+        specialize_by omega;
+        try rewrite <- !H, !minus_diag;
+        try rewrite <- fold'_drop in IHlen by omega ].
+
+  Lemma to_string_length str
+  : List.length (to_string str) = length str.
+  Proof.
+    induction_to_string str IHlen; trivial.
+    destruct (get 0 str) eqn:H'; simpl; [ rewrite IHlen; reflexivity | ].
+    apply no_first_char_empty in H'; omega.
+  Qed.
+
+  Local Ltac take_drop_to_string_t0 :=
+    repeat match goal with
+             | _ => progress specialize_by omega
+             | _ => reflexivity
+             | _ => omega
+             | _ => progress subst
+             | [ H : context[S _ - S _] |- _ ] => rewrite Nat.sub_succ in H
+             | [ H : context[S ?x - ?x] |- _ ] => replace (S x - x) with 1 in H by omega
+             | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
+             | _ => discriminate
+             | [ H : context[_ + 1] |- _ ] => rewrite Nat.add_1_r in H
+             | [ |- context[match get 0 ?s with _ => _ end] ] => destruct (get 0 s) eqn:?
+             | [ H : get 0 ?str = None |- _ ] => apply no_first_char_empty in H
+             | [ H : _ = ?x |- _ = ?x ] => rewrite <- H; clear H
+             | [ H : ?x = _ |- ?x = _ ] => rewrite H; clear H
+             | [ H : context[length (drop _ _)] |- _ ] => rewrite drop_length in H
+             | [ |- context[length (drop _ _)] ] => rewrite drop_length
+             | [ H : context[length (take _ _)] |- _ ] => rewrite take_length in H
+             | [ |- context[length (take _ _)] ] => rewrite take_length
+             | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
+             | [ H : context[_ - 0] |- _ ] => rewrite Nat.sub_0_r in H
+             | [ |- context[fold' _ _ (drop _ _) _] ] => rewrite <- fold'_drop by (rewrite ?take_length; try apply Min.min_case_strong; omega)
+             | [ H : context[fold' _ _ (drop _ _) _] |- _ ] => rewrite <- fold'_drop in H by omega
+             | [ H : ?x = ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
+             | [ H : ?y = ?x |- context[?x - ?y] ] => replace (x - y) with 0 by omega
+             | [ |- cons _ _ = cons _ _ ] => apply f_equal2
+             | [ H : context[get _ (drop 0 ?str)] |- _ ] => rewrite (drop_0 str) in H
+             | [ H : ?x = Some ?c, H' : ?y = Some ?c' |- _ ]
+               => not constr_eq c c'; is_var c; is_var c';
+                  assert (c = c') by congruence; subst
+             | _ => progress simpl in *
+             | [ |- context[fold' _ _ (drop _ (drop _ _)) _] ] => rewrite drop_drop
+             | [ |- context[?x + 1] ] => rewrite Nat.add_1_r
+             | [ H : S _ = ?x |- context[match ?x with _ => _ end] ] => rewrite <- H
+             | [ H : S _ = ?x, H' : context[match ?x with _ => _ end] |- _ ] => rewrite <- H in H'
+             | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
+             | [ |- context[?x - ?x] ] => rewrite minus_diag
+             | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
+             | [ H : context[min (pred ?x) ?x] |- _ ] => rewrite (Min.min_l (pred x) x) in H by omega
+             | [ |- context[take _ (drop _ _)] ] => rewrite take_drop
+             | [ |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by omega
+             | [ |- context[get _ (drop 0 ?s)] ] => rewrite (drop_0 s)
+             | [ |- context[get _ (drop _ (drop _ _))] ] => rewrite drop_drop
+             | [ H : S ?x = ?y, H' : S ?z = ?y |- _ ]
+               => is_var x; not constr_eq x z; assert (x = z) by omega; subst
+             | [ H : S ?x = ?y, H' : ?y = S ?z |- _ ]
+               => is_var x; not constr_eq x z; assert (x = z) by omega; subst
+             | [ H : get ?n ?s = None |- _ ] => not constr_eq n 0; rewrite get_drop in H
+           end.
+
+  Local Ltac take_drop_to_string_t s n :=
+    unfold fold; rewrite ?drop_length, ?take_length;
+    revert n;
+    let IHlen := fresh "IHlen" in
+    induction_to_string s IHlen;
+      destruct n as [|n];
+      try specialize (IHlen n);
+      take_drop_to_string_t0.
+
+  Lemma drop_to_string s n
+  : Operations.drop n (to_string s) = to_string (drop n s).
+  Proof.
+    take_drop_to_string_t s n.
+  Qed.
+
+  Lemma take_to_string s n
+  : Operations.take n (to_string s) = to_string (take n s).
+  Proof.
+    destruct (le_lt_dec (length s) n) as [H|H].
+    { rewrite take_long by assumption.
+      rewrite take_all by (rewrite to_string_length; assumption).
+      reflexivity. }
+    { revert H.
+      take_drop_to_string_t s n. }
+  Qed.
+
+  Lemma nth_to_string s n
+  : List.nth_error (to_string s) n = get n s.
+  Proof.
+    rewrite get_drop.
+    symmetry.
+    take_drop_to_string_t s n;
+      try solve [ apply has_first_char_nonempty; rewrite ?drop_length; omega ].
+  Qed.
+
+  Lemma beq_to_string {s s'}
+  : to_string s = to_string s' <-> s =s s'.
+  Proof.
+    split.
+    { intro H; apply bool_eq_from_get; intro n.
+      rewrite <- !nth_to_string, H; reflexivity. }
+    { intro; setoid_subst_rel beq.
+      reflexivity. }
+  Qed.
+
+  Lemma is_char_to_string s ch
+  : is_char s ch <-> to_string s = (ch::nil)%list.
+  Proof.
+    induction_to_string s IHlen.
+    { split; intro H'; exfalso; try congruence.
+      apply length_singleton in H'; omega. }
+    { clear IHlen.
+      take_drop_to_string_t0.
+      split; intro H'.
+      { pose proof (add_take_1_singleton _ _ H') as H''.
+        apply length_singleton in H'.
+        apply get_0 in H''.
+        take_drop_to_string_t0. }
+      { take_drop_to_string_t0.
+        rewrite <- take_long by reflexivity.
+        match goal with
+          | [ H : S ?len = length ?s |- _ ] => is_var len; destruct len; rewrite <- H
+        end.
+        { apply get_0; assumption. }
+        { take_drop_to_string_t0.
+          match goal with
+            | [ H : context[match get ?n ?s with _ => _ end] |- _ ] => destruct (get n s) eqn:?
+          end;
+          take_drop_to_string_t0. } } }
+  Qed.
+
+  Section substring.
+    Local Ltac substring_t' :=
+      idtac;
+      match goal with
+        | [ |- beq _ _ ] => reflexivity
+        | [ |- _ = _ ] => reflexivity
+        | _ => assumption
+        | [ H : length ?s = 0 |- beq _ ?s ] => apply bool_eq_empty
+        | [ H : length ?s = 0 |- beq ?s _ ] => apply bool_eq_empty
+        | _ => progress rewrite ?drop_0, ?take_long, ?take_length, ?drop_length by trivial
+        | _ => progress rewrite <- ?Nat.sub_min_distr_r, ?Nat.add_sub by trivial
+        | _ => rewrite !take_long by (rewrite drop_length; omega)
+        | [ |- context[min ?x ?y] ]
+          => match goal with
+               | [ |- context[min y x] ]
+                 => rewrite (Min.min_comm x y)
+             end
+        | _ => repeat apply Min.min_case_strong; omega
+      end.
+
+    Local Ltac substring_t := repeat substring_t'.
+
+    Lemma substring_correct3 {s : String} m (H : length s <= m)
+    : substring 0 m s =s s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct3' {s : String}
+    : substring 0 (length s) s =s s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_length {s n m}
+    : length (substring n m s) = (min (length s) (m + n)) - n.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0_length {s : String} {n}
+    : length (substring n 0 s) = 0.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0 {s s' : String} {n} (H : length s' = 0)
+    : substring n 0 s =s s'.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0'_length {s : String} {n m} (H : length s <= n)
+    : length (substring n m s) = 0.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0' {s s' : String} {n m} (H : length s <= n) (H' : length s' = 0)
+    : substring n m s =s s'.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct4 {s : String} {n m m'}
+          (H : length s <= n + m) (H' : length s <= n + m')
+    : substring n m s =s substring n m' s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_substring {s n m n' m'}
+    : substring n m (substring n' m' s) =s substring (n + n') (min m (m' - n)) s.
+    Proof.
+      rewrite !drop_take, !take_take, !drop_drop; reflexivity.
+    Qed.
+
+    Lemma substring_min {x x' y y' z str} (H : substring x y str =s substring x' y' str)
+    : substring x (min y z) str =s substring x' (min y' z) str.
+    Proof.
+      pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
+      setoid_rewrite Nat.sub_0_r in H'.
+      setoid_rewrite Min.min_comm in H'.
+      rewrite <- !H', H; reflexivity.
+    Qed.
+  End substring.
 End String.

@@ -3,7 +3,8 @@ Require Import Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Common Fiat.Common.Equality Fiat.Common.StringFacts.
+Require Import Fiat.Common Fiat.Common.Equality.
+Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
 
 Set Implicit Arguments.
 
@@ -13,8 +14,8 @@ Global Instance string_stringlike : StringLike Ascii.ascii
   := { String := string;
        is_char str ch := string_beq str (String.String ch ""%string);
        length := String.length;
-       take n s := substring 0 n s;
-       drop n s := substring n (String.length s) s;
+       take n s := String.substring 0 n s;
+       drop n s := String.substring n (String.length s) s;
        get := String.get;
        bool_eq := string_beq }.
 
@@ -26,6 +27,8 @@ Proof.
            | [ |- _ = _ ] => reflexivity
            | [ |- is_true true ] => reflexivity
            | [ |- is_true false ] => exfalso
+           | [ |- String.get _ (string_of_list _) = List.nth_error _ _ ]
+             => apply get_string_of_list
            | _ => progress simpl in *
            | _ => progress subst
            | [ H : context[string_eq_dec ?x ?y] |- _ ] => destruct (string_eq_dec x y)
@@ -71,16 +74,17 @@ Proof.
            | [ H : String.get 0 ?s = _ |- _ ] => is_var s; destruct s
            | [ |- String.get 0 ?s = _ ] => is_var s; destruct s
            | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-           | [ |- context[String.get ?p (substring _ ?m _)] ]
+           | [ |- context[String.get ?p (String.substring _ ?m _)] ]
              => destruct (Compare_dec.lt_dec p m);
                [ rewrite substring_correct1 by omega
                | rewrite substring_correct2 by omega ]
            | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
+           | [ H : forall n, String.get n _ = String.get n _ |- _ ] => apply get_correct in H
          end.
 Qed.
 
 Lemma substring_take_drop (str : String) n m
-: substring n m str = take m (drop n str).
+: String.substring n m str = take m (drop n str).
 Proof.
   simpl.
   rewrite substring_substring; simpl.

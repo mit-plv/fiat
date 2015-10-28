@@ -282,7 +282,7 @@ Section IndexedImpl.
   Local Notation T := (String.string * (nat * nat))%type (only parsing).
 
   Local Notation string_of_indexed s :=
-    (substring (fst (snd s)) (snd (snd s)) (fst s))
+    (String.substring (fst (snd s)) (snd (snd s)) (fst s))
       (only parsing).
   Local Notation ilength s :=
     (min (String.length (fst s) - fst (snd s)) (snd (snd s)))
@@ -492,7 +492,7 @@ Section IndexedImpl.
              | _ => reflexivity
              | _ => assumption
            end;
-    try solve [ rewrite substring_correct3'; reflexivity
+    try solve [ rewrite !substring_correct3'; reflexivity
               | repeat match goal with
                          | _ => intro
                          | [ |- context[min ?x ?x] ]
@@ -511,9 +511,9 @@ Section IndexedImpl.
                               end
                          | [ |- context[min (min _ ?x) (?x - ?y)] ]
                            => rewrite <- (Min.min_assoc _ x (x - y)), (Min.min_r x (x - y)) by omega
-                         | [ |- substring (?x + ?y) _ _ = substring (?y + ?x) _ _ ]
+                         | [ |- String.substring (?x + ?y) _ _ = String.substring (?y + ?x) _ _ ]
                            => rewrite (Plus.plus_comm x y)
-                         | [ |- substring ?x ?y ?z = substring ?x (min ?w ?y) ?z ]
+                         | [ |- String.substring ?x ?y ?z = String.substring ?x (min ?w ?y) ?z ]
                            => apply (@Min.min_case_strong w y)
                          | [ H : _ |- _ ] => rewrite Min.min_assoc in H
                          | _ => apply substring_correct4; omega
@@ -535,7 +535,7 @@ Section IndexedImpl.
                          | _ => progress rewrite ?drop_length, ?take_length, ?substring_length, ?Nat.add_sub, ?Minus.minus_diag, ?Nat.sub_0_r, <- ?plus_n_O, ?sub_plus by omega
                          | [ H : is_true (string_beq _ _) |- _ ] => apply string_bl in H
                          | [ |- _ \/ False ] => left
-                         | [ H : substring _ _ _ = String.String _ _ |- _ = _ :> nat ] => apply (f_equal String.length) in H; simpl in H
+                         | [ H : String.substring _ _ _ = String.String _ _ |- _ = _ :> nat ] => apply (f_equal String.length) in H; simpl in H
                          | [ H : context[(_ ~= [ _ ])%string_like] |- _ ]
                            => apply length_singleton in H
                          | [ |- context[min ?x (?y + ?z) - ?z] ]
@@ -636,7 +636,7 @@ Section IndexedImpl.
     refine (transitivityT _ _ _ _ FirstStep_helper_2).
     unfold rindexed_spec', expanded_fallback_list', split_list_is_complete_alt.
     econstructor 1 with (AbsR := (fun r_o r_n =>
-                                    substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
+                                    String.substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
 
         eapply Iterate_Ensemble_BoundedIndex_equiv;
         try apply string_dec;

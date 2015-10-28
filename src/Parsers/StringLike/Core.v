@@ -1,4 +1,5 @@
 (** * Definition of the string-like type *)
+Require Coq.Lists.List.
 Require Import Coq.Relations.Relation_Definitions (* for [relation] *).
 Require Import Coq.Classes.Morphisms (* for [==>] / [respectful] *).
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
@@ -59,9 +60,13 @@ Module Export StringLike.
   : A
     := fold' f init str (length str).
 
+  Notation to_string str := (fold (@List.cons _) (@List.nil _) str).
+
   Definition str_le `{StringLike Char} (s1 s2 : String)
     := length s1 < length s2 \/ s1 =s s2.
   Infix "≤s" := str_le (at level 70, right associativity).
+
+  Notation substring n m str := (take m (drop n str)).
 
   Class StringLikeProperties (Char : Type) `{StringLike Char} :=
     {
@@ -84,7 +89,8 @@ Module Export StringLike.
       drop_0 : forall str, drop 0 str =s str;
       drop_drop : forall str n m, drop n (drop m str) =s drop (n + m) str;
       drop_take : forall str n m, drop n (take m str) =s take (m - n) (drop n str);
-      take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str)
+      take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str);
+      bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str'
     }.
 
   Global Existing Instance Equivalence_Reflexive.
