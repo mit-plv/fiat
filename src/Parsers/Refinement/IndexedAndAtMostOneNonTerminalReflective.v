@@ -697,7 +697,7 @@ Section IndexedImpl.
                        | _ => congruence
                        | [ H : length_of_any ?G ?nt = same_length ?n,
                                p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
-                         => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
+                         => (pose proof (@has_only_terminals_parse_of_item_length _ _ G n nt H str p); clear H)
                        | _ => erewrite <- has_only_terminals_length by eassumption
                        | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
                        | [ H : _ |- _ ] => (generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus)
