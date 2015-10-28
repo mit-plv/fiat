@@ -7,6 +7,8 @@ Require Import Fiat.Parsers.ParserImplementation.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
 
@@ -50,7 +52,7 @@ Proof.
         apply (has_parse_sound old); assumption
       ). }
   { abstract (
-        intros str p H';
+        intros str p;
         rewrite H;
         pose (@transfer_parse_of_item Char _ _ G (Basics.flip R) R_flip_respectful str (make_string str) (NonTerminal G) (R_make str) p) as p';
         apply (has_parse_complete old p'); subst p';
@@ -63,6 +65,7 @@ Arguments transfer_parser {_ _ _ _} _ _ _ _ _ _ _ _.
 Section implementation.
   Context {ls : list (String.string * productions Ascii.ascii)}.
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
+  Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).
   Context {string_like_lite : StringLike Ascii.ascii}
           split_string_for_production_lite
@@ -79,8 +82,9 @@ Section implementation.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
-   Definition parser : Parser G string_stringlike.
+  Definition parser : Parser G string_stringlike.
   Proof.
+    apply grammar_rvalid_correct in Hvalid.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
@@ -88,7 +92,7 @@ Section implementation.
     let impl := (eval simpl in impl') in
     refine (transfer_parser
               (HSL1 := splitter) (HSL2 := string_stringlike)
-              (parser splitter) make_string
+              (parser Hvalid (splitter := splitter)) make_string
               impl
               (fun str => eq_trans
                             (implH str)

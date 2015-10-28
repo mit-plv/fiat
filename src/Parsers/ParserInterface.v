@@ -28,11 +28,9 @@ Section interface.
     := forall n,
          n <= length str
          -> production_is_reachable (it::its)
-         -> forall (pit : parse_of_item G (take n str) it)
-                   (pits : parse_of_production G (drop n str) its),
-              Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit
-              -> Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits
-              -> List.In n (List.map (min (length str)) splits).
+         -> parse_of_item G (take n str) it
+         -> parse_of_production G (drop n str) its
+         -> List.In n (List.map (min (length str)) splits).
 
   Record Splitter :=
     {
@@ -58,10 +56,8 @@ Section interface.
                           has_parse str = true
                           -> parse_of_item G str (NonTerminal (Start_symbol G));
 
-      has_parse_complete : forall str (p : parse_of_item G str (NonTerminal (Start_symbol G))),
-                             Forall_parse_of_item
-                               (fun _ nt => List.In nt (Valid_nonterminals G))
-                               p
+      has_parse_complete : forall str,
+                             parse_of_item G str (NonTerminal (Start_symbol G))
                              -> has_parse str = true
     }.
 End interface.

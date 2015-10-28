@@ -57,8 +57,10 @@ Section cfg.
                               -> parse_of_production str (pat::pats)
     with parse_of_item (str : String) : item -> Type :=
     | ParseTerminal : forall ch, is_true (str ~= [ ch ]) -> parse_of_item str (Terminal ch)
-    | ParseNonTerminal : forall nt, parse_of str (Lookup G nt)
-                                    -> parse_of_item str (NonTerminal nt).
+    | ParseNonTerminal : forall nt,
+                           List.In nt (Valid_nonterminals G)
+                           -> parse_of str (Lookup G nt)
+                           -> parse_of_item str (NonTerminal nt).
   End parse.
 
   Definition parse_of_grammar {HSL : StringLike Char} (str : String) (G : grammar) :=

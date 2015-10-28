@@ -11,7 +11,7 @@ Section rel.
                {str it} (p : parse_of_item G str it) : nat
       := match p with
            | ParseTerminal _ _ => 0
-           | ParseNonTerminal _ p' => S (size_of_parse p')
+           | ParseNonTerminal _ _ p' => S (size_of_parse p')
          end.
 
     Fixpoint size_of_parse {str pats} (p : parse_of G str pats) : nat

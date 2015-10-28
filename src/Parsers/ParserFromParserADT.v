@@ -6,6 +6,8 @@ Require Export Fiat.Parsers.ParserImplementationOptimized.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.Parsers.ParserADTSpecification.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.String.
@@ -24,6 +26,7 @@ Local Open Scope string_scope.
 Section parser.
   Context {ls : list (String.string * productions Ascii.ascii)}.
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
+  Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter_impl : FullySharpened (string_spec G)).
 
   Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii)) "new" _ )).
@@ -74,7 +77,7 @@ Section parser.
 
   Definition parser' : Parser G string_stringlike.
   Proof.
-    refine (@parser ls (adt_based_splitter splitter_impl)
+    refine (@parser ls Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLike_lite splitter_impl)
                     _
                     adtProj new_string_of_string
@@ -100,9 +103,10 @@ End parser.
 
 Definition parser''
            {ls}
+           Hvalid
            splitter_impl
            {constT varT strC}
-           val (H : val = has_parse (@parser' ls splitter_impl constT varT strC))
+           val (H : val = has_parse (@parser' ls Hvalid splitter_impl constT varT strC))
 : Parser (list_to_grammar (nil::nil) ls) string_stringlike.
 Proof.
   refine {| has_parse := val |};
@@ -111,6 +115,7 @@ Defined.
 
 Definition parser
            {ls : list (string * productions Ascii.ascii)}
+           (Hvalid : is_true (grammar_rvalid (list_to_grammar (nil::nil) ls)))
            (splitter_impl : FullySharpened (string_spec (list_to_grammar (nil::nil) ls)))
            {constT varT}
            {strC : @BooleanRecognizerOptimized.str_carrier
@@ -119,7 +124,7 @@ Definition parser
                      constT varT}
 : Parser (list_to_grammar (nil::nil) ls) string_stringlike.
 Proof.
-  let term := (eval cbv beta delta [parser''] in (@parser'' ls splitter_impl constT varT strC)) in
+  let term := (eval cbv beta delta [parser''] in (@parser'' ls Hvalid splitter_impl constT varT strC)) in
   refine (term _ _).
   cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite mlength mtake mdrop mis_char mget mto_string msplits pdata data' adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R].
   match goal with
@@ -127,4 +132,4 @@ Proof.
   end.
 Defined.
 
-Global Arguments parser {ls} splitter_impl {constT varT strC} / .
+Global Arguments parser {ls} Hvalid splitter_impl {constT varT strC} / .

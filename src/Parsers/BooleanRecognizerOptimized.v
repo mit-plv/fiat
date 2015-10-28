@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Parsers.BooleanRecognizerExt.
 Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.

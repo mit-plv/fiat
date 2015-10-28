@@ -45,9 +45,9 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros n ? H_reachable pit pits Hpit Hpits.
+  intros n ? H_reachable pit pits.
   left.
-  pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
+  pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint pit pits H_reachable) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
   destruct_head or; destruct_head and; subst;
@@ -82,9 +82,9 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros n ? H_reachable pit pits Hpit Hpits.
+  intros n ? H_reachable pit pits.
   left.
-  pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H'.
+  pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint pit pits H_reachable) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
   destruct_head or; destruct_head and; subst;

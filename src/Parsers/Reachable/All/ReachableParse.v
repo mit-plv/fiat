@@ -31,7 +31,7 @@ Section cfg.
              (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
   : forall_chars str (fun ch => inhabited (reachable_from_item G ch valid0 it)).
   Proof.
-    destruct p as [ | nt p ].
+    destruct p as [ | nt ? p ].
     { rewrite <- forall_chars_singleton by eassumption.
       repeat constructor. }
     { specialize (forall_chars_reachable_from_parse_of_productions valid0 (G nt) str p (snd Hforall)).

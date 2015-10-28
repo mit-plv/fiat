@@ -5,6 +5,7 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Parsers.BooleanRecognizerExt.
 Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.SetoidInstances.
 
@@ -117,9 +118,8 @@ Section transfer.
       | [ |- appcontext[Fix ?wf _ _ ?a] ]
         => induction (wf a); intros
     end.
-    rewrite !Fix5_eq;
-      solve [ apply parse_nonterminal_step_proj; trivial
-            | intros; apply parse_nonterminal_step_ext; trivial ].
+    rewrite !Fix5_eq by (intros; apply parse_nonterminal_step_ext; trivial).
+    apply parse_nonterminal_step_proj; trivial.
   Qed.
 
   Lemma parse_nonterminal_proj

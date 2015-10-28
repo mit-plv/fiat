@@ -41,6 +41,27 @@ Require Fiat.Parsers.Reachable.MaybeEmpty.OfParse.
 
 Set Implicit Arguments.
 
+Local Ltac find_production_valid
+  := repeat match goal with
+              | [ H : grammar_valid ?G, HinL : In (_ ++ _::?its) (Lookup ?G ?nt), HinV' : is_true (is_valid_nonterminal _ ?nt) |- production_valid ?its ]
+                => specialize (H nt HinV')
+              | [ H : grammar_valid ?G, HinL : In (_ ++ (NonTerminal ?x)::_) (Lookup ?G ?nt), HinV' : is_true (is_valid_nonterminal _ ?nt) |- is_true (is_valid_nonterminal _ ?x) ]
+                => specialize (H nt HinV')
+              | _ => progress unfold productions_valid in *
+              | [ H : Forall _ _ |- _ ] => rewrite Forall_forall in H
+              | [ H : In _ (Lookup ?G ?nt), H' : forall ls, In _ (Lookup ?G ?nt) -> _ |- _ ]
+                => specialize (H' _ H)
+              | [ H : production_valid (_ ++ _::?x) |- production_valid ?x ]
+                => apply production_valid_app in H
+              | [ H : production_valid (_ ++ (NonTerminal ?x)::_) |- is_true (is_valid_nonterminal _ ?x) ]
+                => apply production_valid_app in H
+              | [ H : production_valid (_::?x) |- production_valid ?x ]
+                => apply production_valid_cons in H
+              | [ H : production_valid (?x::_) |- _ ]
+                => inversion H; subst; clear H
+              | _ => assumption
+            end.
+
 Section all_possible.
   Context {Char : Type}.
   Definition possible_terminals := list Char.
@@ -172,14 +193,18 @@ Section all_possible_correctness.
   Defined.
 
   Lemma possible_terminals_of_correct (G : grammar Char)
+        (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) nt
+        (His_valid : is_valid_nonterminal initial_nonterminals_data nt)
         (p : parse_of_item G str (NonTerminal nt))
-        (Hp : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of.
-    generalize (All.ReachableParse.forall_chars_reachable_from_parse_of_item _ Hp).
+    pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_item p (Forall_parse_of_item_valid Hvalid' k p)) as H.
+    specialize (H His_valid).
+    revert H.
     setoid_rewrite All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
@@ -211,6 +236,7 @@ Section only_first_correctness.
   Local Ltac t' :=
     idtac;
     match goal with
+      | [ Hvalid : is_true (grammar_rvalid G) |- grammar_valid G ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
       | [ H : context[?b = true] |- _ ] => change (b = true) with (is_true b) in H
@@ -271,9 +297,8 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
       | [ m : MaybeEmpty.Core.maybe_empty_productions _ _ _ |- _ ]
         => let f := constr:(@MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions _ _ _) in
-           eapply f with (str := ""%string) in m; [ | reflexivity.. ];
-           eapply parse_nonterminal_complete; [ eassumption.. | ];
-           split; [ eassumption | exact (projT2 m) ]
+           eapply f with (str := ""%string) in m; [ | (assumption || reflexivity).. ];
+           eapply parse_nonterminal_complete; destruct_head sigT; eassumption
       | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
       | [ Hvalid : grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
         => idtac;
@@ -329,12 +354,14 @@ Section only_first_correctness.
         (predata := @rdp_list_predata _ G)
         (str : String) pat
         (p : parse_of_production G str pat)
-        (Hp : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
+        (His_valid : production_valid pat)
   : first_char_in str (possible_first_terminals_of_production G pat).
   Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
-    generalize (OnlyFirst.ReachableParse.for_first_char_reachable_from_parse_of_production _ Hp).
+    generalize (OnlyFirst.ReachableParse.for_first_char_reachable_from_parse_of_production (reflexivity _) p).
     setoid_rewrite OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production.
+    intro H; specialize (H (Forall_parse_of_production_valid Hvalid' His_valid p)); revert H.
     apply for_first_char__impl__first_char_in.
     intro ch.
     apply (fold_production_correct (FGCD := only_first_cdata) pat); reflexivity.
@@ -344,16 +371,19 @@ Section only_first_correctness.
         (predata := @rdp_list_predata _ G)
         (str : String) (Hlen : length str = 0) pat
         (p : parse_of_production G str pat)
-        (Hp : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal initial_nonterminals_data nt') p)
+        (His_valid : production_valid pat)
   : might_be_empty (possible_first_terminals_of_production G pat).
   Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
     apply (fold_production_correct (FGCD := only_first_cdata) pat).
     { repeat constructor. }
     { reflexivity. }
     { constructor.
       eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_production;
-        eassumption. }
+        try (eassumption || (apply Forall_parse_of_production_valid; assumption) || reflexivity).
+      Grab Existential Variables.
+      assumption. }
   Qed.
 End only_first_correctness.
 
@@ -370,8 +400,6 @@ Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
       (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
       (pits : parse_of_production G (StringLike.drop n str) its)
       (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
-      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
 : forall_chars__char_in (take n str) (possible_terminals_of G nt)
   /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
       \/ (for_first_char
@@ -379,29 +407,26 @@ Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
             (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))
           /\ n < length str)).
 Proof.
+  pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
   destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
+  pose proof HinV as HinV';
+    rewrite <- (@initial_nonterminals_correct _ G (@rdp_list_predata _ G) (@rdp_list_rdata' _ G)) in HinV'.
   apply and_comm; split.
   { destruct (Compare_dec.le_dec (length str) n); [ left | right ].
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
+      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid'.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
-      eapply expand_forall_parse_of_production;
-        [
-        | rewrite parse_of_production_respectful_refl; eassumption ].
-      intros; simpl in *.
-      apply list_in_lb; try apply @string_lb; []; eassumption. }
-    { erewrite <- parse_of_production_respectful_refl in Hpits.
-      eapply expand_forall_parse_of_production in Hpits;
-        [ rewrite parse_of_production_respectful_refl in Hpits;
-          apply possible_first_terminals_of_production_correct in Hpits; try assumption
-        | intros ?????; apply list_in_lb; apply @string_lb ]; [].
-      split; try omega; [].
-      revert Hpits.
-      apply first_char_in__impl__for_first_char.
+      find_production_valid. }
+    { split; try omega; [].
+      eapply first_char_in__impl__for_first_char;
+      [
+      | apply possible_first_terminals_of_production_correct; [ .. | eassumption | ];
+        find_production_valid ];
+      [].
       intros ch H'.
       apply Bool.negb_true_iff, Bool.not_true_iff_false.
       intro H''.
@@ -410,20 +435,9 @@ Proof.
       apply Bool.negb_true_iff, Bool.not_true_iff_false in H_disjoint.
       apply H_disjoint.
       apply list_in_lb; [ apply (@ascii_lb) | assumption ]. } }
-  { eapply possible_terminals_of_correct.
-    eapply expand_forall_parse_of_item;
-      [
-      | reflexivity
-      | reflexivity
-      | rewrite parse_of_item_respectful_refl; eassumption ].
-    intros ?????; apply list_in_lb; apply @string_lb.
-    Grab Existential Variables.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity. }
+  { apply (fun x y => possible_terminals_of_correct x y pit);
+    try assumption;
+    find_production_valid. }
 Qed.
 
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
@@ -435,15 +449,13 @@ Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
       (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
       (pits : parse_of_production G (StringLike.drop n str) its)
       (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
-      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
 : is_first_char_such_that
     (might_be_empty (possible_first_terminals_of_production G its))
     str
     n
     (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
 Proof.
-  pose proof (terminals_disjoint_search_for_not' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  pose proof (terminals_disjoint_search_for_not' Hvalid _ H_disjoint pit pits H_reachable) as H.
   split;
     [ destruct H as [H0 H1]
     | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
@@ -464,8 +476,6 @@ Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
       (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
       (pits : parse_of_production G (StringLike.drop n str) its)
       (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
-      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
 : forall_chars (take n str)
                (fun ch => negb (list_bin ascii_beq ch (possible_first_terminals_of_production G its)))
   /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
@@ -474,37 +484,25 @@ Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
             (possible_first_terminals_of_production G its)
           /\ n < length str)).
 Proof.
+  pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
   destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
+  pose proof HinV as HinV';
+    rewrite <- (@initial_nonterminals_correct _ G (@rdp_list_predata _ G) (@rdp_list_rdata' _ G)) in HinV'.
   apply and_comm; split.
   { destruct (Compare_dec.le_dec (length str) n); [ left | right ].
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -Hpit HinV HinL Hvalid.
+      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid'.
       intros.
       destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
-      eapply expand_forall_parse_of_production;
-        [
-        | rewrite parse_of_production_respectful_refl; eassumption ].
-      intros; simpl in *.
-      apply list_in_lb; try apply @string_lb; []; eassumption. }
-    { erewrite <- parse_of_production_respectful_refl in Hpits.
-      eapply expand_forall_parse_of_production in Hpits;
-        [ rewrite parse_of_production_respectful_refl in Hpits;
-          apply possible_first_terminals_of_production_correct in Hpits
-        | intros ?????; apply list_in_lb; apply @string_lb ]; try assumption; [].
-      split; try omega; assumption. } }
-  { erewrite <- parse_of_item_respectful_refl in Hpit.
-    eapply expand_forall_parse_of_item in Hpit;
-      [ rewrite parse_of_item_respectful_refl in Hpit;
-        apply possible_terminals_of_correct in Hpit
-      | intros ?????; apply list_in_lb; apply @string_lb
-      | reflexivity
-      | reflexivity ].
-      revert Hpit.
-      apply forall_chars__char_in__impl__forall_chars.
-      intros ch H'.
+      find_production_valid. }
+    { split; try omega; try assumption.
+      apply possible_first_terminals_of_production_correct; try assumption.
+      find_production_valid. } }
+  { eapply forall_chars__char_in__impl__forall_chars.
+    { intros ch H'.
       apply Bool.negb_true_iff, Bool.not_true_iff_false.
       intro H''.
       apply list_in_bl in H''; [ | apply (@ascii_bl) ].
@@ -512,13 +510,8 @@ Proof.
       apply Bool.negb_true_iff, Bool.not_true_iff_false in H_disjoint.
       apply H_disjoint.
       apply list_in_lb; [ apply (@ascii_lb) | assumption ]. }
-  Grab Existential Variables.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
+    { apply possible_terminals_of_correct; try assumption.
+      find_production_valid. } }
 Qed.
 
 Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
@@ -530,15 +523,13 @@ Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
       (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
       (pits : parse_of_production G (StringLike.drop n str) its)
       (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-      (Hpit : Forall_parse_of_item (fun _ nt => List.In nt (Valid_nonterminals G)) pit)
-      (Hpits : Forall_parse_of_production (fun _ nt => List.In nt (Valid_nonterminals G)) pits)
 : is_first_char_such_that
     (might_be_empty (possible_first_terminals_of_production G its))
     str
     n
     (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
 Proof.
-  pose proof (terminals_disjoint_search_for' Hvalid _ H_disjoint _ _ H_reachable Hpit Hpits) as H.
+  pose proof (terminals_disjoint_search_for' Hvalid _ H_disjoint pit pits H_reachable) as H.
   split;
     [ destruct H as [H0 H1]
     | destruct H as [H0 [[H1 H2] | [H1 ?]]]; [ right | left; split ]; eauto ].

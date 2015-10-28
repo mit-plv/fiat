@@ -27,7 +27,7 @@ Declare Reduction parser_red10 := simpl List.fold_right.
 
 Ltac parser_red term :=
   let term := match term with
-                | context[ParserFromParserADT.parser ?splitter] => (eval unfold splitter in term)
+                | context[ParserFromParserADT.parser _ ?splitter] => (eval unfold splitter in term)
                 | _ => constr:term
               end in
   let term := (eval parser_red0 in term) in
@@ -43,10 +43,16 @@ Ltac parser_red term :=
   let term := (eval parser_red10 in term) in
   constr:term.
 
+Class eq_refl_vm_cast T := by_vm_cast : T.
+Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
+
 Ltac make_parser splitter :=
   idtac;
   let str := match goal with str : String.string |- _ => constr:str end in
-  let b := constr:(ParserInterface.has_parse (ParserFromParserADT.parser splitter) str) in
+  let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
+  let T := match type of b0 with ?T -> _ => constr:T end in
+  let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
+  let b := constr:(b0 quicker_opaque_eq_refl) in
   let b' := parser_red b in
   exact b'.
 
