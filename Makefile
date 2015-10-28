@@ -24,11 +24,11 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 STRICT_COQDEP ?= 1
 
-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
+-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
-include etc/coq-scripts/Makefile.coq.common
+-include etc/coq-scripts/Makefile.coq.common
 
-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
+-include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
 
 .DEFAULT_GOAL := fiat
 
