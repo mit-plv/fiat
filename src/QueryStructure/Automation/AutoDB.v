@@ -403,7 +403,7 @@ Ltac fields storage :=
 Ltac prove_extensional_eq :=
   clear;
   unfold ExtensionalEq;
-  find_if_inside; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
+  repeat find_if_inside; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
 (* Default tactics for handling *)
 
