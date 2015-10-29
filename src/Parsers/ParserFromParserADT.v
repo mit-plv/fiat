@@ -27,9 +27,9 @@ Section parser.
   Context {ls : list (String.string * productions Ascii.ascii)}.
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
   Context (Hvalid : is_true (grammar_rvalid G)).
-  Context (splitter_impl : FullySharpened (string_spec G)).
+  Context (splitter_impl : FullySharpened (string_spec G string_stringlike)).
 
-  Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii)) "new" _ )).
+  Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string)) "new" _ )).
 
   Definition new_string_of_base_string (str : String.string)
     := (cConstructors (projT1 splitter_impl) newS (str : String.string)).
@@ -116,7 +116,7 @@ Defined.
 Definition parser
            {ls : list (string * productions Ascii.ascii)}
            (Hvalid : is_true (grammar_rvalid (list_to_grammar (nil::nil) ls)))
-           (splitter_impl : FullySharpened (string_spec (list_to_grammar (nil::nil) ls)))
+           (splitter_impl : FullySharpened (string_spec (list_to_grammar (nil::nil) ls) string_stringlike))
            {constT varT}
            {strC : @BooleanRecognizerOptimized.str_carrier
                      Ascii.ascii

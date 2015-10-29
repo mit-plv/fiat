@@ -25,23 +25,23 @@ Local Open Scope ADT_scope.
 Local Open Scope string_scope.
 Section parser.
   Context (G : grammar Ascii.ascii).
-  Context (splitter_impl : FullySharpened (string_spec G)).
+  Context (splitter_impl : FullySharpened (string_spec G string_stringlike)).
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
   Local Notation mcall0 proj s := (fun st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st)) (only parsing).
+                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st)) (only parsing).
 
   Local Notation mcall1 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n)) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st n)) (only parsing).
 
   Local Notation mcall2 proj s := (fun n n' st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) s _ ) st n n')) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st n n')) (only parsing).
 
   Local Notation ccall0 proj s :=
     (fun st => proj ((callcADTConstructor (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii)) s _ )) st))
+                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string)) s _ )) st))
       (only parsing).
 
   Local Notation mcall01 s := (mcall0 (fun x => x) s) (only parsing).
@@ -63,7 +63,7 @@ Section parser.
   Definition premsplits :=
     Eval simpl in (callcADTMethod
                      (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
+                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) "splits" _ )).
   Definition msplits := Eval simpl in mcall22 "splits".
 
   (*Local Notation mcall1_R meth st arg str H :=
@@ -318,7 +318,7 @@ Section parser.
   Next Obligation. t (@get_of_string). Qed.
 
   Definition splits :=
-    ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) "splits" _ )).
+    ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) "splits" _ )).
 
   Lemma adt_based_splitter_splits_for_complete
   : forall (str : String) (it : item Ascii.ascii)

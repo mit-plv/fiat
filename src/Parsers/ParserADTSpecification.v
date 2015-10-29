@@ -1,8 +1,7 @@
 (** Reference implementation of a splitter and parser based on that splitter *)
-Require Import Coq.Strings.String.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
-Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Common.Equality.
 
@@ -15,15 +14,15 @@ Local Open Scope string_scope.
 
 Section ReferenceImpl.
   Section GenericSig.
-    Context (Char : Type).
+    Context (Char : Type) (String : Type).
 
     (** Representation of a [String] that can be split *)
     Definition string_rep :=
       ADTsignature {
-        Constructor "new" : String.string -> rep,
+        Constructor "new" : String -> rep,
         (** Initialize, with a given [string] to be parsed or split. *)
 
-        Method "to_string" : rep -> rep * String.string,
+        Method "to_string" : rep -> rep * String,
         (** Return the underlying string; hack to get around not having [eq : rep x rep -> bool] *)
 
         Method "is_char" : rep * Char -> rep * bool,
@@ -46,24 +45,24 @@ Section ReferenceImpl.
       }.
   End GenericSig.
 
-  Context (G : grammar Ascii.ascii).
+  Context (G : grammar Ascii.ascii) (HSL : StringLike Ascii.ascii).
   Local Open Scope ADTParsing_scope.
   (** Reference implementation of a [String] that can be split *)
-  Definition string_spec : ADT (string_rep Ascii.ascii) := ADTRep String.string {
+  Definition string_spec : ADT (string_rep Ascii.ascii String) := ADTRep String {
     Def Constructor1 "new"(s : String) : rep :=
       ret s,
 
-    Def Method0 "to_string" (s : rep) : rep * String.string :=
+    Def Method0 "to_string" (s : rep) : rep * String :=
       ret (s, s),
 
     Def Method1 "is_char"(s : rep) (x : Ascii.ascii) : rep * bool  :=
-      ret (s, string_beq s (String.String x "")),
+      ret (s, is_char s x),
 
     Def Method1 "get"(s : rep) (n : nat) : rep * (option Ascii.ascii)  :=
       ret (s, get n s),
 
     Def Method0 "length"(s : rep) : rep * nat :=
-      ret (s, String.length s),
+      ret (s, length s),
 
     Def Method1 "take"(s : rep) (n : nat) : rep :=
       ret (take n s),

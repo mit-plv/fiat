@@ -10,7 +10,7 @@ Set Implicit Arguments.
 Section IndexedImpl.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec plus_expr_grammar).
+  : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     start sharpening ADT.
     start honing parser using indexed representation.
@@ -26,7 +26,7 @@ Section IndexedImpl.
   Defined.
 
   Lemma ComputationalSplitter
-    : FullySharpened (string_spec plus_expr_grammar).
+    : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     make_simplified_splitter ComputationalSplitter'.
   Defined.

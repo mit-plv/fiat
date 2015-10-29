@@ -443,7 +443,7 @@ Section IndexedImpl.
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
   Open Scope ADTParsing_scope.
 
-  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii) :=
+  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii String.string) :=
     ADTRep T {
     Def Constructor1 "new" (s : String.string) : rep :=
       ret (s, (0, String.length s)),
@@ -471,7 +471,7 @@ Section IndexedImpl.
       expanded_fallback_list' P s i p dummy
   }.
 
-  Definition rindexed_spec : ADT (string_rep Ascii.ascii)
+  Definition rindexed_spec : ADT (string_rep Ascii.ascii String.string)
     := rindexed_spec' (fun str it its _ _ => split_list_is_complete G str it its).
 
   Local Ltac fin :=
@@ -630,7 +630,7 @@ Section IndexedImpl.
   Local Transparent expanded_fallback_list'.
 
   Lemma FirstStep
-  : refineADT (string_spec G) rindexed_spec.
+  : refineADT (string_spec G string_stringlike) rindexed_spec.
   Proof.
     refine (transitivityT _ _ _ _ FirstStep_helper_1).
     refine (transitivityT _ _ _ _ FirstStep_helper_2).

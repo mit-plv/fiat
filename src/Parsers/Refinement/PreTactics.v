@@ -133,6 +133,9 @@ Ltac parser_hone_cleanup :=
 Ltac unguard :=
   rewrite ?(unguard [0]).
 
+Tactic Notation "finish" "honing" "parser" "method"
+  := finish_honing_by_eq parser_pull_tac.
+
 Ltac solve_prod_beq :=
   repeat match reverse goal with
            | _ => intro
