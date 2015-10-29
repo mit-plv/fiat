@@ -70,6 +70,7 @@ src/Common/ReservedNotations.v
 src/Common/SetEq.v
 src/Common/SetEqProperties.v
 src/Common/SetoidInstances.v
+src/Common/Sigma.v
 src/Common/StringBound.v
 src/Common/StringFacts.v
 src/Common/StringOperations.v
@@ -100,7 +101,6 @@ src/Common/List/ListMorphisms.v
 src/Common/List/Operations.v
 src/Common/List/PermutationFacts.v
 src/Common/List/UpperBound.v
-src/Common/Sigma.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
@@ -220,15 +220,6 @@ src/Parsers/BooleanRecognizerEquality.v
 src/Parsers/BooleanRecognizerFull.v
 src/Parsers/BooleanRecognizerOptimized.v
 src/Parsers/BooleanRecognizerTests.v
-src/Parsers/ContextFreeGrammar/Core.v
-src/Parsers/ContextFreeGrammar/Equality.v
-src/Parsers/ContextFreeGrammar/Notations.v
-src/Parsers/ContextFreeGrammar/Properties.v
-src/Parsers/ContextFreeGrammar/Transfer.v
-src/Parsers/ContextFreeGrammar/TransferProperties.v
-src/Parsers/ContextFreeGrammar/Valid.v
-src/Parsers/ContextFreeGrammar/ValidProperties.v
-src/Parsers/ContextFreeGrammar/ValidReflective.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
 src/Parsers/FoldGrammar.v
@@ -244,6 +235,15 @@ src/Parsers/SplitterFromParserADT.v
 src/Parsers/StringLike.v
 src/Parsers/WellFoundedParse.v
 src/Parsers/WellFoundedParseProperties.v
+src/Parsers/ContextFreeGrammar/Core.v
+src/Parsers/ContextFreeGrammar/Equality.v
+src/Parsers/ContextFreeGrammar/Notations.v
+src/Parsers/ContextFreeGrammar/Properties.v
+src/Parsers/ContextFreeGrammar/Transfer.v
+src/Parsers/ContextFreeGrammar/TransferProperties.v
+src/Parsers/ContextFreeGrammar/Valid.v
+src/Parsers/ContextFreeGrammar/ValidProperties.v
+src/Parsers/ContextFreeGrammar/ValidReflective.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v

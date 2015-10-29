@@ -1,12 +1,12 @@
 Require Import Coq.FSets.FMaps.
-Require Import Fiat.CertifiedExtraction.Utils.
+Require Import CertifiedExtraction.PureUtils.
 
-Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
+Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
   Module Export BasicFacts := WFacts_fun E M.
   Module Export BasicProperties := WProperties_fun E M.
 
   Set Implicit Arguments.
-  
+
   Notation "A ∈ B" := (In A B) (at level 10, no associativity) : map_scope.
   Notation "A ∉ B" := (not (In A B)) (at level 10, no associativity) : map_scope.
   Notation "[ k <-- v ] :: m" :=
@@ -28,8 +28,8 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     intros A m key H;
     apply in_find_iff in H.
     destruct (find key m) as [value | ] eqn:eq_option;
-    try rewrite <- find_mapsto_iff in eq_option;
-    intuition eauto.
+      try rewrite <- find_mapsto_iff in eq_option;
+      intuition eauto.
   Qed.
 
   Lemma add_remove_cancel:
@@ -73,11 +73,11 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     intros;
     rewrite Equal_mapsto_iff;
     intros *; map_iff;
-      repeat match goal with
-             | _ => progress msubst
-             | _ => progress intuition
-             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
-             end.
+    repeat match goal with
+           | _ => progress msubst
+           | _ => progress intuition
+           | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+           end.
   Qed.
 
   (* Lemma remove_redundant_cancel : (* duplicate of remove_notIn_Equal *) *)
@@ -102,14 +102,14 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     intros *; map_iff.
     destruct (E.eq_dec k' k0); msubst;
     intuition subst;
-      repeat match goal with
-             | _ => progress msubst
-             | _ => progress intuition
-             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
-             end.
+    repeat match goal with
+           | _ => progress msubst
+           | _ => progress intuition
+           | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+           end.
     eauto using E.eq_trans, E.eq_sym.
   Qed.
-  
+
   Lemma remove_add_cancel:
     forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
       k ∉ m ->
@@ -121,11 +121,11 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     intros *; map_iff.
     destruct (E.eq_dec k' k0); msubst;
     intuition subst;
-      repeat match goal with
-             | _ => progress msubst
-             | _ => progress intuition
-             | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
-             end.
+    repeat match goal with
+           | _ => progress msubst
+           | _ => progress intuition
+           | [ H: MapsTo _ _ _ |- _ ] => learn (MapsTo_In H)
+           end.
   Qed.
 
   Lemma add_redundant_cancel:
@@ -139,12 +139,12 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     match goal with
     | [ k: key, k': key |- _ ] => destruct (E.eq_dec k k')
     end;
-    repeat match goal with
-           | _ => congruence
-           | _ => progress msubst
-           | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
-           | _ => intuition
-           end.
+      repeat match goal with
+             | _ => congruence
+             | _ => progress msubst
+             | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
+             | _ => intuition
+             end.
   Qed.
 
   Lemma remove_remove_redundant :
@@ -194,7 +194,7 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     intros *.
     map_iff; intros.
     intuition.
-    exfalso; eauto.
+    exfalso; eauto using E.eq_refl.
   Qed.
 
   Lemma MapsTo_NotIn_inv :
@@ -247,12 +247,12 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
   Qed.
 
   Ltac rewrite_in equality target :=
-  (*! TODO is this still needed? !*)
-  let h := fresh in
-  pose proof target as h;
-    setoid_rewrite equality in h;
-    clear dependent target;
-    rename h into target.
+    (*! TODO is this still needed? !*)
+    let h := fresh in
+    pose proof target as h;
+      setoid_rewrite equality in h;
+      clear dependent target;
+      rename h into target.
 
   Ltac normalize :=
     match goal with
@@ -364,4 +364,4 @@ Module WUtils_fun (E:DecidableType) (Import M:WSfun E).
     | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) (@None key) in
                        constr:(ret)
     end.
-End WUtils_fun.
+End WMoreFacts_fun.
