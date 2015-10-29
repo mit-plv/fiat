@@ -98,3 +98,26 @@ Proof.
   intro H.
   apply substring_correct4; omega.
 Qed.
+
+Local Ltac eq_Proper_t :=
+  let H := fresh in
+  let H' := fresh in
+  intros ?? H ?? H';
+    apply string_bl in H'; apply string_bl in H; repeat subst;
+    reflexivity.
+
+Global Instance eq_string_beq_Proper
+: Proper (beq ==> beq ==> eq) (@eq String.string).
+Proof. eq_Proper_t. Qed.
+Global Instance eq_string_beq_Proper'
+: Proper (beq ==> beq ==> eq) (@eq (@StringLike.String _ string_stringlike)).
+Proof. eq_Proper_t. Qed.
+Global Instance eq_string_beq_impl_Proper
+: Proper (beq ==> beq ==> impl) (@eq String.string).
+Proof. eq_Proper_t. Qed.
+Global Instance eq_string_beq_impl_Proper'
+: Proper (beq ==> beq ==> impl) (@eq (@StringLike.String _ string_stringlike)).
+Proof. eq_Proper_t. Qed.
+Global Instance beq_string_Equivalence
+: (@Equivalence String.string (@beq Ascii.ascii string_stringlike))
+  := bool_eq_Equivalence.
