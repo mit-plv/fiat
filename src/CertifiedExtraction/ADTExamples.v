@@ -21,24 +21,48 @@ Example other_test_with_adt'' :
                           {{ [["ret" <-- SCA _ (List.fold_left (@Word.wplus 32) seq (Word.wordToNat 0)) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
 Proof.
   econstructor; intros.
-  
-  eapply CompileSeq with ([["arg1" <-- ADT nil as _]]::[["ret" <-- SCA (list W) (List.fold_left (Word.wplus (sz:=32)) seq (Word.wordToNat 0)) as _]]::Nil).
+
   let vhead := gensym "head" in
   let vtest := gensym "test" in
   apply (FacadeLoops.CompileLoop (vhead := vhead) (vtest := vtest)); try compile_do_side_conditions.
   compile_step.
-  intros;
-  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  intros.
+
+  Lemma ProgOk_Transitivity_Cons_B :
+    forall {av} env ext t1 t1' t2 prog1 prog2 k (v: Comp (Value av)),
+      {{ t1 }}                            prog1     {{ [[Some k <~~ v as kk]] :: t1' kk }}     ∪ {{ ext }} // env ->
+      {{ [[Some k <~~ v as kk]] :: t1' kk }} prog2     {{ [[Some k <~~ v as kk]] :: t2 kk }} ∪ {{ ext }} // env ->
+      {{ t1 }}                      Seq prog1 prog2 {{ [[Some k <~~ v as kk]] :: t2 kk }} ∪ {{ ext }} // env.
+  Proof.
+    eauto using CompileSeq.
+  Qed.
+
+  (* This is a well-behaved version of ProgOk_Transitivity_Cons, but it is not
+     very useful, as the side goal that it creates are in a form in which one
+     would want to apply transitivity again. *)
+  Lemma ProgOk_Transitivity_Cons_Drop :
+    forall {av} env ext t1 t2 prog1 prog2 k (v: Comp (Value av)),
+      {{ t1 }}                     prog1      {{ [[Some k <~~ v as _]]::(DropName k t1) }}     ∪ {{ ext }} // env ->
+      {{ [[Some k <~~ v as _]]::(DropName k t1) }}      prog2      {{ [[Some k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+      {{ t1 }}                Seq prog1 prog2 {{ [[Some k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env.
+  Proof.
+    SameValues_Facade_t.
+  Qed.
+
+  (* eapply ProgOk_Transitivity_Cons_B. *)
+  (* rewrite TelEq_swap; try compile_do_side_conditions. *)
+  (* apply CompileSkip. *)
+  (* compile_step. *)
+  (* compile_step. *)
+  
+  compile_step.
+
   repeat compile_step.
+
   subst.
 
   let fop := translate_op Word.wplus in
   apply (CompileBinopOrTest_right_inPlace fop); compile_do_side_conditions.
-
-  unfold MyEnvLists.
-  let vtmp := gensym "tmp" in
-  let fpointer := find_function_in_env (Axiomatic (@FacadeImplementationOfDestructor (list W))) MyEnvLists in
-  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fpointer) (vtmp := vtmp)); try compile_do_side_conditions.
 Defined.
 
 Print Assumptions other_test_with_adt''.

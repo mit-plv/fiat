@@ -15,6 +15,31 @@ Example simple :
                                 y <- ret (SCA unit (Word.natToWord 32 5));
                                 ret (SCA _ (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5)))) with EmptyEnv.
 Proof.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  Lemma CompileConstant :
+    forall av env ext prog tenv tenv' name w,
+      name ∉ ext ->
+      PropertiesOfTelescopes.NotInTelescope name tenv ->
+      {{ [[name <-- SCA av w as _]] :: tenv }} prog {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ tenv }} (Seq (Assign name (Const w)) prog) {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env.
+  Proof.
+    eauto using Basics.CompileSeq, Basics.CompileConstant.
+  Qed.
+
+  apply CompileConstant; try Core.compile_do_side_conditions.
+
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  apply CompileConstant; try Core.compile_do_side_conditions.
+
+  repeat compile_step.
+  repeat compile_step.
   repeat compile_step.
 Defined.
 
@@ -235,7 +260,7 @@ Example other_test_with_adt :
                                           ret (ADT ((if IL.wltb x y then x else y) :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
 Proof.
   econstructor; intros.
-  repeat (compile_random || compile_mutation_replace || compile_step).
+  repeat (compile_step || compile_random || compile_mutation_replace).
 Defined.
 
 Eval simpl in (extract_facade other_test_with_adt).
@@ -249,9 +274,7 @@ Example other_test_with_adt' :
                                           ret (ADT (if IL.wltb x y then x :: seq else y :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
 Proof.
   econstructor; intros.
-  repeat (compile_random || compile_mutation_replace || compile_step).
+  repeat (compile_step || compile_random || compile_mutation_replace).
 Defined.
 
 Eval simpl in (extract_facade other_test_with_adt').
-
-(* FIXME: The tricky part here is the dependency on the order of the lemmas *)

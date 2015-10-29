@@ -13,30 +13,12 @@ Ltac compile_read value ext :=
   | Some ?k => apply (CompileRead (var := k))
   end.
 
-Ltac compile_do_cons :=
-  debug "Moving head of Cons to separate goal";
-  apply ProgOk_Transitivity_Cons.
-
-Ltac compile_do_chomp key :=
-  debug "Applying chomp rule";
-  match key with
-  | @Some _ _ => apply ProgOk_Chomp_Some
-  | @None _   => apply ProgOk_Chomp_None
-  end; intros; computes_to_inv.
-
-Ltac compile_do_bind k compA compB tl :=
-  debug "Transforming Fiat-level bind into telescope-level Cons";
-  first [rewrite (SameValues_Fiat_Bind_TelEq k compA compB tl) | (* FIXME use a smarter procedure for rewriting here *)
-         rewrite (SameValues_Fiat_Bind_TelEq_W k compA compB tl)].
-
-Ltac compile_do_alloc cmp tail :=
-  let name := gensym "v" in
-  debug "Naming nameless head variable";
-  apply (ProgOk_Transitivity_Name (k := name)).
-
-Ltac compile_skip :=
-  debug "Compiling empty program";
-  apply CompileSkip.
+Ltac assoc_telescope tel needle :=
+  match tel with (* Note that this may return None when a binding in fact exists *)
+  | Cons (Some ?k) ?v _ => let eq := constr:(eq_refl k : k = needle) in constr:(Some v)
+  | Cons _ _ (fun _ => ?t) => let ret := assoc_telescope t needle in constr:(ret)
+  | _ => None
+  end.
 
 Ltac clean_DropName_in_ProgOk :=
   match_ProgOk ltac:(fun prog pre post ext env =>

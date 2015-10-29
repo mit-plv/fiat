@@ -2,12 +2,14 @@ Require Import
         CertifiedExtraction.Extraction.AllInternal
         CertifiedExtraction.Extraction.External.Core
         CertifiedExtraction.Extraction.External.Loops
+        CertifiedExtraction.Extraction.External.GenericADTMethods
         CertifiedExtraction.Extraction.External.FacadeADTs.
 
 Lemma CompileLoop :
-  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty f,
+  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty fdealloc f,
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor _)) env ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     vlst ∉ ext ->
@@ -30,8 +32,8 @@ Lemma CompileLoop :
           facadeBody
         {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
     {{ [[vlst <-- ADT lst as _]] :: tenv }}
-      (Seq facadeInit (Fold vhead vtest vlst fpop fempty facadeBody))
-    {{ [[vlst <-- ADT nil as _]] :: [[vret <-- SCA _ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+      (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
+    {{ [[vret <-- SCA _ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   eapply CompileSeq; eauto; clear dependent facadeInit.
@@ -39,15 +41,19 @@ Proof.
   unfold Fold.
   eapply CompileSeq.
 
+  eapply CompileSeq.
+
   rewrite TelEq_swap by congruence;
     eapply CompileCallEmpty'; Lifted_t.
 
   clean_DropName_in_ProgOk.
 
-  generalize dependent init;
-  induction lst; simpl; intros.
+  2:eapply CompileCallFacadeImplementationOfDestructor; Lifted_t.
 
-  apply CompileWhileFalse_Loop; Lifted_t.
+  generalize dependent init;
+    induction lst; simpl; intros.
+
+  apply CompileWhileFalse_Loop; try instantiate (1 := nil); Lifted_t. (* instantiate due to Coq bug *)
 
   eapply CompileWhileTrue; Lifted_t.
 

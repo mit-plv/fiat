@@ -60,7 +60,61 @@ Ltac compile_do_unwrap type wrapper key cmp tail val :=
   let wrapper_head := head_constant wrapper in
   cbv beta iota delta [WrappedCons wrapper_head].
 
-(*! FIXME: Why is this first [ ... | fail] thing needed? If it's removed then the lazy match falls through *)
+
+Ltac compile_do_use_transitivity_to_handle_head_separately :=
+  (* FIXME this is a very risky rule; it causes plenty of problems in particular
+     when a compilation step modifies two things at the same time. It should
+     probably be replaced by a bunch of specialized versions of this rule,
+     compiled with each lemma that handles the head. *)
+  (* There's an example of such a specialized lemma as CompileConstant in
+     Examples.v *)
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(post) with
+                       | Cons ?k _ _ =>
+                         match constr:(pre) with
+                         | context[k] => fail 1 "Head variable appears in pre-condition"
+                         | _ => apply ProgOk_Transitivity_Cons
+                         end
+                       end).
+
+Ltac compile_do_extend_scalar_lifetime :=
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(pre) with
+                       | Cons ?k (ret (SCA _ _)) _ =>
+                         match constr:(post, ext) with
+                         | context[k] => fail 1 "Head variable appears in post-condition"
+                         | _ => apply CompileDeallocSCA_discretely; [ compile_do_side_conditions.. | ]
+                         end
+                       end).
+
+Ltac compile_do_cons :=
+  debug "Moving head of Cons to separate goal";
+  (* match pre with *)
+  (* | context[key] =>  *)
+  apply ProgOk_Transitivity_Cons.
+
+Ltac compile_do_chomp key :=
+  debug "Applying chomp rule";
+  match key with
+  | @Some _ _ => apply ProgOk_Chomp_Some
+  | @None _   => apply ProgOk_Chomp_None
+  end; intros; computes_to_inv.
+
+Ltac compile_do_bind k compA compB tl :=
+  debug "Transforming Fiat-level bind into telescope-level Cons";
+  first [rewrite (SameValues_Fiat_Bind_TelEq k compA compB tl) | (* FIXME use a smarter procedure for rewriting here *)
+         rewrite (SameValues_Fiat_Bind_TelEq_W k compA compB tl)].
+
+Ltac compile_do_alloc cmp tail :=
+  let name := gensym "v" in
+  debug "Naming nameless head variable";
+  apply (ProgOk_Transitivity_Name (k := name)).
+
+Ltac compile_skip :=
+  debug "Compiling empty program";
+  apply CompileSkip.
+
+(*! FIXME: The [ ... | fail] thing is needed: when removed the lazy match sometimes falls through *)
 Ltac compile_ProgOk p pre post ext env :=
   is_evar p;
   lazymatch constr:(pre, post, ext) with
@@ -71,8 +125,11 @@ Ltac compile_ProgOk p pre post ext env :=
   | (_,                           Cons ?k (Bind ?compA ?compB) ?tl,            _) => first [compile_do_bind k compA compB tl | fail ]
   | (?tenv,                       Cons (Some ?k) ?cmp (fun _ => ?tenv),           _) => first [compile_simple k cmp | fail ]
   | ([[`?k <~~ ?cmp as _]] :: ?tenv, [[`?k <~~ ?cmp' as _]] :: ?tenv,                _) => first [compile_simple_in_place k cmp cmp' | fail ]
-  | (?tenv,                       Cons ?k ?cmp ?tl,                            _) => first [compile_do_cons | fail ] (* FIXME *)
   | (?tenv,                       ?tenv,                                       _) => first [compile_skip | fail ]
+  | _ => match goal with
+        | _ => compile_do_extend_scalar_lifetime
+        | _ => compile_do_use_transitivity_to_handle_head_separately
+        end
   end.
 
 Ltac is_pushable_head_constant f :=
@@ -106,12 +163,14 @@ Ltac start_compiling :=
     unfold FacadeProgramImplementing, IsFacadeProgramImplementing; econstructor
   end.
 
-Ltac compile_step :=
+Ltac compile_step_with worker :=
   idtac;
   match goal with
   | _ => start_compiling
   | _ => compile_rewrite
   | _ => compile_do_side_conditions
-  | _ => match_ProgOk compile_ProgOk
+  | _ => match_ProgOk worker
   end.
 
+Ltac compile_step :=
+  compile_step_with compile_ProgOk.
