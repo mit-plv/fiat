@@ -1,29 +1,20 @@
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Export Bedrock.Platform.Facade.Facade Bedrock.Platform.Facade.DFacade.
-Require Import Bedrock.Platform.Cito.StringMap.
-Require Import Bedrock.Platform.Cito.SyntaxExpr.
-Require Import Bedrock.Memory.
+Require Import
+        Bedrock.Platform.Facade.Facade
+        Bedrock.Platform.Facade.DFacade
+        Bedrock.Platform.Cito.StringMap
+        Bedrock.Platform.Cito.SyntaxExpr
+        Bedrock.Memory.
 Require Import Coq.Strings.String.
-
-Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
-Coercion nat_as_word : nat >-> Word.word.
-
-Definition string_as_var str : Expr := Var str.
-Coercion string_as_var : string >-> Expr.
-
-Definition word_as_constant w : Expr := Const w.
-Coercion word_as_constant : W >-> Expr.
-
-Definition nat_as_constant n : Expr := Const (Word.natToWord 32 n).
-Coercion nat_as_constant : nat >-> Expr.
 
 Notation "A ; B" := (Seq A B) (at level 201,
                                B at level 201,
                                left associativity,
                                format "'[v' A ';' '/' B ']'") : facade_scope.
+
 Delimit Scope facade_scope with facade.
 
 Definition DummyArgument (s: string) := s.
+Hint Unfold DummyArgument : MapUtils_unfold_db.
 
 Notation "x <- y" := (Assign x y) (at level 90) : facade_scope.
 Notation "y <- f . g ()" := (Call y (f, g) nil)
@@ -61,16 +52,3 @@ Notation "'If' a 'Then' b 'Else' c 'EndIf'" := (DFacade.If a b c)
                                            c at level 1000,
                                           format "'[v' '[v  ' 'If'  a  'Then' '/' b ']' '/' '[v  ' 'Else' '/' c ']' '/' 'EndIf' ']'")
                                        : facade_scope.
-
-Definition Fold (head is_empty seq: StringMap.key)
-                _pop_ _empty_ loop_body := (
-    Call is_empty _empty_ (seq :: nil);
-    While (!is_empty) (
-        Call head _pop_ (seq :: nil);
-        loop_body;
-        Call is_empty _empty_ (seq :: nil)
-    )
-)%facade.
-
-Ltac unfold_coercions :=
-  unfold string_as_var, nat_as_constant, nat_as_word, word_as_constant in *.
