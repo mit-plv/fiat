@@ -23,7 +23,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Export Fiat.Parsers.Reachable.ParenBalanced.Core.
-Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Refinement.PreTactics.
 
 Local Open Scope string_like_scope.
 

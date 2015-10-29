@@ -1,6 +1,6 @@
 (** Refinement rules for disjoint rules *)
 Require Import Coq.Lists.List.
-Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.
