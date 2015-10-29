@@ -1,17 +1,12 @@
-Require Export Fiat.ADTRefinement.
-Require Export Fiat.ADTNotation.BuildADT.
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
-Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Export Fiat.Computation.Core.
 Require Export Coq.Program.Program.
-Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Common.
-Require Export Fiat.ADTNotation.BuildADTSig.
 Require Export Fiat.Parsers.StringLike.Core.
 Require Export Fiat.Parsers.StringLike.String.
 
@@ -19,7 +14,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
 
-Notation hiddenT := (ADTSig.methodType _ _ _).
 Global Open Scope string_scope.
 Global Open Scope list_scope.
 Global Arguments string_beq : simpl never.
@@ -84,16 +78,6 @@ Qed.
 
 Global Arguments unguard {_} _ [_] _.
 
-Ltac finish_honing_by_eq tac
-  := solve [ repeat (subst
-                       || rewrite refineEquiv_pick_eq'
-                       || (simplify with monad laws)
-                       || (simpl @fst; simpl @snd)
-                       || tac);
-             match goal with
-               | [ |- refine (ret _) _ ] => finish honing
-             end  ].
-
 Ltac parser_pull_tac :=
   repeat match goal with
            | [ |- context G[match ?ls with
@@ -122,19 +106,8 @@ Ltac parser_pull_tac :=
              => rewrite (@pull_If_bool _ _ x y b (fun k => ret k))
          end.
 
-Ltac parser_hone_cleanup :=
-  try (hone constructor "new"; [ finish_honing_by_eq idtac | ]);
-  try (hone method "to_string"; [ finish_honing_by_eq idtac | ]);
-  try (hone method "is_char"; [ finish_honing_by_eq idtac | ]);
-  try (hone method "length"; [ finish_honing_by_eq idtac | ]);
-  try (hone method "take"; [ finish_honing_by_eq idtac | ]);
-  try (hone method "drop"; [ finish_honing_by_eq idtac | ]).
-
 Ltac unguard :=
   rewrite ?(unguard [0]).
-
-Tactic Notation "finish" "honing" "parser" "method"
-  := finish_honing_by_eq parser_pull_tac.
 
 Ltac solve_prod_beq :=
   repeat match reverse goal with

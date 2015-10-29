@@ -1,3 +1,8 @@
+Require Export Fiat.ADTRefinement.
+Require Export Fiat.ADTNotation.BuildADT.
+Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Export Fiat.ADTNotation.BuildADTSig.
 Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Export Fiat.Parsers.ParserADTSpecification.
 Require Export Fiat.Parsers.Refinement.ReductionTactics.
@@ -8,7 +13,26 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.Refinement.FinishingLemma.
 
-(** TODO: move this elsewhere, e.g., IndexedAndAtMostOneNonTerminal.v *)
+Notation hiddenT := (ADTSig.methodType _ _ _).
+
+Ltac finish_honing_by_eq tac
+  := solve [ repeat (subst
+                       || rewrite refineEquiv_pick_eq'
+                       || (simplify with monad laws)
+                       || (simpl @fst; simpl @snd)
+                       || tac);
+             match goal with
+               | [ |- refine (ret _) _ ] => finish honing
+             end  ].
+
+Ltac parser_hone_cleanup :=
+  try (hone constructor "new"; [ finish_honing_by_eq idtac | ]);
+  try (hone method "to_string"; [ finish_honing_by_eq idtac | ]);
+  try (hone method "is_char"; [ finish_honing_by_eq idtac | ]);
+  try (hone method "length"; [ finish_honing_by_eq idtac | ]);
+  try (hone method "take"; [ finish_honing_by_eq idtac | ]);
+  try (hone method "drop"; [ finish_honing_by_eq idtac | ]).
+
 Ltac start_honing_ri repInv :=
   eapply SharpenStep;
   [ solve [ apply FirstStep ] | ];
@@ -34,6 +58,9 @@ Tactic Notation "start" "honing" "parser" "using" "indexed" "representation"
        => (eapply FullySharpened_Start; [ start_honing | | ])
      | _ => start_honing
       end).
+
+Tactic Notation "finish" "honing" "parser" "method"
+  := finish_honing_by_eq parser_pull_tac.
 
 Ltac finish_Sharpening_SplitterADT
   := solve [ refine finish_Sharpening_SplitterADT ].
