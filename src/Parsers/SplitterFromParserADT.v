@@ -6,6 +6,7 @@ Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.ADTRefinement.Core.
@@ -13,6 +14,7 @@ Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.StringOperations.
+Require Import Fiat.Common.StringFacts.
 Require Import Fiat.ADTNotation.BuildComputationalADT.
 
 Set Implicit Arguments.
@@ -24,98 +26,6 @@ Local Open Scope string_scope.
 Section parser.
   Context (G : grammar Ascii.ascii).
   Context (splitter_impl : FullySharpened (string_spec G)).
-
-  (* Lemma fst_cMethods_ex {method} *)
-  (*       (st : { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }) *)
-  (*   : *)
-  (*     @Lift_cMethodP _ _ _ *)
-  (*                    (fun _ cMeth => *)
-  (*                       exists orig, AbsR (projT2 splitter_impl) orig (fst cMeth)) *)
-  (*                    (fun cMeth => *)
-  (*                       exists orig, AbsR (projT2 splitter_impl) orig cMeth) *)
-  (*                    (cMethods (projT1 splitter_impl) method (proj1_sig st)). *)
-  (* Proof. *)
-  (*   destruct st as [st [ orig H ] ]. *)
-  (*   generalize  (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ H). *)
-  (*   revert st orig H; pattern method. *)
-  (*   eapply (Lookup_Iterate_Dep_Type); repeat split; simpl; intros. *)
-  (*   abstract (intros; specialize (H0 _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
-  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
-  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
-  (*   abstract (intros; specialize (H0 _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
-  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; eassumption). *)
-  (*   abstract (intros; specialize (H0 t _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; eassumption). *)
-  (*   abstract (intros; specialize (H0 t t0 _ (ReturnComputes _)); computes_to_inv; *)
-  (*             eexists; substs; simpl in *; rewrite <- H0''; eassumption). *)
-  (* Qed. *)
-
-  (* Lemma fst_cMethods_comp {method st arg v retv} *)
-  (*       (H0 : Methods (string_spec G) method v arg = ret retv) *)
-  (*       (H1 : AbsR (projT2 splitter_impl) v st) *)
-  (* : AbsR (projT2 splitter_impl) (fst retv) (fst (cMethods (projT1 splitter_impl) method st arg)). *)
-  (* Proof. *)
-  (*   pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''. *)
-  (*   rewrite H0 in H''; clear H0. *)
-  (*   computes_to_inv. *)
-  (*   match goal with *)
-  (*     | [ H : (_, _) = _ |- _ ] *)
-  (*       => pose proof (f_equal (@fst _ _) H); *)
-  (*         pose proof (f_equal (@snd _ _) H); *)
-  (*         clear H *)
-  (*   end. *)
-  (*   subst. *)
-  (*   destruct_head' prod. *)
-  (*   simpl @fst in *. *)
-  (*   simpl @snd in *. *)
-  (*   subst. *)
-  (*   assumption. *)
-  (* Qed. *)
-
-  (* Lemma snd_cMethods_comp {method st arg v retv} *)
-  (*       (H0 : Methods (string_spec G) method v arg = ret retv) *)
-  (*       (H1 : AbsR (projT2 splitter_impl) v st) *)
-  (* : snd (cMethods (projT1 splitter_impl) method st arg) = snd retv. *)
-  (* Proof. *)
-  (*   pose proof (ADTRefinementPreservesMethods (projT2 splitter_impl) method _ _ arg H1 (cMethods (projT1 splitter_impl) method st arg) (ReturnComputes _)) as H''. *)
-  (*   rewrite H0 in H''; clear H0. *)
-  (*   computes_to_inv. *)
-  (*   match goal with *)
-  (*     | [ H : (_, _) = _ |- _ ] *)
-  (*       => pose proof (f_equal (@fst _ _) H); *)
-  (*         pose proof (f_equal (@snd _ _) H); *)
-  (*         clear H *)
-  (*   end. *)
-  (*   subst. *)
-  (*   destruct_head' prod. *)
-  (*   simpl @fst in *. *)
-  (*   simpl @snd in *. *)
-  (*   subst. *)
-  (*   reflexivity. *)
-  (* Qed. *)
-
-  (* Local Ltac snd_cMethods_comp' := *)
-  (*   idtac; *)
-  (*   match goal with *)
-  (*     | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ] *)
-  (*       => let G' := context G[snd (cMethods impl meth st arg)] in *)
-  (*          progress change G' *)
-  (*     | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ] *)
-  (*       => let G' := context G[snd (cMethods impl meth st arg)] in *)
-  (*          progress change G' in H *)
-  (*     | [ H : appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] |- _ ] *)
-  (*       => erewrite (@snd_cMethods_comp meth st arg) in H by (eassumption || reflexivity); *)
-  (*         simpl @snd in H *)
-  (*     | [ |- appcontext G[snd (cMethods ?impl ?meth ?st ?arg)] ] *)
-  (*       => erewrite (@snd_cMethods_comp meth st arg) by (eassumption || reflexivity); *)
-  (*         simpl @snd *)
-  (*   end. *)
-  (* Local Ltac snd_cMethods_comp := repeat snd_cMethods_comp'. *)
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
@@ -167,8 +77,25 @@ Section parser.
   Local Ltac destruct_twice_faster term :=
     let H' := fresh in
     pose proof term as H';
-      hnf in H'; destruct H' as [? H'];
-      hnf in H'; destruct H'.
+      unfold ibound, indexb in H'; simpl Methods in *;
+      hnf in H'; cbv beta in H'; destruct H' as [? H'];
+      hnf in H'; cbv beta in H'; destruct H'.
+
+  Local Ltac fix_string_of_list :=
+    repeat match goal with
+             | _ => progress change string_of_list with of_string in *
+             | [ H : context[to_string (of_string ?x)] |- _ ] => rewrite to_of_string in H
+             | [ H : context[of_string (to_string ?x)] |- _ ] => rewrite of_to_string in H
+             | [ H : context[of_string (list_of_string ?x)] |- _ ] => simpl of_string in H; rewrite string_of_list_of_string in H
+           end.
+
+  Local Ltac fast_injections :=
+    repeat match goal with
+             | [ H : (?x, ?y) = (?x', ?y') |- _ ]
+               => assert (x = x') by exact (f_equal fst H);
+                 assert (y = y') by exact (f_equal snd H);
+                 clear H
+           end.
 
   Ltac prove_string_eq :=
     match goal with
@@ -176,27 +103,26 @@ Section parser.
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st) = _ =>
-          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H);
-            simpl Methods in *;
-            computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H)
         end
     | |- ?z _ _ = _ => unfold z;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1) = _ =>
-          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1);
-            simpl Methods in *;
-            computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1)
         end
     | |- ?z _ _ = _ => unfold z;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1 ?arg2) = _ =>
-          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1 arg2);
-            simpl Methods in *;
-            computes_to_inv; injections; eauto
+          destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1 arg2)
         end
-    end.
+    end;
+    simpl Methods in *;
+    computes_to_inv;
+    fast_injections;
+    fix_string_of_list;
+    eauto.
 
   Definition mto_string_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
     : mto_string st = str.
@@ -219,14 +145,15 @@ Section parser.
     match goal with
       | [ H : ?str ≃ ?st
           |- _ ≃ callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg ]
-        => destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg);
-          simpl Methods in *;
-          computes_to_inv; subst; eauto
+        => destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg)
       | [ |- _ ≃ callcADTConstructor (projT1 ?splitter_impl) ?proj ?idx ?arg ]
-        => destruct_twice_faster (cConstructors_AbsR splitter_impl (proj idx) arg);
-          simpl Constructors in *;
-          computes_to_inv; subst; eauto
-    end.
+        => destruct_twice_faster (cConstructors_AbsR splitter_impl (proj idx) arg)
+    end;
+    simpl Methods in *; simpl Constructors in *;
+    computes_to_inv;
+    fix_string_of_list;
+    subst;
+    eauto.
 
   Definition mtake_R {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : AbsR (projT2 splitter_impl) (take arg str) (mtake arg st).
