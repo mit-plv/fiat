@@ -1,7 +1,6 @@
 (** Sharpened ADT for (ab)* *)
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ABStar.
-Set Implicit Arguments.
 
 Section IndexedImpl.
 
@@ -17,7 +16,8 @@ Section IndexedImpl.
       simplify parser splitter.
       finish honing parser method.
     }
-    finish_SharpeningADT_WithoutDelegation.
+
+    finish_Sharpening_SplitterADT.
 
   Defined.
 

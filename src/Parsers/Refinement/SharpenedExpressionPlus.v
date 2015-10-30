@@ -16,13 +16,13 @@ Section IndexedImpl.
     start honing parser using indexed representation.
 
     hone method "splits".
-    { set_evars.
+    {
       simplify parser splitter.
       setoid_rewrite refine_disjoint_search_for; [ | reflexivity.. ].
       simpl.
       finish honing parser method.
     }
-    finish_SharpeningADT_WithoutDelegation.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter

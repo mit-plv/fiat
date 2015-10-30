@@ -22,7 +22,7 @@ Section IndexedImpl.
       finish honing parser method.
     }
 
-    finish_SharpeningADT_WithoutDelegation.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter
