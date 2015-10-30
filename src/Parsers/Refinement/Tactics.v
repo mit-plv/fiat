@@ -7,6 +7,7 @@ Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Export Fiat.Parsers.ParserADTSpecification.
 Require Export Fiat.Parsers.Refinement.ReductionTactics.
 Require Export Fiat.Parsers.Refinement.PreTactics.
+Require Export Fiat.Parsers.StringLike.String.
 
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.

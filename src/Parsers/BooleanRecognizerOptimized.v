@@ -504,7 +504,7 @@ Ltac solve_default_str_carrier :=
   let T := match goal with |- { to_string : _ * _ -> string * ?T & _ } => constr:T end in
   exists (fun x : string * T => x);
     exists (fun x : string * T => x);
-    simpl;
+    simpl @fst; simpl @snd;
     solve [ repeat split ].
 
 Hint Extern 1 (str_carrier _ _) => solve_default_str_carrier : typeclass_instances.

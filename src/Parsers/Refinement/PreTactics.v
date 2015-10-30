@@ -8,7 +8,6 @@ Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Common.
 Require Export Fiat.Parsers.StringLike.Core.
-Require Export Fiat.Parsers.StringLike.String.
 
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
