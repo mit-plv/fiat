@@ -5,6 +5,9 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Computation.Refinements.General.
+Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
@@ -20,12 +23,12 @@ Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Export Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Refinement.PreTactics.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 
 Local Open Scope string_like_scope.
 
 Set Implicit Arguments.
+
+Local Opaque string_stringlike.
 
 Section helper_lemmas.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -77,8 +80,6 @@ End helper_lemmas.
 
 Section refine_rules.
   Context {G : grammar Ascii.ascii}
-          {HSL : StringLike Ascii.ascii}
-          {HSLP : StringLikeProperties Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
           (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
@@ -116,23 +117,24 @@ Section refine_rules.
       specialize (Htable n).
       intros idx' Hsmall Hreachable pit pits; simpl.
       specialize (H_nt_hiding _ pit).
+      rewrite substring_take_drop in H_nt_hiding.
       unfold paren_balanced_hiding in *.
+      rewrite take_take in H_nt_hiding.
       inversion pits.
       repeat match goal with
+               | [ H : context[substring _ _ _] |- _ ] => rewrite substring_take_drop in H
                | [ H : is_true (take ?n ?str ~= [ ?ch ]) |- _ ]
                  => progress apply take_n_1_singleton in H
 
+               | [ H : context[take _ (drop _ (take _ _))] |- _ ] => rewrite drop_take in H
                | [ H : is_true (take _ (take _ _) ~= [ _ ]) |- _ ] => rewrite take_take in H
                | [ H : _ <= StringLike.length _ |- _ ] => rewrite take_length in H
-               | [ H : context[min ?x ?y], H' : ?x <= min ?y ?y' |- _ ]
-                 => rewrite (Min.min_l x y) in H
-                                            by (revert H'; clear; abstract (apply (Min.min_case_strong y y'); intros; omega))
+               | [ H : context[min ?x ?y], H' : ?x <= min ?y _ |- _ ]
+                 => replace (min x y) with x in H
+                                             by (revert H'; clear; abstract (repeat apply Min.min_case_strong; intros; omega))
                | [ H : parse_of_item _ _ (Terminal _) |- _ ] => inversion H; clear H
                | _ => progress subst
-               | [ H : is_true (paren_balanced_hiding' (take _ (take _ _)) _) |- _ ] => rewrite take_take in H
-               | [ H : is_true (is_char (substring _ _ (substring _ _ _)) _) |- _ ] => rewrite drop_take in H
              end.
-
       unfold list_of_next_bin_ops_spec'' in *.
 
       destruct (List.nth n table None) as [idx|].
@@ -140,7 +142,7 @@ Section refine_rules.
         left.
         destruct (Compare_dec.lt_eq_lt_dec idx idx') as [[?|?]|?];
           [
-          | subst; apply Min.min_r; rewrite take_length; assumption
+          | subst; apply Min.min_r; rewrite substring_take_drop, take_length; assumption
           | ];
           exfalso.
         { (** idx < idx'; this contradicts the paren-balanced-hiding
@@ -175,15 +177,6 @@ Section refine_rules.
           | solve [ repeat
                       match goal with
                         | [ H : is_true (_ ~= [ _ ]) |- _ ] => apply length_singleton in H
-                        | [ H : ?T |- _ ]
-                          => progress
-                               match T with
-                                 | _ < _ => idtac
-                                 | _ <= _ => idtac
-                                 | _ = _ :> nat => idtac
-                                 | StringLikeProperties _ => idtac
-                                 | _ => clear H
-                               end
                         | [ H : _ |- _ ] => progress rewrite ?drop_length, ?take_length in H
                         | _ => progress rewrite ?drop_length, ?take_length
                         | [ H : min _ _ = _ |- _ ] => revert H; apply Min.min_case_strong; clear; intros; omega
