@@ -76,9 +76,9 @@ Section helper_lemmas.
 End helper_lemmas.
 
 Section refine_rules.
-  Context {HSL : StringLike Ascii.ascii}
+  Context {G : grammar Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
-          {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
           (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
