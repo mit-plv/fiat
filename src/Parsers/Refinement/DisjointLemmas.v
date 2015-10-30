@@ -17,7 +17,6 @@ Require Import Fiat.Parsers.BooleanRecognizerFull.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
@@ -84,7 +83,9 @@ Section all_possible.
 End all_possible.
 
 Section only_first.
-  Context (G : grammar Ascii.ascii).
+  Context (G : grammar Ascii.ascii)
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}.
 
   Record possible_first_terminals :=
     { actual_possible_first_terminals :> list Ascii.ascii;
@@ -92,7 +93,7 @@ Section only_first.
 
   Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
-         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data nt && brute_force_parse_nonterminal G ""%string nt |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data nt && brute_force_parse_nonterminal G (of_string nil) nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -215,6 +216,10 @@ End all_possible_correctness.
 
 Section only_first_correctness.
   Context (G : grammar Ascii.ascii)
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}
+          {HSIP : StringIsoProperties Ascii.ascii}
           (Hvalid : grammar_rvalid G).
   Local Open Scope string_like_scope.
 
@@ -276,7 +281,6 @@ Section only_first_correctness.
       | [ H : is_true (BooleanRecognizer.parse_nonterminal _ _) |- _ ]
         => apply parse_nonterminal_sound in H
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
-      (*| [ |- OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) ] => constructor*)
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (NonTerminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_item _ _ _ (Terminal _) |- _ ] => ddestruction H
       | [ H : OnlyFirst.MinimalReachable.minimal_reachable_from_production _ _ _ nil |- _ ] => ddestruction H
@@ -297,7 +301,7 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
       | [ m : MaybeEmpty.Core.maybe_empty_productions _ _ _ |- _ ]
         => let f := constr:(@MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions _ _ _) in
-           eapply f with (str := ""%string) in m; [ | (assumption || reflexivity).. ];
+           eapply f with (str := of_string nil) in m; [ | (assumption || (rewrite ?of_string_length; reflexivity)).. ];
            eapply parse_nonterminal_complete; destruct_head sigT; eassumption
       | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
       | [ Hvalid : grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
@@ -307,7 +311,7 @@ Section only_first_correctness.
           let T := (type of pf') in
           let T' := (eval simpl in T) in
           unique pose proof (pf' : T')
-      | _ => eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item; try eassumption; reflexivity
+      | _ => eapply MaybeEmpty.OfParse.parse_empty_maybe_empty_parse_of_item; try eassumption; rewrite ?of_string_length; reflexivity
     end.
 
   Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
@@ -392,8 +396,12 @@ Local Open Scope string_like_scope.
 Local Arguments string_beq : simpl never.
 
 Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii string_stringlike)
+      (str : @String Ascii.ascii HSL)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -416,9 +424,8 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid'.
+      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid' HSLP HSIP.
       intros.
-      destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
       find_production_valid. }
     { split; try omega; [].
@@ -441,8 +448,12 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii string_stringlike)
+      (str : @String Ascii.ascii HSL)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -468,8 +479,12 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii string_stringlike)
+      (str : @String Ascii.ascii HSL)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -493,9 +508,8 @@ Proof.
     { split; trivial.
       pose proof (drop_length str n) as H.
       rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid'.
+      generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid' HSLP HSIP.
       intros.
-      destruct s; try (simpl in *; discriminate); [].
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
       find_production_valid. }
     { split; try omega; try assumption.
@@ -515,8 +529,12 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii string_stringlike)
+      (str : @String Ascii.ascii HSL)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
