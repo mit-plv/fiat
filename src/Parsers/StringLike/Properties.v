@@ -675,6 +675,14 @@ Section String.
       setoid_rewrite Min.min_comm in H'.
       rewrite <- !H', H; reflexivity.
     Qed.
+
+    Lemma substring_min_length str x y
+    : substring x (min y (length str)) str =s substring x y str.
+    Proof.
+      apply Min.min_case_strong; try reflexivity.
+      intro H.
+      apply substring_correct4; omega.
+    Qed.
   End substring.
 End String.
 
