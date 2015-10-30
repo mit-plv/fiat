@@ -12,7 +12,6 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedGrammar.
-(*Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.*)
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
@@ -25,15 +24,6 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 
 Local Open Scope string_like_scope.
-
-(*Require Import Coq.Lists.List.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
-Require Import Fiat.Parsers.StringLike.FirstChar.
-Require Import Fiat.Common.
-Require Import Fiat.Parsers.Refinement.DisjointLemmas.
-Require Import Fiat.Parsers.StringLike.Core. *)
 
 Set Implicit Arguments.
 
