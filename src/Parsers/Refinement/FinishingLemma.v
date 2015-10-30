@@ -30,9 +30,9 @@ Lemma finish_Sharpening_SplitterADT'
         ret (fget s n),
       Def Method0 "length" (s : rep) : rep * nat :=
         ret (flength s),
-      Def Method1 "take" (s : rep) (n : nat) : rep * unit :=
+      Def Method1 "take" (s : rep) (n : nat) : rep :=
         ret (ftake s n),
-      Def Method1 "drop" (s : rep) (n : nat) : rep * unit :=
+      Def Method1 "drop" (s : rep) (n : nat) : rep :=
         ret (fdrop s n),
       Def Method2 "splits" (s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) :
       rep * (list nat) :=
