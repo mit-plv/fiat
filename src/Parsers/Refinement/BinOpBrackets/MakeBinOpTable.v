@@ -6,7 +6,6 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
-Require Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.FirstChar.
@@ -583,9 +582,8 @@ pb = pb' '+' 0
   Qed.
 End make_table.
 
-Import Fiat.Parsers.StringLike.String.
-
 Section for_string.
+  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
   Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
 
   Definition list_of_next_bin_ops'_step'_opt
@@ -611,7 +609,7 @@ Section for_string.
               | None => snd table_higher_ops
             end))).
 
-  Definition list_of_next_bin_ops'_opt0 (str : String.string)
+  Definition list_of_next_bin_ops'_opt0 (str : String)
   : option (list (option nat)) * list (option nat)
     := fold
          list_of_next_bin_ops'_step_opt
@@ -622,12 +620,12 @@ Section for_string.
     Local Arguments fold / .
     Local Arguments fold' / .
     Local Arguments list_of_next_bin_ops'_opt0 / .
-    Definition list_of_next_bin_ops'_opt (str : String.string)
+    Definition list_of_next_bin_ops'_opt (str : String)
     : option (list (option nat)) * list (option nat)
       := Eval simpl in list_of_next_bin_ops'_opt0 str.
   End no_fold.
 
-  Definition list_of_next_bin_ops_opt (str : String.string)
+  Definition list_of_next_bin_ops_opt (str : String)
     := let ls' := list_of_next_bin_ops'_opt str in
        match fst ls' with
          | Some ls'' => nth 0 ls'' None :: snd ls'
