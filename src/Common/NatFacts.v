@@ -172,3 +172,9 @@ Proof.
   { apply Hs; intros.
     apply IHn. }
 Qed.
+
+Lemma minus_plus_min x y
+: x - y + min y x = x.
+Proof.
+  apply Min.min_case_strong; omega.
+Qed.
