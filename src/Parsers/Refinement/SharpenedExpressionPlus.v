@@ -18,7 +18,8 @@ Section IndexedImpl.
     hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_disjoint_search_for; [ | reflexivity.. ].
+      let lem := constr:(@refine_disjoint_search_for _ _ _ _) in
+      setoid_rewrite lem; [ | reflexivity.. ].
       simpl.
       finish honing parser method.
     }

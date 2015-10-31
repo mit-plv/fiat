@@ -3,7 +3,6 @@ Require Import Coq.Lists.List.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Common.
@@ -18,14 +17,23 @@ Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
-Definition search_for_condition (G : grammar Ascii.ascii) str its (n : nat)
+Definition search_for_condition
+           {HSL : StringLike Ascii.ascii}
+           {HSI : StringIso Ascii.ascii}
+           (G : grammar Ascii.ascii)
+           str its (n : nat)
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
        str
        n
        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
 
-Lemma refine_disjoint_search_for' {G : grammar Ascii.ascii}
+Lemma refine_disjoint_search_for'
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      (G : grammar Ascii.ascii)
       (Hvalid : grammar_rvalid G)
       {str nt its}
       (H_disjoint : disjoint ascii_beq
@@ -55,14 +63,23 @@ Proof.
   omega.
 Qed.
 
-Definition search_for_not_condition (G : grammar Ascii.ascii) str nt its n
+Definition search_for_not_condition
+           {HSL : StringLike Ascii.ascii}
+           {HSI : StringIso Ascii.ascii}
+           (G : grammar Ascii.ascii)
+           str nt its n
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
        str
        n
        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
 
-Lemma refine_disjoint_search_for_not' {G : grammar Ascii.ascii}
+Lemma refine_disjoint_search_for_not'
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      {G : grammar Ascii.ascii}
       (Hvalid : grammar_rvalid G)
       {str nt its}
       (H_disjoint : disjoint ascii_beq
@@ -184,7 +201,13 @@ Proof.
   apply is_first_char_such_that__find_first_char_such_that.
 Qed.
 
-Lemma refine_disjoint_search_for {G : grammar Ascii.ascii} {str nt its}
+Lemma refine_disjoint_search_for
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      {G : grammar Ascii.ascii}
+      {str nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
@@ -201,7 +224,12 @@ Proof.
   simplify with monad laws; reflexivity.
 Qed.
 
-Lemma refine_disjoint_search_for_not {G : grammar Ascii.ascii} {str nt its}
+Lemma refine_disjoint_search_for_not
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      {G : grammar Ascii.ascii} {str nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
