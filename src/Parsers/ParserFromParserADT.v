@@ -80,7 +80,9 @@ Section parser.
     refine (@parser ls Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLike_lite splitter_impl)
                     _
-                    adtProj new_string_of_string
+                    adtProj
+                    string_stringlike
+                    new_string_of_string
                     (fun rep str => AbsR (projT2 splitter_impl) str (` rep))
                     (@new_string_of_base_string_R) _ _
                     _ _ strC);
