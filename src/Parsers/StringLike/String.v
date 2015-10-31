@@ -89,6 +89,9 @@ Proof. split; t. Qed.
 Global Instance string_stringiso_properties : StringIsoProperties Ascii.ascii.
 Proof. split; t. Qed.
 
+Global Instance string_stringeq_properties : StringEqProperties Ascii.ascii.
+Proof. split; t. Qed.
+
 Lemma substring_take_drop (str : String) n m
 : String.substring n m str = take m (drop n str).
 Proof.

@@ -106,10 +106,17 @@ Module Export StringLike.
       get_of_string : forall n str, get n (of_string str) = List.nth_error str n
     }.
 
+  Class StringEqProperties {Char} {HSL : @StringLike Char} :=
+    {
+      bool_eq_bl : forall s s', s =s s' -> s = s';
+      bool_eq_lb : forall s s', s = s' -> s =s s'
+    }.
+
   Global Existing Instance Equivalence_Reflexive.
   Global Existing Instance Equivalence_Symmetric.
   Global Existing Instance Equivalence_Transitive.
 
   Arguments StringLikeProperties Char {_}.
   Arguments StringIsoProperties Char {_ _}.
+  Arguments StringEqProperties Char {_}.
 End StringLike.
