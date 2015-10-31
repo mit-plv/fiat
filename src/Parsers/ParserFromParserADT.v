@@ -95,7 +95,7 @@ Section parser.
         | [ |- appcontext[mlength] ]
           => ((intros ???); erewrite mlength_eq; intros; eassumption)
         | [ |- appcontext[mtake] ]
-          => (intros; apply mtake_R; assumption)
+          => (intros; refine (mtake_R _ _); assumption)
         | [ |- appcontext[mdrop] ]
           => (intros; refine (mdrop_R _ _); assumption)
          end)

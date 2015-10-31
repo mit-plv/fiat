@@ -5,8 +5,6 @@ Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
@@ -17,6 +15,8 @@ Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.StringOperations.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.ADTNotation.BuildComputationalADT.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 
 Set Implicit Arguments.
 
@@ -25,24 +25,28 @@ Local Open Scope ADTSig_scope.
 Local Open Scope ADT_scope.
 Local Open Scope string_scope.
 Section parser.
+  Context {stringlike_stringlike : StringLike Ascii.ascii}
+          {stringlike_stringiso : StringIso Ascii.ascii}
+          {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}
+          {stringlike_stringiso_properties : StringIsoProperties Ascii.ascii}.
   Context (G : grammar Ascii.ascii).
-  Context (splitter_impl : FullySharpened (string_spec G string_stringlike)).
+  Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
   Local Notation mcall0 proj s := (fun st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st)) (only parsing).
+                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st)) (only parsing).
 
   Local Notation mcall1 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st n)) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st n)) (only parsing).
 
   Local Notation mcall2 proj s := (fun n n' st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) s _ ) st n n')) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st n n')) (only parsing).
 
   Local Notation ccall0 proj s :=
     (fun st => proj ((callcADTConstructor (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string)) s _ )) st))
+                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String)) s _ )) st))
       (only parsing).
 
   Local Notation mcall01 s := (mcall0 (fun x => x) s) (only parsing).
@@ -64,7 +68,7 @@ Section parser.
   Definition premsplits :=
     Eval simpl in (callcADTMethod
                      (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) "splits" _ )).
+                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) "splits" _ )).
   Definition msplits := Eval simpl in mcall22 "splits".
 
   (*Local Notation mcall1_R meth st arg str H :=
@@ -129,13 +133,13 @@ Section parser.
     : mto_string st = str.
   Proof. prove_string_eq. Qed.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-    : mis_char arg st = string_beq str (String.String arg "").
+    : mis_char arg st = is_char str arg.
   Proof. prove_string_eq. Qed.
   Definition mget_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
   : mget arg st = get arg str.
   Proof. prove_string_eq. Qed.
   Definition mlength_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
-    : mlength st = String.length str.
+    : mlength st = length str.
   Proof. prove_string_eq. Qed.
 
   Ltac prove_string_AbsR :=
@@ -197,9 +201,9 @@ Section parser.
          length str := mlength str;
          is_char str ch := mis_char ch str;
          get n str := mget n str;
-         bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
+         bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
   Local Instance adt_based_StringIso_lite : @StringIso Ascii.ascii adt_based_StringLike_lite
-    := { of_string str := cnew (string_of_list str) }.
+    := { of_string str := cnew (of_string str) }.
 
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
     := { String := StringT;
@@ -208,10 +212,10 @@ Section parser.
          length str := mlength str;
          is_char str ch := mis_char ch str;
          get n str := mget n str;
-         bool_eq s1 s2 := string_beq (mto_string s1) (mto_string s2) }.
+         bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
 
   Local Program Instance adt_based_StringIso : @StringIso Ascii.ascii adt_based_StringLike
-    := { of_string str := cnew (string_of_list str) }.
+    := { of_string str := cnew (of_string str) }.
 
   Create HintDb parser_adt_method_db discriminated.
   (** We would like to just do
@@ -266,8 +270,8 @@ Section parser.
                  | match_erewrite_by_eauto (@mlength) (@mlength_eq) ].
 
   Local Ltac t'' H meth :=
-    first [ pose proof (meth Ascii.ascii string_stringlike string_stringlike_properties) as H
-          | pose proof (meth Ascii.ascii string_stringlike string_stringiso string_stringiso_properties) as H ];
+    first [ pose proof (meth Ascii.ascii stringlike_stringlike stringlike_stringlike_properties) as H
+          | pose proof (meth Ascii.ascii stringlike_stringlike stringlike_stringiso stringlike_stringiso_properties) as H ];
     simpl in H; unfold beq in H; simpl in H;
     unfold take, drop, of_string; simpl.
   Local Ltac t' meth :=
@@ -363,11 +367,11 @@ Section parser.
           specialize (fun H0'' H0' H1' =>
                         H n H' H''
                           (@transfer_parse_of_item
-                             Ascii.ascii adt_based_StringLike string_stringlike G
+                             Ascii.ascii adt_based_StringLike stringlike_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
                              H0'' _ _ _ H0' p0)
                           (@transfer_parse_of_production
-                             Ascii.ascii adt_based_StringLike string_stringlike G
+                             Ascii.ascii adt_based_StringLike stringlike_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
                              H0'' _ _ _ H1' p1));
           apply H; clear H p0 p1; try assumption
