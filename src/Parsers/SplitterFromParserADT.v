@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.ADTRefinement.Core.
