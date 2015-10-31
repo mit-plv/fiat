@@ -462,6 +462,23 @@ Section String.
     apply bool_eq_empty; rewrite drop_length; omega.
   Qed.
 
+  Lemma not_is_char_options str ch
+  : (is_char str ch = false) <-> (length str <> 1 \/ get 0 str <> Some ch).
+  Proof.
+    destruct (is_char str ch) eqn:H;
+    (split; intro H'; try solve [ inversion H' | exact eq_refl ]).
+    { pose proof H as H0.
+      apply add_take_1_singleton, get_0 in H.
+      apply length_singleton in H0.
+      rewrite H, H0 in H'.
+      destruct H'; congruence. }
+    { destruct (Nat.eq_dec (length str) 1); [ right | left; assumption ].
+      intro H''.
+      apply get_0 in H''.
+      rewrite take_long in H'' by omega.
+      congruence. }
+  Qed.
+
   Local Ltac induction_to_string str IHlen :=
     let H := fresh "H" in
     let len := fresh "len" in
