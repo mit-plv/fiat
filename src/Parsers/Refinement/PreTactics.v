@@ -22,10 +22,6 @@ Global Arguments production_beq : simpl never.
 Global Arguments productions_beq : simpl never.
 Delimit Scope char_scope with char.
 Infix "=p" := (production_beq _) (at level 70, no associativity).
-Notation string_of_indexed s :=
-  (substring (fst (snd s)) (snd (snd s)) (fst s)).
-Notation ilength s :=
-  (min (String.length (fst s) - fst (snd s)) (snd (snd s))).
 
 Section tac_helpers.
   Lemma pull_match_list {A R R' rn rc} {ls : list A} (f : R -> R')
