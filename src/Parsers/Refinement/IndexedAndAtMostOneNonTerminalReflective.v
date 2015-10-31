@@ -726,7 +726,7 @@ Section IndexedImpl.
       | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ]
         => rewrite (Min.min_r x y) in H by assumption
       | [ H : context[?x + ?y - ?y] |- _ ] => rewrite Nat.add_sub in H
-      | [ H : context[0 + ?x] |- _ ] => change (0 + x) with x in H
+      | [ H : context[(0 + ?x)%nat] |- _ ] => change (0 + x) with x in H
       | [ |- context[min ?x (?y + ?z) - ?z] ]
         => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
       | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
