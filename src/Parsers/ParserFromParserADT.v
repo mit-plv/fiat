@@ -9,12 +9,11 @@ Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common.BoundedLookup.
 Require Import Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
@@ -24,15 +23,18 @@ Local Open Scope ADT_scope.
 Local Open Scope string_scope.
 
 Section parser.
+  Context {stringlike_stringlike : StringLike Ascii.ascii}
+          {stringlike_stringiso : StringIso Ascii.ascii}
+          {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}.
   Context {ls : list (String.string * productions Ascii.ascii)}.
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
   Context (Hvalid : is_true (grammar_rvalid G)).
-  Context (splitter_impl : FullySharpened (string_spec G string_stringlike)).
+  Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
   Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string)) "new" _ )).
 
-  Definition new_string_of_base_string (str : String.string)
-    := (cConstructors (projT1 splitter_impl) newS (str : String.string)).
+  Definition new_string_of_base_string (str : @String _ stringlike_stringlike)
+    := (cConstructors (projT1 splitter_impl) newS str).
 
   Lemma new_string_of_base_string_R {str}
   : AbsR (projT2 splitter_impl) str (new_string_of_base_string str).
@@ -75,20 +77,20 @@ Section parser.
                     (adt_based_StringLike_lite splitter_impl)
                     constT varT}.
 
-  Definition parser' : Parser G string_stringlike.
+  Definition parser' : Parser G stringlike_stringlike.
   Proof.
     refine (@parser ls Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLike_lite splitter_impl)
                     _
                     adtProj
-                    string_stringlike
+                    stringlike_stringlike
                     new_string_of_string
                     (fun rep str => AbsR (projT2 splitter_impl) str (` rep))
                     (@new_string_of_base_string_R) _ _
                     _ _ strC);
     abstract (
         split;
-        unfold flip, length, take, drop, is_char, adt_based_splitter, string_type, adt_based_StringLike, string_stringlike, proj1_sig, String;
+        unfold flip, length, take, drop, is_char, adt_based_splitter, string_type, adt_based_StringLike, proj1_sig, String;
         (lazymatch goal with
         | [ |- appcontext[mis_char] ]
           => ((intros ????); erewrite mis_char_eq; intros; eassumption)
@@ -104,16 +106,19 @@ Section parser.
 End parser.
 
 Definition parser''
+           {HSL HSI}
            {ls}
            Hvalid
            splitter_impl
            {constT varT strC}
-           val (H : val = has_parse (@parser' ls Hvalid splitter_impl constT varT strC))
-: Parser (list_to_grammar (nil::nil) ls) string_stringlike.
+           val (H : val = has_parse (@parser' HSL HSI ls Hvalid splitter_impl constT varT strC))
+: Parser (list_to_grammar (nil::nil) ls) HSL.
 Proof.
   refine {| has_parse := val |};
   abstract (subst val; apply parser').
 Defined.
+
+Require Import Fiat.Parsers.StringLike.String.
 
 Definition parser
            {ls : list (string * productions Ascii.ascii)}
@@ -126,9 +131,10 @@ Definition parser
                      constT varT}
 : Parser (list_to_grammar (nil::nil) ls) string_stringlike.
 Proof.
-  let term := (eval cbv beta delta [parser''] in (@parser'' ls Hvalid splitter_impl constT varT strC)) in
+  let term := (eval cbv beta delta [parser''] in (@parser'' string_stringlike string_stringlike_properties ls Hvalid splitter_impl constT varT strC)) in
   refine (term _ _).
-  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite mlength mtake mdrop mis_char mget mto_string msplits pdata data' adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R].
+  cbv beta iota zeta delta [string_stringlike has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite mlength mtake mdrop mis_char mget mto_string msplits pdata data' adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R].
+  cbv beta iota zeta delta [drop take is_char String length get bool_eq beq].
   match goal with
     | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
   end.
