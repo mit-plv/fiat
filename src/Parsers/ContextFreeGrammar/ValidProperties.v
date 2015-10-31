@@ -93,4 +93,23 @@ Section app.
     induction pat; simpl in *; trivial.
     eapply IHpat, production_valid_cons; eassumption.
   Qed.
+
+  (** Convenience lemmas *)
+  Section convenience.
+    Context {rdata : @parser_removal_dataT' _ G _}
+            (Hvalid : grammar_valid G).
+
+    Lemma reachable_production_valid
+          (its : production Char)
+          (Hreach : production_is_reachable G its)
+    : production_valid its.
+    Proof.
+      destruct Hreach as [nt [prefix [Hreach Hreach']]].
+      apply initial_nonterminals_correct in Hreach.
+      specialize (Hvalid nt Hreach).
+      unfold productions_valid in Hvalid.
+      rewrite Forall_forall in Hvalid.
+      eapply production_valid_app, Hvalid; eassumption.
+    Qed.
+  End convenience.
 End app.
