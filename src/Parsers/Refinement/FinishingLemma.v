@@ -1,5 +1,4 @@
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
-Require Import Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.ADTNotation.BuildADT.
 Require Import Fiat.ADTRefinement.
@@ -7,6 +6,7 @@ Require Import Fiat.Computation.Core.
 Require Import Fiat.ADTNotation.BuildADTSig.
 
 Lemma finish_Sharpening_SplitterADT'
+      {String : Type}
       {repT fnew fto_string fis_char fget flength ftake fdrop fsplits}
 (*      {repT}
       {fnew : string -> repT}
@@ -20,9 +20,9 @@ Lemma finish_Sharpening_SplitterADT'
 : { e : _
   & refineADT
    (ADTRep repT
-    { Def Constructor1 "new" (s: string) : rep :=
+    { Def Constructor1 "new" (s: String) : rep :=
         ret (fnew s),
-      Def Method0 "to_string" (s : rep) : rep * string :=
+      Def Method0 "to_string" (s : rep) : rep * String :=
         ret (fto_string s),
       Def Method1 "is_char" (s : rep) (ch : Ascii.ascii) : rep * bool :=
         ret (fis_char s ch),
@@ -44,7 +44,8 @@ Proof.
 Defined.
 
 Definition finish_Sharpening_SplitterADT
+           {String}
            {repT fnew fto_string fis_char fget flength ftake fdrop fsplits}
 : Sharpened _
   := projT2 (@finish_Sharpening_SplitterADT'
-               repT fnew fto_string fis_char fget flength ftake fdrop fsplits).
+               String repT fnew fto_string fis_char fget flength ftake fdrop fsplits).
