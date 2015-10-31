@@ -178,3 +178,21 @@ Lemma minus_plus_min x y
 Proof.
   apply Min.min_case_strong; omega.
 Qed.
+
+Lemma min_case_strong_r n m (P : nat -> Type)
+: (n <= m -> P n) -> (m < n -> P m) -> P (min n m).
+Proof.
+  destruct (Compare_dec.le_lt_dec n m);
+  first [ rewrite Min.min_r by omega
+        | rewrite Min.min_l by omega ];
+  auto.
+Qed.
+
+Lemma min_case_strong_l n m (P : nat -> Type)
+: (n < m -> P n) -> (m <= n -> P m) -> P (min n m).
+Proof.
+  destruct (Compare_dec.le_lt_dec m n);
+  first [ rewrite Min.min_r by omega
+        | rewrite Min.min_l by omega ];
+  auto.
+Qed.
