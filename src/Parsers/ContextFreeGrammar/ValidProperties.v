@@ -75,6 +75,16 @@ Section app.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
           {predata : parser_computational_predataT}.
 
+  Lemma hd_production_valid
+        (it : item Char)
+        (its : production Char)
+        (H : production_valid (it :: its))
+  : item_valid it.
+  Proof.
+    unfold production_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
   Lemma production_valid_cons
         (it : item Char)
         (its : production Char)
