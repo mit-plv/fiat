@@ -479,6 +479,17 @@ Section String.
       congruence. }
   Qed.
 
+  Lemma is_char_parts str ch
+  : (is_true (is_char str ch)) <-> (length str = 1 /\ get 0 str = Some ch).
+  Proof.
+    destruct (is_char str ch) eqn:H;
+    (split; intro H'; try solve [ inversion H' | reflexivity ]).
+    { split.
+      { apply length_singleton in H; assumption. }
+      { apply get_0, add_take_1_singleton, H. } }
+    { apply not_is_char_options in H; tauto. }
+  Qed.
+
   Local Ltac induction_to_string str IHlen :=
     let H := fresh "H" in
     let len := fresh "len" in
