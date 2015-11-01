@@ -5,7 +5,6 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Computation.Refinements.General.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
@@ -27,8 +26,6 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Local Open Scope string_like_scope.
 
 Set Implicit Arguments.
-
-Local Opaque string_stringlike.
 
 Section helper_lemmas.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -79,6 +76,7 @@ Section helper_lemmas.
 End helper_lemmas.
 
 Section refine_rules.
+  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
   Context {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
