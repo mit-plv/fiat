@@ -1,6 +1,7 @@
 Require Fiat.Parsers.BooleanRecognizerOptimized.
 Require Fiat.Parsers.ParserInterface Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Common.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 
