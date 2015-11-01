@@ -27,7 +27,9 @@ Declare Reduction parser_red10 := simpl List.fold_right.
 
 Ltac parser_red term :=
   let term := match term with
-                | context[ParserFromParserADT.parser _ ?splitter] => (eval unfold splitter in term)
+                | context[ParserFromParserADT.parser _ ?splitter]
+                  => let splitter' := head splitter in
+                     (eval unfold splitter' in term)
                 | _ => constr:term
               end in
   let term := (eval parser_red0 in term) in
