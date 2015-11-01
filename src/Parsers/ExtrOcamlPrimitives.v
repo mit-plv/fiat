@@ -3,6 +3,8 @@ Require Export Coq.extraction.ExtrOcamlNatInt.
 Require Export Coq.extraction.ExtrOcamlString.
 Require Export Coq.extraction.ExtrOcamlIntConv.
 
+Require Import Coq.ZArith.BinInt.
+
 Require Import Coq.Strings.String.
 
 Module Import Ocaml.
@@ -64,10 +66,13 @@ Module Import Ocaml.
   Global Coercion Pervasives.float_of_nat : nat >-> Ocaml.float.
   Global Coercion Pervasives.float_of_int : int >-> Ocaml.float.
 
-  (*Module Ocaml_String.
+  Module String.
     Parameter length : Ocaml.string -> nat.
     Parameter get : Ocaml.string -> nat -> Ascii.ascii.
-  End Ocaml_String.*)
+    Parameter sub : Ocaml.string -> nat -> nat -> Ocaml.string.
+    Parameter safe_get : Ocaml.string -> nat -> option Ascii.ascii.
+    Parameter compare : Ocaml.string -> Ocaml.string -> int.
+  End String.
 
   (*Parameter explode : Ocaml.string -> String.string.
 (*    := fun s =>
@@ -99,6 +104,11 @@ Module ExtrOcaml.
   Extract Inlined Constant Sys.argv => "Sys.argv".
   Extract Inlined Constant Sys.time => "Sys.time".
   Extract Inlined Constant List.sort => "List.sort".
+  Extract Inlined Constant String.length => "String.length".
+  Extract Inlined Constant String.get => "String.get".
+  Extract Inlined Constant String.sub => "String.sub".
+  Extract Constant String.safe_get => "(fun s n -> try Some (String.get s n) with | Invalid_argument -> None)".
+  Extract Inlined Constant String.compare => "String.compare".
   Extract Inlined Constant Pervasives.in_channel => "Pervasives.in_channel".
   Extract Inlined Constant Pervasives.out_channel => "Pervasives.out_channel".
   Extract Inlined Constant Pervasives.open_in => "Pervasives.open_in".
@@ -114,15 +124,35 @@ Module ExtrOcaml.
   Extract Inlined Constant Pervasives.compare => "Pervasives.compare".
   (* http://caml.inria.fr/pub/old_caml_site/FAQ/FAQ_EXPERT-eng.html#strings *)
   Extract Constant Ocaml.explode =>
-  "fun s ->
+  "(fun s ->
       let rec exp i l =
         if i < 0 then l else exp (i - 1) (s.[i] :: l) in
-      exp (String.length s - 1) []".
+      exp (String.length s - 1) [])".
   Extract Constant Ocaml.implode =>
-  "fun l ->
+  "(fun l ->
       let res = String.create (List.length l) in
       let rec imp i = function
       | [] -> res
       | c :: l -> res.[i] <- c; imp (i + 1) l in
-      imp 0 l".
+      imp 0 l)".
 End ExtrOcaml.
+
+Module Export OcamlProperties.
+  Create HintDb ocaml discriminated.
+
+  Module Import StringProperties.
+    Axiom explode_implode : forall s, Ocaml.explode (Ocaml.implode s) = s.
+    Axiom implode_explode : forall s, Ocaml.implode (Ocaml.explode s) = s.
+    Axiom length_correct : forall s, String.length s = Coq.Strings.String.length (Ocaml.explode s).
+    Axiom get_correct : forall s n ch, (String.get s n = ch) <-> (Coq.Strings.String.get n (Ocaml.explode s) = Some ch).
+    Axiom safe_get_correct : forall s n, String.safe_get s n = Coq.Strings.String.get n (Ocaml.explode s).
+    Axiom sub_correct : forall s start len, String.sub s start len = Ocaml.implode (Coq.Strings.String.substring start len (Ocaml.explode s)).
+    Axiom compare_eq : forall s s', (z_of_int (String.compare s s') = 0%Z) <-> s = s'.
+    Definition compare_eq' s s' (H : s = s')
+    : z_of_int (String.compare s s') = 0%Z
+      := proj2 (compare_eq s s') H.
+  End StringProperties.
+
+  Hint Rewrite explode_implode implode_explode length_correct safe_get_correct sub_correct compare_eq : ocaml.
+  Hint Rewrite compare_eq' using reflexivity : ocaml.
+End OcamlProperties.
