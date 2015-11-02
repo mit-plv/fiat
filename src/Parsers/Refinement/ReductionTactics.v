@@ -2,6 +2,7 @@ Require Fiat.Parsers.BooleanRecognizerOptimized.
 Require Fiat.Parsers.ParserInterface Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Common.
+Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
