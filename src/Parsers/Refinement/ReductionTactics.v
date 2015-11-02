@@ -52,7 +52,10 @@ Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) :
 
 Ltac make_parser splitter :=
   idtac;
-  let str := match goal with str : String.string |- _ => constr:str end in
+  let str := match goal with
+               | [ str : String.string |- _ ] => constr:str
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+             end in
   let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
   let T := match type of b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in

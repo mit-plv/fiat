@@ -500,11 +500,12 @@ End recursive_descent_parser.
 Ltac solve_default_str_carrier :=
   match goal with |- str_carrier _ _ => idtac end;
   eapply str_carrier_default; hnf; simpl;
+  let string := match goal with |- { to_string : _ * _ -> ?string * _ & _ } => constr:string end in
   match goal with |- { to_string : _ * _ -> string * _ & _ } => idtac end;
-  let T := match goal with |- { to_string : _ * _ -> string * ?T & _ } => constr:T end in
-  exists (fun x : string * T => x);
+    let T := match goal with |- { to_string : _ * _ -> string * ?T & _ } => constr:T end in
     exists (fun x : string * T => x);
-    simpl @fst; simpl @snd;
-    solve [ repeat split ].
+      exists (fun x : string * T => x);
+      simpl @fst; simpl @snd;
+      solve [ repeat split ].
 
 Hint Extern 1 (str_carrier _ _) => solve_default_str_carrier : typeclass_instances.
