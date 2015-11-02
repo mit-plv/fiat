@@ -107,7 +107,7 @@ Module ExtrOcaml.
   Extract Inlined Constant String.length => "String.length".
   Extract Inlined Constant String.get => "String.get".
   Extract Inlined Constant String.sub => "String.sub".
-  Extract Constant String.safe_get => "(fun s n -> try Some (String.get s n) with | Invalid_argument -> None)".
+  Extract Constant String.safe_get => "(fun s n -> try Some (String.get s n) with | Invalid_argument _ -> None)".
   Extract Inlined Constant String.compare => "String.compare".
   Extract Inlined Constant Pervasives.in_channel => "Pervasives.in_channel".
   Extract Inlined Constant Pervasives.out_channel => "Pervasives.out_channel".

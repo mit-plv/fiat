@@ -1,9 +1,9 @@
 .PHONY: all test test-reference
 
-all: test_ab_star test_ab_star_reference
+all: test_ab_star.exe test_ab_star_reference.exe
 
-test_ab_star test_ab_star_reference: % : %.ml
-	rm -f $@.mli
+test_ab_star.exe test_ab_star_reference.exe: %.exe : %.ml
+	rm -f $*.mli
 	ocamlopt -o $@ $<
 
 ab10:
@@ -23,28 +23,28 @@ ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0 ab10.0.0.0.0.0.0 ab10.0.0
 
 make_fmt = $$(echo "$1 (real: %e, user: %U, sys: %S, mem: %M ko)" | sed s'/\.//g')
 
-test: ab10.0.0.0.0.0 test_ab_star test_ab_star_reference
+test: ab10.0.0.0.0.0 test_ab_star.exe test_ab_star_reference.exe
 	for F in ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0; do \
 	FMT="$(call make_fmt, $$F)"; \
 	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
 	echo $$?; \
 	echo; \
 	echo "reference"; \
-	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference $$F; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
 	echo $$?; \
 	echo; \
 	echo "coq"; \
-	$(shell which time) -f "coq       $$FMT" ./test_ab_star $$F; \
+	$(shell which time) -f "coq       $$FMT" ./test_ab_star.exe $$F; \
 	echo $$?; \
 	done
 
-test-reference: ab10.0.0.0.0.0 test_ab_star_reference
+test-reference: ab10.0.0.0.0.0 test_ab_star_reference.exe
 	for F in ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0; do \
 	FMT="$(call make_fmt, $$F)"; \
 	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
 	echo $$?; \
 	echo; \
 	echo "reference"; \
-	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference $$F; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
 	echo $$?; \
 	done

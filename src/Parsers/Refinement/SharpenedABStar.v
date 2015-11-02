@@ -3,9 +3,12 @@ Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ABStar.
 
 Section IndexedImpl.
+  Context {HSL : StringLike Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}
+          {HSIP : StringEqProperties Ascii.ascii}.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec ab_star_grammar string_stringlike).
+  : FullySharpened (string_spec ab_star_grammar HSL).
   Proof.
 
     start sharpening ADT.
@@ -22,7 +25,7 @@ Section IndexedImpl.
   Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec ab_star_grammar string_stringlike).
+  : FullySharpened (string_spec ab_star_grammar HSL).
   Proof.
     make_simplified_splitter ComputationalSplitter'.
   Defined.
@@ -32,19 +35,27 @@ End IndexedImpl.
 Require Export Fiat.Parsers.ParserFromParserADT.
 Require Export Fiat.Parsers.ExtrOcamlParsers.
 Export Fiat.Parsers.ExtrOcamlParsers.HideProofs.
+Require Export Fiat.Parsers.StringLike.OcamlString.
 
-Definition ab_star_parser (str : String.string) : bool.
+Definition ab_star_parser (str : Coq.Strings.String.string) : bool.
+Proof.
+  Time make_parser (@ComputationalSplitter String.string_stringlike _ _). (* 0.82 s *)
+Defined.
+
+Definition ab_star_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
 Proof.
   Time make_parser ComputationalSplitter. (* 0.6 s *)
 Defined.
 
-Print ab_star_parser.
+Print ab_star_parser_ocaml.
 
-Recursive Extraction ab_star_parser.
+Recursive Extraction ab_star_parser_ocaml.
 
 Definition main_ab_star := premain ab_star_parser.
+Definition main_ab_star_ocaml := premain_ocaml ab_star_parser_ocaml.
 
 Parameter reference_ab_star_parser : Coq.Strings.String.string -> bool.
+Parameter reference_ab_star_parser_ocaml : Ocaml.Ocaml.string -> bool.
 Extract Constant reference_ab_star_parser
 => "fun str ->
   let needs_b : bool Pervasives.ref = Pervasives.ref false in
@@ -58,8 +69,22 @@ Extract Constant reference_ab_star_parser
      if !needs_b then false else true)
   with
    | Not_found -> false".
+Extract Constant reference_ab_star_parser_ocaml
+=> "fun str ->
+  let needs_b : bool Pervasives.ref = Pervasives.ref false in
+  try
+    (String.iter (fun ch ->
+       match ch, !needs_b with
+       | 'a', false -> needs_b := true; ()
+       | 'b', true  -> needs_b := false; ()
+       | _, _       -> raise Not_found)
+       str;
+     if !needs_b then false else true)
+  with
+   | Not_found -> false".
 
 Definition main_ab_star_reference := premain reference_ab_star_parser.
+Definition main_ab_star_reference_ocaml := premain_ocaml reference_ab_star_parser_ocaml.
 
 (*
 (* val needs_b : bool Pervasives.ref;; *)
