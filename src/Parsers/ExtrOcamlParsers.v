@@ -60,8 +60,6 @@ Definition chan : Pervasives.in_channel
        | argc => Pervasives.exit (int_of_z argc)
      end.
 
-Definition line : string := Ocaml.explode (Pervasives.input_line chan).
-
 Definition profile : forall {T}, (unit -> T) -> Ocaml.float * T
   := fun _ f
      => let startt := Sys.time tt in
@@ -92,19 +90,19 @@ Definition median (ls : list Ocaml.float) : Ocaml.float
         / 2)%ocaml_float.
 
 Parameter display_info : forall (sum median mean sample_variance : Ocaml.float)
-                                (iterations : nat),
+                                (iterations : nat) (duplicates_per_iteration : nat),
                            unit.
 Extract Constant display_info
-=> "fun sum median mean sample_variance iterations
--> Printf.printf ""total: %f, median: %f, mean: %f, sample variance: %f, iterations: %d\n"" sum median mean sample_variance iterations".
+=> "fun sum median mean sample_variance iterations duplicates_per_iteration
+-> Printf.printf ""total: %f, median: %f, mean: %f, sample variance: %f, iterations: %d (%d on each)\n"" sum median mean sample_variance iterations duplicates_per_iteration".
 
-Definition display_info_for_times (ls : list Ocaml.float) : unit
+Definition display_info_for_times (duplicates_per_iteration : nat) (ls : list Ocaml.float) : unit
   := let iter := List.length ls in
      let sum := Σ ls in
      let med := median ls in
      let avg := mean ls in
      let var := sample_variance ls in
-     display_info sum med avg var iter.
+     display_info sum med avg var iter duplicates_per_iteration.
 
 Fixpoint copy {A} (n : nat) (x : A) : list A
   := match n with
@@ -113,52 +111,72 @@ Fixpoint copy {A} (n : nat) (x : A) : list A
      end.
 
 Definition profile_parser
-           {T}
-           (parse : Coq.Strings.String.string -> bool)
+           {T stringT}
+           (line : stringT)
+           (parse : stringT -> bool)
            (num_times : nat)
+           (duplicates_per_iteration : nat)
            (all_say_yes : T)
            (all_say_no : T)
            (mixed_answers : forall (yes no : nat), T)
 : T * list Ocaml.float
-  := let time_results := List.map
-                           (fun x : unit => let () := x in @profile bool (fun x => let () := x in parse line))
+  := let parse_once := (fun x : unit => let () := x in parse line) in
+     let starters := copy duplicates_per_iteration tt in
+     let parse_many := (fun x : unit => let () := x in List.map parse_once starters) in
+     let time_results := List.map
+                           (fun x : unit => let () := x in @profile (list bool) parse_many)
                            (copy num_times tt) in
      let times := List.map fst time_results in
      let results := List.map snd time_results in
-     ((if List.fold_right andb true results
+     ((if List.fold_right andb true (flatten1 results)
        then all_say_yes
-       else if List.fold_right andb true (List.map negb results)
+       else if List.fold_right andb true (List.map negb (flatten1 results))
             then all_say_no
             else mixed_answers
-                   (List.length (List.filter (fun x => x) results))
-                   (List.length (List.filter negb results))),
+                   (List.length (List.filter (fun x => x) (flatten1 results)))
+                   (List.length (List.filter negb (flatten1 results)))),
       times).
 
 Definition display_profile_parser_results
-           {T}
-           (parse : Coq.Strings.String.string -> bool)
+           {T stringT}
+           (line : stringT)
+           (parse : stringT -> bool)
            (num_times : nat)
+           (duplicates_per_iteration : nat)
            (all_say_yes : T)
            (all_say_no : T)
            (mixed_answers : forall (yes no : nat), T)
 : unit * T
-  := let '(res, times) := profile_parser parse num_times all_say_yes all_say_no mixed_answers in
-     let tt_val := display_info_for_times times in
+  := let '(res, times) := profile_parser line parse num_times duplicates_per_iteration all_say_yes all_say_no mixed_answers in
+     let tt_val := display_info_for_times duplicates_per_iteration times in
      (tt_val, res).
 
 Definition premain'
+           {stringT}
+           (line : stringT)
            (num_times : nat)
-           (parse : Coq.Strings.String.string -> bool)
+           (duplicates_per_iteration : nat)
+           (parse : stringT -> bool)
 : unit
   := let '((), exit_code)
          := @display_profile_parser_results
               nat
+              stringT
+              line
               parse
               num_times
+              duplicates_per_iteration
               0
               1
               (fun _ _ => 2)
      in Pervasives.exit (int_of_nat exit_code).
 
+Definition line_ocaml : Ocaml.string := Pervasives.input_line chan.
+
+Definition line : string := Ocaml.explode line_ocaml.
+
+Definition premain_ocaml (parse : Ocaml.string -> bool) : unit
+  := premain' line_ocaml 10 10 parse.
+
 Definition premain (parse : Coq.Strings.String.string -> bool) : unit
-  := premain' 10 parse.
+  := premain' line 10 10 parse.
