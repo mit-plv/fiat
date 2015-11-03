@@ -34,3 +34,5 @@ Ltac compile_binop av facade_op lhs rhs ext :=
     let vrhs := gensym "r" in
     apply (CompileBinopOrTest_full (var1 := vlhs) (var2 := vrhs) facade_op)
   end.
+
+Check CompileBinopOrTest_right_inPlace.

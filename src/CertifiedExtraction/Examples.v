@@ -10,36 +10,22 @@ Opaque Word.natToWord.
 
 Definition EmptyEnv : Env unit := (GLabelMap.GLabelMap.empty (FuncSpec unit)).
 
+(* This lemma is not needed anymore; it is constructed dynamically *)
+(* Lemma CompileConstant : *)
+(*   forall av env ext prog tenv tenv' name w, *)
+(*     name ∉ ext -> *)
+(*     PropertiesOfTelescopes.NotInTelescope name tenv -> *)
+(*     {{ [[name <-- SCA av w as _]] :: tenv }} prog {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env -> *)
+(*     {{ tenv }} (Seq (Assign name (Const w)) prog) {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   eauto using Basics.CompileConstant, Basics.CompileSeq. *)
+(* Qed. *)
+
 Example simple :
   Facade program implementing ( x <- ret (SCA unit (Word.natToWord 32 1));
                                 y <- ret (SCA unit (Word.natToWord 32 5));
                                 ret (SCA _ (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5)))) with EmptyEnv.
 Proof.
-  compile_step.
-  compile_step.
-  compile_step.
-
-  Lemma CompileConstant :
-    forall av env ext prog tenv tenv' name w,
-      name ∉ ext ->
-      PropertiesOfTelescopes.NotInTelescope name tenv ->
-      {{ [[name <-- SCA av w as _]] :: tenv }} prog {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ tenv }} (Seq (Assign name (Const w)) prog) {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env.
-  Proof.
-    eauto using Basics.CompileSeq, Basics.CompileConstant.
-  Qed.
-
-  apply CompileConstant; try Core.compile_do_side_conditions.
-
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-
-  apply CompileConstant; try Core.compile_do_side_conditions.
-
-  repeat compile_step.
-  repeat compile_step.
   repeat compile_step.
 Defined.
 
@@ -119,10 +105,11 @@ Ltac compile_random :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:(pre, post) with
-            | (?tenv, Cons ?s (@WrapComp_W ?av Random) (fun _ => ?tenv)) =>
+            | (?tenv, Cons ?s (@WrapComp_W ?av Random) ?tenv') =>
               let fpointer := find_function_in_env
                                (Axiomatic (@FRandom av)) env in
-              apply (CompileCallRandom (fpointer := fpointer))
+               call_tactic_after_moving_head_binding_to_separate_goal
+                ltac:(apply (CompileCallRandom (fpointer := fpointer)))
             end).
 
 (*! We then tell compiler that the definition is available: *)

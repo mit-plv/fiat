@@ -8,6 +8,10 @@ Require Import
         Bedrock.Memory
         Bedrock.Platform.Facade.DFacade.
 
+Transparent computes_to.
+
+(* FIXME this is a special case of below, and should be removed *)
+
 Lemma computes_to_match_SCA:
   forall (av : Type) (compA : Comp W) (v0 : W),
     compA ↝ v0 ->
@@ -31,8 +35,33 @@ Lemma computes_to_match_SCA_inv:
        end) ↝ x ->
     exists xx, x = SCA av xx /\ compA xx.
 Proof.
-  intros; destruct x; vm_compute in H; intuition eauto.
+  intros; destruct x; compute in H; intuition eauto.
 Qed.
+
+(* </FIXME> *)
+
+Lemma computes_to_WrapComp_Generic:
+  forall `{FacadeWrapper (Value av) A} (compA : Comp A) (v0 : A) (H : compA ↝ v0),
+    WrapComp_Generic compA ↝ (wrap v0).
+Proof.
+  unfold WrapComp_Generic, computes_to; simpl; intros.
+  rewrite wrap_unwrap.
+  trivial.
+Qed.
+
+Hint Resolve computes_to_WrapComp_Generic : SameValues_Fiat_db.
+
+Lemma computes_to_WrapComp_Generic_inv:
+  forall `{FacadeWrapper (Value av) A} (compA : Comp A) x,
+    WrapComp_Generic compA ↝ x ->
+    exists xx, unwrap x = Some xx /\ compA ↝ xx.
+Proof.
+  unfold WrapComp_Generic, computes_to; simpl; intros.
+  destruct (unwrap x) eqn:eq0; intuition eauto.
+Qed.
+
+Opaque computes_to.
+
 
 Lemma AlwaysComputesToSCA_ret_SCA:
   forall (av : Type) (v : W), AlwaysComputesToSCA (ret (SCA av v)).

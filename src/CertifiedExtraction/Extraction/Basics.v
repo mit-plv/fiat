@@ -46,9 +46,18 @@ Qed.
 
 Lemma ProgOk_Transitivity_Name :
   forall {av} k env ext t1 t2 prog1 prog2 (v: Comp (Value av)),
-    {{ t1 }}                             prog1       {{ [[`k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
-    {{ [[`k <~~ v as kk]]::t2 kk }}       prog2       {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
-    {{ t1 }}                       Seq prog1 prog2  {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env.
+    {{ t1 }}                          prog1        {{ [[`k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ [[`k <~~ v as kk]]::t2 kk }}      prog2        {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ t1 }}                      Seq prog1 prog2  {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Lemma ProgOk_Transitivity_Name' :
+  forall {av} k env ext t1 t2 prog1 prog2 (v: Comp (Value av)),
+    {{ t1 }}                     prog1        {{ [[`k <~~ v as _]]::t1 }} ∪ {{ ext }} // env ->
+    {{ [[`k <~~ v as _]]::t1 }}     prog2        {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ t1 }}                 Seq prog1 prog2  {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
 Qed.

@@ -43,7 +43,19 @@ Lemma CompileCallEmpty:
                                       | _ :: _ => false
                                       end) as _]]::[[vlst <-- ADT lst as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat (SameValues_Facade_t_step || facade_cleanup_call); facade_eauto.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  info_eauto 3 with SameValues_db call_helpers_db.
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
 Qed.
 
 Lemma CompileCallEmpty':

@@ -4,30 +4,36 @@ Require Export
         CertifiedExtraction.CoreLemmas
         CertifiedExtraction.PropertiesOfTelescopes.
 
+Ltac SameValues_Fiat_t_step :=
+  match goal with
+  | _ => cleanup
+
+  | [  |- _ ≲ Cons _ _ _ ∪ _ ] => simpl
+  | [ H: _ ≲ Cons _ _ _ ∪ _ |- _ ] => simpl in H
+
+  | [ H: match ?k with _ => _ end |- _ ] => let eqn := fresh in destruct k eqn:eqn
+  | [  |- context[match SCA _ _ with _ => _ end] ] => simpl
+  | [ H: _ ↝ _ |- _ ] => apply computes_to_match_SCA_inv in H (* FIXME this is a special case of the next line *)
+  | [ H: _ ↝ _ |- _ ] => apply computes_to_WrapComp_Generic_inv in H
+
+  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite wrap_unwrap in H
+  | [  |- context[unwrap (wrap _)] ] => rewrite wrap_unwrap
+
+  | [ H: ?a = ?b |- context[?a] ] => rewrite H
+  | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
+  | [ H: forall a, TelEq _ (?x a) (?y a) |- _ ≲ (?x _) ∪ _ ] => red in H; rewrite H
+  | [ H: forall a, TelEq _ (?x a) (?y a), H': _ ≲ (?x _) ∪ _ |- _ ] => red in H; rewrite H in H'
+  | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _ |- _ ≲ (?x _) ∪ _ ] => unfold TelEq in H; rewrite (H _ H'')
+  | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _, H': _ ≲ (?x _) ∪ _ |- _ ] => unfold TelEq in H; rewrite (H _ H'') in H'
+  | [ H: Monad.equiv ?b ?a |- ?b ↝ ?A ] => red in H; rewrite H
+  | [ H: Monad.equiv ?a ?b, H': ?a ↝ ?A |- _ ] => red in H; rewrite H in H'
+
+  | [  |- exists _, _ ] => eexists
+  | _ => eauto using computes_to_WrapComp_Generic with SameValues_Fiat_db
+  end.
+
 Ltac SameValues_Fiat_t :=
-  repeat (idtac "step";
-           match goal with
-           | _ => cleanup
-
-           | [  |- _ ≲ Cons _ _ _ ∪ _ ] => simpl
-           | [ H: _ ≲ Cons _ _ _ ∪ _ |- _ ] => simpl in H
-
-           | [ H: match ?k with _ => _ end |- _ ] => let eqn := fresh in destruct k eqn:eqn
-           | [  |- context[match SCA _ _ with _ => _ end] ] => simpl
-           | [ H: _ ↝ _ |- _ ] => apply computes_to_match_SCA_inv in H
-
-           | [ H: ?a = ?b |- context[?a] ] => rewrite H
-           | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
-           | [ H: forall a, TelEq _ (?x a) (?y a) |- _ ≲ (?x _) ∪ _ ] => red in H; rewrite H
-           | [ H: forall a, TelEq _ (?x a) (?y a), H': _ ≲ (?x _) ∪ _ |- _ ] => red in H; rewrite H in H'
-           | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _ |- _ ≲ (?x _) ∪ _ ] => unfold TelEq in H; rewrite (H _ H'')
-           | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _, H': _ ≲ (?x _) ∪ _ |- _ ] => unfold TelEq in H; rewrite (H _ H'') in H'
-           | [ H: Monad.equiv ?b ?a |- ?b ↝ ?A ] => red in H; rewrite H
-           | [ H: Monad.equiv ?a ?b, H': ?a ↝ ?A |- _ ] => red in H; rewrite H in H'
-
-           | [  |- exists _, _ ] => eexists
-           | _ => eauto with SameValues_Fiat_db
-           end).
+  repeat (idtac "step"; SameValues_Fiat_t_step).
 
 Add Parametric Morphism {A} ext : (@Cons A)
     with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelEq ext) ==> (TelEq ext))
@@ -81,7 +87,6 @@ Proof.
   unfold TelEq; SameValues_Fiat_t.
 Qed.
 
-
 Lemma SameValues_Fiat_Bind_TelEq_W :
   forall {av} key (compA: Comp W) (compB: W -> Comp (Value av)) tail ext,
     @TelEq av ext
@@ -91,6 +96,14 @@ Proof.
   unfold TelEq, WrappedCons, WrapCons_W; SameValues_Fiat_t.
 Qed.
 
+Lemma SameValues_Fiat_Bind_TelEq_Generic :
+  forall `{FacadeWrapper (Value av) A} key (compA: Comp A) (compB: A -> Comp (Value av)) tail ext,
+    @TelEq av ext
+           (Cons key (@Bind _ _ compA compB) tail)
+           (Cons None (WrapComp_Generic compA) (WrappedCons WrapCons_Generic key compB tail)).
+Proof.
+  unfold TelEq, WrappedCons, WrapCons_Generic in *; SameValues_Fiat_t.
+Qed.
 
 Ltac push_pop IH :=
   repeat match goal with
@@ -203,7 +216,7 @@ Proof.
   t__.
   repeat match goal with
          | [ H: ?st ≲ ?tel ∪ [?k <-- ?v]::ext |- _ ] =>
-           let h := fresh in pose proof H0 as h; apply SameValues_MapsTo_Ext_State_add in h; no_duplicates
+           let h := fresh in pose proof H as h; apply SameValues_MapsTo_Ext_State_add in h; no_duplicates
          | [ H: StringMap.MapsTo ?k ?v ?m |- match StringMap.find ?k ?m with _ => _ end] =>
            rewrite find_mapsto_iff in H; rewrite H
          end.
@@ -442,7 +455,7 @@ Proof.
          | [ H: ?a ≲ Cons _ _ _ ∪ _ |- _ ] => learn (Cons_PushExt _ _ _ _ _ H)
          | [ H: ProgOk ?fmap _ _ ?t1 ?t2, H': _ ≲ ?t1 ∪ ?fmap |- _ ] => destruct (H _ H'); no_duplicates
          | [ H: RunsTo _ _ ?from ?to, H': forall st, RunsTo _ _ ?from st -> _ |- _ ] => specialize (H' _ H)
-         | [ H: _ ≲ _ ∪ [_ <-- _] :: _ |- _ ] => apply Cons_PopExt in H1
+         | [ H: _ ≲ _ ∪ [_ <-- _] :: _ |- _ ] => apply Cons_PopExt in H
          | _ => solve [eauto using Cons_PopExt]
          end.
 Qed.
@@ -814,7 +827,7 @@ Lemma SameValues_add_SCA_notIn_ext :
     st ≲ tenv ∪ ext ->
     StringMap.add k (SCA av v) st ≲ tenv ∪ ext.
 Proof.
-  eauto with SameValues_db.
+  info_eauto with SameValues_db.
 Qed.
 
 Hint Resolve SameValues_add_SCA_notIn_ext : SameValues_db.

@@ -62,10 +62,7 @@ Lemma CompileIf :
       (Seq facadeTest (If (isTrueExpr tmp) facadeT facadeF))
     {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_if_helper
-         end.
+  repeat (SameValues_Facade_t_step || facade_if_helper).
 Qed.
 
 Lemma CompileIf_InPlace :
