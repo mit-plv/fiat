@@ -55,7 +55,6 @@ src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/Examples.v
 src/CertifiedExtraction/ExtendedLemmas.v
 src/CertifiedExtraction/ExtendedPropertiesOfTelescopes.v
-src/CertifiedExtraction/Extraction.v
 src/CertifiedExtraction/FMapUtils.v
 src/CertifiedExtraction/FacadeLemmas.v
 src/CertifiedExtraction/FacadeNotations.v
