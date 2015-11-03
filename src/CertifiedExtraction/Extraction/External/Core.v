@@ -63,3 +63,31 @@ Hint Resolve WeakEq_Refl : call_helpers_db.
 Hint Resolve WeakEq_remove_notIn : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA_left : call_helpers_db.
+
+Instance WrapInstance `{H: FacadeWrapper av A} : `{FacadeWrapper (Value av) A}.
+Proof.
+  refine {| wrap := fun a => @ADT av (wrap a);
+            unwrap := fun a => match a with ADT a => unwrap a | _ => None end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |};
+  destruct H.
+  eauto with typeclass_instances.
+  destruct v; try congruence.
+  intros; f_equal; eauto.
+Defined.
+
+Lemma WrapInstance_wrap :
+  forall `{H: FacadeWrapper av A} (x: A),
+    wrap x = ADT (wrap x).
+Proof.
+  destruct H; intros; reflexivity.
+Qed.
+
+Lemma WrapInstance_unwrap_wrap :
+  forall `{H: FacadeWrapper av A} (x: A),
+    unwrap (ADT (wrap x)) = Some x.
+Proof.
+  destruct H. eassumption.
+Qed.
+
+Hint Extern 1 => rewrite WrapInstance_wrap : call_helpers_db.

@@ -24,7 +24,7 @@ Ltac compile_do_use_transitivity_to_handle_head_separately :=
 Ltac compile_do_extend_scalar_lifetime :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre) with
-                       | Cons ?k (ret (SCA _ _)) _ =>
+                       | @Cons _ W ?k _ _ =>
                          match constr:(post, ext) with
                          | context[k] => fail 1 "Head variable appears in post-condition"
                          | _ => apply CompileDeallocSCA_discretely; [ compile_do_side_conditions.. | ]
@@ -48,7 +48,7 @@ Ltac call_tactic_after_moving_head_binding_to_separate_goal continuation :=
     ltac:(fun prog pre post ext env =>
             match constr:(pre, post) with
             | (?tenv, Cons _ _ ?tenv') =>
-              let tenv' := strip_useless_binder tenv in
+              let tenv' := strip_useless_binder tenv' in
               let pr := constr:(eq_refl tenv : tenv = tenv') in
               first [ continuation | fail 1 ]
             | _ => compile_do_use_transitivity_to_handle_head_separately; [ continuation | ]
@@ -56,65 +56,55 @@ Ltac call_tactic_after_moving_head_binding_to_separate_goal continuation :=
 
 (** The compile_simple* tactics handle simple gallina forms *)
 
-Hint Rewrite WrapComp_W_rewrite : compile_simple_db.
+Ltac check_type expr type :=
+  match type of expr with
+  | ?t => let pr := constr:(eq_refl t: t = type) in idtac
+  end.
 
-Ltac compile_simple_internal env cmp ext :=
+Ltac is_word w :=
+  check_type w W.
+
+Ltac compile_simple_internal av env cmp ext :=
   match cmp with
-  | ret (SCA ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
-  | ret (@bool2val ?av (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
-  | ret (@bool2val ?av (@dec2bool _ _ (?op ?lhs ?rhs))) => let facade_op := translate_op op in compile_binop av facade_op lhs rhs ext
-  | ret (SCA _ ?w) => compile_constant w; compile_do_side_conditions
-  | ret (SCA ?av ?w) => compile_read (SCA av w) ext; compile_do_side_conditions
-  | ret (SCA ?av (?f ?w)) => compile_external_call_SCA av env f w ext
+  | ret (?op ?lhs ?rhs) => is_word (op lhs rhs); let facade_op := translate_op op in compile_binop facade_op lhs rhs ext
+  | ret (bool2w (?op ?lhs ?rhs)) => let facade_op := translate_op op in compile_binop facade_op lhs rhs ext
+  | ret (bool2w (@dec2bool _ _ (?op ?lhs ?rhs))) => let facade_op := translate_op op in compile_binop facade_op lhs rhs ext
+  | ret ?w => is_word w; compile_constant w; compile_do_side_conditions
+  | ret ?w => is_word w; compile_read (SCA av w) ext; compile_do_side_conditions
+  | ret (?f ?w) => is_word w; compile_external_call_SCA av env f w ext
   | (if ?t then ?tp else ?fp) => compile_if t tp fp
   end.
 
 Ltac compile_simple_ProgOk prog pre post ext env :=
   match constr:(pre, post) with
-  | (?tenv, Cons ?s ?cmp (fun _ => ?tenv)) => compile_simple_internal env cmp ext
+  | (?tenv, Cons (av := ?av) ?s ?cmp (fun _ => ?tenv)) => compile_simple_internal av env cmp ext
   end.
 
 Ltac compile_simple_same_tenv :=
-  autorewrite with compile_simple_db; (* Rewrite using user-provided lemmas *)
-  match_ProgOk compile_simple_ProgOk. (* Recapture cmp after rewriting *)
+  (* FIXME remove autorewrite with compile_simple_db; (* Rewrite using user-provided lemmas *) *)
+  idtac; match_ProgOk compile_simple_ProgOk. (* Recapture cmp after rewriting *)
 
 Ltac compile_simple :=
   debug "Compiling simple pattern";
   call_tactic_after_moving_head_binding_to_separate_goal compile_simple_same_tenv.
 
-(** The compile_simple_inplce* tactic do roughly the same, but modifying an
+(** The compile_simple_inplace* tactic do roughly the same, but modifying an
     existing binding: *)
 
-Ltac compile_simple_inplace_internal env cmp cmp' ext :=
+Ltac compile_simple_inplace_internal av env cmp cmp' ext :=
   match cmp' with
   | (if ?t then ?tp else ?fp) => compile_if_in_place t tp fp
   end.
 
 Ltac compile_simple_inplace_ProgOk prog pre post ext env :=
   match constr:(pre, post) with
-  | (Cons ?s ?cmp ?tenv, Cons ?s ?cmp' ?tenv') => compile_simple_inplace_internal env cmp cmp' ext
+  | (Cons ?s ?cmp ?tenv, Cons (av := ?av) ?s ?cmp' ?tenv') => compile_simple_inplace_internal av env cmp cmp' ext
   end.
 
 Ltac compile_simple_inplace :=
   debug "Compiling simple pattern in place";
-  autorewrite with compile_simple_db; (* Rewrite using user-provided lemmas *)
+  (* FIXME remove autorewrite with compile_simple_db; (* Rewrite using user-provided lemmas *) *)
   match_ProgOk compile_simple_inplace_ProgOk. (* Recapture cmp after rewriting *)
-
-Ltac compile_do_unwrap_W val :=
-  progress repeat match goal with
-  | [ H: WrapComp_W _ ↝ val |- _ ] =>
-    let eqn := fresh in
-    destruct (WrapComp_W_computes_to H) as [? (? & eqn)];
-      rewrite eqn in *; clear eqn H
-  end.
-
-Ltac compile_do_unwrap type wrapper key cmp tail val :=
-  lazymatch type with
-  | W => compile_do_unwrap_W val
-  | _ => fail 1 "Don't know how to unwrap" type
-  end;
-  let wrapper_head := head_constant wrapper in
-  cbv beta iota delta [WrappedCons wrapper_head].
 
 Ltac compile_do_cons :=
   debug "Moving head of Cons to separate goal";
@@ -129,8 +119,7 @@ Ltac compile_do_chomp key :=
 
 Ltac compile_do_bind k compA compB tl :=
   debug "Transforming Fiat-level bind into telescope-level Cons";
-  first [rewrite (SameValues_Fiat_Bind_TelEq k compA compB tl) | (* FIXME use a smarter procedure for rewriting here *)
-         rewrite (SameValues_Fiat_Bind_TelEq_W k compA compB tl)].
+  rewrite (SameValues_Fiat_Bind_TelEq k compA compB tl).
 
 Ltac compile_do_alloc cmp tail :=
   let name := gensym "v" in
@@ -156,8 +145,6 @@ Ltac compile_ProgOk p pre post ext env :=
     first [compile_do_alloc cmp tl | fail ]
 
   (** Fiat manipulations **)
-  | (_, (@WrappedCons _ ?T ?wrap ?k ?cmp ?tl) ?v) => (* Wrapped constant *)
-    first [compile_do_unwrap T wrap k cmp tl v | fail ]
   | (_, Cons ?k (Bind ?compA ?compB) ?tl) => (* Bindings *)
     first [compile_do_bind k compA compB tl | fail ]
 

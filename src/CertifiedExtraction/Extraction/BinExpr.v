@@ -1,5 +1,6 @@
 Require Import
-        CertifiedExtraction.Extraction.Core.
+        CertifiedExtraction.Extraction.Core
+        CertifiedExtraction.Extraction.BasicTactics.
 
 (* Lemma CompileBinop: *)
 (*   forall {av} name var1 var2 (val1 val2: W) ext op tenv, *)
@@ -22,15 +23,15 @@ Definition WrapOpInExpr op :=
   end.
 
 Lemma CompileBinopOrTest:
-  forall {av} name var1 var2 (val1 val2: W) ext op tenv,
+  forall {av} name var1 var2 (val1 val2: W) ext op (tenv: Telescope av),
     name ∉ ext ->
     NotInTelescope name tenv ->
-    StringMap.MapsTo var1 (SCA av val1) ext ->
-    StringMap.MapsTo var2 (SCA av val2) ext ->
+    StringMap.MapsTo var1 (wrap val1) ext ->
+    StringMap.MapsTo var2 (wrap val2) ext ->
     forall env,
     {{ tenv }}
       Assign name (WrapOpInExpr op (Var var1) (Var var2))
-    {{ [[name <-- (SCA _ (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   destruct op;
   SameValues_Facade_t.
@@ -136,21 +137,21 @@ Qed.
 (* Qed. *)
 
 Lemma CompileBinopOrTest_left:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p2 tenv,
+  forall {av} name var1 var2 (val1 val2: W) env ext op p2 (tenv: Telescope av),
     name ∉ ext ->
     NotInTelescope name tenv ->
-    StringMap.MapsTo var1 (SCA av val1) ext ->
+    StringMap.MapsTo var1 (wrap val1) ext ->
     var2 ∉ ext ->
     var1 <> var2 ->
     var2 <> name ->
     {{ tenv }}
       p2
-    {{ [[var2 <-- SCA _ val2 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p2 (Assign name (WrapOpInExpr op (Var var1) (Var var2))))
-    {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  SameValues_Facade_t;
+  repeat hoare.
   destruct op; SameValues_Facade_t.
 Qed.
 
@@ -184,21 +185,21 @@ Qed.
 (* Qed. *)
 
 Lemma CompileBinopOrTest_right:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p2 tenv,
+  forall {av} name var1 var2 (val1 val2: W) env ext op p2 (tenv: Telescope av),
     name ∉ ext ->
     NotInTelescope name tenv ->
-    StringMap.MapsTo var2 (SCA av val2) ext ->
+    StringMap.MapsTo var2 (wrap val2) ext ->
     var1 ∉ ext ->
     var1 <> var2 ->
     var1 <> name ->
     {{ tenv }}
       p2
-    {{ [[var1 <-- SCA _ val1 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p2 (Assign name (WrapOpInExpr op (Var var1) (Var var2))))
-    {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  Time SameValues_Facade_t;
+  repeat hoare.
   destruct op; SameValues_Facade_t.
 Qed.
 
@@ -236,7 +237,7 @@ Qed.
 Opaque Word.natToWord.
 
 Lemma CompileBinopOrTest_full:
-  forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2 tenv,
+  forall {av} name var1 var2 (val1 val2: W) env ext op p1 p2 (tenv: Telescope av),
     name ∉ ext ->
     NotInTelescope name tenv ->
     var1 ∉ ext ->
@@ -246,26 +247,25 @@ Lemma CompileBinopOrTest_full:
     var2 <> name ->
     {{ tenv }}
       p1
-    {{ [[var1 <-- SCA _ val1 as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[var1 <-- SCA _ val1 as _]]::tenv }}
+    {{ [[var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[var1 <-- val1 as _]]::tenv }}
       p2
-    {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[var1 <-- val1 as _]]::[[var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p1 (Seq p2 (Assign name ((match op with inl o => Binop o | inr o => TestE o end) (Var var1) (Var var2)))))
-    {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  Time SameValues_Facade_t;
-  destruct op;
-  repeat SameValues_Facade_t_step.
+  repeat hoare.
+  destruct op; SameValues_Facade_t.
 
-  apply SameValues_Pop_Both; eauto 2.
+  apply (SameValues_Pop_Both (H := FacadeWrapper_SCA)); eauto 2.
   apply SameValues_not_In_Telescope_not_in_Ext_remove; eauto 2.
   eapply SameValues_forget_Ext.
   2:eapply SameValues_forget_Ext; try eassumption.
   eauto with SameValues_db.
   eauto with SameValues_db.
 
-  apply SameValues_Pop_Both; eauto 2.
+  apply (SameValues_Pop_Both (H := FacadeWrapper_SCA)); eauto 2.
   apply SameValues_not_In_Telescope_not_in_Ext_remove; eauto 2.
   eapply SameValues_forget_Ext.
   2:eapply SameValues_forget_Ext; try eassumption.
@@ -274,14 +274,13 @@ Proof.
 Qed.                               (* FIXME why doesn't eauto suffice here? *)
 
 Lemma CompileBinopOrTest_right_inPlace:
-  forall {av} op name var2 (val1 val2: W) env ext tenv,
+  forall {av} op name var2 (val1 val2: W) env ext (tenv: Telescope av),
     name ∉ ext ->
     NotInTelescope name tenv ->
-    StringMap.MapsTo var2 (SCA av val2) ext ->
-    {{ [[name <-- SCA _ val1 as _]]::tenv }}
+    StringMap.MapsTo var2 (wrap val2) ext ->
+    {{ [[name <-- val1 as _]]::tenv }}
       (Assign name (WrapOpInExpr op (Var name) (Var var2)))
-    {{ [[name <-- (SCA av (eval_binop op val1 val2)) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  Time SameValues_Facade_t;
   destruct op; SameValues_Facade_t.
 Qed.

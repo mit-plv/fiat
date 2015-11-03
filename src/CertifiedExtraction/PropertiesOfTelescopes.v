@@ -7,9 +7,8 @@ Definition TelEq {A} ext (T1 T2: Telescope A) :=
   forall st, st ≲ T1 ∪ ext <->
         st ≲ T2 ∪ ext.
 
-Definition PointWise_TelEq {A} ext v t1 t2 :=
-  forall vv: Value A, v ↝ vv -> @TelEq A ext (t1 vv) (t2 vv).
-
+Definition PointWise_TelEq {av T} ext v t1 t2 :=
+  forall vv: T, v ↝ vv -> @TelEq av ext (t1 vv) (t2 vv).
 
 Ltac TelEq_rel_t :=
   red; unfold TelEq; intuition;
@@ -55,12 +54,12 @@ Qed.
 Fixpoint NotInTelescope {av} k (tenv: Telescope av) :=
   match tenv with
   | Nil => True
-  | Cons key val tail => Some k <> key /\ (forall v, val ↝ v -> NotInTelescope k (tail v))
+  | Cons _ _ key val tail => Some k <> key /\ (forall v, val ↝ v -> NotInTelescope k (tail v))
   end.
 
 Lemma NotInTelescope_not_eq_head:
-  forall (av : Type) (key : string) (val : Comp (Value av))
-    (tail : Value av -> Telescope av) (var : StringMap.key),
+  forall `(FacadeWrapper (Value av) A) (key : string) (val : Comp A)
+    (tail : A -> Telescope av) (var : StringMap.key),
     NotInTelescope var ([[` key <~~ val as kk]]::tail kk) ->
     key <> var.
 Proof.
@@ -68,9 +67,9 @@ Proof.
 Qed.
 
 Lemma NotInTelescope_not_in_tail:
-  forall (av : Type) s (val : Comp (Value av))
-    (tail : Value av -> Telescope av) (var : StringMap.key)
-    (v : Value av),
+  forall `(FacadeWrapper (Value av) A) s (val : Comp A)
+    (tail : A -> Telescope av) (var : StringMap.key)
+    (v : A),
     val ↝ v ->
     NotInTelescope var ([[ s <~~ val as kk]]::tail kk) ->
     NotInTelescope var (tail v).
@@ -90,12 +89,11 @@ Ltac decide_NotInTelescope :=
 Fixpoint DropName {A} k (t: Telescope A) :=
   match t with
   | Nil => Nil
-  | Cons key val tail => Cons (match key with 
-                              | Some _key => if string_dec _key k then None else key
-                              | None => key
-                              end) val (fun v => (DropName k (tail v)))
+  | Cons T H key val tail => Cons (match key with 
+                                  | Some _key => if string_dec _key k then None else key
+                                  | None => key
+                                  end) val (fun v => (DropName k (tail v)))
   end.
-
 
 Definition LiftPropertyToTelescope {av} ext (property: _ -> Prop) : Telescope av -> Prop :=
   fun tenv => forall st, st ≲ tenv ∪ ext -> property st.
@@ -169,15 +167,27 @@ Proof.
   eauto using LiftPropertyToTelescope_TelEq_morphism with typeclass_instances.
 Qed.
 
-
-Inductive TelStrongEq {A} : (Telescope A) -> (Telescope A) -> Prop :=
+Inductive TelStrongEq {av} : (Telescope av) -> (Telescope av) -> Prop :=
 | StrongEqNil : TelStrongEq Nil Nil
-| StrongEqCons : forall k v1 v2 t1 t2, Monad.equiv v1 v2 ->
-                                  (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
-                                  TelStrongEq (Cons k v1 t1) (Cons k v2 t2).
+| StrongEqCons : forall {A} {H: FacadeWrapper (Value av) A} k (v1 v2: Comp A) t1 t2,
+    Monad.equiv v1 v2 ->
+    (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
+    TelStrongEq (@Cons av A H k v1 t1) (@Cons av A H k v2 t2).
+
+Print TelStrongEq.
 
 Ltac inversion' H :=
   inversion H; subst; clear H.
+
+Lemma existT_inj : forall A P x Px Px',
+    @existT A P x Px = @existT A P x Px' ->
+    Px = Px'.
+Proof.
+  intros.
+  Require Import Eqdep.       (* FIXME *)
+  apply inj_pair2 in H.
+  assumption.
+Qed.
 
 Ltac TelStrongEq_t :=
   match goal with
@@ -185,6 +195,7 @@ Ltac TelStrongEq_t :=
   | [ H: Monad.equiv ?a _, H': ?a ↝ _ |- _ ] => learn (proj1 (H _) H')
   | [ H: Monad.equiv _ ?a, H': ?a ↝ _ |- _ ] => learn (proj2 (H _) H')
   | [ H: TelStrongEq _ _ |- _ ] => first [ inversion' H; fail | inversion' H; [idtac] ]
+  | [ H: existT ?P ?x _ = existT ?P ?x _ |- _ ] => apply existT_inj in H; subst
   end.
 
 Ltac TelStrongEq_morphism_t :=
@@ -204,7 +215,7 @@ Qed.
 Lemma TelStrongEq_sym {A} :
   Symmetric (@TelStrongEq A).
 Proof.
-  TelStrongEq_morphism_t; eauto.
+  TelStrongEq_morphism_t; eauto with typeclass_instances.
 Qed.
 
 Lemma TelStrongEq_trans {A} :
@@ -219,8 +230,8 @@ Add Parametric Relation {A} : _ (@TelStrongEq A)
     transitivity proved by TelStrongEq_trans
       as TelStrongEqRel.
 
-Add Parametric Morphism {A} : (@Cons A)
-    with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
+Add Parametric Morphism {av T} : (@Cons av T)
+    with signature (eq ==> eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
       as Cons_MonadEquiv_TelStrongEq_morphism.
 Proof.
   unfold pointwise_relation; intros.

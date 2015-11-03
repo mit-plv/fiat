@@ -10,21 +10,10 @@ Opaque Word.natToWord.
 
 Definition EmptyEnv : Env unit := (GLabelMap.GLabelMap.empty (FuncSpec unit)).
 
-(* This lemma is not needed anymore; it is constructed dynamically *)
-(* Lemma CompileConstant : *)
-(*   forall av env ext prog tenv tenv' name w, *)
-(*     name ∉ ext -> *)
-(*     PropertiesOfTelescopes.NotInTelescope name tenv -> *)
-(*     {{ [[name <-- SCA av w as _]] :: tenv }} prog {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env -> *)
-(*     {{ tenv }} (Seq (Assign name (Const w)) prog) {{ [[name <-- SCA av w as _]] :: tenv' }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   eauto using Basics.CompileConstant, Basics.CompileSeq. *)
-(* Qed. *)
-
 Example simple :
-  Facade program implementing ( x <- ret (SCA unit (Word.natToWord 32 1));
-                                y <- ret (SCA unit (Word.natToWord 32 5));
-                                ret (SCA _ (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5)))) with EmptyEnv.
+  Facade program implementing ( x <- ret (Word.natToWord 32 1);
+                                y <- ret (Word.natToWord 32 5);
+                                ret (Word.wplus (Word.natToWord 32 1) (Word.natToWord 32 5))) with EmptyEnv.
 Proof.
   repeat compile_step.
 Defined.
@@ -37,7 +26,7 @@ Eval simpl in (extract_facade simple).
 Example simple_binop :
   Facade program implementing ( x <- ret (Word.natToWord 32 1);
                                 y <- ret (Word.natToWord 32 5);
-                                ret (SCA _ (Word.wplus x y))) with EmptyEnv.
+                                ret (Word.wplus x y)) with EmptyEnv.
 Proof.
   repeat compile_step.
 Defined.
@@ -53,7 +42,7 @@ Example harder_binop :
            y <- ret (Word.natToWord 32 5);
            z <- ret (Word.natToWord 32 8);
            t <- ret (Word.natToWord 32 12);
-           ret (SCA _ (Word.wplus x (Word.wplus z (Word.wminus y t)))))
+           ret (Word.wplus x (Word.wplus z (Word.wminus y t))))
 with EmptyEnv.
 Proof.
   repeat compile_step.
@@ -78,8 +67,8 @@ Proof. refine {|
       PostCond := fun args ret => args = nil /\ exists w, ret = SCA av w
     |}; spec_t. Defined.
 
-Lemma Random_characterization {av}:
-  forall x : W, WrapComp_W Random ↝ SCA av x.
+Lemma Random_characterization:
+  forall x : W, Random ↝ x.
 Proof. constructor. Qed.
 
 Hint Immediate Random_characterization : call_helpers_db.
@@ -93,7 +82,7 @@ Lemma CompileCallRandom:
       NotInTelescope var tenv ->
       {{ tenv }}
         (DFacade.Call var fpointer nil)
-      {{ [[ ` var <~~ WrapComp_W Random as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ ` var <~~ Random as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -105,9 +94,8 @@ Ltac compile_random :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:(pre, post) with
-            | (?tenv, Cons ?s (@WrapComp_W ?av Random) ?tenv') =>
-              let fpointer := find_function_in_env
-                               (Axiomatic (@FRandom av)) env in
+            | (?tenv, Cons (av := ?av) ?s Random ?tenv') =>
+              let fpointer := find_function_in_env (Axiomatic (@FRandom av)) env in
                call_tactic_after_moving_head_binding_to_separate_goal
                 ltac:(apply (CompileCallRandom (fpointer := fpointer)))
             end).
@@ -123,8 +111,8 @@ Definition BasicEnv :=
 Example random_sample :
   Facade program implementing ( x <- Random;
                                 y <- Random;
-                                ret (SCA _ (Word.wminus (Word.wplus x x)
-                                                        (Word.wplus y y))))
+                                ret (Word.wminus (Word.wplus x x)
+                                                 (Word.wplus y y)))
 with BasicEnv.
 Proof.
   repeat (compile_step || compile_random).
@@ -143,22 +131,22 @@ Require Import
         CertifiedExtraction.Extraction.External.External
         CertifiedExtraction.Extraction.External.GenericMethods.
 
-Definition EnvWithSquare {av} :=
+Definition EnvWithSquare :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
-       (GLabelMap.empty (FuncSpec av))).
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW unit Square)))
+       (GLabelMap.empty (FuncSpec unit))).
 
 Example random_test :
   Facade program implementing ( x <- Random;
                                 y <- Random;
                                 z <- Random;
-                                ret (SCA unit (if IL.weqb x y then
-                                                 (Word.wplus z z)
-                                               else
-                                                 if IL.wltb x y then
-                                                   z
-                                                 else
-                                                   (Square z)))) with EnvWithSquare.
+                                ret (if IL.weqb x y then
+                                       (Word.wplus z z)
+                                     else
+                                       if IL.wltb x y then
+                                         z
+                                       else
+                                         (Square z))) with EnvWithSquare.
 Proof.
   repeat (compile_step || compile_random).
 Defined.
@@ -170,23 +158,23 @@ Eval simpl in (extract_facade random_test).
 
 Definition Cube (x: W) := (Word.wmult x (Word.wmult x x)).
 
-Definition EnvWithCubeAsWell {av} :=
+Definition EnvWithCubeAsWell :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW av Square)))
-       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW av Cube)))
-          (GLabelMap.empty (FuncSpec av)))).
+    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW unit Square)))
+       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW unit Cube)))
+          (GLabelMap.empty (FuncSpec unit)))).
 
 Example random_test_with_cube :
   Facade program implementing ( x <- Random;
                                 y <- Random;
                                 z <- Random;
-                                ret (SCA unit (if IL.weqb x y then
-                                                 (Word.wplus z z)
-                                               else
-                                                 if IL.wltb x y then
-                                                   z
-                                                 else
-                                                   (Cube z)))) with EnvWithCubeAsWell.
+                                ret (if IL.weqb x y then
+                                       (Word.wplus z z)
+                                     else
+                                       if IL.wltb x y then
+                                         z
+                                       else
+                                         (Cube z))) with EnvWithCubeAsWell.
 Proof.
   repeat (compile_step || compile_random).
 Defined.

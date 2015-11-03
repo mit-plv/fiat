@@ -6,10 +6,11 @@ Require Import
         CertifiedExtraction.Extraction.External.FacadeADTs.
 
 Lemma CompileLoop :
-  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty fdealloc f,
+  forall `{FacadeWrapper av (list W)}
+    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc f,
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor _)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list W))) env ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     vlst ∉ ext ->
@@ -24,16 +25,16 @@ Lemma CompileLoop :
     vret <> vlst ->
     vret <> vhead ->
     vlst <> vhead ->
-    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+    {{ [[vlst <-- lst as _]] :: tenv }}
       facadeInit
-    {{ [[vret <-- SCA _ init as _]] :: [[vlst <-- ADT lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    (forall head acc s,
-        {{ [[vhead <-- SCA _ head as _]] :: [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ acc as _]] :: tenv }}
+    {{ [[vret <-- init as _]] :: [[vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head acc (s: list W),
+        {{ [[vhead <-- head as _]] :: [[vlst <-- s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[vret <-- acc as _]] :: tenv }}
           facadeBody
-        {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
-    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+        {{ [[vlst <-- s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[vret <-- (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[vlst <-- lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
-    {{ [[vret <-- SCA _ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[vret <-- (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   eapply CompileSeq; eauto; clear dependent facadeInit.
@@ -53,15 +54,16 @@ Proof.
   generalize dependent init;
     induction lst; simpl; intros.
 
-  apply CompileWhileFalse_Loop; try instantiate (1 := nil); Lifted_t. (* instantiate due to Coq bug *)
-
+  apply CompileWhileFalse_Loop. try instantiate (1 := nil). Lifted_t. (* instantiate due to Coq bug *)
+Lifted_t. Lifted_t.
   eapply CompileWhileTrue; Lifted_t.
 
   eapply CompileSeq.
   eapply CompileCallPop'; Lifted_t.
+
   clean_DropName_in_ProgOk.
 
-  eapply CompileSeq; eauto.
+  eapply CompileSeq; [solve [eauto] | ].
 
   apply CompileCallEmpty'; Lifted_t.
   clean_DropName_in_ProgOk.

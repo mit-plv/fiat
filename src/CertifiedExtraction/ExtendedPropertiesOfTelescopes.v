@@ -26,7 +26,7 @@ Qed.
 Hint Resolve DropName_remove : SameValues_db.
 
 Lemma DropName_Cons_Some_neq :
-  forall {av} k k' v (tail: Value av -> Telescope av),
+  forall `{FacadeWrapper (Value av) A} k k' v (tail: A -> Telescope av),
     k <> k' ->
     (DropName k (Cons (Some k') v tail)) = (Cons (Some k') v (fun vv => DropName k (tail vv))).
 Proof.
@@ -35,7 +35,7 @@ Proof.
 Qed.
 
 Lemma DropName_Cons_Some_eq :
-  forall {av} k k' v (tail: Value av -> Telescope av),
+  forall `{FacadeWrapper (Value av) A} k k' v (tail: A -> Telescope av),
     k = k' ->
     (DropName k (Cons (Some k') v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
 Proof.
@@ -44,7 +44,7 @@ Proof.
 Qed.
 
 Lemma DropName_Cons_None :
-  forall {av} k v (tail: Value av -> Telescope av),
+  forall `{FacadeWrapper (Value av) A} k v (tail: A -> Telescope av),
     (DropName k (Cons None v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
 Proof.
   intros; simpl; reflexivity.
@@ -62,7 +62,6 @@ Proof.
     constructor; eauto with typeclass_instances.
 Qed.
 
-
 Lemma SameValues_TelStrongEq_1 :
   forall {A} ext (tenv1 tenv2 : Telescope A) st,
     TelStrongEq tenv1 tenv2 ->
@@ -76,10 +75,10 @@ Proof.
          | [ H: Monad.equiv ?a _, H': context[?a] |- _ ] => rewrite H in H'
          | _ => SameValues_Fiat_t
          end.
-  rewrite <- H; eauto.
-  rewrite <- H; eauto.
-  rewrite -> H; eauto.
-  rewrite -> H; eauto.
+  rewrite <- H0; eauto.
+  rewrite <- H0; eauto.
+  rewrite -> H0; eauto.
+  rewrite -> H0; eauto.
 Qed.
 
 Ltac TelStrongEq_SameValue_Morphism_t :=
@@ -118,17 +117,17 @@ Proof.
 Qed.
 
 Lemma TelEq_chomp_head :
-  forall {av} k v ext tenv tenv',
-    @PointWise_TelEq av ext v tenv tenv' ->
+  forall `{FacadeWrapper (Value av) A} k v ext tenv tenv',
+    @PointWise_TelEq av A ext v tenv tenv' ->
     TelEq ext (Cons k v tenv) (Cons k v tenv').
 Proof.
   intros * H; rewrite H; reflexivity.
 Qed.
 
 Lemma TelEq_chomp_None_right :
-  forall {av} v ext tenv tenv',
+  forall `{FacadeWrapper (Value av) A} v ext tenv tenv',
     (exists vv, v ↝ vv) ->
-    @PointWise_TelEq av ext v (fun _ => tenv) tenv' ->
+    @PointWise_TelEq av A ext v (fun _ => tenv) tenv' ->
     TelEq ext tenv (Cons None v tenv').
 Proof.
   intros * ? H; rewrite <- H; red.
@@ -136,9 +135,9 @@ Proof.
 Qed.
 
 Lemma TelEq_chomp_None_left :
-  forall {av} v ext tenv tenv',
+  forall `{FacadeWrapper (Value av) A} v ext tenv tenv',
     (exists vv, v ↝ vv) ->
-    @PointWise_TelEq av ext v tenv (fun _ => tenv') ->
+    @PointWise_TelEq av A ext v tenv (fun _ => tenv') ->
     TelEq ext (Cons None v tenv) tenv'.
 Proof.
   intros * ? H; rewrite H; red.
@@ -157,24 +156,23 @@ Proof.
          | _ => SameValues_Fiat_t
          end.
   reflexivity.
-  rewrite <- H3.
+  rewrite <- H6.
   apply TelEq_chomp_head; red; intros; eauto.
 Qed.
 
 Lemma Lifted_MapsTo_eq:
-  forall {av} ext k v tail,
-    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k v.
+  forall `{FacadeWrapper (Value av) A} ext k v tail,
+    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k (wrap v).
 Proof.
   unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
 Qed.
 
 Lemma Lifted_MapsTo_neq:
-  forall {av} ext k v tail k' v',
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} ext k (v: A) tail k' (v': A'),
     k <> k' ->
-    v <> v' ->
-    @Lifted_MapsTo av ext (tail v) k' v' ->
-    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k' v'.
+    @Lifted_MapsTo av ext (tail v) k' (wrap v') ->
+    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k' (wrap v').
 Proof.
   unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
@@ -182,15 +180,15 @@ Proof.
 Qed.
 
 Lemma Lifted_not_mapsto_adt_eq:
-  forall {av} ext k v tail,
-    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret (SCA _ v)) tail) k.
+  forall {av} ext k (v: W) tail,
+    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret v) tail) k.
 Proof.
   unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
 Qed.
 
 Lemma Lifted_not_mapsto_adt_neq:
-  forall {av} ext k v tail k',
+  forall `{FacadeWrapper (Value av) A} ext k (v: A) tail k',
     k <> k' ->
     @Lifted_not_mapsto_adt av ext (tail v) k' ->
     @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret v) tail) k'.
@@ -200,7 +198,7 @@ Proof.
 Qed.
 
 Lemma Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt:
-  forall {av} ext k tenv,
+  forall `{FacadeWrapper (Value av) A} ext k tenv,
     k ∉ ext ->
     NotInTelescope k tenv ->
     @Lifted_not_mapsto_adt av ext tenv k.
@@ -210,16 +208,16 @@ Proof.
 Qed.
 
 Lemma Lifted_is_true_eq_MapsTo :
-  forall {av} ext tenv var v,
-    Lifted_MapsTo ext tenv var (SCA av v) ->
+  forall {av} ext tenv var (v: W),
+    Lifted_MapsTo (av := av) ext tenv var (wrap v) ->
     Lifted_is_true ext tenv (var = v)%facade.
 Proof.
-  unfold Lifted_is_true, Lifted_MapsTo, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;
+  unfold Lifted_is_true, Lifted_MapsTo, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval.
   repeat match goal with
-         | _ => progress simpl
          | _ => cleanup_facade_pure
          | _ => SameValues_Facade_t_step
          | [ H: forall _, _ -> _, H': _ |- _ ] => specialize (H _ H')
+         | _ => progress simpl
          end.
 Qed.
 
@@ -259,7 +257,7 @@ Ltac Lifted_t :=
          | [  |- NotInTelescope _ _ ] => decide_NotInTelescope
          | [  |- TelEq _ _ _ ] => reflexivity
          | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
-         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | congruence | ]
+         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | ]
          | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
          | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
          | [  |- Lifted_not_mapsto_adt _ _ _ ] => apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; [ decide_not_in | decide_NotInTelescope ]

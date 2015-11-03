@@ -6,6 +6,7 @@ Require Export
         Bedrock.Platform.Cito.GLabelMap
         Bedrock.Platform.Facade.DFacade.
 Require Import
+        CertifiedExtraction.Core
         CertifiedExtraction.PureUtils
         CertifiedExtraction.FMapUtils
         CertifiedExtraction.StringMapUtils
@@ -19,8 +20,14 @@ Definition bool2w b :=
   | false => (Word.natToWord 32 0)
   end.
 
-Definition bool2val {av} b :=
-  SCA av (bool2w b).
+Instance FacadeWrapper_SCA {av} : FacadeWrapper (Value av) W.
+Proof.
+  refine {| wrap := SCA av;
+            unwrap := fun a => match a with SCA a => Some a | _ => None end;
+            unwrap_wrap := fun v => eq_refl;
+            wrap_unwrap := _ |}.
+  destruct v; congruence.
+Defined.
 
 Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
 Coercion nat_as_word : nat >-> Word.word.
@@ -78,9 +85,9 @@ Ltac facade_construction :=
              eapply (@SafeCallAx _ env retv fname args st spec)
            | [ H: GLabelMap.MapsTo ?fname (@Operational _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
              eapply (@SafeCallOp _ env retv fname args st spec)
-           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- Safe _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
+           | [ H: StringMap.MapsTo ?k (wrap (bool2w ?test)) ?st |- Safe _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
              facade_construction_if_helper test SafeIfTrue SafeIfFalse
-           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- RunsTo _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
+           | [ H: StringMap.MapsTo ?k (wrap (bool2w ?test)) ?st |- RunsTo _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
              facade_construction_if_helper test RunsToIfTrue RunsToIfFalse
            end.
 

@@ -9,14 +9,22 @@ Unset Printing Implicit Defensive.
 (** Telescopes **)
 (****************)
 
+Class FacadeWrapper (WrappingType WrappedType: Type) :=
+  { wrap:        WrappedType -> WrappingType;
+    unwrap:      WrappingType -> option WrappedType;
+    unwrap_wrap: forall v, unwrap (wrap v) = Some v;
+    wrap_unwrap: forall v vv, unwrap v = Some vv -> v = wrap vv }.
+
 Inductive Telescope av : Type :=
 | Nil : Telescope av
-| Cons : forall (key: option string)
-           (val: Comp (Value av))
-           (tail: Value av -> Telescope av),
+| Cons : forall `{H: FacadeWrapper (Value av) T}
+           (key: option string)
+           (val: Comp T)
+           (tail: T -> Telescope av),
     Telescope av.
 
 Arguments Nil {av}.
+Arguments Cons {av T H} key val tail.
 
 (*************************)
 (** Telescope notations **)
@@ -52,10 +60,13 @@ Definition WeakEq {av} m1 m2 :=
 Fixpoint SameValues {av} ext fmap (tenv: Telescope av) :=
   match tenv with
   | Nil => WeakEq ext fmap
-  | Cons key val tail =>
+  | Cons _ _ key val tail =>
     match key with
       | Some k => match StringMap.find k fmap with
-                 | Some v => val ↝ v /\ SameValues ext (StringMap.remove k fmap) (tail v)
+                 | Some v => match unwrap v with
+                            | Some vv => val ↝ vv /\ SameValues ext (StringMap.remove k fmap) (tail vv)
+                            | None => False
+                            end
                  | None => False
                  end
       | None => exists v', val ↝ v' /\ SameValues ext fmap (tail v')
