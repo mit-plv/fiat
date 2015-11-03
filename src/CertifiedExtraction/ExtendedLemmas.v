@@ -113,7 +113,7 @@ Ltac push_pop_step IH :=
     let _eq := fresh in destruct (StringMap.find k (StringMap.remove k' st)) eqn:_eq; [ | tauto]
   | [ H: (StringMap.find ?k (StringMap.remove ?k' ?st)) = Some _ |- _ ] =>
     rewrite <- find_mapsto_iff in H; rewrite remove_mapsto_iff in H
-  | [ H: context[StringMap.find ?k ?st] |- context[StringMap.find ?k (StringMap.remove ?k' ?st)] ] =>
+  | [ H: context[match StringMap.find ?k ?st with _ => _ end] |- context[StringMap.find ?k (StringMap.remove ?k' ?st)] ] =>
     let _eq := fresh in destruct (StringMap.find k st) eqn:_eq; [| tauto]
   | [ H: match (unwrap ?a) with _ => _ end |- _ ] => let _eq := fresh in destruct (unwrap a) eqn:_eq
   | [ H: StringMap.MapsTo ?k ?v ?m |- context[StringMap.find ?k ?m] ] => rewrite find_mapsto_iff in H; rewrite H
@@ -124,10 +124,9 @@ Ltac push_pop_step IH :=
   | [ H: exists v, _ |- exists v, _ ] => destruct H; eexists
   | _ => rewrite SameValues_Equal_iff; eauto using remove_remove_comm
   | [ H: StringMap.find ?k ?m = _ |- match StringMap.find ?k ?m with _ => _ end ] => rewrite H
-  | [ H: StringMap.remove ?k ?st ≲ ?tel ∪ [?k' <-- ?v]::?ext |- _ ] =>
-    assert (k' ∈ (StringMap.remove k st)) by eauto using SameValues_In_Ext_State_add; no_duplicates;
-    assert (k' <> k) by eauto using In_remove_neq;
-    rewrite remove_neq_o by eassumption
+  | [ H: StringMap.remove _ _ ≲ _ ∪ [_ <-- wrap _]::_ |- _ ] => learn (SameValues_In_Ext_State_add _ _ H)
+  | [ H: _ ∈ (StringMap.remove _ _) |- _ ] => learn (In_remove_neq H)
+  | [ H: ?k <> ?k' |- context[StringMap.find ?k' (StringMap.remove ?k _)] ] => rewrite remove_neq_o by eassumption
   | _ => cleanup
   | _ => eauto using remove_remove_comm
   end.
@@ -144,15 +143,14 @@ Lemma SameValues_PushExt:
     initial_state ≲ tail v0 ∪ [key <-- wrap v0]::ext.
 Proof.
   intros until v0.
-  induction (tail v0) as [ | k ? ? IH ]; intros.
+  induction (tail v0) as [ | ? ? k ? ? IH ]; intros.
 
   - simpl in *;
     lazymatch goal with
     | [ H: StringMap.MapsTo _ _ _ |- _ ] => rewrite (MapsTo_add_remove H)
     end; eauto using WeakEq_add.
-  - simpl in *. destruct key0.
-    (* push_pop IH. *)
-Admitted.
+  - simpl in *. destruct k; push_pop IH.
+Qed.
 
 Lemma Cons_PushExt:
   forall `{FacadeWrapper (Value av) A} (key : StringMap.key) (tail : A -> Telescope av)
@@ -184,14 +182,14 @@ Lemma SameValues_PopExt:
     StringMap.remove key initial_state ≲ tail v0 ∪ ext.
 Proof.
   intros until v0.
-  induction (tail v0) as [ | k ? ? IH ]; intros.
+  induction (tail v0) as [ | ? ? k ? ? IH ]; intros.
 
   - simpl in *;
     lazymatch goal with
     | [ H: ?k ∉ ?ext |- _ ] => rewrite <- (fun x => remove_add_cancel x H eq_refl)
     end; eauto using WeakEq_remove.
-  - simpl in *. (* destruct k; push_pop IH. *)
-Admitted.
+  - simpl in *. destruct k; push_pop IH.
+Qed.
 
 Lemma SameValues_PopExt':
   forall `{FacadeWrapper (Value av) A} (key : StringMap.key) (tail : Telescope av)
