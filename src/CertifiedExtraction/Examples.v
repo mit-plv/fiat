@@ -184,51 +184,6 @@ Eval simpl in (extract_facade random_test_with_cube).
 (******************************************************************************)
 (*+ To conclude, a bit of ADT stuff: *)
 
-Ltac not_match_p constr :=
-  match constr with
-  | context[match _ with _ => _ end] => fail 1
-  | _ => idtac
-  end.
-
-Ltac FacadeWrapper_t :=
-  abstract
-    (repeat match goal with
-            | _ => cleanup
-            | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
-            | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
-            | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
-            end).
-
-Instance FacadeWrapper_SingleType {A: Type} : FacadeWrapper A A.
-Proof.
-  refine {| wrap := id;
-            unwrap := fun x => Some x;
-            unwrap_wrap := fun v => eq_refl;
-            wrap_unwrap := _ |}; FacadeWrapper_t.
-Defined.
-
-Instance FacadeWrapper_Left {A B: Type} : FacadeWrapper (A + B)%type A.
-Proof.
-  refine {| wrap := inl;
-            unwrap := fun x => match x with
-                           | inl a => Some a
-                           | inr _ => None
-                           end;
-            unwrap_wrap := fun v => _;
-            wrap_unwrap := _ |}; FacadeWrapper_t.
-Defined.
-
-Instance FacadeWrapper_Right {A B: Type} : FacadeWrapper (A + B)%type B.
-Proof.
-  refine {| wrap := inr;
-            unwrap := fun x => match x with
-                           | inl _ => None
-                           | inr b => Some b
-                           end;
-            unwrap_wrap := fun v => _;
-            wrap_unwrap := _ |}; FacadeWrapper_t.
-Defined.
-
 Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))

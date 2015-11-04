@@ -409,7 +409,7 @@ Proof.
 Qed.
 
 Lemma SameValues_In_Ext_State_add:
-  forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key) v
+  forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key) (v: A)
     {ext st : StringMap.t (Value av)},
     st ≲ tel ∪ [key <-- wrap v]::ext ->
     StringMap.In key st.

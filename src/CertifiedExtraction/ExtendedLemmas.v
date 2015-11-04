@@ -163,7 +163,7 @@ Proof.
 Qed.
 
 Lemma Cons_PushExt':
-  forall `{FacadeWrapper (Value av) A} key tenv ext v (st: State av),
+  forall `{FacadeWrapper (Value av) A} key tenv ext (v: A) (st: State av),
     st ≲ Cons (Some key) (ret v) (fun _ => tenv) ∪ ext ->
     st ≲ tenv ∪ [key <-- wrap v] :: ext.
 Proof.
@@ -225,7 +225,7 @@ Proof.
 Qed.
 
 Lemma SameValues_Add_Cons:
-  forall `{FacadeWrapper (Value av) A} (key : StringMap.key) value (ext state : StringMap.t (Value av)),
+  forall `{FacadeWrapper (Value av) A} (key : StringMap.key) (value: A) (ext state : StringMap.t (Value av)),
     key ∉ ext -> WeakEq ext state -> [key <-- (wrap value)]::state ≲ [[ key <-- value as _]]::Nil ∪ ext.
 Proof.
   intros; apply Cons_PopExt; simpl; eauto using WeakEq_Refl, WeakEq_add.
@@ -250,7 +250,7 @@ Ltac facade_cleanup :=
 Lemma SameValues_Cons_unfold_Some :
   forall `{FacadeWrapper (Value av) A} k (st: State av) val ext tail,
     st ≲ (Cons (Some k) val tail) ∪ ext ->
-    exists v, StringMap.MapsTo k (wrap v) st /\ val ↝ v /\ StringMap.remove k st ≲ tail v ∪ ext.
+    exists v: A, StringMap.MapsTo k (wrap v) st /\ val ↝ v /\ StringMap.remove k st ≲ tail v ∪ ext.
 Proof.
   simpl; intros;
   repeat match goal with
@@ -262,7 +262,7 @@ Proof.
 Qed.
 
 Lemma SameValues_Cons_unfold_None :
-  forall `{FacadeWrapper (Value av) A} (st: State av) val ext tail,
+  forall `{FacadeWrapper (Value av) A} (st: State av) (val: Comp A) ext tail,
     st ≲ (Cons None val tail) ∪ ext ->
     exists v, val ↝ v /\ st ≲ tail v ∪ ext.
 Proof.
@@ -470,7 +470,7 @@ Lemma ProgOk_Chomp_Some :
     (tail2: A -> Telescope av)
     ext,
     key ∉ ext ->
-    (forall v, value ↝ v -> {{ tail1 v }} prog {{ tail2 v }} ∪ {{ [key <-- wrap v] :: ext }} // env) ->
+    (forall v: A, value ↝ v -> {{ tail1 v }} prog {{ tail2 v }} ∪ {{ [key <-- wrap v] :: ext }} // env) ->
     ({{ Cons (Some key) value tail1 }} prog {{ Cons (Some key) value tail2 }} ∪ {{ ext }} // env).
 Proof.
   intros; apply ProkOk_specialize_to_ret; intros; apply ProgOk_Chomp_lemma; eauto.
@@ -600,7 +600,7 @@ Qed.
 Hint Resolve @WeakEq_pop_SCA' : call_helpers_db.
 
 Lemma SameSCAs_pop_SCA_left :
-  forall {av} k v (m1 m2: StringMap.t (Value av)),
+  forall {av} k (v: W) (m1 m2: StringMap.t (Value av)),
     k ∉ m1 ->
     SameSCAs (StringMap.add k (wrap v) m1) m2 ->
     SameSCAs m1 m2.
@@ -609,7 +609,7 @@ Proof.
 Qed.
 
 Lemma SameADTs_pop_SCA_left :
-  forall {av} k v (m1 m2: StringMap.t (Value av)),
+  forall {av} k (v: W) (m1 m2: StringMap.t (Value av)),
     k ∉ m1 ->
     SameADTs (StringMap.add k (wrap v) m1) m2 ->
     SameADTs m1 m2.
@@ -621,7 +621,7 @@ Proof.
 Qed.
 
 Lemma WeakEq_pop_SCA_left :
-  forall {av} k v (m1 m2: StringMap.t (Value av)),
+  forall {av} k (v: W) (m1 m2: StringMap.t (Value av)),
     k ∉ m1 ->
     WeakEq (StringMap.add k (wrap v) m1) m2 ->
     WeakEq m1 m2.
@@ -698,7 +698,7 @@ Hint Resolve @SameValues_not_In_Telescope_not_in_Ext_remove : SameValues_db.
 Hint Resolve @SameValues_forget_Ext_helper : SameValues_db.
 
 Lemma SameValues_add_SCA:
-  forall av tel (st: StringMap.t (Value av)) k ext v,
+  forall av tel (st: StringMap.t (Value av)) k ext (v: W),
     k ∉ st ->
     st ≲ tel ∪ ext ->
     (StringMap.add k (wrap v) st) ≲ tel ∪ ext.
@@ -824,7 +824,7 @@ Hint Resolve @not_in_WeakEq_not_mapsto_adt : SameValues_db.
 (* Qed. *)
 
 Lemma SameValues_add_SCA_notIn_ext :
-  forall {av} k v (st: StringMap.t (Value av)) tenv ext,
+  forall {av} k (v: W) (st: StringMap.t (Value av)) tenv ext,
     k ∉ ext ->
     NotInTelescope k tenv ->
     st ≲ tenv ∪ ext ->

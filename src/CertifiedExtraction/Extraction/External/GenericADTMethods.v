@@ -5,8 +5,8 @@ Require Import
 
 Definition FacadeImplementationOfMutation `{FacadeWrapper av A} (fAA: W -> A -> A) : AxiomaticSpec av.
   refine {|
-      PreCond := fun args => exists w (x: A), args = (wrap x) :: (wrap w) :: nil;
-      PostCond := fun args ret => exists w (x: A), args = (wrap x, Some (wrap (fAA w x))) :: (wrap w, None) :: nil /\ ret = wrap (Word.natToWord 32 0)
+      PreCond := fun args => exists (w: W) (x: A), args = (wrap x) :: (wrap w) :: nil;
+      PostCond := fun args ret => exists (w: W) (x: A), args = (wrap x, Some (wrap (fAA w x))) :: (wrap w, None) :: nil /\ ret = wrap (Word.natToWord 32 0)
     |}; spec_t.
 Defined.
 
@@ -34,20 +34,17 @@ Defined.
 Lemma SameValues_Mutation_helper:
   forall (av : Type) (vsrc vret : StringMap.key)
     (ext : StringMap.t (Value av)) (tenv : Telescope av)
-    (initial_state : State av) (x : av),
+    (initial_state : State av) (x : Value av),
     vret <> vsrc ->
     vret ∉ ext ->
     NotInTelescope vret tenv ->
-    StringMap.MapsTo vsrc (ADT x) initial_state ->
+    StringMap.MapsTo vsrc x initial_state ->
     initial_state ≲ tenv ∪ ext ->
-    [vsrc <-- ADT x]::M.remove vret initial_state ≲ tenv ∪ ext.
+    [vsrc <-- x]::M.remove vret initial_state ≲ tenv ∪ ext.
 Proof.
-  intros.
-  repeat match goal with
-         | _ => rewrite <- remove_add_comm by congruence
-         | [ H: StringMap.MapsTo ?k ?v ?st |- context[StringMap.add ?k ?v ?st] ] => rewrite <- (add_redundant_cancel H)
-         | _ => facade_cleanup_call
-         end; facade_eauto.
+  intros;
+  rewrite <- remove_add_comm, <- add_redundant_cancel by congruence;
+  facade_eauto.
 Qed.
 
 Hint Resolve SameValues_Mutation_helper : call_helpers_db.

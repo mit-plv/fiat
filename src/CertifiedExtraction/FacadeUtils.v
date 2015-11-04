@@ -20,13 +20,51 @@ Definition bool2w b :=
   | false => (Word.natToWord 32 0)
   end.
 
+Ltac FacadeWrapper_t :=
+  abstract
+    (repeat match goal with
+            | _ => cleanup_pure
+            | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+            | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+            | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+            end).
+
 Instance FacadeWrapper_SCA {av} : FacadeWrapper (Value av) W.
 Proof.
   refine {| wrap := SCA av;
             unwrap := fun a => match a with SCA a => Some a | _ => None end;
             unwrap_wrap := fun v => eq_refl;
-            wrap_unwrap := _ |}.
-  destruct v; congruence.
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_SingleType {A: Type} : FacadeWrapper A A.
+Proof.
+  refine {| wrap := id;
+            unwrap := fun x => Some x;
+            unwrap_wrap := fun v => eq_refl;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Left {A B: Type} : FacadeWrapper (A + B)%type A.
+Proof.
+  refine {| wrap := inl;
+            unwrap := fun x => match x with
+                           | inl a => Some a
+                           | inr _ => None
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Right {A B: Type} : FacadeWrapper (A + B)%type B.
+Proof.
+  refine {| wrap := inr;
+            unwrap := fun x => match x with
+                           | inl _ => None
+                           | inr b => Some b
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
 Defined.
 
 Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.

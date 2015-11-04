@@ -16,7 +16,7 @@ Proof.
 Qed.
 
 Lemma CompileDeallocSCA_ret:
-  forall {av} (env : Env av) k v tail tail' ext
+  forall {av} (env : Env av) k (v: W) tail tail' ext
     prog,
     {{ [[(ret v) as kk]]::(tail kk)}}
       prog
@@ -30,7 +30,7 @@ Proof.
 Qed.
 
 Lemma CompileDeallocSCA_discretely :
-  forall {av} (tenv tenv': Telescope av) ext env k v prog,
+  forall {av} (tenv tenv': Telescope av) ext env k (v: W) prog,
     k ∉ ext ->
     NotInTelescope k tenv ->
     {{ [[k <-- v as _]] :: tenv }} prog {{ [[k <-- v as _]] :: tenv' }} ∪ {{ ext }} // env ->
