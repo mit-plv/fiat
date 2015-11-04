@@ -885,16 +885,20 @@ Section ListFacts.
                 | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
                 | _ => solve [ eauto with nocore ]
                 | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
-                | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by omega; specialize (H H'); clear H'
+                | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
                 | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
                 | _ => progress simpl in *
                 | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
                 | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
                 | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
-                | [ H : _ |- _ ] => rewrite H by first_index_error_t
                 | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
                 | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
+                | [ H : or _ _ |- _ ] => destruct H
+                | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
+                | [ H : ?x = None |- context[?x] ] => rewrite H
               end.
+
+
   Lemma first_index_error_Some_correct {A} (P : A -> bool) (n : nat) (ls : list A)
   : first_index_error P ls = Some n <-> ((exists elem, nth_error ls n = Some elem /\ P elem = true)
                                          /\ forall m, m < n -> forall elem, nth_error ls m = Some elem -> P elem = false).
@@ -907,7 +911,7 @@ Section ListFacts.
   Qed.
 
   Lemma first_index_error_None_correct {A} (P : A -> bool) (ls : list A)
-  : first_index_error P ls = None <-> (forall m elem, nth_error ls m = Some elem -> P elem = false).
+  : first_index_error P ls = None <-> (forall elem, List.In elem ls -> P elem = false).
   Proof.
     induction ls; simpl; intros.
     { first_index_error_t. }
