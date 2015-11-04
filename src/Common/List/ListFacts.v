@@ -853,6 +853,16 @@ Section ListFacts.
       destruct H; subst; [ right; eauto | left; reflexivity ]. }
   Qed.
 
+  Lemma in_up_to_iff {n m} : (n < m) <-> List.In n (up_to m).
+  Proof.
+    revert n; induction m; intros n; simpl.
+    { split; intro; exfalso; omega. }
+    { simpl.
+      specialize (IHm n).
+      destruct IHm.
+      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition. }
+  Qed.
+
   Local Ltac first_index_error_t
     := repeat match goal with
                 | _ => discriminate
