@@ -294,7 +294,7 @@ Eval simpl in (extract_facade other_test_with_adt).
 
 (******************************************************************************)
 Example other_test_with_adt' :
-    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret (ADT seq) as _ ]] :: Nil }}
+    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret seq as _ ]] :: Nil }}
                             prog
                           {{ [[`"ret" <~~ ( x <- Random;
                                           y <- Random;
