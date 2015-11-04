@@ -852,4 +852,55 @@ Section ListFacts.
       apply Compare_dec.le_lt_eq_dec in H.
       destruct H; subst; [ right; eauto | left; reflexivity ]. }
   Qed.
+
+  Local Ltac first_index_error_t
+    := repeat match goal with
+                | _ => discriminate
+                | _ => congruence
+                | _ => omega
+                | _ => progress unfold value in *
+                | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+                | _ => progress subst
+                | [ H : ?x = true |- context[?x] ] => rewrite H
+                | [ H : and _ _ |- _ ] => destruct H
+                | [ H : ex _ |- _ ] => destruct H
+                | [ H : iff _ _ |- _ ] => destruct H
+                | [ H : ?x = ?x -> ?A |- _ ] => specialize (H eq_refl)
+                | _ => progress intros
+                | _ => split
+                | [ H : context[if ?b then _ else _] |- _ ] => destruct b eqn:?
+                | [ H : context[option_map _ ?x] |- _ ] => destruct x eqn:?; unfold option_map in H
+                | _ => solve [ repeat (esplit || eassumption) ]
+                | [ H : context[nth_error (_::_) ?x] |- _ ] => is_var x; destruct x; simpl nth_error in H
+                | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
+                | _ => solve [ eauto with nocore ]
+                | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
+                | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by omega; specialize (H H'); clear H'
+                | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
+                | _ => progress simpl in *
+                | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
+                | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
+                | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
+                | [ H : _ |- _ ] => rewrite H by first_index_error_t
+                | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
+                | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
+              end.
+  Lemma first_index_error_Some_correct {A} (P : A -> bool) (n : nat) (ls : list A)
+  : first_index_error P ls = Some n <-> ((exists elem, nth_error ls n = Some elem /\ P elem = true)
+                                         /\ forall m, m < n -> forall elem, nth_error ls m = Some elem -> P elem = false).
+  Proof.
+    revert n.
+    induction ls; simpl; intros.
+    { destruct n; first_index_error_t. }
+    { specialize (IHls (pred n)).
+      destruct n; first_index_error_t. }
+  Qed.
+
+  Lemma first_index_error_None_correct {A} (P : A -> bool) (ls : list A)
+  : first_index_error P ls = None <-> (forall m elem, nth_error ls m = Some elem -> P elem = false).
+  Proof.
+    induction ls; simpl; intros.
+    { first_index_error_t. }
+    { first_index_error_t. }
+  Qed.
 End ListFacts.
