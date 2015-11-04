@@ -903,4 +903,13 @@ Section ListFacts.
     { first_index_error_t. }
     { first_index_error_t. }
   Qed.
+
+  Lemma nth_error_In {A} (n : nat) (x : A) (ls : list A)
+  : nth_error ls n = Some x -> List.In x ls.
+  Proof.
+    revert n; induction ls; intros [|n]; simpl in *;
+    intros; try discriminate; unfold value in *.
+    { left; congruence. }
+    { right; eauto. }
+  Qed.
 End ListFacts.
