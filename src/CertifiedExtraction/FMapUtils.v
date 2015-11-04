@@ -364,4 +364,17 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
     | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) (@None key) in
                        constr:(ret)
     end.
+
+  Ltac matches_pattern observation pattern :=
+    constr:(eq_refl observation: observation = pattern _).
+
+  Ltac find_pattern pattern fmap :=
+    match fmap with
+    | @empty _       => constr:(@None key)
+    | add ?k ?v _    => let pr := matches_pattern v pattern  in
+                       constr:(Some k)
+    | add ?k _ ?tail => let ret := find_pattern pattern tail in constr:(ret)
+    | ?other         => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_pattern pattern reduced) (@None key) in
+                       constr:(ret)
+    end.
 End WMoreFacts_fun.

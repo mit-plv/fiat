@@ -5,9 +5,10 @@ Require Import
 Ltac compile_mutation_alloc :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
-                       | (?tenv, Cons ?s (ret (ADT (?f _ _))) (fun _ => ?tenv)) =>
-                         let fpointer := find_function_in_env
-                                          (Axiomatic (FacadeImplementationOfMutation f)) env in
+                       | (?tenv, Cons ?s (ret (?f _ _)) (fun _ => ?tenv)) =>
+                         let av := av_from_ext ext in
+                         let fpointer := find_function_pattern_in_env
+                                          (fun w => (Axiomatic (FacadeImplementationOfMutation (av := av) (H := w) f))) env in
                          let arg := gensym "arg" in
                          let tmp := gensym "tmp" in
                          apply (CompileCallFacadeImplementationOfMutation_Alloc
@@ -17,9 +18,10 @@ Ltac compile_mutation_alloc :=
 Ltac compile_mutation_replace :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
-                       | ([[?s <-- ADT ?adt as _]] :: ?tenv, [[?s <-- ADT (?f _ ?adt) as _]] :: ?tenv) =>
-                         let fpointer := find_function_in_env
-                                          (Axiomatic (FacadeImplementationOfMutation f)) env in
+                       | ([[?s <-- ?adt as _]] :: ?tenv, [[?s <-- (?f _ ?adt) as _]] :: ?tenv) =>
+                         let av := av_from_ext ext in
+                         let fpointer := find_function_pattern_in_env
+                                          (fun w => Axiomatic (FacadeImplementationOfMutation (av := av) (H := w) f)) env in
                          let arg := gensym "arg" in
                          let tmp := gensym "tmp" in
                          apply (CompileCallFacadeImplementationOfMutation_Replace
@@ -29,9 +31,11 @@ Ltac compile_mutation_replace :=
 Ltac compile_constructor :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre, post) with
-                       | (?tenv, Cons ?s (ret (ADT ?adt)) (fun _ => ?tenv)) =>
-                         let fpointer := find_function_in_env
-                                          (Axiomatic (FacadeImplementationOfConstructor adt)) env in
+                       | (?tenv, Cons ?s (ret ?adt) (fun _ => ?tenv)) =>
+                         let av := av_from_ext ext in
+                         let fpointer := find_function_pattern_in_env
+                                          (fun w => (Axiomatic (FacadeImplementationOfConstructor
+                                                               (av := av) (H := w) adt))) env in
                          apply (CompileCallFacadeImplementationOfConstructor
                                   tenv (fpointer := fpointer))
                        end).

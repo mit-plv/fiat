@@ -46,7 +46,8 @@ Ltac facade_if_helper :=
   end.
 
 Lemma CompileIf :
-  forall {av} k (gallinaTest: bool) gallinaT gallinaF tmp facadeTest facadeT facadeF env (ext: StringMap.t (Value av)) tenv,
+  forall `{FacadeWrapper (Value av) A} k (gallinaTest: bool) (gallinaT gallinaF: Comp A) tmp facadeTest facadeT facadeF
+    env (ext: StringMap.t (Value av)) tenv,
     tmp ∉ ext ->
     NotInTelescope tmp tenv ->
     {{ tenv }}
@@ -69,7 +70,8 @@ Proof.
 Qed.
 
 Lemma CompileIf_InPlace :
-  forall {av} k (gallinaTest: bool) oldK gallinaT gallinaF tmp facadeTest facadeT facadeF env (ext: StringMap.t (Value av)) tenv,
+  forall `{FacadeWrapper (Value av) A} k (gallinaTest: bool) oldK (gallinaT gallinaF: Comp A) tmp facadeTest facadeT facadeF
+    env (ext: StringMap.t (Value av)) tenv,
     tmp ∉ ext ->
     NotInTelescope tmp tenv ->
     {{ [[`k <~~ oldK as kk]] :: tenv }}

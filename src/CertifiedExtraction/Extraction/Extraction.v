@@ -178,13 +178,13 @@ Ltac compile_rewrite p pre post ext env :=
   | appcontext[?f (if ?b then ?x else ?y)] => is_pushable_head_constant f; setoid_rewrite (push_if f x y b)
   end.
 
-Definition IsFacadeProgramImplementing {av} cmp env prog :=
+Definition IsFacadeProgramImplementing `{FacadeWrapper (Value av) A} (cmp: Comp A) env prog :=
   {{ @Nil av }}
     prog
   {{ [[`"ret" <~~ cmp as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // env.
 
-Definition FacadeProgramImplementing {av} cmp env :=
-  sigT (@IsFacadeProgramImplementing av cmp env).
+Definition FacadeProgramImplementing `{FacadeWrapper (Value av) A} cmp env :=
+  sigT (IsFacadeProgramImplementing cmp env).
 
 Notation "'Facade' 'program' 'implementing' cmp 'with' env" :=
   (FacadeProgramImplementing cmp env) (at level 0).

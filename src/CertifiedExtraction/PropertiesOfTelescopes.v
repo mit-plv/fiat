@@ -179,15 +179,17 @@ Print TelStrongEq.
 Ltac inversion' H :=
   inversion H; subst; clear H.
 
-Lemma existT_inj : forall A P x Px Px',
-    @existT A P x Px = @existT A P x Px' ->
-    Px = Px'.
-Proof.
-  intros.
-  Require Import Eqdep.       (* FIXME *)
-  apply inj_pair2 in H.
-  assumption.
-Qed.
+(* Lemma existT_inj : forall A P x Px Px', *)
+(*     @existT A P x Px = @existT A P x Px' -> *)
+(*     Px = Px'. *)
+(* Proof. *)
+(*   intros. *)
+(*   Require Import Eqdep.       (* FIXME *) *)
+(*   apply inj_pair2 in H. *)
+(*   assumption. *)
+(* Qed. *)
+
+Require Import Eqdep.
 
 Ltac TelStrongEq_t :=
   match goal with
@@ -195,33 +197,50 @@ Ltac TelStrongEq_t :=
   | [ H: Monad.equiv ?a _, H': ?a ↝ _ |- _ ] => learn (proj1 (H _) H')
   | [ H: Monad.equiv _ ?a, H': ?a ↝ _ |- _ ] => learn (proj2 (H _) H')
   | [ H: TelStrongEq _ _ |- _ ] => first [ inversion' H; fail | inversion' H; [idtac] ]
-  | [ H: existT ?P ?x _ = existT ?P ?x _ |- _ ] => apply existT_inj in H; subst
+  | [ H: existT ?P ?x _ = existT ?P ?x _ |- _ ] => apply inj_pair2 in H; subst
   end.
 
 Ltac TelStrongEq_morphism_t :=
-  red; intro tel; induction tel;
   repeat match goal with
          | _ => constructor
          | _ => progress intros
          | _ => TelStrongEq_t
+         | _ => eauto with typeclass_instances
          end.
 
 Lemma TelStrongEq_refl {A} :
   Reflexive (@TelStrongEq A).
 Proof.
-  TelStrongEq_morphism_t; eauto with typeclass_instances.
+  red; intros tel; induction tel; TelStrongEq_morphism_t.
 Qed.
 
 Lemma TelStrongEq_sym {A} :
   Symmetric (@TelStrongEq A).
 Proof.
-  TelStrongEq_morphism_t; eauto with typeclass_instances.
+  red; intros tel tel' eq; induction eq;
+  TelStrongEq_morphism_t.
 Qed.
+
+(* Fixpoint Telescope_code {av} (t1 t2: Telescope av) : Prop := *)
+(*   match t1, t2 with *)
+(*   | Nil, Nil => True *)
+(*   | Nil, _ => False *)
+(*   | _, Nil => False *)
+(*   | Cons T H key val tail, Cons T' H' key' val' tail' =>  *)
+(*     exists (eqT: T = T'), (match eqT in _ = T' return FacadeWrapper _ T' *)
+(*                       with eq_refl => H end = H') /\ key = key' *)
+(*                      /\ Monad.equiv (match eqT in _ = T' return Comp T' *)
+(*                                     with eq_refl => val end) val' *)
+(*                      /\ (forall vv, val ↝ vv -> Telescope_code (tail vv) *)
+(*                                                         (tail' (match eqT in _ = T' return T' *)
+(*                                                                 with eq_refl => vv end))) *)
+(*   end. *)
 
 Lemma TelStrongEq_trans {A} :
   Transitive (@TelStrongEq A).
 Proof.
-  TelStrongEq_morphism_t; eauto.
+  red; intros tel; induction tel;
+    TelStrongEq_morphism_t.
 Qed.
 
 Add Parametric Relation {A} : _ (@TelStrongEq A)

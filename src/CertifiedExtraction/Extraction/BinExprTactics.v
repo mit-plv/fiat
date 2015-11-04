@@ -17,11 +17,6 @@ Ltac translate_op gallina_op :=
   | _ => fail 1 "Unknown operator" gallina_op
   end.
 
-Ltac av_from_ext ext :=
-  match type of ext with
-  | StringMap.t (Value ?av) => constr:av
-  end.
-
 Ltac compile_binop facade_op lhs rhs ext :=
   let av := av_from_ext ext in
   let vlhs := find_fast (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) lhs) ext in

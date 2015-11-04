@@ -12,10 +12,24 @@ Require Export
 Require Import Coq.Strings.String.
 Global Open Scope string_scope.
 
+Ltac av_from_ext ext :=
+  match type of ext with
+  | StringMap.t (Value ?av) => constr:av
+  end.
+
 Ltac find_function_in_env function env :=
   match goal with
   | [ H: GLabelMap.MapsTo ?k function env |- _ ] => constr:(k)
   | _ => let key := GLabelMapUtils.find_fast function env in
+        match key with
+        | Some ?k => k
+        end
+  end.
+
+Ltac find_function_pattern_in_env pattern env :=
+  match goal with
+  | [ H: GLabelMap.MapsTo ?k ?function env |- _ ] => let pr := GLabelMapUtils.matches_pattern function pattern in constr:(k)
+  | _ => let key := GLabelMapUtils.find_pattern pattern env in
         match key with
         | Some ?k => k
         end

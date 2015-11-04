@@ -184,11 +184,56 @@ Eval simpl in (extract_facade random_test_with_cube).
 (******************************************************************************)
 (*+ To conclude, a bit of ADT stuff: *)
 
+Ltac not_match_p constr :=
+  match constr with
+  | context[match _ with _ => _ end] => fail 1
+  | _ => idtac
+  end.
+
+Ltac FacadeWrapper_t :=
+  abstract
+    (repeat match goal with
+            | _ => cleanup
+            | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+            | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+            | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+            end).
+
+Instance FacadeWrapper_SingleType {A: Type} : FacadeWrapper A A.
+Proof.
+  refine {| wrap := id;
+            unwrap := fun x => Some x;
+            unwrap_wrap := fun v => eq_refl;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Left {A B: Type} : FacadeWrapper (A + B)%type A.
+Proof.
+  refine {| wrap := inl;
+            unwrap := fun x => match x with
+                           | inl a => Some a
+                           | inr _ => None
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Right {A B: Type} : FacadeWrapper (A + B)%type B.
+Proof.
+  refine {| wrap := inr;
+            unwrap := fun x => match x with
+                           | inl _ => None
+                           | inr b => Some b
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
 Definition MyEnvW :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("std", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
-          (GLabelMap.empty _))).
+          (GLabelMap.empty (FuncSpec (list W))))).
 
 (******************************************************************************)
 (*+ This example returns a list containing
@@ -196,23 +241,30 @@ Definition MyEnvW :=
 
 Example random_test_with_adt :
   Facade program implementing ( x <- Random;
-                                ret (ADT (if IL.weqb x 0 then
-                                            (Word.natToWord 32 1 : W) :: nil
-                                          else
-                                            x :: nil))) with MyEnvW.
+                                ret (if IL.weqb x 0 then
+                                       (Word.natToWord 32 1 : W) :: nil
+                                     else
+                                       x :: nil)) with MyEnvW.
 Proof.
   repeat (compile_step || compile_random || compile_constructor || compile_mutation_alloc).
 Defined.
+
+Ltac pose_ProgOk _prog _pre _post _ext _env := (* FIXME move *)
+  let pre := fresh "pre" in pose _pre as pre;
+    let post := fresh "post" in pose _post as post;
+      let ext := fresh "ext" in pose _ext as ext;
+        let env := fresh "env" in pose _env as env;
+          let prog := fresh "prog" in pose _prog as prog.
 
 Eval simpl in (extract_facade random_test_with_adt).
 
 (******************************************************************************)
 
 Example test_with_adt :
-    sigT (fun prog => forall tail, {{ [[`"ret"  <~~  ret (ADT tail) as _ ]] :: Nil }}
+    sigT (fun prog => forall tail, {{ [[`"ret"  <~~  ret tail as _ ]] :: Nil }}
                              prog
                            {{ [[`"ret"  <~~  ( x <- Random;
-                                             ret (ADT (x :: tail))) as _]] :: Nil }} ∪ {{ ∅ }}
+                                             ret (x :: tail)) as _]] :: Nil }} ∪ {{ ∅ }}
                            // MyEnvW).
 Proof.
   econstructor; intros.
@@ -228,11 +280,11 @@ Eval simpl in (extract_facade test_with_adt).
     - push it into a list *)
 
 Example other_test_with_adt :
-    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret (ADT seq) as _ ]] :: Nil }}
+    sigT (fun prog => forall seq, {{ [[`"ret" <~~ ret seq as _ ]] :: Nil }}
                             prog
                           {{ [[`"ret" <~~ ( x <- Random;
                                           y <- Random;
-                                          ret (ADT ((if IL.wltb x y then x else y) :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
+                                          ret ((if IL.wltb x y then x else y) :: seq)) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
 Proof.
   econstructor; intros.
   repeat (compile_step || compile_random || compile_mutation_replace).
@@ -246,7 +298,7 @@ Example other_test_with_adt' :
                             prog
                           {{ [[`"ret" <~~ ( x <- Random;
                                           y <- Random;
-                                          ret (ADT (if IL.wltb x y then x :: seq else y :: seq))) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
+                                          ret (if IL.wltb x y then x :: seq else y :: seq)) as _]] :: Nil }} ∪ {{ ∅ }} // MyEnvW).
 Proof.
   econstructor; intros.
   repeat (compile_step || compile_random || compile_mutation_replace).
