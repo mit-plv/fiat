@@ -11,14 +11,14 @@ Definition MyEnvLists :=
     ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("list", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
           ((GLabelMap.add ("list", "pop") (Axiomatic List_pop))
-             ((GLabelMap.add ("list", "delete") (Axiomatic (FacadeImplementationOfDestructor _)))
+             ((GLabelMap.add ("list", "delete") (Axiomatic (FacadeImplementationOfDestructor)))
                 ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
-                   (GLabelMap.empty _)))))).
+                   (GLabelMap.empty (FuncSpec (list W)))))))).
 
 Example other_test_with_adt'' :
-    sigT (fun prog => forall seq, {{ [["arg1" <-- ADT seq as _ ]] :: Nil }}
-                            prog
-                          {{ [["ret" <-- SCA _ (List.fold_left (@Word.wminus 32) seq 0) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
+    sigT (fun prog => forall seq: list W, {{ [["arg1" <-- seq as _ ]] :: Nil }}
+                                    prog
+                                  {{ [["ret" <-- (List.fold_left (@Word.wminus 32) seq 0) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
 Proof.
   econstructor; intros.
   repeat (compile_step || compile_loop).
@@ -46,26 +46,17 @@ Example other_test_with_adt''' `{FacadeWrapper (Value (list W)) (list W)} f:
                      prog
                    {{ [[`"ret" <~~  ( seq <- {s: list W | True };
                                     res <- fold_comp f seq (Word.natToWord 32 0: W);
-                                    ret (SCA _ res)) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
+                                    ret res) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
 Proof.
   econstructor; intros.
 
-  rewrite SameValues_Fiat_Bind_TelEq_Generic.
-  (* eapply ProgOk_Transitivity_Cons. *)
-  (* eapply ProgOk_Transitivity_Name. *)
+  repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
   eapply ProgOk_Transitivity_Name' with "seq".
 
   Focus 2.
-  unfold WrappedCons, WrapCons_Generic.
-  unfold WrapComp_Generic at 2.
 
-    Require Import QueryStructure.Specification.Operations.FlattenCompLis.
+  Require Import QueryStructure.Specification.Operations.FlattenCompList.
   Check flatten_CompList.
-
-
-  unfold WrappedCons, WrapCons_Generic.
-
-  compile_step.
 
   repeat (compile_step || compile_loop).
   let fop := translate_op Word.wminus in
@@ -74,9 +65,9 @@ Defined.
 
 
 Example other_test_with_adt'' :
-    sigT (fun prog => forall seq seq', {{ [["arg1" <-- ADT seq as _ ]] :: [["arg2" <--  ADT seq' as _]] :: Nil }}
+    sigT (fun prog => forall seq seq', {{ [["arg1" <-- seq as _ ]] :: [["arg2" <-- seq' as _]] :: Nil }}
                                  prog
-                               {{ [["arg1" <-- ADT (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+                               {{ [["arg1" <-- (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
 Proof.
   econstructor; intros.
 

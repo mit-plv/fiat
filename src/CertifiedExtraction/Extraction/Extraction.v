@@ -24,7 +24,7 @@ Ltac compile_do_use_transitivity_to_handle_head_separately :=
 Ltac compile_do_extend_scalar_lifetime :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre) with
-                       | @Cons _ W ?k _ _ =>
+                       | @Cons _ W _ ?k _ _ =>
                          match constr:(post, ext) with
                          | context[k] => fail 1 "Head variable appears in post-condition"
                          | _ => apply CompileDeallocSCA_discretely; [ compile_do_side_conditions.. | ]

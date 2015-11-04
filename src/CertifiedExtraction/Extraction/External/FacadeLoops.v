@@ -7,7 +7,7 @@ Require Import
 
 Lemma CompileLoop :
   forall `{FacadeWrapper av (list W)}
-    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc f,
+    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: W -> W -> W),
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list W))) env ->
