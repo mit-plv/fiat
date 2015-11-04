@@ -922,4 +922,23 @@ Section ListFacts.
     { left; congruence. }
     { right; eauto. }
   Qed.
+
+  Lemma nth_error_None_long {A} (n : nat) (ls : list A)
+  : nth_error ls n = None <-> List.length ls <= n.
+  Proof.
+    revert n; induction ls;
+    intros [|n]; try (specialize (IHls n); destruct IHls);
+    simpl in *; split; intros;
+    unfold value in *;
+    try (reflexivity || omega || congruence);
+    intuition.
+  Qed.
+
+  Lemma nth_error_Some_short {A} (n : nat) (x : A) (ls : list A)
+  : nth_error ls n = Some x -> n < List.length ls.
+  Proof.
+    destruct (le_lt_dec (List.length ls) n) as [H|H];
+    intro H'; trivial.
+    apply nth_error_None_long in H; congruence.
+  Qed.
 End ListFacts.
