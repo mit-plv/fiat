@@ -841,4 +841,15 @@ Section ListFacts.
     [ | destruct (b x); simpl; rewrite ?IHxs ];
     reflexivity.
   Qed.
+
+  Lemma in_up_to {n m} (H : n < m) : List.In n (up_to m).
+  Proof.
+    revert n H; induction m; intros n H.
+    { exfalso; omega. }
+    { simpl.
+      hnf in H.
+      apply le_S_n in H.
+      apply Compare_dec.le_lt_eq_dec in H.
+      destruct H; subst; [ right; eauto | left; reflexivity ]. }
+  Qed.
 End ListFacts.
