@@ -1,4 +1,4 @@
-.PHONY: all test test-reference
+.PHONY: all test test-reference test-pretty correctness
 
 all: test_ab_star.exe test_ab_star_reference.exe
 
@@ -8,6 +8,9 @@ test_ab_star.exe test_ab_star_reference.exe: %.exe : %.ml
 
 ab10:
 	echo -n "abababababababababab" > $@
+
+aba10:
+	echo -n "ababababababababababa" > $@
 
 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0 ab10.0.0.0.0.0.0 ab10.0.0.0.0.0.0.0 ab10.0.0.0.0.0.0.0.0 : %.0 : %
 	@cp -f $< $@
@@ -29,11 +32,11 @@ test: ab10.0.0.0.0.0 test_ab_star.exe test_ab_star_reference.exe
 	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
 	echo $$? >/dev/null; \
 	echo >/dev/null; \
-	echo "reference"; \
+	echo "reference $$F"; \
 	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
 	echo $$? >/dev/null; \
 	echo >/dev/null; \
-	echo "coq"; \
+	echo "coq $$F"; \
 	$(shell which time) -f "coq       $$FMT" ./test_ab_star.exe $$F; \
 	echo $$? >/dev/null; \
 	echo; \
@@ -50,3 +53,20 @@ test-reference: ab10.0.0.0.0.0 test_ab_star_reference.exe
 	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
 	echo $$?; \
 	done
+
+correctness: aba10 test_ab_star.exe test_ab_star_reference.exe
+	for F in ab10 aba10; do \
+	FMT="$(call make_fmt, $$F)"; \
+	echo "reference $$F"; \
+	$(shell which time) -f "reference $$FMT" ./test_ab_star_reference.exe $$F; \
+	echo $$?; \
+	echo >/dev/null; \
+	echo "coq $$F"; \
+	$(shell which time) -f "coq       $$FMT" ./test_ab_star.exe $$F; \
+	echo $$?; \
+	echo; \
+	echo; \
+	done
+
+test-pretty:
+	$(MAKE) -f $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)) test 2>&1 | python format-test-output.py
