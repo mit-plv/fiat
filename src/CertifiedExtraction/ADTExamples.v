@@ -6,14 +6,14 @@ Require Import
         CertifiedExtraction.Extraction.AllInternal
         CertifiedExtraction.Extraction.Extraction.
 
-Definition MyEnvLists `{FacadeWrapper av (list W)} :=
+Definition MyEnvLists `{FacadeWrapper av (list W)} : Env av :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
        ((GLabelMap.add ("list", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
           ((GLabelMap.add ("list", "pop") (Axiomatic List_pop))
              ((GLabelMap.add ("list", "delete") (Axiomatic (FacadeImplementationOfDestructor)))
                 ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
-                   (GLabelMap.empty (FuncSpec (list W)))))))).
+                   (GLabelMap.empty (FuncSpec _))))))).
 
 Example other_test_with_adt'' `{FacadeWrapper av (list W)}:
     sigT (fun prog => forall seq: list W, {{ [["arg1" <-- seq as _ ]] :: Nil }}
@@ -110,11 +110,65 @@ Proof.
   loop_t.
 Qed.
 
-Example other_test_with_adt''' `{FacadeWrapper av (list W)} f:
-    sigT (fun prog => {{ Nil }}
-                     prog
-                   {{ [[`"ret" <~~  ( seq <- {s: list W | True };
-                                    fold_comp f seq (ret (Word.natToWord 32 0: W))) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
+Lemma CompileLoop_strong :
+  forall `{FacadeWrapper av (list W)}
+    lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
+    env (ext: StringMap.t (Value av)) tenv tenv' (f: Comp W -> W -> Comp W),
+    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list W))) env ->
+    vtest ∉ ext ->
+    NotInTelescope vtest tenv ->
+    vlst ∉ ext ->
+    NotInTelescope vlst tenv ->
+    vret ∉ ext ->
+    NotInTelescope vret tenv ->
+    vhead ∉ ext ->
+    NotInTelescope vhead tenv ->
+    vtest <> vret ->
+    vtest <> vlst ->
+    vtest <> vhead ->
+    vret <> vlst ->
+    vret <> vhead ->
+    vlst <> vhead ->
+    {{ [[`vlst <~~ lst as _]] :: tenv }}
+      facadeInit
+    {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }}
+      facadeConclude
+    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    (forall head (acc: Comp W) (s: Comp (list W)),
+        {{ [[vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+          facadeBody
+        {{ [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[`vlst <~~ lst as _]] :: tenv }}
+      (Seq (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil)))) facadeConclude)
+    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  eapply CompileSeq;
+    [ apply CompileLoop | eassumption ];
+    assumption.
+Qed.
+
+Variable TSearchTerm : Type.
+Definition av := (list W + TSearchTerm)%type.
+
+Definition MyEnvListsB `{FacadeWrapper av (list W)} : Env av :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
+       ((GLabelMap.add ("list", "push!") (Axiomatic (FacadeImplementationOfMutation cons)))
+          ((GLabelMap.add ("list", "pop!") (Axiomatic List_pop))
+             ((GLabelMap.add ("list", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := list W))))
+                ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
+                   ((GLabelMap.add ("search", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := TSearchTerm))))
+                      (GLabelMap.empty (FuncSpec _)))))))).
+
+Example other_test_with_adt''' f (searchTerm: TSearchTerm):
+    sigT (fun prog => {{ [["search" <-- searchTerm as _]] :: (@Nil av) }}
+                      prog
+                      {{ [[`"ret" <~~  ( seq <- {s: list W | True };
+                                       fold_comp f seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
 Proof.
   econstructor; intros.
 
@@ -122,20 +176,32 @@ Proof.
 
   eapply ProgOk_Transitivity_Name' with "seq".
 
-  Focus 2.
+  instantiate (1 := Skip).       (* FIXME alloc *)
+  admit.
 
-  let av := av_from_ext (StringMap.empty (Value (list W))) in
+  let av := av_from_ext (StringMap.empty (Value av)) in
   let fpop := find_function_pattern_in_env
-               (fun w => (Axiomatic (List_pop (av := av) (H := w)))) MyEnvLists in
+               (fun w => (Axiomatic (List_pop (av := av) (H := w)))) MyEnvListsB in
   let fempty := find_function_pattern_in_env
-                 (fun w => (Axiomatic (List_empty (av := av) (H := w)))) MyEnvLists in
+                 (fun w => (Axiomatic (List_empty (av := av) (H := w)))) MyEnvListsB in
   let fdealloc := find_function_pattern_in_env
                    (fun w => (Axiomatic (FacadeImplementationOfDestructor
-                                        (A := list W) (av := av) (H := w)))) MyEnvLists in
+                                        (A := list W) (av := av) (H := w)))) MyEnvListsB in
   let vtest := gensym "test" in
   let vhead := gensym "head" in
-  apply (CompileLoop (vtest := vtest) (vhead := vhead) (fpop := fpop) (fempty := fempty) (fdealloc := fdealloc)); try compile_do_side_conditions; repeat compile_step.
+  apply (CompileLoop_strong (vtest := vtest) (vhead := vhead) (fpop := fpop) (fempty := fempty) (fdealloc := fdealloc));
+    try compile_do_side_conditions; repeat compile_step.
 
+  let fdealloc := find_function_pattern_in_env
+                   (fun w => (Axiomatic (FacadeImplementationOfDestructor
+                                        (A := TSearchTerm) (av := av) (H := w)))) MyEnvListsB in
+  let vtmp := gensym "tmp" in
+  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fdealloc) (vtmp := vtmp));
+    try compile_do_side_conditions.
+
+  let fpop := find_function_pattern_in_env
+               (fun w => (Axiomatic (List_pop (av := av) (H := w)))) MyEnvLists in pose fpop.
+  
 Defined.
 
 Example other_test_with_adt'' :
@@ -193,3 +259,4 @@ Abort.
   Proof.
     SameValues_Facade_t.
   Qed.
+ 
