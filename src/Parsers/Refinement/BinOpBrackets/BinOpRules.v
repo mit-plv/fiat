@@ -5,9 +5,6 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Computation.Refinements.General.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
@@ -15,7 +12,6 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedGrammar.
-(*Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpLemmas.*)
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
@@ -23,22 +19,13 @@ Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Export Fiat.Parsers.Reachable.ParenBalanced.Core.
-Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Refinement.PreTactics.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 
 Local Open Scope string_like_scope.
 
-(*Require Import Coq.Lists.List.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.StringLike.String.
-Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
-Require Import Fiat.Parsers.StringLike.FirstChar.
-Require Import Fiat.Common.
-Require Import Fiat.Parsers.Refinement.DisjointLemmas.
-Require Import Fiat.Parsers.StringLike.Core. *)
-
 Set Implicit Arguments.
-
-Local Opaque string_stringlike.
 
 Section helper_lemmas.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -89,6 +76,7 @@ Section helper_lemmas.
 End helper_lemmas.
 
 Section refine_rules.
+  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
   Context {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
@@ -127,7 +115,6 @@ Section refine_rules.
       specialize (Htable n).
       intros idx' Hsmall Hreachable pit pits; simpl.
       specialize (H_nt_hiding _ pit).
-      rewrite substring_take_drop in H_nt_hiding.
       unfold paren_balanced_hiding in *.
       rewrite take_take in H_nt_hiding.
       inversion pits.
@@ -152,7 +139,7 @@ Section refine_rules.
         left.
         destruct (Compare_dec.lt_eq_lt_dec idx idx') as [[?|?]|?];
           [
-          | subst; apply Min.min_r; rewrite substring_take_drop, take_length; assumption
+          | subst; apply Min.min_r; rewrite take_length; assumption
           | ];
           exfalso.
         { (** idx < idx'; this contradicts the paren-balanced-hiding
@@ -222,10 +209,10 @@ Section refine_rules.
     Lemma refine_binop_table'''
           (predata := rdp_list_predata (G := G))
           (H_nt_hiding : paren_balanced_hiding_correctness_type G nt)
-    : retT (list_of_next_bin_ops_opt str).
+    : retT (list_of_next_bin_ops_opt_nor str).
     Proof.
       apply refine_binop_table''; try assumption.
-      apply list_of_next_bin_ops_opt_satisfies_spec.
+      apply list_of_next_bin_ops_opt_nor_satisfies_spec.
     Qed.
   End derive_table.
 
@@ -288,7 +275,7 @@ Section refine_rules.
                | nil => false
                | _ => true
              end)
-    : retT (list_of_next_bin_ops_opt str).
+    : retT (list_of_next_bin_ops_opt_nor str).
     Proof.
       unfold correct_open_close, possible_valid_open_closes in *.
       subst pdata.
@@ -315,6 +302,9 @@ Global Arguments correct_open_close / .
 Global Arguments possible_open_closes / .
 Global Arguments possible_valid_open_closes / .
 Global Arguments bin_op_data_of_maybe / .
+Global Arguments default_list_of_next_bin_ops_opt_data / .
+Global Arguments take : simpl never.
+Global Arguments drop : simpl never.
 
 (** [simpl] is very slow at simplifying [correct_open_close], so we
     help it along.  If the machinery of [Defined] changes, we may have
@@ -327,5 +317,11 @@ Ltac presimpl_after_refine_binop_table :=
     | [ |- appcontext[@possible_valid_open_closes ?G ?nt ?ch] ]
       => let c := constr:(@possible_valid_open_closes G nt ch) in
          let c' := (eval lazy in c) in
+         change c with c'
+  end;
+  match goal with
+    | [ |- context[@default_list_of_next_bin_ops_opt_data ?HSL ?data] ]
+      => let c := constr:(@default_list_of_next_bin_ops_opt_data HSL data) in
+         let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
          change c with c'
   end.

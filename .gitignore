@@ -5,6 +5,7 @@
 *.bbl
 *.blg
 *.cm*
+*.exe
 *.glob
 *.log
 *.ml4.d
@@ -86,6 +87,7 @@
 /src/Makefile.coq
 /src/Overview
 /src/Parsers/Refinement/Testing/ab10*
+/src/Parsers/Refinement/Testing/aba10*
 /src/Parsers/Refinement/Testing/test_*
 /src/QueryStructure/Automation/RangeTreeBags.v
 /src/QueryStructure/QuerySpecs/ConstraintCheckUnfoldings.v

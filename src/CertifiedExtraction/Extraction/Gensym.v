@@ -27,7 +27,7 @@ Section GenSym.
     end.
 
   Definition NumberToString (n: nat) :=
-    NumberToString_rec (S n) n.
+    NumberToString_rec n (pred n).
 End GenSym.
 
 Ltac gensym_rec prefix start :=

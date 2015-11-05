@@ -10,7 +10,7 @@ Set Implicit Arguments.
 Section IndexedImpl.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec plus_expr_grammar).
+  : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     start sharpening ADT.
     start honing parser using indexed representation.
@@ -18,15 +18,16 @@ Section IndexedImpl.
     Time hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_binop_table; [ presimpl_after_refine_binop_table | reflexivity.. ].
+      let lem := constr:(@refine_binop_table _ _) in
+      setoid_rewrite lem; [ presimpl_after_refine_binop_table | reflexivity.. ].
       finish honing parser method.
     }
 
-    finish_SharpeningADT_WithoutDelegation.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec plus_expr_grammar).
+  : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     make_simplified_splitter ComputationalSplitter'.
   Defined.

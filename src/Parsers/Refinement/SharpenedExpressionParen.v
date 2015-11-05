@@ -1,14 +1,11 @@
 (** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ExpressionParen.
-Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
-
-Set Implicit Arguments.
 
 Section IndexedImpl.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec paren_expr_grammar).
+  : FullySharpened (string_spec paren_expr_grammar string_stringlike).
   Proof.
 
     start sharpening ADT.
@@ -16,16 +13,15 @@ Section IndexedImpl.
 
     hone method "splits".
     {
-      set_evars.
       simplify parser splitter.
       finish honing parser method.
     }
 
-    finish_SharpeningADT_WithoutDelegation.
+    finish_Sharpening_SplitterADT.
   Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec paren_expr_grammar).
+  : FullySharpened (string_spec paren_expr_grammar string_stringlike).
   Proof.
     make_simplified_splitter ComputationalSplitter'.
   Defined.

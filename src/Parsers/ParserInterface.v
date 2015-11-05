@@ -10,15 +10,6 @@ Reserved Infix "~=" (at level 70).
 Section interface.
   Context {Char} (G : grammar Char).
 
-  (** A production is reachable if it is the tail of a production
-      associated to a valid nonterminal. *)
-  Definition production_is_reachable (p : production Char) : Prop
-    := exists nt prefix,
-         List.In nt (Valid_nonterminals G)
-         /\ List.In
-              (prefix ++ p)
-              (Lookup G nt).
-
   (** A list of splits is complete if, for every reachable production,
       it contains every index of the string that yields a parse tree
       for that production by splitting at that index. *)
@@ -27,7 +18,7 @@ Section interface.
   : Prop
     := forall n,
          n <= length str
-         -> production_is_reachable (it::its)
+         -> production_is_reachable G (it::its)
          -> parse_of_item G (take n str) it
          -> parse_of_production G (drop n str) its
          -> List.In n (List.map (min (length str)) splits).

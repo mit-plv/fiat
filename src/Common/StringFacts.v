@@ -218,3 +218,11 @@ Lemma get_list_of_string str n
 Proof.
   rewrite <- get_string_of_list, string_of_list_of_string; reflexivity.
 Qed.
+
+Lemma substring_min_length str x y
+: substring x (min y (length str)) str = substring x y str.
+Proof.
+  apply Min.min_case_strong; try reflexivity.
+  intro H.
+  apply substring_correct4; omega.
+Qed.

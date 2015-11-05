@@ -9,8 +9,8 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 
 Set Implicit Arguments.
 
@@ -70,19 +70,20 @@ Section implementation.
   Context {string_like_lite : StringLike Ascii.ascii}
           split_string_for_production_lite
           (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_lite (parser_data splitter) split_string_for_production_lite).
-  Context (make_string : String.string -> @String _ splitter)
-          (R : @String _ splitter -> @String _ string_stringlike -> Prop)
+  Context (stringlike_stringlike : StringLike Ascii.ascii)
+          (make_string : @String _ stringlike_stringlike -> @String _ splitter)
+          (R : @String _ splitter -> @String _ stringlike_stringlike -> Prop)
           (R_make : forall str, R (make_string str) str)
           (R_respectful : transfer_respectful R)
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
-  Context constT varT {strC : str_carrier constT varT}.
+  Context constT varT {strC : @str_carrier _ string_like_lite constT varT}.
 
   Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_lite
     := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
-  Definition parser : Parser G string_stringlike.
+  Definition parser : Parser G stringlike_stringlike.
   Proof.
     apply grammar_rvalid_correct in Hvalid.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
@@ -91,7 +92,7 @@ Section implementation.
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R] in impl) in
     let impl := (eval simpl in impl') in
     refine (transfer_parser
-              (HSL1 := splitter) (HSL2 := string_stringlike)
+              (HSL1 := splitter) (HSL2 := stringlike_stringlike)
               (parser Hvalid (splitter := splitter)) make_string
               impl
               (fun str => eq_trans

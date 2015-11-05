@@ -1,57 +1,40 @@
-Ltac head_constant expr :=
-  match expr with
-  | ?f _ => head_constant f
-  | ?f => f
-  end.
+Require Import
+        Computation.Core.
+Require Export
+        CertifiedExtraction.CompUtils
+        CertifiedExtraction.PureUtils
+        CertifiedExtraction.FacadeUtils.
 
-Ltac no_duplicates :=
+Lemma wrap_inj `{FacadeWrapper AA A} :
+  forall (a1 a2: A),
+    wrap a1 = wrap a2 -> a1 = a2.
+Proof.
+  intros.
+  cut (Some a1 = Some a2); [ congruence | ].
+  rewrite <- !unwrap_wrap.
+  congruence.
+Qed.
+
+Ltac cleanup :=
   match goal with
-  | [ H: ?P, H': ?P' |- _ ] =>
-    match type of P with
-    | Prop => unify P P'; fail 2 "Duplicates found:" H "and" H' ":" P
-    | _ => fail
-    end
-  | _ => idtac
+  | _ => cleanup_pure
+  | _ => cleanup_facade_pure
+  | _ => progress computes_to_inv
+  | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
+  | [ H: unwrap ?v = Some ?vv |- _ ] => apply wrap_unwrap in H; subst v
+  | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
+  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
   end.
 
-Ltac deduplicate :=
+Ltac wipe :=
   repeat match goal with
-         | [ H: ?P, H': ?P' |- _ ] =>
-           match type of P with
-           | Prop => unify P P'; clear H' (* Fixme don't set evars? *)
-           | _ => fail
+         | [ H: ?a = ?a |- _ ] => clear dependent H
+         | [ H: forall _: State _, _ |- _ ] => clear dependent H
+         | [ H: ?h |- _ ] =>
+           let hd := head_constant h in
+           match hd with
+           | @Learnt => clear dependent H
+           | @Safe => clear dependent H
+           | @ProgOk => clear dependent H
            end
-         | _ => idtac
          end.
-
-(* Inductive Learnt : Prop -> Type := *)
-(*   | AlreadyKnown : forall A, Learnt A. *)
-
-(* Ltac learn fact := *)
-(*   let type := type of fact in *)
-(*   match goal with *)
-(*   | [ H: Learnt type |- _ ] => fail 1 fact "of type" type "is already known" *)
-(*   | _ => pose proof (AlreadyKnown type); pose proof fact *)
-(*   end. *)
-
-(* Definition Learnt {A} (a: A) := *)
-(*   True. *)
-
-(* Ltac learn fact := *)
-(*   match goal with *)
-(*   | [ H: Learnt fact |- _ ] => fail 1 fact "is already known" *)
-(*   | _ => assert (Learnt fact) by exact I; pose proof fact *)
-(*   end. *)
-
-Inductive Learnt {A: Type} (a: A) :=
-  | AlreadyKnown : Learnt a.
-
-Ltac learn fact :=
-  lazymatch goal with
-  | [ H: Learnt fact |- _ ] => fail 0 "fact" fact "has already been learnt"
-  | _ => let type := type of fact in
-        lazymatch goal with
-        | [ H: @Learnt type _ |- _ ] => fail 0 "fact" fact "of type" type "was already learnt through" H
-        | _ => pose proof (AlreadyKnown fact); pose proof fact
-        end
-  end.

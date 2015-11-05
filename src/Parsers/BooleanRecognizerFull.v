@@ -1,6 +1,7 @@
 (** * Brute-force boolean recognizer *)
 Require Import Coq.Classes.RelationClasses.
-Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
@@ -8,7 +9,9 @@ Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Set Implicit Arguments.
 
 Section example_parse_string_grammar.
-  Context (G : grammar Ascii.ascii).
+  Context (G : grammar Ascii.ascii)
+          {HSL : StringLike Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}.
 
   Definition brute_force_parse_nonterminal
   : @String Ascii.ascii _
@@ -35,6 +38,6 @@ Section example_parse_string_grammar.
     := let data := @brute_force_data Ascii.ascii _ G in parse_item (G := G) str.
 
   Definition brute_force_parse
-  : String.string -> bool
+  : String -> bool
     := fun str => brute_force_parse_nonterminal str G.
 End example_parse_string_grammar.

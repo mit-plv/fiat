@@ -4,7 +4,8 @@ Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.StringFacts.
@@ -159,13 +160,16 @@ Definition length_of_any {Char} (G : grammar Char) : String.string -> length_res
 
 Definition length_of_any_productions {Char} G := @length_of_any_productions' Char (@length_of_any Char G).
 
-Lemma has_only_terminals_parse_of_production_length (G : grammar Ascii.ascii) {n}
+Lemma has_only_terminals_parse_of_production_length
+      {HSL : StringLike Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      (G : grammar Ascii.ascii) {n}
       f pat
-      (H_f : forall nt str n', f nt = same_length n' -> parse_of G str (Lookup G nt) -> String.length str = n')
+      (H_f : forall nt str n', f nt = same_length n' -> parse_of G str (Lookup G nt) -> length str = n')
       (H : length_of_any_production' f pat = same_length n)
       str
       (p : parse_of_production G str pat)
-: String.length str = n.
+: length str = n.
 Proof.
   revert n H; induction p; simpl in *.
   { congruence. }
@@ -179,9 +183,9 @@ Proof.
                | _ => exfalso; discriminate
                | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
                | _ => progress subst
-               | [ H : parse_of_item _ _ (Terminal _) |- _ ] => let p := fresh in rename H into p; dependent destruction p
+               | [ H : parse_of_item _ _ (Terminal _) |- _ ] => inversion p; clear p
                | [ H : is_true (_ ~= [ _ ])%string_like |- _ ] => apply length_singleton in H
-               | [ H : _ |- _ ] => progress rewrite ?(@take_length _ string_stringlike _), ?(@drop_length _ string_stringlike _), ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub in H
+               | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub in H
                | [ H : context[min ?x (?y + ?z) - ?z] |- _ ] => rewrite <- (@NPeano.Nat.sub_min_distr_r x (y + z) z) in H
                | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ] => rewrite (@Min.min_l x y) in H by assumption
                | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite (@Min.min_r x y) in H by assumption
@@ -203,7 +207,7 @@ Proof.
                  | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
                  | _ => progress subst
                  | [ H : forall n, same_length _ = same_length n -> _ |- _ ] => specialize (H _ eq_refl)
-                 | _ => progress rewrite ?(@take_length _ string_stringlike _), ?(@drop_length _ string_stringlike _), ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub
+                 | _ => progress rewrite ?take_length, ?drop_length, ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub
                  | [ |- context[min ?x (?y + ?z) - ?z] ] => rewrite <- (@NPeano.Nat.sub_min_distr_r x (y + z) z)
                  | [ |- context[min (?x - ?y) ?x] ] => rewrite (@Min.min_l (x - y) x) by (clear; omega)
                  | [ H : parse_of_item _ _ (Terminal _) |- _ ] => let p := fresh in rename H into p; dependent destruction p
@@ -213,12 +217,15 @@ Proof.
                end. } }
 Qed.
 
-Lemma has_only_terminals_parse_of_length (G : grammar Ascii.ascii) {n}
+Lemma has_only_terminals_parse_of_length
+      {HSL : StringLike Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      (G : grammar Ascii.ascii) {n}
       nt
       (H : length_of_any G nt = same_length n)
       str
       (p : parse_of G str (Lookup G nt))
-: String.length str = n.
+: length str = n.
 Proof.
   unfold length_of_any, length_of_any_nt in H.
   revert n nt H str p.
@@ -279,12 +286,15 @@ Proof.
              end. } }
 Qed.
 
-Lemma has_only_terminals_parse_of_item_length (G : grammar Ascii.ascii) {n}
+Lemma has_only_terminals_parse_of_item_length
+      {HSL : StringLike Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      (G : grammar Ascii.ascii) {n}
       nt
       (H : length_of_any G nt = same_length n)
       str
       (p : parse_of_item G str (NonTerminal nt))
-: String.length str = n.
+: length str = n.
 Proof.
   dependent destruction p.
   eapply has_only_terminals_parse_of_length; eassumption.

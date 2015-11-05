@@ -24,6 +24,12 @@ Definition uniquize {A} (beq : A -> A -> bool) (ls : list A) : list A
        nil
        ls.
 
+Fixpoint up_to (n : nat) : list nat :=
+  match n with
+    | 0 => nil
+    | S n' => n'::up_to n'
+  end.
+
 Definition drop_all_but {A} (n : nat) (ls : list A) : list A
   := drop (List.length ls - n) ls.
 

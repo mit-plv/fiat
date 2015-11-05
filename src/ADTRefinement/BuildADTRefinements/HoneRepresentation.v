@@ -313,10 +313,10 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
   let Rep' :=
       match A with
           @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let ConstructorDom' := eval simpl in (ConstructorDom ASig) in
-  let consIdxB := eval simpl in
+  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
+  let MethodIndex' := eval compute in (MethodIndex ASig) in
+  let ConstructorDom' := eval compute in (ConstructorDom ASig) in
+  let consIdxB := eval compute in
   (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
       eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
                Rep'  _ _ consDefs methDefs consIdxB
@@ -377,10 +377,10 @@ Arguments DecADTSig : simpl never.
   let Rep' :=
       match A with
           @BuildADT ?Rep _ _ _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-  let MethodIndex' := eval simpl in (MethodIndex ASig) in
-  let MethodDomCod' := eval simpl in (MethodDomCod ASig) in
-  let methIdxB := eval simpl in
+  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
+  let MethodIndex' := eval compute in (MethodIndex ASig) in
+  let MethodDomCod' := eval compute in (MethodDomCod ASig) in
+  let methIdxB := eval compute in
   (ibound (indexb (@Build_BoundedIndex _ _ (Vector.map methID methSigs) methIdx _))) in
       eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
                 Rep' _ _ _ _ consDefs methDefs methIdxB

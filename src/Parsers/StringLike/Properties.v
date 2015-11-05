@@ -3,10 +3,14 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 Require Import Coq.Arith.Lt.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.
+Require Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
+
+Local Open Scope list_scope.
 
 Set Implicit Arguments.
 
@@ -400,17 +404,22 @@ Section String.
     setoid_subst_rel beq; reflexivity.
   Qed.
 
+  Lemma add_take_1_singleton (str : String) ch (H : str ~= [ ch ])
+  : take 1 str ~= [ ch ].
+  Proof.
+    rewrite take_long; [ assumption | ].
+    apply length_singleton in H; rewrite H; reflexivity.
+  Qed.
+
   Lemma take_n_1_singleton (str : String) n ch (H : take n str ~= [ ch ])
   : take 1 str ~= [ ch ].
   Proof.
-    assert (H' : take 1 (take n str) ~= [ ch ])
-      by (rewrite take_long; [ assumption | ];
-          apply length_singleton in H; rewrite H; reflexivity).
-    rewrite (take_take str 1 n) in H'.
-    destruct n; simpl min in H'.
-    { apply length_singleton in H'; rewrite take_length in H'.
-      simpl in H'; congruence. }
-    { exact H'. }
+    apply add_take_1_singleton in H.
+    rewrite (take_take str 1 n) in H.
+    destruct n; simpl min in H.
+    { apply length_singleton in H; rewrite take_length in H.
+      simpl in H; congruence. }
+    { exact H. }
   Qed.
 
   Lemma get_take_lt (str : String) n m (Hle : n < m)
@@ -452,4 +461,385 @@ Section String.
     intro H.
     apply bool_eq_empty; rewrite drop_length; omega.
   Qed.
+
+  Lemma not_is_char_options str ch
+  : (is_char str ch = false) <-> (length str <> 1 \/ get 0 str <> Some ch).
+  Proof.
+    destruct (is_char str ch) eqn:H;
+    (split; intro H'; try solve [ inversion H' | exact eq_refl ]).
+    { pose proof H as H0.
+      apply add_take_1_singleton, get_0 in H.
+      apply length_singleton in H0.
+      rewrite H, H0 in H'.
+      destruct H'; congruence. }
+    { destruct (Nat.eq_dec (length str) 1); [ right | left; assumption ].
+      intro H''.
+      apply get_0 in H''.
+      rewrite take_long in H'' by omega.
+      congruence. }
+  Qed.
+
+  Lemma is_char_parts str ch
+  : (is_true (is_char str ch)) <-> (length str = 1 /\ get 0 str = Some ch).
+  Proof.
+    destruct (is_char str ch) eqn:H;
+    (split; intro H'; try solve [ inversion H' | reflexivity ]).
+    { split.
+      { apply length_singleton in H; assumption. }
+      { apply get_0, add_take_1_singleton, H. } }
+    { apply not_is_char_options in H; tauto. }
+  Qed.
+
+  Local Ltac induction_to_string str IHlen :=
+    let H := fresh "H" in
+    let len := fresh "len" in
+    unfold fold;
+      generalize dependent str; intro str;
+      remember (length str) as len eqn:H;
+      revert str H;
+      induction len as [|len IHlen]; simpl; intros;
+      [
+      | specialize (IHlen (drop 1 str));
+        rewrite drop_length in IHlen;
+        specialize_by omega;
+        try rewrite <- !H, !minus_diag;
+        try rewrite <- fold'_drop in IHlen by omega ].
+
+  Lemma to_string_length str
+  : List.length (to_string str) = length str.
+  Proof.
+    induction_to_string str IHlen; trivial.
+    destruct (get 0 str) eqn:H'; simpl; [ rewrite IHlen; reflexivity | ].
+    apply no_first_char_empty in H'; omega.
+  Qed.
+
+  Local Ltac take_drop_to_string_t0 :=
+    repeat match goal with
+             | _ => progress specialize_by omega
+             | _ => reflexivity
+             | _ => omega
+             | _ => progress subst
+             | [ H : context[S _ - S _] |- _ ] => rewrite Nat.sub_succ in H
+             | [ H : context[S ?x - ?x] |- _ ] => replace (S x - x) with 1 in H by omega
+             | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
+             | _ => discriminate
+             | [ H : context[_ + 1] |- _ ] => rewrite Nat.add_1_r in H
+             | [ |- context[match get 0 ?s with _ => _ end] ] => destruct (get 0 s) eqn:?
+             | [ H : get 0 ?str = None |- _ ] => apply no_first_char_empty in H
+             | [ H : _ = ?x |- _ = ?x ] => rewrite <- H; clear H
+             | [ H : ?x = _ |- ?x = _ ] => rewrite H; clear H
+             | [ H : context[length (drop _ _)] |- _ ] => rewrite drop_length in H
+             | [ |- context[length (drop _ _)] ] => rewrite drop_length
+             | [ H : context[length (take _ _)] |- _ ] => rewrite take_length in H
+             | [ |- context[length (take _ _)] ] => rewrite take_length
+             | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
+             | [ H : context[_ - 0] |- _ ] => rewrite Nat.sub_0_r in H
+             | [ |- context[fold' _ _ (drop _ _) _] ] => rewrite <- fold'_drop by (rewrite ?take_length; try apply Min.min_case_strong; omega)
+             | [ H : context[fold' _ _ (drop _ _) _] |- _ ] => rewrite <- fold'_drop in H by omega
+             | [ H : ?x = ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
+             | [ H : ?y = ?x |- context[?x - ?y] ] => replace (x - y) with 0 by omega
+             | [ |- cons _ _ = cons _ _ ] => apply f_equal2
+             | [ H : context[get _ (drop 0 ?str)] |- _ ] => rewrite (drop_0 str) in H
+             | [ H : ?x = Some ?c, H' : ?y = Some ?c' |- _ ]
+               => not constr_eq c c'; is_var c; is_var c';
+                  assert (c = c') by congruence; subst
+             | _ => progress simpl in *
+             | [ |- context[fold' _ _ (drop _ (drop _ _)) _] ] => rewrite drop_drop
+             | [ |- context[?x + 1] ] => rewrite Nat.add_1_r
+             | [ H : S _ = ?x |- context[match ?x with _ => _ end] ] => rewrite <- H
+             | [ H : S _ = ?x, H' : context[match ?x with _ => _ end] |- _ ] => rewrite <- H in H'
+             | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
+             | [ |- context[?x - ?x] ] => rewrite minus_diag
+             | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
+             | [ H : context[min (pred ?x) ?x] |- _ ] => rewrite (Min.min_l (pred x) x) in H by omega
+             | [ |- context[take _ (drop _ _)] ] => rewrite take_drop
+             | [ |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by omega
+             | [ |- context[get _ (drop 0 ?s)] ] => rewrite (drop_0 s)
+             | [ |- context[get _ (drop _ (drop _ _))] ] => rewrite drop_drop
+             | [ H : S ?x = ?y, H' : S ?z = ?y |- _ ]
+               => is_var x; not constr_eq x z; assert (x = z) by omega; subst
+             | [ H : S ?x = ?y, H' : ?y = S ?z |- _ ]
+               => is_var x; not constr_eq x z; assert (x = z) by omega; subst
+             | [ H : get ?n ?s = None |- _ ] => not constr_eq n 0; rewrite get_drop in H
+           end.
+
+  Local Ltac take_drop_to_string_t s n :=
+    unfold fold; rewrite ?drop_length, ?take_length;
+    revert n;
+    let IHlen := fresh "IHlen" in
+    induction_to_string s IHlen;
+      destruct n as [|n];
+      try specialize (IHlen n);
+      take_drop_to_string_t0.
+
+  Lemma drop_to_string s n
+  : Operations.drop n (to_string s) = to_string (drop n s).
+  Proof.
+    take_drop_to_string_t s n.
+  Qed.
+
+  Lemma take_to_string s n
+  : Operations.take n (to_string s) = to_string (take n s).
+  Proof.
+    destruct (le_lt_dec (length s) n) as [H|H].
+    { rewrite take_long by assumption.
+      rewrite take_all by (rewrite to_string_length; assumption).
+      reflexivity. }
+    { revert H.
+      take_drop_to_string_t s n. }
+  Qed.
+
+  Lemma nth_to_string s n
+  : List.nth_error (to_string s) n = get n s.
+  Proof.
+    rewrite get_drop.
+    symmetry.
+    take_drop_to_string_t s n;
+      try solve [ apply has_first_char_nonempty; rewrite ?drop_length; omega ].
+  Qed.
+
+  Lemma beq_to_string {s s'}
+  : to_string s = to_string s' <-> s =s s'.
+  Proof.
+    split.
+    { intro H; apply bool_eq_from_get; intro n.
+      rewrite <- !nth_to_string, H; reflexivity. }
+    { intro; setoid_subst_rel beq.
+      reflexivity. }
+  Qed.
+
+  Lemma is_char_to_string s ch
+  : is_char s ch <-> to_string s = (ch::nil)%list.
+  Proof.
+    induction_to_string s IHlen.
+    { split; intro H'; exfalso; try congruence.
+      apply length_singleton in H'; omega. }
+    { clear IHlen.
+      take_drop_to_string_t0.
+      split; intro H'.
+      { pose proof (add_take_1_singleton _ _ H') as H''.
+        apply length_singleton in H'.
+        apply get_0 in H''.
+        take_drop_to_string_t0. }
+      { take_drop_to_string_t0.
+        rewrite <- take_long by reflexivity.
+        match goal with
+          | [ H : S ?len = length ?s |- _ ] => is_var len; destruct len; rewrite <- H
+        end.
+        { apply get_0; assumption. }
+        { take_drop_to_string_t0.
+          match goal with
+            | [ H : context[match get ?n ?s with _ => _ end] |- _ ] => destruct (get n s) eqn:?
+          end;
+          take_drop_to_string_t0. } } }
+  Qed.
+
+  Section substring.
+    Local Ltac substring_t' :=
+      idtac;
+      match goal with
+        | [ |- beq _ _ ] => reflexivity
+        | [ |- _ = _ ] => reflexivity
+        | _ => assumption
+        | [ H : length ?s = 0 |- beq _ ?s ] => apply bool_eq_empty
+        | [ H : length ?s = 0 |- beq ?s _ ] => apply bool_eq_empty
+        | _ => progress rewrite ?drop_0, ?take_long, ?take_length, ?drop_length by trivial
+        | _ => progress rewrite <- ?Nat.sub_min_distr_r, ?Nat.add_sub by trivial
+        | _ => rewrite !take_long by (rewrite drop_length; omega)
+        | [ |- context[min ?x ?y] ]
+          => match goal with
+               | [ |- context[min y x] ]
+                 => rewrite (Min.min_comm x y)
+             end
+        | _ => repeat apply Min.min_case_strong; omega
+      end.
+
+    Local Ltac substring_t := repeat substring_t'.
+
+    Lemma substring_correct3 {s : String} m (H : length s <= m)
+    : substring 0 m s =s s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct3' {s : String}
+    : substring 0 (length s) s =s s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_length {s n m}
+    : length (substring n m s) = (min (length s) (m + n)) - n.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0_length {s : String} {n}
+    : length (substring n 0 s) = 0.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0 {s s' : String} {n} (H : length s' = 0)
+    : substring n 0 s =s s'.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0'_length {s : String} {n m} (H : length s <= n)
+    : length (substring n m s) = 0.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct0' {s s' : String} {n m} (H : length s <= n) (H' : length s' = 0)
+    : substring n m s =s s'.
+    Proof. substring_t. Qed.
+
+    Lemma substring_correct4 {s : String} {n m m'}
+          (H : length s <= n + m) (H' : length s <= n + m')
+    : substring n m s =s substring n m' s.
+    Proof. substring_t. Qed.
+
+    Lemma substring_substring {s n m n' m'}
+    : substring n m (substring n' m' s) =s substring (n + n') (min m (m' - n)) s.
+    Proof.
+      rewrite !drop_take, !take_take, !drop_drop; reflexivity.
+    Qed.
+
+    Lemma substring_min {x x' y y' z str} (H : substring x y str =s substring x' y' str)
+    : substring x (min y z) str =s substring x' (min y' z) str.
+    Proof.
+      pose proof (fun y x => @substring_substring str 0 z x y) as H'; simpl in *.
+      setoid_rewrite Nat.sub_0_r in H'.
+      setoid_rewrite Min.min_comm in H'.
+      rewrite <- !H', H; reflexivity.
+    Qed.
+
+    Lemma substring_min_length str x y
+    : substring x (min y (length str)) str =s substring x y str.
+    Proof.
+      apply Min.min_case_strong; try reflexivity.
+      intro H.
+      apply substring_correct4; omega.
+    Qed.
+  End substring.
 End String.
+
+Section Iso.
+  Context {Char} {HSL : StringLike Char} {HSI : StringIso Char}
+          {HSLP : StringLikeProperties Char} {HSIP : StringIsoProperties Char}.
+
+  Lemma length_of_string_nil
+  : length (of_string nil) = 0.
+  Proof.
+    apply no_first_char_empty.
+    rewrite get_of_string; reflexivity.
+  Qed.
+
+  Lemma drop_of_string (n : nat) str
+  : drop n (of_string str) =s of_string (Operations.drop n str).
+  Proof.
+    apply bool_eq_from_get.
+    intro n'; rewrite get_drop', !get_of_string, nth_error_drop.
+    reflexivity.
+  Qed.
+
+  Lemma take_of_string (n : nat) str
+  : take n (of_string str) =s of_string (Operations.take n str).
+  Proof.
+    revert str; induction n; intros; simpl.
+    { apply bool_eq_empty; rewrite ?take_length, ?drop_length; trivial.
+      apply length_of_string_nil. }
+    { apply bool_eq_from_get.
+      intros [].
+      { destruct str as [|ch str]; simpl;
+        repeat match goal with
+                 | _ => progress simpl
+                 | _ => reflexivity
+                 | _ => progress rewrite ?get_take_lt, ?get_of_string, ?take_length, ?length_of_string_nil
+                       by (reflexivity || omega)
+               end. }
+      { intro n'; rewrite !get_S.
+        rewrite drop_take, !drop_of_string; simpl.
+        rewrite NPeano.Nat.sub_0_r.
+        destruct str; simpl;
+        rewrite !IHn; simpl; trivial.
+        destruct n; reflexivity. } }
+  Qed.
+
+  Lemma of_string_length str
+  : length (of_string str) = List.length str.
+  Proof.
+    induction str as [|ch str IHstr].
+    { apply no_first_char_empty.
+      rewrite get_of_string; reflexivity. }
+    { simpl; rewrite <- IHstr; clear IHstr.
+      assert (H : of_string str =s drop 1 (of_string (ch :: str))) by (rewrite drop_of_string; reflexivity).
+      rewrite H, drop_length.
+      destruct (length (of_string (ch::str))) eqn:H'.
+      { apply has_first_char_nonempty in H'.
+        rewrite get_of_string in H'; simpl in H'.
+        inversion H'. }
+      { omega. } }
+  Qed.
+
+  Lemma is_char_of_string str ch
+  : is_true (is_char (of_string str) ch) <-> str = (ch::nil).
+  Proof.
+    split; intro H;
+    [ pose proof (length_singleton _ _ H) as H';
+      rewrite of_string_length in H'
+    | ];
+    (destruct str as [|ch' [|ch'' str]];
+     simpl in *; try discriminate);
+    change (ch' :: nil) with (Operations.take 1 (ch'::nil)) in *;
+    repeat match goal with
+             | [ H : _ |- _ ] => progress rewrite <- ?take_of_string, ?get_of_string in H
+             | _ => progress rewrite <- ?take_of_string, ?get_of_string
+             | _ => progress simpl in *
+             | [ H : is_true (is_char _ _) |- _ ] => apply get_0 in H
+             | [ |- is_true (is_char _ _) ] => apply get_0
+             | _ => progress unfold value in *
+             | [ H : Some _ = Some _ |- _ ] => inversion_clear H
+             | [ H : _::_ = _::_ |- _ ] => inversion_clear H
+             | _ => reflexivity
+           end.
+  Qed.
+
+  Lemma substring_of_string {n m str}
+  : substring n m (of_string str) =s of_string (Operations.take m (Operations.drop n str)).
+  Proof.
+    rewrite <- take_of_string, <- drop_of_string; reflexivity.
+  Qed.
+
+  Lemma to_of_string str
+  : to_string (of_string str) = str.
+  Proof.
+    induction str.
+    { unfold fold, fold'.
+      rewrite of_string_length; simpl.
+      reflexivity. }
+    { rewrite fold_recr.
+      rewrite get_of_string; simpl.
+      rewrite drop_of_string; simpl.
+      rewrite IHstr.
+      reflexivity. }
+  Qed.
+
+  Lemma of_to_string str
+  : of_string (to_string str) =s str.
+  Proof.
+    remember (length str) as n eqn:H.
+    revert str H; induction n; intros.
+    { unfold fold.
+      apply bool_eq_empty; rewrite <- H, ?of_string_length; reflexivity. }
+    { rewrite fold_recr.
+      apply bool_eq_from_get.
+      intros [|n'].
+      { destruct (get 0 str) eqn:H'.
+        { rewrite get_of_string; reflexivity. }
+        { apply no_first_char_empty in H'; congruence. } }
+      { rewrite !get_S.
+        rewrite <- (IHn (drop 1 str)) by (rewrite drop_length; omega).
+        rewrite drop_of_string.
+        destruct (get 0 str) eqn:H'; simpl.
+        { reflexivity. }
+        { apply no_first_char_empty in H'; congruence. } } }
+  Qed.
+
+  Lemma beq_of_string {s s'}
+  : of_string s =s of_string s' <-> s = s'.
+  Proof.
+    rewrite <- beq_to_string, !to_of_string.
+    reflexivity.
+  Qed.
+End Iso.

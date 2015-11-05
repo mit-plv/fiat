@@ -6,7 +6,6 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
-Require Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.FirstChar.
@@ -583,9 +582,8 @@ pb = pb' '+' 0
   Qed.
 End make_table.
 
-Import Fiat.Parsers.StringLike.String.
-
 Section for_string.
+  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
   Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
 
   Definition list_of_next_bin_ops'_step'_opt
@@ -611,7 +609,7 @@ Section for_string.
               | None => snd table_higher_ops
             end))).
 
-  Definition list_of_next_bin_ops'_opt0 (str : String.string)
+  Definition list_of_next_bin_ops'_opt0 (str : String)
   : option (list (option nat)) * list (option nat)
     := fold
          list_of_next_bin_ops'_step_opt
@@ -622,12 +620,14 @@ Section for_string.
     Local Arguments fold / .
     Local Arguments fold' / .
     Local Arguments list_of_next_bin_ops'_opt0 / .
-    Definition list_of_next_bin_ops'_opt (str : String.string)
+    Local Arguments list_of_next_bin_ops'_step_opt / .
+    Local Arguments list_of_next_bin_ops'_step'_opt / .
+    Definition list_of_next_bin_ops'_opt (str : String)
     : option (list (option nat)) * list (option nat)
       := Eval simpl in list_of_next_bin_ops'_opt0 str.
   End no_fold.
 
-  Definition list_of_next_bin_ops_opt (str : String.string)
+  Definition list_of_next_bin_ops_opt (str : String)
     := let ls' := list_of_next_bin_ops'_opt str in
        match fst ls' with
          | Some ls'' => nth 0 ls'' None :: snd ls'
@@ -697,3 +697,85 @@ Section for_string.
     apply list_of_next_bin_ops_satisfies_spec.
   Qed.
 End for_string.
+
+Section no_records.
+  Section specialized.
+    Context {String : Type}.
+
+    Class list_of_next_bin_ops_opt_data :=
+      { is_open : Ascii.ascii -> bool;
+        is_close : Ascii.ascii -> bool;
+        is_bin_op : Ascii.ascii -> bool;
+        length : String -> nat;
+        get : nat -> String -> option Ascii.ascii }.
+    Context {ldata : list_of_next_bin_ops_opt_data}.
+
+    Section exploded.
+      Context (is_char : String -> Ascii.ascii -> bool)
+              (take : nat -> String -> String)
+              (drop : nat -> String -> String)
+              (bool_eq : String -> String -> bool).
+
+      Local Instance temp_pbh : paren_balanced_hiding_dataT Ascii.ascii
+        := { is_open := is_open;
+             is_close := is_close;
+             is_bin_op := is_bin_op }.
+
+      Local Instance temp_hsl : StringLike Ascii.ascii
+        := { is_char := is_char;
+             length := length;
+             drop := drop;
+             take := take;
+             get := get;
+             bool_eq := bool_eq }.
+
+      Local Arguments list_of_next_bin_ops'_opt / .
+      Definition list_of_next_bin_ops'_opt_nor' (str : String)
+      : option (list (option nat)) * list (option nat)
+        := Eval simpl in list_of_next_bin_ops'_opt (str : @StringLike.String _ temp_hsl).
+    End exploded.
+
+    Definition list_of_next_bin_ops'_opt_nor (str : String)
+    : option (list (option nat)) * list (option nat)
+      := Eval unfold list_of_next_bin_ops'_opt_nor' in list_of_next_bin_ops'_opt_nor' str.
+
+    Definition list_of_next_bin_ops_opt_nor (str : String)
+      := let ls' := list_of_next_bin_ops'_opt_nor str in
+         match fst ls' with
+           | Some ls'' => nth 0 ls'' None :: snd ls'
+           | None => snd ls'
+         end.
+  End specialized.
+
+  Section correct.
+    Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
+    Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
+
+    Global Instance default_list_of_next_bin_ops_opt_data : list_of_next_bin_ops_opt_data
+      := { is_open := ParenBalanced.Core.is_open;
+           is_close := ParenBalanced.Core.is_close;
+           is_bin_op := ParenBalanced.Core.is_bin_op;
+           length := StringLike.length;
+           get := StringLike.get }.
+
+    Lemma list_of_next_bin_ops'_opt_nor_correct (str : String)
+    : list_of_next_bin_ops'_opt_nor str
+      = (nth 0 (map Some (list_of_next_bin_ops' str)) None,
+         tl (map (fun ls => nth 0 ls None) (list_of_next_bin_ops' str))).
+    Proof.
+      exact (list_of_next_bin_ops'_opt_correct str).
+    Qed.
+
+    Lemma list_of_next_bin_ops_opt_nor_correct (str : String)
+    : list_of_next_bin_ops_opt_nor str = list_of_next_bin_ops str.
+    Proof.
+      exact (list_of_next_bin_ops_opt_correct str).
+    Qed.
+
+    Lemma list_of_next_bin_ops_opt_nor_satisfies_spec (str : String)
+    : list_of_next_bin_ops_spec (list_of_next_bin_ops_opt_nor str) str.
+    Proof.
+      exact (list_of_next_bin_ops_opt_satisfies_spec str).
+    Qed.
+  End correct.
+End no_records.

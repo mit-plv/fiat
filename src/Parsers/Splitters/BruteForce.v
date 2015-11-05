@@ -5,29 +5,14 @@ Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Common.
+Require Import Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.ListFacts.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section brute_force_splitter.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
-
-  Fixpoint up_to (n : nat) : list nat :=
-    match n with
-      | 0 => nil
-      | S n' => n'::up_to n'
-    end.
-
-  Lemma in_up_to {n m} (H : n < m) : List.In n (up_to m).
-  Proof.
-    revert n H; induction m; intros n H.
-    { exfalso; omega. }
-    { simpl.
-      hnf in H.
-      apply le_S_n in H.
-      apply Compare_dec.le_lt_eq_dec in H.
-      destruct H; subst; [ right; eauto | left; reflexivity ]. }
-  Qed.
 
   Definition make_all_single_splits (str : String) : list nat
     := (length str)::up_to (length str).

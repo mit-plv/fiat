@@ -1,11 +1,8 @@
 (** First step of a splitter refinement; indexed representation, and handle all rules with at most one nonterminal; leave a reflective goal *)
 Require Import Coq.Strings.String Coq.Arith.Lt Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
@@ -22,6 +19,8 @@ Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Computation.SetoidMorphisms.
+Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 
 Set Implicit Arguments.
 
@@ -276,20 +275,33 @@ Section helpers.
   End generic_string.
 End helpers.
 
-Section IndexedImpl.
-  Context (G : grammar Ascii.ascii).
+Module Export PrettyNotations.
+  Global Arguments Compare_dec.leb !_ !_.
 
-  Local Notation T := (String.string * (nat * nat))%type (only parsing).
-
-  Local Notation string_of_indexed s :=
+  Notation string_of_indexed s :=
     (substring (fst (snd s)) (snd (snd s)) (fst s))
       (only parsing).
-  Local Notation ilength s :=
-    (min (String.length (fst s) - fst (snd s)) (snd (snd s)))
+  Notation ilength s :=
+    (snd (snd s))
       (only parsing).
-  Local Notation iget n s :=
-    (get n (string_of_indexed s))
+  Notation iget n s :=
+    (if Compare_dec.leb (S n) (snd (snd s))
+     then get (n + fst (snd s)) (fst s)
+     else None)
       (only parsing).
+  Notation iis_char s ch :=
+    (((EqNat.beq_nat (ilength s) 1)
+        && option_beq ascii_beq (get (fst (snd s)) (fst s)) (Some ch))%bool)
+      (only parsing).
+End PrettyNotations.
+
+Section IndexedImpl.
+  Context {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
+          {HSEP : StringEqProperties Ascii.ascii}.
+  Context (G : grammar Ascii.ascii).
+
+  Local Notation T := (String * (nat * nat))%type (only parsing).
 
   Definition expanded_fallback_list'
              (P : String -> item Ascii.ascii -> production Ascii.ascii -> item Ascii.ascii -> production Ascii.ascii -> list nat -> Prop)
@@ -443,16 +455,16 @@ Section IndexedImpl.
   (** Reference implementation of a [String] that can be split; has a [string], and a start index, and a length *)
   Open Scope ADTParsing_scope.
 
-  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii) :=
+  Definition rindexed_spec' P : ADT (string_rep Ascii.ascii String) :=
     ADTRep T {
-    Def Constructor1 "new" (s : String.string) : rep :=
-      ret (s, (0, String.length s)),
+    Def Constructor1 "new" (s : String) : rep :=
+      ret (s, (0, length s)),
 
-    Def Method0 "to_string"(s : rep) : rep * String.string :=
+    Def Method0 "to_string"(s : rep) : rep * String :=
       ret (s, string_of_indexed s),
 
     Def Method1 "is_char"(s : rep) (ch : Ascii.ascii) : rep * bool  :=
-      ret (s, string_beq (string_of_indexed s) (String.String ch "")),
+      ret (s, iis_char s ch),
 
     Def Method1 "get"(s : rep) (n : nat) : rep * (option Ascii.ascii)  :=
       ret (s, iget n s),
@@ -464,14 +476,14 @@ Section IndexedImpl.
       ret ((fst s, (fst (snd s), min (snd (snd s)) n))),
 
     Def Method1 "drop"(s : rep) (n : nat) : rep :=
-      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr))),
+      ret ((fst s, (min n (snd (snd s)) + fst (snd s), (snd (snd s) - n)%natr))),
 
     Def Method2 "splits"(s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) : rep * (list nat) :=
       dummy <- { ls : list nat | True };
       expanded_fallback_list' P s i p dummy
   }.
 
-  Definition rindexed_spec : ADT (string_rep Ascii.ascii)
+  Definition rindexed_spec : ADT (string_rep Ascii.ascii String)
     := rindexed_spec' (fun str it its _ _ => split_list_is_complete G str it its).
 
   Local Ltac fin :=
@@ -489,10 +501,18 @@ Section IndexedImpl.
                  [ let H := fresh in intro H; try rewrite H; eapply ReturnComputes | ]
              | [ |- computes_to (Pick _) _ ]
                => eapply PickComputes
+             | [ |- context[substring _ _ (substring _ _ _)] ]
+                 => rewrite substring_substring
+             | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
+             | [ |- context[substring _ (min _ (length ?str)) ?str] ]
+               => rewrite substring_min_length
+             | [ |- context[_ + 0] ] => rewrite Plus.plus_0_r
+             | [ |- context[min ?x ?x] ]
+               => rewrite (Min.min_idempotent x)
              | _ => reflexivity
              | _ => assumption
            end;
-    try solve [ rewrite substring_correct3'; reflexivity
+    try solve [ rewrite !substring_correct3'; reflexivity
               | repeat match goal with
                          | _ => intro
                          | [ |- context[min ?x ?x] ]
@@ -530,12 +550,14 @@ Section IndexedImpl.
                          | [ H : parse_of_production _ _ (_::_) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
                          | [ H : parse_of_item _ _ (Terminal _) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
                          | [ H : parse_of_item _ _ (NonTerminal _) |- _ ] => let H' := fresh in rename H into H'; dependent destruction H'
+                         | [ H : length (substring ?n ?m ?s) = _, H' : context[length (substring ?n ?m ?s)] |- _ ] => rewrite H in H'
+                         | [ H : context[length (take _ _)] |- _ ] => rewrite take_length in H
                          | _ => erewrite <- has_only_terminals_length by eassumption
-                         | [ H : _ |- _ ] => progress rewrite ?(@drop_length _ string_stringlike string_stringlike_properties), ?(@take_length _ string_stringlike string_stringlike_properties), ?substring_length, ?Nat.add_sub, <- ?plus_n_O, ?Minus.minus_diag, ?Nat.sub_0_r, ?sub_plus in H by omega
+                         | [ H : _ |- _ ] => progress rewrite ?(@drop_length _ HSL HSLP), ?(@take_length _ HSL HSLP), ?substring_length, ?Nat.add_sub, <- ?plus_n_O, ?Minus.minus_diag, ?Nat.sub_0_r, ?sub_plus in H by omega
                          | _ => progress rewrite ?drop_length, ?take_length, ?substring_length, ?Nat.add_sub, ?Minus.minus_diag, ?Nat.sub_0_r, <- ?plus_n_O, ?sub_plus by omega
                          | [ H : is_true (string_beq _ _) |- _ ] => apply string_bl in H
                          | [ |- _ \/ False ] => left
-                         | [ H : substring _ _ _ = String.String _ _ |- _ = _ :> nat ] => apply (f_equal String.length) in H; simpl in H
+                         | [ H : String.substring _ _ _ = String.String _ _ |- _ = _ :> nat ] => apply (f_equal String.length) in H; simpl in H
                          | [ H : context[(_ ~= [ _ ])%string_like] |- _ ]
                            => apply length_singleton in H
                          | [ |- context[min ?x (?y + ?z) - ?z] ]
@@ -561,6 +583,8 @@ Section IndexedImpl.
                          | [ H : context[?x - ?y], H' : ?x <= ?y |- _ ]
                            => rewrite (proj2 (@Nat.sub_0_le x y)) in H by exact H'
                          | [ H : context[min 0 ?x] |- _ ] => change (min 0 x) with 0 in H
+                         | [ |- context[min (min _ ?x) (?x - ?y)] ]
+                           => rewrite <- (Min.min_assoc _ x (x - y)), (Min.min_r x (x - y)) by omega
                          | [ |- 1 = ?x ] => is_var x; destruct x
                          | [ |- 1 = S ?x ] => is_var x; destruct x
                          | [ H : _ <= 0 |- _ ] => apply Le.le_n_0_eq in H; symmetry in H
@@ -629,21 +653,245 @@ Section IndexedImpl.
 
   Local Transparent expanded_fallback_list'.
 
+  Local Ltac pre_fin' :=
+    idtac;
+    match goal with
+      | [ |- True ] => constructor
+      | _ => progress computes_to_inv
+      | _ => progress subst
+      | [ |- _ = _ ] => reflexivity
+      | _ => progress simpl @fst
+      | _ => progress simpl @snd
+      | _ => progress simplify with monad laws
+      | [ |- (_, _) = (_, _) ] => apply f_equal2
+      | [ |- fst ?e =s ?r ]
+        => is_evar e; refine (_ : fst (_, _) =s r); simpl @fst
+      | [ |- computes_to (Bind _ _) _ ]
+        => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
+      | [ |- computes_to (Return ?x) ?y ]
+        => cut (x = y);
+          [ let H := fresh in intro H; try rewrite H; (exact (ReturnComputes x) || exact (ReturnComputes y)) | ]
+      | [ |- computes_to (Pick _) _ ]
+        => eapply PickComputes
+      | [ H : _ /\ _ |- _ ] => destruct H
+      | [ |- _ /\ _ ] => split
+      | _ => omega
+      | [ |- _ = _ :> String ] => apply bool_eq_bl
+      | [ |- _ =s _ ] => reflexivity
+    end.
+  Local Ltac pre_fin := repeat pre_fin'.
+
+  Local Arguments EqNat.beq_nat : simpl never.
+
+  Local Ltac do_Iterate_Ensemble_BoundedIndex_equiv :=
+    eapply Iterate_Ensemble_BoundedIndex_equiv;
+    cbv beta iota zeta delta [Iterate_Ensemble_BoundedIndex Constructors Methods Iterate_Ensemble_BoundedIndex' string_spec BuildADT getConsDef getMethDef ith icons inil Vector.caseS Vector_caseS' ilist_hd ilist_tl ilist.prim_fst ilist.prim_snd consBody methBody ConstructorDom Rep string_rep DecADTSig BuildADTSig consDom Vector.nth MethodDomCod methDom methCod refineConstructor refineMethod refineMethod'];
+    simpl @fst; simpl @snd;
+    repeat match goal with
+             | [ |- prim_and _ _ ] => split
+           end;
+    intros;
+    try simplify with monad laws;
+    repeat intro;
+    pre_fin.
+
+  Local Ltac fin_common' :=
+    idtac;
+    match goal with
+      | [ |- ?b = ?b' :> bool ]
+        => (destruct b eqn:?; destruct b' eqn:?);
+          (reflexivity || exfalso)
+      | _ => progress subst
+      | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+      | [ |- context[min ?x ?x] ]
+        => rewrite (Min.min_idempotent x)
+      | [ |- List.In ?x [?y] ] => left
+      | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+      | [ |- _ \/ False ] => left
+      | [ H : context[if Compare_dec.leb ?x ?y then _ else _] |- _ ]
+        => destruct (Compare_dec.leb x y) eqn:?
+      | [ |- context[if Compare_dec.leb ?x ?y then _ else _] ]
+        => destruct (Compare_dec.leb x y) eqn:?
+      | [ H : context[option_beq _ None (Some _)] |- _ ] => unfold option_beq in H
+      | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
+      | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
+      | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+      | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
+      | [ H : Compare_dec.leb _ _ = true |- _ ] => apply Compare_dec.leb_complete in H
+      | [ H : Compare_dec.leb _ _ = false |- _ ] => apply Compare_dec.leb_complete_conv in H
+      | [ H : option_beq ascii_beq _ _ = true |- _ ]
+        => apply (option_bl (@ascii_bl)) in H
+      | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ]
+        => rewrite (Min.min_l x y) in H by assumption
+      | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ]
+        => rewrite (Min.min_r x y) in H by assumption
+      | [ H : context[?x + ?y - ?y] |- _ ] => rewrite Nat.add_sub in H
+      | [ H : context[(0 + ?x)%nat] |- _ ] => change (0 + x) with x in H
+      | [ |- context[min ?x (?y + ?z) - ?z] ]
+        => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
+      | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
+        => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+      | [ H : context[ascii_beq ?x ?x] |- _ ] => rewrite (ascii_lb eq_refl) in H
+      | [ H : ?x = ?y, H' : option_beq _ ?x ?y' = _ |- _]
+        => match constr:(y, y') with
+             | (Some _, Some _) => idtac
+             | (None, Some _) => idtac
+             | (Some _, None) => idtac
+             | (None, None) => idtac
+           end;
+          rewrite H in H'; unfold option_beq in H'
+      | [ H : context[?x + ?y - ?y] |- _ ] => rewrite Nat.add_sub in H
+      | [ |- context[?x + ?y - ?y] ] => rewrite Nat.add_sub
+      | [ H : ?x = 0 |- context[?x] ] => rewrite H
+      | [ H : 1 = snd (snd ?x), H' : context[snd (snd ?x)] |- _ ]
+        => is_var x; rewrite <- H in H'
+      | [ |- context[min 0 _] ] => rewrite Min.min_0_l
+      | [ |- context[min _ 0] ] => rewrite Min.min_0_r
+      | [ |- context[(_ - _)%natr] ] => rewrite minusr_minus
+      | [ |- context[?x - ?y + min ?y ?x] ] => rewrite minus_plus_min
+      | [ |- context[?x - ?y + (min ?y ?x + _)] ] => rewrite !Plus.plus_assoc, minus_plus_min
+      | [ H : ?x < S ?y |- context[?x - ?y] ]
+        => rewrite (proj2 (Nat.sub_0_le x y)) by omega
+      | [ H : ?x + ?y <= ?z, H' : context[min ?x (?z - ?y)] |- _ ]
+        => rewrite (Min.min_l x (z - y)) in H' by (clear -H; omega)
+      | [ H : ?x <= ?y |- context[min ?x ?y] ]
+        => rewrite (Min.min_l x y H)
+      | [ H : ?y <= ?x |- context[min ?x ?y] ]
+        => rewrite (Min.min_r x y H)
+      | [ |- context[min ?x (?x - _)] ] => rewrite min_minus_r
+      | _ => progress destruct_head' and
+      | _ => progress destruct_head' or
+      | _ => omega
+      | _ => discriminate
+      | _ => congruence
+      | _ => progress computes_to_inv
+    end.
+  Local Ltac fin_common := repeat fin_common'.
+
+  Local Ltac string_from_parse' :=
+    idtac;
+    match goal with
+      | [ H : parse_of_production _ _ nil |- _ ] => inversion H; clear H
+      | [ H : parse_of_production _ _ (_::_) |- _ ] => inversion H; clear H
+      | [ H : parse_of_item _ _ (Terminal _) |- _ ] => inversion H; clear H
+      | [ H : parse_of_item _ _ (NonTerminal _) |- _ ] => inversion H; clear H
+      | [ H : parse_of_production _ _ ?v |- _ = _ :> nat ] => is_var v; clear H
+      | [ H : parse_of_item _ _ ?v |- _ = _ :> nat ] => is_var v; clear H
+      | _ => progress fin_common
+    end.
+  Local Ltac string_from_parse := repeat string_from_parse'.
+
+  Local Ltac fin2' :=
+    idtac;
+    match goal with
+      | [ H : context[length (substring ?n ?m ?s)], H' : length (substring ?n ?m ?s) = _ |- _ ] => rewrite H' in H
+      | [ H' : length (substring ?n ?m ?s) = _ |- context[length (substring ?n ?m ?s)] ] => rewrite H'
+      | [ H : context[length (drop _ (substring _ _ _))] |- _ ] => rewrite drop_length in H
+      | [ H : context[length (take _ (substring _ _ _))] |- _ ] => rewrite take_length in H
+      | [ H : is_true (is_char _ _) |- _ ] => apply is_char_parts in H
+      | [ |- context[length (drop _ (substring _ _ _))] ] => rewrite drop_length
+      | [ |- context[length (take _ (substring _ _ _))] ] => rewrite take_length
+    end.
+  Local Ltac fin2 := repeat first [ progress fin_common
+                                  | progress string_from_parse
+                                  | progress fin2' ].
+
+
   Lemma FirstStep
-  : refineADT (string_spec G) rindexed_spec.
+  : refineADT (string_spec G HSL) rindexed_spec.
   Proof.
     refine (transitivityT _ _ _ _ FirstStep_helper_1).
     refine (transitivityT _ _ _ _ FirstStep_helper_2).
+    (*hone representation using (fun r_o r_n =>
+                                 (substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o)(*
+                                 /\ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n))*));
+      repeat match goal with
+               | [ H : ?T, rv : _ |- context[Pick ?P] ]
+                 => unify (P rv) T;
+                   let H' := fresh in
+                   assert (H' : refine (Pick P) (ret rv));
+                     [ repeat intro; apply PickComputes; computes_to_inv; subst; assumption
+                     | setoid_rewrite H'; clear H'; try clear H rv  ]
+               | _ => progress simplify with monad laws
+               | [ |- context G[fst (?x, _)] ]
+                 => let G' := context G[x] in change G'
+               | [ |- context G[snd (_, ?x)] ]
+                 => let G' := context G[x] in change G'
+             end;
+      simpl @fst; simpl @snd;
+      try solve [ repeat match goal with
+                           | [ H : _ /\ _ |- _ ] => destruct H
+                           | _ => progress subst
+                         end;
+                  try match goal with
+                        | [ |- refine ?a (?e ?x) ]
+                          => let ev := (eval unfold e in e) in
+                             match eval pattern x in a with
+                               | ?P _ => unify ev P
+                             end;
+                               try (subst e; reflexivity)
+                        | [ |- refine ?a (?e ?x ?y) ]
+                          => let ev := (eval unfold e in e) in
+                             match eval pattern x, y in a with
+                               | ?P _ _ => unify ev P
+                             end;
+                               try (subst e; reflexivity)
+                        | [ |- refine ?a (?e ?x ?y ?z) ]
+                          => let ev := (eval unfold e in e) in
+                             match eval pattern x, y, z in a with
+                               | ?P _ _ _ => unify ev P
+                             end;
+                               try (subst e; reflexivity)
+                      end ];
+      [].
+    econstructor 1 with (AbsR :=
+                           fun r_o r_n =>
+                             fst r_o =s fst r_n
+                             /\ snd r_o = snd r_n
+                             /\ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n)));
+      do_Iterate_Ensemble_BoundedIndex_equiv.*)
     unfold rindexed_spec', expanded_fallback_list', split_list_is_complete_alt.
     econstructor 1 with (AbsR := (fun r_o r_n =>
-                                    substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o));
-
-        eapply Iterate_Ensemble_BoundedIndex_equiv;
-        try apply string_dec;
-        simpl; intuition; intros; try simplify with monad laws;
-        repeat intro; computes_to_inv; subst; simpl;
-        fin.
+                                    (substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o)
+                                    /\ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n))));
+      do_Iterate_Ensemble_BoundedIndex_equiv.
+    { rewrite substring_correct3'; reflexivity. }
+    { repeat match goal with
+               | _ => progress fin_common
+               | [ H : is_char _ _ = true |- _ ]
+                 => let H' := fresh in
+                    pose proof H as H';
+                      apply length_singleton in H';
+                      apply add_take_1_singleton, get_0 in H
+               | [ H : context[length (substring _ _ _)] |- _ ]
+                 => rewrite substring_length in H
+               | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
+               | [ H : context[get _ (drop _ _)] |- _ ] => rewrite <- get_drop in H
+               | [ H : is_char _ _ = false |- _ ] => apply not_is_char_options in H
+             end. }
+    { repeat match goal with
+               | _ => progress fin_common
+               | [ |- context[get ?n ?s] ] => not constr_eq n 0; rewrite (@get_drop _ _ _ n s)
+               | [ H : _ |- _ ] => progress rewrite ?drop_length in H
+               | _ => progress rewrite ?drop_take, ?drop_drop, ?substring_length, ?take_take
+               | [ |- get ?n (take ?m ?s) = get ?n ?s ] => destruct (get n s) eqn:?
+               | [ H : get 0 _ = None |- _ ] => apply no_first_char_empty in H
+               | [ |- get 0 _ = None ] => apply has_first_char_nonempty
+               | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
+               | [ |- get 0 _ = Some _ ] => apply get_0
+               | _ => apply min_case_strong_r; intro
+             end. }
+    { rewrite substring_length, Min.min_r by assumption; omega. }
+    { rewrite take_take, Min.min_comm; reflexivity. }
+    { apply Min.min_case_strong; omega. }
+    { rewrite drop_take, drop_drop, minusr_minus.
+      apply Min.min_case_strong; intro; try reflexivity; [].
+      rewrite (proj2 (Nat.sub_0_le _ _)) by assumption.
+      apply substring_correct0, substring_correct0_length. }
+    { fin_common. }
+    unfold split_list_is_complete.
     intros.
+
     match goal with
       | [ H' : appcontext[forall_reachable_productions], H : production_is_reachable G (?x::?xs) |- _ ]
         => move H' at top; move H at top; generalize dependent xs; intros xs H H';
@@ -663,6 +911,13 @@ Section IndexedImpl.
                   (flatten
                      (map (fun nt : string => map tails (G nt))
                           (Valid_nonterminals G)))).
+    match goal with
+      | [ H : context[length (substring ?n ?m ?s)] |- _ ]
+        => let H' := fresh in
+           assert (H' : length (substring n m s) = m)
+             by (rewrite substring_length, Min.min_r by assumption; omega);
+             rewrite !H' in H |- *
+    end.
     intro ls; induction ls; simpl; trivial; [].
     { repeat match goal with
                | [ |- _ /\ _ ] => split
@@ -670,9 +925,9 @@ Section IndexedImpl.
                | [ |- context[production_beq _ ?x ?x] ] => rewrite (production_lb (@ascii_lb) eq_refl)
                | _ => solve [ trivial ]
              end.
-      { clear IHls; intros; abstract fin. }
-      { clear IHls; intros; abstract fin. }
-      { clear IHls; intros; abstract fin. }
+      { clear IHls; intros; abstract fin2. }
+      { clear IHls; intros; abstract fin2. }
+      { clear IHls; intros; abstract fin2. }
       { clear IHls; unfold If_Then_Else, option_rect.
         repeat match goal with
                  | [ |- context[if has_only_terminals ?e then _ else _] ]
@@ -683,34 +938,16 @@ Section IndexedImpl.
           try
             abstract (
               repeat match goal with
-                       | _ => intro
-                       | _ => progress computes_to_inv
-                       | _ => progress subst
-                       | [ |- In _ [_] ] => left
-                       | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
-                       | [ |- context[min ?x ?x] ]
-                         => rewrite (Min.min_idempotent x)
-                       | [ H : collapse_length_result ?e = Some _ |- _ ]
-                         => (revert H; case_eq e; simpl)
-                       | [ H : Some _ = Some _ |- _ ]
-                         => (inversion H; clear H)
-                       | _ => congruence
                        | [ H : length_of_any ?G ?nt = same_length ?n,
                                p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
-                         => (pose proof (@has_only_terminals_parse_of_item_length G n nt H str p); clear H)
+                         => (pose proof (@has_only_terminals_parse_of_item_length _ _ G n nt H str p); clear H)
                        | _ => erewrite <- has_only_terminals_length by eassumption
-                       | _ => progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus
-                       | [ H : _ |- _ ] => (generalize dependent H; progress rewrite ?substring_length, ?Nat.add_sub, ?Nat.sub_0_r, ?Nat.add_0_r, ?minusr_minus)
-                       | [ H : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
-                       | [ H : ?x <= ?y |- context[min ?x ?y] ] => rewrite (Min.min_l x y) by assumption
-                       | [ |- context[min ?x (?y + ?z) - ?z] ]
-                         => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
-                       | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
-                         => (generalize dependent H; rewrite <- (Nat.sub_min_distr_r x (y + z) z))
-                       | [ |- context[min (?x - ?y) ?x] ] => rewrite (Min.min_l (x - y) x) by omega
-                       | [ |- context[min ?x (?x - ?y)] ] => rewrite (Min.min_r x (x - y)) by omega
-                       | _ => omega
-                       | _ => solve [ eauto ]
+                       | [ H : collapse_length_result ?e = Some _ |- _ ]
+                         => (revert H; case_eq e; simpl)
+                       | _ => progress fin_common
+                       | _ => progress fin2'
+                       | _ => progress intros
+                       | _ => solve [ eauto with nocore ]
                      end
             ). } }
   Qed.
