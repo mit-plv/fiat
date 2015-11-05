@@ -103,24 +103,6 @@ Section sound.
         Qed.
       End item.
 
-      Section item_ext.
-        Lemma parse_item_ext
-              (str : String)
-              (str_matches_nonterminal1 str_matches_nonterminal2 : String.string -> bool)
-              (it : item Char)
-              (ext : forall x, str_matches_nonterminal1 x = str_matches_nonterminal2 x)
-        : parse_item' str_matches_nonterminal1 str it
-          = parse_item' str_matches_nonterminal2 str it.
-        Proof.
-          unfold parse_item'.
-          destruct it; auto;
-          match goal with
-            | [ |- context[match ?E with _ => _ end] ] => destruct E
-          end;
-          auto.
-        Qed.
-      End item_ext.
-
       Section production.
         Context (len0 : nat)
                 (parse_nonterminal : forall (str : String) (len : nat),
