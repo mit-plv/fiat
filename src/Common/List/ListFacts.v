@@ -951,4 +951,22 @@ Section ListFacts.
     intro H'; trivial.
     apply nth_error_None_long in H; congruence.
   Qed.
+
+  Lemma nth_error_nth {A} (ls : list A) (n : nat) (y : A)
+  : nth n ls y = match nth_error ls n with
+                   | Some x => x
+                   | None => y
+                 end.
+  Proof.
+    revert n; induction ls; intros [|n]; simpl in *; intros;
+    try discriminate;
+    unfold value in *;
+    eauto.
+  Qed.
+
+  Lemma nth_error_Some_nth {A} (ls : list A) (n : nat) (x : A)
+  : nth_error ls n = Some x -> forall y, nth n ls y = x.
+  Proof.
+    intros H ?; rewrite nth_error_nth, H; reflexivity.
+  Qed.
 End ListFacts.
