@@ -375,7 +375,6 @@ Ltac SameValues_Facade_t_step :=
   | _ => cleanup
   | _ => facade_cleanup
   | _ => facade_inversion
-  | _ => facade_construction
 
   | [ |- @ProgOk _ _ _ _ _ _ ] => red
 
@@ -413,6 +412,8 @@ Ltac SameValues_Facade_t_step :=
   | [ H: context[SCA ?av ?w] |- _ ] => change (SCA av w) with (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) w) in H
 
   | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
+
+  | _ => facade_construction
   end.
 
 Ltac SameValues_Facade_t :=
@@ -847,18 +848,103 @@ Qed.
 Hint Resolve @WeakEq_add_MapsTo : call_helpers_db.
 Hint Resolve @WeakEq_add : call_helpers_db.
 
-Lemma TelEq_swap :
-  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} {ext} k k' (v: A) (v': A') (tenv: Telescope av),
+Lemma TelEq_swap:
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} {ext} k k' (v: Comp A) (v': Comp A') (tenv: A -> A' -> Telescope av),
     k <> k' ->
-    k ∉ ext ->
-    k' ∉ ext ->
-    TelEq ext ([[k <-- v as _]]::[[k' <-- v' as _]]::tenv) ([[k' <-- v' as _]]::[[k <-- v as _]]::tenv).
+    match k with | Some k => k ∉ ext | _ => True end ->
+    match k' with | Some k => k ∉ ext | _ => True end ->
+    TelEq ext
+          ([[k <~~ v as vv]] :: [[k' <~~ v' as vv']] :: tenv vv vv')
+          ([[k' <~~ v' as vv']] :: [[k <~~ v as vv]] :: tenv vv vv').
 Proof.
-  intros; unfold TelEq; intros; SameValues_Facade_t;
-  eapply Cons_PopExt; try decide_not_in;
-  eapply Cons_PopExt; try decide_not_in;
-  erewrite SameValues_Morphism;
-  try rewrite add_add_comm;
-  try reflexivity;
-  auto.
+  destruct k, k';
+  unfold TelEq;
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => progress SameValues_Fiat_t_step
+         | _ => rewrite remove_remove_comm; congruence
+         end.
+Qed.
+
+(* Lemma TelEq_swap_Some : *)
+(*   forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} {ext} k k' (v: Comp A) (v': Comp A') (tenv: A -> A' -> Telescope av), *)
+(*     k <> k' -> *)
+(*     k ∉ ext -> *)
+(*     k' ∉ ext -> *)
+(*     TelEq ext *)
+(*           ([[`k <~~ v as vv]] :: [[`k' <~~ v' as vv']] :: tenv vv vv') *)
+(*           ([[`k' <~~ v' as vv']] :: [[`k <~~ v as vv]] :: tenv vv vv'). *)
+(* Proof. *)
+(*   intros; apply TelEq_swap; congruence. *)
+(* Qed. *)
+
+(* Lemma TelEq_swap_rets : *)
+(*   forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} {ext} k k' (v: A) (v': A') (tenv: Telescope av), *)
+(*     k <> k' -> *)
+(*     k ∉ ext -> *)
+(*     k' ∉ ext -> *)
+(*     TelEq ext ([[k <-- v as _]]::[[k' <-- v' as _]]::tenv) ([[k' <-- v' as _]]::[[k <-- v as _]]::tenv). *)
+(* Proof. *)
+(*   intros; apply TelEq_swap; congruence. *)
+(* Qed. *)
+
+Lemma SameValues_Push_ret:
+  forall `{H : FacadeWrapper (Value av) A} (k : string)
+    (tenv : A -> Telescope av) (ext : StringMap.t (Value av))
+    (initial_state : State av) (a : A),
+    StringMap.MapsTo k (wrap a) initial_state ->
+    StringMap.remove k initial_state ≲ tenv a ∪ ext ->
+    initial_state ≲ [[k <-- a as vv0]]::tenv vv0 ∪ ext.
+Proof.
+  SameValues_Fiat_t.
+  SameValues_Facade_t.
+Qed.
+
+Lemma Propagate_anonymous_ret:
+  forall `{H : FacadeWrapper (Value av) A} (tenv' : A -> Telescope av)
+    (ext : StringMap.t (Value av)) (vv : A),
+    TelEq ext ([[ret vv as vv0]]::tenv' vv0) (tenv' vv).
+Proof.
+  unfold TelEq; SameValues_Fiat_t.
+Qed.
+
+Ltac miniChomp_t_step :=
+  match goal with
+  | _ => solve [simpl; eauto]
+  | _ => SameValues_Facade_t_step
+  | [ H: match ?x with _ => _ end = _ |- _ ] => destruct x; try discriminate; [idtac]
+  | [ H: _ = ?x |- context[match ?x with _ => _ end] ] => rewrite <- H
+  | [ H: forall vv, ?v ↝ vv -> _, H': ?v ↝ _ |- _ ] => learn (H _ H')
+  | [ H: StringMap.remove ?k ?st ≲ _ ∪ _, H': StringMap.MapsTo ?k _ ?st |- _ ] => learn (SameValues_Push_ret _ _ _ H' H)
+  end.
+
+Ltac miniChomp_t :=
+  intros; unfold ProgOk;
+  repeat miniChomp_t_step.
+
+Lemma miniChomp_arbitrary_post :
+  forall `{FacadeWrapper (Value av) A} k (v: Comp A) tenv tenv' ext prog env,
+    (forall vv, v ↝ vv ->
+           {{ [[k <-- vv as vv]] :: (tenv vv) }} prog {{ tenv' v }} ∪ {{ ext }} // env) ->
+    {{ [[`k <~~ v as vv]] :: (tenv vv) }} prog {{ tenv' v }} ∪ {{ ext }} // env.
+Proof.
+  miniChomp_t.
+Qed.
+
+Lemma miniChomp:
+  forall `{FacadeWrapper (Value av) A} k k' (v: Comp A) tenv tenv' ext prog env,
+    (forall vv, v ↝ vv ->
+           {{ [[k <-- vv as vv]] :: (tenv vv) }} prog {{ [[k' <~~ ret vv as vv]] :: tenv' vv }} ∪ {{ ext }} // env) ->
+    {{ [[`k <~~ v as vv]] :: (tenv vv) }} prog {{ [[k' <~~ v as vv]] :: tenv' vv }} ∪ {{ ext }} // env.
+Proof.
+  miniChomp_t; destruct k'; simpl; miniChomp_t.
+Qed.
+
+Lemma miniChomp' :
+  forall `{FacadeWrapper (Value av) A} k (v: Comp A) tenv tenv' ext prog env,
+    (forall vv, v ↝ vv ->
+           {{ [[k <-- vv as vv]] :: (tenv vv) }} prog {{ tenv' vv }} ∪ {{ ext }} // env) ->
+    {{ [[`k <~~ v as vv]] :: (tenv vv) }} prog {{ [[v as vv]] :: tenv' vv }} ∪ {{ ext }} // env.
+Proof.
+  intros; apply miniChomp; intros; rewrite Propagate_anonymous_ret by reflexivity; eauto.
 Qed.

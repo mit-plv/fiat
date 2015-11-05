@@ -229,13 +229,16 @@ Ltac is_dirty_telescope term :=
 
 Ltac decide_TelEq_instantiate :=
   repeat match goal with
-         | [  |- TelEq _ ?from _ ] =>
-           match from with
+         | [  |- TelEq _ ?from ?to ] =>
+           match constr:(from, to) with
            | _ => rewrite DropName_Cons_Some_eq by congruence
            | _ => rewrite DropName_Cons_Some_neq by congruence
-           | Cons None _ _ => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
-           | Cons _    _ _ => apply TelEq_chomp_head; red; intros
-           | context[DropName ?k ?tenv] => first [is_dirty_telescope tenv; fail 1 | rewrite (@DropName_NotInTelescope _ tenv k) by eauto]
+           | (Cons None _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
+           | (_, Cons None _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
+           | (Cons _ _ _, _) => apply TelEq_chomp_head; red; intros
+           | (_, Cons _ _ _) => apply TelEq_chomp_head; red; intros
+           | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
+                                                   rewrite (DropName_NotInTelescope tenv k) by eauto ]
            | _ => apply TelEq_refl
            end
          end; fail.

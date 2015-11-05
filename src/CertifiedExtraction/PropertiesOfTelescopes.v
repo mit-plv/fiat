@@ -256,3 +256,14 @@ Proof.
   unfold pointwise_relation; intros.
   constructor; eauto.
 Qed.
+
+Lemma Propagate_ret :
+  forall `{FacadeWrapper (Value av) A} k (v: A) (tail: A -> Telescope av),
+    TelStrongEq
+      (Cons k (ret v) tail)
+      (Cons k (ret v) (fun _ => tail v)).
+Proof.
+  constructor.
+  - reflexivity.
+  - intros; computes_to_inv; subst; reflexivity.
+Qed.
