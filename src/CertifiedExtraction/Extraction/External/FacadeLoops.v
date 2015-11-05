@@ -5,6 +5,25 @@ Require Import
         CertifiedExtraction.Extraction.External.GenericADTMethods
         CertifiedExtraction.Extraction.External.FacadeADTs.
 
+Ltac loop_unify_with_nil_t :=
+  match goal with
+  | [  |- context[Cons (T := list W) _ (ret ?val) _] ] => unify val (@nil W)
+  end.
+
+Ltac loop_t :=
+  repeat (intros || unfold Fold || Lifted_t || compile_do_side_conditions || clean_DropName_in_ProgOk || rewrite Propagate_ret || eapply CompileSeq || eauto 2).
+
+Ltac apply_generalized_t compilation_lemma :=
+  erewrite ProgOk_TelEq_morphism;
+  repeat match goal with
+         | _ => eapply compilation_lemma
+         | [  |- _ = _ ] => reflexivity
+         | [  |- TelEq _ _ _ ] => decide_TelEq_instantiate
+         end.
+
+Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
+  apply_generalized_t compilation_lemma.
+
 Lemma CompileLoop :
   forall `{FacadeWrapper av (list W)}
     lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: W -> W -> W),
@@ -36,37 +55,25 @@ Lemma CompileLoop :
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
     {{ [[vret <-- (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  intros.
-  eapply CompileSeq; eauto; clear dependent facadeInit.
-
-  unfold Fold.
-  eapply CompileSeq.
-
-  eapply CompileSeq.
+  loop_t.
 
   rewrite TelEq_swap by congruence;
-    eapply CompileCallEmpty'; Lifted_t.
+    eapply CompileCallEmpty; loop_t.
 
-  clean_DropName_in_ProgOk.
+  loop_t.
+  2:eapply CompileCallFacadeImplementationOfDestructor; loop_t.
 
-  2:eapply CompileCallFacadeImplementationOfDestructor; Lifted_t.
+  loop_unify_with_nil_t. (* instantiate early to prevent bad unification heuristics *)
 
-  generalize dependent init;
+  clear dependent facadeInit;
+    generalize dependent init;
     induction lst; simpl; intros.
 
-  apply CompileWhileFalse_Loop. try instantiate (1 := nil). Lifted_t. (* instantiate due to Coq bug *)
-Lifted_t. Lifted_t.
-  eapply CompileWhileTrue; Lifted_t.
+  apply CompileWhileFalse_Loop; loop_t.
 
-  eapply CompileSeq.
-  eapply CompileCallPop'; Lifted_t.
+  eapply CompileWhileTrue; loop_t.
 
-  clean_DropName_in_ProgOk.
+  apply generalized CompileCallPop; loop_t.
 
-  eapply CompileSeq; [solve [eauto] | ].
-
-  apply CompileCallEmpty'; Lifted_t.
-  clean_DropName_in_ProgOk.
-
-  eauto.
+  apply generalized CompileCallEmpty; loop_t.
 Qed.

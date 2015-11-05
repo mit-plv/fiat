@@ -128,7 +128,7 @@ Lemma CompileCallFacadeImplementationOfMutation_Alloc:
       {{ [[ vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
-  rewrite TelEq_swap;
+  rewrite TelEq_swap by congruence;
   eauto using CompileCallFacadeImplementationOfMutation.
 Qed.
 
@@ -194,4 +194,24 @@ Proof.
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call
          end; facade_eauto.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfDestructor':
+  forall `{FacadeWrapper av A} {env} fpointer vtmp (adt: Comp A) (tenv: A -> Telescope av),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor (A := A))) env ->
+    forall vadt ext,
+      vtmp <> vadt ->
+      vtmp ∉ ext ->
+      (forall aadt, adt ↝ aadt -> NotInTelescope vtmp (tenv aadt)) ->
+      vadt ∉ ext ->
+      (forall aadt, adt ↝ aadt -> NotInTelescope vadt (tenv aadt)) ->
+      {{ [[`vadt <~~ adt as aadt]] :: tenv aadt}}
+        (Call vtmp fpointer (vadt :: nil))
+      {{ [[adt as aadt]] :: tenv aadt }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  apply miniChomp'.
+  intros.
+  rewrite Propagate_ret.
+  eauto using CompileCallFacadeImplementationOfDestructor.
 Qed.
