@@ -19,10 +19,13 @@ Section implementation.
   Context {Char} {G : grammar Char}.
   Context (splitter : Splitter G).
 
+  Local Instance parser_split_data : @split_dataT Char _ :=
+    { split_string_for_production it its str
+      := splits_for splitter str it its }.
+
   Local Instance parser_data : @boolean_parser_dataT Char _ :=
     { predata := rdp_list_predata (G := G);
-      split_string_for_production it its str
-      := splits_for splitter str it its }.
+      split_data := parser_split_data }.
 
   Local Arguments split_string_for_production : simpl never.
 

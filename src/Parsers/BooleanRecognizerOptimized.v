@@ -8,6 +8,7 @@ Require Import Fiat.Common Fiat.Common.Wf.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.BooleanRecognizerExt.
+Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
@@ -30,7 +31,7 @@ Global Arguments parse_production _ _ _ _ _ !_.
 Section recursive_descent_parser.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {ls : list (String.string * productions Char)}.
-  Context {data : @boolean_parser_dataT Char _}.
+  Context {splitdata : @split_dataT Char _}.
 
   Class str_carrier (constT varT : Type)
     := { to_string : constT * varT -> String;
@@ -59,6 +60,11 @@ Section recursive_descent_parser.
   Context constT varT {strC : str_carrier constT varT}.
 
   Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
+
+  Let data : boolean_parser_dataT :=
+    {| predata := @rdp_list_predata _ G;
+       split_data := splitdata |}.
+  Local Existing Instance data.
 
   Definition stringlike_lite (constV : constT) : StringLike Char
     := {| String := varT;
@@ -105,9 +111,12 @@ Section recursive_descent_parser.
                  | eauto with nocore ].
   Qed.
 
+  Definition split_data_lite (constV : constT) : @split_dataT _ (stringlike_lite constV)
+    := {| split_string_for_production it its s := split_string_for_production it its (to_string (constV, s)) |}.
+
   Definition data_lite (constV : constT) : @boolean_parser_dataT _ (stringlike_lite constV)
-    := {| predata := data;
-          split_string_for_production it its s := split_string_for_production it its (to_string (constV, s)) |}.
+    := {| predata := @rdp_list_predata _ G;
+          split_data := split_data_lite constV |}.
 
   Inductive take_or_drop := take_of (n : nat) | drop_of (n : nat).
 
@@ -383,6 +392,7 @@ Section recursive_descent_parser.
     unfold G'.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
+    cbv beta iota zeta delta [rdp_list_nonterminals_listT rdp_list_is_valid_nonterminal rdp_list_remove_nonterminal].
     refine_Fix5_Proper_eq.
     unfold parse_production', parse_production'_for, parse_item'.
     fix_trans;

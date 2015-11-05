@@ -19,9 +19,12 @@ Section brute_force_splitter.
 
   Context (G : grammar Char).
 
+  Global Instance brute_force_split_data : @split_dataT Char _
+    := { split_string_for_production it its := make_all_single_splits }.
+
   Global Instance brute_force_data : @boolean_parser_dataT Char _
     := { predata := @rdp_list_predata _ G;
-         split_string_for_production it its := make_all_single_splits }.
+         split_data := brute_force_split_data }.
 
   Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G brute_force_data
     := { split_string_for_production_complete str0 valid str pf it its
