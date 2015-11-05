@@ -31,48 +31,120 @@ Section addCache.
        then we add a Pick implementation of a [cacheVal]
        that satisfies our specification [cacheSpec] to the result. *)
 
-  (*Definition addCacheToMethod
-        (Dom Cod : Type)
-        (oldMethod : methodType rep Dom Cod) nr n
-  : Comp (cachedRep * Cod) :=
-    or <- oldMethod (origRep nr) n;
-    cv <- {cv | cacheSpec (fst or) cv};
-    ret ({| origRep := (fst or);
-            cachedVal := cv |}, snd or).
+  Fixpoint addCacheToMethod'
+    (Dom : list Type)
+    (Cod : option Type)
+    (oldMethod : methodType' rep Dom Cod)
+    : methodType' cachedRep Dom Cod :=
+    match Dom return methodType' rep Dom Cod
+                     -> methodType' cachedRep Dom Cod with
+    | nil => match Cod return methodType' rep nil Cod
+                                -> methodType' cachedRep nil Cod with
+             | Some C => fun oldMethod =>
+                           or <- oldMethod;
+                           cv <- {cv | cacheSpec (fst or) cv};
+                           ret ({| origRep := (fst or);
+                                   cachedVal := cv |}, snd or)
+               | None => fun oldMethod =>
+                           or <- oldMethod;
+                           cv <- {cv | cacheSpec or cv};
+                           ret {| origRep := or;
+                                  cachedVal := cv |}
+               end
+    | cons D Dom' => fun oldMethod (d : D) => addCacheToMethod' Dom' Cod (oldMethod d)
+    end oldMethod.
+
+  Definition addCacheToMethod
+             {Dom : list Type}
+             {Cod : option Type}
+             (oldMethod : methodType rep Dom Cod)
+             (nr : cachedRep)
+    : methodType' cachedRep Dom Cod :=
+    addCacheToMethod' Dom Cod (oldMethod (origRep nr)).
 
   Lemma refine_addCacheToMethod
-        (Dom Cod : Type)
+        {Dom : list Type}
+        {Cod : option Type}
         (oldMethod : methodType rep Dom Cod)
   : @refineMethod rep cachedRep cachedRep_AbsR _ _
                   oldMethod
                   (addCacheToMethod oldMethod).
   Proof.
-    unfold refineMethod, addCacheToMethod, refine; intros.
-    computes_to_inv; subst.
-    destruct H; subst.
-    repeat computes_to_econstructor; eauto; split; eauto.
+    unfold refineMethod, addCacheToMethod, methodType,
+    cachedRep_AbsR, refine in *; intros; intuition; subst.
+    induction Dom; simpl.
+    - destruct Cod.
+      + unfold cachedRep_AbsR in *; intuition; subst.
+        repeat (f_equiv; intro).
+        computes_to_inv; subst.
+        repeat computes_to_econstructor.
+        simpl; split; eauto.
+      + unfold cachedRep_AbsR in *; intuition; subst.
+        repeat (f_equiv; intro).
+        computes_to_inv; subst.
+        repeat computes_to_econstructor.
+        simpl; split; eauto.
+    - intros; eapply (IHDom (fun r_n => oldMethod r_n d)).
+  Qed.
+
+  (* For use in honing tactics. *)
+  Lemma refine_addCacheToMethod_step
+        {Dom : list Type}
+        {Cod : option Type}
+        (oldMethod : methodType rep Dom Cod)
+        (newMethod : methodType cachedRep Dom Cod)
+    : @refineMethod_eq cachedRep _ _
+                     (addCacheToMethod oldMethod)
+                     newMethod ->
+      @refineMethod rep cachedRep cachedRep_AbsR _ _
+                    oldMethod
+                    newMethod.
+  Proof.
+    intros; eapply refineMethod_eq_trans;
+    eauto using refine_addCacheToMethod.
   Qed.
 
   (* A similar approach works for constructors. *)
-  Definition addCacheToConstructor
-        (Dom : Type)
-        (oldConstr : constructorType rep Dom) n
-  : Comp cachedRep :=
-    or <- oldConstr n;
-    cv <- {cv | cacheSpec or cv};
-    ret {| origRep := or;
-           cachedVal := cv |}.
+  Fixpoint addCacheToConstructor
+           {Dom : list Type}
+    (oldConstructor : constructorType rep Dom)
+    : constructorType cachedRep Dom :=
+    match Dom return constructorType rep Dom
+                     -> constructorType cachedRep Dom with
+    | nil => fun oldConstructor =>
+               or <- oldConstructor;
+               cv <- {cv | cacheSpec or cv};
+               ret {| origRep := or;
+                      cachedVal := cv |}
+    | cons D Dom' => fun oldConstructor (d : D) => @addCacheToConstructor Dom' (oldConstructor d)
+    end oldConstructor.
 
   Lemma refine_addCacheToConstructor
-        (Dom : Type)
+        (Dom : list Type)
         (oldConstr : constructorType rep Dom)
   : @refineConstructor rep cachedRep cachedRep_AbsR _
                   oldConstr
                   (addCacheToConstructor oldConstr).
   Proof.
-    unfold refineConstructor, addCacheToConstructor, refine; intros.
-    computes_to_inv; subst.
-    repeat computes_to_econstructor; eauto; split; eauto.
+    unfold cachedRep_AbsR, refine in *; intros; intuition; subst.
+    induction Dom; simpl.
+    - repeat (f_equiv; intro).
+      computes_to_inv; subst.
+      repeat computes_to_econstructor; eauto.
+    - intros; eapply IHDom.
+  Qed.
+
+  (* For use in honing tactics. *)
+  Lemma refine_addCacheToConstructor_step
+        (Dom : list Type)
+        (oldConstr : constructorType rep Dom)
+        (newConstr : constructorType cachedRep Dom)
+    : refineConstructor_eq _ (addCacheToConstructor oldConstr) newConstr 
+      -> @refineConstructor rep cachedRep cachedRep_AbsR _
+                  oldConstr newConstr.
+  Proof.
+    eapply refineConstructor_eq_trans;
+    eauto using refine_addCacheToConstructor.
   Qed.
 
   (* We can refine an ADT using the default caching implementations
@@ -103,6 +175,6 @@ Section addCache.
     unfold refine; intros or v ComputesTo_v;
     computes_to_inv; subst; econstructor;
     unfold cachedRep_AbsR; simpl; intuition.
-  Qed. *)
+  Qed.
 
 End addCache.

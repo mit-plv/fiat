@@ -17,6 +17,11 @@ Section IndexedEnsembles.
 
   Definition IndexedEnsemble := Ensemble IndexedElement.
 
+  Definition IndexedEnsemble_In
+             (ensemble : IndexedEnsemble)
+             (item : ElementType) :=
+    exists idx, In _ ensemble {| elementIndex := idx; indexedElement := item |}.
+
   Definition IndexedEnsembleSubtract
              (element : ElementType)
              (ens : IndexedEnsemble)

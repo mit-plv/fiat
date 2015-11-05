@@ -149,7 +149,7 @@ Definition GetRelationBnd
            (QSSchema : QueryStructureSchema)
            (qs : QueryStructure QSSchema)
            (idx : BoundedIndex (QSschemaNames QSSchema))
-  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) (ibound (indexb idx)))) := rawRel (ith2 (rawRels qs) (ibound (indexb idx))).
+  : @IndexedEnsemble (@RawTuple (GetNRelSchemaHeading (qschemaSchemas QSSchema) (ibound (indexb idx)))) := @GetRelation QSSchema qs (ibound (indexb idx)).
 
 (* This lets us drop the constraints from the reference implementation
    for easier refinements. *)

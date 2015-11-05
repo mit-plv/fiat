@@ -49,6 +49,26 @@ Section MethodRefinement.
                              (newConstructor d)
     end.
 
+  (* Variant for use in tactics. *)
+    Fixpoint refineConstructor_eq
+           {dom : list Type}
+    : constructorType oldRep dom
+      -> constructorType oldRep dom
+      -> Prop :=
+    match dom return
+          constructorType oldRep dom
+          -> constructorType oldRep dom
+          -> Prop
+    with
+    | nil => fun oldConstructor newConstructor =>
+               refine oldConstructor newConstructor
+    | cons D dom' =>
+      fun oldConstructor newConstructor =>
+        forall d : D,
+          @refineConstructor_eq dom' (oldConstructor d)
+                                (newConstructor d)
+    end.
+
   (** Refinement of a method : the values of the computation
       produced by applying a new method [newMethod] to any new
       state [r_n] related to an old state [r_o] by the abstraction
@@ -111,6 +131,45 @@ Section MethodRefinement.
     := forall r_o r_n,
       r_o ≃ r_n ->
       @refineMethod' dom cod (oldMethod r_o) (newMethod r_n).
+
+    Fixpoint refineMethod_eq'
+           {dom : list Type}
+           {cod : option Type}
+    : methodType' oldRep dom cod
+      -> methodType' oldRep dom cod
+      -> Prop :=
+    match dom return
+          methodType' oldRep dom cod
+          -> methodType' oldRep dom cod
+          -> Prop
+    with
+    | nil =>
+      match cod return
+            methodType' oldRep [] cod
+            -> methodType' oldRep [] cod
+            -> Prop
+      with
+      | Some cod' =>
+        fun oldMethod newMethod =>
+          refine oldMethod newMethod
+      | _ =>
+        fun oldMethod newMethod =>
+          refine oldMethod newMethod
+      end
+    | cons D dom' =>
+      fun oldMethod newMethod =>
+        forall d : D,
+          @refineMethod_eq' dom' cod (oldMethod d)
+                        (newMethod d)
+    end.
+
+  Definition refineMethod_eq
+             {dom : list Type}
+             {cod : option Type}
+             (oldMethod : methodType oldRep dom cod)
+             (newMethod : methodType oldRep dom cod)
+    := forall r_o,
+      @refineMethod_eq' dom cod (oldMethod r_o) (newMethod r_o).
 
 End MethodRefinement.
 
