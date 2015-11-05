@@ -1,5 +1,6 @@
 (** * Definition of the part of boolean-returning CFG parser-recognizer that instantiates things to lists *)
 Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
+Require Import Coq.Strings.Ascii.
 Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
@@ -12,33 +13,237 @@ Local Open Scope string_like_scope.
 
 Section recursive_descent_parser_list.
   Context {Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : grammar Char}.
-  Definition rdp_list_nonterminals_listT : Type := list String.string.
+  Definition rdp_list_nonterminals_listT : Type := list nat.
+  Definition rdp_list_nonterminal_carrierT : Type := nat.
 
   Definition list_bin_eq
-    := Eval unfold list_bin in list_bin string_beq.
+    := Eval unfold list_bin in list_bin EqNat.beq_nat.
 
-  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
+  Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> rdp_list_nonterminal_carrierT -> bool
     := fun ls nt => list_bin_eq nt ls.
+
+  Local Ltac fix_list_bin_eq :=
+    unfold rdp_list_is_valid_nonterminal;
+    change list_bin_eq with (list_bin EqNat.beq_nat) in *.
+
+  Definition rdp_list_initial_nonterminals_data
+  : rdp_list_nonterminals_listT
+    := up_to (List.length (Valid_nonterminals G)).
+
+  Definition rdp_list_of_nonterminal
+  : String.string -> rdp_list_nonterminal_carrierT
+    := fun nt => match first_index_error (string_beq nt) (Valid_nonterminals G) with
+                   | Some idx => idx
+                   | None => List.length (Valid_nonterminals G)
+                 end.
+  Fixpoint string_copy (n : nat) (ch : Ascii.ascii)
+    := match n with
+         | 0 => EmptyString
+         | S n' => String.String ch (string_copy n' ch)
+       end.
+  Lemma string_copy_length n ch
+  : String.length (string_copy n ch) = n.
+  Proof.
+    induction n; simpl; eauto.
+  Qed.
+  Definition some_invalid_nonterminal
+    := string_copy (S (fold_right max 0 (map String.length (Valid_nonterminals G)))) "a"%char.
+  Lemma some_invalid_nonterminal_invalid_helper
+  : forall x, List.In x (Valid_nonterminals G) -> String.length x < String.length some_invalid_nonterminal.
+  Proof.
+    unfold some_invalid_nonterminal in *.
+    induction (Valid_nonterminals G) as [|x xs IHxs].
+    { intros ? []. }
+    { intros nt H.
+      destruct H as [H|H]; subst.
+      { clear IHxs; simpl.
+        rewrite string_copy_length; simpl.
+        apply Max.max_case_strong; simpl; intros; omega. }
+      { specialize (IHxs _ H).
+        rewrite string_copy_length in IHxs |- *; simpl in *.
+        apply Max.max_case_strong; omega. } }
+  Qed.
+  Lemma some_invalid_nonterminal_invalid
+  : ~List.In some_invalid_nonterminal (Valid_nonterminals G).
+  Proof.
+    intro H; apply some_invalid_nonterminal_invalid_helper in H.
+    omega.
+  Qed.
+  Definition rdp_list_to_nonterminal
+  : rdp_list_nonterminal_carrierT -> String.string
+    := fun nt => nth nt (Valid_nonterminals G) some_invalid_nonterminal.
+
+  Local Ltac t' :=
+    idtac;
+    match goal with
+      | _ => assumption
+      | _ => omega
+      | _ => congruence
+      | _ => discriminate
+      | [ H : first_index_error _ _ = Some _ |- _ ] => apply first_index_error_Some_correct in H
+      | [ H : first_index_error _ _ = None |- _ ] => rewrite first_index_error_None_correct in H
+      | _ => intro
+      | [ H : and _ _ |- _ ] => destruct H
+      | [ H : ex _ |- _ ] => destruct H
+      | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
+      | _ => progress subst
+      | [ |- nth _ _ _ = _ ] => apply nth_error_Some_nth
+      | [ H : ?T |- _ <-> ?T ] => split; [ intro; assumption | intro ]
+      | [ H : is_true (list_bin _ _ _) |- _ ] => apply (list_in_bl (@beq_nat_true)) in H
+      | [ |- is_true (list_bin _ _ _) ] => apply list_in_lb; [ intros ???; subst; symmetry; apply beq_nat_refl | ]
+      | [ H : In _ (up_to _) |- _ ] => apply in_up_to_iff in H
+      | [ |- In _ (up_to _) ] => apply in_up_to_iff
+      | [ H : In ?nt _ |- _ ] => let H' := fresh in assert (H' : string_beq nt nt = false) by eauto; exfalso; clear -H'
+      | [ H : context[string_beq ?x ?x] |- _ ] => rewrite (string_lb eq_refl) in H
+      | [ |- _ <-> _ ] => split
+      | [ |- In (nth _ ?ls _) ?ls ] => apply nth_In; assumption
+      | [ H : nth_error _ _ = Some _ |- _ ]
+        => let H' := fresh in
+           pose proof H as H';
+             apply nth_error_In in H;
+             apply nth_error_Some_short in H'
+      | [ |- ?x < ?y ] => destruct (le_lt_dec y x); [ exfalso | assumption ]
+      | [ H : context[nth ?nt ?ls ?d] |- _ ]
+        => rewrite nth_overflow in H by assumption
+      | [ H : In some_invalid_nonterminal (Valid_nonterminals G) |- _ ]
+        => apply some_invalid_nonterminal_invalid in H
+    end.
+
+  Local Ltac t := repeat t'.
+
+  Definition rdp_list_initial_nonterminals_correct'
+  : forall nt,
+      is_true (rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data nt) <-> List.In (rdp_list_to_nonterminal nt) (Valid_nonterminals G).
+  Proof.
+    fix_list_bin_eq.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_to_nonterminal, rdp_list_initial_nonterminals_data.
+    intro nt.
+    t.
+  Qed.
+
   Definition rdp_list_initial_nonterminals_correct
   : forall nt,
-      is_true (rdp_list_is_valid_nonterminal (Valid_nonterminals G) nt) <-> List.In nt (Valid_nonterminals G)
-    := fun nt => conj (list_in_bl (@string_bl)) (list_in_lb (@string_lb)).
+      is_true (rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data (rdp_list_of_nonterminal nt)) <-> List.In nt (Valid_nonterminals G).
+  Proof.
+    fix_list_bin_eq.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_of_nonterminal, rdp_list_initial_nonterminals_data.
+    intro nt.
+    destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H'; t.
+  Qed.
+
+  Lemma rdp_list_find_to_nonterminal idx
+  : Operations.first_index_error
+      (string_beq (rdp_list_to_nonterminal idx))
+      (Valid_nonterminals G)
+    = if list_beq string_beq (Valid_nonterminals G) (uniquize string_beq (Valid_nonterminals G))
+      then bool_rect
+             (fun _ => option _)
+             (Some idx)
+             (None)
+             (Compare_dec.leb (S idx) (List.length (Valid_nonterminals G)))
+      else Operations.first_index_error
+             (string_beq (rdp_list_to_nonterminal idx))
+             (Valid_nonterminals G).
+  Proof.
+    destruct (list_beq string_beq (Valid_nonterminals G) (uniquize string_beq (Valid_nonterminals G))) eqn:H; [ | reflexivity ].
+    { apply (list_bl (@string_bl)) in H.
+      symmetry in H.
+      apply uniquize_length in H.
+      destruct (leb (S idx) (List.length (Valid_nonterminals G))) eqn:H0; simpl;
+      [ apply leb_complete in H0
+      | apply leb_complete_conv in H0 ].
+      { generalize dependent idx.
+        unfold rdp_list_to_nonterminal.
+        induction (Valid_nonterminals G) as [|x xs IHxs].
+        { simpl; intros; omega. }
+        { intros [|idx].
+          { simpl.
+            rewrite (string_lb eq_refl); trivial. }
+          { simpl nth.
+            simpl.
+            intros.
+            simpl in H.
+            destruct (list_bin string_beq x (uniquize string_beq xs)) eqn:H''.
+            { exfalso; clear -H.
+              pose proof (uniquize_shorter xs string_beq).
+              omega. }
+            { simpl in H.
+              rewrite IHxs by omega; clear IHxs.
+              repeat match goal with
+                       | _ => exact (@string_lb)
+                       | _ => progress simpl in *
+                       | [ |- context[if ?E then _ else _] ] => destruct E eqn:?
+                       | _ => reflexivity
+                       | [ |- Some _ = Some _ ] => apply f_equal
+                       | [ |- 0 = S _ ] => exfalso
+                       | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
+                       | _ => progress subst
+                       | [ H : S _ = S _ |- _ ] => apply (f_equal pred) in H
+                       | [ H : List.length (uniquize _ _) = List.length _ |- _ ]
+                         => apply uniquize_length in H
+                       | [ H : uniquize ?beq ?ls = ?ls, H' : context[uniquize ?beq ?ls] |- _ ]
+                         => rewrite H in H'
+                       | [ H : list_bin _ _ _ = false |- False ]
+                         => rewrite list_in_lb in H; [ discriminate | | ]
+                       | [ |- In (nth _ _ _) _ ] => apply nth_In; omega
+                     end. } } } }
+      { unfold rdp_list_to_nonterminal.
+        rewrite nth_overflow by omega.
+        apply first_index_error_None_correct; intros elem H''.
+        destruct (string_beq some_invalid_nonterminal elem) eqn:H'''; trivial.
+        apply string_bl in H'''.
+        subst.
+        apply some_invalid_nonterminal_invalid in H''; destruct H''. } }
+  Qed.
+
+  Lemma rdp_list_to_of_nonterminal
+  : forall nt,
+      List.In nt (Valid_nonterminals G)
+      -> rdp_list_to_nonterminal (rdp_list_of_nonterminal nt) = nt.
+  Proof.
+    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal.
+    intro nt.
+    destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H';
+      t.
+  Qed.
+
+  (*Lemma rdp_list_of_to_nonterminal
+  : forall nt,
+      is_true (rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data nt)
+      -> rdp_list_of_nonterminal (rdp_list_to_nonterminal nt) = nt.
+  Proof.
+    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, rdp_list_is_valid_nonterminal, rdp_list_initial_nonterminals_data.
+    intros nt H.
+    apply (list_in_bl (@beq_nat_true)), in_up_to_iff in H.
+    revert nt H.
+    induction (Valid_nonterminals G) as [|x xs IHxs].
+    { simpl; intros; omega. }
+    { intros [|nt].
+      { simpl.
+        rewrite (string_lb eq_refl); trivial. }
+      { simpl Datatypes.length.
+        intro H.
+        apply lt_S_n in H.
+        specialize (IHxs _ H).
+        simpl nth.simpl.
+
+        SearchAbout (S _ < S _).
+    match goal with
+    destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H';
+      t.
+  Qed.*)
 
   Definition filter_out_eq nt ls
-    := Eval unfold filter_out in filter_out (string_beq nt) ls.
+    := Eval unfold filter_out in filter_out (EqNat.beq_nat nt) ls.
 
-  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> String.string -> rdp_list_nonterminals_listT
+  Definition rdp_list_remove_nonterminal : rdp_list_nonterminals_listT -> rdp_list_nonterminal_carrierT -> rdp_list_nonterminals_listT
     := fun ls nt =>
          filter_out_eq nt ls.
 
   Local Ltac fix_filter_out_eq :=
     unfold rdp_list_remove_nonterminal;
-    change filter_out_eq with (fun nt ls => filter_out (string_beq nt) ls); cbv beta;
+    change filter_out_eq with (fun nt ls => filter_out (EqNat.beq_nat nt) ls); cbv beta;
     setoid_rewrite filter_out_filter.
-
-  Local Ltac fix_list_bin_eq :=
-    unfold rdp_list_is_valid_nonterminal;
-    change list_bin_eq with (list_bin string_beq) in *.
 
   Local Ltac fix_eqs := try fix_filter_out_eq; try fix_list_bin_eq.
 
@@ -60,7 +265,7 @@ Section recursive_descent_parser_list.
     intros ls prods H.
     unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
     fix_eqs.
-    apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ].
+    apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ].
     match goal with
       | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
         => assert (~In prods (filter f ls))
@@ -68,7 +273,8 @@ Section recursive_descent_parser_list.
     { intro H'.
       apply filter_In in H'.
       destruct H' as [? H'].
-      rewrite (fun x => string_lb (eq_refl x)) in *; simpl in *; congruence. }
+      rewrite <- beq_nat_refl in H'.
+      simpl in *; congruence. }
     { match goal with
         | [ |- context[filter ?f ?ls] ] => generalize dependent f; intros
       end.
@@ -109,8 +315,10 @@ Section recursive_descent_parser_list.
              | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ H : ?T, H' : ~?T |- _ ] => destruct (H' H)
-             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ]
-             | [ |- list_bin _ _ _ = true ] => apply list_in_lb; [ solve [ intros; apply string_lb; trivial ] | ]
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ]
+             | [ |- list_bin _ _ _ = true ] => apply list_in_lb
+             | _ => progress subst
+             | [ |- context[beq_nat ?x ?x] ] => rewrite <- beq_nat_refl
            end.
   Qed.
 
@@ -143,15 +351,21 @@ Section recursive_descent_parser_list.
              | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
              | [ H : context[string_beq ?x ?x] |- _ ] => rewrite (string_lb (eq_refl x)) in H
              | _ => progress simpl in *
-             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ]
-             | [ |- list_bin _ _ _ = true ] => apply list_in_lb; [ solve [ intros; apply string_lb; trivial ] | ]
+             | [ H : list_bin _ _ _ = true |- _ ] => apply list_in_bl in H; [ | solve [ intros; apply beq_nat_true; trivial ] ]
+             | [ |- list_bin _ _ _ = true ] => apply list_in_lb
              | [ |- context[list_bin ?x ?y ?z = false] ] => case_eq (list_bin x y z)
              | [ H : list_bin _ _ _ = false |- _ ] => apply Bool.not_true_iff_false in H
-             | [ H : list_bin _ _ _ <> true |- _ ] => specialize (fun H' => H (list_in_lb (@string_lb) H'))
+             | [ H : list_bin _ _ _ <> true |- _ ] => specialize (fun pf H' => H (list_in_lb pf H'))
+             | [ H : ?A -> ?B |- _ ]
+               => let H' := fresh in
+                  assert (H' : A) by (intros; subst; rewrite <- ?beq_nat_refl; reflexivity);
+                    specialize (H H'); clear H'
+             | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
+             | [ H : context[beq_nat ?x ?x] |- _ ] => rewrite <- beq_nat_refl in H
            end.
   Qed.
 
-  Lemma rdp_list_remove_nonterminal_noninc (ls : rdp_list_nonterminals_listT) (nonterminal : string)
+  Lemma rdp_list_remove_nonterminal_noninc (ls : rdp_list_nonterminals_listT) nonterminal
   : ~ rdp_list_nonterminals_listT_R ls (rdp_list_remove_nonterminal ls nonterminal).
   Proof.
     simpl. unfold ltof, rdp_list_remove_nonterminal.
@@ -164,7 +378,9 @@ Section recursive_descent_parser_list.
 
   Global Instance rdp_list_predata : parser_computational_predataT
     := { nonterminals_listT := rdp_list_nonterminals_listT;
-         initial_nonterminals_data := Valid_nonterminals G;
+         initial_nonterminals_data := rdp_list_initial_nonterminals_data;
+         of_nonterminal := rdp_list_of_nonterminal;
+         to_nonterminal := rdp_list_to_nonterminal;
          is_valid_nonterminal := rdp_list_is_valid_nonterminal;
          remove_nonterminal := rdp_list_remove_nonterminal;
          nonterminals_length := @List.length _
@@ -175,7 +391,9 @@ Section recursive_descent_parser_list.
   Global Instance rdp_list_rdata' : @parser_removal_dataT' _ G rdp_list_predata
     := { remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
          remove_nonterminal_noninc := rdp_list_remove_nonterminal_noninc;
+         to_of_nonterminal := rdp_list_to_of_nonterminal;
          initial_nonterminals_correct := rdp_list_initial_nonterminals_correct;
+         initial_nonterminals_correct' := rdp_list_initial_nonterminals_correct';
          remove_nonterminal_1 := rdp_list_remove_nonterminal_1;
          remove_nonterminal_2 := rdp_list_remove_nonterminal_2 }.
 End recursive_descent_parser_list.

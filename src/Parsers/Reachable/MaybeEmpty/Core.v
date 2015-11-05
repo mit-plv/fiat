@@ -26,7 +26,7 @@ Section cfg.
                                               -> maybe_empty_production its
                                               -> maybe_empty_production (it::its)
   with maybe_empty_item : item Char -> Type :=
-  | MaybeEmptyNonTerminal : forall nt, is_valid_nonterminal valid nt
+  | MaybeEmptyNonTerminal : forall nt, is_valid_nonterminal valid (of_nonterminal nt)
                                       -> maybe_empty_productions (Lookup G nt)
                                       -> maybe_empty_item (NonTerminal nt).
 End cfg.

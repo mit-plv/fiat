@@ -112,10 +112,11 @@ Section cfg.
   Proof. repeat intro; subst; eapply expand_minimal_reachable_from_productions; eauto. Qed.*)
 
   Section minimize.
-    Context {ch : Char} {valid0 : nonterminals_listT}.
+    Context {ch : Char} {valid0 : nonterminals_listT}
+            (Hsub0 : sub_nonterminals_listT valid0 initial_nonterminals_data).
 
     Let alt_option h valid
-      := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
+      := { nt : _ & (is_valid_nonterminal valid (of_nonterminal nt) = false /\ is_valid_nonterminal valid0 (of_nonterminal nt))
                     * { p : reachable_from_productions G ch valid0 (Lookup G nt)
                             & (size_of_reachable_from_productions p < h) } }%type.
 
@@ -289,8 +290,8 @@ Section cfg.
           destruct p as [ |nonterminal' H' p'].
           { left.
             eexists (MinReachableTerminal _ _); simpl; constructor. }
-          { case_eq (is_valid_nonterminal valid' nonterminal'); intro H'''.
-            { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' nonterminal') _ p' k)
+          { case_eq (is_valid_nonterminal valid' (of_nonterminal nonterminal')); intro H'''.
+            { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];
             [ solve [ auto with arith ]
             | left | ].
@@ -310,7 +311,27 @@ Section cfg.
               { right.
                 exists nt''.
                 destruct_head prod; destruct_head and; repeat split; trivial.
-                { erewrite <- remove_nonterminal_5 by eassumption; assumption. }
+                { erewrite <- remove_nonterminal_5
+                    by repeat match goal with
+                                | _ => eassumption
+                                | _ => progress subst
+                                | [ H : ?y <> ?x, H' : _ = ?x |- _ ] => destruct (H H')
+                                | _ => progress destruct_head' and
+                                | _ => intro
+                                | [ Hsub0 : sub_nonterminals_listT _ _,
+                                            H : _ = of_nonterminal _ |- _ ]
+                                  => let H' := fresh in
+                                     pose proof (f_equal to_nonterminal H) as H';
+                                       progress
+                                         (rewrite !to_of_nonterminal
+                                           in H'
+                                           by (apply initial_nonterminals_correct, Hsub0;
+                                               first [ assumption
+                                                     | rewrite <- H; assumption
+                                                     | rewrite -> H; assumption ]));
+                                       clear H
+                              end.
+                  eassumption. }
                 { destruct_head sigT.
                   eexists.
                   apply Lt.lt_S; eassumption. } } } }

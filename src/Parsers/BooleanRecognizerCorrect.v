@@ -35,18 +35,18 @@ Section sound.
 
       Section item.
         Context (str : String)
-                (str_matches_nonterminal : String.string -> bool).
+                (str_matches_nonterminal : nonterminal_carrierT -> bool).
 
         Definition str_matches_nonterminal_soundT
           := forall nonterminal,
-               is_valid_nonterminal initial_nonterminals_data nonterminal
-               -> str_matches_nonterminal nonterminal
+               is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal)
+               -> str_matches_nonterminal (of_nonterminal nonterminal)
                -> parse_of_item G str (NonTerminal nonterminal).
 
         Definition str_matches_nonterminal_completeT P len0
           := forall (valid : nonterminals_listT) nonterminal (H_sub : P len0 valid nonterminal),
                minimal_parse_of_item (G := G) len0 valid str (NonTerminal nonterminal)
-               -> str_matches_nonterminal nonterminal.
+               -> str_matches_nonterminal (of_nonterminal nonterminal).
 
         Lemma parse_item_sound'
               (str_matches_nonterminal_sound : str_matches_nonterminal_soundT)
@@ -106,19 +106,19 @@ Section sound.
         Context (len0 : nat)
                 (parse_nonterminal : forall (str : String) (len : nat),
                                 len <= len0
-                                -> String.string
+                                -> nonterminal_carrierT
                                 -> bool).
 
         Definition parse_nonterminal_soundT
           := forall str len (Hlen : length str = len) pf nonterminal,
-               is_valid_nonterminal initial_nonterminals_data nonterminal
-               -> @parse_nonterminal str len pf nonterminal
+               is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal)
+               -> @parse_nonterminal str len pf (of_nonterminal nonterminal)
                -> parse_of_item G str (NonTerminal nonterminal).
 
         Definition parse_nonterminal_completeT P
           := forall valid (str : String) len (Hlen : length str = len) pf nonterminal (H_sub : P len0 valid nonterminal),
                minimal_parse_of_nonterminal (G := G) len0 valid str nonterminal
-               -> @parse_nonterminal str len pf nonterminal.
+               -> @parse_nonterminal str len pf (of_nonterminal nonterminal).
 
         Lemma parse_production_sound'
                  (parse_nonterminal_sound : parse_nonterminal_soundT)
@@ -275,7 +275,7 @@ Section sound.
         Context len0
                 (parse_nonterminal : forall (str : String) (len : nat),
                                 len <= len0
-                                -> String.string
+                                -> nonterminal_carrierT
                                 -> bool).
 
         Local Ltac parse_productions_t :=
@@ -360,13 +360,13 @@ Section sound.
                        prod_relation lt lt p (len0, valid_len)
                        -> forall (valid : nonterminals_listT)
                                  (str : String) (len : nat),
-                            len <= fst p -> String.string -> bool).
+                            len <= fst p -> nonterminal_carrierT -> bool).
 
           Lemma parse_nonterminal_step_sound
                 (parse_nonterminal_sound : forall p pf valid, parse_nonterminal_soundT (@parse_nonterminal p pf valid))
                 (str : String) (len : nat) (Hlen : length str = len) (pf : len <= len0) (nonterminal : String.string)
-                (Hvalid : is_valid_nonterminal initial_nonterminals_data nonterminal)
-          : parse_nonterminal_step (G := G) parse_nonterminal valid str pf nonterminal
+                (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
+          : parse_nonterminal_step (G := G) parse_nonterminal valid str pf (of_nonterminal nonterminal)
             -> parse_of_item G str (NonTerminal nonterminal).
           Proof.
             pose proof Hvalid as Hvalid'; rewrite initial_nonterminals_correct in Hvalid'.
@@ -375,6 +375,7 @@ Section sound.
             intro H'; constructor; trivial; revert H'; [].
             edestruct lt_dec as [|n]; simpl in *.
             { intro H'.
+              rewrite to_of_nonterminal in H' by assumption.
               apply parse_productions_sound' in H'; eauto with nocore. }
             { pose proof (le_lt_eq_dec _ _ pf) as pf'.
               destruct pf' as [pf'|]; subst.
@@ -382,6 +383,13 @@ Section sound.
               { intro H'.
                 unfold is_true in *.
                 repeat first [ hnf; simpl; intros; discriminate
+                             | progress subst
+                             | idtac;
+                               match goal with
+                                 | [ H : _ /\ _ |- _ ] => destruct H
+                                 | [ H : andb _ _ = true |- _ ] => rewrite Bool.andb_true_iff in H
+                                 | [ H : context[to_nonterminal (of_nonterminal _)] |- _ ] => rewrite to_of_nonterminal in H; [ | clear H ]
+                               end
                              | edestruct dec; simpl in *; trivial; [];
                                match goal with
                                  | [ H : ?T |- _ ] => has_evar T; fail 1
@@ -397,7 +405,7 @@ Section sound.
                 (Hvalid_len : forall nt, is_valid_nonterminal valid nt -> negb (beq_nat valid_len 0))
                 (parse_nonterminal_complete : forall p pf valid, parse_nonterminal_completeT (@parse_nonterminal p pf valid) (Pv p valid))
                 (str : String) (len : nat) (Hlen : length str = len) (pf : len <= len0) (nonterminal : String.string)
-                (Hnt : is_valid_nonterminal initial_nonterminals_data nonterminal)
+                (Hnt : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
                 (Hinit : forall str1 len1,
                            len1 <= len ->
                            forall nonterminal0,
@@ -407,13 +415,14 @@ Section sound.
                             len <= len0 ->
                             forall nonterminal0 : String.string,
                               minimal_parse_of_nonterminal (G := G)
-                                                    len0 (remove_nonterminal valid nonterminal) str nonterminal0 ->
-                              Pv (len0, if is_valid_nonterminal valid nonterminal then pred valid_len else nonterminals_length initial_nonterminals_data) (remove_nonterminal valid nonterminal) len0 (remove_nonterminal valid nonterminal) nonterminal0)
+                                                    len0 (remove_nonterminal valid (of_nonterminal nonterminal)) str nonterminal0 ->
+                              Pv (len0, if is_valid_nonterminal valid (of_nonterminal nonterminal) then pred valid_len else nonterminals_length initial_nonterminals_data) (remove_nonterminal valid (of_nonterminal nonterminal)) len0 (remove_nonterminal valid (of_nonterminal nonterminal)) nonterminal0)
           : minimal_parse_of_nonterminal (G := G) len0 valid str nonterminal
-            -> parse_nonterminal_step (G := G) parse_nonterminal valid str pf nonterminal.
+            -> parse_nonterminal_step (G := G) parse_nonterminal valid str pf (of_nonterminal nonterminal).
           Proof.
             specialize (fun len' valid_len' => parse_nonterminal_complete (len', valid_len')).
             unfold parse_nonterminal_step.
+            rewrite !to_of_nonterminal by first [ assumption | apply initial_nonterminals_correct; assumption ].
             edestruct lt_dec as [|n]; simpl in *.
             { intros H'.
               inversion H'; clear H'; subst. (* Work around Anomaly: Evar ?425 was not declared. Please report. *)
@@ -458,8 +467,8 @@ Section sound.
                 (Hlen : length str = len)
                 (pf : len <= fst p)
                 (nonterminal : String.string)
-                (Hvalid : is_valid_nonterminal initial_nonterminals_data nonterminal)
-          : parse_nonterminal_or_abort (G := G) p valid str pf nonterminal
+                (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
+          : parse_nonterminal_or_abort (G := G) p valid str pf (of_nonterminal nonterminal)
             -> parse_of_item G str (NonTerminal nonterminal).
           Proof.
             unfold parse_nonterminal_or_abort.
@@ -493,7 +502,7 @@ Section sound.
                          nonterminals_length validp <= snd p
                          /\ nonterminals_length valid0 <= nonterminals_length validp
                          /\ nonterminals_length validp <= nonterminals_length initial_nonterminals_data
-                         /\ is_valid_nonterminal initial_nonterminals_data nt
+                         /\ is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
                          /\ sub_nonterminals_listT valid0 validp
                          /\ sub_nonterminals_listT validp initial_nonterminals_data)
                 (p : nat * nat) (validp : nonterminals_listT)
@@ -572,7 +581,7 @@ Section sound.
             = true
             -> parse_of_item G str (NonTerminal nonterminal).
           Proof.
-            unfold parse_nonterminal, parse_nonterminal_or_abort.
+            unfold parse_nonterminal, parse_nonterminal', parse_nonterminal_or_abort.
             intro H; generalize H.
             apply parse_nonterminal_or_abort_sound; trivial.
             rewrite Fix5_eq in H by (intros; apply parse_nonterminal_step_ext; assumption).
@@ -587,7 +596,7 @@ Section sound.
           Lemma parse_nonterminal_complete'
                 (str : String) (len : nat) (Hlen : length str = len)
                 (nonterminal : String.string)
-                (H_init : is_valid_nonterminal initial_nonterminals_data nonterminal)
+                (H_init : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
           : minimal_parse_of_nonterminal (G := G) len initial_nonterminals_data str nonterminal
             -> parse_nonterminal (G := G) str nonterminal
                = true.
@@ -602,7 +611,7 @@ Section sound.
                 (str : String)
                 (nonterminal : String.string)
                 (p : parse_of G str (Lookup G nonterminal))
-                (Hvalid : is_valid_nonterminal initial_nonterminals_data nonterminal)
+                (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
           : parse_nonterminal (G := G) str nonterminal = true.
           Proof.
             apply parse_nonterminal_complete' with (len := length str); try assumption; trivial.
@@ -641,7 +650,7 @@ Section correct.
 
   Definition parse_nonterminal_correct
   : (parse_nonterminal (G := G) str nt -> parse_of_item G str (NonTerminal nt))
-    * (parse_of G str (G nt) -> is_valid_nonterminal initial_nonterminals_data nt
+    * (parse_of G str (G nt) -> is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
        -> parse_nonterminal (G := G) str nt).
   Proof.
     split.
@@ -665,7 +674,7 @@ Section convenience.
   Proof.
     eapply parse_item_sound'; trivial.
     hnf.
-    intros ??; apply parse_nonterminal_sound; trivial.
+    intros ??; rapply parse_nonterminal_sound; trivial.
   Defined.
 
   Definition parse_item_complete
@@ -674,7 +683,7 @@ Section convenience.
   : parse_item (G := G) str it.
   Proof.
     eapply (@parse_item_complete'
-              _ _ G _ str (parse_nonterminal (G := G) str)
+              _ _ G _ str (parse_nonterminal' (G := G) str)
               (length str) initial_nonterminals_data);
       [
       |
@@ -741,7 +750,7 @@ Section convenience.
              (str : String) (pat : production Char)
              (H_reachable
               : exists (nt : string) (prefix : list (item Char)),
-                  is_valid_nonterminal initial_nonterminals_data nt /\ In (prefix ++ pat) (G nt))
+                  is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) /\ In (prefix ++ pat) (G nt))
              (p : parse_of_production G str pat)
   : parse_production (G := G) str pat.
   Proof.
@@ -799,7 +808,7 @@ Section convenience.
              (str : String) (pats : productions Char)
              (H_reachable
               : exists (nt : string) (prefix : productions Char),
-                  is_valid_nonterminal initial_nonterminals_data nt /\ prefix ++ pats = G nt)
+                  is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) /\ prefix ++ pats = G nt)
              (p : parse_of G str pats)
   : parse_productions (G := G) str pats.
   Proof.
@@ -847,7 +856,7 @@ Section convenience_valid.
   Lemma parse_nonterminal_completev
         (str : String)
         (nonterminal : String.string)
-        (Hnt : is_valid_nonterminal initial_nonterminals_data nonterminal)
+        (Hnt : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
         (p : parse_of G str (Lookup G nonterminal))
   : parse_nonterminal (G := G) str nonterminal = true.
   Proof.
@@ -867,7 +876,7 @@ Section convenience_valid.
              (str : String) (pat : production Char)
              (H_reachable
               : exists (nt : string) (prefix : list (item Char)),
-                  is_valid_nonterminal initial_nonterminals_data nt /\ In (prefix ++ pat) (G nt))
+                  is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) /\ In (prefix ++ pat) (G nt))
              (p : parse_of_production G str pat)
   : parse_production (G := G) str pat.
   Proof.
@@ -878,7 +887,7 @@ Section convenience_valid.
              (str : String) (pats : productions Char)
              (H_reachable
               : exists (nt : string) (prefix : productions Char),
-                  is_valid_nonterminal initial_nonterminals_data nt /\ prefix ++ pats = G nt)
+                  is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) /\ prefix ++ pats = G nt)
              (p : parse_of G str pats)
   : parse_productions (G := G) str pats.
   Proof.

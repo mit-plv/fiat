@@ -32,11 +32,7 @@ Section implementation.
   Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ G parser_data
     := { split_string_for_production_complete str0 valid str pf nt Hvalid := _ }.
   Proof.
-    unfold is_valid_nonterminal in Hvalid; simpl in Hvalid.
-    unfold rdp_list_is_valid_nonterminal in Hvalid; simpl in Hvalid.
-    hnf in Hvalid.
-    change list_bin_eq with (list_bin string_beq) in *.
-    apply Equality.list_in_bl in Hvalid; [ | apply @Equality.string_bl ].
+    apply initial_nonterminals_correct in Hvalid.
     generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H'))) pit pits).
     clear Hvalid.
     induction (G nt) as [ | x xs IHxs ].

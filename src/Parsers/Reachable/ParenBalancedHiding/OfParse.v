@@ -26,16 +26,16 @@ Section cfg.
   Fixpoint paren_balanced_hiding_pbh_parse_of_productions
              {valid00 valid0 pats}
              (str : String) (p : parse_of G str pats)
-             (Hforall0 : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid00 nt') p)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall0 : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid00 (of_nonterminal nt')) p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
              (Hp : pbh'_productions G valid00 valid0 pats)
              {struct Hp}
   : paren_balanced_hiding' str 0 = true
   with paren_balanced_hiding_pbh_parse_of_production
          {valid00 valid0 pat level}
          (str : String) (p : parse_of_production G str pat)
-         (Hforall0 : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid00 nt') p)
-         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+         (Hforall0 : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid00 (of_nonterminal nt')) p)
+         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
          (Hp : pbh'_production G valid00 valid0 level pat)
          {struct Hp}
        : paren_balanced_hiding' str level = true.
@@ -85,7 +85,7 @@ Section cfg.
         specialize_by assumption.
         specialize (fun x H p H1 H0
                     => paren_balanced_hiding_pbh_parse_of_productions
-                         str p H (H0, expand_forall_parse_of (str' := take (min n n) str) (P := fun _ nt => is_valid_nonterminal valid00 nt) x (reflexivity _) _ _ H1, tt)).
+                         str p H (H0, expand_forall_parse_of (str' := take (min n n) str) (P := fun _ nt => is_valid_nonterminal valid00 (of_nonterminal nt)) x (reflexivity _) _ _ H1, tt)).
         simpl in *.
         specialize_by trivial.
         specialize_by ltac:(rewrite drop_length, take_length; apply Min.min_case_strong; omega).

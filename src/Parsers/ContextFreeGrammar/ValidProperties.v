@@ -17,7 +17,8 @@ Section cfg.
           {predata : parser_computational_predataT}
           (Hvalid : grammar_valid G).
 
-  Local Notation P nt := (is_true (is_valid_nonterminal initial_nonterminals_data nt)) (only parsing).
+  Local Notation P' nt := (is_true (is_valid_nonterminal initial_nonterminals_data nt)) (only parsing).
+  Local Notation P nt := (P' (of_nonterminal nt)) (only parsing).
 
   Definition Forall_parse_of_item_valid'
              (Forall_parse_of_valid'
@@ -115,7 +116,6 @@ Section app.
     : production_valid its.
     Proof.
       destruct Hreach as [nt [prefix [Hreach Hreach']]].
-      apply initial_nonterminals_correct in Hreach.
       specialize (Hvalid nt Hreach).
       unfold productions_valid in Hvalid.
       rewrite Forall_forall in Hvalid.

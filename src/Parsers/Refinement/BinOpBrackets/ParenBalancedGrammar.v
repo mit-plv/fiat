@@ -25,8 +25,11 @@ Section specific.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
   Context (G : grammar Char).
+  Let predata := (@rdp_list_predata _ G).
+  Local Existing Instance predata.
+
   Section assume_lists.
-    Context (pb_nts pbh_nts : @nonterminals_listT (@rdp_list_predata _ G)).
+    Context (pb_nts pbh_nts : nonterminals_listT).
 
     Definition paren_balanced''_production_step
                (hiding : bool)
@@ -40,8 +43,8 @@ Section specific.
                 => (*(is_valid_nonterminal initial_nonterminals_data nt)
                    &&*)
                 (if (hiding && Compare_dec.zerop level)
-                 then is_valid_nonterminal pbh_nts nt
-                 else is_valid_nonterminal pb_nts nt)
+                 then is_valid_nonterminal pbh_nts (of_nonterminal nt)
+                 else is_valid_nonterminal pb_nts (of_nonterminal nt))
                   && rest_balanced level
             end.
 
@@ -68,13 +71,13 @@ Section specific.
 
     Definition paren_balanced''_nt
                (hiding : bool)
-               (nt : String.string)
+               (nt : nonterminal_carrierT)
     : bool
       := let predata := @rdp_list_predata _ G in
          (paren_balanced''_productions
             hiding
             0
-            (Lookup G nt)).
+            (Lookup G (to_nonterminal nt))).
 
     Section correct.
       Context (H_pb : forall nt, is_valid_nonterminal pb_nts nt
@@ -165,6 +168,7 @@ Section specific.
                   unfold paren_balanced''_nt in *.
                   (*apply Bool.andb_true_iff in H_pbh;
                   destruct H_pbh as [H_pbh0 H_pbh1]; clear H_pbh.*)
+                  rewrite to_of_nonterminal in H_pbh by assumption.
                   specialize (paren_balanced_productions_correct _ _ H_pbh).
                   simpl in *.
                   assumption. }
@@ -172,6 +176,7 @@ Section specific.
                   unfold paren_balanced''_nt in *.
                   (*apply Bool.andb_true_iff in H_pb;
                   destruct H_pb as [H_pb0 H_pb1]; clear H_pb.*)
+                  rewrite to_of_nonterminal in H_pb by assumption.
                   specialize (paren_balanced_productions_correct _ _ H_pb).
                   simpl in *.
                   assumption. } }
@@ -181,6 +186,7 @@ Section specific.
                 unfold paren_balanced''_nt in *.
                 (*apply Bool.andb_true_iff in H_pb;
                 destruct H_pb as [H_pb0 H_pb1]; clear H_pb.*)
+                rewrite to_of_nonterminal in H_pb by assumption.
                 specialize (paren_balanced_productions_correct _ _ H_pb).
                 simpl in *.
                 assumption. } } } }
@@ -188,8 +194,8 @@ Section specific.
 
       Lemma paren_balanced_nt''_correct
             (hiding : bool)
-            (nt : String.string)
-            (H_p : paren_balanced''_nt hiding nt)
+            nt
+            (H_p : paren_balanced''_nt hiding (of_nonterminal nt))
             (str : String)
             (p : parse_of_item G str (NonTerminal nt))
       : if hiding
@@ -197,7 +203,8 @@ Section specific.
         else paren_balanced str.
       Proof.
         dependent destruction p.
-        eapply paren_balanced_productions_correct; eassumption.
+        eapply paren_balanced_productions_correct;
+          try eassumption; instantiate; rewrite ?to_of_nonterminal; eassumption.
       Qed.
     End correct.
 
@@ -216,6 +223,7 @@ Section specific.
                  | _ => progress subst
                  | _ => congruence
                  | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
+                 | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
                  | [ H : is_true (_ || _) |- _ ] => apply Bool.orb_true_iff in H
                  | [ H : is_true (_ && _) |- _ ] => apply Bool.andb_true_iff in H
                  | [ H : _ /\ _ |- _ ] => let H1 := fresh in
@@ -227,8 +235,8 @@ Section specific.
 
       Lemma paren_balanced_nt'_correct
             (hiding : bool)
-            (nt : String.string)
-            (H_p : paren_balanced''_nt hiding nt)
+            nt
+            (H_p : paren_balanced''_nt hiding (of_nonterminal nt))
             (str : String)
             (p : parse_of_item G str (NonTerminal nt))
       : if hiding
@@ -250,9 +258,11 @@ Section paren_balanced_nonterminals.
   Context {pdata : paren_balanced_hiding_dataT Char}
           (G : grammar Char)
           (hiding : bool).
+  Let predata := (@rdp_list_predata _ G).
+  Local Existing Instance predata.
 
   Definition paren_balanced_nonterminals_T
-    := nat -> nat * (list String.string * list String.string).
+    := nat -> nat * (list nonterminal_carrierT * list nonterminal_carrierT).
 
   Local Instance paren_balanced_nonterminals_fold_data : fold_grammar_data Char paren_balanced_nonterminals_T
     := { on_terminal ch level
@@ -275,13 +285,13 @@ Section paren_balanced_nonterminals.
          on_nonterminal nt f level
          := (level,
              let '(pb_ls, pbh_ls) := eta (snd (f level)) in
-             ((nt::pb_ls)
+             ((of_nonterminal nt::pb_ls)
                 ++ (if Compare_dec.gt_dec level 0
                     then pbh_ls
                     else nil),
               if Compare_dec.gt_dec level 0
               then nil
-              else nt::pbh_ls)) }.
+              else of_nonterminal nt::pbh_ls)) }.
 
   Definition paren_balanced_nonterminals_of : String.string -> paren_balanced_nonterminals_T
     := @fold_nt _ _ paren_balanced_nonterminals_fold_data G.
@@ -290,7 +300,7 @@ Section paren_balanced_nonterminals.
   Definition paren_balanced_nonterminals_of_production : production Char -> paren_balanced_nonterminals_T
     := @fold_production _ _ paren_balanced_nonterminals_fold_data G.
 
-  Definition paren_balanced_nonterminals (nt : String.string) : list String.string * list String.string
+  Definition paren_balanced_nonterminals nt : list nonterminal_carrierT * list nonterminal_carrierT
     := snd (paren_balanced_nonterminals_of nt 0).
 End paren_balanced_nonterminals.
 
@@ -300,6 +310,8 @@ Section with_lists.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
   Context (G : grammar Char).
+  Let predata := (@rdp_list_predata _ G).
+  Local Existing Instance predata.
 
   Section pre.
     Context (hiding : bool)
@@ -314,7 +326,7 @@ Section with_lists.
             (H_pbh : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts true) pbh_nts)).
 
     Lemma paren_balanced_nt_correct
-          (H_p : paren_balanced''_nt pb_nts pbh_nts hiding nt)
+          (H_p : paren_balanced''_nt pb_nts pbh_nts hiding (of_nonterminal nt))
           (str : String)
           (p : parse_of_item G str (NonTerminal nt))
     : if hiding
@@ -336,7 +348,7 @@ Section with_lists.
     Definition paren_balanced_hiding_correctness_type
       := (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
            && (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts true) pbh_nts))
-           && (paren_balanced''_nt pb_nts pbh_nts true nt).
+           && (paren_balanced''_nt pb_nts pbh_nts true (of_nonterminal nt)).
 
     Global Arguments paren_balanced_hiding_correctness_type / .
 

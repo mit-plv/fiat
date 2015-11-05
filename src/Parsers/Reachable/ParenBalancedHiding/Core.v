@@ -36,7 +36,7 @@ pbh = pbh' '+' 0
     := pb_new_level ch start_level.
 
   Section generic.
-    Context (transform_valid : nonterminals_listT -> string -> nonterminals_listT)
+    Context (transform_valid : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT)
             (valid0 : nonterminals_listT).
 
     Inductive generic_pbh'_productions : nonterminals_listT -> productions Char -> Type :=
@@ -50,8 +50,8 @@ pbh = pbh' '+' 0
     | PBHProductionNil : forall valid,
                            generic_pbh'_production valid 0 nil
     | PBHProductionConsNonTerminal0 : forall valid nt its,
-                                        is_valid_nonterminal valid nt
-                                        -> generic_pbh'_productions (transform_valid valid nt) (Lookup G nt)
+                                        is_valid_nonterminal valid (of_nonterminal nt)
+                                        -> generic_pbh'_productions (transform_valid valid (of_nonterminal nt)) (Lookup G nt)
                                         -> generic_pbh'_production valid 0 its
                                         -> generic_pbh'_production valid 0 (NonTerminal nt :: its)
     | PBHProductionConsNonTerminalS : forall valid start_level nt its,

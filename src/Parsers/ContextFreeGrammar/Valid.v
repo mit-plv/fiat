@@ -16,7 +16,7 @@ Section cfg.
   Definition item_valid (it : item Char)
     := match it with
          | Terminal _ => True
-         | NonTerminal nt' => is_true (is_valid_nonterminal initial_nonterminals_data nt')
+         | NonTerminal nt' => is_true (is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt'))
        end.
 
   Definition production_valid pat
@@ -26,6 +26,7 @@ Section cfg.
     := List.Forall production_valid pats.
 
   Definition grammar_valid
-    := forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt)
-                  -> productions_valid (Lookup G nt).
+    := forall nt,
+         List.In nt (Valid_nonterminals G)
+         -> productions_valid (Lookup G nt).
 End cfg.

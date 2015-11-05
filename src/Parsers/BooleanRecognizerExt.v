@@ -74,7 +74,7 @@ Section recursive_descent_parser.
   Proof. t_ext expand'. Qed.
 
   Lemma parse_item'_ext
-        (str_matches_nonterminal str_matches_nonterminal' : String.string -> bool)
+        (str_matches_nonterminal str_matches_nonterminal' : nonterminal_carrierT -> bool)
         (ext : forall s, str_matches_nonterminal s = str_matches_nonterminal' s)
         (str : String)
         (it : item Char)
@@ -101,7 +101,7 @@ Section recursive_descent_parser.
             (parse_nonterminal parse_nonterminal'
              : forall (str : String) (len : nat),
                  len <= len0
-                 -> String.string
+                 -> nonterminal_carrierT
                  -> bool).
 
     Lemma parse_production'_for_ext_drop_take
@@ -147,7 +147,7 @@ Section recursive_descent_parser.
             (parse_nonterminal parse_nonterminal'
              : forall (str : String) (len : nat),
                  len <= len0
-                 -> String.string
+                 -> nonterminal_carrierT
                  -> bool)
             (ext : forall str len pf nt,
                      parse_nonterminal str len pf nt
@@ -205,7 +205,7 @@ Section recursive_descent_parser.
              : forall (str : String)
                       (len : nat)
                       (pf : len <= len0),
-                 String.string -> bool).
+                 nonterminal_carrierT -> bool).
 
     Lemma parse_productions'_ext_drop_take
           (str : String)
@@ -229,7 +229,7 @@ Section recursive_descent_parser.
              : forall (str : String)
                       (len : nat)
                       (pf : len <= len0),
-                 String.string -> bool)
+                 nonterminal_carrierT -> bool)
             (ext : forall str len pf nt,
                      parse_nonterminal str len pf nt
                      = parse_nonterminal' str len pf nt).
@@ -265,7 +265,7 @@ Section recursive_descent_parser.
                    Wf.prod_relation lt lt p (len0, valid_len)
                    -> forall (valid : nonterminals_listT)
                              (str : String) (len : nat),
-                        len <= fst p -> String.string -> bool).
+                        len <= fst p -> nonterminal_carrierT -> bool).
 
       Definition parse_nonterminal_step_ext_drop_take
                  (valid : nonterminals_listT)
@@ -275,7 +275,7 @@ Section recursive_descent_parser.
                           = @parse_nonterminal' p pf valid (drop_takes ns str) len pf' nt)
                  (len : nat)
                  (pf : len <= len0)
-                 (nt : String.string)
+                 (nt : nonterminal_carrierT)
                  ns
       : parse_nonterminal_step (G := G) parse_nonterminal valid (drop_takes ns str) pf nt
         = parse_nonterminal_step (G := G) parse_nonterminal' valid (drop_takes ns str) pf nt.
@@ -291,7 +291,7 @@ Section recursive_descent_parser.
                    Wf.prod_relation lt lt p (len0, valid_len)
                    -> forall (valid : nonterminals_listT)
                              (str : String) (len : nat),
-                        len <= fst p -> String.string -> bool)
+                        len <= fst p -> nonterminal_carrierT -> bool)
               (ext : forall p pf valid str len pf' nt,
                        parse_nonterminal p pf valid str len pf' nt
                        = parse_nonterminal' p pf valid str len pf' nt).
@@ -301,7 +301,7 @@ Section recursive_descent_parser.
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
-                 (nt : String.string)
+                 (nt : nonterminal_carrierT)
       : parse_nonterminal_step (G := G) parse_nonterminal valid str pf nt
         = parse_nonterminal_step (G := G) parse_nonterminal' valid str pf nt.
       Proof.

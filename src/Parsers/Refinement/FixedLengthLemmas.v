@@ -130,9 +130,9 @@ Definition length_of_any_nt_step {Char} (G : grammar Char) (predata := @rdp_list
            (nt : String.string)
 : length_result.
 Proof.
-  refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
+  refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
           then length_of_any_productions'
-                 (@length_of_any_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
+                 (@length_of_any_nt (remove_nonterminal valid0 (of_nonterminal nt)) (remove_nonterminal_dec _ _ _))
                  (Lookup G nt)
           else different_lengths);
   assumption.

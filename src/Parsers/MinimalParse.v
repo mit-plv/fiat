@@ -58,15 +58,15 @@ Section cfg.
   | MinParseNonTerminalStrLt
     : forall len0 valid (nt : String.string) str,
         length str < len0
-        -> is_valid_nonterminal initial_nonterminals_data nt
+        -> is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
         -> @minimal_parse_of (length str) initial_nonterminals_data str (Lookup G nt)
         -> @minimal_parse_of_nonterminal len0 valid str nt
   | MinParseNonTerminalStrEq
     : forall len0 str valid nonterminal,
         length str = len0
-        -> is_valid_nonterminal initial_nonterminals_data nonterminal
-        -> is_valid_nonterminal valid nonterminal
-        -> @minimal_parse_of len0 (remove_nonterminal valid nonterminal) str (Lookup G nonterminal)
+        -> is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal)
+        -> is_valid_nonterminal valid (of_nonterminal nonterminal)
+        -> @minimal_parse_of len0 (remove_nonterminal valid (of_nonterminal nonterminal)) str (Lookup G nonterminal)
         -> @minimal_parse_of_nonterminal len0 valid str nonterminal.
 
 End cfg.

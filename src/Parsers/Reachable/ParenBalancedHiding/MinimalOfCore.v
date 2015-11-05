@@ -27,7 +27,7 @@ Section cfg.
   Local Arguments eq_rect / .
 
   Section expand.
-    Context (transform1 transform2 : nonterminals_listT -> string -> nonterminals_listT).
+    Context (transform1 transform2 : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT).
     Context (transform12 : ((sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT)%signature)
                              transform1
                              transform2).
@@ -112,7 +112,7 @@ Section cfg.
       Context (valid0 : nonterminals_listT).
 
       Definition alt_option h valid
-        := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
+        := { nt : _ & (is_valid_nonterminal valid (of_nonterminal nt) = false /\ is_valid_nonterminal valid0 (of_nonterminal nt))
                       * { p : pbh'_productions G valid00 valid0 (Lookup G nt)
                               & (size_of_pbh'_productions p < h) } }%type.
 
@@ -173,15 +173,16 @@ Section cfg.
       Defined.
     End alt_option.
 
-    Context {valid0 : nonterminals_listT}.
+    Context {valid0 : nonterminals_listT}
+            (Hsub0 : sub_nonterminals_listT valid0 initial_nonterminals_data).
 
     Section wf_parts.
       Let of_item_T' h
           (valid : nonterminals_listT) {nt : string}
           (p : pbh'_productions G valid00 valid0 (Lookup G nt))
         := forall (p_small : size_of_pbh'_productions p < h)
-                  (pf : sub_nonterminals_listT (remove_nonterminal valid nt) valid0),
-             ({ p' : minimal_pbh'_productions G valid00 (remove_nonterminal valid nt) (Lookup G nt)
+                  (pf : sub_nonterminals_listT (remove_nonterminal valid (of_nonterminal nt)) valid0),
+             ({ p' : minimal_pbh'_productions G valid00 (remove_nonterminal valid (of_nonterminal nt)) (Lookup G nt)
                      & (size_of_pbh'_productions (pbh'_productions__of__minimal_pbh'_productions (reflexivity _) pf p')) <= size_of_pbh'_productions p })%type
              + alt_option valid0 (size_of_pbh'_productions p) valid.
 
@@ -240,10 +241,10 @@ Section cfg.
           { left; eexists (PBHProductionNil _ _ _ _); reflexivity. }
           { assert (size_of_pbh'_productions p0' < h') by exact (lt_helper_1 H_h).
             assert (size_of_pbh'_production p1' < h') by exact (lt_helper_2 H_h).
-            assert (pf : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
+            assert (pf : sub_nonterminals_listT (remove_nonterminal valid' (of_nonterminal nt')) valid)
               by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
-            destruct (is_valid_nonterminal valid' nt') eqn:Hnt'.
-            { assert (pf' : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
+            destruct (is_valid_nonterminal valid' (of_nonterminal nt')) eqn:Hnt'.
+            { assert (pf' : sub_nonterminals_listT (remove_nonterminal valid' (of_nonterminal nt')) valid)
                 by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
               destruct (fun k => minimal_pbh'_item__of__pbh'_item' _ _ p0' k pf')
                 as [ [p0'' H0''] | p0'' ];
@@ -278,9 +279,9 @@ Section cfg.
               exists p0'.
               abstract omega. } }
           { assert (size_of_pbh'_production p' < h') by omega.
-            assert (pf : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
+            assert (pf : sub_nonterminals_listT (remove_nonterminal valid' (of_nonterminal nt')) valid)
               by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
-            assert (pf' : sub_nonterminals_listT (remove_nonterminal valid' nt') valid)
+            assert (pf' : sub_nonterminals_listT (remove_nonterminal valid' (of_nonterminal nt')) valid)
               by (rewrite Hinit'; apply sub_nonterminals_listT_remove_2; reflexivity).
             destruct (fun k => minimal_pbh'_production__of__pbh'_production' valid' _ _ p' k Hinit')
               as [ [p1'' H1''] | p1'' ];
@@ -380,16 +381,23 @@ Section cfg.
         Proof.
           intros valid' nt p H_h Hinit'.
           pose proof (minimal_pbh'_productions__of__pbh'_productions' minimal_pbh'_item__of__pbh'_item) as X.
-          specialize (X (remove_nonterminal valid' nt) (Lookup G nt) p H_h Hinit').
+          specialize (X (remove_nonterminal valid' (of_nonterminal nt)) (Lookup G nt) p H_h Hinit').
           destruct X as [p' | [nt' [[H0' H1'] [p' H']]] ];
             [ left
             | ].
           { exact p'. }
-          { destruct (is_valid_nonterminal valid' nt') eqn:Hvalid.
-            { assert (nt = nt').
+          { destruct (is_valid_nonterminal valid' (of_nonterminal nt')) eqn:Hvalid.
+            { assert (H'nt : of_nonterminal nt = of_nonterminal nt').
               { apply remove_nonterminal_2 in H0'.
-                destruct H0' as [ H0' | ]; [ | subst; reflexivity ].
+                destruct H0' as [ H0' | ]; [ | assumption ].
                 clear -H0' Hvalid; congruence. }
+              pose proof (f_equal to_nonterminal H'nt) as H'nt'.
+              rewrite !to_of_nonterminal
+                in H'nt'
+                by (apply initial_nonterminals_correct, Hsub0;
+                    first [ assumption
+                          | rewrite -> H'nt; assumption
+                          | rewrite <- H'nt; assumption ]).
               subst.
               destruct (minimal_pbh'_item__of__pbh'_item _ H_h valid' _ p' H' Hinit')
                 as [ [p'' H''] | p''].

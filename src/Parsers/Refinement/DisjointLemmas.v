@@ -42,9 +42,11 @@ Set Implicit Arguments.
 
 Local Ltac find_production_valid
   := repeat match goal with
-              | [ H : grammar_valid ?G, HinL : In (_ ++ _::?its) (Lookup ?G ?nt), HinV' : is_true (is_valid_nonterminal _ ?nt) |- production_valid ?its ]
+              | [ H : is_true (is_valid_nonterminal initial_nonterminals_data _) |- _ ]
+                => apply initial_nonterminals_correct in H
+              | [ H : grammar_valid ?G, HinL : In (_ ++ _::?its) (Lookup ?G ?nt), HinV' : List.In ?nt (Valid_nonterminals ?G) |- production_valid ?its ]
                 => specialize (H nt HinV')
-              | [ H : grammar_valid ?G, HinL : In (_ ++ (NonTerminal ?x)::_) (Lookup ?G ?nt), HinV' : is_true (is_valid_nonterminal _ ?nt) |- is_true (is_valid_nonterminal _ ?x) ]
+              | [ H : grammar_valid ?G, HinL : In (_ ++ (NonTerminal ?x)::_) (Lookup ?G ?nt), HinV' : List.In ?nt (Valid_nonterminals ?G) |- is_true (is_valid_nonterminal _ (of_nonterminal ?x)) ]
                 => specialize (H nt HinV')
               | _ => progress unfold productions_valid in *
               | [ H : Forall _ _ |- _ ] => rewrite Forall_forall in H
@@ -52,7 +54,7 @@ Local Ltac find_production_valid
                 => specialize (H' _ H)
               | [ H : production_valid (_ ++ _::?x) |- production_valid ?x ]
                 => apply production_valid_app in H
-              | [ H : production_valid (_ ++ (NonTerminal ?x)::_) |- is_true (is_valid_nonterminal _ ?x) ]
+              | [ H : production_valid (_ ++ (NonTerminal ?x)::_) |- is_true (is_valid_nonterminal _ (of_nonterminal ?x)) ]
                 => apply production_valid_app in H
               | [ H : production_valid (_::?x) |- production_valid ?x ]
                 => apply production_valid_cons in H
@@ -93,7 +95,7 @@ Section only_first.
 
   Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
-         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data nt && brute_force_parse_nonterminal G (of_string nil) nt |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) && brute_force_parse_nonterminal G (of_string nil) nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -197,7 +199,7 @@ Section all_possible_correctness.
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) nt
-        (His_valid : is_valid_nonterminal initial_nonterminals_data nt)
+        (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
         (p : parse_of_item G str (NonTerminal nt))
   : forall_chars__char_in str (possible_terminals_of G nt).
   Proof.
@@ -206,7 +208,7 @@ Section all_possible_correctness.
     pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_item p (Forall_parse_of_item_valid Hvalid' k p)) as H.
     specialize (H His_valid).
     revert H.
-    setoid_rewrite All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item.
+    setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item (reflexivity _)).
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
     let f := constr:(fold_nt_correct (G := G) nt) in
@@ -295,7 +297,7 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ (_::_) |- _ ] => ddestruction H
       | _ => right; eauto;
              apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__of__maybe_empty_item;
-             constructor; assumption
+             first [ constructor; assumption | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_item _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_item__of__minimal_maybe_empty_item in H; [ | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_production__of__minimal_maybe_empty_production in H; [ | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
@@ -364,7 +366,7 @@ Section only_first_correctness.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
     generalize (OnlyFirst.ReachableParse.for_first_char_reachable_from_parse_of_production (reflexivity _) p).
-    setoid_rewrite OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production.
+    setoid_rewrite (OnlyFirst.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production (reflexivity _)).
     intro H; specialize (H (Forall_parse_of_production_valid Hvalid' His_valid p)); revert H.
     apply for_first_char__impl__first_char_in.
     intro ch.
@@ -427,7 +429,8 @@ Proof.
       generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid' HSLP HSIP.
       intros.
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
-      find_production_valid. }
+      find_production_valid.
+ }
     { split; try omega; [].
       eapply first_char_in__impl__for_first_char;
       [

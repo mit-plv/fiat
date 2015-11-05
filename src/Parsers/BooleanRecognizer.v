@@ -18,13 +18,13 @@ Section recursive_descent_parser.
   Section bool.
     Section parts.
       Definition parse_item'
-                 (str_matches_nonterminal : String.string -> bool)
+                 (str_matches_nonterminal : nonterminal_carrierT -> bool)
                  (str : String)
                  (it : item Char)
       : bool
         := match it with
              | Terminal ch => str ~= [ ch ]
-             | NonTerminal nt => str_matches_nonterminal nt
+             | NonTerminal nt => str_matches_nonterminal (of_nonterminal nt)
            end.
 
       Section production.
@@ -32,7 +32,7 @@ Section recursive_descent_parser.
                 (parse_nonterminal
                  : forall (str : String) (len : nat),
                      len <= len0
-                     -> String.string
+                     -> nonterminal_carrierT
                      -> bool).
 
         (** To match a [production], we must match all of its items.
@@ -86,7 +86,7 @@ Section recursive_descent_parser.
                  : forall (str : String)
                           (len : nat)
                           (pf : len <= len0),
-                     String.string -> bool).
+                     nonterminal_carrierT -> bool).
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
         Definition parse_productions'
@@ -110,14 +110,14 @@ Section recursive_descent_parser.
                        prod_relation lt lt p (len0, valid_len)
                        -> forall (valid : nonterminals_listT)
                                  (str : String) (len : nat),
-                            len <= fst p -> String.string -> bool).
+                            len <= fst p -> nonterminal_carrierT -> bool).
 
           Definition parse_nonterminal_step
                      (valid : nonterminals_listT)
                      (str : String)
                      (len : nat)
                      (pf : len <= len0)
-                     (nt : String.string)
+                     (nt : nonterminal_carrierT)
           : bool.
           Proof.
             refine
@@ -133,10 +133,10 @@ Section recursive_descent_parser.
                           (fun _ => le_n _)
                           (fun _ => _)
                           (lt_dec len len0))
-                       (Lookup G nt))
+                       (Lookup G (to_nonterminal nt)))
                  false
                  (sumbool_rect
-                    (fun b => option (forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> String.string -> bool))
+                    (fun b => option (forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> nonterminal_carrierT -> bool))
                     (fun _ => (** [str] got smaller, so we reset the valid nonterminals list *)
                        Some (@parse_nonterminal
                                (len, nonterminals_length initial_nonterminals_data)
@@ -144,7 +144,7 @@ Section recursive_descent_parser.
                                initial_nonterminals_data))
                     (fun _ => (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
                        sumbool_rect
-                         (fun _ => option (forall (str' : String) (len' : nat), len' <= len0 -> String.string -> bool))
+                         (fun _ => option (forall (str' : String) (len' : nat), len' <= len0 -> nonterminal_carrierT -> bool))
                          (fun is_valid => (** It was valid, so we can remove it *)
                             Some (@parse_nonterminal
                                     (len0, pred valid_len)
@@ -173,7 +173,7 @@ Section recursive_descent_parser.
                    (valid : nonterminals_listT)
                    (str : String) (len : nat),
               len <= fst p
-              -> String.string
+              -> nonterminal_carrierT
               -> bool
             := @Fix
                  (nat * nat)
@@ -182,15 +182,21 @@ Section recursive_descent_parser.
                  _
                  (fun sl => @parse_nonterminal_step (fst sl) (snd sl)).
 
-          Definition parse_nonterminal
+          Definition parse_nonterminal'
                      (str : String)
-                     (nt : String.string)
+                     (nt : nonterminal_carrierT)
           : bool
             := @parse_nonterminal_or_abort
                  (length str, nonterminals_length initial_nonterminals_data)
                  initial_nonterminals_data
                  str (length str)
                  (le_n _) nt.
+
+          Definition parse_nonterminal
+                     (str : String)
+                     (nt : String.string)
+          : bool
+            := parse_nonterminal' str (of_nonterminal nt).
         End wf.
       End nonterminals.
 
@@ -198,7 +204,7 @@ Section recursive_descent_parser.
                  (str : String)
                  (it : item Char)
       : bool
-        := parse_item' (parse_nonterminal str) str it.
+        := parse_item' (parse_nonterminal' str) str it.
 
       Definition parse_production
                  (str : String)

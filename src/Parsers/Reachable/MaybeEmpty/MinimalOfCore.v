@@ -108,10 +108,11 @@ Section cfg.
   Proof. repeat intro; subst; eapply expand_minimal_maybe_empty_productions; eauto. Qed.*)
 
   Section minimize.
-    Context {valid0 : nonterminals_listT}.
+    Context {valid0 : nonterminals_listT}
+            (Hsub0 : sub_nonterminals_listT valid0 initial_nonterminals_data).
 
     Let alt_option h valid
-      := { nt : _ & (is_valid_nonterminal valid nt = false /\ is_valid_nonterminal valid0 nt)
+      := { nt : _ & (is_valid_nonterminal valid (of_nonterminal nt) = false /\ is_valid_nonterminal valid0 (of_nonterminal nt))
                     * { p : maybe_empty_productions G valid0 (Lookup G nt)
                             & (size_of_maybe_empty_productions p < h) } }%type.
 
@@ -300,8 +301,8 @@ Section cfg.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [nonterminal' H' p'].
-          { case_eq (is_valid_nonterminal valid' nonterminal'); intro H'''.
-            { edestruct (fun k => @minimal_maybe_empty_productions__of__maybe_empty_productions' _ (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' nonterminal') _ p' k)
+          { case_eq (is_valid_nonterminal valid' (of_nonterminal nonterminal')); intro H'''.
+            { edestruct (fun k => @minimal_maybe_empty_productions__of__maybe_empty_productions' _ (fun h'' pf => minimal_maybe_empty_item__of__maybe_empty_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];
             [ solve [ auto with arith ]
             | left | ].
@@ -321,7 +322,27 @@ Section cfg.
               { right.
                 exists nt''.
                 destruct_head prod; destruct_head and; repeat split; trivial.
-                { erewrite <- remove_nonterminal_5 by eassumption; assumption. }
+                { erewrite <- remove_nonterminal_5
+                    by repeat match goal with
+                                | _ => eassumption
+                                | _ => progress subst
+                                | [ H : ?y <> ?x, H' : _ = ?x |- _ ] => destruct (H H')
+                                | _ => progress destruct_head' and
+                                | _ => intro
+                                | [ Hsub0 : sub_nonterminals_listT _ _,
+                                            H : _ = of_nonterminal _ |- _ ]
+                                  => let H' := fresh in
+                                     pose proof (f_equal to_nonterminal H) as H';
+                                       progress
+                                         (rewrite !to_of_nonterminal
+                                           in H'
+                                           by (apply initial_nonterminals_correct, Hsub0;
+                                               first [ assumption
+                                                     | rewrite <- H; assumption
+                                                     | rewrite -> H; assumption ]));
+                                       clear H
+                              end.
+                  eassumption. }
                 { destruct_head sigT.
                   eexists.
                   apply Lt.lt_S; eassumption. } } } }

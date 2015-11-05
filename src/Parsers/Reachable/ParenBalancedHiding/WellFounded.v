@@ -10,7 +10,7 @@ Section rel.
           {G : grammar Char}.
 
   Section size.
-    Context {transform_valid : nonterminals_listT -> string -> nonterminals_listT}.
+    Context {transform_valid : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT}.
 
     Fixpoint size_of_pbh'_productions {valid n pats} (p : generic_pbh'_productions G transform_valid valid n pats)
     : nat
