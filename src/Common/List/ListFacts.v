@@ -822,6 +822,31 @@ Section ListFacts.
     symmetry; eauto.
   Qed.
 
+  Lemma uniquize_shorter {A} (ls : list A) beq
+  : List.length (uniquize beq ls) <= List.length ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; trivial.
+    edestruct @Equality.list_bin; simpl; omega.
+  Qed.
+
+  Lemma uniquize_length {A} (ls : list A) beq
+  : List.length (uniquize beq ls) = List.length ls
+    <-> uniquize beq ls = ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; try (split; reflexivity).
+    edestruct @Equality.list_bin; simpl.
+    { pose proof (uniquize_shorter xs beq).
+      split; intro H'.
+      { omega. }
+      { apply (f_equal (@List.length _)) in H'.
+        simpl in H'.
+        omega. } }
+    { destruct IHxs.
+      split; intro;
+      first [ congruence
+            | f_equal; auto ]. }
+  Qed.
+
   Lemma fold_right_bool_rect {T} t b init ls' bv
   : fold_right (fun (x : T) (acc : bool -> bool)
                 => bool_rect
