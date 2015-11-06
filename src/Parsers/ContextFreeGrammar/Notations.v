@@ -1,5 +1,6 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Equality.
 
 Export Coq.Strings.Ascii.
@@ -15,15 +16,12 @@ Fixpoint production_of_string (s : string) : production Ascii.ascii
 Coercion production_of_string : string >-> production.
 
 Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
-  := fold_right
-       (fun str_t else_case s
-        => bool_rect
-             (fun _ => _)
-             (snd str_t)
-             (else_case s)
-             (string_beq (fst str_t) s))
-       (fun _ => default)
-       ls.
+  := fun nt
+     => option_rect
+          (fun _ => T)
+          (fun idx => nth idx (map snd ls) default)
+          default
+          (first_index_error (string_beq nt) (map fst ls)).
 
 Definition list_to_grammar {T} (default : productions T) (ls : list (string * productions T)) : grammar T
   := {| Start_symbol := hd ""%string (map fst ls);

@@ -335,6 +335,9 @@ Section recursive_descent_parser.
       | [ |- _ = @map ?A ?B _ _ ]
         => refine (_ : @map A B (fun x => _) _ = _);
           apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _) (@map A B)); repeat intro
+      | [ |- _ = @nth ?A _ _ _ ]
+        => refine (_ : @nth A _ _ _ = _);
+          apply f_equal3
     end;
     fin_step_opt.
 
@@ -418,24 +421,19 @@ Section recursive_descent_parser.
     step_opt'.
     etransitivity_rev _.
     { step_opt'.
-      match goal with
-        | [ |- appcontext[fold_right (fun str_t else_case s => bool_rect (fun _ => ?T) (@?a str_t) (else_case s) (@?b str_t s))] ]
-          => rewrite (@fold_right_fun _ _ _ (fun str_t else_cases s => bool_rect (fun _ => T) (a str_t) else_cases (b str_t s)))
-      end.
-      match goal with
-        | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
-          => rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
-      end.
-      reflexivity. }
-    match goal with
-      | [ |- appcontext[?f _ (fold_right (fun x acc => bool_rect (fun _ => _) _ acc _) _ ?ls)] ]
-        => rewrite (fun extra_arg init => @f_fold_right_bool_rect _ _ _ (fun k => f extra_arg k) init ls)
-    end.
-    simpl.
-    rewrite fold_right_bool_rect; simpl.
+      rewrite pull_option_rect; simpl map.
+      step_opt'.
+      { match goal with
+          | [ |- _ = ?f (nth _ _ _) ]
+            => rewrite <- (map_nth f)
+        end.
+        simpl map.
+        reflexivity. }
+      { reflexivity. } }
     step_opt'.
+    step_opt'; [ | reflexivity ].
     step_opt'.
-    step_opt'.
+    step_opt'; [ | reflexivity ].
     step_opt'.
     lazymatch goal with
       | [ |- _
