@@ -43,3 +43,12 @@ Definition pull_bool_rect_dep {A B} (P : forall b : bool, A b -> B b) (a : A tru
 Definition pull_bool_rect {A B} (P : A -> B) (a a' : A) (b : bool)
 : P (bool_rect (fun _ => A) a a' b) = bool_rect (fun _ => B) (P a) (P a') b
   := pull_bool_rect_dep (fun _ => P) a a' b.
+
+Definition pull_option_rect_dep {T A B} (P : forall x : option T, A x -> B x) (a : forall x, A (Some x)) (a' : A None)
+           (x : option T)
+: P x (option_rect A a a' x) = option_rect B (fun x => P _ (a x)) (P _ a') x
+  := match x with Some _ => eq_refl | None => eq_refl end.
+
+Definition pull_option_rect {T A B} (P : A -> B) (a : T -> A) (a' : A) (x : option T)
+: P (option_rect (fun _ => A) a a' x) = option_rect (fun _ => B) (fun x => P (a x)) (P a') x
+  := pull_option_rect_dep (fun _ => P) a a' x.
