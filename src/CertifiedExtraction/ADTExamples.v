@@ -110,6 +110,68 @@ Proof.
   loop_t.
 Qed.
 
+Lemma CompileLoop' :
+  forall {A} `{FacadeWrapper av (list W)} `{FacadeWrapper av A}
+    (lst: Comp (list W)) init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody env (ext: StringMap.t (Value av)) tenv (f: Comp A -> W -> Comp A),
+    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list W))) env ->
+    vtest ∉ ext ->
+    NotInTelescope vtest tenv ->
+    vlst ∉ ext ->
+    NotInTelescope vlst tenv ->
+    vret ∉ ext ->
+    NotInTelescope vret tenv ->
+    vhead ∉ ext ->
+    NotInTelescope vhead tenv ->
+    vtest <> vret ->
+    vtest <> vlst ->
+    vtest <> vhead ->
+    vret <> vlst ->
+    vret <> vhead ->
+    vlst <> vhead ->
+    {{ [[`vlst <~~ lst as _]] :: tenv }}
+      facadeInit
+    {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head (acc: Comp A) (s: Comp (list W)),
+        {{ [[vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+          facadeBody
+        {{ [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[`vlst <~~ lst as _]] :: tenv }}
+      (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
+    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  loop_t.
+
+  rewrite TelEq_swap by congruence;
+    eapply CompileCallEmpty_spec; loop_t.
+
+  2:eapply (CompileCallFacadeImplementationOfDestructor (A := list W)); loop_t.
+
+  loop_unify_with_nil_t.
+  
+  rewrite (TelEq_swap (k' := None)) by loop_t.
+
+  apply miniChomp'; loop_t.
+
+  clear dependent facadeInit;
+  generalize dependent init;
+  generalize dependent lst;
+  induction vv; loop_t.
+
+  rewrite TelEq_swap by loop_t.
+
+  apply CompileWhileFalse_Loop; loop_t.
+
+  eapply CompileWhileTrue; loop_t.
+
+  apply generalized CompileCallPop; loop_t.
+
+  apply CompileCallEmpty_spec; loop_t.
+
+  loop_t.
+Qed.
+
 Lemma CompileLoop_strong :
   forall `{FacadeWrapper av (list W)}
     lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
@@ -151,25 +213,32 @@ Proof.
     assumption.
 Qed.
 
-Variable TSearchTerm : Type.
-Definition av := (list W + TSearchTerm)%type.
+Parameter TSearchTerm : Type.
+Parameter TAcc : Type.
+Definition av := (list W + TSearchTerm + TAcc)%type.
 
-Definition MyEnvListsB `{FacadeWrapper av (list W)} : Env av :=
+Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
-       ((GLabelMap.add ("list", "push!") (Axiomatic (FacadeImplementationOfMutation cons)))
+    ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor (@nil W))))
+       ((GLabelMap.add ("list", "push!") (Axiomatic (FacadeImplementationOfMutation (@cons W))))
           ((GLabelMap.add ("list", "pop!") (Axiomatic List_pop))
              ((GLabelMap.add ("list", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := list W))))
                 ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
                    ((GLabelMap.add ("search", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := TSearchTerm))))
-                      (GLabelMap.empty (FuncSpec _)))))))).
+                      ((GLabelMap.add ("acc", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := TAcc))))
+                         (GLabelMap.empty (FuncSpec _))))))))).
 
-Example other_test_with_adt''' f (searchTerm: TSearchTerm):
-    sigT (fun prog => {{ [["search" <-- searchTerm as _]] :: (@Nil av) }}
-                      prog
-                      {{ [[`"ret" <~~  ( seq <- {s: list W | True };
-                                       fold_comp f seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
+Example other_test_with_adt''':
+  sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc),
+            {{ [["search" <-- searchTerm as _]] :: [["init" <-- init as _]] :: (@Nil av) }}
+              prog
+            {{ [[`"ret" <~~  ( seq <- {s: list W | True };
+                             fold_comp (fun acc elem =>
+                                          acc <- acc;
+                                          { x: W | Word.wlt (Word.wplus acc elem) x })
+                                       seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
 Proof.
+  Unset Ltac Debug.
   econstructor; intros.
 
   repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
@@ -190,8 +259,12 @@ Proof.
   let vtest := gensym "test" in
   let vhead := gensym "head" in
   apply (CompileLoop_strong (vtest := vtest) (vhead := vhead) (fpop := fpop) (fempty := fempty) (fdealloc := fdealloc));
-    try compile_do_side_conditions; repeat compile_step.
+    try compile_do_side_conditions.
 
+  repeat compile_step.
+  repeat compile_step.
+
+  eapply CompileSeq.
   let fdealloc := find_function_pattern_in_env
                    (fun w => (Axiomatic (FacadeImplementationOfDestructor
                                         (A := TSearchTerm) (av := av) (H := w)))) MyEnvListsB in
@@ -199,10 +272,31 @@ Proof.
   apply (CompileCallFacadeImplementationOfDestructor (fpointer := fdealloc) (vtmp := vtmp));
     try compile_do_side_conditions.
 
-  let fpop := find_function_pattern_in_env
-               (fun w => (Axiomatic (List_pop (av := av) (H := w)))) MyEnvLists in pose fpop.
-  
+  let fdealloc := find_function_pattern_in_env
+                   (fun w => (Axiomatic (FacadeImplementationOfDestructor
+                                        (A := TAcc) (av := av) (H := w)))) MyEnvListsB in
+  let vtmp := gensym "tmp" in
+  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fdealloc) (vtmp := vtmp));
+    try compile_do_side_conditions.
+
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply miniChomp.
+  intros.
+  rewrite Propagate_anonymous_ret.
+
+  instantiate (1 := Skip).
+  admit.
 Defined.
+
+Eval compute in (extract_facade other_test_with_adt''').
 
 Example other_test_with_adt'' :
     sigT (fun prog => forall seq seq', {{ [["arg1" <-- seq as _ ]] :: [["arg2" <-- seq' as _]] :: Nil }}
