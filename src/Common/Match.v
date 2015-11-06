@@ -31,6 +31,20 @@ Definition pull_match_bool_dep {A B} (P : forall b : bool, A b -> B b) (a : A tr
   if b as b return B b then P _ a else P _ a'
   := match b with true => eq_refl | false => eq_refl end.
 
+
+Definition pull_sumbool_rect_dep {L R A B} (P : forall b : sumbool L R, A b -> B b)
+           (a : forall x, A (left x))
+           (a' : forall x, A (right x))
+           b
+: P b (sumbool_rect A a a' b)
+  = sumbool_rect B (fun x => P _ (a x)) (fun x => P _ (a' x)) b
+  := match b with left _ => eq_refl | right _ => eq_refl end.
+
+Definition pull_sumbool_rect {L R : Prop} {A B} (P : A -> B) (a : L -> A) (a' : R -> A) (b : sumbool L R)
+: P (sumbool_rect (fun _ => A) a a' b)
+  = sumbool_rect (fun _ => B) (fun x => P (a x)) (fun x => P (a' x)) b
+  := pull_sumbool_rect_dep (fun _ => P) a a' b.
+
 Definition pull_match_bool {A B} (P : A -> B) (a a' : A) (b : bool)
 : P (if b then a else a') = if b then P a else P a'
   := pull_match_bool_dep (fun _ => P) a a' b.
@@ -65,3 +79,8 @@ Definition pull_bool_rect_fun_id {T A} (a a' : T -> A) (b : bool)
 : (fun t : T => bool_rect (fun _ => A) (a t) (a' t) b)
   = bool_rect (fun _ => T -> A) a a' b
   := pull_bool_rect_fun (fun x => x) a a' b.
+
+Definition option_rect_const {A B} (a a' : B) (x : option A)
+: option_rect (fun _ => B) (fun _ => a) a' x
+  = bool_rect (fun _ => B) a a' (option_rect _ (fun _ => true) false x)
+:= match x with Some _ => eq_refl | None => eq_refl end.
