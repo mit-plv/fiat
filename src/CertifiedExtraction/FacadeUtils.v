@@ -20,14 +20,20 @@ Definition bool2w b :=
   | false => (Word.natToWord 32 0)
   end.
 
+Ltac FacadeWrapper_t_step :=
+  match goal with
+  | _ => cleanup_pure
+  | _ => progress simpl in *
+  | [ H: FacadeWrapper _ _ |- _ ] => destruct H
+  | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+  | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+  | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+  | [  |- _ = _ ] => progress f_equal
+  | _ => solve [eauto]
+  end.
+
 Ltac FacadeWrapper_t :=
-  abstract
-    (repeat match goal with
-            | _ => cleanup_pure
-            | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
-            | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
-            | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
-            end).
+  abstract (repeat FacadeWrapper_t_step).
 
 Instance FacadeWrapper_SCA {av} : FacadeWrapper (Value av) W.
 Proof.
@@ -37,7 +43,7 @@ Proof.
             wrap_unwrap := _ |}; FacadeWrapper_t.
 Defined.
 
-Instance FacadeWrapper_SingleType {A: Type} : FacadeWrapper A A.
+Instance FacadeWrapper_Self {A: Type} : FacadeWrapper A A.
 Proof.
   refine {| wrap := id;
             unwrap := fun x => Some x;
@@ -45,23 +51,25 @@ Proof.
             wrap_unwrap := _ |}; FacadeWrapper_t.
 Defined.
 
-Instance FacadeWrapper_Left {A B: Type} : FacadeWrapper (A + B)%type A.
+Instance FacadeWrapper_Left {LType RType A: Type} (_: FacadeWrapper LType A) :
+  FacadeWrapper (LType + RType)%type A.
 Proof.
-  refine {| wrap := inl;
+  refine {| wrap x := inl (wrap x);
             unwrap := fun x => match x with
-                           | inl a => Some a
+                           | inl b => unwrap b
                            | inr _ => None
                            end;
             unwrap_wrap := fun v => _;
             wrap_unwrap := _ |}; FacadeWrapper_t.
 Defined.
 
-Instance FacadeWrapper_Right {A B: Type} : FacadeWrapper (A + B)%type B.
+Instance FacadeWrapper_Right {LType RType A: Type} (_: FacadeWrapper RType A):
+  FacadeWrapper (LType + RType)%type A.
 Proof.
-  refine {| wrap := inr;
+  refine {| wrap x := inr (wrap x);
             unwrap := fun x => match x with
                            | inl _ => None
-                           | inr b => Some b
+                           | inr b => unwrap b
                            end;
             unwrap_wrap := fun v => _;
             wrap_unwrap := _ |}; FacadeWrapper_t.
