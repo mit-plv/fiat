@@ -1,10 +1,14 @@
-.PHONY: all test test-reference test-pretty correctness
+.PHONY: all test test-reference test-pretty correctness test-profile
 
 all: test_ab_star.exe test_ab_star_reference.exe
 
 test_ab_star.exe test_ab_star_reference.exe: %.exe : %.ml
 	rm -f $*.mli
 	ocamlopt -o $@ $<
+
+test_ab_star_p.exe test_ab_star_reference_p.exe: %_p.exe : %.ml
+	rm -f $*.mli
+	ocamloptp -p -o $@ $<
 
 ab10:
 	echo -n "abababababababababab" > $@
@@ -23,6 +27,12 @@ ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0 ab10.0.0.0.0.0.0 ab10.0.0
 	@cat $< >> $@
 	@cat $< >> $@
 	@cat $< >> $@
+
+ocamlprof.dump: test_ab_star_p.exe ab10.0.0.0
+	./test_ab_star_p.exe ab10.0.0.0
+
+test-profile: ocamlprof.dump test_ab_star_p.exe
+	gprof ./test_ab_star_p.exe
 
 make_fmt = $$(echo "$1 (real: %e, user: %U, sys: %S, mem: %M ko)" | sed s'/\.//g')
 
