@@ -7,3 +7,6 @@ test-ab-star::
 
 test-ab-star-pretty::
 	$(MAKE) -f Makefile.ab_star test-pretty
+
+test-ab-star-profile::
+	$(MAKE) -f Makefile.ab_star test-profile

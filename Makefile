@@ -5,7 +5,7 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc \
-	test-parsers
+	test-parsers test-parsers-profile
 
 submodule-update: .gitmodules
 	git submodule sync && \
@@ -45,6 +45,9 @@ HASNATDYNLINK = true
 
 test-parsers: src/Parsers/Refinement/ExtractSharpenedABStar.vo
 	$(MAKE) -C src/Parsers/Refinement/Testing
+
+test-parsers-profile: src/Parsers/Refinement/ExtractSharpenedABStar.vo
+	$(MAKE) -C src/Parsers/Refinement/Testing test-ab-star-profile
 
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
