@@ -994,4 +994,10 @@ Section ListFacts.
   Proof.
     intros H ?; rewrite nth_error_nth, H; reflexivity.
   Qed.
+
+  Lemma length_up_to n
+  : List.length (up_to n) = n.
+  Proof.
+    induction n; simpl; auto.
+  Qed.
 End ListFacts.
