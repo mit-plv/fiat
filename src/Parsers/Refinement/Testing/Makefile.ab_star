@@ -1,4 +1,4 @@
-.PHONY: all test test-reference test-pretty correctness test-profile
+.PHONY: all test test-reference test-pretty correctness test-profile test-profile-graph
 
 all: test_ab_star.exe test_ab_star_reference.exe
 
@@ -33,6 +33,9 @@ ocamlprof.dump: test_ab_star_p.exe ab10.0.0.0
 
 test-profile: ocamlprof.dump test_ab_star_p.exe
 	gprof ./test_ab_star_p.exe
+
+test-profile-graph: ocamlprof.dump test_ab_star_p.exe
+	gprof --graph="$$(gprof ./test_ab_star_p.exe  | grep -o '[^ ]*fix_F[^ ]*' | sort | uniq)" ./test_ab_star_p.exe
 
 make_fmt = $$(echo "$1 (real: %e, user: %U, sys: %S, mem: %M ko)" | sed s'/\.//g')
 
