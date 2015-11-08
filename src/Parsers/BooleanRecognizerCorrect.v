@@ -387,7 +387,13 @@ Section sound.
                              | idtac;
                                match goal with
                                  | [ H : _ /\ _ |- _ ] => destruct H
-                                 | [ H : andb _ _ = true |- _ ] => rewrite Bool.andb_true_iff in H
+                                 | [ H : andb _ _ = true |- _ ]
+                                   =>
+                                   (* Work around bug in 8.5 where [rewrite] creates ill-typed terms *)
+                                   match goal with
+                                     | [ H' : context[H] |- _ ] => fail 1
+                                     | _ => rewrite Bool.andb_true_iff in H
+                                   end
                                  | [ H : context[to_nonterminal (of_nonterminal _)] |- _ ] => rewrite to_of_nonterminal in H; [ | clear H ]
                                end
                              | edestruct dec; simpl in *; trivial; [];
