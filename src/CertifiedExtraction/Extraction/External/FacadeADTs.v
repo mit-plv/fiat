@@ -1,24 +1,24 @@
 Require Import CertifiedExtraction.Extraction.External.Core.
 
-Definition List_pop `{FacadeWrapper av (list W)} : AxiomaticSpec av.
+Definition List_pop `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
-                   exists h t,
+                   exists (h: A) t,
                      args = (wrap (cons h t)) :: nil;
       PostCond := fun args ret =>
-                    exists h t,
+                    exists (h: A) t,
                       args = (wrap (cons h t), Some (wrap t)) :: nil /\
                       ret = wrap h
     |}; spec_t.
 Defined.
 
-Definition List_empty `{FacadeWrapper av (list W)} : AxiomaticSpec av.
+Definition List_empty `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
-                   exists l: list W,
+                   exists l: list A,
                      args = (wrap l) :: nil;
       PostCond := fun args ret =>
-                    exists l: list W,
+                    exists l: list A,
                       args = (wrap l, Some (wrap l)) :: nil /\
                       exists w, ret = wrap w /\ w = bool2w (match l with
                                                        | nil => true
@@ -28,8 +28,8 @@ Definition List_empty `{FacadeWrapper av (list W)} : AxiomaticSpec av.
 Defined.
 
 Lemma CompileCallEmpty:
-  forall `{FacadeWrapper av (list W)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
-    (fempty : GLabelMap.key) (lst : list W),
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
+    (fempty : GLabelMap.key) (lst : list A),
     vlst <> vtest ->
     vtest ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap lst) ->
@@ -52,44 +52,9 @@ Proof.
   rewrite <- add_redundant_cancel; eauto.
 Qed.
 
-(* Lemma CompileCallEmpty: *)
-(*   forall `{FacadeWrapper av (list W)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext *)
-(*     (fempty : GLabelMap.key) (lst : list W), *)
-(*     vlst <> vtest -> *)
-(*     vtest ∉ ext -> *)
-(*     NotInTelescope vtest tenv -> *)
-(*     vlst ∉ ext -> *)
-(*     NotInTelescope vlst tenv -> *)
-(*     GLabelMap.MapsTo fempty (Axiomatic List_empty) env -> *)
-(*     {{ [[`vlst <-- lst as _]]::tenv }} *)
-(*       Call vtest fempty (vlst :: nil) *)
-(*     {{ [[`vtest <-- (bool2w match lst with *)
-(*                          | nil => true *)
-(*                          | _ :: _ => false *)
-(*                          end) as _]]::[[`vlst <-- lst as _]]::tenv }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   repeat match goal with *)
-(*          | _ => SameValues_Facade_t_step *)
-(*          | _ => facade_cleanup_call *)
-(*          (* | [ H: ADT _ = ADT _ |- _ ] => inversion' H *) *)
-(*          (* | [  |- context[wrap (FacadeWrapper := WrapInstance) ?x]     ] => rewrite WrapInstance_wrap *) *)
-(*          (* | [ H: context[wrap (FacadeWrapper := WrapInstance) _] |- _ ] => rewrite WrapInstance_wrap in H *) *)
-(*          (* | _ => rewrite WrapInstance_unwrap_wrap *) *)
-(*          end. *)
-
-(*   facade_eauto. *)
-(*   facade_eauto. *)
-(*   facade_eauto. *)
-(*   facade_eauto. *)
-
-(*   eapply (SameValues_PopExt' (H := WrapInstance (H := H))). (* FIXME *) *)
-(*   facade_eauto. *)
-(*   facade_eauto. *)
-(* Qed. *)
-
 Lemma CompileCallEmpty_spec:
-  forall `{FacadeWrapper av (list W)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
-    (fempty : GLabelMap.key) (lst : Comp (list W)),
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
+    (fempty : GLabelMap.key) (lst : Comp (list A)),
     vlst <> vtest ->
     vtest ∉ ext ->
     Lifted_not_mapsto_adt ext tenv vtest ->
@@ -106,8 +71,8 @@ Proof.
 Qed.
 
 Lemma CompileCallPop:
-  forall `{FacadeWrapper av (list W)} (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) tenv ext
-    (fpop : GLabelMap.key) head (tail : list W),
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) tenv ext
+    (fpop : GLabelMap.key) head (tail : list A),
     vlst <> vhead ->
     vhead ∉ ext ->
     vlst ∉ ext ->

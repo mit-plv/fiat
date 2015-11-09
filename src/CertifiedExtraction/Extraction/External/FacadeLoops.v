@@ -7,7 +7,7 @@ Require Import
 
 Ltac loop_unify_with_nil_t :=
   match goal with
-  | [  |- context[Cons (T := list W) _ (ret ?val) _] ] => unify val (@nil W)
+  | [  |- context[Cons (T := list ?A) _ (ret ?val) _] ] => unify val (@nil A)
   end.
 
 Ltac loop_t :=
@@ -15,8 +15,8 @@ Ltac loop_t :=
 
 Ltac apply_generalized_t compilation_lemma :=
   erewrite ProgOk_TelEq_morphism;
+  try eapply compilation_lemma;
   repeat match goal with
-         | _ => eapply compilation_lemma
          | [  |- _ = _ ] => reflexivity
          | [  |- TelEq _ _ _ ] => decide_TelEq_instantiate
          end.
@@ -25,11 +25,11 @@ Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
   apply_generalized_t compilation_lemma.
 
 Lemma CompileLoop :
-  forall `{FacadeWrapper av (list W)}
-    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: W -> W -> W),
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) B} `{FacadeWrapper av (list A)}
+    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: B -> A -> B),
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list W))) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list A))) env ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     vlst ∉ ext ->
@@ -47,7 +47,7 @@ Lemma CompileLoop :
     {{ [[`vlst <-- lst as _]] :: tenv }}
       facadeInit
     {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    (forall head acc (s: list W),
+    (forall head acc (s: list A),
         {{ [[`vhead <-- head as _]] :: [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- acc as _]] :: tenv }}
           facadeBody
         {{ [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
@@ -58,7 +58,7 @@ Proof.
   loop_t.
 
   rewrite TelEq_swap by (cleanup; congruence);
-    eapply CompileCallEmpty; loop_t.
+    eapply (CompileCallEmpty (lst := lst)); loop_t.
 
   loop_t.
   2:eapply CompileCallFacadeImplementationOfDestructor; loop_t.
@@ -73,7 +73,7 @@ Proof.
 
   eapply CompileWhileTrue; loop_t.
 
-  apply generalized CompileCallPop; loop_t.
+  apply generalized @CompileCallPop; loop_t.
 
-  apply generalized CompileCallEmpty; loop_t.
+  apply generalized @CompileCallEmpty; loop_t.
 Qed.
