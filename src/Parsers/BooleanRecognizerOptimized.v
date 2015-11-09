@@ -480,8 +480,8 @@ Section recursive_descent_parser.
         etransitivity_rev _.
         { step_opt'.
           match goal with
-            | [ |- _ = option_rect (fun _ => ?T) (fun _ => ?a) ?b (sumbool_rect _ _ _ _) ]
-              => rewrite (pull_sumbool_rect_dep (fun _ b' => option_rect (fun _ => T) (fun _ => a) b b'))
+            | [ |- _ = option_rect (fun _ => ?T) (fun _ => ?a) ?b (@sumbool_rect ?L ?R ?A ?x ?y ?z) ]
+              => rewrite (@pull_sumbool_rect_dep L R A _ (fun _ b' => option_rect (fun _ => T) (fun _ => a) b b') x y z)
           end.
           simpl option_rect.
           step_opt'.

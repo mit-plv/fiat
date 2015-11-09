@@ -316,8 +316,12 @@ Section cfg.
                                 | _ => eassumption
                                 | _ => progress subst
                                 | [ H : ?y <> ?x, H' : _ = ?x |- _ ] => destruct (H H')
+                                | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
                                 | _ => progress destruct_head' and
                                 | _ => intro
+                                | [ H : ?x <> ?y,
+                                        H' : ?e = of_nonterminal ?y |- _ ]
+                                  => is_evar e; unify e (of_nonterminal x); revert H'
                                 | [ Hsub0 : sub_nonterminals_listT _ _,
                                             H : _ = of_nonterminal _ |- _ ]
                                   => let H' := fresh in
