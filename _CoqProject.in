@@ -111,7 +111,6 @@ src/Common/StringBound.v
 src/Common/StringFacts.v
 src/Common/StringOperations.v
 src/Common/String_as_OT.v
-src/Common/Telescope/Core.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v
@@ -141,6 +140,7 @@ src/Common/List/UpperBound.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
+src/Common/Telescope/Core.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/LogicLemmas.v
@@ -188,6 +188,7 @@ src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
+src/Examples/QueryStructure/ProcessScheduler.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v
