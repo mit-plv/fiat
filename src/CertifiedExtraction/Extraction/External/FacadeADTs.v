@@ -37,7 +37,7 @@ Lemma CompileCallEmpty:
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
     {{ tenv }}
       Call vtest fempty (vlst :: nil)
-    {{ [[vtest <-- (bool2w match lst with
+    {{ [[`vtest <-- (bool2w match lst with
                          | nil => true
                          | _ :: _ => false
                          end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -61,12 +61,12 @@ Qed.
 (*     vlst ∉ ext -> *)
 (*     NotInTelescope vlst tenv -> *)
 (*     GLabelMap.MapsTo fempty (Axiomatic List_empty) env -> *)
-(*     {{ [[vlst <-- lst as _]]::tenv }} *)
+(*     {{ [[`vlst <-- lst as _]]::tenv }} *)
 (*       Call vtest fempty (vlst :: nil) *)
-(*     {{ [[vtest <-- (bool2w match lst with *)
+(*     {{ [[`vtest <-- (bool2w match lst with *)
 (*                          | nil => true *)
 (*                          | _ :: _ => false *)
-(*                          end) as _]]::[[vlst <-- lst as _]]::tenv }} ∪ {{ ext }} // env. *)
+(*                          end) as _]]::[[`vlst <-- lst as _]]::tenv }} ∪ {{ ext }} // env. *)
 (* Proof. *)
 (*   repeat match goal with *)
 (*          | _ => SameValues_Facade_t_step *)
@@ -96,7 +96,7 @@ Lemma CompileCallEmpty_spec:
     GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
     {{ [[`vlst <~~ lst as _]] :: tenv }}
       Call vtest fempty (vlst :: nil)
-    {{ [[`vlst <~~ lst as ls]] :: [[vtest <-- (bool2w match ls with
+    {{ [[`vlst <~~ lst as ls]] :: [[`vtest <-- (bool2w match ls with
                                                 | nil => true
                                                 | _ :: _ => false
                                                 end) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -116,7 +116,7 @@ Lemma CompileCallPop:
     GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
-    {{ [[vhead <-- head as _]]::[[vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+    {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.

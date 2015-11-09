@@ -6,6 +6,8 @@ Require Import
         CertifiedExtraction.Extraction.AllInternal
         CertifiedExtraction.Extraction.Extraction.
 
+Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
+
 Definition MyEnvLists `{FacadeWrapper av (list W)} : Env av :=
   (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
     ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
@@ -16,9 +18,9 @@ Definition MyEnvLists `{FacadeWrapper av (list W)} : Env av :=
                    (GLabelMap.empty (FuncSpec _))))))).
 
 Example other_test_with_adt'' `{FacadeWrapper av (list W)}:
-    sigT (fun prog => forall seq: list W, {{ [["arg1" <-- seq as _ ]] :: Nil }}
+    sigT (fun prog => forall seq: list W, {{ [[`"arg1" <-- seq as _ ]] :: Nil }}
                                     prog
-                                  {{ [["ret" <-- (List.fold_left (@Word.wminus 32) seq 0) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
+                                  {{ [[`"ret" <-- (List.fold_left (@Word.wminus 32) seq 0) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvLists).
 Proof.
   econstructor; intros.
   repeat (compile_step || compile_loop).
@@ -73,9 +75,9 @@ Lemma CompileLoop :
       facadeInit
     {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
     (forall head (acc: Comp W) (s: Comp (list W)),
-        {{ [[vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+        {{ [[`vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
           facadeBody
-        {{ [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+        {{ [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
     {{ [[`vlst <~~ lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
     {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }} ∪ {{ ext }} // env.
@@ -83,12 +85,12 @@ Proof.
   Require Import FacadeLoops.
   loop_t.
 
-  rewrite TelEq_swap by congruence;
+  rewrite TelEq_swap by loop_t;
     eapply CompileCallEmpty_spec; loop_t.
 
   2:eapply CompileCallFacadeImplementationOfDestructor; loop_t.
 
-  rewrite (TelEq_swap (k' := None)) by loop_t.
+  rewrite (TelEq_swap _ NTNone) by loop_t.
 
   apply miniChomp'; loop_t.
 
@@ -134,23 +136,23 @@ Lemma CompileLoop' :
       facadeInit
     {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
     (forall head (acc: Comp A) (s: Comp (list W)),
-        {{ [[vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+        {{ [[`vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
           facadeBody
-        {{ [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+        {{ [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
     {{ [[`vlst <~~ lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
     {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   loop_t.
 
-  rewrite TelEq_swap by congruence;
+  rewrite TelEq_swap by loop_t;
     eapply CompileCallEmpty_spec; loop_t.
 
   2:eapply (CompileCallFacadeImplementationOfDestructor (A := list W)); loop_t.
 
   loop_unify_with_nil_t.
   
-  rewrite (TelEq_swap (k' := None)) by loop_t.
+  rewrite (TelEq_swap _ NTNone) by loop_t.
 
   apply miniChomp'; loop_t.
 
@@ -200,9 +202,9 @@ Lemma CompileLoop_strong :
       facadeConclude
     {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (acc: Comp W) (s: Comp (list W)),
-        {{ [[vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+        {{ [[`vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
           facadeBody
-        {{ [[`vlst <~~ s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+        {{ [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
     {{ [[`vlst <~~ lst as _]] :: tenv }}
       (Seq (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil)))) facadeConclude)
     {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env.
@@ -230,7 +232,7 @@ Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
 
 Example other_test_with_adt''':
   sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc),
-            {{ [["search" <-- searchTerm as _]] :: [["init" <-- init as _]] :: (@Nil av) }}
+            {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }}
               prog
             {{ [[`"ret" <~~  ( seq <- {s: list W | True };
                              fold_comp (fun acc elem =>
@@ -298,10 +300,213 @@ Defined.
 
 Eval compute in (extract_facade other_test_with_adt''').
 
+Lemma SameValues_Fiat_Bind_TelEq_Pair :
+  forall {av A1 A2 B} key compA compB tail ext,
+    TelEq ext
+          (Cons (av := av) key (@Bind (A1 * A2) B compA compB) tail)
+          (Cons NTNone compA (fun a => Cons NTNone (ret (fst a)) (fun a1 => Cons NTNone (ret (snd a)) (fun a2 => Cons key (compB (a1, a2)) tail)))).
+Proof.
+  unfold TelEq;
+  repeat match goal with
+         | _ => progress subst
+         | _ => progress SameValues_Fiat_t_step
+         | _ => rewrite <- surjective_pairing in *
+         end.
+Qed.
+
+(* Example other_test_with_adt'''' A: *)
+(*   sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc), *)
+(*             {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }} *)
+(*               prog *)
+(*             {{ [[`"ret" <~~  ( seq <- {s: (A * list W) | True }; *)
+(*                              ret (snd seq)) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB). *)
+(* Proof. *)
+(*   Unset Ltac Debug. *)
+(*   econstructor; intros. *)
+
+(*   rewrite SameValues_Fiat_Bind_TelEq_Pair. *)
+(*   simpl. *)
+
+
+Require Import QueryStructureImplementation Common Schema.
+Require Import Fin.
+Print PartialSchedulerImpl.
+
+Definition Type1 := IndexedQueryStructure 
+                     (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                     (@icons3 _ 
+                              (fun sch : RawHeading => SearchUpdateTerms sch) heading 0 
+                              (VectorDef.nil RawHeading) SearchUpdateTerm 
+                              (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))).
+
+Definition Type2 := (Type1 * list (Domain heading (@FS 2 (@FS 1 (@F1 0)))))%type.
+
+Definition MethodOfInterest := fun (r_n : Type1) (d : W) =>
+                                (a <- @CallBagMethod 
+                                   (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                        (@icons3 _ 
+                                           (fun sch : RawHeading => SearchUpdateTerms sch) heading 0 
+                                           (VectorDef.nil RawHeading) SearchUpdateTerm 
+                                           (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))) 
+                                        (@F1 0)
+                                        (@BagFind heading
+                                           (@ilist3_hd RawSchema 
+                                              (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 1
+                                              (Vector.cons RawSchema
+                                                 {|
+                                                 rawSchemaHeading := heading;
+                                                 attrConstraints := @None (@RawTuple heading -> Prop);
+                                                 tupleConstraints := @Some 
+                                                  (@RawTuple heading -> @RawTuple heading -> Prop) 
+                                                  (@FunctionalDependency_P heading [@FS 2 (@FS 1 (@F1 0)); @FS 2 (@F1 1)] [@F1 2]) |} 0 
+                                                 (Vector.nil RawSchema))
+                                              (@icons3 _ 
+                                                 (fun sch : RawHeading => SearchUpdateTerms sch) heading 0 
+                                                 (VectorDef.nil RawHeading) SearchUpdateTerm 
+                                                 (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
+                                        (@Some W d, (@None (Domain heading (@FS 2 (@F1 1))), fun _ : @RawTuple heading => true));
+                                 ret
+                                   (r_n,
+                                   @map (@RawTuple heading) 
+                                     (Domain heading (@FS 2 (@FS 1 (@F1 0))))
+                                     (fun x : @RawTuple heading =>
+                                      @GetAttributeRaw heading
+                                        (@ilist2.ilist2_hd RawHeading 
+                                           (@RawTuple) 1 
+                                           (VectorDef.cons RawHeading heading 0 (VectorDef.nil RawHeading))
+                                           (@ilist2.icons2 RawHeading (@RawTuple) heading 0 (VectorDef.nil RawHeading) x (@ilist2.inil2 RawHeading (@RawTuple))))
+                                        (@FS 2 (@FS 1 (@F1 0)))) 
+                                     (@snd (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)) a)))%comp : Comp Type2.
+
+Definition av' := (list W + Type1 + Type2)%type.
+
+Definition MyEnvListsC : Env av' :=
+  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
+    ((GLabelMap.add ("list", "nil") (Axiomatic (FacadeImplementationOfConstructor (@nil W))))
+       ((GLabelMap.add ("list", "push!") (Axiomatic (FacadeImplementationOfMutation (@cons W))))
+          ((GLabelMap.add ("list", "pop!") (Axiomatic List_pop))
+             ((GLabelMap.add ("list", "delete!") (Axiomatic (FacadeImplementationOfDestructor (A := list W))))
+                ((GLabelMap.add ("list", "empty?") (Axiomatic List_empty))
+                   (GLabelMap.empty (FuncSpec _))))))).
+
+Check MethodOfInterest.
+
+Example compile :
+  sigT (fun prog => forall (r_n : Type1) (d : W),
+            {{ [[`"r_n" <-- r_n as _ ]] :: [[`"d" <-- d as _]] :: Nil }}
+              prog
+            {{ [[MethodOfInterest r_n d as retv]] :: [[`"r_n" <-- fst retv as _]] :: [[`"ret" <-- snd retv as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvListsC).
+Proof.
+  eexists; intros.
+  unfold MethodOfInterest.
+
+  (* Notation "'BIND' !! A !! B !! C" := (@Bind A B C) (at level 1). *)
+  (* Notation "x { A } <- y ; z" := (Bind y (fun x: A => z)) (at level 1). *)
+  rewrite SameValues_Fiat_Bind_TelEq_Pair.
+  setoid_rewrite Propagate_anonymous_ret at 3; simpl.
+
+  Eval simpl in (@CallBagMethod (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+           (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+              (VectorDef.nil RawHeading) SearchUpdateTerm 
+              (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) 
+           (@F1 O)
+           (@BagFind heading
+              (@ilist3_hd RawSchema (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 
+                 (S O)
+                 (Vector.cons RawSchema
+                    (Build_RawSchema heading (@None (@RawTuple heading -> Prop))
+                       (@Some (@RawTuple heading -> @RawTuple heading -> Prop)
+                          (@FunctionalDependency_P heading
+                             (@cons (t (S (S (S O)))) 
+                                (@FS (S (S O)) (@FS (S O) (@F1 O)))
+                                (@cons (t (S (S (S O)))) (@FS (S (S O)) (@F1 (S O))) (@nil (t (S (S (S O)))))))
+                             (@cons (t (S (S (S O)))) (@F1 (S (S O))) (@nil (t (S (S (S O))))))))) O 
+                    (Vector.nil RawSchema))
+                 (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                    (VectorDef.nil RawHeading) SearchUpdateTerm 
+                    (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
+           (@pair (option W) (prod (option (Domain heading (@FS (S (S O)) (@F1 (S O))))) (@RawTuple heading -> bool)) 
+              (@Some W d)
+              (@pair (option (Domain heading (@FS (S (S O)) (@F1 (S O))))) 
+                 (@RawTuple heading -> bool) (@None (Domain heading (@FS (S (S O)) (@F1 (S O))))) 
+                 (fun _ : @RawTuple heading => true)))).
+
+  Eval simpl in ((fix methodType' (rep : Type) (dom : list Type) (cod : option Type) {struct dom} : 
+        Type :=
+          match dom with
+          | nil => match cod with
+                  | Some cod' => Comp (rep * cod')
+                  | None => Comp rep
+                  end
+          | d :: dom' => d -> methodType' rep dom' cod
+          end)
+         (Core.Rep
+            (BagADT.BagSpec (BagMatchSearchTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))
+               (BagApplyUpdateTerm (ith3 (icons3 SearchUpdateTerm inil3) F1)))) 
+         []
+         (snd
+            (ADTSig.MethodDomCod
+               (BuildADTSig.DecADTSig
+                  (BagADT.BagSig RawTuple (BagSearchTermType (ith3 (icons3 SearchUpdateTerm inil3) F1))
+                     (BagUpdateTermType (ith3 (icons3 SearchUpdateTerm inil3) F1)))) BagFind))).
+
+  
+  eapply ProgOk_Transitivity_Cons; repeat compile_step.
+  Focus 2. eapply ProgOk_Transitivity_Name' with "fst"; repeat compile_step.
+  Focus 2. eapply ProgOk_Transitivity_Name' with "snd"; repeat compile_step.
+  Focus 2. 
+
+
+  
+  simpl.
+  eapply ProgOk_Transitivity_Cons.
+
+
+
+  
+  f_equal.
+  unfold Type2.
+  compute.
+  specialize (H (@NTSome _ _ "ret" (@WrapInstance av' Type2 (@FacadeWrapper_Right (sum (list W) Type1) Type2 Type2 (@FacadeWrapper_Self Type2))))).
+
+  
+  compile_step.
+  
+  Eval compute in (Core.Rep
+          (BagADT.BagSpec (BagMatchSearchTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))
+             (BagApplyUpdateTerm (ith3 (icons3 SearchUpdateTerm inil3) F1)))).
+
+  Set Printing Implicit.
+  Unset Printing Notations.
+  
+  Eval compute in (CallBagMethod (qs_schema := QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema) F1 BagFind r_n (Some d, (None, fun _ : RawTuple => true))).
+  Eval compute in ((fix methodType' (rep : Type) (dom : list Type) (cod : option Type) {struct dom} : 
+        Type :=
+          match dom with
+          | nil => match cod with
+                  | Some cod' => Comp (rep * cod')
+                  | None => Comp rep
+                  end
+          | d :: dom' => d -> methodType' rep dom' cod
+          end)
+         (Core.Rep
+            (BagADT.BagSpec (BagMatchSearchTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))
+               (BagApplyUpdateTerm (ith3 (icons3 SearchUpdateTerm inil3) F1)))) 
+         []
+         (snd
+            (ADTSig.MethodDomCod
+               (BuildADTSig.DecADTSig
+                  (BagADT.BagSig RawTuple (BagSearchTermType (ith3 (icons3 SearchUpdateTerm inil3) F1))
+                     (BagUpdateTermType (ith3 (icons3 SearchUpdateTerm inil3) F1)))) BagFind))).
+  compile_step.
+  forall ,
+    
+
+
 Example other_test_with_adt'' :
-    sigT (fun prog => forall seq seq', {{ [["arg1" <-- seq as _ ]] :: [["arg2" <-- seq' as _]] :: Nil }}
+    sigT (fun prog => forall seq seq', {{ [[`"arg1" <-- seq as _ ]] :: [[`"arg2" <-- seq' as _]] :: Nil }}
                                  prog
-                               {{ [["arg1" <-- (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
+                               {{ [[`"arg1" <-- (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
 Proof.
   econstructor; intros.
 

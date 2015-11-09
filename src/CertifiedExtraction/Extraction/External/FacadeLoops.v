@@ -44,20 +44,20 @@ Lemma CompileLoop :
     vret <> vlst ->
     vret <> vhead ->
     vlst <> vhead ->
-    {{ [[vlst <-- lst as _]] :: tenv }}
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       facadeInit
-    {{ [[vret <-- init as _]] :: [[vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
     (forall head acc (s: list W),
-        {{ [[vhead <-- head as _]] :: [[vlst <-- s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[vret <-- acc as _]] :: tenv }}
+        {{ [[`vhead <-- head as _]] :: [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- acc as _]] :: tenv }}
           facadeBody
-        {{ [[vlst <-- s as _]] :: [[vtest <-- (bool2w false) as _]] :: [[vret <-- (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
-    {{ [[vlst <-- lst as _]] :: tenv }}
+        {{ [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
-    {{ [[vret <-- (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   loop_t.
 
-  rewrite TelEq_swap by congruence;
+  rewrite TelEq_swap by (cleanup; congruence);
     eapply CompileCallEmpty; loop_t.
 
   loop_t.

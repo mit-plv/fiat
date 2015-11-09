@@ -60,7 +60,7 @@ Lemma CompileCallFacadeImplementationOfCopy:
       StringMap.MapsTo vsrc (wrap adt) ext ->
       {{ tenv }}
         (Call vret fpointer (vsrc :: nil))
-      {{ [[ vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -88,9 +88,9 @@ Lemma CompileCallFacadeImplementationOfMutation:
       @NotInTelescope av vret tenv ->
       @NotInTelescope av vtmp tenv ->
       @NotInTelescope av varg tenv ->
-      {{ [[vret <-- ADTarg as _]]::[[varg <-- SCAarg as _]]::tenv }}
+      {{ [[`vret <-- ADTarg as _]]::[[`varg <-- SCAarg as _]]::tenv }}
         Call vtmp fpointer (vret :: varg :: nil)
-      {{ [[vret <-- fADT SCAarg ADTarg as _]]::tenv }} ∪ {{ ext }} // env.
+      {{ [[`vret <-- fADT SCAarg ADTarg as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -119,16 +119,16 @@ Lemma CompileCallFacadeImplementationOfMutation_Alloc:
       @NotInTelescope av varg tenv ->
       {{ tenv }}
         pSCA
-      {{ [[ varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ varg <-- SCAarg as _]] :: tenv }}
+      {{ [[ `varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- SCAarg as _]] :: tenv }}
         pADT
-      {{ [[ varg <-- SCAarg as _]] :: [[ vret <-- ADTarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- SCAarg as _]] :: [[ `vret <-- ADTarg as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq pSCA (Seq pADT (Call vtmp fpointer (vret :: varg :: nil)))
-      {{ [[ vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
-  rewrite TelEq_swap by congruence;
+  rewrite TelEq_swap by (cleanup; congruence).
   eauto using CompileCallFacadeImplementationOfMutation.
 Qed.
 
@@ -146,12 +146,12 @@ Lemma CompileCallFacadeImplementationOfMutation_Replace:
       NotInTelescope vret tenv ->
       NotInTelescope vtmp tenv ->
       NotInTelescope varg tenv ->
-      {{ [[ vret <-- ADTarg as _]] :: tenv }}
+      {{ [[ `vret <-- ADTarg as _]] :: tenv }}
         pSCA
-      {{ [[ vret <-- ADTarg as _]] :: [[ varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ vret <-- ADTarg as _]] :: tenv }}
+      {{ [[ `vret <-- ADTarg as _]] :: [[ `varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- ADTarg as _]] :: tenv }}
         Seq pSCA (Call vtmp fpointer (vret :: varg :: nil))
-      {{ [[ vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   eauto using CompileCallFacadeImplementationOfMutation.
@@ -166,7 +166,7 @@ Lemma CompileCallFacadeImplementationOfConstructor:
       NotInTelescope vret tenv ->
       {{ tenv }}
         (Call vret fpointer nil)
-      {{ [[ vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -186,7 +186,7 @@ Lemma CompileCallFacadeImplementationOfDestructor:
       NotInTelescope vtmp tenv ->
       vadt ∉ ext ->
       NotInTelescope vadt tenv ->
-      {{ [[ vadt <-- adt as _]] :: tenv }}
+      {{ [[ `vadt <-- adt as _]] :: tenv }}
         (Call vtmp fpointer (vadt :: nil))
       {{ tenv }} ∪ {{ ext }} // env.
 Proof.

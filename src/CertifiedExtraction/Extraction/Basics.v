@@ -8,7 +8,7 @@ Lemma CompileConstant:
     NotInTelescope name tenv ->
     {{ tenv }}
       (Assign name (Const w))
-    {{ [[name <-- w as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- w as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
 Qed.
@@ -21,7 +21,7 @@ Lemma CompileRead:
     forall env,
     {{ tenv }}
       (Assign name (Var var))
-    {{ [[name <-- val as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- val as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
 Qed.
@@ -36,7 +36,7 @@ Proof.
 Qed.
 
 Lemma ProgOk_Transitivity_Cons :
-  forall `{FacadeWrapper (Value av) A} env ext t1 t2 prog1 prog2 k (v: Comp A),
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v: Comp A),
     {{ t1 }}                     prog1      {{ [[k <~~ v as _]]::t1 }}     ∪ {{ ext }} // env ->
     {{ [[k <~~ v as _]]::t1 }}      prog2      {{ [[k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
     {{ t1 }}                Seq prog1 prog2 {{ [[k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env.

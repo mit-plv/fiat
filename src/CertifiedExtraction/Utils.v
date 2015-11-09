@@ -24,6 +24,11 @@ Ltac cleanup :=
   | [ H: unwrap ?v = Some ?vv |- _ ] => apply wrap_unwrap in H; subst v
   | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
   | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
+  | [ H: NTSome _ = NTSome _ |- _ ] => inversion H; unfold_and_subst; clear H
+  | [  |- context[NameTagAsStringOption NTNone] ]     => cbv [NameTagAsStringOption]
+  | [ H: context[NameTagAsStringOption NTNone] |- _ ] => cbv [NameTagAsStringOption] in H
+  | [  |- context[NameTagAsStringOption (NTSome _)] ]     => cbv [NameTagAsStringOption]
+  | [ H: context[NameTagAsStringOption (NTSome _)] |- _ ] => cbv [NameTagAsStringOption] in H
   end.
 
 Ltac wipe :=

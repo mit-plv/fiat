@@ -48,7 +48,7 @@ Lemma CompileWhileFalse_Loop:
     TelEq ext tenv tenv' ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
-    {{[[vtest <-- (Word.natToWord 32 1) as _]]::tenv }}
+    {{[[`vtest <-- (Word.natToWord 32 1) as _]]::tenv }}
       (DFacade.While (TestE IL.Eq vtest O) body)
     {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
