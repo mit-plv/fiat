@@ -3,7 +3,7 @@
 from __future__ import with_statement
 import fileinput, re, sys
 
-def make_table_line(cur_reference, cur_synthesized, col1, col2, col3, col4):
+def make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4):
     num_chars = cur_file.replace('.', '').rjust(len(col1))
     if cur_reference is not None and cur_synthesized is not None and cur_reference.strip('.0') != '':
         ratio = str(float(cur_synthesized) / float(cur_reference) * 100)
@@ -37,7 +37,7 @@ def format_output(lines):
             cur_parser = parser
             if name != cur_file:
                 if cur_reference is not None or cur_synthesized is not None:
-                    table.append(make_table_line(cur_reference, cur_synthesized, col1, col2, col3, col4))
+                    table.append(make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4))
                 cur_file = name
                 cur_reference = None
                 cur_synthesized = None
@@ -68,7 +68,7 @@ def format_output(lines):
             else:
                 print('error: %s' % cur_parser)
     if cur_reference is not None or cur_synthesized is not None:
-        table.append(make_table_line(cur_reference, cur_synthesized, col1, col2, col3, col4))
+        table.append(make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4))
     print('\n'.join(table))
 
 if __name__ == '__main__':
