@@ -114,6 +114,7 @@ src/Common/String_as_OT.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v
+src/Common/Wf2.v
 src/Common/i2list.v
 src/Common/i2list2.v
 src/Common/i3list.v
