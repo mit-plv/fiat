@@ -391,7 +391,7 @@ Section recursive_descent_parser.
     let G' := head G in
     unfold G'.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort list_to_grammar].
-    change (@parse_nonterminal_step) with (fun a b c d e f g h i j k l => @parse_nonterminal_step a b c d e f g h i j k l); cbv beta.
+    change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k l => @parse_nonterminal_step Char b c d e f g h i j k l); cbv beta.
     evar (b : bool).
     sigL_transitivity b; subst b;
     [
