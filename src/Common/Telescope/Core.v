@@ -20,7 +20,7 @@ Module Export Telescope.
   Global Arguments Telescope_append : clear implicits.
 
   Fixpoint flatten_forall {t : Telescope} : flattenT t Type -> Type
-    := match t return flattenT t _ -> _ with
+    := match t return flattenT t Type -> Type with
          | bottom => fun P => P
          | tele A B => fun P => forall a : A, flatten_forall (P a)
        end.
@@ -29,9 +29,9 @@ Module Export Telescope.
   : forall {t' : flattenT t Type},
       flattenT (Telescope_append t t') Type -> flatten_forall t' -> Type
     := match t return forall {t' : flattenT t _},
-                        flattenT (Telescope_append t t') _
+                        flattenT (Telescope_append t t') Type
                         -> flatten_forall t'
-                        -> _
+                        -> Type
        with
          | bottom => fun t' P v => P v
          | tele A B => fun t' P v => forall a, @flatten_append_forall (B a) (t' a) (P a) (v a)
