@@ -328,8 +328,8 @@ Qed.
 (*   simpl. *)
 
 
-Require Import QueryStructureImplementation Common Schema.
-Require Import Fin.
+Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation Fiat.QueryStructure.Automation.Common Fiat.QueryStructure.Specification.Representation.Schema.
+Require Import Coq.Vectors.Fin.
 Print PartialSchedulerImpl.
 
 Definition Type1 := IndexedQueryStructure 
