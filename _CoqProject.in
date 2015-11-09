@@ -111,6 +111,7 @@ src/Common/StringBound.v
 src/Common/StringFacts.v
 src/Common/StringOperations.v
 src/Common/String_as_OT.v
+src/Common/Telescope/Core.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v
