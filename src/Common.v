@@ -1443,6 +1443,19 @@ Fixpoint Forall_tails_all {T} {P : list T -> Type} (p : forall t, P t) {ls}
      | x::xs => (p _, @Forall_tails_all T P p xs)
      end.
 
+
+Fixpoint ForallT_impl {T} (P P' : T -> Type) (ls : list T) {struct ls}
+: ForallT (fun x => P x -> P' x) ls
+  -> ForallT P ls
+  -> ForallT P' ls
+  := match ls return ForallT (fun x => P x -> P' x) ls
+                     -> ForallT P ls
+                     -> ForallT P' ls
+     with
+       | nil => fun _ _ => I
+       | x::xs => fun H H' => (fst H (fst H'), @ForallT_impl T P P' xs (snd H) (snd H'))
+     end.
+
 Ltac free_in x y :=
   idtac;
   match y with
