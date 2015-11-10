@@ -227,25 +227,35 @@ Ltac is_dirty_telescope term :=
   | _ => fail 1
   end.
 
+Ltac decide_TelEq_instantiate_do_swaps k target :=
+  match target with
+  | context[k] => repeat setoid_rewrite (TelEq_swap _ k)
+  | _ => idtac
+  end.
+
+Ltac decide_TelEq_instantiate_step :=
+  match goal with
+  | [  |- TelEq _ ?from ?to ] =>
+    match constr:(from, to) with
+    | _ => rewrite DropName_Cons_Some_eq by congruence
+    | _ => rewrite DropName_Cons_Some_neq by congruence
+    | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
+    | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
+    | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+    | (?t, Cons ?k _ _) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+    | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
+                                            rewrite (DropName_NotInTelescope tenv k) by eauto ]
+    | _ => apply TelEq_refl
+    end
+  end.
+
 Ltac decide_TelEq_instantiate :=
-  repeat match goal with
-         | [  |- TelEq _ ?from ?to ] =>
-           match constr:(from, to) with
-           | _ => rewrite DropName_Cons_Some_eq by congruence
-           | _ => rewrite DropName_Cons_Some_neq by congruence
-           | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
-           | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
-           | (Cons _ _ _, _) => apply TelEq_chomp_head; red; intros
-           | (_, Cons _ _ _) => apply TelEq_chomp_head; red; intros
-           | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
-                                                   rewrite (DropName_NotInTelescope tenv k) by eauto ]
-           | _ => apply TelEq_refl
-           end
-         end; fail.
+  repeat decide_TelEq_instantiate_step.
 
 Ltac clean_telescope tel ext :=
   let clean := fresh in
   let type := type of tel in
+  let clean := fresh in
   evar (clean: type);
     setoid_replace tel with clean using relation (@TelEq _ ext);
     unfold clean;
