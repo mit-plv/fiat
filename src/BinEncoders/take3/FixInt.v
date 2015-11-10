@@ -1,9 +1,10 @@
-Require Export Vector.
+Require Export Coq.Vectors.Vector.
 Require Import Fiat.BinEncoders.Base BinNums BinNat Omega.
 
 Section FixInt.
 
   Variable size : nat.
+  Hypothesis size_nonzero : 0 < size.
 
   Fixpoint exp2' (l : nat) :=
     match l with
@@ -13,7 +14,7 @@ Section FixInt.
 
   Definition exp2 (l : nat) := Npos (exp2' l).
 
-  Definition predicate (n : N) := (n < (exp2 size))%N.
+  Definition predicate (n : N) := (n < exp2 size)%N.
 
   Fixpoint encode''(pos : positive) (acc : bin) :=
     match pos with
@@ -179,9 +180,36 @@ Section FixInt.
     rewrite encode_correct'. reflexivity.
   Qed.
 
+  Lemma decode''_shorten' :
+    forall b l acc, length (snd (decode'' b l acc)) <= length b.
+  Proof.
+    induction b; destruct l; intuition eauto; simpl.
+    econstructor; destruct a; eauto.
+  Qed.
+
+  Lemma decode'_shorten' :
+    forall b l, length (snd (decode' b l)) <= length b.
+  Proof.
+    induction b; destruct l; intuition eauto; simpl.
+    destruct a; eauto.
+    pose proof (decode''_shorten' b l 1).
+    destruct (decode'' b l 1); eauto.
+  Qed.
+
+  Theorem decode_shorten : decode_shorten decode.
+  Proof.
+    unfold decode_shorten, decode.
+    destruct size; [ inversion size_nonzero | clear size_nonzero ].
+    destruct ls; intuition eauto; destruct b; simpl.
+    { pose proof (decode''_shorten' ls n 1).
+      destruct (decode'' ls n 1); eauto. }
+    { eapply decode'_shorten'. }
+  Qed.
+
   Definition FixInt_encode_decode :=
     {| predicate_R := predicate;
        encode_R    := encode;
        decode_R    := decode;
-       proof_R     := encode_correct |}.
+       proof_R     := encode_correct;
+       shorten_R   := decode_shorten |}.
 End FixInt.

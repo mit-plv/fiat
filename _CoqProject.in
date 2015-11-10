@@ -376,6 +376,7 @@ src/QueryStructure/Implementation/DataStructures/Bags/CountingListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/ListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/NatCompare_Facts.v
+src/QueryStructure/Implementation/DataStructures/Bags/ProductBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/RangeTreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TrieBags.v

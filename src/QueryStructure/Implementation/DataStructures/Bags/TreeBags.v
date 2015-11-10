@@ -1,3 +1,5 @@
+(* Print LoadPath. *)
+
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 Require Import

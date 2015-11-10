@@ -1,4 +1,4 @@
-Require Import BigNat Fiat.BinEncoders.Base.
+Require Import Fiat.BinEncoders.BigNat Fiat.BinEncoders.Base.
 
 Section List1.
 
@@ -45,9 +45,27 @@ Section List1.
     simpl; eauto.
   Qed.
 
+  Lemma decode'_shorten' : forall d b, length (snd (decode' b d)) <= length b.
+  Proof.
+    induction d; intuition eauto; simpl.
+    pose proof (shorten_R A_record b).
+    destruct (decode_R A_record b); simpl in *; specialize (IHd b0).
+    destruct (decode' b0 d). eapply Le.le_trans; eauto.
+    eapply Le.le_trans; eauto. eapply Le.le_pred_n.
+  Qed.
+
+  Theorem decode_shorten : decode_shorten decode.
+  Proof.
+    unfold decode_shorten, decode; intro ls.
+    pose proof (shorten_R BigNat_encode_decode ls).
+    destruct (decode_R BigNat_encode_decode ls).
+    eapply Le.le_trans. eapply decode'_shorten'. eauto.
+  Qed.
+
   Definition List1_encode_decode :=
     {| predicate_R := predicate;
        encode_R    := encode;
        decode_R    := decode;
-       proof_R     := encode_correct |}.
+       proof_R     := encode_correct;
+       shorten_R   := decode_shorten |}.
 End List1.
