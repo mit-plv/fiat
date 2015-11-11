@@ -1,6 +1,5 @@
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface
-        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties
-        Fiat.QueryStructure.Implementation.DataStructures.Bags.ListBags.
+        Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsProperties.
 
 Unset Implicit Arguments.
 
@@ -107,8 +106,8 @@ Section ProductBag.
   Proof.
     unfold ProdBag_RepInv, ProdBag_bempty; intuition; simpl;
     [ apply bempty_RepInv | apply bempty_RepInv | ].
-    assert (forall A (ls ls' : list A), ls = [] -> ls' = [] -> Permutation ls ls') as perm_nil by (intuition; subst; constructor).
-    assert (forall A (ls : list A), (forall a, ~ List.In a ls) -> ls = []) as emp.
+    assert (forall A (ls ls' : list A), ls = nil -> ls' = nil -> Permutation ls ls') as perm_nil by (intuition; subst; constructor).
+    assert (forall A (ls : list A), (forall a, ~ List.In a ls) -> ls = nil) as emp.
     intros; destruct ls; eauto; specialize (H a); simpl in H; tauto.
     eapply perm_nil.
     eapply emp; eapply benumerate_empty.
@@ -131,8 +130,8 @@ Section ProductBag.
   Proof.
     unfold bdelete_Preserves_RepInv, ProdBag_bdelete.
     intros container st [repA [repB repP]].
-    setoid_rewrite surjective_pairing with (p:=bdelete (fst container) Prod_st_A).
-    setoid_rewrite surjective_pairing with (p:=bdelete (snd container) Prod_st_B).
+    rewrite surjective_pairing with (p:=bdelete (fst container) Prod_st_A).
+    rewrite surjective_pairing with (p:=bdelete (snd container) Prod_st_B).
     unfold ProdBag_RepInv; intuition.
     - destruct Prod_st_choice; eapply bdelete_RepInv; eauto.
     - destruct Prod_st_choice; eapply bdelete_RepInv; eauto.
@@ -149,8 +148,8 @@ Section ProductBag.
   Proof.
     unfold bupdate_Preserves_RepInv, ProdBag_bupdate.
     intros container st ut [repA [repB repP]] [valA [valB valP]].
-    setoid_rewrite surjective_pairing with (p:=bupdate (fst container) Prod_st_A ut).
-    setoid_rewrite surjective_pairing with (p:=bupdate (snd container) Prod_st_B ut).
+    rewrite surjective_pairing with (p:=bupdate (fst container) Prod_st_A ut).
+    rewrite surjective_pairing with (p:=bupdate (snd container) Prod_st_B ut).
     unfold ProdBag_RepInv; intuition.
     - destruct Prod_st_choice; eapply bupdate_RepInv; eauto.
     - destruct Prod_st_choice; eapply bupdate_RepInv; eauto.
@@ -198,14 +197,33 @@ Section ProductBag.
     setoid_rewrite repP. eapply bfind_correct; eauto.
   Qed.
 
+  Lemma ProdBag_BagMatcherEquiv :
+    forall st i, ProdBag_bfind_matcher st i = bfind_matcher Prod_st_A i.
+  Proof.
+    intros st i; unfold ProdBag_bfind_matcher.
+    destruct Prod_st_choice; try rewrite Prod_st_proof; eauto.
+  Qed.
+
   Lemma ProdBag_BagDeleteCorrect :
     BagDeleteCorrect ProdBag_RepInv ProdBag_bfind ProdBag_bfind_matcher
                      ProdBag_benumerate ProdBag_bdelete.
   Proof.
-    unfold ProdBag_benumerate, ProdBag_bfind_matcher, ProdBag_bdelete, ProdBag_bfind_matcher.
-    hnf; intros container st [repA [repB repP]].
-    destruct Prod_st_choice; simpl.
-    admit. admit.
+    unfold ProdBag_benumerate, ProdBag_bfind_matcher, ProdBag_bdelete, ProdBag_bfind;
+    hnf; intros container st [repA [repB repP]];
+    rewrite surjective_pairing with (p:=bdelete (fst container) Prod_st_A);
+    rewrite surjective_pairing with (p:=bdelete (snd container) Prod_st_B); split.
+    - rewrite ListFacts.partition_filter_neq; eapply perm_trans.
+      + destruct Prod_st_choice; eapply bdelete_correct; eauto.
+      + eapply perm_trans; [ |
+        eapply ListMorphisms.filter_permutation_morphism; try eapply Permutation_refl;
+        unfold Morphisms.pointwise_relation; intro a;
+        pose proof (ProdBag_BagMatcherEquiv st a); unfold ProdBag_bfind_matcher in H; rewrite H;
+        reflexivity ].
+        rewrite <- ListFacts.partition_filter_neq; reflexivity.
+    - destruct Prod_st_choice; try eapply bdelete_correct; eauto.
+      simpl; eapply perm_trans; try eapply bdelete_correct; eauto.
+      rewrite !ListFacts.partition_filter_eq.
+      rewrite repP; reflexivity.
   Qed.
 
   Lemma ProdBag_BagUpdateCorrect :
@@ -213,8 +231,27 @@ Section ProductBag.
                      ProdBag_bfind ProdBag_bfind_matcher
                      ProdBag_benumerate ProdBag_bupdate_transform ProdBag_bupdate.
   Proof.
-    hnf.
-    admit.
+    unfold ProdBag_benumerate, ProdBag_bfind_matcher, ProdBag_bupdate, ProdBag_bfind, ProdBag_bupdate_transform;
+    hnf; intros container st ut [repA [repB repP]] [valA [valB valP]].
+    rewrite surjective_pairing with (p:=bupdate (fst container) Prod_st_A ut);
+    rewrite surjective_pairing with (p:=bupdate (snd container) Prod_st_B ut); split.
+    - rewrite ListFacts.partition_filter_neq; eapply perm_trans.
+      + destruct Prod_st_choice; eapply bupdate_correct; eauto.
+      + eapply Permutation_app.
+        * eapply perm_trans; [ |
+          eapply ListMorphisms.filter_permutation_morphism; try eapply Permutation_refl;
+          unfold Morphisms.pointwise_relation; intro a;
+          pose proof (ProdBag_BagMatcherEquiv st a); unfold ProdBag_bfind_matcher in H; rewrite H;
+          reflexivity ]. rewrite <- ListFacts.partition_filter_neq; reflexivity.
+        * eapply ListMorphisms.map_permutation_morphism; try reflexivity.
+          rewrite !ListFacts.partition_filter_eq.
+          destruct Prod_st_choice; try reflexivity.
+          eapply ListMorphisms.filter_permutation_morphism; try reflexivity.
+          intro; eapply Prod_st_proof.
+    - destruct Prod_st_choice; try eapply bupdate_correct; eauto.
+      simpl; eapply perm_trans; try eapply bupdate_correct; eauto.
+      rewrite !ListFacts.partition_filter_eq.
+      rewrite repP; reflexivity.
   Qed.
 
   Global Instance ProdBagAsBag
