@@ -36,11 +36,6 @@ Opaque nat_as_constant nat_as_word string_as_var.
 
 Eval compute in (extract_facade other_test_with_adt'').
 
-Definition fold_comp {TAcc TElem} (f: Comp TAcc -> TElem -> Comp TAcc) seq init :=
-  List.fold_left (fun (acc: Comp TAcc) (elem: TElem) =>
-                    ( f acc elem )%comp)
-                 seq init.
-
 Require Import
         CertifiedExtraction.Extraction.AllInternal
         CertifiedExtraction.Extraction.External.Core
@@ -52,6 +47,26 @@ Require Import
 
 Require Import FacadeLoops.
 
+Ltac defunctionalize_evar :=
+  match goal with
+  | [  |- context[?e] ] =>
+    is_evar e;
+      match type of e with
+      | ?a -> ?b => let ee := fresh in
+                  evar (ee: b);
+                    unify e (fun _:a => ee);
+                    unfold ee in *;
+                    clear ee
+      end
+  end.
+
+Ltac move_to_front var :=
+  repeat lazymatch goal with
+    | [  |- context[Cons ?k _ (fun _ => Cons (@NTSome _ _ var _) _ _)] ] =>
+      setoid_rewrite (TelEq_swap k (@NTSome _ _ var _)) at 1
+    end.
+
+
 Lemma CompileLoop :
   forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
     lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody env (ext: StringMap.t (Value av)) tenv (f: Comp A' -> A -> Comp A'),
@@ -59,16 +74,17 @@ Lemma CompileLoop :
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       facadeInit
-    {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    (forall head (acc: Comp A') (s: Comp (list A)),
-        {{ [[`vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+    {{ [[`vret <~~ init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head (acc: Comp A') (s: list A),
+        {{ [[`vhead <-- head as _]] :: [[`vret <~~ acc as _]] :: tenv }}
           facadeBody
-        {{ [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+        {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
+        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
-    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   loop_t.
 
@@ -77,22 +93,23 @@ Proof.
 
   2:eapply CompileCallFacadeImplementationOfDestructor; loop_t.
 
-  rewrite (TelEq_swap _ NTNone).
+  loop_unify_with_nil_t.
 
-  apply miniChomp'; loop_t.
-
+  loop_t.
   clear dependent facadeInit;
   generalize dependent init;
-  generalize dependent lst;
-  induction vv; loop_t.
+  induction lst; loop_t.
 
-  rewrite TelEq_swap.
-
+  move_to_front vtest;
   apply CompileWhileFalse_Loop; loop_t.
 
-  eapply CompileWhileTrue; loop_t.
+  eapply CompileWhileTrue; [ loop_t.. | ].
 
   apply generalized @CompileCallPop; loop_t.
+
+  move_to_front vlst; apply ProgOk_Chomp_Some; loop_t.
+  move_to_front vtest; apply ProgOk_Chomp_Some; loop_t.
+  computes_to_inv; subst; defunctionalize_evar; eauto.
 
   apply CompileCallEmpty_spec; loop_t.
 
@@ -107,19 +124,20 @@ Lemma CompileLoop_strong :
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       facadeInit
-    {{ [[`vret <~~ init as _]] :: [[`vlst <~~ lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv }}
+    {{ [[`vret <~~ init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
-    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    (forall head (acc: Comp A') (s: Comp (list A)),
-        {{ [[`vhead <-- head as _]] :: [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ acc as _]] :: tenv }}
+    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    (forall head (acc: Comp A') (s: list A),
+        {{ [[`vhead <-- head as _]] :: [[`vret <~~ acc as _]] :: tenv }}
           facadeBody
-        {{ [[`vlst <~~ s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <~~ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+        {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
+        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       (Seq (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil)))) facadeConclude)
-    {{ [[lst as ls]] :: [[`vret <~~ (fold_comp f ls init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   eapply CompileSeq;
@@ -147,7 +165,7 @@ Example other_test_with_adt''':
             {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }}
               prog
             {{ [[`"ret" <~~  ( seq <- {s: list W | True };
-                             fold_comp (fun acc elem =>
+                             fold_left (fun acc elem =>
                                           acc <- acc;
                                           { x: W | Word.wlt (Word.wplus acc elem) x })
                                        seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
@@ -161,6 +179,9 @@ Proof.
 
   instantiate (1 := Skip).       (* FIXME alloc *)
   admit.
+
+  apply miniChomp'.
+  compile_step.
 
   let av := av_from_ext (StringMap.empty (Value av)) in
   let fpop := find_function_pattern_in_env
@@ -200,12 +221,9 @@ Proof.
   compile_step.
   compile_step.
   compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
   apply miniChomp.
-  intros.
+  compile_step.
+  compile_step.
   rewrite Propagate_anonymous_ret.
 
   instantiate (1 := Skip).
@@ -216,7 +234,7 @@ Eval compute in (extract_facade other_test_with_adt''').
 
 Definition revmap {A B} f := fun seq => @map A B f (rev seq).
 
-Lemma CompileMap_helper:
+Lemma revmap_fold_helper:
   forall (A A' : Type) (f : A -> A') (a : A) (vv : list A) (base : list A'),
     revmap f (a :: vv) ++ base = revmap f vv ++ f a :: base.
 Proof.
@@ -230,97 +248,54 @@ Proof.
   reflexivity.
 Qed.
 
-Ltac defunctionalize_evar :=
-  match goal with
-  | [  |- context[?e] ] =>
-    is_evar e;
-      match type of e with
-      | ?a -> ?b => let ee := fresh in
-                  evar (ee: b);
-                    unify e (fun _:a => ee);
-                    unfold ee in *;
-                    clear ee
-      end
-  end.
+Lemma revmap_fold_strong :
+  forall {A B} (f: A -> B) (seq: list A) (base: list B),
+    fold_left (fun acc elem => f elem :: acc) seq base = (@revmap A B f seq) ++ base.
+Proof.
+  induction seq; simpl; intros.
+  - reflexivity.
+  - rewrite revmap_fold_helper; eauto.
+Qed.
 
-Ltac move_to_front var :=
-  repeat lazymatch goal with
-    | [  |- context[Cons ?k _ (fun _ => Cons (@NTSome _ _ var _) _ _)] ] =>
-      setoid_rewrite (TelEq_swap k (@NTSome _ _ var _)) at 1
-    end.
-
-Lemma CompileMap_ADT :
-  forall {av A A'} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list A')} `{FacadeWrapper av A} `{FacadeWrapper av A'}
-    (base: list A') (lst: Comp (list A)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody env (ext: StringMap.t (Value av)) (tenv: Telescope av) (f: A -> A'),
-    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
-    GLabelMap.MapsTo falloc (Axiomatic (FacadeImplementationOfConstructor (list A') base)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
-    (* GLabelMap.MapsTo fdealloc_one (Axiomatic (FacadeImplementationOfDestructor A)) env -> *)
-    GLabelMap.MapsTo fcons (Axiomatic (FacadeImplementationOfMutation_ADT A' (list A') cons)) env ->
-    PreconditionSet tenv ext ([[[vhead; vhead'; vtest; vlst; vret; vtmp]]]) ->
-    (forall head (s: list A) (s': list A'),
-        {{ [[`vhead <-- head as _]] :: tenv }}
-          facadeBody
-        {{ [[`vhead' <-- f head as _]] :: tenv }} ∪
-        {{ [vret <-- wrap s'] :: [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
-      (Seq
-         (Call vret falloc nil)
-         (Seq
-            (Fold vhead vtest vlst fpop fempty
-                  (Seq facadeBody
-                       (Call vtmp fcons (vret :: vhead' :: nil))))
-            (Call vtest fdealloc (vlst :: nil))))
-    {{ [[lst as ls]] :: [[`vret <-- (revmap f ls) ++ base as _]] :: tenv }} ∪ {{ ext }} // env.
+Lemma revmap_fold :
+  forall {A B} (f: A -> B) (seq: list A),
+    fold_left (fun acc elem => f elem :: acc) seq nil = @revmap A B f seq.
 Proof.
   intros.
-  loop_t.
+  rewrite <- (app_nil_r (revmap f seq)).
+  apply revmap_fold_strong.
+Qed.
 
-  eapply (CompileCallFacadeImplementationOfConstructor (A := list A') (adt := base)); loop_t.
+Lemma revmap_fold_comp_strong :
+  forall {A B} (f: A -> B) (seq: list A) base,
+    Monad.equiv
+      (fold_left (fun cacc elem => (acc <- cacc; ret (f elem :: acc))%comp) seq base)
+      ( b <- base;
+        ret ((@revmap A B f seq) ++ b)).
+Proof.
+  intros; etransitivity.
+  2: apply Monad.computes_under_bind; intros; rewrite <- revmap_fold_strong; apply SetoidMorphisms.equiv_refl.
 
-  rewrite TelEq_swap;
-    eapply CompileCallEmpty_spec; loop_t.
+  generalize dependent base; induction seq; simpl;
+  [ | setoid_rewrite IHseq ];
+  split; intros; computes_to_inv; subst; eauto using BindComputes.
+Qed.
 
-  2:eapply (CompileCallFacadeImplementationOfDestructor (A := list A)); loop_t.
-
-  loop_unify_with_nil_t.
-  rewrite (TelEq_swap _ NTNone).
-
-  apply miniChomp'; loop_t.
-
-  clear dependent falloc;
-  generalize dependent lst;
-    generalize dependent base;
-    induction vv; loop_t.
-
-  rewrite TelEq_swap.
-
-  apply CompileWhileFalse_Loop; loop_t.
-
-  eapply CompileWhileTrue; loop_t.
-
-  apply generalized (CompileCallPop (A := A)); loop_t.
-
-  move_to_front vlst; apply ProgOk_Chomp_Some; loop_t.
-  move_to_front vtest; apply ProgOk_Chomp_Some; loop_t.
-  move_to_front vret; apply ProgOk_Chomp_Some; loop_t.
-  computes_to_inv; subst; defunctionalize_evar; eauto.
-
-  move_to_front vhead'.
-  move_to_front vret.
-  apply CompileCallFacadeImplementationOfMutation_ADT; try compile_do_side_conditions.
-
-  move_to_front vlst.
-  apply CompileCallEmpty_spec; loop_t.
-
-  rewrite CompileMap_helper.
-  loop_t.
+Lemma revmap_fold_comp :
+  forall {A B} (f: A -> B) (seq: list A),
+    Monad.equiv
+      (fold_left (fun cacc elem => (acc <- cacc; ret (f elem :: acc))%comp) seq (ret nil))
+      (ret (@revmap A B f seq)).
+Proof.
+  intros.
+  rewrite <- (app_nil_r (revmap f seq)).
+  rewrite revmap_fold_comp_strong.
+  split; intros; computes_to_inv; subst; eauto using BindComputes.
 Qed.
 
 Lemma CompileMap_ADT_strong :
   forall {av A A'} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list A')} `{FacadeWrapper av A} `{FacadeWrapper av A'}
-    (lst: Comp (list A)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value av)) tenv tenv' (f: A -> A'),
+    (lst: list A) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value av)) tenv tenv' (f: A -> A'),
     GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo falloc (Axiomatic (FacadeImplementationOfConstructor (list A') nil)) env ->
@@ -328,15 +303,15 @@ Lemma CompileMap_ADT_strong :
     GLabelMap.MapsTo fcons (Axiomatic (FacadeImplementationOfMutation_ADT A' (list A') cons)) env ->
     (* GLabelMap.MapsTo fdealloc_one (Axiomatic (FacadeImplementationOfDestructor A)) env -> *)
     PreconditionSet tenv ext [[[vhead; vhead'; vtest; vlst; vret; vtmp]]] ->
-    {{ [[lst as ls]] :: [[`vret <-- (revmap f ls) as _]] :: tenv }}
+    {{ [[`vret <-- (revmap f lst) as _]] :: tenv }}
       facadeCoda
-    {{ [[lst as ls]] :: [[`vret <-- (revmap f ls) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (s: list A) (s': list A'),
         {{ [[`vhead <-- head as _]] :: tenv }}
           facadeBody
         {{ [[`vhead' <-- f head as _]] :: tenv }} ∪
         {{ [vret <-- wrap s'] :: [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       (Seq
          (Seq
             (Call vret falloc nil)
@@ -346,77 +321,21 @@ Lemma CompileMap_ADT_strong :
                           (Call vtmp fcons (vret :: vhead' :: nil))))
                (Call vtest fdealloc (vlst :: nil))))
           facadeCoda)
-    {{ [[lst as ls]] :: [[`vret <-- (revmap f ls) as _]] :: tenv' }} ∪ {{ ext }} // env.
-Proof.
-  intros; hoare.
-  setoid_rewrite (app_nil_end (revmap f _)).
-  apply CompileMap_ADT; eauto.
-Qed.
-
-Lemma CompileMap_SCA:
-  forall {av A} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list W)} `{FacadeWrapper av A}
-    (base: list W) (lst: list A) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody env (ext: StringMap.t (Value av)) (tenv: Telescope av) (f: A -> W),
-    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
-    GLabelMap.MapsTo falloc (Axiomatic (FacadeImplementationOfConstructor (list W) base)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
-    (* GLabelMap.MapsTo fdealloc_one (Axiomatic (FacadeImplementationOfDestructor A)) env -> *)
-    GLabelMap.MapsTo fcons (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons)) env ->
-    PreconditionSet tenv ext ([[[vhead; vhead'; vtest; vlst; vret; vtmp]]]) ->
-    (forall head (s: list A) (s': list W),
-        {{ [[`vhead <-- head as _]] :: tenv }}
-          facadeBody
-        {{ [[`vhead' <-- f head as _]] :: tenv }} ∪
-        {{ [vret <-- wrap s'] :: [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
-      (Seq
-         (Call vret falloc nil)
-         (Seq
-            (Fold vhead vtest vlst fpop fempty
-                  (Seq facadeBody
-                       (Call vtmp fcons (vret :: vhead' :: nil))))
-            (Call vtest fdealloc (vlst :: nil))))
-    {{ [[`vret <-- (revmap f lst) ++ base as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
-  loop_t.
-
-  eapply (CompileCallFacadeImplementationOfConstructor (A := list W) (adt := base)); loop_t.
-
-  rewrite TelEq_swap;
-    eapply CompileCallEmpty_spec; loop_t.
-
-  2:eapply (CompileCallFacadeImplementationOfDestructor (A := list A)); loop_t.
-
-  loop_unify_with_nil_t.
-  loop_t.
-
-  clear dependent falloc;
-    generalize dependent base;
-    induction lst; loop_t.
-
-  rewrite TelEq_swap.
-
-  apply CompileWhileFalse_Loop; loop_t.
-
-  eapply CompileWhileTrue; loop_t.
-
-  apply generalized (CompileCallPop (A := A)); loop_t.
-
-  move_to_front vlst; apply ProgOk_Chomp_Some; loop_t.
-  move_to_front vtest; apply ProgOk_Chomp_Some; loop_t.
-  move_to_front vret; apply ProgOk_Chomp_Some; loop_t.
-  computes_to_inv; subst; defunctionalize_evar; eauto.
-
-  move_to_front vhead'.
+  setoid_rewrite <- revmap_fold_comp.
+  apply CompileLoop_strong; eauto.
+  PreconditionSet_t; eauto.
+  eapply (CompileCallFacadeImplementationOfConstructor (A := list A')); loop_t.
+  setoid_rewrite revmap_fold_comp; eassumption.
+  intros.
+  rewrite SameValues_Fiat_Bind_TelEq.
   move_to_front vret.
-  apply CompileCallFacadeImplementationOfMutation_SCA; try compile_do_side_conditions.
-
-  move_to_front vlst.
-  apply CompileCallEmpty_spec; loop_t.
-
-  rewrite CompileMap_helper.
-  loop_t.
+  apply miniChomp'; intros.
+  hoare.
+  apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
+  apply CompileCallFacadeImplementationOfMutation_ADT; try compile_do_side_conditions.
 Qed.
 
 Lemma CompileMap_SCA_strong :
@@ -449,9 +368,19 @@ Lemma CompileMap_SCA_strong :
           facadeCoda)
     {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
-  intros; hoare.
-  setoid_rewrite (app_nil_end (revmap f _)).
-  apply CompileMap_SCA; eauto.
+  intros.
+  setoid_rewrite <- revmap_fold_comp.
+  apply CompileLoop_strong; eauto.
+  PreconditionSet_t; eauto.
+  eapply (CompileCallFacadeImplementationOfConstructor (A := list W)); loop_t.
+  setoid_rewrite revmap_fold_comp; eassumption.
+  intros.
+  rewrite SameValues_Fiat_Bind_TelEq.
+  move_to_front vret.
+  apply miniChomp'; intros.
+  hoare.
+  apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
+  apply CompileCallFacadeImplementationOfMutation_SCA; try compile_do_side_conditions.
 Qed.
 
 Lemma SameValues_Fiat_Bind_TelEq_Pair :
@@ -577,6 +506,35 @@ Proof.
   repeat hoare.
 Qed.
 
+Ltac compile_CallBagFind :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons (NTSome ?kd) (ret ?d) ?tenv,
+               Cons NTNone (CallBagMethod ?id BagFind ?v (Some ?d, ?r)) ?tenv') =>
+              let vfst := gensym "fst" in
+              let vsnd := gensym "snd" in
+              let vtmp := gensym "tmp" in
+              match post with
+              | Cons NTNone ?v _ =>
+                eapply CompileSeq with ([[v as vv]]
+                                          :: [[`vfst <-- fst vv as f]]
+                                          :: [[`vsnd <-- snd vv as s]]
+                                          :: [[ret d as dd]]
+                                          :: (tenv dd));
+                  [ match_ProgOk
+                      ltac:(fun prog' _ _ _ _ =>
+                              unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
+                                                (vfst :: vsnd :: "r_n" :: kd :: nil))) (* FIXME *) | ]
+              end
+            end).
+
+Definition FinToWord {N: nat} (n: Fin.t N) :=
+  Word.natToWord 32 (proj1_sig (Fin.to_nat n)).
+
+Definition FitsInW {N: nat} (n: Fin.t N) :=
+  Word.wordToNat (FinToWord n) = proj1_sig (Fin.to_nat n).
+
 Definition MyEnvListsC : Env av' :=
   (GLabelMap.empty (FuncSpec _))
     ### ("std", "rand") ->> (Axiomatic FRandom)
@@ -610,29 +568,6 @@ Proof.
   compile_step.
   compile_step.
 
-  Ltac compile_CallBagFind :=
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:(pre, post) with
-              | (Cons (NTSome ?kd) (ret ?d) ?tenv,
-                 Cons NTNone (CallBagMethod ?id BagFind ?v (Some ?d, ?r)) ?tenv') =>
-                let vfst := gensym "fst" in
-                let vsnd := gensym "snd" in
-                let vtmp := gensym "tmp" in
-                match post with
-                | Cons NTNone ?v _ =>
-                  eapply CompileSeq with ([[v as vv]]
-                                            :: [[`vfst <-- fst vv as f]]
-                                            :: [[`vsnd <-- snd vv as s]]
-                                            :: [[ret d as dd]]
-                                            :: (tenv dd));
-                    [ match_ProgOk
-                        ltac:(fun prog' _ _ _ _ =>
-                                unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
-                                                  (vfst :: vsnd :: "r_n" :: kd :: nil))) (* FIXME *) | ]
-                end
-              end).
-
   compile_CallBagFind.
   admit.
 
@@ -658,12 +593,6 @@ Proof.
   compile_step.
   compile_step.
   compile_step.
-
-  Definition FinToWord {N: nat} (n: Fin.t N) :=
-    Word.natToWord 32 (proj1_sig (Fin.to_nat n)).
-
-  Definition FitsInW {N: nat} (n: Fin.t N) :=
-    Word.wordToNat (FinToWord n) = proj1_sig (Fin.to_nat n).
 
   assert (FitsInW (@FS 2 (@FS 1 (@F1 0)))) by reflexivity.
 
