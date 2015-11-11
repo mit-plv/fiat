@@ -23,6 +23,7 @@ Require Export Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 
 Local Open Scope string_like_scope.
 
@@ -82,9 +83,11 @@ Section refine_rules.
   Context {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
+	  {pf : match (possible_first_terminals_of_production G its).(actual_possible_first_terminals) return Prop with
+                  | nil => False
+                  | ls => fold_right and True (map (eq ch) ls)
+                end}
           (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
-
-  Definition dummy_value := 0.
 
   Local Opaque rdp_list_predata.
 
@@ -93,10 +96,10 @@ Section refine_rules.
                | split_list_is_complete
                    G (substring n m str)
                    (NonTerminal nt)
-                   (Terminal ch :: its) splits}
+                   its splits}
                (ret [match List.nth n table None with
                        | Some idx => idx
-                       | None => dummy_value
+                       | None => StringLike.length (substring n m str)
                      end])).
 
   Section general_table.
@@ -118,8 +121,76 @@ Section refine_rules.
       intros idx' Hsmall Hreachable pit pits; simpl.
       specialize (H_nt_hiding _ pit).
       unfold paren_balanced_hiding in *.
+      set (s_str := (substring n m str) : @StringLike.String _ string_stringlike) in *.
+      destruct (Compare_dec.zerop (StringLike.length (drop idx' s_str))) as [iszero|isnonzero].
+      { (* Deal with the case where drop idx' s_str is empty *)
+        rewrite drop_length in iszero.
+        assert (lenequal : idx' = StringLike.length s_str) by omega.
+        subst.
+        destruct (nth n table None) eqn:nth_equals.
+        {
+          destruct (Compare_dec.le_lt_dec (StringLike.length s_str) n0) as [|g].
+          { rewrite Min.min_l by assumption.
+            left.
+            reflexivity. }
+          { exfalso.
+            destruct (Htable n0) as [some_impl _].
+            pose (some_impl nth_equals) as Hn0.
+            destruct Hn0 as [Hn0_binop Hn0_balanced].
+            apply paren_balanced_hiding_impl_paren_balanced' in Hn0_balanced.
+            subst s_str.
+            rewrite take_take in H_nt_hiding.
+            refine (paren_balanced_hiding'_prefix__index_points_to_binop _ H_nt_hiding Hn0_binop Hn0_balanced _).
+            rewrite <- Min.min_assoc.
+            rewrite <- take_length.
+            rewrite Min.min_idempotent.
+            assumption.
+          }
+        }
+        {
+          rewrite Min.min_idempotent.
+          tauto.
+        }
+      }
+
+      subst s_str.
       rewrite take_take in H_nt_hiding.
-      inversion pits.
+      inversion pits as [|idx'' pat pats H_parse_item H_parse_production Hits].
+      {
+        (* Deal with the silly case where [] = its *)
+        subst.
+        simpl in *.
+        tauto.
+      }
+
+      assert (take 1 (drop idx' (substring n m str)) ~= [ch]).
+      {
+        destruct ((possible_first_terminals_of_production G its).(actual_possible_first_terminals)) eqn:terminals.
+        {
+          simpl in *.
+          tauto.
+        }
+        {
+          pose Hvalid as Hvalid0.
+          rewrite grammar_rvalid_correct in Hvalid0.
+          pose (ValidProperties.reachable_production_valid Hvalid0 Hreachable) as Hits_valid.
+          apply production_valid_cons in Hits_valid.
+          pose proof (DisjointLemmas.possible_first_terminals_of_production_correct Hvalid pits Hits_valid) as H_first_char.
+          apply FirstChar.first_char_in_exists in H_first_char.
+          {
+            destruct H_first_char as [ch0 [take_equals in_list]].
+            rewrite terminals in in_list.
+            clear terminals.
+            set (ls := (a :: l)) in *.
+            induction ls;
+              destruct pf;
+              destruct in_list;
+              subst;
+              tauto.
+          }
+          { omega. }
+        }
+      }
       repeat match goal with
                | [ H : context[substring _ _ _] |- _ ] => rewrite substring_take_drop in H
                | [ H : is_true (take ?n ?str ~= [ ?ch ]) |- _ ]

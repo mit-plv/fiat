@@ -18,7 +18,8 @@ Section IndexedImpl.
     Time hone method "splits".
     {
       simplify parser splitter.
-      setoid_rewrite refine_binop_table; [ presimpl_after_refine_binop_table | reflexivity.. ].
+      setoid_rewrite refine_binop_table; [ presimpl_after_refine_binop_table | solve [reflexivity | repeat esplit].. ].
+
       finish honing parser method.
     }
 
