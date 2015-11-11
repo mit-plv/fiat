@@ -7,7 +7,8 @@ Require Export
         CertifiedExtraction.ComputesToLemmas
         CertifiedExtraction.PropertiesOfTelescopes
         CertifiedExtraction.ExtendedPropertiesOfTelescopes
-        CertifiedExtraction.Extraction.Gensym.
+        CertifiedExtraction.Extraction.Gensym
+        CertifiedExtraction.Extraction.PreconditionSets.
 
 Require Import Coq.Strings.String.
 Global Open Scope string_scope.
@@ -45,13 +46,14 @@ Hint Extern 1 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
 Hint Extern 1 (_ ∉ _) => decide_not_in : SameValues_db.
 
 Ltac compile_do_side_conditions :=
-  match goal with
-  | _ => abstract decide_not_in
-  | _ => abstract decide_NotInTelescope
-  | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
-  | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
-  | [  |- GLabelMap.MapsTo _ _ _ ] => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
-  end.
+  solve [ PreconditionSet_t;
+          match goal with
+          | _ => abstract decide_not_in
+          | _ => abstract decide_NotInTelescope
+          | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
+          | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
+          | [  |- GLabelMap.MapsTo _ _ _ ] => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
+          end].
 
 Ltac match_ProgOk continuation :=
   lazymatch goal with

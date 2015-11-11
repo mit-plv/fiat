@@ -208,3 +208,5 @@ Ltac compile_step_with worker :=
 
 Ltac compile_step :=
   compile_step_with compile_ProgOk.
+
+Notation "trunk ### name ->> function" := (GLabelMap.add name function trunk) (at level 20).

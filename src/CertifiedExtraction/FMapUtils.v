@@ -13,6 +13,14 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
     (add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
   Local Open Scope map_scope.
 
+  Lemma remove_mapsto :
+    forall (elt : Type) (m : t elt) (x y : key) (e : elt),
+      MapsTo y e (remove (elt:=elt) x m) ->
+      (not (E.eq x y)) /\ MapsTo y e m.
+  Proof.
+    intros; rewrite <- remove_mapsto_iff; assumption.
+  Qed.
+
   Lemma MapsTo_In :
     forall {A: Type} key (val: A) tree,
       MapsTo key val tree -> In key tree.

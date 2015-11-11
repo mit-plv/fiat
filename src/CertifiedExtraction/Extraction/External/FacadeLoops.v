@@ -7,7 +7,7 @@ Require Import
 
 Ltac loop_unify_with_nil_t :=
   match goal with
-  | [  |- context[Cons (T := list ?A) _ (ret ?val) _] ] => unify val (@nil A)
+  | [  |- context[Cons (T := list ?A) _ (ret ?val) _] ] => is_evar val; unify val (@nil A)
   end.
 
 Ltac loop_t :=
@@ -25,11 +25,11 @@ Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
   apply_generalized_t compilation_lemma.
 
 Lemma CompileLoop :
-  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) B} `{FacadeWrapper av (list A)}
-    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: B -> A -> B),
-    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (A := list A))) env ->
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
+    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: A' -> A -> A'),
+    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     vlst ∉ ext ->
@@ -57,7 +57,7 @@ Lemma CompileLoop :
 Proof.
   loop_t.
 
-  rewrite TelEq_swap by (cleanup; congruence);
+  rewrite TelEq_swap;
     eapply (CompileCallEmpty (lst := lst)); loop_t.
 
   loop_t.

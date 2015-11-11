@@ -1,4 +1,6 @@
-Require Import Extraction.Core.
+Require Import
+        CertifiedExtraction.Core
+        CertifiedExtraction.PropertiesOfTelescopes.
 
 Fixpoint NoDuplicates_helper {A} var (vars: list A) :=
   match vars with
@@ -15,7 +17,7 @@ Fixpoint NoDuplicates {A} (vars: list A) :=
 Fixpoint PreconditionSet_helper {av} (tenv: Telescope av) (ext: StringMap.t (Value av)) (vars: list string) :=
   match vars with
   | nil => True
-  | cons var vars => var ∉ ext /\ NotInTelescope var tenv /\ PreconditionSet_helper tenv ext vars
+  | cons var vars => (not (StringMap.In var ext)) /\ NotInTelescope var tenv /\ PreconditionSet_helper tenv ext vars
   end.
 
 Definition PreconditionSet {av} (tenv: Telescope av) (ext: StringMap.t (Value av)) (vars: list string) :=
@@ -35,8 +37,13 @@ Ltac destruct_ands H :=
   end.
 
 Ltac PreconditionSet_t :=
-  match goal with
-  | [ H: PreconditionSet _ _ _ |- _ ] =>
-    cbv [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H;
-      destruct_ands H
-  end.
+  repeat match goal with
+         | [ H: PreconditionSet _ _ _ |- _ ] =>
+           cbv [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H;
+             destruct_ands H
+         | [ |- PreconditionSet _ _ _ ] =>
+           cbv [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper];
+             repeat match goal with
+                    | [  |- _ /\ _ ] => split
+                    end
+         end.

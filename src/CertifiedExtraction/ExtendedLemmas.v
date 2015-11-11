@@ -824,9 +824,6 @@ Hint Resolve @WeakEq_add : call_helpers_db.
 
 Lemma TelEq_swap:
   forall {av A A' ext} (k: @NameTag av A) (k': @NameTag av A') (v: Comp A) (v': Comp A') (tenv: A -> A' -> Telescope av),
-    NameTagAsStringOption k <> NameTagAsStringOption k' ->
-    match k with | NTSome k _ => k ∉ ext | _ => True end ->
-    match k' with | NTSome k _ => k ∉ ext | _ => True end ->
     TelEq ext
           ([[k <~~ v as vv]] :: [[k' <~~ v' as vv']] :: tenv vv vv')
           ([[k' <~~ v' as vv']] :: [[k <~~ v as vv]] :: tenv vv vv').
@@ -836,6 +833,7 @@ Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => progress SameValues_Fiat_t_step
+         | [ H: StringMap.MapsTo _ _ (StringMap.remove _ _) |- _ ] => learn (remove_mapsto H)
          | _ => rewrite remove_remove_comm; congruence
          end.
 Qed.

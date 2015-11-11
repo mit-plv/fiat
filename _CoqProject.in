@@ -77,6 +77,7 @@ src/CertifiedExtraction/Extraction/DeallocSCA.v
 src/CertifiedExtraction/Extraction/DeallocSCATactics.v
 src/CertifiedExtraction/Extraction/Extraction.v
 src/CertifiedExtraction/Extraction/Gensym.v
+src/CertifiedExtraction/Extraction/PreconditionSets.v
 src/CertifiedExtraction/Extraction/External/AllExternal.v
 src/CertifiedExtraction/Extraction/External/Core.v
 src/CertifiedExtraction/Extraction/External/External.v
@@ -85,6 +86,7 @@ src/CertifiedExtraction/Extraction/External/FacadeLoops.v
 src/CertifiedExtraction/Extraction/External/GenericADTMethods.v
 src/CertifiedExtraction/Extraction/External/GenericADTTactics.v
 src/CertifiedExtraction/Extraction/External/GenericMethods.v
+src/CertifiedExtraction/Extraction/External/LoopTactics.v
 src/CertifiedExtraction/Extraction/External/Loops.v
 src/CertifiedExtraction/Extraction/External/ScalarMethodTactics.v
 src/CertifiedExtraction/Extraction/External/ScalarMethods.v

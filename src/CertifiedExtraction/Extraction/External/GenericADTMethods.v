@@ -3,33 +3,48 @@ Require Import
         CertifiedExtraction.Extraction.BasicTactics
         CertifiedExtraction.Extraction.External.Core.
 
-Definition FacadeImplementationOfMutation `{FacadeWrapper av A} (fAA: W -> A -> A) : AxiomaticSpec av.
+Unset Implicit Arguments.
+
+Definition FacadeImplementationOfMutation_SCA {av} A `{FacadeWrapper av A} (fAA: W -> A -> A) : AxiomaticSpec av.
   refine {|
       PreCond := fun args => exists (w: W) (x: A), args = (wrap x) :: (wrap w) :: nil;
       PostCond := fun args ret => exists (w: W) (x: A), args = (wrap x, Some (wrap (fAA w x))) :: (wrap w, None) :: nil /\ ret = wrap (Word.natToWord 32 0)
     |}; spec_t.
 Defined.
 
-Definition FacadeImplementationOfConstructor  `{FacadeWrapper av A} (fAA: A) : AxiomaticSpec av.
+(* We need two separate lemma, as a wrapper into (Value av) could send some
+   things into ADT, and some things into SCAs, and this would create ill-typed
+   Facade specs. *)
+Definition FacadeImplementationOfMutation_ADT {av} Targ Tadt `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ}
+           (fAA: Targ -> Tadt -> Tadt) : AxiomaticSpec av.
+  refine {|
+      PreCond := fun args => exists (arg: Targ) (adt: Tadt), args = (wrap adt) :: (wrap arg) :: nil;
+      PostCond := fun args ret => exists (arg: Targ) (adt: Tadt), args = (wrap adt, Some (wrap (fAA arg adt))) :: (wrap arg, None) :: nil /\ ret = wrap (Word.natToWord 32 0)
+    |}; spec_t.
+Defined.
+
+Definition FacadeImplementationOfConstructor {av} A `{FacadeWrapper av A} (fAA: A) : AxiomaticSpec av.
   refine {|
       PreCond := fun args => args = nil;
       PostCond := fun args ret => args = nil /\ ret = (wrap fAA)
     |}; spec_t.
 Defined.
 
-Definition FacadeImplementationOfCopy `{FacadeWrapper av A} : AxiomaticSpec av.
+Definition FacadeImplementationOfCopy {av} A `{FacadeWrapper av A} : AxiomaticSpec av.
   refine {|
       PreCond := fun args => exists x: A, args = (wrap x) :: nil;
       PostCond := fun args ret => exists x: A, args = (wrap x, Some (wrap x)) :: nil /\ ret = (wrap x)
     |}; spec_t.
 Defined.
 
-Definition FacadeImplementationOfDestructor `{FacadeWrapper av A} : AxiomaticSpec av.
+Definition FacadeImplementationOfDestructor {av} A `{FacadeWrapper av A} : AxiomaticSpec av.
   refine {|
       PreCond := fun args => exists x: A, args = (wrap x) :: nil;
       PostCond := fun args ret => exists x: A, args = (wrap x, None) :: nil /\ ret = wrap (Word.natToWord 32 0)
     |}; spec_t.
 Defined.
+
+Set Implicit Arguments.
 
 Lemma SameValues_Mutation_helper:
   forall (av : Type) (vsrc vret : StringMap.key)
@@ -52,7 +67,7 @@ Hint Resolve SameValues_Mutation_helper : call_helpers_db.
 Lemma CompileCallFacadeImplementationOfCopy:
   forall `{FacadeWrapper av A} {env},
   forall fpointer vsrc,
-    GLabelMap.MapsTo fpointer (Axiomatic FacadeImplementationOfCopy) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfCopy A)) env ->
     forall vret (adt: A) (ext: StringMap.t (Value av)) (tenv: Telescope av),
       vret <> vsrc ->
       vret ∉ ext ->
@@ -72,12 +87,12 @@ Proof.
   facade_eauto.
 Qed.
 
-Lemma CompileCallFacadeImplementationOfMutation:
+Lemma CompileCallFacadeImplementationOfMutation_SCA:
   forall `{H : FacadeWrapper av A}
     (env : GLabelMap.t (FuncSpec av)) (fADT : W -> A -> A)
     (fpointer : GLabelMap.key) (varg vtmp : StringMap.key) 
-    (SCAarg : W) (ADTarg : A) (tenv : Telescope av),
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+    (arg : W) (target : A) (tenv : Telescope av),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA _ fADT)) env ->
     forall (vret : StringMap.key) (ext : StringMap.t (Value av)),
       vret <> varg ->
       vtmp <> varg ->
@@ -88,25 +103,21 @@ Lemma CompileCallFacadeImplementationOfMutation:
       @NotInTelescope av vret tenv ->
       @NotInTelescope av vtmp tenv ->
       @NotInTelescope av varg tenv ->
-      {{ [[`vret <-- ADTarg as _]]::[[`varg <-- SCAarg as _]]::tenv }}
+      {{ [[`vret <-- target as _]]::[[`varg <-- arg as _]]::tenv }}
         Call vtmp fpointer (vret :: varg :: nil)
-      {{ [[`vret <-- fADT SCAarg ADTarg as _]]::tenv }} ∪ {{ ext }} // env.
+      {{ [[`vret <-- fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
-         | _ => SameValues_Facade_t_step
-         | _ => facade_cleanup_call
-         end.
-
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
   facade_eauto.
   facade_eauto.
   facade_eauto.
   facade_eauto.
 Qed.
 
-Lemma CompileCallFacadeImplementationOfMutation_Alloc:
+Lemma CompileCallFacadeImplementationOfMutation_SCA_Alloc:
   forall `{FacadeWrapper av A} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) (ADTarg: A) tenv,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+  forall fpointer varg vtmp (arg: W) (target: A) tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA _ fADT)) env ->
     forall vret ext pSCA pADT,
       vret <> varg ->
       vtmp <> varg ->
@@ -119,23 +130,23 @@ Lemma CompileCallFacadeImplementationOfMutation_Alloc:
       @NotInTelescope av varg tenv ->
       {{ tenv }}
         pSCA
-      {{ [[ `varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `varg <-- SCAarg as _]] :: tenv }}
+      {{ [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- arg as _]] :: tenv }}
         pADT
-      {{ [[ `varg <-- SCAarg as _]] :: [[ `vret <-- ADTarg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- arg as _]] :: [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq pSCA (Seq pADT (Call vtmp fpointer (vret :: varg :: nil)))
-      {{ [[ `vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
-  rewrite TelEq_swap by (cleanup; congruence).
-  eauto using CompileCallFacadeImplementationOfMutation.
+  rewrite TelEq_swap.
+  eauto using CompileCallFacadeImplementationOfMutation_SCA.
 Qed.
 
-Lemma CompileCallFacadeImplementationOfMutation_Replace:
+Lemma CompileCallFacadeImplementationOfMutation_SCA_Replace:
   forall `{FacadeWrapper av A} {env} fADT,
-  forall fpointer varg vtmp (SCAarg: W) (ADTarg: A) tenv,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation fADT)) env ->
+  forall fpointer varg vtmp (arg: W) (target: A) tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA _ fADT)) env ->
     forall vret ext pSCA,
       vret <> varg ->
       vtmp <> varg ->
@@ -146,21 +157,107 @@ Lemma CompileCallFacadeImplementationOfMutation_Replace:
       NotInTelescope vret tenv ->
       NotInTelescope vtmp tenv ->
       NotInTelescope varg tenv ->
-      {{ [[ `vret <-- ADTarg as _]] :: tenv }}
+      {{ [[ `vret <-- target as _]] :: tenv }}
         pSCA
-      {{ [[ `vret <-- ADTarg as _]] :: [[ `varg <-- SCAarg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- ADTarg as _]] :: tenv }}
+      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- target as _]] :: tenv }}
         Seq pSCA (Call vtmp fpointer (vret :: varg :: nil))
-      {{ [[ `vret <-- (fADT SCAarg ADTarg) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
-  eauto using CompileCallFacadeImplementationOfMutation.
+  eauto using CompileCallFacadeImplementationOfMutation_SCA.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutation_ADT:
+  forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ}
+    (env : GLabelMap.t (FuncSpec av)) (fADT : Targ -> Tadt -> Tadt)
+    (fpointer : GLabelMap.key) (varg vtmp : StringMap.key) 
+    (arg : Targ) (target : Tadt) (tenv : Telescope av),
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
+    forall (vret : StringMap.key) (ext : StringMap.t (Value av)),
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      @NotInTelescope av vret tenv ->
+      @NotInTelescope av vtmp tenv ->
+      @NotInTelescope av varg tenv ->
+      {{ [[`vret <-- target as _]]::[[`varg <-- arg as _]]::tenv }}
+        Call vtmp fpointer (vret :: varg :: nil)
+      {{ [[`vret <-- fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_cleanup_call
+         end.
+
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  rewrite remove_remove_comm by congruence.
+  facade_eauto.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutation_ADT_Alloc:
+  forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ} {env} fADT,
+  forall fpointer varg vtmp (arg: Targ) (target: Tadt) tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
+    forall vret ext pArg pTarget,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      @NotInTelescope av vret tenv ->
+      @NotInTelescope av vtmp tenv ->
+      @NotInTelescope av varg tenv ->
+      {{ tenv }}
+        pArg
+      {{ [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- arg as _]] :: tenv }}
+        pTarget
+      {{ [[ `varg <-- arg as _]] :: [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ tenv }}
+        Seq pArg (Seq pTarget (Call vtmp fpointer (vret :: varg :: nil)))
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  rewrite TelEq_swap.
+  apply CompileCallFacadeImplementationOfMutation_ADT; eauto.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace:
+  forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ} {env} fADT,
+  forall fpointer varg vtmp (arg: Targ) (target: Tadt) tenv,
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
+    forall vret ext pArg,
+      vret <> varg ->
+      vtmp <> varg ->
+      vtmp <> vret ->
+      vret ∉ ext ->
+      vtmp ∉ ext ->
+      varg ∉ ext ->
+      NotInTelescope vret tenv ->
+      NotInTelescope vtmp tenv ->
+      NotInTelescope varg tenv ->
+      {{ [[ `vret <-- target as _]] :: tenv }}
+        pArg
+      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- target as _]] :: tenv }}
+        Seq pArg (Call vtmp fpointer (vret :: varg :: nil))
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  apply CompileCallFacadeImplementationOfMutation_ADT; eauto.
 Qed.
 
 Lemma CompileCallFacadeImplementationOfConstructor:
   forall `{FacadeWrapper av A} {env} (adt: A) tenv,
   forall fpointer,
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfConstructor adt)) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfConstructor _ adt)) env ->
     forall vret ext,
       vret ∉ ext ->
       NotInTelescope vret tenv ->
@@ -179,7 +276,7 @@ Qed.
 
 Lemma CompileCallFacadeImplementationOfDestructor:
   forall `{FacadeWrapper av A} {env} fpointer vtmp (adt: A) (tenv: Telescope av),
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor (A := A))) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor A)) env ->
     forall vadt ext,
       vtmp <> vadt ->
       vtmp ∉ ext ->
@@ -198,7 +295,7 @@ Qed.
 
 Lemma CompileCallFacadeImplementationOfDestructor':
   forall `{FacadeWrapper av A} {env} fpointer vtmp (adt: Comp A) (tenv: A -> Telescope av),
-    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor (A := A))) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfDestructor A)) env ->
     forall vadt ext,
       vtmp <> vadt ->
       vtmp ∉ ext ->

@@ -1,6 +1,8 @@
 Require Import CertifiedExtraction.Extraction.External.Core.
 
-Definition List_pop `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
+Unset Implicit Arguments.
+
+Definition List_pop {av} A `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
                    exists (h: A) t,
@@ -12,7 +14,7 @@ Definition List_pop `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} :
     |}; spec_t.
 Defined.
 
-Definition List_empty `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
+Definition List_empty {av} A `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
                    exists l: list A,
@@ -27,6 +29,8 @@ Definition List_empty `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)}
     |}; spec_t.
 Defined.
 
+Set Implicit Arguments.
+
 Lemma CompileCallEmpty:
   forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
     (fempty : GLabelMap.key) (lst : list A),
@@ -34,7 +38,7 @@ Lemma CompileCallEmpty:
     vtest ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap lst) ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty _)) env ->
     {{ tenv }}
       Call vtest fempty (vlst :: nil)
     {{ [[`vtest <-- (bool2w match lst with
@@ -58,7 +62,7 @@ Lemma CompileCallEmpty_spec:
     vlst <> vtest ->
     vtest ∉ ext ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     {{ [[`vlst <~~ lst as _]] :: tenv }}
       Call vtest fempty (vlst :: nil)
     {{ [[`vlst <~~ lst as ls]] :: [[`vtest <-- (bool2w match ls with
@@ -78,7 +82,7 @@ Lemma CompileCallPop:
     vlst ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap (head :: tail)) ->
     Lifted_not_mapsto_adt ext tenv vhead ->
-    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    GLabelMap.MapsTo fpop (Axiomatic (List_pop _)) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
     {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.

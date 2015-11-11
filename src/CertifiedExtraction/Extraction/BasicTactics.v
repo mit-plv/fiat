@@ -22,8 +22,8 @@ Ltac assoc_telescope tel needle :=
 
 Ltac clean_DropName_in_ProgOk :=
   match_ProgOk ltac:(fun prog pre post ext env =>
-                       try (is_dirty_telescope pre; clean_telescope pre ext);
-                       try (is_dirty_telescope post; clean_telescope post ext)).
+                       try (is_dirty_telescope pre; PreconditionSet_t; clean_telescope pre ext);
+                       try (is_dirty_telescope post; PreconditionSet_t; clean_telescope post ext)).
 
 Ltac hoare :=
   match goal with
