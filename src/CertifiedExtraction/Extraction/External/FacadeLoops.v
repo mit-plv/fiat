@@ -11,7 +11,7 @@ Ltac loop_unify_with_nil_t :=
   end.
 
 Ltac loop_t :=
-  repeat (intros || unfold Fold || Lifted_t || compile_do_side_conditions || clean_DropName_in_ProgOk || rewrite Propagate_ret || eapply CompileSeq || eauto 2).
+  repeat (intros || unfold Fold || solve [PreconditionSet_t; Lifted_t] || compile_do_side_conditions || clean_DropName_in_ProgOk || rewrite Propagate_ret || eapply CompileSeq || eauto 2).
 
 Ltac apply_generalized_t compilation_lemma :=
   erewrite ProgOk_TelEq_morphism;

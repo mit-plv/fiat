@@ -46,10 +46,8 @@ Lemma CompileCallEmpty:
                          | _ :: _ => false
                          end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
 Proof.
-  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
-  facade_eauto.
-  facade_eauto.
-  facade_eauto.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
+  [ facade_eauto.. | ].
   rewrite <- remove_add_comm by congruence. (* FIXME *)
   apply DropName_remove.
   eauto.
