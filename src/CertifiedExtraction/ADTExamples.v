@@ -625,6 +625,495 @@ Ltac compile_map :=
                 try compile_do_side_conditions
             end).
 
+
+Definition Method2 := fun
+                               (r_n : QueryStructureImplementation.IndexedQueryStructure 
+                                        (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                        (@ilist3.icons3 Heading.RawHeading
+                                           (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                           (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                           (@ilist3.inil3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) 
+                               (d d0 : Memory.W) =>
+                             @Core.Bind (@IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading) * list (@Tuple.RawTuple heading))
+                               (QueryStructureImplementation.IndexedQueryStructure 
+                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                  (@ilist3.icons3 Heading.RawHeading 
+                                     (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                     (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                     (@ilist3.inil3 Heading.RawHeading (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) *
+                                bool)
+                               (@QueryStructureImplementation.CallBagMethod 
+                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                  (@ilist3.icons3 Heading.RawHeading 
+                                     (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                     (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                     (@ilist3.inil3 Heading.RawHeading (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))
+                                  (@Fin.F1 0)
+                                  (@QueryStructureImplementation.BagFind heading
+                                     (@ilist3.ilist3_hd Schema.RawSchema
+                                        (fun ns : Schema.RawSchema => QueryStructureImplementation.SearchUpdateTerms (Schema.rawSchemaHeading ns)) 1
+                                        (Vector.cons Schema.RawSchema
+                                           {|
+                                           Schema.rawSchemaHeading := heading;
+                                           Schema.attrConstraints := @None (@Tuple.RawTuple heading -> Prop);
+                                           Schema.tupleConstraints := @Some 
+                                                  (@Tuple.RawTuple heading -> @Tuple.RawTuple heading -> Prop)
+                                                  (@Schema.FunctionalDependency_P heading
+                                                  (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)) :: (@Fin.FS 2 (@Fin.F1 1) :: @nil (Fin.t 3))%list)
+                                                  (@Fin.F1 2 :: @nil (Fin.t 3))) |} 0 
+                                           (Vector.nil Schema.RawSchema))
+                                        (@ilist3.icons3 Heading.RawHeading
+                                           (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                           (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                           (@ilist3.inil3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))))) r_n
+                                  (@Some (Heading.Domain heading (@Fin.F1 2))
+                                     (@Tuple.GetAttributeRaw heading
+                                        (@ilist2.icons2 
+                                           Type (@id Type) Memory.W 2 
+                                           (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
+                                           (@ilist2.icons2 
+                                              Type 
+                                              (@id Type) ProcessScheduler.State 1 
+                                              (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
+                                              (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type))))) 
+                                        (@Fin.F1 2)),
+                                  (@None (Heading.Domain heading (@Fin.FS 2 (@Fin.F1 1))),
+                                  fun tup : @Tuple.RawTuple heading =>
+                                  negb
+                                    ((if @Word.weq 32
+                                           (@Tuple.GetAttributeRaw heading
+                                              (@ilist2.icons2 
+                                                 Type 
+                                                 (@id Type) Memory.W 2 
+                                                 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
+                                                 (@ilist2.icons2 
+                                                  Type 
+                                                  (@id Type) ProcessScheduler.State 1 
+                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
+                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
+                                              (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)))) 
+                                           (@Tuple.GetAttributeRaw heading tup (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0))))
+                                      then true
+                                      else false) &&
+                                     ((if @Word.weq 32
+                                            (@Tuple.GetAttributeRaw heading
+                                               (@ilist2.icons2 
+                                                  Type 
+                                                  (@id Type) Memory.W 2 
+                                                  (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
+                                                  (@ilist2.icons2 
+                                                  Type 
+                                                  (@id Type) ProcessScheduler.State 1 
+                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
+                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
+                                               (@Fin.FS 2 (@Fin.F1 1))) 
+                                            (@Tuple.GetAttributeRaw heading tup (@Fin.FS 2 (@Fin.F1 1)))
+                                       then true
+                                       else false) && true)))))
+                               (fun a : @IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading) * list (@Tuple.RawTuple heading) =>
+                                  (@Common.If_Then_Else
+                                     (Core.Comp
+                                        (QueryStructureImplementation.IndexedQueryStructure 
+                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                           (@ilist3.icons3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                              (@ilist3.inil3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool))
+                                     (EqNat.beq_nat
+                                        (@length (@Tuple.RawTuple heading)
+                                           (@snd (@IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading)) (list (@Tuple.RawTuple heading)) a)) 0)
+                                     (@Core.Bind
+                                        (QueryStructureImplementation.IndexedQueryStructure 
+                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                           (@ilist3.icons3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                              (@ilist3.inil3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
+                                        (QueryStructureImplementation.IndexedQueryStructure 
+                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                           (@ilist3.icons3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                              (@ilist3.inil3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
+                                        (@Core.Bind
+                                           (@IndexedEnsembles.IndexedEnsemble
+                                              (@Tuple.RawTuple
+                                                 {|
+                                                 Heading.NumAttr := 3;
+                                                 Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}))
+                                           (QueryStructureImplementation.IndexedQueryStructure 
+                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                              (@ilist3.icons3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                 (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
+                                           (@QueryStructureImplementation.CallBagMethod 
+                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                              (@ilist3.icons3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                 (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) 
+                                              (@Fin.F1 0)
+                                              (@QueryStructureImplementation.BagInsert
+                                                 {|
+                                                 Heading.NumAttr := 3;
+                                                 Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}
+                                                 (@ilist3.ilist3_hd Schema.RawSchema
+                                                  (fun ns : Schema.RawSchema => QueryStructureImplementation.SearchUpdateTerms (Schema.rawSchemaHeading ns)) 1
+                                                  (Vector.cons Schema.RawSchema
+                                                  {|
+                                                  Schema.rawSchemaHeading := {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |};
+                                                  Schema.attrConstraints := @None
+                                                  (@Tuple.RawTuple
+                                                  {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} -> Prop);
+                                                  Schema.tupleConstraints := @Some
+                                                  (@Tuple.RawTuple
+                                                  {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} ->
+                                                  @Tuple.RawTuple
+                                                  {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} -> Prop)
+                                                  (@Schema.FunctionalDependency_P
+                                                  {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}
+                                                  (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)) :: (@Fin.FS 2 (@Fin.F1 1) :: @nil (Fin.t 3))%list)
+                                                  (@Fin.F1 2 :: @nil (Fin.t 3))) |} 0 
+                                                  (Vector.nil Schema.RawSchema))
+                                                  (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))))) r_n
+                                              (@ilist2.icons2 
+                                                 Type 
+                                                 (@id Type) Memory.W 2 
+                                                 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
+                                                 (@ilist2.icons2 
+                                                  Type 
+                                                  (@id Type) ProcessScheduler.State 1 
+                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
+                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type))))))
+                                           (fun
+                                              a0 : 
+                                               @IndexedEnsembles.IndexedEnsemble
+                                                 (@Tuple.RawTuple
+                                                  {|
+                                                  Heading.NumAttr := 3;
+                                                  Heading.AttrList := Vector.cons 
+                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}) =>
+                                            @Core.Return
+                                              (QueryStructureImplementation.IndexedQueryStructure
+                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                 (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
+                                              (Refinements.UpdateIndexedRelation 
+                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                 (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) r_n 
+                                                 (@Fin.F1 0) a0, true)))
+                                        (fun
+                                           a0 : QueryStructureImplementation.IndexedQueryStructure
+                                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                  (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool =>
+                                         @Core.Return
+                                           (QueryStructureImplementation.IndexedQueryStructure 
+                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                              (@ilist3.icons3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                 (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
+                                           (@fst
+                                              (QueryStructureImplementation.IndexedQueryStructure
+                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                 (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) bool a0,
+                                           @snd
+                                             (QueryStructureImplementation.IndexedQueryStructure
+                                                (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                (@ilist3.icons3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                                  (@ilist3.inil3 Heading.RawHeading
+                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) bool a0)))
+                                     (@Core.Return
+                                        (QueryStructureImplementation.IndexedQueryStructure 
+                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                           (@ilist3.icons3 Heading.RawHeading
+                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
+                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
+                                              (@ilist3.inil3 Heading.RawHeading
+                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool) 
+                                        (r_n, false)))).
+
+Example compile2 :
+  sigT (fun prog => forall r_n d d0,
+            {{ [[`"r_n" <-- r_n as _ ]] :: [[`"d" <-- d as _]] :: [[`"d0" <-- d0 as _]] :: Nil }}
+              prog
+            {{ [[Method2 r_n d d0 as retv]] :: [[`"r_n" <-- fst retv as _]] :: [[`"ret" <-- bool2w (snd retv) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvListsC).
+Proof.
+  eexists; intros.
+  unfold Method2.
+
+  rewrite SameValues_Fiat_Bind_TelEq.
+  unfold Common.If_Then_Else.
+
+  assert (FacadeWrapper av' (prod (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)))) by admit.
+  apply ProgOk_Transitivity_Name' with "AA". (* introduces a FacadeWrapper *)
+
+  instantiate (1 := Skip).       (* BagFind *)
+  admit.
+
+  apply miniChomp'.
+  compile_step.
+
+  assert (FacadeWrapper av'
+                                  (prod
+                                     (IndexedQueryStructure
+                                        (QueryStructureSchema.QueryStructureSchemaRaw
+                                           SchedulerSchema)
+                                        (@icons3 RawHeading
+                                           (fun sch : RawHeading =>
+                                            SearchUpdateTerms sch) heading O
+                                           (VectorDef.nil RawHeading)
+                                           SearchUpdateTerm
+                                           (@inil3 RawHeading
+                                              (fun sch : RawHeading =>
+                                               SearchUpdateTerms sch)))) bool)) by admit.
+
+Lemma CompileIf :
+  forall {av A} `{FacadeWrapper (Value av) A} k tmp (gallinaTest: bool) (gallinaT gallinaF: Comp A) facadeTest facadeT facadeF
+    env (ext: StringMap.t (Value av)) tenv tenv',
+    tmp ∉ ext ->
+    NotInTelescope tmp tenv ->
+    {{ tenv }}
+      facadeTest
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+      facadeT
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[k <~~ gallinaT as v]]::tenv' v }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+      facadeF
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[k <~~ gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq facadeTest (DFacade.If (isTrueExpr tmp) facadeT facadeF))
+    {{ [[k <~~ if gallinaTest then gallinaT else gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env.
+Proof.
+  intros; hoare.
+  repeat match goal with
+         | _ => SameValues_Facade_t_step
+         | _ => facade_if_helper
+         end.
+  Grab Existential Variables.
+  apply 42.
+  apply 42.
+Qed.
+
+  apply (CompileIf (tmp := "tmp")).
+  compile_step.
+  compile_step.
+
+  instantiate (1 := Call (DummyArgument "tmp") ("list", "Empty") ("vv" :: nil)). (* FIXME *)
+  admit.
+
+  compile_step.
+  compile_step.
+  (* compile_step.                 (* FIXME naming headless only works if nothing depends on destructing that head later *) *)
+
+  rewrite SameValues_Fiat_Bind_TelEq.
+  rewrite SameValues_Fiat_Bind_TelEq.
+  setoid_rewrite Propagate_anonymous_ret.
+  setoid_rewrite Propagate_anonymous_ret.
+  cbv [fst snd].
+
+  subst.
+
+  compile_destructor.
+  instantiate (1 := ("ext", "DeallocPair")); admit.
+
+  apply CompileSeq with ([[@CallBagMethod
+          (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)
+             heading 0 (VectorDef.nil RawHeading) SearchUpdateTerm
+             (@inil3 RawHeading
+                (fun sch : RawHeading => SearchUpdateTerms sch))) 
+          (@F1 0)
+          (@BagInsert
+             {|
+             NumAttr := 3;
+             AttrList := Vector.cons Type W 2
+                           (Vector.cons Type ProcessScheduler.State 1
+                              (Vector.cons Type W 0 (Vector.nil Type))) |}
+             (@ilist3_hd RawSchema
+                (fun ns : RawSchema =>
+                 SearchUpdateTerms (rawSchemaHeading ns)) 1
+                (Vector.cons RawSchema
+                   {|
+                   rawSchemaHeading := {|
+                                       NumAttr := 3;
+                                       AttrList := Vector.cons 
+                                                  Type W 2
+                                                  (Vector.cons 
+                                                  Type ProcessScheduler.State
+                                                  1
+                                                  (Vector.cons 
+                                                  Type W 0 
+                                                  (Vector.nil Type))) |};
+                   attrConstraints := @None
+                                        (@RawTuple
+                                           {|
+                                           NumAttr := 3;
+                                           AttrList := Vector.cons 
+                                                  Type W 2
+                                                  (Vector.cons 
+                                                  Type ProcessScheduler.State
+                                                  1
+                                                  (Vector.cons 
+                                                  Type W 0 
+                                                  (Vector.nil Type))) |} ->
+                                         Prop);
+                   tupleConstraints := @Some
+                                         (@RawTuple
+                                            {|
+                                            NumAttr := 3;
+                                            AttrList := Vector.cons 
+                                                  Type W 2
+                                                  (Vector.cons 
+                                                  Type ProcessScheduler.State
+                                                  1
+                                                  (Vector.cons 
+                                                  Type W 0 
+                                                  (Vector.nil Type))) |} ->
+                                          @RawTuple
+                                            {|
+                                            NumAttr := 3;
+                                            AttrList := Vector.cons 
+                                                  Type W 2
+                                                  (Vector.cons 
+                                                  Type ProcessScheduler.State
+                                                  1
+                                                  (Vector.cons 
+                                                  Type W 0 
+                                                  (Vector.nil Type))) |} ->
+                                          Prop)
+                                         (@FunctionalDependency_P
+                                            {|
+                                            NumAttr := 3;
+                                            AttrList := Vector.cons 
+                                                  Type W 2
+                                                  (Vector.cons 
+                                                  Type ProcessScheduler.State
+                                                  1
+                                                  (Vector.cons 
+                                                  Type W 0 
+                                                  (Vector.nil Type))) |}
+                                            [@FS 2 (@FS 1 (@F1 0));
+                                            @FS 2 (@F1 1)] 
+                                            [@F1 2]) |} 0
+                   (Vector.nil RawSchema))
+                (@icons3 RawHeading
+                   (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
+                   (VectorDef.nil RawHeading) SearchUpdateTerm
+                   (@inil3 RawHeading
+                      (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
+          (@ilist2.icons2 Type (@id Type) W 2
+             (Vector.cons Type ProcessScheduler.State 1
+                (Vector.cons Type W 0 (Vector.nil Type))) d
+             (@ilist2.icons2 Type (@id Type) ProcessScheduler.State 1
+                (Vector.cons Type W 0 (Vector.nil Type)) SLEEPING
+                (@ilist2.icons2 Type (@id Type) W 0 
+                   (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
+      as a]]
+      ::[[ ` "r_n" <--
+        Refinements.UpdateIndexedRelation
+          (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)
+             heading 0 (VectorDef.nil RawHeading) SearchUpdateTerm
+             (@inil3 RawHeading
+                (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
+          (@F1 0) a as _]]::[[ ` "d" <-- d as _]]::[[ ` "d0" <-- d0 as _]]::@Nil av').
+
+  instantiate (1 := Call (DummyArgument "tmp") ("ext", "BagInsert") ("r_n" :: "ret" :: "d" :: "d0" :: nil)); admit.
+
+  apply ProgOk_Chomp_None.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply CompileDeallocSCA_discretely.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply CompileDeallocSCA_discretely.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  
+  setoid_rewrite Propagate_anonymous_ret.
+  compile_step.
+  compile_step.
+  cbv [fst snd].
+  apply CompileDeallocADT_discretely'.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply CompileDeallocSCA_discretely.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+  apply CompileDeallocSCA_discretely.
+  compile_step.
+  compile_step.
+  compile_step.
+  compile_step.
+
+  compile_step.
+
+  compile_destructor.
+
+  instantiate (1 := ("ext", "DeallocPair")); admit.
+Defined.
+
+Eval compute in (extract_facade compile2).
+
 Example compile :
   sigT (fun prog => forall (r_n : Type1) (d : W),
             {{ [[`"r_n" <-- r_n as _ ]] :: [[`"d" <-- d as _]] :: Nil }}
@@ -678,6 +1167,7 @@ Proof.
   compile_destructor.
 Defined.
 
+  
 Opaque DummyArgument.
 Eval compute in (extract_facade compile).
 
