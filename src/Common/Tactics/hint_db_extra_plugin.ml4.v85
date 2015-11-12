@@ -29,7 +29,7 @@ struct
 		 let db = Hints.searchtable_map l in
 		 (* iterate over the hint database, pulling the hint *)
 		 (* list out for each. *)
-		 Hints.Hint_db.iter (fun _ hintlist ->
+		 Hints.Hint_db.iter (fun _ _ hintlist ->
 				    syms := hintlist::!syms) db) dbs in
     (* Now iterate over the list of list of hints, *)
     List.fold_left
@@ -37,20 +37,20 @@ struct
        List.fold_left
 	 (fun tac hint ->
 	  (* match the type of the hint to pull out the lemma *)
-	  match hint.Auto.code with
-	    Auto.Give_exact lem
-	  | Auto.Res_pf (lem,_)
-	  | Auto.ERes_pf (lem,_) ->
+	  match hint.Hints.code with
+	    Hints.Give_exact lem
+	  | Hints.Res_pf lem
+	  | Hints.ERes_pf lem ->
 	     (* *)
 	     let this_tac : Proof_type.tactic =
-	       ltac_apply tacK [to_ltac_val lem] in
+             ltac_apply tacK [to_ltac_val lem] in
 	     Tacticals.tclORELSE this_tac tac
 	  | _ -> tac)
 	 tac hints)
       (Tacticals.tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
 
   let add_resolve_to_db lem db =
-    let _ = Auto.add_hints true db (Auto.HintsResolveEntry [(Some 1,false,Auto.PathAny,lem)]) in
+    let _ = Hints.add_hints true db (Hints.HintsResolveEntry [(Some 1,false,Hints.PathAny,lem)]) in
     Tacticals.tclIDTAC
 
 end
