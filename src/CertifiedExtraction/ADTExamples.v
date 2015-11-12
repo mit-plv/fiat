@@ -61,11 +61,13 @@ Ltac defunctionalize_evar :=
   end.
 
 Ltac move_to_front var :=
-  repeat lazymatch goal with
+  repeat
+    lazymatch goal with         (* `at 1' prevents setoid_rewrite from modifying evars *)
+    | [  |- context[Cons ?k _ (fun _ => Cons var _ _)] ] =>
+      setoid_rewrite (TelEq_swap k var) at 1
     | [  |- context[Cons ?k _ (fun _ => Cons (@NTSome _ _ var _) _ _)] ] =>
       setoid_rewrite (TelEq_swap k (@NTSome _ _ var _)) at 1
     end.
-
 
 Lemma CompileLoop :
   forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
@@ -83,10 +85,10 @@ Lemma CompileLoop :
         {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
         {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
     {{ [[`vlst <-- lst as _]] :: tenv }}
-      (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
+      (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))))
     {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  loop_t.
+  unfold DummyArgument; loop_t.
 
   rewrite TelEq_swap by loop_t;
     eapply CompileCallEmpty_spec; loop_t.
@@ -136,7 +138,7 @@ Lemma CompileLoop_strong :
         {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
         {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
     {{ [[`vlst <-- lst as _]] :: tenv }}
-      (Seq (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil)))) facadeConclude)
+      (Seq (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))) facadeConclude)
     {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
@@ -144,93 +146,6 @@ Proof.
     [ apply CompileLoop | eassumption ];
     assumption.
 Qed.
-
-Parameter TSearchTerm : Type.
-Parameter TAcc : Type.
-Definition av := (list W + TSearchTerm + TAcc)%type.
-
-Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
-  (GLabelMap.empty (FuncSpec _))
-    ### ("std", "rand") ->> (Axiomatic FRandom)
-    ### ("listW", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
-    ### ("listW", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
-    ### ("listW", "pop!") ->> (Axiomatic (List_pop W))
-    ### ("listW", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
-    ### ("listW", "empty?") ->> (Axiomatic (List_empty W))
-    ### ("search", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TSearchTerm))
-    ### ("acc", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TAcc)).
-
-Example other_test_with_adt''':
-  sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc),
-            {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }}
-              prog
-            {{ [[`"ret" <~~  ( seq <- {s: list W | True };
-                             fold_left (fun acc elem =>
-                                          acc <- acc;
-                                          { x: W | Word.wlt (Word.wplus acc elem) x })
-                                       seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
-Proof.
-  Unset Ltac Debug.
-  econstructor; intros.
-
-  repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
-
-  eapply ProgOk_Transitivity_Name' with "seq".
-
-  instantiate (1 := Skip).       (* FIXME alloc *)
-  admit.
-
-  apply miniChomp'.
-  compile_step.
-
-  let av := av_from_ext (StringMap.empty (Value av)) in
-  let fpop := find_function_pattern_in_env
-               (fun w => (Axiomatic (List_pop (av := av) _ (H := w)))) MyEnvListsB in
-  let fempty := find_function_pattern_in_env
-                 (fun w => (Axiomatic (List_empty (av := av) _ (H := w)))) MyEnvListsB in
-  let fdealloc := find_function_pattern_in_env
-                   (fun w => (Axiomatic (FacadeImplementationOfDestructor
-                                        (list W) (av := av) (H := w)))) MyEnvListsB in
-  let vtest := gensym "test" in
-  let vhead := gensym "head" in
-  apply (CompileLoop_strong (vtest := vtest) (vhead := vhead) (fpop := fpop) (fempty := fempty) (fdealloc := fdealloc));
-    try compile_do_side_conditions.
-
-  repeat compile_step.
-  repeat compile_step.
-
-  eapply CompileSeq.
-  let fdealloc := find_function_pattern_in_env
-                   (fun w => (Axiomatic (FacadeImplementationOfDestructor
-                                        TSearchTerm (av := av) (H := w)))) MyEnvListsB in
-  let vtmp := gensym "tmp" in
-  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fdealloc) (vtmp := vtmp));
-    try compile_do_side_conditions.
-
-  let fdealloc := find_function_pattern_in_env
-                   (fun w => (Axiomatic (FacadeImplementationOfDestructor
-                                        TAcc (av := av) (H := w)))) MyEnvListsB in
-  let vtmp := gensym "tmp" in
-  apply (CompileCallFacadeImplementationOfDestructor (fpointer := fdealloc) (vtmp := vtmp));
-    try compile_do_side_conditions.
-
-  compile_step.
-  apply CompileDeallocSCA_discretely. (* FIXME compile_do_extend_scalar_lifetime should consider Word.word 32 *)
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  apply miniChomp.
-  compile_step.
-  compile_step.
-  rewrite Propagate_anonymous_ret.
-
-  instantiate (1 := Skip).
-  admit.
-Defined.
-
-Eval compute in (extract_facade other_test_with_adt''').
 
 Definition revmap {A B} f := fun seq => @map A B f (rev seq).
 
@@ -335,7 +250,7 @@ Proof.
   apply miniChomp'; intros.
   hoare.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
-  apply CompileCallFacadeImplementationOfMutation_ADT; try compile_do_side_conditions.
+  apply CompileCallFacadeImplementationOfMutation_ADT; compile_do_side_conditions.
 Qed.
 
 Lemma CompileMap_SCA_strong :
@@ -363,8 +278,8 @@ Lemma CompileMap_SCA_strong :
             (Seq
                (Fold vhead vtest vlst fpop fempty
                      (Seq facadeBody
-                          (Call vtmp fcons (vret :: vhead' :: nil))))
-               (Call vtest fdealloc (vlst :: nil))))
+                          (Call (DummyArgument vtmp) fcons (vret :: vhead' :: nil))))
+               (Call (DummyArgument vtest) fdealloc (vlst :: nil))))
           facadeCoda)
     {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
@@ -380,8 +295,111 @@ Proof.
   apply miniChomp'; intros.
   hoare.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
-  apply CompileCallFacadeImplementationOfMutation_SCA; try compile_do_side_conditions.
+  apply CompileCallFacadeImplementationOfMutation_SCA; unfold DummyArgument; compile_do_side_conditions.
 Qed.
+
+Parameter TSearchTerm : Type.
+Parameter TAcc : Type.
+Definition av := (list W + TSearchTerm + TAcc)%type.
+
+Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
+  (GLabelMap.empty (FuncSpec _))
+    ### ("std", "rand") ->> (Axiomatic FRandom)
+    ### ("listW", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
+    ### ("listW", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
+    ### ("listW", "pop!") ->> (Axiomatic (List_pop W))
+    ### ("listW", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
+    ### ("listW", "empty?") ->> (Axiomatic (List_empty W))
+    ### ("search", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TSearchTerm))
+    ### ("acc", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TAcc)).
+
+Ltac compile_loop :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vtest := gensym "test" in
+            let vhead := gensym "head" in
+            match constr:(pre, post) with
+            | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (List.fold_left _ ?seq _) ?tenv') =>
+              apply (CompileLoop_strong (vtest := vtest) (vhead := vhead)); try compile_do_side_conditions
+            | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (List.fold_left _ ?seq _)) ?tenv') =>
+              (* FIXME rename and generalize to different tenvs *)
+              apply (FacadeLoops.CompileLoop CompileLoop_strong (vtest := vtest) (vhead := vhead)); try compile_do_side_conditions
+            end).
+
+Ltac compile_destructor :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vtmp := gensym "tmp" in
+            match constr:(pre, post) with
+            | (Cons _ _ (fun _ => ?tenv), ?tenv) =>
+              apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp))
+            | (Cons _ ?v (fun _ => ?tenv), ?tenv') =>
+              match tenv' with
+              | context[v] => fail 1
+              | _ => eapply CompileSeq; [ apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp)) | ]
+              end
+            end; try compile_do_side_conditions).
+
+Ltac compile_miniChomp :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match post with
+            | Cons NTNone ?v ?tenv' =>
+              match pre with
+              | context[Cons ?k v _] =>
+                move_to_front k;
+                  apply miniChomp'
+              end
+            end).
+
+Example other_test_with_adt''':
+  sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc),
+            {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }}
+              prog
+            {{ [[`"ret" <~~  ( seq <- {s: list W | True };
+                             fold_left (fun acc elem =>
+                                          acc <- acc;
+                                          { x: W | Word.wlt (Word.wplus acc elem) x })
+                                       seq (ret (Word.natToWord 32 0: W))) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB).
+Proof.
+  econstructor; intros.
+
+  repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
+
+  (* FXIME compile_do_alloc should use Transitivity_Name' *)
+  eapply ProgOk_Transitivity_Name' with "seq".
+
+  instantiate (1 := Skip).       (* FIXME alloc *)
+  admit.
+
+  compile_miniChomp.
+  compile_step.
+  compile_loop.
+  compile_step.
+
+  repeat compile_step.
+
+  compile_destructor.
+  compile_destructor.
+
+  compile_step.
+  repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
+
+  compile_do_extend_scalar_lifetime.
+  compile_step.
+  compile_step.
+  (* FIXME compile_do_alloc shouldn't be called here. *)
+  compile_miniChomp.
+  compile_step.
+  compile_step.
+
+  instantiate (1 := Skip).
+  admit.
+Defined.
+
+Opaque DummyArgument.
+
+Eval compute in (extract_facade other_test_with_adt''').
 
 Lemma SameValues_Fiat_Bind_TelEq_Pair :
   forall {av A1 A2 B} key compA compB tail ext,
@@ -436,7 +454,7 @@ Definition MethodOfInterest := fun (r_n : Type1) (d : W) =>
                                         (@Some W d, (@None (Domain heading (@FS 2 (@F1 1))), fun _ : @RawTuple heading => true));
                                  ret
                                    (r_n,
-                                   @map (@RawTuple heading)
+                                   @revmap (@RawTuple heading)
                                      (Domain heading (@FS 2 (@FS 1 (@F1 0))))
                                      (fun x : @RawTuple heading =>
                                       @GetAttributeRaw heading
@@ -473,8 +491,6 @@ Lemma ProgOk_Transitivity_Name_Pair :
 Proof.
   repeat hoare.
 Qed.
-
-About List_pop.
 
 Lemma CompileDeallocADT_discretely : (* TODO create a specialized version that hardcodes the deallocation call *)
   forall {av A} {env ext} (k: NameTag av A) comp tenv tenv' prog dealloc,
@@ -551,6 +567,64 @@ Definition MyEnvListsC : Env av' :=
     ### ("IndexedEnsemble", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor IndexedEnsembles.IndexedEnsemble))
     ### ("RawTuple", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (@RawTuple heading))).
 
+Ltac compile_chomp :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match pre with    (* FIXME could be generalized beyond the first binding *)
+            | Cons ?k ?v ?tenv =>
+              match post with
+              | Cons k v _ => fail 1
+              | context[Cons k v _] => move_to_front k
+              end
+            end).
+
+Ltac compile_dealloc_useless :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match pre with
+            | Cons ?k ?v ?tenv =>
+              match post with
+              | context[k] => fail 1 "k appears in conclusion"
+              | context[v] => fail 1 "v appears in conclusion"
+              | _ => apply CompileDeallocSCA_discretely
+              | _ => apply CompileDeallocADT_discretely
+              | _ => apply CompileDeallocADT_discretely'
+              end
+            end).
+
+Ltac compile_CallGetAttribute :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons (NTSome ?vsrc) (ret ?src) ?tenv,
+               Cons (NTSome ?vtarget) (ret (GetAttributeRaw ?src ?index)) ?tenv') =>
+              let vindex := gensym "index" in
+              eapply CompileSeq with ([[`vindex <-- FinToWord index as _]]
+                                        :: [[`vsrc <-- src as src]]
+                                        :: (tenv src));
+                [ | match_ProgOk
+                      ltac:(fun prog' _ _ _ _ =>
+                              unify prog' (Call vtarget ("ext", "GetAttribute")
+                                                (vsrc :: vindex :: nil))) ]
+            end).
+
+
+Ltac compile_map :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vhead := gensym "head" in
+            let vhead' := gensym "head'" in
+            let vtest := gensym "test" in
+            let vtmp := gensym "tmp" in
+            match constr:(pre, post) with
+            | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
+              unify seq seq';
+                first [
+                    apply (CompileMap_SCA_strong seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) |
+                    apply (CompileMap_ADT_strong seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) ];
+                try compile_do_side_conditions
+            end).
+
 Example compile :
   sigT (fun prog => forall (r_n : Type1) (d : W),
             {{ [[`"r_n" <-- r_n as _ ]] :: [[`"d" <-- d as _]] :: Nil }}
@@ -563,7 +637,7 @@ Proof.
   rewrite SameValues_Fiat_Bind_TelEq.
   setoid_rewrite Propagate_anonymous_ret; simpl.
 
-  move_to_front "r_n".
+  compile_chomp.
   compile_step.
   compile_step.
   compile_step.
@@ -574,45 +648,34 @@ Proof.
   apply ProgOk_Chomp_None.
   compile_step.
 
-  apply CompileDeallocADT_discretely'.
+  compile_dealloc_useless.
+  compile_step.
   compile_step.
   compile_step.
 
   setoid_rewrite Propagate_anonymous_ret.
 
-  match goal with
-  | [  |- appcontext[@map ?a ?b] ] => replace (@map a b) with (@revmap a b) by admit
-  end.
+  compile_map.
 
-  let vhead := gensym "head" in
-  let vhead' := gensym "head'" in
-  let vtest := gensym "test" in
-  let vtmp := gensym "tmp" in
-  apply (CompileMap_SCA_strong (snd v0) (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)); try compile_do_side_conditions.
+  compile_step.
+  compile_step.
+
+  change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head.
+
+  compile_CallGetAttribute.
+
+  compile_step.                 (* FIXME call_tactic_after_moving_head_binding_to_separate_goal should try unifying after checking not_evar *)
 
   compile_step.
   compile_step.
   compile_step.
+  apply CompileSkip.            (* Give this precedence is there are no evars. *)
+  (* FIXME assert (FitsInW (@FS 2 (@FS 1 (@F1 0)))) by reflexivity. *)
 
-  assert (FitsInW (@FS 2 (@FS 1 (@F1 0)))) by reflexivity.
-
-  compile_do_use_transitivity_to_handle_head_separately.
-
-  apply CompileSeq with ([[`"index" <-- FinToWord (@FS 2 (@FS 1 (@F1 0))) as _]] :: [[ ` "head" <-- head as _]] :: Nil).
-
-  compile_step.                 (* FIXME shouldn't extend SCA lifespan *)
-  apply CompileSkip. (* FIXME fast-track compile_step this to just apply CompileSkip *)
-  instantiate (1 := Call "head'" ("ext", "GetAttribute") ("head" :: "index" :: nil)).
   admit.
 
-  compile_step.
-  compile_step.
-  compile_step.
-  let tmp := gensym "tmp" in     (* FIXME prove  deallocation lemma specific to the ret case. *)
-  apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument tmp)); try compile_do_side_conditions.
-
-  let tmp := gensym "tmp" in     (* FIXME prove  deallocation lemma specific to the ret case. *)
-  apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument tmp)); try compile_do_side_conditions.
+  Unset Ltac Debug.
+  compile_destructor.
 Defined.
 
 Opaque DummyArgument.
