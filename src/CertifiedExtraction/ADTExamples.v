@@ -1113,8 +1113,7 @@ Ltac compile_do_side_conditions_internal ::=
   repeat cleanup; PreconditionSet_t;
    match goal with
    | _ => exact I
-   (* | _ => discriminate *) (* Small speedup *)
-   (* | _ => congruence *)
+   | |- _ <> _ => discriminate 1
    | |- _ ∉ _ => decide_not_in
    | |- NotInTelescope _ _ => decide_NotInTelescope
    | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
@@ -1178,11 +1177,8 @@ Proof.
   eexists; intros.
   unfold MethodOfInterest.
 
-  _compile.
+  Time repeat (_compile_step || change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head).
   admit.
-
-  change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head.
-  _compile.
   admit.
 Defined.
 
