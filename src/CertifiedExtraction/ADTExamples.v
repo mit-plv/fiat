@@ -1036,6 +1036,23 @@ Ltac _compile_if :=
               apply (CompileIf (tmp := "test"))
             end).
 
+Ltac __compile_prepare_chomp tenv tenv' :=
+  match tenv with
+  | Cons ?k ?v ?tenv =>
+    match tenv' with
+    | Cons k v _ => fail 1
+    | context[Cons k v _] => move_to_front k
+    end
+  end.
+
+Ltac _compile_prepare_chomp :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            first [ __compile_prepare_chomp pre post
+                  | __compile_prepare_chomp post pre ]).
+
+Arguments wrap : simpl never.
+
 Ltac _compile_step :=
   match goal with
   | _ => progress subst
@@ -1053,7 +1070,8 @@ Ltac _compile_step :=
   | _ => compile_simple
   | _ => setoid_rewrite SameValues_Fiat_Bind_TelEq
   | _ => setoid_rewrite Propagate_anonymous_ret
-  | _ => simpl
+  | _ => progress simpl
+  | _ => _compile_prepare_chomp
   end.
 
 Ltac _compile :=
@@ -1101,15 +1119,9 @@ Proof.
   unfold MethodOfInterest.
 
   _compile.
-
-  (* FIXME callBagFind should capture r_n. *)
   admit.
 
-  move_to_front "r_n".
-  _compile.
-
   change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head.
-
   _compile.
   admit.
 Defined.
