@@ -1164,37 +1164,21 @@ Ltac Implement_If_Opt_Then_Else :=
   end.
 
 Ltac Implement_AbsR_Relation :=
-  match goal with
+    match goal with
   (* The case when a table has been updated *)
-  | [H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                ?ValidImpls ?r_o ?r_n,
-         H2 : AbsR (?ValidImpls ?TableID) ?r_o' ?r_n'
+  | [
      |-  refine (Bind {r_n' | @Build_IndexedQueryStructure_Impl_AbsR
                                 ?qs_schema
                                 ?Index ?DelegateReps ?DelegateImpls
-                                ?ValidImpls (UpdateIndexedRelation _ _ ?r_o ?TableID ?r_o') r_n'} _) _]
-    => etransitivity;
+                                ?ValidImpls ?r_o r_n'} _) _]
+    =>  etransitivity;
       [ apply refine_bind;
-        [apply refine_pick_val;
-          apply (@Update_Build_IndexedQueryStructure_Impl_AbsR
-                   qs_schema Index DelegateReps DelegateImpls
-                   ValidImpls r_o r_n TableID r_o' r_n' H H2)
-        | unfold pointwise_relation; intros; higher_order_reflexivity
-        ]
-      | etransitivity;
-        [ apply (proj1 (refineEquiv_bind_unit _ _)) | simpl]
-      ]; cbv beta; simpl in *
-
-  | [H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                ?ValidImpls ?r_o ?r_n
-     |- refine (Bind {r_n' | @Build_IndexedQueryStructure_Impl_AbsR
-                               ?qs_schema
-                               ?Index ?DelegateReps ?DelegateImpls
-                               ?ValidImpls ?r_o r_n'} _) _]
-    => etransitivity;
-      [ apply refine_bind;
-        [apply refine_pick_val;
-          apply H
+        [apply refine_pick_val; eauto;
+          repeat match goal with
+                 |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
+                 eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
+                   eauto
+                 end
         | unfold pointwise_relation; intros; higher_order_reflexivity
         ]
       | etransitivity;
@@ -1365,28 +1349,34 @@ Proof.
     eapply H1; eauto.
 Qed.
 
-Ltac  Implement_Bound_Bag_Call :=
+    Ltac  Implement_Bound_Bag_Call :=
     let r_o' := fresh "r_o'" in
     let AbsR_r_o' := fresh "AbsR_r_o'" in
     let refines_r_o' := fresh "refines_r_o'" in
     match goal with
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls ?r_o ?r_n
+                                                 ?ValidImpls _ _
       |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg1 ?arg2) ?k) _ =>
-      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg1 arg2 k) as refines_r_o'
+      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg1 arg2 k) as refines_r_o'
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls ?r_o ?r_n
+                                                 ?ValidImpls _ _
       |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg) ?k) _ =>
-      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg k) as refines_r_o'
+      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg k) as refines_r_o'
     | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls ?r_o ?r_n
+                                                 ?ValidImpls _ _
       |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o) ?k) _ =>
-      pose (@Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H k) as refines_r_o'
+      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H k) as refines_r_o'
     end;
       simpl in refines_r_o';
       fold_string_hyps_in refines_r_o'; fold_heading_hyps_in refines_r_o';
       etransitivity;
-      [ eapply refines_r_o'; cbv beta; simpl in *; intros | ].
+      [ eapply refines_r_o'; cbv beta; simpl in *; intros; eauto;
+        repeat match goal with
+                 |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
+                 eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
+                   eauto
+               end
+      | ].
 
     Ltac implement_bag_methods :=
   etransitivity;
