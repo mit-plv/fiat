@@ -36,6 +36,9 @@ Definition SchedulerSpec : ADT _ :=
       ret (r, proc)
               }%methDefParsing.
 
+Local Transparent CallBagFind.
+Local Transparent CallBagInsert.
+
 Definition SharpenedScheduler :
   MostlySharpened SchedulerSpec.
 Proof.
@@ -89,8 +92,8 @@ Proof.
       hone method "Enumerate".
       { subst; simplify with monad laws.
         unfold H1; apply refine_under_bind.
-        intros; rewrite (CallBagFind_fst H0); simpl.
-        set_evars.
+        intros; set_evars; simpl in *.
+        rewrite (CallBagFind_fst H0).
         setoid_rewrite refine_pick_eq'; simplify with monad laws.
         simpl; rewrite app_nil_r, map_map, <- map_rev.
         unfold ilist2_hd; simpl.
@@ -99,8 +102,7 @@ Proof.
       hone method "GetCPUTime".
       { subst; simplify with monad laws.
         unfold H1; apply refine_under_bind.
-        intros; rewrite (CallBagFind_fst H0); simpl.
-        set_evars.
+        intros; set_evars; rewrite (CallBagFind_fst H0); simpl in *.
         setoid_rewrite refine_pick_eq'; simplify with monad laws.
         simpl; rewrite app_nil_r, map_map, <- map_rev.
         unfold ilist2_hd; simpl.
@@ -108,21 +110,17 @@ Proof.
       }
       simpl.
       eapply reflexivityT.
-  - Local Transparent CallBagFind.
-    Local Transparent CallBagInsert.
-    unfold CallBagFind, CallBagInsert.
+  - unfold CallBagFind, CallBagInsert.
     pose_headings_all;
       match goal with
       | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
         FullySharpenQueryStructure Schema Indexes
       end.
-
 Defined.
 
 Time Definition PartialSchedulerImpl : ADT _ :=
   Eval simpl in (fst (projT1 SharpenedScheduler)).
 Print PartialSchedulerImpl.
-
 
 Time Definition SchedulerImplSpecs :=
   Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
