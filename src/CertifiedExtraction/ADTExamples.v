@@ -428,13 +428,6 @@ Definition Type1 := IndexedQueryStructure
 
 Definition Type2 := (Type1 * list (Domain heading (@FS 2 (@FS 1 (@F1 0)))))%type.
 
-Goal Type1 = Core.Rep
-       (BagADT.BagSpec
-          (BagMatchSearchTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))
-          (BagApplyUpdateTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))).
-  unfold Type1.
-
-  
 Definition MethodOfInterest := fun (r_n : Type1) (d : W) =>
                                 (a <- @CallBagMethod
                                    (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
@@ -592,7 +585,6 @@ Ltac _compile_CallGetAttribute :=
                               unify prog' (Call vtarget ("ext", "GetAttribute")
                                                 (vsrc :: vindex :: nil))) ]
             end).
-
 
 Ltac _compile_map :=
   match_ProgOk
@@ -1011,12 +1003,16 @@ Ltac _compile_destructor :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             let vtmp := gensym "tmp" in
-            match constr:(pre, post) with
-            | (Cons _ ?v (fun _ => ?tenv), ?tenv') =>
-              match v with
-              | ret ?vv => tenv_mentions tenv' vv; fail 1
-              | ?vv => tenv_mentions tenv' vv; fail 1
-              | _ => _compile_destructor_unsafe vtmp tenv tenv'
+            match pre with
+            | Cons _ ?v (fun _ => ?tenv) =>
+              match tenv with
+              | context[post] => _compile_destructor_unsafe vtmp tenv post
+              | _ => unify tenv post; _compile_destructor_unsafe vtmp tenv post
+              | _ => match v with
+                    | ret ?vv => tenv_mentions post vv; fail 1
+                    | ?vv => tenv_mentions post vv; fail 1
+                    | _ => _compile_destructor_unsafe vtmp tenv post
+                    end
               end
             end).
 
@@ -1038,44 +1034,108 @@ Ltac _compile_if :=
 
 Ltac __compile_prepare_chomp tenv tenv' :=
   match tenv with
-  | Cons ?k ?v ?tenv =>
+  | Cons ?k ?v _ =>
     match tenv' with
-    | Cons k v _ => fail 1
-    | context[Cons k v _] => move_to_front k
+    | Cons ?k' ?v' _ =>
+      unify k k'; unify v v';
+      fail 1 (* Nothing to do: can already chomp *)
+    | Cons _ _ (fun _ => ?tail) =>
+      unify tenv tail; idtac;
+      fail 1 (* This is a job for deallocation, not chomping *)
+    | context[Cons k v _] =>
+      move_to_front k
     end
   end.
 
 Ltac _compile_prepare_chomp :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
+            is_evar prog;
             first [ __compile_prepare_chomp pre post
                   | __compile_prepare_chomp post pre ]).
 
 Arguments wrap : simpl never.
 
+Ltac useless_binder term :=
+  lazymatch term with
+  | (fun _ => ?body) => let capture := body in idtac
+  end.
+
+Ltac _compile_rewrite :=
+  (* setoid_rewrite at the speed of light *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | context[Cons ?k (ret _) ?tail] =>
+              first [ useless_binder tail; fail 1 |
+                      match k with
+                      | NTSome _ => setoid_rewrite Propagate_ret
+                      | NTNone => setoid_rewrite Propagate_anonymous_ret
+                      end ]
+            | context[Cons _ (Bind _ _) _] => setoid_rewrite SameValues_Fiat_Bind_TelEq
+            end).
+
 Ltac _compile_step :=
   match goal with
-  | _ => progress subst
-  | _ => progress intros
-  | _ => progress computes_to_inv
-  | _ => compile_do_side_conditions
-  | _ => _compile_skip
-  | _ => _compile_map
-  | _ => _compile_CallBagFind
-  | _ => _compile_CallBagInsert
-  | _ => _compile_CallGetAttribute
-  | _ => _compile_destructor
-  | _ => _compile_chomp
-  | _ => _compile_if
-  | _ => compile_simple
-  | _ => setoid_rewrite SameValues_Fiat_Bind_TelEq
-  | _ => setoid_rewrite Propagate_anonymous_ret
-  | _ => progress simpl
-  | _ => _compile_prepare_chomp
+  | _ => progress subst; idtac "progress subst"
+  | _ => progress intros; idtac "progress intros"
+  | _ => progress computes_to_inv; idtac "progress computes_to_inv"
+  | _ => _compile_rewrite; idtac "_compile_rewrite"
+  | _ => compile_do_side_conditions; idtac "compile_do_side_conditions"
+  | _ => _compile_skip; idtac "_compile_skip"
+  | _ => _compile_map; idtac "_compile_map"
+  | _ => _compile_CallBagFind; idtac "_compile_CallBagFind"
+  | _ => _compile_CallBagInsert; idtac "_compile_CallBagInsert"
+  | _ => _compile_CallGetAttribute; idtac "_compile_CallGetAttribute"
+  | _ => _compile_destructor; idtac "_compile_destructor"
+  | _ => _compile_chomp; idtac "_compile_chomp"
+  | _ => _compile_prepare_chomp; idtac "_compile_prepare_chomp"
+  | _ => _compile_if; idtac "_compile_if"
+  | _ => compile_simple; idtac "compile_simple"
+  | _ => progress simpl; idtac "progress simpl"
   end.
 
 Ltac _compile :=
   repeat _compile_step.
+
+Ltac _compile_random :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?tenv, Cons NTNone Random ?tenv') =>
+              let vrandom := gensym "random" in
+              apply ProgOk_Transitivity_Name with vrandom;
+                [ call_tactic_after_moving_head_binding_to_separate_goal
+                    ltac:(apply CompileCallRandom) | apply miniChomp' ] (* FIXME do deallocation here *)
+            end).
+
+Ltac compile_do_side_conditions_internal ::=
+  repeat cleanup; PreconditionSet_t;
+   match goal with
+   | _ => exact I
+   (* | _ => discriminate *) (* Small speedup *)
+   (* | _ => congruence *)
+   | |- _ ∉ _ => decide_not_in
+   | |- NotInTelescope _ _ => decide_NotInTelescope
+   | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
+   | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
+   | |- GLabelMap.MapsTo _ _ _ =>
+         GLabelMapUtils.decide_mapsto_maybe_instantiate
+   end.
+
+Example random_test_with_adt :
+  Facade program implementing ( x <- Random;
+                                ret (if IL.weqb x 0 then
+                                       (Word.natToWord 32 1 : W) :: nil
+                                     else
+                                       x :: nil)) with MyEnvW.
+Proof.
+  Time compile_step.
+  Time repeat (_compile_random || compile_mutation_alloc || compile_constructor || _compile_step || match_ProgOk compile_rewrite).
+  (* FIXME try the side conditions before subst and computes_to_inv? *)
+Defined.
+
+Eval compute in (extract_facade random_test_with_adt).
 
 Example compile2 :
   sigT (fun prog => forall r_n d d0,
@@ -1099,7 +1159,7 @@ Proof.
                              (@ilist2.inil2 Type (@id Type)))))
                     (@F1 (S (S O)))) with d.
 
-  _compile.
+  Time repeat _compile_step.
   admit.
   instantiate (1 := Call "test" ("list", "Empty") ("snd" :: nil)) (* FIXME *); admit.
   admit.
@@ -1128,30 +1188,6 @@ Defined.
 
 Opaque DummyArgument.
 Eval compute in (extract_facade compile).
-
-Ltac _compile_random :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (?tenv, Cons NTNone Random ?tenv') =>
-              let vrandom := gensym "random" in
-              apply ProgOk_Transitivity_Name with vrandom;
-                [ call_tactic_after_moving_head_binding_to_separate_goal
-                    ltac:(apply CompileCallRandom) | apply miniChomp' ] (* FIXME do deallocation here *)
-            end).
-
-Example random_test_with_adt :
-  Facade program implementing ( x <- Random;
-                                ret (if IL.weqb x 0 then
-                                       (Word.natToWord 32 1 : W) :: nil
-                                     else
-                                       x :: nil)) with MyEnvW.
-Proof.
-  compile_step.
-  repeat (_compile_random || compile_mutation_alloc || compile_constructor || _compile_step || match_ProgOk compile_rewrite).
-Defined.
-
-
 
 Example other_test_with_adt''''' :
     sigT (fun prog => forall seq seq', {{ [[`"arg1" <-- seq as _ ]] :: [[`"arg2" <-- seq' as _]] :: Nil }}
