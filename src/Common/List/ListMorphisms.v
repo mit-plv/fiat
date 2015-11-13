@@ -3,6 +3,7 @@ Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
 Require Import Coq.Sorting.Permutation.
 Require Import Fiat.Common.Ensembles.EnsembleListEquivalence
         Fiat.Common.List.ListFacts
+        Fiat.Common.List.Operations
         Fiat.Common.List.PermutationFacts.
 
 Require Import Fiat.Common.List.FlattenList.
@@ -309,3 +310,19 @@ Proof.
   induction ls; intros; simpl; trivial.
   rewrite IHls, H; reflexivity.
 Defined.
+
+Global Instance filter_Proper {A}
+: Proper (pointwise_relation _ eq ==> eq ==> eq)
+         (@filter A).
+Proof.
+  intros ?? H ? ls ?; subst.
+  induction ls; trivial; simpl; rewrite IHls, H; reflexivity.
+Qed.
+
+Global Instance filter_out_Proper {A}
+: Proper (pointwise_relation _ eq ==> eq ==> eq)
+         (@filter_out A).
+Proof.
+  intros ?? H ? ls ?; subst.
+  induction ls; trivial; simpl; rewrite IHls, H; reflexivity.
+Qed.

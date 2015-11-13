@@ -39,6 +39,12 @@ Definition rev_nth {A} (n : nat) (ls : list A) : A -> A
 Arguments drop_all_but : simpl never.
 Arguments rev_nth : simpl never.
 
+Fixpoint filter_out {A} (f : A -> bool) (ls : list A) : list A
+  := match ls with
+       | nil => nil
+       | x::xs => if f x then filter_out f xs else x::filter_out f xs
+     end.
+
 Fixpoint enumerate {A} (ls : list A) (start : nat) : list (nat * A)
   := match ls with
        | nil => nil
