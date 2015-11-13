@@ -520,6 +520,14 @@ and gives you the computational hypothesis for the second *)
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma refine_If_Then_Else_Duplicate {A}
+    : forall i (t e e' : A),
+      If i Then (If i Then t Else e') Else e =
+      If i Then t Else e.
+  Proof.
+    destruct i; simpl; reflexivity.
+  Qed.
+
   Lemma refine_If_Opt_Then_Else_Bind {A B C}
     : forall (i : option A)
              (t : A -> Comp B)

@@ -88,6 +88,20 @@ Lemma refine_For
             {l | Permutation result l}).
 Proof. reflexivity. Qed.
 
+Lemma refine_For_rev {ResultT}
+      (bod : Comp (list ResultT))
+  : refine
+      (Query_For bod)
+      (res <- Query_For bod;
+       ret (rev res)).
+Proof.
+  unfold Query_For; intros v Comp_v; computes_to_inv.
+  subst; computes_to_econstructor; eauto.
+  computes_to_econstructor.
+  setoid_rewrite Comp_v'0.
+  apply Permutation_rev.
+Qed.
+
 Tactic Notation "t_morphism" reference(symb) :=
   intros * H; unfold symb; rewrite H; reflexivity.
 

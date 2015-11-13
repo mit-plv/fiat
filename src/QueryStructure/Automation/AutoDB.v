@@ -957,7 +957,7 @@ Ltac convert_filter_to_find' :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
 
-    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n;
+    |- context[l <- CallBagEnumerate ?idx ?r_n;
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                       (Build_single_Tuple_list (snd l))) ?resultComp] =>
     match f with
@@ -968,7 +968,7 @@ Ltac convert_filter_to_find' :=
     end
 
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-    |- context[l <- CallBagMethod ?idx BagEnumerate ?r_n;
+    |- context[l <- CallBagEnumerate ?idx ?r_n;
                 l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) ?cl;
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a)
                                       l') ?resultComp] =>
@@ -979,18 +979,18 @@ Ltac convert_filter_to_find' :=
         simpl in b; setoid_rewrite b;
         [ clear b
         | match goal with
-          | |- context [CallBagMethod ?idx' BagEnumerate _] =>
+          | |- context [CallBagEnumerate ?idx' _] =>
             intros; eapply (realizeable_Enumerate (r_o := r_o) (r_n := r_n) idx' H)
-          | |- context [CallBagMethod ?idx' BagFind _ _] =>
+          | |- context [CallBagFind ?idx' _ _] =>
             intros; eapply (realizeable_Find (r_o := r_o) (r_n := r_n) idx' H)
           end]
     end
 
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-    |- context[l <- CallBagMethod ?idx BagFind ?r_n ?st;
+    |- context[l <- CallBagFind ?idx ?r_n ?st;
                 l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l))
                    (fun _ : ilist (@RawTuple) [?heading] =>
-                      l <- CallBagMethod ?idx' BagEnumerate ?r_n;
+                      l <- CallBagEnumerate ?idx' ?r_n;
                     ret (snd l));
                 List_Query_In (filter (fun a => @?f a && @?filter_rest a) l') ?resultComp] =>
     match f with
@@ -1749,12 +1749,12 @@ Ltac find_equiv_tl a As f g :=
 Ltac Realize_CallBagMethods :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-    |- context [CallBagMethod ?idx' BagEnumerate _] =>
+    |- context [CallBagEnumerate ?idx' _] =>
     generalize H; clear;
     intros; eapply (@realizeable_Enumerate qs_schema BagIndexKeys r_n r_o idx' H)
 
   | H : @DelegateToBag_AbsR ?qs_schema ?BagIndexKeys ?r_o ?r_n
-    |- context [CallBagMethod ?idx' BagFind _ ?st] =>
+    |- context [CallBagFind ?idx' _ ?st] =>
     generalize H; clear;
     intros; eapply (@realizeable_Find qs_schema BagIndexKeys r_n r_o idx' st H)
   end.
@@ -1891,7 +1891,7 @@ Ltac convert_filter_search_term_to_find :=
   match goal with
   | H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
     |- refine (l <- Join_Filtered_Comp_Lists (a := ?heading) (As := ?headings) ?l1
-                 (fun _ => l' <- CallBagMethod ?idx BagEnumerate ?r_n;
+                 (fun _ => l' <- CallBagEnumerate ?idx ?r_n;
                   ret (snd l')) ?f;
                _) _ =>
     match f with
@@ -2171,8 +2171,13 @@ Ltac partial_master_plan' matchIndex
           end
          ). *)
 
+
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.
+Global Opaque CallBagFind.
+Global Opaque CallBagInsert.
+Global Opaque CallBagDelete.
+Global Opaque CallBagEnumerate.
 Global Opaque Initialize_IndexedQueryStructure.
 
 (* Debugging tactics *)

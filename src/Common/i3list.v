@@ -267,3 +267,21 @@ Section i3list_replace.
   Qed. *)
 
 End i3list_replace.
+
+Lemma ilist3_eq_ith3
+  : forall (A : Type) (B : A -> Type) C (m : nat) (As : Vector.t A m)
+           (Bs : ilist3 As)
+           (il il' : i3list (B := B) C Bs),
+    (forall idx : Fin.t m, i3th il idx = i3th il' idx)
+    -> il = il'.
+Proof.
+  induction As.
+  - unfold ilist3; intros.
+    destruct il; destruct il'; reflexivity.
+  - intros.
+    destruct il; destruct il'.
+    f_equal; eauto.
+    + apply (H (Fin.F1)).
+    + eapply IHAs; intros.
+      eapply (H (Fin.FS idx)).
+Qed.

@@ -1,6 +1,10 @@
-Require Export Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
+Require Export
+        Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.Operations.Query.
-Require Import Coq.Lists.List Coq.Arith.Compare_dec Coq.Bool.Bool Coq.Strings.String
+Require Import Coq.Lists.List
+        Coq.Arith.Compare_dec
+        Coq.Bool.Bool
+        Coq.Strings.String
         Fiat.Common.BoolFacts
         Fiat.Common.List.PermutationFacts
         Fiat.Common.List.ListMorphisms
@@ -810,7 +814,7 @@ Proof.
   reflexivity.
 Qed.
 
-Theorem FunctionalDependency_symmetry
+ Theorem FunctionalDependency_symmetry
   : forall A H (f : _ -> _ -> Comp A) (P : _ -> Prop) attrlist1 attrlist2 n,
     refine (x1 <- {b | decides b
                                (forall tup' : @IndexedRawTuple H,
@@ -854,3 +858,57 @@ Global Instance cons_List_Query_eq
   :
     List_Query_eq (A :: As) :=
   { As_Query_eq := (A_Query_eq, As_Query_eq) }.
+
+Theorem UniqueAttribute_symmetry
+  : forall A (f : _ -> _ -> Comp A) H (P : _ -> Prop) attr n,
+    refine (b1 <- {b | decides b
+                               (forall tup' : @IndexedRawTuple H,
+                                   P tup'
+                                   -> UniqueAttribute' attr n (indexedElement tup'))};
+           b2 <- {b | decides b (forall tup' : @IndexedRawTuple H,
+                                     P tup'
+                                     -> UniqueAttribute' attr (indexedElement tup') n)}; f b1 b2)
+           (b1 <- {b | decides b
+                               (forall tup' : @IndexedRawTuple H,
+                                   P tup'
+                                   -> UniqueAttribute' attr n (indexedElement tup'))}; f b1 b1).
+Proof.
+  unfold refine, UniqueAttribute'; intros.
+  computes_to_inv; firstorder.
+  repeat (computes_to_econstructor; eauto).
+  destruct v0; simpl in *; unfold not in *; intros; eauto.
+Qed.
+
+Lemma refine_uniqueness_check_into_query' :
+  forall {schm : RawQueryStructureSchema}
+         idx
+         tup
+         attr
+         (c : UnConstrQueryStructure schm),
+    Query_eq (Domain (GetNRelSchemaHeading (qschemaSchemas schm) idx) attr)
+    -> refine
+      {b | decides b
+                   (forall tup' : @IndexedRawTuple _,
+                       GetUnConstrRelation c idx tup'
+                       -> UniqueAttribute' attr tup (indexedElement tup'))}
+      (c <- (Count
+               For (UnConstrQuery_In c idx
+                                     (fun tup' =>
+                                        Where (GetAttributeRaw tup attr
+                                               = GetAttributeRaw tup' attr)
+                                              Return tup')));
+            (ret (beq_nat c 0))).
+Proof.
+  intros.
+  setoid_replace (forall tup', GetUnConstrRelation c idx tup' ->
+                               UniqueAttribute' attr tup (indexedElement tup'))
+with           (forall tup', ~ (GetUnConstrRelation c idx tup' /\
+                                GetAttributeRaw tup attr = GetAttributeRaw  (indexedElement tup') attr)) by
+      (unfold UniqueAttribute'; intuition eauto).
+  setoid_rewrite refine_decide_negation.
+  rewrite (@refine_constraint_check_into_query _ _
+                                                      (fun tup' => GetAttributeRaw tup attr = GetAttributeRaw tup' attr)) by eauto with typeclass_instances.
+  simplify with monad laws.
+  setoid_rewrite negb_involutive.
+  reflexivity.
+Qed.
