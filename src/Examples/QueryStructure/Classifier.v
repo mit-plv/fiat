@@ -114,11 +114,11 @@ Section ADT.
     master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).
 
   Time Defined.
-  (* Mem: 902MB *)
 
   Time Definition ClassifierImpl : ComputationalADT.cADT ClassifierSig :=
     Eval simpl in (projT1 SharpenedClassifier).
-  (* Mem: 1028MB *)
+
   Print ClassifierImpl.
+  Print ADTImplRep.
 
 End ADT.

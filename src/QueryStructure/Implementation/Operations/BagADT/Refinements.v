@@ -1244,10 +1244,10 @@ Lemma CallBagFind_fst
            (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
            (st : BagSearchTermType (ith3 BagIndexKeys idx))
            a,
-    CallBagFind _ _ idx r_n st ↝ a
-    -> r_n = fst a.
+    CallBagMethod idx BagFind r_n st ↝ a
+    -> r_n = (UpdateIndexedRelation _ _ r_n idx (fst a)).
 Proof.
-  unfold CallBagFind, CallBagMethod; intros.
+  unfold CallBagMethod; intros.
   simpl in *; computes_to_inv; subst.
   simpl.
   unfold UpdateIndexedRelation.
