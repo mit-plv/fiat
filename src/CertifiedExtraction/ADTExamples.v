@@ -594,7 +594,7 @@ Ltac _compile_CallGetAttribute :=
             end).
 
 
-Ltac compile_map :=
+Ltac _compile_map :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             let vhead := gensym "head" in
@@ -1060,7 +1060,7 @@ Ltac _compile_step :=
   | _ => progress computes_to_inv
   | _ => compile_do_side_conditions
   | _ => _compile_skip
-  | _ => compile_map
+  | _ => _compile_map
   | _ => _compile_CallBagFind
   | _ => _compile_CallBagInsert
   | _ => _compile_CallGetAttribute
@@ -1129,37 +1129,36 @@ Defined.
 Opaque DummyArgument.
 Eval compute in (extract_facade compile).
 
-Example other_test_with_adt'' :
+Ltac _compile_random :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?tenv, Cons NTNone Random ?tenv') =>
+              let vrandom := gensym "random" in
+              apply ProgOk_Transitivity_Name with vrandom;
+                [ call_tactic_after_moving_head_binding_to_separate_goal
+                    ltac:(apply CompileCallRandom) | apply miniChomp' ] (* FIXME do deallocation here *)
+            end).
+
+Example random_test_with_adt :
+  Facade program implementing ( x <- Random;
+                                ret (if IL.weqb x 0 then
+                                       (Word.natToWord 32 1 : W) :: nil
+                                     else
+                                       x :: nil)) with MyEnvW.
+Proof.
+  compile_step.
+  repeat (_compile_random || compile_mutation_alloc || compile_constructor || _compile_step || match_ProgOk compile_rewrite).
+Defined.
+
+
+
+Example other_test_with_adt''''' :
     sigT (fun prog => forall seq seq', {{ [[`"arg1" <-- seq as _ ]] :: [[`"arg2" <-- seq' as _]] :: Nil }}
                                  prog
                                {{ [[`"arg1" <-- (rev_append seq seq') as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvW).
 Proof.
   econstructor; intros.
-
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_random.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_random.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-
-
-  compile_step.
-  Fail fail.
 Abort.
 
 
@@ -1184,17 +1183,3 @@ Abort.
   Proof.
     SameValues_Facade_t.
   Qed.
-
-  
-(* Example other_test_with_adt'''' A: *)
-(*   sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc), *)
-(*             {{ [[`"search" <-- searchTerm as _]] :: [[`"init" <-- init as _]] :: (@Nil av) }} *)
-(*               prog *)
-(*             {{ [[`"ret" <~~  ( seq <- {s: (A * list W) | True }; *)
-(*                              ret (snd seq)) as _]] :: (@Nil av) }} ∪ {{ StringMap.empty (Value av) }} // MyEnvListsB). *)
-(* Proof. *)
-(*   Unset Ltac Debug. *)
-(*   econstructor; intros. *)
-
-(*   rewrite SameValues_Fiat_Bind_TelEq_Pair. *)
-(*   simpl. *)
