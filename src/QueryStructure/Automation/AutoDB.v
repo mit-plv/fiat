@@ -2164,10 +2164,6 @@ Ltac partial_master_plan' matchIndex
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.
-Global Opaque CallBagFind.
-Global Opaque CallBagInsert.
-Global Opaque CallBagDelete.
-Global Opaque CallBagEnumerate.
 Global Opaque Initialize_IndexedQueryStructure.
 
 (* Debugging tactics *)

@@ -36,9 +36,6 @@ Definition SchedulerSpec : ADT _ :=
       ret (r, proc)
               }%methDefParsing.
 
-Local Transparent CallBagFind.
-Local Transparent CallBagInsert.
-
 Definition SharpenedScheduler :
   MostlySharpened SchedulerSpec.
 Proof.
