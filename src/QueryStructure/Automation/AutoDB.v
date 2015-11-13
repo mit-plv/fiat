@@ -1365,7 +1365,7 @@ Proof.
     eapply H1; eauto.
 Qed.
 
-Ltac Implement_Bound_Bag_Call :=
+Ltac  Implement_Bound_Bag_Call :=
     let r_o' := fresh "r_o'" in
     let AbsR_r_o' := fresh "AbsR_r_o'" in
     let refines_r_o' := fresh "refines_r_o'" in
@@ -1390,7 +1390,7 @@ Ltac Implement_Bound_Bag_Call :=
 
     Ltac implement_bag_methods :=
   etransitivity;
-  [ repeat first [
+  [ repeat (first [
              simpl; simplify with monad laws
            | remove_spurious_Dep_Type_BoundedIndex_nth_eq
            | Implement_If_Then_Else
@@ -1402,7 +1402,7 @@ Ltac Implement_Bound_Bag_Call :=
                |- context[CallBagImplMethod _ _ _ _ _] =>
                unfold CallBagImplMethod; cbv beta; simpl
              end
-           | higher_order_reflexivity ] |];
+           | higher_order_reflexivity ]; simpl) |];
   (* Clean up any leftover CallBagImplMethods *)
   repeat (cbv beta; simpl;
           match goal with
