@@ -530,29 +530,6 @@ Proof.
   repeat hoare.
 Qed.
 
-Ltac compile_CallBagFind :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (Cons (NTSome ?kd) (ret ?d) ?tenv,
-               Cons NTNone (CallBagMethod ?id BagFind ?v (Some ?d, ?r)) ?tenv') =>
-              let vfst := gensym "fst" in
-              let vsnd := gensym "snd" in
-              let vtmp := gensym "tmp" in
-              match post with
-              | Cons NTNone ?v _ =>
-                eapply CompileSeq with ([[v as vv]]
-                                          :: [[`vfst <-- fst vv as f]]
-                                          :: [[`vsnd <-- snd vv as s]]
-                                          :: [[ret d as dd]]
-                                          :: (tenv dd));
-                  [ match_ProgOk
-                      ltac:(fun prog' _ _ _ _ =>
-                              unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
-                                                (vfst :: vsnd :: "r_n" :: kd :: nil))) (* FIXME *) | ]
-              end
-            end).
-
 Definition FinToWord {N: nat} (n: Fin.t N) :=
   Word.natToWord 32 (proj1_sig (Fin.to_nat n)).
 
@@ -586,7 +563,7 @@ Ltac compile_chomp :=
               end
             end).
 
-Ltac compile_dealloc_useless :=
+Ltac compile_dealloc_useless :=  (* FIXME used? *)
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match pre with
@@ -600,7 +577,7 @@ Ltac compile_dealloc_useless :=
               end
             end).
 
-Ltac compile_CallGetAttribute :=
+Ltac _compile_CallGetAttribute :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:(pre, post) with
@@ -924,7 +901,7 @@ Definition Method2 := fun
                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool) 
                                         (r_n, false)))).
 
-Ltac compile_CallBagFind ::=
+Ltac _compile_CallBagFind :=
      match_ProgOk
      ltac:(fun prog pre post ext env =>
              match constr:(pre, post) with
@@ -948,6 +925,140 @@ Ltac compile_CallBagFind ::=
                end
              end).
 
+Ltac _compile_CallBagInsert :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons ?vdb (ret ?db) (fun _ => ?tenv),
+               Cons NTNone ?bm (fun a => Cons ?vdb (@?rel a) (fun _ => ?tenv'))) =>
+              match constr:(vdb, bm, rel) with
+              | (NTSome ?vdb', CallBagMethod _ BagInsert ?db _, (fun a => ret (Refinements.UpdateIndexedRelation _ _ ?db _ a))) =>
+                let vtmp := gensym "tmp" in
+                apply CompileSeq with (Cons NTNone bm (fun a => Cons vdb (rel a) (fun _ => tenv))); (* FIXME hardcoded var names *)
+                  [ match_ProgOk
+                      ltac:(fun prog' _ _ _ _ =>
+                              unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ]
+              end
+            end).
+
+Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
+              unify k k'; unify v v';
+              match k with
+              | NTNone => apply ProgOk_Chomp_None
+              | _ => apply ProgOk_Chomp_Some
+              end
+            end).
+
+Lemma SameValues_remove_SCA:
+  forall (av0 : Type) (tenv' : Telescope av0)
+    (ext : StringMap.t (Value av0)) (k : StringMap.key)
+    (final_state : State av0) (x : W),
+    StringMap.MapsTo k (wrap x) final_state ->
+    StringMap.remove (elt:=Value av0) k final_state ≲ tenv' ∪ ext ->
+    final_state ≲ tenv' ∪ ext.
+Proof.
+  induction tenv'; simpl; intros.
+  - rewrite (add_redundant_cancel H).
+    rewrite <- add_remove_cancel; try reflexivity.
+    apply WeakEq_pop_SCA.
+    apply StringMap.remove_1; reflexivity.
+    assumption.
+  - destruct key; repeat cleanup.
+    + eauto.
+    + SameValues_Fiat_t.
+      StringMap_t.
+      rewrite remove_mapsto_iff in *.
+      cleanup.
+      StringMap_t.
+      repeat cleanup.
+      eapply H.
+      2: rewrite remove_remove_comm; eauto.
+      rewrite remove_mapsto_iff in *; eauto.
+Qed.
+
+Hint Resolve SameValues_remove_SCA : SameValues_db.
+
+Lemma CompileDeallocSCA_discretely :
+  forall {av} (tenv tenv': Telescope av) ext env k (v: Comp W) prog,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    {{ [[`k <~~ v as _]] :: tenv }} prog {{ [[`k <~~ v as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`k <~~ v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Ltac tenv_mentions env v :=
+  first [ match env with
+          | context[?vv] => first [ is_evar vv; fail 1
+                                 | unify v vv; fail 2 ]
+          | _ => idtac
+          end; fail 1 | idtac ].
+
+Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
+  (apply CompileDeallocSCA_discretely ||
+   first [ unify tenv tenv';
+           apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp))
+         | eapply CompileSeq;
+           [ apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp)) | ] ]);
+  try compile_do_side_conditions.
+
+Ltac _compile_destructor :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vtmp := gensym "tmp" in
+            match constr:(pre, post) with
+            | (Cons _ ?v (fun _ => ?tenv), ?tenv') =>
+              match v with
+              | ret ?vv => tenv_mentions tenv' vv; fail 1
+              | ?vv => tenv_mentions tenv' vv; fail 1
+              | _ => _compile_destructor_unsafe vtmp tenv tenv'
+              end
+            end).
+
+Ltac _compile_skip :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?tenv, ?tenv') => not_evar tenv; not_evar tenv'; unify tenv tenv'; apply CompileSkip
+            end).
+
+Ltac _compile_if :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (_, Cons _ (if _ then _ else _) _) =>
+              let vtmp := gensym "test" in
+              apply (CompileIf (tmp := "test"))
+            end).
+
+Ltac _compile_step :=
+  match goal with
+  | _ => progress subst
+  | _ => progress intros
+  | _ => progress computes_to_inv
+  | _ => compile_do_side_conditions
+  | _ => _compile_skip
+  | _ => compile_map
+  | _ => _compile_CallBagFind
+  | _ => _compile_CallBagInsert
+  | _ => _compile_CallGetAttribute
+  | _ => _compile_destructor
+  | _ => _compile_chomp
+  | _ => _compile_if
+  | _ => compile_simple
+  | _ => setoid_rewrite SameValues_Fiat_Bind_TelEq
+  | _ => setoid_rewrite Propagate_anonymous_ret
+  | _ => simpl
+  end.
+
+Ltac _compile :=
+  repeat _compile_step.
+
 Example compile2 :
   sigT (fun prog => forall r_n d d0,
             {{ [[`"r_n" <-- r_n as _ ]] :: [[`"d" <-- d as _]] :: [[`"d0" <-- d0 as _]] :: Nil }}
@@ -955,12 +1066,7 @@ Example compile2 :
             {{ [[Method2 r_n d d0 as retv]] :: [[`"r_n" <-- fst retv as _]] :: [[`"ret" <-- bool2w (snd retv) as _]] :: Nil }} ∪ {{ StringMap.empty _ }} // MyEnvListsC).
 Proof.
   eexists; intros.
-  unfold Method2.
-
-  rewrite SameValues_Fiat_Bind_TelEq.
-  unfold Common.If_Then_Else.
-
-  Print MethodOfInterest.
+  unfold Method2, Common.If_Then_Else.
 
   change (@GetAttributeRaw heading
                     (@ilist2.icons2 Type (@id Type) W 
@@ -975,195 +1081,10 @@ Proof.
                              (@ilist2.inil2 Type (@id Type)))))
                     (@F1 (S (S O)))) with d.
 
-  compile_CallBagFind.
+  _compile.
   admit.
-
-  apply ProgOk_Chomp_None.
-  compile_step.
-
-  (* assert (FacadeWrapper av' (prod (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)))) by admit. *)
-  (* apply ProgOk_Transitivity_Name' with "AA". (* introduces a FacadeWrapper *) *)
-
-  (* instantiate (1 := Skip).       (* BagFind *) *)
-  (* admit. *)
-
-  (* apply miniChomp'. *)
-
-  (* assert (FacadeWrapper av' *)
-  (*                                 (prod *)
-  (*                                    (IndexedQueryStructure *)
-  (*                                       (QueryStructureSchema.QueryStructureSchemaRaw *)
-  (*                                          SchedulerSchema) *)
-  (*                                       (@icons3 RawHeading *)
-  (*                                          (fun sch : RawHeading => *)
-  (*                                           SearchUpdateTerms sch) heading O *)
-  (*                                          (VectorDef.nil RawHeading) *)
-  (*                                          SearchUpdateTerm *)
-  (*                                          (@inil3 RawHeading *)
-  (*                                             (fun sch : RawHeading => *)
-  (*                                              SearchUpdateTerms sch)))) bool)) by admit. *)
-
-  let vtmp := gensym "tmp" in
-  apply (CompileIf (tmp := "tmp")).
-  compile_step.
-  compile_step.
-
-  instantiate (1 := Call (DummyArgument "tmp") ("list", "Empty") ("snd" :: nil)) (* FIXME *); admit.
-
-  compile_step.
-  compile_step.
-  (* compile_step.                 (* FIXME naming headless only works if nothing depends on destructing that head later *) *)
-
-  repeat setoid_rewrite SameValues_Fiat_Bind_TelEq.
-  repeat setoid_rewrite Propagate_anonymous_ret.
-  cbv [fst snd].
-
-  subst.
-
-  compile_destructor.
-  compile_destructor.
-
-  apply CompileSeq with ([[@CallBagMethod
-          (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)
-             heading 0 (VectorDef.nil RawHeading) SearchUpdateTerm
-             (@inil3 RawHeading
-                (fun sch : RawHeading => SearchUpdateTerms sch))) 
-          (@F1 0)
-          (@BagInsert
-             {|
-             NumAttr := 3;
-             AttrList := Vector.cons Type W 2
-                           (Vector.cons Type ProcessScheduler.State 1
-                              (Vector.cons Type W 0 (Vector.nil Type))) |}
-             (@ilist3_hd RawSchema
-                (fun ns : RawSchema =>
-                 SearchUpdateTerms (rawSchemaHeading ns)) 1
-                (Vector.cons RawSchema
-                   {|
-                   rawSchemaHeading := {|
-                                       NumAttr := 3;
-                                       AttrList := Vector.cons 
-                                                  Type W 2
-                                                  (Vector.cons 
-                                                  Type ProcessScheduler.State
-                                                  1
-                                                  (Vector.cons 
-                                                  Type W 0 
-                                                  (Vector.nil Type))) |};
-                   attrConstraints := @None
-                                        (@RawTuple
-                                           {|
-                                           NumAttr := 3;
-                                           AttrList := Vector.cons 
-                                                  Type W 2
-                                                  (Vector.cons 
-                                                  Type ProcessScheduler.State
-                                                  1
-                                                  (Vector.cons 
-                                                  Type W 0 
-                                                  (Vector.nil Type))) |} ->
-                                         Prop);
-                   tupleConstraints := @Some
-                                         (@RawTuple
-                                            {|
-                                            NumAttr := 3;
-                                            AttrList := Vector.cons 
-                                                  Type W 2
-                                                  (Vector.cons 
-                                                  Type ProcessScheduler.State
-                                                  1
-                                                  (Vector.cons 
-                                                  Type W 0 
-                                                  (Vector.nil Type))) |} ->
-                                          @RawTuple
-                                            {|
-                                            NumAttr := 3;
-                                            AttrList := Vector.cons 
-                                                  Type W 2
-                                                  (Vector.cons 
-                                                  Type ProcessScheduler.State
-                                                  1
-                                                  (Vector.cons 
-                                                  Type W 0 
-                                                  (Vector.nil Type))) |} ->
-                                          Prop)
-                                         (@FunctionalDependency_P
-                                            {|
-                                            NumAttr := 3;
-                                            AttrList := Vector.cons 
-                                                  Type W 2
-                                                  (Vector.cons 
-                                                  Type ProcessScheduler.State
-                                                  1
-                                                  (Vector.cons 
-                                                  Type W 0 
-                                                  (Vector.nil Type))) |}
-                                            [@FS 2 (@FS 1 (@F1 0));
-                                            @FS 2 (@F1 1)] 
-                                            [@F1 2]) |} 0
-                   (Vector.nil RawSchema))
-                (@icons3 RawHeading
-                   (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
-                   (VectorDef.nil RawHeading) SearchUpdateTerm
-                   (@inil3 RawHeading
-                      (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
-          (@ilist2.icons2 Type (@id Type) W 2
-             (Vector.cons Type ProcessScheduler.State 1
-                (Vector.cons Type W 0 (Vector.nil Type))) d
-             (@ilist2.icons2 Type (@id Type) ProcessScheduler.State 1
-                (Vector.cons Type W 0 (Vector.nil Type)) SLEEPING
-                (@ilist2.icons2 Type (@id Type) W 0 
-                   (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
-      as a]]
-      ::[[ ` "r_n" <--
-        Refinements.UpdateIndexedRelation
-          (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)
-             heading 0 (VectorDef.nil RawHeading) SearchUpdateTerm
-             (@inil3 RawHeading
-                (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
-          (@F1 0) a as _]]::[[ ` "d" <-- d as _]]::[[ ` "d0" <-- d0 as _]]::@Nil av').
-
-  instantiate (1 := Call (DummyArgument "tmp") ("ext", "BagInsert") ("r_n" :: "ret" :: "d" :: "d0" :: nil)); admit.
-
-  apply ProgOk_Chomp_None.
-  compile_step.
-  compile_step.
-  compile_step.
-  apply CompileDeallocSCA_discretely.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  apply CompileDeallocSCA_discretely.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  
-  setoid_rewrite Propagate_anonymous_ret.
-  compile_step.
-  compile_step.
-  cbv [fst snd].
-
-  compile_destructor.
-  compile_destructor.
-  compile_step.
-  compile_step.
-  apply CompileDeallocSCA_discretely.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-  apply CompileDeallocSCA_discretely.
-  compile_step.
-  compile_step.
-  compile_step.
-  compile_step.
-
-  compile_step.
+  instantiate (1 := Call "test" ("list", "Empty") ("snd" :: nil)) (* FIXME *); admit.
+  admit.
 Defined.
 
 Eval compute in (extract_facade compile2).
@@ -1179,132 +1100,10 @@ Proof.
   eexists; intros.
   unfold MethodOfInterest.
 
-  rewrite SameValues_Fiat_Bind_TelEq.
-  setoid_rewrite Propagate_anonymous_ret; simpl.
-
-  Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:(pre, post) with
-              | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
-                unify k k'; unify v v';
-                match k with
-                | NTNone => apply ProgOk_Chomp_None
-                | _ => apply ProgOk_Chomp_Some
-                end
-              end).
-
-
-  Lemma SameValues_remove_SCA:
-    forall (av0 : Type) (tenv' : Telescope av0)
-      (ext : StringMap.t (Value av0)) (k : StringMap.key)
-      (final_state : State av0) (x : W),
-      StringMap.MapsTo k (wrap x) final_state ->
-      StringMap.remove (elt:=Value av0) k final_state ≲ tenv' ∪ ext ->
-      final_state ≲ tenv' ∪ ext.
-  Proof.
-    induction tenv'; simpl; intros.
-    - rewrite (add_redundant_cancel H).
-      rewrite <- add_remove_cancel; try reflexivity.
-      apply WeakEq_pop_SCA.
-      apply StringMap.remove_1; reflexivity.
-      assumption.
-    - destruct key; repeat cleanup.
-      + eauto.
-      + SameValues_Fiat_t.
-        StringMap_t.
-        rewrite remove_mapsto_iff in *.
-        cleanup.
-        StringMap_t.
-        repeat cleanup.
-        eapply H.
-        2: rewrite remove_remove_comm; eauto.
-        rewrite remove_mapsto_iff in *; eauto.
-  Qed.
-
-  Hint Resolve SameValues_remove_SCA : SameValues_db.
-
-  Lemma CompileDeallocSCA_discretely :
-    forall {av} (tenv tenv': Telescope av) ext env k (v: Comp W) prog,
-      k ∉ ext ->
-      NotInTelescope k tenv ->
-      {{ [[`k <~~ v as _]] :: tenv }} prog {{ [[`k <~~ v as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ [[`k <~~ v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
-  Proof.
-    SameValues_Facade_t.
-  Qed.
-
-  Ltac tenv_mentions env v :=
-    first [ match env with
-            | context[?vv] => first [ is_evar vv; fail 1
-                                   | unify v vv; fail 2 ]
-            | _ => idtac
-            end; fail 1 | idtac ].
-
-  Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
-    (apply CompileDeallocSCA_discretely ||
-     first [ unify tenv tenv';
-             apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp))
-           | eapply CompileSeq;
-             [ apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp)) | ] ]);
-    try compile_do_side_conditions.
-
-
-  Ltac _compile_destructor :=
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              let vtmp := gensym "tmp" in
-              match constr:(pre, post) with
-              | (Cons _ ?v (fun _ => ?tenv), ?tenv') =>
-                match v with
-                | ret ?vv => tenv_mentions tenv' vv; fail 1
-                | ?vv => tenv_mentions tenv' vv; fail 1
-                | _ => _compile_destructor_unsafe vtmp tenv tenv'
-                end
-              end).
-
-  Ltac _compile_skip :=
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:(pre, post) with
-              | (?tenv, ?tenv') => not_evar tenv; not_evar tenv'; unify tenv tenv'; apply CompileSkip
-              end).
-
-  (* Ltac _compile_destructor := *)
-  (*   match_ProgOk *)
-  (*     ltac:(fun prog pre post ext env => *)
-  (*             let vtmp := gensym "tmp" in *)
-  (*             match constr:(pre, post) with *)
-  (*             | (Cons _ _ (fun _ => ?tenv), ?tenv) => *)
-  (*               apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp)) *)
-  (*             | (Cons _ (ret ?v) (fun _ => ?tenv), _) => *)
-  (*               match post with *)
-  (*               | context[?vv] => unify v vv; fail 1 *)
-  (*               | _ => eapply CompileSeq; [ apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp)) | ] *)
-  (*               end *)
-  (*             end; try compile_do_side_conditions). *)
-
-  Ltac _compile_step :=
-    match goal with
-    | _ => progress intros
-    | _ => progress computes_to_inv
-    | _ => compile_do_side_conditions
-    | _ => _compile_skip
-    | _ => compile_map
-    | _ => compile_CallBagFind
-    | _ => compile_CallGetAttribute
-    | _ => compile_simple
-    | _ => _compile_destructor
-    | _ => _compile_chomp
-    end.
-
-  Ltac _compile :=
-    repeat _compile_step.
-
-  _compile. (* FIXME callBagFind should capture r_n. *)
-  admit.
-
   _compile.
+
+  (* FIXME callBagFind should capture r_n. *)
+  admit.
 
   move_to_front "r_n".
   _compile.
