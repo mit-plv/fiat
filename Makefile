@@ -5,7 +5,7 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick \
 	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
 	pdf doc clean-doc \
-	test-parsers
+	test-parsers test-parsers-profile test-parsers-profile-graph
 
 submodule-update: .gitmodules
 	git submodule sync && \
@@ -46,6 +46,12 @@ HASNATDYNLINK = true
 test-parsers: src/Parsers/Refinement/ExtractSharpenedABStar.vo
 	$(MAKE) -C src/Parsers/Refinement/Testing
 
+test-parsers-profile: src/Parsers/Refinement/ExtractSharpenedABStar.vo
+	$(MAKE) -C src/Parsers/Refinement/Testing test-ab-star-profile
+
+test-parsers-profile-graph: src/Parsers/Refinement/ExtractSharpenedABStar.vo
+	$(MAKE) -C src/Parsers/Refinement/Testing test-ab-star-profile-graph
+
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
 	src/Common/i2list.vo \
@@ -78,6 +84,7 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/QueryStructure/PhotoalbumExtraction.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.vo \
+	src/Examples/QueryStructure/ProcessScheduler.vo \
 	src/Examples/QueryStructure/CodeLookup.vo \
 	src/Examples/QueryStructure/SearchTest.vo \
 	src/Examples/SearchTest.vo \
@@ -93,6 +100,7 @@ PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
 DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
 COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
+EXTRACTION_VO := $(filter src/CertifiedExtraction/%.vo,$(VOFILES)) src/Examples/QueryStructure/ProcessScheduler.vo
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
@@ -108,6 +116,7 @@ parsers-all: $(PARSERS_ALL_VO)
 finitesets: $(FINITESETS_VO)
 dns: $(DNS_VO)
 compiler: $(COMPILER_VO)
+extraction: $(EXTRACTION_VO)
 facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)

@@ -52,13 +52,13 @@ Lemma CompileIf :
     NotInTelescope tmp tenv ->
     {{ tenv }}
       facadeTest
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
       facadeT
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
       facadeF
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq facadeTest (If (isTrueExpr tmp) facadeT facadeF))
     {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::tenv }} ∪ {{ ext }} // env.
@@ -76,13 +76,13 @@ Lemma CompileIf_InPlace :
     NotInTelescope tmp tenv ->
     {{ [[`k <~~ oldK as kk]] :: tenv }}
       facadeTest
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
       facadeT
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaT as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ oldK as _]] :: tenv }}
       facadeF
-    {{ [[tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[`k <~~ gallinaF as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ [[`k <~~ oldK as _]] :: tenv }}
       (Seq facadeTest (DFacade.If (isTrueExpr tmp) facadeT facadeF))
     {{ [[`k <~~ if gallinaTest then gallinaT else gallinaF as _]]::tenv }} ∪ {{ ext }} // env.

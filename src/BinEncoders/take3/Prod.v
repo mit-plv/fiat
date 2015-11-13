@@ -25,9 +25,19 @@ Section Prod.
     rewrite (proof_R A_record); [ rewrite (proof_R B_record) | ]; firstorder.
   Qed.
 
-  Definition encode_decode :=
+  Theorem decode_shorten : decode_shorten decode.
+  Proof.
+    unfold decode_shorten, decode; intro ls.
+    pose proof (shorten_R A_record ls); destruct (decode_R A_record ls) as [? ls'].
+    pose proof (shorten_R B_record ls'); destruct (decode_R B_record ls').
+    simpl in *; eapply Le.le_trans; eauto.
+    eapply Le.le_trans; [ eapply Le.le_pred_n | eauto ].
+  Qed.
+
+  Definition Prod_encode_decode :=
     {| predicate_R := predicate;
        encode_R    := encode;
        decode_R    := decode;
-       proof_R     := encode_correct |}.
+       proof_R     := encode_correct;
+       shorten_R   := decode_shorten |}.
 End Prod.

@@ -31,7 +31,7 @@ Lemma CompileBinopOrTest:
     forall env,
     {{ tenv }}
       Assign name (WrapOpInExpr op (Var var1) (Var var2))
-    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   destruct op;
   SameValues_Facade_t.
@@ -40,8 +40,8 @@ Qed.
 (* Lemma CompileBinopB_util: *)
 (*   forall {T} k1 k2 k3 {v1 v2 v3} (fmap: StringMap.t T), *)
 (*     k1 <> k2 -> k2 <> k3 -> k1 <> k3 -> *)
-(*     StringMap.Equal ([k3 <-- v3] ::[k2 <-- v2]::[k1 <-- v1]::fmap) *)
-(*                     ([k1 <-- v1] ::[k2 <-- v2]::[k3 <-- v3]::fmap). *)
+(*     StringMap.Equal ([`k3 <-- v3] ::[`k2 <-- v2]::[`k1 <-- v1]::fmap) *)
+(*                     ([`k1 <-- v1] ::[`k2 <-- v2]::[`k3 <-- v3]::fmap). *)
 (* Proof. *)
 (*   unfold StringMap.Equal; intros; *)
 (*   destruct (StringMap.E.eq_dec y k1); *)
@@ -59,12 +59,12 @@ Qed.
 (*     var1 ∉ ext -> *)
 (*     var2 ∉ ext -> *)
 (*     var3 ∉ ext -> *)
-(*     [var1 <-- val1] *)
-(*       ::[var2 <-- val2] *)
-(*       ::[var3 <-- val3]::ext *)
-(*       ≲ [[var1 <-- val1 as _]] *)
-(*       ::[[var2 <-- val2 as _]] *)
-(*       ::[[var3 <-- val3 as _]]::Nil ∪ ext. *)
+(*     [`var1 <-- val1] *)
+(*       ::[`var2 <-- val2] *)
+(*       ::[`var3 <-- val3]::ext *)
+(*       ≲ [[`var1 <-- val1 as _]] *)
+(*       ::[[`var2 <-- val2 as _]] *)
+(*       ::[[`var3 <-- val3 as _]]::Nil ∪ ext. *)
 (* Proof. *)
 (*   intros. *)
 (*   repeat apply Cons_PopExt; try decide_not_in. *)
@@ -82,23 +82,23 @@ Qed.
 (*     var2 <> name -> *)
 (*     {{ Nil }} *)
 (*       p1 *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::Nil }} *)
 (*       p2 *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::[[`var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::[[`var2 <-- SCA _ val2 as _]]::[[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} *)
 (*       p3 *)
-(*     {{ [[ret (SCA _ val1) as _]]::[[ret (SCA _ val2) as _]]::[[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[ret (SCA _ val1) as _]]::[[ret (SCA _ val2) as _]]::[[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env -> *)
 (*     {{ Nil }} *)
 (*       (Seq p1 (Seq p2 (Seq (Assign name (Binop op (Var var1) (Var var2))) p3))) *)
-(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(*     {{ [[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
 (* Proof. *)
 (*   Time SameValues_Facade_t; *)
 (*  *)
-(*   assert ([name <-- SCA av (IL.evalBinop op val1 val2)]::st'0 *)
-(*         ≲ [[var1 <-- SCA av val1 as _]] *)
-(*           ::[[var2 <-- SCA av val2 as _]] *)
-(*             ::[[name <-- SCA av (eval_binop (inl op) val1 val2) as _]]::Nil *)
+(*   assert ([`name <-- SCA av (IL.evalBinop op val1 val2)]::st'0 *)
+(*         ≲ [[`var1 <-- SCA av val1 as _]] *)
+(*           ::[[`var2 <-- SCA av val2 as _]] *)
+(*             ::[[`name <-- SCA av (eval_binop (inl op) val1 val2) as _]]::Nil *)
 (*             ∪ ext) by (repeat apply Cons_PopExt; *)
 (*                         try decide_not_in; *)
 (*                         simpl; *)
@@ -116,10 +116,10 @@ Qed.
 (*     var2 <> name -> *)
 (*     {{ Nil }} *)
 (*       p2 *)
-(*     {{ [[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
 (*     {{ Nil }} *)
 (*       (Seq p2 (Assign name (Binop op (Var var1) (Var var2)))) *)
-(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(*     {{ [[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
 (* Proof. *)
 (*   Time SameValues_Facade_t. *)
 (*  *)
@@ -146,10 +146,10 @@ Lemma CompileBinopOrTest_left:
     var2 <> name ->
     {{ tenv }}
       p2
-    {{ [[var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p2 (Assign name (WrapOpInExpr op (Var var1) (Var var2))))
-    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   destruct op; SameValues_Facade_t.
@@ -164,10 +164,10 @@ Qed.
 (*     var1 <> name -> *)
 (*     {{ Nil }} *)
 (*       p2 *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
 (*     {{ Nil }} *)
 (*       (Seq p2 (Assign name (Binop op (Var var1) (Var var2)))) *)
-(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(*     {{ [[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
 (* Proof. *)
 (*   Time SameValues_Facade_t. *)
 (*  *)
@@ -194,10 +194,10 @@ Lemma CompileBinopOrTest_right:
     var1 <> name ->
     {{ tenv }}
       p2
-    {{ [[var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p2 (Assign name (WrapOpInExpr op (Var var1) (Var var2))))
-    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   destruct op; SameValues_Facade_t.
@@ -213,13 +213,13 @@ Qed.
 (*     var2 <> name -> *)
 (*     {{ Nil }} *)
 (*       p1 *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::Nil }} *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::Nil }} *)
 (*       p2 *)
-(*     {{ [[var1 <-- SCA _ val1 as _]]::[[var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
+(*     {{ [[`var1 <-- SCA _ val1 as _]]::[[`var2 <-- SCA _ val2 as _]]::Nil }} ∪ {{ ext }} // env -> *)
 (*     {{ Nil }} *)
 (*       (Seq p1 (Seq p2 (Assign name (Binop op (Var var1) (Var var2))))) *)
-(*     {{ [[name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
+(*     {{ [[`name <-- (SCA av (eval_binop (inl op) val1 val2)) as _]]::Nil }} ∪ {{ ext }} // env. *)
 (* Proof. *)
 (*   Time SameValues_Facade_t. *)
 (*   apply Cons_PopExt; [ SameValues_Facade_t | ]. *)
@@ -247,13 +247,13 @@ Lemma CompileBinopOrTest_full:
     var2 <> name ->
     {{ tenv }}
       p1
-    {{ [[var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[var1 <-- val1 as _]]::tenv }}
+    {{ [[`var1 <-- val1 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`var1 <-- val1 as _]]::tenv }}
       p2
-    {{ [[var1 <-- val1 as _]]::[[var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`var1 <-- val1 as _]]::[[`var2 <-- val2 as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p1 (Seq p2 (Assign name ((match op with inl o => Binop o | inr o => TestE o end) (Var var1) (Var var2)))))
-    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   destruct op; SameValues_Facade_t.
@@ -278,9 +278,9 @@ Lemma CompileBinopOrTest_right_inPlace:
     name ∉ ext ->
     NotInTelescope name tenv ->
     StringMap.MapsTo var2 (wrap val2) ext ->
-    {{ [[name <-- val1 as _]]::tenv }}
+    {{ [[`name <-- val1 as _]]::tenv }}
       (Assign name (WrapOpInExpr op (Var name) (Var var2)))
-    {{ [[name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`name <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   destruct op; SameValues_Facade_t.
 Qed.

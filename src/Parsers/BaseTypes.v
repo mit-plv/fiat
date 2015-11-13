@@ -42,10 +42,14 @@ Section recursive_descent_parser.
   Definition sub_nonterminals_listT `{parser_computational_predataT} (x y : nonterminals_listT) : Prop
     := forall p, is_valid_nonterminal x p -> is_valid_nonterminal y p.
 
-  Class boolean_parser_dataT :=
-    { predata :> parser_computational_predataT;
-      split_string_for_production
+  Class split_dataT :=
+    { split_string_for_production
       : item Char -> production Char -> String -> list nat }.
 
+  Class boolean_parser_dataT :=
+    { predata :> parser_computational_predataT;
+      split_data :> split_dataT }.
+
   Global Coercion predata : boolean_parser_dataT >-> parser_computational_predataT.
+  Global Coercion split_data : boolean_parser_dataT >-> split_dataT.
 End recursive_descent_parser.

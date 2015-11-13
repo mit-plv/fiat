@@ -54,11 +54,11 @@ Qed.
 Fixpoint NotInTelescope {av} k (tenv: Telescope av) :=
   match tenv with
   | Nil => True
-  | Cons _ _ key val tail => Some k <> key /\ (forall v, val ↝ v -> NotInTelescope k (tail v))
+  | Cons _ key val tail => Some k <> (NameTagAsStringOption key) /\ (forall v, val ↝ v -> NotInTelescope k (tail v))
   end.
 
 Lemma NotInTelescope_not_eq_head:
-  forall `(FacadeWrapper (Value av) A) (key : string) (val : Comp A)
+  forall `{FacadeWrapper (Value av) A} (key : string) (val : Comp A)
     (tail : A -> Telescope av) (var : StringMap.key),
     NotInTelescope var ([[` key <~~ val as kk]]::tail kk) ->
     key <> var.
@@ -67,7 +67,7 @@ Proof.
 Qed.
 
 Lemma NotInTelescope_not_in_tail:
-  forall `(FacadeWrapper (Value av) A) s (val : Comp A)
+  forall {av A} s (val : Comp A)
     (tail : A -> Telescope av) (var : StringMap.key)
     (v : A),
     val ↝ v ->
@@ -79,20 +79,20 @@ Proof.
 Qed.
 
 Ltac decide_NotInTelescope :=
-  repeat match goal with
-         | _ => cleanup
-         | _ => congruence
-         | [  |- NotInTelescope _ Nil ] => reflexivity
-         | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
-         end.
+  progress repeat match goal with
+                  | _ => cleanup
+                  | _ => congruence
+                  | [  |- NotInTelescope _ Nil ] => reflexivity
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
+                  end.
 
 Fixpoint DropName {A} k (t: Telescope A) :=
   match t with
   | Nil => Nil
-  | Cons T H key val tail => Cons (match key with 
-                                  | Some _key => if string_dec _key k then None else key
-                                  | None => key
-                                  end) val (fun v => (DropName k (tail v)))
+  | Cons T key val tail => Cons (match key with
+                                | NTSome _key H => if string_dec _key k then NTNone else key
+                                | NTNone => key
+                                end) val (fun v => (DropName k (tail v)))
   end.
 
 Definition LiftPropertyToTelescope {av} ext (property: _ -> Prop) : Telescope av -> Prop :=
@@ -169,10 +169,10 @@ Qed.
 
 Inductive TelStrongEq {av} : (Telescope av) -> (Telescope av) -> Prop :=
 | StrongEqNil : TelStrongEq Nil Nil
-| StrongEqCons : forall {A} {H: FacadeWrapper (Value av) A} k (v1 v2: Comp A) t1 t2,
+| StrongEqCons : forall {A} k (v1 v2: Comp A) t1 t2,
     Monad.equiv v1 v2 ->
     (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
-    TelStrongEq (@Cons av A H k v1 t1) (@Cons av A H k v2 t2).
+    TelStrongEq (@Cons av A k v1 t1) (@Cons av A k v2 t2).
 
 Print TelStrongEq.
 
@@ -250,7 +250,7 @@ Add Parametric Relation {A} : _ (@TelStrongEq A)
       as TelStrongEqRel.
 
 Add Parametric Morphism {av T} : (@Cons av T)
-    with signature (eq ==> eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
+    with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelStrongEq) ==> (TelStrongEq))
       as Cons_MonadEquiv_TelStrongEq_morphism.
 Proof.
   unfold pointwise_relation; intros.
@@ -258,7 +258,7 @@ Proof.
 Qed.
 
 Lemma Propagate_ret :
-  forall `{FacadeWrapper (Value av) A} k (v: A) (tail: A -> Telescope av),
+  forall {av A} k (v: A) (tail: A -> Telescope av),
     TelStrongEq
       (Cons k (ret v) tail)
       (Cons k (ret v) (fun _ => tail v)).

@@ -7,4 +7,5 @@ Require Export
         CertifiedExtraction.Extraction.Conditionals
         CertifiedExtraction.Extraction.ConditionalTactics
         CertifiedExtraction.Extraction.DeallocSCA
-        CertifiedExtraction.Extraction.DeallocSCATactics.
+        CertifiedExtraction.Extraction.DeallocSCATactics
+        CertifiedExtraction.Extraction.PreconditionSets.

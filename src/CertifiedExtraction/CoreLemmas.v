@@ -132,32 +132,32 @@ Ltac t__ :=
   repeat step.
 
 Lemma SameValues_MapsTo_ret:
-  forall `{FacadeWrapper (Value av) A}
+  forall `{H: FacadeWrapper (Value av) A}
     (key : String.string) (value : Comp A)
     (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)) (x : A),
     StringMap.MapsTo key (wrap x) state ->
-    state ≲ Cons (Some key) value tail ∪ ext ->
-    state ≲ Cons (Some key) (ret x) tail ∪ ext.
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
+    state ≲ Cons (NTSome key) (ret x) tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_MapsTo_ret_inv:
-  forall `{FacadeWrapper (Value av) A}
+  forall `{H: FacadeWrapper (Value av) A}
     (key : String.string) (value : Comp A)
     (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)) (x : A),
     value ↝ x ->
-    state ≲ Cons (Some key) (ret x) tail ∪ ext ->
-    state ≲ Cons (Some key) value tail ∪ ext.
+    state ≲ Cons (NTSome key) (ret x) tail ∪ ext ->
+    state ≲ Cons (NTSome key) value tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_MapsTo_ret_ex:
-  forall `{FacadeWrapper (Value av) A}
+  forall `{H: FacadeWrapper (Value av) A}
     (key : String.string) (value : Comp A)
     (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)),
-    state ≲ Cons (Some key) value tail ∪ ext ->
-    exists v, value ↝ v /\ state ≲ Cons (Some key) (ret v) tail ∪ ext.
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
+    exists v, value ↝ v /\ state ≲ Cons (NTSome key) (ret v) tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_Equal :
@@ -166,7 +166,7 @@ Lemma SameValues_Equal :
     (m1 ≲ tenv ∪ ext ->
      m2 ≲ tenv ∪ ext).
 Proof.
-  induction tenv as [ | ? ? ? IH ];
+  induction tenv;
   repeat match goal with
          | [ IH: _, H: StringMap.remove ?k ?m1 ≲ (?t ?v) ∪ ?ext, H': StringMap.Equal ?m1 ?m2 |-
              StringMap.remove ?k ?m2 ≲ (?t ?v) ∪ ?ext ] => apply (IH _ _ _ _ (remove_m eq_refl H')); exact H
@@ -441,8 +441,8 @@ Lemma ProkOk_specialize_to_ret :
     (tail1: A -> Telescope av)
     (tail2: A -> Telescope av)
     ext,
-    (forall v, value ↝ v -> {{ Cons (Some key) (ret v) tail1 }} prog {{ Cons (Some key) (ret v) tail2 }} ∪ {{ ext }} // env) ->
-    ({{ Cons (Some key) value tail1 }} prog {{ Cons (Some key) value tail2 }} ∪ {{ ext }} // env).
+    (forall v, value ↝ v -> {{ Cons (NTSome key) (ret v) tail1 }} prog {{ Cons (NTSome key) (ret v) tail2 }} ∪ {{ ext }} // env) ->
+    ({{ Cons (NTSome key) value tail1 }} prog {{ Cons (NTSome key) value tail2 }} ∪ {{ ext }} // env).
 Proof.
   repeat match goal with
          | _ => progress intros
@@ -461,7 +461,7 @@ Lemma SameValues_MapsTo:
     (key : String.string) (value : Comp A)
     (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)),
-    state ≲ Cons (Some key) value tail ∪ ext ->
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
     exists v : A, value ↝ v /\ StringMap.MapsTo key (wrap v) state.
 Proof.
   simpl; intros.

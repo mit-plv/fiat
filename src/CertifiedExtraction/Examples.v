@@ -8,7 +8,7 @@ Definition extract_facade := proj1_sig.
 
 Opaque Word.natToWord.
 
-Definition EmptyEnv : Env unit := (GLabelMap.GLabelMap.empty (FuncSpec unit)).
+Definition EmptyEnv : Env unit := (GLabelMap.empty _).
 
 Example simple :
   Facade program implementing ( x <- ret (Word.natToWord 32 1);
@@ -102,9 +102,9 @@ Ltac compile_random :=
 
 (*! We then tell compiler that the definition is available: *)
 
-Definition BasicEnv :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    (GLabelMap.empty (FuncSpec unit)).
+Definition BasicEnv : Env unit :=
+  (GLabelMap.empty (FuncSpec unit))
+    ### ("std", "rand") ->> (Axiomatic (@FRandom unit)).
 
 (*! And we can now compile programs using that function! *)
 
@@ -132,9 +132,9 @@ Require Import
         CertifiedExtraction.Extraction.External.GenericMethods.
 
 Definition EnvWithSquare :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW unit Square)))
-       (GLabelMap.empty (FuncSpec unit))).
+  (GLabelMap.empty (FuncSpec unit))
+    ### ("std", "rand") ->> (Axiomatic FRandom)
+    ### ("mylib", "square") ->> (Axiomatic (FacadeImplementationWW unit Square)).
 
 Example random_test :
   Facade program implementing ( x <- Random;
@@ -159,10 +159,10 @@ Eval simpl in (extract_facade random_test).
 Definition Cube (x: W) := (Word.wmult x (Word.wmult x x)).
 
 Definition EnvWithCubeAsWell :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("mylib", "square") (Axiomatic (FacadeImplementationWW unit Square)))
-       ((GLabelMap.add ("mylib", "cube") (Axiomatic (FacadeImplementationWW unit Cube)))
-          (GLabelMap.empty (FuncSpec unit)))).
+  (GLabelMap.empty (FuncSpec unit))
+    ### ("std", "rand") ->> (Axiomatic FRandom)
+    ### ("mylib", "square") ->> (Axiomatic (FacadeImplementationWW unit Square))
+    ### ("mylib", "cube") ->> (Axiomatic (FacadeImplementationWW unit Cube)).
 
 Example random_test_with_cube :
   Facade program implementing ( x <- Random;
@@ -185,10 +185,10 @@ Eval simpl in (extract_facade random_test_with_cube).
 (*+ To conclude, a bit of ADT stuff: *)
 
 Definition MyEnvW :=
-  (GLabelMap.add ("std", "rand") (Axiomatic FRandom))
-    ((GLabelMap.add ("std", "nil") (Axiomatic (FacadeImplementationOfConstructor nil)))
-       ((GLabelMap.add ("std", "push") (Axiomatic (FacadeImplementationOfMutation cons)))
-          (GLabelMap.empty (FuncSpec (list W))))).
+  (GLabelMap.empty (FuncSpec (list W)))
+    ### ("std", "rand") ->> (Axiomatic FRandom)
+    ### ("std", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
+    ### ("std", "push") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons)).
 
 (******************************************************************************)
 (*+ This example returns a list containing

@@ -75,4 +75,11 @@ Section BoolFacts.
     intros; repeat rewrite andb_assoc;
     replace (a && b) with (b && a) by apply andb_comm; reflexivity.
   Qed.
+
+  Lemma bool_rect_andb x y z
+  : bool_rect (fun _ => bool) x y z
+    = orb (andb (negb z) y) (andb z x).
+  Proof.
+    destruct x, y, z; reflexivity.
+  Qed.
 End BoolFacts.

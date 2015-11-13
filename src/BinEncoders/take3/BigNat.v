@@ -24,10 +24,20 @@ Section BigNat.
     rewrite IHval; eauto.
   Qed.
 
+  Theorem decode_shorten : decode_shorten decode.
+  Proof.
+    unfold decode_shorten.
+    destruct ls; intuition eauto.
+    induction ls; destruct b; simpl; intuition eauto.
+    destruct a; simpl in *; intuition eauto.
+    destruct (decode ls); intuition eauto.
+  Qed.
+
   Definition BigNat_encode_decode :=
     {| predicate_R := fun _ => True;
        encode_R    := encode;
        decode_R    := decode;
-       proof_R     := encode_correct |}.
+       proof_R     := encode_correct;
+       shorten_R   := decode_shorten |}.
 
 End BigNat.

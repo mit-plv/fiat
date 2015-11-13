@@ -13,6 +13,14 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
     (add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
   Local Open Scope map_scope.
 
+  Lemma remove_mapsto :
+    forall (elt : Type) (m : t elt) (x y : key) (e : elt),
+      MapsTo y e (remove (elt:=elt) x m) ->
+      (not (E.eq x y)) /\ MapsTo y e m.
+  Proof.
+    intros; rewrite <- remove_mapsto_iff; assumption.
+  Qed.
+
   Lemma MapsTo_In :
     forall {A: Type} key (val: A) tree,
       MapsTo key val tree -> In key tree.
@@ -331,23 +339,32 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
                                         change m with reduced
              end).
 
-  Lemma not_or : forall (A B: Prop), not A /\ not B -> not (A \/ B).
+  Lemma NotIn_noteq :
+    forall {A} k k' v (tail: t A),
+      ~ (E.eq k k') ->
+      k ∉ tail ->
+      k ∉ (add k' v tail).
   Proof.
-    tauto.
+    intros; rewrite add_in_iff; intuition.
   Qed.
 
+  Lemma NotIn_empty :
+    forall {A} k,
+      k ∉ (empty A).
+  Proof.
+    intros; rewrite empty_in_iff; intuition.
+  Qed.
+
+  Ltac not_evar x :=
+    first [ is_evar x; fail 1 | idtac ].
+
   Ltac decide_not_in :=
-    (* map_iff; intuition congruence. *)
-    repeat match goal with
-           | _                      => assumption
-           | _                      => progress autounfold with MapUtils_unfold_db
-           | [  |- _ /\ _ ]           => split
-           | [  |- _ <> _ ]           => abstract congruence
-           | [  |- not False ]           => intro; assumption
-           | [  |- not (_ \/ _) ]     => apply not_or
-           | [  |- _ ∉ (empty _) ]   => rewrite empty_in_iff
-           | [  |- _ ∉ (add _ _ _) ] => rewrite add_in_iff
-           end.
+    progress repeat match goal with
+                    | |- ?k ∉ (empty _) => not_evar k; apply NotIn_empty
+                    | |- ?k ∉ ?m => not_evar k; not_evar m; apply NotIn_noteq
+                    | |- _ => discriminate
+                    | |- _ => congruence
+                    end.
 
   Ltac reduce_or_fallback term continuation fallback :=
     match nat with

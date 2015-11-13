@@ -24,7 +24,7 @@ Ltac compile_do_use_transitivity_to_handle_head_separately :=
 Ltac compile_do_extend_scalar_lifetime :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        match constr:(pre) with
-                       | @Cons _ W _ ?k _ _ =>
+                       | Cons (T := W) ?k _ _ =>
                          match constr:(post, ext) with
                          | context[k] => fail 1 "Head variable appears in post-condition"
                          | _ => apply CompileDeallocSCA_discretely; [ compile_do_side_conditions.. | ]
@@ -112,9 +112,10 @@ Ltac compile_do_cons :=
 
 Ltac compile_do_chomp key :=
   debug "Applying chomp rule";
-  match key with
-  | @Some _ _ => apply ProgOk_Chomp_Some
-  | @None _   => apply ProgOk_Chomp_None
+  let keyHead := head_constant key in
+  match keyHead with
+  | @NTSome => apply ProgOk_Chomp_Some
+  | @NTNone => apply ProgOk_Chomp_None
   end; intros; computes_to_inv.
 
 Ltac compile_do_bind k compA compB tl :=
@@ -139,9 +140,9 @@ Ltac compile_ProgOk p pre post ext env :=
     first [compile_skip | fail ]
   | (Cons ?k ?cmp _, Cons ?k ?cmp _) => (* Chomp rule *)
     first [compile_do_chomp k | fail ]
-  | (Cons (Some ?k) ?cmp _, Cons None ?cmp _) => (* Deallocation of head variable *)
+  | (Cons (NTSome ?k) ?cmp _, Cons NTNone ?cmp _) => (* Deallocation of head variable *)
     first [compile_dealloc k cmp | fail ]
-  | (_, Cons None ?cmp ?tl) => (* Program does deallocation + something else; split *)
+  | (_, Cons NTNone ?cmp ?tl) => (* Program does deallocation + something else; split *)
     first [compile_do_alloc cmp tl | fail ]
 
   (** Fiat manipulations **)
@@ -154,7 +155,7 @@ Ltac compile_ProgOk p pre post ext env :=
           (lazymatch constr:(pre, post) with
             | ([[`?k <~~ ?cmp as _]] :: ?tenv, [[`?k <~~ ?cmp' as _]] :: ?tenv') => (* In place modifications *)
               first [ compile_simple_inplace | fail ]
-            | (?tenv, Cons (Some ?k) ?cmp ?tenv') => (* Assignments to new variables *)
+            | (?tenv, Cons (NTSome ?k) ?cmp ?tenv') => (* Assignments to new variables *)
               first [ compile_simple | fail ]
             end)
         | _ => (* Fallback abstract manipulation *)
@@ -207,3 +208,5 @@ Ltac compile_step_with worker :=
 
 Ltac compile_step :=
   compile_step_with compile_ProgOk.
+
+Notation "trunk ### name ->> function" := (GLabelMap.add name function trunk) (at level 20).

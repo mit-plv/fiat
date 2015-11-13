@@ -14,8 +14,7 @@ Set Implicit Arguments.
 Section transfer.
   Context {Char} {HSL_heavy HSL_lite : StringLike Char} {G : grammar Char}.
   Context {data : @boolean_parser_dataT Char HSL_heavy}.
-  Context (split_string_for_production_lite
-           : item Char -> production Char -> @String Char HSL_lite -> list nat).
+  Context {split_data_lite : @split_dataT Char HSL_lite}.
 
   Class StringLikeProj :=
     { proj : @String Char HSL_heavy -> @String Char HSL_lite;
@@ -25,15 +24,14 @@ Section transfer.
       is_char_proj : forall str ch, is_char (proj str) ch = is_char str ch;
       split_string_for_production_proj
       : forall it its str,
-          split_string_for_production_lite it its (proj str)
-          = split_string_for_production it its str }.
+          @split_string_for_production _ HSL_lite _ it its (proj str)
+          = @split_string_for_production _ HSL_heavy _ it its str }.
 
   Context {HSLPr : StringLikeProj}.
 
   Local Instance data' : @boolean_parser_dataT Char HSL_lite
     := { predata := predata;
-         split_string_for_production it its str
-         := split_string_for_production_lite it its str }.
+         split_data := split_data_lite }.
 
   Lemma parse_item_proj
         str_matches_nonterminal str_matches_nonterminal'

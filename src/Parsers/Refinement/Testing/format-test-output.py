@@ -3,6 +3,18 @@
 from __future__ import with_statement
 import fileinput, re, sys
 
+def make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4):
+    num_chars = cur_file.replace('.', '').rjust(len(col1))
+    if cur_reference is not None and cur_synthesized is not None and cur_reference.strip('.0') != '':
+        ratio = str(float(cur_synthesized) / float(cur_reference) * 100)
+    else:
+        ratio = None
+    cur_reference = ((cur_reference + ' s') if cur_reference is not None else 'None').rjust(len(col2))
+    cur_synthesized = ((cur_synthesized + ' s') if cur_synthesized is not None else 'None').rjust(len(col3))
+    ratio = ((ratio + ' % slower') if ratio is not None else 'N/A').rjust(len(col4))
+    return '%s | %s | %s | %s' % (num_chars, cur_reference, cur_synthesized, ratio)
+
+
 def format_output(lines):
     FILE_REG = re.compile(r'^(reference|coq)\s*ab(1[0\.]*)$')
     TIME_REG = re.compile(r'^total: ([0-9\.]*), median: ([0-9\.]*), mean: ([0-9\.]*), sample variance: ([0-9\.]*), iterations: ([0-9]*) \(([0-9]*) on each\)$')
@@ -25,15 +37,7 @@ def format_output(lines):
             cur_parser = parser
             if name != cur_file:
                 if cur_reference is not None or cur_synthesized is not None:
-                    num_chars = cur_file.replace('.', '').rjust(len(col1))
-                    if cur_reference is not None and cur_synthesized is not None and cur_reference.strip('.0') != '':
-                        ratio = str(float(cur_synthesized) / float(cur_reference) * 100)
-                    else:
-                        ratio = None
-                    cur_reference = ((cur_reference + ' s') if cur_reference is not None else 'None').rjust(len(col2))
-                    cur_synthesized = ((cur_synthesized + ' s') if cur_synthesized is not None else 'None').rjust(len(col3))
-                    ratio = ((ratio + ' % slower') if ratio is not None else 'N/A').rjust(len(col4))
-                    table.append('%s | %s | %s | %s' % (num_chars, cur_reference, cur_synthesized, ratio))
+                    table.append(make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4))
                 cur_file = name
                 cur_reference = None
                 cur_synthesized = None
@@ -63,6 +67,8 @@ def format_output(lines):
                 cur_synthesized = time_displayed
             else:
                 print('error: %s' % cur_parser)
+    if cur_reference is not None or cur_synthesized is not None:
+        table.append(make_table_line(cur_reference, cur_synthesized, cur_file, col1, col2, col3, col4))
     print('\n'.join(table))
 
 if __name__ == '__main__':

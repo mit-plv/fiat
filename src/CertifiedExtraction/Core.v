@@ -15,16 +15,28 @@ Class FacadeWrapper (WrappingType WrappedType: Type) :=
     unwrap_wrap: forall v, unwrap (wrap v) = Some v;
     wrap_unwrap: forall v vv, unwrap v = Some vv -> v = wrap vv }.
 
+Inductive NameTag av T :=
+| NTNone : NameTag av T
+| NTSome (key: string) (H: FacadeWrapper (Value av) T) : NameTag av T.
+
+Arguments NTNone {av T}.
+Arguments NTSome {av T} key {H}.
+
+Definition NameTagAsStringOption {av T} (nt: NameTag av T) :=
+  match nt with
+  | NTNone => None
+  | NTSome key H => Some key
+  end.
+
 Inductive Telescope av : Type :=
 | Nil : Telescope av
-| Cons : forall `{H: FacadeWrapper (Value av) T}
-           (key: option string)
+| Cons : forall T (key: NameTag av T)
            (val: Comp T)
            (tail: T -> Telescope av),
     Telescope av.
 
 Arguments Nil {av}.
-Arguments Cons {av T H} key val tail.
+Arguments Cons {av T} key val tail.
 
 (*************************)
 (** Telescope notations **)
@@ -36,13 +48,16 @@ Notation "[[ k <~~ v 'as' kk ]] :: t" :=
 Global Open Scope telescope_scope.
 
 Notation "[[ ` k <~~ v 'as' kk ]] :: t" :=
-  ([[ Some k <~~ v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+  ([[ NTSome k <~~ v as kk]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
 Notation "[[ k <-- v 'as' kk ]] :: t" :=
-  ([[ `k <~~ (ret v) as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+  ([[ k <~~ (ret v) as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+
+Notation "[[ ` k <-- v 'as' kk ]] :: t" :=
+  ([[ NTSome k <-- v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
 Notation "[[ v 'as' kk ]] :: t" :=
-  ([[ None <~~ v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+  ([[ NTNone <~~ v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
 (**********************************************)
 (** SameValues: matching FMaps to Telescopes **)
@@ -60,16 +75,16 @@ Definition WeakEq {av} m1 m2 :=
 Fixpoint SameValues {av} ext fmap (tenv: Telescope av) :=
   match tenv with
   | Nil => WeakEq ext fmap
-  | Cons _ _ key val tail =>
+  | Cons T key val tail =>
     match key with
-      | Some k => match StringMap.find k fmap with
-                 | Some v => match unwrap v with
-                            | Some vv => val ↝ vv /\ SameValues ext (StringMap.remove k fmap) (tail vv)
-                            | None => False
-                            end
-                 | None => False
-                 end
-      | None => exists v', val ↝ v' /\ SameValues ext fmap (tail v')
+      | NTSome k H => match StringMap.find k fmap with
+                  | Some v => match unwrap (FacadeWrapper := H) v with
+                             | Some vv => val ↝ vv /\ SameValues ext (StringMap.remove k fmap) (tail vv)
+                             | None => False
+                             end
+                  | None => False
+                  end
+      | NTNone => exists v', val ↝ v' /\ SameValues ext fmap (tail v')
     end
   end.
 
