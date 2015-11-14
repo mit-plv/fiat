@@ -358,11 +358,15 @@ Section beq_correct.
 End beq_correct.
 
 Section In.
-  Fixpoint list_bin {A} (eq_A : A -> A -> bool) (a : A) (ls : list A) : bool
-    := match ls with
-         | nil => false
-         | x::xs => orb (list_bin eq_A a xs) (eq_A x a)
-       end.
+  Section list_bin.
+    Context {A} (eq_A : A -> A -> bool) (a : A).
+
+    Fixpoint list_bin (ls : list A) : bool
+      := match ls with
+           | nil => false
+           | x::xs => orb (list_bin xs) (eq_A x a)
+         end.
+  End list_bin.
 
   Local Ltac t :=
     repeat match goal with
