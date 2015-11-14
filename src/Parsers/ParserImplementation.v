@@ -35,6 +35,7 @@ Section implementation.
     unfold is_valid_nonterminal in Hvalid; simpl in Hvalid.
     unfold rdp_list_is_valid_nonterminal in Hvalid; simpl in Hvalid.
     hnf in Hvalid.
+    change list_bin_eq with (list_bin string_beq) in *.
     apply Equality.list_in_bl in Hvalid; [ | apply @Equality.string_bl ].
     generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H'))) pit pits).
     clear Hvalid.
