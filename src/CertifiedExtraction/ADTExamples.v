@@ -417,66 +417,6 @@ Qed.
 
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation Fiat.QueryStructure.Automation.Common Fiat.QueryStructure.Specification.Representation.Schema.
 Require Import Coq.Vectors.Fin.
-Print PartialSchedulerImpl.
-
-Definition Type1 := IndexedQueryStructure
-                     (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                     (@icons3 _
-                              (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
-                              (VectorDef.nil RawHeading) SearchUpdateTerm
-                              (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))).
-
-Definition Type2 := (Type1 * list (Domain heading (@FS 2 (@FS 1 (@F1 0)))))%type.
-
-Goal Type1 = Core.Rep
-       (BagADT.BagSpec
-          (BagMatchSearchTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))
-          (BagApplyUpdateTerm (ith3 (icons3 SearchUpdateTerm inil3) F1))).
-  unfold Type1.
-
-  
-Definition MethodOfInterest := fun (r_n : Type1) (d : W) =>
-                                (a <- @CallBagMethod
-                                   (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                        (@icons3 _
-                                           (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
-                                           (VectorDef.nil RawHeading) SearchUpdateTerm
-                                           (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch)))
-                                        (@F1 0)
-                                        (@BagFind heading
-                                           (@ilist3_hd RawSchema
-                                              (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 1
-                                              (Vector.cons RawSchema
-                                                 {|
-                                                 rawSchemaHeading := heading;
-                                                 attrConstraints := @None (@RawTuple heading -> Prop);
-                                                 tupleConstraints := @Some
-                                                  (@RawTuple heading -> @RawTuple heading -> Prop)
-                                                  (@FunctionalDependency_P heading [@FS 2 (@FS 1 (@F1 0)); @FS 2 (@F1 1)] [@F1 2]) |} 0
-                                                 (Vector.nil RawSchema))
-                                              (@icons3 _
-                                                 (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
-                                                 (VectorDef.nil RawHeading) SearchUpdateTerm
-                                                 (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
-                                        (@Some W d, (@None (Domain heading (@FS 2 (@F1 1))), fun _ : @RawTuple heading => true));
-                                 ret
-                                   (r_n,
-                                   @revmap (@RawTuple heading)
-                                     (Domain heading (@FS 2 (@FS 1 (@F1 0))))
-                                     (fun x : @RawTuple heading =>
-                                      @GetAttributeRaw heading
-                                        (@ilist2.ilist2_hd RawHeading
-                                           (@RawTuple) 1
-                                           (VectorDef.cons RawHeading heading 0 (VectorDef.nil RawHeading))
-                                           (@ilist2.icons2 RawHeading (@RawTuple) heading 0 (VectorDef.nil RawHeading) x (@ilist2.inil2 RawHeading (@RawTuple))))
-                                        (@FS 2 (@FS 1 (@F1 0))))
-                                     (@snd (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)) a)))%comp : Comp Type2.
-
-
-Definition av' := (list W + Type1 + Type2 + (@IndexedEnsembles.IndexedEnsemble
-                                              (@RawTuple heading)) + (list (@RawTuple heading)) + (@RawTuple heading))%type.
-
-Check MethodOfInterest.
 
 (* Notation "'BIND' !! A !! B !! C" := (@Bind A B C) (at level 1). *)
 (* Notation "x { A } <- y ; z" := (Bind y (fun x: A => z)) (at level 1). *)
@@ -536,22 +476,6 @@ Definition FinToWord {N: nat} (n: Fin.t N) :=
 Definition FitsInW {N: nat} (n: Fin.t N) :=
   Word.wordToNat (FinToWord n) = proj1_sig (Fin.to_nat n).
 
-Definition MyEnvListsC : Env av' :=
-  (GLabelMap.empty (FuncSpec _))
-    ### ("std", "rand") ->> (Axiomatic FRandom)
-    ### ("listW", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
-    ### ("listW", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
-    ### ("listW", "pop!") ->> (Axiomatic (List_pop W))
-    ### ("listW", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
-    ### ("listW", "empty?") ->> (Axiomatic (List_empty W))
-    ### ("listT", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list (@RawTuple heading)) nil))
-    ### ("listT", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_ADT _ (list (@RawTuple heading)) cons))
-    ### ("listT", "pop!") ->> (Axiomatic (List_pop (@RawTuple heading)))
-    ### ("listT", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list (@RawTuple heading))))
-    ### ("listT", "empty?") ->> (Axiomatic (List_empty (@RawTuple heading)))
-    ### ("IndexedEnsemble", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor IndexedEnsembles.IndexedEnsemble))
-    ### ("RawTuple", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (@RawTuple heading))).
-
 Ltac compile_chomp :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
@@ -592,7 +516,6 @@ Ltac _compile_CallGetAttribute :=
                               unify prog' (Call vtarget ("ext", "GetAttribute")
                                                 (vsrc :: vindex :: nil))) ]
             end).
-
 
 Ltac _compile_map :=
   match_ProgOk
@@ -647,311 +570,609 @@ Proof.
   repeat (SameValues_Facade_t_step || facade_if_helper).
 Qed.
 
-Definition Method2 := fun
-                               (r_n : QueryStructureImplementation.IndexedQueryStructure 
-                                        (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                        (@ilist3.icons3 Heading.RawHeading
-                                           (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                           (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                           (@ilist3.inil3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) 
-                               (d d0 : Memory.W) =>
-                             @Core.Bind (@IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading) * list (@Tuple.RawTuple heading))
-                               (QueryStructureImplementation.IndexedQueryStructure 
-                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                  (@ilist3.icons3 Heading.RawHeading 
-                                     (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                     (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                     (@ilist3.inil3 Heading.RawHeading (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) *
-                                bool)
-                               (@QueryStructureImplementation.CallBagMethod 
-                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                  (@ilist3.icons3 Heading.RawHeading 
-                                     (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                     (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                     (@ilist3.inil3 Heading.RawHeading (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))
-                                  (@Fin.F1 0)
-                                  (@QueryStructureImplementation.BagFind heading
-                                     (@ilist3.ilist3_hd Schema.RawSchema
-                                        (fun ns : Schema.RawSchema => QueryStructureImplementation.SearchUpdateTerms (Schema.rawSchemaHeading ns)) 1
-                                        (Vector.cons Schema.RawSchema
-                                           {|
-                                           Schema.rawSchemaHeading := heading;
-                                           Schema.attrConstraints := @None (@Tuple.RawTuple heading -> Prop);
-                                           Schema.tupleConstraints := @Some 
-                                                  (@Tuple.RawTuple heading -> @Tuple.RawTuple heading -> Prop)
-                                                  (@Schema.FunctionalDependency_P heading
-                                                  (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)) :: (@Fin.FS 2 (@Fin.F1 1) :: @nil (Fin.t 3))%list)
-                                                  (@Fin.F1 2 :: @nil (Fin.t 3))) |} 0 
-                                           (Vector.nil Schema.RawSchema))
-                                        (@ilist3.icons3 Heading.RawHeading
-                                           (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                           (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                           (@ilist3.inil3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))))) r_n
-                                  (@Some (Heading.Domain heading (@Fin.F1 2))
-                                     (@Tuple.GetAttributeRaw heading
-                                        (@ilist2.icons2 
-                                           Type (@id Type) Memory.W 2 
-                                           (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
-                                           (@ilist2.icons2 
-                                              Type 
-                                              (@id Type) ProcessScheduler.State 1 
-                                              (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
-                                              (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type))))) 
-                                        (@Fin.F1 2)),
-                                  (@None (Heading.Domain heading (@Fin.FS 2 (@Fin.F1 1))),
-                                  fun tup : @Tuple.RawTuple heading =>
-                                  negb
-                                    ((if @Word.weq 32
-                                           (@Tuple.GetAttributeRaw heading
-                                              (@ilist2.icons2 
-                                                 Type 
-                                                 (@id Type) Memory.W 2 
-                                                 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
-                                                 (@ilist2.icons2 
-                                                  Type 
-                                                  (@id Type) ProcessScheduler.State 1 
-                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
-                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
-                                              (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)))) 
-                                           (@Tuple.GetAttributeRaw heading tup (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0))))
-                                      then true
-                                      else false) &&
-                                     ((if @Word.weq 32
-                                            (@Tuple.GetAttributeRaw heading
-                                               (@ilist2.icons2 
-                                                  Type 
-                                                  (@id Type) Memory.W 2 
-                                                  (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
-                                                  (@ilist2.icons2 
-                                                  Type 
-                                                  (@id Type) ProcessScheduler.State 1 
-                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
-                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type)))))
-                                               (@Fin.FS 2 (@Fin.F1 1))) 
-                                            (@Tuple.GetAttributeRaw heading tup (@Fin.FS 2 (@Fin.F1 1)))
-                                       then true
-                                       else false) && true)))))
-                               (fun a : @IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading) * list (@Tuple.RawTuple heading) =>
-                                  (@Common.If_Then_Else
-                                     (Core.Comp
-                                        (QueryStructureImplementation.IndexedQueryStructure 
-                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                           (@ilist3.icons3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                              (@ilist3.inil3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool))
-                                     (EqNat.beq_nat
-                                        (@length (@Tuple.RawTuple heading)
-                                           (@snd (@IndexedEnsembles.IndexedEnsemble (@Tuple.RawTuple heading)) (list (@Tuple.RawTuple heading)) a)) 0)
-                                     (@Core.Bind
-                                        (QueryStructureImplementation.IndexedQueryStructure 
-                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                           (@ilist3.icons3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                              (@ilist3.inil3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
-                                        (QueryStructureImplementation.IndexedQueryStructure 
-                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                           (@ilist3.icons3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                              (@ilist3.inil3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
-                                        (@Core.Bind
-                                           (@IndexedEnsembles.IndexedEnsemble
-                                              (@Tuple.RawTuple
-                                                 {|
-                                                 Heading.NumAttr := 3;
-                                                 Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}))
-                                           (QueryStructureImplementation.IndexedQueryStructure 
-                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                              (@ilist3.icons3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                 (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
-                                           (@QueryStructureImplementation.CallBagMethod 
-                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                              (@ilist3.icons3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                 (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) 
-                                              (@Fin.F1 0)
-                                              (@QueryStructureImplementation.BagInsert
-                                                 {|
-                                                 Heading.NumAttr := 3;
-                                                 Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}
-                                                 (@ilist3.ilist3_hd Schema.RawSchema
-                                                  (fun ns : Schema.RawSchema => QueryStructureImplementation.SearchUpdateTerms (Schema.rawSchemaHeading ns)) 1
-                                                  (Vector.cons Schema.RawSchema
-                                                  {|
-                                                  Schema.rawSchemaHeading := {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |};
-                                                  Schema.attrConstraints := @None
-                                                  (@Tuple.RawTuple
-                                                  {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} -> Prop);
-                                                  Schema.tupleConstraints := @Some
-                                                  (@Tuple.RawTuple
-                                                  {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} ->
-                                                  @Tuple.RawTuple
-                                                  {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |} -> Prop)
-                                                  (@Schema.FunctionalDependency_P
-                                                  {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}
-                                                  (@Fin.FS 2 (@Fin.FS 1 (@Fin.F1 0)) :: (@Fin.FS 2 (@Fin.F1 1) :: @nil (Fin.t 3))%list)
-                                                  (@Fin.F1 2 :: @nil (Fin.t 3))) |} 0 
-                                                  (Vector.nil Schema.RawSchema))
-                                                  (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))))) r_n
-                                              (@ilist2.icons2 
-                                                 Type 
-                                                 (@id Type) Memory.W 2 
-                                                 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) d
-                                                 (@ilist2.icons2 
-                                                  Type 
-                                                  (@id Type) ProcessScheduler.State 1 
-                                                  (Vector.cons Type Memory.W 0 (Vector.nil Type)) SLEEPING
-                                                  (@ilist2.icons2 Type (@id Type) Memory.W 0 (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type))))))
-                                           (fun
-                                              a0 : 
-                                               @IndexedEnsembles.IndexedEnsemble
-                                                 (@Tuple.RawTuple
-                                                  {|
-                                                  Heading.NumAttr := 3;
-                                                  Heading.AttrList := Vector.cons 
-                                                  Type Memory.W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type Memory.W 0 (Vector.nil Type))) |}) =>
-                                            @Core.Return
-                                              (QueryStructureImplementation.IndexedQueryStructure
-                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                 (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
-                                              (Refinements.UpdateIndexedRelation 
-                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                 (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) r_n 
-                                                 (@Fin.F1 0) a0, true)))
-                                        (fun
-                                           a0 : QueryStructureImplementation.IndexedQueryStructure
-                                                  (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                  (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool =>
-                                         @Core.Return
-                                           (QueryStructureImplementation.IndexedQueryStructure 
-                                              (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                              (@ilist3.icons3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                 (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                 (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool)
-                                           (@fst
-                                              (QueryStructureImplementation.IndexedQueryStructure
-                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                 (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) bool a0,
-                                           @snd
-                                             (QueryStructureImplementation.IndexedQueryStructure
-                                                (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                (@ilist3.icons3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                                  (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                                  (@ilist3.inil3 Heading.RawHeading
-                                                  (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch)))) bool a0)))
-                                     (@Core.Return
-                                        (QueryStructureImplementation.IndexedQueryStructure 
-                                           (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                           (@ilist3.icons3 Heading.RawHeading
-                                              (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch) heading 0
-                                              (VectorDef.nil Heading.RawHeading) SearchUpdateTerm
-                                              (@ilist3.inil3 Heading.RawHeading
-                                                 (fun sch : Heading.RawHeading => QueryStructureImplementation.SearchUpdateTerms sch))) * bool) 
-                                        (r_n, false)))).
+Set Printing All.
+Set Printing Depth 1000.
+Print PartialSchedulerImpl.
+Unset Printing All.
 
-Ltac _compile_CallBagFind :=
-     match_ProgOk
-     ltac:(fun prog pre post ext env =>
-             match constr:(pre, post) with
-             | (Cons (NTSome ?vdb) (ret ?db) (fun _ => Cons (NTSome ?vd) (ret ?d) ?tenv),
-                Cons NTNone (CallBagMethod ?id BagFind ?db (Some ?d, _)) ?tenv') =>
-               let vfst := gensym "fst" in
-               let vsnd := gensym "snd" in
-               let vtmp := gensym "tmp" in
-               match post with
-               | Cons NTNone ?bf _ =>
-                 eapply CompileSeq with ([[bf as retv]]
-                                           :: [[`vfst <-- fst retv as f]]
-                                           :: [[`vsnd <-- snd retv as s]]
-                                           :: [[`vdb <-- db as _]]
-                                           :: [[`vd <-- d as _]]
-                                           :: (tenv d));
-                   [ match_ProgOk
-                       ltac:(fun prog' _ _ _ _ =>
-                               unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
-                                                 (vfst :: vsnd :: vdb :: vd :: nil))) (* FIXME *) | ]
-               end
-             end).
+Definition Type1 := IndexedQueryStructure
+                     (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                     (@icons3 _
+                              (fun sch : RawHeading => SearchUpdateTerms sch) heading 0
+                              (VectorDef.nil RawHeading) SearchUpdateTerm
+                              (@inil3 _ (fun sch : RawHeading => SearchUpdateTerms sch))).
 
-Ltac _compile_CallBagInsert :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (Cons ?vdb (ret ?db) (fun _ => ?tenv),
-               Cons NTNone ?bm (fun a => Cons ?vdb (@?rel a) (fun _ => ?tenv'))) =>
-              match constr:(vdb, bm, rel) with
-              | (NTSome ?vdb', CallBagMethod _ BagInsert ?db _, (fun a => ret (Refinements.UpdateIndexedRelation _ _ ?db _ a))) =>
-                let vtmp := gensym "tmp" in
-                apply CompileSeq with (Cons NTNone bm (fun a => Cons vdb (rel a) (fun _ => tenv))); (* FIXME hardcoded var names *)
-                  [ match_ProgOk
-                      ltac:(fun prog' _ _ _ _ =>
-                              unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ]
-              end
-            end).
+Definition Type2 := (Type1 * list (Domain heading (@FS 2 (@FS 1 (@F1 0)))))%type.
 
-Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
-              unify k k'; unify v v';
-              match k with
-              | NTNone => apply ProgOk_Chomp_None
-              | _ => apply ProgOk_Chomp_Some
-              end
-            end).
+Definition Method2 :=
+          (fun
+           (r_n : IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                    (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                       (VectorDef.nil RawHeading) SearchUpdateTerm
+                       (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))))
+           (d
+            d0 : Word.word
+                   (S
+                      (S
+                         (S
+                            (S
+                               (S
+                                  (S
+                                     (S
+                                        (S
+                                           (S
+                                              (S
+                                                 (S
+                                                  (S
+                                                  (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O))))))))))))))))))))))))))))))))) =>
+         @Bind
+           (prod
+              (@IndexedEnsembles.IndexedEnsemble
+                 (@RawTuple
+                    (@Build_RawHeading (S (S (S O)))
+                       (Vector.cons Type W (S (S O))
+                          (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+              (list
+                 (@RawTuple
+                    (@Build_RawHeading (S (S (S O)))
+                       (Vector.cons Type W (S (S O))
+                          (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))))
+           (prod
+              (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                    (VectorDef.nil RawHeading) SearchUpdateTerm 
+                    (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool)
+           (@CallBagMethod (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+              (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                 (VectorDef.nil RawHeading) SearchUpdateTerm 
+                 (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) 
+              (@F1 O)
+              (@BagFind
+                 (@Build_RawHeading (S (S (S O)))
+                    (Vector.cons Type W (S (S O))
+                       (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))
+                 (@ilist3_hd RawSchema (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 
+                    (S O)
+                    (Vector.cons RawSchema
+                       (Build_RawSchema
+                          (@Build_RawHeading (S (S (S O)))
+                             (Vector.cons Type W (S (S O))
+                                (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))
+                          (@None
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                              Prop))
+                          (@Some
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                              @RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                              Prop)
+                             (@UniqueAttribute
+                                (@BuildHeading (S (S (S O)))
+                                   (Vector.cons Attribute
+                                      (Build_Attribute
+                                         (String (Ascii.Ascii false false false false true true true false)
+                                            (String 
+                                               (Ascii.Ascii true false false true false true true false)
+                                               (String (Ascii.Ascii false false true false false true true false) EmptyString))) W)
+                                      (S (S O))
+                                      (Vector.cons Attribute
+                                         (Build_Attribute
+                                            (String 
+                                               (Ascii.Ascii true true false false true true true false)
+                                               (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                            ProcessScheduler.State) 
+                                         (S O)
+                                         (Vector.cons Attribute
+                                            (Build_Attribute
+                                               (String 
+                                                  (Ascii.Ascii true true false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) W)
+                                            O (Vector.nil Attribute)))))
+                                (@BoundedLookup.Build_BoundedIndex string 
+                                   (S (S (S O)))
+                                   (Vector.cons string
+                                      (String (Ascii.Ascii false false false false true true true false)
+                                         (String (Ascii.Ascii true false false true false true true false)
+                                            (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                      (S (S O))
+                                      (Vector.cons string
+                                         (String (Ascii.Ascii true true false false true true true false)
+                                            (String 
+                                               (Ascii.Ascii false false true false true true true false)
+                                               (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                         (S O)
+                                         (Vector.cons string
+                                            (String 
+                                               (Ascii.Ascii true true false false false true true false)
+                                               (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) O
+                                            (Vector.nil string))))
+                                   (String (Ascii.Ascii false false false false true true true false)
+                                      (String (Ascii.Ascii true false false true false true true false)
+                                         (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                   (@BoundedLookup.Build_IndexBound string 
+                                      (S (S (S O)))
+                                      (String (Ascii.Ascii false false false false true true true false)
+                                         (String (Ascii.Ascii true false false true false true true false)
+                                            (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                      (Vector.cons string
+                                         (String (Ascii.Ascii false false false false true true true false)
+                                            (String 
+                                               (Ascii.Ascii true false false true false true true false)
+                                               (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                         (S (S O))
+                                         (Vector.cons string
+                                            (String 
+                                               (Ascii.Ascii true true false false true true true false)
+                                               (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                            (S O)
+                                            (Vector.cons string
+                                               (String 
+                                                  (Ascii.Ascii true true false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) O
+                                               (Vector.nil string)))) 
+                                      (@F1 (S (S O)))
+                                      (@eq_refl string
+                                         (String (Ascii.Ascii false false false false true true true false)
+                                            (String 
+                                               (Ascii.Ascii true false false true false true true false)
+                                               (String (Ascii.Ascii false false true false false true true false) EmptyString)))))))))
+                       O (Vector.nil RawSchema))
+                    (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                       (VectorDef.nil RawHeading) SearchUpdateTerm
+                       (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
+              (@pair (option (Domain heading (@F1 (S (S O)))))
+                 (prod (option (Domain heading (@FS (S (S O)) (@F1 (S O))))) (@RawTuple heading -> bool))
+                 (@Some (Domain heading (@F1 (S (S O)))) d)
+                 (@pair (option (Domain heading (@FS (S (S O)) (@F1 (S O))))) 
+                    (@RawTuple heading -> bool) (@None (Domain heading (@FS (S (S O)) (@F1 (S O)))))
+                    (fun _ : @RawTuple heading => true))))
+           (fun
+              a : prod
+                    (@IndexedEnsembles.IndexedEnsemble
+                       (@RawTuple
+                          (@Build_RawHeading (S (S (S O)))
+                             (Vector.cons Type W (S (S O))
+                                (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                    (list
+                       (@RawTuple
+                          (@Build_RawHeading (S (S (S O)))
+                             (Vector.cons Type W (S (S O))
+                                (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))) =>
+            @Common.If_Then_Else
+              (Comp
+                 (prod
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool))
+              (EqNat.beq_nat
+                 (@Datatypes.length (@RawTuple heading)
+                    (@rev (@RawTuple heading)
+                       (@snd
+                          (@IndexedEnsembles.IndexedEnsemble
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                          (list
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))) a)))
+                 O)
+              (@Bind
+                 (@IndexedEnsembles.IndexedEnsemble
+                    (@RawTuple
+                       (@Build_RawHeading (S (S (S O)))
+                          (Vector.cons Type W (S (S O))
+                             (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                 (prod
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool)
+                 (@CallBagMethod (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                    (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                       (VectorDef.nil RawHeading) SearchUpdateTerm
+                       (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) 
+                    (@F1 O)
+                    (@BagInsert
+                       (@Build_RawHeading (S (S (S O)))
+                          (Vector.cons Type W (S (S O))
+                             (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))
+                       (@ilist3_hd RawSchema (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 
+                          (S O)
+                          (Vector.cons RawSchema
+                             (Build_RawSchema
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))
+                                (@None
+                                   (@RawTuple
+                                      (@Build_RawHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons 
+                                            Type W 
+                                            (S (S O))
+                                            (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                                    Prop))
+                                (@Some
+                                   (@RawTuple
+                                      (@Build_RawHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons 
+                                            Type W 
+                                            (S (S O))
+                                            (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                                    @RawTuple
+                                      (@Build_RawHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons 
+                                            Type W 
+                                            (S (S O))
+                                            (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))) ->
+                                    Prop)
+                                   (@UniqueAttribute
+                                      (@BuildHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons Attribute
+                                            (Build_Attribute
+                                               (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false true false true true false)
+                                                  (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                               W) (S (S O))
+                                            (Vector.cons Attribute
+                                               (Build_Attribute
+                                                  (String 
+                                                  (Ascii.Ascii true true false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                                  ProcessScheduler.State) 
+                                               (S O)
+                                               (Vector.cons Attribute
+                                                  (Build_Attribute
+                                                  (String 
+                                                  (Ascii.Ascii true true false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) W)
+                                                  O 
+                                                  (Vector.nil Attribute)))))
+                                      (@BoundedLookup.Build_BoundedIndex string 
+                                         (S (S (S O)))
+                                         (Vector.cons string
+                                            (String 
+                                               (Ascii.Ascii false false false false true true true false)
+                                               (String 
+                                                  (Ascii.Ascii true false false true false true true false)
+                                                  (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                            (S (S O))
+                                            (Vector.cons string
+                                               (String 
+                                                  (Ascii.Ascii true true false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                               (S O)
+                                               (Vector.cons string
+                                                  (String 
+                                                  (Ascii.Ascii true true false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) O
+                                                  (Vector.nil string))))
+                                         (String (Ascii.Ascii false false false false true true true false)
+                                            (String 
+                                               (Ascii.Ascii true false false true false true true false)
+                                               (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                         (@BoundedLookup.Build_IndexBound string 
+                                            (S (S (S O)))
+                                            (String 
+                                               (Ascii.Ascii false false false false true true true false)
+                                               (String 
+                                                  (Ascii.Ascii true false false true false true true false)
+                                                  (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                            (Vector.cons string
+                                               (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false true false true true false)
+                                                  (String (Ascii.Ascii false false true false false true true false) EmptyString)))
+                                               (S (S O))
+                                               (Vector.cons string
+                                                  (String 
+                                                  (Ascii.Ascii true true false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false true false true true true false)
+                                                  (String (Ascii.Ascii true false true false false true true false) EmptyString)))))
+                                                  (S O)
+                                                  (Vector.cons string
+                                                  (String 
+                                                  (Ascii.Ascii true true false false false true true false)
+                                                  (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String (Ascii.Ascii true false true false true true true false) EmptyString))) O
+                                                  (Vector.nil string)))) 
+                                            (@F1 (S (S O)))
+                                            (@eq_refl string
+                                               (String 
+                                                  (Ascii.Ascii false false false false true true true false)
+                                                  (String 
+                                                  (Ascii.Ascii true false false true false true true false)
+                                                  (String (Ascii.Ascii false false true false false true true false) EmptyString)))))))))
+                             O (Vector.nil RawSchema))
+                          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                             (VectorDef.nil RawHeading) SearchUpdateTerm
+                             (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))))
+                    (Refinements.UpdateIndexedRelation 
+                       (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
+                       (@F1 O)
+                       (@fst
+                          (@IndexedEnsembles.IndexedEnsemble
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                          (list
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))) a))
+                    (@ilist2.icons2 Type (@id Type) W 
+                       (S (S O)) (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))) d
+                       (@ilist2.icons2 Type (@id Type) ProcessScheduler.State 
+                          (S O) (Vector.cons Type W O (Vector.nil Type)) SLEEPING
+                          (@ilist2.icons2 Type (@id Type) W O (Vector.nil Type) d0 (@ilist2.inil2 Type (@id Type))))))
+                 (fun
+                    u : @IndexedEnsembles.IndexedEnsemble
+                          (@RawTuple
+                             (@Build_RawHeading (S (S (S O)))
+                                (Vector.cons Type W 
+                                   (S (S O))
+                                   (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))) =>
+                  @Return
+                    (prod
+                       (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                             (VectorDef.nil RawHeading) SearchUpdateTerm
+                             (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool)
+                    (@pair
+                       (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                             (VectorDef.nil RawHeading) SearchUpdateTerm
+                             (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool
+                       (Refinements.UpdateIndexedRelation 
+                          (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                          (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                             (VectorDef.nil RawHeading) SearchUpdateTerm
+                             (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))
+                          (Refinements.UpdateIndexedRelation 
+                             (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                             (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O
+                                (VectorDef.nil RawHeading) SearchUpdateTerm
+                                (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
+                             (@F1 O)
+                             (@fst
+                                (@IndexedEnsembles.IndexedEnsemble
+                                   (@RawTuple
+                                      (@Build_RawHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons 
+                                            Type W 
+                                            (S (S O))
+                                            (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                                (list
+                                   (@RawTuple
+                                      (@Build_RawHeading 
+                                         (S (S (S O)))
+                                         (Vector.cons 
+                                            Type W 
+                                            (S (S O))
+                                            (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                                a)) (@F1 O) u) true)))
+              (@Return
+                 (prod
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool)
+                 (@pair
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) bool
+                    (Refinements.UpdateIndexedRelation 
+                       (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
+                       (@F1 O)
+                       (@fst
+                          (@IndexedEnsembles.IndexedEnsemble
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                          (list
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))) a))
+                    false)))).
+
+Definition MethodOfInterest :=
+  (fun
+              (r_n : IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) 
+              (d : ProcessScheduler.State) =>
+            @Bind (prod (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)))
+              (prod
+                 (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                    (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                       (VectorDef.nil RawHeading) SearchUpdateTerm
+                       (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))))
+                 (list
+                    (Word.word
+                       (S
+                          (S
+                             (S
+                                (S
+                                   (S
+                                      (S
+                                         (S
+                                            (S
+                                               (S
+                                                  (S
+                                                  (S
+                                                  (S
+                                                  (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S O)))))))))))))))))))))))))))))))))))
+              (@CallBagMethod (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                    (VectorDef.nil RawHeading) SearchUpdateTerm 
+                    (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) 
+                 (@F1 O)
+                 (@BagFind heading
+                    (@ilist3_hd RawSchema (fun ns : RawSchema => SearchUpdateTerms (rawSchemaHeading ns)) 
+                       (S O)
+                       (Vector.cons RawSchema
+                          (Build_RawSchema heading 
+                             (@None (@RawTuple heading -> Prop))
+                             (@Some (@RawTuple heading -> @RawTuple heading -> Prop) (@UniqueAttribute heading0 BStringId0))) O
+                          (Vector.nil RawSchema))
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))))) r_n
+                 (@pair (option (Domain heading (@F1 (S (S O))))) 
+                    (prod (option ProcessScheduler.State) (@RawTuple heading -> bool)) 
+                    (@None (Domain heading (@F1 (S (S O)))))
+                    (@pair (option ProcessScheduler.State) 
+                       (@RawTuple heading -> bool) 
+                       (@Some ProcessScheduler.State d) 
+                       (fun _ : @RawTuple heading => true))))
+              (fun a : prod (@IndexedEnsembles.IndexedEnsemble (@RawTuple heading)) (list (@RawTuple heading)) =>
+               @Return
+                 (prod
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) 
+                    (list W))
+                 (@pair
+                    (IndexedQueryStructure (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch)))) 
+                    (list W)
+                    (Refinements.UpdateIndexedRelation 
+                       (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                       (@icons3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch) heading O 
+                          (VectorDef.nil RawHeading) SearchUpdateTerm
+                          (@inil3 RawHeading (fun sch : RawHeading => SearchUpdateTerms sch))) r_n 
+                       (@F1 O)
+                       (@fst
+                          (@IndexedEnsembles.IndexedEnsemble
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                          (list
+                             (@RawTuple
+                                (@Build_RawHeading 
+                                   (S (S (S O)))
+                                   (Vector.cons Type W 
+                                      (S (S O))
+                                      (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type))))))) a))
+                    (@map (@RawTuple heading) (Domain heading (@F1 (S (S O))))
+                       (fun x : @RawTuple heading => @GetAttributeRaw heading x (@F1 (S (S O))))
+                       (@rev (@RawTuple heading)
+                          (@snd
+                             (@IndexedEnsembles.IndexedEnsemble
+                                (@RawTuple
+                                   (@Build_RawHeading 
+                                      (S (S (S O)))
+                                      (Vector.cons 
+                                         Type W (S (S O))
+                                         (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                             (list
+                                (@RawTuple
+                                   (@Build_RawHeading 
+                                      (S (S (S O)))
+                                      (Vector.cons 
+                                         Type W (S (S O))
+                                         (Vector.cons Type ProcessScheduler.State (S O) (Vector.cons Type W O (Vector.nil Type)))))))
+                             a)))))).
 
 Lemma SameValues_remove_SCA:
   forall (av0 : Type) (tenv' : Telescope av0)
@@ -992,12 +1213,102 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
+Print Type1.
+
+Definition av' := (list W + Type1 +
+                  (@IndexedEnsembles.IndexedEnsemble
+                     (@RawTuple heading)) +
+                  (list (@RawTuple heading)) +
+                  (@RawTuple heading))%type.
+
+Definition MyEnvListsC : Env av' :=
+  (GLabelMap.empty (FuncSpec _))
+    ### ("std", "rand") ->> (Axiomatic FRandom)
+    ### ("listW", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
+    ### ("listW", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
+    ### ("listW", "pop!") ->> (Axiomatic (List_pop W))
+    ### ("listW", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
+    ### ("listW", "empty?") ->> (Axiomatic (List_empty W))
+    ### ("listT", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list (@RawTuple heading)) nil))
+    ### ("listT", "push!") ->> (Axiomatic (FacadeImplementationOfMutation_ADT _ (list (@RawTuple heading)) cons))
+    ### ("listT", "pop!") ->> (Axiomatic (List_pop (@RawTuple heading)))
+    ### ("listT", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (list (@RawTuple heading))))
+    ### ("listT", "empty?") ->> (Axiomatic (List_empty (@RawTuple heading)))
+    ### ("IndexedEnsemble", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor IndexedEnsembles.IndexedEnsemble))
+    ### ("RawTuple", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (@RawTuple heading))).
+
+Check MethodOfInterest.
+
+Ltac _compile_CallBagFind :=
+  match_ProgOk
+     ltac:(fun prog pre post ext env =>
+             match constr:(pre, post) with
+             | (Cons (NTSome ?vdb) (ret ?db) (fun _ => Cons (NTSome ?vd) (ret ?d) ?tenv),
+                Cons NTNone (CallBagMethod ?id BagFind ?db (Some ?d, _)) ?tenv') =>
+               let vsnd := gensym "snd" in
+               let vtmp := gensym "tmp" in
+               match post with
+               | Cons NTNone ?bf _ =>
+                 eapply CompileSeq with ([[bf as retv]]
+                                           :: [[`vdb <-- Refinements.UpdateIndexedRelation
+                                                (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                (icons3 SearchUpdateTerm inil3) db F1 (fst retv)
+                                                as _]]
+                                           :: [[`vsnd <-- snd retv as s]]
+                                           :: [[`vd <-- d as _]]
+                                           :: (tenv d));
+                   [ match_ProgOk
+                       ltac:(fun prog' _ _ _ _ =>
+                               unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
+                                                 (vsnd :: vdb :: vd :: nil))) (* FIXME *) | ]
+               end
+             end).
+
+Ltac _compile_CallBagInsert :=
+  match_ProgOk
+     ltac:(fun prog pre post ext env =>
+             match constr:(pre, post) with
+             | (Cons ?vdb (ret ?db) (fun _ => ?tenv),
+                Cons NTNone ?bm (fun a => Cons ?vdb' (@?rel a) (fun _ => ?tenv'))) =>
+               unify vdb vdb';
+                 match constr:(vdb, bm, rel) with
+                 | (NTSome ?vdb', CallBagMethod ?id BagInsert ?db _, (fun a => ret (Refinements.UpdateIndexedRelation _ _ ?db' ?id a))) =>
+                   unify db db';
+                     let vtmp := gensym "tmp" in
+                     apply CompileSeq with (Cons NTNone bm (fun a => Cons vdb (rel a) (fun _ => tenv))); (* FIXME hardcoded var names *)
+                       [ match_ProgOk
+                           ltac:(fun prog' _ _ _ _ =>
+                                   unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ]
+                 end
+             end).
+
+Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
+              unify k k'; unify v v';
+              match k with
+              | NTNone => apply ProgOk_Chomp_None
+              | _ => apply ProgOk_Chomp_Some
+              end
+            end).
+
 Ltac tenv_mentions env v :=
   first [ match env with
           | context[?vv] => first [ is_evar vv; fail 1
                                  | unify v vv; fail 2 ]
           | _ => idtac
           end; fail 1 | idtac ].
+
+Ltac tenv_mentions_fast env v :=
+  lazymatch v with
+  | ?f => match env with context[f] => idtac end
+  | ?f ?a => match env with context[f ?a'] => unify a a' end
+  | ?f ?a ?b => match env with context[f ?a' ?b'] => unify a a'; unify b b' end
+  | ?f ?a ?b ?c => match env with context[f ?a' ?b' ?c'] => unify a a'; unify b b'; unify c c' end
+  | ?f ?a ?b ?c ?d => match env with context[f ?a' ?b' ?c' ?d'] => unify a a'; unify b b'; unify c c'; unify d d' end
+  end.
 
 Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
   (apply CompileDeallocSCA_discretely ||
@@ -1009,16 +1320,21 @@ Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
 
 Ltac _compile_destructor :=
   match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            let vtmp := gensym "tmp" in
-            match constr:(pre, post) with
-            | (Cons _ ?v (fun _ => ?tenv), ?tenv') =>
-              match v with
-              | ret ?vv => tenv_mentions tenv' vv; fail 1
-              | ?vv => tenv_mentions tenv' vv; fail 1
-              | _ => _compile_destructor_unsafe vtmp tenv tenv'
-              end
-            end).
+     ltac:(fun prog pre post ext env =>
+             let vtmp := gensym "tmp" in
+             match pre with
+             | Cons _ ?v (fun _ => ?tenv) =>
+               match tenv with
+               | context[post] => _compile_destructor_unsafe vtmp tenv post
+               | _ => unify tenv post; _compile_destructor_unsafe vtmp tenv post
+               | _ => lazymatch v with
+                 | ret ?vv => first [ tenv_mentions_fast post vv; fail 1
+                                   | _compile_destructor_unsafe vtmp tenv post ]
+                 | ?vv => first [ tenv_mentions_fast post vv; fail 1
+                               | _compile_destructor_unsafe vtmp tenv post ]
+                 end
+               end
+             end).
 
 Ltac _compile_skip :=
   match_ProgOk
@@ -1038,44 +1354,149 @@ Ltac _compile_if :=
 
 Ltac __compile_prepare_chomp tenv tenv' :=
   match tenv with
-  | Cons ?k ?v ?tenv =>
+  | Cons ?k ?v _ =>
     match tenv' with
-    | Cons k v _ => fail 1
-    | context[Cons k v _] => move_to_front k
+    | Cons ?k' ?v' _ =>
+      unify k k'; unify v v';
+      fail 1 (* Nothing to do: can already chomp *)
+    | Cons _ _ (fun _ => ?tail) =>
+      unify tenv tail; idtac;
+      fail 1 (* This is a job for deallocation, not chomping *)
+    | context[Cons k v _] =>
+      move_to_front k
     end
   end.
 
 Ltac _compile_prepare_chomp :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
+            is_evar prog;
             first [ __compile_prepare_chomp pre post
                   | __compile_prepare_chomp post pre ]).
 
 Arguments wrap : simpl never.
 
+Ltac useless_binder term :=
+  lazymatch term with
+  | (fun _ => ?body) => let capture := body in idtac
+  end.
+
+Ltac _compile_rewrite :=
+  (* setoid_rewrite at the speed of light *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | context[Cons ?k (ret _) ?tail] =>
+              first [ useless_binder tail; fail 1 |
+                      match k with
+                      | NTSome _ => setoid_rewrite Propagate_ret
+                      | NTNone => setoid_rewrite Propagate_anonymous_ret
+                      end ]
+            | context[Cons _ (Bind _ _) _] => setoid_rewrite SameValues_Fiat_Bind_TelEq
+            end).
+
 Ltac _compile_step :=
   match goal with
-  | _ => progress subst
-  | _ => progress intros
-  | _ => progress computes_to_inv
-  | _ => compile_do_side_conditions
-  | _ => _compile_skip
-  | _ => _compile_map
-  | _ => _compile_CallBagFind
-  | _ => _compile_CallBagInsert
-  | _ => _compile_CallGetAttribute
-  | _ => _compile_destructor
-  | _ => _compile_chomp
-  | _ => _compile_if
-  | _ => compile_simple
-  | _ => setoid_rewrite SameValues_Fiat_Bind_TelEq
-  | _ => setoid_rewrite Propagate_anonymous_ret
-  | _ => progress simpl
-  | _ => _compile_prepare_chomp
+  | _ => progress subst; idtac "progress subst"
+  | _ => progress intros; idtac "progress intros"
+  | _ => progress computes_to_inv; idtac "progress computes_to_inv"
+  | _ => _compile_rewrite; idtac "_compile_rewrite"
+  | _ => compile_do_side_conditions; idtac "compile_do_side_conditions"
+  | _ => _compile_skip; idtac "_compile_skip"
+  | _ => _compile_map; idtac "_compile_map"
+  | _ => _compile_CallBagFind; idtac "_compile_CallBagFind"
+  | _ => _compile_CallBagInsert; idtac "_compile_CallBagInsert"
+  | _ => _compile_CallGetAttribute; idtac "_compile_CallGetAttribute"
+  | _ => _compile_destructor; idtac "_compile_destructor"
+  | _ => _compile_chomp; idtac "_compile_chomp"
+  | _ => _compile_prepare_chomp; idtac "_compile_prepare_chomp"
+  | _ => _compile_if; idtac "_compile_if"
+  | _ => compile_simple; idtac "compile_simple"
+  | _ => progress simpl; idtac "progress simpl"
   end.
 
 Ltac _compile :=
   repeat _compile_step.
+
+Ltac _compile_random :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?tenv, Cons NTNone Random ?tenv') =>
+              let vrandom := gensym "random" in
+              apply ProgOk_Transitivity_Name with vrandom;
+                [ call_tactic_after_moving_head_binding_to_separate_goal
+                    ltac:(apply CompileCallRandom) | apply miniChomp' ] (* FIXME do deallocation here *)
+            end).
+
+Ltac compile_do_side_conditions_internal ::=
+  repeat cleanup; PreconditionSet_t;
+   match goal with
+   | _ => exact I
+   | |- _ <> _ => discriminate 1
+   | |- _ ∉ _ => decide_not_in
+   | |- NotInTelescope _ _ => decide_NotInTelescope
+   | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
+   | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
+   | |- GLabelMap.MapsTo _ _ _ =>
+         GLabelMapUtils.decide_mapsto_maybe_instantiate
+   end.
+
+Example random_test_with_adt :
+  Facade program implementing ( x <- Random;
+                                ret (if IL.weqb x 0 then
+                                       (Word.natToWord 32 1 : W) :: nil
+                                     else
+                                       x :: nil)) with MyEnvW.
+Proof.
+  Time compile_step.
+  repeat (_compile_random || compile_mutation_alloc || compile_constructor || _compile_step || match_ProgOk compile_rewrite).
+  (* FIXME try the side conditions before subst and computes_to_inv? *)
+Defined.
+
+Eval compute in (extract_facade random_test_with_adt).
+
+Definition Remembered {A} (a : A) := a.
+
+Ltac set_remember v :=
+  let vv := fresh in
+  change v with (Remembered v);
+    set (vv := Remembered v) in *.
+
+Ltac set_values tenv :=
+  lazymatch tenv with
+  | context[Cons _ ?v ?tail] =>
+    try match v with
+        | ret ?v  => set_remember v
+        | _ => set_remember v
+        end;
+      try set_values tail
+  | _ => idtac
+  end.
+
+Ltac unset_values :=
+  repeat match goal with
+         | [ H := Remembered _ |- _ ] => unfold H in *; clear H
+         | _ => unfold Remembered in *
+         end.
+
+(* Ltac _compile_destructor ::= *)
+(*      match_ProgOk *)
+(*      ltac:(fun prog pre post ext env => *)
+(*              let vtmp := gensym "tmp" in *)
+(*              match pre with *)
+(*              | Cons _ ?v (fun _ => ?tenv) => *)
+(*                match tenv with *)
+(*                | context[post] => _compile_destructor_unsafe vtmp tenv post *)
+(*                | _ => unify tenv post; _compile_destructor_unsafe vtmp tenv post *)
+(*                | _ => ( set_values tail; *)
+(*                        lazymatch v with *)
+(*                        | ret ?vv => tenv_not_mentions post vv; _compile_destructor_unsafe vtmp tenv post *)
+(*                        | ?vv => tenv_not_mentions post vv; _compile_destructor_unsafe vtmp tenv post *)
+(*                        end; *)
+(*                        unset_values) *)
+(*                end *)
+(*              end). *)
 
 Example compile2 :
   sigT (fun prog => forall r_n d d0,
@@ -1086,24 +1507,11 @@ Proof.
   eexists; intros.
   unfold Method2, Common.If_Then_Else.
 
-  change (@GetAttributeRaw heading
-                    (@ilist2.icons2 Type (@id Type) W 
-                       (S (S O))
-                       (Vector.cons Type ProcessScheduler.State 
-                          (S O) (Vector.cons Type W O (Vector.nil Type))) d
-                       (@ilist2.icons2 Type (@id Type) ProcessScheduler.State
-                          (S O) (Vector.cons Type W O (Vector.nil Type))
-                          SLEEPING
-                          (@ilist2.icons2 Type (@id Type) W O
-                             (Vector.nil Type) d0
-                             (@ilist2.inil2 Type (@id Type)))))
-                    (@F1 (S (S O)))) with d.
-
-  _compile.
+  Time repeat _compile_step.
   admit.
   instantiate (1 := Call "test" ("list", "Empty") ("snd" :: nil)) (* FIXME *); admit.
   admit.
-Defined.
+Time Defined.
 
 Eval compute in (extract_facade compile2).
 
@@ -1118,40 +1526,43 @@ Proof.
   eexists; intros.
   unfold MethodOfInterest.
 
-  _compile.
-  admit.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
+  _compile_step.
 
-  change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head.
-  _compile.
+  
+  Time repeat (_compile_step || change (ilist2.ilist2_hd (ilist2.icons2 head ilist2.inil2)) with head).
+  admit.
   admit.
 Defined.
 
 Opaque DummyArgument.
 Eval compute in (extract_facade compile).
-
-Ltac _compile_random :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (?tenv, Cons NTNone Random ?tenv') =>
-              let vrandom := gensym "random" in
-              apply ProgOk_Transitivity_Name with vrandom;
-                [ call_tactic_after_moving_head_binding_to_separate_goal
-                    ltac:(apply CompileCallRandom) | apply miniChomp' ] (* FIXME do deallocation here *)
-            end).
-
-Example random_test_with_adt :
-  Facade program implementing ( x <- Random;
-                                ret (if IL.weqb x 0 then
-                                       (Word.natToWord 32 1 : W) :: nil
-                                     else
-                                       x :: nil)) with MyEnvW.
-Proof.
-  compile_step.
-  repeat (_compile_random || compile_mutation_alloc || compile_constructor || _compile_step || match_ProgOk compile_rewrite).
-Defined.
-
-
 
 Example other_test_with_adt''''' :
     sigT (fun prog => forall seq seq', {{ [[`"arg1" <-- seq as _ ]] :: [[`"arg2" <-- seq' as _]] :: Nil }}
