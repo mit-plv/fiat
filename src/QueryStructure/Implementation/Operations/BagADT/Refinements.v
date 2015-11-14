@@ -1259,6 +1259,27 @@ Proof.
   rewrite i3th_replace_Index_neq; eauto.
 Qed.
 
+Lemma CallBagEnumerate_fst
+      {qs_schema : RawQueryStructureSchema}
+      {BagIndexKeys : ilist3 (qschemaSchemas qs_schema)}
+  : forall (idx : Fin.t (numRawQSschemaSchemas qs_schema))
+           (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+           a,
+    CallBagMethod idx BagEnumerate r_n ↝ a
+    -> r_n = (UpdateIndexedRelation _ _ r_n idx (fst a)).
+Proof.
+  unfold CallBagMethod; intros.
+  simpl in *; computes_to_inv; subst.
+  simpl.
+  unfold UpdateIndexedRelation.
+  unfold GetIndexedRelation.
+  unfold IndexedQueryStructure in r_n.
+  eapply ilist3_eq_ith3; intros.
+  destruct (fin_eq_dec idx idx0); subst.
+  rewrite i3th_replace_Index_eq; reflexivity.
+  rewrite i3th_replace_Index_neq; eauto.
+Qed.
+
 Arguments CallBagMethod : simpl never.
 Arguments CallBagMethod [_ _] _ _ _.
 
