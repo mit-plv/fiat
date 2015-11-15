@@ -125,10 +125,100 @@ Class IPoolCorrect (TPool TIndex TItem : Type)
                                                 pget (pput pool idx item) idx' = pget pool idx';
     pfresh_correct : forall pool, pget pool (pfresh pool) = None }.
 
+Module NatIPool.
+
+  Context {TItem : Type}.
+
+  Require Import
+          Coq.FSets.FMapInterface
+          Coq.FSets.FMapFacts
+          Coq.FSets.FMapAVL
+          Coq.Structures.OrderedTypeEx.
+
+  Module Import XMap := FMapAVL.Make Nat_as_OT.
+  Module Import XMapFacts := WFacts_fun Nat_as_OT XMap.
+
+  Definition TPool := { ds : (t TItem * nat) |
+                        forall idx t, MapsTo idx t (fst ds) -> idx < snd ds }.
+
+  Definition NatIPool_pempty : TPool.
+    refine (exist _ (empty TItem, O) _).
+    intros idx t. rewrite empty_mapsto_iff. tauto.
+  Defined.
+
+  Definition NatIPool_pget (pool : TPool) (idx : nat) :=
+    find idx (fst (proj1_sig pool)).
+
+  Definition NatIPool_pput : TPool -> nat -> option TItem -> TPool.
+    intros [[m n] pf].
+    refine (fun idx t =>
+              match t with
+              | None   => exist _ (remove idx m, n) _
+              | Some t'=> exist _ (add idx t' m, max n (S idx)) _
+              end); simpl in *; intuition.
+    - destruct (Peano_dec.eq_nat_dec idx idx0); subst.
+      apply NPeano.Nat.max_lt_iff. right. auto with arith.
+      apply NPeano.Nat.max_lt_iff. left. eapply pf. eapply add_3. eauto. eauto.
+    - eapply pf; eapply remove_3; eauto.
+  Defined.
+
+  Definition NatIPool_pfresh (pool : TPool) :=
+    snd (proj1_sig pool).
+
+  Lemma NatIPool_pempty_correct :
+    forall idx, NatIPool_pget NatIPool_pempty idx = None.
+  Proof.
+    apply empty_o.
+  Qed.
+
+  Lemma NatIPool_pput_eq :
+    forall pool idx item, NatIPool_pget (NatIPool_pput pool idx item) idx = item.
+  Proof.
+    unfold NatIPool_pget, NatIPool_pput.
+    intros [[m n] pf] idx item; destruct item eqn: eq; simpl; subst.
+    - eapply add_eq_o; eauto.
+    - eapply remove_eq_o; eauto.
+  Qed.
+
+  Lemma NatIPool_pput_neq :
+    forall pool idx idx' item,
+      idx <> idx' ->
+      NatIPool_pget (NatIPool_pput pool idx item) idx' = NatIPool_pget pool idx'.
+  Proof.
+    unfold NatIPool_pget, NatIPool_pput.
+    intros [[m n] pf] idx idx' item; destruct item eqn: eq; simpl; subst; intros.
+    - eapply add_neq_o; eauto.
+    - eapply remove_neq_o; eauto.
+  Qed.
+
+  Lemma NatIPool_pfresh_correct :
+    forall pool, NatIPool_pget pool (NatIPool_pfresh pool) = None.
+  Proof.
+    unfold NatIPool_pget, NatIPool_pfresh; intros [[m n] pf]; simpl.
+    destruct (find (elt:=TItem) n m) eqn: eq; eauto.
+    apply find_2 in eq. apply pf in eq. simpl in eq. omega.
+  Qed.
+
+  Global Instance NatIPoolAsIPool
+    : IPool TPool nat TItem :=
+    {| pempty := NatIPool_pempty;
+       pget   := NatIPool_pget;
+       pput   := NatIPool_pput;
+       pfresh := NatIPool_pfresh |}.
+
+  Global Instance NatIPoolAsCorrectIPool
+    : IPoolCorrect TPool nat TItem NatIPoolAsIPool :=
+    {| pempty_correct := NatIPool_pempty_correct;
+       pput_eq        := NatIPool_pput_eq;
+       pput_neq       := NatIPool_pput_neq;
+       pfresh_correct := NatIPool_pfresh_correct |}.
+
+End NatIPool.
+
 Section IndexedBag.
 
   Context {TBag TPool TIndex TItem TSearchTerm TUpdateTerm : Type}
-          (TIndex_dec : forall (idx idx' : TIndex), {idx = idx'} + {idx <> idx'})
+          (TIndex_dec : forall idx idx' : TIndex, {idx = idx'} + {idx <> idx'})
 
           (RepInv : (TIndex -> option TItem) -> TBag -> Prop)
           (Matcher : TSearchTerm -> TItem -> bool)
@@ -450,5 +540,19 @@ Section IndexedBag.
        bcount     := IndexedBag_bcount;
        bdelete    := IndexedBag_bdelete;
        bupdate    := IndexedBag_bupdate |}.
+
+  Global Instance IndexedBagAsCorrectBag
+    : CorrectBag IndexedBag_RepInv IndexedBag_ValidUpdate IndexedBagAsBag :=
+    {| bempty_RepInv     := IndexedBag_Empty_RepInv;
+       binsert_RepInv    := IndexedBag_binsert_Preserves_RepInv;
+       bdelete_RepInv    := IndexedBag_bdelete_Preserves_RepInv;
+       bupdate_RepInv    := IndexedBag_bupdate_Preserves_RepInv;
+
+       binsert_enumerate := IndexedBag_BagInsertEnumerate;
+       benumerate_empty  := IndexedBag_BagEnumerateEmpty;
+       bfind_correct     := IndexedBag_BagFindCorrect;
+       bcount_correct    := IndexedBag_BagCountCorrect;
+       bdelete_correct   := IndexedBag_BagDeleteCorrect;
+       bupdate_correct   := IndexedBag_BagUpdateCorrect |}.
 
 End IndexedBag.
