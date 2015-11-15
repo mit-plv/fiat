@@ -5,6 +5,11 @@ Instance : Query_eq (Word.word n) :=
   { A_eq_dec := @Word.weq n }.
 Opaque Word.weq.
 Opaque Word.natToWord.
+Opaque Word.wlt_dec.
+Definition WordMax (w w' : W) :=
+  if Word.wlt_dec w w' then w' else w.
+Definition MaxW (rows : Comp (list W)) : Comp (option W) :=
+  FoldAggregateOption WordMax rows.
 
 Definition VALUE := "VALUE".
 Definition MEASUREMENT_TYPE := "MEASUREMENT_TYPE".
@@ -25,7 +30,6 @@ Definition MEASUREMENTS := "MEASUREMENTS".
 Definition CELLS := "CELLS".
 
 Definition MeasurementType := W.
-
 
 Definition WeatherSchema :=
   Query Structure Schema
@@ -49,7 +53,7 @@ Definition AddMeasurement := "AddMeasurement".
 Definition CountCells := "CountCells".
 Definition LocalMax := "LocalMax".
 
-Definition WeatherSpec : ADT WeatherSig :=
+Definition WeatherSpec : ADT _ :=
   Eval simpl in
     QueryADTRep WeatherSchema {
     Def Constructor0 Init : rep := empty,
@@ -60,14 +64,14 @@ Definition WeatherSpec : ADT WeatherSig :=
     Def Method1 AddMeasurement (r : rep) (measurement : WeatherSchema#MEASUREMENTS) : rep * bool :=
       Insert measurement into r!MEASUREMENTS,
 
-    Def Method1 CountCells (r : rep) (area : AreaCode) : rep * nat :=
+    Def Method1 CountCells (r : rep) (area : W) : rep * nat :=
       cnt <- Count (For (cell in r!CELLS)
                         Where (area = cell!AREA_CODE)
                         Return 1);
     ret (r, cnt),
 
-    Def Method2 LocalMax (r : rep) (areaC : AreaCode) (measType : MeasurementType) : rep * (option Z) :=
-      max <- MaxZ (For (cell in r!CELLS) (measurement in r!MEASUREMENTS)
+    Def Method2 LocalMax (r : rep) (areaC : W) (measType : MeasurementType) : rep * (option W) :=
+      max <- MaxW (For (cell in r!CELLS) (measurement in r!MEASUREMENTS)
             Where (cell!AREA_CODE = areaC)
             Where (measurement!MEASUREMENT_TYPE = measType)
             Where (cell!CELL_ID = measurement!CELL_ID)
@@ -78,13 +82,85 @@ Definition WeatherSpec : ADT WeatherSig :=
 Definition SharpenedWeatherStation :
   MostlySharpened WeatherSpec.
 Proof.
+  start sharpening ADT.
+  simpl; pose_string_hyps; pose_heading_hyps.
+  start_honing_QueryStructure'.
+  GenerateIndexesForAll EqExpressionAttributeCounter
+  ltac:(fun attrlist =>
+          let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in
+              make_simple_indexes attrlist'
+                                  ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                         ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+  + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+         EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+         EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  + setoid_rewrite refine_For_rev; simplify with monad laws.
+    plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+         EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  + setoid_rewrite refine_For_rev; simplify with monad laws.
+    plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+         EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  + setoid_rewrite refine_For_rev; simplify with monad laws.
+    plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+         EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  + hone method "AddMeasurement".
+    { simpl in *; subst.
+      setoid_rewrite refine_Count; simplify with monad laws.
+      setoid_rewrite app_nil_r;
+        setoid_rewrite map_map; simpl.
+      unfold ilist2_hd at 1; simpl.
+      setoid_rewrite rev_length.
+      setoid_rewrite map_length.
+      setoid_rewrite refine_pick_eq'; simplify with monad laws.
+      repeat setoid_rewrite refine_If_Then_Else_Bind.
+      repeat setoid_rewrite refineEquiv_bind_bind.
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+      unfold H1.
+      eapply refine_under_bind; intros; set_evars.
+      rewrite (CallBagFind_fst H0); simpl.
+      finish honing.
+    }
+    hone method "CountCells".
+    { simpl in *; subst; simplify with monad laws.
+      setoid_rewrite refine_Count; simplify with monad laws.
+      unfold H1; eapply refine_under_bind; intros; set_evars.
+      rewrite (CallBagFind_fst H0); simpl.
+      setoid_rewrite refine_pick_eq'; simplify with monad laws.
+      rewrite rev_length.
+      rewrite !map_length.
+      rewrite app_nil_r; simpl.
+      rewrite map_length.
+      finish honing.
+    }
+    hone method "LocalMax".
+    { simpl in *; subst; simplify with monad laws.
+      unfold H1; eapply refine_under_bind; intros; set_evars.
+      rewrite (CallBagFind_fst H0); simpl.
+      etransitivity.
+      eapply refine_under_bind_both.
+      eapply (@foo WeatherSchema Index (Fin.FS Fin.F1)).
+      intros; finish honing.
+      simplify with monad laws.
+      unfold H2; apply refine_under_bind; set_evars.
+      intros.
+      apply foo' in H4; rewrite H4.
+      setoid_rewrite refine_pick_eq'; simplify with monad laws.
+      simpl.
+      finish honing.
+    }
+    simpl.
 
-  (* Uncomment this to see the mostly sharpened implementation *)
-  (* partial_master_plan EqIndexTactics. *)
-  master_plan EqIndexTactics.
+    simpl; eapply reflexivityT.
+  + unfold CallBagFind, CallBagInsert.
+    pose_headings_all.
+    match goal with
+    | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
+      FullySharpenQueryStructure Schema Indexes
+    end.
 
 Time Defined.
 
-Time Definition WeatherStationImpl : ComputationalADT.cADT WeatherSig :=
-  Eval simpl in projT1 SharpenedWeatherStation.
+Time Definition WeatherStationImpl :=
+  Eval simpl in (fst (projT1 SharpenedWeatherStation)).
 Print WeatherStationImpl.

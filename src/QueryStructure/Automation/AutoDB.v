@@ -1378,6 +1378,160 @@ Qed.
                end
       | ].
 
+    Definition flatten_CompList'
+               (A B : Type)
+               (c : list (B -> Comp (B * list A)))
+               (b : B)
+      : Comp (B * list A) :=
+      fold_right (fun a b =>
+                    l <- b;
+                  l' <- a (fst l);
+                  ret (fst l', app (snd l') (snd l)))
+                 (ret (b, [ ]))  c.
+    
+    Definition Join_Comp_Lists_prod
+               {n}
+               {A B : Type}
+                 {f : A -> Type}
+                 {As : Vector.t A n}
+                 {a : A}
+                 (b : B)
+                 (l' : list (ilist2 (B := f) As))
+                 (c : B -> ilist2 (B := f) As -> Comp (B * list (f a)))
+      : Comp (B * list (ilist2 (B := f) (Vector.cons _ a _ As))) :=
+      flatten_CompList' (map (fun a' b' => l <- c b' a'; (ret (fst l, map (fun fa : f a => icons2 fa a') (snd l)))) l') b.
+    
+    
+    Lemma Join_Comp_Lists_eq qs_schema Index n A' B A :
+      forall r_n a f' (f : ilist2 A -> B) l (z : _ -> B -> Comp (IndexedQueryStructure qs_schema Index * list _)),
+        (forall r_n a, refine (u <- z r_n a; ret (fst u)) (ret r_n) )
+        -> refine (Join_Comp_Lists (A := A' ) (f := f') (n := n) (a := a) l
+                                   (fun a =>
+                                      u <- z r_n (f a);
+                                    ret (snd u)))
+                  (r' <- Join_Comp_Lists_prod r_n l
+                      (fun r_n' a =>
+                         z r_n' (f a)) ;
+                   ret (snd r')).
+    Proof.
+      intros.
+      induction l; unfold Join_Comp_Lists, Join_Comp_Lists_prod; simpl.
+      - intros v CompV.
+        computes_to_inv; subst.
+        computes_to_econstructor.
+      - simplify with monad laws.
+        setoid_rewrite IHl.
+        repeat setoid_rewrite refineEquiv_bind_bind.
+        intros v Comp_v; computes_to_inv; subst.
+        repeat computes_to_econstructor; eauto.
+        pose proof (H _ (f a0) _ (ReturnComputes r_n)).
+        computes_to_inv; subst.
+    Admitted.
+    
+    Lemma foo qs_schema Index
+      : forall idx n h f r_n l,
+        refine (Join_Comp_Lists (n := n) l
+                                (fun a0 : ilist2 h =>
+                                   u <- @CallBagMethod qs_schema Index idx BagFind
+                                     r_n
+                                     (f a0);
+                                 ret (snd u)))
+               (u <- Join_Comp_Lists_prod r_n l
+                  (fun r_n (a0 : ilist2 h) =>
+                     @CallBagFind qs_schema Index idx
+                                  r_n
+                                  (f a0));
+                ret (snd u)) .
+    Proof.
+      intros.
+    Admitted.
+    
+    Lemma foo' qs_schema Index
+      : forall idx n h f r_n l a,
+        computes_to (Join_Comp_Lists_prod (n := n) r_n l
+                                          (fun r_n (a0 : ilist2 h) =>
+                                             @CallBagFind qs_schema Index idx
+                                                          r_n
+                                                          (f a0))) a
+                 -> r_n = (fst a).
+      Proof.
+        intros.
+      Admitted.
+
+  Definition Join_Comp_Lists_prod'
+           {n} {A B : Type} {f : A -> Type} {As : Vector.t A n} {a : A}
+           (b : B) (l : list (ilist2 (B := f) As)) (c : B -> ilist2 (B := f) As -> B * list (f a)) : B * list (ilist2 (B := f) (Vector.cons _ a _ As)) :=
+    fold_right (fun a' b' => (fst (c (fst b') a'),
+                              app (snd b')
+                                  (flatten (map
+                                              (fun l' => map (fun fa : f a => icons2 fa l') (snd (c (fst b') l'))) l))
+
+               )) (b, [ ]) l.
+
+  Lemma Join_Comp_Lists_Impl'
+        {B}
+        qs_schema
+        (n' := numRawQSschemaSchemas qs_schema ) (schemas := qschemaSchemas qs_schema)
+        n
+        (Index : ilist3 schemas)
+        (DelegateReps : Fin.t n' -> Type)
+        (DelegateImpls : forall idx : Fin.t n',
+            ComputationalADT.pcADT
+              (Build_IndexedQueryStructure_Impl_Sigs Index idx)
+              (DelegateReps idx))
+        ValidImpls
+        heading
+        (idx : Fin.t n')
+    : forall (r_n : IndexedQueryStructure qs_schema Index) l f' (f'' : _ -> B) r_n',
+       Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
+        ValidImpls r_n r_n'
+        -> refine (x <- @Join_Comp_Lists_prod n _ _ (@RawTuple) heading _ r_n l
+                                    (fun r_n b' =>
+                                       br <- CallBagMethod idx BagFind r_n
+                                          (f' b');
+                                     ret
+                                       (UpdateIndexedRelation qs_schema
+                                                              Index r_n
+                                                              idx (fst br), snd br));
+             r_n'0 <- {r_n0 | Build_IndexedQueryStructure_Impl_AbsR DelegateReps
+                                                                    DelegateImpls ValidImpls (fst x) r_n0};
+             ret (r_n'0, f'' (snd x)))
+
+            (let res := (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
+                                                  let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
+                                                                               (f' b') in
+
+                                       (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
+                                                              idx (fst br), snd br))) in ret (fst res, f'' (snd res) )).
+Proof.
+  induction l; unfold Join_Comp_Lists, Join_Comp_Lists'; simpl; intros.
+Admitted.
+
+Ltac Implement_Bound_Join_Comp_Lists' :=
+match goal with
+  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                               ?ValidImpls ?r_o ?r_n
+    |- refine (Bind (@Join_Comp_Lists_prod _ _ ?B ?f ?As ?a ?b ?l
+                                           (fun r_n b' =>
+                                              br <- CallBagMethod ?idx BagFind r_n
+                                                 (@?f' b');
+                                            ret
+                                              (UpdateIndexedRelation ?qs_schema
+                                                              ?Index r_n
+                                                              ?idx (fst br), snd br))
+                    ) (fun x1 => r_n' <- _; ret (r_n', @?f'' x1 ))) _ =>
+    match type of f'' with
+      _ * ?B -> ?C =>
+      makeEvar (B -> C)
+               ltac:(fun g =>
+                       assert (forall x', g (snd x') = f'' x') by
+                         (let x' := fresh in intros x'; destruct x'; simpl; reflexivity);
+                     setoid_rewrite (@Join_Comp_Lists_Impl' _ qs_schema _ Index DelegateReps DelegateImpls ValidImpls _ idx b l f' g);
+                     eauto using (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index DelegateReps DelegateImpls ValidImpls))
+
+    end
+end.
+
     Ltac implement_bag_methods :=
   etransitivity;
   [ repeat (first [
@@ -1387,6 +1541,7 @@ Qed.
            | Implement_If_Opt_Then_Else
            | Implement_Bound_Bag_Call
            | Implement_Bound_Join_Comp_Lists
+           | Implement_Bound_Join_Comp_Lists'
            | Implement_AbsR_Relation
            | match goal with
                |- context[CallBagImplMethod _ _ _ _ _] =>
