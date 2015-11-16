@@ -130,7 +130,6 @@ Fixpoint Decomposei3list
                               Cons (NTSome ("rep" ++ (NumberToString n'))) (ret (prim_fst r)) (fun _ => Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
   end.
 
-Require Import Fiat.ADTNotation.
 
 Definition DecomposeIndexedQueryStructure av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
