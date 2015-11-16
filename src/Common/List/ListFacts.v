@@ -1000,4 +1000,16 @@ Section ListFacts.
   Proof.
     induction n; simpl; auto.
   Qed.
+
+  Lemma filter_out_filter {A} f (ls : list A)
+  :  filter_out f ls = filter (fun x => negb (f x)) ls.
+  Proof.
+    induction ls; simpl; trivial; rewrite !IHls; edestruct f; reflexivity.
+  Qed.
+
+  Lemma filter_filter_out {A} f (ls : list A)
+  :  filter f ls = filter_out (fun x => negb (f x)) ls.
+  Proof.
+    induction ls; simpl; trivial; rewrite !IHls; edestruct f; reflexivity.
+  Qed.
 End ListFacts.

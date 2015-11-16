@@ -7,6 +7,8 @@ Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
+Global Arguments min !_ !_.
+Global Arguments max !_ !_.
 
 Declare Reduction splitter_red0 := cbv beta iota zeta delta [ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
 

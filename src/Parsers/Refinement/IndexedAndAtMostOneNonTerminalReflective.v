@@ -476,7 +476,7 @@ Section IndexedImpl.
       ret ((fst s, (fst (snd s), min (snd (snd s)) n))),
 
     Def Method1 "drop"(s : rep) (n : nat) : rep :=
-      ret ((fst s, (min n (snd (snd s)) + fst (snd s), (snd (snd s) - n)%natr))),
+      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr))),
 
     Def Method2 "splits"(s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) : rep * (list nat) :=
       dummy <- { ls : list nat | True };
@@ -719,6 +719,9 @@ Section IndexedImpl.
       | [ H : EqNat.beq_nat _ _ = false |- _ ] => apply EqNat.beq_nat_false in H
       | [ H : Compare_dec.leb _ _ = true |- _ ] => apply Compare_dec.leb_complete in H
       | [ H : Compare_dec.leb _ _ = false |- _ ] => apply Compare_dec.leb_complete_conv in H
+      | [ H : context[?x - ?x] |- _ ] => rewrite Minus.minus_diag in H
+      | [ H : context[min _ 0] |- _ ] => rewrite Min.min_0_r in H
+      | [ H : context[min 0 _] |- _ ] => rewrite Min.min_0_l in H
       | [ H : option_beq ascii_beq _ _ = true |- _ ]
         => apply (option_bl (@ascii_bl)) in H
       | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ]
@@ -731,6 +734,8 @@ Section IndexedImpl.
         => rewrite <- (Nat.sub_min_distr_r x (y + z) z)
       | [ H : context[min ?x (?y + ?z) - ?z] |- _ ]
         => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
+      | [ H : context[min ?x ?z - ?z] |- _ ]
+        => rewrite <- (Nat.sub_min_distr_r x z z) in H
       | [ H : context[ascii_beq ?x ?x] |- _ ] => rewrite (ascii_lb eq_refl) in H
       | [ H : ?x = ?y, H' : option_beq _ ?x ?y' = _ |- _]
         => match constr:(y, y') with
@@ -743,6 +748,7 @@ Section IndexedImpl.
       | [ H : context[?x + ?y - ?y] |- _ ] => rewrite Nat.add_sub in H
       | [ |- context[?x + ?y - ?y] ] => rewrite Nat.add_sub
       | [ H : ?x = 0 |- context[?x] ] => rewrite H
+      | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
       | [ H : 1 = snd (snd ?x), H' : context[snd (snd ?x)] |- _ ]
         => is_var x; rewrite <- H in H'
       | [ |- context[min 0 _] ] => rewrite Min.min_0_l
@@ -853,7 +859,7 @@ Section IndexedImpl.
     unfold rindexed_spec', expanded_fallback_list', split_list_is_complete_alt.
     econstructor 1 with (AbsR := (fun r_o r_n =>
                                     (substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o)
-                                    /\ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n))));
+                                    /\ (snd (snd r_n) = 0 \/ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n)))));
       do_Iterate_Ensemble_BoundedIndex_equiv.
     { rewrite substring_correct3'; reflexivity. }
     { repeat match goal with
@@ -881,13 +887,11 @@ Section IndexedImpl.
                | [ |- get 0 _ = Some _ ] => apply get_0
                | _ => apply min_case_strong_r; intro
              end. }
-    { rewrite substring_length, Min.min_r by assumption; omega. }
+    { rewrite substring_length; fin_common; rewrite Min.min_r by omega; omega. }
     { rewrite take_take, Min.min_comm; reflexivity. }
     { apply Min.min_case_strong; omega. }
     { rewrite drop_take, drop_drop, minusr_minus.
-      apply Min.min_case_strong; intro; try reflexivity; [].
-      rewrite (proj2 (Nat.sub_0_le _ _)) by assumption.
-      apply substring_correct0, substring_correct0_length. }
+      reflexivity. }
     { fin_common. }
     unfold split_list_is_complete.
     intros.
@@ -915,7 +919,7 @@ Section IndexedImpl.
       | [ H : context[length (substring ?n ?m ?s)] |- _ ]
         => let H' := fresh in
            assert (H' : length (substring n m s) = m)
-             by (rewrite substring_length, Min.min_r by assumption; omega);
+             by (rewrite substring_length; fin_common; rewrite Min.min_r by omega; omega);
              rewrite !H' in H |- *
     end.
     intro ls; induction ls; simpl; trivial; [].

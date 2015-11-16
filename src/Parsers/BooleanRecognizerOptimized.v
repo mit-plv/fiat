@@ -392,8 +392,8 @@ Section recursive_descent_parser.
     unfold G'.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort list_to_grammar].
     change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k l => @parse_nonterminal_step Char b c d e f g h i j k l); cbv beta.
-    evar (b : bool).
-    sigL_transitivity b; subst b;
+    evar (b' : bool).
+    sigL_transitivity b'; subst b';
     [
     | rewrite Fix5_2_5_eq by (intros; apply parse_nonterminal_step_ext; assumption);
       reflexivity ].
@@ -401,8 +401,8 @@ Section recursive_descent_parser.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
     cbv beta iota zeta delta [rdp_list_nonterminals_listT rdp_list_is_valid_nonterminal rdp_list_remove_nonterminal].
-    evar (b : bool).
-    sigL_transitivity b; subst b;
+    evar (b' : bool).
+    sigL_transitivity b'; subst b';
     [
     | rewrite <- !surjective_pairing, !to_of;
       reflexivity ].

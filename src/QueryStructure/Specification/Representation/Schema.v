@@ -42,6 +42,15 @@ Definition tupleAgree
 Definition AttributeList {hHint : HeadingHint}
   := list (Attributes headingHint).
 
+Definition UniqueAttribute' {heading : RawHeading}
+           attr
+           (tup1 tup2 : @RawTuple heading) :=
+  GetAttributeRaw tup1 attr <> GetAttributeRaw tup2 attr.
+
+Definition UniqueAttribute {heading}
+           (attr : BoundedString (HeadingNames heading)) :=
+  UniqueAttribute' (ibound (indexb attr)).
+
 Notation "[ attr1 ; .. ; attr2 ] " :=
   (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr1%string _)))
         .. (cons

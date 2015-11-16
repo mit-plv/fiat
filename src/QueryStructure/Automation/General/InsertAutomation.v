@@ -133,7 +133,6 @@ Ltac drop_symmetric_functional_dependencies :=
            try setoid_rewrite if_duplicate_cond_eq
   end.
 
-
 Ltac drop_constraints_from_insert :=
   remove trivial insertion checks;
   (* The trivial insertion checks involve the fresh id,

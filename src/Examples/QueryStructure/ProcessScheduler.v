@@ -13,7 +13,7 @@ Definition SchedulerSchema :=
   Query Structure Schema [
           relation "Processes" has schema
           <"pid" :: W, "state" :: State, "cpu" :: W>
-          where attributes ["cpu"; "state"] depend on ["pid"]
+          where (UniqueAttribute ``"pid")
   ] enforcing [].
 
 Definition SchedulerSpec : ADT _ :=
@@ -34,7 +34,6 @@ Definition SchedulerSpec : ADT _ :=
                 Where (p!"pid" = id)
                 Return (p!"cpu");
       ret (r, proc)
-
               }%methDefParsing.
 
 Definition SharpenedScheduler :
@@ -43,6 +42,16 @@ Proof.
   start sharpening ADT.
   simpl; pose_string_hyps; pose_heading_hyps.
   start_honing_QueryStructure'.
+  hone method "Spawn".
+  { setoid_rewrite UniqueAttribute_symmetry.
+    setoid_rewrite (@refine_uniqueness_check_into_query' SchedulerSchema Fin.F1 _ _ _ _).
+    setoid_rewrite refine_For_rev.
+    setoid_rewrite refine_Count.
+    simplify with monad laws; simpl in *; subst.
+    setoid_rewrite refine_pick_eq'.
+    setoid_rewrite refine_bind_unit.
+    setoid_rewrite refine_If_Then_Else_Duplicate.
+    finish honing. }
   (* Now we implement the various set operations using BagADTs. *)
   - make_simple_indexes
       {|
@@ -55,38 +64,51 @@ Proof.
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
     + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    + setoid_rewrite refine_For_rev; simplify with monad laws.
+      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    + setoid_rewrite refine_For_rev; simplify with monad laws.
+      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
     + hone method "Spawn".
       { subst; simplify with monad laws.
+        unfold GetAttributeRaw at 1.
+        simpl; unfold ilist2_hd at 1; simpl.
         unfold H1; apply refine_under_bind.
         intros; set_evars.
         setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        rewrite app_nil_r, map_map, map_length; simpl.        
+        rewrite app_nil_r, map_map; simpl.
+        unfold ilist2_hd; simpl; rewrite map_id.
         repeat setoid_rewrite refine_If_Then_Else_Bind.
         repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+        setoid_rewrite refineEquiv_bind_bind.
+        setoid_rewrite refineEquiv_bind_unit.
+        rewrite (CallBagFind_fst H0); simpl.
         finish honing.
       }
       hone method "Enumerate".
       { subst; simplify with monad laws.
         unfold H1; apply refine_under_bind.
-        intros; set_evars.
+        intros; set_evars; simpl in *.
+        rewrite (CallBagFind_fst H0).
         setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map.
+        simpl; rewrite app_nil_r, map_map, <- map_rev.
+        unfold ilist2_hd; simpl.
         finish honing.
       }
       hone method "GetCPUTime".
       { subst; simplify with monad laws.
         unfold H1; apply refine_under_bind.
-        intros; set_evars.
+        intros; set_evars; rewrite (CallBagFind_fst H0); simpl in *.
         setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map.
+        simpl; rewrite app_nil_r, map_map, <- map_rev.
+        unfold ilist2_hd; simpl.
         finish honing.
       }
+      simpl.
       eapply reflexivityT.
-  - pose_headings_all;
+  - unfold CallBagFind, CallBagInsert.
+    pose_headings_all;
       match goal with
       | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
         FullySharpenQueryStructure Schema Indexes
@@ -101,6 +123,7 @@ Time Definition SchedulerImplSpecs :=
   Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
 Print SchedulerImplSpecs.
 
+Print MostlySharpened.
 
 Lemma GetRelation_Empty_eq  :
   forall MySchema R,

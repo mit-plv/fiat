@@ -79,12 +79,12 @@ Proof.
 Qed.
 
 Ltac decide_NotInTelescope :=
-  repeat match goal with
-         | _ => cleanup
-         | _ => congruence
-         | [  |- NotInTelescope _ Nil ] => reflexivity
-         | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
-         end.
+  progress repeat match goal with
+                  | _ => cleanup
+                  | _ => congruence
+                  | [  |- NotInTelescope _ Nil ] => reflexivity
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
+                  end.
 
 Fixpoint DropName {A} k (t: Telescope A) :=
   match t with

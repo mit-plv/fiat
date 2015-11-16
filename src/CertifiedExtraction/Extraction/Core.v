@@ -45,15 +45,22 @@ Tactic Notation "debug" constr(m1) constr(m2) :=
 Hint Extern 1 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
 Hint Extern 1 (_ ∉ _) => decide_not_in : SameValues_db.
 
+Ltac compile_do_side_conditions_internal :=
+  repeat cleanup;
+  PreconditionSet_t;
+  match goal with
+  | _ => exact I                 (* FIXME This is much faster than adding a match for True; why? *)
+  | _ => discriminate
+  | _ => congruence
+  | [  |- _ ∉ _ ] => decide_not_in
+  | [  |- NotInTelescope _ _ ] => decide_NotInTelescope
+  | [  |- StringMap.find _ _ = Some _ ] => decide_mapsto_maybe_instantiate
+  | [  |- StringMap.MapsTo _ _ _ ] => decide_mapsto_maybe_instantiate
+  | [  |- GLabelMap.MapsTo _ _ _ ] => GLabelMapUtils.decide_mapsto_maybe_instantiate
+  end.
+
 Ltac compile_do_side_conditions :=
-  solve [ PreconditionSet_t;
-          match goal with
-          | _ => abstract decide_not_in
-          | _ => abstract decide_NotInTelescope
-          | [  |- StringMap.find _ _ = Some _ ] => solve [decide_mapsto_maybe_instantiate]
-          | [  |- StringMap.MapsTo _ _ _ ] => solve [decide_mapsto_maybe_instantiate]
-          | [  |- GLabelMap.MapsTo _ _ _ ] => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
-          end].
+  solve [compile_do_side_conditions_internal].
 
 Ltac match_ProgOk continuation :=
   lazymatch goal with
