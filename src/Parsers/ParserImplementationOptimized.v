@@ -86,7 +86,7 @@ Section implementation.
   Definition parser : Parser G stringlike_stringlike.
   Proof.
     apply grammar_rvalid_correct in Hvalid.
-    let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (data := pdata) (proj (make_string str)) (Start_symbol G))) in
+    let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (splitdata := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R] in impl) in

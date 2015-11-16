@@ -1,92 +1,92 @@
 Require Import CertifiedExtraction.Extraction.External.Core.
 
-Definition List_pop : AxiomaticSpec (list W).
+Unset Implicit Arguments.
+
+Definition List_pop {av} A `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
-                   exists h t,
-                     args = (ADT (cons h t)) :: nil;
+                   exists (h: A) t,
+                     args = (wrap (cons h t)) :: nil;
       PostCond := fun args ret =>
-                    exists h t,
-                      args = (ADT (cons h t), Some t) :: nil /\
-                      ret = SCA (list W) h
+                    exists (h: A) t,
+                      args = (wrap (cons h t), Some (wrap t)) :: nil /\
+                      ret = wrap h
     |}; spec_t.
 Defined.
 
-Definition List_empty : AxiomaticSpec (list W).
+Definition List_empty {av} A `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} : AxiomaticSpec av.
   refine {|
       PreCond := fun args =>
-                   exists l,
-                     args = (ADT l) :: nil;
+                   exists l: list A,
+                     args = (wrap l) :: nil;
       PostCond := fun args ret =>
-                    exists l,
-                      args = (ADT l, Some l) :: nil /\
-                      exists w, ret = SCA _ w /\ w = bool2w (match l with
+                    exists l: list A,
+                      args = (wrap l, Some (wrap l)) :: nil /\
+                      exists w, ret = wrap w /\ w = bool2w (match l with
                                                        | nil => true
                                                        | _ => false
                                                        end)
     |}; spec_t.
 Defined.
 
-Lemma CompileCallEmpty:
-  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
-    (fempty : GLabelMap.key) (lst : list W),
-    vlst <> vtest ->
-    vtest ∉ ext ->
-    NotInTelescope vtest tenv ->
-    vlst ∉ ext ->
-    NotInTelescope vlst tenv ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
-    {{ [[vlst <-- ADT lst as _]]::tenv }}
-      Call vtest fempty (vlst :: nil)
-    {{ [[vtest <-- SCA (list W) (bool2w match lst with
-                                      | nil => true
-                                      | _ :: _ => false
-                                      end) as _]]::[[vlst <-- ADT lst as _]]::tenv }} ∪ {{ ext }} // env.
-Proof.
-  repeat (SameValues_Facade_t_step || facade_cleanup_call); facade_eauto.
-Qed.
+Set Implicit Arguments.
 
-Lemma CompileCallEmpty':
-  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
-    (fempty : GLabelMap.key) (lst : list W),
+Lemma CompileCallEmpty:
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
+    (fempty : GLabelMap.key) (lst : list A),
     vlst <> vtest ->
     vtest ∉ ext ->
-    Lifted_MapsTo ext tenv vlst (ADT lst) ->
+    Lifted_MapsTo ext tenv vlst (wrap lst) ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty _)) env ->
     {{ tenv }}
       Call vtest fempty (vlst :: nil)
-    {{ [[vtest <-- SCA (list W) (bool2w match lst with
-                                      | nil => true
-                                      | _ :: _ => false
-                                      end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
+    {{ [[`vtest <-- (bool2w match lst with
+                         | nil => true
+                         | _ :: _ => false
+                         end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
-         | _ =>  SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t
-         end.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
   facade_eauto.
   facade_eauto.
-  rewrite <- remove_add_comm by congruence.
+  facade_eauto.
+  rewrite <- remove_add_comm by congruence. (* FIXME *)
   apply DropName_remove.
   eauto.
   rewrite <- add_redundant_cancel; eauto.
 Qed.
 
-Lemma CompileCallPop':
-  forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec (list W))) tenv ext
-    (fpop : GLabelMap.key) head (tail : list W),
+Lemma CompileCallEmpty_spec:
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) (tenv: Telescope av) ext
+    (fempty : GLabelMap.key) (lst : Comp (list A)),
+    vlst <> vtest ->
+    vtest ∉ ext ->
+    Lifted_not_mapsto_adt ext tenv vtest ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
+    {{ [[`vlst <~~ lst as _]] :: tenv }}
+      Call vtest fempty (vlst :: nil)
+    {{ [[`vlst <~~ lst as ls]] :: [[`vtest <-- (bool2w match ls with
+                                                | nil => true
+                                                | _ :: _ => false
+                                                end) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
+  facade_eauto.
+Qed.
+
+Lemma CompileCallPop:
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper av (list A)} (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec av)) tenv ext
+    (fpop : GLabelMap.key) head (tail : list A),
     vlst <> vhead ->
     vhead ∉ ext ->
     vlst ∉ ext ->
-    Lifted_MapsTo ext tenv vlst (ADT (head :: tail)) ->
+    Lifted_MapsTo ext tenv vlst (wrap (head :: tail)) ->
     Lifted_not_mapsto_adt ext tenv vhead ->
-    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
+    GLabelMap.MapsTo fpop (Axiomatic (List_pop _)) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
-    {{ [[vhead <-- SCA (list W) head as _]]::[[vlst <-- ADT tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+    {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
-  repeat match goal with
-         | _ =>  SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t
-         end;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.
 Qed.

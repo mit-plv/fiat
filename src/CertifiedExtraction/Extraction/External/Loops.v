@@ -3,8 +3,8 @@ Require Import
         CertifiedExtraction.Extraction.External.Core.
 
 Lemma CompileWhileFalse:
-  forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
-    (tenv : Telescope (list W)) tenv' test body,
+  forall {av} (env : GLabelMap.t (FuncSpec av)) (ext : StringMap.t (Value av))
+    (tenv : Telescope av) tenv' test body,
     TelEq ext tenv tenv' ->
     Lifted_is_false ext tenv test ->
     {{ tenv }} (DFacade.While test body) {{ tenv' }} ∪ {{ ext }} // env.
@@ -23,8 +23,8 @@ Proof.
 Qed.
 
 Lemma CompileWhileTrue:
-  forall (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W)))
-    (tenv : Telescope (list W)) tenv' tenv'' test body,
+  forall {av} (env : GLabelMap.t (FuncSpec av)) (ext : StringMap.t (Value av))
+    (tenv : Telescope av) tenv' tenv'' test body,
     Lifted_is_true ext tenv test ->
     {{ tenv }}  body                      {{ tenv' }}  ∪ {{ ext }} // env ->
     {{ tenv' }} (DFacade.While test body) {{ tenv'' }} ∪ {{ ext }} // env ->
@@ -42,13 +42,13 @@ Proof.
 Qed.
 
 Lemma CompileWhileFalse_Loop:
-  forall (vtest : StringMap.key) 
-    (env : GLabelMap.t (FuncSpec (list W))) (ext : StringMap.t (Value (list W))) 
-    (tenv : Telescope (list W)) tenv' body,
+  forall {av} (vtest : StringMap.key)
+    (env : GLabelMap.t (FuncSpec av)) (ext : StringMap.t (Value av))
+    (tenv : Telescope av) tenv' body,
     TelEq ext tenv tenv' ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
-    {{ [[vtest <-- SCA (list W) (Word.natToWord 32 1) as _]]::tenv }}
+    {{[[`vtest <-- (Word.natToWord 32 1) as _]]::tenv }}
       (DFacade.While (TestE IL.Eq vtest O) body)
     {{ tenv' }} ∪ {{ ext }} // env.
 Proof.

@@ -4,6 +4,7 @@ Require Export
         CertifiedExtraction.Utils
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.ComputesToLemmas.
+
 Require Export Coq.Setoids.Setoid.
 
 Local Open Scope map_scope.
@@ -55,6 +56,10 @@ Ltac t_Morphism_step :=
 
   | [ |- context[match StringMap.find ?k ?m with _ => _ end] ] => let h := fresh in destruct (StringMap.find k m) eqn:h; simpl
   | [ H: context[match StringMap.find ?k ?m with _ => _ end] |- _ ] => let h := fresh in destruct (StringMap.find k m) eqn:h; simpl in H
+
+  | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
+  | [ |- context[match unwrap ?v with _ => _ end] ] => let h := fresh in destruct (unwrap v) eqn:h; simpl
+  | [ H: context[match unwrap ?v with _ => _ end] |- _ ] => let h := fresh in destruct (unwrap v) eqn:h; simpl
 
   | [ H: exists v, _ |- exists v, _ ] => destruct H; eexists
   end.
@@ -113,9 +118,12 @@ Ltac step :=
   | _ => progress intros; simpl in *
   | _ => progress split
   | [ H: ?a /\ ?b |- _ ] => destruct H
+  | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
+  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
   | [ H: StringMap.MapsTo ?k ?v ?m |- Some ?v = StringMap.find ?k ?m ] => symmetry; rewrite <- find_mapsto_iff; assumption
   | [ H: StringMap.MapsTo ?k ?v ?m |- context[StringMap.find ?k ?m] ] => replace (StringMap.find k m) with (Some v) in *
   | [ H: context[match StringMap.find ?k ?m with | Some _ => _ | None => _ end] |- _ ] => let eq0 := fresh in progress (destruct (StringMap.find k m) eqn:eq0; deduplicate)
+  | [ H: context[match unwrap ?v with _ => _ end] |- _ ] => let eq0 := fresh in progress (destruct (unwrap v) eqn:eq0; deduplicate)
   | [ H: ret _ ↝ _ |- _ ] => inversion H; clear H; subst
   | _ => solve [intuition eauto]
   end.
@@ -124,32 +132,32 @@ Ltac t__ :=
   repeat step.
 
 Lemma SameValues_MapsTo_ret:
-  forall {av}
-    (key : String.string) (value : Comp (Value av))
-    (tail : Value av -> Telescope av)
-    (ext state : StringMap.t (Value av)) (x : Value av),
-    StringMap.MapsTo key x state ->
-    state ≲ Cons (Some key) value tail ∪ ext ->
-    state ≲ Cons (Some key) (ret x) tail ∪ ext.
+  forall `{H: FacadeWrapper (Value av) A}
+    (key : String.string) (value : Comp A)
+    (tail : A -> Telescope av)
+    (ext state : StringMap.t (Value av)) (x : A),
+    StringMap.MapsTo key (wrap x) state ->
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
+    state ≲ Cons (NTSome key) (ret x) tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_MapsTo_ret_inv:
-  forall {av}
-    (key : String.string) (value : Comp (Value av))
-    (tail : Value av -> Telescope av)
-    (ext state : StringMap.t (Value av)) (x : Value av),
+  forall `{H: FacadeWrapper (Value av) A}
+    (key : String.string) (value : Comp A)
+    (tail : A -> Telescope av)
+    (ext state : StringMap.t (Value av)) (x : A),
     value ↝ x ->
-    state ≲ Cons (Some key) (ret x) tail ∪ ext ->
-    state ≲ Cons (Some key) value tail ∪ ext.
+    state ≲ Cons (NTSome key) (ret x) tail ∪ ext ->
+    state ≲ Cons (NTSome key) value tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_MapsTo_ret_ex:
-  forall {av}
-    (key : String.string) (value : Comp (Value av))
-    (tail : Value av -> Telescope av)
+  forall `{H: FacadeWrapper (Value av) A}
+    (key : String.string) (value : Comp A)
+    (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)),
-    state ≲ Cons (Some key) value tail ∪ ext ->
-    exists v, value ↝ v /\ state ≲ Cons (Some key) (ret v) tail ∪ ext.
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
+    exists v, value ↝ v /\ state ≲ Cons (NTSome key) (ret v) tail ∪ ext.
 Proof. t__. Qed.
 
 Lemma SameValues_Equal :
@@ -158,7 +166,7 @@ Lemma SameValues_Equal :
     (m1 ≲ tenv ∪ ext ->
      m2 ≲ tenv ∪ ext).
 Proof.
-  induction tenv as [ | ? ? ? IH ];
+  induction tenv;
   repeat match goal with
          | [ IH: _, H: StringMap.remove ?k ?m1 ≲ (?t ?v) ∪ ?ext, H': StringMap.Equal ?m1 ?m2 |-
              StringMap.remove ?k ?m2 ≲ (?t ?v) ∪ ?ext ] => apply (IH _ _ _ _ (remove_m eq_refl H')); exact H
@@ -318,15 +326,16 @@ Ltac StringMap_t :=
   end.
 
 Lemma SameValues_Pop_Both:
-  forall {av} k ext tenv (st : State av) cmp v,
+  forall `{FacadeWrapper (Value av) A}
+    k ext tenv (st : State av) cmp (v: A),
     cmp ↝ v ->
     StringMap.remove k st ≲ tenv ∪ ext ->
-    [k <-- v] :: st ≲ [[`k <~~ cmp as _]] :: tenv ∪ ext.
+    [k <-- wrap v] :: st ≲ [[`k <~~ cmp as _]] :: tenv ∪ ext.
 Proof.
-  intros; simpl; repeat StringMap_t; eauto.
+  intros; simpl; repeat (StringMap_t; cleanup); eauto.
 Qed.
 
-Hint Resolve SameValues_Pop_Both : SameValues_db.
+Hint Resolve @SameValues_Pop_Both : SameValues_db.
 
 Lemma SameValues_WeakEq :
   forall {av} tenv st1 st2 m,
@@ -373,15 +382,16 @@ Proof.
              H'': StringMap.MapsTo ?key ?v' _  |- _ ] => specialize (H v key ext st H' v' H''); rename H into IHREC
          | [ H: StringMap.MapsTo ?k ?v (StringMap.remove _ ?s) |- StringMap.MapsTo ?k ?v ?s ] => solve[eauto using MapsTo_remove]
          | [ H: match StringMap.find ?s ?st with _ => _ end |- _ ] => let a := fresh in destruct (StringMap.find s st) eqn:a
+         | [ H: match unwrap ?v with _ => _ end |- _ ] => let a := fresh in destruct (unwrap v) eqn:a
          | [ H: exists v, _ |- _ ] => destruct H
          end; eauto using WeakEq_Mapsto_MapsTo. (*! FIXME why does adding the eauto at the end of the match make things slower? *)
 Qed.
 
 Lemma SameValues_MapsTo_Ext_State_add:
-  forall {av : Type} {tel: Telescope av} (key : StringMap.key)
-    {v} {ext st : StringMap.t (Value av)},
-    st ≲ tel ∪ [key <-- v]::ext ->
-    StringMap.MapsTo key v st.
+  forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key)
+    {v: A} {ext st : StringMap.t (Value av)},
+    st ≲ tel ∪ [key <-- wrap v]::ext ->
+    StringMap.MapsTo key (wrap v) st.
 Proof.
   intros; eauto using SameValues_MapsTo_Ext_State, StringMap.add_1.
 Qed.
@@ -399,9 +409,9 @@ Proof.
 Qed.
 
 Lemma SameValues_In_Ext_State_add:
-  forall {av : Type} {tel: Telescope av} (key : StringMap.key) v
+  forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key) (v: A)
     {ext st : StringMap.t (Value av)},
-    st ≲ tel ∪ [key <-- v]::ext ->
+    st ≲ tel ∪ [key <-- wrap v]::ext ->
     StringMap.In key st.
 Proof.
   intros; eapply MapsTo_In; eauto using SameValues_MapsTo_Ext_State_add.
@@ -426,12 +436,13 @@ Ltac t_SameValues_Morphism :=
          end.
 
 Lemma ProkOk_specialize_to_ret :
-  forall {av} env key value prog
-    (tail1: Value av -> Telescope av)
-    (tail2: Value av -> Telescope av)
+  forall `{FacadeWrapper (Value av) A}
+    env key value prog
+    (tail1: A -> Telescope av)
+    (tail2: A -> Telescope av)
     ext,
-    (forall v, value ↝ v -> {{ Cons (Some key) (ret v) tail1 }} prog {{ Cons (Some key) (ret v) tail2 }} ∪ {{ ext }} // env) ->
-    ({{ Cons (Some key) value tail1 }} prog {{ Cons (Some key) value tail2 }} ∪ {{ ext }} // env).
+    (forall v, value ↝ v -> {{ Cons (NTSome key) (ret v) tail1 }} prog {{ Cons (NTSome key) (ret v) tail2 }} ∪ {{ ext }} // env) ->
+    ({{ Cons (NTSome key) value tail1 }} prog {{ Cons (NTSome key) value tail2 }} ∪ {{ ext }} // env).
 Proof.
   repeat match goal with
          | _ => progress intros
@@ -446,15 +457,18 @@ Proof.
 Qed.
 
 Lemma SameValues_MapsTo:
-  forall {av} (key : String.string) (value : Comp (Value av))
-    (tail : Value av -> Telescope av)
+  forall `{FacadeWrapper (Value av) A}
+    (key : String.string) (value : Comp A)
+    (tail : A -> Telescope av)
     (ext state : StringMap.t (Value av)),
-    state ≲ Cons (Some key) value tail ∪ ext ->
-    exists v : Value av, value ↝ v /\ StringMap.MapsTo key v state.
+    state ≲ Cons (NTSome key) value tail ∪ ext ->
+    exists v : A, value ↝ v /\ StringMap.MapsTo key (wrap v) state.
 Proof.
   simpl; intros.
   destruct (StringMap.find _ _) eqn: eq0; try tauto.
+  destruct (unwrap _) eqn: eq1; try tauto.
   rewrite <- find_mapsto_iff in *.
+  repeat cleanup.
   eexists; intuition eauto.
 Qed.
 

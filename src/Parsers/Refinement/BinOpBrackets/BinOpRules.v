@@ -5,7 +5,6 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Computation.Refinements.General.
-Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.OfParse.
@@ -28,8 +27,6 @@ Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Local Open Scope string_like_scope.
 
 Set Implicit Arguments.
-
-Local Opaque string_stringlike.
 
 Section helper_lemmas.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -80,6 +77,8 @@ Section helper_lemmas.
 End helper_lemmas.
 
 Section refine_rules.
+  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}
+          {HSI : StringIso Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}.
   Context {G : grammar Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
@@ -121,7 +120,7 @@ Section refine_rules.
       intros idx' Hsmall Hreachable pit pits; simpl.
       specialize (H_nt_hiding _ pit).
       unfold paren_balanced_hiding in *.
-      set (s_str := (substring n m str) : @StringLike.String _ string_stringlike) in *.
+      set (s_str := (substring n m str) : @StringLike.String _ HSL) in *.
       destruct (Compare_dec.zerop (StringLike.length (drop idx' s_str))) as [iszero|isnonzero].
       { (* Deal with the case where drop idx' s_str is empty *)
         rewrite drop_length in iszero.

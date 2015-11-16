@@ -291,7 +291,7 @@ Module Export PrettyNotations.
       (only parsing).
   Notation iis_char s ch :=
     (((EqNat.beq_nat (ilength s) 1)
-        && option_beq ascii_beq (iget 0 s) (Some ch))%bool)
+        && option_beq ascii_beq (get (fst (snd s)) (fst s)) (Some ch))%bool)
       (only parsing).
 End PrettyNotations.
 

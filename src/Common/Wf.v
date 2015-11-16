@@ -1,6 +1,7 @@
 (** * Miscellaneous Well-Foundedness Facts *)
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
+Require Import Fiat.Common.Telescope.Core.
 
 Set Implicit Arguments.
 
@@ -127,42 +128,6 @@ Section wf.
   End wf_projT1.
 End wf.
 
-Section Fix_rect.
-  Context A (R : A -> A -> Prop) (Rwf : well_founded R)
-          (P : A -> Type) (F : forall x : A, (forall y : A, R y x -> P y) -> P x)
-          (Q : forall x, P x -> Type)
-          (H : forall x, (forall y, R y x -> Q y (@Fix A R Rwf P F y)) -> Q x (@F x (fun (y : A) (_ : R y x) => @Fix A R Rwf P F y)))
-          (F_ext : forall (x : A) (f g : forall y : A, R y x -> P y),
-                   (forall (y : A) (p : R y x), f y p = g y p) -> F _ f = F _ g).
-
-  Definition Fix_rect x
-  : @Q x (@Fix A R Rwf P F x).
-  Proof.
-    induction (Rwf x).
-    rewrite Init.Wf.Fix_eq; auto.
-  Defined.
-End Fix_rect.
-
-Local Ltac Fix_Proper_t Fix_eq wf :=
-  let H := fresh "H" in
-  let a := fresh "a" in
-  unfold forall_relation, pointwise_relation, respectful;
-  intros ?? H a; repeat intro;
-  induction (wf a);
-  rewrite !Fix_eq; [ erewrite H; [ reflexivity | .. ] | .. ]; eauto; intros;
-  [ etransitivity; [ symmetry; apply H; reflexivity | apply H; eassumption ]; reflexivity
-  | etransitivity; [ apply H; eassumption | symmetry; apply H; reflexivity ]; reflexivity ].
-
-
-Global Instance Fix_Proper_eq {A R wf P}
-: Proper
-    ((forall_relation (fun a =>
-                         (forall_relation (fun a' => pointwise_relation _ eq))
-                           ==> eq))
-       ==> (forall_relation (fun a => eq)))
-    (@Fix A R wf P).
-Proof. Fix_Proper_t @Coq.Init.Wf.Fix_eq wf. Qed.
-
 Local Ltac Fix_eq_t F_ext Rwf :=
   intros;
   unfold Fix;
@@ -178,6 +143,92 @@ Local Ltac Fix_eq_t F_ext Rwf :=
   intros; rewrite <- !Fix_F_eq;
   apply F_ext; eauto.
 
+Local Ltac Fix_Proper_t Fix_eq wf :=
+  change (@flatten_forall_eq_relation) with (@flatten_forall_eq);
+  let H := fresh "H" in
+  let a := fresh "a" in
+  unfold forall_relation, pointwise_relation, respectful;
+  intros ?? H a; repeat intro;
+  induction (wf a);
+  rewrite !Fix_eq; [ erewrite H; [ reflexivity | .. ] | .. ]; eauto; intros;
+  [ etransitivity; [ symmetry; apply H; reflexivity | apply H; eassumption ]; reflexivity
+  | etransitivity; [ apply H; eassumption | symmetry; apply H; reflexivity ]; reflexivity ].
+
+Section FixV.
+  Context A (B : A -> Telescope)
+          (R : A -> A -> Prop) (Rwf : well_founded R)
+          (P : forall a, flattenT (B a) Type).
+
+  Local Notation FixV := (@Fix A R Rwf (fun a : A => flatten_forall (P a))).
+
+  Section F.
+    Context (F : forall x : A, (forall y : A, R y x -> flatten_forall (P y)) -> flatten_forall (P x)).
+
+    Definition FixV_eq
+               (F_ext : forall x (f g : forall y, R y x -> flatten_forall (P y)),
+                          (forall y (p : R y x), flatten_forall_eq (f y p) (g y p))
+                          -> flatten_forall_eq (@F x f) (@F x g))
+    : forall a, flatten_forall_eq (@FixV F a) (@F a (fun y (_ : R y a) => @FixV F y)).
+    Proof. Fix_eq_t F_ext Rwf. Defined.
+
+    Definition FixV_rect
+               (Q : forall a, flattenT (Telescope_append (B a) (P a)) Type)
+               (H0 : forall x, (forall y, R y x -> flatten_append_forall (@Q y) (@FixV F y))
+                              -> flatten_append_forall (@Q x) (@F x (fun (y : A) (_ : R y x) => @FixV F y)))
+               (F_ext : forall x (f g : forall y, R y x -> flatten_forall (@P y)),
+                          (forall y (p : R y x), flatten_forall_eq (f y p) (g y p))
+                          -> flatten_forall_eq (@F x f) (@F x g))
+               a
+    : flatten_append_forall (@Q a) (@FixV F a).
+    Proof.
+      induction (Rwf a).
+      eapply flatten_append_forall_Proper; auto with nocore.
+      symmetry; eapply FixV_eq; auto with nocore.
+    Defined.
+  End F.
+
+  Global Instance FixV_Proper_eq
+  : Proper
+      ((forall_relation
+          (fun a =>
+             (forall_relation
+                (fun a' =>
+                   pointwise_relation
+                     _
+                     (flatten_forall_eq_relation)))
+               ==> flatten_forall_eq_relation))
+         ==> (forall_relation (fun a => flatten_forall_eq_relation)))
+      FixV.
+  Proof. Fix_Proper_t @FixV_eq Rwf. Qed.
+End FixV.
+
+Arguments FixV_Proper_eq {A B R Rwf P} _ _ _ _.
+
+Local Arguments flatten_forall / .
+Local Arguments flattenT / .
+Local Arguments flatten_forall_eq / .
+Local Arguments flatten_forall_eq_relation / .
+Local Arguments flatten_append_forall / .
+
+Local Notation type_of x := ((fun T (y : T) => T) _ x).
+
+Section Fix_rect.
+  Context (A : Type).
+  Local Notation T := (fun _ : A => bottom).
+
+  Let Fix_rect' := @FixV_rect A T.
+  Let Fix_rect'T := Eval simpl in type_of Fix_rect'.
+
+  Let Fix_Proper_eq' := @FixV_Proper_eq A T.
+  Let Fix_Proper_eq'T := Eval simpl in type_of Fix_Proper_eq'.
+
+  Definition Fix_rect : Fix_rect'T := Fix_rect'.
+  Definition Fix_Proper_eq : Fix_Proper_eq'T := Fix_Proper_eq'.
+End Fix_rect.
+
+Arguments Fix_Proper_eq {A R Rwf P} _ _ _ _.
+Global Existing Instance Fix_Proper_eq.
+
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
 Section Fix1.
@@ -186,43 +237,24 @@ Section Fix1.
           (P : forall a, B a -> Type).
 
   Local Notation Fix1 := (@Fix A R Rwf (fun a : A => forall b, @P a b)).
+  Local Notation T := (fun a => tele (B a) (fun _ => bottom)).
 
-  Section F.
-    Context (F : forall x : A, (forall y : A, R y x -> forall b, @P y b) -> forall b, @P x b).
+  Let Fix1_eq' := @FixV_eq A T R Rwf P.
+  Let Fix1_eq'T := Eval simpl in type_of Fix1_eq'.
 
-    Definition Fix1_eq
-               (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                          (forall y (p : R y x) b, f y p b = g y p b)
-                          -> forall b, @F x f b = @F x g b)
-    : forall a b, @Fix1 F a b = @F a (fun y (_ : R y a) => @Fix1 F y) b.
-    Proof. Fix_eq_t F_ext Rwf. Defined.
+  Let Fix1_rect' := @FixV_rect A T R Rwf P.
+  Let Fix1_rect'T := Eval simpl in type_of Fix1_rect'.
 
-    Definition Fix1_rect
-               (Q : forall a b, @P a b -> Type)
-               (H : forall x, (forall y, R y x -> forall b, @Q y b (@Fix1 F y b))
-                              -> forall b, @Q x b (@F x (fun y (_ : R y x) => @Fix1 F y) b))
-               (F_ext : forall x (f g : forall y, R y x -> forall b, @P y b),
-                          (forall y (p : R y x) b, f y p b = g y p b)
-                          -> forall b, @F x f b = @F x g b)
-               a b
-    : @Q a b (@Fix1 F a b).
-    Proof.
-      induction (Rwf a).
-      rewrite Fix1_eq; auto.
-    Defined.
-  End F.
+  Let Fix1_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix1_Proper_eq'T := Eval simpl in type_of Fix1_Proper_eq'.
 
-  Global Instance Fix1_Proper_eq
-  : Proper
-      ((forall_relation (fun a =>
-                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => eq))))
-                             ==> (forall_relation (fun b => eq)))
-                        ==> (forall_relation (fun a => forall_relation (fun b => eq)))))
-      Fix1.
-  Proof. Fix_Proper_t @Fix1_eq Rwf. Qed.
+  Definition Fix1_eq : Fix1_eq'T := Fix1_eq'.
+  Definition Fix1_rect : Fix1_rect'T := Fix1_rect'.
+  Definition Fix1_Proper_eq : Fix1_Proper_eq'T := Fix1_Proper_eq'.
 End Fix1.
 
 Arguments Fix1_Proper_eq {A B R Rwf P} _ _ _ _ _.
+Global Existing Instance Fix1_Proper_eq.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
@@ -232,43 +264,24 @@ Section Fix2.
           (P : forall a b, C a b -> Type).
 
   Local Notation Fix2 := (@Fix A R Rwf (fun a : A => forall b c, @P a b c)).
+  Local Notation T := (fun a => tele (B a) (fun b => tele (@C a b) (fun _ => bottom))).
 
-  Section F.
-    Context (F : forall x : A, (forall y : A, R y x -> forall b c, @P y b c) -> forall b c, @P x b c).
+  Let Fix2_eq' := @FixV_eq A T R Rwf P.
+  Let Fix2_eq'T := Eval simpl in type_of Fix2_eq'.
 
-    Definition Fix2_eq
-               (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
-                          (forall y (p : R y x) b c, f y p b c = g y p b c)
-                          -> forall b c, @F x f b c = @F x g b c)
-    : forall a b c, @Fix2 F a b c = @F a (fun y (_ : R y a) => @Fix2 F y) b c.
-    Proof. Fix_eq_t F_ext Rwf. Defined.
+  Let Fix2_rect' := @FixV_rect A T R Rwf P.
+  Let Fix2_rect'T := Eval simpl in type_of Fix2_rect'.
 
-    Definition Fix2_rect
-               (Q : forall a b c, @P a b c -> Type)
-               (H : forall x, (forall y, R y x -> forall b c, @Q y b c (@Fix2 F y b c))
-                              -> forall b c, @Q x b c (@F x (fun y (_ : R y x) => @Fix2 F y) b c))
-               (F_ext : forall x (f g : forall y, R y x -> forall b c, @P y b c),
-                          (forall y (p : R y x) b c, f y p b c = g y p b c)
-                          -> forall b c, @F x f b c = @F x g b c)
-               a b c
-    : @Q a b c (@Fix2 F a b c).
-    Proof.
-      induction (Rwf a).
-      rewrite Fix2_eq; auto.
-    Defined.
-  End F.
+  Let Fix2_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix2_Proper_eq'T := Eval simpl in type_of Fix2_Proper_eq'.
 
-  Global Instance Fix2_Proper_eq
-  : Proper
-      ((forall_relation (fun a =>
-                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => eq)))))
-                             ==> (forall_relation (fun b => forall_relation (fun c => eq))))
-                        ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => eq))))))
-      Fix2.
-  Proof. Fix_Proper_t @Fix2_eq Rwf. Qed.
+  Definition Fix2_eq : Fix2_eq'T := Fix2_eq'.
+  Definition Fix2_rect : Fix2_rect'T := Fix2_rect'.
+  Definition Fix2_Proper_eq : Fix2_Proper_eq'T := Fix2_Proper_eq'.
 End Fix2.
 
 Arguments Fix2_Proper_eq {A B C R Rwf P} _ _ _ _ _ _.
+Global Existing Instance Fix2_Proper_eq.
 
 (** A variant of [Fix] that has a nice [Fix_eq] for functions which
     doesn't require [functional_extensionality]. *)
@@ -278,43 +291,24 @@ Section Fix3.
           (P : forall a b c, D a b c -> Type).
 
   Local Notation Fix3 := (@Fix A R Rwf (fun a : A => forall b c d, @P a b c d)).
+  Local Notation T := (fun a => tele _ (fun b => tele _ (fun c => tele (@D a b c) (fun _ => bottom)))).
 
-  Section F.
-    Context (F : forall x : A, (forall y : A, R y x -> forall b c d, @P y b c d) -> forall b c d, @P x b c d).
+  Let Fix3_eq' := @FixV_eq A T R Rwf P.
+  Let Fix3_eq'T := Eval simpl in type_of Fix3_eq'.
 
-    Definition Fix3_eq
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
-                          (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
-                          -> forall b c d, @F x f b c d = @F x g b c d)
-    : forall a b c d, @Fix3 F a b c d = @F a (fun y (_ : R y a) => @Fix3 F y) b c d.
-    Proof. Fix_eq_t F_ext Rwf. Defined.
+  Let Fix3_rect' := @FixV_rect A T R Rwf P.
+  Let Fix3_rect'T := Eval simpl in type_of Fix3_rect'.
 
-    Definition Fix3_rect
-               (Q : forall a b c d, @P a b c d -> Type)
-               (H : forall x, (forall y, R y x -> forall b c d, @Q y b c d (@Fix3 F y b c d))
-                              -> forall b c d, @Q x b c d (@F x (fun y (_ : R y x) => @Fix3 F y) b c d))
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d, @P y b c d),
-                          (forall y (p : R y x) b c d, f y p b c d = g y p b c d)
-                          -> forall b c d, @F x f b c d = @F x g b c d)
-               a b c d
-    : @Q a b c d (@Fix3 F a b c d).
-    Proof.
-      induction (Rwf a).
-      rewrite Fix3_eq; auto.
-    Defined.
-  End F.
+  Let Fix3_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix3_Proper_eq'T := Eval simpl in type_of Fix3_Proper_eq'.
 
-  Global Instance Fix3_Proper_eq
-  : Proper
-      ((forall_relation (fun a =>
-                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => eq))))))
-      Fix3.
-  Proof. Fix_Proper_t @Fix3_eq Rwf. Qed.
+  Definition Fix3_eq : Fix3_eq'T := Fix3_eq'.
+  Definition Fix3_rect : Fix3_rect'T := Fix3_rect'.
+  Definition Fix3_Proper_eq : Fix3_Proper_eq'T := Fix3_Proper_eq'.
 End Fix3.
 
 Arguments Fix3_Proper_eq {A B C D R Rwf P} _ _ _ _ _ _ _.
+Global Existing Instance Fix3_Proper_eq.
 
 Section Fix4.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type)
@@ -322,43 +316,24 @@ Section Fix4.
           (P : forall a b c d, E a b c d -> Type).
 
   Local Notation Fix4 := (@Fix A R Rwf (fun a : A => forall b c d e, @P a b c d e)).
+  Local Notation T := (fun a => tele _ (fun b => tele _ (fun c => tele _ (fun d => tele (@E a b c d) (fun _ => bottom))))).
 
-  Section F.
-    Context (F : forall x : A, (forall y : A, R y x -> forall b c d e, @P y b c d e) -> forall b c d e, @P x b c d e).
+  Let Fix4_eq' := @FixV_eq A T R Rwf P.
+  Let Fix4_eq'T := Eval simpl in type_of Fix4_eq'.
 
-    Definition Fix4_eq
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
-                          (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
-                          -> forall b c d e, @F x f b c d e = @F x g b c d e)
-    : forall a b c d e, @Fix4 F a b c d e = @F a (fun y (_ : R y a) => @Fix4 F y) b c d e.
-    Proof. Fix_eq_t F_ext Rwf. Defined.
+  Let Fix4_rect' := @FixV_rect A T R Rwf P.
+  Let Fix4_rect'T := Eval simpl in type_of Fix4_rect'.
 
-    Definition Fix4_rect
-               (Q : forall a b c d e, @P a b c d e -> Type)
-               (H : forall x, (forall y, R y x -> forall b c d e, @Q y b c d e (@Fix4 F y b c d e))
-                              -> forall b c d e, @Q x b c d e (@F x (fun y (_ : R y x) => @Fix4 F y) b c d e))
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d e, @P y b c d e),
-                          (forall y (p : R y x) b c d e, f y p b c d e = g y p b c d e)
-                          -> forall b c d e, @F x f b c d e = @F x g b c d e)
-               a b c d e
-    : @Q a b c d e (@Fix4 F a b c d e).
-    Proof.
-      induction (Rwf a).
-      rewrite Fix4_eq; auto.
-    Defined.
-  End F.
+  Let Fix4_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix4_Proper_eq'T := Eval simpl in type_of Fix4_Proper_eq'.
 
-  Global Instance Fix4_Proper_eq
-  : Proper
-      ((forall_relation (fun a =>
-                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => eq)))))))
-      Fix4.
-  Proof. Fix_Proper_t @Fix4_eq Rwf. Qed.
+  Definition Fix4_eq : Fix4_eq'T := Fix4_eq'.
+  Definition Fix4_rect : Fix4_rect'T := Fix4_rect'.
+  Definition Fix4_Proper_eq : Fix4_Proper_eq'T := Fix4_Proper_eq'.
 End Fix4.
 
 Arguments Fix4_Proper_eq {A B C D E R Rwf P} _ _ _ _ _ _ _ _.
+Global Existing Instance Fix4_Proper_eq.
 
 Section Fix5.
   Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type) (H : forall a b c d, E a b c d -> Type)
@@ -366,40 +341,21 @@ Section Fix5.
           (P : forall a b c d e, H a b c d e -> Type).
 
   Local Notation Fix5 := (@Fix A R Rwf (fun a : A => forall b c d e h, @P a b c d e h)).
+  Local Notation T := (fun a => tele _ (fun b => tele _ (fun c => tele _ (fun d => tele _ (fun e => tele (@H a b c d e) (fun _ => bottom)))))).
 
-  Section F.
-    Context (F : forall x : A, (forall y : A, R y x -> forall b c d e h, @P y b c d e h) -> forall b c d e h, @P x b c d e h).
+  Let Fix5_eq' := @FixV_eq A T R Rwf P.
+  Let Fix5_eq'T := Eval simpl in type_of Fix5_eq'.
 
-    Definition Fix5_eq
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d e h, @P y b c d e h),
-                          (forall y (p : R y x) b c d e h, f y p b c d e h = g y p b c d e h)
-                          -> forall b c d e h, @F x f b c d e h = @F x g b c d e h)
-    : forall a b c d e h, @Fix5 F a b c d e h = @F a (fun y (_ : R y a) => @Fix5 F y) b c d e h.
-    Proof. Fix_eq_t F_ext Rwf. Defined.
+  Let Fix5_rect' := @FixV_rect A T R Rwf P.
+  Let Fix5_rect'T := Eval simpl in type_of Fix5_rect'.
 
-    Definition Fix5_rect
-               (Q : forall a b c d e h, @P a b c d e h -> Type)
-               (H0 : forall x, (forall y, R y x -> forall b c d e h, @Q y b c d e h (@Fix5 F y b c d e h))
-                              -> forall b c d e h, @Q x b c d e h (@F x (fun (y : A) (_ : R y x) => @Fix5 F y) b c d e h))
-               (F_ext : forall x (f g : forall y, R y x -> forall b c d e h, @P y b c d e h),
-                          (forall y (p : R y x) b c d e h, f y p b c d e h = g y p b c d e h)
-                          -> forall b c d e h, @F x f b c d e h = @F x g b c d e h)
-               a b c d e h
-    : @Q a b c d e h (@Fix5 F a b c d e h).
-    Proof.
-      induction (Rwf a).
-      rewrite Fix5_eq; auto.
-    Defined.
-  End F.
+  Let Fix5_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix5_Proper_eq'T := Eval simpl in type_of Fix5_Proper_eq'.
 
-  Global Instance Fix5_Proper_eq
-  : Proper
-      ((forall_relation (fun a =>
-                           (forall_relation (fun a' => pointwise_relation _ (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
-                             ==> (forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
-         ==> (forall_relation (fun a => forall_relation (fun b => forall_relation (fun c => forall_relation (fun d => forall_relation (fun e => forall_relation (fun h => eq))))))))
-      Fix5.
-  Proof. Fix_Proper_t @Fix5_eq Rwf. Qed.
+  Definition Fix5_eq : Fix5_eq'T := Fix5_eq'.
+  Definition Fix5_rect : Fix5_rect'T := Fix5_rect'.
+  Definition Fix5_Proper_eq : Fix5_Proper_eq'T := Fix5_Proper_eq'.
 End Fix5.
 
 Arguments Fix5_Proper_eq {A B C D E H R Rwf P} _ _ _ _ _ _ _ _ _.
+Global Existing Instance Fix5_Proper_eq.

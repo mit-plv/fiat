@@ -2,6 +2,8 @@ Require Fiat.Parsers.BooleanRecognizerOptimized.
 Require Fiat.Parsers.ParserInterface Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Common.
+Require Import Fiat.Common.Wf Fiat.Common.Wf2.
+Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
@@ -26,6 +28,7 @@ Declare Reduction parser_red7 := simpl @fst.
 Declare Reduction parser_red8 := simpl @snd.
 Declare Reduction parser_red9 := simpl List.length.
 Declare Reduction parser_red10 := simpl List.fold_right.
+Declare Reduction parser_red11 := cbv beta iota zeta delta [Fix2 Fix2_F].
 
 Ltac parser_red term :=
   let term := match term with
@@ -45,6 +48,7 @@ Ltac parser_red term :=
   let term := (eval parser_red8 in term) in
   let term := (eval parser_red9 in term) in
   let term := (eval parser_red10 in term) in
+  let term := (eval parser_red11 in term) in
   constr:term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.
@@ -52,7 +56,10 @@ Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) :
 
 Ltac make_parser splitter :=
   idtac;
-  let str := match goal with str : String.string |- _ => constr:str end in
+  let str := match goal with
+               | [ str : String.string |- _ ] => constr:str
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+             end in
   let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
   let T := match type of b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in

@@ -1,4 +1,5 @@
 Require Import
+        CertifiedExtraction.Extraction.BasicTactics
         CertifiedExtraction.Extraction.External.Core
         CertifiedExtraction.Extraction.External.GenericMethods.
 
@@ -11,10 +12,10 @@ Lemma CompileCallFacadeImplementationWW:
     forall vret ext,
       vret ∉ ext ->
       NotInTelescope vret tenv ->
-      StringMap.MapsTo varg (SCA av arg) ext ->
+      StringMap.MapsTo varg (wrap arg) ext ->
       {{ tenv }}
         Call vret fpointer (varg :: nil)
-      {{ [[ vret <-- SCA av (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
   Time repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -34,11 +35,12 @@ Lemma CompileCallFacadeImplementationWW_full:
       vret <> varg ->
       {{ tenv }}
         p
-      {{ [[ varg <-- SCA av arg as _]]:: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg <-- arg as _]]:: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq p (Call vret fpointer (varg :: nil))
-      {{ [[ vret <-- SCA av (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
+  repeat hoare.
   Time repeat match goal with
          | _ => SameValues_Facade_t_step
          | _ => facade_cleanup_call

@@ -17,20 +17,21 @@ Ltac translate_op gallina_op :=
   | _ => fail 1 "Unknown operator" gallina_op
   end.
 
-Ltac compile_binop av facade_op lhs rhs ext :=
-  let vlhs := find_fast (SCA av lhs) ext in
-  let vrhs := find_fast (SCA av rhs) ext in
+Ltac compile_binop facade_op lhs rhs ext :=
+  let av := av_from_ext ext in
+  let vlhs := find_fast (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) lhs) ext in
+  let vrhs := find_fast (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) rhs) ext in
   lazymatch constr:(vlhs, vrhs) with
   | (Some ?vlhs, Some ?vrhs) =>
-    apply (CompileBinopOrTest (var1 := vlhs) (var2 := vrhs) facade_op)
+    apply (BinExpr.CompileBinopOrTest (var1 := vlhs) (var2 := vrhs) facade_op)
   | (Some ?vlhs, None) =>
     let vrhs := gensym "r" in
-    apply (CompileBinopOrTest_left (var1 := vlhs) (var2 := vrhs) facade_op)
+    apply (BinExpr.CompileBinopOrTest_left (var1 := vlhs) (var2 := vrhs) facade_op)
   | (None, Some ?vrhs) =>
     let vlhs := gensym "l" in
-    apply (CompileBinopOrTest_right (var1 := vlhs) (var2 := vrhs) facade_op)
+    apply (BinExpr.CompileBinopOrTest_right (var1 := vlhs) (var2 := vrhs) facade_op)
   | (None, None) =>
     let vlhs := gensym "l" in
     let vrhs := gensym "r" in
-    apply (CompileBinopOrTest_full (var1 := vlhs) (var2 := vrhs) facade_op)
+    apply (BinExpr.CompileBinopOrTest_full (var1 := vlhs) (var2 := vrhs) facade_op)
   end.

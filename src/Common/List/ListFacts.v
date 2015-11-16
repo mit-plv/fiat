@@ -822,6 +822,31 @@ Section ListFacts.
     symmetry; eauto.
   Qed.
 
+  Lemma uniquize_shorter {A} (ls : list A) beq
+  : List.length (uniquize beq ls) <= List.length ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; trivial.
+    edestruct @Equality.list_bin; simpl; omega.
+  Qed.
+
+  Lemma uniquize_length {A} (ls : list A) beq
+  : List.length (uniquize beq ls) = List.length ls
+    <-> uniquize beq ls = ls.
+  Proof.
+    induction ls as [|x xs IHxs]; simpl; try (split; reflexivity).
+    edestruct @Equality.list_bin; simpl.
+    { pose proof (uniquize_shorter xs beq).
+      split; intro H'.
+      { omega. }
+      { apply (f_equal (@List.length _)) in H'.
+        simpl in H'.
+        omega. } }
+    { destruct IHxs.
+      split; intro;
+      first [ congruence
+            | f_equal; auto ]. }
+  Qed.
+
   Lemma fold_right_bool_rect {T} t b init ls' bv
   : fold_right (fun (x : T) (acc : bool -> bool)
                 => bool_rect
@@ -840,5 +865,139 @@ Section ListFacts.
     induction ls' as [|x xs IHxs]; simpl;
     [ | destruct (b x); simpl; rewrite ?IHxs ];
     reflexivity.
+  Qed.
+
+  Lemma in_up_to {n m} (H : n < m) : List.In n (up_to m).
+  Proof.
+    revert n H; induction m; intros n H.
+    { exfalso; omega. }
+    { simpl.
+      hnf in H.
+      apply le_S_n in H.
+      apply Compare_dec.le_lt_eq_dec in H.
+      destruct H; subst; [ right; eauto | left; reflexivity ]. }
+  Qed.
+
+  Lemma in_up_to_iff {n m} : (n < m) <-> List.In n (up_to m).
+  Proof.
+    revert n; induction m; intros n; simpl.
+    { split; intro; exfalso; omega. }
+    { simpl.
+      specialize (IHm n).
+      destruct IHm.
+      destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition. }
+  Qed.
+
+  Local Ltac first_index_error_t'
+    := idtac;
+      match goal with
+        | _ => discriminate
+        | _ => congruence
+        | _ => omega
+        | _ => progress unfold value in *
+        | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+        | _ => progress subst
+        | [ H : ?x = true |- context[?x] ] => rewrite H
+        | [ H : and _ _ |- _ ] => destruct H
+        | [ H : ex _ |- _ ] => destruct H
+        | [ H : iff _ _ |- _ ] => destruct H
+        | [ H : ?x = ?x -> ?A |- _ ] => specialize (H eq_refl)
+        | _ => progress intros
+        | _ => split
+        | [ H : context[if ?b then _ else _] |- _ ] => destruct b eqn:?
+        | [ H : context[option_map _ ?x] |- _ ] => destruct x eqn:?; unfold option_map in H
+        | _ => solve [ repeat (esplit || eassumption) ]
+        | [ H : context[nth_error (_::_) ?x] |- _ ] => is_var x; destruct x; simpl nth_error in H
+        | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
+        | _ => solve [ eauto with nocore ]
+        | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
+        | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
+        | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
+        | _ => progress simpl in *
+        | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
+        | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
+        | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
+        | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
+        | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
+        | [ H : or _ _ |- _ ] => destruct H
+        | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
+        | [ H : ?x = None |- context[?x] ] => rewrite H
+      end.
+
+  Local Ltac first_index_error_t :=
+    repeat match goal with
+             | _ => progress first_index_error_t'
+             | [ H : _ |- _ ] => rewrite H by repeat first_index_error_t'
+           end.
+
+  Lemma first_index_error_Some_correct {A} (P : A -> bool) (n : nat) (ls : list A)
+  : first_index_error P ls = Some n <-> ((exists elem, nth_error ls n = Some elem /\ P elem = true)
+                                         /\ forall m, m < n -> forall elem, nth_error ls m = Some elem -> P elem = false).
+  Proof.
+    revert n.
+    induction ls; simpl; intros.
+    { destruct n; first_index_error_t. }
+    { specialize (IHls (pred n)).
+      destruct n; first_index_error_t. }
+  Qed.
+
+  Lemma first_index_error_None_correct {A} (P : A -> bool) (ls : list A)
+  : first_index_error P ls = None <-> (forall elem, List.In elem ls -> P elem = false).
+  Proof.
+    induction ls; simpl; intros.
+    { first_index_error_t. }
+    { first_index_error_t. }
+  Qed.
+
+  Lemma nth_error_In {A} (n : nat) (x : A) (ls : list A)
+  : nth_error ls n = Some x -> List.In x ls.
+  Proof.
+    revert n; induction ls; intros [|n]; simpl in *;
+    intros; try discriminate; unfold value in *.
+    { left; congruence. }
+    { right; eauto. }
+  Qed.
+
+  Lemma nth_error_None_long {A} (n : nat) (ls : list A)
+  : nth_error ls n = None <-> List.length ls <= n.
+  Proof.
+    revert n; induction ls;
+    intros [|n]; try (specialize (IHls n); destruct IHls);
+    simpl in *; split; intros;
+    unfold value in *;
+    try (reflexivity || omega || congruence);
+    intuition.
+  Qed.
+
+  Lemma nth_error_Some_short {A} (n : nat) (x : A) (ls : list A)
+  : nth_error ls n = Some x -> n < List.length ls.
+  Proof.
+    destruct (le_lt_dec (List.length ls) n) as [H|H];
+    intro H'; trivial.
+    apply nth_error_None_long in H; congruence.
+  Qed.
+
+  Lemma nth_error_nth {A} (ls : list A) (n : nat) (y : A)
+  : nth n ls y = match nth_error ls n with
+                   | Some x => x
+                   | None => y
+                 end.
+  Proof.
+    revert n; induction ls; intros [|n]; simpl in *; intros;
+    try discriminate;
+    unfold value in *;
+    eauto.
+  Qed.
+
+  Lemma nth_error_Some_nth {A} (ls : list A) (n : nat) (x : A)
+  : nth_error ls n = Some x -> forall y, nth n ls y = x.
+  Proof.
+    intros H ?; rewrite nth_error_nth, H; reflexivity.
+  Qed.
+
+  Lemma length_up_to n
+  : List.length (up_to n) = n.
+  Proof.
+    induction n; simpl; auto.
   Qed.
 End ListFacts.

@@ -22,27 +22,28 @@ Section addCache.
      implementation (computation?) for the methods of an ADT with
      using the old methods. *)
 
-  (*Definition addCacheToConsDef
+  Definition addCacheToConsDef
              (Sig : consSig)
              (oldCons : @consDef rep Sig)
-  : @consDef (@cachedRep rep cacheType) Sig :=
+    : @consDef (@cachedRep rep cacheType) Sig :=
     {| consBody := addCacheToConstructor cacheSpec (consBody oldCons) |}.
 
   Definition addCacheToMethDef
              (Sig : methSig)
              (oldCons : @methDef rep Sig)
   : @methDef (@cachedRep rep cacheType) Sig :=
-    {| methBody := addCacheToMethod cacheSpec (methBody oldCons) |}. *)
+    {| methBody := addCacheToMethod cacheSpec (methBody oldCons) |}.
 
-  (*Lemma refine_addCacheTo_BuildADT
-            (consSigs : list consSig)
-            (methSigs : list methSig)
-            (consDefs : ilist (@consDef rep) consSigs)
-            (methDefs : ilist (@methDef rep) methSigs) :
+  Lemma refine_addCacheTo_BuildADT
+        (n m : nat)
+        (consSigs : Vector.t consSig n)
+        (methSigs : Vector.t methSig m)
+        (consDefs : ilist (B := @consDef rep) consSigs)
+        (methDefs : ilist (B := @methDef rep) methSigs) :
     refineADT
       (BuildADT consDefs methDefs)
-      (BuildADT (imap _ addCacheToConsDef consDefs)
-                (imap _ addCacheToMethDef methDefs)).
+      (BuildADT (imap addCacheToConsDef consDefs)
+                (imap addCacheToMethDef methDefs)).
   Proof.
     generalize (refine_addCacheToADT
                   cacheSpec
@@ -50,11 +51,11 @@ Section addCache.
                   (fun idx => getConsDef consDefs idx)
                   (fun idx => getMethDef methDefs idx)); eauto; intros.
     econstructor; intros.
-    - simpl Constructors; rewrite <- ith_Bounded_imap.
+    - simpl Constructors; rewrite <- ith_imap.
       apply refine_addCacheToConstructor.
-    - simpl Methods; rewrite <- ith_Bounded_imap.
+    - simpl Methods; rewrite <- ith_imap.
       apply refine_addCacheToMethod.
-  Qed. *)
+  Qed. 
 
 End addCache.
 

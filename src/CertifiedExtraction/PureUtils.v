@@ -82,3 +82,9 @@ Ltac cleanup_pure :=
   | [ H: exists _, _ |- _ ] => destruct H
   | [ H: Some _ <> Some _ |- _ ] => rewrite Some_neq in H
   end.
+
+Ltac not_match_p constr :=
+  match constr with
+  | context[match _ with _ => _ end] => fail 1
+  | _ => idtac
+  end.

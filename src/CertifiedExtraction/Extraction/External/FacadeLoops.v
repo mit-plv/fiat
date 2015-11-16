@@ -5,11 +5,31 @@ Require Import
         CertifiedExtraction.Extraction.External.GenericADTMethods
         CertifiedExtraction.Extraction.External.FacadeADTs.
 
+Ltac loop_unify_with_nil_t :=
+  match goal with
+  | [  |- context[Cons (T := list ?A) _ (ret ?val) _] ] => is_evar val; unify val (@nil A)
+  end.
+
+Ltac loop_t :=
+  repeat (intros || unfold Fold || Lifted_t || compile_do_side_conditions || clean_DropName_in_ProgOk || rewrite Propagate_ret || eapply CompileSeq || eauto 2).
+
+Ltac apply_generalized_t compilation_lemma :=
+  erewrite ProgOk_TelEq_morphism;
+  try eapply compilation_lemma;
+  repeat match goal with
+         | [  |- _ = _ ] => reflexivity
+         | [  |- TelEq _ _ _ ] => decide_TelEq_instantiate
+         end.
+
+Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
+  apply_generalized_t compilation_lemma.
+
 Lemma CompileLoop :
-  forall lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value (list W))) tenv fpop fempty fdealloc f,
-    GLabelMap.MapsTo fpop (Axiomatic List_pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic List_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor _)) env ->
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
+    lst init facadeInit facadeBody vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv fpop fempty fdealloc (f: A' -> A -> A'),
+    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     vlst ∉ ext ->
@@ -24,47 +44,36 @@ Lemma CompileLoop :
     vret <> vlst ->
     vret <> vhead ->
     vlst <> vhead ->
-    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       facadeInit
-    {{ [[vret <-- SCA _ init as _]] :: [[vlst <-- ADT lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    (forall head acc s,
-        {{ [[vhead <-- SCA _ head as _]] :: [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ acc as _]] :: tenv }}
+    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head acc (s: list A),
+        {{ [[`vhead <-- head as _]] :: [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- acc as _]] :: tenv }}
           facadeBody
-        {{ [[vlst <-- ADT s as _]] :: [[vtest <-- SCA _ (bool2w false) as _]] :: [[vret <-- SCA _ (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
-    {{ [[vlst <-- ADT lst as _]] :: tenv }}
+        {{ [[`vlst <-- s as _]] :: [[`vtest <-- (bool2w false) as _]] :: [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call vtest fdealloc (vlst :: nil))))
-    {{ [[vret <-- SCA _ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
-  intros.
-  eapply CompileSeq; eauto; clear dependent facadeInit.
+  loop_t.
 
-  unfold Fold.
-  eapply CompileSeq.
+  rewrite TelEq_swap;
+    eapply (CompileCallEmpty (lst := lst)); loop_t.
 
-  eapply CompileSeq.
+  loop_t.
+  2:eapply CompileCallFacadeImplementationOfDestructor; loop_t.
 
-  rewrite TelEq_swap by congruence;
-    eapply CompileCallEmpty'; Lifted_t.
+  loop_unify_with_nil_t. (* instantiate early to prevent bad unification heuristics *)
 
-  clean_DropName_in_ProgOk.
-
-  2:eapply CompileCallFacadeImplementationOfDestructor; Lifted_t.
-
-  generalize dependent init;
+  clear dependent facadeInit;
+    generalize dependent init;
     induction lst; simpl; intros.
 
-  apply CompileWhileFalse_Loop; try instantiate (1 := nil); Lifted_t. (* instantiate due to Coq bug *)
+  apply CompileWhileFalse_Loop; loop_t.
 
-  eapply CompileWhileTrue; Lifted_t.
+  eapply CompileWhileTrue; loop_t.
 
-  eapply CompileSeq.
-  eapply CompileCallPop'; Lifted_t.
-  clean_DropName_in_ProgOk.
+  apply generalized @CompileCallPop; loop_t.
 
-  eapply CompileSeq; eauto.
-
-  apply CompileCallEmpty'; Lifted_t.
-  clean_DropName_in_ProgOk.
-
-  eauto.
+  apply generalized @CompileCallEmpty; loop_t.
 Qed.

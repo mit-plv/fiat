@@ -55,7 +55,6 @@ src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/Examples.v
 src/CertifiedExtraction/ExtendedLemmas.v
 src/CertifiedExtraction/ExtendedPropertiesOfTelescopes.v
-src/CertifiedExtraction/Extraction.v
 src/CertifiedExtraction/FMapUtils.v
 src/CertifiedExtraction/FacadeLemmas.v
 src/CertifiedExtraction/FacadeNotations.v
@@ -78,6 +77,7 @@ src/CertifiedExtraction/Extraction/DeallocSCA.v
 src/CertifiedExtraction/Extraction/DeallocSCATactics.v
 src/CertifiedExtraction/Extraction/Extraction.v
 src/CertifiedExtraction/Extraction/Gensym.v
+src/CertifiedExtraction/Extraction/PreconditionSets.v
 src/CertifiedExtraction/Extraction/External/AllExternal.v
 src/CertifiedExtraction/Extraction/External/Core.v
 src/CertifiedExtraction/Extraction/External/External.v
@@ -86,6 +86,7 @@ src/CertifiedExtraction/Extraction/External/FacadeLoops.v
 src/CertifiedExtraction/Extraction/External/GenericADTMethods.v
 src/CertifiedExtraction/Extraction/External/GenericADTTactics.v
 src/CertifiedExtraction/Extraction/External/GenericMethods.v
+src/CertifiedExtraction/Extraction/External/LoopTactics.v
 src/CertifiedExtraction/Extraction/External/Loops.v
 src/CertifiedExtraction/Extraction/External/ScalarMethodTactics.v
 src/CertifiedExtraction/Extraction/External/ScalarMethods.v
@@ -115,6 +116,7 @@ src/Common/String_as_OT.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v
+src/Common/Wf2.v
 src/Common/i2list.v
 src/Common/i2list2.v
 src/Common/i3list.v
@@ -141,6 +143,7 @@ src/Common/List/UpperBound.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
+src/Common/Telescope/Core.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/LogicLemmas.v
@@ -188,6 +191,7 @@ src/Examples/QueryStructure/Photoalbum.v
 src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
+src/Examples/QueryStructure/ProcessScheduler.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/Smtp/Smtp.v
@@ -260,6 +264,7 @@ src/Parsers/BooleanRecognizerOptimized.v
 src/Parsers/BooleanRecognizerTests.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
+src/Parsers/ExtrOcamlPrimitives.v
 src/Parsers/FoldGrammar.v
 src/Parsers/MinimalParse.v
 src/Parsers/MinimalParseOfParse.v
@@ -335,6 +340,7 @@ src/Parsers/StringLike/Core.v
 src/Parsers/StringLike/FirstChar.v
 src/Parsers/StringLike/FirstCharSuchThat.v
 src/Parsers/StringLike/ForallChars.v
+src/Parsers/StringLike/OcamlString.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
 src/QueryStructure/Automation/AutoDB.v
@@ -372,6 +378,7 @@ src/QueryStructure/Implementation/DataStructures/Bags/CountingListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/ListBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/NatCompare_Facts.v
+src/QueryStructure/Implementation/DataStructures/Bags/ProductBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/RangeTreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TreeBags.v
 src/QueryStructure/Implementation/DataStructures/Bags/TrieBags.v

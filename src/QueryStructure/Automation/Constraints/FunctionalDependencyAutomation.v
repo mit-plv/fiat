@@ -31,8 +31,16 @@ Ltac dec_tauto :=
       | [ H : _ |- _ ] => apply Tuple_Agree_eq_dec' in H; solve [ eauto ]
     end.
 
+  Lemma query_eq_true_iff {A}
+        (q_eq : Query_eq A)
+    : forall (a a' : A), ?[ A_eq_dec a a'] = true <-> a = a'.
+  Proof.
+    intros; destruct (A_eq_dec a a'); split; intros; try congruence.
+  Qed.
+
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;
+  repeat setoid_rewrite <- (@query_eq_true_iff _ _);
   try setoid_rewrite <- eq_nat_dec_bool_true_iff;
   try setoid_rewrite <- eq_N_dec_bool_true_iff;
   try setoid_rewrite <- eq_Z_dec_bool_true_iff;
@@ -75,8 +83,9 @@ Ltac fundepToQuery :=
     | [ |- context[Pick
                      (fun b => decides
                                  b
-                                 (forall tup', GetUnConstrRelation (QSSchema := ?qs_schema) ?or ?Ridx _
-                                               -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 ?n _))] ] =>
+                                 (forall tup' : @IndexedRawTuple ?sch,
+                                     GetUnConstrRelation (QSSchema := ?qs_schema) ?or ?Ridx _
+                                     -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 ?n _))] ] =>
       let H' := fresh in
       let H'' := fresh in
       let refine_fundep := fresh in
@@ -85,12 +94,12 @@ Ltac fundepToQuery :=
                  -> @FunctionalDependency_P heading attrlist1 attrlist2 n (indexedElement tup'))
               <-> (forall tup' : IndexedRawTuple,
                      ~ (GetUnConstrRelation or Ridx tup'
-                        /\ tupleAgree n (indexedElement tup') attrlist2
-                        /\ ~ tupleAgree n (indexedElement tup') attrlist1))) as H'
+                        /\ @tupleAgree sch n (indexedElement tup') attrlist2
+                        /\ ~ @tupleAgree sch n (indexedElement tup') attrlist1))) as H'
           by (unfold FunctionalDependency_P; dec_tauto);
         assert (DecideableEnsemble (fun x : RawTuple =>
-                                      tupleAgree_computational n x attrlist2 /\
-                                      ~ tupleAgree_computational n x attrlist1)) as H''
+                                      @tupleAgree_computational sch n x attrlist2 /\
+                                      ~ @tupleAgree_computational sch n x attrlist1)) as H''
           by (subst_all;
               prove_decidability_for_functional_dependencies);
         let refine_fundep := eval simpl in (@refine_functional_dependency_check_into_query qs_schema Ridx n attrlist2 attrlist1 or H'' H') in
@@ -100,8 +109,9 @@ Ltac fundepToQuery :=
     | [ |- context[Pick
                      (fun b => decides
                                  b
-                                 (forall tup', GetUnConstrRelation ?or ?Ridx _
-                                               -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 _ ?n ))] ] =>
+                                 (forall tup' : @IndexedRawTuple ?sch,
+                                     GetUnConstrRelation ?or ?Ridx _
+                                     -> @FunctionalDependency_P ?heading ?attrlist1 ?attrlist2 _ ?n ))] ] =>
       let H' := fresh in
       let H'' := fresh in
       let refine_fundep := fresh in
@@ -110,12 +120,12 @@ Ltac fundepToQuery :=
                  -> @FunctionalDependency_P heading attrlist1 attrlist2 (indexedElement tup') n)
               <-> (forall tup' : IndexedTuple,
                      ~ (GetUnConstrRelation or Ridx tup'
-                        /\ tupleAgree (indexedElement tup') n attrlist2
-                        /\ ~ tupleAgree (indexedElement tup') n attrlist1))) as H'
+                        /\ @tupleAgree sch (indexedElement tup') n attrlist2
+                        /\ ~ @tupleAgree sch (indexedElement tup') n attrlist1))) as H'
           by (unfold FunctionalDependency_P; dec_tauto);
         assert (DecideableEnsemble (fun x : Tuple =>
-                                      tupleAgree_computational x n attrlist2 /\
-                                      ~ tupleAgree_computational x n attrlist1)) as H''
+                                      @tupleAgree_computational sch x n attrlist2 /\
+                                      ~ @tupleAgree_computational sch x n attrlist1)) as H''
           by prove_decidability_for_functional_dependencies;
         let refine_fundep := eval simpl in
         (@refine_functional_dependency_check_into_query' _ _ n attrlist2 attrlist1 or H'' H') in

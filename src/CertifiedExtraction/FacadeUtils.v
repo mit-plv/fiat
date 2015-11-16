@@ -6,6 +6,7 @@ Require Export
         Bedrock.Platform.Cito.GLabelMap
         Bedrock.Platform.Facade.DFacade.
 Require Import
+        CertifiedExtraction.Core
         CertifiedExtraction.PureUtils
         CertifiedExtraction.FMapUtils
         CertifiedExtraction.StringMapUtils
@@ -19,8 +20,60 @@ Definition bool2w b :=
   | false => (Word.natToWord 32 0)
   end.
 
-Definition bool2val {av} b :=
-  SCA av (bool2w b).
+Ltac FacadeWrapper_t_step :=
+  match goal with
+  | _ => cleanup_pure
+  | _ => progress simpl in *
+  | [ H: FacadeWrapper _ _ |- _ ] => destruct H
+  | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+  | [  |- context[match ?x with _ => _ end]     ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+  | [ H: context[match ?x with _ => _ end] |- _ ] => not_match_p x; let h := fresh "eq" in destruct x eqn:h
+  | [  |- _ = _ ] => progress f_equal
+  | _ => solve [eauto]
+  end.
+
+Ltac FacadeWrapper_t :=
+  abstract (repeat FacadeWrapper_t_step).
+
+Instance FacadeWrapper_SCA {av} : FacadeWrapper (Value av) W.
+Proof.
+  refine {| wrap := SCA av;
+            unwrap := fun a => match a with SCA a => Some a | _ => None end;
+            unwrap_wrap := fun v => eq_refl;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Self {A: Type} : FacadeWrapper A A.
+Proof.
+  refine {| wrap := id;
+            unwrap := fun x => Some x;
+            unwrap_wrap := fun v => eq_refl;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Left {LType RType A: Type} (_: FacadeWrapper LType A) :
+  FacadeWrapper (LType + RType)%type A.
+Proof.
+  refine {| wrap x := inl (wrap x);
+            unwrap := fun x => match x with
+                           | inl b => unwrap b
+                           | inr _ => None
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
+
+Instance FacadeWrapper_Right {LType RType A: Type} (_: FacadeWrapper RType A):
+  FacadeWrapper (LType + RType)%type A.
+Proof.
+  refine {| wrap x := inr (wrap x);
+            unwrap := fun x => match x with
+                           | inl _ => None
+                           | inr b => unwrap b
+                           end;
+            unwrap_wrap := fun v => _;
+            wrap_unwrap := _ |}; FacadeWrapper_t.
+Defined.
 
 Definition nat_as_word n : Word.word 32 := Word.natToWord 32 n.
 Coercion nat_as_word : nat >-> Word.word.
@@ -78,9 +131,9 @@ Ltac facade_construction :=
              eapply (@SafeCallAx _ env retv fname args st spec)
            | [ H: GLabelMap.MapsTo ?fname (@Operational _ ?spec) ?env |- Safe ?env (Call ?retv ?fname ?args) ?st ] =>
              eapply (@SafeCallOp _ env retv fname args st spec)
-           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- Safe _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
+           | [ H: StringMap.MapsTo ?k (wrap (bool2w ?test)) ?st |- Safe _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
              facade_construction_if_helper test SafeIfTrue SafeIfFalse
-           | [ H: StringMap.MapsTo ?k (bool2val ?test) ?st |- RunsTo _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
+           | [ H: StringMap.MapsTo ?k (wrap (bool2w ?test)) ?st |- RunsTo _ (DFacade.If (isTrueExpr ?k) _ _) ?st ] =>
              facade_construction_if_helper test RunsToIfTrue RunsToIfFalse
            end.
 

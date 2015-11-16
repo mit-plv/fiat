@@ -10,6 +10,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
+Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common.BoundedLookup.
 Require Import Fiat.ADTNotation.BuildADTSig.
@@ -54,13 +55,16 @@ Section parser.
              str
              new_string_of_base_string_R)).
 
+  Local Instance split_dataProj : @split_dataT _ (adt_based_StringLike_lite splitter_impl)
+    := { split_string_for_production it its str := msplits splitter_impl it its str }.
+
   Local Instance adtProj
   : @StringLikeProj
       _
       (adt_based_splitter splitter_impl)
       (adt_based_StringLike_lite splitter_impl)
       (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
-      (fun it its str => msplits splitter_impl it its str)
+      split_dataProj
     := { proj := @proj1_sig _ _ }.
   Proof.
     reflexivity.

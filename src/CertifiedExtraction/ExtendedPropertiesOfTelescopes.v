@@ -13,7 +13,7 @@ Proof.
   induction tenv;
   repeat match goal with
          | _ => SameValues_Facade_t_step
-         | [ key: option string |- _ ] => destruct key
+         | [ key: NameTag _ _ |- _ ] => destruct key
          | [  |- context[string_dec ?x ?y] ] => destruct (string_dec x y)
          | _ => progress simpl
          | [  |- exists _, _ ] => eexists
@@ -26,26 +26,26 @@ Qed.
 Hint Resolve DropName_remove : SameValues_db.
 
 Lemma DropName_Cons_Some_neq :
-  forall {av} k k' v (tail: Value av -> Telescope av),
+  forall `{FacadeWrapper (Value av) A} k k' v (tail: A -> Telescope av),
     k <> k' ->
-    (DropName k (Cons (Some k') v tail)) = (Cons (Some k') v (fun vv => DropName k (tail vv))).
+    (DropName k (Cons (NTSome k') v tail)) = (Cons (NTSome k') v (fun vv => DropName k (tail vv))).
 Proof.
   intros; simpl.
   destruct (string_dec _ _); (congruence || reflexivity).
 Qed.
 
 Lemma DropName_Cons_Some_eq :
-  forall {av} k k' v (tail: Value av -> Telescope av),
+  forall `{FacadeWrapper (Value av) A} k k' v (tail: A -> Telescope av),
     k = k' ->
-    (DropName k (Cons (Some k') v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+    (DropName k (Cons (NTSome k') v tail)) = (Cons NTNone v (fun vv => DropName k (tail vv))).
 Proof.
   intros; simpl.
   destruct (string_dec _ _); (congruence || reflexivity).
 Qed.
 
 Lemma DropName_Cons_None :
-  forall {av} k v (tail: Value av -> Telescope av),
-    (DropName k (Cons None v tail)) = (Cons None v (fun vv => DropName k (tail vv))).
+  forall `{FacadeWrapper (Value av) A} k v (tail: A -> Telescope av),
+    (DropName k (Cons NTNone v tail)) = (Cons NTNone v (fun vv => DropName k (tail vv))).
 Proof.
   intros; simpl; reflexivity.
 Qed.
@@ -58,10 +58,9 @@ Proof.
   induction tenv; intros; simpl.
   - reflexivity.
   - destruct key; simpl in *; cleanup;
-    [ destruct (string_dec _ _); subst; cleanup | ];
+    [ | destruct (string_dec _ _); subst; cleanup ];
     constructor; eauto with typeclass_instances.
 Qed.
-
 
 Lemma SameValues_TelStrongEq_1 :
   forall {A} ext (tenv1 tenv2 : Telescope A) st,
@@ -118,28 +117,28 @@ Proof.
 Qed.
 
 Lemma TelEq_chomp_head :
-  forall {av} k v ext tenv tenv',
-    @PointWise_TelEq av ext v tenv tenv' ->
+  forall {av A} k v ext tenv tenv',
+    @PointWise_TelEq av A ext v tenv tenv' ->
     TelEq ext (Cons k v tenv) (Cons k v tenv').
 Proof.
   intros * H; rewrite H; reflexivity.
 Qed.
 
 Lemma TelEq_chomp_None_right :
-  forall {av} v ext tenv tenv',
+  forall {av A} v ext tenv tenv',
     (exists vv, v ↝ vv) ->
-    @PointWise_TelEq av ext v (fun _ => tenv) tenv' ->
-    TelEq ext tenv (Cons None v tenv').
+    @PointWise_TelEq av A ext v (fun _ => tenv) tenv' ->
+    TelEq ext tenv (Cons NTNone v tenv').
 Proof.
   intros * ? H; rewrite <- H; red.
   split; eauto with SameValues_db.
 Qed.
 
 Lemma TelEq_chomp_None_left :
-  forall {av} v ext tenv tenv',
+  forall {av A} v ext tenv tenv',
     (exists vv, v ↝ vv) ->
-    @PointWise_TelEq av ext v tenv (fun _ => tenv') ->
-    TelEq ext (Cons None v tenv) tenv'.
+    @PointWise_TelEq av A ext v tenv (fun _ => tenv') ->
+    TelEq ext (Cons NTNone v tenv) tenv'.
 Proof.
   intros * ? H; rewrite H; red.
   split; eauto with SameValues_db.
@@ -162,19 +161,18 @@ Proof.
 Qed.
 
 Lemma Lifted_MapsTo_eq:
-  forall {av} ext k v tail,
-    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k v.
+  forall `{FacadeWrapper (Value av) A} ext k v tail,
+    @Lifted_MapsTo av ext (Cons (NTSome k) (ret v) tail) k (wrap v).
 Proof.
   unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
 Qed.
 
 Lemma Lifted_MapsTo_neq:
-  forall {av} ext k v tail k' v',
+  forall `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} ext k (v: A) tail k' (v': A'),
     k <> k' ->
-    v <> v' ->
-    @Lifted_MapsTo av ext (tail v) k' v' ->
-    @Lifted_MapsTo av ext (Cons (Some k) (ret v) tail) k' v'.
+    @Lifted_MapsTo av ext (tail v) k' (wrap v') ->
+    @Lifted_MapsTo av ext (Cons (NTSome k) (ret v) tail) k' (wrap v').
 Proof.
   unfold Lifted_MapsTo, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
@@ -182,25 +180,25 @@ Proof.
 Qed.
 
 Lemma Lifted_not_mapsto_adt_eq:
-  forall {av} ext k v tail,
-    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret (SCA _ v)) tail) k.
+  forall {av} ext k (v: W) tail,
+    @Lifted_not_mapsto_adt av ext (Cons (NTSome k) (ret v) tail) k.
 Proof.
   unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
 Qed.
 
 Lemma Lifted_not_mapsto_adt_neq:
-  forall {av} ext k v tail k',
+  forall `{FacadeWrapper (Value av) A} ext k (v: A) tail k',
     k <> k' ->
     @Lifted_not_mapsto_adt av ext (tail v) k' ->
-    @Lifted_not_mapsto_adt av ext (Cons (Some k) (ret v) tail) k'.
+    @Lifted_not_mapsto_adt av ext (Cons (NTSome k) (ret v) tail) k'.
 Proof.
   unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
   SameValues_Facade_t.
 Qed.
 
 Lemma Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt:
-  forall {av} ext k tenv,
+  forall `{FacadeWrapper (Value av) A} ext k tenv,
     k ∉ ext ->
     NotInTelescope k tenv ->
     @Lifted_not_mapsto_adt av ext tenv k.
@@ -210,16 +208,16 @@ Proof.
 Qed.
 
 Lemma Lifted_is_true_eq_MapsTo :
-  forall {av} ext tenv var v,
-    Lifted_MapsTo ext tenv var (SCA av v) ->
+  forall {av} ext tenv var (v: W),
+    Lifted_MapsTo (av := av) ext tenv var (wrap v) ->
     Lifted_is_true ext tenv (var = v)%facade.
 Proof.
-  unfold Lifted_is_true, Lifted_MapsTo, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;
+  unfold Lifted_is_true, Lifted_MapsTo, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval.
   repeat match goal with
-         | _ => progress simpl
          | _ => cleanup_facade_pure
          | _ => SameValues_Facade_t_step
          | [ H: forall _, _ -> _, H': _ |- _ ] => specialize (H _ H')
+         | _ => progress simpl
          end.
 Qed.
 
@@ -229,22 +227,35 @@ Ltac is_dirty_telescope term :=
   | _ => fail 1
   end.
 
+Ltac decide_TelEq_instantiate_do_swaps k target :=
+  match target with
+  | context[k] => repeat setoid_rewrite (TelEq_swap _ k)
+  | _ => idtac
+  end.
+
+Ltac decide_TelEq_instantiate_step :=
+  match goal with
+  | [  |- TelEq _ ?from ?to ] =>
+    match constr:(from, to) with
+    | _ => rewrite DropName_Cons_Some_eq by congruence
+    | _ => rewrite DropName_Cons_Some_neq by congruence
+    | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
+    | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
+    | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+    | (?t, Cons ?k _ _) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+    | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
+                                            rewrite (DropName_NotInTelescope tenv k) by eauto ]
+    | _ => apply TelEq_refl
+    end
+  end.
+
 Ltac decide_TelEq_instantiate :=
-  repeat match goal with
-         | [  |- TelEq _ ?from _ ] =>
-           match from with
-           | _ => rewrite DropName_Cons_Some_eq by congruence
-           | _ => rewrite DropName_Cons_Some_neq by congruence
-           | Cons None _ _ => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
-           | Cons _    _ _ => apply TelEq_chomp_head; red; intros
-           | context[DropName ?k ?tenv] => first [is_dirty_telescope tenv; fail 1 | rewrite (@DropName_NotInTelescope _ tenv k) by eauto]
-           | _ => apply TelEq_refl
-           end
-         end; fail.
+  repeat decide_TelEq_instantiate_step.
 
 Ltac clean_telescope tel ext :=
   let clean := fresh in
   let type := type of tel in
+  let clean := fresh in
   evar (clean: type);
     setoid_replace tel with clean using relation (@TelEq _ ext);
     unfold clean;
@@ -258,10 +269,10 @@ Ltac Lifted_t :=
          | [  |- StringMap.MapsTo _ _ _ ] => decide_mapsto
          | [  |- NotInTelescope _ _ ] => decide_NotInTelescope
          | [  |- TelEq _ _ _ ] => reflexivity
-         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
-         | [  |- Lifted_MapsTo _ (Cons (Some ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | congruence | ]
-         | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
-         | [  |- Lifted_not_mapsto_adt _ (Cons (Some ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
+         | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
+         | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | ]
+         | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
+         | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
          | [  |- Lifted_not_mapsto_adt _ _ _ ] => apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; [ decide_not_in | decide_NotInTelescope ]
          | [  |- Lifted_is_true _ _ _ ] => apply Lifted_is_true_eq_MapsTo (* Coercions make precise matching hard *)
          end.

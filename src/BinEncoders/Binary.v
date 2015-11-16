@@ -50,6 +50,9 @@ Section Binary.
       | (d, b') => decode' b' d
     end.
 
+  Eval compute in (encode 6%N).
+  Eval compute in (decode (encode 6%N)).
+
   Lemma encode''_nonnil : forall n, length (encode'' n) <> O.
   Proof.
     intro n.

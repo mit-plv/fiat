@@ -4,7 +4,6 @@ Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.BooleanRecognizer Fiat.Parsers.MinimalParse.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
-Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Common Fiat.Common.Wf.
@@ -103,24 +102,6 @@ Section sound.
         Qed.
       End item.
 
-      Section item_ext.
-        Lemma parse_item_ext
-              (str : String)
-              (str_matches_nonterminal1 str_matches_nonterminal2 : String.string -> bool)
-              (it : item Char)
-              (ext : forall x, str_matches_nonterminal1 x = str_matches_nonterminal2 x)
-        : parse_item' str_matches_nonterminal1 str it
-          = parse_item' str_matches_nonterminal2 str it.
-        Proof.
-          unfold parse_item'.
-          destruct it; auto;
-          match goal with
-            | [ |- context[match ?E with _ => _ end] ] => destruct E
-          end;
-          auto.
-        Qed.
-      End item_ext.
-
       Section production.
         Context (len0 : nat)
                 (parse_nonterminal : forall (str : String) (len : nat),
@@ -198,7 +179,7 @@ Section sound.
                      (fun prod' =>
                         match prod' return Type with
                           | nil => True
-                          | it::its => split_list_completeT (G := G) (valid := valid) (len0 := len0) it its str pf (split_string_for_production it its str)
+                          | it::its => split_list_completeT (G := G) (valid := valid) (len0 := len0) it its str pf (@split_string_for_production _ _ data it its str)
                         end)
                      prod)
         : minimal_parse_of_production (G := G) len0 valid str prod
@@ -354,7 +335,7 @@ Section sound.
                         (fun prod' =>
                            match prod' return Type with
                              | nil => True
-                             | it::its => split_list_completeT (G := G) (valid := valid) (len0 := len0) it its str pf (split_string_for_production it its str)
+                             | it::its => split_list_completeT (G := G) (valid := valid) (len0 := len0) it its str pf (@split_string_for_production _ _ data it its str)
                            end))
                      prods)
         : minimal_parse_of (G := G) len0 valid str prods

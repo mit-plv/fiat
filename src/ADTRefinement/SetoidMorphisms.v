@@ -42,6 +42,23 @@ Proof.
     eapply H0.
 Qed.
 
+Lemma refineConstructor_eq_trans
+      rep rep' Dom
+      AbsR
+  : forall c c' c'',
+    @refineConstructor rep rep' AbsR Dom c c'
+    -> @refineConstructor_eq rep' Dom c' c''
+    -> refineConstructor AbsR c c''.
+Proof.
+  induction Dom.
+  - intro; simpl; intros; subst; intros v Comp_v.
+    apply H0 in Comp_v; computes_to_inv; subst.
+    apply H in Comp_v; computes_to_inv; subst; eauto.
+  - simpl; intros; eapply IHDom; simpl in *.
+    apply H.
+    eapply H0.
+Qed.
+
 Instance refineConstructor_trans' rep Dom
 : Transitive (@refineConstructor rep rep eq Dom).
 Proof.
@@ -79,6 +96,30 @@ Proof.
     eapply (IHDom (fun d' => m r_o d)
                   (fun d' => m' x d)
                   (fun d' => m'' r_n d)); eauto.
+Qed.
+
+Lemma refineMethod_eq_trans rep rep' Dom Cod
+      AbsR
+  : forall m m' m'',
+    @refineMethod rep rep' AbsR Dom Cod m m'
+    -> @refineMethod_eq rep' Dom Cod m' m''
+    -> refineMethod AbsR m m''.
+Proof.
+  unfold refineMethod, methodType; induction Dom.
+  - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+    + destruct_ex; intuition.
+      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+  - simpl; intros.
+    destruct_ex; intuition.
+    unfold refineMethod_eq in *.
+    eapply (IHDom (fun r_o => m r_o d)
+                  (fun r_n => m' r_n d)
+                  (fun r_n => m'' r_n d)); eauto.
+    intros; eapply H0.
 Qed.
 
 Instance refineMethod_trans' rep Dom Cod

@@ -71,7 +71,7 @@ Definition FullySharpenedUnderDelegates
 Notation Sharpened spec := (@refineADT _ spec _).
 
 Definition MostlySharpened {Sig} spec :=
-  {adt : _ & @FullySharpenedUnderDelegates Sig spec adt}.
+  {adt : _ & prod (refineADT spec (fst adt)) (@FullySharpenedUnderDelegates Sig (fst adt) (snd adt))}.
 
 Lemma FullySharpened_Start
   : forall {Sig} (spec : ADT Sig) cadt,
@@ -103,11 +103,12 @@ Proof.
 Qed.
 
 Lemma MostlySharpened_Start
-  : forall {Sig} (spec : ADT Sig) adt,
-    (@FullySharpenedUnderDelegates _ spec adt)
+  : forall {Sig} (spec : ADT Sig) adt cadt,
+    (@refineADT _ spec adt)
+    -> (@FullySharpenedUnderDelegates _ adt cadt)
     -> MostlySharpened spec.
 Proof.
-  intros; exists adt; eassumption.
+  intros; exists (adt, cadt); eauto.
 Defined.
 
 (* The proof componentn of a single refinement step. *)
@@ -320,9 +321,9 @@ Lemma cConstructors_AbsR {Sig} {spec : ADT Sig}
   :
     @Lift_Constructor2P _ _ _
                    (fun Cons cCons =>
-                      exists o_r',
-                        computes_to Cons (o_r')
-                        /\ AbsR (projT2 impl) o_r' cCons)
+                      exists r_o',
+                        computes_to Cons (r_o')
+                        /\ AbsR (projT2 impl) r_o' cCons)
                    (Constructors spec midx)
                    (cConstructors (projT1 impl) midx).
 Proof.
@@ -427,21 +428,21 @@ Qed.
 Lemma cMethods_AbsR {Sig} {spec : ADT Sig}
       (impl : FullySharpened spec)
       midx
-      (o_r : Rep spec)
-      (n_r : cRep (projT1 impl))
-      (Abs : AbsR (projT2 impl) o_r n_r)
+      (r_o : Rep spec)
+      (r_n : cRep (projT1 impl))
+      (Abs : AbsR (projT2 impl) r_o r_n)
   :
     @Lift_Method2P _ _ _ _
                    (fun _ Meth cMeth =>
-                      exists o_r',
-                        computes_to Meth (o_r', (snd cMeth))
-                        /\ AbsR (projT2 impl) o_r' (fst cMeth))
+                      exists r_o',
+                        computes_to Meth (r_o', (snd cMeth))
+                        /\ AbsR (projT2 impl) r_o' (fst cMeth))
                    (fun Meth cMeth =>
-                      exists o_r',
-                        computes_to Meth (o_r')
-                        /\ AbsR (projT2 impl) o_r' cMeth)
-                   (Methods spec midx o_r)
-                   (cMethods (projT1 impl) midx n_r).
+                      exists r_o',
+                        computes_to Meth (r_o')
+                        /\ AbsR (projT2 impl) r_o' cMeth)
+                   (Methods spec midx r_o)
+                   (cMethods (projT1 impl) midx r_n).
 Proof.
   simpl in *.
   generalize  (ADTRefinementPreservesMethods (projT2 impl) midx _ _ Abs).

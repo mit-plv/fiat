@@ -821,7 +821,7 @@ Lemma refine_under_bind_both_trans {A B}
     -> refine (a <- c'; y a) c''
     -> refine (a <- c; x a) c''.
 Proof. intros; etransitivity; eauto using refine_under_bind_both. Qed.
-Unset Ltac Debug.
+
 Lemma refine_If_Then_Else_trans {A}
   : forall (c : bool) (x y z : Comp A),
     refine x y ->
@@ -830,6 +830,7 @@ Lemma refine_If_Then_Else_trans {A}
       -> refine (If c Then y Else y0) z
       -> refine (If c Then x Else x0) z.
 Proof. intros; etransitivity; eauto using refine_If_Then_Else. Qed.
+
 Lemma refine_If_Opt_Then_Else_trans {A B}
   : forall (c : option B) (e e' z: Comp A) (t t' : B -> Comp A),
     (forall b, refine (t b) (t' b))
@@ -839,7 +840,6 @@ Lemma refine_If_Opt_Then_Else_trans {A B}
 Proof.
   intros; etransitivity; eauto using refine_If_Opt_Then_Else.
 Qed.
-
 
 Tactic Notation "refine" "pick" "val" open_constr(v) :=
   let T := type of v in
