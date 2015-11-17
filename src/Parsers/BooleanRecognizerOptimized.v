@@ -73,6 +73,7 @@ Section recursive_descent_parser.
           take n s := snd (of_string (take n (to_string (constV, s))));
           drop n s := snd (of_string (drop n (to_string (constV, s))));
           get n s := get n (to_string (constV, s));
+          unsafe_get n s := unsafe_get n (to_string (constV, s));
           bool_eq s s' := bool_eq (to_string (constV, s)) (to_string (constV, s')) |}.
 
   Local Ltac contract_drop_take_t' :=

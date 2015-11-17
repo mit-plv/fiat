@@ -26,7 +26,7 @@ Lemma finish_Sharpening_SplitterADT'
         ret (fto_string s),
       Def Method1 "is_char" (s : rep) (ch : Ascii.ascii) : rep * bool :=
         ret (fis_char s ch),
-      Def Method1 "get" (s : rep) (n : nat) : rep * (option Ascii.ascii) :=
+      Def Method1 "get" (s : rep) (n : nat) : rep * Ascii.ascii :=
         ret (fget s n),
       Def Method0 "length" (s : rep) : rep * nat :=
         ret (flength s),
