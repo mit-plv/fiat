@@ -1,6 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
+Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.BaseTypes.
@@ -339,7 +340,9 @@ Section recursive_descent_parser.
         => refine (_ : @map A B (fun x => _) _ = _);
           apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _) (@map A B)); repeat intro
       | [ |- _ = @nth ?A _ _ _ ]
-        => refine (_ : @nth A _ _ _ = _);
+        => rewrite <- nth'_nth
+      | [ |- _ = @nth' ?A _ _ _ ]
+        => refine (_ : @nth' A _ _ _ = _);
           apply f_equal3
       | [ |- _ = sumbool_rect ?T (fun a => _) (fun b => _) ?c ]
         => refine (_ : sumbool_rect T (fun a => _) (fun b => _) c = _);
@@ -460,6 +463,7 @@ Section recursive_descent_parser.
       end.
       rewrite map_map.
       simpl fold_left.
+      rewrite <- nth'_nth.
       reflexivity. }
     match goal with
       | [ |- context[fun s : ?T => bool_rect (fun _ => ?P) (@?a s) (@?a' s) ?b] ]
