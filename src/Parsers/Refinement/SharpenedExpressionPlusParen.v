@@ -19,7 +19,7 @@ Section IndexedImpl.
     {
       simplify parser splitter.
       let lem := constr:(@refine_binop_table _ _ _ _) in
-      setoid_rewrite lem; [ presimpl_after_refine_binop_table | solve [reflexivity | repeat esplit].. ].
+      setoid_rewrite lem; [ | solve [reflexivity | repeat esplit].. ]; presimpl_after_refine_binop_table.
       finish honing parser method.
     }
 

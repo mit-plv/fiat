@@ -707,7 +707,8 @@ Section no_records.
         is_close : Ascii.ascii -> bool;
         is_bin_op : Ascii.ascii -> bool;
         length : String -> nat;
-        get : nat -> String -> option Ascii.ascii }.
+        get : nat -> String -> option Ascii.ascii;
+        unsafe_get : nat -> String -> Ascii.ascii }.
     Context {ldata : list_of_next_bin_ops_opt_data}.
 
     Section exploded.
@@ -727,6 +728,7 @@ Section no_records.
              drop := drop;
              take := take;
              get := get;
+             unsafe_get := unsafe_get;
              bool_eq := bool_eq }.
 
       Local Arguments list_of_next_bin_ops'_opt / .
@@ -756,7 +758,8 @@ Section no_records.
            is_close := ParenBalanced.Core.is_close;
            is_bin_op := ParenBalanced.Core.is_bin_op;
            length := StringLike.length;
-           get := StringLike.get }.
+           get := StringLike.get;
+           unsafe_get := StringLike.unsafe_get }.
 
     Lemma list_of_next_bin_ops'_opt_nor_correct (str : String)
     : list_of_next_bin_ops'_opt_nor str

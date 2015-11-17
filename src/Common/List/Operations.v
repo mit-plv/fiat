@@ -39,6 +39,17 @@ Definition rev_nth {A} (n : nat) (ls : list A) : A -> A
 Arguments drop_all_but : simpl never.
 Arguments rev_nth : simpl never.
 
+Fixpoint nth'_helper {A} (n : nat) (ls : list A) (default : A) (offset : nat) :=
+  match ls with
+    | nil => default
+    | x::xs => if EqNat.beq_nat n offset
+               then x
+               else nth'_helper n xs default (S offset)
+  end.
+
+Definition nth' {A} (n : nat) (ls : list A) (default : A) :=
+  Eval unfold nth'_helper in nth'_helper n ls default 0.
+
 Section filter_out.
   Context {A} (f : A -> bool).
 
