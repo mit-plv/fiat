@@ -196,7 +196,7 @@ Proof.
   split; intros; computes_to_inv; subst; eauto using BindComputes.
 Qed.
 
-Lemma CompileMapAlloc_ADT :
+Lemma CompileMap_ADT :
   forall {av A A'} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list A')} `{FacadeWrapper (Value av) A} `{FacadeWrapper av A'}
     (lst: list A) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value av)) tenv tenv' (f: A -> A'),
     GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
@@ -241,7 +241,7 @@ Proof.
   apply CompileCallFacadeImplementationOfMutation_ADT; compile_do_side_conditions.
 Qed.
 
-Lemma CompileMapAlloc_SCA :
+Lemma CompileMap_SCA :
   forall {av A} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list W)} `{FacadeWrapper (Value av) A}
     (lst: list A) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value av)) tenv tenv' (f: A -> W),
     GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
@@ -285,6 +285,8 @@ Proof.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
   apply CompileCallFacadeImplementationOfMutation_SCA; unfold DummyArgument; compile_do_side_conditions.
 Qed.
+
+(* FIXME prove lemma for un-reved map using temp variable *)
 
 Lemma ret_fold_fold_ret_lemma :
   forall {TElem TAcc} (f: TAcc -> TElem -> TAcc) lst (init: TAcc) init_comp,
@@ -358,7 +360,6 @@ Lemma CompileLoopAlloc_ret :
 Proof.
   eauto using @CompileSeq, @CompileLoop_ret.
 Qed.
-
 
 Lemma SameValues_Fiat_Bind_TelEq_Pair :
   forall {av A1 A2 B} key compA compB tail ext,
@@ -460,7 +461,6 @@ Proof.
 Qed.
 
 (* FIXME move stuff above to Extraction.Extraction *)
-
 
 Lemma SameValues_remove_SCA:
   forall (av0 : Type) (tenv' : Telescope av0)
@@ -594,8 +594,8 @@ Ltac _compile_map :=
             | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
               unify seq seq';
                 first [
-                    apply (CompileMapAlloc_SCA seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) |
-                    apply (CompileMapAlloc_ADT seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) ]
+                    apply (CompileMap_SCA seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) |
+                    apply (CompileMap_ADT seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := DummyArgument vtmp)) ]
             end).
 
 Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
@@ -1053,6 +1053,72 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_double).
 
+Fixpoint Inb {sz} (w: @Word.word sz) seq :=
+  match seq with
+  | nil => false
+  | cons w' tl => if Word.weqb w w' then true else Inb w tl
+  end.
+
+Require Import Coq.Program.Basics.
+
+Arguments wrap : simpl never.
+Opaque Word.weqb Word.NToWord.
+
+Arguments map : simpl nomatch.
+Arguments Word.NToWord {sz} n.
+
+Require Import NArith.
+
+Definition nibble_power_of_2_p (w: W) :=
+  Eval simpl in bool2w (Inb w (map Word.NToWord [[[1; 2; 4; 8]]]%N)).
+
+Ltac is_pushable_head_constant f ::=
+     let hd := head_constant f in
+     match hd with
+     | @Cons => fail 1
+     | _ => idtac
+     end.
+
+Ltac _compile_rewrite_if ::=
+     match_ProgOk
+     ltac:(fun prog pre post ext env =>
+             match post with
+             | appcontext [if ?b then ?x else ?y] =>
+               is_dec b; first [ rewrite (dec2bool_correct b x y)
+                               | setoid_rewrite (dec2bool_correct b x y) ]
+             | appcontext [?f (if ?b then ?x else ?y)] =>
+               is_pushable_head_constant f; first [ rewrite (push_if f x y b)
+                                                  | setoid_rewrite (push_if f x y b) ]
+             end).
+
+Ltac _compile_early_hook ::= progress unfold nibble_power_of_2_p.
+
+Example micro_nibble_power_of_2 :
+  ParametricExtraction
+    #vars      x
+    #program   ret (nibble_power_of_2_p (Word.wplus x 1))
+    #arguments [[`"x" <-- x as _ ]] :: Nil
+    #env       Microbenchmarks_Env.
+Proof.                               (* FIXME prove something for maps *)
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_nibble_power_of_2).
+
+Ltac _compile_early_hook ::= fail.
+
+Example micro_nibble_power_of_2__intrinsic :
+  ParametricExtraction
+    #vars      x
+    #program   ret (nibble_power_of_2_p (Word.wplus x 1))
+    #arguments [[`"x" <-- x as _ ]] :: Nil
+    #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_2_p)).
+Proof.                               (* FIXME prove something for maps *)
+  repeat _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_nibble_power_of_2__intrinsic).
+
 Example micro_fold_plus :
   ParametricExtraction
     #vars      seq
@@ -1233,3 +1299,4 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_drop_larger_than_random).
+
