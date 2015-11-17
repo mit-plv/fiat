@@ -60,6 +60,7 @@ src/CertifiedExtraction/FacadeLemmas.v
 src/CertifiedExtraction/FacadeNotations.v
 src/CertifiedExtraction/FacadeUtils.v
 src/CertifiedExtraction/HintDBs.v
+src/CertifiedExtraction/Microbenchmarks.v
 src/CertifiedExtraction/PropertiesOfTelescopes.v
 src/CertifiedExtraction/PureFacadeLemmas.v
 src/CertifiedExtraction/PureUtils.v
