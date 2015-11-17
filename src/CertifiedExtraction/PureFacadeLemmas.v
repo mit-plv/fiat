@@ -1,19 +1,13 @@
 Require Export Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.StringMapFacts.
 Require Export Bedrock.Platform.Cito.SyntaxExpr Bedrock.Platform.Facade.DFacade.
+Require Import Bedrock.Platform.Facade.DFacadeFacts2.
 Require Import Coq.Setoids.Setoid.
 
 Add Parametric Morphism {av} : (@eval av)
     with signature (StringMap.Equal ==> eq ==> eq)
       as eval_Morphism.
 Proof.
-  intros;
-  match goal with
-  | [ e: Expr |- _ ] => induction e
-  end; simpl;
-  repeat match goal with
-         | [ H: _ |- _ ] => rewrite H
-         end;
-  reflexivity.
+  eauto using DFacadeFacts2.eval_Morphism.
 Qed.
 
 Lemma IL_weqb_refl : forall x,
@@ -33,13 +27,15 @@ Add Parametric Morphism {av} {env} {prog} : (@Safe av env prog)
     with signature (StringMap.Equal ==> iff)
       as Safe_Morphism.
 Proof.
-Admitted.
+  eauto using DFacadeFacts2.Safe_Morphism.
+Qed.
 
 Add Parametric Morphism {av} {env} {prog} : (@RunsTo av env prog)
     with signature (StringMap.Equal ==> StringMap.Equal ==> iff)
       as RunsTo_Morphism.
 Proof.
-Admitted.
+  eauto using DFacadeFacts2.RunsTo_Morphism.
+Qed.
 
 Ltac isDeterministicStmtConstructor stmt :=
   match stmt with
