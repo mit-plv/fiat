@@ -25,6 +25,9 @@ Fixpoint DomWrapperT av (Dom : list Type) : Type :=
                            (DomWrapperT av Dom')
   end.
 
+Definition nthArgName n := "arg" ++ (NumberToString n).
+Definition nthRepName n := "rep" ++ (NumberToString n).
+
 Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
          (f : Rep -> Telescope av)
          {struct Dom}
@@ -58,7 +61,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
            end
   | cons DomT Dom' =>
     fun cWrap dWrap prog tele meth =>
-      forall d, let _ := fst dWrap in LiftMethod' env Dom' f cWrap (snd dWrap) prog ([[ (NTSome ("arg" ++ (NumberToString (List.length Dom')))) <-- d as _]] :: tele) (meth d)
+      forall d, let _ := fst dWrap in LiftMethod' env Dom' f cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
   end.
 
 Definition LiftMethod
@@ -114,7 +117,7 @@ Fixpoint Decomposei3list
   | Vector.nil => fun as' rWrap r => Nil
   | Vector.cons a n' As' => fun as' rWrap r =>
                               let fWrap' := fst rWrap in
-                              Cons (NTSome ("rep" ++ (NumberToString n'))) (ret (prim_fst r)) (fun _ => Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
+                              Cons (NTSome (nthRepName n')) (ret (prim_fst r)) (fun _ => Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
   end.
 
 Definition DecomposeIndexedQueryStructure av qs_schema Index
@@ -136,6 +139,203 @@ Arguments NumberToString _ / .
 Eval simpl in
   (forall av env rWrap cWrap dWrap prog,
       (LiftMethod (av := av) env (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
+
+Require Import Bedrock.Platform.Facade.DFModule.
+Require Import Fiat.ADTNotation.
+
+Fixpoint NumUpTo n acc := 
+  match n with
+  | 0 => acc
+  | S n' => NumUpTo n' (n' :: acc)
+  end.
+
+Definition BuildArgNames n m :=
+  List.app (map nthArgName (NumUpTo n nil))
+           (map nthRepName (NumUpTo m nil)).
+Compute (BuildArgNames 3 5).
+
+Definition Shelve {A} (a : A) := True.
+
+Definition DFModuleEquiv
+           av
+           env
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (module : DFModule av)
+           (consWrapper' : forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx)))
+           (domWrapper : forall midx, DomWrapperT av (methDom (Vector.nth methSigs midx)))
+           (f : Core.Rep adt -> Telescope av)
+           (DecomposeRepCount : nat)
+  : Prop :=
+  (* Environments match *)
+  (* FIXME : (module.(Imports) = env) *)
+  (* Method Correspondence *)
+  (forall midx : Fin.t n',
+      let meth := Vector.nth methSigs midx in 
+      exists Fun,
+        Fun.(Core).(RetVar) = "ret"
+        /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
+        /\ LiftMethod env f (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
+                      (Methods adt midx)
+        /\ (StringMap.MapsTo (methID meth) Fun module.(Funs))
+        /\ Shelve Fun).
+
+Definition BuildFacadeModuleT
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : Core.ADT (BuildADTSig consSigs methSigs))
+           (f : A -> _)
+           g
+  := {module : _ &
+      {cWrap : _ &
+       {dWrap : _ &
+        {rWrap : _ & DFModuleEquiv env adt module cWrap dWrap (f rWrap) g } } } } .
+
+Arguments nthRepName _ / .
+Arguments nthArgName _ / .
+Arguments BuildArgNames !n !m / .
+
+Ltac makeEvar T k :=
+  let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+Ltac list_of_evar B n k :=
+  match n with
+  | 0 => k (@nil B)
+  | S ?n' =>
+    makeEvar B ltac:(fun b =>
+                       list_of_evar
+                         B n' ltac:(fun Bs => k (cons b Bs)))
+  end.
+
+Fixpoint BuildStringMap {A} (k : list string) (v : list A) : StringMap.t A :=
+  match k, v with
+  | cons k ks, cons v vs => StringMap.add k v (BuildStringMap ks vs)
+  | _, _ => StringMap.empty A 
+  end.
+  
+Definition BuildFacadeModule
+           av
+           (env : Env av)
+  : BuildFacadeModuleT env PartialSchedulerImpl (DecomposeIndexedQueryStructure av)
+                       (QueryStructureSchema.numQSschemaSchemas SchedulerSchema).
+Proof.
+  lazymatch goal with
+    |- BuildFacadeModuleT _ ?adt _ _ =>
+  let sig := match type of adt with Core.ADT ?sig => sig end in
+    let methSigs := match sig with
+                      DecADTSig ?DecSig => constr:(MethodNames DecSig) end in
+    let methIdx := eval compute in (MethodIndex sig) in 
+        match methIdx with
+        | Fin.t ?n =>
+          list_of_evar DFFun n ltac:(fun z => eexists {| Funs := BuildStringMap (Vector.fold_right cons methSigs nil) z |})
+        end
+  end.
+  do 3 eexists.
+  simpl; unfold DFModuleEquiv.
+  eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv.
+  simpl; repeat split;
+  eexists {| Core := {| Body := Assign "ret" (Const 0) |};
+             compiled_syntax_ok := _ |};
+  simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate;
+
+  try match goal with
+  |- Shelve
+      {|
+        Core := {|
+                 ArgVars := _;
+                 RetVar := _;
+                 Body := _;
+                 args_no_dup := ?a;
+                 ret_not_in_args := ?b;
+                 no_assign_to_args := ?c;
+                 args_name_ok := ?d;
+                 ret_name_ok := ?e;
+                 syntax_ok := ?f |};
+        compiled_syntax_ok := ?g |} =>
+  try unify a (eq_refl true);
+    try unify b (eq_refl true);
+    try unify c (eq_refl true);
+    try unify d (eq_refl true);
+    try unify e (eq_refl true);
+    try unify f (eq_refl true);
+    try unify g (eq_refl true);
+    constructor        
+    end.
+  Show Existentials.
+  
+  Goal (exists x : (FacadeWrapper W W), Shelve x).
+    eexists.
+    match goal with
+      |- @Shelve ?X ?x =>
+      let x' := constr:(_ : X) in unify x' x
+    end.
+    
+    simpl in e.
+  Print is_syntax_ok.
+  cbv [CompileDFacade.compile_op] in e.
+  simpl in e.
+  unfold FModule.is_syntax_ok in e.
+  
+  
+  compute in e.
+  compute in e.
+simpl in e.
+let a' := eval unfold e in e in
+    unify a' (eq_refl true).
+  reflexivity.
+  Fo
+  intros.
+  
+  instantiate (1 := Skip).
+  
+  eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex.
+  intros.
+  eexists.
+  split.
+  Focus 2.
+
+  Definition CompiledModule
+  : BuildFacadeModule FixedAV adt.
+Proof.
+
+Definition BuildFacadeModule av
+           {n n'}
+           {Rep}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (consDefs : ilist (B := @consDef Rep) consSigs)
+           (methDefs : ilist (B := @methDef Rep) methSigs)
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+  := {module : DFModule av |
+            forall
+
+
+
+     .
+Proof.
+  refine {| Imports := Imports;
+            Funs := _;
+            import_module_names_good := _ |}.
+  refine (Vector.fold_left (fun acc el => (StringMap.add _ _ acc)) (StringMap.empty _) methSigs).
+  exact (methID el).
+  assert OperationalSpec.
+  Print OperationalSpec.
+
+  refine {| Core := {| ;
+           compiled_syntax_ok := _ |}. FModule.is_syntax_ok
+                                            (CompileDFacade.compile_op Core) = true }
+  econstructor.
+
+  Print methSig.
+  refine StringMap.
+
+
 
 Definition MyEnvLists `{FacadeWrapper av (list W)} : Env av :=
   (GLabelMap.empty (FuncSpec _))
