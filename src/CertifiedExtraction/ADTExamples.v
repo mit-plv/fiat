@@ -25,18 +25,6 @@ Fixpoint DomWrapperT av (Dom : list Type) : Type :=
                            (DomWrapperT av Dom')
   end.
 
-Fixpoint LiftMethodT (av : Type) Rep Cod Dom
-  {struct Dom}
-  : Type :=
-  match Dom with
-  | nil => CodWrapperT av Cod
-           -> FacadeWrapper av Rep
-           -> Prop
-  | cons DomT Dom' =>
-    FacadeWrapper (Value av) DomT
-    -> LiftMethodT av Rep Cod Dom'
-  end.
-
 Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
          (f : Rep -> Telescope av)
          {struct Dom}
@@ -66,8 +54,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                               prog
                               {{[[meth as mPair]]
                                   :: [[`"ret" <-- snd mPair as _]]
-                                  :: [[ret (fst mPair) as database]]
-                                  :: (f database)}}  ∪ {{ StringMap.empty _ }} // env
+                                  :: (f (fst mPair))}}  ∪ {{ StringMap.empty _ }} // env
            end
   | cons DomT Dom' =>
     fun cWrap dWrap prog tele meth =>
@@ -86,7 +73,7 @@ Definition LiftMethod
          (prog : Stmt)
          (meth : methodType Rep Dom Cod)
   : Prop :=
-  forall r, LiftMethod' env Dom f cWrap dWrap prog ([[(ret r) as database]] :: (f database)) (meth r).
+  forall r, LiftMethod' env Dom f cWrap dWrap prog (f r) (meth r).
 Arguments LiftMethod [_] _ {_ _ _} _ _ _ _ _ / .
 
 Fixpoint RepWrapperT
@@ -130,7 +117,6 @@ Fixpoint Decomposei3list
                               Cons (NTSome ("rep" ++ (NumberToString n'))) (ret (prim_fst r)) (fun _ => Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
   end.
 
-
 Definition DecomposeIndexedQueryStructure av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
                                  Schema.RawSchema
@@ -149,7 +135,7 @@ Arguments NumberToString _ / .
 
 Eval simpl in
   (forall av env rWrap cWrap dWrap prog,
-      (LiftMethod (av := av) env (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.F1)))).
+      (LiftMethod (av := av) env (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
 
 Definition MyEnvLists `{FacadeWrapper av (list W)} : Env av :=
   (GLabelMap.empty (FuncSpec _))
