@@ -83,7 +83,7 @@ Section implementation.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
-  Local Arguments Compare_dec.leb : simpl never.
+  Local Arguments Compare_dec.leb !_ !_.
 
   Definition parser : Parser G stringlike_stringlike.
   Proof.
