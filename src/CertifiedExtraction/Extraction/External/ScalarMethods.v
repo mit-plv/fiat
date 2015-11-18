@@ -1,5 +1,4 @@
 Require Import
-        CertifiedExtraction.Extraction.BasicTactics
         CertifiedExtraction.Extraction.External.Core
         CertifiedExtraction.Extraction.External.GenericMethods.
 

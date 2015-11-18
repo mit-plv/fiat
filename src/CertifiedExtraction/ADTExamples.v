@@ -5,7 +5,7 @@ Require Import
         CertifiedExtraction.FacadeUtils
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.Examples
-        CertifiedExtraction.Extraction.AllInternal
+        CertifiedExtraction.Extraction.Internal
         CertifiedExtraction.Extraction.Extraction.
 
 Parameter TSearchTerm : Type.
@@ -22,7 +22,6 @@ Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
     ### ("listW", "empty?") ->> (Axiomatic (List_empty W))
     ### ("search", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TSearchTerm))
     ### ("acc", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor TAcc)).
-
 
 (* Ltac compile_destructor := *)
 (*   match_ProgOk *)
@@ -696,7 +695,6 @@ Ltac _compile_CallGetAttribute :=
                                                 (vsrc :: vindex :: nil))) ]
             end).
 
-
 Ltac _compile_CallBagFind :=
   match_ProgOk
      ltac:(fun prog pre post ext env =>
@@ -780,26 +778,6 @@ Ltac unset_values :=
          | [ H := Remembered _ |- _ ] => unfold H in *; clear H
          | _ => unfold Remembered in *
          end.
-
-(* Ltac _compile_destructor ::= *)
-(*      match_ProgOk *)
-(*      ltac:(fun prog pre post ext env => *)
-(*              let vtmp := gensym "tmp" in *)
-(*              match pre with *)
-(*              | Cons _ ?v (fun _ => ?tenv) => *)
-(*                match tenv with *)
-(*                | context[post] => _compile_destructor_unsafe vtmp tenv post *)
-(*                | _ => unify tenv post; _compile_destructor_unsafe vtmp tenv post *)
-(*                | _ => ( set_values tail; *)
-(*                        lazymatch v with *)
-(*                        | ret ?vv => tenv_not_mentions post vv; _compile_destructor_unsafe vtmp tenv post *)
-(*                        | ?vv => tenv_not_mentions post vv; _compile_destructor_unsafe vtmp tenv post *)
-(*                        end; *)
-(*                        unset_values) *)
-(*                end *)
-(*              end). *)
-
-
 
 Example other_test_with_adt''':
   sigT (fun prog => forall (searchTerm: TSearchTerm) (init: TAcc),

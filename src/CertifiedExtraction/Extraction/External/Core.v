@@ -1,6 +1,7 @@
 Require Export
         Coq.Lists.List
-        CertifiedExtraction.Extraction.Core.
+        CertifiedExtraction.Extraction.Core
+        CertifiedExtraction.Extraction.Basics.
 
 Create HintDb call_helpers_db discriminated.
 

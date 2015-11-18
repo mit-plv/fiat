@@ -62,6 +62,34 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
+Lemma ProgOk_Remove_Skip_L :
+  forall {av} ext (t1 t2: Telescope av) env prog,
+    {{ t1 }} (Seq Skip prog) {{ t2 }} ∪ {{ ext }} // env ->
+    {{ t1 }} prog {{ t2 }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+  learn (RunsToSkip env (Equal_refl initial_state)); eauto.
+  learn (RunsToSeq (RunsToSkip _ (Equal_refl _)) H1); eauto.
+Qed.
+
+Lemma ProgOk_Remove_Skip_R :
+  forall {av} ext (t1 t2: Telescope av) env prog,
+    {{ t1 }} (Seq prog Skip) {{ t2 }} ∪ {{ ext }} // env ->
+    {{ t1 }} prog {{ t2 }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+  learn (RunsToSeq H1 (RunsToSkip _ (Equal_refl _))); eauto.
+Qed.
+
+Lemma ProgOk_Transitivity_Name_SCA :
+  forall {av} k env ext t1 (t2: W -> Telescope av) prog1 (v: Comp W),
+    {{ t1 }} prog1 {{ [[`k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ t1 }} prog1 {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+  eauto using SameValues_Dealloc_SCA.
+Qed.
+
 Lemma CompileSeq :
   forall {av} (tenv1 tenv1' tenv2: Telescope av) ext env p1 p2,
     {{ tenv1 }}
@@ -76,3 +104,9 @@ Lemma CompileSeq :
 Proof.
   SameValues_Facade_t.
 Qed.
+
+Ltac hoare :=
+  match goal with
+  | _ => progress intros
+  | [  |- {{ _ }} (Seq _ _) {{ _ }} ∪ {{ _ }} // _ ] => eapply CompileSeq; try eassumption
+  end.

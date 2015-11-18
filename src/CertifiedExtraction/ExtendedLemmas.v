@@ -898,3 +898,85 @@ Lemma miniChomp' :
 Proof.
   intros; apply miniChomp; intros; rewrite Propagate_anonymous_ret by reflexivity; eauto.
 Qed.
+
+
+Lemma SameValues_remove_SCA:
+  forall (av0 : Type) (tenv' : Telescope av0)
+    (ext : StringMap.t (Value av0)) (k : StringMap.key)
+    (final_state : State av0) (x : W),
+    StringMap.MapsTo k (wrap x) final_state ->
+    StringMap.remove (elt:=Value av0) k final_state ≲ tenv' ∪ ext ->
+    final_state ≲ tenv' ∪ ext.
+Proof.
+  induction tenv'; simpl; intros.
+  - rewrite (add_redundant_cancel H).
+    rewrite <- add_remove_cancel; try reflexivity.
+    apply WeakEq_pop_SCA.
+    apply StringMap.remove_1; reflexivity.
+    assumption.
+  - destruct key; repeat cleanup.
+    + eauto.
+    + SameValues_Fiat_t.
+      StringMap_t.
+      rewrite remove_mapsto_iff in *.
+      cleanup.
+      StringMap_t.
+      repeat cleanup.
+      eapply H.
+      2: rewrite remove_remove_comm; eauto.
+      rewrite remove_mapsto_iff in *; eauto.
+Qed.
+
+Hint Resolve SameValues_remove_SCA : SameValues_db.
+
+Lemma CompileDeallocSCA_discretely :
+  forall {av} (tenv tenv': Telescope av) ext env k (v: Comp W) prog,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    {{ [[`k <~~ v as _]] :: tenv }} prog {{ [[`k <~~ v as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`k <~~ v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Lemma ProgOk_Chomp_Some_snd :
+  forall {av A T} `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) T} env key value k (v': Comp T) prog
+    (tail1: A -> Telescope av)
+    (tail2: A -> Telescope av)
+    ext,
+    key ∉ ext ->
+    (forall v: A, value ↝ v -> {{ tail1 v }} prog {{ Cons (NTSome k) v' (fun _ => tail2 v) }} ∪ {{ [key <-- wrap v] :: ext }} // env) ->
+    ({{ Cons (NTSome key) value tail1 }} prog {{ Cons (NTSome k) v' (fun _ => Cons (NTSome key) value tail2) }} ∪ {{ ext }} // env).
+Proof.
+  intros.
+  rewrite TelEq_swap.
+  apply ProgOk_Chomp_Some; eauto.
+Qed.
+
+Lemma ProgOk_Chomp_None_snd :
+  forall {av A T} `{FacadeWrapper (Value av) T} env key value prog
+    (tail1: A -> Telescope av)
+    (tail2: A -> Telescope av)
+    ext k (v': Comp T),
+    key ∉ ext ->
+    (forall v: A, value ↝ v -> {{ tail1 v }} prog {{ Cons (NTSome k) v' (fun _ => tail2 v) }} ∪ {{ ext }} // env) ->
+    ({{ Cons NTNone value tail1 }} prog {{ Cons (NTSome k) v' (fun _ => Cons NTNone value tail2) }} ∪ {{ ext }} // env).
+Proof.
+  intros.
+  rewrite TelEq_swap.
+  apply ProgOk_Chomp_None; eauto.
+Qed.
+
+Lemma SameValues_Fiat_Bind_TelEq_Pair :
+  forall {av A1 A2 B} key compA compB tail ext,
+    TelEq ext
+          (Cons (av := av) key (@Bind (A1 * A2) B compA compB) tail)
+          (Cons NTNone compA (fun a => Cons NTNone (ret (fst a)) (fun a1 => Cons NTNone (ret (snd a)) (fun a2 => Cons key (compB (a1, a2)) tail)))).
+Proof.
+  unfold TelEq;
+  repeat match goal with
+         | _ => progress subst
+         | _ => progress SameValues_Fiat_t_step
+         | _ => rewrite <- surjective_pairing in *
+         end.
+Qed.
