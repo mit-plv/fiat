@@ -10,6 +10,12 @@ Module Export Telescope.
          | tele A B => forall a : A, flattenT (B a) X
        end.
 
+  Fixpoint flattenT_sig (t : Telescope)
+    := match t return Type with
+         | bottom => unit
+         | tele A B => { a : A & flattenT_sig (B a) }
+       end.
+
   Fixpoint Telescope_append (t : Telescope)
   : flattenT t Type -> Telescope
     := match t return flattenT t _ -> _ with
