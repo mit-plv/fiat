@@ -142,7 +142,7 @@ Eval simpl in
 Require Import Bedrock.Platform.Facade.DFModule.
 Require Import Fiat.ADTNotation.
 
-Fixpoint NumUpTo n acc := 
+Fixpoint NumUpTo n acc :=
   match n with
   | 0 => acc
   | S n' => NumUpTo n' (n' :: acc)
@@ -172,7 +172,7 @@ Definition DFModuleEquiv
   (* FIXME : (module.(Imports) = env) *)
   (* Method Correspondence *)
   (forall midx : Fin.t n',
-      let meth := Vector.nth methSigs midx in 
+      let meth := Vector.nth methSigs midx in
       exists Fun,
         Fun.(Core).(RetVar) = "ret"
         /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
@@ -215,9 +215,9 @@ Ltac list_of_evar B n k :=
 Fixpoint BuildStringMap {A} (k : list string) (v : list A) : StringMap.t A :=
   match k, v with
   | cons k ks, cons v vs => StringMap.add k v (BuildStringMap ks vs)
-  | _, _ => StringMap.empty A 
+  | _, _ => StringMap.empty A
   end.
-  
+
 Definition BuildFacadeModule
            av
            (env : Env av)
@@ -229,7 +229,7 @@ Proof.
   let sig := match type of adt with Core.ADT ?sig => sig end in
     let methSigs := match sig with
                       DecADTSig ?DecSig => constr:(MethodNames DecSig) end in
-    let methIdx := eval compute in (MethodIndex sig) in 
+    let methIdx := eval compute in (MethodIndex sig) in
         match methIdx with
         | Fin.t ?n =>
           list_of_evar DFFun n ltac:(fun z => eexists {| Funs := BuildStringMap (Vector.fold_right cons methSigs nil) z |})
@@ -239,49 +239,130 @@ Proof.
   simpl; unfold DFModuleEquiv.
   eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv.
   simpl; repeat split;
-  eexists {| Core := {| Body := Assign "ret" (Const 0) |};
+  eexists {| Core := {| Body := _ |};
              compiled_syntax_ok := _ |};
   simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate;
 
   try match goal with
-  |- Shelve
-      {|
-        Core := {|
-                 ArgVars := _;
-                 RetVar := _;
-                 Body := _;
-                 args_no_dup := ?a;
-                 ret_not_in_args := ?b;
-                 no_assign_to_args := ?c;
-                 args_name_ok := ?d;
-                 ret_name_ok := ?e;
-                 syntax_ok := ?f |};
-        compiled_syntax_ok := ?g |} =>
-  try unify a (eq_refl true);
-    try unify b (eq_refl true);
-    try unify c (eq_refl true);
-    try unify d (eq_refl true);
-    try unify e (eq_refl true);
-    try unify f (eq_refl true);
-    try unify g (eq_refl true);
-    constructor        
-    end.
+        |- Shelve
+            {|
+              Core := {|
+                       ArgVars := _;
+                       RetVar := _;
+                       Body := _;
+                       args_no_dup := ?a;
+                       ret_not_in_args := ?b;
+                       no_assign_to_args := ?c;
+                       args_name_ok := ?d;
+                       ret_name_ok := ?e;
+                       syntax_ok := ?f |};
+              compiled_syntax_ok := ?g |} =>
+        try unify a (eq_refl true);
+          try unify b (eq_refl true);
+          try unify c (eq_refl true);
+          try unify d (eq_refl true);
+          try unify e (eq_refl true);
+          try unify f (eq_refl true);
+          try unify g (eq_refl true);
+          constructor
+      end.
+
+  intros.
+
+  Definition FinToWord {N: nat} (n: Fin.t N) :=
+    Word.natToWord 32 (proj1_sig (Fin.to_nat n)).
+
+  Definition FitsInW {N: nat} (n: Fin.t N) :=
+    Word.wordToNat (FinToWord n) = proj1_sig (Fin.to_nat n).
+
+  Ltac _compile_CallGetAttribute :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:(pre, post) with
+              | (Cons (NTSome ?vsrc) (ret ?src) ?tenv,
+                 Cons (NTSome ?vtarget) (ret (GetAttributeRaw ?src ?index)) ?tenv') =>
+                let vindex := gensym "index" in
+                eapply CompileSeq with ([[`vindex <-- FinToWord index as _]]
+                                          :: [[`vsrc <-- src as src]]
+                                          :: (tenv src));
+                  [ | match_ProgOk
+                        ltac:(fun prog' _ _ _ _ =>
+                                unify prog' (Call vtarget ("ext", "GetAttribute")
+                                                  (vsrc :: vindex :: nil))) ]
+              end).
+
+  Ltac _compile_CallBagFind :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:post with
+              | Cons NTNone (CallBagMethod ?id BagFind ?db (Some ?d, _)) ?tenv' =>
+                match pre with
+                | context[Cons (NTSome ?vdb) (ret (prim_fst db)) _] =>
+                  match pre with
+                  | context[Cons (NTSome ?vd) (ret d) ?tenv] =>
+                    let vsnd := gensym "snd" in
+                    let vtmp := gensym "tmp" in
+                    match post with
+                    | Cons NTNone ?bf _ =>
+                      let stmt := constr:(Call (DummyArgument vtmp) ("ext", "BagFind") (vsnd :: vdb :: vd :: nil)) in
+                      pose stmt;
+                        move_to_front "arg0";
+                        move_to_front "rep";
+                        eapply CompileSeq with ([[bf as retv]]
+                                                  :: [[`vdb <-- prim_fst (Refinements.UpdateIndexedRelation
+                                                                         (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                                         (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv))
+                                                       as _]]
+                                                  :: [[`vsnd <-- snd retv as s]]
+                                                  :: [[`vd <-- d as _]]
+                                                  :: (tenv d));
+                        [ try match_ProgOk ltac:(fun prog' _ _ _ _ => unify prog' stmt) (* FIXME fails bc of evars *) | ]
+                    end
+                  end
+                end
+              end).
+
+  Ltac _compile_CallBagInsert :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:(pre, post) with
+              | (Cons ?vdb (ret ?db) (fun _ => ?tenv),
+                 Cons NTNone ?bm (fun a => Cons ?vdb' (@?rel a) (fun _ => ?tenv'))) =>
+                unify vdb vdb';
+                  match constr:(vdb, bm, rel) with
+                  | (NTSome ?vdb', CallBagMethod ?id BagInsert ?db _, (fun a => ret (Refinements.UpdateIndexedRelation _ _ ?db' ?id a))) =>
+                    unify db db';
+                      let vtmp := gensym "tmp" in
+                      apply CompileSeq with (Cons NTNone bm (fun a => Cons vdb (rel a) (fun _ => tenv))); (* FIXME hardcoded var names *)
+                        [ match_ProgOk
+                            ltac:(fun prog' _ _ _ _ =>
+                                    unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ]
+                  end
+              end).
+
+  _compile.
+  _compile_CallBagFind.
+  (* unfold CallBagMethod.         (* FIXME *) *)
+
+  (* apply ProgOk_Chomp_None. FIXME evars *)
+
+
   Show Existentials.
-  
+
   Goal (exists x : (FacadeWrapper W W), Shelve x).
     eexists.
     match goal with
       |- @Shelve ?X ?x =>
       let x' := constr:(_ : X) in unify x' x
     end.
-    
+
     simpl in e.
   Print is_syntax_ok.
   cbv [CompileDFacade.compile_op] in e.
   simpl in e.
   unfold FModule.is_syntax_ok in e.
-  
-  
+
+
   compute in e.
   compute in e.
 simpl in e.
@@ -290,9 +371,9 @@ let a' := eval unfold e in e in
   reflexivity.
   Fo
   intros.
-  
+
   instantiate (1 := Skip).
-  
+
   eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex.
   intros.
   eexists.
@@ -368,15 +449,6 @@ Definition MyEnvListsB : Env (list W + TSearchTerm + TAcc) :=
 
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation Fiat.QueryStructure.Automation.Common Fiat.QueryStructure.Specification.Representation.Schema.
 Require Import Coq.Vectors.Fin.
-
-(* Notation "'BIND' !! A !! B !! C" := (@Bind A B C) (at level 1). *)
-(* Notation "x { A } <- y ; z" := (Bind y (fun x: A => z)) (at level 1). *)
-
-Definition FinToWord {N: nat} (n: Fin.t N) :=
-  Word.natToWord 32 (proj1_sig (Fin.to_nat n)).
-
-Definition FitsInW {N: nat} (n: Fin.t N) :=
-  Word.wordToNat (FinToWord n) = proj1_sig (Fin.to_nat n).
 
 Set Printing All.
 Set Printing Depth 1000.
@@ -1007,65 +1079,6 @@ Definition MyEnvListsC : Env av' :=
     ### ("RawTuple", "delete!") ->> (Axiomatic (FacadeImplementationOfDestructor (@RawTuple heading))).
 
 Check MethodOfInterest.
-
-Ltac _compile_CallGetAttribute :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (Cons (NTSome ?vsrc) (ret ?src) ?tenv,
-               Cons (NTSome ?vtarget) (ret (GetAttributeRaw ?src ?index)) ?tenv') =>
-              let vindex := gensym "index" in
-              eapply CompileSeq with ([[`vindex <-- FinToWord index as _]]
-                                        :: [[`vsrc <-- src as src]]
-                                        :: (tenv src));
-                [ | match_ProgOk
-                      ltac:(fun prog' _ _ _ _ =>
-                              unify prog' (Call vtarget ("ext", "GetAttribute")
-                                                (vsrc :: vindex :: nil))) ]
-            end).
-
-Ltac _compile_CallBagFind :=
-  match_ProgOk
-     ltac:(fun prog pre post ext env =>
-             match constr:(pre, post) with
-             | (Cons (NTSome ?vdb) (ret ?db) (fun _ => Cons (NTSome ?vd) (ret ?d) ?tenv),
-                Cons NTNone (CallBagMethod ?id BagFind ?db (Some ?d, _)) ?tenv') =>
-               let vsnd := gensym "snd" in
-               let vtmp := gensym "tmp" in
-               match post with
-               | Cons NTNone ?bf _ =>
-                 eapply CompileSeq with ([[bf as retv]]
-                                           :: [[`vdb <-- Refinements.UpdateIndexedRelation
-                                                (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                (icons3 SearchUpdateTerm inil3) db F1 (fst retv)
-                                                as _]]
-                                           :: [[`vsnd <-- snd retv as s]]
-                                           :: [[`vd <-- d as _]]
-                                           :: (tenv d));
-                   [ match_ProgOk
-                       ltac:(fun prog' _ _ _ _ =>
-                               unify prog' (Call (DummyArgument vtmp) ("ext", "BagFind")
-                                                 (vsnd :: vdb :: vd :: nil))) (* FIXME *) | ]
-               end
-             end).
-
-Ltac _compile_CallBagInsert :=
-  match_ProgOk
-     ltac:(fun prog pre post ext env =>
-             match constr:(pre, post) with
-             | (Cons ?vdb (ret ?db) (fun _ => ?tenv),
-                Cons NTNone ?bm (fun a => Cons ?vdb' (@?rel a) (fun _ => ?tenv'))) =>
-               unify vdb vdb';
-                 match constr:(vdb, bm, rel) with
-                 | (NTSome ?vdb', CallBagMethod ?id BagInsert ?db _, (fun a => ret (Refinements.UpdateIndexedRelation _ _ ?db' ?id a))) =>
-                   unify db db';
-                     let vtmp := gensym "tmp" in
-                     apply CompileSeq with (Cons NTNone bm (fun a => Cons vdb (rel a) (fun _ => tenv))); (* FIXME hardcoded var names *)
-                       [ match_ProgOk
-                           ltac:(fun prog' _ _ _ _ =>
-                                   unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ]
-                 end
-             end).
 
 Arguments wrap : simpl never.
 
