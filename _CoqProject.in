@@ -85,7 +85,6 @@ src/CertifiedExtraction/Extraction/External/FacadeADTs.v
 src/CertifiedExtraction/Extraction/External/FacadeLoops.v
 src/CertifiedExtraction/Extraction/External/GenericADTMethods.v
 src/CertifiedExtraction/Extraction/External/GenericMethods.v
-src/CertifiedExtraction/Extraction/External/LoopTactics.v
 src/CertifiedExtraction/Extraction/External/Loops.v
 src/CertifiedExtraction/Extraction/External/ScalarMethods.v
 src/Common/BoolFacts.v
