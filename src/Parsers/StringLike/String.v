@@ -10,6 +10,11 @@ Set Implicit Arguments.
 
 Local Hint Extern 0 => match goal with H : S _ = 0 |- _ => destruct (Nat.neq_succ_0 _ H) end.
 
+Definition dummy_ch : Ascii.ascii.
+Proof.
+  repeat constructor.
+Qed.
+
 Global Instance string_stringlike : StringLike Ascii.ascii
   := { String := string;
        is_char str ch := string_beq str (String.String ch ""%string);
@@ -17,6 +22,10 @@ Global Instance string_stringlike : StringLike Ascii.ascii
        take n s := String.substring 0 n s;
        drop n s := String.substring n (String.length s) s;
        get := String.get;
+       unsafe_get n s := match String.get n s with
+                           | Some ch => ch
+                           | None => dummy_ch
+                         end;
        bool_eq := string_beq }.
 
 Global Instance string_stringiso : StringIso Ascii.ascii
@@ -56,6 +65,7 @@ Local Ltac t :=
            | _ => rewrite Min.min_0_l
            | _ => rewrite Nat.add_1_r
            | _ => rewrite <- Min.min_assoc
+           | [ H : ?x = Some _ |- context[match ?x with _ => _ end] ] => rewrite H
            | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct
            | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
            | [ |- context[min ?m (?m - ?n)] ]

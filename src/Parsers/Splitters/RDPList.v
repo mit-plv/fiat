@@ -13,8 +13,12 @@ Local Open Scope string_like_scope.
 Section recursive_descent_parser_list.
   Context {Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : grammar Char}.
   Definition rdp_list_nonterminals_listT : Type := list String.string.
+
+  Definition list_bin_eq
+    := Eval unfold list_bin in list_bin string_beq.
+
   Definition rdp_list_is_valid_nonterminal : rdp_list_nonterminals_listT -> String.string -> bool
-    := fun ls nt => list_bin string_beq nt ls.
+    := fun ls nt => list_bin_eq nt ls.
   Definition rdp_list_initial_nonterminals_correct
   : forall nt,
       is_true (rdp_list_is_valid_nonterminal (Valid_nonterminals G) nt) <-> List.In nt (Valid_nonterminals G)
@@ -31,6 +35,12 @@ Section recursive_descent_parser_list.
     unfold rdp_list_remove_nonterminal;
     change filter_out_eq with (fun nt ls => filter_out (string_beq nt) ls); cbv beta;
     setoid_rewrite filter_out_filter.
+
+  Local Ltac fix_list_bin_eq :=
+    unfold rdp_list_is_valid_nonterminal;
+    change list_bin_eq with (list_bin string_beq) in *.
+
+  Local Ltac fix_eqs := try fix_filter_out_eq; try fix_list_bin_eq.
 
   Definition rdp_list_nonterminals_listT_R : rdp_list_nonterminals_listT -> rdp_list_nonterminals_listT -> Prop
     := ltof _ (@List.length _).
@@ -49,8 +59,8 @@ Section recursive_descent_parser_list.
   Proof.
     intros ls prods H.
     unfold rdp_list_is_valid_nonterminal, rdp_list_nonterminals_listT_R, rdp_list_remove_nonterminal, ltof in *.
+    fix_eqs.
     apply list_in_bl in H; [ | solve [ intros; apply string_bl; trivial ] ].
-    fix_filter_out_eq.
     match goal with
       | [ H : In ?prods ?ls |- context[filter ?f ?ls] ]
         => assert (~In prods (filter f ls))
@@ -89,7 +99,7 @@ Section recursive_descent_parser_list.
       -> rdp_list_is_valid_nonterminal ls ps' = true.
   Proof.
     unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
-    fix_filter_out_eq.
+    fix_eqs.
     repeat match goal with
              | _ => exfalso; congruence
              | _ => reflexivity
@@ -110,7 +120,7 @@ Section recursive_descent_parser_list.
       <-> rdp_list_is_valid_nonterminal ls ps' = false \/ ps = ps'.
   Proof.
     unfold rdp_list_is_valid_nonterminal, rdp_list_remove_nonterminal.
-    fix_filter_out_eq.
+    fix_eqs.
     repeat match goal with
              | _ => exfalso; congruence
              | _ => reflexivity
@@ -145,7 +155,7 @@ Section recursive_descent_parser_list.
   : ~ rdp_list_nonterminals_listT_R ls (rdp_list_remove_nonterminal ls nonterminal).
   Proof.
     simpl. unfold ltof, rdp_list_remove_nonterminal.
-    fix_filter_out_eq.
+    fix_eqs.
     intro H.
     cut (Datatypes.length ls < Datatypes.length ls); try omega.
     eapply Lt.lt_le_trans; [ eassumption | ].

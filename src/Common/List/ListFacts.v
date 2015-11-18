@@ -1012,4 +1012,31 @@ Section ListFacts.
   Proof.
     induction ls; simpl; trivial; rewrite !IHls; edestruct f; reflexivity.
   Qed.
+
+  Lemma nth'_helper_nth {A} n ls (default : A) offset (H : offset <= n)
+  : nth'_helper n ls default offset = nth (n - offset) ls default.
+  Proof.
+    revert n default offset H.
+    induction ls as [|x xs IHxs].
+    { simpl; intros; destruct (n - offset); reflexivity. }
+    { simpl; intros.
+      destruct (beq_nat n offset) eqn:H';
+        [ apply beq_nat_true in H'
+        | apply beq_nat_false in H' ];
+        subst;
+        rewrite ?minus_diag; trivial.
+      destruct (n - offset) eqn:H''.
+      { omega. }
+      { rewrite IHxs by omega.
+        f_equal.
+        omega. } }
+  Qed.
+
+  Lemma nth'_nth {A} n ls (default : A)
+  : nth' n ls default = nth n ls default.
+  Proof.
+    change (nth'_helper n ls default 0 = nth n ls default).
+    rewrite nth'_helper_nth by omega.
+    f_equal; omega.
+  Qed.
 End ListFacts.

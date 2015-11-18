@@ -285,13 +285,11 @@ Module Export PrettyNotations.
     (snd (snd s))
       (only parsing).
   Notation iget n s :=
-    (if Compare_dec.leb (S n) (snd (snd s))
-     then get (n + fst (snd s)) (fst s)
-     else None)
+    (unsafe_get (n + fst (snd s)) (fst s))
       (only parsing).
   Notation iis_char s ch :=
     (((EqNat.beq_nat (ilength s) 1)
-        && option_beq ascii_beq (get (fst (snd s)) (fst s)) (Some ch))%bool)
+        && ascii_beq (unsafe_get (fst (snd s)) (fst s)) ch)%bool)
       (only parsing).
 End PrettyNotations.
 
@@ -466,7 +464,7 @@ Section IndexedImpl.
     Def Method1 "is_char"(s : rep) (ch : Ascii.ascii) : rep * bool  :=
       ret (s, iis_char s ch),
 
-    Def Method1 "get"(s : rep) (n : nat) : rep * (option Ascii.ascii)  :=
+    Def Method1 "get"(s : rep) (n : nat) : rep * Ascii.ascii  :=
       ret (s, iget n s),
 
     Def Method0 "length"(s : rep) : rep * nat :=
@@ -713,6 +711,7 @@ Section IndexedImpl.
       | [ |- context[if Compare_dec.leb ?x ?y then _ else _] ]
         => destruct (Compare_dec.leb x y) eqn:?
       | [ H : context[option_beq _ None (Some _)] |- _ ] => unfold option_beq in H
+      | [ H : appcontext[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
       | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
       | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
       | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
@@ -736,6 +735,7 @@ Section IndexedImpl.
         => rewrite <- (Nat.sub_min_distr_r x (y + z) z) in H
       | [ H : context[min ?x ?z - ?z] |- _ ]
         => rewrite <- (Nat.sub_min_distr_r x z z) in H
+      | [ H : ascii_beq ?x ?y = true |- _ ] => apply ascii_bl in H
       | [ H : context[ascii_beq ?x ?x] |- _ ] => rewrite (ascii_lb eq_refl) in H
       | [ H : ?x = ?y, H' : option_beq _ ?x ?y' = _ |- _]
         => match constr:(y, y') with
@@ -874,18 +874,33 @@ Section IndexedImpl.
                | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
                | [ H : context[get _ (drop _ _)] |- _ ] => rewrite <- get_drop in H
                | [ H : is_char _ _ = false |- _ ] => apply not_is_char_options in H
+               | [ H : None <> Some _ |- _ ] => clear H
+               | [ H : Some _ <> Some _ |- _ ] => specialize (fun H' => H (f_equal (@Some _) H'))
+               | [ H : ?x <> Some _ |- _ ] => destruct x eqn:?
+               | [ H : get _ _ = None |- _ ]
+                 => rewrite get_drop in H; apply no_first_char_empty in H; rewrite drop_length in H
              end. }
-    { repeat match goal with
-               | _ => progress fin_common
-               | [ |- context[get ?n ?s] ] => not constr_eq n 0; rewrite (@get_drop _ _ _ n s)
-               | [ H : _ |- _ ] => progress rewrite ?drop_length in H
-               | _ => progress rewrite ?drop_take, ?drop_drop, ?substring_length, ?take_take
-               | [ |- get ?n (take ?m ?s) = get ?n ?s ] => destruct (get n s) eqn:?
-               | [ H : get 0 _ = None |- _ ] => apply no_first_char_empty in H
-               | [ |- get 0 _ = None ] => apply has_first_char_nonempty
+    { intros ch H; apply unsafe_get_correct; revert H.
+      rewrite (@get_drop _ _ _ d).
+      rewrite (@get_drop _ _ _ (d + _)).
+      rewrite drop_take, drop_drop.
+      intro H.
+      rewrite get_take_lt in H; [ assumption | ].
+      repeat match goal with
                | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
-               | [ |- get 0 _ = Some _ ] => apply get_0
-               | _ => apply min_case_strong_r; intro
+               | [ H : is_true (is_char _ _) |- _ < _ ] => apply length_singleton in H
+               | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length in H
+               | [ H : min 1 ?x = 1 |- _ ]
+                 => assert (x >= 1) by (revert H; apply (Min.min_case_strong 1 x); intro; intro; omega);
+                   clear H
+               | [ H : context[min 0 _] |- _ ] => rewrite Min.min_0_l in H
+               | [ H : _ \/ _ |- _ ] => destruct H
+               | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
+               | [ H : context[0 - ?x] |- _ ] => change (0 - x) with 0 in H
+               | [ H : 0 >= S _ |- _ ] => exfalso; clear -H; omega
+               | [ H : context[min _ _] |- _ ] => rewrite Min.min_l in H by omega
+               | [ H : context[min _ _] |- _ ] => rewrite Min.min_r in H by omega
+               | _ => omega
              end. }
     { rewrite substring_length; fin_common; rewrite Min.min_r by omega; omega. }
     { rewrite take_take, Min.min_comm; reflexivity. }

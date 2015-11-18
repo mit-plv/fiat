@@ -79,6 +79,11 @@ Section parser.
     (@snd_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
       (only parsing). *)
 
+  Definition msafe_get n str
+    := if Compare_dec.leb (S n) (mlength str)
+       then Some (mget n str)
+       else None.
+
   Local Ltac destruct_twice_faster term :=
     let H' := fresh in
     pose proof term as H';
@@ -92,6 +97,13 @@ Section parser.
              | [ H : context[to_string (of_string ?x)] |- _ ] => rewrite to_of_string in H
              | [ H : context[of_string (to_string ?x)] |- _ ] => rewrite of_to_string in H
              | [ H : context[of_string (list_of_string ?x)] |- _ ] => simpl of_string in H; rewrite string_of_list_of_string in H
+           end.
+
+  Local Ltac fix_unsafe_get :=
+    repeat match goal with
+             | [ H : ?x = Some ?ch, H' : forall ch', ?x = Some ch' -> _ |- _ ] => specialize (H' _ H)
+             | _ => progress subst
+             | _ => solve [ eauto ]
            end.
 
   Local Ltac fast_injections :=
@@ -127,7 +139,8 @@ Section parser.
     computes_to_inv;
     fast_injections;
     fix_string_of_list;
-    eauto.
+    eauto;
+    fix_unsafe_get.
 
   Definition mto_string_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
     : mto_string st = str.
@@ -135,12 +148,37 @@ Section parser.
   Definition mis_char_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
     : mis_char arg st = is_char str arg.
   Proof. prove_string_eq. Qed.
+  Definition hidden_mget str n : { x : _ | mget str n = x }.
+  Proof.
+    exact (exist _ _ eq_refl).
+  Qed.
   Definition mget_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
-  : mget arg st = get arg str.
-  Proof. prove_string_eq. Qed.
+  : mget arg st = match get arg str with
+                    | Some ch => ch
+                    | None => proj1_sig (hidden_mget arg st)
+                  end.
+  Proof.
+    destruct (get arg str) eqn:H'; [ | exact (proj2_sig (hidden_mget _ _)) ].
+    prove_string_eq.
+  Qed.
   Definition mlength_eq {st str} (H : AbsR (projT2 splitter_impl) str st)
     : mlength st = length str.
   Proof. prove_string_eq. Qed.
+  Definition msafe_get_eq {arg st str} (H : AbsR (projT2 splitter_impl) str st)
+  : msafe_get arg st = get arg str.
+  Proof.
+    unfold msafe_get; erewrite @mget_eq, @mlength_eq by eassumption.
+    destruct (Compare_dec.leb (S arg) (length str)) eqn:H';
+      [ apply Compare_dec.leb_iff in H'
+      | apply Compare_dec.leb_iff_conv in H' ];
+      (destruct (get arg str) eqn:H''; rewrite get_drop in H'';
+       [ try reflexivity;
+         rewrite has_first_char_nonempty in H'' by (rewrite drop_length; omega);
+         try assumption
+       | apply no_first_char_empty in H''; rewrite drop_length in H'' ]);
+      try reflexivity;
+      try omega.
+  Qed.
 
   Ltac prove_string_AbsR :=
     match goal with
@@ -200,7 +238,8 @@ Section parser.
          drop n str := mdrop n str;
          length str := mlength str;
          is_char str ch := mis_char ch str;
-         get n str := mget n str;
+         get n str := msafe_get n str;
+         unsafe_get n str := mget n str;
          bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
   Local Instance adt_based_StringIso_lite : @StringIso Ascii.ascii adt_based_StringLike_lite
     := { of_string str := cnew (of_string str) }.
@@ -211,7 +250,8 @@ Section parser.
          drop n str := mdrop n str;
          length str := mlength str;
          is_char str ch := mis_char ch str;
-         get n str := mget n str;
+         get n str := msafe_get n str;
+         unsafe_get n str := mget n str;
          bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
 
   Local Program Instance adt_based_StringIso : @StringIso Ascii.ascii adt_based_StringLike
@@ -263,10 +303,11 @@ Section parser.
     repeat intro;
     destruct_head_hnf' sig;
     destruct_head_hnf' ex;
-    unfold beq, bool_eq, adt_based_StringIso, adt_based_StringLike, proj1_sig, take, drop, is_char, length, get, of_string in *;
+    unfold beq, bool_eq, adt_based_StringIso, adt_based_StringLike, proj1_sig, take, drop, is_char, length, unsafe_get, get, of_string in *;
     repeat first [ match_erewrite_by_eauto (@mto_string) (@mto_string_eq)
                  | match_erewrite_by_eauto (@mis_char) (@mis_char_eq)
                  | match_erewrite_by_eauto (@mget) (@mget_eq)
+                 | match_erewrite_by_eauto (@msafe_get) (@msafe_get_eq)
                  | match_erewrite_by_eauto (@mlength) (@mlength_eq) ].
 
   Local Ltac t'' H meth :=
@@ -293,6 +334,13 @@ Section parser.
   Qed.
   Next Obligation. t @get_0. Qed.
   Next Obligation. t @get_S. Qed.
+  Next Obligation.
+    repeat match goal with
+             | [ H : ?x = Some _ |- context[match ?x with _ => _ end] ]
+               => rewrite H
+             | [ |- ?x = ?x ] => reflexivity
+           end.
+  Qed.
   Next Obligation. t @length_singleton. Qed.
   Next Obligation. t @bool_eq_char. Qed.
   Next Obligation. t @is_char_Proper. Qed.
@@ -315,7 +363,7 @@ Section parser.
   Proof.
     let H := fresh in
     t'' H (@bool_eq_from_get);
-      apply H; intro; erewrite <- !mget_eq by eassumption; trivial.
+      apply H; intro; erewrite <- !msafe_get_eq by eassumption; trivial.
   Qed.
 
   Local Program Instance adt_based_StringIsoProperties : @StringIsoProperties Ascii.ascii adt_based_StringLike _

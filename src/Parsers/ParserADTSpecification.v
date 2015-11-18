@@ -28,8 +28,8 @@ Section ReferenceImpl.
         Method "is_char" : rep * Char -> rep * bool,
         (* Return [true] if this string represents a singleton character equal to the given one; otherwise return [false]. *)
 
-        Method "get" : rep * nat -> rep * (option Char),
-        (* Returns [Some ch] if the [n]th character of this string is some [ch], and returns [None] otherwise. *)
+        Method "get" : rep * nat -> rep * Char,
+        (* Returns [ch] if the [n]th character of this string is some [ch], and returns an arbitrary character otherwise. *)
 
         Method "length" : rep -> rep * nat,
         (** Return the length of this string. *)
@@ -58,8 +58,9 @@ Section ReferenceImpl.
     Def Method1 "is_char"(s : rep) (x : Ascii.ascii) : rep * bool  :=
       ret (s, is_char s x),
 
-    Def Method1 "get"(s : rep) (n : nat) : rep * (option Ascii.ascii)  :=
-      ret (s, get n s),
+    Def Method1 "get"(s : rep) (n : nat) : rep * Ascii.ascii  :=
+      ch <- { ch : Ascii.ascii | forall ch', get n s = Some ch' -> ch = ch' };
+      ret (s, ch),
 
     Def Method0 "length"(s : rep) : rep * nat :=
       ret (s, length s),
