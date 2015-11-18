@@ -16,6 +16,13 @@ Module Export Telescope.
          | tele A B => { a : A & flattenT_sig (B a) }
        end.
 
+  Fixpoint flattenT_apply {t : Telescope} {X : Type}
+  : flattenT t X -> flattenT_sig t -> X
+    := match t return flattenT t X -> flattenT_sig t -> X with
+         | bottom => fun x _ => x
+         | tele A B => fun f p => flattenT_apply (f (projT1 p)) (projT2 p)
+       end.
+
   Fixpoint Telescope_append (t : Telescope)
   : flattenT t Type -> Telescope
     := match t return flattenT t _ -> _ with
