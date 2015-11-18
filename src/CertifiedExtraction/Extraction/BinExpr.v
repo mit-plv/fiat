@@ -1,6 +1,6 @@
 Require Import
         CertifiedExtraction.Extraction.Core
-        CertifiedExtraction.Extraction.BasicTactics.
+        CertifiedExtraction.Extraction.Basics.
 
 (* Lemma CompileBinop: *)
 (*   forall {av} name var1 var2 (val1 val2: W) ext op tenv, *)
@@ -284,3 +284,5 @@ Lemma CompileBinopOrTest_right_inPlace:
 Proof.
   destruct op; SameValues_Facade_t.
 Qed.
+
+(* FIXME add variants *)

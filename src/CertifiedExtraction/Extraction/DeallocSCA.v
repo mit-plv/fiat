@@ -1,5 +1,6 @@
 Require Import
-        CertifiedExtraction.Extraction.Core.
+        CertifiedExtraction.Extraction.Core
+        CertifiedExtraction.Extraction.Basics.
 
 Lemma CompileDeallocSCA:
   forall {av} (env : Env av) k (compSCA: Comp W) tail tail' ext prog,
@@ -15,26 +16,17 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
-(* Lemma CompileDeallocSCA_ret: *)
-(*   forall {av} (env : Env av) k (v: W) tail tail' ext *)
-(*     prog, *)
-(*     {{ [[(ret v) as kk]]::(tail kk)}} *)
-(*       prog *)
-(*     {{ [[(ret v) as kk]]::(tail' kk) }} ∪ {{ ext }} // env -> *)
-(*     {{ [[k <~~ ret v as kk]]::(tail kk)}} *)
-(*       prog *)
-(*     {{ [[ret v as kk]]::(tail' kk) }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   intros; apply CompileDeallocSCA; *)
-(*   SameValues_Facade_t. *)
-(* Qed. *)
-
-Lemma CompileDeallocSCA_discretely :
-  forall {av} (tenv tenv': Telescope av) ext env k (v: W) prog,
-    k ∉ ext ->
-    NotInTelescope k tenv ->
-    {{ [[`k <-- v as _]] :: tenv }} prog {{ [[`k <-- v as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`k <-- v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+Lemma CompileExtendLifetime:
+  forall {av A} {env ext} (k: NameTag av A) comp tenv tenv' prog dealloc,
+    {{ [[k <~~ comp as kk]] :: tenv kk }}
+      prog
+    {{ [[k <~~ comp as kk]] :: tenv' kk }} ∪ {{ext}} // env ->
+    {{ [[k <~~ comp as kk]] :: tenv' kk }}
+      dealloc
+    {{ [[comp as kk]] :: tenv' kk }} ∪ {{ext}} // env ->
+    {{ [[k <~~ comp as kk]] :: tenv kk }}
+      (Seq prog dealloc)
+    {{ [[comp as kk]] :: tenv' kk }} ∪ {{ext}} // env.
 Proof.
-  SameValues_Facade_t.
+  repeat hoare.
 Qed.

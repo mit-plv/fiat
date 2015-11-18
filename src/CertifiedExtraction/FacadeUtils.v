@@ -151,3 +151,5 @@ Ltac spec_t :=
                    | _ => progress subst
                    | [ H: exists t, _ |- _ ] => destruct H
                    end; intuition).
+
+Notation "trunk ### name ->> function" := (GLabelMap.add name function trunk) (at level 20).

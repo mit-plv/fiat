@@ -12,8 +12,3 @@ Ltac compile_if t tp fp :=
   is_comp tp; is_comp fp;
   let test_var := gensym "test" in
   apply (CompileIf _ (tmp := test_var)).
-
-Ltac compile_if_in_place t tp fp :=
-  is_comp tp; is_comp fp;
-  let test_var := gensym "test" in
-  apply (CompileIf_InPlace _ (tmp := test_var)).
