@@ -92,7 +92,7 @@ Fixpoint RepWrapperT
     fun il => unit
   | Vector.cons a _ As' =>
     fun il =>
-      prod (FacadeWrapper (Value av) (C a (prim_fst il)))
+      prod (FacadeWrapper av (C a (prim_fst il)))
            (RepWrapperT av C _ (prim_snd il))
   end.
 
@@ -233,23 +233,23 @@ Fixpoint AxiomitizeMethodPost' {Dom} {Cod} {Rep}
          {struct Dom}
   : CodWrapperT av Cod
     -> DomWrapperT av Dom
-    -> (Rep -> list ((Value av) * option (Value av)))
+    -> (Rep -> list ((Value av) * option av))
     -> methodType' Rep Dom Cod
-    -> list ((Value av) * option (Value av)) -> Value av -> Prop
+    -> list ((Value av) * option av) -> Value av -> Prop
   :=
   match Dom return
         CodWrapperT av Cod
         -> DomWrapperT av Dom
-        -> (Rep -> list ((Value av) * option (Value av)))
+        -> (Rep -> list ((Value av) * option av))
         -> methodType' Rep Dom Cod
-        -> list ((Value av) * option (Value av))
+        -> list ((Value av) * option av)
         -> Value av -> Prop with
   | nil => match Cod return
                    CodWrapperT av Cod
                    -> DomWrapperT av nil
-                   -> (Rep -> list ((Value av) * option (Value av)))
+                   -> (Rep -> list ((Value av) * option av))
                    -> methodType' Rep nil Cod
-                   -> list ((Value av) * option (Value av))
+                   -> list ((Value av) * option av)
                    -> Value av -> Prop with
            | None => fun cWrap dWrap args' meth args ret =>
                        exists r', computes_to meth r'
@@ -270,11 +270,11 @@ Definition AxiomitizeMethodPost
            (av : Type)
            (env : Env av)
            {Dom} {Cod} {Rep}
-           (f : Rep -> Rep -> list ((Value av) * option (Value av)))
+           (f : Rep -> Rep -> list ((Value av) * option av))
            (cWrap : CodWrapperT av Cod)
            (dWrap : DomWrapperT av Dom)
            (meth : methodType Rep Dom Cod)
-           (args : list ((Value av) * option (Value av)))
+           (args : list ((Value av) * option av))
            (ret : Value av)
   : Prop :=
   exists r, AxiomitizeMethodPost' env cWrap dWrap (f r) (meth r) args ret.
@@ -292,17 +292,17 @@ Fixpoint DecomposePosti3list
       RepWrapperT av C As il
       -> i3list C il
       -> i3list C il
-      -> list (((Value av) * option (Value av))) :=
+      -> list (((Value av) * option av)) :=
   match As return
         forall (il : ilist3 (B := B) As),
           RepWrapperT av C As il
           -> i3list C il
           -> i3list C il
-          -> list (((Value av) * option (Value av))) with
+          -> list (((Value av) * option av)) with
   | Vector.nil => fun as' rWrap r r' => nil
   | Vector.cons a n' As' => fun as' rWrap r r' =>
                               let fWrap' := fst rWrap in
-                              cons (wrap (prim_fst r), Some (wrap (prim_fst r')))
+                              cons (ADT (wrap (prim_fst r)), Some (wrap (prim_fst r')))
                                    (DecomposePosti3list As' (prim_snd as') (snd rWrap)
                                                         (prim_snd r) (prim_snd r'))
   end.
@@ -319,7 +319,7 @@ Definition DecomposeIndexedQueryStructurePost av qs_schema Index
                                  (QueryStructureSchema.qschemaSchemas qs_schema) Index)
 
            (r r' : IndexedQueryStructure qs_schema Index)
-  : list (((Value av) * option (Value av))) :=
+  : list (((Value av) * option av)) :=
   DecomposePosti3list _ _ rWrap r r'.
 
 Fixpoint DecomposePrei3list
@@ -382,6 +382,46 @@ Eval simpl in
 
 Require Import Bedrock.Platform.Facade.CompileUnit2.
 
+Definition GenAxiomaticSpecs
+           av
+           (env : Env av)
+           {Cod}
+           {Dom}
+           {Rep}
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType Rep Dom Cod)
+           (f : Rep -> list (Value av))
+           (f' : Rep -> Rep -> list ((Value av) * option av))
+           (_ : forall x x0, ListFacts1.forall2 (is_same_type (ADTValue:=av)) (f x0) (f x) = true)
+  : AxiomaticSpec av.
+      refine {| PreCond := AxiomitizeMethodPre env f dWrap;
+                PostCond := AxiomitizeMethodPost env f' cWrap dWrap meth |}.
+      admit.
+Defined.
+
+Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
+  match n return list (Fin.t n) with
+  | 0  => nil
+  | S n' => cons (@Fin.F1 _) (map (@Fin.FS _) (BuildFinUpTo n'))
+  end.
+
+Definition GenExports
+           av
+           (env : Env av)
+           (n n' : nat)
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (consWrapper : (forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx))))
+           (domWrapper : (forall midx,  DomWrapperT av (methDom (Vector.nth methSigs midx))))
+           (f : Core.Rep adt -> list (Value av))
+           (f' : Core.Rep adt -> Core.Rep adt -> list ((Value av) * option av))
+           (H : forall x x0, ListFacts1.forall2 (is_same_type (ADTValue:=av)) (f x0) (f x) = true)
+  : StringMap.t (AxiomaticSpec av) :=
+  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
+                                              (GenAxiomaticSpecs env (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
+
 Definition CompileUnit2Equiv
            av
            (env : Env av)
@@ -389,20 +429,20 @@ Definition CompileUnit2Equiv
            {n n'}
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
-           (adt : Core.ADT (BuildADTSig consSigs methSigs))
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
            (f : A -> _)
            g
-           ax_mod_name
-           op_mod_name
+           ax_mod_name'
+           op_mod_name'
            cWrap
            dWrap
            rWrap
-           compileUnit
+           {exports}
+           (compileUnit : CompileUnit exports)
   :=
     DFModuleEquiv env adt compileUnit.(module) cWrap dWrap (f rWrap) g
-    /\ compileUnit.(ax_mod_name) = ax_mod_name
-    /\ compileUnit.(op_mod_name) = op_mod_name.
-    /\
+    /\ compileUnit.(ax_mod_name) = ax_mod_name'
+    /\ compileUnit.(op_mod_name) = op_mod_name'.
 
 Definition BuildCompileUnit2T
            av
@@ -411,19 +451,19 @@ Definition BuildCompileUnit2T
            {n n'}
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
-           (adt : Core.ADT (BuildADTSig consSigs methSigs))
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
            (f : A -> _)
+           f'
+           f''
            g
-           ax_mod_name
+           ax_mod_name'
+           op_mod_name'
            cWrap
            dWrap
-           rWrap :=
-  {compileUnit : CompileUnit av ( & (DFModuleEquiv env adt compileUnit.(module) cWrap dWrap (f rWrap) g) }
-    {module : _ &
-      {cWrap : _ &
-       {dWrap : _ &
-        {rWrap : _ &  } } } } .
-
+           rWrap
+           H
+           (exports := GenExports env adt cWrap dWrap f' f'' H) :=
+  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt f g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
@@ -442,6 +482,119 @@ Fixpoint BuildStringMap {A} (k : list string) (v : list A) : StringMap.t A :=
   | cons k ks, cons v vs => StringMap.add k v (BuildStringMap ks vs)
   | _, _ => StringMap.empty A
   end.
+
+
+Definition CUnit av (env : Env av) cWrap dWrap rWrap H
+  : BuildCompileUnit2T
+      env PartialSchedulerImpl (DecomposeIndexedQueryStructure av)
+      (DecomposeIndexedQueryStructurePre av _ _ rWrap)
+      (DecomposeIndexedQueryStructurePost av _ _ rWrap)
+      (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
+      "foo"
+      "bar"
+      cWrap
+      dWrap
+      rWrap
+      H
+.
+Proof.
+    let sig := match type of PartialSchedulerImpl with Core.ADT ?sig => sig end in
+    let methSigs := match sig with
+                      DecADTSig ?DecSig => constr:(MethodNames DecSig) end in
+    let methIdx := eval compute in (MethodIndex sig) in
+        match methIdx with
+        | Fin.t ?n =>
+          list_of_evar DFFun n ltac:(fun z => pose (BuildStringMap (Vector.fold_right cons methSigs nil) z))
+        end.
+    eexists {| module := {| Funs := t |} |}.
+  unfold CompileUnit2Equiv; repeat split.
+  simpl; unfold DFModuleEquiv.
+  eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv.
+  simpl; repeat split;
+  eexists {| Core := {| Body := _ |};
+             compiled_syntax_ok := _ |};
+  simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate;
+
+  try match goal with
+        |- Shelve
+            {|
+              Core := {|
+                       ArgVars := _;
+                       RetVar := _;
+                       Body := _;
+                       args_no_dup := ?a;
+                       ret_not_in_args := ?b;
+                       no_assign_to_args := ?c;
+                       args_name_ok := ?d;
+                       ret_name_ok := ?e;
+                       syntax_ok := ?f |};
+              compiled_syntax_ok := ?g |} =>
+        try unify a (eq_refl true);
+          try unify b (eq_refl true);
+          try unify c (eq_refl true);
+          try unify d (eq_refl true);
+          try unify e (eq_refl true);
+          try unify f (eq_refl true);
+          try unify g (eq_refl true);
+          constructor
+      end.
+  _compile.
+
+  move_to_front "arg0".
+  move_to_front "rep".
+  pose (cWrap Fin.F1).
+  simpl in c.
+  assert (forall v, FacadeWrapper (Value av) v) by (clear; admit).
+  
+  match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:post with
+              | Cons NTNone (CallBagMethod ?id BagFind ?db (Some ?d, _)) ?tenv' =>
+                match pre with
+                | context[Cons (NTSome (H := ?H) ?vdb) (ret (prim_fst db)) _] =>
+                  match pre with
+                  | context[Cons (NTSome (H := ?H2) ?vd) (ret d) ?tenv] =>
+                    let vsnd := gensym "snd" in
+                    let vtmp := gensym "tmp" in
+                    match post with
+                    | Cons NTNone ?bf _ =>
+                      let stmt := constr:(Call (DummyArgument vtmp) ("ext", "BagFind") (vsnd :: vdb :: vd :: nil)) in
+                      pose stmt;
+                        move_to_front "arg0";
+                        move_to_front "rep";
+                       apply CompileSeq with ([[bf as retv]]
+                                                  :: [[(NTSome (H := H) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
+                                                                         (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                                         (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv))
+                                                       as _]]
+                                                  :: [[(NTSome (H := (X _)) vsnd) <-- snd retv as s]]
+                                                  :: [[(NTSome (H := H2) vd) <-- d as _]]
+                                                  :: (tenv d));
+                        [ try match_ProgOk ltac:(fun prog' _ _ _ _ => unify prog' stmt) (* FIXME fails bc of evars *) | ]
+                        
+                    end
+                  end
+                end
+              end).
+
+  instantiate (1 := Call "blah" ("blah", "blah") [[[ "hi" ]]]).
+    assert True.
+    clear H t r d d0 rWrap.
+    clear.
+    assert (s = s).
+
+    instantiate (4 := s).
+    clear.
+    clear t.
+    Set Printing All.
+    idtac.
+    admit.
+  Print Ltac _compile_CallBagFind.
+
+
+                     _ _ adt.
+
+
 
 Definition BuildFacadeModule
            av
