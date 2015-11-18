@@ -207,7 +207,7 @@ Section Iterate_Dep_Type.
   Local Notation Dep_Type A := (A -> Type).
 
   Fixpoint Iterate_Dep_Type_BoundedIndex'
-           ( Remaining : nat)
+           (Remaining : nat)
            (P : Dep_Type (Fin.t Remaining))
            {struct Remaining}
     : Type :=
