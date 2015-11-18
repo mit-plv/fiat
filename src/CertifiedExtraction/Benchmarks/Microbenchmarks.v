@@ -314,6 +314,50 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_double_larger_than_random).
 
+(* FIXME a dotimes macro would be very nice. Suggested examples then would be transforming 2 3 1 4 into 22 333 1 4444 *)
+
+Example micro_duplicate_all :
+  ParametricExtraction
+    #vars      (seq: list W)
+    #program   ( ret (fold_left (fun acc w => w :: w :: acc)
+                                seq nil) )
+    #arguments [[`"seq" <-- seq as _ ]] :: Nil
+    #env       Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_duplicate_all).
+
+Example micro_increment_zeroes :
+  ParametricExtraction
+    #vars      (seq: list W)
+    #program   ( ret (fold_left (fun acc w => (if Word.weqb w (Word.natToWord 32 0) then
+                                              (Word.natToWord 32 1)
+                                            else
+                                              w) :: acc)
+                                seq nil) )
+    #arguments [[`"seq" <-- seq as _ ]] :: Nil
+    #env       Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_increment_zeroes).
+
+Example micro_read_baseN :
+  ParametricExtraction
+    #vars      (seq: list W) N
+    #program   ( ret (fold_left (fun acc w => (Word.wmult w N) :: acc)
+                                seq nil) )
+    #arguments [[`"seq" <-- seq as _ ]] :: [[`"N" <-- N as _ ]] :: Nil
+    #env       Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_read_baseN).
+
 Example micro_drop_larger_than_random :
   ParametricExtraction
     #vars      seq

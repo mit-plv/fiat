@@ -318,6 +318,7 @@ Ltac _compile_mutation :=
                            first [ eapply (CompileCallFacadeImplementationOfMutation_SCA (vtmp:=DummyArgument tmp))
                                  | eapply (CompileCallFacadeImplementationOfMutation_SCA_Replace (varg:=arg) (vtmp:=DummyArgument tmp))
                                  | eapply (CompileCallFacadeImplementationOfMutation_SCA_Replace_strong (varg:=arg) (vtmp:=DummyArgument tmp))
+                                 | eapply (CompileCallFacadeImplementationOfMutation_SCA_Replace_strong' (varg:=arg) (vtmp:=DummyArgument tmp))
                                  | fail 1 ]
                        | tenv => eapply (CompileCallFacadeImplementationOfMutation_SCA_Alloc (varg:=arg) (vtmp:=DummyArgument tmp))
                        end
@@ -327,6 +328,7 @@ Ltac _compile_mutation :=
                             first [ eapply (CompileCallFacadeImplementationOfMutation_ADT (vtmp:=DummyArgument tmp))
                                   | eapply (CompileCallFacadeImplementationOfMutation_ADT_Replace (varg:=arg) (vtmp:=DummyArgument tmp))
                                   | eapply (CompileCallFacadeImplementationOfMutation_ADT_Replace_strong (varg:=arg) (vtmp:=DummyArgument tmp))
+                                  | eapply (CompileCallFacadeImplementationOfMutation_ADT_Replace_strong' (varg:=arg) (vtmp:=DummyArgument tmp))
                                   | fail 1 ]
                         | tenv => eapply (CompileCallFacadeImplementationOfMutation_ADT_Alloc (varg:=arg) (vtmp:=DummyArgument tmp))
                         end

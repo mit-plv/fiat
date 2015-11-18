@@ -160,6 +160,30 @@ Proof.
   apply CompileCallFacadeImplementationOfMutation_SCA_Replace; PreconditionSet_t; eauto.
 Qed.
 
+
+Lemma CompileCallFacadeImplementationOfMutation_SCA_Replace_strong':
+  forall {av Tadt} `{FacadeWrapper av Tadt} {env} fADT,
+  forall fpointer varg vtmp (arg: W) (orig target: Tadt) tenv tenv',
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA Tadt fADT)) env ->
+    forall vret ext pTarget pArg pCoda,
+      PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
+      {{ [[ `vret <-- orig as _]] :: tenv }}
+        pTarget
+      {{ [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- target as _]] :: tenv }}
+        pArg
+      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+        pCoda
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- orig as _]] :: tenv }}
+        Seq (Seq pTarget (Seq pArg (Call vtmp fpointer (vret :: varg :: nil)))) pCoda
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; hoare. hoare.
+  apply CompileCallFacadeImplementationOfMutation_SCA_Replace; PreconditionSet_t; eauto.
+Qed.
+
 Lemma CompileCallFacadeImplementationOfMutation_ADT:
   forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ}
     (env : GLabelMap.t (FuncSpec av)) (fADT : Targ -> Tadt -> Tadt)
@@ -223,7 +247,6 @@ Proof.
   apply CompileCallFacadeImplementationOfMutation_ADT; eauto.
 Qed.
 
-
 Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace_strong:
   forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ} {env} fADT,
   forall fpointer varg vtmp (arg: Targ) (target: Tadt) tenv tenv',
@@ -241,6 +264,30 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace_strong:
         {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare.
+  apply CompileCallFacadeImplementationOfMutation_ADT_Replace; PreconditionSet_t; eauto.
+Qed.
+
+Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace_strong':
+  forall {av Targ Tadt} `{FacadeWrapper av Tadt} `{FacadeWrapper av Targ} {env} fADT,
+  forall fpointer varg vtmp (arg: Targ) (orig target: Tadt) tenv tenv',
+    GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
+    forall vret ext pTarget pArg pCoda,
+      PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
+      {{ [[ `vret <-- orig as _]] :: tenv }}
+        pTarget
+      {{ [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- target as _]] :: tenv }}
+        pArg
+      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+        pCoda
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret <-- orig as _]] :: tenv }}
+        Seq (Seq pTarget (Seq pArg (Call vtmp fpointer (vret :: varg :: nil)))) pCoda
+      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; hoare.
+  hoare. eauto.
   apply CompileCallFacadeImplementationOfMutation_ADT_Replace; PreconditionSet_t; eauto.
 Qed.
 
