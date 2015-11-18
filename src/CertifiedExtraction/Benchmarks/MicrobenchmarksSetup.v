@@ -5,7 +5,7 @@ Require Export
         CertifiedExtraction.Extraction.Internal
         CertifiedExtraction.Extraction.Extraction.
 Require Export
-        CertifiedExtraction.Random.
+        CertifiedExtraction.Benchmarks.Random.
 Require Export
         Coq.NArith.NArith
         Coq.Program.Basics.

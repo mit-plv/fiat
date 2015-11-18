@@ -1,4 +1,4 @@
-Require Import CertifiedExtraction.MicrobenchmarksSetup.
+Require Import CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
 
 (* Opaque WrapInstance.            (* FIXME simpl never? *) *)
 
@@ -7,7 +7,7 @@ Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
 Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
   (GLabelMap.empty (FuncSpec _))
     ### ("std", "rand") ->> (Axiomatic FRandom)
-    ### ("list", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
+    ### ("list[W]", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
     ### ("list[W]", "push") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
     ### ("list[W]", "pop") ->> (Axiomatic (List_pop W))
     ### ("list[W]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
@@ -264,6 +264,20 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_sum_random).
+
+
+Example micro_push_random :
+  ParametricExtraction
+    #vars      seq: list W
+    #program ( r <- Random;
+               ret (r :: seq) )
+    #arguments [[`"out" <-- seq as _ ]] :: Nil
+    #env     Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_push_random).
 
 (* FIXME loops on zips? *)
 

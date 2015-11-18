@@ -346,7 +346,6 @@ Proof.
 
   (* apply ProgOk_Chomp_None. FIXME evars *)
 
-
   Show Existentials.
 
   Goal (exists x : (FacadeWrapper W W), Shelve x).
