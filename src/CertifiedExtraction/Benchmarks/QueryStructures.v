@@ -48,7 +48,8 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
            | None => fun cWrap dWrap prog pre meth =>
                        {{ pre }}
                          prog
-                         {{ [[meth as database]] :: (f database) }} ∪ {{ StringMap.empty _ }} // env
+                         {{ [[`"ret" <-- Word.natToWord 32 0 as _]]
+                              :: [[meth as database]] :: (f database) }} ∪ {{ StringMap.empty _ }} // env
 
            | Some CodT => fun cWrap dWrap prog pre meth =>
                             let v : FacadeWrapper (Value av) CodT := cWrap in
@@ -199,6 +200,230 @@ Definition BuildFacadeModuleT
 Arguments nthRepName _ / .
 Arguments nthArgName _ / .
 Arguments BuildArgNames !n !m / .
+
+Fixpoint AxiomitizeMethodPre' (av : Type) (env : Env av) {Dom}
+         {struct Dom}
+  : DomWrapperT av Dom
+    -> list (Value av)
+    -> list (Value av) -> Prop
+  :=
+  match Dom return
+        DomWrapperT av Dom
+        -> list (Value av)
+        -> list (Value av)
+        -> Prop with
+  | nil => fun dWrap args' args =>
+             args = args'
+  | cons DomT Dom' =>
+    fun dWrap args' args =>
+      let wrap' := fst dWrap in
+      exists x : DomT, AxiomitizeMethodPre' env Dom' (snd dWrap) (wrap x :: args') args
+  end.
+
+Definition AxiomitizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
+         (f : Rep -> list (Value av))
+  : DomWrapperT av Dom
+    -> list (Value av) -> Prop
+  :=
+    fun dWrap args => exists r, (AxiomitizeMethodPre' env Dom dWrap (f r) args).
+
+Fixpoint AxiomitizeMethodPost' {Dom} {Cod} {Rep}
+         (av : Type)
+         (env : Env av)
+         {struct Dom}
+  : CodWrapperT av Cod
+    -> DomWrapperT av Dom
+    -> (Rep -> list ((Value av) * option (Value av)))
+    -> methodType' Rep Dom Cod
+    -> list ((Value av) * option (Value av)) -> Value av -> Prop
+  :=
+  match Dom return
+        CodWrapperT av Cod
+        -> DomWrapperT av Dom
+        -> (Rep -> list ((Value av) * option (Value av)))
+        -> methodType' Rep Dom Cod
+        -> list ((Value av) * option (Value av))
+        -> Value av -> Prop with
+  | nil => match Cod return
+                   CodWrapperT av Cod
+                   -> DomWrapperT av nil
+                   -> (Rep -> list ((Value av) * option (Value av)))
+                   -> methodType' Rep nil Cod
+                   -> list ((Value av) * option (Value av))
+                   -> Value av -> Prop with
+           | None => fun cWrap dWrap args' meth args ret =>
+                       exists r', computes_to meth r'
+                                  /\ args = args' r'
+                                  /\ ret = wrap (Word.natToWord 32 0)
+           | Some CodT => fun cWrap dWrap args' meth args ret =>
+                            exists r' v', computes_to meth (r', v')
+                                  /\ args = args' r'
+                                  /\ ret = wrap (FacadeWrapper := cWrap) v'
+           end
+  | cons DomT Dom' =>
+    fun cWrap dWrap args' meth args ret =>
+      let wrap' := fst dWrap in
+      exists x : DomT, AxiomitizeMethodPost' env cWrap (snd dWrap) (fun r' => (wrap x, None) :: args' r') (meth x) args ret
+  end.
+
+Definition AxiomitizeMethodPost
+           (av : Type)
+           (env : Env av)
+           {Dom} {Cod} {Rep}
+           (f : Rep -> Rep -> list ((Value av) * option (Value av)))
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType Rep Dom Cod)
+           (args : list ((Value av) * option (Value av)))
+           (ret : Value av)
+  : Prop :=
+  exists r, AxiomitizeMethodPost' env cWrap dWrap (f r) (meth r) args ret.
+
+Fixpoint DecomposePosti3list
+           av
+           {n}
+           {A}
+           {B}
+           {C}
+           {As : Vector.t n A}
+           {struct As}
+  :
+    forall (il : ilist3 (B := B) As),
+      RepWrapperT av C As il
+      -> i3list C il
+      -> i3list C il
+      -> list (((Value av) * option (Value av))) :=
+  match As return
+        forall (il : ilist3 (B := B) As),
+          RepWrapperT av C As il
+          -> i3list C il
+          -> i3list C il
+          -> list (((Value av) * option (Value av))) with
+  | Vector.nil => fun as' rWrap r r' => nil
+  | Vector.cons a n' As' => fun as' rWrap r r' =>
+                              let fWrap' := fst rWrap in
+                              cons (wrap (prim_fst r), Some (wrap (prim_fst r')))
+                                   (DecomposePosti3list As' (prim_snd as') (snd rWrap)
+                                                        (prim_snd r) (prim_snd r'))
+  end.
+
+Definition DecomposeIndexedQueryStructurePost av qs_schema Index
+           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+           (r r' : IndexedQueryStructure qs_schema Index)
+  : list (((Value av) * option (Value av))) :=
+  DecomposePosti3list _ _ rWrap r r'.
+
+Fixpoint DecomposePrei3list
+           av
+           {n}
+           {A}
+           {B}
+           {C}
+           {As : Vector.t n A}
+           {struct As}
+  :
+    forall (il : ilist3 (B := B) As),
+      RepWrapperT av C As il
+      -> i3list C il
+      -> list (Value av) :=
+  match As return
+        forall (il : ilist3 (B := B) As),
+          RepWrapperT av C As il
+          -> i3list C il
+          -> list (Value av) with
+  | Vector.nil => fun as' rWrap r => nil
+  | Vector.cons a n' As' => fun as' rWrap r =>
+                              let fWrap' := fst rWrap in
+                              cons (wrap (prim_fst r))
+                                   (DecomposePrei3list As' (prim_snd as') (snd rWrap)
+                                                        (prim_snd r))
+  end.
+
+Definition DecomposeIndexedQueryStructurePre av qs_schema Index
+           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+           (r : IndexedQueryStructure qs_schema Index)
+  : list (Value av) :=
+  DecomposePrei3list _ _ rWrap r.
+
+Arguments AxiomitizeMethodPost _ _ _ _ _ _ _ _ _ _ _ / .
+Arguments DecomposePosti3list _ _ _ _ _ _ _ _ _ _ / .
+Arguments DecomposeIndexedQueryStructurePost _ _ _ _ _ _ / .
+Arguments AxiomitizeMethodPre _ _ _ _ _ _ _ / .
+Arguments DecomposePrei3list _ _ _ _ _ _ _ _ _ / .
+Arguments DecomposeIndexedQueryStructurePre _ _ _ _ _ / .
+
+Eval simpl in
+  (forall av env rWrap cWrap dWrap l ret,
+      (AxiomitizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l ret).
+
+Eval simpl in
+    (forall av env rWrap cWrap dWrap l l' ret,
+        let Dom' := _ in
+        (AxiomitizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Dom := Dom') (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l' ret
+    /\ (AxiomitizeMethodPre (av := av) env (DecomposeIndexedQueryStructurePre _ _ _ rWrap) dWrap l)).
+
+Require Import Bedrock.Platform.Facade.CompileUnit2.
+
+Definition CompileUnit2Equiv
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : Core.ADT (BuildADTSig consSigs methSigs))
+           (f : A -> _)
+           g
+           ax_mod_name
+           op_mod_name
+           cWrap
+           dWrap
+           rWrap
+           compileUnit
+  :=
+    DFModuleEquiv env adt compileUnit.(module) cWrap dWrap (f rWrap) g
+    /\ compileUnit.(ax_mod_name) = ax_mod_name
+    /\ compileUnit.(op_mod_name) = op_mod_name.
+    /\
+
+Definition BuildCompileUnit2T
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : Core.ADT (BuildADTSig consSigs methSigs))
+           (f : A -> _)
+           g
+           ax_mod_name
+           cWrap
+           dWrap
+           rWrap :=
+  {compileUnit : CompileUnit av ( & (DFModuleEquiv env adt compileUnit.(module) cWrap dWrap (f rWrap) g) }
+    {module : _ &
+      {cWrap : _ &
+       {dWrap : _ &
+        {rWrap : _ &  } } } } .
+
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
