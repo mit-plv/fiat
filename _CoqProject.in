@@ -47,7 +47,6 @@ src/BinEncoders/take3/List1.v
 src/BinEncoders/take3/List2.v
 src/BinEncoders/take3/Prod.v
 src/BinEncoders/take3/Vector.v
-src/CertifiedExtraction/ADTExamples.v
 src/CertifiedExtraction/CompUtils.v
 src/CertifiedExtraction/ComputesToLemmas.v
 src/CertifiedExtraction/Core.v
@@ -60,14 +59,15 @@ src/CertifiedExtraction/FacadeLemmas.v
 src/CertifiedExtraction/FacadeNotations.v
 src/CertifiedExtraction/FacadeUtils.v
 src/CertifiedExtraction/HintDBs.v
-src/CertifiedExtraction/Microbenchmarks.v
-src/CertifiedExtraction/MicrobenchmarksSetup.v
 src/CertifiedExtraction/PropertiesOfTelescopes.v
 src/CertifiedExtraction/PureFacadeLemmas.v
 src/CertifiedExtraction/PureUtils.v
-src/CertifiedExtraction/Random.v
 src/CertifiedExtraction/StringMapUtils.v
 src/CertifiedExtraction/Utils.v
+src/CertifiedExtraction/Benchmarks/Microbenchmarks.v
+src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
+src/CertifiedExtraction/Benchmarks/QueryStructures.v
+src/CertifiedExtraction/Benchmarks/Random.v
 src/CertifiedExtraction/Extraction/Basics.v
 src/CertifiedExtraction/Extraction/BinExpr.v
 src/CertifiedExtraction/Extraction/ConditionalTactics.v
