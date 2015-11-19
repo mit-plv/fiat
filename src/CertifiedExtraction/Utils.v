@@ -5,30 +5,17 @@ Require Export
         CertifiedExtraction.PureUtils
         CertifiedExtraction.FacadeUtils.
 
-Lemma wrap_inj `{FacadeWrapper AA A} :
-  forall (a1 a2: A),
-    wrap a1 = wrap a2 -> a1 = a2.
-Proof.
-  intros.
-  cut (Some a1 = Some a2); [ congruence | ].
-  rewrite <- !unwrap_wrap.
-  congruence.
-Qed.
-
 Ltac cleanup :=
   match goal with
   | _ => cleanup_pure
   | _ => cleanup_facade_pure
   | _ => progress computes_to_inv
   | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
-  | [ H: unwrap ?v = Some ?vv |- _ ] => apply wrap_unwrap in H; subst v
-  | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
-  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
   | [ H: NTSome _ = NTSome _ |- _ ] => inversion H; unfold_and_subst; clear H
   | [  |- context[NameTagAsStringOption NTNone] ]     => cbv [NameTagAsStringOption]
-  | [ H: context[NameTagAsStringOption NTNone] |- _ ] => cbv [NameTagAsStringOption] in H
+  | [ H: context[NameTagAsStringOption NTNone] |- _ ] => may_touch H; cbv [NameTagAsStringOption] in H
   | [  |- context[NameTagAsStringOption (NTSome _)] ]     => cbv [NameTagAsStringOption]
-  | [ H: context[NameTagAsStringOption (NTSome _)] |- _ ] => cbv [NameTagAsStringOption] in H
+  | [ H: context[NameTagAsStringOption (NTSome _)] |- _ ] => may_touch H; cbv [NameTagAsStringOption] in H
   end.
 
 Ltac wipe :=

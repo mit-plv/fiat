@@ -2,8 +2,7 @@ Require Export
         CertifiedExtraction.HintDBs
         CertifiedExtraction.Core
         CertifiedExtraction.Utils
-        CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.ComputesToLemmas.
+        CertifiedExtraction.StringMapUtils.
 
 Require Export Coq.Setoids.Setoid.
 
@@ -43,10 +42,25 @@ Proof.
   firstorder.
 Qed.
 
+Ltac rewrite_equalities :=
+  match goal with
+  | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
+
+  | [ H: ?a = ?b |- context[?a] ] => rewrite H
+  | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
+
+  | [ H: StringMap.Equal ?a ?b |- context[?a] ] => setoid_rewrite H
+  | [ H: StringMap.Equal ?a ?b, H': context[?a] |- _ ] => setoid_rewrite H in H'
+
+  | [ H: forall (k : StringMap.key) (v : _), StringMap.MapsTo k (ADT v) ?y <-> StringMap.MapsTo k (ADT v) ?y'
+      |- context[StringMap.MapsTo _ (ADT _) ?y] ] => rewrite H
+  | [ H: forall (k : StringMap.key) (v : _), StringMap.MapsTo k (ADT v) ?y <-> StringMap.MapsTo k (ADT v) ?y',
+      H': context[StringMap.MapsTo _ (ADT _) ?y] |- _ ] => rewrite H in H'
+  end.
+
 Ltac t_Morphism_step :=
   match goal with
   | _ => cleanup
-  | _ => rewrite_equalities
 
   | [ |- context[?m ≲ Nil ∪ ?ext] ] => simpl
   | [ H: context[?m ≲ Nil ∪ ?ext] |- _ ] => simpl in H
@@ -58,10 +72,8 @@ Ltac t_Morphism_step :=
   | [ H: context[match StringMap.find ?k ?m with _ => _ end] |- _ ] => let h := fresh in destruct (StringMap.find k m) eqn:h; simpl in H
 
   | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
-  | [ |- context[match unwrap ?v with _ => _ end] ] => let h := fresh in destruct (unwrap v) eqn:h; simpl
-  | [ H: context[match unwrap ?v with _ => _ end] |- _ ] => let h := fresh in destruct (unwrap v) eqn:h; simpl
-
-  | [ H: exists v, _ |- exists v, _ ] => destruct H; eexists
+  | |- exists _, _ => eexists
+  | _ => rewrite_equalities
   end.
 
 Ltac t_Morphism := repeat t_Morphism_step.
@@ -115,17 +127,13 @@ Qed.
 
 Ltac step :=
   match goal with
-  | _ => progress intros; simpl in *
-  | _ => progress split
-  | [ H: ?a /\ ?b |- _ ] => destruct H
-  | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
-  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
+  | _ => progress simpl in *
+  | _ => cleanup
   | [ H: StringMap.MapsTo ?k ?v ?m |- Some ?v = StringMap.find ?k ?m ] => symmetry; rewrite <- find_mapsto_iff; assumption
   | [ H: StringMap.MapsTo ?k ?v ?m |- context[StringMap.find ?k ?m] ] => replace (StringMap.find k m) with (Some v) in *
   | [ H: context[match StringMap.find ?k ?m with | Some _ => _ | None => _ end] |- _ ] => let eq0 := fresh in progress (destruct (StringMap.find k m) eqn:eq0; deduplicate)
-  | [ H: context[match unwrap ?v with _ => _ end] |- _ ] => let eq0 := fresh in progress (destruct (unwrap v) eqn:eq0; deduplicate)
   | [ H: ret _ ↝ _ |- _ ] => inversion H; clear H; subst
-  | _ => solve [intuition eauto]
+  | _ => solve [intuition eauto 8]
   end.
 
 Ltac t__ :=
@@ -170,8 +178,8 @@ Proof.
   repeat match goal with
          | [ IH: _, H: StringMap.remove ?k ?m1 ≲ (?t ?v) ∪ ?ext, H': StringMap.Equal ?m1 ?m2 |-
              StringMap.remove ?k ?m2 ≲ (?t ?v) ∪ ?ext ] => apply (IH _ _ _ _ (remove_m eq_refl H')); exact H
+         | _ => solve [eauto]
          | _ => t_Morphism_step
-         | _ => eauto
          end.
 Qed.
 
@@ -332,7 +340,7 @@ Lemma SameValues_Pop_Both:
     StringMap.remove k st ≲ tenv ∪ ext ->
     [k <-- wrap v] :: st ≲ [[`k <~~ cmp as _]] :: tenv ∪ ext.
 Proof.
-  intros; simpl; repeat (StringMap_t; cleanup); eauto.
+  intros; simpl; repeat (StringMap_t || cleanup || eexists); eauto.
 Qed.
 
 Hint Resolve @SameValues_Pop_Both : SameValues_db.
@@ -382,7 +390,7 @@ Proof.
              H'': StringMap.MapsTo ?key ?v' _  |- _ ] => specialize (H v key ext st H' v' H''); rename H into IHREC
          | [ H: StringMap.MapsTo ?k ?v (StringMap.remove _ ?s) |- StringMap.MapsTo ?k ?v ?s ] => solve[eauto using MapsTo_remove]
          | [ H: match StringMap.find ?s ?st with _ => _ end |- _ ] => let a := fresh in destruct (StringMap.find s st) eqn:a
-         | [ H: match unwrap ?v with _ => _ end |- _ ] => let a := fresh in destruct (unwrap v) eqn:a
+         | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
          | [ H: exists v, _ |- _ ] => destruct H
          end; eauto using WeakEq_Mapsto_MapsTo. (*! FIXME why does adding the eauto at the end of the match make things slower? *)
 Qed.
@@ -466,7 +474,6 @@ Lemma SameValues_MapsTo:
 Proof.
   simpl; intros.
   destruct (StringMap.find _ _) eqn: eq0; try tauto.
-  destruct (unwrap _) eqn: eq1; try tauto.
   rewrite <- find_mapsto_iff in *.
   repeat cleanup.
   eexists; intuition eauto.

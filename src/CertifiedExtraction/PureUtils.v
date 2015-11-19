@@ -37,6 +37,12 @@ Ltac learn fact :=
         end
   end.
 
+Ltac may_touch H :=
+  match type of H with
+  | Learnt _ => fail 1
+  | _ => idtac
+  end.
+
 Ltac is_dec term :=
   match type of term with
   | {?p} + {?q}  => idtac
@@ -76,6 +82,7 @@ Ltac cleanup_pure :=
   | _ => tauto
   | _ => discriminate
   | _ => progress intros
+  | _ => progress subst
   | [ |- ?a <-> ?b ] => split
   | [  |- ?a /\ ?b ] => split
   | [ H: ?a /\ ?b |- _ ] => destruct H

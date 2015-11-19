@@ -11,9 +11,7 @@ Unset Printing Implicit Defensive.
 
 Class FacadeWrapper (WrappingType WrappedType: Type) :=
   { wrap:        WrappedType -> WrappingType;
-    unwrap:      WrappingType -> option WrappedType;
-    unwrap_wrap: forall v, unwrap (wrap v) = Some v;
-    wrap_unwrap: forall v vv, unwrap v = Some vv -> v = wrap vv }.
+    wrap_inj: forall v v', wrap v = wrap v' -> v = v' }.
 
 Inductive NameTag av T :=
 | NTNone : NameTag av T
@@ -78,10 +76,7 @@ Fixpoint SameValues {av} ext fmap (tenv: Telescope av) :=
   | Cons T key val tail =>
     match key with
       | NTSome k H => match StringMap.find k fmap with
-                  | Some v => match unwrap (FacadeWrapper := H) v with
-                             | Some vv => val ↝ vv /\ SameValues ext (StringMap.remove k fmap) (tail vv)
-                             | None => False
-                             end
+                  | Some v => exists v', val ↝ v' /\ v = wrap v' /\ SameValues ext (StringMap.remove k fmap) (tail v')
                   | None => False
                   end
       | NTNone => exists v', val ↝ v' /\ SameValues ext fmap (tail v')

@@ -265,35 +265,32 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
   Ltac normalize :=
     match goal with
     | [  |- context[find ?k (add ?k ?v ?m)] ] => rewrite (@add_eq_o _ m k k v eq_refl) by reflexivity
-    | [ H: context[find ?k (add ?k ?v ?m)] |- _ ] => rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
+    | [ H: context[find ?k (add ?k ?v ?m)] |- _ ] => may_touch H; rewrite (@add_eq_o _ m k k v eq_refl) in H by reflexivity
     | [ H: ?k <> ?k'    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
-    | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+    | [ H: ?k <> ?k', H': context[find ?k (add ?k' _ _)] |- _ ] => may_touch H; rewrite add_neq_o in H' by congruence
     | [ H: ?k' <> ?k    |- context[find ?k (add ?k' _ _)] ] => rewrite add_neq_o by congruence
-    | [ H: ?k' <> ?k, H': context[find ?k (add ?k' _ _)] |- _ ] => rewrite add_neq_o in H' by congruence
+    | [ H: ?k' <> ?k, H': context[find ?k (add ?k' _ _)] |- _ ] => may_touch H; rewrite add_neq_o in H' by congruence
     | [ H: ?k <> ?k' |- context[find ?k (remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
     | [ H: ?k' <> ?k |- context[find ?k (remove ?k' ?m)] ] => rewrite (remove_neq_o m (x := k') (y := k)) by congruence
 
     | [ |-  context[remove ?k (add ?k ?v ?m)] ]     => rewrite (@remove_trickle _ k k v m eq_refl) by congruence
-    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
+    | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => may_touch H; rewrite (@remove_trickle _ k k v m eq_refl) in H by congruence
     | [ H: ?k' <> ?k    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
+    | [ H: ?k' <> ?k, H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => may_touch H; rewrite (@remove_add_comm _ k k' v m) in H' by congruence
     | [ H: ?k <> ?k'    |- context[remove ?k (add ?k' ?v ?m)] ]     => rewrite (@remove_add_comm _ k k' v m) by congruence
-    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => rewrite (@remove_add_comm _ k k' v m) in H' by congruence
+    | [ H: ?k <> ?k', H': context[remove ?k (add ?k' ?v ?m)] |- _ ] => may_touch H; rewrite (@remove_add_comm _ k k' v m) in H' by congruence
     | [ H': ?k ∉ ?m   |- context[remove ?k ?m] ]     => rewrite (remove_notIn_Equal H') by congruence
-    | [ H': ?k ∉ ?m, H: context[remove ?k ?m] |- _ ] => rewrite (remove_notIn_Equal H') in H by congruence
+    | [ H': ?k ∉ ?m, H: context[remove ?k ?m] |- _ ] => may_touch H; rewrite (remove_notIn_Equal H') in H by congruence
 
     | [ H: Equal ?st ?st |- _ ] => clear dependent H
     | [ H: Equal ?st ?st', H': context[?st] |- _ ] => rewrite_in H H'
     | [ H: Equal ?st ?st' |- context[?st] ] => rewrite H
     | [ H: find ?k ?m = Some ?v |- _ ] => apply find_2 in H
     | [ H: MapsTo ?k ?v ?m |- context[find ?k ?m] ] => rewrite (find_1 H)
-    | [ H: MapsTo ?k ?v ?m, H': context[find ?k ?m] |- _ ] => rewrite_in (find_1 H) H'
-    | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H'); clear dependent H'
+    | [ H: MapsTo ?k ?v ?m, H': context[find ?k ?m] |- _ ] => may_touch H'; rewrite_in (find_1 H) H'
+    | [ H: MapsTo ?k ?v ?m, H': MapsTo ?k ?v' ?m |- _ ] => learn (MapsTo_fun H H')
     | [ H: MapsTo ?k ?v (add ?k ?v' ?m) |- _ ] => learn (MapsTo_add_eq_inv H)
     | [ H: MapsTo ?k ?v (add ?k' ?v' ?m), H': ?k' <> ?k |- _ ] => learn (add_3 H' H)
-
-    (* | [ |- context[remove ?k (add ?k ?v ?m)] ] => rewrite (remove_trickle (k := k) (k' := k) v m eq_refl) *)
-    (* | [ H: context[remove ?k (add ?k ?v ?m)] |- _ ] => rewrite_in (remove_trickle (k := k) (k' := k) v m eq_refl) H *)
 
     | [ H: find _ _ = Some _ |- _ ] => rewrite <- find_mapsto_iff in H
     | [ H: find _ _ = None |- _ ] => rewrite <- not_find_in_iff in H

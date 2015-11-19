@@ -47,12 +47,10 @@ Ltac facade_cleanup_call :=
   | [ H: List.combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
   | [ |-  context[List.split (cons _ _)] ] => simpl
   | [ H: context[List.split (cons _ _)] |- _ ] => may_touch H; simpl in H
-  (* | [ H: match ?output with | nil => _ | cons _ _ => _ end = _ |- _ ] => let a := fresh in destruct output eqn:a *)
   | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
-  (* | _ => progress simpl *)
-  (* | _ => solve [eauto with call_helpers_db SameValues_db] *)
+  | [  |- exists _, _ ] => eexists
   end.
 
 Ltac facade_eauto :=
@@ -68,13 +66,8 @@ Hint Resolve WeakEq_pop_SCA_left : call_helpers_db.
 Instance WrapInstance `{H: FacadeWrapper av A} : `{FacadeWrapper (Value av) A}.
 Proof.
   refine {| wrap := fun a => @ADT av (wrap a);
-            unwrap := fun a => match a with ADT a => unwrap a | _ => None end;
-            unwrap_wrap := fun v => _;
-            wrap_unwrap := _ |};
-  destruct H.
-  eauto with typeclass_instances.
-  destruct v; try congruence.
-  intros; f_equal; eauto.
+            wrap_inj := _ |};
+  FacadeWrapper_t.
 Defined.
 
 Lemma WrapInstance_wrap :
@@ -82,13 +75,6 @@ Lemma WrapInstance_wrap :
     wrap x = ADT (wrap x).
 Proof.
   destruct H; intros; reflexivity.
-Qed.
-
-Lemma WrapInstance_unwrap_wrap :
-  forall `{H: FacadeWrapper av A} (x: A),
-    unwrap (ADT (wrap x)) = Some x.
-Proof.
-  destruct H. eassumption.
 Qed.
 
 Hint Extern 1 => rewrite WrapInstance_wrap : call_helpers_db.

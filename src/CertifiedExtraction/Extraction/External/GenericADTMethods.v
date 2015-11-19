@@ -83,7 +83,6 @@ Proof.
   facade_eauto.
   facade_eauto.
   facade_eauto.
-  facade_eauto.
 Qed.
 
 Lemma CompileCallFacadeImplementationOfMutation_SCA:
@@ -202,7 +201,6 @@ Proof.
          | _ => PreconditionSet_t
          end.
 
-  facade_eauto.
   facade_eauto.
   facade_eauto.
   rewrite remove_remove_comm by congruence.

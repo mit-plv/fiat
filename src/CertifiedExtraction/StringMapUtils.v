@@ -42,23 +42,3 @@ Add Parametric Morphism {av} : (@StringMap.find av)
 Proof.
   intros; erewrite find_m; intuition.
 Qed.
-
-Ltac rewriteP hyp := first [rewrite hyp | setoid_rewrite hyp].
-Ltac rewriteP_in hyp target := first [rewrite hyp in target | setoid_rewrite hyp in target].
-
-Ltac rewrite_equalities :=
-  match goal with
-  | _ => progress subst
-  | [ H: Some _ = Some _ |- _ ] => inversion H; subst; clear H
-
-  | [ H: ?a = ?b |- context[?a] ] => rewrite H
-  | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
-
-  | [ H: StringMap.Equal ?a ?b |- context[?a] ] => rewriteP H
-  | [ H: StringMap.Equal ?a ?b, H': context[?a] |- _ ] => rewriteP_in H H'
-
-  | [ H: forall (k : StringMap.key) (v : _), StringMap.MapsTo k (ADT v) ?y <-> StringMap.MapsTo k (ADT v) ?y'
-      |- context[StringMap.MapsTo _ (ADT _) ?y] ] => rewriteP H
-  | [ H: forall (k : StringMap.key) (v : _), StringMap.MapsTo k (ADT v) ?y <-> StringMap.MapsTo k (ADT v) ?y',
-      H': context[StringMap.MapsTo _ (ADT _) ?y] |- _ ] => rewriteP_in H H'
-  end.

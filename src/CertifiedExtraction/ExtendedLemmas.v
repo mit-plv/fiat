@@ -14,11 +14,8 @@ Ltac SameValues_Fiat_t_step :=
   | [ H: match ?k with _ => _ end |- _ ] => let eqn := fresh in destruct k eqn:eqn
   | [  |- context[match SCA _ _ with _ => _ end] ] => simpl
 
-  | [ H: context[unwrap (wrap _)] |- _ ] => rewrite unwrap_wrap in H
-  | [  |- context[unwrap (wrap _)] ] => rewrite unwrap_wrap
-
   | [ H: ?a = ?b |- context[?a] ] => rewrite H
-  | [ H: ?a = ?b, H': context[?a] |- _ ] => rewrite H in H'
+  | [ H: ?a = ?b, H': context[?a] |- _ ] => may_touch H; rewrite H in H'
   | [ H: forall a, TelEq _ (?x a) (?y a) |- _ ≲ (?x _) ∪ _ ] => red in H; rewrite H
   | [ H: forall a, TelEq _ (?x a) (?y a), H': _ ≲ (?x _) ∪ _ |- _ ] => red in H; rewrite H in H'
   | [ H: forall a, ?v ↝ a -> TelEq _ (?x a) (?y a), H'': ?v ↝ _ |- _ ≲ (?x _) ∪ _ ] => unfold TelEq in H; rewrite (H _ H'')
@@ -97,19 +94,18 @@ Ltac push_pop_step IH :=
     rewrite <- find_mapsto_iff in H; rewrite remove_mapsto_iff in H
   | [ H: context[match StringMap.find ?k ?st with _ => _ end] |- context[StringMap.find ?k (StringMap.remove ?k' ?st)] ] =>
     let _eq := fresh in destruct (StringMap.find k st) eqn:_eq; [| tauto]
-  | [ H: match (unwrap ?a) with _ => _ end |- _ ] => let _eq := fresh in destruct (unwrap a) eqn:_eq
   | [ H: StringMap.MapsTo ?k ?v ?m |- context[StringMap.find ?k ?m] ] => rewrite find_mapsto_iff in H; rewrite H
   | [ H: StringMap.MapsTo ?k ?v ?s, H': ?k <> ?k' |- StringMap.MapsTo ?k ?v (StringMap.remove ?k' ?s)] =>
     rewrite remove_neq_mapsto_iff by congruence
   | [ H: StringMap.remove ?k (StringMap.remove ?k' ?s) ≲ _ ∪ _ |- StringMap.remove ?k' (StringMap.remove ?k ?s) ≲ _ ∪ _ ] =>
     rewrite remove_remove_comm
-  | [ H: exists v, _ |- exists v, _ ] => destruct H; eexists
   | _ => rewrite SameValues_Equal_iff; eauto using remove_remove_comm
   | [ H: StringMap.find ?k ?m = _ |- match StringMap.find ?k ?m with _ => _ end ] => rewrite H
   | [ H: StringMap.remove _ _ ≲ _ ∪ [_ <-- wrap _]::_ |- _ ] => learn (SameValues_In_Ext_State_add _ _ H)
   | [ H: _ ∈ (StringMap.remove _ _) |- _ ] => learn (In_remove_neq H)
   | [ H: ?k <> ?k' |- context[StringMap.find ?k' (StringMap.remove ?k _)] ] => rewrite remove_neq_o by eassumption
   | _ => cleanup
+  | [ |- exists v, _ ] => eexists
   | _ => eauto using remove_remove_comm
   end.
 
@@ -223,7 +219,7 @@ Ltac facade_cleanup :=
   | [  |- eval _ _ = Some _ ] => first [ reflexivity | progress simpl ]
   | [ H: eval _ _ = Some _ |- _ ] => simpl in H
   | [ H: eval_binop_m _ _ _ = Some _ |- _ ] => simpl in H
-  | [ H: context[match Some _ with _ => _ end] |- _ ] => simpl in H
+  | [ H: context[match Some _ with _ => _ end] |- _ ] => may_touch H; simpl in H
   | [ H: ?k <> ?k' |- context[not_mapsto_adt ?k (StringMap.add ?k' _ _)] ] => rewrite not_mapsto_adt_add by congruence
   | [ H: ?k' <> ?k |- context[not_mapsto_adt ?k (StringMap.add ?k' _ _)] ] => rewrite not_mapsto_adt_add by congruence
   | [ H: ?k ∉ ?m |- context[not_mapsto_adt ?k ?m] ] => rewrite NotIn_not_mapsto_adt by assumption
@@ -364,7 +360,7 @@ Ltac SameValues_Facade_t_step :=
   | _ => progress subst
 
   | [ H: TelEq _ ?x _ |- context[?st ≲ ?x ∪ _] ] => rewrite (H st)
-  | [ H: TelEq _ ?x _, H': context[?st ≲ ?x ∪ _] |- _ ] => rewrite_in (H st) H'
+  | [ H: TelEq _ ?x _, H': context[?st ≲ ?x ∪ _] |- _ ] => may_touch H'; rewrite_in (H st) H'
 
   (* Specialize ProgOk *)
   | [ H: ProgOk ?ext _ _ ?tel _, H': ?st ≲ ?tel ∪ ?ext |- _ ] => learn (H st H')
@@ -391,7 +387,7 @@ Ltac SameValues_Facade_t_step :=
 
   (* Cleanup typeclass uses *)
   | [  |- context[SCA ?av ?w]     ] => change (SCA av w) with (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) w)
-  | [ H: context[SCA ?av ?w] |- _ ] => change (SCA av w) with (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) w) in H
+  | [ H: context[SCA ?av ?w] |- _ ] => may_touch H; change (SCA av w) with (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) w) in H
 
   | [ H: ?a -> _, H': ?a |- _ ] => match type of a with Prop => specialize (H H') end
 
@@ -661,7 +657,7 @@ Lemma SameValues_not_In_Telescope_not_in_Ext_remove:
 Proof.
   induction tenv; intros;
   simpl in *; SameValues_Fiat_t; SameValues_Facade_t.
-  rewrite remove_remove_comm by congruence; SameValues_Facade_t.
+  eexists; rewrite remove_remove_comm by congruence; SameValues_Facade_t.
 Qed.
 
 Lemma SameValues_forget_Ext_helper:
@@ -723,7 +719,6 @@ Proof.
   StringMap_t.
   repeat match goal with
          | [ H: StringMap.MapsTo _ _ ?st |- ?st ≲ _ ∪ _ ] => rewrite (MapsTo_add_remove H)
-         | [ H: ?v ↝ ?vv, H': AlwaysComputesToSCA ?v |- _ ] => specialize (H' _ H)
          | [ H: is_adt ?v = false |- _ ] => destruct v; simpl in H; try congruence
          | [ H: match ?x with _ => _ end = _ |- _ ] => destruct x; try congruence
          end.
@@ -887,7 +882,8 @@ Lemma miniChomp:
            {{ [[`k <-- vv as vv]] :: (tenv vv) }} prog {{ [[k' <~~ ret vv as vv]] :: tenv' vv }} ∪ {{ ext }} // env) ->
     {{ [[`k <~~ v as vv]] :: (tenv vv) }} prog {{ [[k' <~~ v as vv]] :: tenv' vv }} ∪ {{ ext }} // env.
 Proof.
-  miniChomp_t; destruct k'; simpl; miniChomp_t.
+  miniChomp_t.
+  destruct k'; simpl; miniChomp_t.
 Qed.
 
 Lemma miniChomp' :
@@ -921,10 +917,10 @@ Proof.
       rewrite remove_mapsto_iff in *.
       cleanup.
       StringMap_t.
-      repeat cleanup.
+      eexists; repeat cleanup; eauto.
       eapply H.
-      2: rewrite remove_remove_comm; eauto.
       rewrite remove_mapsto_iff in *; eauto.
+      rewrite remove_remove_comm; eauto.
 Qed.
 
 Hint Resolve SameValues_remove_SCA : SameValues_db.
