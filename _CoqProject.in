@@ -63,6 +63,7 @@ src/CertifiedExtraction/StringMapUtils.v
 src/CertifiedExtraction/Utils.v
 src/CertifiedExtraction/Benchmarks/Microbenchmarks.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
+src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
 src/CertifiedExtraction/Benchmarks/QueryStructures.v
 src/CertifiedExtraction/Benchmarks/Random.v
 src/CertifiedExtraction/Extraction/Basics.v
