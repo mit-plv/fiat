@@ -113,6 +113,8 @@ Ltac _compile_chomp :=         (* This is a weak version of the real compile_cho
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:(pre, post) with
+            | (Cons (NTSome ?k) ?v ?tenv, Cons NTNone ?v' ?tenv') =>
+              unify v v'; apply miniChomp'
             | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
               unify k k'; unify v v';
               match k with
@@ -203,7 +205,6 @@ Ltac _compile_if :=
               apply (CompileIf (tmp := vtest))
             end).
 
-
 Ltac compile_simple_internal av env cmp ext :=
   match cmp with
   | ret (?op ?lhs ?rhs) => is_word (op lhs rhs); let facade_op := translate_op op in compile_binop facade_op lhs rhs ext
@@ -229,11 +230,22 @@ Ltac compile_simple :=
     existing binding: *)
 
 Ltac compile_simple_inplace :=
-  debug "Compiling simple pattern in place";
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (Cons ?s ?cmp ?tenv, Cons (av := ?av) ?s ?cmp' ?tenv') => fail (* FIXME *)
+            match post with
+            | Cons (NTSome ?s) (ret ?final) ?tenv' =>
+              match pre with
+              | context[Cons (NTSome ?s) (ret ?initial) _] =>
+                move_to_front s;
+                  match constr:(initial, final) with
+                  | (?a, ?op ?a' ?b) =>
+                    unify a a';
+                      is_word (op a b);
+                      let facade_op := translate_op op in
+                      first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
+                            | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
+                  end
+              end
             end).
 
 Ltac _compile_map :=
@@ -377,6 +389,7 @@ Ltac _compile_step :=
   | _ => _compile_mutation
   | _ => _compile_constructor
   | _ => compile_simple
+  | _ => compile_simple_inplace
   | _ => _compile_destructor
   | _ => _compile_rewrite_if
   | _ => _compile_late_hook

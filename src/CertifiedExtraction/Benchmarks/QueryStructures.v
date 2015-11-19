@@ -637,19 +637,6 @@ Proof.
     _compile_step.
     _compile_step.
 
-    Ltac find_fast value fmap ::=
-      match fmap with
-      | ∅ => constr:None
-      | [?k <-- ?v]::_ => let eq := constr:(eq_refl:v = value) in
-                      constr:(Some k)
-      | [?k <-- wrap ?v]::_ => let eq := constr:(eq_refl:v = value) in
-                      constr:(Some k)
-      | [?k <-- _]::?tail => let ret := find_fast value tail in
-                          constr:ret
-      | ?other => let ret := reduce_or_fallback fmap ltac:(fun reduced => find_fast value reduced) None in
-                 constr:ret
-      end.
-
     match goal with
     | |- context[@RawTuple ?t] => pose t
     end.
@@ -670,7 +657,7 @@ Proof.
                   | CallBagMethod Fin.F1 BagFind ?db (Some ?v, (None, fun _ => true)) =>
                     let vsnd := gensym "snd" in
                     let vtmp := gensym "tmp" in
-                    let vkwd := find_fast v ext in
+                    let vkwd := find_fast (wrap v) ext in
                     match vkwd with
                       Some ?vkwd =>
                       let stmt := constr:(Call (DummyArgument vtmp) ("ext", "BagFind") (vsnd :: vdb :: vkwd :: nil)) in

@@ -285,4 +285,33 @@ Proof.
   destruct op; SameValues_Facade_t.
 Qed.
 
-(* FIXME add variants *)
+Lemma CompileBinopOrTest_right_inPlace_tel:
+  forall {av} op vret varg (val1 val2: W) env ext (tenv: Telescope av),
+    PreconditionSet tenv ext [[[vret; varg]]] ->
+    {{ [[`vret <-- val1 as _]]::[[`varg <-- val2 as _]]::tenv }}
+      Assign vret (WrapOpInExpr op (Var vret) (Var varg))
+    {{ [[`vret <-- (eval_binop op val1 val2) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  move_to_front varg.
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  apply ProgOk_Chomp_Some; try compile_do_side_conditions.
+  intros; apply CompileBinopOrTest_right_inPlace; try compile_do_side_conditions.
+Qed.
+
+Lemma CompileBinopOrTest_right_inPlace_tel_generalized:
+  forall {av} op vret varg (val1 val2: W) env ext (tenv tenv': Telescope av) pCoda,
+    PreconditionSet tenv ext [[[vret; varg]]] ->
+    {{ [[`vret <-- (eval_binop op val1 val2) as _]]::[[`varg <-- val2 as _]]::tenv }}
+      pCoda
+    {{ [[`vret <-- (eval_binop op val1 val2) as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret <-- val1 as _]]::[[`varg <-- val2 as _]]::tenv }}
+      (Seq (Assign vret (WrapOpInExpr op (Var vret) (Var varg))) pCoda)
+    {{ [[`vret <-- (eval_binop op val1 val2) as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  move_to_front varg.
+  apply ProgOk_Chomp_Some; try compile_do_side_conditions.
+  intros; apply CompileBinopOrTest_right_inPlace; try compile_do_side_conditions.
+Qed.
+

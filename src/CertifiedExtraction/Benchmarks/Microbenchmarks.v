@@ -1,7 +1,5 @@
 Require Import CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
 
-(* Opaque WrapInstance.            (* FIXME simpl never? *) *)
-
 Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
 
 Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
@@ -37,7 +35,7 @@ Example micro_plus_minus :
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
-  repeat (_compile_step || apply ProgOk_Chomp_Some_snd).
+  _compile.
 Defined.
 
 Time Eval lazy in (extract_facade micro_plus_minus).
@@ -132,7 +130,7 @@ Example micro_double :
     #program   ret (revmap (fun w => Word.wmult w 2) seq)
     #arguments [[`"seq" <-- seq as _ ]] :: Nil
     #env       Microbenchmarks_Env.
-Proof.                               (* FIXME prove something for maps *)
+Proof.
   _compile.
 Defined.
 
@@ -149,7 +147,7 @@ Example micro_nibble_power_of_2 :
     #program   ret (nibble_power_of_2_p (Word.wplus x 1))
     #arguments [[`"x" <-- x as _ ]] :: Nil
     #env       Microbenchmarks_Env.
-Proof.                               (* FIXME prove something for maps *)
+Proof.
   _compile.
 Defined.
 
@@ -164,7 +162,7 @@ Example micro_nibble_power_of_2__intrinsic :
     #arguments [[`"x" <-- x as _ ]] :: Nil
     #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_2_p)).
 Proof.                               (* FIXME prove something for maps *)
-  repeat _compile.
+  _compile.
 Defined.
 
 Time Eval lazy in (extract_facade micro_nibble_power_of_2__intrinsic).
@@ -177,10 +175,6 @@ Example micro_fold_plus :
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
-  instantiate (1 := Skip).
-  admit.
-  (* let fop := translate_op Word.wplus in (* FIXME *) *)
-  (* apply (CompileBinopOrTest_right_inPlace fop); compile_do_side_conditions. *)
 Defined.
 
 Time Eval lazy in (extract_facade micro_fold_plus).
@@ -193,10 +187,6 @@ Example micro_fold_plus_x :
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
-  instantiate (1 := Skip).
-  admit.
-  (* let fop := translate_op Word.wplus in (* FIXME *) *)
-  (* apply (CompileBinopOrTest_right_inPlace fop); compile_do_side_conditions. *)
 Defined.
 
 Time Eval lazy in (extract_facade micro_fold_plus_x).
@@ -290,8 +280,6 @@ Example micro_randomize :
     #arguments [[`"seq" <-- seq as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
-  _compile.
-  apply miniChomp'.             (* FIXME *)
   _compile.
 Defined.
 
