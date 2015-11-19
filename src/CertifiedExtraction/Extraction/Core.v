@@ -4,7 +4,6 @@ Require Export
         CertifiedExtraction.FacadeUtils
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.ExtendedLemmas
-        CertifiedExtraction.ComputesToLemmas
         CertifiedExtraction.PropertiesOfTelescopes
         CertifiedExtraction.ExtendedPropertiesOfTelescopes
         CertifiedExtraction.Extraction.Gensym

@@ -1,7 +1,7 @@
 Require Import
         Computation.Core.
 Require Export
-        CertifiedExtraction.CompUtils
+        CertifiedExtraction.Core
         CertifiedExtraction.PureUtils
         CertifiedExtraction.FacadeUtils.
 

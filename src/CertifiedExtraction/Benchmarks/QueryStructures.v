@@ -7,7 +7,6 @@ Require Import
         CertifiedExtraction.Core
         CertifiedExtraction.FacadeUtils
         CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.Examples
         CertifiedExtraction.Extraction.Internal
         CertifiedExtraction.Extraction.Extraction.
 
