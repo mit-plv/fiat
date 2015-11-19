@@ -37,8 +37,9 @@ Fixpoint ilist2ToListW {N} {struct N} : ilist2.ilist2 (B := fun x => x) (MakeVec
 Notation BedrockElement := (@TuplesF.IndexedElement (list W)).
 Notation BedrockBag := (@TuplesF.IndexedEnsemble (list W)).
 
-Notation FiatElement N := (@IndexedEnsembles.IndexedElement (@RawTuple (MakeWordHeading N))).
-Notation FiatBag N := (@IndexedEnsembles.IndexedEnsemble (@RawTuple (MakeWordHeading N))).
+Notation FiatTuple N := (@RawTuple (MakeWordHeading N)).
+Notation FiatElement N := (@IndexedEnsembles.IndexedElement (FiatTuple N)).
+Notation FiatBag N := (@IndexedEnsembles.IndexedEnsemble (FiatTuple N)).
 
 Definition TupleToListW {N} (tuple: @RawTuple (MakeWordHeading N)) :=
   ilist2ToListW tuple.
@@ -112,6 +113,37 @@ Proof.
   - inversion H; f_equal; eauto.
 Qed.
 
+Hint Resolve TupleToListW_inj : inj_db.
+
+Ltac Wrapper_t :=
+  abstract (intros * H; inversion H; subst; clear H; f_equal;
+            eauto with inj_db).
+
+Instance QS_WrapTup {N} : FacadeWrapper ADTValue (@RawTuple (MakeWordHeading N)).
+Proof.
+  refine {| wrap tp := Tuple (TupleToListW tp);
+            wrap_inj := _ |}; Wrapper_t.
+Defined.
+
+Lemma map_TupleToListW_inj {N}:
+  forall (t1 t2: list (@RawTuple (MakeWordHeading N))),
+    map TupleToListW t1 = map TupleToListW t2 ->
+    t1 = t2.
+Proof.
+  induction t1; simpl; destruct t2; simpl; intros; try discriminate.
+  - reflexivity.
+  - inversion H; f_equal; eauto with inj_db.
+Qed.
+
+Hint Resolve map_TupleToListW_inj : inj_db.
+
+Instance QS_WrapList {N} : FacadeWrapper ADTValue (list (@RawTuple (MakeWordHeading N))).
+Proof.
+  refine {| wrap tl := List (List.map TupleToListW tl);
+            wrap_inj := _ |}; Wrapper_t.
+Defined.
+
+
 Lemma lift_eq {A} (f g: A -> Prop) :
   f = g -> (forall x, f x <-> g x).
 Proof.
@@ -156,30 +188,112 @@ Proof.
                          end; tauto.
 Qed.
 
-Instance QS_WrapTup : FacadeWrapper ADTValue tupl.
-Proof.
-  refine {| wrap tp := Tuple tp;
-            wrap_inj := _ |}; FacadeWrapper_t.
-Defined.
-
-Instance QS_WrapList : FacadeWrapper ADTValue (list tupl).
-Proof.
-  refine {| wrap tl := List tl;
-            wrap_inj := _ |}; FacadeWrapper_t.
-Defined.
+Hint Resolve IndexedEnsemble_TupleToListW_inj : inj_db.
 
 Instance QS_WrapBag0 {N} : FacadeWrapper ADTValue (FiatBag N).
 Proof.
   refine {| wrap tl := Tuples0 (Word.natToWord 32 N) (IndexedEnsemble_TupleToListW tl);
-            wrap_inj := _ |};
-  abstract (intros * H; inversion H; subst; clear H; f_equal;
-            eauto using IndexedEnsemble_TupleToListW_inj).
+            wrap_inj := _ |}; Wrapper_t.
 Defined.
 
 Instance QS_WrapBag1 {N} (M: Word.word 32) : FacadeWrapper ADTValue (FiatBag N).
 Proof.
   refine {| wrap tl := Tuples1 (Word.natToWord 32 N) M (IndexedEnsemble_TupleToListW tl);
-            wrap_inj := _ |};
-  abstract (intros * H; inversion H; subst; clear H; f_equal;
-            eauto using IndexedEnsemble_TupleToListW_inj).
+            wrap_inj := _ |}; Wrapper_t.
 Defined.
+
+Require Import Bedrock.Platform.Facade.examples.QsADTs.
+
+Print Tuple.
+Print TuplesF.tupl.
+
+Print TuplesF.tupl.
+
+Require Import CertifiedExtraction.Extraction.External.Core.
+Require Import Bedrock.Platform.Facade.examples.QsADTs.
+
+Lemma CompileList_new :
+  forall vret fpointer (env: Env ADTValue) ext tenv N,
+    GLabelMap.find fpointer env = Some (Axiomatic List_new) ->
+    vret ∉ ext ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    {{ tenv }}
+      Call vret fpointer nil
+    {{ [[ `vret <-- @nil (FiatTuple N) as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  change (ADT (List [])) with (wrap (FacadeWrapper := WrapInstance (H := @QS_WrapList N)) []).
+  facade_eauto.
+Qed.
+
+Lemma CompileList_delete :
+  forall vret vlst fpointer (env: Env ADTValue) ext tenv N,
+    GLabelMap.find fpointer env = Some (Axiomatic List_delete) ->
+    Lifted_MapsTo ext tenv vlst (wrap (@nil (FiatTuple N))) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    vret <> vlst ->
+    vlst ∉ ext ->
+    vret ∉ ext ->
+    {{ tenv }}
+      Call vret fpointer (vlst :: nil)
+    {{ [[ `vret <-- SCAZero as _ ]] :: DropName vret (DropName vlst tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  facade_eauto.
+  facade_eauto.
+Qed.
+
+Lemma CompileList_pop :
+  forall vret vlst fpointer (env: Env ADTValue) ext tenv N
+    h (t: list (FiatTuple N)),
+    GLabelMap.find fpointer env = Some (Axiomatic List_pop) ->
+    Lifted_MapsTo ext tenv vlst (wrap (h :: t)) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    vret <> vlst ->
+    vlst ∉ ext ->
+    vret ∉ ext ->
+    {{ tenv }}
+      Call vret fpointer (vlst :: nil)
+    {{ [[ `vret <-- h as _ ]] :: [[ `vlst <-- t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+Qed.
+
+Lemma CompileList_push :
+  forall vret vhd vlst fpointer (env: Env ADTValue) ext tenv N
+    h (t: list (FiatTuple N)),
+    GLabelMap.find fpointer env = Some (Axiomatic List_push) ->
+    Lifted_MapsTo ext tenv vhd (wrap h) ->
+    Lifted_MapsTo ext tenv vlst (wrap t) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    vret <> vlst ->
+    vret <> vhd ->
+    vhd <> vlst ->
+    vhd ∉ ext ->
+    vlst ∉ ext ->
+    vret ∉ ext ->
+    {{ tenv }}
+      Call vret fpointer (vlst :: vhd :: nil)
+    {{ [[ `vret <-- SCAZero as _ ]] :: [[ `vlst <-- h :: t as _ ]] :: DropName vlst (DropName vret (DropName vhd tenv)) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  facade_eauto.
+  facade_eauto.
+  facade_eauto.
+  repeat apply DropName_remove; congruence.
+Qed.
+
+Lemma CompileTuple_new :
+  forall vret varg fpointer w (env: Env ADTValue) ext tenv,
+    Lifted_MapsTo ext tenv varg w ->
+    {{ tenv }}
+      Call vret fpointer (varg :: nil)
+    {{ [[ vret <-- tuple as _ ]] :: DropName vret tenv }} ∪ {{ext}} // env.
+Proof.
+
+        (* {{ tenv }} *)
+    (*   InitArgs *)
+    (* {{ [[`varg <-- N]] :: tenv }} ∪ {{ ext }} // env -> *)
