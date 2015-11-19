@@ -43,7 +43,6 @@ Ltac av_from_ext ext :=
 (*   end. *)
 
 Ltac ensure_all_pointers_found :=
-  (* FIXME use instead of explicitly finding pointers *)
   match goal with
   | |- GLabelMap.MapsTo ?ptr _ _ => is_evar ptr; first [solve [GLabelMapUtils.decide_mapsto_maybe_instantiate] | fail 2]
   | _ => idtac
@@ -106,7 +105,7 @@ Hint Extern 1 (_ ∉ _) => decide_not_in : SameValues_db.
 Ltac compile_do_side_conditions_internal :=
   repeat cleanup; PreconditionSet_t;
    match goal with
-   | _ => exact I (* FIXME This is much faster than adding a match for True; why? *)
+   | _ => exact I (* NOTE This is much faster than adding a match for True; why? *)
    | |- _ <> _ => discriminate 1
    | |- _ <> _ => congruence
    | |- _ ∉ _ => decide_not_in

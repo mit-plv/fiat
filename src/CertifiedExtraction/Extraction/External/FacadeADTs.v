@@ -48,7 +48,7 @@ Lemma CompileCallEmpty:
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   [ facade_eauto.. | ].
-  rewrite <- remove_add_comm by congruence. (* FIXME *)
+  rewrite <- remove_add_comm by congruence.
   apply DropName_remove.
   eauto.
   rewrite <- add_redundant_cancel; eauto.

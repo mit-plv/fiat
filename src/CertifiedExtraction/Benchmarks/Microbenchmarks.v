@@ -161,7 +161,7 @@ Example micro_nibble_power_of_2__intrinsic :
     #program   ret (nibble_power_of_2_p (Word.wplus x 1))
     #arguments [[`"x" <-- x as _ ]] :: Nil
     #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_2_p)).
-Proof.                               (* FIXME prove something for maps *)
+Proof.
   _compile.
 Defined.
 
@@ -269,8 +269,6 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_push_random).
 
-(* FIXME loops on zips? *)
-
 Example micro_randomize :
   ParametricExtraction
     #vars      seq: list W
@@ -296,13 +294,11 @@ Example micro_double_larger_than_random :
                              seq) )
     #arguments [[`"seq" <-- seq as _ ]] :: Nil
     #env       Microbenchmarks_Env.
-Proof.                               (* FIXME prove something for maps *)
+Proof.
   _compile.
 Defined.
 
 Time Eval lazy in (extract_facade micro_double_larger_than_random).
-
-(* FIXME a dotimes macro would be very nice. Suggested examples then would be transforming 2 3 1 4 into 22 333 1 4444 *)
 
 Example micro_duplicate_all :
   ParametricExtraction

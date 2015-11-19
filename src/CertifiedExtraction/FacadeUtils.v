@@ -93,7 +93,6 @@ Ltac unfold_coercions :=
 Module GLabelMapUtils := WMoreFacts_fun (GLabelMap.E) (GLabelMap).
 
 Ltac facade_inversion :=
-  (*! TODO Why does inversion_clear just delete RunsTo Skip a b? !*)
   progress match goal with
   | [ H: Safe _ ?p _ |- _ ]     => isSafelyInvertibleStmtConstructor p; inversion H; unfold_and_subst; clear H
   | [ H: RunsTo _ ?p _ _ |- _ ] => isSafelyInvertibleStmtConstructor p; inversion H; unfold_and_subst; clear H

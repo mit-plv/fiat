@@ -101,7 +101,7 @@ Ltac is_pushable_head_constant f :=
 (* Ltac compile_chomp := *)
 (*   match_ProgOk *)
 (*     ltac:(fun prog pre post ext env => *)
-(*             match pre with    (* FIXME could be generalized beyond the first binding *) *)
+(*             match pre with    (* NOTE could be generalized beyond the first binding *) *)
 (*             | Cons ?k ?v ?tenv => *)
 (*               match post with *)
 (*               | Cons k v _ => fail 1 *)
@@ -363,7 +363,7 @@ Ltac _compile_constructor :=
 Ltac start_compiling :=
   match goal with
   | |- sigT _ => eexists; intros
-  end.                        (* FIXME format of progOk notation *)
+  end.
 
 Ltac _compile_early_hook := fail.
 Ltac _compile_late_hook := fail.

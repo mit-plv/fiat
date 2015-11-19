@@ -271,7 +271,7 @@ Proof.
   2:eapply SameValues_forget_Ext; try eassumption.
   eauto with SameValues_db.
   eauto with SameValues_db.
-Qed.                               (* FIXME why doesn't eauto suffice here? *)
+Qed.                               (* NOTE why doesn't eauto suffice here? *)
 
 Lemma CompileBinopOrTest_right_inPlace:
   forall {av} op name var2 (val1 val2: W) env ext (tenv: Telescope av),

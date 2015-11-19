@@ -255,7 +255,6 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
   Qed.
 
   Ltac rewrite_in equality target :=
-    (*! TODO is this still needed? !*)
     let h := fresh in
     pose proof target as h;
       setoid_rewrite equality in h;

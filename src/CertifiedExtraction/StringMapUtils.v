@@ -18,7 +18,7 @@ Proof.
   repeat red; intros; subst; assumption.
 Qed.
 
-(* FIXME: Why is this needed? *)
+(* NOTE: Why is this needed? *)
 Hint Resolve urgh : typeclass_instances.
 
 (* Lemma Bug: *)

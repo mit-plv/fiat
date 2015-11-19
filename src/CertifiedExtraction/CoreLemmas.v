@@ -392,7 +392,7 @@ Proof.
          | [ H: match StringMap.find ?s ?st with _ => _ end |- _ ] => let a := fresh in destruct (StringMap.find s st) eqn:a
          | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
          | [ H: exists v, _ |- _ ] => destruct H
-         end; eauto using WeakEq_Mapsto_MapsTo. (*! FIXME why does adding the eauto at the end of the match make things slower? *)
+         end; eauto using WeakEq_Mapsto_MapsTo. (* NOTE adding the eauto at the end of the match makes things slower *)
 Qed.
 
 Lemma SameValues_MapsTo_Ext_State_add:

@@ -179,16 +179,6 @@ Print TelStrongEq.
 Ltac inversion' H :=
   inversion H; subst; clear H.
 
-(* Lemma existT_inj : forall A P x Px Px', *)
-(*     @existT A P x Px = @existT A P x Px' -> *)
-(*     Px = Px'. *)
-(* Proof. *)
-(*   intros. *)
-(*   Require Import Eqdep.       (* FIXME *) *)
-(*   apply inj_pair2 in H. *)
-(*   assumption. *)
-(* Qed. *)
-
 Require Import Eqdep.
 
 Ltac TelStrongEq_t :=

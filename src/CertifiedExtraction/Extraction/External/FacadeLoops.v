@@ -285,7 +285,7 @@ Proof.
   apply CompileCallFacadeImplementationOfMutation_SCA; unfold DummyArgument; compile_do_side_conditions.
 Qed.
 
-(* FIXME prove lemma for un-reved map using temp variable *)
+(* NOTE: Could prove lemma for un-reved map using temp variable *)
 
 Lemma ret_fold_fold_ret_lemma :
   forall {TElem TAcc} (f: TAcc -> TElem -> TAcc) lst (init: TAcc) init_comp,
