@@ -419,7 +419,7 @@ Proof.
     helper.
 
     eauto.
-Qed.
+Defined.
 
 Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
   match n return list (Fin.t n) with
@@ -550,6 +550,8 @@ Definition SchedulerWrappers : { rWrap : _ & @SideStuff QsADTs.ADTValue _ _ _ _ 
          | [  |- unit ] => constructor
          | _ => typeclasses eauto
          end.
+  admit.
+  admit.
 Defined.
 
 Check SchedulerWrappers.
@@ -558,7 +560,21 @@ Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
 Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
 Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
 
-Definition CUnit (env : Env QsADTs.ADTValue)
+Lemma progOKs
+  : forall (env := GLabelMap.empty _)
+      (rWrap := projT1 SchedulerWrappers)
+      (Scheduler_SideStuff := projT2 SchedulerWrappers)
+      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
+                                   (coDomainWrappers Scheduler_SideStuff midx)
+                                   (domainWrappers Scheduler_SideStuff midx)
+                                   prog (Methods PartialSchedulerImpl midx)}.
+Proof.
+  intros.
+  revert midx; eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type.
+  admit.
+Defined.
+
+Definition CUnit (env := GLabelMap.empty _)
            (rWrap := projT1 SchedulerWrappers)
            (Scheduler_SideStuff := projT2 SchedulerWrappers)
   : BuildCompileUnit2T
@@ -583,16 +599,17 @@ Proof.
         list_of_evar DFFun n ltac:(fun z =>
                                      let map := constr:(BuildStringMap (Vector.fold_right cons methSigs nil) z) in
                                      let map' := (eval simpl in map) in
-                                     eexists {| module := {| Funs := map' |} |})
+                                     eexists {| module := {| Funs := map'; Imports := GLabelMap.empty _ |} |})
       end.
 
   unfold CompileUnit2Equiv; repeat split.
-  simpl; unfold DFModuleEquiv.
+  simpl; unfold DFModuleEquiv; simpl.
   eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv.
   simpl; repeat split;
   eexists {| Core := {| Body := _ |};
              compiled_syntax_ok := _ |};
-  simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate;
+  
+  simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate; try eauto;
 
     try match goal with
           |- Shelve
@@ -617,29 +634,132 @@ Proof.
             try unify g (eq_refl true);
             constructor
         end.
+  intros; eapply (projT2 (progOKs Fin.F1)).
+  intros; eapply (projT2 (progOKs (Fin.FS Fin.F1))).
+  intros; eapply (projT2 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+  Grab Existential Variables.
 
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
-    _compile_step.
+  Focus 10.
 
+  Arguments ops_refines_axs {_} [_] _ _.
+
+  simpl Funs.
+
+  unfold GenExports. cbv [BuildFinUpTo].
+  simpl.
+
+  unfold ops_refines_axs.
+
+  intros.
+
+  StringMap_t.
+
+  Ltac StringMap_iterate_over_specs :=
     match goal with
-    | |- context[@RawTuple ?t] => pose t
+    | [ H: StringMap.MapsTo ?x _ (StringMap.add ?x' _ _) |- _ ] =>
+      destruct (StringMap.E.eq_dec x x');
+        [ subst; apply MapsTo_add_eq_inv in H; subst | apply StringMap.add_3 in H; try discriminate ]
     end.
+
+  
+  StringMap_iterate_over_specs.
+  2:StringMap_iterate_over_specs.
+  3:StringMap_iterate_over_specs.
+
+  
+  
+  
+  apply StringMap.add_ in H.
+  
+  match goal with
+  | [  |- context[StringMap.map Core _ ] ] => cbv [StringMap.map StringMap.Raw.map]; simpl
+  end.
+  
+  
+  Notation op_refine 
+  
+  lazymatch goal with
+  | [ |- appcontext[ops_refines_axs ?env] ] => set (en := env)
+  end.
+    unfold ops_refines_axs.
+    intros * h.
+
+    destruct (string_dec x "Spawn"); subst.
+    simpl in h.
+    cbv [StringMap.find StringMap.Raw.find] in h.
+    simpl in h.
+    match goal with
+    | H: Some ?a = Some ?b |- _ => assert (a = b)
+    end.
+    Focus 2.
+    clear h.
+    unfold GenAxiomaticSpecs, AxiomatizeMethodPre, AxiomatizeMethodPost in H.
+    simpl in H.
+    simpl.
+    cbv [StringMap.find StringMap.Raw.find].
+    simpl.
+    eexists ; split; try reflexivity.
+    unfold op_refines_ax.
+    simpl.
+    repeat split.
+
+    Focus 3.
+    pose proof (projT2 (progOKs Fin.F1)).
+
+    unfold GenExports.
+    simpl.
+
+    cbv [get_env].
+    unfold GLabelMap.map, map_aug_mod_name.
+    simpl.
+    unfold GLabelMapFacts.UWFacts.WFacts.P.update, GLabelMapFacts.M.fold, GLabelMapFacts.M.add.
+    simpl.
+    unfold GLabelMapFacts.M.Raw.fold, GLabelMap.Raw.map. simpl.
+    subst. 
+    unfold AxSafe.
+    simpl; intros.
+    repeat cleanup.
+    simpl in H0; specialize (H0 x0 x1 x2).
+    unfold ProgOk in H0.
+    assert (st ≲ [[ ` "arg" <-- x2 as _]]::[[ ` "arg0" <-- x1 as _]]::[[ ` "rep" <-- prim_fst x0 as _]]::Nil ∪ ∅).
+    simpl.
+    rewrite H1.
+    StringMap_t.
+    eexists; repeat split; eauto.
+    admit.
+    admit.
+    Focus 3.
+    unfold AxRunsTo.
+    rewrite <- H.
+    simpl.
+    unfold AxSafe; intros.
+    eexists; eexists; repeat split.
+    Focus 3.
+    rewrite H1.
+    StringMap_t.
+    
+    
+    Print Safe.
+    match goal with
+    | [ |- Safe ?M _ _] => set (M' := M); clearbody M'
+    end.
+    
+
+  - 
+     
+    unfold ; simpl.
+    specialize (H0 x0 x1 x2).
+    AxSa
+    simpl ax
+    Show Existentials.
+    simpl.
+    Safe
+    unfold GLabelMapFacts.UWFacts.WFacts.P.update
+        (GLabelMap.map (Axiomatic (ADTValue:=QsADTs.ADTValue))
+           (map_aug_mod_name
+aug_mod
+    Focus
+    simpl.
 
     Print RawHeading.
     repeat match goal with
