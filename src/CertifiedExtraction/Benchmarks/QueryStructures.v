@@ -30,6 +30,7 @@ Definition nthArgName n := "arg" ++ (NumberToString n).
 Definition nthRepName n := "rep" ++ (NumberToString n).
 
 Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
+         (P : Rep -> Prop)
          (f : Rep -> Telescope av)
          {struct Dom}
   :=
@@ -52,6 +53,8 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                          prog
                          {{ [[`"ret" <-- Word.natToWord 32 0 as _]]
                               :: [[meth as database]] :: (f database) }} ∪ {{ StringMap.empty _ }} // env
+                       /\ forall r', computes_to meth r' -> P r'
+
 
            | Some CodT => fun cWrap dWrap prog pre meth =>
                             let v : FacadeWrapper (Value av) CodT := cWrap in
@@ -60,26 +63,30 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                               {{[[meth as mPair]]
                                   :: [[`"ret" <-- snd mPair as _]]
                                   :: (f (fst mPair))}}  ∪ {{ StringMap.empty _ }} // env
+                            /\ forall r' v', computes_to meth (r', v') -> P r'
            end
   | cons DomT Dom' =>
     fun cWrap dWrap prog tele meth =>
-      forall d, let _ := projT1 (fst dWrap) in LiftMethod' env Dom' f cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
+      forall d, let _ := projT1 (fst dWrap) in LiftMethod' env Dom' P f cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
   end.
 
 Definition LiftMethod
            (av : Type)
            env
-         {Rep}
-         {Cod}
-         {Dom}
-         (f : Rep -> Telescope av)
-         (cWrap : CodWrapperT av Cod)
-         (dWrap : DomWrapperT av Dom)
-         (prog : Stmt)
-         (meth : methodType Rep Dom Cod)
+           {Rep}
+           {Cod}
+           {Dom}
+           (P : Rep -> Prop)
+           (f : Rep -> Telescope av)
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (prog : Stmt)
+           (meth : methodType Rep Dom Cod)
   : Prop :=
-  forall r, LiftMethod' env Dom f cWrap dWrap prog (f r) (meth r).
-Arguments LiftMethod [_] _ {_ _ _} _ _ _ _ _ / .
+  forall r,
+    P r ->
+    LiftMethod' env Dom P f cWrap dWrap prog (f r) (meth r).
+Arguments LiftMethod [_] _ {_ _ _} _ _ _ _ _ _ / .
 
 Fixpoint RepWrapperT
            av
@@ -139,8 +146,8 @@ Arguments DecomposeIndexedQueryStructure _ {_ _} _ _ /.
 Arguments NumberToString _ / .
 
 Eval simpl in
-  (forall av env rWrap cWrap dWrap prog,
-      (LiftMethod (av := av) env (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
+  (forall av env P rWrap cWrap dWrap prog,
+      (LiftMethod (av := av) env P (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
 
 Require Import Bedrock.Platform.Facade.DFModule.
 Require Import Fiat.ADTNotation.
@@ -165,6 +172,7 @@ Definition DFModuleEquiv
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (P : Core.Rep adt -> Prop)
            (module : DFModule av)
            (consWrapper' : forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx)))
            (domWrapper : forall midx, DomWrapperT av (methDom (Vector.nth methSigs midx)))
@@ -179,7 +187,7 @@ Definition DFModuleEquiv
       exists Fun,
         Fun.(Core).(RetVar) = "ret"
         /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
-        /\ LiftMethod env f (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
+        /\ LiftMethod env P f (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
                       (Methods adt midx)
         /\ (StringMap.MapsTo (methID meth) Fun module.(Funs))
         /\ Shelve Fun).
@@ -390,11 +398,11 @@ Proof.
 
   unfold type_conforming.
   unfold AxiomatizeMethodPre in *.
-  
+
   generalize dependent f.
   generalize dependent Rep.
   induction Dom; simpl; repeat cleanup.
-  
+
   - eauto.
   - simpl in H0.
     eapply IHDom.
@@ -451,6 +459,7 @@ Definition CompileUnit2Equiv
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
            (f : A -> _)
            g
            ax_mod_name'
@@ -461,7 +470,7 @@ Definition CompileUnit2Equiv
            {exports}
            (compileUnit : CompileUnit exports)
   :=
-    DFModuleEquiv env adt compileUnit.(module) cWrap dWrap (f rWrap) g
+    DFModuleEquiv env adt P compileUnit.(module) cWrap dWrap (f rWrap) g
     /\ compileUnit.(ax_mod_name) = ax_mod_name'
     /\ compileUnit.(op_mod_name) = op_mod_name'.
 
@@ -473,6 +482,7 @@ Definition BuildCompileUnit2T
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
            (f : A -> _)
            f'
            f''
@@ -484,7 +494,7 @@ Definition BuildCompileUnit2T
            rWrap
            H
            (exports := GenExports env adt cWrap dWrap f' f'' H) :=
-  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt f g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt P f g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
@@ -588,7 +598,7 @@ Lemma CompileTuples2_findFirst :
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
            :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
 Proof.
@@ -658,7 +668,7 @@ Lemma CompileTuples2_findFirst_spec :
     {{ [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
            :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: tenv }} ∪ {{ ext }} // env.
 Proof.
@@ -890,6 +900,7 @@ Proof.
   repeat apply DropName_remove; eauto 1.
 Qed.
 
+
 Lemma CompileTuple_Delete_spec:
   forall (vtmp vtup vsize : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
     (fpointer : GLabelMap.key) (tup : FiatTuple N),
@@ -922,6 +933,26 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
 Qed.
+
+
+    Lemma minFresh_UnConstrFresh :
+      forall n table idx,
+        minFreshIndex (IndexedEnsemble_TupleToListW (N := n) table) idx ->
+        IndexedEnsembles.UnConstrFreshIdx table idx.
+    Proof.
+      unfold minFreshIndex, IndexedEnsembles.UnConstrFreshIdx; intros.
+      intuition.
+      unfold UnConstrFreshIdx in *.
+      assert (IndexedEnsemble_TupleToListW table
+                                           {| elementIndex := IndexedEnsembles.elementIndex element;
+                                              indexedElement := TupleToListW (IndexedEnsembles.indexedElement element)
+                                           |}).
+      unfold IndexedEnsemble_TupleToListW; intros; eexists; split; eauto.
+      unfold RelatedIndexedTupleAndListW; simpl; intuition.
+      apply H1 in H; eauto.
+    Qed.
+
+
   Lemma CompileTuples2_insert :
     forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
       (table: FiatBag N) (tuple: FiatTuple N),
@@ -948,7 +979,7 @@ Qed.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
     facade_eauto.
     fiat_t.
-    instantiate (1 := x10); admit.
+    apply minFresh_UnConstrFresh; eauto.
     facade_eauto.
     facade_eauto.
 
@@ -1170,7 +1201,7 @@ Proof.
 
   apply generalized @CompileTupleList_pop; loop_t.
   rewrite <- GLabelMapFacts.find_mapsto_iff; assumption.
-  
+
   move_to_front vlst; apply ProgOk_Chomp_Some; loop_t.
   move_to_front vtest; apply ProgOk_Chomp_Some; loop_t.
   move_to_front vret; loop_t.
@@ -1424,13 +1455,12 @@ Lemma CompileTuples2_findSecond :
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
            :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
   fiat_t.
-
   instantiate (1 := nil); admit.
   fiat_t.
   fiat_t.
@@ -1455,7 +1485,7 @@ Lemma CompileTuples2_findSecond_spec :
     {{ [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
     {{ [[ table' as retv ]]
-         :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+         :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
          :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
          :: tenv }} ∪ {{ ext }} // env.
 Proof.
@@ -1497,12 +1527,12 @@ Ltac _compile_CallBagFind :=
                                           :: [[`vsnd <-- snd retv as s]]
                                           :: tenv);
                   [ match kwd with
-                    | (Some ?v, (None, fun _ => true)) => 
+                    | (Some ?v, (None, fun _ => true)) =>
                       let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
                       match vkwd with
                       | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
                       end
-                    | (None, (Some ?v, fun _ => true)) => 
+                    | (None, (Some ?v, fun _ => true)) =>
                       let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
                       match vkwd with
                       | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
@@ -1517,7 +1547,7 @@ Ltac _compile_length :=
             match constr:(pre, post) with
             | (?pre, Cons ?k (ret (bool2w (EqNat.beq_nat (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
               let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapTupleList)) seq) ext in
-              match vlst with 
+              match vlst with
               | Some ?vlst => eapply (CompileTupleList_Empty_spec (vlst := vlst))
               end
             end).
@@ -1561,15 +1591,129 @@ Ltac _compile_allocTuple :=
               end
             end).
 
+                Lemma ilist2ToListW_inj :
+                forall n el el',
+                  ilist2ToListW (N := n) el = ilist2ToListW el'
+                  -> el = el'.
+              Proof.
+                induction n; simpl; eauto.
+                - destruct el; destruct el'; reflexivity.
+                - destruct el; destruct el'; simpl; intros.
+                  unfold ilist2.ilist2_tl, ilist2.ilist2_hd in *; simpl in *.
+                  injections; f_equal.
+                  eapply IHn; eassumption.
+              Qed.
+
+
+
+          Lemma Lift_Ensemble :
+            forall n r idx el,
+              Ensembles.In (FiatElement n) r
+                           {|
+                             IndexedEnsembles.elementIndex := idx;
+                             IndexedEnsembles.indexedElement := el |}
+              <->
+              Ensembles.In (BedrockElement) (IndexedEnsemble_TupleToListW r)
+                           {|
+                             elementIndex := idx;
+                             indexedElement := TupleToListW el |}.
+          Proof.
+            split; intros.
+            - econstructor; intuition eauto.
+              unfold RelatedIndexedTupleAndListW; split; simpl; eauto.
+            - destruct H;  unfold RelatedIndexedTupleAndListW in *; intuition.
+              simpl in *; subst.
+              destruct x; simpl in *; subst.
+              unfold TupleToListW in H2.
+              apply ilist2ToListW_inj in H2; subst; eauto.
+          Qed.
+
+
+    Lemma postConditionAdd :
+      forall n
+             (r : FiatBag n)
+             (H : functional (IndexedEnsemble_TupleToListW r))
+             el
+             (H0 : IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el)),
+        functional
+          (IndexedEnsemble_TupleToListW
+             (Ensembles.Add IndexedEnsembles.IndexedElement r el))
+        /\ (exists idx : nat,
+               minFreshIndex
+                 (IndexedEnsemble_TupleToListW
+                    (Ensembles.Add IndexedEnsembles.IndexedElement r el)) idx) .
+    Proof.
+      unfold functional, minFreshIndex; intros; intuition.
+      - destruct t1; destruct t2; simpl in *; subst; f_equal.
+        destruct H2; destruct H1; intuition.
+        destruct H2; destruct H3; subst.
+        + unfold tupl in *.
+          unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition.
+          subst.
+          destruct x; destruct x0; simpl in *; subst.
+          apply Lift_Ensemble in H2; apply Lift_Ensemble in H1.
+          pose proof (H _ _ H1 H2 (eq_refl _)); injections; eauto.
+        + destruct H2.
+          unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
+          destruct x0; destruct el; simpl in *; subst.
+          unfold UnConstrFreshIdx in H1.
+          unfold IndexedEnsembles.UnConstrFreshIdx in H0.
+          apply H0 in H1; simpl in *.
+          omega.
+        + destruct H1.
+          unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
+          destruct x; destruct el; simpl in *; subst.
+          unfold IndexedEnsembles.UnConstrFreshIdx in H0.
+          apply H0 in H2; simpl in *.
+          omega.
+        + destruct H2; destruct H1.
+          unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
+          reflexivity.
+      - exists (S (IndexedEnsembles.elementIndex el)); split.
+        + unfold UnConstrFreshIdx in *; intros.
+          destruct H1 as [? [? ? ] ].
+          unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
+          destruct element; simpl in *; subst.
+          * destruct H1.
+            destruct x; simpl in *.
+            apply H0 in H1; simpl in *; omega.
+            destruct H1; omega.
+        + intros.
+          inversion H1; subst.
+          unfold UnConstrFreshIdx in *.
+          assert (lt (elementIndex (IndexedElement_TupleToListW el)) (IndexedEnsembles.elementIndex el) ).
+          eapply H2.
+          econstructor; split.
+          unfold Ensembles.Add.
+          econstructor 2.
+          reflexivity.
+          unfold RelatedIndexedTupleAndListW; eauto.
+          destruct el; simpl in *; omega.
+          unfold UnConstrFreshIdx in *; intros.
+          assert (lt (IndexedEnsembles.elementIndex el) idx').
+          eapply (H2 {| elementIndex := _;
+                        indexedElement := _ |}); simpl.
+          unfold IndexedEnsemble_TupleToListW.
+          simpl; eexists; split.
+          econstructor 2.
+          reflexivity.
+          unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
+          omega.
+    Qed.
+
 Lemma progOKs
   : forall (env := GLabelMap.empty _)
+           (P := fun r => functional (IndexedEnsemble_TupleToListW (prim_fst r))
+                          /\ exists idx,
+                     minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
       (rWrap := projT1 SchedulerWrappers)
       (Scheduler_SideStuff := projT2 SchedulerWrappers)
-      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
+      midx, {prog : _ & LiftMethod env P (DecomposeIndexedQueryStructure _ rWrap)
                                    (coDomainWrappers Scheduler_SideStuff midx)
                                    (domainWrappers Scheduler_SideStuff midx)
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
+  intros.
   start_compiling_adt.
 
   Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
@@ -1584,6 +1728,8 @@ Proof.
                [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
                                                         (vtest := vtest) (vhead := vhead)) | ] ].
 
+
+
   Lemma CompileConstantBool:
     forall {av} name env (b: bool) ext (tenv: Telescope av),
       name ∉ ext ->
@@ -1596,7 +1742,9 @@ Proof.
     change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
     facade_eauto.
   Qed.
-
+  eexists.
+  split.
+  destruct H as [? [? ?] ].
   repeat match goal with
          | _ => _compile_step
          | _ => _compile_CallBagFind
@@ -1608,25 +1756,41 @@ Proof.
          end.
 
   instantiate (1 := ("ADT", "Tuples2_findFirst")); admit.
-  admit.
+
   instantiate (1 := ("ADT", "TupleList_empty")); admit.
   instantiate (1 := ("ADT", "Tuple_new")); admit.
   instantiate (1 := ("ADT", "Tuple_set")); admit.
   instantiate (1 := ("ADT", "Tuples2_insert")); admit.
   reflexivity.
-  instantiate (1 := 0); admit.
-  reflexivity.
-  instantiate (1 := ("ADT", "TupleList_pop")); admit.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  instantiate (1 := ("ADT", "TupleList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
-  reflexivity.
-  instantiate (1 := ("ADT", "TupleList_pop")); admit.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  instantiate (1 := ("ADT", "TupleList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
 
-  
+  unfold CallBagMethod in H1; simpl in H1.
+  computes_to_inv; subst; simpl.
+  unfold GetIndexedRelation; simpl.
+  eauto.
+
+  reflexivity.
+  instantiate (1 := ("ADT", "TupleList_pop")); admit.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  instantiate (1 := ("ADT", "TupleList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+  reflexivity.
+  instantiate (1 := ("ADT", "TupleList_pop")); admit.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  instantiate (1 := ("ADT", "TupleList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+  destruct H as [? [? ?] ].
+  unfold CallBagMethod; simpl; intros; computes_to_inv; subst.
+  find_if_inside.
+  - computes_to_inv; subst.
+    injections; simpl.
+    unfold GetIndexedRelation in *; simpl in *.
+    intros; eapply postConditionAdd; simpl; eauto.
+  - computes_to_inv; subst.
+    injections; simpl.
+    unfold GetIndexedRelation in *; simpl in *; split; eauto.
+
+    Focus 2.
+
   (* instantiate (1 := ("ADT", "Tuple_new")); admit. *)
   (* instantiate (1 := ("ADT", "Tuple_delete")); admit. *)
   (* instantiate (1 := ("ADT", "Tuple_copy")); admit. *)
@@ -1666,7 +1830,8 @@ Proof.
   (* instantiate (1 := ("ADT", "Tuples2_findFirst")); admit. *)
   (* instantiate (1 := ("ADT", "Tuples2_findSecond")); admit. *)
   (* instantiate (1 := ("ADT", "Tuples2_enumerate")); admit. *)
-
+  eexists; split.
+  destruct H as [? [? ? ] ].
   repeat match goal with
          | _ => _compile_step
          | _ => _compile_CallBagFind
@@ -1679,7 +1844,6 @@ Proof.
 
   instantiate (1 := ("ADT", "Tuples2_findSecond")); admit.
 
-  admit.
 
   Lemma map_rev_def :
     forall {A B} f seq,
@@ -1692,10 +1856,10 @@ Proof.
   setoid_rewrite map_rev_def.
 
   match goal with
-    
+
   end
 
-  
+
 let vhead := gensym "vhead" in
 let vhead' := gensym "vhead'" in
 let vtest := gensym "vtest" in
@@ -1703,7 +1867,7 @@ let vtmp := gensym "vtmp" in
 apply (CompileMap_TuplesToWords (N := 3) (snd v0) (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp)); _compile.
 
   apply Compile
-  
+
   admit.
   admit.
 Defined.
@@ -1830,7 +1994,7 @@ Proof.
   simpl; repeat split;
   eexists {| Core := {| Body := _ |};
              compiled_syntax_ok := _ |};
-  
+
   simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate; try eauto;
 
     try match goal with
@@ -1883,23 +2047,23 @@ Proof.
         [ subst; apply MapsTo_add_eq_inv in H; subst | apply StringMap.add_3 in H; try discriminate ]
     end.
 
-  
+
   StringMap_iterate_over_specs.
   2:StringMap_iterate_over_specs.
   3:StringMap_iterate_over_specs.
 
-  
-  
-  
+
+
+
   apply StringMap.add_ in H.
-  
+
   match goal with
   | [  |- context[StringMap.map Core _ ] ] => cbv [StringMap.map StringMap.Raw.map]; simpl
   end.
-  
-  
-  Notation op_refine 
-  
+
+
+  Notation op_refine
+
   lazymatch goal with
   | [ |- appcontext[ops_refines_axs ?env] ] => set (en := env)
   end.
@@ -1937,7 +2101,7 @@ Proof.
     unfold GLabelMapFacts.UWFacts.WFacts.P.update, GLabelMapFacts.M.fold, GLabelMapFacts.M.add.
     simpl.
     unfold GLabelMapFacts.M.Raw.fold, GLabelMap.Raw.map. simpl.
-    subst. 
+    subst.
     unfold AxSafe.
     simpl; intros.
     repeat cleanup.
@@ -1959,16 +2123,16 @@ Proof.
     Focus 3.
     rewrite H1.
     StringMap_t.
-    
-    
+
+
     Print Safe.
     match goal with
     | [ |- Safe ?M _ _] => set (M' := M); clearbody M'
     end.
-    
 
-  - 
-     
+
+  -
+
     unfold ; simpl.
     specialize (H0 x0 x1 x2).
     AxSa
@@ -1989,7 +2153,7 @@ aug_mod
                                         let pr := constr:(eq_refl hd : hd = (MakeWordHeading num)) in
                                         change hd with (MakeWordHeading num)
            end.                 (* FIXME *)
-    
+
     Ltac _compile_CallBagFind_internal :=
       match_ProgOk
         ltac:(fun prog pre post ext env =>
@@ -2035,11 +2199,11 @@ aug_mod
       evar (wrapper : FacadeWrapper QsADTs.ADTValue T0).
       simpl in T.
 
-      
+
       Goal FacadeWrapper (list RawTuple
       Print Ltac find_fast.
 
-      
+
 
     Ltac _compile_CallBagFind_internal :=
       match_ProgOk
@@ -2186,9 +2350,9 @@ aug_mod
                   (*                   unify prog' (Call (DummyArgument "tmp") ("ext", "BagInsert") (vdb' :: "d" :: "d0" :: nil))) | ] *)
                   (* end *)
               end).
-    
+
     f_equal.
-    
+
   _compile_CallBagInsert_Internal.
   _compile_step.
   _compile_step.
@@ -2242,12 +2406,12 @@ aug_mod
   match_ProgOk
     ltac:(fun prog pre post ext env => __compile_prepare_chomp pre post).
 
-  
+
   _compile_step.
   _compile_step.
   _compile_step.
-  
-    
+
+
     match_ProgOk
       ltac:(fun prog pre post ext env =>
               match constr:post with
@@ -2273,7 +2437,7 @@ aug_mod
                                                  :: [[(NTSome (H := H2) vd) <-- d as _]]
                                                  :: (tenv d));
                         [ try match_ProgOk ltac:(fun prog' _ _ _ _ => unify prog' stmt) (* FIXME fails bc of evars *) | ]
-                          
+
                     end
                   end
                 end
