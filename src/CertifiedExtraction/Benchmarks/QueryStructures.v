@@ -577,7 +577,7 @@ Lemma CompileTuples2_findFirst :
                ret (table,
                     List.filter (fun tup : FiatTuple (S N) => ((if Word.weq (ilist2.ilist2_hd tup) key then true else false) && true)%bool) results)
                : Comp (_ * list (FiatTuple (S N))))),
-    GLabelMap.find fpointer env = Some (Axiomatic Tuples2_findFirst) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findFirst) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
     Lifted_not_mapsto_adt ext tenv vret ->
@@ -649,7 +649,7 @@ Lemma CompileTuples2_findFirst_spec :
                ret (table,
                     List.filter (fun tup : FiatTuple (S N) => ((if Word.weq (ilist2.ilist2_hd tup) key then true else false) && true)%bool) results)
                : Comp (_ * list (FiatTuple (S N))))),
-    GLabelMap.find fpointer env = Some (Axiomatic Tuples2_findFirst) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findFirst) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
     vret <> vkey ->
@@ -687,7 +687,7 @@ Lemma CompileTupleList_Empty:
     vtest ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTupleList (N := N)))) lst) ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.find fpointer env = Some (Axiomatic TupleList_empty) ->
+    GLabelMap.MapsTo fpointer (Axiomatic TupleList_empty) env ->
     {{ tenv }}
       Call vtest fpointer (vlst :: nil)
       {{ [[`vtest <-- (bool2w (EqNat.beq_nat (Datatypes.length lst) 0)) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -707,7 +707,7 @@ Lemma CompileTupleList_Empty_spec:
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     StringMap.MapsTo vlst (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTupleList (N := N)))) lst) ext ->
-    GLabelMap.find fpointer env = Some (Axiomatic TupleList_empty) ->
+    GLabelMap.MapsTo fpointer (Axiomatic TupleList_empty) env ->
     {{ tenv }}
       Call vtest fpointer (vlst :: nil)
       {{ [[`vtest <-- (bool2w (EqNat.beq_nat (Datatypes.length (rev lst)) 0)) as _]] :: tenv }} ∪ {{ ext }} // env.
@@ -729,7 +729,7 @@ Lemma CompileTuple_new_characterization:
   forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue))
     (fnew : GLabelMap.key) (initial_state st' : State ADTValue) (w: W),
     StringMap.MapsTo vlen (wrap w) initial_state ->
-    GLabelMap.find (elt:=FuncSpec ADTValue) fnew env = Some (Axiomatic Tuple_new) ->
+    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) = Some (Axiomatic Tuple_new) fnew ->
     RunsTo env (Call vtup fnew [[[vlen]]]) initial_state st' ->
     exists x1, M.Equal st' ([vtup <-- ADT (Tuple x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
 Proof.
@@ -743,7 +743,7 @@ Lemma CompileTuple_set_characterization:
     StringMap.MapsTo v (wrap val) initial_state ->
     StringMap.MapsTo vpos (wrap pos) initial_state ->
     StringMap.MapsTo vtup (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTuple (N := N)))) tup) initial_state ->
-    GLabelMap.find fset env = Some (Axiomatic Tuple_set) ->
+    GLabelMap.MapsTo fset (Axiomatic Tuple_set) env ->
     RunsTo env (Call vtmp fset [[[vtup;vpos;v]]]) initial_state st' ->
     M.Equal st' ([vtmp <-- SCAZero]::[vtup <-- ADT (Tuple (Array.upd (TupleToListW tup) pos val))]::initial_state).
 Proof.
@@ -776,8 +776,8 @@ Lemma CompileTuple_new :
     NotInTelescope vtmp tenv ->
     vtup ∉ ext ->
     vtmp ∉ ext ->
-    GLabelMap.find fnew env = Some (Axiomatic Tuple_new) ->
-    GLabelMap.find fset env = Some (Axiomatic Tuple_set) ->
+    GLabelMap.MapsTo fnew (Axiomatic Tuple_new) env ->
+    GLabelMap.MapsTo fset (Axiomatic Tuple_set) env ->
     {{ tenv }}
       (Seq (Call vtup fnew (vlen :: nil))
            (Seq (Call vtmp fset (vtup :: o1 :: v1 :: nil))
@@ -823,8 +823,8 @@ Lemma CompileTuple_new_spec :
     NotInTelescope vtup tenv -> NotInTelescope vtmp tenv ->
     vtup ∉ ext ->
     vtmp ∉ ext ->
-    GLabelMap.find (elt:=FuncSpec ADTValue) fnew env = Some (Axiomatic Tuple_new) ->
-    GLabelMap.find (elt:=FuncSpec ADTValue) fset env = Some (Axiomatic Tuple_set) ->
+    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) fnew (Axiomatic Tuple_new) env ->
+    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) fset (Axiomatic Tuple_set) env ->
     {{ tenv }}
       setup
       {{ [[`v1 <-- val1 as _]]
@@ -878,7 +878,7 @@ Lemma CompileTuple_Delete:
     Lifted_MapsTo ext tenv vsize (wrap (Word.natToWord 32 N)) ->
     Lifted_not_mapsto_adt ext tenv vtmp ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.find fpointer env = Some (Axiomatic Tuple_delete) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuple_delete) env ->
     {{ tenv }}
       Call vtmp fpointer (vtup :: vsize :: nil)
     {{ [[`vtmp <-- (Word.natToWord 32 0) as _]] :: (DropName vtmp (DropName vtup tenv)) }} ∪ {{ ext }} // env.
@@ -903,7 +903,7 @@ Lemma CompileTuple_Delete_spec:
     NotInTelescope vtup tenv ->
     NotInTelescope vsize tenv ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.find fpointer env = Some (Axiomatic Tuple_delete) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuple_delete) env ->
     {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTuple (N := N)))) vtup) <-- tup as _]] :: tenv }}
       (Seq (Assign vsize (Const (Word.natToWord 32 N))) (Call vtmp fpointer (vtup :: vsize :: nil)))
     {{ tenv }} ∪ {{ ext }} // env.
@@ -1072,7 +1072,7 @@ Proof.
   Lemma CompileTuples2_insert :
     forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
       (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples2_insert) ->
+      GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
       Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
       Lifted_MapsTo ext tenv vtuple (wrap tuple) ->
       Lifted_not_mapsto_adt ext tenv vret ->
@@ -1107,7 +1107,7 @@ Proof.
   Lemma CompileTuples2_insert_spec :
     forall vtmp vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
       (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples2_insert) ->
+      GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
       NoDuplicates [[[vtmp; vtable; vtuple]]] ->
       vtmp ∉ ext ->
       vtable ∉ ext ->
@@ -1160,7 +1160,7 @@ Proof.
   admit.
 Defined.
 
-Lemma CompileWordList_Pop:
+Lemma CompileWordList_pop:
   forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
     (fpop : GLabelMap.key) head (tail : list W),
     vlst <> vhead ->
@@ -1174,6 +1174,22 @@ Lemma CompileWordList_Pop:
     {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
+  facade_eauto.
+Qed.
+
+Lemma CompileWordList_new:
+  forall (vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
+    (fnew : GLabelMap.key),
+    vlst ∉ ext ->
+    NotInTelescope vlst tenv ->
+    GLabelMap.MapsTo fnew (Axiomatic WordList_new) env ->
+    {{ tenv }}
+      Call vlst fnew (nil)
+    {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList)))  <-- @nil W as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
+  facade_eauto.
+  change (ADT (WordList [])) with (wrap (FacadeWrapper := WrapInstance (H := @QS_WrapWordList)) []).
   facade_eauto.
 Qed.
 
@@ -1291,7 +1307,7 @@ Require Import
         CertifiedExtraction.Extraction.External.FacadeADTs.
 
 Lemma CompileTupleList_LoopBase :
-  forall {N A} `{FacadeWrapper ADTValue A} (lst: list (FiatTuple N)) init vhead vtest vlst vret fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value ADTValue)) tenv (f: Comp A -> FiatTuple N -> Comp A),
+  forall {N A} `{FacadeWrapper (Value ADTValue) A} (lst: list (FiatTuple N)) init vhead vtest vlst vret fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value ADTValue)) tenv (f: Comp A -> FiatTuple N -> Comp A),
     GLabelMap.MapsTo fpop (Axiomatic TupleList_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic TupleList_empty) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic TupleList_delete) env ->
@@ -1342,7 +1358,7 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_Loop :
-  forall {N A} `{FacadeWrapper ADTValue A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeBody facadeConclude
+  forall {N A} `{FacadeWrapper (Value ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeBody facadeConclude
     env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: Comp A -> FiatTuple N -> Comp A),
     GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
@@ -1366,7 +1382,7 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_LoopAlloc :
-  forall {N A} `{FacadeWrapper ADTValue A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
+  forall {N A} `{FacadeWrapper (Value ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
     env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: Comp A -> (FiatTuple N) -> Comp A),
     GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
@@ -1392,7 +1408,47 @@ Proof.
   apply @CompileTupleList_Loop; try eassumption.
 Qed.
 
-Lemma CompileMap_ADT :
+Lemma CompileWordList_push :
+  forall vret vhd vlst fpointer (env: Env ADTValue) ext tenv
+    h (t: list W),
+    GLabelMap.MapsTo fpointer (Axiomatic WordList_push) env ->
+    Lifted_MapsTo ext tenv vhd (wrap h) ->
+    Lifted_MapsTo ext tenv vlst (wrap t) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    vret <> vlst ->
+    vret <> vhd ->
+    vhd <> vlst ->
+    vhd ∉ ext ->
+    vlst ∉ ext ->
+    vret ∉ ext ->
+    {{ tenv }}
+      Call vret fpointer (vlst :: vhd :: nil)
+      {{ [[ `vret <-- (Word.natToWord 32 0) as _ ]] :: [[ `vlst <-- h :: t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  facade_eauto.
+  facade_eauto.
+  repeat apply DropName_remove; congruence.
+Qed.
+
+Lemma CompileWordList_push_spec :
+  forall vtmp vhd vlst fpointer (env: Env ADTValue) ext tenv
+    h (t: list W),
+    GLabelMap.MapsTo fpointer (Axiomatic WordList_push) env ->
+    PreconditionSet tenv ext [[[vtmp;vhd;vlst]]] ->
+    {{ [[ `vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
+      Call vtmp fpointer (vlst :: vhd :: nil)
+    {{ [[ `vlst <-- h :: t as _ ]] :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  apply ProgOk_Remove_Skip_R. hoare. PreconditionSet_t.
+  apply generalized CompileWordList_push; repeat (compile_do_side_conditions || Lifted_t).
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  move_to_front vhd; apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  apply CompileSkip.
+Qed.
+
+Lemma CompileMap_TuplesToWords :
   forall {N} (lst: list (FiatTuple N)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: FiatTuple N -> W),
     GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
@@ -1425,8 +1481,8 @@ Proof.
   setoid_rewrite <- revmap_fold_comp.
   apply CompileTupleList_LoopAlloc; eauto.
   PreconditionSet_t; eauto.
-  
-  eapply (CompileCallFacadeImplementationOfConstructor (A := list A')); loop_t.
+
+  eapply CompileWordList_new; compile_do_side_conditions.
   setoid_rewrite revmap_fold_comp; eassumption.
   intros.
   rewrite SameValues_Fiat_Bind_TelEq.
@@ -1434,8 +1490,95 @@ Proof.
   apply miniChomp'; intros.
   hoare.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
-  apply CompileCallFacadeImplementationOfMutation_ADT; compile_do_side_conditions.
+
+  apply CompileWordList_push_spec; try compile_do_side_conditions.
 Qed.
+
+Lemma CompileTupleList_Loop_ret :
+  forall {N A} `{FacadeWrapper (Value ADTValue) A}
+    lst init facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
+    GLabelMap.MapsTo fpop (Axiomatic TupleList_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic TupleList_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic TupleList_delete) env ->
+    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    (forall head acc (s: list (FiatTuple N)),
+        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+          facadeBody
+        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
+      facadeConclude
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret <-- init as _]] :: [[(NTSome (H := WrapInstance (H := QS_WrapTupleList)) vlst) <-- lst as _]] :: tenv }}
+      (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  setoid_rewrite ret_fold_fold_ret.
+  eapply CompileSeq.
+  apply CompileTupleList_LoopBase; try compile_do_side_conditions.
+  2: apply ProkOk_specialize_to_ret; intros * h; apply ret_fold_fold_ret in h; computes_to_inv; subst; eauto.
+  intros; rewrite SameValues_Fiat_Bind_TelEq.
+  apply miniChomp'; intros; eauto.
+Qed.
+
+Lemma CompileTupleList_LoopAlloc_ret :
+  forall {N A} `{FacadeWrapper (Value ADTValue) A}
+    lst init facadeInit facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
+    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
+    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
+      facadeInit
+    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    (forall head acc (s: list (FiatTuple N)),
+        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+          facadeBody
+        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
+      facadeConclude
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vlst <-- lst as _]] :: tenv }}
+      (Seq facadeInit (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude))
+    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  eauto using @CompileSeq, @CompileTupleList_Loop_ret.
+Qed.
+
+Lemma CompileTupleList_DeleteAny_spec:
+  forall {N} (vtmp vtmp2 vsize vtest vlst vhead : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+    (fpop fempty fdealloc : GLabelMap.key) (seq: (list (FiatTuple N))),
+    PreconditionSet tenv ext [[[vtmp; vtmp2; vsize; vhead; vtest; vlst; vtmp]]] ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
+    { prog: _ & {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTupleList (N := N)))) vlst) <-- seq as _]] :: tenv }}
+      prog
+    {{ tenv }} ∪ {{ ext }} // env}.
+Proof.
+  eexists; intros.
+  apply ProgOk_Remove_Skip_R.
+  apply CompileSeq with ([[ ` vtmp <-- fold_left (fun acc x => acc) seq (Word.natToWord 32 0) as _]]::tenv).
+  eapply (CompileTupleList_LoopAlloc_ret (vhead := vhead) (vtest := vtest)); try compile_do_side_conditions.
+  apply CompileConstant; try compile_do_side_conditions.
+  intros. apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  apply (CompileTuple_Delete_spec (vtmp := vtmp2) (vsize := vsize)); try compile_do_side_conditions.
+
+  intros. move_to_front vhead.
+  intros.
+  apply ProgOk_Remove_Skip_R; hoare.
+  apply generalized CompileTupleList_Delete; try (compile_do_side_conditions ||  Lifted_t).
+  repeat match goal with
+         | [ H: NotInTelescope _ _ |- _ ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
+         | _ => setoid_rewrite Propagate_anonymous_ret
+         end.
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  apply CompileSkip.
+Qed.
+
 
 Lemma CompileMap_SCA :
   forall {av A} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list W)} `{FacadeWrapper (Value av) A}
@@ -1483,79 +1626,6 @@ Proof.
 Qed.
 
 (* NOTE: Could prove lemma for un-reved map using temp variable *)
-
-Lemma ret_fold_fold_ret_lemma :
-  forall {TElem TAcc} (f: TAcc -> TElem -> TAcc) lst (init: TAcc) init_comp,
-    Monad.equiv (ret init) init_comp ->
-    Monad.equiv (ret (fold_left f lst init))
-                (fold_left (fun (acc: Comp TAcc) x => (a <- acc; ret (f a x))%comp) lst init_comp).
-Proof.
-  induction lst; simpl; intros.
-  - trivial.
-  - etransitivity; [ apply IHlst | reflexivity ].
-    unfold Monad.equiv in *; repeat (cleanup_pure || computes_to_inv || subst).
-    + eapply BindComputes; try rewrite <- H; apply ReturnComputes.
-    + rewrite <- H in *; computes_to_inv; subst; apply ReturnComputes.
-Qed.
-
-Lemma ret_fold_fold_ret :
-  forall {TElem TAcc} (f: TAcc -> TElem -> TAcc) lst (init: TAcc),
-    Monad.equiv (ret (fold_left f lst init))
-                (fold_left (fun (acc: Comp TAcc) x => (a <- acc; ret (f a x))%comp) lst (ret init)).
-Proof.
-  intros; apply ret_fold_fold_ret_lemma; apply SetoidMorphisms.equiv_refl.
-Qed.
-
-Lemma CompileLoop_ret :
-  forall {av A} `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
-    lst init facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv tenv' fpop fempty fdealloc (f: A' -> A -> A'),
-    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
-    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    (forall head acc (s: list A),
-        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
-          facadeBody
-        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
-      facadeConclude
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }}
-      (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
-Proof.
-  intros.
-  setoid_rewrite ret_fold_fold_ret.
-  eapply CompileSeq.
-  apply CompileLoopBase; eauto.
-  2: apply ProkOk_specialize_to_ret; intros * h; apply ret_fold_fold_ret in h; computes_to_inv; subst; eauto.
-  intros; rewrite SameValues_Fiat_Bind_TelEq.
-  apply miniChomp'; intros; eauto.
-Qed.
-
-Lemma CompileLoopAlloc_ret :
-  forall {av A} `{FacadeWrapper (Value av) A} `{FacadeWrapper (Value av) A'} `{FacadeWrapper av (list A)}
-    lst init facadeInit facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value av)) tenv tenv' fpop fempty fdealloc (f: A' -> A -> A'),
-    GLabelMap.MapsTo fpop (Axiomatic (List_pop A)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
-    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
-      facadeInit
-    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    (forall head acc (s: list A),
-        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
-          facadeBody
-        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
-      facadeConclude
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
-      (Seq facadeInit (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude))
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
-Proof.
-  eauto using @CompileSeq, @CompileLoop_ret.
-Qed.
 
 
 
