@@ -922,153 +922,6 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
 Qed.
-
-Lemma progOKs
-  : forall (env := GLabelMap.empty _)
-      (rWrap := projT1 SchedulerWrappers)
-      (Scheduler_SideStuff := projT2 SchedulerWrappers)
-      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
-                                   (coDomainWrappers Scheduler_SideStuff midx)
-                                   (domainWrappers Scheduler_SideStuff midx)
-                                   prog (Methods PartialSchedulerImpl midx)}.
-Proof.
-  intros; unfold_and_subst.
-  revert midx; repeat_destruct.
-
-  Transparent CallBagMethod.
-  Arguments CallBagMethod : simpl never.
-
-  unfold If_Then_Else, heading in *.
-  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3).
-  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
-
-  Ltac _compile_destructor_unsafe ::= fail.
-
-  Ltac _compile_CallBagFind :=
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:(pre, post) with
-              | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
-                match bf with
-                | CallBagMethod Fin.F1 BagFind ?db (Some ?v, (None, fun _ => true)) =>
-                  let vsnd := gensym "snd" in
-                  let vtmp := gensym "tmp" in
-                  let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                  match vkwd with
-                  | Some ?vkwd =>
-                    eapply CompileSeq with ([[bf as retv]]
-                                              :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                                     (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                                                     (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv))
-                                                   as _]]
-                                              :: [[`vsnd <-- snd retv as s]]
-                                              :: tenv);
-                      [ apply (CompileTuples2_findFirst_spec (vkey := vkwd)) | ]
-                  end
-                end
-              end).
-
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_CallBagFind.
-  instantiate (1 := ("Bags2", "FindFirst")); admit.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  admit.                        (* FIXME update LiftMethod *)
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-
-  apply CompileTupleList_Empty_spec; repeat (compile_do_side_conditions; cbv iota); repeat (compile_do_side_conditions; cbv iota).
-  instantiate (1 := ("Seq", "Empty")); admit.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-
-  (* Ltac _compile_CallBagInsert_Internal := *)
-  
-  simpl. match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:(pre, post) with
-              | (Cons (NTSome (H := ?h) ?vrep) (ret ?db) (fun _ => ?tenv),
-                 Cons NTNone ?bm (fun a => Cons ?vret _ (fun _ => Cons (NTSome ?vrep') (ret a) (fun _ => ?tenv')))) =>
-                unify vrep vrep';
-                  match bm with
-                  | (CallBagMethod _ BagInsert _ (ilist2.icons2 ?a (ilist2.icons2 ?b (ilist2.icons2 ?c ilist2.inil2)))) =>
-                      let vtmp := gensym "tmp" in
-                      let vtup := gensym "tup" in
-                      (* match pre with *)
-                      (* | context preCtx[Nil] => *)
-                        (* let post' := context preCtx [ Cons (NTSome vtup) (ret (tup: FiatTuple 3)) (fun _ => Nil) ] in *)
-                      change (ilist2.icons2 a (ilist2.icons2 b (ilist2.icons2 c ilist2.inil2))) with (ListWToTuple [[[a; b; c]]]);
-                      apply CompileSeq with (Cons (NTSome (H := h) vrep) (ret db)
-                                                  (fun _ => Cons (NTSome (H := WrapInstance (H := QS_WrapTuple)) vtup) (ret ((ListWToTuple [[[a; b; c]]]): FiatTuple 3)) (fun _ => tenv)))
-                      (* end *)
-                  end
-              end).
-
-  _compile.
-
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
-            | (?pre, Cons ?k (ret ?tup) (fun _ => ?pre)) =>
-              match type of tup with
-              | FiatTuple _ =>
-                let v1 := gensym "v1" in
-                let v2 := gensym "v2" in
-                let v3 := gensym "v3" in
-                let o1 := gensym "o1" in
-                let o2 := gensym "o2" in
-                let o3 := gensym "o3" in
-                let vlen := gensym "vlen" in
-                let vtmp := gensym "vtmp" in
-                apply (CompileTuple_new_spec (v1 := "v1") (v2 := "v2") (v3 := "v3") (o1 := "o1") (o2 := "o2") (o3 := "o3") (vlen := "vlen") (vtmp := "vtmp")); try explode 6
-              end
-            end); _compile.
-
-  instantiate (1 := ("ADT", "New")); admit.
-  instantiate (1 := ("ADT", "Set")); admit.
-  Focus 2.
-  _compile.
-
-  instantiate (1 := Skip); admit.
-  _compile.
-
   Lemma CompileTuples2_insert :
     forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
       (table: FiatBag N) (tuple: FiatTuple N),
@@ -1142,23 +995,6 @@ Proof.
     apply CompileSkip.
   Qed.
 
-  eapply CompileSeq.
-  let vtmp := gensym "vtmp" in
-  eapply (CompileTuples2_insert_spec (vtmp := vtmp)); try compile_do_side_conditions.
-
-  2:reflexivity.
-
-  instantiate (1 := ("ADT", "Insert")); admit.
-
-  instantiate (1 := 0); admit.
-
-  _compile.
-  
-  instantiate (1 := Skip); admit.
-
-  admit.
-  admit.
-Defined.
 
 Lemma CompileWordList_pop:
   forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
@@ -1298,13 +1134,6 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
 Qed.
-
-Require Import
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.External.Core
-        CertifiedExtraction.Extraction.External.Loops
-        CertifiedExtraction.Extraction.External.GenericADTMethods
-        CertifiedExtraction.Extraction.External.FacadeADTs.
 
 Lemma CompileTupleList_LoopBase :
   forall {N A} `{FacadeWrapper (Value ADTValue) A} (lst: list (FiatTuple N)) init vhead vtest vlst vret fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value ADTValue)) tenv (f: Comp A -> FiatTuple N -> Comp A),
@@ -1550,7 +1379,7 @@ Qed.
 Lemma CompileTupleList_DeleteAny_spec:
   forall {N} (vtmp vtmp2 vsize vtest vlst vhead : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
     (fpop fempty fdealloc ftdealloc : GLabelMap.key) (seq: (list (FiatTuple N))),
-    PreconditionSet tenv ext [[[vtmp; vtmp2; vsize; vhead; vtest; vlst; vtmp]]] ->
+    PreconditionSet tenv ext [[[vtmp; vtmp2; vsize; vhead; vtest; vlst]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
@@ -1575,6 +1404,326 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
 Defined.
+
+
+Lemma CompileTuples2_findSecond :
+  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+    (table: FiatBag (S (S N))) (key: W)
+    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
+               ret (table,
+                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
+               : Comp (_ * list (FiatTuple (S (S N)))))),
+    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findSecond) env ->
+    Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
+    Lifted_MapsTo ext tenv vkey (wrap key) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    NoDuplicates [[[vret; vtable; vkey]]] ->
+    vret ∉ ext ->
+    vtable ∉ ext ->
+    functional (IndexedEnsemble_TupleToListW table) ->
+    {{ tenv }}
+      Call vret fpointer (vtable :: vkey :: nil)
+      {{ [[ table' as retv ]]
+           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+           :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+           :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
+  fiat_t.
+
+  instantiate (1 := nil); admit.
+  fiat_t.
+  fiat_t.
+  simpl. admit.
+
+  repeat apply DropName_remove; eauto 1.
+Qed.
+
+Lemma CompileTuples2_findSecond_spec :
+  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+    (table: FiatBag (S (S N))) (key: W)
+    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
+               ret (table,
+                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
+               : Comp (_ * list (FiatTuple (S (S N)))))),
+    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findSecond) env ->
+    StringMap.MapsTo vkey (wrap key) ext ->
+    PreconditionSet tenv ext [[[vret; vtable]]] ->
+    vret <> vkey ->
+    vtable <> vkey ->
+    functional (IndexedEnsemble_TupleToListW table) ->
+    {{ [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
+      Call vret fpointer (vtable :: vkey :: nil)
+    {{ [[ table' as retv ]]
+         :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]] 
+         :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+         :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  apply generalized CompileTuples2_findSecond; repeat (compile_do_side_conditions || Lifted_t || PreconditionSet_t).
+  setoid_rewrite (DropName_NotInTelescope _ _ H11).
+  rewrite DropName_Cons_None.
+  setoid_rewrite (DropName_NotInTelescope _ _ H9).
+  decide_TelEq_instantiate.
+Qed.
+
+Transparent CallBagMethod.
+Arguments CallBagMethod : simpl never.
+Arguments wrap : simpl never.
+Arguments ListWToTuple: simpl never.
+
+Ltac start_compiling_adt :=
+  intros;
+  unfold_and_subst;
+  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
+  repeat_destruct;
+  unfold If_Then_Else, heading in *;
+  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
+  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
+
+Ltac _compile_CallBagFind :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
+              match bf with
+              | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
+                let vsnd := gensym "snd" in
+                let vtmp := gensym "tmp" in
+                eapply CompileSeq with ([[bf as retv]]
+                                          :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
+                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                                                 (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
+                                          :: [[`vsnd <-- snd retv as s]]
+                                          :: tenv);
+                  [ match kwd with
+                    | (Some ?v, (None, fun _ => true)) => 
+                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                      match vkwd with
+                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
+                      end
+                    | (None, (Some ?v, fun _ => true)) => 
+                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                      match vkwd with
+                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
+                      end
+                    end | ]
+              end
+            end).
+
+Ltac _compile_length :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?pre, Cons ?k (ret (bool2w (EqNat.beq_nat (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
+              let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapTupleList)) seq) ext in
+              match vlst with 
+              | Some ?vlst => eapply (CompileTupleList_Empty_spec (vlst := vlst))
+              end
+            end).
+
+
+Ltac _compile_CallBagInsert := (* FIXME should do the insert in the second branch *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons (NTSome (H := ?h) ?vrep) (ret ?db) (fun _ => ?tenv),
+               Cons NTNone ?bm (fun a => Cons ?vret _ (fun _ => Cons (NTSome ?vrep') (ret a) (fun _ => ?tenv')))) =>
+              unify vrep vrep';
+                match bm with
+                | (CallBagMethod _ BagInsert _ (ilist2.icons2 ?a (ilist2.icons2 ?b (ilist2.icons2 ?c ilist2.inil2)))) =>
+                  let vtmp := gensym "tmp" in
+                  let vtup := gensym "tup" in
+                  (* match pre with *)
+                  change (ilist2.icons2 a (ilist2.icons2 b (ilist2.icons2 c ilist2.inil2))) with (ListWToTuple [[[a; b; c]]]);
+                    apply CompileSeq with (Cons (NTSome (H := h) vrep) (ret db)
+                                                (fun _ => Cons (NTSome (H := WrapInstance (H := QS_WrapTuple)) vtup) (ret ((ListWToTuple [[[a; b; c]]]): FiatTuple 3)) (fun _ => tenv)));
+                    [ | eapply CompileSeq; [ let vtmp := gensym "vtmp" in eapply (CompileTuples2_insert_spec (vtmp := vtmp)) | ] ]
+                end
+            end).
+
+Ltac _compile_allocTuple :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (?pre, Cons ?k (ret ?tup) (fun _ => ?pre)) =>
+              match type of tup with
+              | FiatTuple _ =>
+                let v1 := gensym "v1" in
+                let v2 := gensym "v2" in
+                let v3 := gensym "v3" in
+                let o1 := gensym "o1" in
+                let o2 := gensym "o2" in
+                let o3 := gensym "o3" in
+                let vlen := gensym "vlen" in
+                let vtmp := gensym "vtmp" in
+                apply (CompileTuple_new_spec (v1 := "v1") (v2 := "v2") (v3 := "v3") (o1 := "o1") (o2 := "o2") (o3 := "o3") (vlen := "vlen") (vtmp := "vtmp")); try explode 6
+              end
+            end).
+
+Lemma progOKs
+  : forall (env := GLabelMap.empty _)
+      (rWrap := projT1 SchedulerWrappers)
+      (Scheduler_SideStuff := projT2 SchedulerWrappers)
+      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
+                                   (coDomainWrappers Scheduler_SideStuff midx)
+                                   (domainWrappers Scheduler_SideStuff midx)
+                                   prog (Methods PartialSchedulerImpl midx)}.
+Proof.
+  start_compiling_adt.
+
+  Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
+       let vtmp2 := gensym "tmp'" in
+       let vsize := gensym "size" in
+       let vtest := gensym "test" in
+       let vhead := gensym "head" in
+       first [ unify tenv tenv';
+               apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                                                      (vtest := vtest) (vhead := vhead))
+             | eapply CompileSeq;
+               [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                                                        (vtest := vtest) (vhead := vhead)) | ] ].
+
+  Lemma CompileConstantBool:
+    forall {av} name env (b: bool) ext (tenv: Telescope av),
+      name ∉ ext ->
+      NotInTelescope name tenv ->
+      {{ tenv }}
+        (Assign name (Const (bool2w b)))
+      {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
+  Proof.
+    SameValues_Facade_t.
+    change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
+    facade_eauto.
+  Qed.
+
+  repeat match goal with
+         | _ => _compile_step
+         | _ => _compile_CallBagFind
+         | _ => _compile_CallBagInsert
+         | _ => _compile_length
+         | _ => _compile_allocTuple
+         | _ => apply CompileConstantBool
+         | _ => simpl
+         end.
+
+  instantiate (1 := ("ADT", "Tuples2_findFirst")); admit.
+  admit.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  instantiate (1 := ("ADT", "Tuple_new")); admit.
+  instantiate (1 := ("ADT", "Tuple_set")); admit.
+  instantiate (1 := ("ADT", "Tuples2_insert")); admit.
+  reflexivity.
+  instantiate (1 := 0); admit.
+  reflexivity.
+  instantiate (1 := ("ADT", "TupleList_pop")); admit.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  instantiate (1 := ("ADT", "TupleList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+  reflexivity.
+  instantiate (1 := ("ADT", "TupleList_pop")); admit.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  instantiate (1 := ("ADT", "TupleList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+
+  
+  (* instantiate (1 := ("ADT", "Tuple_new")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuple_delete")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuple_copy")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuple_get")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuple_set")); admit. *)
+
+  (* instantiate (1 := ("ADT", "WordList_new")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_delete")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_pop")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_empty")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_push")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_copy")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_rev")); admit. *)
+  (* instantiate (1 := ("ADT", "WordList_length")); admit. *)
+
+  (* instantiate (1 := ("ADT", "TupleList_new")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_delete")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_copy")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_pop")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_empty")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_push")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_rev")); admit. *)
+  (* instantiate (1 := ("ADT", "TupleList_length")); admit. *)
+
+  (* instantiate (1 := ("ADT", "Tuples0_new")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples0_insert")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples0_enumerate")); admit. *)
+
+  (* instantiate (1 := ("ADT", "Tuples1_new")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples1_insert")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples1_find")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples1_enumerate")); admit. *)
+
+  (* instantiate (1 := ("ADT", "Tuples2_new")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples2_insert")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples2_findBoth")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples2_findFirst")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples2_findSecond")); admit. *)
+  (* instantiate (1 := ("ADT", "Tuples2_enumerate")); admit. *)
+
+  repeat match goal with
+         | _ => _compile_step
+         | _ => _compile_CallBagFind
+         | _ => _compile_CallBagInsert
+         | _ => _compile_length
+         | _ => _compile_allocTuple
+         | _ => apply CompileConstantBool
+         | _ => simpl
+         end.
+
+  instantiate (1 := ("ADT", "Tuples2_findSecond")); admit.
+
+  admit.
+
+  Lemma map_rev_def :
+    forall {A B} f seq,
+      @map A B f (rev seq) = revmap f seq.
+  Proof.
+    intros; reflexivity.
+  Qed.
+
+
+  setoid_rewrite map_rev_def.
+
+  match goal with
+    
+  end
+
+  
+let vhead := gensym "vhead" in
+let vhead' := gensym "vhead'" in
+let vtest := gensym "vtest" in
+let vtmp := gensym "vtmp" in
+apply (CompileMap_TuplesToWords (N := 3) (snd v0) (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp)); _compile.
+
+  apply Compile
+  
+  admit.
+  admit.
+Defined.
+
+(* Set Printing All. *)
+Set Printing Depth 1000.
+Eval compute in (projT1 (progOKs Fin.F1)).
+Extraction a.
+
+(* HERE *)
+
+
+
+Require Import
+        CertifiedExtraction.Extraction.Internal
+        CertifiedExtraction.Extraction.External.Core
+        CertifiedExtraction.Extraction.External.Loops
+        CertifiedExtraction.Extraction.External.GenericADTMethods
+        CertifiedExtraction.Extraction.External.FacadeADTs.
+
 
 Lemma CompileMap_SCA :
   forall {av A} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list W)} `{FacadeWrapper (Value av) A}
@@ -3139,12 +3288,6 @@ Proof.
                 end
               end).
 
-  Lemma map_rev_def :
-    forall {A B} f seq,
-      @map A B f (rev seq) = revmap f seq.
-  Proof.
-    intros; reflexivity.
-  Qed.
 
   Time repeat (_compile_step || setoid_rewrite map_rev_def).
 =======
