@@ -729,7 +729,7 @@ Lemma CompileTuple_new_characterization:
   forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue))
     (fnew : GLabelMap.key) (initial_state st' : State ADTValue) (w: W),
     StringMap.MapsTo vlen (wrap w) initial_state ->
-    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) = Some (Axiomatic Tuple_new) fnew ->
+    GLabelMap.MapsTo fnew (Axiomatic Tuple_new) env ->
     RunsTo env (Call vtup fnew [[[vlen]]]) initial_state st' ->
     exists x1, M.Equal st' ([vtup <-- ADT (Tuple x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
 Proof.
@@ -1549,36 +1549,32 @@ Qed.
 
 Lemma CompileTupleList_DeleteAny_spec:
   forall {N} (vtmp vtmp2 vsize vtest vlst vhead : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
-    (fpop fempty fdealloc : GLabelMap.key) (seq: (list (FiatTuple N))),
+    (fpop fempty fdealloc ftdealloc : GLabelMap.key) (seq: (list (FiatTuple N))),
     PreconditionSet tenv ext [[[vtmp; vtmp2; vsize; vhead; vtest; vlst; vtmp]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
-    { prog: _ & {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTupleList (N := N)))) vlst) <-- seq as _]] :: tenv }}
-      prog
-    {{ tenv }} ∪ {{ ext }} // env}.
+    GLabelMap.MapsTo ftdealloc (Axiomatic (Tuple_delete)) env ->
+    {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTupleList (N := N)))) vlst) <-- seq as _]] :: tenv }}
+      (Seq (Assign vtmp (Const (Word.natToWord 32 0)))
+           (Seq (Seq (Fold vhead vtest vlst fpop fempty (Seq (Assign vsize (Const (Word.natToWord 32 N)))
+                                                             (Call vtmp2 ftdealloc [[[vhead; vsize]]])))
+                     (Call (DummyArgument vtest) fdealloc [[[vlst]]]))
+                Skip))
+    {{ tenv }} ∪ {{ ext }} // env.
 Proof.
-  eexists; intros.
+  intros.
   apply ProgOk_Remove_Skip_R.
   apply CompileSeq with ([[ ` vtmp <-- fold_left (fun acc x => acc) seq (Word.natToWord 32 0) as _]]::tenv).
   eapply (CompileTupleList_LoopAlloc_ret (vhead := vhead) (vtest := vtest)); try compile_do_side_conditions.
   apply CompileConstant; try compile_do_side_conditions.
   intros. apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   apply (CompileTuple_Delete_spec (vtmp := vtmp2) (vsize := vsize)); try compile_do_side_conditions.
-
-  intros. move_to_front vhead.
-  intros.
-  apply ProgOk_Remove_Skip_R; hoare.
-  apply generalized CompileTupleList_Delete; try (compile_do_side_conditions ||  Lifted_t).
-  repeat match goal with
-         | [ H: NotInTelescope _ _ |- _ ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
-         | _ => setoid_rewrite Propagate_anonymous_ret
-         end.
+  apply CompileSkip.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
-Qed.
-
+Defined.
 
 Lemma CompileMap_SCA :
   forall {av A} `{FacadeWrapper av (list A)} `{FacadeWrapper av (list W)} `{FacadeWrapper (Value av) A}
