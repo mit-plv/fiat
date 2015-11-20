@@ -1561,17 +1561,6 @@ Ltac _compile_allocTuple :=
               end
             end).
 
-Lemma progOKs
-  : forall (env := GLabelMap.empty _)
-      (rWrap := projT1 SchedulerWrappers)
-      (Scheduler_SideStuff := projT2 SchedulerWrappers)
-      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
-                                   (coDomainWrappers Scheduler_SideStuff midx)
-                                   (domainWrappers Scheduler_SideStuff midx)
-                                   prog (Methods PartialSchedulerImpl midx)}.
-Proof.
-  start_compiling_adt.
-
   Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
        let vtmp2 := gensym "tmp'" in
        let vsize := gensym "size" in
@@ -1590,96 +1579,13 @@ Proof.
       NotInTelescope name tenv ->
       {{ tenv }}
         (Assign name (Const (bool2w b)))
-      {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
+        {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
   Proof.
     SameValues_Facade_t.
     change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
     facade_eauto.
   Qed.
 
-  repeat match goal with
-         | _ => _compile_step
-         | _ => _compile_CallBagFind
-         | _ => _compile_CallBagInsert
-         | _ => _compile_length
-         | _ => _compile_allocTuple
-         | _ => apply CompileConstantBool
-         | _ => simpl
-         end.
-
-  instantiate (1 := ("ADT", "Tuples2_findFirst")); admit.
-  admit.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  instantiate (1 := ("ADT", "Tuple_new")); admit.
-  instantiate (1 := ("ADT", "Tuple_set")); admit.
-  instantiate (1 := ("ADT", "Tuples2_insert")); admit.
-  reflexivity.
-  instantiate (1 := 0); admit.
-  reflexivity.
-  instantiate (1 := ("ADT", "TupleList_pop")); admit.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  instantiate (1 := ("ADT", "TupleList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
-  reflexivity.
-  instantiate (1 := ("ADT", "TupleList_pop")); admit.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  instantiate (1 := ("ADT", "TupleList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
-
-  
-  (* instantiate (1 := ("ADT", "Tuple_new")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuple_delete")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuple_copy")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuple_get")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuple_set")); admit. *)
-
-  (* instantiate (1 := ("ADT", "WordList_new")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_delete")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_pop")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_empty")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_push")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_copy")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_rev")); admit. *)
-  (* instantiate (1 := ("ADT", "WordList_length")); admit. *)
-
-  (* instantiate (1 := ("ADT", "TupleList_new")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_delete")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_copy")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_pop")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_empty")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_push")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_rev")); admit. *)
-  (* instantiate (1 := ("ADT", "TupleList_length")); admit. *)
-
-  (* instantiate (1 := ("ADT", "Tuples0_new")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples0_insert")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples0_enumerate")); admit. *)
-
-  (* instantiate (1 := ("ADT", "Tuples1_new")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples1_insert")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples1_find")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples1_enumerate")); admit. *)
-
-  (* instantiate (1 := ("ADT", "Tuples2_new")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples2_insert")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples2_findBoth")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples2_findFirst")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples2_findSecond")); admit. *)
-  (* instantiate (1 := ("ADT", "Tuples2_enumerate")); admit. *)
-
-  repeat match goal with
-         | _ => _compile_step
-         | _ => _compile_CallBagFind
-         | _ => _compile_CallBagInsert
-         | _ => _compile_length
-         | _ => _compile_allocTuple
-         | _ => apply CompileConstantBool
-         | _ => simpl
-         end.
-
-  instantiate (1 := ("ADT", "Tuples2_findSecond")); admit.
-
-  admit.
 
   Lemma map_rev_def :
     forall {A B} f seq,
@@ -1688,34 +1594,244 @@ Proof.
     intros; reflexivity.
   Qed.
 
+  Ltac _compile_map ::=
+       match_ProgOk
+       ltac:(fun prog pre post ext env =>
+               let vhead := gensym "head" in
+               let vhead' := gensym "head'" in
+               let vtest := gensym "test" in
+               let vtmp := gensym "tmp" in
+               match constr:(pre, post) with
+               | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
+                 unify seq seq';
+                   apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
+               end).
 
-  setoid_rewrite map_rev_def.
 
+  Lemma CompileTuple_Get_helper :
+    forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
+  Proof.
+    induction idx; eauto.
+  Defined.
+
+    Lemma CompileTuple_get_helper:
+      forall (N : nat) (idx : Fin.t N),
+        BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+        IL.goodSize (` (Fin.to_nat idx)).
+    Proof.
+      intros *.
+      pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
+      apply NPeano.Nat.le_exists_sub in h; repeat cleanup.
+      assert (IL.goodSize N) as h.
+      eassumption.
+      rewrite H0 in h.
+      eapply Arrays.goodSize_plus_r.
+      rewrite NPeano.Nat.add_succ_r in h.
+      rewrite <- NPeano.Nat.add_succ_l in h.
+      eassumption.
+    Defined.
+
+Lemma CompileTuple_get_helper':
+    forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
+      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+      Word.wlt (Word.natToWord 32 (` (Fin.to_nat idx))) (IL.natToW (Datatypes.length (TupleToListW tup))).
+  Proof.
+    intros. rewrite TupleToListW_length by assumption.
+    rewrite Word.wordToNat_natToWord_idempotent by assumption.
+    pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
+    apply Arrays.lt_goodSize; try eassumption.
+    apply CompileTuple_get_helper; assumption.
+  Qed.
+
+  Hint Resolve CompileTuple_get_helper' : call_helpers_db.
+      
+  Lemma CompileTuple_get_helper'':
+    forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
+      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+      (match CompileTuple_Get_helper idx in (_ = W) return (Vector.nth (MakeVectorOfW N) idx -> W) with
+       | eq_refl => fun t : Vector.nth (MakeVectorOfW N) idx => t
+       end (ilist2.ith2 tup idx)) = Array.sel (TupleToListW tup) (Word.natToWord 32 (` (Fin.to_nat idx))).
+  Proof.
+    unfold Array.sel.
+    intros.
+    rewrite Word.wordToNat_natToWord_idempotent by (apply (CompileTuple_get_helper idx); assumption).
+    induction idx; simpl; try rewrite IHidx.
+    - reflexivity.
+    - destruct tup; simpl.
+      unfold TupleToListW, ilist2.ilist2_hd, ilist2.ilist2_tl; simpl.
+      destruct (Fin.to_nat idx); simpl; reflexivity.
+    - apply BinNat.N.lt_succ_l.
+      rewrite Nnat.Nat2N.inj_succ in H.
+      assumption.
+  Qed.
+
+Lemma CompileTuple_Get:
+  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+    (fpointer : GLabelMap.key) (tup : FiatTuple N) (idx: Fin.t N),
+    vtup <> vret ->
+    vret ∉ ext ->
+    Lifted_MapsTo ext tenv vtup (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTuple (N := N)))) tup) ->
+    Lifted_MapsTo ext tenv vpos (wrap (Word.natToWord 32 (proj1_sig (Fin.to_nat idx)))) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuple_get) env ->
+    {{ tenv }}
+      Call vret fpointer (vtup :: vpos :: nil)
+      {{ [[(NTSome (H := FacadeWrapper_SCA) vret) <--
+                                                 (match CompileTuple_Get_helper idx in _ = W return _ -> W with
+                                                  | eq_refl => fun t => t
+                                                  end) (ilist2.ith2 tup idx) as _]]
+           :: (DropName vret tenv) }} ∪ {{ ext }} // env.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
+
+  facade_eauto.
+  rewrite <- CompileTuple_get_helper'' by congruence; reflexivity.
+  rewrite <- remove_add_comm by congruence.
+  setoid_rewrite <- add_redundant_cancel; try eassumption.
+  repeat apply DropName_remove; eauto 1.
+Qed.
+
+Lemma CompileTuple_Get_spec:
+  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+    (fpointer : GLabelMap.key) (tup : FiatTuple N) (idx: Fin.t N),
+    PreconditionSet tenv ext [[[vtup; vret; vpos]]] ->
+    vret ∉ ext ->
+    vtup ∉ ext ->
+    NotInTelescope vret tenv ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    GLabelMap.MapsTo fpointer (Axiomatic Tuple_get) env ->
+    {{ [[ `vtup <-- tup as _ ]] :: tenv }}
+      (Seq (Assign vpos (Const (Word.natToWord 32 (proj1_sig (Fin.to_nat idx))))) (Call vret fpointer (vtup :: vpos :: nil)))
+    {{ [[ `vtup <-- tup  as _]]
+         :: [[(NTSome (H := FacadeWrapper_SCA) vret) <-- (match CompileTuple_Get_helper idx in _ = W return _ -> W with
+                                                      | eq_refl => fun t => t
+                                                      end) (ilist2.ith2 tup idx) as _]]
+         :: tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  hoare.
+  apply CompileConstant; try compile_do_side_conditions.
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+
+  remember (match CompileTuple_Get_helper idx in (_ = W) return (Vector.nth (AttrList (MakeWordHeading N)) idx -> W) with
+      | eq_refl => fun t : Vector.nth (AttrList (MakeWordHeading N)) idx => t
+            end (ilist2.ith2 tup idx)). (* Otherwise Coq crashes *)
+  setoid_replace tenv with (DropName vret tenv) using relation (@TelStrongEq ADTValue) at 2.
+  computes_to_inv;
+    subst; apply CompileTuple_Get; repeat (PreconditionSet_t || compile_do_side_conditions || decide_not_in || Lifted_t).
+  apply Lifted_MapsTo_Ext; decide_mapsto_maybe_instantiate.
+  apply Lifted_MapsTo_Ext; decide_mapsto_maybe_instantiate.
+  symmetry; apply DropName_NotInTelescope; assumption.
+Qed.
+
+Ltac _compile_get :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vtmp := gensym "tmp" in
+            match constr:(pre, post) with
+            | (Cons (NTSome (H:=?h) ?k) (ret ?tup) ?tenv, Cons (NTSome (H:=?h') ?k') (ret (GetAttributeRaw ?tup' ?idx')) _) =>
+              unify tup tup';
+                let vpos := gensym "pos" in
+                eapply CompileSeq with (Cons (NTSome (H:=h) k) (ret tup)
+                                             (fun a => Cons (NTSome (H:=h') k') (ret (ilist2.ith2 tup' idx'))
+                                                         (fun _ => tenv a)));
+                  [ apply (CompileTuple_Get_spec (N := 3) tup' idx' (vpos := vpos)) |
+                    let vtmp := gensym "tmp" in
+                    let vsize := gensym "size" in
+                    apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
+            end).
+
+Print Env.
+Definition QSEnv : Env ADTValue :=
+  (GLabelMap.empty _)
+  ### ("ADT", "Tuple_new") ->> (Axiomatic Tuple_new)
+  ### ("ADT", "Tuple_delete") ->> (Axiomatic Tuple_delete)
+  ### ("ADT", "Tuple_copy") ->> (Axiomatic Tuple_copy)
+  ### ("ADT", "Tuple_get") ->> (Axiomatic Tuple_get)
+  ### ("ADT", "Tuple_set") ->> (Axiomatic Tuple_set)
+
+  ### ("ADT", "WordList_new") ->> (Axiomatic WordList_new)
+  ### ("ADT", "WordList_delete") ->> (Axiomatic WordList_delete)
+  ### ("ADT", "WordList_pop") ->> (Axiomatic WordList_pop)
+  ### ("ADT", "WordList_empty") ->> (Axiomatic WordList_empty)
+  ### ("ADT", "WordList_push") ->> (Axiomatic WordList_push)
+  ### ("ADT", "WordList_copy") ->> (Axiomatic WordList_copy)
+  ### ("ADT", "WordList_rev") ->> (Axiomatic WordList_rev)
+  ### ("ADT", "WordList_length") ->> (Axiomatic WordList_length)
+
+  ### ("ADT", "TupleList_new") ->> (Axiomatic TupleList_new)
+  ### ("ADT", "TupleList_delete") ->> (Axiomatic TupleList_delete)
+  ### ("ADT", "TupleList_copy") ->> (Axiomatic TupleList_copy)
+  ### ("ADT", "TupleList_pop") ->> (Axiomatic TupleList_pop)
+  ### ("ADT", "TupleList_empty") ->> (Axiomatic TupleList_empty)
+  ### ("ADT", "TupleList_push") ->> (Axiomatic TupleList_push)
+  ### ("ADT", "TupleList_rev") ->> (Axiomatic TupleList_rev)
+  ### ("ADT", "TupleList_length") ->> (Axiomatic TupleList_length)
+
+  ### ("ADT", "Tuples0_new") ->> (Axiomatic Tuples0_new)
+  ### ("ADT", "Tuples0_insert") ->> (Axiomatic Tuples0_insert)
+  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic Tuples0_enumerate)
+
+  ### ("ADT", "Tuples1_new") ->> (Axiomatic Tuples1_new)
+  ### ("ADT", "Tuples1_insert") ->> (Axiomatic Tuples1_insert)
+  ### ("ADT", "Tuples1_find") ->> (Axiomatic Tuples1_find)
+  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic Tuples1_enumerate)
+
+  ### ("ADT", "Tuples2_new") ->> (Axiomatic Tuples2_new)
+  ### ("ADT", "Tuples2_insert") ->> (Axiomatic Tuples2_insert)
+  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic Tuples2_findBoth)
+  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic Tuples2_findFirst)
+  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic Tuples2_findSecond)
+  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic Tuples2_enumerate).
+
+Ltac _qs_step :=
   match goal with
-    
-  end
+  | _ => _compile_step
+  | _ => _compile_CallBagFind
+  | _ => _compile_CallBagInsert
+  | _ => _compile_length
+  | _ => _compile_allocTuple
+  | _ => _compile_get
+  | _ => apply CompileConstantBool
+  | _ => reflexivity
+  | _ => progress simpl
+  | _ => setoid_rewrite map_rev_def
+  end.
 
-  
-let vhead := gensym "vhead" in
-let vhead' := gensym "vhead'" in
-let vtest := gensym "vtest" in
-let vtmp := gensym "vtmp" in
-apply (CompileMap_TuplesToWords (N := 3) (snd v0) (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp)); _compile.
+Ltac _compile :=
+  repeat _qs_step.
 
-  apply Compile
+Lemma progOKs
+  : forall (env := QSEnv)
+      (rWrap := projT1 SchedulerWrappers)
+      (Scheduler_SideStuff := projT2 SchedulerWrappers)
+      midx, {prog : _ & LiftMethod env (DecomposeIndexedQueryStructure _ rWrap)
+                                   (coDomainWrappers Scheduler_SideStuff midx)
+                                   (domainWrappers Scheduler_SideStuff midx)
+                                   prog (Methods PartialSchedulerImpl midx)}.
+Proof.
+  start_compiling_adt.
   
+  _compile.
+
   admit.
+  instantiate (1 := 0); admit.
+  
+  _compile.
+  admit.
+
+  _compile.
   admit.
 Defined.
 
-(* Set Printing All. *)
-Set Printing Depth 1000.
-Eval compute in (projT1 (progOKs Fin.F1)).
-Extraction a.
+(* The three methods: *)
 
-(* HERE *)
-
-
+Eval compute in (projT1 (progOKs (Fin.F1))).
+Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
 
 Require Import
         CertifiedExtraction.Extraction.Internal
