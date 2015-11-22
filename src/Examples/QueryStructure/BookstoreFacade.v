@@ -173,12 +173,12 @@ Proof.
       rewrite (CallBagEnumerate_fst H0); simpl.
       etransitivity.
       eapply refine_under_bind_both.
-      eapply (@foo BookStoreSchema Index Fin.F1).
+      eapply (@Join_Comp_Lists_eq BookStoreSchema Index Fin.F1).
       intros; finish honing.
       simplify with monad laws.
       unfold H2; apply refine_under_bind.
       intros.
-      apply foo' in H3; rewrite H3.
+      apply Join_Comp_Lists_eq' in H3; rewrite H3.
       finish honing.
     }
     simpl; eapply reflexivityT.
@@ -188,7 +188,7 @@ Proof.
     | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
       FullySharpenQueryStructure Schema Indexes
     end.
-    
+
     Time Defined.
 
 Time Definition BookstoreImpl :=

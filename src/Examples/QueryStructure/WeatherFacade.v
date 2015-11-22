@@ -139,12 +139,12 @@ Proof.
       rewrite (CallBagFind_fst H0); simpl.
       etransitivity.
       eapply refine_under_bind_both.
-      eapply (@foo WeatherSchema Index (Fin.FS Fin.F1)).
+      eapply (@Join_Comp_Lists_eq WeatherSchema Index (Fin.FS Fin.F1)).
       intros; finish honing.
       simplify with monad laws.
       unfold H2; apply refine_under_bind; set_evars.
       intros.
-      apply foo' in H4; rewrite H4.
+      apply Join_Comp_Lists_eq' in H4; rewrite H4.
       setoid_rewrite refine_pick_eq'; simplify with monad laws.
       simpl.
       finish honing.
