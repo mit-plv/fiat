@@ -258,4 +258,20 @@ Module Export Telescope.
     induction B; simpl in *; eauto with nocore.
     intros; subst; assumption.
   Defined.
+
+  Global Instance flattenT_unapply_Proper {t X}
+  : Proper (pointwise_relation _ eq ==> flattenT_eq)
+           (@flattenT_unapply t X).
+  Proof.
+    repeat intro; unfold pointwise_relation in *; induction t as [|?? IHt]; simpl in *;
+    auto with nocore.
+  Defined.
+
+  Global Instance flattenT_apply_Proper {t X}
+  : Proper (flattenT_eq ==> pointwise_relation _ eq)
+           (@flattenT_apply t X).
+  Proof.
+    repeat intro; unfold pointwise_relation in *; induction t as [|?? IHt]; simpl in *;
+    auto with nocore.
+  Defined.
 End Telescope.
