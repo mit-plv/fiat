@@ -19,6 +19,36 @@ Module Export Telescope.
          | tele A B => { a : A & flattenT_sig (B a) }
        end.
 
+  Fixpoint flattenT_eq {t : Telescope} {X : Type} : relation (flattenT t X)
+    := match t return relation (flattenT t X) with
+         | bottom => fun P Q => P = Q :> X
+         | tele A B => fun P Q => forall a : A, flattenT_eq (P a) (Q a)
+       end.
+
+  Global Instance flattenT_eq_Reflexive {t : Telescope} {X : Type}
+  : Reflexive (@flattenT_eq t X).
+  Proof.
+    repeat intro; induction t; simpl in *.
+    { reflexivity. }
+    { eauto with nocore. }
+  Defined.
+
+  Global Instance flattenT_eq_Symmetric {t : Telescope} {X : Type}
+  : Symmetric (@flattenT_eq t X).
+  Proof.
+    repeat intro; induction t; simpl in *.
+    { symmetry; assumption. }
+    { eauto with nocore. }
+  Defined.
+
+  Global Instance flattenT_eq_Transitive {t : Telescope} {X : Type}
+  : Transitive (@flattenT_eq t X).
+  Proof.
+    repeat intro; induction t; simpl in *.
+    { etransitivity; eassumption. }
+    { eauto with nocore. }
+  Defined.
+
   Fixpoint flattenT_apply {t : Telescope} {X : Type}
   : flattenT t X -> flattenT_sig t -> X
     := match t return flattenT t X -> flattenT_sig t -> X with
@@ -53,6 +83,16 @@ Module Export Telescope.
                                               (projT2 x))
        end.
 
+  Fixpoint flattenT_unapply_apply {t : Telescope} {X : Type} {struct t}
+  : forall (f : flattenT t X),
+      flattenT_eq f (flattenT_unapply (flattenT_apply f))
+    := match t return forall (f : flattenT t X),
+                        flattenT_eq f (flattenT_unapply (flattenT_apply f))
+       with
+         | bottom => fun f => eq_refl
+         | tele A B => fun f x => @flattenT_unapply_apply (B x) X (f x)
+       end.
+
   Fixpoint Telescope_append (t : Telescope)
   : flattenT t Type -> Telescope
     := match t return flattenT t _ -> _ with
@@ -67,6 +107,67 @@ Module Export Telescope.
          | bottom => fun P => P
          | tele A B => fun P => forall a : A, flatten_forall (P a)
        end.
+
+  Fixpoint flatten_forall_eq_rect {t : Telescope}
+  : forall {P Q : flattenT t Type},
+      flattenT_eq P Q
+      -> flatten_forall P
+      -> flatten_forall Q
+    := match t return forall {P Q : flattenT t Type},
+                        flattenT_eq P Q
+                        -> flatten_forall P
+                        -> flatten_forall Q
+       with
+         | bottom => fun P Q H k => eq_rect _ (fun x => x) k _ H
+         | tele A B => fun P Q H k a => @flatten_forall_eq_rect (B a) (P a) (Q a) (H a) (k a)
+       end.
+
+  Fixpoint flatten_forall_eq_relation {t : Telescope}
+  : forall {P : flattenT t Type},
+      relation (flatten_forall P)
+    := match t
+             return forall {P : flattenT t _},
+                      relation (flatten_forall P)
+       with
+         | bottom => fun P => eq
+         | tele A B => fun P => forall_relation (fun a : A => @flatten_forall_eq_relation (B a) (P a))
+       end.
+
+  Definition flatten_forall_eq {t : Telescope}
+  : forall {P : flattenT t Type}
+           (f g : flatten_forall P),
+      Prop
+    := Eval unfold flatten_forall_eq_relation, forall_relation in @flatten_forall_eq_relation t.
+
+  Global Instance flatten_forall_eq_relation_Reflexive {t P}
+  : Reflexive (@flatten_forall_eq_relation t P).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ reflexivity | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_relation_Symmetric {t P}
+  : Symmetric (@flatten_forall_eq_relation t P).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ symmetry; assumption | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_relation_Transitive {t P}
+  : Transitive (@flatten_forall_eq_relation t P).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ etransitivity; eassumption | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_Reflexive {t P}
+  : Reflexive (@flatten_forall_eq t P)
+    := flatten_forall_eq_relation_Reflexive.
+
+  Global Instance flatten_forall_eq_Symmetric {t P}
+  : Symmetric (@flatten_forall_eq t P)
+    := flatten_forall_eq_relation_Symmetric.
+
+  Global Instance flatten_forall_eq_Transitive {t P}
+  : Transitive (@flatten_forall_eq t P)
+    := flatten_forall_eq_relation_Transitive.
 
   Fixpoint flatten_forall_apply {t : Telescope}
   : forall {P : flattenT t Type},
@@ -120,6 +221,22 @@ Module Export Telescope.
     refine (f_equal _ (concat_1p _)).
   Defined.
 
+  Fixpoint flatten_forall_unapply_apply {t : Telescope} {struct t}
+  : forall {P : flattenT t Type}
+           (f : flatten_forall P),
+      flatten_forall_eq
+        (flatten_forall_eq_rect (flattenT_unapply_apply P) f)
+        (flatten_forall_unapply (flatten_forall_apply f))
+    := match t return forall {P : flattenT t Type}
+                             (f : flatten_forall P),
+                        flatten_forall_eq
+                          (flatten_forall_eq_rect (flattenT_unapply_apply P) f)
+                          (flatten_forall_unapply (flatten_forall_apply f))
+       with
+         | bottom => fun P f => eq_refl
+         | tele A B => fun P f a => @flatten_forall_unapply_apply (B a) (P a) (f a)
+       end.
+
   Fixpoint flatten_append_forall {t : Telescope}
   : forall {t' : flattenT t Type},
       flattenT (Telescope_append t t') Type -> flatten_forall t' -> Type
@@ -131,53 +248,6 @@ Module Export Telescope.
          | bottom => fun t' P v => P v
          | tele A B => fun t' P v => forall a, @flatten_append_forall (B a) (t' a) (P a) (v a)
        end.
-
-  Fixpoint flatten_forall_eq_relation {t : Telescope}
-  : forall {P : flattenT t Type},
-      relation (flatten_forall P)
-    := match t
-             return forall {P : flattenT t _},
-                      relation (flatten_forall P)
-       with
-         | bottom => fun P => eq
-         | tele A B => fun P => forall_relation (fun a : A => @flatten_forall_eq_relation (B a) (P a))
-       end.
-
-  Definition flatten_forall_eq {t : Telescope}
-  : forall {P : flattenT t Type}
-           (f g : flatten_forall P),
-      Prop
-    := Eval unfold flatten_forall_eq_relation, forall_relation in @flatten_forall_eq_relation t.
-
-  Global Instance flatten_forall_eq_relation_Reflexive {t P}
-  : Reflexive (@flatten_forall_eq_relation t P).
-  Proof.
-    hnf; induction t; simpl; unfold forall_relation; [ reflexivity | eauto with nocore ].
-  Defined.
-
-  Global Instance flatten_forall_eq_relation_Symmetric {t P}
-  : Symmetric (@flatten_forall_eq_relation t P).
-  Proof.
-    hnf; induction t; simpl; unfold forall_relation; [ symmetry; assumption | eauto with nocore ].
-  Defined.
-
-  Global Instance flatten_forall_eq_relation_Transitive {t P}
-  : Transitive (@flatten_forall_eq_relation t P).
-  Proof.
-    hnf; induction t; simpl; unfold forall_relation; [ etransitivity; eassumption | eauto with nocore ].
-  Defined.
-
-  Global Instance flatten_forall_eq_Reflexive {t P}
-  : Reflexive (@flatten_forall_eq t P)
-    := flatten_forall_eq_relation_Reflexive.
-
-  Global Instance flatten_forall_eq_Symmetric {t P}
-  : Symmetric (@flatten_forall_eq t P)
-    := flatten_forall_eq_relation_Symmetric.
-
-  Global Instance flatten_forall_eq_Transitive {t P}
-  : Transitive (@flatten_forall_eq t P)
-    := flatten_forall_eq_relation_Transitive.
 
   Lemma flatten_append_forall_Proper {B P Q}
   : forall f g,
