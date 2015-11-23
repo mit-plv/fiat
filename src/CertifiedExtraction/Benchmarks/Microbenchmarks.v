@@ -28,6 +28,10 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_plus).
 
+(* Output:
+     = ("out" <- Var "x" + Var "y")%facade
+     : Stmt *)
+
 Example micro_plus_minus :
   ParametricExtraction
     #vars      x y
@@ -39,6 +43,11 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_plus_minus).
+
+(* Output:
+     = ("r" <- Var "y" - Var "x";
+        "out" <- Var "x" + Var "r")%facade
+     : Stmt *)
 
 Example micro_min :
   ParametricExtraction
@@ -52,6 +61,15 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_min).
 
+(* Output:
+     = ("test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Var "x"
+        Else
+          "out" <- Var "y"
+        EndIf)%facade
+     : Stmt *)
+
 Example micro_max :
   ParametricExtraction
     #vars      x y
@@ -63,6 +81,15 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_max).
+
+(* Output:
+     = ("test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Var "y"
+        Else
+          "out" <- Var "x"
+        EndIf)%facade
+     : Stmt *)
 
 Example micro_squared_max :
   ParametricExtraction
@@ -76,6 +103,15 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_squared_max).
 
+(* Output:
+     = ("test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Var "y" * Var "y"
+        Else
+          "out" <- Var "x" * Var "x"
+        EndIf)%facade
+     : Stmt *)
+
 Example micro_make_singleton :
   ParametricExtraction
     #vars      x y
@@ -88,6 +124,14 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_make_singleton).
 
+(* Output:
+     = ("arg" <- Var "x";
+        "arg0" <- Var "y";
+        "out" <- "list[W]"."nil"();
+        call "list[W]"."push"("out", "arg0");
+        call "list[W]"."push"("out", "arg"))%facade
+     : Stmt *)
+
 Example micro_duplicate_word :
   ParametricExtraction
     #vars      x
@@ -97,6 +141,14 @@ Example micro_duplicate_word :
 Proof.
   _compile.
 Defined.
+
+(* Output:
+     = ("arg" <- Var "x";
+        "arg0" <- Var "arg";
+        "out" <- "list[W]"."nil"();
+        call "list[W]"."push"("out", "arg0");
+        call "list[W]"."push"("out", "arg"))%facade
+     : Stmt *)
 
 Time Eval lazy in (extract_facade micro_duplicate_word).
 
@@ -112,6 +164,23 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_sort_pair_1).
 
+(* Output:
+     = ("test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "arg" <- Var "x";
+          "arg0" <- Var "y";
+          "out" <- "list[W]"."nil"();
+          call "list[W]"."push"("out", "arg0");
+          call "list[W]"."push"("out", "arg")
+        Else
+          "arg" <- Var "y";
+          "arg0" <- Var "x";
+          "out" <- "list[W]"."nil"();
+          call "list[W]"."push"("out", "arg0");
+          call "list[W]"."push"("out", "arg")
+        EndIf)%facade
+     : Stm *)
+
 Example micro_sort_pair_2 :
   ParametricExtraction
     #vars      x y
@@ -124,6 +193,24 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_sort_pair_2).
 
+(* Output:
+     = ("test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "arg" <- Var "x"
+        Else
+          "arg" <- Var "y"
+        EndIf;
+        "test" <- Var "x" < Var "y";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "arg0" <- Var "y"
+        Else
+          "arg0" <- Var "x"
+        EndIf;
+        "out" <- "list[W]"."nil"();
+        call "list[W]"."push"("out", "arg0");
+        call "list[W]"."push"("out", "arg"))%facade
+     : Stm *)
+
 Example micro_double :
   ParametricExtraction
     #vars      seq
@@ -135,6 +222,19 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_double).
+
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "r" <- Const 2;
+            "head'" <- Var "head" * Var "r";
+            call "list[W]"."push"("out", "head'");
+            "test" <- "list[W]"."empty?"("seq");
+        "test" <- "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
 
 Definition nibble_power_of_2_p (w: W) :=
   Eval simpl in bool2w (Inb w (map Word.NToWord [[[1; 2; 4; 8]]]%N)).
@@ -153,6 +253,42 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_nibble_power_of_2).
 
+(* Output:
+     = ("r" <- Const 1;
+        "l" <- Var "x" + Var "r";
+        "r" <- Const (Word.NToWord 1);
+        "test" <- Var "l" = Var "r";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Const (Word.natToWord 32 1)
+        Else
+          "r" <- Const 1;
+          "l" <- Var "x" + Var "r";
+          "r" <- Const (Word.NToWord 2);
+          "test0" <- Var "l" = Var "r";
+          If Const (Word.natToWord 32 1) = Var "test0" Then
+            "out" <- Const (Word.natToWord 32 1)
+          Else
+            "r" <- Const 1;
+            "l" <- Var "x" + Var "r";
+            "r" <- Const (Word.NToWord 4);
+            "test1" <- Var "l" = Var "r";
+            If Const (Word.natToWord 32 1) = Var "test1" Then
+              "out" <- Const (Word.natToWord 32 1)
+            Else
+              "r" <- Const 1;
+              "l" <- Var "x" + Var "r";
+              "r" <- Const (Word.NToWord 8);
+              "test2" <- Var "l" = Var "r";
+              If Const (Word.natToWord 32 1) = Var "test2" Then
+                "out" <- Const (Word.natToWord 32 1)
+              Else
+                "out" <- Const (Word.natToWord 32 0)
+              EndIf
+            EndIf
+          EndIf
+        EndIf)%facade
+     : Stm *)
+
 Ltac _compile_early_hook ::= fail.
 
 Example micro_nibble_power_of_2__intrinsic :
@@ -167,6 +303,12 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_nibble_power_of_2__intrinsic).
 
+(* Output:
+     = ("r" <- Const 1;
+        "arg" <- Var "x" + Var "r";
+        "out" <- "intrinsics"."nibble_pow2"("arg"))%facade
+     : Stm *)
+
 Example micro_fold_plus :
   ParametricExtraction
     #vars      seq
@@ -179,6 +321,17 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_fold_plus).
 
+(* Output:
+     = ("out" <- Const 0;
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "out" <- Var "out" + Var "head";
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
+
 Example micro_fold_plus_x :
   ParametricExtraction
     #vars      seq x
@@ -188,6 +341,17 @@ Example micro_fold_plus_x :
 Proof.
   _compile.
 Defined.
+
+(* Output:
+     = ("out" <- Var "x";
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "out" <- Var "out" + Var "head";
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
 
 Time Eval lazy in (extract_facade micro_fold_plus_x).
 
@@ -205,6 +369,17 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_fold_reverse).
 
+(* Output:
+     = ("out" <- "list[list[W]]"."nil"();
+        "test" <- "list[list[W]]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[list[W]]"."pop"("seq");
+            call "list[list[W]]"."push"("out", "head");
+            "test" <- "list[list[W]]"."empty?"("seq");
+        call "list[list[W]]"."delete"("seq");
+        __)%facade
+     : Stm *)
+
 Example micro_fold_flatten_rev :
   ParametricExtraction
     #vars      seqs
@@ -216,6 +391,23 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_fold_flatten_rev).
+
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[list[W]]"."empty?"("seqs");
+        While ("test" = 0)
+            "head" <- "list[list[W]]"."pop"("seqs");
+            "test0" <- "list[W]"."empty?"("head");
+            While ("test0" = 0)
+                "head0" <- "list[W]"."pop"("head");
+                call "list[W]"."push"("out", "head0");
+                "test0" <- "list[W]"."empty?"("head");
+            call "list[W]"."delete"("head");
+            __;
+            "test" <- "list[list[W]]"."empty?"("seqs");
+        call "list[list[W]]"."delete"("seqs");
+        __)%facade
+     : Stm *)
 
 Ltac _compile_random :=
   match_ProgOk
@@ -243,6 +435,10 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_pick_random).
 
+(* Output:
+     = ("out" <- "std"."rand"())%facade
+     : Stm *)
+
 Example micro_sum_random :
   ParametricExtraction
     #program ( r1 <- Random;
@@ -255,6 +451,11 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_sum_random).
 
+(* Output:
+     = ("random" <- "std"."rand"();
+        "random0" <- "std"."rand"();
+        "out" <- Var "random" + Var "random0")%facade
+     : Stm *)
 
 Example micro_push_random :
   ParametricExtraction
@@ -269,6 +470,12 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_push_random).
 
+(* Output:
+     = ("random" <- "std"."rand"();
+        "arg" <- Var "random";
+        call "list[W]"."push"("out", "arg"))%facade
+     : Stm *)
+
 Example micro_randomize :
   ParametricExtraction
     #vars      seq: list W
@@ -282,6 +489,20 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_randomize).
+
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "random" <- "std"."rand"();
+            "arg" <- Var "random";
+            call "list[W]"."push"("out", "arg");
+            __;
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
 
 Example micro_double_larger_than_random :
   ParametricExtraction
@@ -300,6 +521,25 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_double_larger_than_random).
 
+(* Output:
+     = ("random" <- "std"."rand"();
+        "out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "test0" <- Var "random" < Var "head";
+            If Const (Word.natToWord 32 1) = Var "test0" Then
+              "r" <- Const 2;
+              "head'" <- Var "head" * Var "r"
+            Else
+              "head'" <- Var "head"
+            EndIf;
+            call "list[W]"."push"("out", "head'");
+            "test" <- "list[W]"."empty?"("seq");
+        "test" <- "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
+
 Example micro_duplicate_all :
   ParametricExtraction
     #vars      (seq: list W)
@@ -312,6 +552,21 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_duplicate_all).
+
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "arg" <- Var "head";
+            call "list[W]"."push"("out", "arg");
+            "arg" <- Var "head";
+            call "list[W]"."push"("out", "arg");
+            __;
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
 
 Example micro_increment_zeroes :
   ParametricExtraction
@@ -329,6 +584,24 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_increment_zeroes).
 
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "test0" <- Var "head" = Var "test";
+            If Const (Word.natToWord 32 1) = Var "test0" Then
+              "arg" <- Const (Word.natToWord 32 1)
+            Else
+              "arg" <- Var "head"
+            EndIf;
+            call "list[W]"."push"("out", "arg");
+            __;
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
+
 Example micro_read_baseN :
   ParametricExtraction
     #vars      (seq: list W) N
@@ -341,6 +614,19 @@ Proof.
 Defined.
 
 Time Eval lazy in (extract_facade micro_read_baseN).
+
+(* Output:
+     = ("out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "arg" <- Var "head" * Var "N";
+            call "list[W]"."push"("out", "arg");
+            __;
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
 
 Example micro_drop_larger_than_random :
   ParametricExtraction
@@ -359,3 +645,19 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_drop_larger_than_random).
 
+(* Output:
+     = ("random" <- "std"."rand"();
+        "out" <- "list[W]"."nil"();
+        "test" <- "list[W]"."empty?"("seq");
+        While ("test" = 0)
+            "head" <- "list[W]"."pop"("seq");
+            "test0" <- Var "random" < Var "head";
+            If Const (Word.natToWord 32 1) = Var "test0" Then
+              __
+            Else
+              call "list[W]"."push"("out", "head")
+            EndIf;
+            "test" <- "list[W]"."empty?"("seq");
+        call "list[W]"."delete"("seq");
+        __)%facade
+     : Stm *)
