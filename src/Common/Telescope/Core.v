@@ -11,6 +11,8 @@ Module Export Telescope.
          | tele A B => forall a : A, flattenT (B a) X
        end.
 
+  Global Arguments tele : clear implicits.
+
   Fixpoint flattenT_sig (t : Telescope)
     := match t return Type with
          | bottom => unit
