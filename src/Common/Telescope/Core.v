@@ -301,4 +301,26 @@ About flatten_forall_unapply.
     auto with nocore;
     subst; simpl; reflexivity.
   Defined.
+
+  Fixpoint flatten_forall_eq_rect_trans {t : Telescope}
+  : forall {P Q R : flattenT t Type}
+           (p : flattenT_eq P Q)
+           (q : flattenT_eq Q R)
+           (f : flatten_forall P),
+      flatten_forall_eq (flatten_forall_eq_rect (transitivity p q) f)
+                        (flatten_forall_eq_rect q (flatten_forall_eq_rect p f)).
+  Proof.
+    refine match t return forall {P Q R : flattenT t Type}
+                                 (p : flattenT_eq P Q)
+                                 (q : flattenT_eq Q R)
+                                 (f : flatten_forall P),
+                            flatten_forall_eq (flatten_forall_eq_rect (transitivity p q) f)
+                                              (flatten_forall_eq_rect q (flatten_forall_eq_rect p f))
+           with
+             | bottom => fun P Q H k => _
+             | tele A B => fun P Q R p q f a => @flatten_forall_eq_rect_trans (B a) _ _ _ _ _ _
+           end;
+    simpl in *.
+    { intros; subst; simpl; reflexivity. }
+  Defined.
 End Telescope.
