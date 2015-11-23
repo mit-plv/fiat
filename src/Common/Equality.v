@@ -435,3 +435,12 @@ Proof.
   induction a; trivial.
   simpl; rewrite IHa, ascii_dec_refl; reflexivity.
 Qed.
+
+Definition concat_1p {A x y} (p : x = y :> A) : eq_trans eq_refl p = p.
+Proof. case p; reflexivity. Defined.
+Definition concat_p1 {A x y} (p : x = y :> A) : eq_trans p eq_refl = p.
+Proof. case p; reflexivity. Defined.
+Definition concat_pV {A x y} (p : x = y :> A) : eq_trans p (eq_sym p) = eq_refl.
+Proof. case p; reflexivity. Defined.
+Definition concat_Vp {A x y} (p : x = y :> A) : eq_trans (eq_sym p) p = eq_refl.
+Proof. case p; reflexivity. Defined.
