@@ -274,4 +274,22 @@ Module Export Telescope.
     repeat intro; unfold pointwise_relation in *; induction t as [|?? IHt]; simpl in *;
     auto with nocore.
   Defined.
+
+About flatten_forall_unapply.
+
+  Global Instance flatten_forall_unapply_Proper {t P}
+  : Proper (forall_relation (fun _ => eq) ==> flatten_forall_eq)
+           (@flatten_forall_unapply t P).
+  Proof.
+    repeat intro; unfold forall_relation in *; induction t as [|?? IHt]; simpl in *;
+    auto with nocore.
+  Defined.
+
+  Global Instance flatten_forall_apply_Proper {t P}
+  : Proper (flatten_forall_eq ==> forall_relation (fun _ => eq))
+           (@flatten_forall_apply t P).
+  Proof.
+    repeat intro; unfold forall_relation in *; induction t as [|?? IHt]; simpl in *;
+    auto with nocore.
+  Defined.
 End Telescope.
