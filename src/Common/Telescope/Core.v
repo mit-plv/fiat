@@ -292,4 +292,13 @@ About flatten_forall_unapply.
     repeat intro; unfold forall_relation in *; induction t as [|?? IHt]; simpl in *;
     auto with nocore.
   Defined.
+
+  Global Instance flatten_forall_eq_rect_Proper {t P Q H}
+  : Proper (flatten_forall_eq ==> flatten_forall_eq)
+           (@flatten_forall_eq_rect t P Q H).
+  Proof.
+    repeat intro; unfold forall_relation in *; induction t as [|?? IHt]; simpl in *;
+    auto with nocore;
+    subst; simpl; reflexivity.
+  Defined.
 End Telescope.
