@@ -447,3 +447,6 @@ Proof. case p; reflexivity. Defined.
 Definition transport_pp {A} {P : A -> Type} {x y z} (p : x = y) (q : y = z) (k : P x)
 : eq_rect _ P k _ (eq_trans p q) = eq_rect _ P (eq_rect _ P k _ p) _ q.
 Proof. case q; simpl; reflexivity. Defined.
+Lemma transport_const {A P x y} (p : x = y :> A) k
+: eq_rect _ (fun _ : A => P) k _ p = k.
+Proof. case p; reflexivity. Defined.
