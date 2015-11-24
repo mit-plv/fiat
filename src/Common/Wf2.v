@@ -369,7 +369,7 @@ Section Fix2VTransfer.
       apply IH.
     Qed.
 
-    Definition FixV_transfer_eq
+    Definition Fix2V_transfer_eq
                a a'
     : flatten_forall_eq (@Fix2V F a a') (untransfer' _ _ (@Fix2V' F' a a')).
     Proof.
