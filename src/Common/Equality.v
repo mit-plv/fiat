@@ -453,3 +453,9 @@ Proof. case p; reflexivity. Defined.
 Lemma ap_const {A B x y} (b : B) (p : x = y :> A)
 : f_equal (fun _ => b) p = eq_refl.
 Proof. case p; reflexivity. Defined.
+Lemma inv_pp {A x y z} (p : x = y :> A) (q : y = z :> A)
+: eq_sym (eq_trans p q) = eq_trans (eq_sym q) (eq_sym p).
+Proof. case q; case p; reflexivity. Defined.
+Lemma inv_V {A x y} (p : x = y :> A)
+: eq_sym (eq_sym p) = p.
+Proof. case p; reflexivity. Defined.
