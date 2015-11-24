@@ -275,8 +275,6 @@ Module Export Telescope.
     auto with nocore.
   Defined.
 
-About flatten_forall_unapply.
-
   Global Instance flatten_forall_unapply_Proper {t P}
   : Proper (forall_relation (fun _ => eq) ==> flatten_forall_eq)
            (@flatten_forall_unapply t P).
@@ -323,4 +321,22 @@ About flatten_forall_unapply.
     simpl in *.
     { intros; subst; simpl; reflexivity. }
   Defined.
+
+  Fixpoint flatten_forall_eq_rect_flattenT_unapply_Proper {t}
+  : forall {P Q : flattenT_sig t -> Type}
+           (H : forall x, P x = Q x)
+           (f : forall x, P x),
+      flatten_forall_eq
+        (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P Q H) (flatten_forall_unapply f))
+        (flatten_forall_unapply (fun x => eq_rect _ (fun P => P) (f x) _ (H x)))
+    := match t return forall {P Q : flattenT_sig t -> Type}
+                             (H : forall x, P x = Q x)
+                             (f : forall x, P x),
+                        flatten_forall_eq
+                          (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P Q H) (flatten_forall_unapply f))
+                          (flatten_forall_unapply (fun x => eq_rect _ (fun P => P) (f x) _ (H x)))
+       with
+         | bottom => fun P Q H k => eq_refl
+         | tele A B => fun P Q H f a => @flatten_forall_eq_rect_flattenT_unapply_Proper (B a) _ _ _ _
+       end.
 End Telescope.
