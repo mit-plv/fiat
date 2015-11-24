@@ -327,13 +327,13 @@ Module Export Telescope.
            (H : forall x, P x = Q x)
            (f : forall x, P x),
       flatten_forall_eq
-        (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P Q H) (flatten_forall_unapply f))
+        (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P (fun x => Q x) H) (flatten_forall_unapply f))
         (flatten_forall_unapply (fun x => eq_rect _ (fun P => P) (f x) _ (H x)))
     := match t return forall {P Q : flattenT_sig t -> Type}
                              (H : forall x, P x = Q x)
                              (f : forall x, P x),
                         flatten_forall_eq
-                          (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P Q H) (flatten_forall_unapply f))
+                          (flatten_forall_eq_rect (@flattenT_unapply_Proper t _ P (fun x => Q x) H) (flatten_forall_unapply f))
                           (flatten_forall_unapply (fun x => eq_rect _ (fun P => P) (f x) _ (H x)))
        with
          | bottom => fun P Q H k => eq_refl
