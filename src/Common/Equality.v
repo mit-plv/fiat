@@ -450,3 +450,6 @@ Proof. case q; simpl; reflexivity. Defined.
 Lemma transport_const {A P x y} (p : x = y :> A) k
 : eq_rect _ (fun _ : A => P) k _ p = k.
 Proof. case p; reflexivity. Defined.
+Lemma ap_const {A B x y} (b : B) (p : x = y :> A)
+: f_equal (fun _ => b) p = eq_refl.
+Proof. case p; reflexivity. Defined.
