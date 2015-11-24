@@ -361,11 +361,11 @@ Section Fix2VTransfer.
       intros x x' f' g' IH.
       subst F' transfer transfer'; cbv beta.
       apply (_ : Proper (forall_relation _ ==> _) flatten_forall_unapply); intro.
-      refine ((_ : Proper (_ ==> forall_relation _) flatten_forall_apply) _ _ _ _).
+      apply flatten_forall_apply_Proper.
       apply F_ext; intros.
       refine ((_ : Proper (flatten_forall_eq ==> _) (@flatten_forall_eq_rect _ _ _ _)) _ _ _).
       apply (_ : Proper (forall_relation _ ==> _) flatten_forall_unapply); intro.
-      refine ((_ : Proper (_ ==> forall_relation _) flatten_forall_apply) _ _ _ _).
+      apply flatten_forall_apply_Proper.
       apply IH.
     Qed.
 
@@ -377,13 +377,14 @@ Section Fix2VTransfer.
       intro a; induction (Rwf a).
       rewrite Fix2V_eq by eauto with nocore.
       etransitivity_rev _.
-      { subst transfer untransfer'; cbv beta.
+      { unfold transfer, untransfer'; cbv beta.
         apply flatten_forall_eq_rect_Proper, flatten_forall_unapply_Proper; intro.
         apply flatten_forall_apply_Proper.
         rewrite Fix2V_eq by auto using F'_ext with nocore.
         reflexivity. }
       etransitivity.
       { apply F_ext; intros.
+        set_evars.
         lazymatch goal with
           | [ H : forall y r, flatten_forall_eq _ _ |- _ ]
             => specialize (fun y0 y1 => H (y0, y1));
@@ -393,6 +394,9 @@ Section Fix2VTransfer.
         match goal with
           | [ |- ?R ?a (?e ?x ?y) ]
             => revert x y
+        end.
+        match goal with
+          | [ H := ?e |- _ ] => is_evar e; subst H
         end.
         match goal with
           | [ |- forall x y, ?R (@?LHS x y) (?RHS x y) ]
@@ -416,8 +420,14 @@ Section Fix2VTransfer.
       etransitivity_rev _.
       { apply flatten_forall_eq_rect_Proper.
         apply flatten_forall_unapply_Proper; intro.
-        change (@transitivity _ (@eq ?A) _) with (@eq_trans A).
-        change (@symmetry _ (@eq ?A) _) with (@eq_sym A).
+        match goal with
+          | [ |- appcontext[@transitivity _ (@eq ?A) ?P] ]
+            => change (@transitivity _ (@eq ?A) P) with (@eq_trans A)
+        end.
+        match goal with
+          | [ |- appcontext[@symmetry _ (@eq ?A) ?P] ]
+            => change (@symmetry _ (@eq ?A) P) with (@eq_sym A)
+        end.
         set_evars.
         rewrite @transport_pp.
         match goal with
