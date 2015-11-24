@@ -339,4 +339,38 @@ Module Export Telescope.
          | bottom => fun P Q H k => eq_refl
          | tele A B => fun P Q H f a => @flatten_forall_eq_rect_flattenT_unapply_Proper (B a) _ _ _ _
        end.
+
+  Fixpoint eq_rect_symmetry_flattenT_apply_unapply {t}
+  : forall {f x k},
+      eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply k) x) _ (eq_sym (@flattenT_apply_unapply t Type f x))
+      = k x
+    := match t return forall {f x k},
+                        eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply k) x) _ (eq_sym (@flattenT_apply_unapply t Type f x))
+                        = k x
+       with
+         | bottom => fun f x k => match x with
+                                    | tt => eq_refl
+                                  end
+         | tele A'' B'' => fun f x k =>
+                             match x with
+                               | existT x1 x2
+                                 => eq_trans
+                                      (y := eq_rect
+                                              _ (fun T => T)
+                                              (flatten_forall_apply
+                                                 (flatten_forall_unapply (fun x' => k (existT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
+                                                 x2)
+                                              _
+                                              (eq_sym (flattenT_apply_unapply (fun p => f (existT (fun x' => flattenT_sig (B'' x')) x1 p)) x2)))
+                                      (f_equal (fun p' => eq_rect
+                                                            _ (fun T => T)
+                                                            (flatten_forall_apply
+                                                               (flatten_forall_unapply (fun x' => k (existT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
+                                                               x2)
+                                                            _
+                                                            (eq_sym p'))
+                                               (concat_1p _))
+                                      (@eq_rect_symmetry_flattenT_apply_unapply (B'' x1) (fun x2' => f (existT (fun a => flattenT_sig (B'' a)) x1 x2')) x2 (fun x2' => k (existT (fun a => flattenT_sig (B'' a)) x1 x2')))
+                             end
+       end.
 End Telescope.
