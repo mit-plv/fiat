@@ -197,6 +197,22 @@ Module Export Telescope.
          | tele A B => fun P f x => @flatten_forall_unapply (B x) _ (fun x' => f _)
        end.
 
+  Fixpoint flatten_forall_apply_of_unapply {t X} {struct t}
+  : forall (f : flatten_forall
+                  (flattenT_unapply
+                     (fun _ : flattenT_sig t => X)))
+           (x : flattenT_sig t),
+      X
+    := match t return forall (f : flatten_forall
+                                    (flattenT_unapply
+                                       (fun _ : flattenT_sig t => X)))
+                             (x : flattenT_sig t),
+                        X
+       with
+         | bottom => fun x _ => x
+         | tele A B => fun f x => @flatten_forall_apply_of_unapply (B (projT1 x)) X (f (projT1 x)) (projT2 x)
+       end.
+
   Fixpoint flatten_forall_apply_unapply {t : Telescope} {struct t}
   : forall {P : flattenT_sig t -> Type}
            (f : forall x, P x)
