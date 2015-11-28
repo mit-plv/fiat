@@ -407,4 +407,25 @@ Module Export Telescope.
          | bottom => fun f k => eq_refl
          | tele A'' B'' => fun f k a => @flatten_forall_eq_rect_symmetry_flattenT_unapply_apply (B'' a) (f a) (k a)
        end.
+
+  Lemma flatten_forall_apply_of_unapply_eq {t X}
+        f x
+  : eq_rect
+      _
+      (fun T : Type => T)
+      (flatten_forall_apply f x)
+      _
+      (eq_sym
+         (flattenT_apply_unapply (fun _ => X) _))
+    = @flatten_forall_apply_of_unapply t X f x.
+  Proof.
+    induction t as [|A B IHt]; simpl in *.
+    { destruct x; simpl; reflexivity. }
+    { specialize (IHt (projT1 x) (f (projT1 x)) (projT2 x)).
+      etransitivity; [ clear IHt | exact IHt ].
+      repeat apply f_equal.
+      etransitivity; [ | apply concat_1p ].
+      apply f_equal2; [ | reflexivity ].
+      apply ap_const. }
+  Defined.
 End Telescope.
