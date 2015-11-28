@@ -2,11 +2,6 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Classes.RelationClasses Coq.Relations.Relation_Definitions Coq.Classes.Morphisms.
 Require Import Fiat.Common.Equality.
 
-Record tsigT {A} (P : A -> Type) := texistT { tprojT1 : A ; tprojT2 : P tprojT1 }.
-Arguments tsigT {A} P.
-Arguments tprojT1 {A P} _.
-Arguments tprojT2 {A P} _.
-
 Module Export Telescope.
   Inductive Telescope := bottom | tele (A : Type) (B : A -> Telescope).
 
@@ -21,7 +16,7 @@ Module Export Telescope.
   Fixpoint flattenT_sig (t : Telescope)
     := match t return Type with
          | bottom => unit
-         | tele A B => tsigT (fun a : A => flattenT_sig (B a))
+         | tele A B => { a : A & flattenT_sig (B a) }
        end.
 
   Fixpoint flattenT_eq {t : Telescope} {X : Type} : relation (flattenT t X)
@@ -58,14 +53,14 @@ Module Export Telescope.
   : flattenT t X -> flattenT_sig t -> X
     := match t return flattenT t X -> flattenT_sig t -> X with
          | bottom => fun x _ => x
-         | tele A B => fun f p => flattenT_apply (f (tprojT1 p)) (tprojT2 p)
+         | tele A B => fun f p => flattenT_apply (f (projT1 p)) (projT2 p)
        end.
 
   Fixpoint flattenT_unapply {t : Telescope} {X : Type}
   : (flattenT_sig t -> X) -> flattenT t X
     := match t return (flattenT_sig t -> X) -> flattenT t X with
          | bottom => fun f => f tt
-         | tele A B => fun f x => flattenT_unapply (fun p => f (texistT (fun x' => flattenT_sig (B x')) x p))
+         | tele A B => fun f x => flattenT_unapply (fun p => f (existT (fun x' => flattenT_sig (B x')) x p))
        end.
 
   Fixpoint flattenT_apply_unapply {t : Telescope} {X : Type} {struct t}
@@ -79,13 +74,13 @@ Module Export Telescope.
          | bottom => fun f x => match x with
                                   | tt => eq_refl
                                 end
-         | tele A B => fun f x => eq_trans (f_equal f match x return x = texistT (fun a => flattenT_sig (B a)) (tprojT1 x) (tprojT2 x) with
-                                                        | texistT _ _ => eq_refl
+         | tele A B => fun f x => eq_trans (f_equal f match x return x = existT (fun a => flattenT_sig (B a)) (projT1 x) (projT2 x) with
+                                                        | existT _ _ => eq_refl
                                                       end)
                                            (@flattenT_apply_unapply
-                                              (B (tprojT1 x)) X
-                                              (fun p => f (texistT (fun x' => flattenT_sig (B x')) (tprojT1 x) p))
-                                              (tprojT2 x))
+                                              (B (projT1 x)) X
+                                              (fun p => f (existT (fun x' => flattenT_sig (B x')) (projT1 x) p))
+                                              (projT2 x))
        end.
 
   Fixpoint flattenT_unapply_apply {t : Telescope} {X : Type} {struct t}
@@ -186,7 +181,7 @@ Module Export Telescope.
                            flattenT_apply P x
        with
          | bottom => fun X x _ => x
-         | tele A B => fun P f x => @flatten_forall_apply (B (tprojT1 x)) _ (f (tprojT1 x)) (tprojT2 x)
+         | tele A B => fun P f x => @flatten_forall_apply (B (projT1 x)) _ (f (projT1 x)) (projT2 x)
        end.
 
   Fixpoint flatten_forall_unapply {t : Telescope}
@@ -220,7 +215,7 @@ Module Export Telescope.
                                         end
              | tele A B => fun f x x' => eq_trans
                                            _
-                                           (@flatten_forall_apply_unapply (B (tprojT1 x')) _ _ _)
+                                           (@flatten_forall_apply_unapply (B (projT1 x')) _ _ _)
            end.
     destruct x'; simpl in *.
     refine (f_equal _ (concat_1p _)).
@@ -358,24 +353,24 @@ Module Export Telescope.
                                   end
          | tele A'' B'' => fun f x k =>
                              match x with
-                               | texistT x1 x2
+                               | existT x1 x2
                                  => eq_trans
                                       (y := eq_rect
                                               _ (fun T => T)
                                               (flatten_forall_apply
-                                                 (flatten_forall_unapply (fun x' => k (texistT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
+                                                 (flatten_forall_unapply (fun x' => k (existT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
                                                  x2)
                                               _
-                                              (eq_sym (flattenT_apply_unapply (fun p => f (texistT (fun x' => flattenT_sig (B'' x')) x1 p)) x2)))
+                                              (eq_sym (flattenT_apply_unapply (fun p => f (existT (fun x' => flattenT_sig (B'' x')) x1 p)) x2)))
                                       (f_equal (fun p' => eq_rect
                                                             _ (fun T => T)
                                                             (flatten_forall_apply
-                                                               (flatten_forall_unapply (fun x' => k (texistT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
+                                                               (flatten_forall_unapply (fun x' => k (existT (fun x'' => flattenT_sig (B'' x'')) x1 x')))
                                                                x2)
                                                             _
                                                             (eq_sym p'))
                                                (concat_1p _))
-                                      (@eq_rect_symmetry_flattenT_apply_unapply (B'' x1) (fun x2' => f (texistT (fun a => flattenT_sig (B'' a)) x1 x2')) x2 (fun x2' => k (texistT (fun a => flattenT_sig (B'' a)) x1 x2')))
+                                      (@eq_rect_symmetry_flattenT_apply_unapply (B'' x1) (fun x2' => f (existT (fun a => flattenT_sig (B'' a)) x1 x2')) x2 (fun x2' => k (existT (fun a => flattenT_sig (B'' a)) x1 x2')))
                              end
        end.
 
