@@ -3,29 +3,45 @@ Require Import Coq.Classes.RelationClasses Coq.Relations.Relation_Definitions Co
 Require Import Fiat.Common.Telescope.Core.
 
 Module Export Telescope.
-  Global Instance flattenT_eq_Reflexive {t : Telescope} {X : Type}
-  : Reflexive (@flattenT_eq t X).
+  Definition flattenT_R_lift {X : Type} {t : Telescope} (P : forall A, relation A -> Prop)
+             (R : relation X)
+             (H : P _ R)
+             (H_forall : forall A T (R' : forall a : A, relation (T a)),
+                           (forall a : A, P _ (R' a))
+                           -> P _ (forall_relation R'))
+  : P _ (@flattenT_R_relation X R t).
   Proof.
     repeat intro; induction t; simpl in *.
-    { reflexivity. }
+    { assumption. }
     { eauto with nocore. }
   Defined.
+
+  Global Instance flattenT_R_Reflexive {t X R} {_ : @Reflexive X R}
+  : Reflexive (@flattenT_R_relation X R t)
+    := flattenT_R_lift (@Reflexive) R _ _.
+  Proof. lazy; eauto with nocore. Defined.
+
+  Global Instance flattenT_R_Symmetric {t X R} {_ : @Symmetric X R}
+  : Symmetric (@flattenT_R_relation X R t)
+    := flattenT_R_lift (@Symmetric) R _ _.
+  Proof. lazy; eauto with nocore. Defined.
+
+  Global Instance flattenT_R_Transitive {t X R} {_ : @Transitive X R}
+  : Transitive (@flattenT_R_relation X R t)
+    := flattenT_R_lift (@Transitive) R _ _.
+  Proof. lazy; eauto with nocore. Defined.
+
+  Global Instance flattenT_eq_Reflexive {t : Telescope} {X : Type}
+  : Reflexive (@flattenT_eq X t)
+    := flattenT_R_Reflexive.
 
   Global Instance flattenT_eq_Symmetric {t : Telescope} {X : Type}
-  : Symmetric (@flattenT_eq t X).
-  Proof.
-    repeat intro; induction t; simpl in *.
-    { symmetry; assumption. }
-    { eauto with nocore. }
-  Defined.
+  : Symmetric (@flattenT_eq X t)
+    := flattenT_R_Symmetric.
 
   Global Instance flattenT_eq_Transitive {t : Telescope} {X : Type}
-  : Transitive (@flattenT_eq t X).
-  Proof.
-    repeat intro; induction t; simpl in *.
-    { etransitivity; eassumption. }
-    { eauto with nocore. }
-  Defined.
+  : Transitive (@flattenT_eq X t)
+    := flattenT_R_Transitive.
 
   Global Instance flatten_forall_eq_relation_Reflexive {t P}
   : Reflexive (@flatten_forall_eq_relation t P).

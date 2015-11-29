@@ -18,11 +18,18 @@ Module Export Telescope.
          | tele A B => { a : A & flattenT_sig (B a) }
        end.
 
-  Fixpoint flattenT_eq {t : Telescope} {X : Type} : relation (flattenT t X)
-    := match t return relation (flattenT t X) with
-         | bottom => fun P Q => P = Q :> X
-         | tele A B => fun P Q => forall a : A, flattenT_eq (P a) (Q a)
-       end.
+  Section R.
+    Context {X : Type} (R : relation X).
+
+    Fixpoint flattenT_R_relation {t : Telescope} : relation (flattenT t X)
+      := match t return relation (flattenT t X) with
+           | bottom => R
+           | tele A B => forall_relation (fun a => flattenT_R_relation)
+         end.
+  End R.
+
+  Definition flattenT_eq {X : Type} : forall {t : Telescope}, relation (flattenT t X)
+    := Eval unfold flattenT_R_relation, forall_relation in @flattenT_R_relation X eq.
 
   Fixpoint flattenT_apply {t : Telescope} {X : Type}
   : flattenT t X -> flattenT_sig t -> X
