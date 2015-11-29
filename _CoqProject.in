@@ -138,6 +138,8 @@ src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
 src/Common/Telescope/Core.v
+src/Common/Telescope/Equality.v
+src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/LogicLemmas.v
