@@ -31,6 +31,17 @@ Module Export Telescope.
     := flattenT_R_lift (@Transitive) R _ _.
   Proof. lazy; eauto with nocore. Defined.
 
+  Global Instance flattenT_R_relation_flip_impl_Proper {t X R}
+         {H : Proper (Basics.flip R ==> R ==> Basics.flip Basics.impl)
+                     R}
+  : Proper (Basics.flip (flattenT_R_relation R) ==> flattenT_R_relation R ==> Basics.flip Basics.impl)
+           (@flattenT_R_relation X R t)
+    := @flattenT_R_lift X t (fun A R => Proper (Basics.flip R ==> R ==> Basics.flip Basics.impl) R) _ H _.
+  Proof.
+    unfold Proper, respectful, Basics.flip, Basics.impl, forall_relation in *; intros.
+    eauto with nocore.
+  Defined.
+
   Global Instance flattenT_eq_Reflexive {t : Telescope} {X : Type}
   : Reflexive (@flattenT_eq X t)
     := flattenT_R_Reflexive.
