@@ -45,6 +45,15 @@ Module Export Telescope.
          | tele A B => fun f x => flattenT_unapply (fun p => f (existT (fun x' => flattenT_sig (B x')) x p))
        end.
 
+  Fixpoint Telescope_append_nondep (t t' : Telescope)
+  : Telescope
+    := match t with
+         | bottom => t'
+         | tele A B => @tele A (fun a => Telescope_append_nondep (B a) t')
+       end.
+
+  Global Arguments Telescope_append_nondep : clear implicits.
+
   Fixpoint Telescope_append (t : Telescope)
   : flattenT t Type -> Telescope
     := match t return flattenT t _ -> _ with
