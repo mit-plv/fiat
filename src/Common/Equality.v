@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Import Coq.Strings.String.
 Require Import Fiat.Common.
 
@@ -264,12 +264,22 @@ Proof.
   decide equality.
 Defined.
 
+Scheme Equality for unit.
+Scheme Equality for Empty_set.
 Scheme Equality for bool.
 Scheme Equality for Ascii.ascii.
 Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
 
+Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
+Proof. apply internal_unit_dec_bl. Qed.
+Lemma unit_lb {x y} : x = y -> unit_beq x y = true.
+Proof. apply internal_unit_dec_lb. Qed.
+Lemma Empty_set_bl {x y} : Empty_set_beq x y = true -> x = y.
+Proof. apply internal_Empty_set_dec_bl. Qed.
+Lemma Empty_set_lb {x y} : x = y -> Empty_set_beq x y = true.
+Proof. apply internal_Empty_set_dec_lb. Qed.
 Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
 Proof. apply internal_bool_dec_bl. Qed.
 Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
@@ -282,6 +292,19 @@ Lemma string_bl {x y} : string_beq x y = true -> x = y.
 Proof. apply internal_string_dec_bl. Qed.
 Lemma string_lb {x y} : x = y -> string_beq x y = true.
 Proof. apply internal_string_dec_lb. Qed.
+Lemma list_bin_eqlistA_iff {A eq_A} {x y : list A}
+: list_beq eq_A x y = true <-> SetoidList.eqlistA eq_A x y.
+Proof.
+  split; intro H.
+  { generalize dependent y; induction x as [|x xs IHxs]; simpl;
+    intros [|??]; simpl; intro H; try discriminate; constructor.
+    { apply Bool.andb_true_iff in H; apply H. }
+    { apply Bool.andb_true_iff in H.
+      destruct H.
+      eauto with nocore. } }
+  { induction H; simpl; try reflexivity.
+    apply Bool.andb_true_iff; split; assumption. }
+Qed.
 Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
 : list_beq eq_A x y = true -> x = y.
 Proof. apply internal_list_dec_bl; assumption. Qed.
