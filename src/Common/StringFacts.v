@@ -6,6 +6,14 @@ Require Import Fiat.Common.StringOperations.
 
 Global Set Implicit Arguments.
 
+Lemma nat_of_ascii_small x
+: Ascii.nat_of_ascii x < 256.
+Proof.
+  apply Compare_dec.leb_complete.
+  revert x.
+  repeat intros []; lazy; reflexivity.
+Qed.
+
 Lemma substring_correct3 {s : string} m (H : length s <= m)
   : substring 0 m s = s.
 Proof.
