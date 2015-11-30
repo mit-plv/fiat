@@ -292,7 +292,7 @@ Lemma string_bl {x y} : string_beq x y = true -> x = y.
 Proof. apply internal_string_dec_bl. Qed.
 Lemma string_lb {x y} : x = y -> string_beq x y = true.
 Proof. apply internal_string_dec_lb. Qed.
-Lemma list_bin_eqlistA_iff {A eq_A} {x y : list A}
+Lemma list_beq_eqlistA_iff {A eq_A} {x y : list A}
 : list_beq eq_A x y = true <-> SetoidList.eqlistA eq_A x y.
 Proof.
   split; intro H.
@@ -304,6 +304,14 @@ Proof.
       eauto with nocore. } }
   { induction H; simpl; try reflexivity.
     apply Bool.andb_true_iff; split; assumption. }
+Qed.
+Lemma list_blA {A eq_A} {R : relation A} (A_bl : forall x y : A, eq_A x y = true -> R x y)
+      {x y : list A}
+: list_beq eq_A x y = true -> SetoidList.eqlistA R x y.
+Proof.
+  generalize dependent y; induction x as [|x xs IHxs]; simpl;
+  intros [|??]; simpl; intro H; try discriminate; constructor;
+  apply Bool.andb_true_iff in H; destruct H; eauto with nocore.
 Qed.
 Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
 : list_beq eq_A x y = true -> x = y.
