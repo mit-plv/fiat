@@ -50,7 +50,7 @@ Section enum.
     intros; eapply enumerate_fun_bl_in; try eassumption; trivial.
   Qed.
 
-  Definition enumerate_fun_lb_in
+  Definition enumerate_fun_false_lb_in
              (lb : forall x y, x = y -> beq x y = true)
              (enumerate : list A) (f g : A -> B)
   : enumerate_fun_beq enumerate f g = false -> { x | List.In x enumerate /\ f x <> g x }.
@@ -72,16 +72,28 @@ Section enum.
         abstract congruence. } }
   Defined.
 
-  Definition enumerate_fun_lb
+  Definition enumerate_fun_false_lb
              (lb : forall x y, x = y -> beq x y = true)
              (enumerate : list A)
              (f g : A -> B)
   : enumerate_fun_beq enumerate f g = false -> { x | f x <> g x }.
   Proof.
     intro H.
-    eexists (proj1_sig (enumerate_fun_lb_in lb enumerate f g H)).
-    apply (proj2_sig (enumerate_fun_lb_in lb enumerate f g H)).
+    eexists (proj1_sig (enumerate_fun_false_lb_in lb enumerate f g H)).
+    apply (proj2_sig (enumerate_fun_false_lb_in lb enumerate f g H)).
   Defined.
+
+  Definition enumerate_fun_lb
+             (lb : forall x y, x = y -> beq x y = true)
+             (enumerate : list A)
+             (f g : A -> B)
+  : (forall x, f x = g x) -> enumerate_fun_beq enumerate f g = true.
+  Proof.
+    destruct (enumerate_fun_beq enumerate f g) eqn:Heq; [ reflexivity | ].
+    intro H; exfalso.
+    apply enumerate_fun_false_lb in Heq; [ | assumption.. ].
+    destruct Heq; eauto with nocore.
+  Qed.
 End enum.
 
 Section enumerable.
@@ -94,10 +106,15 @@ Section enumerable.
              (f g : A -> B)
   : enumerable_fun_beq f g = true -> forall x, f x = g x
     := enumerate_fun_bl beq bl (enumerate A) enumerate_correct f g.
-  Definition enumerable_fun_lb
+  Definition enumerable_fun_false_lb
              (lb : forall x y, x = y -> beq x y = true)
              (f g : A -> B)
   : enumerable_fun_beq f g = false -> { x | f x <> g x }
+    := enumerate_fun_false_lb beq lb (enumerate A) f g.
+  Definition enumerable_fun_lb
+             (lb : forall x y, x = y -> beq x y = true)
+             (f g : A -> B)
+  : (forall x, f x = g x) -> enumerable_fun_beq f g = true
     := enumerate_fun_lb beq lb (enumerate A) f g.
 End enumerable.
 
