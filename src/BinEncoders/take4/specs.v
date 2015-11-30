@@ -71,22 +71,28 @@ Lemma decode_app_l (data_t proj_t prev_t : Type) :
          (encode1 : proj_t -> bin)
          (encode2 : data_t -> bin),
   { decode : prev_t -> bin -> proj_t * bin |
-      forall data ext,
-        decode (prev data) (encode1 (proj data) ++ ext) = (proj data, ext) } ->
+    forall data ext,
+      decode (prev data) (encode1 (proj data) ++ ext) = (proj data, ext) } ->
   { decode : prev_t * proj_t -> bin -> data_t * bin |
-      forall data ext,
-        decode (prev data, proj data) (encode2 data ++ ext) = (data, ext) } ->
+    forall data ext,
+      decode (prev data, proj data) (encode2 data ++ ext) = (data, ext) } ->
   { decode : prev_t -> bin -> data_t * bin |
-      forall data ext,
-        decode (prev data) (encode1 (proj data) ++ (encode2 data) ++ ext) =
-        (data, ext) }.
+    forall data ext,
+      decode (prev data) (encode1 (proj data) ++ encode2 data ++ ext) = (data, ext) }.
 Proof.
-Admitted.
+  intros prev proj encode1 encode2.
+  destruct 1 as [ decode1 decode1_pf ]; destruct 1 as [ decode2 decode2_pf ].
+  eexists. intros data ext.
+  instantiate (1:=fun _prev _bin => let (_proj, _ext) := decode1 _prev _bin in
+                                    decode2 (_prev, _proj) _ext).
+  simpl. rewrite decode1_pf. rewrite decode2_pf. reflexivity.
+Qed.
 
 Lemma decode_inject_unit (T : Type) (P : T -> Prop) :
   { decode : unit -> T | P (decode tt) } -> { decode : T | P decode }.
 Proof.
-Admitted.
+  destruct 1; eauto.
+Qed.
 
 Lemma decode_resolve_hyp (data_t proj_t prev_t goal_t : Type) :
   forall (prev : data_t -> prev_t)
@@ -94,26 +100,47 @@ Lemma decode_resolve_hyp (data_t proj_t prev_t goal_t : Type) :
          (goal : data_t -> goal_t)
          (encode : proj_t -> bin),
   { constr : prev_t -> proj_t -> goal_t |
-      forall data, constr (prev data) (proj data) = goal data } ->
+    forall data, constr (prev data) (proj data) = goal data } ->
   { decode : bin -> proj_t * bin |
-      forall data ext, decode (encode data ++ ext) = (data, ext) } ->
+    forall data ext, decode (encode data ++ ext) = (data, ext) } ->
   { decode : prev_t -> bin -> goal_t * bin |
-      forall data ext,
-        decode (prev data) (encode (proj data) ++ ext) = (goal data, ext) }.
+    forall data ext,
+      decode (prev data) (encode (proj data) ++ ext) = (goal data, ext) }.
 Proof.
-Admitted.
+  intros prev proj goal encode.
+  destruct 1 as [ constr constr_pf ]; destruct 1 as [ decode decode_pf ].
+  eexists. intros data ext.
+  instantiate (1:=fun _prev _bin => let (_proj, _ext) := decode _bin in
+                                    (constr _prev _proj, _ext)).
+  simpl. rewrite decode_pf. rewrite constr_pf. reflexivity.
+Qed.
 
 Lemma decode_generalize (data_t : Type) :
   forall (encode : data_t -> bin),
     { decode | encode <++> decode } -> { decode | encode <+> decode }.
 Proof.
-Admitted.
+  intro encode. destruct 1 as [ decode decode_pf ].
+  eexists. instantiate (1:=fun _bin => fst (decode _bin)).
+  simpl. intro data.
+  rewrite <- app_nil_r with (l:=encode data). rewrite decode_pf. reflexivity.
+Qed.
 
-Lemma sig_rewrite (T : Type) (P P' : T -> Prop) :
-  P = P' ->
-  { x | P x } = { x | P' x }.
+Lemma decode_app_assoc (data_t prev_t : Type) :
+  forall (prev : data_t -> prev_t)
+         (encode1 : data_t -> bin)
+         (encode2 : data_t -> bin),
+    { decode : prev_t -> bin -> data_t * bin |
+      forall data ext,
+        decode (prev data) (encode1 data ++ encode2 data ++ ext) = (data, ext) } ->
+    { decode : prev_t -> bin -> data_t * bin |
+      forall data ext,
+        decode (prev data) ((encode1 data ++ encode2 data) ++ ext) = (data, ext) }.
 Proof.
-Admitted.
+  intros prev encode1 encode2.
+  destruct 1 as [ decode decode_pf ].
+  eexists. intros data ext.
+  instantiate (1:=decode). rewrite <- app_assoc. apply decode_pf.
+Qed.
 
 Definition SS_decode :
   { decode : bin -> SSRecord | forall data, decode (SS_encode data) = data }.
@@ -123,49 +150,25 @@ Proof.
   eapply decode_generalize.
   eapply decode_inject_unit.
 
-  (* rewrite sig_rewrite with
-    (P:=fun decode =>
-           forall data ext, decode tt
-             ((FixNat_encode 4 (field1 data) ++
-               List1_encode (FixNat_encode 16) 8 (field2 data) ++
-               FixNat_encode 2 (field3 data)) ++ ext) = (data, ext))
-    (P':=fun decode =>
-           forall data ext, decode tt
-             ((FixNat_encode 4 (field1 data)) ++
-               (List1_encode (FixNat_encode 16) 8 (field2 data) ++
-                FixNat_encode 2 (field3 data) ++ ext)) = (data, ext)). *)
-  assert ({decode0 : unit -> list bool -> SSRecord * list bool |
-           forall (data : SSRecord) (ext : list bool),
-             decode0 tt
-                     (FixNat_encode 4 (field1 data) ++
-                      (List1_encode (FixNat_encode 16) 8 (field2 data) ++
-                       FixNat_encode 2 (field3 data)) ++ ext) = (data, ext)}).
-  Focus 2. admit.
-
+  eapply decode_app_assoc.
   eapply decode_app_l.
 
   eapply decode_resolve_hyp.
-  eexists. intros. instantiate (1:=fun _ x => x). reflexivity.
-  eexists. intros. eapply decode_block_app.
+  eexists; intros; instantiate (1:=fun _ x => x); reflexivity.
+  eexists; intros; eapply decode_block_app.
 
-  assert ({decode : unit * {n : nat | n < exp2 4} -> bin -> SSRecord * bin |
-           forall (data : SSRecord) (ext : list bool),
-             decode (tt, field1 data)
-                     (List1_encode (FixNat_encode 16) 8 (field2 data) ++
-                      FixNat_encode 2 (field3 data) ++ ext) = (data, ext)}).
-  Focus 2. admit.
-
+  eapply decode_app_assoc.
   eapply decode_app_l.
 
   eapply decode_resolve_hyp.
-  eexists. intros. instantiate (1:=fun _ x => x). reflexivity.
-  eexists. intros. eapply decode_block_app.
+  eexists; intros; instantiate (1:=fun _ x => x); reflexivity.
+  eexists; intros; eapply decode_block_app.
 
   eapply decode_resolve_hyp.
-  eexists. intros. instantiate (1:=fun prev proj =>
+  eexists; intros; instantiate (1:=fun prev proj =>
                                      let (prev', f2) := prev in
                                      let (_, f1)     := prev' in
                                      Build_SSRecord f1 f2 proj).
   destruct data; reflexivity.
-  eexists. intros. eapply decode_block_app.
+  eexists; intros; eapply decode_block_app.
 Defined.
