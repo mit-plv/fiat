@@ -1607,3 +1607,43 @@ Ltac subst_refine_evar :=
   | |- ?R _ (?H ) => subst H
   | _ => idtac
   end.
+
+(** Change hypotheses of the form [(exists x : A, B x) -> T] into hypotheses of the form [forall (x : A), B x -> T] *)
+Class flatten_exC {T} (x : T) {retT} := make_flatten_exC : retT.
+
+Ltac flatten_ex_helper H rec_tac rec_tac_progress :=
+  let T := type of H in
+  match eval cbv beta in T with
+    | forall x : @ex ?A ?B, @?C x => let ret := constr:(fun (a : A) (y : B a) => H (@ex_intro A B a y)) in
+                                     rec_tac_progress ret
+    | forall x : and ?A ?B, @?C x => let ret := constr:(fun (a : A) (b : B) => H (@conj A B a b)) in
+                                     rec_tac_progress ret
+    | forall x : ?A, @?P x => let ret := constr:(fun (x : A) => _ : flatten_exC (H x)) in
+                              let ret := (eval cbv beta delta [flatten_exC] in ret) in
+                              let retT := type of ret in
+                              let retT := (eval cbv beta delta [flatten_exC] in retT) in
+                              let ret := constr:(ret : retT) in
+                              rec_tac ret
+  end.
+
+Ltac flatten_ex H :=
+  match H with
+    | _ => flatten_ex_helper H ltac:(fun x => constr:x) flatten_ex
+    | _ => H
+  end.
+
+Ltac progress_flatten_ex H :=
+  flatten_ex_helper H progress_flatten_ex flatten_ex.
+
+Hint Extern 0 (flatten_exC ?H) => let ret := progress_flatten_ex H in exact ret : typeclass_instances.
+
+Ltac flatten_all_ex :=
+  repeat match goal with
+           | [ H : context[ex _ -> _] |- _ ]
+             => let H' := fresh in
+                rename H into H';
+                  let term := flatten_ex H' in
+                  pose proof term as H;
+                    cbv beta in H;
+                    clear H'
+         end.
