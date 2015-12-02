@@ -1075,4 +1075,14 @@ Section ListFacts.
       apply IHxs.
       repeat esplit; eassumption. }
   Qed.
+
+  Lemma eqlistA_eq {A} ls ls'
+  : @SetoidList.eqlistA A eq ls ls' <-> ls = ls'.
+  Proof.
+    split; intro H; subst; try reflexivity.
+    revert ls' H.
+    induction ls as [|x xs IHxs]; intros []; intros;
+    f_equal;
+    inversion H; subst; trivial; eauto with nocore.
+  Qed.
 End ListFacts.

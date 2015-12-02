@@ -339,3 +339,9 @@ Global Instance eqlistA_length_Proper {A eqA}
 Proof.
   intros x y H; induction H; simpl; f_equal; trivial.
 Qed.
+
+Global Instance eqlistA_eq_Proper {A B f}
+: Proper (@SetoidList.eqlistA A eq ==> @eq B) f.
+Proof.
+  intros ?? H; apply eqlistA_eq in H; subst; reflexivity.
+Qed.
