@@ -333,3 +333,9 @@ Proof.
   repeat intro.
   apply SetoidList.eqlistA_cons; assumption.
 Qed.
+
+Global Instance eqlistA_length_Proper {A eqA}
+: Proper (@SetoidList.eqlistA A eqA ==> eq) (@List.length _).
+Proof.
+  intros x y H; induction H; simpl; f_equal; trivial.
+Qed.
