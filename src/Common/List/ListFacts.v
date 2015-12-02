@@ -1039,4 +1039,40 @@ Section ListFacts.
     rewrite nth'_helper_nth by omega.
     f_equal; omega.
   Qed.
+
+  Lemma eqlistA_app_iff {A} (R : relation A) (x y z : list A)
+  : SetoidList.eqlistA R (x ++ y) z <-> (exists x' y', (x' ++ y' = z)%list /\ SetoidList.eqlistA R x x' /\ SetoidList.eqlistA R y y').
+  Proof.
+    revert z.
+    induction x as [|x xs IHxs]; simpl; intros z;
+    split; intro H.
+    { eexists nil; eexists z; split; [ reflexivity | ].
+      split; first [ assumption | constructor ]. }
+    { destruct H as [x' [y' [H0 [H1 H2]]]]; subst.
+      inversion H1; subst; simpl.
+      assumption. }
+    { inversion_clear H.
+      match goal with
+        | [ H : SetoidList.eqlistA _ _ _ |- _ ]
+          => apply IHxs in H; clear IHxs
+      end.
+      repeat match goal with
+               | [ H : ex _ |- _ ] => destruct H
+               | [ H : and _ _ |- _ ] => destruct H
+               | _ => progress subst
+             end.
+      eexists (_::_)%list; simpl; eexists.
+      repeat split; first [ assumption | constructor; assumption ]. }
+    { repeat match goal with
+               | [ H : ex _ |- _ ] => destruct H
+               | [ H : and _ _ |- _ ] => destruct H
+               | _ => progress subst
+               | [ H : SetoidList.eqlistA _ (_::_) _ |- _ ] => inversion H; clear H
+               | _ => progress simpl
+               | [ |- SetoidList.eqlistA _ (_::_) (_::_) ] => constructor
+               | _ => assumption
+             end.
+      apply IHxs.
+      repeat esplit; eassumption. }
+  Qed.
 End ListFacts.
