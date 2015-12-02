@@ -326,3 +326,10 @@ Proof.
   intros ?? H ? ls ?; subst.
   induction ls; trivial; simpl; rewrite IHls, H; reflexivity.
 Qed.
+
+Global Instance cons_eqlistA_Proper {T} {R : relation T}
+: Proper (R ==> SetoidList.eqlistA R ==> SetoidList.eqlistA R) cons.
+Proof.
+  repeat intro.
+  apply SetoidList.eqlistA_cons; assumption.
+Qed.
