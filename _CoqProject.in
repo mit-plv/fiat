@@ -1,6 +1,5 @@
 -R src Fiat
 -I src/Common/Tactics
--arg -dont-load-proofs
 src/ADT.v
 src/ADTNotation.v
 src/ADTRefinement.v

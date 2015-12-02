@@ -151,7 +151,7 @@ install-fiat install-fiat-core install-querystructures install-parsers install-f
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; echo '-arg -dont-load-proofs'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4') | $(SORT_COQPROJECT)) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4') | $(SORT_COQPROJECT)) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
 # >= 8.5 if it exists

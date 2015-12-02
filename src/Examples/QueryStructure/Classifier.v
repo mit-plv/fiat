@@ -13,7 +13,7 @@ Section Packet.
   Inductive Protocol := tcp | udp.
 
   Lemma Protocol_dec : forall a b : Protocol, {a = b} + {a <> b}.
-  Proof. decide equality. Qed.
+  Proof. decide equality. Defined.
 
   Global Instance Query_eq_Protocol :
     Query_eq Protocol := {| A_eq_dec := Protocol_dec |}.
