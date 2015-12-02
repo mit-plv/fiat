@@ -1,9 +1,33 @@
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List Coq.Lists.SetoidList.
 Require Import Coq.Strings.String.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.
 Local Close Scope nat_scope.
+
+Definition concat_1p {A x y} (p : x = y :> A) : eq_trans eq_refl p = p.
+Proof. case p; reflexivity. Defined.
+Definition concat_p1 {A x y} (p : x = y :> A) : eq_trans p eq_refl = p.
+Proof. case p; reflexivity. Defined.
+Definition concat_pV {A x y} (p : x = y :> A) : eq_trans p (eq_sym p) = eq_refl.
+Proof. case p; reflexivity. Defined.
+Definition concat_Vp {A x y} (p : x = y :> A) : eq_trans (eq_sym p) p = eq_refl.
+Proof. case p; reflexivity. Defined.
+Definition transport_pp {A} {P : A -> Type} {x y z} (p : x = y) (q : y = z) (k : P x)
+: eq_rect _ P k _ (eq_trans p q) = eq_rect _ P (eq_rect _ P k _ p) _ q.
+Proof. case q; simpl; reflexivity. Defined.
+Lemma transport_const {A P x y} (p : x = y :> A) k
+: eq_rect _ (fun _ : A => P) k _ p = k.
+Proof. case p; reflexivity. Defined.
+Lemma ap_const {A B x y} (b : B) (p : x = y :> A)
+: f_equal (fun _ => b) p = eq_refl.
+Proof. case p; reflexivity. Defined.
+Lemma inv_pp {A x y z} (p : x = y :> A) (q : y = z :> A)
+: eq_sym (eq_trans p q) = eq_trans (eq_sym q) (eq_sym p).
+Proof. case q; case p; reflexivity. Defined.
+Lemma inv_V {A x y} (p : x = y :> A)
+: eq_sym (eq_sym p) = p.
+Proof. case p; reflexivity. Defined.
 
 Section sigT.
   Definition pr1_path {A} {P : A -> Type} {u v : sigT P} (p : u = v)
@@ -30,6 +54,11 @@ Section sigT.
              (p : projT1 u = projT1 v) (q : eq_rect _ _ (projT2 u) _ p = projT2 v)
   : u = v
     := path_sigT_uncurried u v (existT _ p q).
+
+  Definition path_sigT_nondep {A B : Type} (u v : @sigT A (fun _ => B))
+             (p : projT1 u = projT1 v) (q : projT2 u = projT2 v)
+  : u = v
+    := @path_sigT _ _ u v p (eq_trans (transport_const _ _) q).
 
   Lemma eq_rect_sigT {A x} {P : A -> Type} (Q : forall a, P a -> Prop) (u : sigT (Q x)) {y} (H : x = y)
   : eq_rect x (fun a => sigT (Q a)) u y H
@@ -235,12 +264,22 @@ Proof.
   decide equality.
 Defined.
 
+Scheme Equality for unit.
+Scheme Equality for Empty_set.
 Scheme Equality for bool.
 Scheme Equality for Ascii.ascii.
 Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
 
+Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
+Proof. apply internal_unit_dec_bl. Qed.
+Lemma unit_lb {x y} : x = y -> unit_beq x y = true.
+Proof. apply internal_unit_dec_lb. Qed.
+Lemma Empty_set_bl {x y} : Empty_set_beq x y = true -> x = y.
+Proof. apply internal_Empty_set_dec_bl. Qed.
+Lemma Empty_set_lb {x y} : x = y -> Empty_set_beq x y = true.
+Proof. apply internal_Empty_set_dec_lb. Qed.
 Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
 Proof. apply internal_bool_dec_bl. Qed.
 Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
@@ -253,6 +292,27 @@ Lemma string_bl {x y} : string_beq x y = true -> x = y.
 Proof. apply internal_string_dec_bl. Qed.
 Lemma string_lb {x y} : x = y -> string_beq x y = true.
 Proof. apply internal_string_dec_lb. Qed.
+Lemma list_beq_eqlistA_iff {A eq_A} {x y : list A}
+: list_beq eq_A x y = true <-> SetoidList.eqlistA eq_A x y.
+Proof.
+  split; intro H.
+  { generalize dependent y; induction x as [|x xs IHxs]; simpl;
+    intros [|??]; simpl; intro H; try discriminate; constructor.
+    { apply Bool.andb_true_iff in H; apply H. }
+    { apply Bool.andb_true_iff in H.
+      destruct H.
+      eauto with nocore. } }
+  { induction H; simpl; try reflexivity.
+    apply Bool.andb_true_iff; split; assumption. }
+Qed.
+Lemma list_blA {A eq_A} {R : relation A} (A_bl : forall x y : A, eq_A x y = true -> R x y)
+      {x y : list A}
+: list_beq eq_A x y = true -> SetoidList.eqlistA R x y.
+Proof.
+  generalize dependent y; induction x as [|x xs IHxs]; simpl;
+  intros [|??]; simpl; intro H; try discriminate; constructor;
+  apply Bool.andb_true_iff in H; destruct H; eauto with nocore.
+Qed.
 Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
 : list_beq eq_A x y = true -> x = y.
 Proof. apply internal_list_dec_bl; assumption. Qed.

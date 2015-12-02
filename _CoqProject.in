@@ -87,6 +87,7 @@ src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
+src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
 src/Common/IterateBoundedIndex.v
@@ -137,6 +138,8 @@ src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
 src/Common/Telescope/Core.v
+src/Common/Telescope/Equality.v
+src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/LogicLemmas.v

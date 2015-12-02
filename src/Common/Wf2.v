@@ -2,6 +2,10 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
 Require Import Fiat.Common.Telescope.Core.
+Require Import Fiat.Common.Telescope.Instances.
+Require Import Fiat.Common.Telescope.Equality.
+Require Import Fiat.Common.
+Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.Wf.
 
 Set Implicit Arguments.
@@ -286,6 +290,172 @@ Local Arguments flatten_forall_eq_relation / .
 Local Arguments flatten_append_forall / .
 
 Local Notation type_of x := ((fun T (y : T) => T) _ x).
+
+Section Fix2VTransfer.
+  Context A A' (B B' : A * A' -> Telescope)
+          (f0 : forall a, flattenT_sig (B a) -> flattenT_sig (B' a))
+          (g0 : forall a, flattenT_sig (B' a) -> flattenT_sig (B a))
+          (sect : forall a x, g0 a (f0 a x) = x)
+          (R : A * A' -> A * A' -> Prop) (Rwf : well_founded R)
+          (P : forall a, flattenT (B a) Type).
+
+  Let P' : forall a, flattenT (B' a) Type
+    := fun a => flattenT_unapply (fun x => flattenT_apply (P a) (g0 _ x)).
+
+  Local Notation Fix2V := (@Fix2 A A' R Rwf (fun a => flatten_forall (P a))).
+  Local Notation Fix2V' := (@Fix2 A A' R Rwf (fun a => flatten_forall (P' a))).
+
+  Section F.
+    Context (F : forall x x', (forall y y', R (y, y') (x, x') -> flatten_forall (P (y, y'))) -> flatten_forall (P (x, x'))).
+
+    Let transfer
+    : forall y y',
+        flatten_forall
+          (flattenT_unapply
+             (fun x : flattenT_sig (B (y, y')) => flattenT_apply (P' (y, y')) (f0 (y, y') x)))
+        -> flatten_forall (P (y, y')).
+    Proof.
+      intros y y'.
+      refine (flatten_forall_eq_rect
+                (transitivity
+                   ((_ : Proper (pointwise_relation _ _ ==> _) flattenT_unapply)
+                      _ _
+                      (fun x' => transitivity
+                                   (symmetry (flattenT_apply_unapply _ _))
+                                   (f_equal (flattenT_apply _) (sect _ _))))
+                   (symmetry (flattenT_unapply_apply _)))).
+    Defined.
+
+    Let transfer'
+    : forall a a',
+        flatten_forall (P (a, a'))
+        -> flatten_forall (P' (a, a')).
+    Proof.
+      intros a a'.
+      refine (fun f' => flatten_forall_unapply (fun x' => flatten_forall_apply f' (g0 _ x'))).
+    Defined.
+
+    Let untransfer'
+    : forall a a',
+        flatten_forall (P' (a, a'))
+        -> flatten_forall (P (a, a')).
+    Proof.
+      intros a a'.
+      refine (fun f' => _).
+      refine (transfer
+                _ _
+                (flatten_forall_unapply (fun x => flatten_forall_apply f' (f0 _ x)))).
+    Defined.
+
+    Let F' : forall x x', (forall y y', R (y, y') (x, x') -> flatten_forall (P' (y, y'))) -> flatten_forall (P' (x, x'))
+      := fun a a' F' => transfer' _ _ (@F a a' (fun y y' pf => transfer _ _ (flatten_forall_unapply (fun x => flatten_forall_apply (F' y y' pf) (f0 _ x))))).
+
+
+    Context (F_ext : forall x x' (f g : forall y y', R (y, y') (x, x') -> flatten_forall (P (y, y'))),
+                       (forall y y' (p : R (y, y') (x, x')), flatten_forall_eq (f y y' p) (g y y' p))
+                       -> flatten_forall_eq (@F x x' f) (@F x x' g)).
+
+    Lemma F'_ext
+    : forall x x' (f g : forall y y', R (y, y') (x, x') -> flatten_forall (P' (y, y'))),
+        (forall y y' (p : R (y, y') (x, x')), flatten_forall_eq (f y y' p) (g y y' p))
+        -> flatten_forall_eq (@F' x x' f) (@F' x x' g).
+    Proof.
+      intros x x' f' g' IH.
+      subst F' transfer transfer'; cbv beta.
+      apply (_ : Proper (forall_relation _ ==> _) flatten_forall_unapply); intro.
+      apply flatten_forall_apply_Proper.
+      apply F_ext; intros.
+      refine ((_ : Proper (flatten_forall_eq ==> _) (@flatten_forall_eq_rect _ _ _ _)) _ _ _).
+      apply (_ : Proper (forall_relation _ ==> _) flatten_forall_unapply); intro.
+      apply flatten_forall_apply_Proper.
+      apply IH.
+    Qed.
+
+    Definition Fix2V_transfer_eq
+               a a'
+    : flatten_forall_eq (@Fix2V F a a') (untransfer' _ _ (@Fix2V' F' a a')).
+    Proof.
+      tuple_generalize a a'.
+      intro a; induction (Rwf a).
+      rewrite Fix2V_eq by eauto with nocore.
+      etransitivity_rev _.
+      { unfold transfer, untransfer'; cbv beta.
+        apply flatten_forall_eq_rect_Proper, flatten_forall_unapply_Proper; intro.
+        apply flatten_forall_apply_Proper.
+        rewrite Fix2V_eq by auto using F'_ext with nocore.
+        reflexivity. }
+      etransitivity.
+      { apply F_ext; intros.
+        set_evars.
+        lazymatch goal with
+          | [ H : forall y r, flatten_forall_eq _ _ |- _ ]
+            => specialize (fun y0 y1 => H (y0, y1));
+              simpl @fst in H; simpl @snd in H;
+              rewrite H by (destruct_head prod; assumption)
+        end.
+        match goal with
+          | [ |- ?R ?a (?e ?x ?y) ]
+            => revert x y
+        end.
+        match goal with
+          | [ H := ?e |- _ ] => is_evar e; subst H
+        end.
+        match goal with
+          | [ |- forall x y, ?R (@?LHS x y) (?RHS x y) ]
+            => unify LHS RHS; cbv beta
+        end.
+        reflexivity. }
+      lazymatch goal with
+        | [ |- appcontext[Fix2V' ?F] ]
+          => generalize (Fix2V' F)
+      end.
+      subst F'; cbv beta.
+      subst untransfer' transfer transfer'; cbv beta.
+      intro.
+      rewrite flatten_forall_eq_rect_trans.
+      match goal with
+        | [ |- appcontext[flatten_forall_eq_rect
+                            (flattenT_unapply_Proper ?P ?Q ?H)
+                            (flatten_forall_unapply ?f)] ]
+          => rewrite (@flatten_forall_eq_rect_flattenT_unapply_Proper _ P Q H f)
+      end.
+      etransitivity_rev _.
+      { apply flatten_forall_eq_rect_Proper.
+        apply flatten_forall_unapply_Proper; intro.
+        match goal with
+          | [ |- appcontext[@transitivity _ (@eq ?A) ?P] ]
+            => change (@transitivity _ (@eq ?A) P) with (@eq_trans A)
+        end.
+        match goal with
+          | [ |- appcontext[@symmetry _ (@eq ?A) ?P] ]
+            => change (@symmetry _ (@eq ?A) P) with (@eq_sym A)
+        end.
+        set_evars.
+        rewrite @transport_pp.
+        match goal with
+          | [ |- appcontext G[eq_rect _ (fun T => T) (flatten_forall_apply (flatten_forall_unapply ?k) ?x0) _ (eq_sym (flattenT_apply_unapply ?f1 ?x0))] ]
+            => let H := fresh in
+               pose proof (@eq_rect_symmetry_flattenT_apply_unapply _ f1 x0 k) as H;
+                 cbv beta in H |- *;
+                 let RHS := match type of H with _ = ?RHS => constr:RHS end in
+                 let LHS := match type of H with ?LHS = _ => constr:LHS end in
+                 let G' := context G[LHS] in
+                 change G';
+                   rewrite H;
+                   clear H
+        end.
+        match goal with
+          | [ |- context[f_equal _ ?p] ]
+            => destruct p; unfold f_equal; simpl @eq_rect
+        end.
+        subst_body.
+        reflexivity. }
+      rewrite flatten_forall_eq_rect_symmetry_flattenT_unapply_apply.
+      apply F_ext; intros.
+      reflexivity.
+    Qed.
+  End F.
+End Fix2VTransfer.
 
 Section Fix2_0.
   Context A A'
