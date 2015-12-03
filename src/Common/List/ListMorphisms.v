@@ -341,7 +341,7 @@ Proof.
 Qed.
 
 Global Instance eqlistA_eq_Proper {A B f}
-: Proper (@SetoidList.eqlistA A eq ==> @eq B) f.
+: Proper (@SetoidList.eqlistA A eq ==> @eq B) f | 100.
 Proof.
   intros ?? H; apply eqlistA_eq in H; subst; reflexivity.
 Qed.
