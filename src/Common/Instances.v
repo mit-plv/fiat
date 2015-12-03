@@ -77,7 +77,7 @@ Proof.
 Defined.
 Global Instance forall_fun3_Proper {A X Y Z RX RY RZ} {B : _ -> _ -> _ -> _ -> Prop}
        {H : forall a, Proper (RX ==> RY ==> RZ ==> flip impl) (B a)}
-: Proper (RX ==> RY ==> RZ ==> flip impl) (fun (x : X) (y : Y) (z : Z) => forall a : A, B a x y z).
+: Proper (RX ==> RY ==> RZ ==> flip impl) (fun (x : X) (y : Y) (z : Z) => forall a : A, B a x y z) | 1000.
 Proof.
   lazy in H |- *; eauto with nocore.
 Defined.
