@@ -393,6 +393,20 @@ Notation "'Ifopt' c 'as' c' 'Then' t 'Else' e" :=
   (If_Opt_Then_Else c (fun c' => t) e)
     (at level 70).
 
+Global Instance If_Then_Else_fun_Proper {T} {R : relation T} {A B C D RA RB RC RD}
+       {bv tv fv}
+       {H0 : Proper (RA ==> RB ==> RC ==> RD ==> eq) bv}
+       {H1 : Proper (RA ==> RB ==> RC ==> RD ==> R) tv}
+       {H2 : Proper (RA ==> RB ==> RC ==> RD ==> R) fv}
+: Proper (RA ==> RB ==> RC ==> RD ==> R) (fun (a : A) (b : B) (c : C) (d : D) => If bv a b c d Then tv a b c d Else fv a b c d).
+Proof.
+  intros ?? Ha ?? Hb ?? Hc ?? Hd.
+  specialize (H0 _ _ Ha _ _ Hb _ _ Hc _ _ Hd).
+  rewrite H0; clear H0.
+  edestruct bv; simpl;
+  unfold Proper, impl, flip, respectful in *; eauto with nocore.
+Qed.
+
 Ltac find_if_inside :=
   match goal with
   | [ |- context[if ?X then _ else _] ] => destruct X

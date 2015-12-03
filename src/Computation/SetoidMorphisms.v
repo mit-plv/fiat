@@ -243,3 +243,10 @@ Add Parametric Relation {A} : _ (@Monad.equiv A)
       as MonadEquivRel.
 
 Typeclasses Opaque If_Then_Else.
+
+Global Instance computes_to_to_refine_Proper_fun {T} {A B RA RB f} {v : T}
+       {H0 : Proper (RA ==> RB ==> refine) f}
+: Proper (RA ==> RB ==> flip impl) (fun (a : A) (b : B) => computes_to (f a b) v).
+Proof.
+  unfold Proper, impl, flip, respectful, refine in *; eauto with nocore.
+Qed.
