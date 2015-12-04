@@ -711,6 +711,16 @@ Section String.
       intro H.
       apply substring_correct4; omega.
     Qed.
+
+    Lemma substring_length_no_min {offset len s} (Hshort : len = 0 \/ offset + len <= length s)
+    : length (substring offset len s) = len.
+    Proof.
+      rewrite substring_length; destruct Hshort as [Hshort|Hshort];
+      try rewrite Min.min_r by (clear -Hshort; omega);
+      subst; simpl;
+      rewrite <- ?NPeano.Nat.sub_min_distr_r, ?NPeano.Nat.add_sub, ?minus_diag, ?Min.min_0_r;
+      reflexivity.
+    Qed.
   End substring.
 End String.
 
