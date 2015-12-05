@@ -1040,6 +1040,7 @@ Section ListFacts.
     f_equal; omega.
   Qed.
 
+
   Lemma NoDup_filter {A} :
     forall (f : A -> bool)
            (l : list A),
@@ -1053,6 +1054,52 @@ Section ListFacts.
         subst; unfold not; intros H1;
         apply filter_In in H1; intuition.
       + inversion H0; eauto.
+  Qed.
+
+  Lemma eqlistA_app_iff {A} (R : relation A) (x y z : list A)
+  : SetoidList.eqlistA R (x ++ y) z <-> (exists x' y', (x' ++ y' = z)%list /\ SetoidList.eqlistA R x x' /\ SetoidList.eqlistA R y y').
+  Proof.
+    revert z.
+    induction x as [|x xs IHxs]; simpl; intros z;
+    split; intro H.
+    { eexists nil; eexists z; split; [ reflexivity | ].
+      split; first [ assumption | constructor ]. }
+    { destruct H as [x' [y' [H0 [H1 H2]]]]; subst.
+      inversion H1; subst; simpl.
+      assumption. }
+    { inversion_clear H.
+      match goal with
+        | [ H : SetoidList.eqlistA _ _ _ |- _ ]
+          => apply IHxs in H; clear IHxs
+      end.
+      repeat match goal with
+               | [ H : ex _ |- _ ] => destruct H
+               | [ H : and _ _ |- _ ] => destruct H
+               | _ => progress subst
+             end.
+      eexists (_::_)%list; simpl; eexists.
+      repeat split; first [ assumption | constructor; assumption ]. }
+    { repeat match goal with
+               | [ H : ex _ |- _ ] => destruct H
+               | [ H : and _ _ |- _ ] => destruct H
+               | _ => progress subst
+               | [ H : SetoidList.eqlistA _ (_::_) _ |- _ ] => inversion H; clear H
+               | _ => progress simpl
+               | [ |- SetoidList.eqlistA _ (_::_) (_::_) ] => constructor
+               | _ => assumption
+             end.
+      apply IHxs.
+      repeat esplit; eassumption. }
+  Qed.
+
+  Lemma eqlistA_eq {A} ls ls'
+  : @SetoidList.eqlistA A eq ls ls' <-> ls = ls'.
+  Proof.
+    split; intro H; subst; try reflexivity.
+    revert ls' H.
+    induction ls as [|x xs IHxs]; intros []; intros;
+    f_equal;
+    inversion H; subst; trivial; eauto with nocore.
   Qed.
 
 End ListFacts.

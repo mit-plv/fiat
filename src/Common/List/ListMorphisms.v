@@ -326,3 +326,22 @@ Proof.
   intros ?? H ? ls ?; subst.
   induction ls; trivial; simpl; rewrite IHls, H; reflexivity.
 Qed.
+
+Global Instance cons_eqlistA_Proper {T} {R : relation T}
+: Proper (R ==> SetoidList.eqlistA R ==> SetoidList.eqlistA R) cons.
+Proof.
+  repeat intro.
+  apply SetoidList.eqlistA_cons; assumption.
+Qed.
+
+Global Instance eqlistA_length_Proper {A eqA}
+: Proper (@SetoidList.eqlistA A eqA ==> eq) (@List.length _).
+Proof.
+  intros x y H; induction H; simpl; f_equal; trivial.
+Qed.
+
+Global Instance eqlistA_eq_Proper {A B f}
+: Proper (@SetoidList.eqlistA A eq ==> @eq B) f | 100.
+Proof.
+  intros ?? H; apply eqlistA_eq in H; subst; reflexivity.
+Qed.

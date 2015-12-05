@@ -313,6 +313,18 @@ Proof.
   intros [|??]; simpl; intro H; try discriminate; constructor;
   apply Bool.andb_true_iff in H; destruct H; eauto with nocore.
 Qed.
+Lemma list_lbA {A eq_A} {R : relation A} (A_lb : forall x y : A, R x y -> eq_A x y = true)
+      {x y : list A}
+: SetoidList.eqlistA R x y -> list_beq eq_A x y = true.
+Proof.
+  generalize dependent y; induction x as [|x xs IHxs]; simpl;
+  intros [|??]; simpl; intro H;
+  try solve [ reflexivity
+            | discriminate ];
+  inversion H; subst; clear H.
+  apply Bool.andb_true_iff.
+  split; eauto with nocore.
+Qed.
 Lemma list_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
 : list_beq eq_A x y = true -> x = y.
 Proof. apply internal_list_dec_bl; assumption. Qed.

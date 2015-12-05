@@ -90,6 +90,7 @@ src/Common/Ensembles.v
 src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
+src/Common/Instances.v
 src/Common/IterateBoundedIndex.v
 src/Common/Le.v
 src/Common/LogicFacts.v

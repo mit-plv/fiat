@@ -393,6 +393,20 @@ Notation "'Ifopt' c 'as' c' 'Then' t 'Else' e" :=
   (If_Opt_Then_Else c (fun c' => t) e)
     (at level 70).
 
+Global Instance If_Then_Else_fun_Proper {T} {R : relation T} {A B C D RA RB RC RD}
+       {bv tv fv}
+       {H0 : Proper (RA ==> RB ==> RC ==> RD ==> eq) bv}
+       {H1 : Proper (RA ==> RB ==> RC ==> RD ==> R) tv}
+       {H2 : Proper (RA ==> RB ==> RC ==> RD ==> R) fv}
+: Proper (RA ==> RB ==> RC ==> RD ==> R) (fun (a : A) (b : B) (c : C) (d : D) => If bv a b c d Then tv a b c d Else fv a b c d).
+Proof.
+  intros ?? Ha ?? Hb ?? Hc ?? Hd.
+  specialize (H0 _ _ Ha _ _ Hb _ _ Hc _ _ Hd).
+  rewrite H0; clear H0.
+  edestruct bv; simpl;
+  unfold Proper, impl, flip, respectful in *; eauto with nocore.
+Qed.
+
 Ltac find_if_inside :=
   match goal with
   | [ |- context[if ?X then _ else _] ] => destruct X
@@ -1607,3 +1621,43 @@ Ltac subst_refine_evar :=
   | |- ?R _ (?H ) => subst H
   | _ => idtac
   end.
+
+(** Change hypotheses of the form [(exists x : A, B x) -> T] into hypotheses of the form [forall (x : A), B x -> T] *)
+Class flatten_exC {T} (x : T) {retT} := make_flatten_exC : retT.
+
+Ltac flatten_ex_helper H rec_tac rec_tac_progress :=
+  let T := type of H in
+  match eval cbv beta in T with
+    | forall x : @ex ?A ?B, @?C x => let ret := constr:(fun (a : A) (y : B a) => H (@ex_intro A B a y)) in
+                                     rec_tac_progress ret
+    | forall x : and ?A ?B, @?C x => let ret := constr:(fun (a : A) (b : B) => H (@conj A B a b)) in
+                                     rec_tac_progress ret
+    | forall x : ?A, @?P x => let ret := constr:(fun (x : A) => _ : flatten_exC (H x)) in
+                              let ret := (eval cbv beta delta [flatten_exC] in ret) in
+                              let retT := type of ret in
+                              let retT := (eval cbv beta delta [flatten_exC] in retT) in
+                              let ret := constr:(ret : retT) in
+                              rec_tac ret
+  end.
+
+Ltac flatten_ex H :=
+  match H with
+    | _ => flatten_ex_helper H ltac:(fun x => constr:x) flatten_ex
+    | _ => H
+  end.
+
+Ltac progress_flatten_ex H :=
+  flatten_ex_helper H progress_flatten_ex flatten_ex.
+
+Hint Extern 0 (flatten_exC ?H) => let ret := progress_flatten_ex H in exact ret : typeclass_instances.
+
+Ltac flatten_all_ex :=
+  repeat match goal with
+           | [ H : context[ex _ -> _] |- _ ]
+             => let H' := fresh in
+                rename H into H';
+                  let term := flatten_ex H' in
+                  pose proof term as H;
+                    cbv beta in H;
+                    clear H'
+         end.
