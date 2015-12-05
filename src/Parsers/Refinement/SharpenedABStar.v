@@ -1,6 +1,6 @@
 (** Sharpened ADT for (ab)* *)
-Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Grammars.ABStar.
+Require Import Fiat.Parsers.Refinement.Tactics.
 
 Section IndexedImpl.
   Context {HSL : StringLike Ascii.ascii}

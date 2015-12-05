@@ -24,16 +24,17 @@ Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar item_
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike Operations.nth'].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike].
 Declare Reduction parser_red5 := simpl List.hd.
-Declare Reduction parser_red6 := simpl List.map.
-Declare Reduction parser_red7 := simpl @fst.
-Declare Reduction parser_red8 := simpl @snd.
-Declare Reduction parser_red9 := simpl List.length.
-Declare Reduction parser_red10 := simpl List.fold_right.
-Declare Reduction parser_red11 := simpl @Operations.first_index_error.
-Declare Reduction parser_red12 := simpl @Operations.up_to.
-Declare Reduction parser_red13 := cbv beta iota zeta delta [Fix2 Fix2_F].
+Declare Reduction parser_red6 := simpl @fst.
+Declare Reduction parser_red7 := simpl @snd.
+Declare Reduction parser_red8 := simpl List.length.
+Declare Reduction parser_red9 := simpl List.fold_right.
+Declare Reduction parser_red10 := simpl @Operations.first_index_default.
+Declare Reduction parser_red11 := simpl @Operations.up_to.
+Declare Reduction parser_red12 := simpl @Compare_dec.leb.
+Declare Reduction parser_red13 := simpl List.map.
+Declare Reduction parser_red14 := cbv beta iota zeta delta [Operations.nth' Fix2 Fix2_F].
 
 Ltac parser_red term :=
   let term := match term with
@@ -56,6 +57,7 @@ Ltac parser_red term :=
   let term := (eval parser_red11 in term) in
   let term := (eval parser_red12 in term) in
   let term := (eval parser_red13 in term) in
+  let term := (eval parser_red14 in term) in
   constr:term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.
