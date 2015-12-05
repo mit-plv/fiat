@@ -992,6 +992,95 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma flatten_CompList_Return {A}
+  : forall (l : list A),
+    refine (FlattenCompList.flatten_CompList (map Query_Return l))
+           (ret l).
+Proof.
+  induction l; simpl; eauto; f_equiv.
+  setoid_rewrite IHl; simplify with monad laws; reflexivity.
+Qed.
+
+Definition FiniteTables_AbsR
+           {qs_schema}
+           (r_o r_n : UnConstrQueryStructure qs_schema) :=
+  r_o = r_n /\ forall idx, (FiniteEnsemble (GetUnConstrRelation r_o idx)).
+
+Lemma FiniteTables_AbsR_Insert
+      {qs_schema}
+  : forall r_o r_n idx tup,
+    FiniteTables_AbsR r_o r_n
+    -> UnConstrFreshIdx (ith2 r_o idx) (elementIndex tup)
+    -> refine {r_n0 : UnConstrQueryStructure qs_schema |
+               FiniteTables_AbsR
+                 (UpdateUnConstrRelation
+                    r_o idx
+                    (EnsembleInsert tup
+                                    (GetUnConstrRelation r_o idx))) r_n0}
+              (ret (UpdateUnConstrRelation
+                      r_n idx
+                      (EnsembleInsert tup
+                                      (GetUnConstrRelation r_n idx)))).
+Proof.
+  intros; refine pick val _; try split; eauto.
+  - destruct H; subst; reflexivity.
+  - destruct H; intros idx'; destruct (fin_eq_dec idx idx'); subst;
+    unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    + rewrite ith_replace2_Index_eq.
+      destruct (H1 idx') as [l ?]; eexists (cons (indexedElement tup) l).
+      eauto using UnIndexedEnsembleListEquivalence_Insert.
+    + rewrite ith_replace2_Index_neq; eauto.
+Qed.
+
+Lemma FiniteTables_AbsR_Delete
+      {qs_schema}
+  : forall r_o r_n idx P (P_dec : DecideableEnsemble P),
+    FiniteTables_AbsR r_o r_n
+    -> refine {r_n0 : UnConstrQueryStructure qs_schema |
+               FiniteTables_AbsR
+                 (UpdateUnConstrRelation
+                    r_o idx
+                    (EnsembleDelete (GetUnConstrRelation r_o idx) P)) r_n0}
+              (ret (UpdateUnConstrRelation
+                      r_n idx
+                      (EnsembleDelete (GetUnConstrRelation r_n idx) P))).
+Proof.
+  intros; refine pick val _; try split; eauto.
+  - destruct H; subst; reflexivity.
+  - destruct H; intros idx'; destruct (fin_eq_dec idx idx'); subst;
+    unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    + rewrite ith_replace2_Index_eq.
+      destruct (H0 idx') as [? ?].
+      eexists.
+      eauto using UnIndexedEnsembleListEquivalence_Delete.
+    + rewrite ith_replace2_Index_neq; eauto.
+Qed.
+
+Require Import Fiat.QueryStructure.Specification.Operations.Empty.
+Lemma FiniteEnsemble_QSEmptySpec {qs_schema}
+  : forall idx,
+    FiniteEnsemble
+      (GetUnConstrRelation
+         (DropQSConstraints (QSEmptySpec qs_schema)) idx).
+Proof.
+  unfold QSEmptySpec, DropQSConstraints, GetUnConstrRelation.
+  setoid_rewrite <- ith_imap2.
+  unfold rawRels; intros; rewrite @Build_EmptyRelation_IsEmpty.
+  simpl; eexists [ ].
+  eauto using UnIndexedEnsembleListEquivalence_Empty_set.
+Qed.
+
+Lemma FiniteTables_AbsR_QSEmptySpec
+      {qs_schema}
+  :  FiniteTables_AbsR
+       (DropQSConstraints (QSEmptySpec qs_schema))
+       (DropQSConstraints (QSEmptySpec qs_schema)).
+Proof.
+  unfold FiniteTables_AbsR; intuition.
+  eapply FiniteEnsemble_QSEmptySpec.
+Qed.
+
+
 (*Lemma Equivalent_Swap_In {ResultT}
       qsSchema qs R (bod : RawTuple -> Comp (list ResultT))
       enumR

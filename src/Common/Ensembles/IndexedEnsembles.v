@@ -10,6 +10,20 @@ Require Import Coq.Lists.List
 Class UnConstrRelationAbsRClass {A B : Type} :=
   { UnConstrRelationAbsR : Ensemble A -> B -> Prop }.
 
+Definition EnsembleInsert {A : Type}
+           (a : A)
+           (R : Ensemble A)
+           (a' : A) :=
+  a' = a \/ R a'.
+
+Lemma in_ensemble_insert_iff :
+  forall {A} table tup inserted,
+    In A (EnsembleInsert inserted table) tup <->
+    tup = inserted \/ In A table tup.
+Proof.
+  firstorder.
+Qed.
+
 Section IndexedEnsembles.
 
   Context {ElementType : Type}.
@@ -192,6 +206,63 @@ Section IndexedEnsembles.
     eapply Permutation_map.
     eapply NoDup_Permutation; eauto using NoDup_IndexedElement.
   Qed.
+
+  Lemma UnIndexedEnsembleListEquivalence_Empty_set
+    : UnIndexedEnsembleListEquivalence (Empty_set IndexedElement) [].
+  Proof.
+    unfold UnIndexedEnsembleListEquivalence; eexists [ ];
+    simpl; intuition.
+    destruct H.
+    econstructor.
+  Qed.
+
+  Lemma UnIndexedEnsembleListEquivalence_Insert
+    : forall ens (l : list _) a,
+      UnConstrFreshIdx ens (elementIndex a)
+      -> UnIndexedEnsembleListEquivalence ens l
+      -> UnIndexedEnsembleListEquivalence (EnsembleInsert a ens) (indexedElement a :: l).
+  Proof.
+    unfold UnIndexedEnsembleListEquivalence; intros; intuition.
+    destruct_ex; intuition.
+    subst.
+    eexists (_ :: _); simpl; intuition.
+    - destruct H1; subst; eauto.
+      right; eapply H0; eauto.
+    - econstructor; congruence.
+    - right; eapply H0; eauto.
+    - econstructor.
+      intro.
+      eapply in_map_iff in H1; destruct_ex; intuition; subst.
+      eapply H0 in H4; apply H in H4.
+      omega.
+      eauto.
+  Qed.
+
+  Lemma UnIndexedEnsembleListEquivalence_Delete
+    : forall ens (l : list ElementType) P (P_dec : DecideableEnsemble P),
+      UnIndexedEnsembleListEquivalence ens l
+      -> UnIndexedEnsembleListEquivalence
+           (EnsembleDelete ens P)
+           (filter (fun a : ElementType => negb (DecideableEnsembles.dec a)) l).
+  Proof.
+    unfold UnIndexedEnsembleListEquivalence; intros; intuition.
+    destruct_ex; intuition; subst.
+    eexists; simpl; intuition.
+    symmetry; eapply filter_map.
+    simpl.
+    - destruct H0; subst; eauto.
+      unfold Complement, In in H1.
+      eapply filter_In; split; eauto.
+      eapply H; eauto.
+      rewrite <- Decides_false in H1; rewrite H1; reflexivity.
+    - eapply filter_In in H0; intuition.
+      constructor; eauto.
+      eapply H; eauto.
+      eapply (@Decides_false _ P).
+      destruct (DecideableEnsembles.dec (indexedElement x0)); simpl in *; eauto.
+    - eauto using NoDup_filter_map.
+  Qed.
+
 
 End IndexedEnsembles.
 

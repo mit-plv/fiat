@@ -17,19 +17,6 @@ Require Import Coq.Lists.List
 (* 'Inserting' a Tuple [tup] into a relation [R] represented
     as an ensemble produces a new ensemble that holds for any
     Tuple [tup'] equal to [tup] or which is already in [R]. *)
-Definition EnsembleInsert {A : Type}
-           (a : A)
-           (R : Ensemble A)
-           (a' : A) :=
-  a' = a \/ R a'.
-
-Lemma in_ensemble_insert_iff :
-  forall {A} table tup inserted,
-    In A (EnsembleInsert inserted table) tup <->
-    tup = inserted \/ In A table tup.
-Proof.
-  firstorder.
-Qed.
 
 Definition QSInsertSpec
            {qs_schema}
