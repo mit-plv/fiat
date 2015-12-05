@@ -32,10 +32,10 @@ Section recursive_descent_parser_list.
 
   Definition rdp_list_of_nonterminal
   : String.string -> rdp_list_nonterminal_carrierT
-    := fun nt => match first_index_error (string_beq nt) (Valid_nonterminals G) with
-                   | Some idx => idx
-                   | None => List.length (Valid_nonterminals G)
-                 end.
+    := fun nt => first_index_default
+                   (string_beq nt)
+                   (List.length (Valid_nonterminals G))
+                   (Valid_nonterminals G).
   Fixpoint string_copy (n : nat) (ch : Ascii.ascii)
     := match n with
          | 0 => EmptyString
@@ -107,6 +107,7 @@ Section recursive_descent_parser_list.
         => rewrite nth_overflow in H by assumption
       | [ H : In some_invalid_nonterminal (Valid_nonterminals G) |- _ ]
         => apply some_invalid_nonterminal_invalid in H
+      | _ => progress simpl in *
     end.
 
   Local Ltac t := repeat t'.
@@ -128,6 +129,8 @@ Section recursive_descent_parser_list.
     fix_list_bin_eq.
     unfold rdp_list_is_valid_nonterminal, rdp_list_of_nonterminal, rdp_list_initial_nonterminals_data.
     intro nt.
+    unfold first_index_default.
+    rewrite first_index_helper_first_index_error.
     destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H'; t.
   Qed.
 
@@ -168,7 +171,7 @@ Section recursive_descent_parser_list.
               pose proof (uniquize_shorter xs string_beq).
               omega. }
             { simpl in H.
-              rewrite IHxs by omega; clear IHxs.
+              rewrite first_index_helper_first_index_error, IHxs by omega; clear IHxs.
               repeat match goal with
                        | _ => exact (@string_lb)
                        | _ => progress simpl in *
@@ -203,6 +206,8 @@ Section recursive_descent_parser_list.
   Proof.
     unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal.
     intro nt.
+    unfold first_index_default.
+    rewrite first_index_helper_first_index_error.
     destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H';
       t.
   Qed.
