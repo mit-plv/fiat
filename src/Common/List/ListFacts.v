@@ -888,6 +888,19 @@ Section ListFacts.
       destruct (lt_eq_lt_dec n m) as [[?|?]|?]; split; intros; try omega; eauto; intuition. }
   Qed.
 
+  Lemma first_index_helper_first_index_error
+        {A B} (f : A -> bool)
+        (rect : option nat -> B) (ls : list A) (rec : nat -> nat)
+  : first_index_helper f rect ls rec = rect (option_map rec (first_index_error f ls)).
+  Proof.
+    revert B rec rect; induction ls as [|x xs IHxs]; simpl; intros.
+    { reflexivity. }
+    { destruct (f x).
+      { reflexivity. }
+      { rewrite !IHxs.
+        destruct (first_index_error f xs); reflexivity. } }
+  Qed.
+
   Local Ltac first_index_error_t'
     := idtac;
       match goal with
@@ -922,6 +935,8 @@ Section ListFacts.
         | [ H : or _ _ |- _ ] => destruct H
         | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
         | [ H : ?x = None |- context[?x] ] => rewrite H
+        | [ H : appcontext[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
+        | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
       end.
 
   Local Ltac first_index_error_t :=

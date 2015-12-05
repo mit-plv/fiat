@@ -157,11 +157,27 @@ Proof.
   eapply list_in_lb; eauto.
 Defined.
 
-Fixpoint first_index_error {A} (f : A -> bool) (ls : list A) : option nat
-  := match ls with
-       | nil => None
-       | x::xs => if f x then Some 0 else option_map S (first_index_error f xs)
+Section first_index_f.
+  Context {A B} (f : A -> bool) (rect : option nat -> B).
+
+  Fixpoint first_index_helper (ls : list A) (rec : nat -> nat) : B
+    := match ls with
+         | nil => rect None
+         | x::xs => if f x
+                    then rect (Some (rec 0))
+                    else first_index_helper xs (fun x => rec (S x))
      end.
+End first_index_f.
+
+Definition first_index_default {A} (f : A -> bool) (default : nat) (ls : list A) : nat
+  := first_index_helper f (option_rect (fun _ => nat) (fun x => x) default) ls (fun x => x).
+
+Global Arguments first_index_default _ _ _ !_ / .
+
+Definition first_index_error {A} (f : A -> bool) (ls : list A) : option nat
+  := first_index_helper f (fun x => x) ls (fun x => x).
+
+Global Arguments first_index_error _ _ !_ / .
 
 Fixpoint first_index {A} (f : A -> bool) (ls : list A) : nat
   := match ls with
