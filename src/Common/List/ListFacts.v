@@ -1039,4 +1039,20 @@ Section ListFacts.
     rewrite nth'_helper_nth by omega.
     f_equal; omega.
   Qed.
+
+  Lemma NoDup_filter {A} :
+    forall (f : A -> bool)
+           (l : list A),
+      NoDup l
+      -> NoDup (filter f l).
+  Proof.
+    induction l; simpl.
+    - constructor.
+    - case_eq (f a); simpl; intros.
+      + inversion H0; constructor; eauto.
+        subst; unfold not; intros H1;
+        apply filter_In in H1; intuition.
+      + inversion H0; eauto.
+  Qed.
+
 End ListFacts.

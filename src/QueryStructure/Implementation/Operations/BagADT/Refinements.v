@@ -1035,39 +1035,6 @@ Section BagsQueryStructureRefinements.
     reflexivity.
   Qed.
 
-  Lemma NoDup_filter {A} :
-    forall (f : A -> bool)
-           (l : list A),
-      NoDup l
-      -> NoDup (filter f l).
-  Proof.
-    induction l; simpl.
-    - constructor.
-    - case_eq (f a); simpl; intros.
-      + inversion H0; constructor; eauto.
-        subst; unfold not; intros H1;
-        apply filter_In in H1; intuition.
-      + inversion H0; eauto.
-  Qed.
-
-  Lemma NoDup_filter_map {A} :
-    forall (f : A -> bool)
-           (l : list _),
-      NoDup (map elementIndex l)
-      -> NoDup
-           (map elementIndex
-                (filter (fun a => f (indexedElement a)) l)) .
-  Proof.
-    induction l; simpl.
-    - constructor.
-    - case_eq (f (indexedElement a)); simpl; intros; inversion H0; subst; eauto.
-      constructor; eauto.
-      unfold not; intros; apply H3.
-      revert H1; clear; induction l; simpl.
-      + eauto.
-      + case_eq (f (indexedElement a0)); simpl; intros; intuition.
-  Qed.
-
   Lemma refine_BagADT_QSDelete_snd :
     forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
       DelegateToBag_AbsR r_o r_n
