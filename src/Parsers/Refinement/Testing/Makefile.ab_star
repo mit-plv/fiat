@@ -40,8 +40,12 @@ test-profile-graph: ocamlprof.dump test_ab_star_p.exe
 make_fmt = $$(echo "$1 (real: %e, user: %U, sys: %S, mem: %M ko)" | sed s'/\.//g')
 
 # ab10.0.0.0.0.0
-test: ab10.0.0.0.0.0 test_ab_star.exe test_ab_star_reference.exe
-	for F in ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0; do \
+TEST_FILES = ab10 ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0
+ifeq ($(LONG),1)
+  TEST_FILES += ab10.0.0.0.0.0
+endif
+test: ab10.0.0.0.0.0.0 test_ab_star.exe test_ab_star_reference.exe
+	for F in $(TEST_FILES); do \
 	FMT="$(call make_fmt, $$F)"; \
 	$(shell which time) -f "cat       $$FMT" cat $$F>/dev/null; \
 	echo $$? >/dev/null; \
