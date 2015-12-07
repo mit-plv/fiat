@@ -486,8 +486,9 @@ Section recursive_descent_parser.
           simpl option_rect.
           step_opt'.
           match goal with
-            | [ |- _ = option_rect (fun _ => ?T) (fun _ => ?a) ?b (sumbool_rect _ _ _ _) ]
-              => rewrite (pull_sumbool_rect_dep (fun _ b' => option_rect (fun _ => T) (fun _ => a) b b'))
+            | [ |- _ = option_rect (fun _ : ?A => ?T) (fun _ => ?a) ?b (sumbool_rect _ _ _ _) ]
+              => let lem := constr:(fun L R => pull_sumbool_rect_dep (L := L) (R := R) (fun _ b' => option_rect (fun _ : A => T) (fun _ => a) b b')) in
+                 rewrite lem
           end.
           simpl option_rect.
           match goal with
