@@ -890,15 +890,28 @@ Section ListFacts.
 
   Lemma first_index_helper_first_index_error
         {A B} (f : A -> bool)
-        (rect : option nat -> B) (ls : list A) (rec : nat -> nat)
-  : first_index_helper f rect ls rec = rect (option_map rec (first_index_error f ls)).
+        (rect : option (nat * A) -> B) (ls : list A) (rec : nat * A -> nat * A)
+  : first_index_helper f rect ls rec
+    = rect (let idx := first_index_error f ls in
+            let v := option_rect (fun _ => option A) (nth_error ls) None idx in
+            option_map
+              rec
+              (option_rect
+                 (fun _ => option (nat * A))
+                 (fun v' : A => option_map (fun idx' : nat => (idx', v')) idx)
+                 None
+                 v)).
   Proof.
     revert B rec rect; induction ls as [|x xs IHxs]; simpl; intros.
     { reflexivity. }
     { destruct (f x).
       { reflexivity. }
       { rewrite !IHxs.
-        destruct (first_index_error f xs); reflexivity. } }
+        destruct (first_index_error f xs) as [idx|] eqn:Heq;
+          simpl; [ | reflexivity ].
+        destruct (nth_error xs idx) eqn:Heq'; simpl; [ | reflexivity ].
+        rewrite Heq'; simpl.
+        reflexivity. } }
   Qed.
 
   Local Ltac first_index_error_t'
@@ -935,8 +948,11 @@ Section ListFacts.
         | [ H : or _ _ |- _ ] => destruct H
         | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
         | [ H : ?x = None |- context[?x] ] => rewrite H
+        | [ H : S _ = S _ |- _ ] => inversion H; clear H
         | [ H : appcontext[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
         | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
+        | [ H : option_rect _ _ _ ?v = Some _ |- _ ] => destruct v eqn:?; simpl in H
+        | [ H : option_rect _ _ _ ?v = None |- _ ] => destruct v eqn:?; simpl in H
       end.
 
   Local Ltac first_index_error_t :=
@@ -961,7 +977,28 @@ Section ListFacts.
   Proof.
     induction ls; simpl; intros.
     { first_index_error_t. }
-    { first_index_error_t. }
+    { first_index_error_t.
+      match goal with
+        | [ H : first_index_error _ _ = Some _ |- _ ] => apply first_index_error_Some_correct in H
+      end.
+      first_index_error_t. }
+  Qed.
+
+  Lemma first_index_default_first_index_error
+        {A} (f : A -> bool)
+        default
+        (ls : list A)
+  : first_index_default f default ls
+    = option_rect (fun _ => nat) (fun x => x) default (first_index_error f ls).
+  Proof.
+    unfold first_index_default.
+    rewrite first_index_helper_first_index_error; simpl.
+    destruct (first_index_error f ls) as [n|] eqn:H; simpl; [ | reflexivity ].
+    destruct (nth_error ls n) eqn:H'; simpl; [ reflexivity | ].
+    exfalso.
+    apply first_index_error_Some_correct in H.
+    repeat (destruct_head and; destruct_head ex).
+    congruence.
   Qed.
 
   Lemma nth_error_In {A} (n : nat) (x : A) (ls : list A)

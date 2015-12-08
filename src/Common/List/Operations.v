@@ -158,26 +158,42 @@ Proof.
 Defined.
 
 Section first_index_f.
-  Context {A B} (f : A -> bool) (rect : option nat -> B).
+  Context {A B} (f : A -> bool) (rect : option (nat * A) -> B).
 
-  Fixpoint first_index_helper (ls : list A) (rec : nat -> nat) : B
+  Fixpoint first_index_helper (ls : list A) (rec : nat * A -> nat * A) : B
     := match ls with
          | nil => rect None
          | x::xs => if f x
-                    then rect (Some (rec 0))
-                    else first_index_helper xs (fun x => rec (S x))
+                    then rect (Some (rec (0, x)))
+                    else first_index_helper xs (fun x => rec (S (fst x), snd x))
      end.
 End first_index_f.
 
 Definition first_index_default {A} (f : A -> bool) (default : nat) (ls : list A) : nat
-  := first_index_helper f (option_rect (fun _ => nat) (fun x => x) default) ls (fun x => x).
+  := first_index_helper f (option_rect (fun _ => nat) fst default) ls (fun x => x).
 
 Global Arguments first_index_default _ _ _ !_ / .
 
 Definition first_index_error {A} (f : A -> bool) (ls : list A) : option nat
-  := first_index_helper f (fun x => x) ls (fun x => x).
+  := first_index_helper f (option_map fst) ls (fun x => x).
 
 Global Arguments first_index_error _ _ !_ / .
+
+Definition first_index_and_value_option {A} (ls : list (option A)) : option (nat * A)
+  := first_index_helper
+       (B := option (nat * A))
+       (fun x => match x with
+                   | None => false
+                   | Some _ => true
+                 end)
+       (fun x => match x with
+                   | Some (x1, Some x2) => Some (x1, x2)
+                   | _ => None
+                 end)
+       ls
+       (fun x => x).
+
+Global Arguments first_index_and_value_option _ !_ / .
 
 Fixpoint first_index {A} (f : A -> bool) (ls : list A) : nat
   := match ls with

@@ -4,6 +4,7 @@ Require Import Coq.Strings.Ascii.
 Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
@@ -129,8 +130,7 @@ Section recursive_descent_parser_list.
     fix_list_bin_eq.
     unfold rdp_list_is_valid_nonterminal, rdp_list_of_nonterminal, rdp_list_initial_nonterminals_data.
     intro nt.
-    unfold first_index_default.
-    rewrite first_index_helper_first_index_error.
+    rewrite first_index_default_first_index_error.
     destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H'; t.
   Qed.
 
@@ -171,10 +171,16 @@ Section recursive_descent_parser_list.
               pose proof (uniquize_shorter xs string_beq).
               omega. }
             { simpl in H.
-              rewrite first_index_helper_first_index_error, IHxs by omega; clear IHxs.
+              specialize_by omega.
+              specialize (IHxs idx).
+              specialize_by omega.
+              rewrite first_index_helper_first_index_error, IHxs by omega.
+              apply first_index_error_Some_correct in IHxs.
               repeat match goal with
                        | _ => exact (@string_lb)
                        | _ => progress simpl in *
+                       | _ => progress destruct_head and
+                       | _ => progress destruct_head ex
                        | [ |- context[if ?E then _ else _] ] => destruct E eqn:?
                        | _ => reflexivity
                        | [ |- Some _ = Some _ ] => apply f_equal
@@ -189,6 +195,8 @@ Section recursive_descent_parser_list.
                        | [ H : list_bin _ _ _ = false |- False ]
                          => rewrite list_in_lb in H; [ discriminate | | ]
                        | [ |- In (nth _ _ _) _ ] => apply nth_In; omega
+                       | [ |- context[nth_error ?n ?ls] ] => destruct (nth_error n ls) eqn:?
+                       | _ => congruence
                      end. } } } }
       { unfold rdp_list_to_nonterminal.
         rewrite nth_overflow by omega.
@@ -206,8 +214,7 @@ Section recursive_descent_parser_list.
   Proof.
     unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal.
     intro nt.
-    unfold first_index_default.
-    rewrite first_index_helper_first_index_error.
+    rewrite first_index_default_first_index_error.
     destruct (first_index_error (string_beq nt) (Valid_nonterminals G)) eqn:H';
       t.
   Qed.
@@ -388,10 +395,7 @@ Section recursive_descent_parser_list.
          to_nonterminal := rdp_list_to_nonterminal;
          is_valid_nonterminal := rdp_list_is_valid_nonterminal;
          remove_nonterminal := rdp_list_remove_nonterminal;
-         nonterminals_length := @List.length _
-         (*nonterminals_listT_R := rdp_list_nonterminals_listT_R;*)
-         (*remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;*)
-         (*ntl_wf := rdp_list_ntl_wf*) }.
+         nonterminals_length := @List.length _ }.
 
   Global Instance rdp_list_rdata' : @parser_removal_dataT' _ G rdp_list_predata
     := { remove_nonterminal_dec := rdp_list_remove_nonterminal_dec;
