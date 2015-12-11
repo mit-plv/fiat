@@ -55,7 +55,7 @@ Section cfg.
                     | MinParseNonTerminalStrEq len0 str valid nonterminal pf H H' p' => p'
                   end)) in
        let pf := (match p in (@MinimalParse.minimal_parse_of_nonterminal _ _ _ _ len0 valid str nonterminal)
-                        return (is_valid_nonterminal initial_nonterminals_data nonterminal)
+                        return (is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
                   with
                     | MinParseNonTerminalStrLt _ _ _ _ _ pf _ => pf
                     | MinParseNonTerminalStrEq _ _ _ _ _ pf _ _ => pf
@@ -480,7 +480,7 @@ Section cfg.
 
   Section minimize.
     Let alt_option h valid str
-      := { nonterminal : _ & (is_valid_nonterminal valid nonterminal = false /\ is_valid_nonterminal initial_nonterminals_data nonterminal)
+      := { nonterminal : _ & (is_valid_nonterminal valid (of_nonterminal nonterminal) = false /\ is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal))
                       * { p : parse_of G str (Lookup G nonterminal)
                         | size_of_parse p < h } }%type.
 
@@ -886,8 +886,8 @@ Section cfg.
                       | assumption
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
-              destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid nonterminal)) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_parse_of_productions__of__parse_of_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid nonterminal) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
+              destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid (of_nonterminal nonterminal))) as [ Hvalid | Hinvalid ].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid (of_nonterminal nonterminal)) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
                 { left.
                   exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (proj2 (initial_nonterminals_correct _) Hvalid') Hvalid (proj1_sig p')).
                   simpl in *.
@@ -920,7 +920,26 @@ Section cfg.
                     exists nonterminal'.
                     destruct p' as [p'H p'p].
                     split.
-                    { rewrite remove_nonterminal_5 in p'H by assumption.
+                    { rewrite remove_nonterminal_5
+                        in p'H
+                        by repeat match goal with
+                                    | _ => assumption
+                                    | _ => progress subst
+                                    | [ H : ?x <> ?x |- _ ] => destruct (H eq_refl)
+                                    | _ => progress destruct_head' and
+                                    | _ => intro
+                                    | [ H : of_nonterminal _ = of_nonterminal _ |- _ ]
+                                      => let H' := fresh in
+                                         pose proof (f_equal to_nonterminal H) as H';
+                                           progress
+                                             (rewrite !to_of_nonterminal
+                                               in H'
+                                               by (apply initial_nonterminals_correct;
+                                                   first [ assumption
+                                                         | rewrite <- H; assumption
+                                                         | rewrite -> H; assumption ]));
+                                           clear H
+                                  end.
                       exact p'H. }
                     { exists (proj1_sig p'p).
                       exact (Lt.lt_S _ _ (proj2_sig p'p)). } } } }

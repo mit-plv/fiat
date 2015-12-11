@@ -27,7 +27,7 @@ Section general.
   Class boolean_parser_completeness_dataT' {data : boolean_parser_dataT} :=
     { split_string_for_production_complete
       : forall len0 valid str (pf : length str <= len0) nt,
-          is_valid_nonterminal initial_nonterminals_data nt
+          is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
           -> ForallT
                (Forall_tails
                   (fun prod

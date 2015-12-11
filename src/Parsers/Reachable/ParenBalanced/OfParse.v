@@ -24,14 +24,14 @@ Section cfg.
   Fixpoint paren_balanced_pb_parse_of_productions
              {valid0 pats}
              (str : String) (p : parse_of G str pats)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
              (Hp : pb'_productions G valid0 pats)
              {struct Hp}
   : paren_balanced' str 0 = true
   with paren_balanced_pb_parse_of_production
          {valid0 pat level}
          (str : String) (p : parse_of_production G str pat)
-         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
          (Hp : pb'_production G valid0 level pat)
          {struct Hp}
        : paren_balanced' str level = true.

@@ -70,9 +70,9 @@ Section general_fold.
              (nt : String.string)
   : T.
   Proof.
-    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 nt)
+    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
             then fold_productions'
-                   (@fold_nt (remove_nonterminal valid0 nt) (remove_nonterminal_dec _ _ _))
+                   (@fold_nt (remove_nonterminal valid0 (of_nonterminal nt)) (remove_nonterminal_dec _ _ _))
                    (Lookup G nt)
             else on_redundant_nonterminal nt);
     assumption.
@@ -118,12 +118,12 @@ Section fold_correctness.
     { fgccd :> fold_grammar_correctness_computational_data;
       Pnt_lift : forall valid0 nt value,
                    sub_nonterminals_listT valid0 initial_nonterminals_data
-                   -> is_valid_nonterminal valid0 nt
-                   -> Ppats (remove_nonterminal valid0 nt) (G nt) value
+                   -> is_valid_nonterminal valid0 (of_nonterminal nt)
+                   -> Ppats (remove_nonterminal valid0 (of_nonterminal nt)) (G nt) value
                    -> Pnt valid0 nt value;
       Pnt_redundant : forall valid0 nt,
                         sub_nonterminals_listT valid0 initial_nonterminals_data
-                        -> is_valid_nonterminal valid0 nt = false
+                        -> is_valid_nonterminal valid0 (of_nonterminal nt) = false
                         -> Pnt valid0 nt (on_redundant_nonterminal nt);
       Ppat_nil : forall valid0, Ppat valid0 nil on_nil_production;
       Ppat_cons_nt : forall valid0 nt xs p ps,

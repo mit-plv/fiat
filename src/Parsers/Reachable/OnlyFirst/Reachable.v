@@ -29,7 +29,7 @@ Section cfg.
                                              -> reachable_from_production (it::its)
   with reachable_from_item : item Char -> Type :=
   | ReachableTerminal : reachable_from_item (Terminal ch)
-  | ReachableNonTerminal : forall nt, is_valid_nonterminal valid nt
+  | ReachableNonTerminal : forall nt, is_valid_nonterminal valid (of_nonterminal nt)
                                       -> reachable_from_productions (Lookup G nt)
                                       -> reachable_from_item (NonTerminal nt).
 End cfg.

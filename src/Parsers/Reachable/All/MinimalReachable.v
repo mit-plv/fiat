@@ -28,8 +28,8 @@ Section cfg.
                                                       -> minimal_reachable_from_production valid (it::its)
   with minimal_reachable_from_item : nonterminals_listT -> item Char -> Type :=
   | MinReachableTerminal : forall valid, minimal_reachable_from_item valid (Terminal ch)
-  | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid nt
-                                               -> minimal_reachable_from_productions (remove_nonterminal valid nt) (Lookup G nt)
+  | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid (of_nonterminal nt)
+                                               -> minimal_reachable_from_productions (remove_nonterminal valid (of_nonterminal nt)) (Lookup G nt)
                                                -> minimal_reachable_from_item valid (NonTerminal nt).
 
 End cfg.

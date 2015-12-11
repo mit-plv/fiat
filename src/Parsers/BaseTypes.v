@@ -13,10 +13,13 @@ Section recursive_descent_parser.
 
   Class parser_computational_predataT :=
     { nonterminals_listT : Type;
+      nonterminal_carrierT : Type;
+      of_nonterminal : String.string -> nonterminal_carrierT;
+      to_nonterminal : nonterminal_carrierT -> String.string;
       initial_nonterminals_data : nonterminals_listT;
       nonterminals_length : nonterminals_listT -> nat;
-      is_valid_nonterminal : nonterminals_listT -> String.string -> bool;
-      remove_nonterminal : nonterminals_listT -> String.string -> nonterminals_listT }.
+      is_valid_nonterminal : nonterminals_listT -> nonterminal_carrierT -> bool;
+      remove_nonterminal : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT }.
 
   Class parser_removal_dataT' `{predata : parser_computational_predataT} :=
     { nonterminals_listT_R : nonterminals_listT -> nonterminals_listT -> Prop
@@ -27,7 +30,15 @@ Section recursive_descent_parser.
       remove_nonterminal_noninc : forall ls nonterminal,
                                     ~nonterminals_listT_R ls (remove_nonterminal ls nonterminal);
       initial_nonterminals_correct : forall nonterminal,
-                                       is_valid_nonterminal initial_nonterminals_data nonterminal <-> List.In nonterminal (Valid_nonterminals G);
+                                       is_valid_nonterminal initial_nonterminals_data (of_nonterminal nonterminal) <-> List.In nonterminal (Valid_nonterminals G);
+      initial_nonterminals_correct' : forall nonterminal,
+                                       is_valid_nonterminal initial_nonterminals_data nonterminal <-> List.In (to_nonterminal nonterminal) (Valid_nonterminals G);
+      to_of_nonterminal : forall nonterminal,
+                            List.In nonterminal (Valid_nonterminals G)
+                            -> to_nonterminal (of_nonterminal nonterminal) = nonterminal;
+      (*of_to_nonterminal : forall nonterminal,
+                            is_valid_nonterminal initial_nonterminals_data nonterminal
+                            -> of_nonterminal (to_nonterminal nonterminal) = nonterminal;*)
       ntl_wf : well_founded nonterminals_listT_R
       := well_founded_ltof _ _;
       remove_nonterminal_1

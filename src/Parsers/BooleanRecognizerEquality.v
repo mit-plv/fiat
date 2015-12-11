@@ -37,8 +37,8 @@ Section transfer.
         str_matches_nonterminal str_matches_nonterminal'
         (H : forall nt, str_matches_nonterminal nt = str_matches_nonterminal' nt)
         str it
-  : @parse_item' _ HSL_lite str_matches_nonterminal (proj str) it
-    = @parse_item' _ HSL_heavy str_matches_nonterminal' str it.
+  : @parse_item' _ HSL_lite _ str_matches_nonterminal (proj str) it
+    = @parse_item' _ HSL_heavy _ str_matches_nonterminal' str it.
   Proof.
     unfold parse_item'.
     destruct it.
@@ -106,7 +106,7 @@ Section transfer.
 
   Lemma parse_nonterminal_or_abort_proj
         (p : nat * nat) (valid : nonterminals_listT)
-        (str : @String Char HSL_heavy) (len : nat) (pf : len <= fst p) (nt : String.string)
+        (str : @String Char HSL_heavy) (len : nat) (pf : len <= fst p) nt
   : @parse_nonterminal_or_abort _ HSL_lite G _ p valid (proj str) len pf nt
     = @parse_nonterminal_or_abort _ HSL_heavy G _ p valid str len pf nt.
   Proof.
@@ -120,12 +120,20 @@ Section transfer.
     apply parse_nonterminal_step_proj; trivial.
   Qed.
 
+  Lemma parse_nonterminal'_proj
+        (str : @String Char HSL_heavy) nt
+  : parse_nonterminal' (G := G) (proj str) nt = parse_nonterminal' (G := G) str nt.
+  Proof.
+    unfold parse_nonterminal'.
+    rewrite length_proj.
+    apply parse_nonterminal_or_abort_proj.
+  Qed.
+
   Lemma parse_nonterminal_proj
-        (str : @String Char HSL_heavy) (nt : String.string)
+        (str : @String Char HSL_heavy) nt
   : parse_nonterminal (G := G) (proj str) nt = parse_nonterminal (G := G) str nt.
   Proof.
     unfold parse_nonterminal.
-    rewrite length_proj.
-    apply parse_nonterminal_or_abort_proj.
+    apply parse_nonterminal'_proj.
   Qed.
 End transfer.

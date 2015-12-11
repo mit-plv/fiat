@@ -91,7 +91,7 @@ Section implementation.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (splitdata := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
-    let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R] in impl) in
+    let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal RDPList.rdp_list_nonterminal_carrierT RDPList.some_invalid_nonterminal] in impl) in
     let impl := (eval simpl in impl') in
     refine (transfer_parser
               (HSL1 := splitter) (HSL2 := stringlike_stringlike)

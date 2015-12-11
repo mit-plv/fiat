@@ -1,5 +1,6 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Equality.
 
 Export Coq.Strings.Ascii.
@@ -15,20 +16,17 @@ Fixpoint production_of_string (s : string) : production Ascii.ascii
 Coercion production_of_string : string >-> production.
 
 Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
-  := fold_right
-       (fun str_t else_case s
-        => bool_rect
-             (fun _ => _)
-             (snd str_t)
-             (else_case s)
-             (string_beq (fst str_t) s))
-       (fun _ => default)
-       ls.
+  := fun nt
+     => option_rect
+          (fun _ => T)
+          (fun idx => nth idx (map snd (uniquize (fun x y => string_beq (fst x) (fst y)) ls)) default)
+          default
+          (first_index_error (string_beq nt) (uniquize string_beq (map fst ls))).
 
 Definition list_to_grammar {T} (default : productions T) (ls : list (string * productions T)) : grammar T
-  := {| Start_symbol := hd ""%string (map fst ls);
+  := {| Start_symbol := hd ""%string (uniquize string_beq (map fst ls));
         Lookup := list_to_productions default ls;
-        Valid_nonterminals := map fst ls |}.
+        Valid_nonterminals := uniquize string_beq (map fst ls) |}.
 
 Definition item_ascii := item Ascii.ascii.
 Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal ch.

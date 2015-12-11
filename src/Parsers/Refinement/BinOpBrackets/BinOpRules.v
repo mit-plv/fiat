@@ -86,7 +86,7 @@ Section refine_rules.
                   | nil => False
                   | ls => fold_right and True (map (eq ch) ls)
                 end}
-          (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data nt).
+          (Hnt_valid : let predata := rdp_list_predata (G := G) in is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)).
 
   Local Opaque rdp_list_predata.
 

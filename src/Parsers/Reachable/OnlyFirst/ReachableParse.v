@@ -27,12 +27,12 @@ Section cfg.
               : forall valid0 pats
                        (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
                        (str : String) (p : parse_of G str pats)
-                       (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p),
+                       (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p),
                   for_first_char str (fun ch => inhabited (reachable_from_productions G ch valid0 pats)))
              {valid0 it}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : for_first_char str (fun ch => inhabited (reachable_from_item G ch valid0 it)).
   Proof.
     destruct p as [ | nt ? p ].
@@ -49,14 +49,14 @@ Section cfg.
              {valid0 pats}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of G str pats)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
              {struct p}
   : for_first_char str (fun ch => inhabited (reachable_from_productions G ch valid0 pats))
   with for_first_char_reachable_from_parse_of_production
          {valid0 pat}
          (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
          (str : String) (p : parse_of_production G str pat)
-         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
          {struct p}
        : for_first_char str (fun ch => inhabited (reachable_from_production G ch valid0 pat)).
   Proof.
@@ -87,7 +87,7 @@ Section cfg.
              {valid0 it}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : for_first_char str (fun ch => inhabited (reachable_from_item G ch valid0 it))
     := @for_first_char_reachable_from_parse_of_item' (@for_first_char_reachable_from_parse_of_productions) valid0 it Hsub str p Hforall.
 
@@ -95,10 +95,10 @@ Section cfg.
              {valid0 it}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_item (G := G) valid0 ch valid0 it)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_item__iff__reachable_from_item.
+    setoid_rewrite <- (minimal_reachable_from_item__iff__reachable_from_item Hsub).
     eapply for_first_char_reachable_from_parse_of_item; eassumption.
   Qed.
 
@@ -106,10 +106,10 @@ Section cfg.
              {valid0 pat}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_production G str pat)
-             (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_production (G := G) valid0 ch valid0 pat)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_production__iff__reachable_from_production.
+    setoid_rewrite <- (minimal_reachable_from_production__iff__reachable_from_production Hsub).
     eapply for_first_char_reachable_from_parse_of_production; eassumption.
   Qed.
 
@@ -117,10 +117,10 @@ Section cfg.
              {valid0 pats}
              (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of G str pats)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : for_first_char str (fun ch => inhabited (minimal_reachable_from_productions (G := G) valid0 ch valid0 pats)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_productions__iff__reachable_from_productions.
+    setoid_rewrite <- (minimal_reachable_from_productions__iff__reachable_from_productions Hsub).
     eapply for_first_char_reachable_from_parse_of_productions; eassumption.
   Qed.
 End cfg.

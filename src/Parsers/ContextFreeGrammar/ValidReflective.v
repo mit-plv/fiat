@@ -20,7 +20,7 @@ Section cfg.
   Definition item_rvalid (it : item Char)
     := match it with
          | Terminal _ => true
-         | NonTerminal nt' => is_valid_nonterminal initial_nonterminals_data nt'
+         | NonTerminal nt' => is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt')
        end.
 
   Definition production_rvalid pat
@@ -30,7 +30,7 @@ Section cfg.
     := fold_right andb true (map production_rvalid pats).
 
   Definition grammar_rvalid
-    := fold_right andb true (map productions_rvalid (map (Lookup G) initial_nonterminals_data)).
+    := fold_right andb true (map productions_rvalid (map (Lookup G) (Valid_nonterminals G))).
 
   Lemma item_rvalid_correct {it} : is_true (item_rvalid it) <-> item_valid it.
   Proof.
@@ -41,6 +41,7 @@ Section cfg.
     idtac;
     match goal with
       | _ => assumption
+      | [ H : False |- _ ] => destruct H
       | _ => progress simpl in *
       | _ => setoid_rewrite Bool.andb_true_iff
       | [ H : context[(_ || _)%bool = true] |- _ ] => setoid_rewrite Bool.orb_true_iff in H
@@ -57,6 +58,7 @@ Section cfg.
       | [ H : List.Forall _ (_::_) |- _ ] => inversion H; clear H
       | _ => progress subst
       | _ => congruence
+      | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
       | [ H : Equality.string_beq _ _ = true |- _ ] => apply Equality.string_bl in H
       | [ H : or _ _ |- _ ] => destruct H
       | [ H : forall x, @?A x \/ @?B x -> _ |- _ ]
@@ -65,6 +67,7 @@ Section cfg.
           clear H
       | [ H : _ |- _ ] => apply H; apply Equality.string_lb; reflexivity
       | [ H : _ |- _ ] => eapply H; eassumption
+      | [ H : _ |- _ ] => eapply H; reflexivity
     end.
 
   Local Ltac t tac := repeat (t' || tac).
@@ -94,7 +97,7 @@ Section cfg.
   Lemma grammar_rvalid_correct : is_true grammar_rvalid <-> grammar_valid G.
   Proof.
     unfold grammar_rvalid, grammar_valid.
-    induction initial_nonterminals_data;
+    induction (Valid_nonterminals G);
       t ltac:(idtac;
               match goal with
                 | [ |- productions_valid _ ] => apply productions_rvalid_correct

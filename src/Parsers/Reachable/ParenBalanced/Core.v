@@ -53,7 +53,7 @@ pb = pb' '+' 0
                  else start_level.
 
   Section generic.
-    Context (transform_valid : nonterminals_listT -> string -> nonterminals_listT).
+    Context (transform_valid : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT).
 
     Inductive generic_pb'_productions : nonterminals_listT -> productions Char -> Type :=
     | PBNil : forall valid,
@@ -66,8 +66,8 @@ pb = pb' '+' 0
     | PBProductionNil : forall valid,
                            generic_pb'_production valid 0 nil
     | PBProductionConsNonTerminal : forall valid start_level nt its,
-                                       is_valid_nonterminal valid nt
-                                       -> generic_pb'_productions (transform_valid valid nt) (Lookup G nt)
+                                       is_valid_nonterminal valid (of_nonterminal nt)
+                                       -> generic_pb'_productions (transform_valid valid (of_nonterminal nt)) (Lookup G nt)
                                        -> generic_pb'_production valid start_level its
                                        -> generic_pb'_production valid start_level (NonTerminal nt :: its)
     | PBProductionConsTerminal : forall valid start_level ch its,

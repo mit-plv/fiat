@@ -25,8 +25,8 @@ Section cfg.
                                                        -> minimal_maybe_empty_production valid its
                                                        -> minimal_maybe_empty_production valid (it::its)
   with minimal_maybe_empty_item : nonterminals_listT -> item Char -> Type :=
-  | MinMaybeEmptyNonTerminal : forall valid nt, is_valid_nonterminal valid nt
-                                                -> minimal_maybe_empty_productions (remove_nonterminal valid nt) (Lookup G nt)
+  | MinMaybeEmptyNonTerminal : forall valid nt, is_valid_nonterminal valid (of_nonterminal nt)
+                                                -> minimal_maybe_empty_productions (remove_nonterminal valid (of_nonterminal nt)) (Lookup G nt)
                                                 -> minimal_maybe_empty_item valid (NonTerminal nt).
 
 End cfg.

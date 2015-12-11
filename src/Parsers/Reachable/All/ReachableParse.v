@@ -24,11 +24,11 @@ Section cfg.
              (forall_chars_reachable_from_parse_of_productions
               : forall valid0 pats
                        (str : String) (p : parse_of G str pats)
-                       (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p),
+                       (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p),
                   forall_chars str (fun ch => inhabited (reachable_from_productions G ch valid0 pats)))
              {valid0 it}
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : forall_chars str (fun ch => inhabited (reachable_from_item G ch valid0 it)).
   Proof.
     destruct p as [ | nt ? p ].
@@ -44,13 +44,13 @@ Section cfg.
   Fixpoint forall_chars_reachable_from_parse_of_productions
              {valid0 pats}
              (str : String) (p : parse_of G str pats)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
              {struct p}
   : forall_chars str (fun ch => inhabited (reachable_from_productions G ch valid0 pats))
   with forall_chars_reachable_from_parse_of_production
          {valid0 pat}
          (str : String) (p : parse_of_production G str pat)
-         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+         (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
          {struct p}
        : forall_chars str (fun ch => inhabited (reachable_from_production G ch valid0 pat)).
   Proof.
@@ -75,37 +75,40 @@ Section cfg.
   Definition forall_chars_reachable_from_parse_of_item
              {valid0 it}
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : forall_chars str (fun ch => inhabited (reachable_from_item G ch valid0 it))
     := @forall_chars_reachable_from_parse_of_item' (@forall_chars_reachable_from_parse_of_productions) valid0 it str p Hforall.
 
   Definition forall_chars_minimal_reachable_from_parse_of_item
              {valid0 it}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_item G str it)
-             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_item (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : forall_chars str (fun ch => inhabited (minimal_reachable_from_item (G := G) ch valid0 it)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_item__iff__reachable_from_item.
+    setoid_rewrite <- (minimal_reachable_from_item__iff__reachable_from_item Hsub).
     eapply forall_chars_reachable_from_parse_of_item; eassumption.
   Qed.
 
   Definition forall_chars_minimal_reachable_from_parse_of_production
              {valid0 pat}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of_production G str pat)
-             (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of_production (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : forall_chars str (fun ch => inhabited (minimal_reachable_from_production (G := G) ch valid0 pat)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_production__iff__reachable_from_production.
+    setoid_rewrite <- (minimal_reachable_from_production__iff__reachable_from_production Hsub).
     eapply forall_chars_reachable_from_parse_of_production; eassumption.
   Qed.
 
   Definition forall_chars_minimal_reachable_from_parse_of_productions
              {valid0 pats}
+             (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
              (str : String) (p : parse_of G str pats)
-             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 nt') p)
+             (Hforall : Forall_parse_of (fun _ nt' => is_valid_nonterminal valid0 (of_nonterminal nt')) p)
   : forall_chars str (fun ch => inhabited (minimal_reachable_from_productions (G := G) ch valid0 pats)).
   Proof.
-    setoid_rewrite <- minimal_reachable_from_productions__iff__reachable_from_productions.
+    setoid_rewrite <- (minimal_reachable_from_productions__iff__reachable_from_productions Hsub).
     eapply forall_chars_reachable_from_parse_of_productions; eassumption.
   Qed.
 End cfg.
