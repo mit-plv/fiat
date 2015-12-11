@@ -715,8 +715,7 @@ Proof.
     + Finish_Master BuildEarlyBag BuildLastBag.
 Time Defined.
 
-
 Time Definition ROSMasterImpl : ComputationalADT.cADT _ :=
   Eval simpl in projT1 SharpenedRosMaster.
 
-Print BookstoreImpl.
+Print ROSMasterImpl.
