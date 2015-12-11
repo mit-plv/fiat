@@ -6,6 +6,8 @@ Require Import
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.packet.
 
+Require Import Fiat.Common.Tactics.HintDbExtra.
+
 Definition DnsSchema :=
   Query Structure Schema
         [ relation sCOLLECTIONS has

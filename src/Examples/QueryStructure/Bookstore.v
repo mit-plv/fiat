@@ -97,9 +97,93 @@ Definition BookStoreSpec : ADT BookStoreSig :=
       ret (r, count)
 }%methDefParsing.
 
+Locate EnsembleInsert.
+
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
+
+  start sharpening ADT.
+  pose_string_hyps.
+  start_honing_QueryStructure'.
+  hone representation using (@FiniteTables_AbsR BookStoreSchema).
+  - simplify with monad laws.
+    refine pick val _; simpl; intuition.
+    eauto using FiniteTables_AbsR_QSEmptySpec.
+  - simplify with monad laws.
+    split_and; subst.
+    unfold UnConstrQuery_In.
+    Focused_refine_Query.
+    rewrite (@refine_Where_Intersection _ _ _ _ _ _); eauto.
+    unfold QueryResultComp; setoid_rewrite flatten_CompList_Return.
+    finish honing.
+    eapply ((proj2 H0) Fin.F1).
+    simplify with monad laws.
+
+    Ltac implement_stuff  :=
+      repeat (cbv beta; simpl;
+              first
+                [simplify with monad laws; simpl
+                | setoid_rewrite refine_If_Then_Else_Bind
+                | rewrite (@FiniteTables_AbsR_Insert BookStoreSchema);
+                  try simplify with monad laws; eauto
+                | rewrite (@FiniteTables_AbsR_Delete BookStoreSchema);
+                  eauto with typeclass_instances
+                | try (refine pick val _; [ | eassumption ])
+             ]).
+    etransitivity.
+
+Ltac stuff :=
+  doAny ltac:(implement_stuff) rewrite_drill ltac:(finish honing).
+stuff.
+simpl.
+destruct H0; subst.
+finish honing.
+  - etransitivity. stuff.
+    destruct H0; subst; finish honing.
+  - simplify with monad laws.
+    unfold UnConstrQuery_In.
+    Focused_refine_Query.
+    rewrite (@refine_Where_Intersection _ _ _ _ _ _); eauto.
+    unfold QueryResultComp; setoid_rewrite flatten_CompList_Return.
+    finish honing.
+    eapply ((proj2 H0) Fin.F1).
+    simplify with monad laws.
+    etransitivity.
+    stuff.
+    destruct H0; subst.
+    finish honing.
+  - simplify with monad laws.
+    unfold UnConstrQuery_In.
+    Focused_refine_Query.
+    unfold QueryResultComp.
+    setoid_rewrite (@refine_Where_Intersection _ _ _ _ _ _); eauto.
+    unfold QueryResultComp; setoid_rewrite flatten_CompList_Return.
+    finish honing.
+    eapply ((proj2 H0) Fin.F1).
+    simplify with monad laws.
+    etransitivity.
+    stuff.
+    destruct H0; subst.
+    finish honing.
+
+    rewrite_drill.
+Focus 2.
+rewrite_drill.
+Focus 2.
+rewrite_drill.
+rewrite (@FiniteTables_AbsR_Insert BookStoreSchema);
+  try simplify with monad laws; eauto.
+
+simpl.
+    unfold QueryResultComp. set_evars. unfold FlattenCompList.flatten_CompList.
+    finish honing.
+    Show Existentials.
+    unfold Query_For.
+    unfold QueryResultComp; simpl.
+
+
+  }
 
   master_plan EqIndexTactics.
       (* Uncomment this to see the mostly sharpened implementation *)

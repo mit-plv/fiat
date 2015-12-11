@@ -520,6 +520,15 @@ and gives you the computational hypothesis for the second *)
     intros; destruct i; simpl; reflexivity.
   Qed.
 
+  Lemma refine_if_Then_Else_Duplicate {A}
+    : forall (i : bool) (t e e' : Comp A),
+      refine (if i then (if i then t else e') else e)
+             (if i then t else e).
+  Proof.
+    destruct i; simpl; reflexivity.
+  Qed.
+
+
   Lemma refine_If_Then_Else_Duplicate {A}
     : forall i (t e e' : A),
       If i Then (If i Then t Else e') Else e =
@@ -857,8 +866,8 @@ Tactic Notation "refine" "pick" "val" open_constr(v) :=
 
 Tactic Notation "refine" "pick" "eq" :=
   match goal with
-    | |- context[Pick (fun x => x = _)] =>
-      setoid_rewrite refine_pick_eq || setoid_rewrite refineEquiv_pick_eq
-    | |- context[Pick (fun x => _ = x)] =>
-      setoid_rewrite refine_pick_eq' || setoid_rewrite refineEquiv_pick_eq'
+  | |- context[Pick (fun x => x = _)] =>
+    setoid_rewrite refine_pick_eq || setoid_rewrite refineEquiv_pick_eq
+  | |- context[Pick (fun x => _ = x)] =>
+    setoid_rewrite refine_pick_eq' || setoid_rewrite refineEquiv_pick_eq'
   end.

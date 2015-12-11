@@ -41,15 +41,15 @@ Tactic Notation "drop" "constraints" "from" "query" :=
     finish honing.
 
 Ltac drop_constraints_from_query :=
-    simplify with monad laws;
+  try simplify with monad laws;
     repeat first [setoid_rewrite refine_bind_unit
                  | setoid_rewrite refine_bind_bind
                  | setoid_rewrite refine_If_Then_Else_Bind];
     repeat setoid_rewrite DropQSConstraintsQuery_In; simpl;
     setoid_rewrite refineEquiv_pick_eq';
     try simplify with monad laws; cbv beta; simpl;
-    match goal with
-      H : DropQSConstraints_AbsR _ _ |- _ =>
-      unfold DropQSConstraints_AbsR in H; rewrite H
-    end; (*pose_string_hyps; pose_heading_hyps; *)
+    repeat match goal with
+             H : DropQSConstraints_AbsR _ _ |- _ =>
+             unfold DropQSConstraints_AbsR in H; rewrite H
+           end; (*pose_string_hyps; pose_heading_hyps; *)
     finish honing.

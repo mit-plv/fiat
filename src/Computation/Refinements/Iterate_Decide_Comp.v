@@ -169,8 +169,7 @@ Section Iterate_Decide_Comp.
   Qed.
 
   Definition Iterate_Decide_Comp_BoundedIndex {n}
-    : forall (Bound : Fin.t n )
-             (P : Ensemble (Fin.t n)),
+    : forall (P : Ensemble (Fin.t n)),
       refine {b | decides b (forall Ridx', P Ridx')}
              (Iterate_Decide_Comp _ P).
   Proof.

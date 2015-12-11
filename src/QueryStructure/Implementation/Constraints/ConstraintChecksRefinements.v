@@ -144,6 +144,87 @@ Section ConstraintCheckRefinements.
     reflexivity.
   Qed.
 
+  Lemma refine_SatisfiesTupleConstraints_Constr
+    : forall (qsSchema : QueryStructureSchema)
+             (qs : QueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
+      refine {b | decides
+                    b
+                    (forall tup',
+                        GetRelation qs Ridx tup'
+                        -> SatisfiesTupleConstraints
+                             Ridx
+                             tup
+                             (indexedElement tup'))}
+             match (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) _)) with
+               Some Constr =>
+               {b | decides b (forall tup',
+                                  GetRelation qs Ridx tup'
+                                  -> Constr tup (indexedElement tup'))}
+             | None => ret true
+             end.
+  Proof.
+    unfold SatisfiesTupleConstraints.
+    intros; match goal with
+              |- context [tupleConstraints ?A] => destruct (tupleConstraints A)
+            end;
+    eauto using decides_True.
+    reflexivity.
+    apply decides_2_True.
+  Qed.
+
+  Lemma refine_SatisfiesTupleConstraints_Constr'
+    : forall (qsSchema : QueryStructureSchema)
+             (qs : QueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
+      refine {b | decides b
+                          (forall tup',
+                              GetRelation qs Ridx tup'
+                              -> SatisfiesTupleConstraints Ridx (indexedElement tup') tup)}
+             match tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) _) with
+               Some Constr =>
+               {b | decides b (forall tup',
+                                  GetRelation qs Ridx tup'
+                                  -> Constr (indexedElement tup') tup)}
+             | None => ret true
+             end.
+  Proof.
+    unfold SatisfiesTupleConstraints.
+    intros; match goal with
+              |- context [tupleConstraints ?A] => destruct (tupleConstraints A)
+            end;
+    eauto using decides_True.
+    reflexivity.
+    apply decides_2_True.
+  Qed.
+
+  Lemma refine_SatisfiesCrossConstraints_Constr
+    : forall (qsSchema : QueryStructureSchema)
+             (qs : QueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             (tup : @RawTuple (rawSchemaHeading (GetNRelSchema (qschemaSchemas qsSchema) Ridx))),
+      refine
+        (@Iterate_Decide_Comp _
+                              (fun Ridx' =>
+                                 SatisfiesCrossRelationConstraints
+                                   Ridx Ridx' tup
+                                   (GetRelation qs Ridx')))
+        (@Iterate_Decide_Comp_opt _ (fun Ridx' =>
+                                      match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
+                                      | Some CrossConstr =>
+                                        Some (CrossConstr tup (GetRelation qs Ridx'))
+                                      | None => None
+                                      end)) .
+  Proof.
+    intros.
+    setoid_rewrite <- refine_Iterate_Decide_Comp.
+    unfold SatisfiesCrossRelationConstraints; f_equiv.
+    apply functional_extensionality; intros.
+    destruct BuildQueryStructureConstraints; reflexivity.
+  Qed.
+
   Lemma refine_SatisfiesTupleConstraints
     : forall (qsSchema : RawQueryStructureSchema)
              (qs : UnConstrQueryStructure qsSchema)
@@ -223,6 +304,97 @@ Section ConstraintCheckRefinements.
     unfold SatisfiesCrossRelationConstraints; f_equiv.
     apply functional_extensionality; intros.
     destruct BuildQueryStructureConstraints; reflexivity.
+  Qed.
+
+  Lemma refine_SatisfiesCrossConstraints'_Constr
+    : forall (qsSchema : QueryStructureSchema)
+             (qs : QueryStructure qsSchema)
+             (Ridx : Fin.t _)
+             tup idx,
+      refine
+        (@Iterate_Decide_Comp _
+                              (fun Ridx' =>
+                Ridx' <> Ridx
+                -> forall tup',
+                     (GetRelation qs Ridx') tup'
+                     -> SatisfiesCrossRelationConstraints
+                          Ridx' Ridx (indexedElement tup')
+                          (EnsembleInsert
+                             {| elementIndex := idx;
+                                indexedElement := tup |}
+                             (GetRelation qs Ridx))))
+             (@Iterate_Decide_Comp_opt _
+                                        (fun Ridx' =>
+                                           if (fin_eq_dec Ridx Ridx') then
+                                             None
+                                           else
+                                             match (BuildQueryStructureConstraints qsSchema Ridx' Ridx) with
+                                               | Some CrossConstr =>
+                                                 Some (
+                                                     forall tup',
+                                                       (GetRelation qs Ridx') tup'
+                                                       -> CrossConstr (indexedElement tup') (
+                                                                        (EnsembleInsert
+                                                                           {| elementIndex := idx;
+                                                                              indexedElement := tup |}
+                                                                           (GetRelation qs Ridx))))
+                                               | None => None
+                                      end)).
+  Proof.
+    intros.
+    setoid_rewrite <- refine_Iterate_Decide_Comp.
+    unfold SatisfiesCrossRelationConstraints.
+    apply refine_Iterate_Decide_Comp_equiv; simpl; intros.
+    simpl in *; destruct (fin_eq_dec Ridx idx0); subst.
+    congruence.
+    destruct (BuildQueryStructureConstraints qsSchema idx0 Ridx); eauto.
+    simpl in *; destruct (fin_eq_dec Ridx idx0); subst; eauto.
+    destruct (BuildQueryStructureConstraints qsSchema idx0 Ridx); eauto.
+  Qed.
+
+  Lemma refine_SatisfiesCrossConstraints'
+  : forall qsSchema qs Ridx tup,
+    forall idx,
+      refine
+        (@Iterate_Decide_Comp _
+                              (fun Ridx' =>
+                Ridx' <> Ridx
+                -> forall tup',
+                     (GetUnConstrRelation qs Ridx') tup'
+                     -> SatisfiesCrossRelationConstraints
+                          Ridx' Ridx (indexedElement tup')
+                          (EnsembleInsert
+                             {| elementIndex := idx;
+                                indexedElement := tup |}
+                             (GetUnConstrRelation qs Ridx))))
+             (@Iterate_Decide_Comp_opt _
+                                        (fun Ridx' =>
+                                           if (fin_eq_dec Ridx Ridx') then
+                                             None
+                                           else
+                                             match (BuildQueryStructureConstraints qsSchema Ridx' Ridx) with
+                                               | Some CrossConstr =>
+                                                 Some (
+                                                     forall tup',
+                                                       (GetUnConstrRelation qs Ridx') tup'
+                                                       -> CrossConstr (indexedElement tup') (
+                                                                        (EnsembleInsert
+                                                                           {| elementIndex := idx;
+                                                                              indexedElement := tup |}
+                                                                           (GetUnConstrRelation qs Ridx))))
+                                               | None => None
+                                      end)).
+  Proof.
+    intros.
+    setoid_rewrite <- refine_Iterate_Decide_Comp.
+    unfold SatisfiesCrossRelationConstraints.
+    apply refine_Iterate_Decide_Comp_equiv; simpl; intros.
+    destruct (fin_eq_dec Ridx idx0); subst.
+    congruence.
+    destruct (BuildQueryStructureConstraints qsSchema idx0 Ridx); eauto.
+    intro; eapply H.
+    destruct (fin_eq_dec Ridx idx0); subst; eauto.
+    destruct (BuildQueryStructureConstraints qsSchema idx0 Ridx); eauto.
   Qed.
 
   Lemma tupleAgree_refl :
@@ -838,6 +1010,28 @@ Proof.
   unfold not; intros; eapply H0; intros.
   rewrite H1; eauto; intros; rewrite H3; eauto.
 Qed.
+
+
+Theorem FunctionalDependency_symmetry'
+  : forall H P attrlist1 attrlist2 n b',
+    decides b'
+            (forall tup' : @IndexedRawTuple H,
+                P tup'
+                -> FunctionalDependency_P attrlist1 attrlist2 n (indexedElement tup'))
+    -> refine {b | decides b (forall tup' : @IndexedRawTuple H,
+                                 P tup'
+                                 -> FunctionalDependency_P attrlist1 attrlist2 (indexedElement tup') n)}
+                  (ret b').
+Proof.
+  unfold FunctionalDependency_P; intros.
+  refine pick val b'.
+  reflexivity.
+  destruct b'; simpl in *; unfold tupleAgree in *; intros; eauto.
+  erewrite H0; eauto; intros; rewrite H1; eauto.
+  unfold not; intros; eapply H0; intros.
+  rewrite H1; eauto; intros; rewrite H2; eauto.
+Qed.
+
 
 Lemma if_duplicate_cond_eq {A}
   : forall (i : bool) (t e : A),

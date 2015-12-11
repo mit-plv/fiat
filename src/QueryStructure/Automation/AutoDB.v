@@ -235,23 +235,23 @@ Lemma refine_BagImplMethods
     Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls ValidImpls r_o r_n ->
     forall midx,
       Lift_Method2P
-         (fst (MethodDomCod
-         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
-                 (BagUpdateTermType (ith3 Index ridx))) midx))
-         (snd (MethodDomCod
-         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
-                 (BagUpdateTermType (ith3 Index ridx))) midx))
-      (fun cod m m' =>
-         exists r_o',
-           refine m (ret (r_o', snd m'))
-           /\ AbsR (ValidImpls ridx) r_o' (fst m'))
-      (fun m m' =>
-         exists r_o',
-           refine m (ret r_o')
-           /\ AbsR (ValidImpls ridx) r_o' m')
-      (CallBagMethod ridx midx r_o)
-      (CallBagImplMethod DelegateReps DelegateImpls midx r_n)
-       .
+        (fst (MethodDomCod
+                (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                        (BagUpdateTermType (ith3 Index ridx))) midx))
+        (snd (MethodDomCod
+                (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                        (BagUpdateTermType (ith3 Index ridx))) midx))
+        (fun cod m m' =>
+           exists r_o',
+             refine m (ret (r_o', snd m'))
+             /\ AbsR (ValidImpls ridx) r_o' (fst m'))
+        (fun m m' =>
+           exists r_o',
+             refine m (ret r_o')
+             /\ AbsR (ValidImpls ridx) r_o' m')
+        (CallBagMethod ridx midx r_o)
+        (CallBagImplMethod DelegateReps DelegateImpls midx r_n)
+.
 Proof.
   intros.
   generalize (ADTRefinementPreservesMethods (ValidImpls ridx) midx
@@ -349,7 +349,7 @@ Proof.
     computes_to_econstructor.
     intros.
     pose proof (@refine_BagImplConstructor
-                           _ _  _ DelegateReps DelegateImpls ValidImpls idx BagEmpty).
+                  _ _  _ DelegateReps DelegateImpls ValidImpls idx BagEmpty).
     revert qschemaSchemas IHqschemaSchemas DelegateReps idx' Index' DelegateImpls ValidImpls
            v0 H H' H0.
     pattern n, idx; apply Fin.caseS; simpl; intros.
@@ -501,7 +501,7 @@ Ltac find_simple_search_term
                                                                                            simpl; intro; try prove_extensional_eq
                       )) end.
 
-  Ltac implement_QSDeletedTuples find_search_term :=
+Ltac implement_QSDeletedTuples find_search_term :=
   match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[Pick (QSDeletedTuples ?r_o ?idx ?DeletedTuples)] ] =>
@@ -509,15 +509,15 @@ Ltac find_simple_search_term
         let idx_search_update_term := eval simpl in (ith3 indices idx) in
             let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                 let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
-                        makeEvar search_term_type'
-                                 ltac: (fun search_term =>
-                                          let eqv := fresh in
-                                          assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
-                                        [ find_search_term qs_schema idx filter_dec search_term
-                                        | let H' := fresh in
-                                          pose (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
-                                            fold_string_hyps_in H'; fold_heading_hyps_in H';
-                                            setoid_rewrite (H' eqv); clear H' eqv])
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                    [ find_search_term qs_schema idx filter_dec search_term
+                                    | let H' := fresh in
+                                      pose (@refine_BagADT_QSDelete_fst _ _ r_o r_n H idx DeletedTuples _ search_term) as H';
+                                        fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                        setoid_rewrite (H' eqv); clear H' eqv])
   end.
 
 Ltac implement_EnsembleDelete_AbsR find_search_term :=
@@ -532,17 +532,17 @@ Ltac implement_EnsembleDelete_AbsR find_search_term :=
             let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                 let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                     makeEvar search_term_type'
-                                 ltac:(fun search_term =>
-                                         let eqv := fresh in
-                                         assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
-                                       [ find_search_term qs_schema idx filter_dec search_term
-                                       | let H' := fresh in
-                                         pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ search_term eqv) as H';
-                                           simpl in H';
-                                           fold_string_hyps; fold_heading_hyps;
-                                           fold_string_hyps_in H'; fold_heading_hyps_in H';
-                                           setoid_rewrite H'; clear H'
-                                      ] )
+                             ltac:(fun search_term =>
+                                     let eqv := fresh in
+                                     assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                   [ find_search_term qs_schema idx filter_dec search_term
+                                   | let H' := fresh in
+                                     pose (@refine_BagADT_QSDelete_snd _ _ r_o r_n H idx DeletedTuples _ search_term eqv) as H';
+                                       simpl in H';
+                                       fold_string_hyps; fold_heading_hyps;
+                                       fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                       setoid_rewrite H'; clear H'
+                                  ] )
   end.
 
 
@@ -889,23 +889,23 @@ Ltac find_equivalent_search_term_pair build_search_term_dep :=
                                                                                                                                                                     let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                                                                                                                         let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                                                                                                                                                                             let search_term_type := search_term_type' in
-                                                                                                                                                                                makeEvar (dom -> search_term_type)
-                                                                                                                                                                                         ltac: (fun search_term =>
-                                                                                                                                                                                                  let eqv := fresh in
-                                                                                                                                                                                                  assert (forall (a : ilist2 (B:= @RawTuple) (headings)) (b : @RawTuple heading) ,
-                                                                                                                                                                                                             filter_dec a b = search_term_matcher (search_term a) b) as eqv;                                                                   [ build_search_term_dep qs_schema idx dom filter_dec search_term
-                                                                                                                                                                                                                                                                                                                                               | match goal with
-                                                                                                                                                                                                                                                                                                                                                   |- ExtensionalEq ?f ?search_term' =>
-                                                                                                                                                                                                                                                                                                                                                   match type of f with
-                                                                                                                                                                                                                                                                                                                                                   | ilist2 (B := @RawTuple) (Vector.cons ?T ?A ?n ?As) -> _ =>
-                                                                                                                                                                                                                                                                                                                                                     unify search_term' (fun a : ilist2 (B := @RawTuple) (Vector.cons T A n As) => search_term_matcher (search_term (ilist2_tl a)) (ilist2_hd a))
-                                                                                                                                                                                                                                                                                                                                                   end
-                                                                                                                                                                                                                                                                                                                                                 end;
-                                                                                                                                                                                                                                                                                                                                                 unfold ExtensionalEq in *;
-                                                                                                                                                                                                                                                                                                                                                 let a := fresh in intro a; eapply eqv
+                                                                                                                                                                            makeEvar (dom -> search_term_type)
+                                                                                                                                                                                     ltac: (fun search_term =>
+                                                                                                                                                                                              let eqv := fresh in
+                                                                                                                                                                                              assert (forall (a : ilist2 (B:= @RawTuple) (headings)) (b : @RawTuple heading) ,
+                                                                                                                                                                                                         filter_dec a b = search_term_matcher (search_term a) b) as eqv;                                                                   [ build_search_term_dep qs_schema idx dom filter_dec search_term
+                                                                                                                                                                                                                                                                                                                                           | match goal with
+                                                                                                                                                                                                                                                                                                                                               |- ExtensionalEq ?f ?search_term' =>
+                                                                                                                                                                                                                                                                                                                                               match type of f with
+                                                                                                                                                                                                                                                                                                                                               | ilist2 (B := @RawTuple) (Vector.cons ?T ?A ?n ?As) -> _ =>
+                                                                                                                                                                                                                                                                                                                                                 unify search_term' (fun a : ilist2 (B := @RawTuple) (Vector.cons T A n As) => search_term_matcher (search_term (ilist2_tl a)) (ilist2_hd a))
+                                                                                                                                                                                                                                                                                                                                               end
+                                                                                                                                                                                                                                                                                                                                             end;
+                                                                                                                                                                                                                                                                                                                                             unfold ExtensionalEq in *;
+                                                                                                                                                                                                                                                                                                                                             let a := fresh in intro a; eapply eqv
 
 
-                                                                                                                                                                                                                                                                                                                                               ]
+                                                                                                                                                                                                                                                                                                                                           ]
                     )) ]) end
   end.
 
@@ -928,23 +928,23 @@ Ltac find_equivalent_search_term build_search_term :=
                                                                      let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
                                                                          let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
                                                                              let search_term_type := search_term_type' in
-                                                                                 makeEvar (search_term_type)
-                                                                                          ltac:(fun search_term =>
+                                                                             makeEvar (search_term_type)
+                                                                                      ltac:(fun search_term =>
 
-                                                                                                  let eqv := fresh in
-                                                                                                  assert (forall a, filter_dec a
-                                                                                                                    = search_term_matcher search_term a) as eqv;
-                                                                                                [ build_search_term qs_schema idx
-                                                                                                                    filter_dec search_term
-                                                                                                | match goal with
-                                                                                                    |- ExtensionalEq ?f ?search_term' =>
-                                                                                                    match type of f with
-                                                                                                    | ?A -> _ =>
-                                                                                                      unify search_term' (fun a : A => search_term_matcher search_term (ilist2_hd a))
-                                                                                                    end
-                                                                                                  end;
-                                                                                                  unfold ExtensionalEq in *; intros;
-                                                                                                  simpl in *; rewrite <- eqv; simpl; reflexivity
+                                                                                              let eqv := fresh in
+                                                                                              assert (forall a, filter_dec a
+                                                                                                                = search_term_matcher search_term a) as eqv;
+                                                                                            [ build_search_term qs_schema idx
+                                                                                                                filter_dec search_term
+                                                                                            | match goal with
+                                                                                                |- ExtensionalEq ?f ?search_term' =>
+                                                                                                match type of f with
+                                                                                                | ?A -> _ =>
+                                                                                                  unify search_term' (fun a : A => search_term_matcher search_term (ilist2_hd a))
+                                                                                                end
+                                                                                              end;
+                                                                                              unfold ExtensionalEq in *; intros;
+                                                                                              simpl in *; rewrite <- eqv; simpl; reflexivity
                         ]))) end.
 
 
@@ -1136,7 +1136,7 @@ Ltac Implement_If_Then_Else :=
       | etransitivity;
         [ apply refine_If_Then_Else;
           [
-            | ]
+          | ]
         | eapply refine_If_Then_Else_ret
         ]
       ]
@@ -1164,21 +1164,21 @@ Ltac Implement_If_Opt_Then_Else :=
   end.
 
 Ltac Implement_AbsR_Relation :=
-    match goal with
+  match goal with
   (* The case when a table has been updated *)
   | [
-     |-  refine (Bind {r_n' | @Build_IndexedQueryStructure_Impl_AbsR
-                                ?qs_schema
-                                ?Index ?DelegateReps ?DelegateImpls
-                                ?ValidImpls ?r_o r_n'} _) _]
+    |-  refine (Bind {r_n' | @Build_IndexedQueryStructure_Impl_AbsR
+                               ?qs_schema
+                               ?Index ?DelegateReps ?DelegateImpls
+                               ?ValidImpls ?r_o r_n'} _) _]
     =>  etransitivity;
       [ apply refine_bind;
         [apply refine_pick_val; eauto;
-          repeat match goal with
-                 |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
-                 eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
-                   eauto
-                 end
+         repeat match goal with
+                  |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
+                  eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
+                    eauto
+                end
         | unfold pointwise_relation; intros; higher_order_reflexivity
         ]
       | etransitivity;
@@ -1300,11 +1300,11 @@ Lemma Implement_Bound_Bag_Call' A
       qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n
     -> Lift_Method2P
          (fst (MethodDomCod
-         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
-                 (BagUpdateTermType (ith3 Index ridx))) midx))
+                 (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                         (BagUpdateTermType (ith3 Index ridx))) midx))
          (snd (MethodDomCod
-         (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
-                 (BagUpdateTermType (ith3 Index ridx))) midx))
+                 (BagSig RawTuple (BagSearchTermType (ith3 Index ridx))
+                         (BagUpdateTermType (ith3 Index ridx))) midx))
          (fun cod m m' =>
             forall (k : _ -> Comp A) k',
               (forall r_n' r_o' c,
@@ -1313,7 +1313,7 @@ Lemma Implement_Bound_Bag_Call' A
               -> refine (l <- m;
                          k l)
                         (k' (fst m') (snd m')))
-               (fun m m' =>
+         (fun m m' =>
             forall (k : _ -> Comp A) k',
               (forall r_n' r_o',
                   (AbsR (ValidImpls ridx)) r_o' r_n'
@@ -1321,8 +1321,8 @@ Lemma Implement_Bound_Bag_Call' A
               -> refine (l <- m;
                          k l)
                         (k' m'))
-               (CallBagMethod (BagIndexKeys := Index) ridx midx r_o)
-               (CallBagImplMethod DelegateReps DelegateImpls midx r_n).
+         (CallBagMethod (BagIndexKeys := Index) ridx midx r_o)
+         (CallBagImplMethod DelegateReps DelegateImpls midx r_n).
 Proof.
   simpl; intros.
   generalize (@refine_BagImplMethods qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx H midx).
@@ -1349,172 +1349,172 @@ Proof.
     eapply H1; eauto.
 Qed.
 
-    Ltac  Implement_Bound_Bag_Call :=
-    let r_o' := fresh "r_o'" in
-    let AbsR_r_o' := fresh "AbsR_r_o'" in
-    let refines_r_o' := fresh "refines_r_o'" in
-    match goal with
-    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls _ _
-      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg1 ?arg2) ?k) _ =>
-      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg1 arg2 k) as refines_r_o'
-    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls _ _
-      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg) ?k) _ =>
-      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg k) as refines_r_o'
-    | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                 ?ValidImpls _ _
-      |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o) ?k) _ =>
-      pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H k) as refines_r_o'
-    end;
-      simpl in refines_r_o';
-      fold_string_hyps_in refines_r_o'; fold_heading_hyps_in refines_r_o';
-      etransitivity;
-      [ eapply refines_r_o'; cbv beta; simpl in *; intros; eauto;
-        repeat match goal with
-                 |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
-                 eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
-                   eauto
-               end
-      | ].
+Ltac  Implement_Bound_Bag_Call :=
+  let r_o' := fresh "r_o'" in
+  let AbsR_r_o' := fresh "AbsR_r_o'" in
+  let refines_r_o' := fresh "refines_r_o'" in
+  match goal with
+  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                               ?ValidImpls _ _
+    |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg1 ?arg2) ?k) _ =>
+    pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg1 arg2 k) as refines_r_o'
+  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                               ?ValidImpls _ _
+    |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o ?arg) ?k) _ =>
+    pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H arg k) as refines_r_o'
+  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                               ?ValidImpls _ _
+    |- refine (Bind (CallBagMethod (BagIndexKeys := ?Index') ?ridx ?midx ?r_o) ?k) _ =>
+    pose proof (fun r_n H => @Implement_Bound_Bag_Call' _ qs_schema Index DelegateReps DelegateImpls ValidImpls r_o r_n ridx midx H k) as refines_r_o'
+  end;
+    simpl in refines_r_o';
+    fold_string_hyps_in refines_r_o'; fold_heading_hyps_in refines_r_o';
+    etransitivity;
+    [ eapply refines_r_o'; cbv beta; simpl in *; intros; eauto;
+      repeat match goal with
+               |- @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index _ _ _ _ _ =>
+               eapply (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index);
+                 eauto
+             end
+    | ].
 
-    Definition flatten_CompList'
-               (A B : Type)
-               (c : list (B -> Comp (B * list A)))
-               (b : B)
-      : Comp (B * list A) :=
-      fold_right (fun a b =>
-                    l <- b;
-                  l' <- a (fst l);
-                  ret (fst l', app (snd l') (snd l)))
-                 (ret (b, [ ]))  c.
-    
-    Definition Join_Comp_Lists_prod
-               {n}
-               {A B : Type}
-                 {f : A -> Type}
-                 {As : Vector.t A n}
-                 {a : A}
-                 (b : B)
-                 (l' : list (ilist2 (B := f) As))
-                 (c : B -> ilist2 (B := f) As -> Comp (B * list (f a)))
-      : Comp (B * list (ilist2 (B := f) (Vector.cons _ a _ As))) :=
-      flatten_CompList' (map (fun a' b' => l <- c b' a'; (ret (fst l, map (fun fa : f a => icons2 fa a') (snd l)))) l') b.
-        
-    Lemma Join_Comp_Lists_eq qs_schema Index
-      : forall idx n h f r_n l,
-        refine (Join_Comp_Lists (n := n) l
-                                (fun a0 : ilist2 h =>
-                                   u <- @CallBagMethod qs_schema Index idx BagFind
-                                     r_n
-                                     (f a0);
-                                 ret (snd u)))
-               (u <- Join_Comp_Lists_prod r_n l
-                  (fun r_n (a0 : ilist2 h) =>
-                     @CallBagFind qs_schema Index idx
-                                  r_n
-                                  (f a0));
-                ret (snd u)) .
-    Proof.
-      intros; induction l; unfold Join_Comp_Lists, Join_Comp_Lists_prod; simpl.
-      - intros v CompV.
-        computes_to_inv; subst.
-        computes_to_econstructor.
-      -
-        setoid_rewrite IHl.
-        repeat setoid_rewrite refineEquiv_bind_bind.
-        Local Opaque CallBagMethod.
-        simplify with monad laws.
-        intros v Comp_v; computes_to_inv; subst.
-        unfold CallBagFind in Comp_v'; computes_to_inv; subst; simpl.
-        repeat computes_to_econstructor; eauto.
-        assert (r_n = fst v0); subst; eauto.
-        generalize v0 Comp_v; clear.
-        induction l.
-        + simpl; intros; computes_to_inv; subst.
-          reflexivity.
-        + simpl; intros; computes_to_inv; subst.
-          apply IHl in Comp_v; simpl.
-          unfold CallBagFind in Comp_v'; computes_to_inv; subst.
-          simpl.
-          apply CallBagFind_fst in Comp_v'; eauto.
-    Qed.
+Definition flatten_CompList'
+           (A B : Type)
+           (c : list (B -> Comp (B * list A)))
+           (b : B)
+  : Comp (B * list A) :=
+  fold_right (fun a b =>
+                l <- b;
+              l' <- a (fst l);
+              ret (fst l', app (snd l') (snd l)))
+             (ret (b, [ ]))  c.
 
-    Lemma Join_Comp_Lists_eq' qs_schema Index
-      : forall idx n h f r_n l a,
-        computes_to (Join_Comp_Lists_prod (n := n) r_n l
-                                          (fun r_n (a0 : ilist2 h) =>
-                                             @CallBagFind qs_schema Index idx
-                                                          r_n
-                                                          (f a0))) a
-                 -> r_n = (fst a).
-      Proof.
-        induction l; unfold Join_Comp_Lists, Join_Comp_Lists_prod; simpl; intros.
-        - computes_to_inv; simpl; subst; reflexivity.
-        - simpl; intros; computes_to_inv; subst.
-          apply IHl in H; simpl.
-          unfold CallBagFind in H'; computes_to_inv; subst.
-          simpl; eapply CallBagFind_fst; eauto.
-      Qed.
-      Print flatten.
+Definition Join_Comp_Lists_prod
+           {n}
+           {A B : Type}
+           {f : A -> Type}
+           {As : Vector.t A n}
+           {a : A}
+           (b : B)
+           (l' : list (ilist2 (B := f) As))
+           (c : B -> ilist2 (B := f) As -> Comp (B * list (f a)))
+  : Comp (B * list (ilist2 (B := f) (Vector.cons _ a _ As))) :=
+  flatten_CompList' (map (fun a' b' => l <- c b' a'; (ret (fst l, map (fun fa : f a => icons2 fa a') (snd l)))) l') b.
 
-  Definition Join_Comp_Lists_prod'
+Lemma Join_Comp_Lists_eq qs_schema Index
+  : forall idx n h f r_n l,
+    refine (Join_Comp_Lists (n := n) l
+                            (fun a0 : ilist2 h =>
+                               u <- @CallBagMethod qs_schema Index idx BagFind
+                                 r_n
+                                 (f a0);
+                             ret (snd u)))
+           (u <- Join_Comp_Lists_prod r_n l
+              (fun r_n (a0 : ilist2 h) =>
+                 @CallBagFind qs_schema Index idx
+                              r_n
+                              (f a0));
+            ret (snd u)) .
+Proof.
+  intros; induction l; unfold Join_Comp_Lists, Join_Comp_Lists_prod; simpl.
+  - intros v CompV.
+    computes_to_inv; subst.
+    computes_to_econstructor.
+  -
+    setoid_rewrite IHl.
+    repeat setoid_rewrite refineEquiv_bind_bind.
+    Local Opaque CallBagMethod.
+    simplify with monad laws.
+    intros v Comp_v; computes_to_inv; subst.
+    unfold CallBagFind in Comp_v'; computes_to_inv; subst; simpl.
+    repeat computes_to_econstructor; eauto.
+    assert (r_n = fst v0); subst; eauto.
+    generalize v0 Comp_v; clear.
+    induction l.
+    + simpl; intros; computes_to_inv; subst.
+      reflexivity.
+    + simpl; intros; computes_to_inv; subst.
+      apply IHl in Comp_v; simpl.
+      unfold CallBagFind in Comp_v'; computes_to_inv; subst.
+      simpl.
+      apply CallBagFind_fst in Comp_v'; eauto.
+Qed.
+
+Lemma Join_Comp_Lists_eq' qs_schema Index
+  : forall idx n h f r_n l a,
+    computes_to (Join_Comp_Lists_prod (n := n) r_n l
+                                      (fun r_n (a0 : ilist2 h) =>
+                                         @CallBagFind qs_schema Index idx
+                                                      r_n
+                                                      (f a0))) a
+    -> r_n = (fst a).
+Proof.
+  induction l; unfold Join_Comp_Lists, Join_Comp_Lists_prod; simpl; intros.
+  - computes_to_inv; simpl; subst; reflexivity.
+  - simpl; intros; computes_to_inv; subst.
+    apply IHl in H; simpl.
+    unfold CallBagFind in H'; computes_to_inv; subst.
+    simpl; eapply CallBagFind_fst; eauto.
+Qed.
+
+
+Definition Join_Comp_Lists_prod'
            {n} {A B : Type} {f : A -> Type} {As : Vector.t A n} {a : A}
            (b : B) (l : list (ilist2 (B := f) As)) (c : B -> ilist2 (B := f) As -> B * list (f a)) : B * list (ilist2 (B := f) (Vector.cons _ a _ As)) :=
-    fold_right (fun a' b' => let l'' := c (fst b') a' in
-                             (fst l'', 
-                              app 
-                                (flatten (map
-                                            (fun l' => map (fun fa : f a => icons2 fa l') (snd l'')) l)) (snd b')
+  fold_right (fun a' b' => let l'' := c (fst b') a' in
+                           (fst l'',
+                            app
+                              (flatten (map
+                                          (fun l' => map (fun fa : f a => icons2 fa l') (snd l'')) l)) (snd b')
 
-               )) (b, [ ]) l.
-  
-  Lemma ReturnComputes_eq {A}
-    : forall (a a' : A),
-      a = a' -> computes_to (ret a) a'.
-  Proof.
-    intros; subst; computes_to_econstructor.
-  Qed.
+             )) (b, [ ]) l.
 
-  Lemma Join_Comp_Lists_Impl''
-        qs_schema
-        (n' := numRawQSschemaSchemas qs_schema ) (schemas := qschemaSchemas qs_schema)
-        n
-        (Index : ilist3 schemas)
-        (DelegateReps : Fin.t n' -> Type)
-        (DelegateImpls : forall idx : Fin.t n',
-            ComputationalADT.pcADT
-              (Build_IndexedQueryStructure_Impl_Sigs Index idx)
-              (DelegateReps idx))
-        ValidImpls
-        heading
-        (idx : Fin.t n')
-    : forall (r_n : IndexedQueryStructure qs_schema Index) l f' r_n',
-       Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
-                                             ValidImpls r_n r_n'       
-        -> exists r_n'', computes_to (@Join_Comp_Lists_prod n _ _ (@RawTuple) heading _ r_n l
-                                    (fun r_n b' =>
-                                       br <- CallBagMethod idx BagFind r_n
-                                          (f' b');
-                                     ret
-                                       (UpdateIndexedRelation qs_schema
-                                                              Index r_n
-                                                              idx (fst br), snd br)))
-                                    (r_n'', snd (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
-                                                           let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
-                                                                                        (f' b') in
-                                                           
-                                                           (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
-                                                                                                         idx (fst br), snd br))))
-                         /\        Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
-                                                                         ValidImpls r_n''
-                                                                         (fst (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
-                                                           let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
-                                                                                        (f' b') in
-                                                           
-                                                           (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
-                                                                                                         idx (fst br), snd br)))).
-  Proof.
+Lemma ReturnComputes_eq {A}
+  : forall (a a' : A),
+    a = a' -> computes_to (ret a) a'.
+Proof.
+  intros; subst; computes_to_econstructor.
+Qed.
+
+Lemma Join_Comp_Lists_Impl''
+      qs_schema
+      (n' := numRawQSschemaSchemas qs_schema ) (schemas := qschemaSchemas qs_schema)
+      n
+      (Index : ilist3 schemas)
+      (DelegateReps : Fin.t n' -> Type)
+      (DelegateImpls : forall idx : Fin.t n',
+          ComputationalADT.pcADT
+            (Build_IndexedQueryStructure_Impl_Sigs Index idx)
+            (DelegateReps idx))
+      ValidImpls
+      heading
+      (idx : Fin.t n')
+  : forall (r_n : IndexedQueryStructure qs_schema Index) l f' r_n',
+    Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
+                                          ValidImpls r_n r_n'
+    -> exists r_n'', computes_to (@Join_Comp_Lists_prod n _ _ (@RawTuple) heading _ r_n l
+                                                        (fun r_n b' =>
+                                                           br <- CallBagMethod idx BagFind r_n
+                                                              (f' b');
+                                                         ret
+                                                           (UpdateIndexedRelation qs_schema
+                                                                                  Index r_n
+                                                                                  idx (fst br), snd br)))
+                                 (r_n'', snd (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
+                                                                                              let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
+                                                                                                                           (f' b') in
+
+                                                                                              (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
+                                                                                                                                            idx (fst br), snd br))))
+                     /\        Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
+                                                                     ValidImpls r_n''
+                                                                     (fst (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
+                                                                                                                           let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
+                                                                                                                                                        (f' b') in
+
+                                                                                                                           (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
+                                                                                                                                                                         idx (fst br), snd br)))).
+Proof.
   induction l; unfold Join_Comp_Lists_prod, Join_Comp_Lists_prod'; simpl; intros.
   - eexists; simpl; intuition eauto.
   - destruct (IHl f' r_n' H) as [r_n'' [? ?]].
@@ -1528,43 +1528,43 @@ Qed.
     eapply ReturnComputes_eq; f_equal.
     progress f_equal.
     unfold Join_Comp_Lists_prod'.
-  Admitted.
-  
-  Lemma Join_Comp_Lists_Impl'
-        {B}
-        qs_schema
-        (n' := numRawQSschemaSchemas qs_schema ) (schemas := qschemaSchemas qs_schema)
-        n
-        (Index : ilist3 schemas)
-        (DelegateReps : Fin.t n' -> Type)
-        (DelegateImpls : forall idx : Fin.t n',
-            ComputationalADT.pcADT
-              (Build_IndexedQueryStructure_Impl_Sigs Index idx)
-              (DelegateReps idx))
-        ValidImpls
-        heading
-        (idx : Fin.t n')
-    : forall (r_n : IndexedQueryStructure qs_schema Index) l f' (f'' : _ -> B) r_n',
-       Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
-        ValidImpls r_n r_n'
-        -> refine (x <- @Join_Comp_Lists_prod n _ _ (@RawTuple) heading _ r_n l
-                                    (fun r_n b' =>
-                                       br <- CallBagMethod idx BagFind r_n
-                                          (f' b');
-                                     ret
-                                       (UpdateIndexedRelation qs_schema
-                                                              Index r_n
-                                                              idx (fst br), snd br));
-             r_n'0 <- {r_n0 | Build_IndexedQueryStructure_Impl_AbsR DelegateReps
-                                                                    DelegateImpls ValidImpls (fst x) r_n0};
-             ret (r_n'0, f'' (snd x)))
+Admitted.
 
-            (let res := (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
-                                                  let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
-                                                                               (f' b') in
+Lemma Join_Comp_Lists_Impl'
+      {B}
+      qs_schema
+      (n' := numRawQSschemaSchemas qs_schema ) (schemas := qschemaSchemas qs_schema)
+      n
+      (Index : ilist3 schemas)
+      (DelegateReps : Fin.t n' -> Type)
+      (DelegateImpls : forall idx : Fin.t n',
+          ComputationalADT.pcADT
+            (Build_IndexedQueryStructure_Impl_Sigs Index idx)
+            (DelegateReps idx))
+      ValidImpls
+      heading
+      (idx : Fin.t n')
+  : forall (r_n : IndexedQueryStructure qs_schema Index) l f' (f'' : _ -> B) r_n',
+    Build_IndexedQueryStructure_Impl_AbsR DelegateReps DelegateImpls
+                                          ValidImpls r_n r_n'
+    -> refine (x <- @Join_Comp_Lists_prod n _ _ (@RawTuple) heading _ r_n l
+                 (fun r_n b' =>
+                    br <- CallBagMethod idx BagFind r_n
+                       (f' b');
+                  ret
+                    (UpdateIndexedRelation qs_schema
+                                           Index r_n
+                                           idx (fst br), snd br));
+               r_n'0 <- {r_n0 | Build_IndexedQueryStructure_Impl_AbsR DelegateReps
+                                                                      DelegateImpls ValidImpls (fst x) r_n0};
+               ret (r_n'0, f'' (snd x)))
 
-                                       (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
-                                                              idx (fst br), snd br))) in ret (fst res, f'' (snd res) )).
+              (let res := (Join_Comp_Lists_prod' (As := heading) r_n' l (fun r_n b' =>
+                                                                           let br := @CallBagImplMethod _ _ Index DelegateReps DelegateImpls _ BagFind r_n
+                                                                                                        (f' b') in
+
+                                                                           (Update_Build_IndexedQueryStructure_Impl_cRep qs_schema Index DelegateReps r_n
+                                                                                                                         idx (fst br), snd br))) in ret (fst res, f'' (snd res) )).
 Proof.
   intros * AbsR v Comp_v.
   computes_to_inv; subst.
@@ -1573,7 +1573,7 @@ Proof.
 Qed.
 
 Ltac Implement_Bound_Join_Comp_Lists' :=
-match goal with
+  match goal with
   | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
                                                ?ValidImpls ?r_o ?r_n
     |- refine (Bind (@Join_Comp_Lists_prod _ _ ?B ?f ?As ?a ?b ?l
@@ -1582,8 +1582,8 @@ match goal with
                                                  (@?f' b');
                                             ret
                                               (UpdateIndexedRelation ?qs_schema
-                                                              ?Index r_n
-                                                              ?idx (fst br), snd br))
+                                                                     ?Index r_n
+                                                                     ?idx (fst br), snd br))
                     ) (fun x1 => r_n' <- _; ret (r_n', @?f'' x1 ))) _ =>
     match type of f'' with
       _ * ?B -> ?C =>
@@ -1595,24 +1595,24 @@ match goal with
                      eauto using (@Update_Build_IndexedQueryStructure_Impl_AbsR qs_schema Index DelegateReps DelegateImpls ValidImpls))
 
     end
-end.
+  end.
 
-    Ltac implement_bag_methods :=
+Ltac implement_bag_methods :=
   etransitivity;
   [ repeat (first [
-             simpl; simplify with monad laws
-           | remove_spurious_Dep_Type_BoundedIndex_nth_eq
-           | Implement_If_Then_Else
-           | Implement_If_Opt_Then_Else
-           | Implement_Bound_Bag_Call
-           | Implement_Bound_Join_Comp_Lists
-           | Implement_Bound_Join_Comp_Lists'
-           | Implement_AbsR_Relation
-           | match goal with
-               |- context[CallBagImplMethod _ _ _ _ _] =>
-               unfold CallBagImplMethod; cbv beta; simpl
-             end
-           | higher_order_reflexivity ]; simpl) |];
+                simpl; simplify with monad laws
+              | remove_spurious_Dep_Type_BoundedIndex_nth_eq
+              | Implement_If_Then_Else
+              | Implement_If_Opt_Then_Else
+              | Implement_Bound_Bag_Call
+              | Implement_Bound_Join_Comp_Lists
+              | Implement_Bound_Join_Comp_Lists'
+              | Implement_AbsR_Relation
+              | match goal with
+                  |- context[CallBagImplMethod _ _ _ _ _] =>
+                  unfold CallBagImplMethod; cbv beta; simpl
+                end
+              | higher_order_reflexivity ]; simpl) |];
   (* Clean up any leftover CallBagImplMethods *)
   repeat (cbv beta; simpl;
           match goal with
@@ -1670,10 +1670,10 @@ Ltac FullySharpenQueryStructure qs_schema Index :=
                                                                Iterate_Dep_Type_BoundedIndex
                                                                  (fun idx =>
                                                                     @refineConstructor _
-                                                                      (cRep' DelegateReps) (cAbsR' _ _ ValidImpls)
-                                                  (consDom (Vector.nth consSigs idx))
-                                                  (getConsDef consDefs idx)
-                                                  (ComputationalADT.LiftcConstructor _ _ (ith  (cCons DelegateReps DelegateImpls) idx))))
+                                                                                       (cRep' DelegateReps) (cAbsR' _ _ ValidImpls)
+                                                                                       (consDom (Vector.nth consSigs idx))
+                                                                                       (getConsDef consDefs idx)
+                                                                                       (ComputationalADT.LiftcConstructor _ _ (ith  (cCons DelegateReps DelegateImpls) idx))))
                                                            * (forall
                                                                  (DelegateReps : Fin.t (numRawQSschemaSchemas qs_schema) -> Type)
                                                                  (DelegateImpls : forall idx,

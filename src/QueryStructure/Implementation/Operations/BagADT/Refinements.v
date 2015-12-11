@@ -16,6 +16,7 @@ Require Import Coq.Bool.Bool
         Fiat.Common.List.ListFacts
         Fiat.QueryStructure.Specification.Operations.FlattenCompList
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
+        Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
         Fiat.QueryStructure.Implementation.Operations.General.EmptyRefinements
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Implementation.ListImplementation
@@ -1175,6 +1176,78 @@ Section BagsQueryStructureRefinements.
           apply in_map_iff in H2; destruct H2; destruct H2;
             apply l''_eqv in H3; unfold UnConstrFreshIdx in H1;
             unfold In in H2; apply H1 in H3;
+            unfold GetNRelSchema in *; omega.
+      - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
+  Qed.
+
+
+Lemma refine_BagADT_QSInsert' {ResultT}
+     : forall 
+         (r_o : UnConstrQueryStructure qs_schema)
+         (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+         (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT),
+       DelegateToBag_AbsR r_o r_n ->
+       forall (idx : Fin.t (numRawQSschemaSchemas qs_schema))
+              (t : RawTuple) (freshIdx : nat),
+
+         UnConstrFreshIdx (GetUnConstrRelation r_o idx) freshIdx ->
+         (forall r_o r_n,
+             DelegateToBag_AbsR r_o r_n ->
+             refine (k r_o) (k' r_n))
+         ->  refine
+               (r_o' <- UpdateUnconstrRelationC r_o idx {| elementIndex := freshIdx; indexedElement := t |};
+                k r_o')
+               (r_n' <- CallBagInsert idx r_n t;
+                k' r_n').
+Proof.
+  unfold refine; intros.
+  unfold CallBagInsert, CallBagMethod in *; simpl in *; computes_to_inv; subst.
+    computes_to_econstructor; simpl.
+    unfold UpdateUnconstrRelationC; computes_to_econstructor.
+    eapply H1; eauto.
+    unfold DelegateToBag_AbsR in *; intuition; intros.
+    intros; destruct (fin_eq_dec idx idx0); subst.
+    - rewrite get_update_unconstr_eq, get_update_indexed_eq.
+      destruct (H idx0) as
+          [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
+                [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+      exists (cons t l); repeat split.
+      + exists (S freshIdx); unfold EnsembleInsert, UnConstrFreshIdx; intros.
+        unfold UnConstrFreshIdx in H0; intuition; subst; simpl; eauto.
+      + unfold UnIndexedEnsembleListEquivalence;
+                 exists ({| indexedElement := t; elementIndex := freshIdx |} :: l')%list; intuition.
+        * simpl in *; rewrite l'_eq; trivial.
+        * simpl; destruct H3;
+          [left; symmetry; exact H3
+           | right; apply l_eqv; eauto].
+        * unfold EnsembleInsert; destruct H3;
+          [rewrite <- H3; left; trivial
+           | right; eapply l_eqv; eauto ].
+        * simpl; apply NoDup_cons; eauto.
+          unfold not; intros;
+          apply in_map_iff in H3; destruct H3; destruct H3;
+            apply l_eqv in H4. unfold UnConstrFreshIdx in H0;
+            unfold In in H3; apply H0 in H4;
+            unfold GetNRelSchema in *; omega.
+      + exists (S v2); unfold Add, UnConstrFreshIdx; intros.
+        inversion H3; subst.
+        unfold UnConstrFreshIdx in H2; intuition; subst; simpl; eauto.
+        inversion H4; subst.
+        simpl; eauto.
+      + unfold UnIndexedEnsembleListEquivalence;
+                 exists ({| indexedElement := t; elementIndex := v2 |} :: l'')%list; intuition.
+        * simpl in *; rewrite l''_eq; trivial.
+        * simpl; destruct H3;
+          [right; apply l''_eqv; eauto |
+           left; inversion H3; reflexivity ].
+        * unfold Add; destruct H3;
+          [ right; subst; econstructor
+          | left; eapply l''_eqv; eauto ].
+        * simpl; apply NoDup_cons; eauto.
+          unfold not; intros;
+          apply in_map_iff in H3; destruct H3; destruct H3;
+            apply l''_eqv in H4; unfold UnConstrFreshIdx in H2;
+            unfold In in H3; apply H2 in H4;
             unfold GetNRelSchema in *; omega.
       - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
