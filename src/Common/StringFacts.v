@@ -1,7 +1,7 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.StringOperations.
 
 Global Set Implicit Arguments.
@@ -200,7 +200,7 @@ Proof.
 Qed.
 
 Lemma list_of_string_substring n m str
-: StringOperations.list_of_string (String.substring n m str) = Operations.take m (Operations.drop n (StringOperations.list_of_string str)).
+: StringOperations.list_of_string (String.substring n m str) = List.take m (List.drop n (StringOperations.list_of_string str)).
 Proof.
   revert n m; induction str as [|?? IHstr];
   intros [|?] [|?];

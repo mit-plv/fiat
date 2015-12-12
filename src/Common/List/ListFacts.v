@@ -680,7 +680,7 @@ Section ListFacts.
   Qed.
 
   Lemma length_drop {A} (n : nat) (ls : list A)
-  : List.length (Operations.drop n ls) = List.length ls - n.
+  : List.length (List.drop n ls) = List.length ls - n.
   Proof.
     revert ls; induction n; simpl; intros.
     { auto with arith. }
@@ -690,7 +690,7 @@ Section ListFacts.
 
   Lemma drop_non_empty {A} (n : nat) (ls : list A)
         (H : ls <> nil)
-  : Operations.drop (List.length ls - S n) ls <> nil.
+  : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.
@@ -704,7 +704,7 @@ Section ListFacts.
 
   Lemma drop_S_non_empty {A} (n : nat) (ls : list A)
         (H : n < List.length ls)
-  : Operations.drop (List.length ls - S n) ls <> nil.
+  : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.

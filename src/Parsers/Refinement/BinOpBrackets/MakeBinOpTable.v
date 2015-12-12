@@ -185,7 +185,7 @@ pb = pb' '+' 0
   Qed.
 
   Lemma list_of_next_bin_ops'_drop {HSLP : StringLikeProperties Char} str n
-  : List.Operations.drop n (list_of_next_bin_ops' str) = list_of_next_bin_ops' (drop n str).
+  : List.List.drop n (list_of_next_bin_ops' str) = list_of_next_bin_ops' (drop n str).
   Proof.
     revert str.
     induction n as [|n]; simpl; intros.

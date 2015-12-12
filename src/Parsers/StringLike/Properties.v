@@ -5,7 +5,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.
-Require Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
@@ -573,13 +573,13 @@ Section String.
       take_drop_to_string_t0.
 
   Lemma drop_to_string s n
-  : Operations.drop n (to_string s) = to_string (drop n s).
+  : List.drop n (to_string s) = to_string (drop n s).
   Proof.
     take_drop_to_string_t s n.
   Qed.
 
   Lemma take_to_string s n
-  : Operations.take n (to_string s) = to_string (take n s).
+  : List.take n (to_string s) = to_string (take n s).
   Proof.
     destruct (le_lt_dec (length s) n) as [H|H].
     { rewrite take_long by assumption.
@@ -736,7 +736,7 @@ Section Iso.
   Qed.
 
   Lemma drop_of_string (n : nat) str
-  : drop n (of_string str) =s of_string (Operations.drop n str).
+  : drop n (of_string str) =s of_string (List.drop n str).
   Proof.
     apply bool_eq_from_get.
     intro n'; rewrite get_drop', !get_of_string, nth_error_drop.
@@ -744,7 +744,7 @@ Section Iso.
   Qed.
 
   Lemma take_of_string (n : nat) str
-  : take n (of_string str) =s of_string (Operations.take n str).
+  : take n (of_string str) =s of_string (List.take n str).
   Proof.
     revert str; induction n; intros; simpl.
     { apply bool_eq_empty; rewrite ?take_length, ?drop_length; trivial.
@@ -791,7 +791,7 @@ Section Iso.
     | ];
     (destruct str as [|ch' [|ch'' str]];
      simpl in *; try discriminate);
-    change (ch' :: nil) with (Operations.take 1 (ch'::nil)) in *;
+    change (ch' :: nil) with (List.take 1 (ch'::nil)) in *;
     repeat match goal with
              | [ H : _ |- _ ] => progress rewrite <- ?take_of_string, ?get_of_string in H
              | _ => progress rewrite <- ?take_of_string, ?get_of_string
@@ -806,7 +806,7 @@ Section Iso.
   Qed.
 
   Lemma substring_of_string {n m str}
-  : substring n m (of_string str) =s of_string (Operations.take m (Operations.drop n str)).
+  : substring n m (of_string str) =s of_string (List.take m (List.drop n str)).
   Proof.
     rewrite <- take_of_string, <- drop_of_string; reflexivity.
   Qed.
