@@ -3,6 +3,17 @@ Require Import Coq.Lists.List.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
+Print In.
+
+Section InT.
+  Context {A : Type} (a : A).
+
+  Fixpoint InT (ls : list A) : Set
+    := match ls return Set with
+         | nil => False
+         | b :: m => (b = a) + InT m
+       end%type.
+End InT.
 
 Fixpoint drop {A} (n : nat) (ls : list A) : list A
   := match n, ls with
