@@ -1159,4 +1159,20 @@ Section ListFacts.
   Proof.
     induction ls; simpl; trivial.
   Qed.
+
+  Lemma Forall_tails_id {A P} (ls : list A)
+        (H : Forall_tails P ls)
+  : P ls.
+  Proof.
+    destruct ls; simpl in *; try assumption.
+    destruct H; assumption.
+  Defined.
+
+  Lemma Forall_tails_app {A P} (ls ls' : list A)
+        (H : Forall_tails P (ls ++ ls'))
+  : Forall_tails P ls'.
+  Proof.
+    induction ls; simpl in *; trivial.
+    destruct H; auto.
+  Defined.
 End ListFacts.
