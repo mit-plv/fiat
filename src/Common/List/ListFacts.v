@@ -1154,4 +1154,9 @@ Section ListFacts.
     inversion H; subst; trivial; eauto with nocore.
   Qed.
 
+  Lemma fold_left_orb_true (ls : list bool)
+  : fold_left orb ls true = true.
+  Proof.
+    induction ls; simpl; trivial.
+  Qed.
 End ListFacts.
