@@ -847,6 +847,35 @@ Section ListFacts.
             | f_equal; auto ]. }
   Qed.
 
+  Lemma uniquize_In {A} (ls : list A) (beq : A -> A -> bool) x
+  : In x (uniquize beq ls) -> In x ls.
+  Proof.
+    intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H'.
+    { right; eauto with nocore. }
+    { destruct H.
+      { left; assumption. }
+      { right; eauto with nocore. } }
+  Qed.
+
+  Lemma uniquize_In_refl {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
+  : In x ls -> In x (uniquize beq ls).
+  Proof.
+    intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H';
+      destruct H; subst;
+      eauto with nocore.
+    { apply Equality.list_in_bl in H'; assumption. }
+    { left; reflexivity. }
+    { right; eauto with nocore. }
+  Qed.
+
+  Lemma uniquize_In_refl_iff {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
+  : In x ls <-> In x (uniquize beq ls).
+  Proof.
+    split; first [ apply uniquize_In | apply uniquize_In_refl ]; assumption.
+  Qed.
+
   Lemma fold_right_bool_rect {T} t b init ls' bv
   : fold_right (fun (x : T) (acc : bool -> bool)
                 => bool_rect
