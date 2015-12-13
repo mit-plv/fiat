@@ -1661,3 +1661,9 @@ Ltac flatten_all_ex :=
                     cbv beta in H;
                     clear H'
          end.
+
+Fixpoint apply_n {A} (n : nat) (f : A -> A) (a : A) : A :=
+  match n with
+    | 0 => a
+    | S n' => apply_n n' f (f a)
+  end.

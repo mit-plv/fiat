@@ -1175,4 +1175,19 @@ Section ListFacts.
     induction ls; simpl in *; trivial.
     destruct H; auto.
   Defined.
+
+  Lemma first_index_default_S_cons {A f k} {x} {xs : list A}
+  : first_index_default f (S k) (x::xs) = if (f x) then 0 else S (first_index_default f k xs).
+  Proof.
+    simpl.
+    rewrite first_index_default_first_index_error.
+    rewrite first_index_helper_first_index_error; simpl.
+    destruct (first_index_error f xs) eqn:H, (f x); trivial; simpl.
+    apply first_index_error_Some_correct in H.
+    repeat (destruct_head and; destruct_head ex).
+    match goal with
+      | [ H : ?x = Some _ |- context[?x] ] => rewrite H
+    end.
+    reflexivity.
+  Qed.
 End ListFacts.
