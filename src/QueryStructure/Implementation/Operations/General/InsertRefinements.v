@@ -855,7 +855,7 @@ Section InsertRefinements.
 
   Local Transparent QSInsert.
 
-  Definition UpdateUnconstrRelationC {qsSchema} (qs : UnConstrQueryStructure qsSchema) Ridx tup :=
+  Definition UpdateUnConstrRelationInsertC {qsSchema} (qs : UnConstrQueryStructure qsSchema) Ridx tup :=
     ret (UpdateUnConstrRelation qs Ridx
                                 (EnsembleInsert tup (GetUnConstrRelation qs Ridx))).
 
@@ -945,7 +945,7 @@ Section InsertRefinements.
              qsConstr' <- refined_qsConstr' idx;
              match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
              | true, true, true, true, true =>
-               qs'' <- UpdateUnconstrRelationC qs' Ridx {| elementIndex := idx;
+               qs'' <- UpdateUnConstrRelationInsertC qs' Ridx {| elementIndex := idx;
                                                            indexedElement := tup |};
              success qs''
              | _, _, _, _, _ => default
@@ -1000,7 +1000,7 @@ Section InsertRefinements.
                                         indexedElement := tup |} H9' H10' H8 H11 H12').
     simplify with monad laws.
     refine pick val true.
-    unfold UpdateUnconstrRelationC.
+    unfold UpdateUnConstrRelationInsertC.
     simplify with monad laws.
     setoid_rewrite refineEquiv_bind_unit.
     eapply H5.
@@ -1246,4 +1246,4 @@ Arguments GetUnConstrRelation : simpl never.
 Arguments UpdateUnConstrRelation : simpl never.
 Arguments replace_BoundedIndex : simpl never.
 
-Opaque UpdateUnconstrRelationC.
+Opaque UpdateUnConstrRelationInsertC.

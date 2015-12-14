@@ -354,35 +354,47 @@ Ltac implement_insert' CreateTerm EarlyIndex LastIndex
 
 
 Opaque QSInsert.
+Opaque QSDelete.
 Opaque UpdateUnconstrRelationC.
 
+
 Definition RosMasterSchema :=
-    Query Structure Schema
-    [
-      relation sNODES has
-               schema <sNODE_ID :: string, sNODE_API :: string>;
+  Query Structure Schema
+        [
+          relation sNODES has
+                   schema <sNODE_ID :: string, sNODE_API :: string>
+          where attributes [sNODE_API] depend on [sNODE_ID];
 
-      relation sTOPICS has
-                schema <sTOPIC :: string, sTOPIC_TYPE :: string>;
+            relation sTOPICS has
+                     schema <sTOPIC :: string, sTOPIC_TYPE :: string>
+          where attributes [sTOPIC_TYPE] depend on [sTOPIC];
 
-      relation sPARAMS has
-                schema <sKEY :: string, sVALUE :: any>;
+            relation sPARAMS has
+                     schema <sKEY :: string, sVALUE :: any>
+          where attributes [sVALUE] depend on [sKEY];
 
-      relation sSUBSCRIPTIONS has
-                schema <sNODE_ID :: string, sTOPIC :: string>;
+            relation sSUBSCRIPTIONS has
+                     schema <sNODE_ID :: string, sTOPIC :: string>
+          where (fun tup1 tup2 => tup1 <> tup2);
 
-      relation sPARAMSUBSCRIPTIONS has
-                schema <sNODE_ID :: string, sKEY :: string>;
+            relation sPARAMSUBSCRIPTIONS has
+                     schema <sNODE_ID :: string, sKEY :: string>
+          where (fun tup1 tup2 => tup1 <> tup2);
 
-      relation sPUBLICATIONS has
-                schema <sNODE_ID :: string, sTOPIC :: string>;
+            relation sPUBLICATIONS has
+                     schema <sNODE_ID :: string, sTOPIC :: string>
+          where (fun tup1 tup2 => tup1 <> tup2);
 
-      relation sSERVICES has
-                schema <sNODE_ID :: string, sSERVICE :: string, sSERVICE_API :: string>
-    ]
-    enforcing [ ].
-
-
+            relation sSERVICES has
+                     schema <sNODE_ID :: string, sSERVICE :: string, sSERVICE_API :: string>
+          where attributes [sNODE_ID; sSERVICE_API] depend on [sSERVICE]
+        ]
+        enforcing [ attribute sNODE_ID for sSUBSCRIPTIONS references sNODES;
+                    attribute sTOPIC for sSUBSCRIPTIONS references sTOPICS;
+                    attribute sNODE_ID for sPUBLICATIONS references sNODES;
+                    attribute sTOPIC for sPUBLICATIONS references sTOPICS;
+                    attribute sNODE_ID for sPARAMSUBSCRIPTIONS references sNODES;
+                    attribute sKEY for sPARAMSUBSCRIPTIONS references sPARAMS ].
 
 Definition RosMasterSpec : ADT _ :=
   Eval simpl in
@@ -436,6 +448,69 @@ Definition RosMasterSpec : ADT _ :=
            ret(r, (FAILURE, "That node exists but with a different api.", [])))
            Else
            ret(r, (FAILURE, "You are already publishing to that topic.", [])),
+
+    Def Method4 "registerService"
+      (r : rep) (caller_id : string) (service : string) (service_api : string) (caller_api : string)
+      : rep * (int * string * int)%type
+      :=
+
+        res1 <- Insert <sNODE_ID::caller_id, sSERVICE::service_api, sNODE_API::caller_api> into r ! sSERVICES;
+        If snd res1 Then
+          res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
+          If snd res2 Then
+            ret(fst res2, (SUCCESS, "Service registered.", 0))
+          Else
+            ret(r, (FAILURE, "That node exists but with a different api.", 0))
+        Else
+          ret(r, (FAILURE, "That service is already being provided", 0))
+    ,
+
+    Def Method3 "unregisterService"
+      (r : rep) (caller_id : string) (service : string) (service_api : string)
+      : rep * (int * string * int)%type
+      :=
+        res1 <- Delete serv from r ! sSERVICES
+                where (serv ! sNODE_ID = caller_id /\ serv ! sSERVICE = service /\ serv ! sSERVICE_API = service_api );
+
+        c1 <- ret (List.length (snd res1));
+
+        (* c1 should be either 0 or 1. How can it be guaranteed?*)
+
+        if beq_nat c1 0 then
+          ret (fst res1, (SUCCESS, "Service was not registered in the first place.", c1))
+        else
+          ret (fst res1, (SUCCESS, "Service unsubscribed.", c1))
+    ,
+
+    Def Method3 "unregisterSubscriber"
+      (r : rep) (caller_id : string) (topic : string) (caller_api : string)
+      : rep * (int * string * int)%type
+      :=
+        res1 <- Delete sub from r ! sSUBSCRIPTIONS
+                where (sub ! sNODE_ID = caller_id /\ sub ! sTOPIC = topic );
+
+        c1 <- ret (List.length (snd res1)); (* or, c1 <- Count (ret (snd res1)); *)
+
+        if beq_nat c1 0 then
+          ret (fst res1, (SUCCESS, "You weren't subscribed to begin with.", c1))
+        else
+          ret (fst res1, (SUCCESS, "You are now unsubscribed.", c1))
+    ,
+
+    Def Method3 "unregisterPublisher"
+      (r : rep) (caller_id : string) (topic : string) (caller_api : string)
+      : rep * (int * string * int)%type
+      :=
+        res1 <- Delete pub from r ! sPUBLICATIONS
+                where (pub ! sNODE_ID = caller_id /\ pub ! sTOPIC = topic );
+
+        c1 <- ret (List.length (snd res1));
+
+        if beq_nat c1 0 then
+          ret (fst res1, (SUCCESS, "You weren't publishing to begin with.", c1))
+        else
+          ret (fst res1, (SUCCESS, "You are now unregistered.", c1))
+    ,
 
     Def Method2 "lookupNode"
       (r : rep) (caller_id : string) (node_name : string)
@@ -575,6 +650,155 @@ Proof.
     etransitivity.
     eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
     + rewrite decides_True; finish honing.
+    + simpl; try funDepToQuery; try implement_DuplicateFree; simpl; finish honing.
+    + simpl. intros; try first [ setoid_rewrite FunctionalDependency_symmetry'
+                               | implement_DuplicateFree_symmetry
+                               | funDepToQuery
+                               | implement_DuplicateFree]; eauto.
+      finish honing.
+    + simpl. repeat foreignToQuery'. finish honing.
+    + simpl. intros; finish honing.
+    + simpl; intros; simplify with monad laws.
+      etransitivity.
+      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+      * simpl; rewrite decides_True; finish honing.
+      * simpl; try funDepToQuery; finish honing.
+      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+      finish honing.
+      * simpl. repeat foreignToQuery'. finish honing.
+      * simpl.
+        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+        finish honing.
+      * simpl; intros; simplify with monad laws.
+        etransitivity.
+        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+          - simpl; rewrite decides_True; finish honing.
+          - simpl; try funDepToQuery; finish honing.
+          - simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+            finish honing.
+          - simpl. repeat foreignToQuery'. finish honing.
+          - simpl.
+            intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+            finish honing.
+          - simpl; intros.
+            simplify with monad laws; cbv beta; simpl.
+            drop_constraints_from_query.
+          - intros; simpl; simplify with monad laws.
+            simpl; refine pick val _; try eassumption.
+            simplify with monad laws; finish honing.
+        }
+        simplify with monad laws.
+        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
+        finish honing.
+      * intros; simpl; simplify with monad laws.
+        simpl; refine pick val _; try eassumption.
+        simplify with monad laws; finish honing.
+      * intros; simpl; simplify with monad laws.
+        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
+        finish honing.
+    + intros; simpl; simplify with monad laws.
+      simpl; refine pick val _; try eassumption.
+      simplify with monad laws; finish honing.
+    + intros; simpl; simplify with monad laws.
+      finish honing.
+  - simplify with monad laws.
+    etransitivity.
+    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+    + rewrite decides_True; finish honing.
+    + simpl; try funDepToQuery; try implement_DuplicateFree; simpl; finish honing.
+    + simpl. intros; try first [ setoid_rewrite FunctionalDependency_symmetry'
+                               | implement_DuplicateFree_symmetry
+                               | funDepToQuery
+                               | implement_DuplicateFree]; eauto.
+      finish honing.
+    + simpl. repeat foreignToQuery'. finish honing.
+    + simpl. intros; finish honing.
+    + simpl; intros; simplify with monad laws.
+      etransitivity.
+      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+      * simpl; rewrite decides_True; finish honing.
+      * simpl; try funDepToQuery; finish honing.
+      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+      finish honing.
+      * simpl. repeat foreignToQuery'. finish honing.
+      * simpl.
+        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+        finish honing.
+      * simpl; intros; simplify with monad laws.
+        etransitivity.
+        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+          - simpl; rewrite decides_True; finish honing.
+          - simpl; try funDepToQuery; finish honing.
+          - simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+            finish honing.
+          - simpl. repeat foreignToQuery'. finish honing.
+          - simpl.
+            intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+            finish honing.
+          - simpl; intros.
+            simplify with monad laws; cbv beta; simpl.
+            drop_constraints_from_query.
+          - intros; simpl; simplify with monad laws.
+            simpl; refine pick val _; try eassumption.
+            simplify with monad laws; finish honing.
+        }
+        simplify with monad laws.
+        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
+        finish honing.
+      * intros; simpl; simplify with monad laws.
+        simpl; refine pick val _; try eassumption.
+        simplify with monad laws; finish honing.
+      * intros; simpl; simplify with monad laws.
+        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
+        finish honing.
+    + intros; simpl; simplify with monad laws.
+      simpl; refine pick val _; try eassumption.
+      simplify with monad laws; finish honing.
+    + intros; simpl; simplify with monad laws.
+      finish honing.
+  - simplify with monad laws.
+    etransitivity.
+    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+    + rewrite decides_True; finish honing.
+    + simpl; try funDepToQuery; finish honing.
+    + simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+      finish honing.
+    + simpl. repeat foreignToQuery'. finish honing.
+    + simpl.
+      intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+      finish honing.
+    + simpl; intros; simplify with monad laws.
+      etransitivity.
+      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
+      * rewrite decides_True; finish honing.
+      * simpl; try funDepToQuery; finish honing.
+      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
+      finish honing.
+      * simpl. repeat foreignToQuery'. finish honing.
+      * simpl.
+        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
+        finish honing.
+      * simpl; intros.
+        simplify with monad laws; cbv beta; simpl.
+        simpl; refine pick val _; try eassumption.
+        simplify with monad laws; finish honing.
+      * simpl; intros.
+        simplify with monad laws; cbv beta; simpl.
+        simpl; refine pick val _; try eassumption.
+        simplify with monad laws; finish honing.
+      * simplify with monad laws.
+        setoid_rewrite refine_if_Then_Else_Duplicate.
+        finish honing.
+    + simpl; intros.
+      simplify with monad laws; cbv beta; simpl.
+      simpl; refine pick val _; try eassumption.
+      simplify with monad laws; finish honing.
+    + simplify with monad laws.
+      repeat setoid_rewrite refine_if_Then_Else_Duplicate.
+      finish honing.
+  - simplify with monad laws.
+
+
     + simpl. refine pick val true; simpl; eauto; finish honing.
     + simpl. intros; refine pick val true; simpl; eauto; finish honing.
     + simpl. repeat foreignToQuery'. finish honing.
