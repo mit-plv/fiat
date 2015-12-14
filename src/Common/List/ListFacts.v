@@ -1,6 +1,6 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        Fiat.Common Fiat.Common.List.Operations.
+        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality.
 
 Unset Implicit Arguments.
 
@@ -680,7 +680,7 @@ Section ListFacts.
   Qed.
 
   Lemma length_drop {A} (n : nat) (ls : list A)
-  : List.length (Operations.drop n ls) = List.length ls - n.
+  : List.length (List.drop n ls) = List.length ls - n.
   Proof.
     revert ls; induction n; simpl; intros.
     { auto with arith. }
@@ -690,7 +690,7 @@ Section ListFacts.
 
   Lemma drop_non_empty {A} (n : nat) (ls : list A)
         (H : ls <> nil)
-  : Operations.drop (List.length ls - S n) ls <> nil.
+  : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.
@@ -704,7 +704,7 @@ Section ListFacts.
 
   Lemma drop_S_non_empty {A} (n : nat) (ls : list A)
         (H : n < List.length ls)
-  : Operations.drop (List.length ls - S n) ls <> nil.
+  : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.
@@ -845,6 +845,35 @@ Section ListFacts.
       split; intro;
       first [ congruence
             | f_equal; auto ]. }
+  Qed.
+
+  Lemma uniquize_In {A} (ls : list A) (beq : A -> A -> bool) x
+  : In x (uniquize beq ls) -> In x ls.
+  Proof.
+    intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H'.
+    { right; eauto with nocore. }
+    { destruct H.
+      { left; assumption. }
+      { right; eauto with nocore. } }
+  Qed.
+
+  Lemma uniquize_In_refl {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
+  : In x ls -> In x (uniquize beq ls).
+  Proof.
+    intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H';
+      destruct H; subst;
+      eauto with nocore.
+    { apply Equality.list_in_bl in H'; assumption. }
+    { left; reflexivity. }
+    { right; eauto with nocore. }
+  Qed.
+
+  Lemma uniquize_In_refl_iff {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
+  : In x ls <-> In x (uniquize beq ls).
+  Proof.
+    split; first [ apply uniquize_In | apply uniquize_In_refl ]; assumption.
   Qed.
 
   Lemma fold_right_bool_rect {T} t b init ls' bv
@@ -1154,4 +1183,242 @@ Section ListFacts.
     inversion H; subst; trivial; eauto with nocore.
   Qed.
 
+  Lemma fold_left_orb_true (ls : list bool)
+  : fold_left orb ls true = true.
+  Proof.
+    induction ls; simpl; trivial.
+  Qed.
+
+  Lemma Forall_tails_id {A P} (ls : list A)
+        (H : Forall_tails P ls)
+  : P ls.
+  Proof.
+    destruct ls; simpl in *; try assumption.
+    destruct H; assumption.
+  Defined.
+
+  Lemma Forall_tails_app {A P} (ls ls' : list A)
+        (H : Forall_tails P (ls ++ ls'))
+  : Forall_tails P ls'.
+  Proof.
+    induction ls; simpl in *; trivial.
+    destruct H; auto.
+  Defined.
+
+  Lemma first_index_default_S_cons {A f k} {x} {xs : list A}
+  : first_index_default f (S k) (x::xs) = if (f x) then 0 else S (first_index_default f k xs).
+  Proof.
+    simpl.
+    rewrite first_index_default_first_index_error.
+    rewrite first_index_helper_first_index_error; simpl.
+    destruct (first_index_error f xs) eqn:H, (f x); trivial; simpl.
+    apply first_index_error_Some_correct in H.
+    repeat (destruct_head and; destruct_head ex).
+    match goal with
+      | [ H : ?x = Some _ |- context[?x] ] => rewrite H
+    end.
+    reflexivity.
+  Qed.
+
+  Definition Forall_ForallT_step
+             (Forall_ForallT
+              : forall A P ls,
+                forall ls' ls'', ls = ls' -> ls = ls''
+                                 -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')))
+             A P ls
+  : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')).
+  Proof.
+    intros ls' ls'' H' H''; split; [ intro H | intros [H] ];
+    (destruct ls as [|x xs];
+     [
+     | specialize (@Forall_ForallT A P xs (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H''));
+       pose proof (proj1' Forall_ForallT);
+       pose proof (proj2' Forall_ForallT) ]);
+    clear Forall_ForallT;
+    simpl in *;
+    repeat match goal with
+             | [ H : nil = ?ls |- inhabited (ForallT _ ?ls) ] => clear -H; solve [ repeat first [ constructor | subst ] ]
+           end;
+    try solve [ repeat constructor ]; simpl in *.
+    { destruct H;
+      try (exfalso; clear -H'; abstract congruence);
+      simpl in *;
+      specialize_by assumption;
+      destruct_head inhabited;
+      constructor.
+      destruct ls'';
+        try (exfalso; clear -H''; abstract congruence).
+      simpl in *.
+      repeat first [ assumption | constructor ].
+      apply (f_equal (hd x)) in H''.
+      apply (f_equal (hd x)) in H'.
+      simpl in *.
+      clear -H H'' H'.
+      pose proof (eq_trans (eq_sym H') H'') as H'''; clear H' H''.
+      subst; assumption. }
+    { clear -H'; subst; constructor. }
+    { destruct ls';
+      try (exfalso; clear -H'; abstract congruence);
+      simpl in *.
+      destruct ls'';
+        try (exfalso; clear -H''; abstract congruence);
+        simpl in *.
+      destruct_head prod.
+      specialize_by ltac:(repeat first [ assumption | constructor ]).
+      repeat first [ assumption | constructor ].
+      apply (f_equal (hd x)) in H''.
+      apply (f_equal (hd x)) in H'.
+      simpl in *.
+      clear -p H'' H'.
+      pose proof (eq_trans (eq_sym H') H'') as H'''; clear H' H''.
+      subst; assumption. }
+  Defined.
+
+  Global Arguments Forall_ForallT_step {_ _ _} _ _ _ _ _ : simpl never.
+
+  Fixpoint Forall_ForallT' A P ls {struct ls}
+  : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls''))
+    := @Forall_ForallT_step (@Forall_ForallT') A P ls.
+  Global Arguments Forall_ForallT' {_ _ _} _ _ _ _.
+  Definition Forall_ForallT A P ls
+  : @Forall A P ls <-> inhabited (@ForallT A P ls)
+    := @Forall_ForallT' A P ls ls ls eq_refl eq_refl.
+  Global Arguments Forall_ForallT {_ _ _}.
+
+  Lemma step_Forall_ForallT' {A P ls ls' ls'' H' H''}
+  : @Forall_ForallT' A P ls ls' ls'' H' H'' = @Forall_ForallT_step (@Forall_ForallT') A P ls ls' ls'' H' H''.
+  Proof.
+    destruct ls; reflexivity.
+  Defined.
+
+  Fixpoint Forall_ForallT_Forall_eq {A P ls} (x : @Forall A P ls) {struct x}
+  : proj2' Forall_ForallT (proj1' Forall_ForallT x) = x.
+  Proof.
+    unfold Forall_ForallT in *.
+    destruct x as [|? xs p ps]; simpl in *;
+    [ | specialize (@Forall_ForallT_Forall_eq A P xs ps) ].
+    { reflexivity. }
+    { edestruct (@Forall_ForallT');
+      unfold eq_ind_r.
+      simpl in *.
+      match goal with
+        | [ |- context[match ?f ?x with _ => _ end] ]
+          => destruct (f x) eqn:H'
+      end.
+      rewrite Forall_ForallT_Forall_eq; reflexivity. }
+  Qed.
+
+  Fixpoint ForallT_Forall_ForallT_eq {A} {P : A -> Prop} ls (x : inhabited (@ForallT A P ls)) {struct ls}
+  : proj1' Forall_ForallT (proj2' (@Forall_ForallT A P ls) x) = x.
+  Proof.
+    unfold Forall_ForallT in *.
+    destruct ls as [|v vs];
+      [ clear ForallT_Forall_ForallT_eq | specialize (@ForallT_Forall_ForallT_eq A P vs) ];
+      simpl in *;
+      destruct_head inhabited;
+      destruct_head prod;
+      destruct_head True.
+    { reflexivity. }
+    { match goal with
+        | [ x : _ |- _ ] => specialize (ForallT_Forall_ForallT_eq (inhabits x))
+      end.
+      unfold eq_ind_r in *; simpl in *.
+      edestruct (@Forall_ForallT'); simpl in *.
+      repeat (rewrite ForallT_Forall_ForallT_eq; simpl).
+      reflexivity. }
+  Qed.
+
+  Fixpoint ForallT_code A P ls {struct ls} : @ForallT A P ls -> @ForallT A P ls -> Prop
+    := match ls return @ForallT A P ls -> @ForallT A P ls -> Prop with
+         | nil => fun _ _ => True
+         | x::xs => fun H H' => fst H = fst H' /\ @ForallT_code A P xs (snd H) (snd H')
+       end.
+  Global Arguments ForallT_code {A P ls} _ _.
+  Fixpoint ForallT_encode A P ls {struct ls}
+  : forall (x y : @ForallT A P ls), x = y -> ForallT_code x y.
+  Proof.
+    destruct ls as [|v vs]; simpl; intros x y p.
+    { constructor. }
+    { specialize (@ForallT_encode A P vs (snd x) (snd y) (f_equal snd p)).
+      apply (f_equal fst) in p.
+      split; assumption. }
+  Defined.
+  Global Arguments ForallT_encode {A P ls} {_ _} _.
+  Fixpoint ForallT_decode A P ls {struct ls}
+  : forall (x y : @ForallT A P ls), ForallT_code x y -> x = y.
+  Proof.
+    destruct ls as [|v vs]; simpl; intros x y p.
+    { destruct x, y; reflexivity. }
+    { apply injective_projections'.
+      { apply p. }
+      { apply ForallT_decode, p. } }
+  Defined.
+  Global Arguments ForallT_decode {A P ls} {_ _} _.
+  Fixpoint ForallT_endecode A P ls {struct ls}
+  : forall (x y : @ForallT A P ls) p, @ForallT_encode A P ls x y (ForallT_decode p) = p.
+  Proof.
+    destruct ls as [|v vs]; simpl; intros x y p.
+    { destruct p; reflexivity. }
+    { destruct p as [p0 p1], x, y; simpl in *.
+      destruct p0; simpl in *.
+      apply f_equal2;
+        [ rewrite f_equal_fst_injective_projections'
+        | rewrite f_equal_snd_injective_projections' ];
+        eauto. }
+  Qed.
+  Fixpoint ForallT_deencode A P ls {struct ls}
+  : forall (x y : @ForallT A P ls) p, @ForallT_decode A P ls x y (ForallT_encode p) = p.
+  Proof.
+    destruct ls as [|v vs]; simpl; intros x y p.
+    { destruct p, x; reflexivity. }
+    { rewrite ForallT_deencode.
+      destruct p, x; reflexivity. }
+  Qed.
+
+  Lemma Forall_proof_irrelevance {A P ls} (x y : @Forall A P ls)
+        (pi : forall a (x y : P a), x = y)
+  : x = y.
+  Proof.
+    rewrite <- (Forall_ForallT_Forall_eq x), <- (Forall_ForallT_Forall_eq y).
+    apply f_equal.
+    induction ls as [|v vs IHvs].
+    { reflexivity. }
+    { unfold Forall_ForallT in *.
+      revert IHvs.
+      set (ls := v::vs).
+      set (ls' := v::vs).
+      set (ls'' := v::vs).
+      pose (eq_refl : v::vs = ls) as H.
+      pose (eq_refl : ls = ls') as H'.
+      pose (eq_refl : ls = ls'') as H''.
+      change (v::vs) with ls' in x.
+      change (v::vs) with ls'' in y.
+      change
+        ((forall (x0 : Forall P (tl ls')) (y0 : Forall P (tl ls'')),
+            proj1' (Forall_ForallT' (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H'')) x0
+            = proj1' (Forall_ForallT' (tl ls'') (tl ls'') (f_equal (@tl _) H'') (f_equal (@tl _) H'')) y0)
+         -> proj1' (Forall_ForallT' ls' ls'' H' H'') x
+            = proj1' (Forall_ForallT' ls'' ls'' H'' H'') y).
+      clearbody H H' H'' ls ls' ls''.
+      intro IHvs.
+      rewrite !step_Forall_ForallT'.
+      simpl.
+      destruct ls, x, y; try congruence.
+      simpl in *.
+      erewrite IHvs; clear IHvs.
+      match goal with
+        | [ |- match ?e with _ => _ end = match ?e' with _ => _ end ]
+          => unify e e'; destruct e
+      end.
+      unfold eq_ind_r; simpl.
+      repeat (f_equal; []).
+      repeat match goal with
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress subst
+               | _ => solve [ eauto with nocore ]
+               | [ |- context[f_equal ?f ?H] ]
+                 => generalize (f_equal f H); clear H
+             end. }
+  Qed.
 End ListFacts.

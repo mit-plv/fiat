@@ -30,11 +30,11 @@ Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
 Declare Reduction parser_red8 := simpl List.length.
 Declare Reduction parser_red9 := simpl List.fold_right.
-Declare Reduction parser_red10 := simpl @Operations.first_index_default.
-Declare Reduction parser_red11 := simpl @Operations.up_to.
+Declare Reduction parser_red10 := simpl @List.first_index_default.
+Declare Reduction parser_red11 := simpl @List.up_to.
 Declare Reduction parser_red12 := simpl @Compare_dec.leb.
 Declare Reduction parser_red13 := simpl List.map.
-Declare Reduction parser_red14 := cbv beta iota zeta delta [Operations.nth' Fix2 Fix2_F].
+Declare Reduction parser_red14 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
 
 Ltac parser_red term :=
   let term := match term with

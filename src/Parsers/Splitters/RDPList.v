@@ -135,7 +135,7 @@ Section recursive_descent_parser_list.
   Qed.
 
   Lemma rdp_list_find_to_nonterminal idx
-  : Operations.first_index_error
+  : List.first_index_error
       (string_beq (rdp_list_to_nonterminal idx))
       (Valid_nonterminals G)
     = if list_beq string_beq (Valid_nonterminals G) (uniquize string_beq (Valid_nonterminals G))
@@ -144,7 +144,7 @@ Section recursive_descent_parser_list.
              (Some idx)
              (None)
              (Compare_dec.leb (S idx) (List.length (Valid_nonterminals G)))
-      else Operations.first_index_error
+      else List.first_index_error
              (string_beq (rdp_list_to_nonterminal idx))
              (Valid_nonterminals G).
   Proof.

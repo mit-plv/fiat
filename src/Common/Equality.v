@@ -507,3 +507,10 @@ Proof.
   induction a; trivial.
   simpl; rewrite IHa, ascii_dec_refl; reflexivity.
 Qed.
+
+Lemma f_equal_fst_injective_projections' {A B x y} (p : fst x = fst y :> A) (q : snd x = snd y :> B)
+: f_equal fst (injective_projections' p q) = p.
+Proof. destruct x, y; simpl in *; destruct p, q; reflexivity. Defined.
+Lemma f_equal_snd_injective_projections' {A B x y} (p : fst x = fst y :> A) (q : snd x = snd y :> B)
+: f_equal snd (injective_projections' p q) = q.
+Proof. destruct x, y; simpl in *; destruct p, q; reflexivity. Defined.

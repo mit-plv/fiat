@@ -1661,3 +1661,23 @@ Ltac flatten_all_ex :=
                     cbv beta in H;
                     clear H'
          end.
+
+Fixpoint apply_n {A} (n : nat) (f : A -> A) (a : A) : A :=
+  match n with
+    | 0 => a
+    | S n' => apply_n n' f (f a)
+  end.
+
+(** Transparent versions of [proj1], [proj2] *)
+Definition proj1' : forall {A B}, A /\ B -> A.
+Proof. intros ?? [? ?]; assumption. Defined.
+Definition proj2' : forall {A B}, A /\ B -> B.
+Proof. intros ?? [? ?]; assumption. Defined.
+
+Definition injective_projections'
+: forall {A B} {p1 p2 : A * B},
+    fst p1 = fst p2 -> snd p1 = snd p2 -> p1 = p2.
+Proof.
+  intros; destruct p1, p2; simpl in *; subst; reflexivity.
+Defined.
+Global Arguments injective_projections' {_ _ _ _} !_ !_.

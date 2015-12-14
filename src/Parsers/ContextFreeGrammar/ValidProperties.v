@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
-Require Import Fiat.Common.
+Require Import Fiat.Common Fiat.Common.UIP Fiat.Common.List.ListFacts.
 
 Set Implicit Arguments.
 
@@ -72,6 +72,33 @@ Section cfg.
     := @Forall_parse_of_item_valid' (@Forall_parse_of_valid) str it Hit p.
 End cfg.
 
+Section uip.
+  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
+          {predata : parser_computational_predataT}.
+
+  Lemma item_valid_proof_irrelevance {it : item Char} (x y : item_valid it)
+  : x = y.
+  Proof.
+    destruct it; simpl in *;
+    try destruct x, y; trivial.
+    apply dec_eq_uip; decide equality.
+  Qed.
+
+  Lemma production_valid_proof_irrelevance
+        {p : production Char} (x y : production_valid p)
+  : x = y.
+  Proof.
+    apply Forall_proof_irrelevance, @item_valid_proof_irrelevance.
+  Qed.
+
+  Lemma productions_valid_proof_irrelevance
+        {p : productions Char} (x y : productions_valid p)
+  : x = y.
+  Proof.
+    apply Forall_proof_irrelevance, @production_valid_proof_irrelevance.
+  Qed.
+End uip.
+
 Section app.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
           {predata : parser_computational_predataT}.
@@ -103,6 +130,35 @@ Section app.
   Proof.
     induction pat; simpl in *; trivial.
     eapply IHpat, production_valid_cons; eassumption.
+  Qed.
+
+  Lemma hd_productions_valid
+        (p : production Char)
+        (ps : productions Char)
+        (H : productions_valid (p :: ps))
+  : production_valid p.
+  Proof.
+    unfold productions_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
+  Lemma productions_valid_cons
+        (p : production Char)
+        (ps : productions Char)
+        (H : productions_valid (p :: ps))
+  : productions_valid ps.
+  Proof.
+    unfold productions_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
+  Lemma productions_valid_app
+        (pat pat' : productions Char)
+        (H : productions_valid (pat ++ pat'))
+  : productions_valid pat'.
+  Proof.
+    induction pat; simpl in *; trivial.
+    eapply IHpat, productions_valid_cons; eassumption.
   Qed.
 
   (** Convenience lemmas *)

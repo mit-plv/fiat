@@ -590,15 +590,15 @@ Section recursive_descent_parser.
     assert (Hvalid' : S (of_nonterminal nt) <= List.length (Valid_nonterminals G)).
     { simpl.
       unfold rdp_list_of_nonterminal; simpl.
-      destruct (Operations.first_index_error
+      destruct (List.first_index_error
                   (string_beq nt)
-                  (Operations.uniquize string_beq (map fst ls)))
+                  (List.uniquize string_beq (map fst ls)))
                eqn:H;
         [ apply first_index_error_Some_correct in H
         | rewrite first_index_error_None_correct in H ].
       {
       {
-      SearchAbout Operations.first_index_error.
+      SearchAbout List.first_index_error.
 
 unfold rdp_list_initial_nonterminals_data
 
