@@ -105,6 +105,35 @@ Section app.
     eapply IHpat, production_valid_cons; eassumption.
   Qed.
 
+  Lemma hd_productions_valid
+        (p : production Char)
+        (ps : productions Char)
+        (H : productions_valid (p :: ps))
+  : production_valid p.
+  Proof.
+    unfold productions_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
+  Lemma productions_valid_cons
+        (p : production Char)
+        (ps : productions Char)
+        (H : productions_valid (p :: ps))
+  : productions_valid ps.
+  Proof.
+    unfold productions_valid in *.
+    inversion H; subst; assumption.
+  Qed.
+
+  Lemma productions_valid_app
+        (pat pat' : productions Char)
+        (H : productions_valid (pat ++ pat'))
+  : productions_valid pat'.
+  Proof.
+    induction pat; simpl in *; trivial.
+    eapply IHpat, productions_valid_cons; eassumption.
+  Qed.
+
   (** Convenience lemmas *)
   Section convenience.
     Context {rdata : @parser_removal_dataT' _ G _}
