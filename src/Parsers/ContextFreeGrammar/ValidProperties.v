@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
-Require Import Fiat.Common.
+Require Import Fiat.Common Fiat.Common.UIP Fiat.Common.List.ListFacts.
 
 Set Implicit Arguments.
 
@@ -71,6 +71,33 @@ Section cfg.
   : Forall_parse_of_item (fun _ nt' => P nt') p
     := @Forall_parse_of_item_valid' (@Forall_parse_of_valid) str it Hit p.
 End cfg.
+
+Section uip.
+  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
+          {predata : parser_computational_predataT}.
+
+  Lemma item_valid_proof_irrelevance {it : item Char} (x y : item_valid it)
+  : x = y.
+  Proof.
+    destruct it; simpl in *;
+    try destruct x, y; trivial.
+    apply dec_eq_uip; decide equality.
+  Qed.
+
+  Lemma production_valid_proof_irrelevance
+        {p : production Char} (x y : production_valid p)
+  : x = y.
+  Proof.
+    apply Forall_proof_irrelevance, @item_valid_proof_irrelevance.
+  Qed.
+
+  Lemma productions_valid_proof_irrelevance
+        {p : productions Char} (x y : productions_valid p)
+  : x = y.
+  Proof.
+    apply Forall_proof_irrelevance, @production_valid_proof_irrelevance.
+  Qed.
+End uip.
 
 Section app.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
