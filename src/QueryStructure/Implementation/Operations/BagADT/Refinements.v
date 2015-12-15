@@ -1182,7 +1182,7 @@ Section BagsQueryStructureRefinements.
 
 
 Lemma refine_BagADT_QSInsert' {ResultT}
-     : forall 
+     : forall
          (r_o : UnConstrQueryStructure qs_schema)
          (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
          (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT),
@@ -1195,7 +1195,7 @@ Lemma refine_BagADT_QSInsert' {ResultT}
              DelegateToBag_AbsR r_o r_n ->
              refine (k r_o) (k' r_n))
          ->  refine
-               (r_o' <- UpdateUnconstrRelationC r_o idx {| elementIndex := freshIdx; indexedElement := t |};
+               (r_o' <- UpdateUnConstrRelationInsertC r_o idx {| elementIndex := freshIdx; indexedElement := t |};
                 k r_o')
                (r_n' <- CallBagInsert idx r_n t;
                 k' r_n').
@@ -1203,7 +1203,7 @@ Proof.
   unfold refine; intros.
   unfold CallBagInsert, CallBagMethod in *; simpl in *; computes_to_inv; subst.
     computes_to_econstructor; simpl.
-    unfold UpdateUnconstrRelationC; computes_to_econstructor.
+    unfold UpdateUnConstrRelationInsertC; computes_to_econstructor.
     eapply H1; eauto.
     unfold DelegateToBag_AbsR in *; intuition; intros.
     intros; destruct (fin_eq_dec idx idx0); subst.
