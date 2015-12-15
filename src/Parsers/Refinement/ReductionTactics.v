@@ -76,7 +76,7 @@ Ltac make_parser_gen splitter do_simpl_list_map :=
   let T := match type of b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in
-  let b' := parser_red b do_simpl_list_map in
+  let b' := parser_red_gen b do_simpl_list_map in
   exact_no_check b'.
 
 Ltac make_parser splitter := make_parser_gen splitter true.
