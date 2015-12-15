@@ -33,10 +33,10 @@ Declare Reduction parser_red9 := simpl List.fold_right.
 Declare Reduction parser_red10 := simpl @List.first_index_default.
 Declare Reduction parser_red11 := simpl @List.up_to.
 Declare Reduction parser_red12 := simpl @Compare_dec.leb.
-Declare Reduction parser_red13 := simpl List.map.
+(*Declare Reduction parser_red13 := simpl List.map.*)
 Declare Reduction parser_red14 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
 
-Ltac parser_red term :=
+Ltac parser_red_gen term do_simpl_list_map :=
   let term := match term with
                 | context[ParserFromParserADT.parser _ ?splitter]
                   => let splitter' := head splitter in
@@ -56,14 +56,17 @@ Ltac parser_red term :=
   let term := (eval parser_red10 in term) in
   let term := (eval parser_red11 in term) in
   let term := (eval parser_red12 in term) in
-  let term := (eval parser_red13 in term) in
+  let term := (match do_simpl_list_map with
+                 | true => eval simpl List.map in term
+                 | _ => term
+               end) in
   let term := (eval parser_red14 in term) in
   constr:term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.
 Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
 
-Ltac make_parser splitter :=
+Ltac make_parser_gen splitter do_simpl_list_map :=
   idtac;
   let str := match goal with
                | [ str : String.string |- _ ] => constr:str
@@ -73,8 +76,11 @@ Ltac make_parser splitter :=
   let T := match type of b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in
-  let b' := parser_red b in
+  let b' := parser_red_gen b do_simpl_list_map in
   exact_no_check b'.
+
+Ltac make_parser splitter := make_parser_gen splitter true.
+Ltac make_parser_without_simpl_list_map splitter := make_parser_gen splitter false.
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
