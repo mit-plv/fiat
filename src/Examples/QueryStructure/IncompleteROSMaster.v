@@ -54,6 +54,28 @@ Lemma refine_DuplicateFree
 Proof.
 Admitted.
 
+Lemma DeleteDuplicateFreeOK {qsSchema}
+  : forall (qs : UnConstrQueryStructure qsSchema)
+           (Ridx :Fin.t _)
+           DeletedTuples,
+      refine {b | (forall tup tup',
+                      elementIndex tup <> elementIndex tup'
+                      -> GetUnConstrRelation qs Ridx tup
+                      -> GetUnConstrRelation qs Ridx tup'
+                      -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
+                  -> decides b (Mutate.MutationPreservesTupleConstraints
+                                  (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
+                                  DuplicateFree
+             )}
+             (ret true).
+Proof.
+  unfold Mutate.MutationPreservesTupleConstraints, DuplicateFree;
+  intros * v Comp_v;  computes_to_inv; subst.
+  computes_to_constructor; simpl.
+  intros.
+  unfold EnsembleDelete in *; destruct H1; destruct H2; eauto.
+Qed.
+
 Lemma refine_DuplicateFree_symmetry
       {qsSchema}
   : forall (qs : UnConstrQueryStructure qsSchema) Ridx tup' b',
@@ -108,6 +130,24 @@ Instance prefixDecideable' {B} (f : B -> _) str'
   intros.
   unfold stringPrefix. destruct (prefix str' (f a)); simpl; split; eauto.
 Defined.
+
+Ltac RemoveDeleteDuplicateFreeCheck :=
+    match goal with
+        |- context[{b | (forall tup tup',
+                           elementIndex tup <> elementIndex tup'
+                           -> GetUnConstrRelation ?qs ?Ridx tup
+                           -> GetUnConstrRelation ?qs ?Ridx tup'
+                           -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
+                        -> decides b (Mutate.MutationPreservesTupleConstraints
+                                        (EnsembleDelete (GetUnConstrRelation ?qs ?Ridx) ?DeletedTuples)
+                                        DuplicateFree
+                                     )}] =>
+        let refinePK := fresh in
+        pose proof (DeleteDuplicateFreeOK qs Ridx DeletedTuples) as refinePK;
+          simpl in refinePK; pose_string_hyps_in refinePK; pose_heading_hyps_in refinePK;
+          setoid_rewrite refinePK; clear refinePK;
+          try setoid_rewrite refineEquiv_bind_unit
+    end.
 
 Ltac PickIndexes BuildEarlyIndex BuildLastIndex :=
 GenerateIndexesForAll
@@ -333,30 +373,10 @@ Ltac Finish_Master BuildEarlyBag BuildLastBag :=
       GetAttributeRaw; simpl;
       higher_order_reflexivityT ].
 
-Ltac implement_insert' CreateTerm EarlyIndex LastIndex
-     makeClause_dep EarlyIndex_dep LastIndex_dep :=
-        repeat first
-         [simplify with monad laws; simpl
-         | setoid_rewrite refine_If_Then_Else_Bind
-         | match goal with
-             H : DelegateToBag_AbsR ?r_o ?r_n
-             |- context[Pick (fun idx => UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx)] =>
-             let freshIdx := fresh in
-             destruct (exists_UnConstrFreshIdx H Ridx) as [? freshIdx];
-               setoid_rewrite (refine_Pick_UnConstrFreshIdx H Ridx freshIdx)
-           end
-         | etransitivity; [eapply refine_BagADT_QSInsert'; [ eassumption
-                                                           | eauto
-                                                           | intros ] | set_evars ]
-         | implement_Query CreateTerm EarlyIndex LastIndex
-                           makeClause_dep EarlyIndex_dep LastIndex_dep
-         |  setoid_rewrite refine_Pick_DelegateToBag_AbsR; [ | solve [ eauto ] .. ] ].
-
-
 Opaque QSInsert.
 Opaque QSDelete.
-Opaque UpdateUnconstrRelationC.
-
+Opaque UpdateUnConstrRelationInsertC.
+Opaque UpdateUnConstrRelationDeleteC.
 
 Definition RosMasterSchema :=
   Query Structure Schema
@@ -375,15 +395,15 @@ Definition RosMasterSchema :=
 
             relation sSUBSCRIPTIONS has
                      schema <sNODE_ID :: string, sTOPIC :: string>
-          where (fun tup1 tup2 => tup1 <> tup2);
+          where DuplicateFree;
 
             relation sPARAMSUBSCRIPTIONS has
                      schema <sNODE_ID :: string, sKEY :: string>
-          where (fun tup1 tup2 => tup1 <> tup2);
+          where DuplicateFree;
 
             relation sPUBLICATIONS has
                      schema <sNODE_ID :: string, sTOPIC :: string>
-          where (fun tup1 tup2 => tup1 <> tup2);
+          where DuplicateFree;
 
             relation sSERVICES has
                      schema <sNODE_ID :: string, sSERVICE :: string, sSERVICE_API :: string>
@@ -396,58 +416,84 @@ Definition RosMasterSchema :=
                     attribute sNODE_ID for sPARAMSUBSCRIPTIONS references sNODES;
                     attribute sKEY for sPARAMSUBSCRIPTIONS references sPARAMS ].
 
-Definition RosMasterSpec : ADT _ :=
+Definition RosMasterSig : ADTSig :=
+  ADTsignature {
+      Constructor "Init" : rep,
+
+      (* register/unregister methods *)
+
+      Method "registerService" : rep * string * string * string * string
+                                    -> rep * (int * string * int),
+
+      Method "unregisterService" : rep * string * string * string
+                                    -> rep * (int * string * int),
+
+      Method "registerSubscriber" : rep * string * string * string * string
+                                    -> rep * (int * string * list string),
+
+      Method "unregisterSubscriber" : rep * string * string * string
+                                      -> rep * (int * string * int),
+
+      Method "registerPublisher" : rep * string * string * string * string
+                                    -> rep * (int * string * list string),
+
+      Method "unregisterPublisher" : rep * string * string * string
+                                      -> rep * (int * string * int),
+
+      (* name service and system state *)
+
+      Method "lookupNode" : rep * string * string
+                          -> rep * (int * string * string),
+
+      Method "getPublishedTopics" : rep * string * string
+                          -> rep * (int * string * list (string * string)),
+
+      Method "getTopicTypes" : rep * string
+                               -> rep * (int * string * list (string * string)),
+
+      Method "getSystemState" : rep * string
+                          -> rep * (int * string * list ( list (string * list string) ) ),
+
+      Method "getUri" : rep * string
+                          -> rep * (int * string * string),
+
+      Method "lookupService" : rep * string * string
+                          -> rep * (int * string * string),
+
+      (* parameter server API *)
+
+      Method "deleteParam" : rep * string * string
+                             -> rep * (int * string * int),
+
+      Method "setParam" : rep * string * string * any
+                          -> rep * (int * string * int),
+
+      Method "getParam" : rep * string * string
+                          -> rep * (int * string * any),
+
+      Method "searchParam" : rep * string * string
+                             -> rep * (int * string * string),
+
+      Method "subscribeParam" : rep * string * string * string
+                              -> rep * (int * string * any),
+
+      Method "unsubscribeParam" : rep * string * string * string
+                                  -> rep * (int * string * int),
+
+      Method "hasParam" : rep * string * string
+                          -> rep * (int * string * bool),
+
+      Method "getParamNames" : rep * string
+                               -> rep * (int * string * list string)
+  }.
+
+Definition RosMasterSpec : ADT RosMasterSig :=
   Eval simpl in
     QueryADTRep RosMasterSchema {
 
     Def Constructor0 "Init" : rep := empty
 
     ,
-
-    Def Method4 "registerSubscriber"
-      (r : rep) (caller_id : string) (topic : string) (topic_type : string) (caller_api : string)
-      : rep * (int * string * list string)%type
-      :=
-        res1 <- Insert <sNODE_ID :: caller_id, sTOPIC :: topic> into r ! sSUBSCRIPTIONS;
-
-        if (snd res1) then
-          (res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
-           if (snd res2) then
-             (res3 <- Insert <sTOPIC :: topic, sTOPIC_TYPE :: topic_type> into (fst res2) ! sTOPICS;
-              if snd res3 then
-                (publishers <- For (pub in r ! sPUBLICATIONS) (node in r ! sNODES)
-                            Where ( pub ! sTOPIC = topic  /\  pub ! sNODE_ID = node ! sNODE_ID )
-                            Return ( node ! sNODE_API );
-                 ret(fst res3, (SUCCESS, "You are now subscribed.  Publishers are:", publishers)))
-              else
-                ret(r, (FAILURE, "That topic exists but with a different type.", [])))
-           else
-             ret(r, (FAILURE, "That node exists but with a different api.", [])))
-        else
-          ret(r, (FAILURE, "You are already subscribed to that topic.", []))
-    ,
-
-    Def Method4 "registerPublisher"
-      (r : rep) (caller_id : string) (topic : string) (topic_type : string) (caller_api : string)
-      : rep * (int * string * list string)%type
-      :=
-        res1 <- Insert <sNODE_ID :: caller_id, sTOPIC :: topic> into r ! sPUBLICATIONS;
-        If snd res1 Then
-           (res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
-            If snd res2 Then
-               (res3 <- Insert <sTOPIC :: topic, sTOPIC_TYPE :: topic_type> into (fst res2) ! sTOPICS;
-                If snd res3 Then
-                   subscribers <- For (sub in r ! sSUBSCRIPTIONS) (node in r ! sNODES)
-                   Where ( sub ! sTOPIC = topic  /\  sub ! sNODE_ID = node ! sNODE_ID )
-                   Return ( node ! sNODE_API );
-
-                   ret(fst res3, (SUCCESS, "You are now publishing.  Subscribers are:", subscribers))
-               Else
-               ret(r, (FAILURE, "That topic exists but with a different type.", [])))
-           Else
-           ret(r, (FAILURE, "That node exists but with a different api.", [])))
-           Else
-           ret(r, (FAILURE, "You are already publishing to that topic.", [])),
 
     Def Method4 "registerService"
       (r : rep) (caller_id : string) (service : string) (service_api : string) (caller_api : string)
@@ -482,6 +528,30 @@ Definition RosMasterSpec : ADT _ :=
           ret (fst res1, (SUCCESS, "Service unsubscribed.", c1))
     ,
 
+
+    Def Method4 "registerSubscriber"
+      (r : rep) (caller_id : string) (topic : string) (topic_type : string) (caller_api : string)
+      : rep * (int * string * list string)%type
+      :=
+        res1 <- Insert <sNODE_ID :: caller_id, sTOPIC :: topic> into r ! sSUBSCRIPTIONS;
+
+        if (snd res1) then
+          (res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
+           if (snd res2) then
+             (res3 <- Insert <sTOPIC :: topic, sTOPIC_TYPE :: topic_type> into (fst res2) ! sTOPICS;
+              if snd res3 then
+                (publishers <- For (pub in r ! sPUBLICATIONS) (node in r ! sNODES)
+                            Where ( pub ! sTOPIC = topic  /\  pub ! sNODE_ID = node ! sNODE_ID )
+                            Return ( node ! sNODE_API );
+                 ret(fst res3, (SUCCESS, "You are now subscribed.  Publishers are:", publishers)))
+              else
+                ret(r, (FAILURE, "That topic exists but with a different type.", [])))
+           else
+             ret(r, (FAILURE, "That node exists but with a different api.", [])))
+        else
+          ret(r, (FAILURE, "You are already subscribed to that topic.", []))
+    ,
+
     Def Method3 "unregisterSubscriber"
       (r : rep) (caller_id : string) (topic : string) (caller_api : string)
       : rep * (int * string * int)%type
@@ -496,6 +566,28 @@ Definition RosMasterSpec : ADT _ :=
         else
           ret (fst res1, (SUCCESS, "You are now unsubscribed.", c1))
     ,
+
+    Def Method4 "registerPublisher"
+      (r : rep) (caller_id : string) (topic : string) (topic_type : string) (caller_api : string)
+      : rep * (int * string * list string)%type
+      :=
+        res1 <- Insert <sNODE_ID :: caller_id, sTOPIC :: topic> into r ! sPUBLICATIONS;
+        If snd res1 Then
+           (res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
+            If snd res2 Then
+               (res3 <- Insert <sTOPIC :: topic, sTOPIC_TYPE :: topic_type> into (fst res2) ! sTOPICS;
+                If snd res3 Then
+                   subscribers <- For (sub in r ! sSUBSCRIPTIONS) (node in r ! sNODES)
+                   Where ( sub ! sTOPIC = topic  /\  sub ! sNODE_ID = node ! sNODE_ID )
+                   Return ( node ! sNODE_API );
+
+                   ret(fst res3, (SUCCESS, "You are now publishing.  Subscribers are:", subscribers))
+               Else
+               ret(r, (FAILURE, "That topic exists but with a different type.", [])))
+           Else
+           ret(r, (FAILURE, "That node exists but with a different api.", [])))
+           Else
+           ret(r, (FAILURE, "You are already publishing to that topic.", [])),
 
     Def Method3 "unregisterPublisher"
       (r : rep) (caller_id : string) (topic : string) (caller_api : string)
@@ -598,7 +690,102 @@ Definition RosMasterSpec : ADT _ :=
         if beq_nat c 0 then (* could use 'match ... with' instead of if *)
           ret (r, (FAILURE, "No one is provind that service.", id))
         else
-          ret (r, (SUCCESS, "Service provider is :", id))
+          ret (r, (SUCCESS, "Service provider is :", id)),
+
+            Def Method2 "deleteParam"
+      (r : rep) (caller_id : string) (key : string)
+      : rep * (int * string * int)%type
+      :=
+        res <- Delete param from r ! sPARAMS
+                where (param ! sKEY = key);
+        ret (fst res, (SUCCESS, "Parameter deleted", 0))
+    ,
+
+    Def Method3 "setParam"
+      (r : rep) (caller_id : string) (key : string) (value : any)
+      : rep * (int * string * int)%type
+      :=
+        res1 <- Delete param from r ! sPARAMS
+                where (param ! sKEY = key);
+
+        res2 <- Insert <sKEY :: key, sVALUE :: value> into (fst res1) ! sPARAMS;
+
+        ret (fst res2, (SUCCESS, "Parameter set", 0))
+    ,
+
+    Def Method2 "getParam" (* not supported for key being a namespace *)
+      (r : rep) (caller_id : string) (key : string)
+      : rep * (int * string * any)%type
+      := values <- For (param in r ! sPARAMS)
+                    Where ( param ! sKEY = key )
+                    Return ( param ! sVALUE  );
+        Ifopt hd_error values as v
+        Then
+        ret (r, (SUCCESS, "Parameter value is :", v))
+        Else
+        ret (r, (FAILURE, "Parameter not set yet", ""))
+    ,
+
+    Def Method2 "searchParam" (* unimplemented *)
+      (r : rep) (caller_id : string) (key : string)
+      : rep * (int * string * string)%type
+      := ret (r, (ERROR, "This API is not implemented.", ""))
+    ,
+
+    Def Method3 "subscribeParam"
+      (r : rep) (caller_id : string) (caller_api : string) (key : string)
+      : rep * (int * string * any)%type
+      :=
+
+        res1 <- Insert <sNODE_ID :: caller_id, sKEY :: key> into r ! sPARAMSUBSCRIPTIONS;
+        If snd res1 Then
+           res2 <- Insert <sNODE_ID :: caller_id, sNODE_API :: caller_api> into (fst res1) ! sNODES;
+        If snd res2 Then
+            values <- For (param in r ! sPARAMS)
+                    Where ( param ! sKEY = key )
+                    Return ( param ! sVALUE  );
+        Ifopt hd_error values as v Then
+           ret (fst res2, (SUCCESS, "Parameter is not set yet.", v))
+           Else ret (fst res2, (SUCCESS, "Parameter value is :", ""))
+          Else
+            ret(r, (FAILURE, "That node exists but with a different api.", ""))
+        Else
+          ret(r, (FAILURE, "You are already subscribing to that parameter.", ""))
+    ,
+
+    Def Method3 "unsubscribeParam"
+      (r : rep) (caller_id : string) (caller_api : string) (key : string)
+      : rep * (int * string * int)%type
+      :=
+        res1 <- Delete paramsub from r ! sPARAMSUBSCRIPTIONS
+                where (paramsub ! sNODE_ID = caller_id /\ paramsub ! sKEY = key);
+
+        c1 <- ret (List.length (snd res1));
+
+        if beq_nat c1 0 then
+          ret (fst res1, (SUCCESS, "You weren't subscribed to begin with.", c1))
+        else
+          ret (fst res1, (SUCCESS, "You are now unsubscribed.", c1))
+    ,
+
+    Def Method2 "hasParam"
+      (r : rep) (caller_id : string) (key : string)
+      : rep * (int * string * bool)%type
+      := values <- For (param in r ! sPARAMS)
+                    Where ( param ! sKEY = key )
+                    Return ();
+        Ifopt hd_error values as _ Then
+          ret (r, (SUCCESS, "Parameter is set.", true))
+          Else ret (r, (FAILURE, "Parameter is not set.", false))
+                             ,
+
+    Def Method1 "getParamNames"
+      (r : rep) (caller_id : string)
+      : rep * (int * string * list string)%type
+      :=
+        keys <- For (param in r ! sPARAMS)
+                  Return (param ! sKEY);
+        ret (r, (SUCCESS, "Parameter names are :", keys))
 
 }%methDefParsing.
 
@@ -607,9 +794,315 @@ Definition RosMasterSpec : ADT _ :=
 Set Ltac Debug.
 *)
 
+Ltac implement_QSInsertSpec :=
+  match goal with
+    H : DropQSConstraints_AbsR ?r_o ?r_n
+    |- refine (u <- QSInsert ?r_o ?Ridx ?tup;
+               @?k u) _ =>
+    eapply (@QSInsertSpec_refine_subgoals _ _ r_o r_n Ridx tup); try exact H
+  end; try set_refine_evar;
+  [  try rewrite decides_True; finish honing
+   | simpl; repeat funDepToQuery; repeat implement_DuplicateFree; finish honing
+   | simpl; intros; try set_refine_evar;
+     repeat first [
+              setoid_rewrite FunctionalDependency_symmetry';
+              [ | solve [ eauto ] ]
+            | implement_DuplicateFree_symmetry; [ | solve [ eauto ] ]
+            | funDepToQuery
+            | implement_DuplicateFree]; eauto;
+     finish honing
+   | simpl; repeat foreignToQuery'; finish honing
+   |  simpl; intros; try set_refine_evar;
+      repeat (remove_trivial_fundep_insertion_constraints; simpl);
+      finish honing
+   | simpl; intros; try set_refine_evar;
+     try simplify with monad laws
+   | simpl; intros; try set_refine_evar;
+     try simplify with monad laws].
+
+Ltac implement_QSDeleteSpec :=
+  match goal with
+    H : DropQSConstraints_AbsR ?r_o ?r_n
+    |- refine (u <- QSDelete ?r_o ?Ridx ?DeletedTuples;
+               @?k u) _ =>
+    eapply (@QSDeleteSpec_refine_subgoals _ _ r_o r_n Ridx _ _ _ _ DeletedTuples k); try exact H
+  end; try set_refine_evar;
+  [ simpl; repeat RemoveDeleteDuplicateFreeCheck;
+    repeat RemoveDeleteFunctionalDependencyCheck
+  | simpl; repeat ImplementDeleteForeignKeysCheck
+  | simpl; intros; set_refine_evar
+  | simpl; intros; set_refine_evar
+  ].
+
+Ltac master_rewrite_drill :=
+  subst_refine_evar;
+  first
+    [ try set_refine_evar; implement_QSInsertSpec
+    | try set_refine_evar; implement_QSDeleteSpec
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
+
+Ltac implement_DropQSConstraints_AbsR :=
+  simpl; intros;
+  try simplify with monad laws; cbv beta; simpl;
+  simpl; refine pick val _; [ | eassumption].
+
+Ltac drop_constraints_from_query' :=
+  match goal with
+    [ H : DropQSConstraints_AbsR ?r_o ?r_n
+      |- context [Query_In ?r_o _ _] ] =>
+    setoid_rewrite (DropQSConstraintsQuery_In r_o);
+      rewrite !H
+  end.
+
+Ltac drop_constraints :=
+  first
+    [ simplify with monad laws
+    | drop_constraints_from_query'
+    | setoid_rewrite refine_If_Then_Else_Bind; simpl
+    | setoid_rewrite refine_If_Opt_Then_Else_Bind; simpl
+    | setoid_rewrite refine_if_Then_Else_Duplicate
+    | implement_DropQSConstraints_AbsR].
+
+Ltac progress_subgoal' top tac cont :=
+  idtac "doAnyBreak"; top; (tac; try (cont ()) || (try (cont ()))).
+
+(* ltac is call-by-value, so wrap the cont in a function *)
+(* local definition in a_u_s *)
+Ltac cont_fn' top tac'' x :=
+  apply_under_subgoal' top tac'' with
+
+  (* mutually recursive with progress_subgoal *)
+  (* calls top on each subgoal generated, which may generate more subgoals *)
+  (* fails when top fails in progress_subgoals *)
+  apply_under_subgoal' top tac'' :=
+    progress_subgoal' top tac'' ltac:(cont_fn' top tac'').
+
+Ltac doAny' srewrite_fn drills_fn finish_fn :=
+  let repeat_srewrite_fn := repeat srewrite_fn in
+  try repeat_srewrite_fn;
+    try apply_under_subgoal' drills_fn ltac:(repeat_srewrite_fn);
+    finish_fn.
+
+Ltac implement_Pick_DelegateToBag_AbsR :=
+  match goal with
+    [ H : DelegateToBag_AbsR ?r_o ?r_n
+      |- context [ {r_n' |  DelegateToBag_AbsR ?r_o r_n'} ] ] =>
+    setoid_rewrite (@refine_Pick_DelegateToBag_AbsR _ _ _ _ H)
+  end.
+
+Ltac Focused_refine_TopMost_Query :=
+  match goal with
+  | |- refine (Bind (Count (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Count ResultT body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (MaxN (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_MaxN body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (SumN (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_SumN body') at 1;
+                       clear refine_body' ] )
+  | |- refine (Bind (MaxZ (@Query_For ?ResultT ?body)) ?k) _ =>
+
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_MaxZ body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (SumZ (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_SumZ body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (Max (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Max body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (Sum (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Sum body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (@Query_For ?ResultT ?body) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       clear refine_body' ] )
+
+  end.
+
+Ltac implement_TopMost_Query' k k_dep:=
+  Focused_refine_TopMost_Query;
+  [ (* Step 1: Implement [In / Where Combinations] by enumerating and joining. *)
+    implement_In_opt;
+    (* Step 2: Move filters to the outermost [Join_Comp_Lists] to which *)
+    (* they can be applied. *)
+    repeat progress distribute_filters_to_joins;
+    (* Step 3: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+    implement_filters_with_find k k_dep
+  |
+  ]; pose_string_hyps; pose_heading_hyps.
+
+Ltac implement_TopMost_Query CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  implement_TopMost_Query'
+    ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
+           ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep).
+
+Lemma refine_BagADT_QSDelete' {ResultT} {qs_schema} {BagIndexKeys}
+  : forall
+    (r_o : UnConstrQueryStructure qs_schema)
+    (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+    idx
+    DeletedTuples
+    (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT)
+    (DT_Dec : DecideableEnsemble DeletedTuples)
+    search_pattern,
+    ExtensionalEq (@dec _ _ DT_Dec)
+                  (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
+    -> DelegateToBag_AbsR r_o r_n
+    -> (forall r_o r_n,
+           DelegateToBag_AbsR r_o r_n ->
+           refine (k r_o) (k' r_n))
+    ->  refine
+          (r_o' <- UpdateUnConstrRelationDeleteC r_o idx DeletedTuples;
+           k r_o')
+          (r_n' <- CallBagDelete idx r_n search_pattern;
+           k' (fst r_n')).
+Proof.
+  unfold refine; intros.
+Admitted.
+
+Ltac implement_UpdateUnConstrRelationDeleteC find_search_term :=
+  match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (UpdateUnConstrRelationDeleteC ?r_o ?idx ?DeletedTuples) ?k) _ ] =>
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                    [ find_search_term qs_schema idx filter_dec search_term
+                                    | let H' := fresh in
+                                      pose proof (fun k' => @refine_BagADT_QSDelete' _ _ _ r_o r_n idx DeletedTuples k k' _ search_term eqv H) as H';
+                                        fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                        eapply H'; clear H' eqv; set_evars])
+  end.
+
+Lemma hd_error_map:
+  forall (A B: Type) (l : list A) (f : A -> B) ,
+    hd_error (map f l) =
+    match hd_error l with
+    | Some a => Some (f a)
+    | None => None
+    end.
+Proof.
+  induction l; simpl; reflexivity.
+Qed.
+
+Ltac implement_insert' CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  first
+    [simplify with monad laws; simpl
+    | simpl; rewrite !map_app
+    | simpl; rewrite !map_length
+    | simpl; rewrite !app_nil_r
+    | simpl; rewrite !map_map
+    | simpl; rewrite !filter_map
+    | simpl; rewrite !hd_error_map
+    | simpl; setoid_rewrite refine_if_Then_Else_Duplicate
+    | simpl; setoid_rewrite refine_If_Then_Else_Bind
+    | simpl; setoid_rewrite refine_If_Opt_Then_Else_Bind
+    | match goal with
+        H : DelegateToBag_AbsR ?r_o ?r_n
+        |- context[Pick (fun idx => UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx)] =>
+        let freshIdx := fresh in
+        destruct (exists_UnConstrFreshIdx H Ridx) as [? freshIdx];
+          setoid_rewrite (refine_Pick_UnConstrFreshIdx H Ridx freshIdx)
+      end
+    | implement_QSDeletedTuples ltac:(find_simple_search_term
+                                        CreateTerm EarlyIndex LastIndex)
+    | implement_TopMost_Query CreateTerm EarlyIndex LastIndex
+                              makeClause_dep EarlyIndex_dep LastIndex_dep
+    | implement_Pick_DelegateToBag_AbsR ].
+
+Ltac master_implement_drill CreateTerm EarlyIndex LastIndex :=
+  subst_refine_evar;
+  first
+    [ eapply refine_BagADT_QSInsert'; try eassumption; intros
+    | implement_UpdateUnConstrRelationDeleteC ltac:(find_simple_search_term
+                                                      CreateTerm EarlyIndex LastIndex);
+      intros
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
+
 Theorem SharpenedRosMaster :
   FullySharpened RosMasterSpec.
 Proof.
+  Unset Ltac Debug.
   unfold RosMasterSpec.
   pose_string_hyps.
   start sharpening ADT.
@@ -646,296 +1139,191 @@ Proof.
                               cbv delta [GetAttribute] beta; simpl | ]
                           ])]
     end | ].
-  - simplify with monad laws.
-    etransitivity.
-    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-    + rewrite decides_True; finish honing.
-    + simpl; try funDepToQuery; try implement_DuplicateFree; simpl; finish honing.
-    + simpl. intros; try first [ setoid_rewrite FunctionalDependency_symmetry'
-                               | implement_DuplicateFree_symmetry
-                               | funDepToQuery
-                               | implement_DuplicateFree]; eauto.
-      finish honing.
-    + simpl. repeat foreignToQuery'. finish honing.
-    + simpl. intros; finish honing.
-    + simpl; intros; simplify with monad laws.
-      etransitivity.
-      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-      * simpl; rewrite decides_True; finish honing.
-      * simpl; try funDepToQuery; finish honing.
-      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-      finish honing.
-      * simpl. repeat foreignToQuery'. finish honing.
-      * simpl.
-        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-        finish honing.
-      * simpl; intros; simplify with monad laws.
-        etransitivity.
-        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-          - simpl; rewrite decides_True; finish honing.
-          - simpl; try funDepToQuery; finish honing.
-          - simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-            finish honing.
-          - simpl. repeat foreignToQuery'. finish honing.
-          - simpl.
-            intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-            finish honing.
-          - simpl; intros.
-            simplify with monad laws; cbv beta; simpl.
-            drop_constraints_from_query.
-          - intros; simpl; simplify with monad laws.
-            simpl; refine pick val _; try eassumption.
-            simplify with monad laws; finish honing.
-        }
-        simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-      * intros; simpl; simplify with monad laws.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * intros; simpl; simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-    + intros; simpl; simplify with monad laws.
-      simpl; refine pick val _; try eassumption.
-      simplify with monad laws; finish honing.
-    + intros; simpl; simplify with monad laws.
-      finish honing.
-  - simplify with monad laws.
-    etransitivity.
-    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-    + rewrite decides_True; finish honing.
-    + simpl; try funDepToQuery; try implement_DuplicateFree; simpl; finish honing.
-    + simpl. intros; try first [ setoid_rewrite FunctionalDependency_symmetry'
-                               | implement_DuplicateFree_symmetry
-                               | funDepToQuery
-                               | implement_DuplicateFree]; eauto.
-      finish honing.
-    + simpl. repeat foreignToQuery'. finish honing.
-    + simpl. intros; finish honing.
-    + simpl; intros; simplify with monad laws.
-      etransitivity.
-      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-      * simpl; rewrite decides_True; finish honing.
-      * simpl; try funDepToQuery; finish honing.
-      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-      finish honing.
-      * simpl. repeat foreignToQuery'. finish honing.
-      * simpl.
-        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-        finish honing.
-      * simpl; intros; simplify with monad laws.
-        etransitivity.
-        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-          - simpl; rewrite decides_True; finish honing.
-          - simpl; try funDepToQuery; finish honing.
-          - simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-            finish honing.
-          - simpl. repeat foreignToQuery'. finish honing.
-          - simpl.
-            intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-            finish honing.
-          - simpl; intros.
-            simplify with monad laws; cbv beta; simpl.
-            drop_constraints_from_query.
-          - intros; simpl; simplify with monad laws.
-            simpl; refine pick val _; try eassumption.
-            simplify with monad laws; finish honing.
-        }
-        simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-      * intros; simpl; simplify with monad laws.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * intros; simpl; simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-    + intros; simpl; simplify with monad laws.
-      simpl; refine pick val _; try eassumption.
-      simplify with monad laws; finish honing.
-    + intros; simpl; simplify with monad laws.
-      finish honing.
-  - simplify with monad laws.
-    etransitivity.
-    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-    + rewrite decides_True; finish honing.
-    + simpl; try funDepToQuery; finish honing.
-    + simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-      finish honing.
-    + simpl. repeat foreignToQuery'. finish honing.
-    + simpl.
-      intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-      finish honing.
-    + simpl; intros; simplify with monad laws.
-      etransitivity.
-      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-      * rewrite decides_True; finish honing.
-      * simpl; try funDepToQuery; finish honing.
-      * simpl. intros; try first [setoid_rewrite FunctionalDependency_symmetry' | funDepToQuery]; eauto.
-      finish honing.
-      * simpl. repeat foreignToQuery'. finish honing.
-      * simpl.
-        intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-        finish honing.
-      * simpl; intros.
-        simplify with monad laws; cbv beta; simpl.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * simpl; intros.
-        simplify with monad laws; cbv beta; simpl.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * simplify with monad laws.
-        setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-    + simpl; intros.
-      simplify with monad laws; cbv beta; simpl.
-      simpl; refine pick val _; try eassumption.
-      simplify with monad laws; finish honing.
-    + simplify with monad laws.
-      repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-      finish honing.
-  - simplify with monad laws.
-
-
-    + simpl. refine pick val true; simpl; eauto; finish honing.
-    + simpl. intros; refine pick val true; simpl; eauto; finish honing.
-    + simpl. repeat foreignToQuery'. finish honing.
-    + simpl. intros; finish honing.
-    + simpl; intros; simplify with monad laws.
-      etransitivity.
-      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-      * simpl; rewrite decides_True; finish honing.
-      * simpl. refine pick val true; simpl; eauto; finish honing.
-      * simpl. intros; refine pick val true; simpl; eauto; finish honing.
-      * simpl. repeat foreignToQuery'. finish honing.
-      * simpl. intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-        finish honing.
-      * simpl; intros; simplify with monad laws.
-        etransitivity.
-        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-          * simpl; rewrite decides_True; finish honing.
-          * simpl. refine pick val true; simpl; eauto; finish honing.
-          * simpl. intros; refine pick val true; simpl; eauto; finish honing.
-          * simpl. repeat foreignToQuery'. finish honing.
-          * simpl. intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-            finish honing.
-          * simpl; intros.
-            simplify with monad laws; cbv beta; simpl.
-            drop_constraints_from_query.
-          * intros; simpl; simplify with monad laws.
-            simpl; refine pick val _; try eassumption.
-            simplify with monad laws; finish honing.
-        }
-        simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-      * intros; simpl; simplify with monad laws.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * intros; simpl; simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-    + intros; simpl; simplify with monad laws.
-      simpl; refine pick val _; try eassumption.
-      simplify with monad laws; finish honing.
-    + intros; simpl; simplify with monad laws.
-      finish honing.
-  - simplify with monad laws.
-    etransitivity.
-    eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-    + rewrite decides_True; finish honing.
-    + simpl. refine pick val true; simpl; eauto; finish honing.
-    + simpl. intros; refine pick val true; simpl; eauto; finish honing.
-    + simpl. repeat foreignToQuery'. finish honing.
-    + simpl. intros; finish honing.
-    + simpl; intros; simplify with monad laws.
-      etransitivity.
-      eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-      * simpl; rewrite decides_True; finish honing.
-      * simpl. refine pick val true; simpl; eauto; finish honing.
-      * simpl. intros; refine pick val true; simpl; eauto; finish honing.
-      * simpl. repeat foreignToQuery'. finish honing.
-      * simpl. intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-        finish honing.
-      * simpl; intros; simplify with monad laws.
-        etransitivity.
-        { eapply QSInsertSpec_refine_subgoals; try eassumption; set_evars.
-          * simpl; rewrite decides_True; finish honing.
-          * simpl. refine pick val true; simpl; eauto; finish honing.
-          * simpl. intros; refine pick val true; simpl; eauto; finish honing.
-          * simpl. repeat foreignToQuery'. finish honing.
-          * simpl. intros; repeat (remove_trivial_fundep_insertion_constraints; simpl).
-            finish honing.
-          * simpl; intros.
-            simplify with monad laws; cbv beta; simpl.
-            drop_constraints_from_query.
-          * intros; simpl; simplify with monad laws.
-            simpl; refine pick val _; try eassumption.
-            simplify with monad laws; finish honing.
-        }
-        simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-      * intros; simpl; simplify with monad laws.
-        simpl; refine pick val _; try eassumption.
-        simplify with monad laws; finish honing.
-      * intros; simpl; simplify with monad laws.
-        repeat setoid_rewrite refine_if_Then_Else_Duplicate.
-        finish honing.
-    + intros; simpl; simplify with monad laws.
-      simpl; refine pick val _; try eassumption.
-      simplify with monad laws; finish honing.
-    + intros; simpl; simplify with monad laws.
-      finish honing.
-  - drop_constraints_from_query.
-  - drop_constraints_from_query.
-  - drop_constraints_from_query.
-  - drop_constraints_from_query.
-  - drop_constraints_from_query.
-  - drop_constraints_from_query.
-  - GenerateIndexesForAll
-   EqExpressionAttributeCounter
-   ltac:(fun attrlist =>
-           let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in make_simple_indexes attrlist'
-                                                                                                               ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                                                                                                                      ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny' ltac:(drop_constraints)
+                  master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - simpl.
+    GenerateIndexesForAll
+      EqExpressionAttributeCounter
+      ltac:(fun attrlist =>
+              let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in make_simple_indexes attrlist'
+                                                                                                                  ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                                                                                                                         ltac:(LastCombineCase5 BuildLastEqualityIndex)).
     + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + implement_insert' EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                        EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep;
-      doAny ltac:(implement_insert'
-                    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
-                   rewrite_drill ltac:(finish honing).
-    + implement_insert' EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                        EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep;
-      doAny ltac:(implement_insert'
-                    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
-                   rewrite_drill ltac:(finish honing).
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + implement_nested_Query EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                             EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
       implement_nested_Query EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
                              EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-      implement_Query EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-                      EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-      simplify with monad laws.
-      cbv beta; simpl; commit.
-      finish honing.
-    + simplify with monad laws; simpl.
-      refine pick val _; eauto.
-      simplify with monad laws.
-      finish honing.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+      doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+      implement_nested_Query EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                             EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+      doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+               ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+                      ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+        ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny'
+        ltac:(implement_insert'
+                EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+                EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep)
+               ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm)
+               ltac:(repeat subst_refine_evar; try finish honing).
     + Finish_Master BuildEarlyBag BuildLastBag.
 Time Defined.
 

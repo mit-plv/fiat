@@ -1180,7 +1180,6 @@ Section BagsQueryStructureRefinements.
       - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
 
-
 Lemma refine_BagADT_QSInsert' {ResultT}
      : forall
          (r_o : UnConstrQueryStructure qs_schema)

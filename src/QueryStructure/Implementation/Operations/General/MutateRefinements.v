@@ -668,12 +668,12 @@ Section MutateRefinements.
                     elementIndex tup <> elementIndex tup'
                     -> GetUnConstrRelation qs Ridx tup
                     -> GetUnConstrRelation qs Ridx tup'
-                    -> SatisfiesTupleConstraints Ridx (indexedElement tup)
+                    -> Constr (indexedElement tup)
                                                  (indexedElement tup'))
                  -> decides b
                             (MutationPreservesTupleConstraints
                                MutatedTuples
-                               (SatisfiesTupleConstraints Ridx)) }
+                               Constr) }
           | None => ret true
         end.
   Proof.
@@ -1058,12 +1058,12 @@ Section MutateRefinements.
                            elementIndex tup <> elementIndex tup'
                            -> GetUnConstrRelation qs' Ridx tup
                            -> GetUnConstrRelation qs' Ridx tup'
-                           -> SatisfiesTupleConstraints Ridx (indexedElement tup)
+                           -> Constr (indexedElement tup)
                                                         (indexedElement tup'))
                        -> decides b
                                   (MutationPreservesTupleConstraints
                                      MutatedTuples
-                                     (SatisfiesTupleConstraints Ridx)) }
+                                     Constr) }
                 | None => ret true
                 end
                 refined_schConstr

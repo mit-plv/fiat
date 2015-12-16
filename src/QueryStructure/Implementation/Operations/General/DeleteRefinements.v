@@ -96,40 +96,6 @@ Section DeleteRefinements.
     rewrite GetRelDropConstraints; eauto.
   Qed.
 
-  Lemma QSDeleteSpec_UnConstr_refine_CrossConstraints_Pre' :
-    forall qsSchema qs qs' Ridx
-           (DeletedTuples : Ensemble RawTuple),
-      @DropQSConstraints_AbsR qsSchema qs qs' ->
-  refine
-     (Iterate_Decide_Comp_opt_Pre (numRawQSschemaSchemas qsSchema)
-        (fun Ridx' : Fin.t (numRawQSschemaSchemas qsSchema) =>
-         if fin_eq_dec Ridx Ridx'
-         then None
-         else
-          match BuildQueryStructureConstraints qsSchema Ridx' Ridx with
-          | Some CrossConstr =>
-              Some
-                (MutationPreservesCrossConstraints
-                   (GetUnConstrRelation qs' Ridx')
-                   (EnsembleDelete (GetRelation qs Ridx) DeletedTuples)
-                   CrossConstr)
-          | None => None
-          end)
-        (Iterate_Ensemble_BoundedIndex_filter
-           (fun Ridx' : Fin.t (numRawQSschemaSchemas qsSchema) =>
-            forall tup' : IndexedElement,
-            GetUnConstrRelation qs' Ridx' tup' ->
-            SatisfiesCrossRelationConstraints Ridx' Ridx
-              (indexedElement tup') (GetUnConstrRelation qs' Ridx))
-           (fun idx : Fin.t (numRawQSschemaSchemas qsSchema) =>
-            if fin_eq_dec Ridx idx then false else true)))
-     (ret true).
-  Proof.
-    unfold MutationPreservesCrossConstraints; intros * AbsR_or_qs v Comp_v.
-    computes_to_inv; subst.
-    pose proof (crossConstr qs Ridx).
-  Admitted.
-
   Lemma QSDeleteSpec_UnConstr_refine_opt :
     forall qsSchema qs Ridx DeletedTuples or,
       @DropQSConstraints_AbsR qsSchema or qs ->
@@ -292,12 +258,12 @@ Section DeleteRefinements.
                            elementIndex tup <> elementIndex tup'
                            -> GetUnConstrRelation qs' Ridx tup
                            -> GetUnConstrRelation qs' Ridx tup'
-                           -> SatisfiesTupleConstraints Ridx (indexedElement tup)
+                           -> Constr (indexedElement tup)
                                                         (indexedElement tup'))
                        -> decides b
                                   (MutationPreservesTupleConstraints
-                                     (EnsembleDelete (GetRelation qs Ridx) DeletedTuples)
-                                     (SatisfiesTupleConstraints Ridx)) }
+                                     (EnsembleDelete (GetUnConstrRelation qs' Ridx) DeletedTuples)
+                                     Constr) }
                 | None => ret true
                 end
                 refined_schConstr
@@ -310,7 +276,7 @@ Section DeleteRefinements.
                                         | Some CrossConstr =>
                                           Some
                                             (MutationPreservesCrossConstraints (GetUnConstrRelation qs' Ridx')
-                                                                               (EnsembleDelete (GetRelation qs Ridx) DeletedTuples)
+                                                                               (EnsembleDelete (GetUnConstrRelation qs' Ridx) DeletedTuples)
                                                                                CrossConstr)
                                         | None => None
                                         end)
@@ -356,22 +322,21 @@ Section DeleteRefinements.
       try first [eassumption | reflexivity ].
     simplify with monad laws.
     repeat (f_equiv; unfold pointwise_relation; intros).
+    rewrite <- H0, <- (GetRelDropConstraints qs Ridx), <- H.
     rewrite refine_SatisfiesTupleConstraintsMutate; eauto.
+    destruct (tupleConstraints (GetNRelSchema (qschemaSchemas qsSchema) Ridx));
+    f_equiv.
     rewrite refine_SatisfiesCrossConstraintsMutate; eauto.
+    rewrite <- (GetRelDropConstraints qs Ridx).
+    rewrite <- H1, H; f_equiv.
     repeat find_if_inside.
     unfold QSDeletedTuples.
     f_equiv.
-    rewrite <- H, GetRelDropConstraints.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation;
-      rewrite ilist2.ith_replace2_Index_eq; reflexivity.
-    intro.
+    rewrite <- (GetRelDropConstraints qs Ridx).
+    unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    rewrite ilist2.ith_replace2_Index_eq, <- H; reflexivity.
     unfold UpdateUnConstrRelationDeleteC, UpdateUnConstrRelationMutateC;
     rewrite <- H, GetRelDropConstraints; reflexivity.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation;
-      rewrite ilist2.ith_replace2_Index_eq.
-    rewrite <- GetRelDropConstraints, H; reflexivity.
-    reflexivity.
-    reflexivity.
     reflexivity.
     reflexivity.
     eauto using QSDeleteSpec_UnConstr_refine_AttributeConstraints.
