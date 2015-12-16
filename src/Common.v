@@ -1668,6 +1668,12 @@ Fixpoint apply_n {A} (n : nat) (f : A -> A) (a : A) : A :=
     | S n' => apply_n n' f (f a)
   end.
 
+Lemma apply_n_commute {A} n (f : A -> A) v
+: apply_n n f (f v) = f (apply_n n f v).
+Proof.
+  revert v; induction n; simpl; trivial.
+Qed.
+
 (** Transparent versions of [proj1], [proj2] *)
 Definition proj1' : forall {A B}, A /\ B -> A.
 Proof. intros ?? [? ?]; assumption. Defined.
