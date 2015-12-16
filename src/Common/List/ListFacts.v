@@ -1421,4 +1421,11 @@ Section ListFacts.
                  => generalize (f_equal f H); clear H
              end. }
   Qed.
+
+  Lemma In_InT {A} (x : A) (ls : list A) (H : InT x ls)
+  : In x ls.
+  Proof.
+    induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct H; [ left | right ]; eauto with nocore.
+  Qed.
 End ListFacts.
