@@ -24,8 +24,8 @@ Section transfer.
       is_char_proj : forall str ch, is_char (proj str) ch = is_char str ch;
       split_string_for_production_proj
       : forall it its str,
-          @split_string_for_production _ HSL_lite _ it its (proj str)
-          = @split_string_for_production _ HSL_heavy _ it its str }.
+          @split_string_for_production _ HSL_lite split_data_lite it its (proj str)
+          = @split_string_for_production _ HSL_heavy data it its str }.
 
   Context {HSLPr : StringLikeProj}.
 

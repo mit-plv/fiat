@@ -436,12 +436,15 @@ Section recursive_descent_parser.
       etransitivity_rev _.
       { step_opt'.
         let c := (eval simpl in (Valid_nonterminals G)) in
+        let beq := match c with uniquize ?beq ?ls => beq end in
+        let c' := match c with uniquize ?beq ?ls => ls end in
+        rewrite <- (@uniquize_idempotent _ beq c');
         change c with (Valid_nonterminals G).
         rewrite rdp_list_find_to_nonterminal.
         unfold list_to_grammar.
         simpl @Valid_nonterminals.
         rewrite uniquize_idempotent.
-        rewrite (list_lb (@string_lb) eq_refl).
+        (*rewrite (list_lb (@string_lb) eq_refl).*)
         rewrite pull_option_rect; simpl map.
         rewrite pull_bool_rect; simpl option_rect.
         step_opt'; [ | reflexivity ].
@@ -511,6 +514,23 @@ Section recursive_descent_parser.
           { rewrite leb_correct by omega; reflexivity. }
           { rewrite leb_correct_conv by omega; reflexivity. } }
         repeat (simpl; rewrite ?bool_rect_andb, ?Bool.andb_false_r, ?Bool.andb_true_r, ?Bool.andb_orb_distrib_r, ?Bool.andb_orb_distrib_l, <- ?Bool.andb_assoc).
+        rewrite ?Bool.andb_assoc, <- ?Bool.andb_orb_distrib_l.
+        match goal with
+          | [ |- _ = andb _ (EqNat.beq_nat ?v 0) ]
+            => is_var v;
+              repeat (let x := match goal with |- _ = andb ?x _ => x end in
+                      match x with
+                        | context X[v]
+                          => let x' := context X[0] in
+                             transitivity (andb x' (EqNat.beq_nat v 0));
+                        [ | destruct v; simpl; rewrite ?Bool.andb_false_r; reflexivity ]
+                      end)
+        end.
+        lazymatch goal with
+          | [ |- context[negb (leb 1 ?v)] ]
+            => replace (negb (leb 1 v)) with (EqNat.beq_nat v 0)
+              by (destruct v; reflexivity)
+        end.
         reflexivity. }
       { reflexivity. } }
     step_opt'; [ | reflexivity | reflexivity ].

@@ -46,6 +46,8 @@ src/BinEncoders/take3/List1.v
 src/BinEncoders/take3/List2.v
 src/BinEncoders/take3/Prod.v
 src/BinEncoders/take3/Vector.v
+src/BinEncoders/take4/specs-backup.v
+src/BinEncoders/take4/specs.v
 src/CertifiedExtraction/Core.v
 src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/ExtendedLemmas.v
@@ -182,6 +184,7 @@ src/Examples/QueryStructure/ClassifierUnOptExtraction.v
 src/Examples/QueryStructure/CodeLookup.v
 src/Examples/QueryStructure/FriendFinder.v
 src/Examples/QueryStructure/Github.v
+src/Examples/QueryStructure/IncompleteROSMaster.v
 src/Examples/QueryStructure/Messages.v
 src/Examples/QueryStructure/MessagesExtraction.v
 src/Examples/QueryStructure/MessagesUnOptimized.v
@@ -260,6 +263,7 @@ src/Parsers/BooleanRecognizerCorrect.v
 src/Parsers/BooleanRecognizerEquality.v
 src/Parsers/BooleanRecognizerExt.v
 src/Parsers/BooleanRecognizerFull.v
+src/Parsers/BooleanRecognizerMin.v
 src/Parsers/BooleanRecognizerOptimized.v
 src/Parsers/BooleanRecognizerTests.v
 src/Parsers/CorrectnessBaseTypes.v
