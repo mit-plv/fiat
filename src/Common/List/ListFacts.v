@@ -1428,4 +1428,15 @@ Section ListFacts.
     induction ls as [|y ys IHys]; simpl in *; trivial.
     destruct H; [ left | right ]; eauto with nocore.
   Qed.
+
+  Lemma tl_drop {A} (ls : list A) (n : nat)
+  : tl (List.drop n ls) = List.drop n (tl ls).
+  Proof.
+    revert n; induction ls as [|x xs IHxs].
+    { intros [|?]; reflexivity. }
+    { simpl.
+      destruct n; simpl; trivial.
+      rewrite IHxs; destruct xs; trivial; simpl.
+      apply drop_all; simpl; omega. }
+  Qed.
 End ListFacts.
