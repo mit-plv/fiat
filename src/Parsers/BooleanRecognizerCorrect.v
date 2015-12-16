@@ -622,7 +622,7 @@ Section sound.
           Proof.
             apply parse_nonterminal_complete' with (len := length str); try assumption; trivial.
             pose proof Hvalid as Hvalid'; rewrite initial_nonterminals_correct in Hvalid'.
-            pose proof (@minimal_parse_of_nonterminal__of__parse_of_nonterminal
+            pose proof (@minimal_parse_of_nonterminal__of__parse_of_nonterminal'
                           Char _ _ G
                           _
                           _
@@ -693,13 +693,7 @@ Section convenience.
               (length str) initial_nonterminals_data);
       [
       |
-      | exact (proj1_sig
-                 (alt_all_elim
-                    (@minimal_parse_of_item__of__parse_of_item
-                       _ _ G _ _ (length str) (S (size_of_parse_item p))
-                       (fun h' _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ G _ _ h')
-                       str (reflexivity _) initial_nonterminals_data _ p (lt_n_Sn _)
-                       (reflexivity _)))) ].
+      | eapply minimal_parse_of_item__of__parse_of_item; [ .. | assumption ] ].
     { hnf.
       clear p it.
       intros valid nt pf pit.
@@ -768,13 +762,7 @@ Section convenience.
     [
     |
     |
-    | exact (proj1_sig
-               (alt_all_elim
-                  (@minimal_parse_of_production__of__parse_of_production
-                     _ _ _ G _ _ (length str) (S (size_of_parse_production p))
-                     (fun h' _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ G _ _ h')
-                     str (reflexivity _) initial_nonterminals_data _ p (lt_n_Sn _)
-                     (reflexivity _)))) ].
+    | eapply minimal_parse_of_production__of__parse_of_production; [ .. | assumption ] ].
     { exact (@parse_nonterminal_or_abort_complete
                _ _ _ G _ _ _
                (length str, nonterminals_length initial_nonterminals_data)
@@ -825,13 +813,7 @@ Section convenience.
     [
     |
     |
-    | exact (proj1_sig
-               (alt_all_elim
-                  (@minimal_parse_of_productions__of__parse_of_productions
-                     _ _ _ G _ _ (length str) (S (size_of_parse p))
-                     (fun h' _ => @minimal_parse_of_nonterminal__of__parse_of_nonterminal _ _ _ G _ _ h')
-                     str (reflexivity _) initial_nonterminals_data _ p (lt_n_Sn _)
-                     (reflexivity _)))) ].
+    | eapply minimal_parse_of_productions__of__parse_of_productions; [ .. | assumption ] ].
     { exact (@parse_nonterminal_or_abort_complete
                _ _ _ G _ _ _
                (length str, nonterminals_length initial_nonterminals_data)
