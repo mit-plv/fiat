@@ -1,9 +1,9 @@
 (** * Properties about Context Free Grammars *)
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Classes.RelationClasses.
+Require Import Fiat.Common Fiat.Common.UIP Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Coq.Classes.RelationClasses.
-Require Import Fiat.Common Fiat.Common.UIP.
 
 Set Implicit Arguments.
 
@@ -18,6 +18,13 @@ Definition production_is_reachable {Char} (G : grammar Char) (p : production Cha
        /\ List.In
             (prefix ++ p)
             (Lookup G nt).
+Definition production_is_reachableT {Char} (G : grammar Char) (p : production Char)
+  := { nt : _
+   & { prefix : _
+     & List.In nt (Valid_nonterminals G)
+       * List.InT
+            (prefix ++ p)
+            (Lookup G nt) } }%type.
 
 Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : @StringLikeProperties Char HSL} (G : grammar Char).

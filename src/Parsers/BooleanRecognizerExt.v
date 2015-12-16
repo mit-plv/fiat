@@ -20,6 +20,13 @@ Require Import Fiat.Common Fiat.Common.Wf.*)
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
+Local Ltac subst_le_proof :=
+  idtac;
+  match goal with
+    | [ H : ?x <= ?y, H' : ?x <= ?y |- _ ]
+      => assert (H = H') by apply Le.le_proof_irrelevance; subst
+  end.
+
 Section recursive_descent_parser.
   Context {Char} {HSL : StringLike Char} {G : grammar Char}.
   Context {data : @boolean_parser_dataT Char _}.
@@ -44,6 +51,7 @@ Section recursive_descent_parser.
       | _ => solve [ eauto with nocore ]
       | _ => progress intros
       | _ => progress subst
+      | _ => progress subst_le_proof
       | [ |- @list_rect ?A ?P ?Pn ?Pc ?ls = @list_rect ?A ?P ?Pn' ?Pc' ?ls ]
         => apply (@list_rect_ext A P Pn Pn' Pc Pc' ls)
       | [ |- @option_rect ?A ?P ?Ps ?Pn ?x = @option_rect ?A ?P ?Ps' ?Pn' ?x ]
@@ -112,13 +120,13 @@ Section recursive_descent_parser.
                      @parse_nonterminal (drop_takes ns str) len pf nt
                      = @parse_nonterminal' (drop_takes ns str) len pf nt)
           (len : nat)
-          (pf : len <= len0)
+          (pf pf' : len <= len0)
           (prod : production Char)
           (ns : list _)
     : parse_production'_for parse_nonterminal splits (drop_takes ns str) pf prod
-      = parse_production'_for parse_nonterminal' splits' (drop_takes ns str) pf prod.
+      = parse_production'_for parse_nonterminal' splits' (drop_takes ns str) pf' prod.
     Proof.
-      revert ns splits splits' Hsplits str ext len pf; induction prod; simpl; intros;
+      revert ns splits splits' Hsplits str ext len pf pf'; induction prod; simpl; intros;
       t_ext idtac.
       erewrite parse_item'_ext.
       { apply f_equal.
@@ -134,12 +142,12 @@ Section recursive_descent_parser.
                         @parse_nonterminal (drop_takes ns str) len pf nt
                         = @parse_nonterminal' (drop_takes ns str) len pf nt)
                (len : nat)
-               (pf : len <= len0)
+               (pf pf' : len <= len0)
                (prod : production Char)
                (ns : list _)
     : parse_production' parse_nonterminal (drop_takes ns str) pf prod
-      = parse_production' parse_nonterminal' (drop_takes ns str) pf prod
-      := parse_production'_for_ext_drop_take _ _ (fun _ _ _ => eq_refl) str ext pf prod ns.
+      = parse_production' parse_nonterminal' (drop_takes ns str) pf' prod
+      := parse_production'_for_ext_drop_take _ _ (fun _ _ _ => eq_refl) str ext pf pf' prod ns.
   End production_drop_take.
 
   Section production.
@@ -158,10 +166,10 @@ Section recursive_descent_parser.
           (Hsplits : forall idx it its, splits idx it its = splits' idx it its)
           (str : String)
           (len : nat)
-          (pf : len <= len0)
+          (pf pf' : len <= len0)
           (prod : production Char)
     : parse_production'_for parse_nonterminal splits str pf prod
-      = parse_production'_for parse_nonterminal' splits' str pf prod.
+      = parse_production'_for parse_nonterminal' splits' str pf' prod.
     Proof.
       apply parse_production'_for_ext_drop_take with (ns := nil); auto with nocore.
     Qed.
@@ -169,18 +177,18 @@ Section recursive_descent_parser.
     Definition parse_production'_ext
                (str : String)
                (len : nat)
-               (pf : len <= len0)
+               (pf pf' : len <= len0)
                (prod : production Char)
     : parse_production' parse_nonterminal str pf prod
-      = parse_production' parse_nonterminal' str pf prod
-      := parse_production'_for_ext _ _ (fun _ _ _ => eq_refl) str pf prod.
+      = parse_production' parse_nonterminal' str pf' prod
+      := parse_production'_for_ext _ _ (fun _ _ _ => eq_refl) str pf pf' prod.
   End production.
 
   Global Instance parse_production'_for_Proper
   : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
               ==> (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq)))
               ==> eq
-              ==> forall_relation (fun _ => eq ==> eq ==> eq))
+              ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
            (parse_production'_for (len0 := len0)).
   Proof.
     repeat intro; subst.
@@ -191,7 +199,7 @@ Section recursive_descent_parser.
   Global Instance parse_production'_Proper
   : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
               ==> eq
-              ==> forall_relation (fun _ => eq ==> eq ==> eq))
+              ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
            (parse_production' (len0 := len0)).
   Proof.
     repeat intro; subst.
@@ -213,11 +221,11 @@ Section recursive_descent_parser.
                    @parse_nonterminal (drop_takes ns str) len pf nt
                    = @parse_nonterminal' (drop_takes ns str) len pf nt)
           (len : nat)
-          (pf : len <= len0)
+          (pf pf' : len <= len0)
           (prods : productions Char)
           ns
     : parse_productions' parse_nonterminal (drop_takes ns str) pf prods
-      = parse_productions' parse_nonterminal' (drop_takes ns str) pf prods.
+      = parse_productions' parse_nonterminal' (drop_takes ns str) pf' prods.
     Proof.
       t_ext ltac:(erewrite parse_production'_for_ext_drop_take || expand').
     Qed.
@@ -237,10 +245,10 @@ Section recursive_descent_parser.
     Lemma parse_productions'_ext
                (str : String)
                (len : nat)
-               (pf : len <= len0)
+               (pf pf' : len <= len0)
                (prods : productions Char)
     : parse_productions' parse_nonterminal str pf prods
-      = parse_productions' parse_nonterminal' str pf prods.
+      = parse_productions' parse_nonterminal' str pf' prods.
     Proof.
       apply parse_productions'_ext_drop_take with (ns := nil); auto with nocore.
     Qed.
@@ -249,7 +257,7 @@ Section recursive_descent_parser.
   Global Instance parse_productions'_Proper
   : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
               ==> eq
-              ==> forall_relation (fun _ => eq ==> eq ==> eq))
+              ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
            (parse_productions' (len0 := len0)).
   Proof.
     repeat intro; subst.
@@ -274,11 +282,11 @@ Section recursive_descent_parser.
                           @parse_nonterminal p pf valid (drop_takes ns str) len pf' nt
                           = @parse_nonterminal' p pf valid (drop_takes ns str) len pf' nt)
                  (len : nat)
-                 (pf : len <= len0)
+                 (pf pf' : len <= len0)
                  (nt : nonterminal_carrierT)
                  ns
       : parse_nonterminal_step (G := G) parse_nonterminal valid (drop_takes ns str) pf nt
-        = parse_nonterminal_step (G := G) parse_nonterminal' valid (drop_takes ns str) pf nt.
+        = parse_nonterminal_step (G := G) parse_nonterminal' valid (drop_takes ns str) pf' nt.
       Proof.
         t_ext ltac:(erewrite parse_productions'_ext_drop_take || expand').
       Qed.
@@ -300,10 +308,10 @@ Section recursive_descent_parser.
                  (valid : nonterminals_listT)
                  (str : String)
                  (len : nat)
-                 (pf : len <= len0)
+                 (pf pf' : len <= len0)
                  (nt : nonterminal_carrierT)
       : parse_nonterminal_step (G := G) parse_nonterminal valid str pf nt
-        = parse_nonterminal_step (G := G) parse_nonterminal' valid str pf nt.
+        = parse_nonterminal_step (G := G) parse_nonterminal' valid str pf' nt.
       Proof.
         apply parse_nonterminal_step_ext_drop_take with (ns := nil); auto with nocore.
       Qed.
@@ -313,7 +321,7 @@ Section recursive_descent_parser.
     : Proper ((forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ (pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq)))))))
                 ==> eq
                 ==> eq
-                ==> forall_relation (fun _ => eq ==> eq ==> eq))
+                ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
              (parse_nonterminal_step (G := G) (len0 := len0) (valid_len := valid_len)).
     Proof.
       repeat intro; subst.

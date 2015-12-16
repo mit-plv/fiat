@@ -80,6 +80,7 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/CacheADT/CacheADT.vo \
 	src/Examples/QueryStructure/FriendFinder.vo \
 	src/Examples/QueryStructure/Github.vo \
+	src/Examples/QueryStructure/IncompleteROSMaster.vo \
 	src/Examples/QueryStructure/Photoalbum.vo \
 	src/Examples/QueryStructure/PhotoalbumExtraction.vo \
 	src/Examples/QueryStructure/PhotoalbumUnOpt.vo \

@@ -589,7 +589,7 @@ Section cfg.
       Section item.
         Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
 
-        Definition minimal_parse_of_item__of__parse_of_item
+        Definition minimal_parse_of_item__of__parse_of_item'
                    h
                    (minimal_parse_of_nonterminal__of__parse_of_nonterminal
                     : forall h' (pf : h' < S (S h)) {len0 str valid nonterminal}
@@ -744,7 +744,7 @@ Section cfg.
             tree for the thing we are asked about (or to contract the
             "alternate option" parse tree, passing it back up?). *)
 
-        Fixpoint minimal_parse_of_production__of__parse_of_production
+        Fixpoint minimal_parse_of_production__of__parse_of_production'
                  h
                  (minimal_parse_of_nonterminal__of__parse_of_nonterminal
                   : forall h' (pf : h' < S (S h)) {len0 str valid nonterminal}
@@ -756,7 +756,7 @@ Section cfg.
           intros str' pf valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [ pf0' | n pat' pats' p0' p1' ].
-          { clear minimal_parse_of_production__of__parse_of_production.
+          { clear minimal_parse_of_production__of__parse_of_production'.
             left.
             eexists (@MinimalParse.MinParseProductionNil _ _ _ _ _ _ _ pf0');
               repeat (reflexivity || esplit). }
@@ -774,8 +774,8 @@ Section cfg.
               by (rewrite take_length; apply Min.min_case_strong; omega).
             assert (pf1' : length (drop n str') <= length str')
               by (rewrite drop_length; omega).
-            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit) as p_it.
-            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit) as p_prod.
+            pose proof (fun valid Hinit => @minimal_parse_of_item__of__parse_of_item' _ h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf0' pf) valid _ p0' H_h0 Hinit) as p_it.
+            pose proof (fun valid Hinit => @minimal_parse_of_production__of__parse_of_production' h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ (transitivity pf1' pf) valid _ p1' H_h1 Hinit) as p_prod.
             clear pf0' pf1'.
             destruct (le_lt_dec (length str') n) as [ Hle | Hle ], (zerop (min n (length str'))) as [Hstr' | Hstr' ].
             { (* empty, empty *)
@@ -805,7 +805,7 @@ Section cfg.
       Section productions.
         Context {len0 : nat} {str : String} {valid : nonterminals_listT}.
 
-        Fixpoint minimal_parse_of_productions__of__parse_of_productions
+        Fixpoint minimal_parse_of_productions__of__parse_of_productions'
                  h
                  (minimal_parse_of_nonterminal__of__parse_of_nonterminal
                   : forall h' (pf : h' < S h) {len0 str valid nonterminal}
@@ -817,8 +817,8 @@ Section cfg.
           intros str' pf valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
           destruct p as [pat pats p' | pat pats p'].
-          { clear minimal_parse_of_productions__of__parse_of_productions.
-            edestruct (@minimal_parse_of_production__of__parse_of_production _ h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
+          { clear minimal_parse_of_productions__of__parse_of_productions'.
+            edestruct (@minimal_parse_of_production__of__parse_of_production' _ h' minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
                       | exact H_forall
                       | exact Hinit' ];
@@ -837,7 +837,7 @@ Section cfg.
           { specialize (fun h' pf
                         => @minimal_parse_of_nonterminal__of__parse_of_nonterminal
                              h' (transitivity pf (Lt.lt_n_Sn _))).
-            edestruct (minimal_parse_of_productions__of__parse_of_productions h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
+            edestruct (minimal_parse_of_productions__of__parse_of_productions' h'  minimal_parse_of_nonterminal__of__parse_of_nonterminal _ pf valid' _ p') as [ [p'' p''H] | [nonterminal' H'] ];
             try solve [ exact (Lt.lt_S_n _ _ H_h)
                       | exact Hinit'
                       | exact H_forall ];
@@ -874,7 +874,7 @@ Section cfg.
 
             destruct (le_lt_eq_dec _ _ H) as [pf_lt|pf_eq].
             { (** [str] got smaller, so we reset the valid nonterminals list *)
-              destruct (@minimal_parse_of_productions__of__parse_of_productions (length str) h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _)) as [p'|p'].
+              destruct (@minimal_parse_of_productions__of__parse_of_productions' (length str) h minimal_parse_of_nonterminal__of__parse_of_nonterminal str (reflexivity _) initial_nonterminals_data (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (reflexivity _)) as [p'|p'].
               { left.
                 exists (MinParseNonTerminalStrLt valid _ pf_lt (proj2 (initial_nonterminals_correct _) Hvalid') (proj1_sig p'));
                   simpl.
@@ -887,7 +887,7 @@ Section cfg.
                       | reflexivity ]. } }
             { (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
               destruct (Sumbool.sumbool_of_bool (is_valid_nonterminal valid (of_nonterminal nonterminal))) as [ Hvalid | Hinvalid ].
-              { destruct (@minimal_parse_of_productions__of__parse_of_productions len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid (of_nonterminal nonterminal)) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
+              { destruct (@minimal_parse_of_productions__of__parse_of_productions' len0 h minimal_parse_of_nonterminal__of__parse_of_nonterminal str Hstr (remove_nonterminal valid (of_nonterminal nonterminal)) (Lookup G nonterminal) p (Lt.lt_S_n _ _ pf) (transitivity (R := sub_nonterminals_listT) (@sub_nonterminals_listT_remove _ _ _ _ _ _) Hinit')) as [p'|p'].
                 { left.
                   exists (@MinimalParse.MinParseNonTerminalStrEq _ _ _ _ _ _ _ _ pf_eq (proj2 (initial_nonterminals_correct _) Hvalid') Hvalid (proj1_sig p')).
                   simpl in *.
@@ -955,7 +955,7 @@ Section cfg.
         End step.
 
         Section wf.
-          Definition minimal_parse_of_nonterminal__of__parse_of_nonterminal
+          Definition minimal_parse_of_nonterminal__of__parse_of_nonterminal'
           : forall h
                    {len0 str valid nonterminal}
                    (p : parse_of G str (Lookup G nonterminal)),
@@ -969,5 +969,83 @@ Section cfg.
         End wf.
       End nonterminal.
     End wf_parts.
+
+    Definition minimal_parse_of_item__of__parse_of_item
+               {str : String}
+               {it : item Char}
+               (p : parse_of_item G str it)
+    : { p' : minimal_parse_of_item (G := G) (length str) initial_nonterminals_data str it
+      | (size_of_parse_item (parse_of_item__of__minimal_parse_of_item p') <= size_of_parse_item p) }%type.
+    Proof.
+      eapply alt_all_elim, minimal_parse_of_item__of__parse_of_item';
+      hnf; intros; try (assumption || reflexivity); [].
+      eapply minimal_parse_of_nonterminal__of__parse_of_nonterminal'; try assumption.
+      hnf; reflexivity.
+    Defined.
+
+    Definition minimal_parse_of_production__of__parse_of_production
+               {str : String}
+               {its : production Char}
+               (p : parse_of_production G str its)
+    : { p' : minimal_parse_of_production (G := G) (length str) initial_nonterminals_data str its
+      | size_of_parse_production (parse_of_production__of__minimal_parse_of_production p') <= size_of_parse_production p }%type.
+    Proof.
+      eapply alt_all_elim, minimal_parse_of_production__of__parse_of_production';
+      hnf; intros; try (assumption || reflexivity); [].
+      eapply minimal_parse_of_nonterminal__of__parse_of_nonterminal'; try assumption.
+      hnf; reflexivity.
+    Defined.
+
+    Definition minimal_parse_of_productions__of__parse_of_productions
+               {str : String}
+               {ps : productions Char}
+               (p : parse_of G str ps)
+    : { p' : minimal_parse_of (G := G) (length str) initial_nonterminals_data str ps
+      | size_of_parse (parse_of__of__minimal_parse_of p') <= size_of_parse p }%type.
+    Proof.
+      eapply alt_all_elim, minimal_parse_of_productions__of__parse_of_productions';
+      hnf; intros; try (assumption || reflexivity); [].
+      eapply minimal_parse_of_nonterminal__of__parse_of_nonterminal'; try assumption.
+      hnf; reflexivity.
+    Defined.
+
+    Definition minimal_parse_of_nonterminal__of__parse_of_nonterminal
+               {str : String}
+               {nonterminal : String.string}
+               (Hvalid : In nonterminal (Valid_nonterminals G))
+               (p : parse_of G str (Lookup G nonterminal))
+    : { p' : minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data str nonterminal
+      | size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item (ParseNonTerminal nonterminal Hvalid p) }%type.
+    Proof.
+      eapply alt_all_elim, minimal_parse_of_nonterminal__of__parse_of_nonterminal';
+      hnf; intros; try (assumption || reflexivity).
+    Defined.
+
+    Definition minimal_parse_of_nonterminal__of__parse_of_item_nonterminal_helper
+               {str : String}
+               {nonterminal : String.string}
+               its
+               (Hits : NonTerminal nonterminal = its)
+               (p : parse_of_item G str its)
+    : { p' : minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data str nonterminal
+      | size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item p }%type.
+    Proof.
+      destruct p.
+      { exfalso; clear -Hits.
+        abstract inversion Hits. }
+      { inversion Hits; subst.
+        apply minimal_parse_of_nonterminal__of__parse_of_nonterminal; assumption. }
+    Defined.
+
+    Definition minimal_parse_of_nonterminal__of__parse_of_item_nonterminal
+               {str : String}
+               {nonterminal : String.string}
+               (p : parse_of_item G str (NonTerminal nonterminal))
+    : { p' : minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data str nonterminal
+      | size_of_parse_item (parse_of_item__of__minimal_parse_of_item (MinParseNonTerminal p')) <= size_of_parse_item p }%type.
+    Proof.
+      apply minimal_parse_of_nonterminal__of__parse_of_item_nonterminal_helper.
+      { reflexivity. }
+    Defined.
   End minimize.
 End cfg.

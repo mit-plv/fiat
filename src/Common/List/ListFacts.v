@@ -1421,4 +1421,33 @@ Section ListFacts.
                  => generalize (f_equal f H); clear H
              end. }
   Qed.
+
+  Lemma In_InT {A} (x : A) (ls : list A) (H : InT x ls)
+  : In x ls.
+  Proof.
+    induction ls as [|y ys IHys]; simpl in *; trivial.
+    destruct H; [ left | right ]; eauto with nocore.
+  Qed.
+
+  Lemma tl_drop {A} (ls : list A) (n : nat)
+  : tl (List.drop n ls) = List.drop n (tl ls).
+  Proof.
+    revert n; induction ls as [|x xs IHxs].
+    { intros [|?]; reflexivity. }
+    { simpl.
+      destruct n; simpl; trivial.
+      rewrite IHxs; destruct xs; trivial; simpl.
+      apply drop_all; simpl; omega. }
+  Qed.
+
+  Lemma map_ext_in {A B} (f f' : A -> B) (ls : list A)
+        (H : forall a, List.In a ls -> f a = f' a)
+  : List.map f ls = List.map f' ls.
+  Proof.
+    induction ls; simpl; trivial.
+    rewrite H, IHls.
+    { reflexivity. }
+    { intros; apply H; right; assumption. }
+    { left; reflexivity. }
+  Qed.
 End ListFacts.

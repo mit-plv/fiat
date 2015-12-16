@@ -86,8 +86,7 @@ Section implementation.
   Next Obligation.
   Proof.
     dependent destruction p.
-    pose proof (@parse_nonterminal_complete Char splitter _ G _ _ rdp_list_rdata' str (Start_symbol G) p) as H'.
-    apply H'.
-    rewrite initial_nonterminals_correct; assumption.
+    pose proof (fun pf => @parse_of_nonterminal_complete Char splitter _ G _ _ rdp_list_rdata' Hvalid str (Start_symbol G) pf p) as H'.
+    apply H'; assumption.
   Qed.
 End implementation.

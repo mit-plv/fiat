@@ -304,7 +304,9 @@ Section only_first_correctness.
       | [ m : MaybeEmpty.Core.maybe_empty_productions _ _ _ |- _ ]
         => let f := constr:(@MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_productions _ _ _) in
            eapply f with (str := of_string nil) in m; [ | (assumption || (rewrite ?of_string_length; reflexivity)).. ];
-           eapply parse_nonterminal_complete; destruct_head sigT; eassumption
+           eapply parse_of_nonterminal_complete; destruct_head sigT;
+           first [ assumption
+                 | apply rdp_list_initial_nonterminals_correct; assumption ]
       | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
       | [ Hvalid : grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
         => idtac;

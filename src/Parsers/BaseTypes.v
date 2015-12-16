@@ -24,6 +24,9 @@ Section recursive_descent_parser.
   Class parser_removal_dataT' `{predata : parser_computational_predataT} :=
     { nonterminals_listT_R : nonterminals_listT -> nonterminals_listT -> Prop
       := ltof _ nonterminals_length;
+      nonterminals_length_zero : forall ls,
+                                   nonterminals_length ls = 0
+                                   -> forall nt, is_valid_nonterminal ls nt = false;
       remove_nonterminal_dec : forall ls nonterminal,
                                  is_valid_nonterminal ls nonterminal
                                  -> nonterminals_listT_R (remove_nonterminal ls nonterminal) ls;
@@ -36,9 +39,9 @@ Section recursive_descent_parser.
       to_of_nonterminal : forall nonterminal,
                             List.In nonterminal (Valid_nonterminals G)
                             -> to_nonterminal (of_nonterminal nonterminal) = nonterminal;
-      (*of_to_nonterminal : forall nonterminal,
+      of_to_nonterminal : forall nonterminal,
                             is_valid_nonterminal initial_nonterminals_data nonterminal
-                            -> of_nonterminal (to_nonterminal nonterminal) = nonterminal;*)
+                            -> of_nonterminal (to_nonterminal nonterminal) = nonterminal;
       ntl_wf : well_founded nonterminals_listT_R
       := well_founded_ltof _ _;
       remove_nonterminal_1
