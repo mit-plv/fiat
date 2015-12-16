@@ -1439,4 +1439,15 @@ Section ListFacts.
       rewrite IHxs; destruct xs; trivial; simpl.
       apply drop_all; simpl; omega. }
   Qed.
+
+  Lemma map_ext_in {A B} (f f' : A -> B) (ls : list A)
+        (H : forall a, List.In a ls -> f a = f' a)
+  : List.map f ls = List.map f' ls.
+  Proof.
+    induction ls; simpl; trivial.
+    rewrite H, IHls.
+    { reflexivity. }
+    { intros; apply H; right; assumption. }
+    { left; reflexivity. }
+  Qed.
 End ListFacts.
