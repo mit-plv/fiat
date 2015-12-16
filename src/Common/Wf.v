@@ -600,3 +600,53 @@ End Fix8.
 
 Arguments Fix8_Proper_eq {A B C D E H I J K R Rwf P} _ _ _ _ _ _ _ _ _ _ _ _.
 Global Existing Instance Fix8_Proper_eq.
+
+Section Fix9.
+  Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type) (H : forall a b c d, E a b c d -> Type) (I : forall a b c d e, H a b c d e -> Type) (J : forall a b c d e h, I a b c d e h -> Type) (K : forall a b c d e h i, J a b c d e h i -> Type) (L : forall a b c d e h i j, K a b c d e h i j -> Type)
+          (R : A -> A -> Prop) (Rwf : well_founded R)
+          (P : forall a b c d e h i j k, L a b c d e h i j k -> Type).
+
+  Local Notation Fix9 := (@Fix A R Rwf (fun a : A => forall b c d e h i j k l, @P a b c d e h i j k l)).
+  Local Notation T := (fun a => tele _ (fun b => tele _ (fun c => tele _ (fun d => tele _ (fun e => tele _ (fun h => tele _ (fun i => tele _ (fun j => tele _ (fun k => tele (@L a b c d e h i j k) (fun _ => bottom)))))))))).
+
+  Let Fix9_eq' := @FixV_eq A T R Rwf P.
+  Let Fix9_eq'T := Eval simpl in type_of Fix9_eq'.
+
+  Let Fix9_rect' := @FixV_rect A T R Rwf P.
+  Let Fix9_rect'T := Eval simpl in type_of Fix9_rect'.
+
+  Let Fix9_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix9_Proper_eq'T := Eval simpl in type_of Fix9_Proper_eq'.
+
+  Definition Fix9_eq : Fix9_eq'T := Fix9_eq'.
+  Definition Fix9_rect : Fix9_rect'T := Fix9_rect'.
+  Definition Fix9_Proper_eq : Fix9_Proper_eq'T := Fix9_Proper_eq'.
+End Fix9.
+
+Arguments Fix9_Proper_eq {A B C D E H I J K L R Rwf P} _ _ _ _ _ _ _ _ _ _ _ _ _.
+Global Existing Instance Fix9_Proper_eq.
+
+Section Fix10.
+  Context A (B : A -> Type) (C : forall a, B a -> Type) (D : forall a b, C a b -> Type) (E : forall a b c, D a b c -> Type) (H : forall a b c d, E a b c d -> Type) (I : forall a b c d e, H a b c d e -> Type) (J : forall a b c d e h, I a b c d e h -> Type) (K : forall a b c d e h i, J a b c d e h i -> Type) (L : forall a b c d e h i j, K a b c d e h i j -> Type) (M : forall a b c d e h i j k, L a b c d e h i j k -> Type)
+          (R : A -> A -> Prop) (Rwf : well_founded R)
+          (P : forall a b c d e h i j k l, M a b c d e h i j k l -> Type).
+
+  Local Notation Fix10 := (@Fix A R Rwf (fun a : A => forall b c d e h i j k l m, @P a b c d e h i j k l m)).
+  Local Notation T := (fun a => tele _ (fun b => tele _ (fun c => tele _ (fun d => tele _ (fun e => tele _ (fun h => tele _ (fun i => tele _ (fun j => tele _ (fun k => tele _ (fun l => tele (@M a b c d e h i j k l) (fun _ => bottom))))))))))).
+
+  Let Fix10_eq' := @FixV_eq A T R Rwf P.
+  Let Fix10_eq'T := Eval simpl in type_of Fix10_eq'.
+
+  Let Fix10_rect' := @FixV_rect A T R Rwf P.
+  Let Fix10_rect'T := Eval simpl in type_of Fix10_rect'.
+
+  Let Fix10_Proper_eq' := @FixV_Proper_eq A T R Rwf P.
+  Let Fix10_Proper_eq'T := Eval simpl in type_of Fix10_Proper_eq'.
+
+  Definition Fix10_eq : Fix10_eq'T := Fix10_eq'.
+  Definition Fix10_rect : Fix10_rect'T := Fix10_rect'.
+  Definition Fix10_Proper_eq : Fix10_Proper_eq'T := Fix10_Proper_eq'.
+End Fix10.
+
+Arguments Fix10_Proper_eq {A B C D E H I J K L M R Rwf P} _ _ _ _ _ _ _ _ _ _ _ _ _ _.
+Global Existing Instance Fix10_Proper_eq.
