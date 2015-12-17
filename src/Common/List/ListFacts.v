@@ -1450,4 +1450,19 @@ Section ListFacts.
     { intros; apply H; right; assumption. }
     { left; reflexivity. }
   Qed.
+
+  Lemma list_bin_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A) x
+  : list_bin beq (f x) (map f ls) = list_bin (fun x y => beq (f x) (f y)) x ls.
+  Proof.
+    induction ls; trivial; simpl.
+    rewrite IHls; reflexivity.
+  Qed.
+
+  Lemma uniquize_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A)
+  : uniquize beq (map f ls) = map f (uniquize (fun x y => beq (f x) (f y)) ls).
+  Proof.
+    induction ls; trivial; simpl.
+    rewrite !IHls, list_bin_map.
+    edestruct @list_bin; simpl; reflexivity.
+  Qed.
 End ListFacts.
