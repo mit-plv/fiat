@@ -35,11 +35,13 @@ Ltac foreignToQuery' :=
   | [ |- context[{ b' | decides b' (@ForeignKey_P ?heading ?relSchema ?AttrID ?AttrID' ?tupmap ?n (@GetUnConstrRelation ?qs_schema ?or ?TableID))}] ]
     =>
     let H' := fresh in
+    (* This let gets around a weird bug in type checking the refine_constraint_check_into_query *)
+    let f := constr:(fun tup : @RawTuple heading => @GetAttributeRaw heading n AttrID = tupmap (@GetAttributeRaw relSchema tup AttrID')) in
     let H' :=
         eval simpl in
     (@refine_constraint_check_into_query
        qs_schema TableID
-       (fun tup : @RawTuple heading => @GetAttributeRaw heading n AttrID = tupmap (@GetAttributeRaw relSchema tup AttrID')) or _) in
+       f or _) in
         pose_string_hyps; pose_heading_hyps;
     (* fold_string_hyps_in H'; fold_heading_hyps_in H'; *)
     setoid_rewrite H'; try simplify with monad laws; cbv beta; simpl

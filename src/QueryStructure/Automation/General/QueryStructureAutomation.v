@@ -82,3 +82,25 @@ Ltac start_honing_QueryStructure :=
   end; pose_string_hyps; pose_heading_hyps.
 
 Tactic Notation "start" "honing" "QueryStructure" := start_honing_QueryStructure.
+
+Ltac implement_DropQSConstraints_AbsR :=
+  simpl; intros;
+  try simplify with monad laws; cbv beta; simpl;
+  simpl; refine pick val _; [ | eassumption].
+
+Ltac drop_constraints_from_query' :=
+  match goal with
+    [ H : DropQSConstraints_AbsR ?r_o ?r_n
+      |- context [Query_In ?r_o _ _] ] =>
+    setoid_rewrite (DropQSConstraintsQuery_In r_o);
+      rewrite !H
+  end.
+
+Ltac drop_constraints :=
+  first
+    [ simplify with monad laws
+    | drop_constraints_from_query'
+    | setoid_rewrite refine_If_Then_Else_Bind; simpl
+    | setoid_rewrite refine_If_Opt_Then_Else_Bind; simpl
+    | setoid_rewrite refine_if_Then_Else_Duplicate
+    | implement_DropQSConstraints_AbsR].

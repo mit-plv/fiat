@@ -155,3 +155,28 @@ Ltac drop_constraints_from_insert :=
 
 Tactic Notation "drop" "constraints" "from" "insert" constr(methname) :=
   drop_constraints_from_insert methname.
+
+Ltac implement_QSInsertSpec :=
+  match goal with
+    H : DropQSConstraints_AbsR ?r_o ?r_n
+    |- refine (u <- QSInsert ?r_o ?Ridx ?tup;
+               @?k u) _ =>
+    eapply (@QSInsertSpec_refine_subgoals _ _ r_o r_n Ridx tup); try exact H
+  end; try set_refine_evar;
+  [  try rewrite decides_True; finish honing
+   | simpl; repeat funDepToQuery; finish honing
+   | simpl; intros; try set_refine_evar;
+     repeat first [
+              setoid_rewrite FunctionalDependency_symmetry';
+              [ | solve [ eauto ] ]
+            | funDepToQuery
+            ]; eauto;
+     finish honing
+   | simpl; repeat first  [foreignToQuery' | foreignToQuery]; finish honing
+   |  simpl; intros; try set_refine_evar;
+      repeat (remove_trivial_fundep_insertion_constraints; simpl);
+      finish honing
+   | simpl; intros; try set_refine_evar;
+     try simplify with monad laws
+   | simpl; intros; try set_refine_evar;
+     try simplify with monad laws].

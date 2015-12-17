@@ -118,3 +118,16 @@ Tactic Notation "drop" "constraints" "from" "delete" constr(methname) :=
   hone method methname;
   [ drop_constraints_from_delete
   | ].
+
+Ltac implement_QSDeleteSpec :=
+  match goal with
+    H : DropQSConstraints_AbsR ?r_o ?r_n
+    |- refine (u <- QSDelete ?r_o ?Ridx ?DeletedTuples;
+               @?k u) _ =>
+    eapply (@QSDeleteSpec_refine_subgoals _ _ r_o r_n Ridx _ _ _ _ DeletedTuples k); try exact H
+  end; try set_refine_evar;
+  [ simpl; repeat RemoveDeleteFunctionalDependencyCheck
+  | simpl; repeat ImplementDeleteForeignKeysCheck
+  | simpl; intros; set_refine_evar
+  | simpl; intros; set_refine_evar
+  ].
