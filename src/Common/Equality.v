@@ -271,6 +271,8 @@ Scheme Equality for Ascii.ascii.
 Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
+Scheme Equality for prod.
+Scheme Equality for sum.
 
 Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
 Proof. apply internal_unit_dec_bl. Qed.
@@ -337,6 +339,18 @@ Proof. apply internal_option_dec_bl; assumption. Qed.
 Lemma option_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
 : x = y -> option_beq eq_A x y = true.
 Proof. apply internal_option_dec_lb; assumption. Qed.
+Lemma prod_bl {A B eq_A eq_B} (A_bl : forall x y : A, eq_A x y = true -> x = y) (B_bl : forall x y : B, eq_B x y = true -> x = y) {x y}
+: prod_beq eq_A eq_B x y = true -> x = y.
+Proof. apply internal_prod_dec_bl; assumption. Qed.
+Lemma prod_lb {A B eq_A eq_B} (A_lb : forall x y : A, x = y -> eq_A x y = true) (B_lb : forall x y : B, x = y -> eq_B x y = true) {x y}
+: x = y -> prod_beq eq_A eq_B x y = true.
+Proof. apply internal_prod_dec_lb; assumption. Qed.
+Lemma sum_bl {A B eq_A eq_B} (A_bl : forall x y : A, eq_A x y = true -> x = y) (B_bl : forall x y : B, eq_B x y = true -> x = y) {x y}
+: sum_beq eq_A eq_B x y = true -> x = y.
+Proof. apply internal_sum_dec_bl; assumption. Qed.
+Lemma sum_lb {A B eq_A eq_B} (A_lb : forall x y : A, x = y -> eq_A x y = true) (B_lb : forall x y : B, x = y -> eq_B x y = true) {x y}
+: x = y -> sum_beq eq_A eq_B x y = true.
+Proof. apply internal_sum_dec_lb; assumption. Qed.
 
 Section beq_correct.
   Local Ltac t rew_t :=
