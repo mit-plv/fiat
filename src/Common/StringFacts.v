@@ -234,3 +234,9 @@ Proof.
   intro H.
   apply substring_correct4; omega.
 Qed.
+
+Lemma string_copy_length n ch
+: String.length (string_copy n ch) = n.
+Proof.
+  induction n; simpl; eauto.
+Qed.
