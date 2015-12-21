@@ -2529,7 +2529,31 @@ Ltac master_rewrite_drill :=
     | eapply refine_If_Opt_Then_Else;
       [intro; set_refine_evar | set_refine_evar ] ].
 
-
+Ltac Finite_AbsR_rewrite_drill :=
+  subst_refine_evar;
+  first
+    [ try set_refine_evar;
+      match goal with
+        |- context [ QueryResultComp ?P ?k ] =>
+        match k with
+        | context [Query_Where _ _] =>
+          match k with
+          | context [QueryResultComp _ _] =>
+            match type of k with
+            | ?A -> ?B => makeEvar (A -> B)
+                                   ltac:(fun k' => let H := fresh in
+                                                   assert (@pointwise_relation A B refine k k') as H;
+                                         [ intros ?; try set_refine_evar | setoid_rewrite H; clear H])
+            end
+          end
+        end
+      end
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.

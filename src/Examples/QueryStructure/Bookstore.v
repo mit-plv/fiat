@@ -97,69 +97,6 @@ Definition BookStoreSpec : ADT BookStoreSig :=
       ret (r, count)
 }%methDefParsing.
 
-Lemma GetRel_FiniteTableAbsR:
-  forall (qsSchema : QueryStructureSchema) (qs qs' : UnConstrQueryStructure qsSchema)
-         (Ridx : Fin.t (numRawQSschemaSchemas qsSchema)),
-    FiniteTables_AbsR qs qs'
-    -> GetUnConstrRelation qs Ridx = GetUnConstrRelation qs' Ridx.
-Proof.
-  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
-Qed.
-
-Lemma FiniteTable_FiniteTableAbsR
-      {qsSchema}
-  : forall (qs qs' : UnConstrQueryStructure qsSchema)
-           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
-    FiniteTables_AbsR qs qs'
-    -> FiniteEnsemble (GetUnConstrRelation qs idx).
-Proof.
-  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
-Qed.
-
-Lemma FiniteTable_FiniteTableAbsR'
-      {qsSchema}
-  : forall (qs qs' : UnConstrQueryStructure qsSchema)
-           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
-    FiniteTables_AbsR qs qs'
-    -> FiniteEnsemble (GetUnConstrRelation qs' idx).
-Proof.
-  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
-Qed.
-
-Ltac subst_FiniteTables_AbsR :=
-  match goal with
-  | [ H : FiniteTables_AbsR ?r_o ?r_n
-      |- context [?r_o] ]=> rewrite (proj1 H)
-  | [ H : FiniteTables_AbsR ?r_o ?r_n
-    |- context [GetUnConstrRelation ?r_o ?Ridx] ]=>
-  rewrite (@GetRel_FiniteTableAbsR _ r_o r_n Ridx H)
-end.
-
-Ltac Finite_FiniteTables_AbsR :=
-match goal with
-| [ H : FiniteTables_AbsR ?r_o ?r_n
-    |- context [FiniteEnsemble (GetUnConstrRelation ?r_o ?Ridx)] ]=>
-  eapply (@FiniteTable_FiniteTableAbsR _ r_o r_n Ridx H)
-| [ H : FiniteTables_AbsR ?r_o ?r_n
-    |- context [FiniteEnsemble (GetUnConstrRelation ?r_n ?Ridx)] ]=>
-  eapply (@FiniteTable_FiniteTableAbsR' _ r_o r_n Ridx H)
-end.
-
-Ltac doAny' srewrite_fn drills_fn finish_fn :=
-  let repeat_srewrite_fn := repeat srewrite_fn in
-  try repeat_srewrite_fn;
-    try apply_under_subgoal drills_fn ltac:(repeat_srewrite_fn);
-    finish_fn.
-
-Ltac simplify_queries :=
-  first [
-           simplify with monad laws
-         | progress unfold UnConstrQuery_In
-         | rewrite (@refine_Where_Intersection _ _ _ _ _ _)
-         | Finite_FiniteTables_AbsR
-         | subst_FiniteTables_AbsR
-         ].
-
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
@@ -199,29 +136,55 @@ Proof.
                               cbv delta [GetAttribute] beta; simpl | ]
                           ])]
     end | ].
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny' drop_constraints
+  - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - hone representation using (@FiniteTables_AbsR BookStoreSchema).
     + simplify with monad laws.
       refine pick val _; simpl; intuition.
       eauto using FiniteTables_AbsR_QSEmptySpec.
-    + doAny' simplify_queries
-             rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + doAny' simplify_queries
-             rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + doAny' simplify_queries
-             rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + doAny' simplify_queries
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + simpl.
+
+
+
+      repeat simplify_queries.
+      master_rewrite_drill.
+finish honing.
+eauto with typeclass_instances.
+repeat simplify_queries'.
+finish honing.
+assert (pointwise_relation
+Focus 2.
+setoid_replace H' with c.
+
+setoid_replace H1 with H1.
+setoid_rewrite H1.
+
+setoid_rewrite (@refine_Where_Intersection _ _ _ _ _ _).
+      repeat simplify_queries'.
+
+      doAny' simplify_queries
              rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + doAny' simplify_queries
              rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).

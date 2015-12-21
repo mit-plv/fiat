@@ -126,8 +126,14 @@ Ltac implement_QSDeleteSpec :=
                @?k u) _ =>
     eapply (@QSDeleteSpec_refine_subgoals _ _ r_o r_n Ridx _ _ _ _ DeletedTuples k); try exact H
   end; try set_refine_evar;
-  [ simpl; repeat RemoveDeleteFunctionalDependencyCheck
-  | simpl; repeat ImplementDeleteForeignKeysCheck
+  [ simpl;
+    repeat first
+           [ rewrite decides_2_True
+           | RemoveDeleteFunctionalDependencyCheck]
+  | simpl;
+    repeat first
+           [ rewrite decides_2_True
+           | ImplementDeleteForeignKeysCheck ]
   | simpl; intros; set_refine_evar
   | simpl; intros; set_refine_evar
   ].

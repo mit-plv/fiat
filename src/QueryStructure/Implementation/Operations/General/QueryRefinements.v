@@ -947,14 +947,16 @@ Proof.
 Qed.
 
 Lemma refine_Where_Intersection' heading {ResultT}
-  : forall R P (P_dec : P \/ ~ P) (bod : _ -> Comp (list ResultT)),
-    FiniteEnsemble R
-    -> refine
-         (QueryResultComp (heading := heading) R (fun r => Query_Where P (bod r)))
-         (Query_Where P (QueryResultComp R bod))
+        : forall R,
+          FiniteEnsemble R
+          -> forall P (bod : _ -> Comp (list ResultT)),
+            (P \/ ~ P)
+            -> refine
+                 (QueryResultComp (heading := heading) R (fun r => Query_Where P (bod r)))
+                 (Query_Where P (QueryResultComp R bod))
 .
 Proof.
-  unfold refine, In, Query_Where, QueryResultComp; intros * ? ? Fin_R v Comp_v.
+  unfold refine, In, Query_Where, QueryResultComp; intros ? Fin_R ? ? ? v Comp_v.
   intuition; computes_to_inv; intuition.
   - computes_to_inv; refine pick val _; eauto.
     repeat computes_to_econstructor.
@@ -970,6 +972,40 @@ Proof.
     instantiate (1 := fun _ => ret nil); simpl; intros; computes_to_inv;
     subst; eauto.
     clear; induction x; simpl; repeat computes_to_econstructor; eauto.
+Qed.
+
+Lemma refine_IndexedEnsemble_Intersection_Intersection heading
+  : forall P Q R,
+    refine {queriedList : list (@RawTuple heading) |
+            UnIndexedEnsembleListEquivalence
+              (IndexedEnsemble_Intersection
+                 (IndexedEnsemble_Intersection
+                    P Q) R)
+           queriedList}
+              {queriedList : list (@RawTuple heading) |
+               UnIndexedEnsembleListEquivalence
+                 (IndexedEnsemble_Intersection
+                    P (fun tup => Q tup /\ R tup))
+              queriedList}.
+Proof.
+  intros.
+  eapply refineEquiv_iff_Pick; unfold pointwise_relation; intuition;
+  eapply UnIndexedEnsembleListEquivalence_Same_set; eauto using IndexedEnsemble_Intersection_And.
+  unfold Same_set, Included, In, IndexedEnsemble_Intersection; intuition eauto.
+Qed.
+
+Lemma refine_QueryResultComp_Intersection_Intersection heading {ResultT}
+  : forall P Q R k,
+    refine (@QueryResultComp heading ResultT
+           (IndexedEnsemble_Intersection
+              (IndexedEnsemble_Intersection
+                 P Q)R) k)
+           (QueryResultComp
+              (IndexedEnsemble_Intersection
+                 P (fun tup => Q tup /\ R tup))
+              k).
+Proof.
+  intros; unfold QueryResultComp; rewrite refine_IndexedEnsemble_Intersection_Intersection; reflexivity.
 Qed.
 
 Lemma DropQSConstraintsQuery_In {A} :
@@ -1006,6 +1042,44 @@ Definition FiniteTables_AbsR
            (r_o r_n : UnConstrQueryStructure qs_schema) :=
   r_o = r_n /\ forall idx, (FiniteEnsemble (GetUnConstrRelation r_o idx)).
 
+
+Lemma GetRel_FiniteTableAbsR:
+  forall (qsSchema : QueryStructureSchema) (qs qs' : UnConstrQueryStructure qsSchema)
+         (Ridx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> GetUnConstrRelation qs Ridx = GetUnConstrRelation qs' Ridx.
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTable_FiniteTableAbsR
+      {qsSchema}
+  : forall (qs qs' : UnConstrQueryStructure qsSchema)
+           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> FiniteEnsemble (GetUnConstrRelation qs idx).
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTable_FiniteTableAbsR'
+      {qsSchema}
+  : forall (qs qs' : UnConstrQueryStructure qsSchema)
+           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> FiniteEnsemble (GetUnConstrRelation qs' idx).
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTables_AbsR_symmetry {qs_schema} :
+  forall (r_o r_n : UnConstrQueryStructure qs_schema),
+    FiniteTables_AbsR r_o r_n
+    -> FiniteTables_AbsR r_n r_o.
+Proof.
+  unfold FiniteTables_AbsR; intuition subst; eauto.
+Qed.
+
 Lemma FiniteTables_AbsR_Insert
       {qs_schema}
   : forall r_o r_n idx tup,
@@ -1031,6 +1105,9 @@ Proof.
       eauto using UnIndexedEnsembleListEquivalence_Insert.
     + rewrite ith_replace2_Index_neq; eauto.
 Qed.
+
+
+
 
 Lemma FiniteTables_AbsR_Delete
       {qs_schema}

@@ -104,3 +104,114 @@ Ltac drop_constraints :=
     | setoid_rewrite refine_If_Opt_Then_Else_Bind; simpl
     | setoid_rewrite refine_if_Then_Else_Duplicate
     | implement_DropQSConstraints_AbsR].
+
+Ltac subst_FiniteTables_AbsR :=
+  match goal with
+  | [ H : FiniteTables_AbsR ?r_o ?r_n
+      |- context [?r_o] ]=> rewrite (proj1 H)
+  | [ H : FiniteTables_AbsR ?r_o ?r_n
+    |- context [GetUnConstrRelation ?r_o ?Ridx] ]=>
+  rewrite (@GetRel_FiniteTableAbsR _ r_o r_n Ridx H)
+end.
+
+Ltac Finite_FiniteTables_AbsR :=
+  match goal with
+  | [ H : FiniteTables_AbsR ?r_o ?r_n
+      |- context [FiniteEnsemble (GetUnConstrRelation ?r_o ?Ridx)] ]=>
+    eapply (@FiniteTable_FiniteTableAbsR _ r_o r_n Ridx H)
+  | [ H : FiniteTables_AbsR ?r_o ?r_n
+      |- context [FiniteEnsemble (GetUnConstrRelation ?r_n ?Ridx)] ]=>
+    eapply (@FiniteTable_FiniteTableAbsR' _ r_o r_n Ridx H)
+  | _ => eapply FiniteEnsemble_Intersection; eauto with typeclass_instances
+  end.
+
+Lemma FiniteTables_AbsR_Insert'
+      {qs_schema : RawQueryStructureSchema}
+  : forall (r_o r_n r_n' : UnConstrQueryStructure qs_schema)
+           (idx : Fin.t (numRawQSschemaSchemas qs_schema))
+           (tup : IndexedElement),
+    computes_to (UpdateUnConstrRelationInsertC r_n idx tup) r_n'
+    -> UnConstrFreshIdx (GetUnConstrRelation r_n idx) (elementIndex tup)
+    -> FiniteTables_AbsR r_o r_n
+    -> FiniteTables_AbsR r_n' r_n'.
+Proof.
+  unfold UpdateUnConstrRelationInsertC; intros; computes_to_inv; subst.
+  unfold FiniteTables_AbsR; intuition.
+  destruct (fin_eq_dec idx idx0); subst.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    rewrite ilist2.ith_replace2_Index_eq.
+    unfold FiniteTables_AbsR in H1; intuition subst.
+    destruct (H2 idx0) as [l ?]; eexists (cons (indexedElement tup) l).
+    eauto using UnIndexedEnsembleListEquivalence_Insert.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    rewrite ilist2.ith_replace2_Index_neq; eauto.
+    unfold FiniteTables_AbsR in H1; intuition subst.
+    eapply H2.
+Qed.
+
+Lemma FiniteTables_AbsR_Delete'
+      {qs_schema : RawQueryStructureSchema}
+  : forall (r_o r_n r_n' : UnConstrQueryStructure qs_schema)
+           (idx : Fin.t (numRawQSschemaSchemas qs_schema))
+           (P : Ensemble RawTuple)
+           (P_dec : DecideableEnsemble P),
+    computes_to (UpdateUnConstrRelationDeleteC r_n idx P) r_n'
+    -> FiniteTables_AbsR r_o r_n
+    -> FiniteTables_AbsR r_n' r_n'.
+Proof.
+  unfold UpdateUnConstrRelationDeleteC; intros; computes_to_inv; subst.
+  unfold FiniteTables_AbsR; intuition.
+  destruct (fin_eq_dec idx idx0); subst.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    rewrite ilist2.ith_replace2_Index_eq.
+    unfold FiniteTables_AbsR in H0; intuition subst.
+    destruct (H1 idx0) as [l ?]; eexists _.
+    eapply UnIndexedEnsembleListEquivalence_Delete; eauto.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    rewrite ilist2.ith_replace2_Index_neq.
+    unfold FiniteTables_AbsR in H0; intuition subst.
+    destruct (H1 idx0) as [l ?]; eexists _; eauto.
+    congruence.
+Qed.
+
+Ltac implement_FiniteTables_AbsR :=
+  simpl; intros;
+  try simplify with monad laws; cbv beta; simpl;
+  simpl; refine pick val _;
+  [
+  | solve
+      [ repeat first
+               [solve [eauto using FiniteTables_AbsR_symmetry]
+               | match goal with
+                   H : computes_to (UpdateUnConstrRelationInsertC ?r_n ?idx ?tup) ?r_n'
+                   |- FiniteTables_AbsR ?r_n' _ =>
+                   eapply (FiniteTables_AbsR_Insert' H); try eassumption
+                 end
+               | match goal with
+                   H : computes_to (UpdateUnConstrRelationDeleteC ?r_n ?idx ?P) ?r_n'
+                   |- FiniteTables_AbsR ?r_n' _ =>
+                   eapply (FiniteTables_AbsR_Delete' H); try eassumption
+                 end
+  ] ] ].
+
+
+Ltac doAny' srewrite_fn drills_fn finish_fn :=
+  let repeat_srewrite_fn := repeat srewrite_fn in
+  try repeat_srewrite_fn;
+    try apply_under_subgoal drills_fn ltac:(repeat_srewrite_fn);
+    finish_fn.
+
+Ltac simplify_queries :=
+  first [
+      simplify with monad laws
+    | progress unfold UnConstrQuery_In
+    | setoid_rewrite refine_If_Then_Else_Bind; simpl
+    | setoid_rewrite refine_If_Opt_Then_Else_Bind; simpl
+    | rewrite refine_QueryResultComp_Intersection_Intersection
+    | rewrite refine_IndexedEnsemble_Intersection_Intersection
+    | rewrite (@refine_Where_Intersection' _ _ _); repeat decide equality
+    | rewrite (@refine_Where_Intersection _ _ _ _ _ _)
+    | Finite_FiniteTables_AbsR
+    | subst_FiniteTables_AbsR
+    | implement_FiniteTables_AbsR
+    ].

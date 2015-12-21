@@ -26,48 +26,107 @@ Definition FriendFinderSig : ADTSig :=
       Constructor "Init"
            : unit                              -> rep,
       Method "AddPerson"
-           : rep x (FriendFinderSchema#PEOPLE) -> rep x bool,
+           : rep * (FriendFinderSchema#PEOPLE) -> rep * bool,
       Method "AddCity"
-           : rep x (FriendFinderSchema#CITIES) -> rep x bool,
+           : rep * (FriendFinderSchema#CITIES) -> rep * bool,
       Method "PeopleAround"
-           : rep x (string * nat)              -> rep x list string,
+           : rep * string * nat              -> rep * (list string),
       Method "PeopleInCity"
-           : rep x string                 -> rep x nat
+           : rep * string                 -> rep * nat
     }.
 
-Definition FriendFinderSpec : ADT FriendFinderSig :=
+Definition FriendFinderSpec : ADT _ :=
   QueryADTRep FriendFinderSchema {
-    Def Constructor "Init" (_ : unit) : rep := empty,
+    Def Constructor0 "Init"  : rep := empty,
 
-    update "AddPerson" (r : rep, person : FriendFinderSchema#PEOPLE) : bool :=
+    Def Method1 "AddPerson" (r : rep) (person : FriendFinderSchema#PEOPLE) : rep * bool :=
       Insert person into r!PEOPLE,
 
-    update "AddCity" (r : rep, city : FriendFinderSchema#CITIES) : bool :=
+    Def Method1 "AddCity" (r : rep) (city : FriendFinderSchema#CITIES) : rep * bool :=
       Insert city into r!CITIES,
 
-    query "PeopleAround" (r : rep, name_distance : string * nat) : list string :=
-      For (person_me in r!PEOPLE)
+    Def Method2 "PeopleAround" (r : rep) (name : string) (distance : nat) : rep * (list string) :=
+        res <- For (person_me in r!PEOPLE)
           (person in r!PEOPLE)
           (city_me in r!CITIES)
           (city in r!CITIES)
-          Where (person_me!NAME = (fst name_distance))
+          Where (person_me!NAME = name)
           Where (city_me!CITY = person_me!CITY)
-          Where (city_me!LATITUDE - (snd name_distance) <=
-                 city!LATITUDE <= city_me!LATITUDE + (snd name_distance))
-          Where (city_me!LONGITUDE - (snd name_distance) <=
-                 city!LONGITUDE <= city_me!LONGITUDE + (snd name_distance))
+          Where (city_me!LATITUDE - distance <=
+                 city!LATITUDE <= city_me!LATITUDE + distance)
+          Where (city_me!LONGITUDE - distance <=
+                 city!LONGITUDE <= city_me!LONGITUDE + distance)
           Where (person!CITY = city!CITY)
-          Return person!NAME,
-          
-     query "PeopleInCity" (r : rep, city : string) : nat :=
-       Count (For (person in r!PEOPLE)
+          Return person!NAME;
+    ret (r, res),         
+
+     Def Method1 "PeopleInCity" (r : rep) (city : string) : rep * nat :=
+      res <- Count (For (person in r!PEOPLE)
                   Where (person!CITY = city)
-                  Return ())
-}.
+                  Return ());
+    ret (r, res)
+}%methDefParsing.
 
 Definition SharpenedFriendFinder :
   FullySharpened FriendFinderSpec.
 Proof.
+  start sharpening ADT.
+  pose_string_hyps.
+  eapply SharpenStep;
+  [ match goal with
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
+        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
+          [ repeat (first [eapply refine_Constructors_nil
+                          | eapply refine_Constructors_cons;
+                            [ simpl; intros;
+                              match goal with
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
+                              end;
+                              (* Drop constraints from empty *)
+                              try apply Constructor_DropQSConstraints;
+                              cbv delta [GetAttribute] beta; simpl
+                            | ] ])
+          | repeat (first [eapply refine_Methods_nil
+                          | eapply refine_Methods_cons;
+                            [ simpl; intros;
+                              match goal with
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
+                              end;
+                              cbv delta [GetAttribute] beta; simpl | ]
+                          ])]
+    end | ].
+  - doAny drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny drop_constraints
+           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny drop_constraints
+           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doAny drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - hone representation using (@FiniteTables_AbsR FriendFinderSchema).
+    + simplify with monad laws.
+      refine pick val _; simpl; intuition.
+      eauto using FiniteTables_AbsR_QSEmptySpec.
+    + doAny simplify_queries
+             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + doAny simplify_queries
+            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    + simpl.
+
   master_plan ltac:(CombineIndexTactics RangeIndexTactics EqIndexTactics).
 Time Defined.
 

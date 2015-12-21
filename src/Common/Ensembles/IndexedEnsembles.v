@@ -134,6 +134,15 @@ Section IndexedEnsembles.
     : IndexedEnsemble :=
     fun element' => ens element' /\ ens' (indexedElement element').
 
+  Lemma IndexedEnsemble_Intersection_And
+    : forall (ens : IndexedEnsemble)
+             (P Q : Ensemble ElementType),
+      Same_set _ (IndexedEnsemble_Intersection (IndexedEnsemble_Intersection ens P) Q)
+               (IndexedEnsemble_Intersection ens (fun el => P el /\ Q el)).
+  Proof.
+    unfold Same_set, Included, IndexedEnsemble_Intersection, In; intuition.
+  Qed.
+
   Definition FiniteEnsemble (P : IndexedEnsemble)
     := exists l, UnIndexedEnsembleListEquivalence P l.
 
@@ -154,7 +163,6 @@ Section IndexedEnsembles.
       + eauto.
       + case_eq (f (indexedElement a0)); simpl; intros; intuition.
   Qed.
-
 
   Lemma UnIndexedEnsembleListEquivalence_filter
     : forall R P (P_dec : DecideableEnsemble (A := ElementType) P) l,
@@ -216,6 +224,19 @@ Section IndexedEnsembles.
     econstructor.
   Qed.
 
+  Lemma UnIndexedEnsembleListEquivalence_Same_set
+    : forall ens ens' l,
+      Same_set _ ens ens' ->
+      UnIndexedEnsembleListEquivalence ens l ->
+      UnIndexedEnsembleListEquivalence ens' l.
+  Proof.
+    unfold UnIndexedEnsembleListEquivalence, Same_set, Included; intros;
+    destruct_ex; intuition; subst.
+    eexists _; intuition eauto.
+    eapply H0; eauto.
+    eapply H1; eapply H0; eauto.
+  Qed.
+
   Lemma UnIndexedEnsembleListEquivalence_Insert
     : forall ens (l : list _) a,
       UnConstrFreshIdx ens (elementIndex a)
@@ -263,6 +284,25 @@ Section IndexedEnsembles.
     - eauto using NoDup_filter_map.
   Qed.
 
+  Lemma FiniteEnsemble_Insert
+    : forall P el,
+      UnConstrFreshIdx P (elementIndex el)
+      -> FiniteEnsemble P
+      -> FiniteEnsemble (EnsembleInsert el P ).
+  Proof.
+    unfold FiniteEnsemble, EnsembleInsert; intros; destruct_ex.
+    eexists; eauto using UnIndexedEnsembleListEquivalence_Insert.
+  Qed.
+
+  Lemma FiniteEnsemble_Intersection
+    : forall P Q,
+      DecideableEnsemble Q
+      -> FiniteEnsemble P
+      -> FiniteEnsemble (IndexedEnsemble_Intersection P Q).
+  Proof.
+    unfold FiniteEnsemble; intros; destruct_ex.
+    eauto using UnIndexedEnsembleListEquivalence_filter.
+  Qed.
 
 End IndexedEnsembles.
 

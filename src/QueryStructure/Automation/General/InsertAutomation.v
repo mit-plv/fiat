@@ -164,15 +164,25 @@ Ltac implement_QSInsertSpec :=
     eapply (@QSInsertSpec_refine_subgoals _ _ r_o r_n Ridx tup); try exact H
   end; try set_refine_evar;
   [  try rewrite decides_True; finish honing
-   | simpl; repeat funDepToQuery; finish honing
+   | simpl;
+     repeat first
+            [ rewrite decides_2_True
+            | funDepToQuery];
+     finish honing
    | simpl; intros; try set_refine_evar;
      repeat first [
-              setoid_rewrite FunctionalDependency_symmetry';
+              rewrite decides_2_True
+            | setoid_rewrite FunctionalDependency_symmetry';
               [ | solve [ eauto ] ]
             | funDepToQuery
             ]; eauto;
      finish honing
-   | simpl; repeat first  [foreignToQuery' | foreignToQuery]; finish honing
+   | simpl;
+     repeat first [
+              rewrite decides_2_True
+            | foreignToQuery'
+            | foreignToQuery
+            ]; finish honing
    |  simpl; intros; try set_refine_evar;
       repeat (remove_trivial_fundep_insertion_constraints; simpl);
       finish honing
