@@ -190,7 +190,7 @@ Ltac implement_FiniteTables_AbsR :=
                | match goal with
                    H : computes_to (UpdateUnConstrRelationDeleteC ?r_n ?idx ?P) ?r_n'
                    |- FiniteTables_AbsR ?r_n' _ =>
-                   eapply (FiniteTables_AbsR_Delete' H); try eassumption
+                   eapply (FiniteTables_AbsR_Delete' _ H); try eassumption
                  end
   ] ] ].
 

@@ -2610,3 +2610,4 @@ Global Opaque QSInsert.
 Global Opaque QSDelete.
 Global Opaque UpdateUnConstrRelationInsertC.
 Global Opaque UpdateUnConstrRelationDeleteC.
+Global Opaque QueryResultComp.

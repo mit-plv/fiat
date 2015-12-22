@@ -113,6 +113,20 @@ Proof.
   t_morphism Query_For.
 Qed.
 
+Add Parametric Morphism heading ResultT P
+  : (@QueryResultComp heading ResultT P)
+    with signature (pointwise_relation _ refine ==> refine)
+      as refine_refine_QueryResultComp.
+Proof.
+  intros.
+  unfold QueryResultComp; intros.
+  f_equiv.
+  unfold pointwise_relation in *; intros.
+  induction a; simpl; f_equiv; eauto.
+  unfold pointwise_relation.
+  intros; setoid_rewrite IHa; f_equiv.
+Qed.
+
 Add Parametric Morphism ResultT
   : (@Count ResultT)
     with signature (refine ==> refine)

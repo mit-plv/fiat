@@ -112,8 +112,6 @@ Proof.
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - doAny drop_constraints
           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - hone representation using (@FiniteTables_AbsR AlbumSchema).
     + simplify with monad laws.
       refine pick val _; simpl; intuition.
@@ -124,8 +122,6 @@ Proof.
              Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + doAny simplify_queries
              Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + doAny simplify_queries
-            Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + doAny simplify_queries
             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + simpl.
