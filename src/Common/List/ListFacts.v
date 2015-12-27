@@ -1565,4 +1565,31 @@ Section ListFacts.
           rewrite <- in_rev in *.
           eauto with nocore. } } }
   Qed.
+
+  Lemma uniquize_nonnil {A} beq (ls : list A)
+  : ls <> nil <-> Operations.List.uniquize beq ls <> nil.
+  Proof.
+    induction ls as [|a ls IHls]; simpl.
+    { reflexivity. }
+    { split; intros H H'.
+      { destruct (list_bin beq a (Operations.List.uniquize beq ls)) eqn:Heq.
+        { rewrite H' in IHls.
+          destruct ls; simpl in *; try congruence.
+          destruct IHls.
+          specialize_by congruence.
+          congruence. }
+        { congruence. } }
+      { congruence. } }
+  Qed.
+  Lemma rev_nonnil {A} (ls : list A)
+  : ls <> nil <-> rev ls <> nil.
+  Proof.
+    destruct ls; simpl.
+    { reflexivity. }
+    { split; intros H H';
+      apply (f_equal (@List.length _)) in H';
+      rewrite ?app_length in H';
+      simpl in *;
+      omega. }
+  Qed.
 End ListFacts.

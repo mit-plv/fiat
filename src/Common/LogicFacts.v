@@ -95,4 +95,18 @@ Section LogicFacts.
   Proof.
     intro H; intros H' x; apply H, H'.
   Qed.
+
+  Lemma and_distr_or_r A B C
+  : (A /\ (B \/ C)) <-> ((A /\ B) \/ (A /\ C)).
+  Proof. tauto. Qed.
+  Lemma and_distr_or_l A B C
+  : ((B \/ C) /\ A) <-> ((B /\ A) \/ (C /\ A)).
+  Proof. tauto. Qed.
+  Lemma ex_distr_or A B C
+  : (exists x : A, B x \/ C x) <-> ((exists x : A, B x) \/ (exists x : A, C x)).
+  Proof.
+    repeat (intros [] || split || intro);
+    first [ do 2 first [ left | esplit ]; eassumption
+          | do 2 first [ right | esplit ]; eassumption ].
+  Defined.
 End LogicFacts.
