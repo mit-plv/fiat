@@ -59,3 +59,9 @@ Proof.
     edestruct @dec_eq_adjust' as [|n]; try reflexivity.
     destruct (n p). }
 Qed.
+
+Lemma UIP_bool {x y : bool} (p q : x = y) : p = q.
+Proof.
+  apply dec_eq_uip.
+  decide equality.
+Qed.
