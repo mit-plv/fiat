@@ -1605,4 +1605,14 @@ Section ListFacts.
     { inversion H; subst; split; assumption. }
     { constructor; apply H. }
   Qed.
+
+  Lemma app_take_drop {A} (ls : list A) n
+  : (Operations.List.take n ls ++ Operations.List.drop n ls)%list = ls.
+  Proof.
+    revert ls; induction n as [|n IHn]; intros.
+    { reflexivity. }
+    { destruct ls as [|x xs]; simpl; trivial.
+      apply f_equal.
+      apply IHn. }
+  Qed.
 End ListFacts.
