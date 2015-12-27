@@ -1592,4 +1592,17 @@ Section ListFacts.
       simpl in *;
       omega. }
   Qed.
+
+  Lemma Forall_tl {A} P (ls : list A)
+  : List.Forall P ls -> List.Forall P (tl ls).
+  Proof.
+    intro H; destruct H; simpl; try constructor; assumption.
+  Qed.
+  Lemma Forall_inv_iff {A} P x (xs : list A)
+  : List.Forall P (x::xs) <-> (P x /\ List.Forall P xs).
+  Proof.
+    split; intro H.
+    { inversion H; subst; split; assumption. }
+    { constructor; apply H. }
+  Qed.
 End ListFacts.
