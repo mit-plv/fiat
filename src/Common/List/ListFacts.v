@@ -1,6 +1,6 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality.
+        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality Fiat.Common.List.FlattenList.
 
 Unset Implicit Arguments.
 
@@ -1464,5 +1464,105 @@ Section ListFacts.
     induction ls; trivial; simpl.
     rewrite !IHls, list_bin_map.
     edestruct @list_bin; simpl; reflexivity.
+  Qed.
+
+  Definition list_rect_In {A} (P : list A -> Type)
+             (ls : list A)
+             (Hnil : P nil)
+             (Hcons : forall x xs, In x ls -> P xs -> P (x::xs))
+  : P ls.
+  Proof.
+    induction ls as [|x xs IHxs]; [ assumption | ].
+    apply Hcons.
+    { left; reflexivity. }
+    { apply IHxs; intros x' xs' H'.
+      apply Hcons.
+      right; exact H'. }
+  Defined.
+
+  Lemma fold_right_and_True_app ls ls'
+  : fold_right and True (ls ++ ls') <-> (fold_right and True ls /\ fold_right and True ls').
+  Proof.
+    revert ls'; induction ls as [|?? IHls]; simpl; intros; try tauto.
+    rewrite IHls; clear IHls.
+    tauto.
+  Qed.
+
+  Lemma fold_right_and_True_flatten ls
+  : fold_right and True (flatten ls) <-> fold_right and True (map (fold_right and True) ls).
+  Proof.
+    induction ls as [|?? IHls]; try tauto; simpl.
+    rewrite <- IHls; clear IHls.
+    rewrite fold_right_and_True_app; reflexivity.
+  Qed.
+
+  Lemma NoDup_app {A} (ls ls' : list A)
+  : NoDup (ls ++ ls') -> NoDup ls /\ NoDup ls'.
+  Proof.
+    induction ls; simpl; intro H; split; trivial; try constructor;
+    simpl in *.
+    { inversion H; subst.
+      eauto using in_or_app. }
+    { apply IHls.
+      inversion H; subst; assumption. }
+    { apply IHls; inversion H; subst; assumption. }
+  Qed.
+  Lemma NoDup_app_in {A} (ls ls' : list A) (x : A) (H : NoDup (ls ++ ls'))
+  : In x ls' -> In x ls -> False.
+  Proof.
+    intros H0 H1.
+    induction ls as [|?? IHls]; simpl in *; trivial.
+    destruct H1; inversion H; clear H; subst; eauto.
+    rewrite in_app_iff in *.
+    eauto.
+  Qed.
+
+  Lemma NoDup_app_in_iff {A} (ls ls' : list A)
+  : NoDup (ls ++ ls') <-> (NoDup ls /\ NoDup ls' /\
+                           forall x, In x ls' -> In x ls -> False).
+  Proof.
+    induction ls as [|?? IHls]; simpl in *; trivial;
+    repeat (split || intro);
+    repeat match goal with
+             | _ => solve [ constructor ]
+             | _ => assumption
+             | _ => progress simpl in *
+             | _ => progress destruct_head and
+             | _ => progress destruct_head iff
+             | _ => progress split_and
+             | _ => progress subst
+             | _ => progress specialize_by assumption
+             | _ => progress specialize_by tauto
+             | [ H : NoDup (_::_) |- _ ] => inversion H; clear H
+             | [ |- NoDup (_::_) ] => constructor
+             | [ H : _ |- _ ] => rewrite in_app_iff in H
+             | _ => rewrite in_app_iff
+             | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
+             | _ => progress destruct_head or
+             | _ => solve [ eauto using eq_refl with nocore ]
+             | [ |- ~(?A \/ ?B) ] => cut (~A /\ ~B); [ tauto | ]
+             | [ |- _ /\ _ ] => split
+             | [ H : ?T, H' : ?T /\ _ -> ?B |- _ ] => specialize (fun X => H' (conj H X))
+             | _ => progress split_in_context_by or (fun a b : Type => a) (fun a b : Type => b) ltac:(fun H => intuition eauto)
+             | [ H : forall x, _ -> _ = x -> _ |- _ ] => specialize (fun k => H _ k eq_refl)
+           end.
+  Qed.
+  Lemma NoDup_rev {A} (ls : list A)
+  : NoDup (rev ls) <-> NoDup ls.
+  Proof.
+    induction ls as [|?? IHls]; simpl.
+    { split; intro; constructor. }
+    { split; intro H.
+      { constructor.
+        { rewrite in_rev.
+          rapply @NoDup_app_in; [ eassumption | left; reflexivity ]. }
+        { apply NoDup_app in H; apply IHls, H. } }
+      { rewrite NoDup_app_in_iff, IHls.
+        inversion H; clear H; subst.
+        repeat split; simpl; trivial.
+        { repeat constructor; simpl; intro; trivial. }
+        { intros; destruct_head or; destruct_head False; subst.
+          rewrite <- in_rev in *.
+          eauto with nocore. } } }
   Qed.
 End ListFacts.

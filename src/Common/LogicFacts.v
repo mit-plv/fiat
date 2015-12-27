@@ -1,4 +1,5 @@
 Require Coq.Lists.List.
+Require Import Coq.Program.Basics.
 
 Section LogicFacts.
   Lemma or_false :
@@ -87,5 +88,11 @@ Section LogicFacts.
   : (forall x : A, (B x <-> C x)) -> ((forall x, B x) <-> (forall x, C x)).
   Proof.
     intro H; split; intros H' x; apply H, H'.
+  Qed.
+
+  Lemma forall_impl {A B C}
+  : (forall x : A, (impl (B x) (C x))) -> (impl (forall x, B x) (forall x, C x)).
+  Proof.
+    intro H; intros H' x; apply H, H'.
   Qed.
 End LogicFacts.
