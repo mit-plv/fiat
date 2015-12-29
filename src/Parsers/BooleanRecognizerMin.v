@@ -651,6 +651,55 @@ Section recursive_descent_parser.
           { clear -p; abstract (inversion p; subst; eexists; split; eassumption). }
         Defined.
 
+        Local Ltac t_parse_production_for :=
+          repeat
+            match goal with
+              | [ H : (beq_nat _ _) = true |- _ ] => apply EqNat.beq_nat_true in H
+              | _ => progress subst
+              | _ => solve [ constructor; assumption ]
+              | [ H : minimal_parse_of_production _ _ _ nil |- _ ] => (inversion H; clear H)
+              | [ H : minimal_parse_of_production _ _ _ (_::_) |- _ ] => (inversion H; clear H)
+              | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
+              | _ => progress simpl in *
+              | _ => discriminate
+              | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x y z => H x (y, z))
+              | _ => solve [ eauto with nocore ]
+              | _ => solve [ apply Min.min_case_strong; omega ]
+              | _ => omega
+              | [ H : production_valid (_::_) |- _ ]
+                => let H' := fresh in
+                   pose proof H as H';
+                     apply production_valid_cons in H;
+                     apply hd_production_valid in H'
+            end.
+
+        Lemma production_is_reachableT_tl {it its}
+        : production_is_reachableT G (it :: its) -> production_is_reachableT G its.
+        Proof.
+          intros [nt [prefix [H0 H1]]].
+          exists nt, (prefix ++ [it]); split; try assumption.
+          rewrite <- app_assoc; assumption.
+        Qed.
+
+        Lemma parse_production'_for__helper__split_list_completeT_for
+              {splits : item Char -> production Char -> String -> list nat}
+              (Hsplits : forall str it its,
+                  production_is_reachableT G (it :: its)
+                  -> forall pf' : length str <= len0,
+                    split_list_completeT_for (G := G) (valid := valid) it its str pf' (splits it its str))
+              {it its}
+              {str : String}
+              (Hreachable : production_is_reachableT G (it :: its))
+              (p : {a : nat
+                   & (In a (splits it its str) *
+                      (minimal_parse_of_item (G := G) len0 valid (take a str) it
+                       * minimal_parse_of_production (G := G) len0 valid (drop a str) its))%type} -> False)
+              (pf' : length str <= len0)
+          : split_list_completeT_for (G := G) (valid := valid) it its str pf' (splits it its str).
+        Proof.
+          t_parse_production_for.
+        Qed.
+
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Definition parse_production'_for
@@ -683,19 +732,20 @@ Section recursive_descent_parser.
                (fun it its parse_production' Hreachable str len Hlen pf
                 => parse_production'_helper
                      _
-                     (let parse_item := (fun n => parse_item' (parse_nonterminal (take n str) (len := min n len) (eq_trans take_length (f_equal (min _) Hlen)) _) it) in
-                      let parse_production := (fun n => parse_production' _ (drop n str) (len - n) (eq_trans (drop_length _ _) (f_equal (fun x => x - _) Hlen)) _) in
+                     (let parse_item := (fun n pf => parse_item' (parse_nonterminal (take n str) (len := min n len) (eq_trans take_length (f_equal (min _) Hlen)) pf) it) in
+                      let parse_item := (fun n => parse_item n (Min.min_case_strong n len (fun k => k <= len0) (fun Hlen => (Nat.le_trans _ _ _ Hlen pf)) (fun Hlen => pf))) in
+                      let parse_production := (fun n => parse_production' (production_is_reachableT_tl Hreachable) (drop n str) (len - n) (eq_trans (drop_length _ _) (f_equal (fun x => x - _) Hlen)) (Nat.le_trans _ _ _ (Nat.le_sub_l _ _) pf)) in
                       match dec_In
                               (fun n => dec_prod (parse_item n) (parse_production n))
                               (splits it its str)
                       with
                         | inl p => inl (existT _ (projT1 p) (snd (projT2 p)))
                         | inr p
-                          => let pf' := _ in
-                             let H := (_ : split_list_completeT_for (G := G) (len0 := len0) (valid := valid) it its str pf' (splits it its str)) in
+                          => let pf' := (Nat.le_trans _ _ _ (Nat.eq_le_incl _ _ Hlen) pf) in
+                             let H := (parse_production'_for__helper__split_list_completeT_for Hsplits Hreachable p pf' : split_list_completeT_for (G := G) (len0 := len0) (valid := valid) it its str pf' (splits it its str)) in
                              inr (fun p' => p (fst dec_in_helper (H p')))
                       end)
-                     (*match dec_stabalize
+            (*match dec_stabalize
                            _
                            (length str)
                            (parse_complete_stabalize (len0 := len0) (valid := valid) (it := it) (its := its))
@@ -715,34 +765,7 @@ Section recursive_descent_parser.
             [ clear parse_nonterminal Hsplits splits rdata cdata
             | clear parse_nonterminal Hsplits splits rdata cdata
             | .. ];
-            try abstract (repeat match goal with
-                                   | [ H : (beq_nat _ _) = true |- _ ] => apply EqNat.beq_nat_true in H
-                                   | _ => progress subst
-                                   | _ => solve [ constructor; assumption ]
-                                   | [ H : minimal_parse_of_production _ _ _ nil |- _ ] => (inversion H; clear H)
-                                   | [ H : minimal_parse_of_production _ _ _ (_::_) |- _ ] => (inversion H; clear H)
-                                   | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
-                                   | _ => progress simpl in *
-                                   | _ => discriminate
-                                   | [ H : forall x, (_ * _)%type -> _ |- _ ] => specialize (fun x y z => H x (y, z))
-                                   | _ => solve [ eauto with nocore ]
-                                   | _ => solve [ apply Min.min_case_strong; omega ]
-                                   | _ => omega
-                                   | [ H : production_valid (_::_) |- _ ]
-                                     => let H' := fresh in
-                                        pose proof H as H';
-                                   apply production_valid_cons in H;
-                                   apply hd_production_valid in H'
-                                 end).
-          { match goal with
-              | [ Hreachable : production_is_reachableT ?G (?it :: ?its)
-                  |- production_is_reachableT ?G ?its ]
-                => clear -Hreachable
-            end.
-            destruct Hreachable as [x [prefix [H0 H1]]].
-            exists x.
-            exists (prefix ++ [it]); split; try assumption; [].
-            clear -H1; abstract (rewrite <- app_assoc; simpl; assumption). }
+            abstract t_parse_production_for.
         Defined.
 
         Definition parse_production'_for_eq
@@ -767,17 +790,23 @@ Section recursive_descent_parser.
           eq_t; eq_list_rect; repeat eq_t'; [].
           expand_onceL; repeat eq_t'; [].
           expand_onceL; eq_list_rect_fold_left_orb; repeat eq_t'; [].
-          erewrite <- parse_item'_eq;
+          let parse_nt := match goal with
+                          | [ |- context[parse_item' ?pnt _] ] => pnt
+                          end in
+          erewrite <- (parse_item'_eq _ parse_nt);
             [
-            | intros; apply parse_nonterminal_eq; assumption
+            | intros; etransitivity;
+              [ apply parse_nonterminal_eq; assumption
+              | repeat (f_equal; []); apply Le.le_proof_irrelevance ]
             | repeat match goal with
                        | [ H : production_is_reachableT ?G (?a :: ?ls) |- item_valid ?a ]
                          => let H' := fresh in
                             assert (H' : production_is_reachable G (a::ls));
                               [ clear -H;
                                 repeat first [ let x := fresh in destruct H as [x H]; exists x
-                                             | assumption
-                                             | destruct H; split
+                                             | assumption ];
+                                destruct H; split; (* work around https://coq.inria.fr/bugs/show_bug.cgi?id=4464 *)
+                                repeat first [ assumption
                                              | apply In_InT ]
                               | apply (@reachable_production_valid _ G _ gvalid), hd_production_valid in H'; assumption ]
                        | _ => assumption
