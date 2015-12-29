@@ -677,7 +677,7 @@ Section recursive_descent_parser.
         : production_is_reachableT G (it :: its) -> production_is_reachableT G its.
         Proof.
           intros [nt [prefix [H0 H1]]].
-          exists nt, (prefix ++ [it]); split; try assumption.
+          exists nt. exists (prefix ++ [it]); split; try assumption.
           rewrite <- app_assoc; assumption.
         Qed.
 
