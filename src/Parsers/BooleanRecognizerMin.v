@@ -931,7 +931,7 @@ Section recursive_descent_parser.
                       => exists (projT1 Hreachable); destruct Hreachable as [nt Hreachable]; simpl
                     | [ Hreachable : { prefix : _ | ?V /\ prefix ++ ?p::?ps = ?k }
                         |- { prefix : _ | ?V /\ prefix ++ ?ps = ?k } ]
-                      => exists (projT1 Hreachable ++ [p]); destruct Hreachable as [prefix [? Hreachable]]; split; [ assumption | simpl ]
+                      => exists (proj1_sig Hreachable ++ [p]); destruct Hreachable as [prefix [? Hreachable]]; split; [ assumption | simpl ]
                     | [ H : ?x ++ ?y::?z = ?k |- (?x ++ [?y]) ++ ?z = ?k ]
                       => clear -H; abstract (rewrite <- app_assoc; assumption)
                     | [ |- { prefix : _ & (_ * _)%type } ]
