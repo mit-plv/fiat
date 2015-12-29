@@ -223,4 +223,14 @@ Module Export List.
              | Some r => Some (0, r)
            end
        end.
+
+  Fixpoint sig_In {A} (ls : list A) : list { x : A | List.In x ls }
+    := match ls return list { x : A | List.In x ls } with
+         | nil => nil
+         | x::xs
+           => (exist _ x (or_introl eq_refl))
+                :: (List.map
+                      (fun xp => exist _ (proj1_sig xp) (or_intror (proj2_sig xp)))
+                      (@sig_In A xs))
+       end.
 End List.

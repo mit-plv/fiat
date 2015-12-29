@@ -1615,4 +1615,34 @@ Section ListFacts.
       apply f_equal.
       apply IHn. }
   Qed.
+
+  Lemma map_proj1_sig_sig_In {A} (ls : list A)
+  : List.map (@proj1_sig _ _) (sig_In ls) = ls.
+  Proof.
+    induction ls; simpl; f_equal; rewrite map_map; simpl; assumption.
+  Qed.
+
+  Lemma in_sig_uip {A} {P : A -> Prop} (UIP : forall x (p q : P x), p = q)
+        (ls : list { x : A | P x })
+        x
+  : List.In x ls <-> List.In (proj1_sig x) (List.map (@proj1_sig _ _) ls).
+  Proof.
+    induction ls as [|y ys IHls]; simpl.
+    { reflexivity. }
+    { repeat match goal with
+               | [ |- ?x = ?x \/ _ ] => left; reflexivity
+               | [ H : ?A |- _ \/ ?A ] => right; assumption
+               | [ |- exist _ ?x _ = exist _ ?x _ \/ _ ] => left; apply f_equal
+               | _ => progress subst
+               | _ => progress simpl in *
+               | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+               | [ H : _ <-> _ |- _ ] => destruct H
+               | [ |- _ <-> _ ] => split
+               | _ => intro
+               | [ H : _ \/ _ |- _ ] => destruct H
+               | [ H : proj1_sig ?x = _ |- _ ] => is_var x; destruct x
+               | [ |- context[exist _ _ _ = ?x] ] => is_var x; destruct x
+               | _ => solve [ eauto with nocore ]
+             end. }
+  Qed.
 End ListFacts.
