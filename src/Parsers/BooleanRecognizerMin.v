@@ -733,15 +733,15 @@ Section recursive_descent_parser.
                 => parse_production'_helper
                      _
                      (let parse_item := (fun n pf => parse_item' (parse_nonterminal (take n str) (len := min n len) (eq_trans take_length (f_equal (min _) Hlen)) pf) it) in
-                      let parse_item := (fun n => parse_item n (Min.min_case_strong n len (fun k => k <= len0) (fun Hlen => (Nat.le_trans _ _ _ Hlen pf)) (fun Hlen => pf))) in
-                      let parse_production := (fun n => parse_production' (production_is_reachableT_tl Hreachable) (drop n str) (len - n) (eq_trans (drop_length _ _) (f_equal (fun x => x - _) Hlen)) (Nat.le_trans _ _ _ (Nat.le_sub_l _ _) pf)) in
+                      let parse_item := (fun n => parse_item n (Min.min_case_strong n len (fun k => k <= len0) (fun Hlen => (NPeano.Nat.le_trans _ _ _ Hlen pf)) (fun Hlen => pf))) in
+                      let parse_production := (fun n => parse_production' (production_is_reachableT_tl Hreachable) (drop n str) (len - n) (eq_trans (drop_length _ _) (f_equal (fun x => x - _) Hlen)) (NPeano.Nat.le_trans _ _ _ (NPeano.Nat.le_sub_l _ _) pf)) in
                       match dec_In
                               (fun n => dec_prod (parse_item n) (parse_production n))
                               (splits it its str)
                       with
                         | inl p => inl (existT _ (projT1 p) (snd (projT2 p)))
                         | inr p
-                          => let pf' := (Nat.le_trans _ _ _ (Nat.eq_le_incl _ _ Hlen) pf) in
+                          => let pf' := (NPeano.Nat.le_trans _ _ _ (NPeano.Nat.eq_le_incl _ _ Hlen) pf) in
                              let H := (parse_production'_for__helper__split_list_completeT_for Hsplits Hreachable p pf' : split_list_completeT_for (G := G) (len0 := len0) (valid := valid) it its str pf' (splits it its str)) in
                              inr (fun p' => p (fst dec_in_helper (H p')))
                       end)
@@ -797,7 +797,7 @@ Section recursive_descent_parser.
             [
             | intros; etransitivity;
               [ apply parse_nonterminal_eq; assumption
-              | repeat (f_equal; []); apply Le.le_proof_irrelevance ]
+              | instantiate; repeat (f_equal; []); apply Le.le_proof_irrelevance ]
             | repeat match goal with
                        | [ H : production_is_reachableT ?G (?a :: ?ls) |- item_valid ?a ]
                          => let H' := fresh in
