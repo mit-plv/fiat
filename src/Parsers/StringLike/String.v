@@ -2,9 +2,9 @@
 Require Import Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
