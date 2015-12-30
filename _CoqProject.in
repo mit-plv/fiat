@@ -132,6 +132,7 @@ src/Common/Ensembles/Morphisms.v
 src/Common/Ensembles/Notations.v
 src/Common/Ensembles/Tactics.v
 src/Common/Enumerable/BoolProp.v
+src/Common/Enumerable/ReflectiveForall.v
 src/Common/List/FlattenList.v
 src/Common/List/ListFacts.v
 src/Common/List/ListMorphisms.v
