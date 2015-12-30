@@ -1,12 +1,12 @@
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.Strings.String.
-Require Import Fiat.Parsers.ExtrOcamlPrimitives.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Coq.ZArith.BinInt.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.
+Require Import Fiat.Parsers.ExtrOcamlPrimitives.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Import Fiat.Parsers.ExtrOcamlPrimitives.Ocaml.
 
