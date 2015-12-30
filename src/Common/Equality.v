@@ -295,7 +295,7 @@ Section lift.
   Proof. lazy in *; eauto with nocore. Qed.
 
   Instance beq_Antisymmetric {ER} {_ : Equivalence ER} {_ : @Antisymmetric A ER _ R}
-  : @Antisymmetric A ER _ beq.
+  : Antisymmetric A ER beq.
   Proof. lazy in *; eauto with nocore. Qed.
 End lift.
 
