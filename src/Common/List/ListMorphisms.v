@@ -345,3 +345,13 @@ Global Instance eqlistA_eq_Proper {A B f}
 Proof.
   intros ?? H; apply eqlistA_eq in H; subst; reflexivity.
 Qed.
+
+Global Instance flat_map_Proper {A B}
+: Proper (pointwise_relation _ eq ==> eq ==> eq) (@flat_map A B).
+Proof.
+  unfold pointwise_relation.
+  intros ?? H ? ls ?; subst.
+  induction ls as [|?? IHls]; simpl.
+  { reflexivity. }
+  { rewrite IHls, H; reflexivity. }
+Qed.
