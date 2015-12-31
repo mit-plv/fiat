@@ -336,8 +336,37 @@ Scheme Equality for Ascii.ascii.
 Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
-Scheme Equality for prod.
 Scheme Equality for sum.
+
+Module ImproperlyRecursiveProdBeq.
+  Scheme Equality for prod.
+End ImproperlyRecursiveProdBeq.
+
+Definition prod_beq {A B} eq_A eq_B (x y : A * B) : bool
+  := Eval unfold ImproperlyRecursiveProdBeq.prod_beq in
+      @ImproperlyRecursiveProdBeq.prod_beq A B eq_A eq_B (fst x, snd x) (fst y, snd y).
+Definition prod_eq_dec := ImproperlyRecursiveProdBeq.prod_eq_dec.
+Definition internal_prod_dec_bl {A B} eq_A eq_B A_bl B_bl x y
+           (H : @prod_beq A B eq_A eq_B x y = true)
+: x = y
+  := eq_trans
+       (surjective_pairing _)
+       (eq_trans
+          (@ImproperlyRecursiveProdBeq.internal_prod_dec_bl
+             A B eq_A eq_B A_bl B_bl
+             (fst x, snd x) (fst y, snd y) H)
+          (eq_sym (surjective_pairing _))).
+Definition internal_prod_dec_lb {A B} eq_A eq_B A_lb B_lb x y
+           (H : x = y)
+: @prod_beq A B eq_A eq_B x y = true
+  := @ImproperlyRecursiveProdBeq.internal_prod_dec_lb
+       A B eq_A eq_B A_lb B_lb
+       (fst x, snd x) (fst y, snd y)
+       (eq_trans
+          (eq_sym (surjective_pairing _))
+          (eq_trans
+             H
+             (surjective_pairing _))).
 
 Global Instance nat_BoolDecR : BoolDecR nat := EqNat.beq_nat.
 Global Instance nat_BoolDec_bl : BoolDec_bl (@eq nat) := @EqNat.beq_nat_true.
