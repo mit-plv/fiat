@@ -84,3 +84,37 @@ Global Instance enumerable_sig_andb {A B P Q}
        {HB : Enumerable { x : B | is_true (Q x) }}
 : Enumerable { x : A * B | is_true (P (fst x) && Q (snd x)) }
   := @enumerable_sig_andb_dep A B P (fun k => Q (snd k)) HA (fun _ _ => HB).
+
+Ltac apply_enumerable_sig_andb_dep :=
+  idtac;
+  let rec head_under_binders x :=
+      match x with
+        | ?f _ => head_under_binders f
+        | (fun a => ?f a)
+          => head_under_binders (fun a => f)
+        | (fun a => ?f)
+          => head_under_binders f
+        | ?x' => x'
+      end in
+  repeat match goal with
+           | [ |- Enumerable { x : ?T | ?P } ]
+             => let T' := (eval hnf in T) in
+                progress change (Enumerable { x : T' | P })
+           | [ |- Enumerable { x : ?T | is_true (_ && _) } ]
+             => idtac
+           | [ |- Enumerable { x : ?T | is_true (?P x) } ]
+             => let h := head_under_binders P in
+                unfold h
+         end;
+    (lazymatch goal with
+    | [ |- Enumerable { x : ?A * ?B | is_true (@?P x && @?Q x) } ]
+      => (idtac;
+          let P' := constr:(fun b a => P (a, b)) in
+          let P' := (eval cbv beta in P') in
+          let P' := (eval simpl @fst in P') in
+          let P' := match P' with (fun _ => ?P') => P' end in
+          apply (@enumerable_sig_andb_dep A B P' Q);
+          simpl @fst; simpl @snd)
+     end).
+
+Global Hint Extern 2 (Enumerable (sig _)) => apply_enumerable_sig_andb_dep : typeclass_instances.
