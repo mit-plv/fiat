@@ -339,6 +339,11 @@ Scheme Equality for option.
 Scheme Equality for prod.
 Scheme Equality for sum.
 
+Global Instance nat_BoolDecR : BoolDecR nat := EqNat.beq_nat.
+Global Instance nat_BoolDec_bl : BoolDec_bl (@eq nat) := @EqNat.beq_nat_true.
+Global Instance nat_BoolDec_lb : BoolDec_lb (@eq nat) :=
+  fun x y => proj2 (@EqNat.beq_nat_true_iff x y).
+
 Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
 Proof. apply internal_unit_dec_bl. Qed.
 Lemma unit_lb {x y} : x = y -> unit_beq x y = true.
