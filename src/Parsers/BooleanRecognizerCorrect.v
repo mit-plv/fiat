@@ -33,11 +33,11 @@ Section convenience.
 
   Definition parse_item_sound
              (str : String) (it : item Char)
-  : parse_item (G := G) str it
+  : parse_item str it
     -> parse_of_item G str it.
   Proof.
     intro pit.
-    erewrite <- parse_item_eq in pit by assumption; invert_bool_of_sum.
+    erewrite <- parse_item_eq in pit by eassumption; invert_bool_of_sum.
     apply parse_of_item__of__minimal_parse_of_item in m.
     apply m.
   Defined.
@@ -45,7 +45,7 @@ Section convenience.
   Definition parse_item_complete
              (str : String) (it : item Char)
              (p : parse_of_item G str it)
-  : parse_item (G := G) str it.
+  : parse_item str it.
   Proof.
     erewrite <- parse_item_eq by assumption; invert_bool_of_sum.
     apply minimal_parse_of_item__of__parse_of_item; assumption.
@@ -53,11 +53,11 @@ Section convenience.
 
   Definition parse_nonterminal_sound
              (str : String) (nt : String.string)
-  : parse_nonterminal (G := G) str nt
+  : parse_nonterminal str nt
     -> parse_of_item G str (NonTerminal nt).
   Proof.
     intro pit.
-    erewrite <- parse_nonterminal_eq in pit by assumption; invert_bool_of_sum.
+    erewrite <- parse_nonterminal_eq in pit by eassumption; invert_bool_of_sum.
     apply parse_of_item_nonterminal__of__minimal_parse_of_nonterminal in m.
     apply m.
   Defined.
@@ -65,7 +65,7 @@ Section convenience.
   Definition parse_nonterminal_complete
              (str : String) (nt : String.string)
              (p : parse_of_item G str (NonTerminal nt))
-  : parse_nonterminal (G := G) str nt.
+  : parse_nonterminal str nt.
   Proof.
     erewrite <- parse_nonterminal_eq by assumption; invert_bool_of_sum.
     apply minimal_parse_of_nonterminal__of__parse_of_item_nonterminal.
@@ -76,7 +76,7 @@ Section convenience.
              (str : String) (nt : String.string)
              (H : List.In nt (Valid_nonterminals G))
              (p : parse_of G str (Lookup G nt))
-  : parse_nonterminal (G := G) str nt.
+  : parse_nonterminal str nt.
   Proof.
     apply (parse_nonterminal_complete (ParseNonTerminal _ H p)).
   Qed.

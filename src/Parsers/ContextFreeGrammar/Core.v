@@ -71,3 +71,13 @@ Arguments item _ : clear implicits.
 Arguments production _ : clear implicits.
 Arguments productions _ : clear implicits.
 Arguments grammar _ : clear implicits.
+
+(** A production is reachable if it is the tail of a production
+    associated to a valid nonterminal. *)
+Definition production_is_reachable {Char} (G : grammar Char) (p : production Char)
+: Prop
+  := exists nt prefix,
+       List.In nt (Valid_nonterminals G)
+       /\ List.In
+            (prefix ++ p)
+            (Lookup G nt).

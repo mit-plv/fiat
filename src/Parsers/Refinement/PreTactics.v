@@ -109,15 +109,22 @@ Ltac unguard :=
 Ltac solve_prod_beq :=
   repeat match reverse goal with
            | _ => intro
-           | [ H : production_beq _ _ _ = true |- _ ] => apply (production_bl (@ascii_bl)) in H
+           | [ H : ?x = ?x |- _ ] => clear H
            | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_iff in H
+           | [ H : (_ && _)%bool = true |- _ ] => apply (proj1 (Bool.andb_true_iff _ _)) in H
+           | [ H : (_ || _)%bool = false |- _ ] => apply Bool.orb_false_iff in H
+           | [ H : (_ && _)%bool = false |- _ ] => apply Bool.andb_false_iff in H
+           | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply (proj1 (EqNat.beq_nat_true_iff _ _)) in H
+           | [ H : _ /\ _ |- _ ] => destruct H
            | [ H : (_::_) = (_::_) |- _ ] => inversion H; clear H
            | [ H : _ = fst ?x |- _ ] => atomic x; destruct x
            | [ H : [] = (_::_) |- _ ] => exfalso; clear -H; inversion H
            | _ => progress subst
            | _ => progress simpl @fst in *
            | _ => progress simpl @snd in *
+           | [ H : fst ?x = _ |- _ ] => is_var x; destruct x
            | [ H : _ \/ _ |- _ ] => destruct H
+           | _ => discriminate
          end.
 
 Definition if_aggregate {A} (b1 b2 : bool) (x y : A)
@@ -130,17 +137,29 @@ Definition if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false 
 : (If b1 Then x Else If b2 Then y Else If b3 Then z Else If b4 Then x Else w) = (If (b1 || b4)%bool Then x Else If b2 Then y Else If b3 Then z Else w)
   := if_aggregate3 _ _ x y z w H.
 
+Ltac simplify_parser_splitter' :=
+  first [ progress unguard
+        | progress simplify with monad laws
+        | rewrite <- !Bool.andb_orb_distrib_r
+        | rewrite <- !Bool.andb_orb_distrib_l
+        | rewrite <- !Bool.orb_andb_distrib_r
+        | rewrite <- !Bool.orb_andb_distrib_l
+        | rewrite <- !Bool.andb_assoc
+        | rewrite <- !Bool.orb_assoc
+        | rewrite <- !andb_orb_distrib_r_assoc
+        | rewrite !if_aggregate
+        | rewrite !beq_0_1_leb
+        | rewrite !beq_S_leb
+        | idtac;
+          match goal with
+            | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
+              => idtac
+          end;
+          progress repeat setoid_rewrite if_aggregate
+        | rewrite !if_aggregate2 by solve_prod_beq
+        | rewrite !if_aggregate3 by solve_prod_beq
+        | progress parser_pull_tac
+        | progress (simpl @fst; simpl @snd) ].
+
 Tactic Notation "simplify" "parser" "splitter" :=
-  repeat first [ progress unguard
-               | progress simplify with monad laws
-               | rewrite !if_aggregate
-               | idtac;
-                 match goal with
-                   | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
-                     => idtac
-                 end;
-                 progress repeat setoid_rewrite if_aggregate
-               | rewrite !if_aggregate2 by solve_prod_beq
-               | rewrite !if_aggregate3 by solve_prod_beq
-               | progress parser_pull_tac
-               | progress (simpl @fst; simpl @snd) ].
+  repeat simplify_parser_splitter'.

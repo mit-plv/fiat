@@ -12,7 +12,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT}.
+  Context {Char} {HSL : StringLike Char} {predata : @parser_computational_predataT Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
 
   Context (G : grammar Char).

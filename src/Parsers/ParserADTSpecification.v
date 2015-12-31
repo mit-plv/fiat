@@ -3,6 +3,7 @@ Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
@@ -14,7 +15,7 @@ Local Open Scope string_scope.
 
 Section ReferenceImpl.
   Section GenericSig.
-    Context (Char : Type) (String : Type).
+    Context (Char : Type) (String : Type) (production_carrierT : Type).
 
     (** Representation of a [String] that can be split *)
     Definition string_rep :=
@@ -40,7 +41,7 @@ Section ReferenceImpl.
         Method "drop" : rep * (nat : Type) -> rep,
         (** Return everything but the first [n] characters, for the given [n : nat]. *)
 
-        Method "splits" : rep * (item Char) * (production Char) -> rep * (list nat)
+        Method "splits" : rep * production_carrierT -> rep * (list nat)
         (** Return a list of locations to split this string at for this production rule. *)
       }.
   End GenericSig.
@@ -48,7 +49,7 @@ Section ReferenceImpl.
   Context (G : grammar Ascii.ascii) (HSL : StringLike Ascii.ascii).
   Local Open Scope ADTParsing_scope.
   (** Reference implementation of a [String] that can be split *)
-  Definition string_spec : ADT (string_rep Ascii.ascii String) := ADTRep String {
+  Definition string_spec : ADT (string_rep Ascii.ascii String default_production_carrierT) := ADTRep String {
     Def Constructor1 "new"(s : String) : rep :=
       ret s,
 
@@ -71,8 +72,8 @@ Section ReferenceImpl.
     Def Method1 "drop"(s : rep) (n : nat) : rep :=
       ret (drop n s),
 
-    Def Method2 "splits"(s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) : rep * list nat :=
-      ls <- { ls : list nat | split_list_is_complete G s i p ls };
+    Def Method1 "splits"(s : rep) (idx : default_production_carrierT) : rep * list nat :=
+      ls <- { ls : list nat | split_list_is_complete_idx G s idx ls };
       ret (s, ls)
   }.
 End ReferenceImpl.

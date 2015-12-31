@@ -19,8 +19,8 @@ Section brute_force_splitter.
 
   Context (G : grammar Char).
 
-  Global Instance brute_force_split_data : @split_dataT Char _
-    := { split_string_for_production it its := make_all_single_splits }.
+  Global Instance brute_force_split_data : @split_dataT Char _ (rdp_list_predata (G := G))
+    := { split_string_for_production p := make_all_single_splits }.
 
   Global Instance brute_force_data : @boolean_parser_dataT Char _
     := { predata := @rdp_list_predata _ G;
@@ -32,7 +32,7 @@ Section brute_force_splitter.
   Proof.
     destruct prod; try solve [ constructor ].
     hnf.
-    intros [ n [ p0 p1 ] ].
+    intros; intros [ n [ p0 p1 ] ].
     destruct (Compare_dec.le_lt_dec (length str) n).
     { exists (length str); simpl; repeat split.
       { left; reflexivity. }

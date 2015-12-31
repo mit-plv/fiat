@@ -31,7 +31,7 @@ Section parser.
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
-  Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string)) "new" _ )).
+  Definition newS := ibound (indexb (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String.string Carriers.default_production_carrierT)) "new" _ )).
 
   Definition new_string_of_base_string (str : @String _ stringlike_stringlike)
     := (cConstructors (projT1 splitter_impl) newS str).
@@ -55,8 +55,8 @@ Section parser.
              str
              new_string_of_base_string_R)).
 
-  Local Instance split_dataProj : @split_dataT _ (adt_based_StringLike_lite splitter_impl)
-    := { split_string_for_production it its str := msplits splitter_impl it its str }.
+  Local Instance split_dataProj : @split_dataT _ (adt_based_StringLike_lite splitter_impl) (RDPList.rdp_list_predata (G := G))
+    := { split_string_for_production idx str := msplits splitter_impl idx str }.
 
   Local Instance adtProj
   : @StringLikeProj

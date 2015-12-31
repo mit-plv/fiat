@@ -14,7 +14,7 @@ Local Open Scope type_scope.
 
 Section cfg.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}
+          {predata : @parser_computational_predataT Char}
           (Hvalid : grammar_valid G).
 
   Local Notation P' nt := (is_true (is_valid_nonterminal initial_nonterminals_data nt)) (only parsing).
@@ -74,7 +74,7 @@ End cfg.
 
 Section uip.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}.
+          {predata : @parser_computational_predataT Char}.
 
   Lemma item_valid_proof_irrelevance {it : item Char} (x y : item_valid it)
   : x = y.
@@ -101,7 +101,7 @@ End uip.
 
 Section app.
   Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}.
+          {predata : @parser_computational_predataT Char}.
 
   Lemma hd_production_valid
         (it : item Char)

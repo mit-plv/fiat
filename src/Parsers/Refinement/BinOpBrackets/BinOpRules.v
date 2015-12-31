@@ -94,8 +94,7 @@ Section refine_rules.
     := (refine {splits : list nat
                | split_list_is_complete
                    G (substring n m str)
-                   (NonTerminal nt)
-                   its splits}
+                   (NonTerminal nt::its) splits}
                (ret [match List.nth n table None with
                        | Some idx => idx
                        | None => StringLike.length (substring n m str)
@@ -117,7 +116,8 @@ Section refine_rules.
       computes_to_inv; subst.
       apply PickComputes.
       specialize (Htable n).
-      intros idx' Hsmall Hreachable pit pits; simpl.
+      intros it' its' Heq idx' Hsmall Hreachable pit pits; simpl.
+      inversion Heq; subst it' its'; clear Heq.
       specialize (H_nt_hiding _ pit).
       unfold paren_balanced_hiding in *.
       set (s_str := (substring n m str) : @StringLike.String _ HSL) in *.
@@ -339,31 +339,60 @@ Section refine_rules.
       := bin_op_data_of_maybe
            (hd None (map Some possible_valid_open_closes)).
 
-    Lemma refine_binop_table
-          (predata := rdp_list_predata (G := G))
-          (pdata := correct_open_close)
-          (H_nt_hiding
-           : match possible_valid_open_closes with
-               | nil => false
-               | _ => true
-             end)
-    : retT (list_of_next_bin_ops_opt_nor str).
-    Proof.
-      unfold correct_open_close, possible_valid_open_closes in *.
-      subst pdata.
-      revert H_nt_hiding.
-      generalize possible_open_closes.
-      intro ls.
-      induction ls; simpl.
-      { intro; congruence. }
-      { match goal with
-          | [ |- context[if ?e then _ else nil] ] => destruct e eqn:?
-        end.
-        { simpl; intro.
-          apply refine_binop_table'''; try assumption.
-          apply ascii_lb; reflexivity. }
-        { simpl; assumption. } }
-    Qed.
+    Section lemmas.
+      Let predata := rdp_list_predata (G := G).
+      Let pdata := correct_open_close.
+      Local Existing Instance predata.
+      Local Existing Instance pdata.
+
+      Context (H_nt_hiding
+               : match possible_valid_open_closes with
+                   | nil => false
+                   | _ => true
+                 end).
+
+      Lemma refine_binop_table
+      : retT (list_of_next_bin_ops_opt_nor str).
+      Proof.
+        unfold correct_open_close, possible_valid_open_closes in *.
+        subst pdata.
+        revert H_nt_hiding.
+        generalize possible_open_closes.
+        intro ls.
+        induction ls; simpl.
+        { intro; congruence. }
+        { match goal with
+            | [ |- context[if ?e then _ else nil] ] => destruct e eqn:?
+          end.
+          { simpl; intro.
+            apply refine_binop_table'''; try assumption.
+            apply ascii_lb; reflexivity. }
+          { simpl; assumption. } }
+      Qed.
+
+      Section idx.
+        Context {idx} {Heq : default_to_production (G := G) idx = NonTerminal nt :: its}.
+
+        Local Notation retT table
+          := (refine {splits : list nat
+                     | split_list_is_complete_idx
+                         G (substring n m str)
+                         idx splits}
+                     (ret [match List.nth n table None with
+                             | Some idx' => idx'
+                             | None => StringLike.length (substring n m str)
+                           end])).
+
+        Lemma refine_binop_table_idx
+        : retT (list_of_next_bin_ops_opt_nor str).
+        Proof.
+          rewrite <- refine_binop_table.
+          apply refine_pick_pick; intro.
+          unfold split_list_is_complete_idx.
+          rewrite Heq; trivial.
+        Qed.
+      End idx.
+    End lemmas.
   End derive_pbhd.
 End refine_rules.
 

@@ -20,7 +20,7 @@ Local Open Scope string_like_scope.
 Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
-          {predata : parser_computational_predataT}
+          {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
   Fixpoint paren_balanced_hiding_pbh_parse_of_productions

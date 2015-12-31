@@ -317,9 +317,9 @@ Section with_lists.
     Context (hiding : bool)
             (nt : String.string).
 
-    Let pb_nts : @nonterminals_listT (@rdp_list_predata _ G)
+    Let pb_nts : nonterminals_listT
       := fst (paren_balanced_nonterminals G nt).
-    Let pbh_nts : @nonterminals_listT (@rdp_list_predata _ G)
+    Let pbh_nts : nonterminals_listT
       := snd (paren_balanced_nonterminals G nt).
 
     Context (H_pb : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
@@ -340,9 +340,9 @@ Section with_lists.
   Section rule.
     Context (nt : String.string).
 
-    Let pb_nts : @nonterminals_listT (@rdp_list_predata _ G)
+    Let pb_nts : nonterminals_listT
       := fst (paren_balanced_nonterminals G nt).
-    Let pbh_nts : @nonterminals_listT (@rdp_list_predata _ G)
+    Let pbh_nts : nonterminals_listT
       := snd (paren_balanced_nonterminals G nt).
 
     Definition paren_balanced_hiding_correctness_type

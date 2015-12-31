@@ -17,7 +17,7 @@ Local Notation "f ∘ g" := (fun x => f (g x)).
 
 Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
-  Context {predata : parser_computational_predataT}
+  Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
   Context (nonterminals_listT_R_respectful : forall x y,
                                         sub_nonterminals_listT x y

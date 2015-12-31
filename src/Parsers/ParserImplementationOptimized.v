@@ -91,15 +91,15 @@ Section implementation.
     let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (splitdata := pdata) (proj (make_string str)) (Start_symbol G))) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
-    let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal RDPList.rdp_list_nonterminal_carrierT RDPList.some_invalid_nonterminal] in impl) in
+    let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in
     let impl := (eval simpl in impl') in
     refine (transfer_parser
               (HSL1 := splitter) (HSL2 := stringlike_stringlike)
-              (parser Hvalid (splitter := splitter)) make_string
+              (parser splitter Hvalid) make_string
               impl
               (fun str => eq_trans
                             (implH str)
-                            (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ HSLPr _ _))
+                            (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ _ HSLPr _ _))
               R R_make _ _).
   Defined.
 

@@ -42,8 +42,7 @@ Lemma refine_disjoint_search_for'
 : refine {splits : list nat
          | split_list_is_complete
              G str
-             (NonTerminal nt)
-             its splits}
+             (NonTerminal nt::its) splits}
          (n <- { n : nat | n <= length str
                            /\ ((exists n', search_for_condition G str its n')
                                -> search_for_condition G str its n) };
@@ -53,7 +52,8 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros n ? H_reachable pit pits.
+  intros it' its' Heq n ? H_reachable pit pits.
+  inversion Heq; subst it' its'; clear Heq.
   left.
   pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint pit pits H_reachable) as H'.
   specialize (H1 (ex_intro _ n H')).
@@ -88,8 +88,8 @@ Lemma refine_disjoint_search_for_not'
 : refine {splits : list nat
          | split_list_is_complete
              G str
-             (NonTerminal nt)
-             its splits}
+             (NonTerminal nt::its)
+             splits}
          (n <- { n : nat | n <= length str
                            /\ ((exists n', search_for_not_condition G str nt its n')
                                -> search_for_not_condition G str nt its n) };
@@ -99,7 +99,8 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros n ? H_reachable pit pits.
+  intros it' its' Heq n ? H_reachable pit pits.
+  inversion Heq; subst it' its'; clear Heq.
   left.
   pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint pit pits H_reachable) as H'.
   specialize (H1 (ex_intro _ n H')).
@@ -215,8 +216,8 @@ Lemma refine_disjoint_search_for
 : refine {splits : list nat
          | split_list_is_complete
              G str
-             (NonTerminal nt)
-             its splits}
+             (NonTerminal nt::its)
+             splits}
          (ret [find_first_char_such_that str (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
 Proof.
   rewrite refine_disjoint_search_for' by assumption.
@@ -237,11 +238,60 @@ Lemma refine_disjoint_search_for_not
 : refine {splits : list nat
          | split_list_is_complete
              G str
-             (NonTerminal nt)
-             its splits}
+             (NonTerminal nt::its)
+             splits}
          (ret [find_first_char_such_that str (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
 Proof.
   rewrite refine_disjoint_search_for_not' by assumption.
   setoid_rewrite refine_find_first_char_such_that.
   simplify with monad laws; reflexivity.
+Qed.
+
+Lemma refine_disjoint_search_for_idx
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      {G : grammar Ascii.ascii}
+      {str nt its idx}
+      (Hvalid : grammar_rvalid G)
+      (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
+      (H_disjoint : disjoint ascii_beq
+                             (possible_terminals_of G nt)
+                             (possible_first_terminals_of_production G its))
+: refine {splits : list nat
+         | split_list_is_complete_idx
+             G str
+             idx
+             splits}
+         (ret [find_first_char_such_that str (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
+Proof.
+  unfold split_list_is_complete_idx.
+  erewrite <- refine_disjoint_search_for by eassumption.
+  rewrite Heq.
+  apply refine_pick_pick; intro; trivial.
+Qed.
+
+Lemma refine_disjoint_search_for_not_idx
+      {HSL : StringLike Ascii.ascii}
+      {HSI : StringIso Ascii.ascii}
+      {HSLP : StringLikeProperties Ascii.ascii}
+      {HSIP : StringIsoProperties Ascii.ascii}
+      {G : grammar Ascii.ascii} {str nt its idx}
+      (Hvalid : grammar_rvalid G)
+      (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
+      (H_disjoint : disjoint ascii_beq
+                             (possible_terminals_of G nt)
+                             (possible_first_terminals_of_production G its))
+: refine {splits : list nat
+         | split_list_is_complete_idx
+             G str
+             idx
+             splits}
+         (ret [find_first_char_such_that str (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
+Proof.
+  unfold split_list_is_complete_idx.
+  erewrite <- refine_disjoint_search_for_not by eassumption.
+  rewrite Heq.
+  apply refine_pick_pick; intro; trivial.
 Qed.

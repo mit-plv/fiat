@@ -17,25 +17,25 @@ Section example_parse_string_grammar.
   : @String Ascii.ascii _
     -> String.string
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_nonterminal (G := G).
+    := let data := @brute_force_data Ascii.ascii _ G in parse_nonterminal.
 
   Definition brute_force_parse_production
              (str : @String Ascii.ascii _)
-  : production Ascii.ascii
+  : BaseTypes.production_carrierT
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_production (G := G) str.
+    := let data := @brute_force_data Ascii.ascii _ G in parse_production str.
 
   Definition brute_force_parse_productions
              (str : @String Ascii.ascii _)
-  : productions Ascii.ascii
+  : list BaseTypes.production_carrierT
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (G := G) str.
+    := let data := @brute_force_data Ascii.ascii _ G in parse_productions str.
 
   Definition brute_force_parse_item
              (str : @String Ascii.ascii _)
   : item Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_item (G := G) str.
+    := let data := @brute_force_data Ascii.ascii _ G in parse_item str.
 
   Definition brute_force_parse
   : String -> bool

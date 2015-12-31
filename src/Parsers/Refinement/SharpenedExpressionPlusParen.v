@@ -13,13 +13,16 @@ Section IndexedImpl.
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     start sharpening ADT.
-    start honing parser using indexed representation.
+    Time start honing parser using indexed representation.
 
     Time hone method "splits".
     {
-      simplify parser splitter.
-      let lem := constr:(@refine_binop_table _ _ _ _) in
-      setoid_rewrite lem; [ | solve [reflexivity | repeat esplit].. ]; presimpl_after_refine_binop_table.
+      Time simplify parser splitter.
+      let lem := constr:(@refine_binop_table_idx _ _ _ _) in
+      setoid_rewrite lem;
+        [ | try solve [reflexivity | repeat esplit ].. ];
+        [ | solve [reflexivity | repeat esplit ].. ];
+        presimpl_after_refine_binop_table.
       finish honing parser method.
     }
 

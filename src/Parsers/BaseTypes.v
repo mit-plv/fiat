@@ -16,12 +16,17 @@ Section recursive_descent_parser.
       nonterminal_carrierT : Type;
       of_nonterminal : String.string -> nonterminal_carrierT;
       to_nonterminal : nonterminal_carrierT -> String.string;
+      production_carrierT : Type;
+      to_production : production_carrierT -> production Char;
+      nonterminal_to_production : nonterminal_carrierT -> list production_carrierT;
+      production_tl : production_carrierT -> production_carrierT;
+      production_carrier_valid : production_carrierT -> bool;
       initial_nonterminals_data : nonterminals_listT;
       nonterminals_length : nonterminals_listT -> nat;
       is_valid_nonterminal : nonterminals_listT -> nonterminal_carrierT -> bool;
       remove_nonterminal : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT }.
 
-  Class parser_removal_dataT' `{predata : parser_computational_predataT} :=
+  Class parser_removal_dataT' {predata : parser_computational_predataT} :=
     { nonterminals_listT_R : nonterminals_listT -> nonterminals_listT -> Prop
       := ltof _ nonterminals_length;
       nonterminals_length_zero : forall ls,
@@ -42,6 +47,20 @@ Section recursive_descent_parser.
       of_to_nonterminal : forall nonterminal,
                             is_valid_nonterminal initial_nonterminals_data nonterminal
                             -> of_nonterminal (to_nonterminal nonterminal) = nonterminal;
+      production_tl_correct : forall p,
+                                to_production (production_tl p) = tl (to_production p);
+      nonterminal_to_production_correct
+      : forall nt,
+          List.In nt (Valid_nonterminals G)
+          -> List.map to_production (nonterminal_to_production (of_nonterminal nt))
+             = Lookup G nt;
+      production_tl_valid
+      : forall p,
+          production_carrier_valid p -> production_carrier_valid (production_tl p);
+      nonterminal_to_production_valid
+      : forall nt,
+          is_valid_nonterminal initial_nonterminals_data nt
+          -> List.Forall production_carrier_valid (nonterminal_to_production nt);
       ntl_wf : well_founded nonterminals_listT_R
       := well_founded_ltof _ _;
       remove_nonterminal_1
@@ -56,9 +75,9 @@ Section recursive_descent_parser.
   Definition sub_nonterminals_listT `{parser_computational_predataT} (x y : nonterminals_listT) : Prop
     := forall p, is_valid_nonterminal x p -> is_valid_nonterminal y p.
 
-  Class split_dataT :=
+  Class split_dataT `{parser_computational_predataT} :=
     { split_string_for_production
-      : item Char -> production Char -> String -> list nat }.
+      : production_carrierT -> String -> list nat }.
 
   Class boolean_parser_dataT :=
     { predata :> parser_computational_predataT;

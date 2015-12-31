@@ -20,11 +20,13 @@ Ltac splitter_red term :=
   let term3 := (eval splitter_red0 in term2) in
   constr:term3.
 
+Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
+
 Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar item_ascii_cons item_of_char list_to_productions BooleanRecognizerOptimized.str_carrier_default projT1 projT2 proj1_sig proj2_sig].
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect].
 Declare Reduction parser_red5 := simpl List.hd.
 Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
@@ -33,8 +35,11 @@ Declare Reduction parser_red9 := simpl List.fold_right.
 Declare Reduction parser_red10 := simpl @List.first_index_default.
 Declare Reduction parser_red11 := simpl @List.up_to.
 Declare Reduction parser_red12 := simpl @Compare_dec.leb.
-(*Declare Reduction parser_red13 := simpl List.map.*)
-Declare Reduction parser_red14 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
+Declare Reduction parser_red13 := simpl @Operations.List.uniquize.
+Declare Reduction parser_red14 := simpl @List.combine.
+Declare Reduction parser_red15 := simpl @BooleanRecognizerOptimized.inner_nth'.
+(*Declare Reduction parser_red16 := simpl List.map.*)
+Declare Reduction parser_red17 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
 
 Ltac parser_red_gen term do_simpl_list_map :=
   let term := match term with
@@ -56,11 +61,14 @@ Ltac parser_red_gen term do_simpl_list_map :=
   let term := (eval parser_red10 in term) in
   let term := (eval parser_red11 in term) in
   let term := (eval parser_red12 in term) in
+  let term := (eval parser_red13 in term) in
+  let term := (eval parser_red14 in term) in
+  let term := (eval parser_red15 in term) in
   let term := (match do_simpl_list_map with
                  | true => eval simpl List.map in term
                  | _ => term
                end) in
-  let term := (eval parser_red14 in term) in
+  let term := (eval parser_red17 in term) in
   constr:term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.

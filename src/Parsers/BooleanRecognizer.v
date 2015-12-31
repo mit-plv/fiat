@@ -38,24 +38,25 @@ Section recursive_descent_parser.
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Definition parse_production'_for
-                 (splits : item Char -> production Char -> String -> list nat)
+                 (splits : production_carrierT -> String -> list nat)
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
-                 (prod : production Char)
+                 (prod_idx : production_carrierT)
         : bool.
         Proof.
           revert str len pf.
           refine
             (list_rect
                (fun _ =>
-                  forall (str : String)
+                  forall (idx : production_carrierT)
+                         (str : String)
                          (len : nat)
                          (pf : len <= len0),
                     bool)
                ((** 0-length production, only accept empty *)
-                 fun str len _ => beq_nat len 0)
-               (fun it its parse_production' str len pf
+                 fun _ str len _ => beq_nat len 0)
+               (fun it its parse_production' idx str len pf
                 => fold_left
                      orb
                      (map (fun n =>
@@ -63,10 +64,11 @@ Section recursive_descent_parser.
                                 (parse_nonterminal (take n str) (len := min n len) _)
                                 (take n str)
                                 it)
-                               && parse_production' (drop n str) (len - n) _)%bool
-                          (splits it its str))
+                               && parse_production' (production_tl idx) (drop n str) (len - n) _)%bool
+                          (splits idx str))
                      false)
-               prod);
+               (to_production prod_idx)
+               prod_idx);
           clear -pf;
           abstract (try apply Min.min_case_strong; omega).
         Defined.
@@ -75,9 +77,9 @@ Section recursive_descent_parser.
                  (str : String)
                  (len : nat)
                  (pf : len <= len0)
-                 (prod : production Char)
+                 (prod_idx : production_carrierT)
         : bool
-          := parse_production'_for split_string_for_production str pf prod.
+          := parse_production'_for split_string_for_production str pf prod_idx.
       End production.
 
       Section productions.
@@ -93,7 +95,7 @@ Section recursive_descent_parser.
                    (str : String)
                    (len : nat)
                    (pf : len <= len0)
-                   (prods : productions Char)
+                   (prods : list production_carrierT)
         : bool
           := fold_right orb
                         false
@@ -133,7 +135,7 @@ Section recursive_descent_parser.
                           (fun _ => le_n _)
                           (fun _ => _)
                           (lt_dec len len0))
-                       (Lookup G (to_nonterminal nt)))
+                       (nonterminal_to_production nt))
                  false
                  (sumbool_rect
                     (fun b => option (forall (str' : String) (len' : nat), len' <= (if b then len else len0) -> nonterminal_carrierT -> bool))
@@ -208,13 +210,13 @@ Section recursive_descent_parser.
 
       Definition parse_production
                  (str : String)
-                 (pat : production Char)
+                 (pat : production_carrierT)
       : bool
         := parse_production' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str (reflexivity _) pat.
 
       Definition parse_productions
                  (str : String)
-                 (pats : productions Char)
+                 (pats : list production_carrierT)
       : bool
         := parse_productions' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) str (reflexivity _) pats.
     End parts.

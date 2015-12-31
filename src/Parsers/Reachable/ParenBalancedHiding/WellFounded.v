@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
 Require Import Fiat.Parsers.BaseTypes.
 
 Section rel.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT}
+  Context {Char} {HSL : StringLike Char} {predata : @parser_computational_predataT Char}
           {pdata : paren_balanced_hiding_dataT Char}
           {G : grammar Char}.
 

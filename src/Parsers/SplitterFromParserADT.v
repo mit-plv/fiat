@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
@@ -36,17 +37,17 @@ Section parser.
   Local Notation StringT_lite := (cRep (projT1 splitter_impl)) (only parsing).
 
   Local Notation mcall0 proj s := (fun st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st)) (only parsing).
+                                                                    (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String default_production_carrierT)) s _ ) st)) (only parsing).
 
   Local Notation mcall1 proj s := (fun n st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st n)) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String default_production_carrierT)) s _ ) st n)) (only parsing).
 
   Local Notation mcall2 proj s := (fun n n' st => proj (callcADTMethod (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) s _ ) st n n')) (only parsing).
+                                                  (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String default_production_carrierT)) s _ ) st n n')) (only parsing).
 
   Local Notation ccall0 proj s :=
     (fun st => proj ((callcADTConstructor (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String)) s _ )) st))
+                                          (@Build_BoundedIndex _ _ (ConstructorNames (string_rep Ascii.ascii String default_production_carrierT)) s _ )) st))
       (only parsing).
 
   Local Notation mcall01 s := (mcall0 (fun x => x) s) (only parsing).
@@ -64,12 +65,12 @@ Section parser.
   Definition mtake := Eval simpl in mcall11 "take".
   Definition mdrop := Eval simpl in mcall11 "drop".
   Definition cnew := Eval simpl in ccall01 "new".
+  Definition msplits := Eval simpl in mcall12 "splits".
 
   Definition premsplits :=
     Eval simpl in (callcADTMethod
                      (projT1 splitter_impl) (fun idx => ibound (indexb idx))
-                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String)) "splits" _ )).
-  Definition msplits := Eval simpl in mcall22 "splits".
+                     (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String default_production_carrierT)) "splits" _ )).
 
   (*Local Notation mcall1_R meth st arg str H :=
     (@fst_cMethods_comp (ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii)) meth _ ))) st arg str _ eq_refl H)
@@ -371,12 +372,11 @@ Section parser.
   Next Obligation. t (@get_of_string). Qed.
 
   Definition splits :=
-    ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string)) "splits" _ )).
+    ibound (indexb (@Build_BoundedIndex _ _ (MethodNames (string_rep Ascii.ascii String.string default_production_carrierT)) "splits" _ )).
 
   Lemma adt_based_splitter_splits_for_complete
-  : forall (str : String) (it : item Ascii.ascii)
-           (its : production Ascii.ascii),
-      split_list_is_complete G str it its (msplits it its (` str)).
+  : forall (str : String) (idx : default_production_carrierT),
+      split_list_is_complete_idx G str idx (msplits idx (` str)).
   Proof.
     repeat intro.
     destruct_head_hnf' sig.
@@ -388,15 +388,15 @@ Section parser.
     repeat match_erewrite_by (@mlength) (@mlength_eq) ltac:eassumption.
     match goal with
       | [ H : AbsR ?Ok ?str ?st
-          |- appcontext[msplits ?arg1 ?arg2 ?st] ]
+          |- appcontext[msplits ?arg1 ?st] ]
         => let T := type of Ok in
            let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
            let H' := fresh in
-           pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 arg2 ((cMethods impl splits st arg1 arg2)) (ReturnComputes _)) as H';
-             change (msplits arg1 arg2 st) with (snd (premsplits st arg1 arg2));
+           pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 ((cMethods impl splits st arg1)) (ReturnComputes _)) as H';
+             change (msplits arg1 st) with (snd (premsplits st arg1));
              match type of H' with
-               | appcontext G[cMethods _ splits ?st ?arg1 ?arg2]
-                 => let G' := context G[premsplits st arg1 arg2] in
+               | appcontext G[cMethods _ splits ?st ?arg1]
+                 => let G' := context G[premsplits st arg1] in
                     change G' in H'
              end
     end.
@@ -404,16 +404,17 @@ Section parser.
     computes_to_inv; subst.
     simpl @fst in *. simpl @snd in *.
     match goal with
-      | [ H : ?x = premsplits _ _ _ |- _ ] => rewrite <- H; clear H; simpl @snd
+      | [ H : ?x = premsplits _ _ |- _ ] => rewrite <- H; clear H; simpl @snd
     end.
     lazymatch goal with
-      | [ H : split_list_is_complete _ _ _ _ _, H' : ?n <= _,
+      | [ H : split_list_is_complete_idx _ _ _ _, H' : ?n <= _,
           p0 : parse_of_item _ _ _, p1 : parse_of_production _ _ _,
-          H'' : production_is_reachable _ _
+          H'' : production_is_reachable _ _,
+          Heq : default_to_production _ = _::_
           |- List.In ?n ?v ]
         => hnf in H;
-          specialize (fun H0'' H0' H1' =>
-                        H n H' H''
+          specialize (fun idx H0'' H0' H1' =>
+                        H idx _ _ Heq n H' H''
                           (@transfer_parse_of_item
                              Ascii.ascii adt_based_StringLike stringlike_stringlike G
                              (fun s1 s2 => AbsR (projT2 splitter_impl) s2 (` s1))
@@ -430,6 +431,6 @@ Section parser.
   Definition adt_based_splitter : Splitter G
     := {| string_type := adt_based_StringLike;
           string_type_properties := adt_based_StringLikeProperties;
-          splits_for str it its := msplits it its (` str);
+          splits_for str idx := msplits idx (` str);
           splits_for_complete := adt_based_splitter_splits_for_complete |}.
 End parser.

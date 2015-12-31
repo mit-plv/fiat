@@ -9,23 +9,6 @@ Set Implicit Arguments.
 
 Local Open Scope list_scope.
 
-(** A production is reachable if it is the tail of a production
-    associated to a valid nonterminal. *)
-Definition production_is_reachable {Char} (G : grammar Char) (p : production Char)
-: Prop
-  := exists nt prefix,
-       List.In nt (Valid_nonterminals G)
-       /\ List.In
-            (prefix ++ p)
-            (Lookup G nt).
-Definition production_is_reachableT {Char} (G : grammar Char) (p : production Char)
-  := { nt : _
-   & { prefix : _
-     & List.In nt (Valid_nonterminals G)
-       * List.InT
-            (prefix ++ p)
-            (Lookup G nt) } }%type.
-
 Section cfg.
   Context {Char} {HSL : StringLike Char} {HSLP : @StringLikeProperties Char HSL} (G : grammar Char).
 

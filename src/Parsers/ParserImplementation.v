@@ -19,9 +19,12 @@ Section implementation.
   Context {Char} {G : grammar Char}.
   Context (splitter : Splitter G).
 
-  Local Instance parser_split_data : @split_dataT Char _ :=
-    { split_string_for_production it its str
-      := splits_for splitter str it its }.
+  Let predata := @rdp_list_predata _ G.
+  Local Existing Instance predata.
+
+  Local Instance parser_split_data : @split_dataT Char _ _ :=
+    { split_string_for_production idx str
+      := splits_for splitter str idx }.
 
   Local Instance parser_data : @boolean_parser_dataT Char _ :=
     { predata := rdp_list_predata (G := G);
@@ -33,7 +36,7 @@ Section implementation.
     := { split_string_for_production_complete str0 valid str pf nt Hvalid := _ }.
   Proof.
     apply initial_nonterminals_correct in Hvalid.
-    generalize (fun it its n pf pit pits prefix H' => @splits_for_complete Char G splitter str it its n pf (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H'))) pit pits).
+    generalize (fun idx Hvalid' it its Heqb n pf pit pits prefix H' => @splits_for_complete Char G splitter str idx Hvalid' it its Heqb n pf (ex_intro _ nt (ex_intro _ prefix (conj Hvalid H'))) pit pits).
     clear Hvalid.
     induction (G nt) as [ | x xs IHxs ].
     { intros; constructor. }
@@ -43,7 +46,7 @@ Section implementation.
         [ clear IHxs
         | apply IHxs;
           intros; eapply H'; try eassumption; [ right; eassumption ] ].
-      specialize (fun prefix it its H n pf pit pits => H' it its n pf pit pits prefix (or_introl H)).
+      specialize (fun prefix idx Hvalid' it its Heqb H n pf pit pits => H' idx Hvalid' it its Heqb n pf pit pits prefix (or_introl H)).
       clear -H'.
       induction x as [ | it its IHx ].
       { simpl; constructor. }
@@ -52,7 +55,11 @@ Section implementation.
           [ clear IHx
           | apply IHx;
             intros; subst; eapply (H' (_::_)); try eassumption; reflexivity ].
-        specialize (H' nil it its eq_refl).
+        intros idx Hvalid Heqb.
+        specialize (H' nil idx).
+        specialize_by assumption.
+        specialize (H' _ _ Heqb).
+        specialize_by ltac:(exact eq_refl).
         hnf.
         intros [ n [ pit pits ] ]; simpl in * |- .
         destruct (Compare_dec.le_ge_dec n (length str)).
@@ -78,10 +85,10 @@ Section implementation.
           { rewrite !take_long; (assumption || reflexivity). }
           { apply bool_eq_empty; rewrite drop_length; omega. } } } }
   Qed.
-
+Set Printing Implicit. Set Printing Coercions.
   Program Definition parser (Hvalid : grammar_valid G) : Parser G splitter
-    := {| has_parse str := parse_nonterminal (G := G) (data := parser_data) str (Start_symbol G);
-          has_parse_sound str Hparse := parse_nonterminal_sound Hvalid _ _ Hparse;
+    := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);
+          has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) Hvalid _ _ Hparse;
           has_parse_complete str p := _ |}.
   Next Obligation.
   Proof.

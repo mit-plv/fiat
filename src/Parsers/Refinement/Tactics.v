@@ -46,7 +46,7 @@ Ltac start_honing :=
   eapply SharpenStep;
   [ solve [ apply FirstStep ] | ];
   unfold rindexed_spec, rindexed_spec'; simpl;
-  unfold forall_reachable_productions; simpl.
+  unfold forall_reachable_productions_if_eq; simpl.
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
   := (lazymatch goal with

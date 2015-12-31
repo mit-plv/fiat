@@ -7,7 +7,7 @@ Require Import Fiat.ADTNotation.BuildADTSig.
 
 Lemma finish_Sharpening_SplitterADT'
       {String : Type}
-      {repT fnew fto_string fis_char fget flength ftake fdrop fsplits}
+      {repT carrierT fnew fto_string fis_char fget flength ftake fdrop fsplits}
 (*      {repT}
       {fnew : string -> repT}
       {fto_string : repT -> repT * string}
@@ -34,9 +34,9 @@ Lemma finish_Sharpening_SplitterADT'
         ret (ftake s n),
       Def Method1 "drop" (s : rep) (n : nat) : rep :=
         ret (fdrop s n),
-      Def Method2 "splits" (s : rep) (i : item Ascii.ascii) (p : production Ascii.ascii) :
+      Def Method1 "splits" (s : rep) (idx : carrierT) :
       rep * (list nat) :=
-        ret (fsplits s i p) })%ADTParsing
+        ret (fsplits s idx) })%ADTParsing
    (ComputationalADT.LiftcADT e) }.
 Proof.
   eexists.
@@ -45,7 +45,7 @@ Defined.
 
 Definition finish_Sharpening_SplitterADT
            {String}
-           {repT fnew fto_string fis_char fget flength ftake fdrop fsplits}
+           {repT carrierT fnew fto_string fis_char fget flength ftake fdrop fsplits}
 : Sharpened _
   := projT2 (@finish_Sharpening_SplitterADT'
-               String repT fnew fto_string fis_char fget flength ftake fdrop fsplits).
+               String repT carrierT fnew fto_string fis_char fget flength ftake fdrop fsplits).
