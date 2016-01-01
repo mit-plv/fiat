@@ -514,7 +514,7 @@ Section recursive_descent_parser.
           { rewrite leb_correct by omega; reflexivity. }
           { rewrite leb_correct_conv by omega; reflexivity. } }
         repeat (simpl; rewrite ?bool_rect_andb, ?Bool.andb_false_r, ?Bool.andb_true_r, ?Bool.andb_orb_distrib_r, ?Bool.andb_orb_distrib_l, <- ?Bool.andb_assoc).
-        rewrite ?Bool.andb_assoc, <- ?Bool.andb_orb_distrib_l.
+        (*rewrite ?Bool.andb_assoc, <- ?Bool.andb_orb_distrib_l.
         match goal with
           | [ |- _ = andb _ (EqNat.beq_nat ?v 0) ]
             => is_var v;
@@ -530,10 +530,10 @@ Section recursive_descent_parser.
           | [ |- context[negb (leb 1 ?v)] ]
             => replace (negb (leb 1 v)) with (EqNat.beq_nat v 0)
               by (destruct v; reflexivity)
-        end.
+        end.*)
         reflexivity. }
       { reflexivity. } }
-    step_opt'; [ | reflexivity | reflexivity ].
+    step_opt'; [ | reflexivity ].
     step_opt'; [ | reflexivity ].
     step_opt'.
     step_opt'; [ | reflexivity ].
