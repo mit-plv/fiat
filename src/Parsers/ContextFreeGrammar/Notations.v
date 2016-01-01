@@ -48,9 +48,9 @@ Delimit Scope grammar_scope with grammar.
 Bind Scope grammar_scope with grammar.
 Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 100) : production_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
-  (list_to_productions (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
+  (list_to_productions nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
-  (list_to_grammar (nil::nil) (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : grammar_scope.
+  (list_to_grammar nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : grammar_scope.
 
 Local Open Scope string_scope.
 Notation "<< x | .. | y >>" :=

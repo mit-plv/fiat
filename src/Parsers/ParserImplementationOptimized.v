@@ -64,7 +64,7 @@ Arguments transfer_parser {_ _ _ _} _ _ _ _ _ _ _ _.
 
 Section implementation.
   Context {ls : list (String.string * productions Ascii.ascii)}.
-  Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
+  Local Notation G := (list_to_grammar nil ls) (only parsing).
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).
   Context {string_like_lite : StringLike Ascii.ascii}

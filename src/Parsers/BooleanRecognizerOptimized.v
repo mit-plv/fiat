@@ -61,7 +61,7 @@ Section recursive_descent_parser.
 
   Context constT varT {strC : str_carrier constT varT}.
 
-  Local Notation G := (list_to_grammar (nil::nil) ls) (only parsing).
+  Local Notation G := (list_to_grammar nil ls) (only parsing).
 
   Let data : boolean_parser_dataT :=
     {| predata := @rdp_list_predata _ G;
