@@ -196,3 +196,17 @@ Proof.
         | rewrite Min.min_l by omega ];
   auto.
 Qed.
+
+Lemma beq_0_1_leb x
+: (EqNat.beq_nat x 1 || EqNat.beq_nat x 0)%bool = Compare_dec.leb x 1.
+Proof.
+  destruct x as [|[|]]; simpl; reflexivity.
+Qed.
+
+Lemma beq_S_leb x n
+: (EqNat.beq_nat x (S n) || Compare_dec.leb x n)%bool = Compare_dec.leb x (S n).
+Proof.
+  revert x; induction n as [|n IHn]; simpl.
+  { intros [|[|]]; reflexivity. }
+  { intros [|x]; [ reflexivity | apply IHn ]. }
+Qed.

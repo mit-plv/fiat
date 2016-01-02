@@ -11,6 +11,8 @@ Require Export Fiat.Parsers.StringLike.Core.
 
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.BoolFacts.
+Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Computation.Refinements.General.
 
 Global Open Scope string_scope.

@@ -82,4 +82,10 @@ Section BoolFacts.
   Proof.
     destruct x, y, z; reflexivity.
   Qed.
+
+  Lemma andb_orb_distrib_r_assoc
+  : forall b1 b2 b3 b4 : bool, ((b1 && (b2 || b3)) || b4)%bool = (b1 && b2 || ((b1 && b3) || b4))%bool.
+  Proof.
+    repeat intros []; reflexivity.
+  Qed.
 End BoolFacts.
