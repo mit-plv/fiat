@@ -1645,4 +1645,65 @@ Section ListFacts.
                | _ => solve [ eauto with nocore ]
              end. }
   Qed.
+
+  Lemma step_rev_up_to {n}
+  : List.rev (up_to n)
+    = match n with
+        | 0 => nil
+        | S n' => 0::map S (List.rev (up_to n'))
+      end.
+  Proof.
+    induction n; simpl; [ reflexivity | ].
+    etransitivity; [ rewrite IHn | reflexivity ].
+    destruct n; simpl; [ reflexivity | ].
+    rewrite map_app; reflexivity.
+  Qed.
+
+  Lemma map_nth_dep_helper {A B} (f' : nat -> nat) (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
+  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+               (combine (List.map f' (List.rev (up_to (List.length l)))) l))
+        (f (f' n) d)
+    = f (f' n) (nth n l d).
+  Proof.
+    rewrite <- (map_nth (f (f' n))).
+    rewrite step_rev_up_to.
+    revert f' n; induction l as [|x xs IHxs]; intros.
+    { destruct n; simpl; reflexivity. }
+    { destruct n; simpl; [ reflexivity | ].
+      specialize (IHxs (fun x => f' (S x))).
+      rewrite <- IHxs; clear IHxs.
+      rewrite map_map.
+      rewrite <- step_rev_up_to.
+      reflexivity. }
+  Qed.
+
+  Lemma map_nth_dep {A B} (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
+  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+               (combine (List.rev (up_to (List.length l))) l))
+        (f n d)
+    = f n (nth n l d).
+  Proof.
+    rewrite <- (map_nth_dep_helper (fun x => x)).
+    rewrite List.map_id; reflexivity.
+  Qed.
+
+  Lemma combine_map_l {A A' B} (g : A -> A') ls ls'
+  : List.combine (List.map g ls) ls'
+    = List.map (fun x : A * B => (g (fst x), snd x))
+               (List.combine ls ls').
+  Proof.
+    revert ls'; induction ls as [|l ls IHls];
+    intros [|l' ls']; simpl; f_equal.
+    eauto with nocore.
+  Qed.
+
+  Lemma combine_map_r {A B B'} (g : B -> B') ls ls'
+  : List.combine ls (List.map g ls')
+    = List.map (fun x : A * B => (fst x, g (snd x)))
+               (List.combine ls ls').
+  Proof.
+    revert ls'; induction ls as [|l ls IHls];
+    intros [|l' ls']; simpl; f_equal.
+    eauto with nocore.
+  Qed.
 End ListFacts.
