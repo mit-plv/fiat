@@ -1,3 +1,4 @@
+Require Fiat.Parsers.StringLike.OcamlString.
 Require Fiat.Parsers.BooleanRecognizerOptimized.
 Require Fiat.Parsers.ParserInterface Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
@@ -10,6 +11,8 @@ Require Import Fiat.Parsers.StringLike.String.
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 Global Arguments min !_ !_.
 Global Arguments max !_ !_.
+Global Arguments Compare_dec.leb !_ !_.
+Global Arguments List.nth {A} !_ !_ _.
 
 Declare Reduction splitter_red0 := cbv beta iota zeta delta [ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
 
@@ -26,9 +29,15 @@ Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar item_
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect].
-Declare Reduction parser_red5 := simpl List.hd.
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd BooleanRecognizerOptimized.of_string BooleanRecognizerOptimized.to_string StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike OcamlString.Ocaml.string_stringlike BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect item_of_string].
+Declare Reduction parser_red5 := opt_red.
 Declare Reduction parser_red6 := simpl @fst.
+Declare Reduction parser_red7 := simpl @snd.
+Declare Reduction parser_red8 := opt2_red.
+Declare Reduction parser_red9 := simpl orb.
+Declare Reduction parser_red10 := opt3_red.
+Declare Reduction parser_red11 := simpl orb.
+(*Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
 Declare Reduction parser_red8 := simpl List.length.
 Declare Reduction parser_red9 := simpl List.fold_right.
@@ -39,7 +48,7 @@ Declare Reduction parser_red13 := simpl @Operations.List.uniquize.
 Declare Reduction parser_red14 := simpl @List.combine.
 Declare Reduction parser_red15 := simpl @BooleanRecognizerOptimized.inner_nth'.
 (*Declare Reduction parser_red16 := simpl List.map.*)
-Declare Reduction parser_red17 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
+Declare Reduction parser_red17 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].*)
 
 Ltac parser_red_gen term do_simpl_list_map :=
   let term := match term with
@@ -60,15 +69,12 @@ Ltac parser_red_gen term do_simpl_list_map :=
   let term := (eval parser_red9 in term) in
   let term := (eval parser_red10 in term) in
   let term := (eval parser_red11 in term) in
-  let term := (eval parser_red12 in term) in
-  let term := (eval parser_red13 in term) in
-  let term := (eval parser_red14 in term) in
-  let term := (eval parser_red15 in term) in
+(*
   let term := (match do_simpl_list_map with
                  | true => eval simpl List.map in term
                  | _ => term
                end) in
-  let term := (eval parser_red17 in term) in
+  let term := (eval parser_red17 in term) in*)
   constr:term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.

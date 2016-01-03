@@ -29,6 +29,84 @@ Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
 Global Arguments parse_production' _ _ _ _ _ _ _ _ !_.
 
+Module Export opt.
+  Module Import opt.
+    Definition first_index_default {A} := Eval compute in @Operations.List.first_index_default A.
+    Definition map {A B} := Eval compute in @List.map A B.
+    Definition length {A} := Eval compute in @List.length A.
+    Definition uniquize {A} := Eval compute in @Operations.List.uniquize A.
+    Definition string_beq := Eval compute in Equality.string_beq.
+    Definition option_rect {A} := Eval compute in @option_rect A.
+    Definition up_to := Eval compute in Operations.List.up_to.
+    Definition rev {A} := Eval compute in @List.rev A.
+    Definition combine {A B} := Eval compute in @List.combine A B.
+    Definition fold_left {A B} := Eval compute in @List.fold_left A B.
+    Definition fold_right {A B} := Eval compute in @List.fold_right A B.
+    Definition list_rect {A} := Eval compute in @list_rect A.
+    Definition hd {A} := Eval compute in @hd A.
+    Definition tl {A} := Eval compute in @tl A.
+    Definition nth {A} := Eval compute in @nth A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition fst {A B} := Eval compute in @fst A B.
+    Definition snd {A B} := Eval compute in @snd A B.
+  End opt.
+
+  Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Ltac opt_red x := eval opt_red in x.
+End opt.
+
+Module Export opt2.
+  Module Import opt2.
+    Definition first_index_default {A} := Eval compute in @Operations.List.first_index_default A.
+    Definition map {A B} := Eval compute in @List.map A B.
+    Definition length {A} := Eval compute in @List.length A.
+    Definition uniquize {A} := Eval compute in @Operations.List.uniquize A.
+    Definition string_beq := Eval compute in Equality.string_beq.
+    Definition option_rect {A} := Eval compute in @option_rect A.
+    Definition up_to := Eval compute in Operations.List.up_to.
+    Definition rev {A} := Eval compute in @List.rev A.
+    Definition combine {A B} := Eval compute in @List.combine A B.
+    Definition fold_left {A B} := Eval compute in @List.fold_left A B.
+    Definition fold_right {A B} := Eval compute in @List.fold_right A B.
+    Definition list_rect {A} := Eval compute in @list_rect A.
+    Definition hd {A} := Eval compute in @hd A.
+    Definition tl {A} := Eval compute in @tl A.
+    Definition nth {A} := Eval compute in @nth A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition fst {A B} := Eval compute in @fst A B.
+    Definition snd {A B} := Eval compute in @snd A B.
+  End opt2.
+
+  Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Ltac opt2_red x := eval opt2_red in x.
+End opt2.
+
+Module Export opt3.
+  Module Import opt3.
+    Definition first_index_default {A} := Eval compute in @Operations.List.first_index_default A.
+    Definition map {A B} := Eval compute in @List.map A B.
+    Definition length {A} := Eval compute in @List.length A.
+    Definition uniquize {A} := Eval compute in @Operations.List.uniquize A.
+    Definition string_beq := Eval compute in Equality.string_beq.
+    Definition option_rect {A} := Eval compute in @option_rect A.
+    Definition up_to := Eval compute in Operations.List.up_to.
+    Definition rev {A} := Eval compute in @List.rev A.
+    Definition combine {A B} := Eval compute in @List.combine A B.
+    Definition fold_left {A B} := Eval compute in @List.fold_left A B.
+    Definition fold_right {A B} := Eval compute in @List.fold_right A B.
+    Definition list_rect {A} := Eval compute in @list_rect A.
+    Definition hd {A} := Eval compute in @hd A.
+    Definition tl {A} := Eval compute in @tl A.
+    Definition nth {A} := Eval compute in @nth A.
+    Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
+    Definition fst {A B} := Eval compute in @fst A B.
+    Definition snd {A B} := Eval compute in @snd A B.
+  End opt3.
+
+  Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Ltac opt3_red x := eval opt3_red in x.
+End opt3.
+
 Section recursive_descent_parser.
   Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {ls : list (String.string * productions Char)}.
@@ -177,6 +255,10 @@ Section recursive_descent_parser.
                => apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_left A B))
              | [ |- @map ?A ?B ?f ?ls = @map ?A ?B ?f' ?ls' ]
                => apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map A B))
+             | [ |- @nth' ?A ?n ?ls ?d = @nth' ?A ?n' ?ls' ?d' ]
+               => apply f_equal3
+             | [ |- @nth ?A ?n ?ls ?d = @nth ?A ?n' ?ls' ?d' ]
+               => apply f_equal3
              | _ => intro
              | [ |- ?x = ?x ] => reflexivity
              | [ |- andb _ _ = andb _ _ ] => apply f_equal2
@@ -206,6 +288,8 @@ Section recursive_descent_parser.
              | [ |- ?f _ (match ?p with eq_refl => ?k end) = ?f' _ ?k ]
                => destruct p
              | [ |- match ?ls with nil => _ | _ => _ end = match ?ls with _ => _ end ]
+               => destruct ls eqn:?
+             | [ |- match ?ls with NonTerminal _ => _ | _ => _ end = match ?ls with _ => _ end ]
                => destruct ls eqn:?
            end.
 
@@ -960,12 +1044,148 @@ Section recursive_descent_parser.
     reflexivity.
   Defined.
 
-  Definition parse_nonterminal_opt
+  Local Ltac change_opt' ls nt str :=
+    idtac;
+    match goal with
+      | _ => progress change (map fst ls) with (opt.map opt.fst ls)
+      | _ => progress change (snd (of_string str)) with (opt.snd (of_string str))
+      | _ => progress change (string_beq nt) with (opt.string_beq nt)
+      | _ => progress change (uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls)
+             with (opt.uniquize (fun x0 y0 => opt.string_beq (opt.fst x0) (opt.fst y0)) ls)
+      | [ |- context G[uniquize string_beq (opt.map ?f ?ls)] ]
+        => progress change (uniquize string_beq (opt.map f ls))
+           with (opt.uniquize opt.string_beq (opt.map f ls))
+      | [ |- context G[List.length (opt.uniquize ?beq ?ls)] ]
+        => progress change (List.length (opt.uniquize beq ls))
+           with (opt.length (opt.uniquize beq ls))
+      | [ |- context G[first_index_default (opt.string_beq ?x) (opt.length ?ls) (opt.uniquize ?beq ?ls')] ]
+        => change (first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
+           with (opt.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
+      | [ |- context G[up_to (opt.length ?ls)] ]
+        => change (up_to (opt.length ls))
+           with (opt.up_to (opt.length ls))
+      | [ |- context G[rev (opt.up_to ?ls)] ]
+        => change (rev (opt.up_to ls))
+           with (opt.rev (opt.up_to ls))
+      | [ |- context G[map (fun x0 : ?T => up_to (Datatypes.length (snd x0)))
+                           (opt.uniquize ?beq ?ls)] ]
+        => change (map (fun x0 : T => up_to (Datatypes.length (snd x0)))
+                       (opt.uniquize beq ls))
+           with (opt.map (fun x0 : T => opt.up_to (opt.length (opt.snd x0)))
+                         (opt.uniquize beq ls))
+      | [ |- context G[combine (opt.rev ?ls) (opt.map ?f ?ls')] ]
+        => change (combine (opt.rev ls) (opt.map f ls'))
+           with (opt.combine (opt.rev ls) (opt.map f ls'))
+      | [ |- context G[List.hd ?d (opt.uniquize ?beq ?ls)] ]
+        => change (List.hd d (opt.uniquize beq ls))
+           with (opt.hd d (opt.uniquize beq ls))
+      | [ |- context G[List.map (@snd _ _) (opt.uniquize ?beq ?ls)] ]
+        => change (List.map (@snd _ _) (opt.uniquize beq ls))
+           with (opt.map (@opt.snd _ _) (opt.uniquize beq ls))
+      | [ |- context G[fst (of_string ?str')] ]
+        => change (fst (of_string str')) with (opt.fst (of_string str'))
+      | [ |- context G[snd (of_string ?str')] ]
+        => change (snd (of_string str')) with (opt.snd (of_string str'))
+      | [ |- context G[List.length (opt.snd ?x)] ]
+        => change (List.length (opt.snd x)) with (opt.length (opt.snd x))
+      | [ |- context G[fst (opt.fst ?x)] ]
+        => change (fst (opt.fst x)) with (opt.fst (opt.fst x))
+      | [ |- context G[snd (opt.fst ?x)] ]
+        => change (snd (opt.fst x)) with (opt.snd (opt.fst x))
+      | [ |- context G[fst (opt.snd ?x)] ]
+        => change (fst (opt.snd x)) with (opt.fst (opt.snd x))
+      | [ |- context G[snd (opt.snd ?x)] ]
+        => change (snd (opt.snd x)) with (opt.snd (opt.snd x))
+    end.
+
+  Local Ltac change_opt ls nt str := repeat change_opt' ls nt str.
+
+  Definition parse_nonterminal_opt'1
              (str : String)
              (nt : String.string)
   : { b : bool | b = parse_nonterminal str nt }.
   Proof.
     let c := constr:(parse_nonterminal_opt'0 str nt) in
+    let h := head c in
+    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
+    evar (b' : bool).
+    sigL_transitivity b'; subst b'.
+    Focus 2.
+    { unfold rdp_list_of_nonterminal; simpl.
+      rewrite !uniquize_idempotent.
+      (** TODO: Come up with a robust (possibly reflective) version of
+      this, based or wheich things are recursively accessible *)
+      change_opt ls nt str.
+      reflexivity. }
+    Unfocus.
+    refine_Fix2_5_Proper_eq.
+    etransitivity_rev _.
+    { fix2_trans;
+      [
+      | solve [ t_reduce_fix;
+                t_reduce_list_more;
+                t_reduce_fix ] ].
+      step_opt'; [ | reflexivity ].
+      apply f_equal2; [ | reflexivity ].
+      step_opt'; [ | reflexivity ].
+      step_opt'.
+      step_opt'.
+      apply f_equal2; [ | reflexivity ].
+      change @List.map with @opt.map at 1.
+      apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
+             : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt.map _ _));
+        [
+        | reflexivity ].
+      let x := fresh in
+      intro x;
+        change (snd x) with (opt.snd x);
+        change (fst x) with (opt.fst x).
+      etransitivity_rev _.
+      { apply f_equal2; [ | reflexivity ].
+        change @List.map with @opt.map at 1.
+        apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
+               : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt.map _ _));
+          [ intro
+          | reflexivity ].
+        etransitivity_rev _.
+        { t_reduce_list_evar; [ reflexivity | ].
+          let idx := match reverse goal with idx : (nat * (nat * nat))%type |- _ => idx end in
+          change (fst idx) with (opt.fst idx);
+            change (snd idx) with (opt.snd idx);
+            change_opt ls nt str.
+          etransitivity_rev _.
+          { step_opt'.
+            step_opt'; [ | reflexivity ].
+            progress change_opt ls nt str.
+            apply (f_equal2 andb); [ reflexivity | ].
+            change @List.map with @opt.map at 1 2.
+            change @snd with @opt.snd at 1 2.
+            change @List.length with @opt.length at 1 2.
+            reflexivity. }
+          change @fold_left with @opt2.fold_left at 1.
+          change @map with @opt2.map at 1.
+          reflexivity. }
+        change @list_rect with @opt.list_rect at 1.
+        reflexivity. }
+      progress change_opt ls nt str.
+      change @nth with @opt3.nth at 1.
+      reflexivity. }
+    change @map with @opt3.map at 1 2.
+    change @fold_left with @opt3.fold_left at 1.
+    change @nth' with @opt3.nth' at 1.
+    change @nth with @opt3.nth at 1 2 3.
+    change @fst with @opt3.fst at 1 2.
+    change @snd with @opt3.snd at 1.
+    reflexivity.
+  Defined.
+
+  Definition parse_nonterminal_opt
+             (str : String)
+             (nt : String.string)
+  : { b : bool | b = parse_nonterminal str nt }.
+  Proof.
+    let c := constr:(parse_nonterminal_opt'1 str nt) in
     let h := head c in
     let impl := (eval cbv beta iota zeta delta [h proj1_sig] in (proj1_sig c)) in
     (exists impl);

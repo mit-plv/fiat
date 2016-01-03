@@ -26,6 +26,7 @@ Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Computation.SetoidMorphisms.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp Fiat.Common.Enumerable.ReflectiveForall.
 
@@ -198,7 +199,7 @@ Module Export PrettyNotations.
     (substring (fst (snd s)) (snd (snd s)) (fst s))
       (only parsing).
   Notation ilength s :=
-    (snd (snd s))
+    ((*opt.*)snd ((*opt.*)snd s))
       (only parsing).
   Notation iget n s :=
     (unsafe_get (n + fst (snd s)) (fst s))
@@ -776,7 +777,8 @@ Section IndexedImpl.
     econstructor 1 with (AbsR := (fun r_o r_n =>
                                     (substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o)
                                     /\ (snd (snd r_n) = 0 \/ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n)))));
-      do_Iterate_Ensemble_BoundedIndex_equiv.
+      do_Iterate_Ensemble_BoundedIndex_equiv;
+      change @opt.snd with @snd in *.
     { rewrite substring_correct3'; reflexivity. }
     { repeat match goal with
                | _ => progress fin_common

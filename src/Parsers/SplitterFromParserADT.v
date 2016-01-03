@@ -57,6 +57,9 @@ Section parser.
   Local Notation mcall21 s := (mcall2 (fun x => x) s) (only parsing).
   Local Notation mcall22 s := (mcall2 snd s) (only parsing).
   Local Notation ccall01 s := (ccall0 (fun x => x) s) (only parsing).
+  Local Notation optmcall02 s := (mcall0 opt.snd s) (only parsing).
+  Local Notation optmcall12 s := (mcall1 opt.snd s) (only parsing).
+  Local Notation optmcall22 s := (mcall2 opt.snd s) (only parsing).
 
   Definition mto_string := Eval simpl in mcall02 "to_string".
   Definition mis_char := Eval simpl in mcall12 "is_char".
@@ -117,19 +120,19 @@ Section parser.
 
   Ltac prove_string_eq :=
     match goal with
-      |- ?z _ = _ => unfold z;
+      |- ?z _ = _ => unfold z; change @opt.snd with @snd in *;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st) = _ =>
           destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H)
         end
-    | |- ?z _ _ = _ => unfold z;
+    | |- ?z _ _ = _ => unfold z; change @opt.snd with @snd in *;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1) = _ =>
           destruct_twice_faster (cMethods_AbsR splitter_impl (proj idx) _ _ H arg1)
         end
-    | |- ?z _ _ = _ => unfold z;
+    | |- ?z _ _ = _ => unfold z; change @opt.snd with @snd in *;
         match goal with
           H : ?str ≃ ?st
           |- snd (callcADTMethod (projT1 ?splitter_impl) ?proj ?idx ?st ?arg1 ?arg2) = _ =>

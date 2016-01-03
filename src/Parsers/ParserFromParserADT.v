@@ -121,6 +121,66 @@ Proof.
   abstract (subst val; apply parser').
 Defined.
 
+Module Import local_opt.
+  Import BooleanRecognizerOptimized.
+  Ltac change_opt' ls nt str :=
+    idtac;
+    match goal with
+      | _ => progress change (List.map fst ls) with (opt.map opt.fst ls)
+      | _ => progress change (snd (of_string str)) with (opt.snd (of_string str))
+      | _ => progress change (Equality.string_beq nt) with (opt.string_beq nt)
+      | _ => progress change (Operations.List.uniquize (fun x0 y0 => Equality.string_beq (fst x0) (fst y0)) ls)
+             with (opt.uniquize (fun x0 y0 => opt.string_beq (opt.fst x0) (opt.fst y0)) ls)
+      | [ |- context G[Operations.List.uniquize Equality.string_beq (opt.map ?f ?ls)] ]
+        => progress change (Operations.List.uniquize Equality.string_beq (opt.map f ls))
+           with (opt.uniquize opt.string_beq (opt.map f ls))
+      | [ |- context G[List.length (opt.uniquize ?beq ?ls)] ]
+        => progress change (List.length (opt.uniquize beq ls))
+           with (opt.length (opt.uniquize beq ls))
+      | [ |- context G[Operations.List.first_index_default (opt.string_beq ?x) (opt.length ?ls) (opt.uniquize ?beq ?ls')] ]
+        => change (Operations.List.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
+           with (opt.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
+      | [ |- context G[Operations.List.up_to (opt.length ?ls)] ]
+        => change (Operations.List.up_to (opt.length ls))
+           with (opt.up_to (opt.length ls))
+      | [ |- context G[List.rev (opt.up_to ?ls)] ]
+        => change (List.rev (opt.up_to ls))
+           with (opt.rev (opt.up_to ls))
+      | [ |- context G[List.map (fun x0 : ?T => Operations.List.up_to (Datatypes.length (snd x0)))
+                                (opt.uniquize ?beq ?ls)] ]
+        => change (List.map (fun x0 : T => Operations.List.up_to (Datatypes.length (snd x0)))
+                            (opt.uniquize beq ls))
+           with (opt.map (fun x0 : T => opt.up_to (opt.length (snd x0)))
+                         (opt.uniquize beq ls))
+      | [ |- context G[List.combine (opt.rev ?ls) (opt.map ?f ?ls')] ]
+        => change (List.combine (opt.rev ls) (opt.map f ls'))
+           with (opt.combine (opt.rev ls) (opt.map f ls'))
+      | [ |- context G[snd (pcMethods ?x ?y ?z ?w ?v)] ]
+        => change (snd (pcMethods x y z w v))
+           with (opt.snd (pcMethods x y z w v))
+      | [ |- context G[List.hd ?d (opt.uniquize ?beq ?ls)] ]
+        => change (List.hd d (opt.uniquize beq ls))
+           with (opt.hd d (opt.uniquize beq ls))
+    end.
+
+  Ltac change_opt ls nt str := repeat change_opt' ls nt str.
+End local_opt.
+
+
+Class change_snd {A} (x : A) := dummy_change_snd : A.
+Hint Extern 0 (change_snd _) => change @snd with @Common.opt.snd; match goal with |- change_snd ?x => exact x end : typeclass_instances.
+
+Local Ltac do_change_snd h impl :=
+  idtac;
+  let term := match goal with
+                | [ |- appcontext[h ?x ?y impl] ]
+                  => constr:(h x y impl)
+              end in
+  let v := (eval cbv beta iota zeta delta [h BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep] in term) in
+  let v := constr:(_ : change_snd v) in
+  let v := (eval cbv beta in v) in
+  change term with v; cbv beta.
+
 Definition parser
            {HSL : StringLike Ascii.ascii}
            {HSLP : StringLikeProperties Ascii.ascii}
@@ -136,8 +196,8 @@ Definition parser
 Proof.
   let term := (eval cbv beta delta [parser''] in (@parser'' HSL HSLP ls Hvalid splitter_impl constT varT strC)) in
   refine (term _ _).
-  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite mlength mtake mdrop mis_char mget mto_string msplits pdata data' BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R].
-  cbv beta iota zeta delta [drop take is_char String length get bool_eq beq].
+  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLike_lite pdata data' BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mis_char mdrop mtake mget].
+  change_opt ls nt str.
   match goal with
     | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
   end.
