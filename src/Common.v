@@ -1689,3 +1689,8 @@ Proof.
   intros; destruct p1, p2; simpl in *; subst; reflexivity.
 Defined.
 Global Arguments injective_projections' {_ _ _ _} !_ !_.
+
+Module opt.
+  Definition fst {A B} := Eval compute in @fst A B.
+  Definition snd {A B} := Eval compute in @snd A B.
+End opt.
