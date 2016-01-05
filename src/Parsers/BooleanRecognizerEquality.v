@@ -53,7 +53,7 @@ Section transfer.
         (H : forall str len pf' nt,
                parse_nonterminal (proj str) len pf' nt
                = parse_nonterminal' str len pf' nt)
-        str len pf prod
+        str len pf (prod : @production_carrierT _ data)
   : @parse_production' _ HSL_lite _ len0 parse_nonterminal (proj str) len pf prod
     = @parse_production' _ HSL_heavy _ len0 parse_nonterminal' str len pf prod.
   Proof.
