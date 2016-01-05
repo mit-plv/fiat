@@ -1272,7 +1272,7 @@ Section recursive_descent_parser.
         Proof.
           destruct H as [nt [prefix [H0 H1]]];
           split; exists nt;
-          [ exists 0 p; simpl; repeat split; try assumption
+          [ exists 0; exists p; simpl; repeat split; try assumption
           | exists (prefix ++ [p]); rewrite <- app_assoc; simpl; split; assumption ].
           rewrite <- H1.
           clear.
