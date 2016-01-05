@@ -224,7 +224,7 @@ Section recursive_descent_parser_list.
       { simpl Datatypes.length.
         intro H.
         apply lt_S_n in H.
-        etransitivity; [ | apply (f_equal S), (IHxs _ H); clear IHxs ].
+        etransitivity; [ | eapply (f_equal S), (IHxs _ H); clear IHxs ].
         rewrite first_index_default_S_cons; simpl.
         match goal with
           | [ |- context[string_beq ?x ?y] ]
