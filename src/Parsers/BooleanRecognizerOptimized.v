@@ -1051,7 +1051,9 @@ Section recursive_descent_parser.
     idtac;
     match goal with
       | _ => progress change (map fst ls) with (opt.map opt.fst ls)
-      | _ => progress change (snd (of_string str)) with (opt.snd (of_string str))
+      | [ |- appcontext G[snd (of_string str)] ]
+        => let G' := context G[opt.snd (of_string str)] in
+           change G'
       | _ => progress change (string_beq nt) with (opt.string_beq nt)
       | _ => progress change (uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls)
              with (opt.uniquize (fun x0 y0 => opt.string_beq (opt.fst x0) (opt.fst y0)) ls)
@@ -1062,43 +1064,49 @@ Section recursive_descent_parser.
         => progress change (List.length (opt.uniquize beq ls))
            with (opt.length (opt.uniquize beq ls))
       | [ |- context G[first_index_default (opt.string_beq ?x) (opt.length ?ls) (opt.uniquize ?beq ?ls')] ]
-        => change (first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
-           with (opt.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls'))
+        => let G' := context G[opt.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls')] in
+           change G'
       | [ |- context G[up_to (opt.length ?ls)] ]
-        => change (up_to (opt.length ls))
-           with (opt.up_to (opt.length ls))
+        => let G' := context G[opt.up_to (opt.length ls)] in
+           change G'
       | [ |- context G[rev (opt.up_to ?ls)] ]
-        => change (rev (opt.up_to ls))
-           with (opt.rev (opt.up_to ls))
+        => let G' := context G[opt.rev (opt.up_to ls)] in
+           change G'
       | [ |- context G[map (fun x0 : ?T => up_to (Datatypes.length (snd x0)))
                            (opt.uniquize ?beq ?ls)] ]
-        => change (map (fun x0 : T => up_to (Datatypes.length (snd x0)))
-                       (opt.uniquize beq ls))
-           with (opt.map (fun x0 : T => opt.up_to (opt.length (opt.snd x0)))
-                         (opt.uniquize beq ls))
+        => let G' := context G[opt.map (fun x0 : T => opt.up_to (opt.length (opt.snd x0)))
+                                       (opt.uniquize beq ls)] in
+           change G'
       | [ |- context G[combine (opt.rev ?ls) (opt.map ?f ?ls')] ]
-        => change (combine (opt.rev ls) (opt.map f ls'))
-           with (opt.combine (opt.rev ls) (opt.map f ls'))
+        => let G' := context G[opt.combine (opt.rev ls) (opt.map f ls')] in
+           change G'
       | [ |- context G[List.hd ?d (opt.uniquize ?beq ?ls)] ]
-        => change (List.hd d (opt.uniquize beq ls))
-           with (opt.hd d (opt.uniquize beq ls))
+        => let G' := context G[opt.hd d (opt.uniquize beq ls)] in
+           change G'
       | [ |- context G[List.map (@snd _ _) (opt.uniquize ?beq ?ls)] ]
-        => change (List.map (@snd _ _) (opt.uniquize beq ls))
-           with (opt.map (@opt.snd _ _) (opt.uniquize beq ls))
+        => let G' := context G[opt.map (@opt.snd _ _) (opt.uniquize beq ls)] in
+           change G'
       | [ |- context G[fst (of_string ?str')] ]
-        => change (fst (of_string str')) with (opt.fst (of_string str'))
+        => let G' := context G[opt.fst (of_string str')] in
+           change G'
       | [ |- context G[snd (of_string ?str')] ]
-        => change (snd (of_string str')) with (opt.snd (of_string str'))
+        => let G' := context G[opt.snd (of_string str')] in
+           change G'
       | [ |- context G[List.length (opt.snd ?x)] ]
-        => change (List.length (opt.snd x)) with (opt.length (opt.snd x))
+        => let G' := context G[opt.length (opt.snd x)] in
+           change G'
       | [ |- context G[fst (opt.fst ?x)] ]
-        => change (fst (opt.fst x)) with (opt.fst (opt.fst x))
+        => let G' := context G[opt.fst (opt.fst x)] in
+           change G'
       | [ |- context G[snd (opt.fst ?x)] ]
-        => change (snd (opt.fst x)) with (opt.snd (opt.fst x))
+        => let G' := context G[opt.snd (opt.fst x)] in
+           change G'
       | [ |- context G[fst (opt.snd ?x)] ]
-        => change (fst (opt.snd x)) with (opt.fst (opt.snd x))
+        => let G' := context G[opt.fst (opt.snd x)] in
+           change G'
       | [ |- context G[snd (opt.snd ?x)] ]
-        => change (snd (opt.snd x)) with (opt.snd (opt.snd x))
+        => let G' := context G[opt.snd (opt.snd x)] in
+           change G'
     end.
 
   Local Ltac change_opt ls nt str := repeat change_opt' ls nt str.
