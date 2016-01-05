@@ -725,8 +725,11 @@ Section recursive_descent_parser.
       | _ => repeat step_opt'
     end.
 
-  Let Let_In {A B} (x : A) (f : forall y : A, B y) : B x
+  Let Let_In' {A B} (x : A) (f : forall y : A, B y) : B x
     := let y := x in f y.
+
+  Local Notation Let_In := (@Let_In' _ _).
+  Local Notation "@ 'Let_In' A B" := (@Let_In' A B) (at level 10, A at level 8, B at level 8, format "@ 'Let_In' A B").
 
   Let Let_In_Proper {A B} x
   : Proper (forall_relation (fun _ => eq) ==> eq) (@Let_In A B x).
@@ -774,7 +777,7 @@ Section recursive_descent_parser.
                         | constr_eq k (snd (snd x)) ];
                  test pose f; (* make sure f is closed *)
                  let c := constr:(@Let_In A B k) in
-                 let c' := (eval unfold Let_In in c) in
+                 let c' := (eval unfold Let_In' in c) in
                  let G' := context G[c' f] in
                  change G'; simpl
            end.
@@ -799,10 +802,10 @@ Section recursive_descent_parser.
            end.
       etransitivity.
       { symmetry; rewrite_map_nth_rhs; symmetry.
-        unfold Let_In at 2 3 4; simpl.
+        unfold Let_In' at 2 3 4; simpl.
         set_evars.
         rewrite drop_all by (simpl; omega).
-        unfold Let_In.
+        unfold Let_In'.
         rewrite <- nth'_nth.
         change @nth' with @inner_nth'.
         subst_body; reflexivity. }
@@ -811,7 +814,7 @@ Section recursive_descent_parser.
   Defined.
 
   Definition rdp_list_to_production_opt x
-    := Eval cbv beta iota delta [proj1_sig rdp_list_to_production_opt_sig Let_In]
+    := Eval cbv beta iota delta [proj1_sig rdp_list_to_production_opt_sig Let_In']
       in proj1_sig (rdp_list_to_production_opt_sig x).
 
   Lemma rdp_list_to_production_opt_correct x
