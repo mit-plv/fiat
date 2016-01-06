@@ -28,11 +28,18 @@ Local Ltac tuplify' a b :=
     | [ |- appcontext[@flatten_append_forall ?B ?T] ] => tac B; tac T
   end.
 
+(** work around https://coq.inria.fr/bugs/show_bug.cgi?id=4471 *)
+Local Ltac tc_goal :=
+  idtac;
+  let H := fresh in
+  let G := match goal with |- ?G => constr:G end in
+  test assert (H : G -> G) by abstract exact (fun x => x).
+
 Local Ltac tuple_generalize a b :=
   first [ tuplify a b;
-          generalize dependent (a, b)
+          generalize dependent (a, b); tc_goal
         | tuplify' a b;
-          generalize dependent (a, b) ];
+          generalize dependent (a, b); tc_goal ];
   clear a b.
 
 Local Ltac destruct_prods :=
