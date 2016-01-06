@@ -66,7 +66,7 @@ Section LogicFacts.
   Lemma fold_right_and_True {ls : list Prop}
   : List.fold_right and True ls <-> (forall P, List.In P ls -> P).
   Proof.
-    split; induction ls; simpl in *; repeat (intros [] || intro);
+    split; induction ls; simpl in *; repeat (subst || intros [] || intro);
     repeat split; try assumption;
     try apply IHls; intros; eauto;
     match goal with
@@ -105,7 +105,10 @@ Section LogicFacts.
   Lemma ex_distr_or A B C
   : (exists x : A, B x \/ C x) <-> ((exists x : A, B x) \/ (exists x : A, C x)).
   Proof.
-    repeat (intros [] || split || intro);
+    repeat ((intros [H0 H1]; revert H0 H1)
+            || (intros [H|H]; revert H)
+            || split
+            || intro);
     first [ do 2 first [ left | esplit ]; eassumption
           | do 2 first [ right | esplit ]; eassumption ].
   Defined.
