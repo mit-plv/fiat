@@ -1055,7 +1055,7 @@ Section recursive_descent_parser.
             [ clear parse_nonterminal Hsplits splits rdata cdata
             | clear parse_nonterminal Hsplits splits rdata cdata
             | clear parse_item parse_production ];
-            abstract parse_production'_for_t.
+            (* abstract *) parse_production'_for_t. (* abstract gives universe inconsistences on Coq <= 8.5rc1 *)
         Defined.
 
         Definition parse_production'_for_eq
