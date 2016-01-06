@@ -431,6 +431,7 @@ Section recursive_descent_parser.
              | [ |- _ = nil ] => reflexivity
              | [ |- _ = 0 ] => reflexivity
              | [ |- _ = 1 ] => reflexivity
+             | [ |- _ = None ] => reflexivity
              | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
              | [ |- _ = leb _ _ ] => apply f_equal2
              | [ |- _ = S _ ] => apply f_equal
@@ -474,11 +475,15 @@ Section recursive_descent_parser.
       | [ |- _ = @nth' ?A _ _ _ ]
         => refine (_ : @nth' A _ _ _ = _);
           apply f_equal3
-      | [ |- _ = sumbool_rect ?T (fun a => _) (fun b => _) ?c ]
-        => refine (_ : sumbool_rect T (fun a => _) (fun b => _) c = _);
-          refine (sumbool_rect
-                    (fun c' => sumbool_rect T _ _ c' = sumbool_rect T _ _ c')
-                    _ _ c); intro; simpl sumbool_rect
+      | [ |- _ = sumbool_rect ?T ?A ?B ?c ]
+        => let A' := fresh in
+           let B' := fresh in
+           let TA := type of A in
+           let TB := type of B in
+           evar (A' : TA); evar (B' : TB);
+           refine (sumbool_rect
+                     (fun c' => sumbool_rect T A' B' c' = sumbool_rect T A B c')
+                     _ _ c); intro; subst A' B'; simpl @sumbool_rect
       | [ |- ?e = match ?ls with nil => _ | _ => _ end ]
         => is_evar e; refine (_ : match ls with nil => _ | _ => _ end = _)
       | [ |- match ?ls with nil => ?A | x::xs => @?B x xs end = match ?ls with nil => ?A' | x::xs => @?B' x xs end ]
