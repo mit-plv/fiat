@@ -137,10 +137,10 @@ Section cfg.
     Proof.
       hnf in H'; unfold alt_option.
       repeat match goal with
-               | [ |- sigT _ -> _ ] => intros []
-               | [ |- sig _ -> _ ] => intros []
-               | [ |- prod _ _ -> _ ] => intros []
-               | [ |- and _ _ -> _ ] => intros []
+               | [ |- sigT _ -> _ ] => intros_destruct
+               | [ |- sig _ -> _ ] => intros_destruct
+               | [ |- prod _ _ -> _ ] => intros_destruct
+               | [ |- and _ _ -> _ ] => intros_destruct
                | _ => intro
                | _ => progress subst
                | [ |- sigT _ ] => esplit

@@ -528,8 +528,8 @@ Section recursive_descent_parser.
                   unfold C at 1, C' at 1;
                   revert y ];
               repeat match goal with
-                       | [ |- forall (x : sigT ?P), _ ] => intros []; simpl
-                                                                    | [ |- forall (x : _ * _), _ ] => intros []; simpl
+                       | [ |- forall (x : sigT ?P), _ ] => intros_destruct; simpl
+                       | [ |- forall (x : _ * _), _ ] => intros_destruct; simpl
                      end;
               [
               | repeat match type of IH with

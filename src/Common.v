@@ -1694,3 +1694,18 @@ Module opt.
   Definition fst {A B} := Eval compute in @fst A B.
   Definition snd {A B} := Eval compute in @snd A B.
 End opt.
+
+(** Work around broken [intros []] in trunk (https://coq.inria.fr/bugs/show_bug.cgi?id=4470) *)
+Definition intros_destruct_dummy := True.
+Ltac intros_destruct :=
+  assert intros_destruct_dummy by constructor;
+  let H := fresh in
+  intro H; destruct H;
+  repeat match goal with
+         | [ H' : ?T |- _ ] => first [ constr_eq T intros_destruct_dummy;
+                                       fail 2
+                                     | revert H' ]
+         end;
+  match goal with
+  | [ H : intros_destruct_dummy |- _ ] => clear H
+  end.

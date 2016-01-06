@@ -750,7 +750,7 @@ Section Iso.
     { apply bool_eq_empty; rewrite ?take_length, ?drop_length; trivial.
       apply length_of_string_nil. }
     { apply bool_eq_from_get.
-      intros [].
+      intros_destruct.
       { destruct str as [|ch str]; simpl;
         repeat match goal with
                  | _ => progress simpl

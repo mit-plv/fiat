@@ -11,7 +11,7 @@ Lemma nat_of_ascii_small x
 Proof.
   apply Compare_dec.leb_complete.
   revert x.
-  repeat intros []; lazy; reflexivity.
+  intros [[] [] [] [] [] [] [] []]; lazy; reflexivity.
 Qed.
 
 Lemma substring_correct3 {s : string} m (H : length s <= m)
