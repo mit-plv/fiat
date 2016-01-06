@@ -34,6 +34,8 @@ Section recursive_descent_parser.
 
   Create HintDb boolr_ext_db discriminated.
   Hint Unfold Proper respectful respectful_hetero pointwise_relation forall_relation pointwise2_relation sumbool_rect : boolr_ext_db.
+  (** Dummy hint for [boolr_ext_db] to work around https://coq.inria.fr/bugs/show_bug.cgi?id=4479 *)
+  Hint Rewrite production_tl_correct : boolr_ext_db.
 
   Local Ltac expand' :=
     idtac;
