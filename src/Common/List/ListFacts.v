@@ -1706,4 +1706,92 @@ Section ListFacts.
     intros [|l' ls']; simpl; f_equal.
     eauto with nocore.
   Qed.
+
+  Lemma fold_right_uniquize {A B}
+        {eq_A : BoolDecR A}
+        {Abl : BoolDec_bl (@eq A)}
+        {Alb : BoolDec_lb (@eq A)}
+        (f : A -> B) ls x base
+  : List.fold_right
+      (fun y else_case => If beq x y Then f y Else else_case)
+      base
+      (uniquize beq ls)
+    = List.fold_right
+        (fun y else_case => If beq x y Then f y Else else_case)
+        base
+        ls.
+  Proof.
+    rewrite !fold_right_beq_in_correct'.
+    destruct (list_bin beq x ls) eqn:Heq;
+      destruct (list_bin beq x (uniquize beq ls)) eqn:Heq';
+      try reflexivity;
+      exfalso;
+      first [ apply (list_in_bl bl) in Heq
+            | apply (list_in_bl bl) in Heq' ];
+      first [ rewrite (list_in_lb lb)
+              in Heq
+              by (eapply uniquize_In; eassumption)
+            | rewrite (list_in_lb lb)
+              in Heq'
+              by (eapply (uniquize_In_refl _ _ _ (lb eq_refl) bl); assumption) ];
+      try congruence.
+  Qed.
 End ListFacts.
+
+Section fold_right_beq.
+  Context {A}
+          {eq_A : BoolDecR A}
+          {Abl : BoolDec_bl (@eq A)}
+          {R}
+          (f : A -> R)
+          (x : A)
+          (base : R).
+
+  Lemma fold_right_beq_in_correct ls
+    : List.fold_right
+        (fun y else_case => If beq y x Then f y Else else_case)
+        base
+        ls
+      = (if list_bin beq x ls then f x else base).
+  Proof.
+    induction ls as [|y ys IHys].
+    { simpl; reflexivity. }
+    { simpl; rewrite IHys; clear IHys.
+      destruct (beq y x) eqn:Heq; simpl.
+      { apply bl in Heq; subst.
+        rewrite Bool.orb_true_r; reflexivity. }
+      { rewrite Bool.orb_false_r; reflexivity. } }
+  Qed.
+End fold_right_beq.
+
+Section fold_right_beq'.
+  Context {A}
+          {eq_A : BoolDecR A}
+          {Abl : BoolDec_bl (@eq A)}
+          {Alb : BoolDec_lb (@eq A)}
+          {R}
+          (f : A -> R)
+          (x : A)
+          (base : R).
+
+  Lemma fold_right_beq_in_correct' ls
+    : List.fold_right
+        (fun y else_case => If beq x y Then f y Else else_case)
+        base
+        ls
+      = (if list_bin beq x ls then f x else base).
+  Proof.
+    induction ls as [|y ys IHys].
+    { simpl; reflexivity. }
+    { simpl; rewrite IHys; clear IHys.
+      destruct (beq y x) eqn:Heq; simpl.
+      { apply bl in Heq; subst.
+        rewrite lb by reflexivity.
+        rewrite Bool.orb_true_r; reflexivity. }
+      { destruct (beq x y) eqn:Heq'; simpl.
+        { apply bl in Heq'; subst.
+          rewrite lb in Heq by reflexivity.
+          congruence. }
+        { rewrite Bool.orb_false_r; reflexivity. } } }
+  Qed.
+End fold_right_beq'.
