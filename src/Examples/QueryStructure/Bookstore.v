@@ -166,7 +166,555 @@ Proof.
             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + simpl.
 
+      (* Delegate_AbsR is a super-generic abstraction relation for any *)
+      (* representation parameterized over some abstract models of state. *)
+      Definition Delegate_AbsR
+                 (* The fixed set of 'abstract' types in the ADT's *)
+                 (* representation. *)
+                 (DelegateIDs : nat)
+                 (AbstractReps : Fin.t DelegateIDs -> Type)
 
+                 (* The parameterized representation type. Intuitively, *)
+                 (* this relation swaps in 'concrete' types for the *)
+                 (* abstract ones, i.e. lists for sets. The type's *)
+                 (* parametricity is witnessed by FunctorRepT. *)
+                 (RepT : (Fin.t DelegateIDs -> Type) -> Type)
+                 (FunctorRepT : forall RepsT RepsT',
+                     (forall idx, RepsT idx -> RepsT' idx)
+                     -> RepT RepsT -> RepT RepsT')
+
+                 (* The signatures of each delegate's constructors *)
+                 (* and methods in terms of the abstract representation *)
+                 (* types. *)
+                 (numDelegateConstructors : Fin.t DelegateIDs -> nat)
+                 (DelegateConstructorSigs
+                  : forall (idx : Fin.t DelegateIDs),
+                     Vector.t consSig (numDelegateConstructors idx))
+                 (numDelegateMethods : Fin.t DelegateIDs -> nat)
+                 (DelegateMethodSigs
+                  : forall (idx : Fin.t DelegateIDs),
+                     Vector.t methSig (numDelegateMethods idx))
+                 (DelegateSigs := fun idx =>
+                                    BuildADTSig
+                                      (DelegateConstructorSigs idx)
+                                      (DelegateMethodSigs idx))
+
+                 (* The specifications of each delegate's constructors *)
+                 (* and methods in terms of the abstract representation *)
+                 (* types. *)
+                 (DelegateConstructorSpecs
+                  : forall (idx : Fin.t DelegateIDs),
+                     ilist (B := consDef (Rep := AbstractReps idx))
+                           (DelegateConstructorSigs idx))
+                 (DelegateMethodSpecs
+                  : forall (idx : Fin.t DelegateIDs),
+                     ilist (B := methDef (Rep := AbstractReps idx))
+                           (DelegateMethodSigs idx))
+                 (DelegateSpecs := fun idx =>
+                                     BuildADT
+                                       (DelegateConstructorSpecs idx)
+                                       (DelegateMethodSpecs idx))
+
+                 (* The concrete implementations of each delegate. *)
+                 (ConcreteReps : Fin.t DelegateIDs -> Type)
+                 (DelegateImpls : forall idx,
+                     ComputationalADT.pcADT (DelegateSigs idx)
+                                            (ConcreteReps idx))
+                 (ValidImpls
+                  : forall idx : Fin.t DelegateIDs,
+                     refineADT (DelegateSpecs idx)
+                               (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+
+                 (r_o : RepT AbstractReps)
+                 (r_n : RepT ConcreteReps)
+        : Prop :=
+        exists r_o_n : RepT (fun idx => sigT (fun ac =>
+                                                AbsR (ValidImpls idx) (fst ac) (snd ac))),
+          r_o = FunctorRepT _ _ (fun idx ac => fst (projT1 ac)) r_o_n
+          /\ r_n = FunctorRepT _ _ (fun idx ac => snd (projT1 ac)) r_o_n.
+
+      (* SharpenFully_w_Delegates constructs a FullySharpened ADT *)
+      (* for an ADT whose representation is parameterized over some *)
+      (* abstract models of state. *)
+      Definition
+        SharpenFully_w_Delegates
+        (* The fixed set of 'abstract' types in the ADT's *)
+        (* representation. *)
+        (DelegateIDs : nat)
+        (AbstractReps : Fin.t DelegateIDs -> Type)
+
+        (* The parameterized representation type. Intuitively, *)
+        (* this relation swaps in 'concrete' types for the *)
+        (* abstract ones, i.e. lists for sets. The type's *)
+        (* parametricity is witnessed by FunctorRepT. *)
+        (pRepT : (Fin.t DelegateIDs -> Type) -> Type)
+        
+        (* The initial representation type. *)
+        (RepT := pRepT AbstractReps)
+
+        (* The constructors and methods of the ADT being *)
+        (* sharpened. *)
+        {n n'}
+        (consSigs : Vector.t consSig n)
+        (methSigs : Vector.t methSig n')
+        (consDefs : ilist (B := consDef (Rep := RepT)) consSigs)
+        (methDefs : ilist (B := methDef (Rep := RepT)) methSigs)
+
+
+        (* The signatures of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (numDelegateConstructors : Fin.t DelegateIDs -> nat)
+        (DelegateConstructorSigs
+         : forall (idx : Fin.t DelegateIDs),
+            Vector.t consSig (numDelegateConstructors idx))
+        (numDelegateMethods : Fin.t DelegateIDs -> nat)
+        (DelegateMethodSigs
+         : forall (idx : Fin.t DelegateIDs),
+            Vector.t methSig (numDelegateMethods idx))
+        (DelegateSigs := fun idx =>
+                           BuildADTSig
+                             (DelegateConstructorSigs idx)
+                             (DelegateMethodSigs idx))
+
+        (* The specifications of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (DelegateConstructorSpecs
+         : forall (idx : Fin.t DelegateIDs),
+            ilist (B := consDef (Rep := AbstractReps idx))
+                  (DelegateConstructorSigs idx))
+        (DelegateMethodSpecs
+         : forall (idx : Fin.t DelegateIDs),
+            ilist (B := methDef (Rep := AbstractReps idx))
+                  (DelegateMethodSigs idx))
+        (DelegateSpecs := fun idx =>
+                            BuildADT
+                              (DelegateConstructorSpecs idx)
+                              (DelegateMethodSpecs idx))
+
+        (* An abstraction relation between the original representation *)
+        (* and the abstract representation (generally equality). This is *)
+        (* generically lifted to a relation between the original *)
+        (* representation and the concrete representation. *)
+        (pAbsR : forall (A B : Fin.t DelegateIDs -> Type),
+                     (forall idx, A idx -> B idx -> Prop)
+                     -> pRepT A -> pRepT B -> Prop)
+        (cAbsR :=
+           fun ConcreteReps' DelegateImpls'
+               (ValidImpls'
+                : forall idx : Fin.t DelegateIDs,
+                   refineADT (DelegateSpecs idx)
+                             (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls' idx))))
+               r_o r_n =>
+             pAbsR _ _ (fun idx => AbsR (ValidImpls' idx)) r_o r_n)
+
+        cConstructors
+        cMethods
+        cConstructorsRefinesSpec
+        cMethodsRefinesSpec
+
+        (* The concrete implementations of each delegate. *)
+        (ConcreteReps : Fin.t DelegateIDs -> Type)
+        (DelegateImpls : forall idx,
+            ComputationalADT.pcADT (DelegateSigs idx)
+                                   (ConcreteReps idx))
+        (ValidImpls
+         : forall idx : Fin.t DelegateIDs,
+            refineADT (DelegateSpecs idx)
+                      (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
+
+        := Notation_Friendly_SharpenFully'
+             consSigs methSigs consDefs methDefs
+             DelegateSigs pRepT
+             cConstructors
+             cMethods
+             DelegateSpecs cAbsR
+             cConstructorsRefinesSpec
+             cMethodsRefinesSpec.
+
+      Fixpoint Iterate_Dep_Type_AbsR {n}
+               (A B : Fin.t n -> Type)
+               (AB_AbsR : forall idx, A idx -> B idx -> Prop)
+               (a : Iterate_Dep_Type_BoundedIndex A)
+               (b : Iterate_Dep_Type_BoundedIndex B)
+        : Prop :=
+        match n as n' return
+              forall (A B : Fin.t n' -> Type)
+                     (AB_AbsR : forall idx, A idx -> B idx -> Prop),
+                Iterate_Dep_Type_BoundedIndex A
+                -> Iterate_Dep_Type_BoundedIndex B
+                -> Prop with
+        | S n' => fun A B AB_AbsR a b =>
+                    AB_AbsR _ (prim_fst a) (prim_fst b)
+                    /\ Iterate_Dep_Type_AbsR (fun n' => A (Fin.FS n'))
+                                             (fun n' => B (Fin.FS n'))
+                                             (fun n' => AB_AbsR (Fin.FS n'))
+                                             (prim_snd a)
+                                             (prim_snd b)
+        | _ => fun _ _ _ _ _ => True
+        end A B AB_AbsR a b.
+
+      Fixpoint UnConstryQueryStructure_Abstract_AbsR'
+               {n}
+               {qsSchema}
+               (r_o : ilist2 (B := (fun ns : RawSchema => RawUnConstrRelation (rawSchemaHeading ns))) qsSchema)
+               (r_n : Iterate_Dep_Type_BoundedIndex
+                          (fun idx : Fin.t n=>
+                             @IndexedEnsemble
+                               (@RawTuple
+                                  (rawSchemaHeading (Vector.nth qsSchema idx)))))
+        : Prop :=
+        match qsSchema as qsSchema return
+              forall
+                (r_o : ilist2 (B := (fun ns : RawSchema => RawUnConstrRelation (rawSchemaHeading ns))) qsSchema)
+                (r_n : Iterate_Dep_Type_BoundedIndex
+                          (fun idx : Fin.t _ =>
+                             @IndexedEnsemble
+                               (@RawTuple
+                                  (rawSchemaHeading (Vector.nth qsSchema idx))))), Prop with
+        | Vector.cons sch _ qsSchema' =>
+          fun r_o r_n =>
+            ilist2_hd r_o = prim_fst r_n
+            /\ UnConstryQueryStructure_Abstract_AbsR'
+                 (prim_snd r_o)
+                 (prim_snd r_n)
+        | Vector.nil  => fun _ _ => True
+        end r_o r_n.
+
+      Definition UnConstryQueryStructure_Abstract_AbsR
+                 {qsSchema}
+                 (r_o : UnConstrQueryStructure qsSchema)
+                 (r_n : Iterate_Dep_Type_BoundedIndex _)
+        := UnConstryQueryStructure_Abstract_AbsR' r_o r_n.
+
+      hone representation using (@UnConstryQueryStructure_Abstract_AbsR BookStoreSchema).
+      simplify with monad laws.
+      refine pick val (imap2 rawRel (Build_EmptyRelations (qschemaSchemas BookStoreSchema))).
+      finish honing.
+      unfold UnConstryQueryStructure_Abstract_AbsR; simpl; intuition.
+      Lemma UpdateUnConstrRelation_Abstract_AbsR {qsSchema}
+        : forall (r_o : UnConstrQueryStructure qsSchema)
+                 (r_n : Iterate_Dep_Type_BoundedIndex _),
+          UnConstryQueryStructure_Abstract_AbsR r_o r_n
+          -> forall idx R,
+            UnConstryQueryStructure_Abstract_AbsR
+              (UpdateUnConstrRelation r_o idx R)
+              (Update_Iterate_Dep_Type idx _ r_n R).
+       Admitted.
+       Ltac UpdateUnConstrRelation_Abstract :=
+       match goal with
+         H : UnConstryQueryStructure_Abstract_AbsR ?r_o ?r_n
+         |- context [{ r_n | UnConstryQueryStructure_Abstract_AbsR
+                               (UpdateUnConstrRelation ?r_o ?idx ?R) r_n }] =>
+         refine pick val _;
+           [ | apply (UpdateUnConstrRelation_Abstract_AbsR r_o r_n H idx R); eauto]
+        end.
+       Ltac PickUnchangedRep :=
+         match goal with
+           |- context [Pick (fun r_n => @?R r_n)] =>
+           match goal with
+             H : ?R' ?r_n |- _ => unify R R'; refine pick val r_n; [ | apply H]
+           end
+         end.
+       Lemma GetUnConstrRelation_Abstract_AbsR {qsSchema}
+        : forall (r_o : UnConstrQueryStructure qsSchema)
+                 (r_n : Iterate_Dep_Type_BoundedIndex _),
+          UnConstryQueryStructure_Abstract_AbsR r_o r_n
+          -> forall idx,
+            GetUnConstrRelation r_o idx = Lookup_Iterate_Dep_Type _ r_n idx.
+      Proof.
+      Admitted.
+      Ltac GetUnConstrRelation_Abstract :=
+        match goal with
+          H : UnConstryQueryStructure_Abstract_AbsR ?r_o ?r_n
+          |- context [GetUnConstrRelation ?r_o ?idx] =>
+          rewrite (GetUnConstrRelation_Abstract_AbsR r_o r_n H idx)
+        end.
+      Transparent UpdateUnConstrRelationInsertC.
+      Transparent UpdateUnConstrRelationDeleteC.
+
+      Ltac parameterize_query_structure :=
+        repeat first
+               [ simplify with monad laws; cbv beta; simpl
+               | rewrite refine_If_Then_Else_Bind
+               | GetUnConstrRelation_Abstract
+               | UpdateUnConstrRelation_Abstract
+               | progress unfold QSDeletedTuples
+               | PickUnchangedRep].
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doAny parameterize_query_structure
+            rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      eapply FullySharpened_Finish.
+      Locate Ltac makeEvar.
+      Print BuildADT.
+
+      Ltac makeEvar T k :=
+  let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+      Ltac ilist_of_evar_dep' n C D B As k :=
+  match n with
+  | 0 => k (fun (c : C) (d : D c) => @inil _ (B c))
+  | S ?n' =>
+    makeEvar (forall (c : C) (d : D c), B c (Vector.hd As))
+             ltac:(fun b =>
+                           ilist_of_evar_dep' n'
+                                             C D B (Vector.tl As)
+                                             ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons (a := Vector.hd As) (b c d) (Bs' c d))))
+  end.
+      
+Ltac FullySharpenEachMethod_w_Delegates
+     DelegateIDs
+     AbstractReps
+     dRepT
+     dAbsR :=
+  match goal with
+    |- FullySharpenedUnderDelegates (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+    (* We build a bunch of evars in order to decompose the goal *)
+    (* into a single subgoal for each constructor. *)
+    makeEvar (Fin.t DelegateIDs -> nat)
+      ltac:(fun numDelegateConstructors => 
+    makeEvar (Fin.t DelegateIDs -> nat)
+      ltac:(fun numDelegateMethods =>
+    makeEvar (Iterate_Dep_Type_BoundedIndex
+                (fun (idx : Fin.t DelegateIDs)=> 
+                   Vector.t consSig (numDelegateConstructors idx)))
+      ltac:(fun DelegateConstructorSigs' => 
+    makeEvar (Iterate_Dep_Type_BoundedIndex
+                (fun (idx : Fin.t DelegateIDs)=> 
+                   Vector.t methSig (numDelegateMethods idx)))
+      ltac:(fun DelegateMethodSigs' =>
+        let DelegateConstructorSigs :=
+            constr:(Lookup_Iterate_Dep_Type _ DelegateConstructorSigs') in
+        let DelegateMethodSigs :=
+            constr:(Lookup_Iterate_Dep_Type _ DelegateMethodSigs') in
+        let DelegateSigs :=
+            constr:(fun idx =>
+                      BuildADTSig (DelegateConstructorSigs idx) (DelegateMethodSigs idx)) in
+    makeEvar (Iterate_Dep_Type_BoundedIndex
+                          (fun (idx : Fin.t DelegateIDs) => 
+                             ilist (B := consDef (Rep := AbstractReps idx))
+                                   (DelegateConstructorSigs idx)))
+      ltac:(fun DelegateConstructorSpecs' => 
+    makeEvar (Iterate_Dep_Type_BoundedIndex
+                (fun (idx : Fin.t DelegateIDs) =>
+                  ilist (B := methDef (Rep := AbstractReps idx))
+                        (DelegateMethodSigs idx)))
+      ltac:(fun DelegateMethodSpecs' => 
+        let DelegateConstructorSpecs :=
+            constr:(Lookup_Iterate_Dep_Type _ DelegateConstructorSpecs') in
+        let DelegateMethodSpecs :=
+            constr:(Lookup_Iterate_Dep_Type _ DelegateMethodSpecs') in
+        let DelegateSpecs :=
+            constr:(fun idx =>
+                      BuildADT (DelegateConstructorSpecs idx) (DelegateMethodSpecs idx)) in 
+      ilist_of_evar_dep' n
+        (Fin.t DelegateIDs -> Type)
+        (fun D =>
+           forall idx,
+             ComputationalADT.pcADT (DelegateSigs idx) (D idx))
+        (fun D Sig => ComputationalADT.cConstructorType (dRepT D) (consDom Sig))
+        consSigs
+        ltac:(fun cCons =>
+                ilist_of_evar_dep' n'
+                                  (Fin.t DelegateIDs -> Type)
+                                  (fun D =>
+                                     forall idx,
+                                       ComputationalADT.pcADT
+                             ((fun idx0 : Fin.t DelegateIDs =>
+                               DecADTSig
+                                 ((fun idx1 : Fin.t DelegateIDs =>
+                                   BuildADTSig (DelegateConstructorSigs idx1)
+                                     (DelegateMethodSigs idx1)) idx0)) idx)
+ (D idx))
+        (fun D Sig => ComputationalADT.cMethodType (dRepT D) (methDom Sig) (methCod Sig))
+        methSigs
+        ltac:(fun cMeths =>
+                eapply (@SharpenFully_w_Delegates
+                          DelegateIDs AbstractReps dRepT n n'
+                          consSigs methSigs
+                          consDefs methDefs
+                          numDelegateConstructors
+                          DelegateConstructorSigs
+                          numDelegateMethods
+                          DelegateMethodSigs
+                          DelegateConstructorSpecs
+                          DelegateMethodSpecs
+                          dAbsR cCons cMeths)))))))))
+    end; try (simpl; repeat split; intros; subst).
+FullySharpenEachMethod_w_Delegates
+  2
+  (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
+     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+  (@Iterate_Dep_Type_BoundedIndex 2)
+  (@Iterate_Dep_Type_AbsR 2).
+Focus 2.
+simplify with monad laws; simpl.
+
+Ltac identify_Abstract_Rep_Use r_o AbstractReps k :=
+  first [unify r_o (AbstractReps Fin.F1);
+          match type of AbstractReps with
+          | Fin.t ?n -> _ => k (@Fin.F1 (n - 1))
+          end
+        | identify_Abstract_Rep_Use r_o (fun n => AbstractReps (Fin.FS n))
+                                    ltac:(fun n => k (Fin.FS n))].
+Unset Ltac Debug.
+etransitivity.
+
+rewrite_drill.
+Ltac find_Abstract_Rep AbstractReps k :=
+  match goal with
+    |- context [?r_o] =>
+    identify_Abstract_Rep_Use
+      ltac:(type of r_o)
+      AbstractReps ltac:(k r_o)
+      
+  end.
+
+find_Abstract_Rep
+  (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
+                                                                         @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+  ltac:(fun r_o n => makeEvar (DelegateReps n)
+                              ltac:(fun r_n' =>
+                                      let AbsR_r_o := fresh in 
+                                      assert (AbsR (ValidImpls n) r_o r_n')
+                                      as AbsR_r_o by intuition eauto)).
+intuition.
+eauto.
+simpl in t.
+Focus 2.
+
+
+      * simplify with monad laws; simpl.
+        refine pick val {| prim_fst := _;
+                           prim_snd := {| prim_fst := _;
+                                          prim_snd := _ |} |}.
+        Focus 2.
+        simpl.
+        intuition.
+        
+        simpl in *.
+
+      eapply SharpenFully_w_Delegates with
+      (DelegateIDs := 2)
+        (pAbsR := Iterate_Dep_Type_AbsR);
+        intros; simpl; try split; try solve [econstructor]; intros.
+      unfold UnConstryQueryStructure_Abstract_AbsR in *; simpl in *.
+      Show Existentials. Variables.
+      (fun idx =>
+
+                      @IndexedEnsemble
+                        (@RawTuple
+                           (GetNRelSchemaHeading (qschemaSchemas BookStoreSchema)
+                                                 idx)))).
+
+             ).
+        : Prop :=
+        exists r_o_n : RepT (fun idx => sigT (fun ac =>
+                                                AbsR (ValidImpls idx) (fst ac) (snd ac))),
+          r_o = FunctorRepT _ _ (fun idx ac => fst (projT1 ac)) r_o_n
+          /\ r_n = FunctorRepT _ _ (fun idx ac => snd (projT1 ac)) r_o_n.
+
+      Definition
+
+
+
+
+             (cAbsR :
+                forall
+,
+                  RepT -> rep DelegateReps -> Prop)
+
+
+
+
+(cAbsR : forall (DelegateReps : Fin.t DelegateIDs -> Type)
+                    (DelegateImpls : forall idx : Fin.t DelegateIDs,
+                                     ComputationalADT.pcADT
+                                       (DelegateSigs idx)
+                                       (DelegateReps idx)),
+                  (forall idx : Fin.t DelegateIDs,
+                   Sharpened (DelegateSpecs idx)) ->
+                  RepT -> rep DelegateReps -> Prop)
+
+
+      Definition UnConstrQueryStructure_AbsR
+                 qsSchema
+                 (DelegateIDs := numRawQSschemaSchemas qsSchema)
+                 (DelegateReps :=
+                    fun idx =>
+                      @IndexedEnsemble
+                        (@RawTuple
+                           (GetNRelSchemaHeading (qschemaSchemas qsSchema)
+                                                 idx)))
+
+                 (numDelegateConstructors : Fin.t DelegateIDs -> nat)
+                 (DelegateConstructorSigs
+                  : forall (idx : Fin.t DelegateIDs),
+                     Vector.t consSig (numDelegateConstructors idx))
+                 (DelegateConstructorDefs
+                  : forall (idx : Fin.t DelegateIDs),
+                     ilist (B := consDef (Rep := DelegateReps idx))
+                           (DelegateConstructorSigs idx))
+
+                 (numDelegateMethods : Fin.t DelegateIDs -> nat)
+                 (DelegateMethodSigs
+                  : forall (idx : Fin.t DelegateIDs),
+                     Vector.t methSig (numDelegateMethods idx))
+                 (DelegateMethodDefs
+                  : forall (idx : Fin.t DelegateIDs),
+                     ilist (B := methDef (Rep := DelegateReps idx))
+                           (DelegateMethodSigs idx))
+
+                 (r_o : UnConstrQueryStructure qsSchema)
+                 (r_n : Iterate_Dep_Type_BoundedIndex DelegateReps)
+        : Prop :=
+        forall (idx : Fin.t DelegateIDs),
+          Same_set _ (GetUnConstrRelation r_o idx)
+                   (Lookup_Iterate_Dep_Type _ r_n idx).
+
+
+
+      eapply FullySharpened_Finish.
+      match goal with
+        |- FullySharpenedUnderDelegates (BuildADT (Rep := ?rep) _ _) _ =>
+        let rep' := (eval cbv [UnConstrQueryStructure
+                                 BookStoreSchema
+                                 numRawQSschemaSchemas
+                                 numQSschemaSchemas
+                                 QueryStructureSchemaRaw
+                                 qschemaSchemas
+                                 Vector.map
+                                 QSschemaSchemas
+                                 ilist2
+                                 rawSchemaHeading
+                                 schemaRaw
+                                 relSchema] in rep) in
+        assert True; pose rep'
+      end.
+
+
+      simpl in T.
+      Print RawUnConstrRelation.
+      unfold BookStoreSchema in T.
+      simpl BookStoreSchema in T.
+      simpl in T.
+      cbv delta in T.
+      simpl in T.
+      Set Printing All.
+      idtac.
+
+      apply Notation_Friendly_SharpenFully'.
+      simpl.
 
       repeat simplify_queries.
       master_rewrite_drill.
