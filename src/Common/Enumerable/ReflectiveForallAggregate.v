@@ -33,7 +33,7 @@ Section reflective_forall.
            possibilities.
 
     Lemma forall_enumerable_by_beq_aggregate_correct
-          (H_f_good : forall x y, f x = f y -> P x = P y)
+          (H_f_good : forall y, f x = f y -> P y -> P x)
     : forall_enumerable_by_beq_aggregate = if P x then g (f x) else base.
     Proof.
       rewrite <- (forall_enumerable_by_beq_correct P x (fun y => g (f y)) base).
@@ -67,15 +67,15 @@ Section reflective_forall.
              end.
       Grab Existential Variables.
       eassumption.
-      simpl; erewrite <- H_f_good by eassumption; assumption.
+      simpl; eapply H_f_good; first [ eassumption | symmetry; eassumption ].
     Qed.
 
     Lemma forall_enumerable_by_beq_aggregate_correct_reachable
-          (H_f_good : forall x y, f x = f y -> P x = P y)
           (H : is_true (P x))
     : forall_enumerable_by_beq_aggregate = g (f x).
     Proof.
-      rewrite forall_enumerable_by_beq_aggregate_correct, H by assumption; reflexivity.
+      rewrite forall_enumerable_by_beq_aggregate_correct, H by (rewrite H; reflexivity).
+      reflexivity.
     Qed.
   End inner.
 End reflective_forall.
