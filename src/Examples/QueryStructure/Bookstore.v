@@ -471,9 +471,39 @@ Proof.
                                              C D B (Vector.tl As)
                                              ltac:(fun Bs' => k (fun (c : C) (d : D c) => icons (a := Vector.hd As) (b c d) (Bs' c d))))
   end.
-      
-Ltac FullySharpenEachMethod_w_Delegates
-     DelegateIDs
+
+      Ltac Iterate_Dep_Type_BoundedIndex_evar n T k :=
+        match n with
+        | 0 => k tt
+        | S ?n' =>
+          Iterate_Dep_Type_BoundedIndex_evar
+            n' (fun n' => T (Fin.FS n'))
+            ltac:(fun b =>
+                    makeEvar
+                      (T Fin.F1)
+                      ltac:(fun a =>
+                              k ({| prim_fst := a;
+                                   prim_snd := b |})))
+        end.      
+
+      Iterate_Dep_Type_BoundedIndex_evar 2
+                                         (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
+                                            @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+                                         ltac:(fun b => pose b).
+
+      Ltac make_Vector_of_evar n T k :=
+        match n with
+        | 0 => k (@Vector.nil T)
+        | S ?n' => make_Vector_of_evar
+                    n' T
+                    ltac:(fun l =>
+                            makeEvar
+                              T
+                              ltac:(fun a => k (@Vector.cons T a n' l)))
+        end.
+
+ Ltac FullySharpenEachMethod_w_Delegates
+     DelegateIDs'
      AbstractReps
      dRepT
      dAbsR :=
@@ -481,39 +511,56 @@ Ltac FullySharpenEachMethod_w_Delegates
     |- FullySharpenedUnderDelegates (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
     (* We build a bunch of evars in order to decompose the goal *)
     (* into a single subgoal for each constructor. *)
-    makeEvar (Fin.t DelegateIDs -> nat)
-      ltac:(fun numDelegateConstructors => 
-    makeEvar (Fin.t DelegateIDs -> nat)
-      ltac:(fun numDelegateMethods =>
-    makeEvar (Iterate_Dep_Type_BoundedIndex
+    let DelegateIDs := (eval compute in DelegateIDs') in 
+    make_Vector_of_evar DelegateIDs nat
+      ltac:(fun numDelegateConstructors' => 
+        let numDelegateConstructors := constr:(Vector.nth numDelegateConstructors') in 
+    make_Vector_of_evar DelegateIDs nat
+      ltac:(fun numDelegateMethods' =>
+        let numDelegateMethods := constr:(Vector.nth numDelegateMethods') in 
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs 
                 (fun (idx : Fin.t DelegateIDs)=> 
-                   Vector.t consSig (numDelegateConstructors idx)))
+                   Vector.t consSig (numDelegateConstructors idx))
       ltac:(fun DelegateConstructorSigs' => 
-    makeEvar (Iterate_Dep_Type_BoundedIndex
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
                 (fun (idx : Fin.t DelegateIDs)=> 
-                   Vector.t methSig (numDelegateMethods idx)))
+                   Vector.t methSig (numDelegateMethods idx))
       ltac:(fun DelegateMethodSigs' =>
         let DelegateConstructorSigs :=
-            constr:(Lookup_Iterate_Dep_Type _ DelegateConstructorSigs') in
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs)=> 
+                         Vector.t consSig (numDelegateConstructors idx))
+                      DelegateConstructorSigs') in
         let DelegateMethodSigs :=
-            constr:(Lookup_Iterate_Dep_Type _ DelegateMethodSigs') in
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs)=> 
+                         Vector.t methSig (numDelegateMethods idx))
+                      DelegateMethodSigs') in
         let DelegateSigs :=
             constr:(fun idx =>
                       BuildADTSig (DelegateConstructorSigs idx) (DelegateMethodSigs idx)) in
-    makeEvar (Iterate_Dep_Type_BoundedIndex
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
                           (fun (idx : Fin.t DelegateIDs) => 
                              ilist (B := consDef (Rep := AbstractReps idx))
-                                   (DelegateConstructorSigs idx)))
+                                   (DelegateConstructorSigs idx))
       ltac:(fun DelegateConstructorSpecs' => 
-    makeEvar (Iterate_Dep_Type_BoundedIndex
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
                 (fun (idx : Fin.t DelegateIDs) =>
                   ilist (B := methDef (Rep := AbstractReps idx))
-                        (DelegateMethodSigs idx)))
+                        (DelegateMethodSigs idx))
       ltac:(fun DelegateMethodSpecs' => 
         let DelegateConstructorSpecs :=
-            constr:(Lookup_Iterate_Dep_Type _ DelegateConstructorSpecs') in
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs) => 
+                         ilist (B := consDef (Rep := AbstractReps idx))
+                               (DelegateConstructorSigs idx))
+                      DelegateConstructorSpecs') in
         let DelegateMethodSpecs :=
-            constr:(Lookup_Iterate_Dep_Type _ DelegateMethodSpecs') in
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs) =>
+                         ilist (B := methDef (Rep := AbstractReps idx))
+                               (DelegateMethodSigs idx))
+                      DelegateMethodSpecs') in
         let DelegateSpecs :=
             constr:(fun idx =>
                       BuildADT (DelegateConstructorSpecs idx) (DelegateMethodSpecs idx)) in 
@@ -551,6 +598,7 @@ Ltac FullySharpenEachMethod_w_Delegates
                           DelegateMethodSpecs
                           dAbsR cCons cMeths)))))))))
     end; try (simpl; repeat split; intros; subst).
+Unset Ltac Debug.
 FullySharpenEachMethod_w_Delegates
   2
   (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
@@ -582,12 +630,82 @@ Ltac find_Abstract_Rep AbstractReps k :=
 
 find_Abstract_Rep
   (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
-                                                                         @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
-  ltac:(fun r_o n => makeEvar (DelegateReps n)
+     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+  ltac:(fun r_o n =>
+          (* Synthesize a similar concrete representation type [r_n'] using an evar.*)
+          makeEvar (DelegateReps n)
                               ltac:(fun r_n' =>
                                       let AbsR_r_o := fresh in 
                                       assert (AbsR (ValidImpls n) r_o r_n')
-                                      as AbsR_r_o by intuition eauto)).
+                                        as AbsR_r_o by intuition eauto);
+        (* Generalize the refineADT proof for the concrete representation type [r_n'] *)
+        (* so that we can add a new method to its spec. *)
+        let ValidImplT' := (type of (ValidImpls n)) in
+        let ValidImplT := (eval simpl in ValidImplT') in 
+        pose (ValidImpls n : ValidImplT)
+       ).
+Print ComputationalADT.LiftcADT.
+
+match goal with
+  H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
+                _
+  |- refine ?c ?H0 =>
+  makeEvar nat
+    ltac:(fun n'' =>
+  makeEvar (Vector.t methSig n'')
+     ltac:(fun methSigs' =>
+  makeEvar (ilist (B := @methDef Rep) methSigs')
+           ltac:(fun methDefs' =>
+                   unify methSigs
+                         (@Vector.cons methSig {| methID := "foo";
+                              methDom := [Order];
+                              methCod := (Some nat) : option Type |} n'' methSigs');
+             unify methDefs
+                   (@icons methSig
+                           (@methDef Rep)
+                           {| methID := "foo";
+                              methDom := [Order];
+                              methCod := (Some nat) : option Type |}
+                           n'' methSigs'
+                           (@Build_methDef Rep {| methID := "foo";
+                              methDom := [Order];
+                              methCod := (Some nat) : option Type |}
+                                           (fun (r_o : Rep) (d : Order) =>
+                                              idx <- { idx | UnConstrFreshIdx r_o idx};
+                                            ret (r_o, idx)))        
+                           methDefs');
+             assert (@refineMethod _ _ (AbsR (ValidImpls (Fin.FS Fin.F1)))
+                                   [Order]
+                                   (Some nat : option Type)
+                                   (fun (r_o : Rep) (d : Order) =>
+                                              idx <- { idx | UnConstrFreshIdx r_o idx};
+                                    ret (r_o, idx))
+                                   (ComputationalADT.LiftcMethod (ComputationalADT.pcMethods (DelegateImpls (Fin.FS Fin.F1)) Fin.F1))))))
+end.
+Print refineADT.
+pose (ADTRefinementPreservesMethods (ValidImpls (Fin.FS (Fin.F1))) Fin.F1).
+simpl in r.
+unfold Lookup_Iterate_Dep_Type in r0; simpl in r0.
+unfold ComputationalADT.cMethods in r0; simpl in r0.
+unfold refineMethod; simpl.
+intros; apply r0.
+
+simpl in m.
+unfold methodType in m; simpl in m.
+Lemma 
+
+pose (ValidImpls (Fin
+specialize (Iterate_Dep_Type_equiv'' _ ValidImpls).
+simpl.
+Print IterateBoundedIndex.Iterate_Dep_Type_equiv.
+
+
+Unset Printing Notations.
+idtac.
+Set Printing Implicit.
+idtac.
+simpl in DelegateImpls.
+Focus 2.
 intuition.
 eauto.
 simpl in t.
