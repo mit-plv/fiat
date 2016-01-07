@@ -143,6 +143,12 @@ Definition if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false 
 
 Ltac simplify_parser_splitter' :=
   first [ progress unguard
+        | progress autounfold with parser_sharpen_db;
+          cbv beta iota zeta;
+          simpl @Operations.List.uniquize;
+          simpl @List.fold_right
+        | rewrite !Bool.orb_false_r
+        | rewrite <- !Bool.andb_orb_distrib_r
         | progress simplify with monad laws
         | rewrite <- !Bool.andb_orb_distrib_r
         | rewrite <- !Bool.andb_orb_distrib_l

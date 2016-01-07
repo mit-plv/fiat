@@ -126,3 +126,6 @@ Global Arguments ascii_of_nat !_ / .
 Global Arguments ascii_of_pos !_ / .
 
 Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero].
+
+Create HintDb parser_sharpen_db discriminated.
+Hint Unfold ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero : parser_sharpen_db.

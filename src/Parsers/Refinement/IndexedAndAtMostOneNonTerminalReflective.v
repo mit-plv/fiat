@@ -31,7 +31,9 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Enumerable.
-Require Import Fiat.Common.Enumerable.BoolProp Fiat.Common.Enumerable.ReflectiveForall.
+Require Import Fiat.Common.Enumerable.BoolProp.
+Require Import Fiat.Common.Enumerable.ReflectiveForall.
+Require Import Fiat.Common.Enumerable.ReflectiveForallAggregate.
 Require Import Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
@@ -43,18 +45,22 @@ Local Open Scope string_scope.
 
 (** Reflective version of [split_list_is_complete] and [production_is_reachable] *)
 Section forall_reachable_productions.
-  Context {Char} (G : pregrammar Char) {T : Type}.
+  Context {Char} (G : pregrammar Char) {T T' : Type}
+          {eq_T' : BoolDecR T'}
+          {T'_bl : BoolDec_bl (@eq T')}
+          {T'_lb : BoolDec_lb (@eq T')}.
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
   Context (x : production_carrierT)
-          (f : @production_carrierT _ (@rdp_list_predata _ G) -> T)
+          (f : @production_carrierT _ (@rdp_list_predata _ G) -> T')
+          (g : T' -> T)
           (init : T).
 
   Definition forall_reachable_productions_if_eq0
   : T
-    := @forall_enumerable_by_beq production_carrierT production_carrier_valid _ _ T x f init.
+    := @forall_enumerable_by_beq_aggregate _ production_carrier_valid _ _ _ _ _ x f g init.
 
   Local Ltac t_flatten :=
     repeat match goal with
@@ -77,36 +83,48 @@ Section forall_reachable_productions.
   Proof.
     eexists.
     unfold forall_reachable_productions_if_eq0.
-    unfold forall_enumerable_by_beq.
+    unfold forall_enumerable_by_beq_aggregate.
     unfold Equality.beq, prod_BoolDecR, dnc_BoolDecR, nat_BoolDecR, prod_beq.
-    apply f_equal.
     match goal with
-      | [ |- appcontext G[@enumerate ?T ?e] ]
-        => let e' := (eval hnf in e) in
-           let G' := context G[@enumerate T e'] in
-           change G'
+    | [ |- appcontext[Operations.List.uniquize _ (List.map f ?ls')] ]
+      => set (ls := ls') at 1 2
     end.
-    cbv beta iota zeta delta [enumerate enumerable_sig_ltb enumerable_sig_andb_dep enumerable_sig_leb].
-    symmetry.
-    rewrite map_flat_map.
-    etransitivity.
-    { t_flatten. }
-    etransitivity.
-    { rewrite flat_map_flatten; apply f_equal.
+    etransitivity_rev _.
+    { pattern ls.
+      let RHS := match goal with |- (fun ls => _ = @?RHS ls) _ => RHS end in
+      eapply (f_equal RHS).
+      subst ls.
+      repeat match goal with
+             | [ |- appcontext G[@enumerate ?T ?e] ]
+               => let e' := (eval hnf in e) in
+                  let G' := context G[@enumerate T e'] in
+                  progress change G'
+             end.
+      cbv beta iota zeta delta [enumerate enumerable_sig_ltb enumerable_sig_andb_dep enumerable_sig_leb].
+      symmetry.
+      rewrite map_flat_map.
       etransitivity.
       { t_flatten. }
       etransitivity.
-      { apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map _ _));
-        [ intro | reflexivity ].
-        rewrite flat_map_flatten.
-        rapply @f_equal.
-        t_flatten. }
-      etransitivity.
-      { apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map _ _));
-        [ intro | reflexivity ].
-        rewrite <- flat_map_flatten; reflexivity. }
+      { rewrite flat_map_flatten; apply f_equal.
+        etransitivity.
+        { t_flatten. }
+        etransitivity.
+        { apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map _ _));
+          [ intro | reflexivity ].
+          rewrite flat_map_flatten.
+          rapply @f_equal.
+          t_flatten. }
+        etransitivity.
+        { apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map _ _));
+          [ intro | reflexivity ].
+          rewrite <- flat_map_flatten; reflexivity. }
+        reflexivity. }
+      rewrite <- flat_map_flatten.
       reflexivity. }
-    rewrite <- flat_map_flatten.
+    subst ls.
+    unfold Lookup_idx.
+    simpl.
     reflexivity.
   Defined.
 
@@ -123,19 +141,25 @@ Section forall_reachable_productions.
     exact (proj2_sig forall_reachable_productions_if_eq_sig).
   Qed.
 
-  Lemma forall_reachable_productions_if_eq_correct
-  : forall_reachable_productions_if_eq = if production_carrier_valid x then f x else init.
-  Proof.
-    rewrite forall_reachable_productions_if_eq_helper;
-    apply forall_enumerable_by_beq_correct; exact _.
-  Qed.
+  Section correct.
+    Context (H_good : forall y,
+                f x = f y -> production_carrier_valid y -> production_carrier_valid x).
+
+    Lemma forall_reachable_productions_if_eq_correct
+      : forall_reachable_productions_if_eq = if production_carrier_valid x then g (f x) else init.
+    Proof.
+      rewrite forall_reachable_productions_if_eq_helper.
+      eapply forall_enumerable_by_beq_aggregate_correct; try exact _.
+      assumption.
+    Qed.
+  End correct.
 
   Definition forall_reachable_productions_if_eq_correct_reachable
              (H : production_carrier_valid x)
-  : forall_reachable_productions_if_eq = f x.
+    : forall_reachable_productions_if_eq = g (f x).
   Proof.
     rewrite forall_reachable_productions_if_eq_helper;
-    apply forall_enumerable_by_beq_correct_reachable;
+    eapply forall_enumerable_by_beq_aggregate_correct_reachable;
     first [ assumption | exact _ ].
   Qed.
 End forall_reachable_productions.
@@ -210,6 +234,42 @@ Module Export PrettyNotations.
   Infix "=ℕ" := EqNat.beq_nat (at level 70, no associativity).
 End PrettyNotations.
 
+Local Set Boolean Equality Schemes.
+Inductive ret_cases : Set :=
+| ret_dummy
+| ret_length_less (n : nat)
+| ret_nat (n : nat)
+| ret_pick (idx : nat * (nat * nat))
+| invalid.
+Local Unset Boolean Equality Schemes.
+
+Local Ltac t_ret_cases :=
+  intros x y; destruct x, y; unfold Equality.beq; simpl; try congruence;
+  repeat match goal with
+         | _ => reflexivity
+         | _ => intro
+         | _ => progress subst
+         | [ H : ?f ?x ?y = ?b |- _ ] => progress change (EqNat.beq_nat x y = b) in H
+         | [ |- ?f ?x ?y = ?b ] => progress change (EqNat.beq_nat x y = b)
+         | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
+         | [ |- EqNat.beq_nat _ _ = true ] => apply EqNat.beq_nat_true_iff
+         | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
+         | [ |- andb _ _ = true ] => apply Bool.andb_true_iff
+         | [ H : and _ _ |- _ ] => destruct H
+         | [ H : ret_length_less _ = ret_length_less _ |- _ ] => inversion H; clear H
+         | [ H : ret_nat _ = ret_nat _ |- _ ] => inversion H; clear H
+         | [ H : ret_pick _ = ret_pick _ |- _ ] => inversion H; clear H
+         | [ H : prod _ _ |- _ ] => destruct H
+         | [ |- and _ _ ] => split
+         | _ => progress simpl in *
+         end.
+
+Global Instance ret_cases_BoolDecR : BoolDecR ret_cases := ret_cases_beq.
+Global Instance ret_cases_bl : BoolDec_bl (@eq ret_cases).
+Proof. t_ret_cases. Qed.
+Global Instance ret_cases_lb : BoolDec_lb (@eq ret_cases).
+Proof. t_ret_cases. Qed.
+
 Section IndexedImpl.
   Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
@@ -248,52 +308,64 @@ Section IndexedImpl.
     exact (proj2_sig (to_production_opt_sig p)).
   Qed.
 
-  Definition expanded_fallback_list'_body
-             (P : String -> nat -> nat -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
-             (s : T)
-             (offset len : nat)
-             (dummy : list nat)
-             (idx p : @production_carrierT _ predata)
-    := match to_production_opt p return Comp (list nat) with
-         | nil => ret dummy
-         | _::nil => ret [len]
-         | (Terminal _):: _ :: _ => ret [1]
-         | (NonTerminal nt):: p'
-           => If has_only_terminals p'
-                 Then
-                 ret [(len - Datatypes.length p')%natr]
-                 Else
-                 (option_rect
-                    (fun _ => Comp (list nat))
-                    (fun (n : nat) => ret [n])
-                    { splits : list nat
-                    | P
-                        s
-                        offset len
-                        p
-                        (to_production p)
-                        idx
-                        (to_production idx)
-                        splits }%comp
-                    (length_of_any G nt))
-       end.
+  Section expanded_fallback_list'.
+    Context (P : String -> nat -> nat -> @production_carrierT _ predata -> production Ascii.ascii -> @production_carrierT _ predata -> production Ascii.ascii -> list nat -> Prop)
+            (s : T)
+            (offset len : nat)
+            (idx : @production_carrierT _ predata)
+            (dummy : list nat).
 
-  Definition expanded_fallback_list'
-             (P : String -> nat -> nat -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
-             (s : T)
-             (offset len : nat)
-             (idx : @production_carrierT _ predata)
-             (dummy : list nat)
-  : Comp (T * list nat)
-    := (ls <- (forall_reachable_productions_if_eq
-                 (G := G)
-                 idx
-                 (expanded_fallback_list'_body P s offset len dummy idx)
-                 (ret dummy));
-        ret (s, ls))%comp.
+    Definition ret_cases_to_comp (c : ret_cases) : Comp (list nat)
+      := match c with
+         | ret_dummy => ret dummy
+         | ret_length_less n => ret [(len - n)%natr]
+         | ret_nat n => ret [n]
+         | ret_pick p => { splits : list nat
+                         | P
+                             s
+                             offset len
+                             p
+                             (to_production p)
+                             idx
+                             (to_production idx)
+                           splits }%comp
+         | invalid => ret dummy
+         end.
 
-  Global Arguments expanded_fallback_list' / .
-  Global Arguments expanded_fallback_list'_body / .
+    Global Arguments ret_cases_to_comp / .
+
+    Definition expanded_fallback_list'_body
+      := (fun p
+          => if production_carrier_valid p
+             then match to_production_opt p return ret_cases with
+                  | nil => ret_dummy
+                  | _::nil => ret_length_less 0
+                  | (Terminal _):: _ :: _ => ret_nat 1
+                  | (NonTerminal nt):: p'
+                    => If has_only_terminals p' Then
+                          ret_length_less (List.length p')
+                          Else
+                          (option_rect
+                             (fun _ => ret_cases)
+                             (fun (n : nat) => ret_nat n)
+                             (ret_pick p)
+                             (length_of_any G nt))
+                  end
+             else invalid).
+
+    Definition expanded_fallback_list'
+      : Comp (T * list nat)
+      := (ls <- (forall_reachable_productions_if_eq
+                   (G := G)
+                   idx
+                   expanded_fallback_list'_body
+                   ret_cases_to_comp
+                   (ret dummy));
+          ret (s, ls))%comp.
+
+    Global Arguments expanded_fallback_list' / .
+  End expanded_fallback_list'.
+
 
   Definition expanded_fallback_list
     := expanded_fallback_list' (fun str offset len pidx p _ _ => split_list_is_complete_idx G str offset len pidx).
@@ -310,7 +382,6 @@ Section IndexedImpl.
                 -> parse_of_item G (take n str) it
                 -> parse_of_production G (drop n str) its
                 -> List.In n (List.map (min (length str)) splits).
-
   Definition expanded_fallback_list_case
     := expanded_fallback_list' split_list_is_complete_case.
 
@@ -345,23 +416,46 @@ Section IndexedImpl.
            (expanded_fallback_list' P2 str offset len idx dummy).
   Proof.
     unfold expanded_fallback_list', expanded_fallback_list'_body.
-    rewrite !forall_reachable_productions_if_eq_correct.
-    simpl.
-    repeat match goal with
-             | [ |- ?R ?x ?x ] => reflexivity
-             | [ |- context[match ?e with _ => _ end] ]
-               => destruct e eqn:?
-             | _ => progress subst
-             | _ => progress simpl in *
-             | _ => progress unfold If_Then_Else, option_rect
-             | [ |- refine (a <- _; _) (b <- _; _) ]
-               => apply refine_under_bind_both; [ | reflexivity ]
-             | [ |- refine { a : _ | _ } { b : _ | _ } ]
-               => apply refine_pick_pick
-             | _ => solve [ eauto with nocore ]
-             | [ H : rdp_list_to_production idx = ?x |- context[?x] ]
-               => rewrite <- H
-           end.
+    rewrite !forall_reachable_productions_if_eq_correct; try exact _;
+      [ rewrite !to_production_opt_correct
+      | intro y; rewrite !to_production_opt_correct.. ];
+      [ repeat match goal with
+               | [ |- ?R ?x ?x ] => reflexivity
+               | [ |- context[match ?e with _ => _ end] ]
+                 => destruct e eqn:?
+               | _ => progress subst
+               | _ => progress simpl in *
+               | _ => progress unfold If_Then_Else, option_rect in *
+               | [ |- refine (a <- _; _) (b <- _; _) ]
+                 => apply refine_under_bind_both; [ | reflexivity ]
+               | [ |- refine { a : _ | _ } { b : _ | _ } ]
+                 => apply refine_pick_pick
+               | _ => progress specialize_by ltac:(exact eq_refl)
+               | _ => solve [ eauto with nocore ]
+               | [ H : rdp_list_to_production idx = ?x |- context[?x] ]
+                 => rewrite <- H
+               | [ H : rdp_list_to_production idx = ?x, H' : context[?x] |- _ ]
+                 => rewrite <- H in H'
+               | [ H : context[match ?e with _ => _ end] |- _ ]
+                 => destruct e eqn:?
+               | _ => discriminate
+               | [ H : ret_pick _ = ret_pick _ |- _ ] => inversion H; clear H
+               end
+      | repeat match goal with
+               | [ |- is_true true ] => reflexivity
+               | [ |- context[@production_carrier_valid ?A ?B ?idx] ]
+                 => destruct (@production_carrier_valid A B idx) eqn:?
+               | _ => intro
+               | _ => discriminate
+               | [ H : ?x = true, H' : ?x = false |- _ ]
+                 => exfalso; clear -H H'; symmetry in H;
+                    pose proof (eq_trans H H'); clear H H'
+               | [ H : invalid = match ?p with _ => _ end |- _ ]
+                 => destruct p
+               | _ => progress unfold If_Then_Else in *
+               | _ => progress unfold option_rect in *
+               | _ => progress simpl in *
+               end.. ].
   Qed.
 
   Lemma expanded_fallback_list'_ext'
@@ -715,6 +809,9 @@ Section IndexedImpl.
         => revert H; clear; repeat apply Min.min_case_strong; intros; omega
       | [ |- context[min (min ?x ?y) ?y] ]
         => rewrite <- (Min.min_assoc x y y), Min.min_idempotent
+      | [ H : ret_length_less _ = ret_length_less _ |- _ ] => inversion H; clear H
+      | [ H : ret_nat _ = ret_nat _ |- _ ] => inversion H; clear H
+      | [ H : ret_pick _ = ret_pick _ |- _ ] => inversion H; clear H
     end.
   Local Ltac fin_common := repeat fin_common'.
 
@@ -892,10 +989,11 @@ Section IndexedImpl.
              rewrite !H' in H |- *
     end.
 
+
     repeat match goal with
              | [ H : appcontext[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
              | [ H : appcontext[forall_reachable_productions_if_eq] |- _ ]
-               => rewrite forall_reachable_productions_if_eq_correct_reachable in H by assumption
+               => rewrite forall_reachable_productions_if_eq_correct_reachable in H by first [ assumption | exact _ ]
              | _ => progress simpl in *
              | _ => progress unfold rdp_list_to_production in *
              | [ H : default_to_production ?p = ?x :: ?xs,
@@ -908,6 +1006,7 @@ Section IndexedImpl.
              | _ => progress unfold If_Then_Else, option_rect in *
              | [ H : context[match ?e with _ => _ end] |- _ ]
                => destruct e eqn:?
+             | _ => unfold rdp_list_production_carrier_valid in *; congruence
            end.
 
     { abstract fin2. }
@@ -944,7 +1043,10 @@ Section IndexedImpl.
                  | _ => progress subst
                  | [ H : ?x - ?y = ?z |- ?x - ?z = ?y ] => clear -H; omega
                  | [ |- context[?x - ?y - (?x - ?z - ?y)] ] => replace (x - z - y) with (x - y - z) by omega
-                 | _ => rewrite sub_twice
+                 | [ |- context[S (?x - S ?y)] ]
+                   => rewrite (Nat.sub_succ_r x y)
+                 | _ => progress rewrite ?sub_twice, ?Nat.sub_0_r
+                 | _ => erewrite <- S_pred by eassumption
                  | _ => rewrite Min.min_r by omega
                  | _ => rewrite Min.min_l by omega
                  | _ => reflexivity
@@ -963,7 +1065,7 @@ Section IndexedImpl.
                  end;
           fin2
         ). }
-    {  abstract (
+    { abstract (
           repeat match goal with
                    | _ => progress fin_common
                    | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
@@ -977,6 +1079,8 @@ Section IndexedImpl.
                      => rewrite substring_length in H
                    | _ => solve [ eauto with nocore ]
                    | _ => progress safe_setoid_subst_beq_r
+                   | _ => progress specialize_by ltac:(exact eq_refl)
+                   | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
                  end
          ). }
     {  abstract (
@@ -1004,7 +1108,11 @@ Section IndexedImpl.
                    | _ => progress specialize_by ltac:(right; assumption)
                    | _ => solve [ eauto with nocore ]
                    | _ => progress safe_setoid_subst_beq_r
+                   | _ => progress specialize_by ltac:(exact eq_refl)
+                   | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
                  end
         ). }
   Qed.
 End IndexedImpl.
+
+Hint Unfold forall_reachable_productions_if_eq expanded_fallback_list' : parser_sharpen_db.
