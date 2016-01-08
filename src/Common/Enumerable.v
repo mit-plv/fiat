@@ -3,6 +3,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 
