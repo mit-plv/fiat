@@ -598,28 +598,19 @@ Proof.
                           DelegateMethodSpecs
                           dAbsR cCons cMeths)))))))))
     end; try (simpl; repeat split; intros; subst).
-Unset Ltac Debug.
-FullySharpenEachMethod_w_Delegates
-  2
-  (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
-     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
-  (@Iterate_Dep_Type_BoundedIndex 2)
-  (@Iterate_Dep_Type_AbsR 2).
-Focus 2.
-simplify with monad laws; simpl.
 
-Ltac identify_Abstract_Rep_Use r_o AbstractReps k :=
+ (* Determines if a term [r_o] is an abstract piece of state. *)
+ Ltac identify_Abstract_Rep_Use r_o AbstractReps k :=
   first [unify r_o (AbstractReps Fin.F1);
           match type of AbstractReps with
           | Fin.t ?n -> _ => k (@Fin.F1 (n - 1))
           end
         | identify_Abstract_Rep_Use r_o (fun n => AbstractReps (Fin.FS n))
                                     ltac:(fun n => k (Fin.FS n))].
-Unset Ltac Debug.
-etransitivity.
 
-rewrite_drill.
-Ltac find_Abstract_Rep AbstractReps k :=
+ (* Crawls through the goal to identify any occurences of abstract *)
+ (* state. (Uber generic, albeit super inefficient. *)
+ Ltac find_Abstract_Rep AbstractReps k :=
   match goal with
     |- context [?r_o] =>
     identify_Abstract_Rep_Use
@@ -628,24 +619,87 @@ Ltac find_Abstract_Rep AbstractReps k :=
       
   end.
 
+FullySharpenEachMethod_w_Delegates
+  2
+  (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
+     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+  (@Iterate_Dep_Type_BoundedIndex 2)
+  (@Iterate_Dep_Type_AbsR 2).
+Focus 2.
+simplify with monad laws; simpl.
+etransitivity.
+rewrite_drill.
+
 find_Abstract_Rep
   (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
      @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
   ltac:(fun r_o n =>
-          (* Synthesize a similar concrete representation type [r_n'] using an evar.*)
+          (* Synthesize a similar concrete representation type [r_n'] *)
+          (* using an evar. If this fails, we don't have a candidate for*)
+          (* operation conversion. *)
           makeEvar (DelegateReps n)
                               ltac:(fun r_n' =>
                                       let AbsR_r_o := fresh in 
                                       assert (AbsR (ValidImpls n) r_o r_n')
                                         as AbsR_r_o by intuition eauto);
-        (* Generalize the refineADT proof for the concrete representation type [r_n'] *)
-        (* so that we can add a new method to its spec. *)
+        (* Generalize the refineADT proof for the concrete representation*)
+        (* type [r_n'] so that we can add a new method to its spec. *)
         let ValidImplT' := (type of (ValidImpls n)) in
         let ValidImplT := (eval simpl in ValidImplT') in 
         pose (ValidImpls n : ValidImplT)
        ).
-Print ComputationalADT.LiftcADT.
 
+      Definition
+        Implement_Abstract_Operation
+        (* The 'abstract' ADT's representation type. *)
+        (AbstractRep : Type)
+
+        (* The signatures of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (numDelegateConstructors : nat)
+        (DelegateConstructorSigs
+         : Vector.t consSig numDelegateConstructors)
+        (numDelegateMethods : nat)
+        (DelegateMethodSigs
+         : Vector.t methSig numDelegateMethods)
+        (DelegateSigs := BuildADTSig
+                           DelegateConstructorSigs
+                           DelegateMethodSigs)
+
+        (* The specifications of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (DelegateConstructorSpecs
+         : ilist (B := @consDef AbstractRep) DelegateConstructorSigs)
+        (DelegateMethodSpecs
+         : ilist (B := methDef (Rep := AbstractRep)) DelegateMethodSigs)
+        (DelegateSpecs := BuildADT
+                              DelegateConstructorSpecs
+                              DelegateMethodSpecs)
+
+        (* The concrete ADT implementation's type. *)
+        (ConcreteRep : Type)
+        (DelegateImpl : ComputationalADT.pcADT
+                           DelegateSigs
+                           ConcreteRep)
+        (ValidImpl
+         : refineADT DelegateSpecs
+                     (ComputationalADT.LiftcADT (existT _ _ DelegateImpl)))
+        : forall midx
+                 (c : methodType
+                        (AbstractRep)
+                        (fst (MethodDomCod DelegateSigs midx))
+                        (snd (MethodDomCod DelegateSigs midx))),
+    Methods DelegateSpecs midx = c
+    -> refineMethod (AbsR ValidImpl)
+                    c
+                    (ComputationalADT.LiftcMethod (callMethod DelegateImpl midx)).
+      Proof.
+      intros; subst.
+      apply (ADTRefinementPreservesMethods ValidImpl midx).
+      Qed.
+      
 match goal with
   H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
                 _
@@ -674,13 +728,31 @@ match goal with
                                               idx <- { idx | UnConstrFreshIdx r_o idx};
                                             ret (r_o, idx)))        
                            methDefs');
+             pose (@Implement_Abstract_Operation Rep n consSigs (S n'')
+                                                 methSigs
+                                                 consDefs
+                                                 methDefs
+                                                 _
+                                                 _
+                                                 r
+                                                 (Fin.F1)
+                                                 _
+                                                 (eq_refl _)
+                                                 _
+                                                 _
+                                                 H1
+         ))))
+end.
+simpl in *.
+simpl in *.
+               
              assert (@refineMethod _ _ (AbsR (ValidImpls (Fin.FS Fin.F1)))
                                    [Order]
                                    (Some nat : option Type)
                                    (fun (r_o : Rep) (d : Order) =>
                                               idx <- { idx | UnConstrFreshIdx r_o idx};
                                     ret (r_o, idx))
-                                   (ComputationalADT.LiftcMethod (ComputationalADT.pcMethods (DelegateImpls (Fin.FS Fin.F1)) Fin.F1))))))
+                                   (ComputationalADT.LiftcMethod (ComputationalADT.pcMethods (DelegateImpls (Fin.FS Fin.F1)) Fin.F1)))))))
 end.
 Print refineADT.
 pose (ADTRefinementPreservesMethods (ValidImpls (Fin.FS (Fin.F1))) Fin.F1).
@@ -689,6 +761,11 @@ unfold Lookup_Iterate_Dep_Type in r0; simpl in r0.
 unfold ComputationalADT.cMethods in r0; simpl in r0.
 unfold refineMethod; simpl.
 intros; apply r0.
+
+
+  eapply reflexivityT.
+  unfold FibonacciComp, Fibonacci.
+  apply etransitivityT.
 
 simpl in m.
 unfold methodType in m; simpl in m.
