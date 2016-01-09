@@ -1,6 +1,6 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality Fiat.Common.List.FlattenList.
+        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality Fiat.Common.List.FlattenList Fiat.Common.LogicFacts.
 
 Unset Implicit Arguments.
 
