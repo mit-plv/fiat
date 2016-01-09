@@ -1794,4 +1794,94 @@ Section ListFacts.
               by (eapply (uniquize_In_refl _ _ _ (lb eq_refl) bl); assumption) ];
       try congruence.
   Qed.
+
+  Lemma uniquize_nil {A beq} (ls : list A)
+  : uniquize beq ls = nil <-> ls = nil.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { destruct (Equality.list_bin beq l (uniquize beq ls)) eqn:Heq.
+      { apply Equality.list_inA_bl in Heq.
+        rewrite SetoidList.InA_altdef, Exists_exists in Heq.
+        destruct_head ex.
+        destruct_head and.
+        split; intro H'; try congruence.
+        rewrite H' in *; simpl in *.
+        destruct_head False. }
+      { split; congruence. } }
+  Qed.
+
+  Lemma uniquize_singleton {A beq}
+        (bl : forall x y : A, beq x y = true -> x = y)
+        (lb : forall x y : A, x = y -> beq x y)
+        (ls : list A) (x : A)
+  : uniquize beq ls = [x] <-> (forall y, In y ls <-> x = y).
+  Proof.
+    induction ls; simpl.
+    { intuition (subst; eauto; split_iff; try congruence). }
+    { destruct (uniquize beq ls) eqn:Heq.
+      { rewrite uniquize_nil in Heq; subst; simpl in *.
+        clear IHls.
+        setoid_rewrite or_false.
+        repeat first [ split
+                     | intro
+                     | progress split_iff
+                     | progress subst
+                     | congruence
+                     | progress f_equal; []
+                     | solve [ eauto ] ]. }
+      { repeat match goal with
+                 | [ |- context[Equality.list_bin ?beq ?x ?ls] ]
+                   => destruct (Equality.list_bin beq x ls) eqn:?
+                 | [ H : Equality.list_bin _ _ _ = true |- _ ]
+                   => apply (Equality.list_in_bl bl) in H
+                 | _ => progress split_iff
+                 | _ => progress simpl in *
+                 | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
+                 | [ H : orb _ _ = false |- _ ] => apply Bool.orb_false_iff in H
+                 | _ => progress subst
+                 | _ => progress split_and
+                 | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
+                 | _ => progress specialize_by ltac:(exact eq_refl)
+                 | _ => congruence
+                 | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
+                   => pose proof (H _ (or_introl eq_refl)); subst a
+                 | [ H : forall y, ?x = y \/ @?P y -> ?x = y |- _ ]
+                   => assert (forall y, P y -> x = y)
+                     by (intros; apply H; right; assumption);
+                     clear H
+                 | [ H : forall y, @?P y -> @?P y \/ _ |- _ ]
+                   => clear H
+                 | [ H : (forall x, @?A x <-> @?B x) -> _,
+                         H' : forall x, @?A x -> @?B x
+                                        |- _ ]
+                   => specialize (fun H'' => H (fun x => conj (H' x) (H'' x)))
+                 | [ H : (forall x, ?a = x -> @?P x) -> _ |- _ ]
+                   => specialize (fun pf' : P a
+                                  => H (fun x pf => match pf in (_ = y) return P y with
+                                                      | eq_refl => pf'
+                                                    end))
+                 | [ H : forall y, In y ?ls -> _ = y,
+                       H' : In ?y' ?ls |- _ ]
+                   => pose proof (H _ H'); subst y'
+                 | [ |- ?x = ?x \/ _ ] => left; reflexivity
+                 | [ |- ?x::_ = ?x::_ ] => apply f_equal
+                 | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
+                 | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
+                   => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
+                                                   rewrite Heq; first [ left; reflexivity
+                                                                      | right; assumption ])
+                 | _ => progress destruct_head False
+                 | [ Heq : uniquize ?beq ?ls = ?x::_, H' : forall y, In y ?ls -> _ = y |- _ ]
+                   => let H := fresh in
+                      assert (H : In x ls)
+                        by (apply (ListFacts.uniquize_In _ beq);
+                            rewrite Heq; left; reflexivity);
+                        pose proof (H' _ H); subst x
+                 | [ H : context[beq ?x ?x] |- _ ] => rewrite lb in H by reflexivity
+                 | _ => progress destruct_head or
+                 | _ => split
+                 | _ => intro
+               end. } }
+  Qed.
 End ListFacts.
