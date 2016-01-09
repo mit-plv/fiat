@@ -112,4 +112,9 @@ Section LogicFacts.
     first [ do 2 first [ left | esplit ]; eassumption
           | do 2 first [ right | esplit ]; eassumption ].
   Defined.
+
+  Lemma and_TrueP_L {P Q : Prop} (H : P) : P /\ Q <-> Q.
+  Proof. tauto. Qed.
+  Lemma and_TrueP_R {P Q : Prop} (H : Q) : P /\ Q <-> P.
+  Proof. tauto. Qed.
 End LogicFacts.

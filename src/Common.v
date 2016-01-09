@@ -1296,7 +1296,7 @@ Qed.
 Lemma fold_right_andb_map_in {A P} {ls : list A} (H : fold_right andb true (map P ls) = true)
   : forall x, List.In x ls -> P x = true.
 Proof.
-  apply fold_right_andb_map_in_iff in H; assumption.
+  rewrite fold_right_andb_map_in_iff in H; assumption.
 Qed.
 
 Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
