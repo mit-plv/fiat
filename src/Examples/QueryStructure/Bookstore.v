@@ -628,7 +628,10 @@ FullySharpenEachMethod_w_Delegates
 Focus 2.
 simplify with monad laws; simpl.
 etransitivity.
-rewrite_drill.
+Show Existentials.
+Print Ltac rewrite_drill.
+apply refine_under_bind_both.
+Show Existentials.
 
 find_Abstract_Rep
   (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
@@ -649,8 +652,8 @@ find_Abstract_Rep
         pose (ValidImpls n : ValidImplT)
        ).
 
-      Definition
-        Implement_Abstract_Operation
+Definition
+  Implement_Abstract_Operation
         (* The 'abstract' ADT's representation type. *)
         (AbstractRep : Type)
 
@@ -691,7 +694,7 @@ find_Abstract_Rep
                         (AbstractRep)
                         (fst (MethodDomCod DelegateSigs midx))
                         (snd (MethodDomCod DelegateSigs midx))),
-    Methods DelegateSpecs midx = c
+    c = (Methods DelegateSpecs midx)
     -> refineMethod (AbsR ValidImpl)
                     c
                     (ComputationalADT.LiftcMethod (callMethod DelegateImpl midx)).
@@ -699,6 +702,193 @@ find_Abstract_Rep
       intros; subst.
       apply (ADTRefinementPreservesMethods ValidImpl midx).
       Qed.
+
+Fixpoint observerType' (rep : Type) (dom : list Type) (cod : option Type)
+                {struct dom} : Type :=
+  match dom with
+  | [] =>
+    match cod with
+    | Some cod' => Comp cod'
+    | None => Comp unit
+    end
+  | d :: dom' => d -> observerType' rep dom' cod
+  end.
+
+Definition observerType (rep : Type)
+           (dom : list Type)
+           (cod : option Type) :=
+  rep -> observerType' rep dom cod.
+
+Fixpoint refineObserver' {oldRep newRep}
+         (AbsR : oldRep -> newRep -> Prop)
+         (dom : list Type)
+         (cod : option Type) {struct dom} :=
+  match
+    dom as dom'             
+    return
+    (observerType' oldRep dom' cod
+     -> methodType' newRep dom' cod
+     -> Prop)
+  with
+  | [] =>
+    match cod as cod' return
+          (observerType' oldRep [] cod' -> methodType' newRep [] cod' -> Prop)
+    with
+    | Some cod' => 
+      fun oldObserver newMethod =>
+        refine oldObserver
+               (r <- newMethod; ret (snd r))
+    | None =>
+      fun oldObserver newMethod =>
+        refine oldObserver (r <- newMethod; ret tt)
+    end
+  | D :: dom' =>
+    fun oldObserver newMethod =>
+      forall d : D, refineObserver' AbsR dom' cod (oldObserver d) (newMethod d)
+  end.
+
+Definition refineObserver {oldRep newRep}
+           (AbsR : oldRep -> newRep -> Prop)
+           (dom : list Type) (cod : option Type)
+           (oldObserver : observerType oldRep dom cod)
+           (newMethod : methodType newRep dom cod) := 
+  forall (r_o : oldRep) (r_n : newRep),
+    AbsR r_o r_n
+    -> refineObserver' AbsR dom cod (oldObserver r_o) (newMethod r_n).
+
+Lemma refineObserverTrans {oldRep newRep}
+  : forall (AbsR : oldRep -> newRep -> Prop)
+           (dom : list Type) (cod : option Type)
+           (oldObserver : observerType oldRep dom cod)
+           (oldMethod : methodType oldRep dom cod)
+           (newMethod : methodType newRep dom cod),
+    refineObserver eq oldObserver oldMethod
+    -> refineMethod AbsR oldMethod newMethod
+    -> refineObserver AbsR oldObserver newMethod.
+Proof.
+  unfold refineObserver; induction dom; simpl.
+  - destruct cod; intros.
+    + rewrite H by eauto.
+      setoid_rewrite <- H0; eauto.
+      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
+      intro.
+      setoid_rewrite refineEquiv_bind_unit; simpl.
+      intros v Comp_v; computes_to_inv; subst; computes_to_econstructor.
+    + rewrite H by eauto.
+      setoid_rewrite <- H0; eauto.
+      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
+      intro.
+      intros v Comp_v; computes_to_inv; subst; computes_to_econstructor.
+  - intros.
+    eapply IHdom with
+    (oldObserver := fun r_o => oldObserver r_o d)            
+      (oldMethod := fun r_o => oldMethod r_o d)
+      (newMethod := fun r_n => newMethod r_n d);
+    intros; subst; eauto.
+    unfold refineMethod; intros; eapply H0; eauto.
+Qed.
+
+Fixpoint liftObserverToMethod'
+         (rep : Type)
+         (dom : list Type)
+         (cod : option Type)
+         (observer : observerType' rep dom cod)
+         (r : rep)
+         {struct dom}
+  : methodType' rep dom cod :=
+  match dom as dom' return 
+        observerType' rep dom' cod
+        -> methodType' rep dom' cod
+  with
+  | [] =>
+    match cod as cod' return 
+        observerType' rep [ ] cod'
+        -> methodType' rep [ ] cod' with
+    | Some cod' => fun observer => r' <- observer; ret (r, r')
+    | None => fun observer => r' <- observer; ret r
+    end
+  | D :: dom' =>
+    fun observer' (d : D) =>
+      liftObserverToMethod' dom' cod (observer' d) r
+  end observer.
+
+Definition liftObserverToMethod
+           (rep : Type)
+           (dom : list Type)
+           (cod : option Type)
+           (observer : observerType rep dom cod) :=
+  fun r => liftObserverToMethod' dom cod (observer r) r.
+
+Lemma refineObserverLift {oldRep}
+  : forall (dom : list Type) (cod : option Type)
+           (oldObserver : observerType oldRep dom cod),
+    refineObserver eq oldObserver (liftObserverToMethod oldObserver).
+Proof.
+  unfold refineObserver, liftObserverToMethod; induction dom; simpl.
+  - destruct cod; intros.
+    + rewrite H by eauto.
+      intros v Comp_v; computes_to_inv; subst; simpl; eauto.
+    + rewrite H by eauto.
+      intros v Comp_v; computes_to_inv; subst; simpl; eauto.
+      destruct v1; eauto.
+  - intros.
+    eapply IHdom with
+    (oldObserver := fun r_o => oldObserver r_o d);
+    intros; subst; eauto.
+Qed.
+
+Definition
+  Implement_Abstract_Observer
+        (* The 'abstract' ADT's representation type. *)
+        (AbstractRep : Type)
+
+        (* The signatures of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (numDelegateConstructors : nat)
+        (DelegateConstructorSigs
+         : Vector.t consSig numDelegateConstructors)
+        (numDelegateMethods : nat)
+        (DelegateMethodSigs
+         : Vector.t methSig numDelegateMethods)
+        (DelegateSigs := BuildADTSig
+                           DelegateConstructorSigs
+                           DelegateMethodSigs)
+
+        (* The specifications of each delegate's constructors *)
+        (* and methods in terms of the abstract representation *)
+        (* types. *)
+        (DelegateConstructorSpecs
+         : ilist (B := @consDef AbstractRep) DelegateConstructorSigs)
+        (DelegateMethodSpecs
+         : ilist (B := methDef (Rep := AbstractRep)) DelegateMethodSigs)
+        (DelegateSpecs := BuildADT
+                              DelegateConstructorSpecs
+                              DelegateMethodSpecs)
+
+        (* The concrete ADT implementation's type. *)
+        (ConcreteRep : Type)
+        (DelegateImpl : ComputationalADT.pcADT
+                           DelegateSigs
+                           ConcreteRep)
+        (ValidImpl
+         : refineADT DelegateSpecs
+                     (ComputationalADT.LiftcADT (existT _ _ DelegateImpl)))
+        : forall midx
+                 (c : observerType
+                        (AbstractRep)
+                        (fst (MethodDomCod DelegateSigs midx))
+                        (snd (MethodDomCod DelegateSigs midx))),
+    refineObserver eq c (Methods DelegateSpecs midx)
+    -> refineObserver (AbsR ValidImpl)
+                    c
+                    (ComputationalADT.LiftcMethod (callMethod DelegateImpl midx)).
+      Proof.
+      intros; subst.
+      eapply refineObserverTrans; eauto.
+      eapply (ADTRefinementPreservesMethods ValidImpl midx).
+      Qed.
+      idtac.
       
 match goal with
   H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
@@ -713,22 +903,22 @@ match goal with
                    unify methSigs
                          (@Vector.cons methSig {| methID := "foo";
                               methDom := [Order];
-                              methCod := (Some nat) : option Type |} n'' methSigs');
+                              methCod := Some (nat : Type) |} n'' methSigs');
              unify methDefs
                    (@icons methSig
                            (@methDef Rep)
                            {| methID := "foo";
                               methDom := [Order];
-                              methCod := (Some nat) : option Type |}
+                              methCod := Some (nat : Type) |}
                            n'' methSigs'
                            (@Build_methDef Rep {| methID := "foo";
                               methDom := [Order];
-                              methCod := (Some nat) : option Type |}
+                              methCod := Some (nat : Type) |}
                                            (fun (r_o : Rep) (d : Order) =>
                                               idx <- { idx | UnConstrFreshIdx r_o idx};
                                             ret (r_o, idx)))        
                            methDefs');
-             pose (@Implement_Abstract_Operation Rep n consSigs (S n'')
+             apply (@Implement_Abstract_Observer Rep n consSigs (S n'')
                                                  methSigs
                                                  consDefs
                                                  methDefs
@@ -737,12 +927,122 @@ match goal with
                                                  r
                                                  (Fin.F1)
                                                  _
-                                                 (eq_refl _)
-                                                 _
-                                                 _
-                                                 H1
-         ))))
+                                                 (refineObserverLift _)
+         ); eauto)))
 end.
+intros.
+rewrite refine_Count, refine_For.
+Transparent QueryResultComp.
+simplify with monad laws.
+rewrite_drill.
+
+find_Abstract_Rep
+  (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
+     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas BookStoreSchema) idx))))
+  ltac:(fun r_o n =>
+          (* Synthesize a similar concrete representation type [r_n'] *)
+          (* using an evar. If this fails, we don't have a candidate for*)
+          (* operation conversion. *)
+          makeEvar (DelegateReps n)
+                              ltac:(fun r_n' =>
+                                      let AbsR_r_o := fresh in 
+                                      assert (AbsR (ValidImpls n) r_o r_n')
+                                        as AbsR_r_o by intuition eauto);
+        (* Generalize the refineADT proof for the concrete representation*)
+        (* type [r_n'] so that we can add a new method to its spec. *)
+        let ValidImplT' := (type of (ValidImpls n)) in
+        let ValidImplT := (eval simpl in ValidImplT') in 
+        pose (ValidImpls n : ValidImplT)
+       ).
+
+match goal with
+  H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
+                _
+  |- refine ?c ?H0 => 
+  makeEvar nat
+    ltac:(fun n'' =>
+  makeEvar (Vector.t methSig n'')
+     ltac:(fun methSigs' =>
+  makeEvar (ilist (B := @methDef Rep) methSigs')
+     ltac:(fun methDefs' =>
+  makeEvar methSig
+     ltac:(fun methSig' =>
+  makeEvar (@methDef Rep methSig')
+     ltac:(fun methDef' =>              
+             unify methDefs
+                   (icons
+                     (@Build_methDef
+                        _
+                        {|methID := "foo";
+                          methDom := [Order];
+                          methCod := Some (list Book)  |}
+                        (@liftObserverToMethod _ [Order] (Some (list Book)) (fun (r_o : @IndexedEnsemble Book) (d : Order) => {queriedList : list Book
+                                                        |
+                                                        UnIndexedEnsembleListEquivalence
+                                                          (IndexedEnsemble_Intersection r_o
+                                                                                        (fun r1 : Book =>
+           GetAttributeRaw d Fin.F1 =
+           GetAttributeRaw r1 (Fin.FS (Fin.FS Fin.F1)))) queriedList})))
+                     methDefs');
+           
+             apply (@Implement_Abstract_Observer
+                     Rep
+                     n consSigs (S n'')
+                     _
+                     consDefs
+                     methDefs
+                     (DelegateReps Fin.F1)
+                     (DelegateImpls Fin.F1)
+                     (ValidImpls Fin.F1)
+                     Fin.F1
+                     _
+                      (@refineObserverLift _ [Order] (Some _) (fun r_o (d :Order) => {queriedList : list RawTuple |
+     UnIndexedEnsembleListEquivalence
+       (IndexedEnsemble_Intersection r_o
+          (fun r1 : Book =>
+           GetAttributeRaw d Fin.F1 =
+           GetAttributeRaw r1 (Fin.FS (Fin.FS Fin.F1)))) queriedList})));
+             intuition eauto
+                      ))))) end.
+eapply (r0 _
+;
+  intuition eauto.
+apply (proj1 H).
+eapply r1; eauto.
+reflexivity.
+unfold liftObserverToMethod; simpl.
+reflexivity.
+simplify with monad laws.
+
+intros; setoid_rewrite r1; eauto.
+f_equiv.
+match goal with
+  |- refine ?r (?f ?a ?b) =>
+  let r' := eval pattern a, b in r in
+      try match r' with ?r'' a b => pose r'';
+                          assert (r'' = f)
+      end
+end.
+Show Existentials.
+instantiate (1 := c).
+reflexivity.
+assert (
+instantiate (1 := c).
+
+finish honing.
+simpl.
+
+intros; subst.
+eapply refineObserverLift.
+eapply r1.
+revert d.
+
+pose (r0 _ _ H0).
+apply r1.
+Show Existentials.
+
+
+finish honing.
 simpl in *.
 simpl in *.
                
