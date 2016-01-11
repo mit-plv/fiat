@@ -7,7 +7,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Common Fiat.Common.Wf Fiat.Common.Wf2 Fiat.Common.Telescope.Core.
 Require Import Fiat.Parsers.BooleanRecognizer.
-Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.BooleanRecognizerExt.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Common.Match.
@@ -27,7 +26,6 @@ Local Open Scope string_like_scope.
 
 Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
-Global Arguments parse_production' _ _ _ _ _ _ _ _ !_.
 
 Module Export opt.
   Module Import opt.
@@ -108,34 +106,8 @@ Module Export opt3.
 End opt3.
 
 Section recursive_descent_parser.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {ls : list (String.string * productions Char)}.
-
-  Class str_carrier (constT varT : Type)
-    := { to_string : constT * varT -> String;
-         of_string : String -> constT * varT;
-         to_of : forall x, to_string (of_string x) = x;
-         of_to : forall x, of_string (to_string x) = x;
-         drop_const : forall x n, fst (of_string (drop n x)) = fst (of_string x);
-         take_const : forall x n, fst (of_string (take n x)) = fst (of_string x)}.
-
-  Definition str_carrier' (constT varT : Type)
-    := { to_string : constT * varT -> StringLike.String
-       & { of_string : StringLike.String -> constT * varT
-         | (forall x, to_string (of_string x) = x)
-           /\ (forall x, of_string (to_string x) = x)
-           /\ (forall x n, fst (of_string (drop n x)) = fst (of_string x))
-           /\ (forall x n, fst (of_string (take n x)) = fst (of_string x)) } }.
-
-  Definition str_carrier_default {constT varT} (strC : str_carrier' constT varT)
-  : str_carrier constT varT.
-  Proof.
-    refine {| to_string := projT1 strC;
-              of_string := proj1_sig (projT2 strC) |};
-    apply (proj2_sig (projT2 strC)).
-  Defined.
-
-  Context constT varT {strC : str_carrier constT varT}.
 
   Local Notation G := (list_to_grammar nil ls) (only parsing).
 
@@ -148,32 +120,18 @@ Section recursive_descent_parser.
     {| split_data := splitdata |}.
   Local Existing Instance data.
 
-  Definition stringlike_lite (constV : constT) : StringLike Char
-    := {| String := varT;
-          is_char s := is_char (to_string (constV, s));
-          length s := length (to_string (constV, s));
-          take n s := snd (of_string (take n (to_string (constV, s))));
-          drop n s := snd (of_string (drop n (to_string (constV, s))));
-          get n s := get n (to_string (constV, s));
-          unsafe_get n s := unsafe_get n (to_string (constV, s));
-          bool_eq s s' := bool_eq (to_string (constV, s)) (to_string (constV, s')) |}.
-
   Local Ltac contract_drop_take_t' :=
     idtac;
     match goal with
-      | [ |- context[to_string (?x, snd ?y)] ]
-        => replace (x, snd y) with y
-          by (
-              etransitivity; [ apply surjective_pairing | ]; apply f_equal2; trivial;
-              rewrite ?take_const, ?drop_const, of_to; reflexivity
-            );
-          rewrite to_of
+      | [ |- context[drop_takes_offset ?ls ?offset + ?v] ]
+        => change (drop_takes_offset ls offset + v) with (drop_takes_offset (drop_of v :: ls) offset)
+      | [ |- context[drop_takes_len ?ls ?len - ?v] ]
+        => change (drop_takes_len ls len - v) with (drop_takes_len (drop_of v :: ls) len)
     end.
 
   Local Ltac contract_drop_take_t :=
     idtac;
     match goal with
-      | _ => contract_drop_take_t'
       | [ H : is_true (bool_eq ?x ?y) |- _ ] => change (beq x y) in H
       | [ H : context[is_true (bool_eq ?x ?y)] |- _ ] => change (is_true (bool_eq x y)) with (beq x y) in H
       | [ |- context[is_true (bool_eq ?x ?y)] ] => change (is_true (bool_eq x y)) with (beq x y)
@@ -184,62 +142,9 @@ Section recursive_descent_parser.
       | [ |- Equivalence _ ] => split; repeat intro
     end.
 
-  Lemma stringlikeproperties_lite (constV : constT) : @StringLikeProperties Char (stringlike_lite constV).
-  Proof.
-    destruct HSLP;
-    split; simpl;
-    unfold Proper, respectful, beq; simpl;
-    repeat first [ progress contract_drop_take_t
-                 | intro
-                 | eauto with nocore ].
-  Qed.
-
-  Definition split_data_lite (constV : constT) : @split_dataT _ (stringlike_lite constV) _
-    := {| split_string_for_production idx s := split_string_for_production idx (to_string (constV, s)) |}.
-
-  Definition data_lite (constV : constT) : @boolean_parser_dataT _ (stringlike_lite constV)
-    := {| split_data := split_data_lite constV |}.
-
-  Inductive take_or_drop := take_of (n : nat) | drop_of (n : nat).
-
-  Definition make_drops (ls : list take_or_drop) (str : String)
-    := fold_right
-         (fun td s => match td with
-                        | take_of n => take n s
-                        | drop_of n => drop n s
-                      end)
-         str
-         ls.
-
-  Arguments make_drops : simpl never.
-
-  Lemma make_drops_eta ls' str
-  : (fst (of_string str), snd (of_string (make_drops ls' str))) = of_string (make_drops ls' str).
-  Proof.
-    revert str; unfold make_drops; induction ls' as [|x xs IHxs]; simpl; intros.
-    { rewrite <- surjective_pairing; reflexivity. }
-    { etransitivity; [ | symmetry; apply surjective_pairing ].
-      destruct x; simpl.
-      { rewrite take_const, <- IHxs; reflexivity. }
-      { rewrite drop_const, <- IHxs; reflexivity. } }
-  Qed.
-
-  Lemma make_drops_eta' ls' ls'' str
-  : (fst (of_string (make_drops ls' str)), snd (of_string (make_drops ls'' str))) = of_string (make_drops ls'' str).
-  Proof.
-    etransitivity; [ | apply make_drops_eta ].
-    f_equal.
-    unfold make_drops.
-    induction ls' as [|x xs IHxs]; simpl; intros; trivial.
-    destruct x; rewrite ?take_const, ?drop_const, IHxs; reflexivity.
-  Qed.
-
-  Lemma make_drops_eta'' ls' str strv
-  : (fst (of_string str), snd (of_string (make_drops ls' (to_string (fst (of_string str), strv))))) = of_string (make_drops ls' (to_string (fst (of_string str), strv))).
-  Proof.
-    etransitivity; [ | apply make_drops_eta ]; simpl.
-    rewrite of_to; simpl; reflexivity.
-  Qed.
+  Local Arguments drop_takes_offset : simpl never.
+  Local Arguments drop_takes_len : simpl never.
+  Local Arguments drop_takes_len_pf : simpl never.
 
   Local Ltac t_reduce_fix :=
     repeat match goal with
@@ -265,15 +170,20 @@ Section recursive_descent_parser.
              | [ |- orb _ _ = orb _ _ ] => apply f_equal2
              | [ |- match ?it with Terminal _ => _ | _ => _ end = match ?it with _ => _ end ] => is_var it; destruct it
              | [ |- context[(fst ?x, snd ?x)] ] => rewrite <- !surjective_pairing
-             | _ => contract_drop_take_t'
+             | [ |- context[andb _ true] ] => rewrite Bool.andb_true_r
+             | [ |- context[andb true _] ] => rewrite Bool.andb_true_l
+             | [ |- context[andb _ false] ] => rewrite Bool.andb_false_r
+             | [ |- context[andb false _] ] => rewrite Bool.andb_false_l
+             | [ |- context[orb _ true] ] => rewrite Bool.orb_true_r
+             | [ |- context[orb true _] ] => rewrite Bool.orb_true_l
+             | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
+             | [ |- context[orb false _] ] => rewrite Bool.orb_false_l
+             (*| _ => contract_drop_take_t'
              | _ => rewrite make_drops_eta
              | _ => rewrite make_drops_eta'
-             | _ => rewrite make_drops_eta''
-             | [ |- context[to_string (of_string _)] ] => rewrite !to_of
-             | [ |- context[take ?x (make_drops ?ls ?str)] ]
-               => change (take x (make_drops ls str)) with (make_drops (take_of x :: ls) str)
-             | [ |- context[drop ?x (make_drops ?ls ?str)] ]
-               => change (drop x (make_drops ls str)) with (make_drops (drop_of x :: ls) str)
+             | _ => rewrite make_drops_eta''*)
+             (*| [ |- context[to_string (of_string _)] ] => rewrite !to_of*)
+             | _ => contract_drop_take_t'
              | _ => solve [ auto with nocore ]
              | [ |- prod_relation lt lt _ _ ] => hnf; simpl; omega
              | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
@@ -296,103 +206,49 @@ Section recursive_descent_parser.
   Local Ltac t_reduce_list :=
     idtac;
     match goal with
-      | [ |- list_rect ?P ?n ?c ?ls ?z (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls ?z (make_drops ?l ?str) ?x ?y ]
-        => let n0 := fresh in
-           let c0 := fresh in
-           let n1 := fresh in
-           let c1 := fresh in
-           set (n0 := n);
-             set (n1 := n');
-             set (c0 := c);
-             set (c1 := c');
-             refine (list_rect
-                       (fun ls' => forall z' x' y' l', list_rect P n0 c0 ls' z' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' z' (make_drops l' str) x' y')
-                       _
-                       _
-                       ls
-                       z x y l);
-             simpl list_rect;
-             [ subst n0 c0 n1 c1; cbv beta
-             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
-      | [ |- list_rect ?P ?n ?c ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls (make_drops ?l ?str) ?x ?y ]
-        => let n0 := fresh in
-           let c0 := fresh in
-           let n1 := fresh in
-           let c1 := fresh in
-           set (n0 := n);
-             set (n1 := n');
-             set (c0 := c);
-             set (c1 := c');
-             refine (list_rect
-                       (fun ls' => forall x' y' l', list_rect P n0 c0 ls' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' (make_drops l' str) x' y')
-                       _
-                       _
-                       ls
-                       x y l);
-             simpl list_rect;
-             [ subst n0 c0 n1 c1; cbv beta
-             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
-      | [ |- list_rect ?P ?n ?c ?ls ?z (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls ?z (snd (of_string (make_drops ?l ?str))) ?x ?y ]
-        => let n0 := fresh in
-           let c0 := fresh in
-           let n1 := fresh in
-           let c1 := fresh in
-           set (n0 := n);
-             set (n1 := n');
-             set (c0 := c);
-             set (c1 := c');
-             refine (list_rect
-                       (fun ls' => forall z' x' y' l', list_rect P n0 c0 ls' z' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' z' (snd (of_string (make_drops l' str))) x' y')
-                       _
-                       _
-                       ls
-                       z x y l);
-             simpl list_rect;
-             [ subst n0 c0 n1 c1; cbv beta
-             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
-      | [ |- list_rect ?P ?n ?c ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y = list_rect ?P' ?n' ?c' ?ls (snd (of_string (make_drops ?l ?str))) ?x ?y ]
-        => let n0 := fresh in
-           let c0 := fresh in
-           let n1 := fresh in
-           let c1 := fresh in
-           set (n0 := n);
-             set (n1 := n');
-             set (c0 := c);
-             set (c1 := c');
-             refine (list_rect
-                       (fun ls' => forall x' y' l', list_rect P n0 c0 ls' (snd (of_string (make_drops l' str))) x' y' = list_rect P' n1 c1 ls' (snd (of_string (make_drops l' str))) x' y')
-                       _
-                       _
-                       ls
-                       x y l);
-             simpl list_rect;
-             [ subst n0 c0 n1 c1; cbv beta
-             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
+    | [ |- list_rect ?P ?n ?c ?ls ?idx ?offset ?len ?y = list_rect ?P' ?n' ?c' ?ls ?idx ?offset ?len ?y ]
+      => let n0 := fresh in
+         let c0 := fresh in
+         let n1 := fresh in
+         let c1 := fresh in
+         set (n0 := n);
+           set (n1 := n');
+           set (c0 := c);
+           set (c1 := c');
+           refine (list_rect
+                     (fun ls' => forall idx' l' y', list_rect P n0 c0 ls' idx' (drop_takes_offset l' offset) (drop_takes_len l' len) y' = list_rect P' n1 c1 ls' idx' (drop_takes_offset l' offset) (drop_takes_len l' len) y')
+                     _
+                     _
+                     ls
+                     idx
+                     nil y);
+           simpl list_rect;
+           [ subst n0 c0 n1 c1; cbv beta
+           | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
     end.
 
-  Definition parse_nonterminal_opt0
-             (str : String)
-             (nt : String.string)
-  : { b : bool | b = parse_nonterminal str nt }.
-  Proof.
-    exists (@parse_nonterminal _ _ (data_lite (fst (of_string str))) (snd (of_string str)) nt).
-    unfold parse_nonterminal, parse_nonterminal', parse_nonterminal_or_abort.
-    simpl.
-    rewrite <- !surjective_pairing, !to_of.
-    change str with (make_drops nil str).
-    lazymatch goal with
-      | [ |- Fix ?rwf _ ?P0 ?a ?b ?c ?d ?e ?f = Fix _ _ ?P1 _ _ ?str _ _ _ ]
-        => set (a' := a); set (P0' := P0); set (P1' := P1); generalize f; generalize e; change (d <= d) with (d <= (fst a')); generalize d; generalize b; clearbody a';
-           generalize (@nil take_or_drop); induction (rwf a') as [?? IH]; intros
+  Local Ltac t_reduce_list_generalize :=
+    idtac;
+    match goal with
+      | [ |- list_rect ?P ?n ?c ?ls ?offset ?len ?y = list_rect ?P' ?n' ?c' ?ls ?offset ?len ?y ]
+        => let n0 := fresh in
+           let c0 := fresh in
+           let n1 := fresh in
+           let c1 := fresh in
+           set (n0 := n);
+             set (n1 := n');
+             set (c0 := c);
+             set (c1 := c');
+             refine (list_rect
+                       (fun ls' => forall offset' len' y', list_rect P n0 c0 ls' offset' len' y' = list_rect P' n1 c1 ls' offset' len' y')
+                       _
+                       _
+                       ls
+                       offset len y);
+             simpl list_rect;
+             [ subst n0 c0 n1 c1; cbv beta
+             | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
     end.
-    rewrite !Fix5_eq by (intros; apply parse_nonterminal_step_ext; assumption).
-    unfold P0' at 1, P1' at 1, parse_nonterminal_step, parse_productions', parse_production', parse_production'_for, parse_item'.
-    t_reduce_fix;
-    t_reduce_list;
-    t_reduce_fix.
-    { apply IH; t_reduce_fix. }
-    { apply IH; t_reduce_fix. }
-  Defined.
 
   Local Ltac refine_Fix2_5_Proper_eq :=
     idtac;
@@ -547,21 +403,6 @@ Section recursive_descent_parser.
         => let RHS' := fix_trans_helper RHS x y
            in transitivity RHS'; [ clear H y | ]
     end.
-
-  Local Ltac t_reduce_list_more :=
-    idtac;
-    (lazymatch goal with
-    | [ str : String |- list_rect ?P ?n ?c ?ls ?str' ?x ?y = list_rect ?P' ?n' ?c' ?ls ?str' ?x ?y ]
-      => (change str' with (snd (fst (of_string str), str'));
-          rewrite <- (of_to (fst (of_string str), str'));
-          change (to_string (fst (of_string str), str')) with (make_drops nil (to_string (fst (of_string str), str')));
-          t_reduce_list)
-    | [ str : String |- list_rect ?P ?n ?c ?ls ?z ?str' ?x ?y = list_rect ?P' ?n' ?c' ?ls ?z ?str' ?x ?y ]
-      => (change str' with (snd (fst (of_string str), str'));
-          rewrite <- (of_to (fst (of_string str), str'));
-          change (to_string (fst (of_string str), str')) with (make_drops nil (to_string (fst (of_string str), str')));
-          t_reduce_list)
-     end).
 
   Local Ltac t_prereduce_list_evar :=
     idtac;
@@ -841,12 +682,8 @@ Section recursive_descent_parser.
              (nt : String.string)
   : { b : bool | b = parse_nonterminal str nt }.
   Proof.
-    let c := constr:(parse_nonterminal_opt0 str nt) in
-    let h := head c in
-    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
-    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort list_to_grammar].
-    change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k => @parse_nonterminal_step Char b c d e f g h i j k); cbv beta.
+    change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k l => @parse_nonterminal_step Char b c d e f g h i j k l); cbv beta.
     evar (b' : bool).
     sigL_transitivity b'; subst b';
     [
@@ -855,13 +692,8 @@ Section recursive_descent_parser.
     simpl @fst; simpl @snd.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
-    evar (b' : bool).
-    sigL_transitivity b'; subst b';
-    [
-    | rewrite <- !surjective_pairing, !to_of;
-      reflexivity ].
     unfold parse_production', parse_production'_for, parse_item', productions, production.
-    cbv beta iota zeta delta [predata BaseTypes.predata data_lite initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
+    cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
     cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
     (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
     evar (b' : bool).
@@ -877,19 +709,20 @@ Section recursive_descent_parser.
                subst f'
       end;
       reflexivity ].
+    progress cbv beta iota zeta delta [rdp_list_production_tl].
     refine_Fix2_5_Proper_eq.
     rewrite uniquize_idempotent.
     etransitivity_rev _.
     { fix2_trans;
       [
       | solve [ t_reduce_fix;
-                t_reduce_list_more;
+                t_reduce_list;
                 t_reduce_fix ] ].
       step_opt'; [ | reflexivity ].
       step_opt'.
       etransitivity_rev _.
       { step_opt'.
-        cbv beta iota delta [rdp_list_nonterminal_to_production].
+        cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
         simpl rewrite list_to_productions_to_nonterminal.
         etransitivity_rev _.
         { step_opt'; [ reflexivity | ].
@@ -1140,8 +973,14 @@ Section recursive_descent_parser.
     { fix2_trans;
       [
       | solve [ t_reduce_fix;
-                t_reduce_list_more;
-                t_reduce_fix ] ].
+                t_reduce_list;
+                t_reduce_fix;
+                match goal with
+                | [ H : forall idx0 l0 y0, list_rect _ _ _ _ _ _ _ _ = _ |- list_rect ?T _ _ _ ?idx _ _ ?pf = _ ]
+                  => generalize pf;
+                    rewrite minusr_minus; intro;
+                    rewrite H; reflexivity
+                end ] ].
       step_opt'; [ | reflexivity ].
       apply f_equal2; [ | reflexivity ].
       step_opt'; [ | reflexivity ].
@@ -1166,6 +1005,7 @@ Section recursive_descent_parser.
           | reflexivity ].
         etransitivity_rev _.
         { t_reduce_list_evar; [ reflexivity | ].
+          unfold Carriers.default_production_carrierT in *.
           let idx := match reverse goal with idx : (nat * (nat * nat))%type |- _ => idx end in
           change (fst idx) with (opt.fst idx);
             change (snd idx) with (opt.snd idx);
@@ -1173,7 +1013,6 @@ Section recursive_descent_parser.
           etransitivity_rev _.
           { step_opt'.
             step_opt'; [ | reflexivity ].
-            progress change_opt ls nt str.
             apply (f_equal2 andb); [ reflexivity | ].
             change @List.map with @opt.map at 1 2.
             change @snd with @opt.snd at 1 2.
@@ -1208,20 +1047,3 @@ Section recursive_descent_parser.
       abstract (exact (proj2_sig c)).
   Defined.
 End recursive_descent_parser.
-
-(** This tactic solves the simple case where the type of string is
-    judgmentally [const_data * variable_data], and [take] and [drop]
-    judgmentally preserve the constant data. *)
-
-Ltac solve_default_str_carrier :=
-  match goal with |- str_carrier _ _ => idtac end;
-  eapply str_carrier_default; hnf; simpl;
-  let string := match goal with |- { to_string : _ * _ -> ?string * _ & _ } => constr:string end in
-  match goal with |- { to_string : _ * _ -> string * _ & _ } => idtac end;
-    let T := match goal with |- { to_string : _ * _ -> string * ?T & _ } => constr:T end in
-    exists (fun x : string * T => x);
-      exists (fun x : string * T => x);
-      simpl @fst; simpl @snd;
-      solve [ repeat split ].
-
-Hint Extern 1 (str_carrier _ _) => solve_default_str_carrier : typeclass_instances.

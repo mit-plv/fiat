@@ -14,7 +14,7 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Set Implicit Arguments.
 
 Section make_table.
-  Context {Char} {HSL : StringLike Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
 
   (** We build a version of paren-balanced-hiding to compute each cell
@@ -583,7 +583,7 @@ pb = pb' '+' 0
 End make_table.
 
 Section for_string.
-  Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
+  Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
   Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
 
   Definition list_of_next_bin_ops'_step'_opt
@@ -712,7 +712,8 @@ Section no_records.
     Context {ldata : list_of_next_bin_ops_opt_data}.
 
     Section exploded.
-      Context (is_char : String -> Ascii.ascii -> bool)
+      Context (char_at_matches : nat -> String -> (Ascii.ascii -> bool) -> bool)
+              (is_char : String -> Ascii.ascii -> bool)
               (take : nat -> String -> String)
               (drop : nat -> String -> String)
               (bool_eq : String -> String -> bool).
@@ -722,9 +723,12 @@ Section no_records.
              is_close := is_close;
              is_bin_op := is_bin_op }.
 
+      Local Instance temp_hslm : StringLikeMin Ascii.ascii
+        := { length := length;
+             char_at_matches := char_at_matches }.
+
       Local Instance temp_hsl : StringLike Ascii.ascii
         := { is_char := is_char;
-             length := length;
              drop := drop;
              take := take;
              get := get;
@@ -750,7 +754,7 @@ Section no_records.
   End specialized.
 
   Section correct.
-    Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
+    Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.
     Context {pdata : paren_balanced_hiding_dataT Ascii.ascii}.
 
     Global Instance default_list_of_next_bin_ops_opt_data : list_of_next_bin_ops_opt_data

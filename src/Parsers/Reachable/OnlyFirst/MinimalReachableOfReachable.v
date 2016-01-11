@@ -16,7 +16,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
@@ -33,7 +33,8 @@ Section cfg.
   : reachable_from_item G ch valid0 it.
   Proof.
     destruct H; [ left | right ].
-    { clear reachable_from_productions__of__minimal_reachable_from_productions; eauto. }
+    { clear reachable_from_productions__of__minimal_reachable_from_productions; split_iff; eauto. }
+    { apply Hsub; assumption. }
     { eapply reachable_from_productions__of__minimal_reachable_from_productions; [ | eassumption ].
       clear -Hsub rdata'.
       eauto using sub_nonterminals_listT_remove_2. }
@@ -76,6 +77,7 @@ Section cfg.
     Proof.
       destruct H; [ left | right ].
       { clear expand_minimal_reachable_from_productions; eauto. }
+      { apply Hsub; assumption. }
       { eapply expand_minimal_reachable_from_productions; [ | eassumption ].
         clear -Hsub rdata'.
         eauto using remove_nonterminal_mor. }
@@ -291,9 +293,9 @@ Section cfg.
         Proof.
           intros valid' pats p H_h Hinit'.
           destruct h as [|h']; [ exfalso; omega | ].
-          destruct p as [ |nonterminal' H' p'].
+          destruct p as [ ? Pch |nonterminal' H' p'].
           { left.
-            eexists (MinReachableTerminal _ _ _); simpl; constructor. }
+            eexists (MinReachableTerminal _ _ _ _ Pch); simpl; constructor. }
           { case_eq (is_valid_nonterminal valid' (of_nonterminal nonterminal')); intro H'''.
             { edestruct (fun k => @minimal_reachable_from_productions__of__reachable_from_productions' _ (fun h'' pf => minimal_reachable_from_item__of__reachable_from_item _ (Le.le_n_S _ _ pf)) (remove_nonterminal valid' (of_nonterminal nonterminal')) _ p' k)
               as [ [ p'' H'' ] | [ nt'' H'' ] ];

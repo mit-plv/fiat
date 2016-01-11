@@ -10,6 +10,7 @@ Set Implicit Arguments.
 
 Section example_parse_string_grammar.
   Context (G : grammar Ascii.ascii)
+          {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}.
 

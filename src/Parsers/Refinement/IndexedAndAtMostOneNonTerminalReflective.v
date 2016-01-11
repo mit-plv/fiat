@@ -10,10 +10,11 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
-Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.ADTRefinement.
-Require Import Fiat.Common.StringBound Fiat.Common.ilist.
 Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
+Require Import Fiat.Common Fiat.Common.Equality.
+Require Import Fiat.Common.StringBound Fiat.Common.ilist.
 Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.List.FlattenList.
 Require Import Fiat.Common.List.ListMorphisms.
@@ -22,8 +23,9 @@ Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.LogicFacts.
 Require Import Fiat.Common.LogicMorphisms.
-Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Computation.SetoidMorphisms.
+Require Import Fiat.Common.List.ListMorphisms.
+Require Import Fiat.Common.Instances.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common.
@@ -150,10 +152,19 @@ Section helpers.
            | (Terminal _)::xs => has_only_terminals xs
            | (NonTerminal _)::_ => false
          end.
+
+    Global Instance has_only_terminals_Proper
+    : Proper (production_code ==> eq) has_only_terminals.
+    Proof.
+      intros ?? H.
+      induction H; simpl; trivial.
+      destruct_head item; trivial;
+      destruct_head False.
+    Qed.
   End generic.
 
   Section generic_string.
-    Context {Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} (G : grammar Char).
+    Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} (G : grammar Char).
 
     Lemma has_only_terminals_length {its str}
           (H0 : @has_only_terminals _ its)
@@ -195,24 +206,10 @@ Module Export PrettyNotations.
   Global Arguments Compare_dec.leb !_ !_.
 
   Infix "=p" := default_production_carrierT_beq (at level 70, no associativity).
-
-  Notation string_of_indexed s :=
-    (substring (fst (snd s)) (snd (snd s)) (fst s))
-      (only parsing).
-  Notation ilength s :=
-    ((*opt.*)snd ((*opt.*)snd s))
-      (only parsing).
-  Notation iget n s :=
-    (unsafe_get (n + fst (snd s)) (fst s))
-      (only parsing).
-  Notation iis_char s ch :=
-    (((EqNat.beq_nat (ilength s) 1)
-        && ascii_beq (unsafe_get (fst (snd s)) (fst s)) ch)%bool)
-      (only parsing).
 End PrettyNotations.
 
 Section IndexedImpl.
-  Context {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
+  Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}.
   Context (G : grammar Ascii.ascii).
@@ -220,90 +217,105 @@ Section IndexedImpl.
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
-  Local Notation T := (String * (nat * nat))%type (only parsing).
+  Local Notation T := (String)%type (only parsing).
+
+  Definition expanded_fallback_list'_body
+             (P : String -> nat -> nat -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
+             (s : T)
+             (offset len : nat)
+             (dummy : list nat)
+             (idx p : @production_carrierT _ predata)
+    := match to_production p return Comp (list nat) with
+         | nil => ret dummy
+         | _::nil => ret [len]
+         | (Terminal _):: _ :: _ => ret [1]
+         | (NonTerminal nt):: p'
+           => If has_only_terminals p'
+                 Then
+                 ret [(len - Datatypes.length p')%natr]
+                 Else
+                 (option_rect
+                    (fun _ => Comp (list nat))
+                    (fun (n : nat) => ret [n])
+                    { splits : list nat
+                    | P
+                        s
+                        offset len
+                        p
+                        (to_production p)
+                        idx
+                        (to_production idx)
+                        splits }%comp
+                    (length_of_any G nt))
+       end.
 
   Definition expanded_fallback_list'
-             (P : String -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
+             (P : String -> nat -> nat -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
              (s : T)
+             (offset len : nat)
              (idx : @production_carrierT _ predata)
              (dummy : list nat)
   : Comp (T * list nat)
     := (ls <- (forall_reachable_productions_if_eq
                  (G := G)
                  idx
-                 (fun p
-                  => match to_production p return Comp (list nat) with
-                     | nil => ret dummy
-                     | _::nil => ret [ilength s]
-                     | (Terminal _):: _ :: _ => ret [1]
-                     | (NonTerminal nt):: p'
-                       => If has_only_terminals p'
-                          Then
-                            ret [(ilength s - Datatypes.length p')%natr]
-                          Else
-                          (option_rect
-                             (fun _ => Comp (list nat))
-                             (fun (n : nat) => ret [n])
-                             { splits : list nat
-                             | P
-                                 (string_of_indexed s)
-                                 p
-                                 (to_production p)
-                                 idx
-                                 (to_production idx)
-                                 splits }%comp
-                             (length_of_any G nt))
-                     end)
+                 (expanded_fallback_list'_body P s offset len dummy idx)
                  (ret dummy));
         ret (s, ls))%comp.
 
   Global Arguments expanded_fallback_list' / .
+  Global Arguments expanded_fallback_list'_body / .
 
   Definition expanded_fallback_list
-    := expanded_fallback_list' (fun str pidx p _ _ => split_list_is_complete_idx G str pidx).
+    := expanded_fallback_list' (fun str offset len pidx p _ _ => split_list_is_complete_idx G str offset len pidx).
   Definition split_list_is_complete_case
-             str (pidx : @production_carrierT _ predata) p (p'idx : @production_carrierT _ predata) p' splits
-    := production_carrier_valid pidx
-       -> forall it its,
-            p = it::its
-            -> forall n,
-                 n <= length str
-                 -> production_is_reachable G p'
-                 -> parse_of_item G (take n str) it
-                 -> parse_of_production G (drop n str) its
-                 -> List.In n (List.map (min (length str)) splits).
+             str offset len (pidx : @production_carrierT _ predata) p (p'idx : @production_carrierT _ predata) p' splits
+    := len = 0 \/ offset + len <= length str
+       -> let str := substring offset len str in
+          production_carrier_valid pidx
+          -> forall it its,
+              p = it::its
+              -> forall n,
+                n <= length str
+                -> production_is_reachable G p'
+                -> parse_of_item G (take n str) it
+                -> parse_of_production G (drop n str) its
+                -> List.In n (List.map (min (length str)) splits).
+
   Definition expanded_fallback_list_case
     := expanded_fallback_list' split_list_is_complete_case.
 
   Definition split_list_is_complete_alt
-    := (fun str pidx p splits
-        => production_carrier_valid pidx
-           -> forall it its,
-                p = it::its
-                -> forall n,
-                     n <= length str
-                     -> parse_of_item G (take n str) it
-                     -> parse_of_production G (drop n str) its
-                     -> List.In n (List.map (min (length str)) splits)).
+    := (fun str offset len pidx p splits
+        => len = 0 \/ offset + len <= length str
+           -> let str := substring offset len str in
+              production_carrier_valid pidx
+              -> forall it its,
+                  p = it::its
+                  -> forall n,
+                    n <= length str
+                    -> parse_of_item G (take n str) it
+                    -> parse_of_production G (drop n str) its
+                    -> List.In n (List.map (min (length str)) splits)).
 
   Definition expanded_fallback_list_alt
-    := expanded_fallback_list' (fun str idx p _ _ => split_list_is_complete_alt str idx p).
+    := expanded_fallback_list' (fun str offset len idx p _ _ => split_list_is_complete_alt str offset len idx p).
 
   Global Arguments expanded_fallback_list / .
   Global Arguments expanded_fallback_list_alt / .
   Global Arguments expanded_fallback_list_case / .
 
   Lemma expanded_fallback_list'_ext''
-        (P1 P2 : String -> production_carrierT -> production _ -> production_carrierT -> production _ -> list nat -> Prop)
-        str idx dummy
+        (P1 P2 : String -> nat -> nat -> production_carrierT -> production _ -> production_carrierT -> production _ -> list nat -> Prop)
+        str offset len idx dummy
         (H : production_carrier_valid idx
              -> forall splits,
-                  P2 (string_of_indexed str) idx (to_production idx) idx (to_production idx) splits
-                  -> P1 (string_of_indexed str) idx (to_production idx) idx (to_production idx) splits)
-  : refine (expanded_fallback_list' P1 str idx dummy)
-           (expanded_fallback_list' P2 str idx dummy).
+                  P2 str offset len idx (to_production idx) idx (to_production idx) splits
+                  -> P1 str offset len idx (to_production idx) idx (to_production idx) splits)
+  : refine (expanded_fallback_list' P1 str offset len idx dummy)
+           (expanded_fallback_list' P2 str offset len idx dummy).
   Proof.
-    unfold expanded_fallback_list'.
+    unfold expanded_fallback_list', expanded_fallback_list'_body.
     rewrite !forall_reachable_productions_if_eq_correct.
     simpl.
     repeat match goal with
@@ -324,13 +336,13 @@ Section IndexedImpl.
   Qed.
 
   Lemma expanded_fallback_list'_ext'
-        (P1 P2 : String -> production_carrierT -> production _ -> production_carrierT -> production _ -> list nat -> Prop)
-        str idx dummy
+        (P1 P2 : String -> nat -> nat -> production_carrierT -> production _ -> production_carrierT -> production _ -> list nat -> Prop)
+        str offset len idx dummy
         (H : forall splits,
-               P2 (string_of_indexed str) idx (to_production idx) idx (to_production idx) splits
-               -> P1 (string_of_indexed str) idx (to_production idx) idx (to_production idx) splits)
-  : refine (expanded_fallback_list' P1 str idx dummy)
-           (expanded_fallback_list' P2 str idx dummy).
+               P2 str offset len idx (to_production idx) idx (to_production idx) splits
+               -> P1 str offset len idx (to_production idx) idx (to_production idx) splits)
+  : refine (expanded_fallback_list' P1 str offset len idx dummy)
+           (expanded_fallback_list' P2 str offset len idx dummy).
   Proof.
     apply expanded_fallback_list'_ext''; eauto with nocore.
   Qed.
@@ -341,33 +353,33 @@ Section IndexedImpl.
   Definition rindexed_spec' P : ADT (string_rep Ascii.ascii String default_production_carrierT) :=
     ADTRep T {
     Def Constructor1 "new" (s : String) : rep :=
-      ret (s, (0, length s)),
+      ret s,
 
     Def Method0 "to_string"(s : rep) : rep * String :=
-      ret (s, string_of_indexed s),
+      ret (s, s),
 
-    Def Method1 "is_char"(s : rep) (ch : Ascii.ascii) : rep * bool  :=
-      ret (s, iis_char s ch),
+    Def Method2 "char_at_matches"(s : rep) (n : nat) (P : Ascii.ascii -> bool) : rep * bool  :=
+      ret (s, char_at_matches n s P),
 
     Def Method1 "get"(s : rep) (n : nat) : rep * Ascii.ascii  :=
-      ret (s, iget n s),
+      ret (s, unsafe_get n s),
 
     Def Method0 "length"(s : rep) : rep * nat :=
-      ret (s, ilength s),
+      ret (s, length s),
 
     Def Method1 "take"(s : rep) (n : nat) : rep :=
-      ret ((fst s, (fst (snd s), min (snd (snd s)) n))),
+      ret (take n s),
 
     Def Method1 "drop"(s : rep) (n : nat) : rep :=
-      ret ((fst s, (n + fst (snd s), (snd (snd s) - n)%natr))),
+      ret (drop n s),
 
-    Def Method1 "splits"(s : rep) (idx : default_production_carrierT) : rep * (list nat) :=
+    Def Method3 "splits"(s : rep) (idx : default_production_carrierT) (offset : nat) (len : nat) : rep * (list nat) :=
       dummy <- { ls : list nat | True };
-      expanded_fallback_list' P s idx dummy
+      expanded_fallback_list' P s offset len idx dummy
   }.
 
   Definition rindexed_spec : ADT (string_rep Ascii.ascii String default_production_carrierT)
-    := rindexed_spec' (fun str idx p _ _ => split_list_is_complete_idx G str idx).
+    := rindexed_spec' (fun str offset len idx p _ _ => split_list_is_complete_idx G str offset len idx).
 
   Local Ltac fin :=
     repeat match goal with
@@ -486,9 +498,9 @@ Section IndexedImpl.
   Local Opaque expanded_fallback_list'.
 
   Lemma FirstStep_helper_gen {P Q}
-        (H : forall r_n d x0,
-               refine (expanded_fallback_list' P r_n d x0)
-                      (expanded_fallback_list' Q r_n d x0))
+        (H : forall r_n offset len d x0,
+               refine (expanded_fallback_list' P r_n offset len d x0)
+                      (expanded_fallback_list' Q r_n offset len d x0))
   : refineADT (rindexed_spec' P)
               (rindexed_spec' Q).
   Proof.
@@ -516,15 +528,17 @@ Section IndexedImpl.
   Proof.
     apply FirstStep_helper_gen; intros.
     apply expanded_fallback_list'_ext'; simpl.
-    unfold split_list_is_complete_case, split_list_is_complete; simpl.
+    unfold split_list_is_complete_case, split_list_is_complete_idx, split_list_is_complete; simpl.
     intro.
+    let H := fresh in intros H ?; revert H.
     let H := fresh in
     repeat first [ exact (fun x => x)
-                 | let x := fresh in intros H x; specialize (H x); revert H; try rewrite x ].
+                 | let x := fresh in intros H x; specialize (H x); revert H; try rewrite x
+                 | intro H; progress specialize_by assumption; revert H ].
   Qed.
 
   Lemma FirstStep_helper_2
-  : refineADT (rindexed_spec' (fun str idx p _ _ => split_list_is_complete_alt str idx p))
+  : refineADT (rindexed_spec' (fun str offset len idx p _ _ => split_list_is_complete_alt str offset len idx p))
               (rindexed_spec' split_list_is_complete_case).
   Proof.
     apply FirstStep_helper_gen; intros.
@@ -668,6 +682,10 @@ Section IndexedImpl.
       | _ => progress specialize_by assumption
       | [ |- context[_ - 0] ] => rewrite Nat.sub_0_r
       | [ H : forall n, n <= 0 -> _ |- _ ] => specialize (H 0 (reflexivity _))
+      | [ H : min _ ?x = ?v |- min ?v ?x = ?v ]
+        => revert H; clear; repeat apply Min.min_case_strong; intros; omega
+      | [ |- context[min (min ?x ?y) ?y] ]
+        => rewrite <- (Min.min_assoc x y y), Min.min_idempotent
     end.
   Local Ltac fin_common := repeat fin_common'.
 
@@ -715,11 +733,63 @@ Section IndexedImpl.
       | [ |- context[min ?x (min (?x - ?z) ?y)] ]
         => rewrite (Min.min_assoc x (x - z)), (Min.min_r x (x - z)) by omega
       | [ |- min ?x ?y = ?y ] => rewrite Min.min_r by omega
+      | [ H : ?x - ?y = 0 |- _ ] => apply Nat.sub_0_le in H
+      | [ H : ?x <= ?y, H' : ?y <= ?x |- _ ]
+        => assert (y = x) by (apply Le.le_antisym; assumption);
+          clear H H'
+      | [ H : length (substring _ ?x _) = ?v |- min ?v ?x = ?v ]
+        => rewrite substring_length in H; clear -H
+      | [ |- min (length (substring ?a ?x ?b)) ?x = length (substring ?a ?x ?b) ]
+        => rewrite !substring_length; clear
+      | _ => rewrite !substring_length_no_min by first [ assumption | left; reflexivity | right; omega ]
+      | [ H : context[length (substring _ _ _)] |- _ ]
+        => rewrite substring_length_no_min in H by first [ assumption | left; reflexivity | right; omega ]
+      | [ H : context[min (?x - ?y) ?z], H' : ?y + ?z <= ?x |- _ ]
+        => rewrite (Min.min_r (x - y) z) in H by (clear -H'; omega)
     end.
   Local Ltac fin2 := repeat first [ progress fin_common
                                   | progress string_from_parse
                                   | progress fin2' ].
 
+
+  Local Ltac setoid_subst_parse_of_beq_r :=
+    repeat match goal with
+             | [ H : ?s =s ?s', H' : context T[?s] |- _ ]
+               => let T' := context T[s'] in
+                  assert T';
+                    [ match type of H' with
+                        | parse_of_item _ _ _
+                          => eapply parse_of_item_respectful
+                        | parse_of_production _ _ _
+                          => eapply parse_of_production_respectful
+                      end;
+                      [ .. | exact H' ];
+                      first [ reflexivity
+                            | rewrite H; reflexivity ]
+                    | clear H' ]
+           end.
+
+  Local Ltac setoid_subst_length_beq_r :=
+    repeat match goal with
+             | [ H : ?s =s ?s', H' : context T[?s] |- _ ]
+               => match type of H' with
+                  | context[length ?s0]
+                    => match s0 with
+                       | context s0'[s]
+                         => let s1 := context s0'[s'] in
+                            replace (length s0) with (length s1) in H' by (rewrite H; reflexivity)
+                       end
+                  end
+           end.
+
+  Local Ltac safe_setoid_subst_beq_r :=
+    repeat first [ progress setoid_subst_length_beq_r
+                 | progress setoid_subst_parse_of_beq_r
+                 | idtac;
+                   match goal with
+                   | [ H : ?s =s ?s' |- _ ]
+                     => clear H s
+                   end ].
 
   Lemma FirstStep
   : refineADT (string_spec G HSL) rindexed_spec.
@@ -775,59 +845,14 @@ Section IndexedImpl.
                              /\ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n)));
       do_Iterate_Ensemble_BoundedIndex_equiv.*)
     unfold rindexed_spec', expanded_fallback_list', split_list_is_complete_alt.
-    econstructor 1 with (AbsR := (fun r_o r_n =>
-                                    (substring (fst (snd r_n)) (snd (snd r_n)) (fst r_n) = r_o)
-                                    /\ (snd (snd r_n) = 0 \/ (snd (snd r_n) + fst (snd r_n) <= length (fst r_n)))));
+    econstructor 1 with (AbsR := (fun r_o r_n => r_o =s r_n));
       do_Iterate_Ensemble_BoundedIndex_equiv;
-      change @opt.snd with @snd in *.
-    { rewrite substring_correct3'; reflexivity. }
-    { repeat match goal with
-               | _ => progress fin_common
-               | [ H : is_char _ _ = true |- _ ]
-                 => let H' := fresh in
-                    pose proof H as H';
-                      apply length_singleton in H';
-                      apply add_take_1_singleton, get_0 in H
-               | [ H : context[length (substring _ _ _)] |- _ ]
-                 => rewrite substring_length in H
-               | [ H : context[get _ (take _ _)] |- _ ] => rewrite get_take_lt in H by omega
-               | [ H : context[get _ (drop _ _)] |- _ ] => rewrite <- get_drop in H
-               | [ H : is_char _ _ = false |- _ ] => apply not_is_char_options in H
-               | [ H : None <> Some _ |- _ ] => clear H
-               | [ H : Some _ <> Some _ |- _ ] => specialize (fun H' => H (f_equal (@Some _) H'))
-               | [ H : ?x <> Some _ |- _ ] => destruct x eqn:?
-               | [ H : get _ _ = None |- _ ]
-                 => rewrite get_drop in H; apply no_first_char_empty in H; rewrite drop_length in H
-             end. }
-    { intros ch H; apply unsafe_get_correct; revert H.
-      rewrite (@get_drop _ _ _ d).
-      rewrite (@get_drop _ _ _ (d + _)).
-      rewrite drop_take, drop_drop.
-      intro H.
-      rewrite get_take_lt in H; [ assumption | ].
-      repeat match goal with
-               | [ H : get 0 _ = Some _ |- _ ] => apply get_0 in H
-               | [ H : is_true (is_char _ _) |- _ < _ ] => apply length_singleton in H
-               | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length in H
-               | [ H : min 1 ?x = 1 |- _ ]
-                 => assert (x >= 1) by (revert H; apply (Min.min_case_strong 1 x); intro; intro; omega);
-                   clear H
-               | [ H : context[min 0 _] |- _ ] => rewrite Min.min_0_l in H
-               | [ H : _ \/ _ |- _ ] => destruct H
-               | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
-               | [ H : context[0 - ?x] |- _ ] => change (0 - x) with 0 in H
-               | [ H : 0 >= S _ |- _ ] => exfalso; clear -H; omega
-               | [ H : context[min _ _] |- _ ] => rewrite Min.min_l in H by omega
-               | [ H : context[min _ _] |- _ ] => rewrite Min.min_r in H by omega
-               | _ => omega
-             end. }
-    { rewrite substring_length; fin_common; rewrite Min.min_r by omega; omega. }
-    { rewrite take_take, Min.min_comm; reflexivity. }
-    { apply Min.min_case_strong; omega. }
-    { rewrite drop_take, drop_drop, minusr_minus.
-      reflexivity. }
-    { fin_common. }
-    unfold split_list_is_complete_idx, split_list_is_complete.
+      try assumption;
+      intros;
+      [ setoid_subst_rel beq; try reflexivity.. | ].
+    { erewrite char_at_matches_correct by eassumption; reflexivity. }
+    { apply unsafe_get_correct; assumption. }
+    unfold split_list_is_complete_idx, split_list_is_complete, expanded_fallback_list'_body in *.
     intros.
 
     match goal with
@@ -860,38 +885,42 @@ Section IndexedImpl.
     { abstract fin2. }
     { abstract (
           repeat match goal with
-                   | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
-                   | _ => progress subst
-                   | _ => erewrite <- has_only_terminals_length by eassumption
-                   | [ H : context[List.length _] |- _ ]
-                     => erewrite <- has_only_terminals_length in H by eassumption
+                 | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
+                 | _ => progress subst
+                 | _ => erewrite <- has_only_terminals_length by eassumption
+                 | [ H : context[List.length _] |- _ ]
+                   => erewrite <- has_only_terminals_length in H by eassumption
+                 | _ => progress safe_setoid_subst_beq_r
+                 | _ => progress destruct_head or; try solve [ fin2 ]; []
+                 | [ H : ?x = ?y |- _ ] => is_var y; subst y
+                 | [ H : ?x = ?y |- _ ] => is_var x; subst x
+                 | _ => rewrite Min.min_r by omega
+                 | _ => progress fin2
+                 | [ H : ?x = ?x |- _ ] => clear H
                  end;
-          fin2
-        ). }
-    { abstract (
           repeat match goal with
-                   | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
-                   | _ => progress subst
-                   | [ H : collapse_length_result ?e = Some _ |- _ ]
-                     => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
-                   | _ => intro
-                   | [ H : length_of_any ?G ?nt = same_length ?n,
-                           p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ G n nt H str p); clear H)
+                 | [ H : _ = _ :> nat |- _ ] => revert H
+                 | [ H : _ <= _ |- _ ] => revert H
                  end;
-          fin2
-        ). }
-    { abstract (
+          clear -HSLP; intros;
+          rewrite !drop_length, !substring_length, Min.min_r, Nat.add_sub by omega;
           repeat match goal with
-                   | _ => progress fin_common
-                   | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
-                     => specialize (H _ _ H')
-                   | [ H : length ?x = _, H' : context[length ?x] |- _ ]
-                     => rewrite H in H'
-                   | _ => solve [ eauto with nocore ]
+                 | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+                 | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
+                 | [ H : ?x = 1 |- context[?x] ] => rewrite H
+                 | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
+                 | _ => rewrite Nat.sub_0_r
+                 | _ => intro
+                 | _ => progress subst
+                 | [ H : ?x - ?y = ?z |- ?x - ?z = ?y ] => clear -H; omega
+                 | [ |- context[?x - ?y - (?x - ?z - ?y)] ] => replace (x - z - y) with (x - y - z) by omega
+                 | _ => rewrite sub_twice
+                 | _ => rewrite Min.min_r by omega
+                 | _ => rewrite Min.min_l by omega
+                 | _ => reflexivity
                  end
         ). }
-    { abstract (
+    {  abstract (
           repeat match goal with
                    | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
                    | _ => progress subst
@@ -900,7 +929,36 @@ Section IndexedImpl.
                    | _ => intro
                    | [ H : length_of_any ?G ?nt = same_length ?n,
                            p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ G n nt H str p); clear H)
+                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
+                 end;
+          fin2
+        ). }
+    {  abstract (
+          repeat match goal with
+                   | _ => progress fin_common
+                   | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
+                     => specialize (H _ _ H')
+                   | [ H : length ?x = _, H' : context[length ?x] |- _ ]
+                     => rewrite H in H'
+                   | _ => progress specialize_by assumption
+                   | _ => progress specialize_by ltac:(left; reflexivity)
+                   | _ => progress specialize_by ltac:(right; assumption)
+                   | [ H : context[length (substring _ 0 _)] |- _ ]
+                     => rewrite substring_length in H
+                   | _ => solve [ eauto with nocore ]
+                   | _ => progress safe_setoid_subst_beq_r
+                 end
+         ). }
+    {  abstract (
+          repeat match goal with
+                   | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
+                   | _ => progress subst
+                   | [ H : collapse_length_result ?e = Some _ |- _ ]
+                     => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
+                   | _ => intro
+                   | [ H : length_of_any ?G ?nt = same_length ?n,
+                           p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
+                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
                  end;
           fin2
         ). }
@@ -911,7 +969,11 @@ Section IndexedImpl.
                      => specialize (H _ _ H')
                    | [ H : length ?x = _, H' : context[length ?x] |- _ ]
                      => rewrite H in H'
+                   | _ => progress specialize_by assumption
+                   | _ => progress specialize_by ltac:(left; reflexivity)
+                   | _ => progress specialize_by ltac:(right; assumption)
                    | _ => solve [ eauto with nocore ]
+                   | _ => progress safe_setoid_subst_beq_r
                  end
         ). }
   Qed.

@@ -10,7 +10,7 @@ Export Fiat.Parsers.ContextFreeGrammar.Core.
 Fixpoint production_of_string (s : string) : production Ascii.ascii
   := match s with
        | EmptyString => nil
-       | String.String ch s' => (Terminal ch)::production_of_string s'
+       | String.String ch s' => (Terminal (ascii_beq ch))::production_of_string s'
      end.
 
 Coercion production_of_string : string >-> production.
@@ -29,7 +29,7 @@ Definition list_to_grammar {T} (default : productions T) (ls : list (string * pr
         Valid_nonterminals := uniquize string_beq (map fst ls) |}.
 
 Definition item_ascii := item Ascii.ascii.
-Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal ch.
+Coercion item_of_char (ch : Ascii.ascii) : item_ascii := Terminal (ascii_beq ch).
 Coercion item_of_string (nt : string) : item_ascii := NonTerminal nt.
 Definition item_ascii_cons : item_ascii -> production Ascii.ascii -> production Ascii.ascii := cons.
 Global Arguments item_ascii_cons / .
@@ -56,8 +56,22 @@ Local Open Scope string_scope.
 Notation "<< x | .. | y >>" :=
   (@cons (production _) (x)%production .. (@cons (production _) (y)%production nil) .. ) : productions_scope.
 
-Notation "$< x $ .. $ y >$" := (item_ascii_cons x .. (item_ascii_cons y nil) .. ) : production_scope.
+Notation "$< x $ .. $ y >$" := (item_ascii_cons x%item .. (item_ascii_cons y%item nil) .. ) : production_scope.
 Notation "# c" := (c%char) (at level 0, only parsing) : production_scope.
 
 Global Open Scope grammar_scope.
 Global Open Scope string_scope.
+
+Global Arguments nat_of_ascii !_ / .
+Global Arguments Compare_dec.leb !_ !_ / .
+Global Arguments BinPos.Pos.to_nat !_ / .
+
+Notation code_le ch ch' := (Compare_dec.leb (nat_of_ascii ch) (nat_of_ascii ch')).
+Notation code_in_range ch ch_low ch_high := (code_le ch_low ch && code_le ch ch_high)%bool.
+
+Notation "'[0-9]'" := (Terminal (fun ch => code_in_range ch "0" "9")) : item_scope.
+Notation "'[0-9]'" := (item_ascii_cons [0-9]%item nil) : production_scope.
+Notation "'[A-Z]'" := (Terminal (fun ch => code_in_range ch "A" "Z")) : item_scope.
+Notation "'[A-Z]'" := (item_ascii_cons [A-Z]%item nil) : production_scope.
+Notation "'[a-z]'" := (Terminal (fun ch => code_in_range ch "a" "z")) : item_scope.
+Notation "'[a-z]'" := (item_ascii_cons [a-z]%item nil) : production_scope.

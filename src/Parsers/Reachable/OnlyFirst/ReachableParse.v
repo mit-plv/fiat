@@ -18,7 +18,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
@@ -37,7 +37,7 @@ Section cfg.
   Proof.
     destruct p as [ | nt ? p ].
     { rewrite <- for_first_char_singleton by eassumption.
-      repeat constructor. }
+      repeat constructor; assumption. }
     { specialize (for_first_char_reachable_from_parse_of_productions valid0 (G nt) Hsub str p (snd Hforall)).
       revert for_first_char_reachable_from_parse_of_productions.
       apply for_first_char_Proper; [ reflexivity | intros ? [H'] ].

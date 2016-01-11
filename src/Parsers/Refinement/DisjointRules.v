@@ -18,6 +18,7 @@ Require Import Fiat.Parsers.StringLike.Core.
 Set Implicit Arguments.
 
 Definition search_for_condition
+           {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
            (G : grammar Ascii.ascii)
@@ -29,41 +30,43 @@ Definition search_for_condition
        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
 
 Lemma refine_disjoint_search_for'
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       (G : grammar Ascii.ascii)
       (Hvalid : grammar_rvalid G)
-      {str nt its}
+      {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
-             G str
+             G str offset len
              (NonTerminal nt::its) splits}
-         (n <- { n : nat | n <= length str
-                           /\ ((exists n', search_for_condition G str its n')
-                               -> search_for_condition G str its n) };
+         (n <- { n : nat | n <= length (substring offset len str)
+                           /\ ((exists n', search_for_condition G (substring offset len str) its n')
+                               -> search_for_condition G (substring offset len str) its n) };
           ret [n]).
 Proof.
   intros ls H.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros it' its' Heq n ? H_reachable pit pits.
+  intros Hlen it' its' Heq n ? H_reachable pit pits.
   inversion Heq; subst it' its'; clear Heq.
   left.
   pose proof (terminals_disjoint_search_for Hvalid _ H_disjoint pit pits H_reachable) as H'.
   specialize (H1 (ex_intro _ n H')).
   pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
   destruct_head or; destruct_head and; subst;
-  rewrite ?Min.min_r by assumption;
+  rewrite ?Min.min_r, ?Min.min_l by assumption;
   omega.
 Qed.
 
 Definition search_for_not_condition
+           {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
            (G : grammar Ascii.ascii)
@@ -75,31 +78,32 @@ Definition search_for_not_condition
        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
 
 Lemma refine_disjoint_search_for_not'
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       {G : grammar Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      {str nt its}
+      {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
-             G str
+             G str offset len
              (NonTerminal nt::its)
              splits}
-         (n <- { n : nat | n <= length str
-                           /\ ((exists n', search_for_not_condition G str nt its n')
-                               -> search_for_not_condition G str nt its n) };
+         (n <- { n : nat | n <= length (substring offset len str)
+                           /\ ((exists n', search_for_not_condition G (substring offset len str) nt its n')
+                               -> search_for_not_condition G (substring offset len str) nt its n) };
           ret [n]).
 Proof.
   intros ls H.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
-  intros it' its' Heq n ? H_reachable pit pits.
+  intros Hlen it' its' Heq n ? H_reachable pit pits.
   inversion Heq; subst it' its'; clear Heq.
   left.
   pose proof (terminals_disjoint_search_for_not Hvalid _ H_disjoint pit pits H_reachable) as H'.
@@ -110,9 +114,9 @@ Proof.
   omega.
 Qed.
 
-Lemma find_first_char_such_that'_short {Char HSL}
+Lemma find_first_char_such_that'_short {Char HSLM HSL}
       str P len
-: @find_first_char_such_that' Char HSL P len str <= len.
+: @find_first_char_such_that' Char HSLM HSL P len str <= len.
 Proof.
   revert str; induction len; simpl; intros; [ reflexivity | ].
   destruct (get (length str - S len) str) eqn:H.
@@ -121,17 +125,17 @@ Proof.
   { apply Le.le_n_S, IHlen. }
 Qed.
 
-Lemma find_first_char_such_that_short {Char HSL}
+Lemma find_first_char_such_that_short {Char HSLM HSL}
       str P
-: @find_first_char_such_that Char HSL str P <= length str.
+: @find_first_char_such_that Char HSLM HSL str P <= length str.
 Proof.
   apply find_first_char_such_that'_short.
 Qed.
 
-Lemma is_first_char_such_that__find_first_char_such_that {Char} {HSL} {HSLP : @StringLikeProperties Char HSL} str P
+Lemma is_first_char_such_that__find_first_char_such_that {Char} {HSLM HSL} {HSLP : @StringLikeProperties Char HSLM HSL} str P
       might_be_empty
       (H : exists n, is_first_char_such_that might_be_empty str n (fun ch => is_true (P ch)))
-: is_first_char_such_that might_be_empty str (@find_first_char_such_that Char HSL str P) (fun ch => is_true (P ch)).
+: is_first_char_such_that might_be_empty str (@find_first_char_such_that Char HSLM HSL str P) (fun ch => is_true (P ch)).
 Proof.
   unfold find_first_char_such_that.
   destruct H as [n H].
@@ -186,8 +190,8 @@ Proof.
           rewrite <- for_first_char_singleton by eassumption; congruence. } } } }
 Qed.
 
-Lemma refine_find_first_char_such_that {Char} {HSL : StringLike Char} {HSLP : @StringLikeProperties Char HSL}
-      (str : @String Char HSL)
+Lemma refine_find_first_char_such_that {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+      (str : String)
       (P : Char -> bool)
       might_be_empty
 : refine { n : nat | n <= length str
@@ -203,22 +207,23 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       {G : grammar Ascii.ascii}
-      {str nt its}
+      {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
-             G str
+             G str offset len
              (NonTerminal nt::its)
              splits}
-         (ret [find_first_char_such_that str (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
+         (ret [find_first_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
 Proof.
   rewrite refine_disjoint_search_for' by assumption.
   setoid_rewrite refine_find_first_char_such_that.
@@ -226,21 +231,22 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for_not
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii} {str nt its}
+      {G : grammar Ascii.ascii} {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
-             G str
+             G str offset len
              (NonTerminal nt::its)
              splits}
-         (ret [find_first_char_such_that str (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
+         (ret [find_first_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
 Proof.
   rewrite refine_disjoint_search_for_not' by assumption.
   setoid_rewrite refine_find_first_char_such_that.
@@ -248,12 +254,13 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for_idx
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       {G : grammar Ascii.ascii}
-      {str nt its idx}
+      {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
       (H_disjoint : disjoint ascii_beq
@@ -261,10 +268,10 @@ Lemma refine_disjoint_search_for_idx
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete_idx
-             G str
+             G str offset len
              idx
              splits}
-         (ret [find_first_char_such_that str (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
+         (ret [find_first_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
 Proof.
   unfold split_list_is_complete_idx.
   erewrite <- refine_disjoint_search_for by eassumption.
@@ -273,11 +280,12 @@ Proof.
 Qed.
 
 Lemma refine_disjoint_search_for_not_idx
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii} {str nt its idx}
+      {G : grammar Ascii.ascii} {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
       (H_disjoint : disjoint ascii_beq
@@ -285,10 +293,10 @@ Lemma refine_disjoint_search_for_not_idx
                              (possible_first_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete_idx
-             G str
+             G str offset len
              idx
              splits}
-         (ret [find_first_char_such_that str (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
+         (ret [find_first_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
 Proof.
   unfold split_list_is_complete_idx.
   erewrite <- refine_disjoint_search_for_not by eassumption.

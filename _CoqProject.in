@@ -322,7 +322,6 @@ src/Parsers/Reachable/ParenBalanced/OfParse.v
 src/Parsers/Reachable/ParenBalanced/WellFounded.v
 src/Parsers/Reachable/ParenBalancedHiding/Core.v
 src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
-src/Parsers/Reachable/ParenBalancedHiding/OfParse.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/DisjointRules.v

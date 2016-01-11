@@ -16,7 +16,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
           {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
@@ -41,7 +41,7 @@ Section cfg.
       { specialize (fun str p H => paren_balanced_pb_parse_of_production _ _ _ str p H Hp0).
         specialize (fun str p H => paren_balanced_pb_parse_of_productions _ _ str p H Hp1).
         dependent destruction p; eauto with nocore. } }
-    { destruct Hp as [|????? Hp0 Hp1|????? Hp].
+    { destruct Hp as [|????? Hp0 Hp1|??????? Hp].
       { inversion p.
         rewrite paren_balanced'_nil by assumption.
         reflexivity. }
@@ -75,10 +75,13 @@ Section cfg.
         erewrite (proj1 (get_0 _ _)) by eassumption.
         rewrite take_length.
         unfold paren_balanced'_step, pb_check_level, pb_new_level in *.
+        split_iff.
         apply Min.min_case_strong;
           repeat match goal with
                    | _ => progress subst
                    | _ => progress intros
+                   | [ H : is_true (P ?ch), H' : forall ch', is_true (P ch') -> _ |- _ ]
+                     => specialize (H' _ H)
                    | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
                    | [ H : is_true ?x |- context[?x] ] => rewrite H
                    | _ => progress simpl in *

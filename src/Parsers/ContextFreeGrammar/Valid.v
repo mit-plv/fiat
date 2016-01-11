@@ -10,7 +10,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
+  Context {Char : Type} {HSL : StringLikeMin Char} (G : grammar Char)
           {predata : @parser_computational_predataT Char}.
 
   Definition item_valid (it : item Char)

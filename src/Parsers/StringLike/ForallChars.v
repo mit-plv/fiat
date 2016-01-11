@@ -10,7 +10,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section forall_chars.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition forall_chars (str : String) (P : Char -> Prop)
     := forall n ch,

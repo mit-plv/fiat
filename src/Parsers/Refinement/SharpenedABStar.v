@@ -3,7 +3,8 @@ Require Import Fiat.Parsers.Grammars.ABStar.
 Require Import Fiat.Parsers.Refinement.Tactics.
 
 Section IndexedImpl.
-  Context {HSL : StringLike Ascii.ascii}
+  Context {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringEqProperties Ascii.ascii}.
 
@@ -39,12 +40,12 @@ Require Export Fiat.Parsers.StringLike.OcamlString.
 
 Definition ab_star_parser (str : Coq.Strings.String.string) : bool.
 Proof.
-  Time make_parser (@ComputationalSplitter String.string_stringlike _ _). (* 0.82 s *)
+  Time make_parser (@ComputationalSplitter _ String.string_stringlike _ _). (* 0.82 s *)
 Defined.
 
 Definition ab_star_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
 Proof.
-  Time make_parser (@ComputationalSplitter Ocaml.string_stringlike _ _). (* 0.82 s *)
+  Time make_parser (@ComputationalSplitter _ Ocaml.string_stringlike _ _). (* 0.82 s *)
 Defined.
 
 Print ab_star_parser_ocaml.

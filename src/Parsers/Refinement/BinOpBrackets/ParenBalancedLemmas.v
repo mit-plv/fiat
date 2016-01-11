@@ -7,7 +7,7 @@ Require Import Fiat.Common.
 Set Implicit Arguments.
 
 Section helpers.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
 
   Local Ltac induction_str_len str :=

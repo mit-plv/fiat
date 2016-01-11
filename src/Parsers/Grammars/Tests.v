@@ -9,6 +9,8 @@ Require Import Fiat.Parsers.Grammars.ExpressionNumPlus.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
 Require Import Fiat.Parsers.Grammars.ExpressionParen.
 
+Local Arguments Equality.ascii_beq !_ !_.
+
 Section ab_star.
   Example ab_star_parses_empty : parse_of_grammar ""%string ab_star_grammar.
   Proof.
@@ -21,9 +23,9 @@ Section ab_star.
     hnf; simpl.
     apply ParseTail, ParseHead.
     apply ParseProductionCons with (n := 1); simpl.
-    { refine (ParseTerminal _ _ _ _); reflexivity. }
+    { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
     { apply ParseProductionCons with (n := 1); simpl.
-      { refine (ParseTerminal _ _ _ _); reflexivity. }
+      { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
       { apply ParseProductionCons with (n := 1); simpl;
         repeat (simpl; constructor). } }
   Defined.
@@ -33,9 +35,9 @@ Section ab_star.
     hnf; simpl.
     apply ParseTail, ParseHead.
     apply ParseProductionCons with (n := 1); simpl.
-    { refine (ParseTerminal _ _ _ _); reflexivity. }
+    { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
     { apply ParseProductionCons with (n := 1); simpl.
-      { refine (ParseTerminal _ _ _ _); reflexivity. }
+      { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
       { apply ParseProductionCons with (n := 2); simpl;
         try solve [ repeat (simpl; constructor) ].
         constructor; simpl; try tauto.
@@ -62,7 +64,10 @@ Section num_paren.
        | [ |- parse_of_production _ _ nil ]
          => apply ParseProductionNil
        | [ |- parse_of_item _ _ (Terminal _) ]
-         => apply ParseTerminal
+         => (refine (ParseTerminal _ _ _ _ _ _);
+             simpl;
+             erewrite ?Equality.ascii_lb by reflexivity;
+             reflexivity)
        | [ |- parse_of_item _ _ (NonTerminal _) ]
          => apply ParseNonTerminal
        | [ |- is_true (is_char (take 1 _) _) ] => apply get_0
@@ -86,11 +91,8 @@ Section num_paren.
     apply ParseTail, ParseHead; repeat safe_step; [].
     apply ParseHead; repeat safe_step; [].
     apply ParseTail, ParseHead; repeat safe_step; [].
-    apply ParseProductionCons with (n := 1); repeat safe_step; [ fin | ].
     apply ParseTail, ParseHead; repeat safe_step; [].
-    apply ParseProductionCons with (n := 1); repeat safe_step; [ fin | ].
-    apply ParseHead; repeat safe_step; [].
-    apply ParseTail, ParseTail, ParseTail, ParseHead; repeat safe_step.
+    apply ParseHead; repeat safe_step.
   Qed.
 End num_paren.
 
@@ -114,7 +116,8 @@ Section num_plus.
                      | [ |- is_true true ] => reflexivity
                    end
                  | apply ParseProductionNil
-                 | apply ParseTerminal
+                 | refine (ParseTerminal _ _ _ _ _ _);
+                   simpl; erewrite ?Equality.ascii_lb by reflexivity; reflexivity
                  | apply ParseNonTerminal
                  | progress simpl
                  | tauto ].
@@ -136,7 +139,7 @@ Section num_plus.
     simpl.
     fin'.
     apply ParseProductionCons with (n := 1); fin'.
-    { apply ParseHead; fin. }
+    { fin. }
     apply ParseTail, ParseHead; fin'.
     apply ParseProductionCons with (n := 1); fin'.
     { apply ParseHead; fin. }
@@ -164,7 +167,8 @@ Section num_plus_paren.
                      => apply ParseProductionCons with (n := String.length s - 1)
                     end)
                  | apply ParseProductionNil
-                 | refine (ParseTerminal _ _ _)
+                 | refine (ParseTerminal _ _ _ _ _ _);
+                   simpl; erewrite ?Equality.ascii_lb by reflexivity; reflexivity
                  | refine (ParseNonTerminal _ _)
                  | progress simpl
                  | solve [ constructor (solve [ fin ]) ] ].

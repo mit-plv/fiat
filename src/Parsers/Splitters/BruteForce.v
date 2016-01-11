@@ -12,10 +12,10 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section brute_force_splitter.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
-  Definition make_all_single_splits (str : String) : list nat
-    := (length str)::up_to (length str).
+  Definition make_all_single_splits (str : String) (offset len : nat) : list nat
+    := len::up_to len.
 
   Context (G : grammar Char).
 
@@ -26,24 +26,29 @@ Section brute_force_splitter.
     := { predata := @rdp_list_predata _ G;
          split_data := brute_force_split_data }.
 
-  Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ G brute_force_data
-    := { split_string_for_production_complete str0 valid str pf it its
+  Global Instance brute_force_cdata : @boolean_parser_completeness_dataT' _ _ _ G brute_force_data
+    := { split_string_for_production_complete str0 valid str offset len pf nt pf' pf''
          := ForallT_all (fun _ => Forall_tails_all (fun prod => _)) }.
   Proof.
     destruct prod; try solve [ constructor ].
     hnf.
     intros; intros [ n [ p0 p1 ] ].
-    destruct (Compare_dec.le_lt_dec (length str) n).
-    { exists (length str); simpl; repeat split.
+    destruct (Compare_dec.le_lt_dec len n).
+    { exists len; simpl; repeat split.
       { left; reflexivity. }
       { eapply expand_minimal_parse_of_item; [ .. | eassumption ];
         try solve [ reflexivity
                   | left; reflexivity
-                  | rewrite !take_long; trivial; reflexivity ]. }
+                  | rewrite !take_long; trivial; reflexivity
+                  | rewrite take_long at 1 by (rewrite Properties.substring_length; apply Min.min_case_strong; omega);
+                    symmetry;
+                    rewrite take_long at 1 by (rewrite Properties.substring_length; apply Min.min_case_strong; omega);
+                    reflexivity ]. }
       { eapply expand_minimal_parse_of_production; [ .. | eassumption ];
         try solve [ reflexivity
                   | left; reflexivity
-                  | apply bool_eq_empty; rewrite drop_length; omega ]. } }
+                  | apply bool_eq_empty; rewrite drop_length; omega
+                  | apply bool_eq_empty; rewrite drop_length, Properties.substring_length; apply Min.min_case_strong; omega ]. } }
     { exists n; simpl; repeat split; try assumption.
       right; apply List.in_map, in_up_to; assumption. }
   Qed.

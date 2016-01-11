@@ -4,7 +4,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.Reachable.Paren
 Require Import Fiat.Parsers.BaseTypes.
 
 Section rel.
-  Context {Char} {HSL : StringLike Char} {predata : @parser_computational_predataT Char}
+  Context {Char} {HSLM : StringLikeMin Char} {predata : @parser_computational_predataT Char}
           {pdata : paren_balanced_hiding_dataT Char}
           {G : grammar Char}.
 
@@ -21,7 +21,7 @@ Section rel.
          := match p with
               | PBProductionNil _ => 0
               | PBProductionConsNonTerminal _ _ _ _ _ p0 p1 => S (size_of_pb'_productions p0 + size_of_pb'_production p1)
-              | PBProductionConsTerminal _ _ _ _ _ p' => S (size_of_pb'_production p')
+              | PBProductionConsTerminal _ _ _ _ _ _ _ p' => S (size_of_pb'_production p')
             end.
   End size.
 End rel.
@@ -44,9 +44,9 @@ Ltac simpl_size_of :=
              => let G' := context G[S (size_of_pb'_productions g1 + size_of_pb'_production g2)] in change G'
            | [ H : context G[size_of_pb'_production (PBProductionConsNonTerminal _ _ ?g1 ?g2)] |- _ ]
              => let G' := context G[S (size_of_pb'_productions g1 + size_of_pb'_production g2)] in change G' in H
-           | [ |- context G[size_of_pb'_production (PBProductionConsTerminal _ _ _ ?g)] ]
+           | [ |- context G[size_of_pb'_production (PBProductionConsTerminal _ _ _ _ ?g)] ]
              => let G' := context G[S (size_of_pb'_production g)] in change G'
-           | [ H : context G[size_of_pb'_production (PBProductionConsTerminal _ _ _ ?g)] |- _ ]
+           | [ H : context G[size_of_pb'_production (PBProductionConsTerminal _ _ _ _ ?g)] |- _ ]
              => let G' := context G[S (size_of_pb'_production g)] in change G' in H
            | _ => progress simpl in *
          end.

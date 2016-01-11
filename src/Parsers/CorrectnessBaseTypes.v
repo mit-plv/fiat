@@ -7,7 +7,7 @@ Require Import Fiat.Common.
 Local Open Scope string_like_scope.
 
 Section general.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {G : grammar Char}.
 
   Definition split_list_completeT_for {data : @parser_computational_predataT Char}
              {len0 valid}
@@ -24,9 +24,10 @@ Section general.
                    * (minimal_parse_of_production (G := G) len0 valid (drop n str) its) }%type).
 
   Definition split_list_completeT {data : @parser_computational_predataT Char}
-             (splits : production_carrierT -> String -> list nat)
-    := forall len0 valid str (pf : length str <= len0) nt,
+             (splits : production_carrierT -> String -> nat -> nat -> list nat)
+    := forall len0 valid str offset len (pf : length (substring offset len str) <= len0) nt,
          is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
+         -> len = 0 \/ offset + len <= length str
          -> ForallT
               (Forall_tails
                  (fun prod
@@ -36,7 +37,7 @@ Section general.
                          => forall idx,
                               production_carrier_valid idx
                               -> to_production idx = it::its
-                              -> @split_list_completeT_for data len0 valid it its str pf (splits idx str)
+                              -> @split_list_completeT_for data len0 valid it its (substring offset len str) pf (splits idx str offset len)
                      end))
               (Lookup G nt).
 

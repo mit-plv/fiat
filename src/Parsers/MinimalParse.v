@@ -9,7 +9,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {G : grammar Char}.
   Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
@@ -44,9 +44,10 @@ Section cfg.
   : forall (len0 : nat) (valid : nonterminals_listT)
            (str : String),
       item Char -> Type :=
-  | MinParseTerminal : forall len0 valid str ch,
-                         str ~= [ ch ]
-                         -> @minimal_parse_of_item len0 valid str (Terminal ch)
+  | MinParseTerminal : forall len0 valid str ch P,
+                         is_true (P ch)
+                         -> str ~= [ ch ]
+                         -> @minimal_parse_of_item len0 valid str (Terminal P)
   | MinParseNonTerminal
     : forall len0 valid str (nt : String.string),
         @minimal_parse_of_nonterminal len0 valid str nt

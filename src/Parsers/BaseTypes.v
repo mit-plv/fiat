@@ -9,7 +9,7 @@ Local Open Scope string_like_scope.
 Local Coercion is_true : bool >-> Sortclass.
 
 Section recursive_descent_parser.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {G : grammar Char}.
 
   Class parser_computational_predataT :=
     { nonterminals_listT : Type;
@@ -77,7 +77,7 @@ Section recursive_descent_parser.
 
   Class split_dataT `{parser_computational_predataT} :=
     { split_string_for_production
-      : production_carrierT -> String -> list nat }.
+      : production_carrierT -> String -> nat -> nat -> list nat }.
 
   Class boolean_parser_dataT :=
     { predata :> parser_computational_predataT;

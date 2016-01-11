@@ -161,6 +161,7 @@ Definition length_of_any {Char} (G : grammar Char) : String.string -> length_res
 Definition length_of_any_productions {Char} G := @length_of_any_productions' Char (@length_of_any Char G).
 
 Lemma has_only_terminals_parse_of_production_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       (G : grammar Ascii.ascii) {n}
@@ -218,6 +219,7 @@ Proof.
 Qed.
 
 Lemma has_only_terminals_parse_of_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       (G : grammar Ascii.ascii) {n}
@@ -287,6 +289,7 @@ Proof.
 Qed.
 
 Lemma has_only_terminals_parse_of_item_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       (G : grammar Ascii.ascii) {n}

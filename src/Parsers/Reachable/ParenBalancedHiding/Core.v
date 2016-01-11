@@ -5,6 +5,7 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Common.
 Require Import Fiat.Common.SetoidInstances.
+Require Import Fiat.Common.Enumerable.
 
 Set Implicit Arguments.
 
@@ -12,7 +13,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {predata : @parser_computational_predataT Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {predata : @parser_computational_predataT Char} {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
 
   Context (G : grammar Char).
@@ -34,6 +35,17 @@ pbh = pbh' '+' 0
 
   Definition pbh_new_level (ch : Char) (start_level : nat) : nat
     := pb_new_level ch start_level.
+
+  Definition pbh_check_level_fun (P : Char -> bool) (start_level : nat) : bool
+    := pb_check_level_fun true P start_level.
+
+  Definition pbh_new_level_fun (P : Char -> bool) (start_level : nat) : list nat
+    := pb_new_level_fun P start_level.
+
+  Definition pbh_check_level_fun_correct P start_level
+  : pbh_check_level_fun P start_level
+    <-> (forall ch, P ch -> pbh_check_level ch start_level)
+    := pb_check_level_fun_correct _ _ _.
 
   Section generic.
     Context (transform_valid : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT)
@@ -58,10 +70,11 @@ pbh = pbh' '+' 0
                                         pb'_production G valid0 0 (NonTerminal nt :: nil)
                                         -> generic_pbh'_production valid (S start_level) its
                                         -> generic_pbh'_production valid (S start_level) (NonTerminal nt :: its)
-    | PBHProductionConsTerminal : forall valid start_level ch its,
-                                    pbh_check_level ch start_level
-                                    -> generic_pbh'_production valid (pbh_new_level ch start_level) its
-                                    -> generic_pbh'_production valid start_level (Terminal ch :: its).
+    | PBHProductionConsTerminal : forall valid start_level new_level P its,
+                                   (forall ch, is_true (P ch) -> pbh_check_level ch start_level)
+                                   -> (forall ch, is_true (P ch) -> pbh_new_level ch start_level = new_level)
+                                    -> generic_pbh'_production valid new_level its
+                                    -> generic_pbh'_production valid start_level (Terminal P :: its).
   End generic.
 
   Definition minimal_pbh'_productions := generic_pbh'_productions remove_nonterminal.

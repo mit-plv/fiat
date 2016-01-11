@@ -12,10 +12,10 @@ Section cfg.
 
   Section definitions.
     (** An [item] is the basic building block of a context-free
-        grammar; it is either a terminal ([CharType]-literal) or a
-        nonterminal ([string]). *)
+        grammar; it is either a terminal (a set of [Char]-literal
+        options) or a nonterminal ([string]). *)
     Inductive item :=
-    | Terminal (_ : Char)
+    | Terminal (_ : Char -> bool)
     | NonTerminal (_ : string).
 
     (** A [productions] is a list of possible [production]s; a
@@ -38,7 +38,7 @@ Section cfg.
   End definitions.
 
   Section parse.
-    Context {HSL : StringLike Char}.
+    Context {HSLM} {HSL : @StringLike Char HSLM}.
     Variable G : grammar.
     (** A parse of a string into [productions] is a [production] in
         that list, together with a list of substrings which cover the
@@ -56,14 +56,14 @@ Section cfg.
                               -> parse_of_production (drop n str) pats
                               -> parse_of_production str (pat::pats)
     with parse_of_item (str : String) : item -> Type :=
-    | ParseTerminal : forall ch, is_true (str ~= [ ch ]) -> parse_of_item str (Terminal ch)
+    | ParseTerminal : forall ch P, is_true (P ch) -> is_true (str ~= [ ch ]) -> parse_of_item str (Terminal P)
     | ParseNonTerminal : forall nt,
                            List.In nt (Valid_nonterminals G)
                            -> parse_of str (Lookup G nt)
                            -> parse_of_item str (NonTerminal nt).
   End parse.
 
-  Definition parse_of_grammar {HSL : StringLike Char} (str : String) (G : grammar) :=
+  Definition parse_of_grammar {HSLM} {HSL : @StringLike Char HSLM} (str : String) (G : grammar) :=
     parse_of G str G.
 End cfg.
 

@@ -12,11 +12,11 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section is_first_char_such_that.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition is_first_char_such_that
              (might_be_empty : Prop)
-             (str : @String Char HSL)
+             (str : String)
              (n : nat)
              P
     := forall_chars (take n str) (fun ch => ~P ch)
@@ -25,7 +25,7 @@ Section is_first_char_such_that.
 
   Lemma first_char_such_that_past_end
         (might_be_empty : Prop)
-        (str : @String Char HSL)
+        (str : String)
         (n : nat)
         P
         (H : length str <= n)
@@ -40,7 +40,7 @@ Section is_first_char_such_that.
 
   Lemma first_char_such_that_0
         {might_be_empty : Prop}
-        {str : @String Char HSL}
+        {str : String}
         {P}
   : is_first_char_such_that might_be_empty str 0 P
     <-> (for_first_char str P /\ (might_be_empty \/ length str > 0)).
@@ -62,7 +62,7 @@ Section is_first_char_such_that.
 
   Lemma is_first_char_such_that_drop
         (might_be_empty : Prop)
-        (str : @String Char HSL)
+        (str : String)
         (n : nat)
         P
   : is_first_char_such_that might_be_empty str (S n) P
@@ -126,7 +126,7 @@ Section is_first_char_such_that.
 
   Lemma is_first_char_such_that_eq_nat_iff
         (might_be_empty : Prop)
-        (str : @String Char HSL)
+        (str : String)
         (n n' : nat)
         P
         (H0 : is_first_char_such_that might_be_empty str n P)
@@ -182,12 +182,12 @@ End is_first_char_such_that.
 
 Global Opaque is_first_char_such_that.
 
-Definition find_first_char_such_that' {Char} {HSL : StringLike Char}
+Definition find_first_char_such_that' {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
            (P : Char -> bool)
            (len : nat)
-: @String Char HSL -> nat
+: String -> nat
   := nat_rect
-       (fun _ => @String Char HSL -> nat)
+       (fun _ => String -> nat)
        (fun _ => 0)
        (fun len' find_first_char_such_that' str
         => let otherwise := S (find_first_char_such_that' str) in
@@ -199,10 +199,10 @@ Definition find_first_char_such_that' {Char} {HSL : StringLike Char}
            end)
        len.
 
-Lemma find_first_char_such_that'_S {Char} {HSL : StringLike Char}
+Lemma find_first_char_such_that'_S {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
       (P : Char -> bool)
       (len : nat)
-      (str : @String Char HSL)
+      (str : String)
 : find_first_char_such_that' P (S len) str
   = let otherwise := S (find_first_char_such_that' P len str) in
     match get (length str - S len) str with
@@ -215,5 +215,5 @@ Proof.
   reflexivity.
 Qed.
 
-Definition find_first_char_such_that {Char} {HSL} str P
-  := @find_first_char_such_that' Char HSL P (length str) str.
+Definition find_first_char_such_that {Char} {HSLM} {HSL} str P
+  := @find_first_char_such_that' Char HSLM HSL P (length str) str.

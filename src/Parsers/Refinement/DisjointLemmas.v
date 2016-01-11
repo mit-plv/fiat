@@ -8,6 +8,8 @@ Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.Enumerable.
+Require Import Fiat.Common.LogicFacts.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.ParserInterface.
@@ -64,11 +66,11 @@ Local Ltac find_production_valid
             end.
 
 Section all_possible.
-  Context {Char : Type}.
+  Context {Char : Type} {HEC : Enumerable Char}.
   Definition possible_terminals := list Char.
 
   Local Instance all_possible_fold_data : fold_grammar_data Char possible_terminals
-    := { on_terminal ch := [ch];
+    := { on_terminal P := filter P (Enumerable.enumerate Char);
          on_redundant_nonterminal nt := nil;
          on_nil_production := nil;
          combine_production := @app _;
@@ -86,6 +88,7 @@ End all_possible.
 
 Section only_first.
   Context (G : grammar Ascii.ascii)
+          {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}.
 
@@ -94,7 +97,9 @@ Section only_first.
       might_be_empty : bool }.
 
   Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
-    := { on_terminal ch := {| actual_possible_first_terminals := [ch] ; might_be_empty := false |};
+    := { on_terminal P
+         := {| actual_possible_first_terminals := filter P (Enumerable.enumerate Ascii.ascii);
+               might_be_empty := false |};
          on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) && brute_force_parse_nonterminal G (of_string nil) nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
@@ -123,7 +128,7 @@ Section only_first.
 End only_first.
 
 Section all_possible_correctness.
-  Context {Char : Type} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {HEC : Enumerable Char}.
   Local Open Scope string_like_scope.
 
   Local Existing Instance all_possible_fold_data.
@@ -157,11 +162,15 @@ Section all_possible_correctness.
       | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
       | _ => progress destruct_head or
       | [ |- _ <-> _ ] => split
+      | [ |- _ /\ _ ] => split
       | [ |- inhabited _ ] => constructor
       | _ => assumption
       | _ => left; assumption
       | _ => right; assumption
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
+      | [ |- context[In _ (filter _ _)] ] => rewrite filter_In
+      | [ |- In _ (Enumerable.enumerate _) ] => apply enumerate_correct
       | [ H : All.MinimalReachable.minimal_reachable_from_item _ _ (NonTerminal _) |- _ ] => ddestruction H
       | [ H : All.MinimalReachable.minimal_reachable_from_item _ _ (Terminal _) |- _ ] => ddestruction H
       | [ H : All.MinimalReachable.minimal_reachable_from_production _ _ nil |- _ ] => ddestruction H
@@ -218,6 +227,7 @@ End all_possible_correctness.
 
 Section only_first_correctness.
   Context (G : grammar Ascii.ascii)
+          {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
@@ -280,6 +290,9 @@ Section only_first_correctness.
       | [ |- inhabited _ ] => constructor
       | [ |- appcontext[if ?e then _ else _] ] => case_eq e
       | [ |- _ \/ False ] => left
+      | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
+      | [ |- context[In _ (filter _ _)] ] => rewrite filter_In
+      | [ |- In _ (Enumerable.enumerate _) ] => apply enumerate_correct
       | [ H : is_true (BooleanRecognizer.parse_nonterminal _ _) |- _ ]
         => apply parse_nonterminal_sound in H
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
@@ -343,6 +356,8 @@ Section only_first_correctness.
   Local Arguments remove_nonterminal : simpl never.
   Local Arguments initial_nonterminals_data : simpl never.
 
+  Local Opaque enumerable_ascii.
+
   Local Instance only_first_cdata
         (rdata := rdp_list_rdata' (G := G))
         (cdata := brute_force_cdata G)
@@ -400,6 +415,7 @@ Local Open Scope string_like_scope.
 Local Arguments string_beq : simpl never.
 
 Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
@@ -431,8 +447,7 @@ Proof.
       generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid' HSLP HSIP.
       intros.
       eapply possible_first_terminals_of_production_empty_correct; try eassumption.
-      find_production_valid.
- }
+      find_production_valid. }
     { split; try omega; [].
       eapply first_char_in__impl__for_first_char;
       [
@@ -453,6 +468,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
@@ -484,6 +500,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
@@ -534,6 +551,7 @@ Proof.
 Qed.
 
 Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}

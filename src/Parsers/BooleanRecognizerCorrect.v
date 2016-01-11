@@ -13,9 +13,9 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Valid Fiat.Parsers.ContextFreeGra
 Local Open Scope string_like_scope.
 
 Section convenience.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
   Context {data : @boolean_parser_dataT Char _}
-          {cdata : @boolean_parser_completeness_dataT' Char _ G _}
+          {cdata : @boolean_parser_completeness_dataT' Char _ _ G _}
           {rdata : @parser_removal_dataT' _ G _}
           (gvalid : grammar_valid G).
 

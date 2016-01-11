@@ -10,6 +10,7 @@ Require Export Fiat.Common.
 Require Export Fiat.Parsers.StringLike.Core.
 
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
@@ -24,6 +25,13 @@ Global Arguments production_beq : simpl never.
 Global Arguments productions_beq : simpl never.
 Delimit Scope char_scope with char.
 Infix "=p" := (production_beq _) (at level 70, no associativity).
+
+(** Unfolding rules for enumerated ascii *)
+Global Arguments Ascii.one / .
+Global Arguments Ascii.shift _ !_ / .
+Global Arguments Ascii.ascii_of_pos !_ / .
+Global Arguments Ascii.ascii_of_nat !_ / .
+Global Arguments Carriers.default_nonterminal_carrierT / .
 
 Section tac_helpers.
   Lemma pull_match_list {A R R' rn rc} {ls : list A} (f : R -> R')
@@ -107,24 +115,20 @@ Ltac unguard :=
   rewrite ?(unguard [0]).
 
 Ltac solve_prod_beq :=
-  repeat match reverse goal with
-           | _ => intro
-           | [ H : ?x = ?x |- _ ] => clear H
-           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_iff in H
-           | [ H : (_ && _)%bool = true |- _ ] => apply (proj1 (Bool.andb_true_iff _ _)) in H
-           | [ H : (_ || _)%bool = false |- _ ] => apply Bool.orb_false_iff in H
-           | [ H : (_ && _)%bool = false |- _ ] => apply Bool.andb_false_iff in H
-           | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply (proj1 (EqNat.beq_nat_true_iff _ _)) in H
-           | [ H : _ /\ _ |- _ ] => destruct H
-           | [ H : (_::_) = (_::_) |- _ ] => inversion H; clear H
-           | [ H : _ = fst ?x |- _ ] => atomic x; destruct x
-           | [ H : [] = (_::_) |- _ ] => exfalso; clear -H; inversion H
-           | _ => progress subst
-           | _ => progress simpl @fst in *
-           | _ => progress simpl @snd in *
-           | [ H : fst ?x = _ |- _ ] => is_var x; destruct x
-           | [ H : _ \/ _ |- _ ] => destruct H
-           | _ => discriminate
+  clear;
+  repeat match goal with
+           | [ |- context[true = false] ] => congruence
+           | [ |- context[false = true] ] => congruence
+           | [ |- context[EqNat.beq_nat ?x ?y] ]
+             => is_var x;
+               let H := fresh in
+               destruct (EqNat.beq_nat x y) eqn:H;
+                 [ apply EqNat.beq_nat_true in H; subst x
+                 | ];
+                 simpl
+           | [ |- context[EqNat.beq_nat ?x ?y] ]
+             => first [ is_var x; fail 1
+                      | generalize x; intro ]
          end.
 
 Definition if_aggregate {A} (b1 b2 : bool) (x y : A)

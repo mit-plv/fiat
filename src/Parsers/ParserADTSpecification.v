@@ -26,8 +26,8 @@ Section ReferenceImpl.
         Method "to_string" : rep -> rep * String,
         (** Return the underlying string; hack to get around not having [eq : rep x rep -> bool] *)
 
-        Method "is_char" : rep * Char -> rep * bool,
-        (* Return [true] if this string represents a singleton character equal to the given one; otherwise return [false]. *)
+        Method "char_at_matches" : rep * (nat : Type) * (Char -> bool) -> rep * bool,
+        (* Return [char_at_matches str n P] is equal to [P ch] if [str] has a character at position [n] which is equal to [ch]; return value is arbitrary otherwise. *)
 
         Method "get" : rep * nat -> rep * Char,
         (* Returns [ch] if the [n]th character of this string is some [ch], and returns an arbitrary character otherwise. *)
@@ -41,13 +41,14 @@ Section ReferenceImpl.
         Method "drop" : rep * (nat : Type) -> rep,
         (** Return everything but the first [n] characters, for the given [n : nat]. *)
 
-        Method "splits" : rep * production_carrierT -> rep * (list nat)
+        Method "splits" : rep * production_carrierT * (nat : Type) * (nat : Type) -> rep * (list nat)
         (** Return a list of locations to split this string at for this production rule. *)
       }.
   End GenericSig.
 
-  Context (G : grammar Ascii.ascii) (HSL : StringLike Ascii.ascii).
+  Context (G : grammar Ascii.ascii) (HSLM : StringLikeMin Ascii.ascii) (HSL : StringLike Ascii.ascii).
   Local Open Scope ADTParsing_scope.
+
   (** Reference implementation of a [String] that can be split *)
   Definition string_spec : ADT (string_rep Ascii.ascii String default_production_carrierT) := ADTRep String {
     Def Constructor1 "new"(s : String) : rep :=
@@ -56,8 +57,9 @@ Section ReferenceImpl.
     Def Method0 "to_string" (s : rep) : rep * String :=
       ret (s, s),
 
-    Def Method1 "is_char"(s : rep) (x : Ascii.ascii) : rep * bool  :=
-      ret (s, is_char s x),
+    Def Method2 "char_at_matches"(s : rep) (n : nat) (P : Ascii.ascii -> bool) : rep * bool  :=
+      b <- { b : bool | forall ch', get n s = Some ch' -> P ch' = b };
+      ret (s, b),
 
     Def Method1 "get"(s : rep) (n : nat) : rep * Ascii.ascii  :=
       ch <- { ch : Ascii.ascii | forall ch', get n s = Some ch' -> ch = ch' };
@@ -72,8 +74,8 @@ Section ReferenceImpl.
     Def Method1 "drop"(s : rep) (n : nat) : rep :=
       ret (drop n s),
 
-    Def Method1 "splits"(s : rep) (idx : default_production_carrierT) : rep * list nat :=
-      ls <- { ls : list nat | split_list_is_complete_idx G s idx ls };
+    Def Method3 "splits"(s : rep) (idx : default_production_carrierT) (offset : nat) (len : nat) : rep * list nat :=
+      ls <- { ls : list nat | split_list_is_complete_idx G s offset len idx ls };
       ret (s, ls)
   }.
 End ReferenceImpl.

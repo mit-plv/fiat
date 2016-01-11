@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Set Implicit Arguments.
 
 Section generic.
-  Context {Char} {HSL : StringLike Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
 
   Definition trivial_grammar : grammar Char :=
     {| Start_symbol := "";

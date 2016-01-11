@@ -10,6 +10,7 @@ Require Import Fiat.Parsers.FoldGrammar.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.
+Require Import Fiat.Common.Enumerable.
 
 Local Open Scope bool_scope.
 Local Open Scope string_like_scope.
@@ -22,7 +23,8 @@ Local Notation eta2 x := (fst x, (fst (snd x), snd (snd x))) (only parsing).
 Local Opaque rdp_list_predata.
 
 Section specific.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+          {CharE : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
   Context (G : grammar Char).
   Let predata := (@rdp_list_predata _ G).
@@ -36,9 +38,12 @@ Section specific.
       := fun (it : item Char) (rest_balanced : nat -> bool) level
          => let predata := @rdp_list_predata _ G in
             match it with
-              | Terminal ch
-                => (pb_check_level hiding ch level)
-                     && rest_balanced (pb_new_level ch level)
+              | Terminal P
+                => ((pb_check_level_fun hiding P level)
+                      && match pb_new_level_fun P level with
+                           | new_level::nil => rest_balanced new_level
+                           | _ => false
+                         end)%bool
               | NonTerminal nt
                 => (*(is_valid_nonterminal initial_nonterminals_data nt)
                    &&*)
@@ -129,6 +134,10 @@ Section specific.
             destruct p0 as [| ? ? p0 ].
             { clear paren_balanced_productions_correct.
               unfold paren_balanced''_production_step at 1 in H_p.
+              destruct (pb_new_level_fun P level) as [|? [|]] eqn:Heq;
+                simpl in *;
+                try rewrite Bool.andb_false_r in *; try congruence;
+                [].
               apply Bool.andb_true_iff in H_p;
                 destruct H_p as [H_p0 H_p1].
               specialize (paren_balanced_production_correct _ _ H_p1).
@@ -148,12 +157,53 @@ Section specific.
                 destruct (length str) as [|[|]] eqn:?; try congruence.
                 apply bool_eq_empty; rewrite ?drop_length; omega. }
               rewrite !H' in paren_balanced_production_correct; clear H'.
-              unfold paren_balanced_hiding'_step, paren_balanced'_step, pb_check_level, pb_new_level in *.
+              repeat match goal with
+                       | [ H : _ |- _ ] => setoid_rewrite pb_check_level_fun_correct in H
+                       | [ H : _ |- _ ] => setoid_rewrite pb_new_level_fun_correct in H
+                     end.
+              unfold paren_balanced_hiding'_step, paren_balanced'_step, pb_check_level_fun, pb_new_level_fun, pb_check_level, pb_new_level in *.
               repeat match goal with
                        | _ => assumption
+                       | _ => progress subst
+                       | [ H : filter _ _ = _::nil |- _ ] => eapply filter_enumerate in H
+                       | _ => progress split_iff
+                       | _ => specialize_by eassumption; progress subst
+                       | [ H : context[fold_right andb true (map _ _)] |- _ ]
+                         => rewrite fold_right_andb_map_in_iff in H
+                       | [ H : context[In _ (filter _ _)] |- _ ]
+                         => setoid_rewrite filter_In in H
+                       | [ H : forall x, _ /\ _ -> _ |- _ ] => specialize (fun x A B => H x (conj A B))
+                       | [ H : forall x, In _ (enumerate _) -> _ |- _ ]
+                           => specialize (fun x => H x (enumerate_correct _))
+                       | [ H : ?x = true, H' : context[?x] |- _ ] => rewrite H in H'
+                       | [ H : ?x = false, H' : context[?x] |- _ ] => rewrite H in H'
+                       | [ H : ?x = ?y::nil |- _ ]
+                         => assert (forall n, In n x <-> n = y)
+                           by (intro; rewrite H; simpl; intuition);
+                           clear H
+                       | [ H : forall x, _ = x -> _ |- _ ] => specialize (H _ eq_refl)
+                       | [ H : forall x, x = _ -> _ |- _ ] => specialize (H _ eq_refl)
+                       | [ H : context[In _ (uniquize _ _)] |- _ ]
+                         => setoid_rewrite <- (ListFacts.uniquize_In_refl_iff _ EqNat.beq_nat _ (lb eq_refl) bl) in H
+                       | [ H : context[In _ (map _ _)] |- _ ]
+                         => setoid_rewrite in_map_iff in H
+                       | _ => progress destruct_head ex
+                       | _ => progress destruct_head and
+                       | [ H : forall x, ex _ -> _ |- _ ]
+                         => specialize (fun x a b => H x (ex_intro _ a b))
+                       | _ => progress cbv beta in *
+                       | _ => progress split_and
                        | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
                        | [ |- appcontext[if ?e then _ else _] ]
                          => destruct e eqn:?
+                       | [ H : forall ch, is_true (?P ch) -> _ |- _ ]
+                         => repeat match goal with
+                                     | [ H' : is_true (P ?ch') |- _ ]
+                                       => unique pose proof (H _ H')
+                                     | [ H' : P ?ch' = true |- _ ]
+                                       => unique pose proof (H _ H')
+                                   end;
+                           clear H
                      end. }
             { specialize (fun hiding level H_p => paren_balanced_productions_correct hiding level _ H_p _ p0); clear p0.
               unfold paren_balanced''_production_step at 1 in H_p.
@@ -254,36 +304,49 @@ Section specific.
 End specific.
 
 Section paren_balanced_nonterminals.
-  Context {Char} {HSL : StringLike Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
+  Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
           (G : grammar Char)
           (hiding : bool).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 
+  Local Notation targetT
+    := (option nat * (list nonterminal_carrierT * list nonterminal_carrierT))%type
+         (only parsing).
+
   Definition paren_balanced_nonterminals_T
-    := nat -> nat * (list nonterminal_carrierT * list nonterminal_carrierT).
+    := nat -> targetT.
 
   Local Instance paren_balanced_nonterminals_fold_data : fold_grammar_data Char paren_balanced_nonterminals_T
-    := { on_terminal ch level
-         := (pb_new_level ch level,
+    := { on_terminal P level
+         := (match pb_new_level_fun P level with
+               | new_level::nil => Some new_level
+               | _ => None
+             end,
              (nil, nil));
          on_redundant_nonterminal nt level
-         := (0, (nil, nil));
+         := (Some 0, (nil, nil));
          on_nil_production level
-         := (level,
+         := (Some level,
              (nil, nil));
          combine_production f1 f2 level
          := let '(level1, (pb_ls1, pbh_ls1)) := eta2 (f1 level) in
-            let '(level2, (pb_ls2, pbh_ls2)) := eta2 (f2 level1) in
-            (level2, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2));
-         on_nil_productions level := (0, (nil, nil));
+            option_rect
+              (fun _ => targetT)
+              (fun level1'
+               => let '(level2, (pb_ls2, pbh_ls2)) := eta2 (f2 level1') in
+                  (level2, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2)))
+              (None, (pb_ls1, pbh_ls1))
+              level1;
+         on_nil_productions level := (Some 0, (nil, nil));
          combine_productions f1 f2 level
          := let '(level1, (pb_ls1, pbh_ls1)) := eta2 (f1 0) in
             let '(level2, (pb_ls2, pbh_ls2)) := eta2 (f2 0) in
-            (0, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2));
+            (Some 0, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2));
          on_nonterminal nt f level
-         := (level,
+         := (option_map (fun _ => level) (fst (f level)),
              let '(pb_ls, pbh_ls) := eta (snd (f level)) in
              ((of_nonterminal nt::pb_ls)
                 ++ (if Compare_dec.gt_dec level 0
@@ -307,7 +370,8 @@ End paren_balanced_nonterminals.
 Local Transparent rdp_list_predata.
 
 Section with_lists.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
   Context (G : grammar Char).
   Let predata := (@rdp_list_predata _ G).
