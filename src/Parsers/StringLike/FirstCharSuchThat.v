@@ -113,6 +113,18 @@ Section is_first_char_such_that.
     assumption.
   Qed.
 
+  Global Instance is_first_char_such_that_Proper_flip
+  : Proper (flip impl ==> beq ==> eq ==> pointwise_relation _ iff ==> flip impl) is_first_char_such_that.
+  Proof.
+    repeat intro; subst.
+    unfold is_first_char_such_that in *.
+    setoid_subst_rel beq.
+    setoid_subst_rel (pointwise_relation Char iff).
+    unfold flip in *.
+    setoid_subst_rel impl.
+    assumption.
+  Qed.
+
   Global Instance is_first_char_such_that_Proper_iff
   : Proper (iff ==> beq ==> eq ==> pointwise_relation _ iff ==> iff) is_first_char_such_that.
   Proof.
