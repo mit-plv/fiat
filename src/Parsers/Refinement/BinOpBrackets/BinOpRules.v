@@ -133,6 +133,7 @@ Section refine_rules.
       computes_to_inv; subst.
       apply PickComputes.
       specialize (Htable n).
+      hnf; cbv zeta.
       intros Hlen it' its' Heq idx' Hsmall Hreachable pit pits; simpl.
       rewrite length_helper by assumption.
       inversion Heq; subst it' its'; clear Heq.
