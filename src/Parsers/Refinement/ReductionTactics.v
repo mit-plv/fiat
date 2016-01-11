@@ -37,6 +37,7 @@ Declare Reduction parser_red8 := opt2_red.
 Declare Reduction parser_red9 := simpl orb.
 Declare Reduction parser_red10 := opt3_red.
 Declare Reduction parser_red11 := simpl orb.
+Declare Reduction parser_red12 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
 (*Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
 Declare Reduction parser_red8 := simpl List.length.
@@ -69,6 +70,7 @@ Ltac parser_red_gen term do_simpl_list_map :=
   let term := (eval parser_red9 in term) in
   let term := (eval parser_red10 in term) in
   let term := (eval parser_red11 in term) in
+  let term := (eval parser_red12 in term) in
 (*
   let term := (match do_simpl_list_map with
                  | true => eval simpl List.map in term
