@@ -222,7 +222,8 @@ Section String.
 
   Definition get_first_char_nonempty' str (H' : length str <> 0) : Char.
   Proof.
-    refine (match get 0 str as ch return get 0 str = ch -> Char with
+    let ret := constr:(get 0 str) in
+    refine (match get 0 str as ch return ret = ch -> Char with
               | Some ch => fun _ => ch
               | None => fun H'' => match _ : False with end
             end eq_refl).
