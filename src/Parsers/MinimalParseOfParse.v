@@ -152,7 +152,7 @@ Section cfg.
     end;
     clear_not_beq;
     repeat match goal with
-             | [ H : @beq ?string ?SL _ _ |- _ ] => setoid_subst_rel (@beq string SL)
+             | [ H : @beq ?string ?SLM ?SL _ _ |- _ ] => setoid_subst_rel (@beq string SLM SL)
            end;
     solve [ assumption | reflexivity | left; reflexivity | right; reflexivity | tac ].
 
