@@ -169,7 +169,7 @@ Proof.
 Defined.
 
 Definition enumerate_ascii : list Ascii.ascii
-  := List.map Ascii.ascii_of_nat (up_to 256).
+  := Eval compute in List.map Ascii.ascii_of_nat (up_to 256).
 
 Global Instance enumerable_ascii : Enumerable Ascii.ascii
   := { enumerate := enumerate_ascii }.
@@ -177,7 +177,7 @@ Proof.
   intro x.
   abstract (
       rewrite <- (Ascii.ascii_nat_embedding x);
-      unfold enumerate_ascii;
+      change enumerate_ascii with (List.map Ascii.ascii_of_nat (up_to 256));
       apply List.in_map, in_up_to, nat_of_ascii_small
     ).
 Defined.
