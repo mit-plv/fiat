@@ -54,6 +54,7 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
+  hnf; cbv zeta.
   intros Hlen it' its' Heq n ? H_reachable pit pits.
   inversion Heq; subst it' its'; clear Heq.
   left.
@@ -103,6 +104,7 @@ Proof.
   computes_to_inv; subst.
   destruct H as [H0 H1].
   apply PickComputes.
+  hnf; cbv zeta.
   intros Hlen it' its' Heq n ? H_reachable pit pits.
   inversion Heq; subst it' its'; clear Heq.
   left.
