@@ -5,6 +5,14 @@ Require Import Fiat.Common.Equality.
 Set Implicit Arguments.
 
 Module Export List.
+  Definition list_caset A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs))
+             ls
+  : P ls
+    := match ls with
+         | nil => N
+         | x::xs => C x xs
+       end.
+
   Section InT.
     Context {A : Type} (a : A).
 
