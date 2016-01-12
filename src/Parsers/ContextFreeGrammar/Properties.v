@@ -10,6 +10,21 @@ Set Implicit Arguments.
 
 Local Open Scope list_scope.
 
+Global Instance item_rect_Proper {Char T}
+: Proper (pointwise_relation _ eq ==> pointwise_relation _ eq ==> eq ==> eq)
+         (@item_rect Char (fun _ => T)).
+Proof.
+  lazy.
+  intros ?? H ?? H' ? [?|?] ?; subst; eauto with nocore.
+Qed.
+Global Instance item_rect_Proper_forall {Char T}
+: Proper (forall_relation (fun _ => eq) ==> forall_relation (fun _ => eq) ==> forall_relation (fun _ => eq))
+         (@item_rect Char T).
+Proof.
+  lazy.
+  intros ?? H ?? H' [?|?]; subst; eauto with nocore.
+Qed.
+
 Section cfg.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} (G : grammar Char).
 
