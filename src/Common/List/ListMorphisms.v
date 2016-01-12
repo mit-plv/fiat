@@ -384,5 +384,5 @@ Global Instance list_caset_Proper' {A P}
          (@list_caset A (fun _ => P)).
 Proof.
   lazy.
-  intros ??? ?? H [|? ?]; subst; eauto.
+  intros ??? ?? H [|? ?] ??; subst; eauto.
 Qed.
