@@ -139,12 +139,12 @@ Section refine_rules.
       inversion Heq; subst it' its'; clear Heq.
       specialize (H_nt_hiding _ pit).
       unfold paren_balanced_hiding in *.
-      set (s_str := (substring n m str) : @StringLike.String _ HSL) in *.
+      set (s_str := (substring n m str) : @StringLike.String _ HSLM) in *.
       destruct (Compare_dec.zerop (StringLike.length (drop idx' s_str))) as [iszero|isnonzero].
       { (* Deal with the case where drop idx' s_str is empty *)
         rewrite drop_length in iszero.
         assert (lenequal : idx' = StringLike.length s_str)
-          by (unfold StringLikeMin_of_StringLike in *; omega).
+          by omega.
         subst.
         destruct (nth n table None) eqn:nth_equals.
         {
@@ -211,7 +211,7 @@ Section refine_rules.
               subst;
               tauto.
           }
-          { unfold StringLikeMin_of_StringLike in *; omega. }
+          { omega. }
         }
       }
 
@@ -305,7 +305,7 @@ Section refine_rules.
                  | [ H : is_true (is_char (substring _ _ (substring _ _ _)) _) |- _ ]
                    => rewrite substring_substring in H;
                      apply take_n_1_singleton in H
-                 | [ H : context[?x + ?y], H' : context[?y + ?x] |- _ ]
+                 | [ H : context[(?x + ?y)%nat], H' : context[(?y + ?x)%nat] |- _ ]
                    => not constr_eq x y; replace (y + x) with (x + y) in H' by omega
                  | [ H : is_true (?str ~= [ ?ch ])%string_like, H' : is_true (?str ~= [ ?ch' ])%string_like |- _ ]
                    => assert (ch = ch') by (eapply singleton_unique; eassumption);

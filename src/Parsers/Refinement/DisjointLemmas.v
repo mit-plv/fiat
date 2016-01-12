@@ -421,7 +421,7 @@ Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii HSL)
+      (str : @String Ascii.ascii HSLM)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -474,7 +474,7 @@ Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii HSL)
+      (str : @String Ascii.ascii HSLM)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -506,7 +506,7 @@ Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii HSL)
+      (str : @String Ascii.ascii HSLM)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}
@@ -557,7 +557,7 @@ Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
       (Hvalid : grammar_rvalid G)
-      (str : @String Ascii.ascii HSL)
+      (str : @String Ascii.ascii HSLM)
       {nt its}
       (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
       {n}

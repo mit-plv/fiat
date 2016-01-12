@@ -135,13 +135,13 @@ Global Instance eq_string_beq_Proper
 : Proper (beq ==> beq ==> eq) (@eq String.string).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_Proper'
-: Proper (beq ==> beq ==> eq) (@eq (@StringLike.String _ string_stringlike)).
+: Proper (beq ==> beq ==> eq) (@eq (@StringLike.String _ string_stringlikemin)).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_impl_Proper
 : Proper (beq ==> beq ==> impl) (@eq String.string).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_impl_Proper'
-: Proper (beq ==> beq ==> impl) (@eq (@StringLike.String _ string_stringlike)).
+: Proper (beq ==> beq ==> impl) (@eq (@StringLike.String _ string_stringlikemin)).
 Proof. eq_Proper_t. Qed.
 Global Instance beq_string_Equivalence
 : (@Equivalence String.string (@beq Ascii.ascii string_stringlikemin _))

@@ -33,14 +33,10 @@ Module Export StringLike.
       beq : relation String := fun x y => bool_eq x y
     }.
 
-  Coercion StringLikeMin_of_StringLike {Char} {HSLM}(x : @StringLike Char HSLM) := HSLM.
-
   Class StringIso {Char} {HSLM : @StringLikeMin Char} :=
     {
       of_string : list Char -> String
     }.
-
-  Coercion StringLikeMin_of_StringIso {Char} {HSLM} (x : @StringIso Char HSLM) := HSLM.
 
   Arguments StringLikeMin : clear implicits.
   Arguments StringLike Char {HSLM}.
@@ -52,8 +48,6 @@ Module Export StringLike.
   Notation "s ~= [ ch ]" := (is_char s ch) (at level 70, no associativity) : string_like_scope.
   Local Open Scope string_like_scope.
   Local Open Scope type_scope.
-
-  Hint Extern 0 (@StringLike (@String ?string ?H)) => exact H : typeclass_instances.
 
   Definition fold' {Char} {HSLM} {HSL : @StringLike Char HSLM} {A}
              (f : Char -> A -> A)

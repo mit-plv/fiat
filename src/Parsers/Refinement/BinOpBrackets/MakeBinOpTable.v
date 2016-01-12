@@ -738,7 +738,7 @@ Section no_records.
       Local Arguments list_of_next_bin_ops'_opt / .
       Definition list_of_next_bin_ops'_opt_nor' (str : String)
       : option (list (option nat)) * list (option nat)
-        := Eval simpl in list_of_next_bin_ops'_opt (str : @StringLike.String _ temp_hsl).
+        := Eval simpl in list_of_next_bin_ops'_opt (str : @StringLike.String _ temp_hslm).
     End exploded.
 
     Definition list_of_next_bin_ops'_opt_nor (str : String)

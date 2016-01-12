@@ -70,17 +70,17 @@ Section implementation.
   Context {string_like_min_lite : StringLikeMin Ascii.ascii}
           {string_like_lite : @StringLike Ascii.ascii string_like_min_lite}
           split_string_for_production_lite
-          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_lite (parser_data splitter) split_string_for_production_lite).
+          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_min_lite (parser_data splitter) split_string_for_production_lite).
   Context (stringlike_stringlikemin : StringLikeMin Ascii.ascii)
           (stringlike_stringlike : @StringLike Ascii.ascii stringlike_stringlikemin)
-          (make_string : @String _ stringlike_stringlike -> @String _ splitter)
-          (R : @String _ splitter -> @String _ stringlike_stringlike -> Prop)
+          (make_string : @String _ stringlike_stringlikemin -> @String _ splitter)
+          (R : @String _ splitter -> @String _ stringlike_stringlikemin -> Prop)
           (R_make : forall str, R (make_string str) str)
           (R_respectful : transfer_respectful R)
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
 
-  Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_lite
-    := @data' _ splitter string_like_lite (parser_data splitter) split_string_for_production_lite.
+  Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_min_lite
+    := @data' _ splitter string_like_min_lite (parser_data splitter) split_string_for_production_lite.
   Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
 
@@ -100,7 +100,7 @@ Section implementation.
               impl
               (fun str => eq_trans
                             (implH str)
-                            (@parse_nonterminal_proj _ splitter string_like_lite G pdata' _ _ HSLPr _ _))
+                            (@parse_nonterminal_proj _ splitter string_like_min_lite G pdata' _ _ HSLPr _ _))
               R R_make _ _).
   Defined.
 
