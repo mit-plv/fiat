@@ -355,3 +355,6 @@ Proof.
   { reflexivity. }
   { rewrite IHls, H; reflexivity. }
 Qed.
+
+(** Increase priority of [eq] instance for [cons] *)
+Global Instance : forall T, Proper (eq ==> eq ==> eq) (@cons T) := _.

@@ -25,6 +25,9 @@ Proof.
   intros ?? H ?? H' [?|?]; subst; eauto with nocore.
 Qed.
 
+Hint Extern 1 (Proper _ (@item_rect _ _)) => exact item_rect_Proper : typeclass_instances.
+Hint Extern 0 (Proper _ (@item_rect _ _)) => exact item_rect_Proper_forall : typeclass_instances.
+
 Section cfg.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} (G : grammar Char).
 
