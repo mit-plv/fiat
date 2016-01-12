@@ -13,9 +13,13 @@ Set Implicit Arguments.
 
 Section transfer.
   Context {Char} {HSLM_heavy HSLM_lite : StringLikeMin Char} {G : grammar Char}.
-  Context {data : @boolean_parser_dataT Char HSLM_heavy}.
-  Context {rdata : @parser_removal_dataT' Char G data}.
+  Context {predata : @parser_computational_predataT Char}.
+  Context {split_data : @split_dataT Char HSLM_heavy _}.
   Context {split_data_lite : @split_dataT Char HSLM_lite _}.
+  Context {rdata : @parser_removal_dataT' Char G predata}.
+  Let data : @boolean_parser_dataT Char HSLM_heavy
+    := {| BaseTypes.split_data := split_data |}.
+  Local Existing Instance data.
 
   Class StringLikeProj :=
     { proj : @String Char HSLM_heavy -> @String Char HSLM_lite;
@@ -24,16 +28,16 @@ Section transfer.
       take_proj : forall n str, take n (proj str) = proj (take n str);*)
       char_at_matches_proj : forall offset str ch, char_at_matches offset (proj str) ch = char_at_matches offset str ch;
       split_string_for_production_proj
-      : forall idx str,
-          @split_string_for_production _ HSLM_lite _ split_data_lite idx (proj str)
-          = @split_string_for_production _ HSLM_heavy _ data idx str }.
+      : forall idx str offset len,
+          @split_string_for_production _ HSLM_lite _ split_data_lite idx (proj str) offset len
+          = @split_string_for_production _ HSLM_heavy _ split_data idx str offset len }.
 
   Context {HSLPr : StringLikeProj}.
   Context (str : @String Char HSLM_heavy).
 
-  Local Instance data' : @boolean_parser_dataT Char HSLM_lite
-    := { predata := predata;
-         split_data := split_data_lite }.
+  Let data' : @boolean_parser_dataT Char HSLM_lite
+    := {| BaseTypes.split_data := split_data_lite |}.
+  Local Existing Instance data'.
 
   Lemma parse_item_proj
         str_matches_nonterminal str_matches_nonterminal'
@@ -59,7 +63,7 @@ Section transfer.
   Proof.
     unfold parse_production', parse_production'_for.
     simpl.
-    set (ls := @to_production Char data prod).
+    set (ls := @to_production Char predata prod).
     generalize (eq_refl : to_production prod = ls).
     clearbody ls.
     revert prod offset len pf; induction ls; simpl; intros ???? Heq.

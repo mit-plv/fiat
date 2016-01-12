@@ -2,13 +2,20 @@
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
 Require Import Fiat.Common.List.Operations.
+Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common Fiat.Common.Wf Fiat.Common.Wf2 Fiat.Common.Telescope.Core.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BooleanRecognizerExt.
+Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
 Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
@@ -47,9 +54,17 @@ Module Export opt.
     Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
+    Definition list_caset {A} := Eval compute in @list_caset A.
+    Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition bool_rect := Eval compute in bool_rect.
+    Definition pred := Eval compute in pred.
+    Definition minusr := Eval compute in minusr.
+    Definition id {A} := Eval compute in @id A.
+    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition leb := Eval compute in leb.
   End opt.
 
-  Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
   Ltac opt_red x := eval opt_red in x.
 End opt.
 
@@ -73,9 +88,17 @@ Module Export opt2.
     Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
+    Definition list_caset {A} := Eval compute in @list_caset A.
+    Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition bool_rect := Eval compute in bool_rect.
+    Definition pred := Eval compute in pred.
+    Definition minusr := Eval compute in minusr.
+    Definition id {A} := Eval compute in @id A.
+    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition leb := Eval compute in leb.
   End opt2.
 
-  Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
   Ltac opt2_red x := eval opt2_red in x.
 End opt2.
 
@@ -99,17 +122,27 @@ Module Export opt3.
     Definition nth' {A} := Eval cbv beta iota zeta delta -[EqNat.beq_nat] in @nth' A.
     Definition fst {A B} := Eval compute in @fst A B.
     Definition snd {A B} := Eval compute in @snd A B.
+    Definition list_caset {A} := Eval compute in @list_caset A.
+    Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition bool_rect := Eval compute in bool_rect.
+    Definition pred := Eval compute in pred.
+    Definition minusr := Eval compute in minusr.
+    Definition id {A} := Eval compute in @id A.
+    Definition beq_nat := Eval compute in EqNat.beq_nat.
+    Definition leb := Eval compute in leb.
   End opt3.
 
-  Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd].
+  Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
   Ltac opt3_red x := eval opt3_red in x.
 End opt3.
 
 Section recursive_descent_parser.
-  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
           {ls : list (String.string * productions Char)}.
 
   Local Notation G := (list_to_grammar nil ls) (only parsing).
+
+  Context (Hvalid : is_true (grammar_rvalid G)).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
@@ -118,7 +151,43 @@ Section recursive_descent_parser.
 
   Let data : boolean_parser_dataT :=
     {| split_data := splitdata |}.
+  Let optdata : boolean_parser_dataT :=
+    {| split_data := optsplitdata |}.
   Local Existing Instance data.
+
+  Let rdata' : @parser_removal_dataT' _ G predata := rdp_list_rdata'.
+  Local Existing Instance rdata'.
+
+  Local Arguments minus !_ !_.
+  Local Arguments min !_ !_.
+
+  Lemma parse_nonterminal_optdata_eq
+        {HSLP : StringLikeProperties Char}
+        {splitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G data}
+        (str : String)
+        (nt : String.string)
+    : parse_nonterminal (data := optdata) str nt = parse_nonterminal (data := data) str nt.
+  Proof.
+    pose optsplitdata_correct.
+    match goal with
+    | [ |- ?LHS = ?RHS ]
+      => destruct LHS eqn:HL;
+        destruct RHS eqn:HR
+    end;
+    try reflexivity;
+    exfalso;
+    first [ apply (@parse_nonterminal_sound _ _ _ _ G) in HR
+          | apply (@parse_nonterminal_sound _ _ _ _ G) in HL ];
+    try eassumption; [ | | | ];
+    try (apply grammar_rvalid_correct; eassumption);
+    [ | ];
+    first [ erewrite @parse_nonterminal_complete in HR; [ congruence | .. ]
+          | erewrite @parse_nonterminal_complete in HL; [ congruence | .. ] ];
+    instantiate;
+    try first [ eassumption
+              | apply grammar_rvalid_correct; eassumption
+              | exact _ ].
+  Defined.
 
   Local Ltac contract_drop_take_t' :=
     idtac;
@@ -158,6 +227,8 @@ Section recursive_descent_parser.
                => apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_right A B))
              | [ |- @fold_left ?A ?B ?f ?ls ?x = @fold_left ?A ?B ?f ?ls' ?x ]
                => apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_left A B))
+             | [ |- @list_caset ?A (fun _ => ?P) _ _ ?ls = @list_caset ?A (fun _ => ?P) _ _ ?ls' ]
+               => apply (_ : Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> _ ==> eq) (@list_caset A (fun _ => P)))
              | [ |- @map ?A ?B ?f ?ls = @map ?A ?B ?f' ?ls' ]
                => apply (_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@map A B))
              | [ |- @nth' ?A ?n ?ls ?d = @nth' ?A ?n' ?ls' ?d' ]
@@ -166,6 +237,7 @@ Section recursive_descent_parser.
                => apply f_equal3
              | _ => intro
              | [ |- ?x = ?x ] => reflexivity
+             | [ |- bool_rect ?P _ _ ?b = bool_rect ?P _ _ ?b ] => apply f_equal3
              | [ |- andb _ _ = andb _ _ ] => apply f_equal2
              | [ |- orb _ _ = orb _ _ ] => apply f_equal2
              | [ |- match ?it with Terminal _ => _ | _ => _ end = match ?it with _ => _ end ] => is_var it; destruct it
@@ -178,6 +250,8 @@ Section recursive_descent_parser.
              | [ |- context[orb true _] ] => rewrite Bool.orb_true_l
              | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
              | [ |- context[orb false _] ] => rewrite Bool.orb_false_l
+             | [ |- cons _ _ = cons _ _ ]
+               => apply f_equal2
              (*| _ => contract_drop_take_t'
              | _ => rewrite make_drops_eta
              | _ => rewrite make_drops_eta'
@@ -283,7 +357,7 @@ Section recursive_descent_parser.
              | [ |- _ = false ] => reflexivity
              | [ |- ?x = ?x ] => reflexivity
              | [ |- _ = ?x ] => is_var x; reflexivity
-             | [ |- _ = (_::_) ] => apply f_equal2
+             | [ |- _ = (_::_) ] => apply (f_equal2 (@cons _))
              | [ |- _ = nil ] => reflexivity
              | [ |- _ = 0 ] => reflexivity
              | [ |- _ = 1 ] => reflexivity
@@ -326,6 +400,12 @@ Section recursive_descent_parser.
       | [ |- _ = @map ?A ?B _ _ ]
         => refine (_ : @map A B (fun x => _) _ = _);
           apply (_ : Proper (pointwise_relation _ _ ==> _ ==> _) (@map A B)); repeat intro
+      | [ |- _ = @list_caset ?A ?P _ _ _ ]
+        => refine (_ : @list_caset A P _ _ _ = _);
+          apply (_ : Proper (forall_relation _ ==> forall_relation (fun _ => forall_relation _) ==> forall_relation _) (@list_caset A P)); repeat intro
+      | [ |- _ = @list_caset ?A (fun _ => ?P) _ _ _ ]
+        => refine (_ : @list_caset A (fun _ => P) _ _ _ = _);
+          apply (_ : Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> _ ==> _) (@list_caset A (fun _ => P))); repeat intro
       | [ |- _ = @nth ?A _ _ _ ]
         => rewrite <- nth'_nth
       | [ |- _ = @nth' ?A _ _ _ ]
@@ -411,8 +491,8 @@ Section recursive_descent_parser.
         => refine (_ : list_rect P _ _ ls A B C D = _)
     end.
 
-  Local Ltac t_reduce_list_evar :=
-    t_prereduce_list_evar;
+  Local Ltac t_postreduce_list :=
+    idtac;
     match goal with
       | [ |- list_rect ?P ?N ?C ?ls ?a ?b ?c ?d = list_rect ?P ?N' ?C' ?ls ?a ?b ?c ?d ]
         => let P0 := fresh in
@@ -440,6 +520,53 @@ Section recursive_descent_parser.
                  setoid_rewrite <- IH; clear IH N1 C1;
                  generalize (list_rect P0 N0 C0 xs); intro ]
     end.
+
+  Local Ltac t_reduce_list_evar :=
+    t_prereduce_list_evar;
+    t_postreduce_list.
+
+  Local Ltac t_postreduce_list_with_hyp :=
+    idtac;
+    match goal with
+      | [ |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ?d = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ?d ]
+        => let P0 := fresh in
+           let N0 := fresh in
+           let C0 := fresh in
+           let N1 := fresh in
+           let C1 := fresh in
+           set (P0 := P);
+             set (N0 := N);
+             set (C0 := C);
+             set (N1 := N');
+             set (C1 := C');
+             let IH := fresh "IH" in
+             let xs := fresh "xs" in
+             refine (list_rect
+                       (fun ls' => forall a' (pf : ls' = f a') b' c' d',
+                                     list_rect P0 N0 C0 ls' a' b' c' d'
+                                     = list_rect P0 N1 C1 ls' a' b' c' d')
+                       _
+                       _
+                       (f a) a eq_refl b c d);
+               simpl @list_rect;
+               [ subst P0 N0 C0 N1 C1; intros; cbv beta
+               | intros ? xs IH; intros; unfold C0 at 1, C1 at 1; cbv beta;
+                 match goal with
+                   | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
+                     => specialize (IH a'')
+                 end;
+                 let T := match type of IH with ?T -> _ => T end in
+                 let H_helper := fresh in
+                 assert (H_helper : T);
+                   [
+                     | specialize (IH H_helper);
+                       setoid_rewrite <- IH; clear IH N1 C1;
+                       generalize (list_rect P0 N0 C0 xs); intro ] ]
+    end.
+
+  Local Ltac t_reduce_list_evar_with_hyp :=
+    t_prereduce_list_evar;
+    t_postreduce_list_with_hyp.
 
   Local Ltac t_refine_item_match_terminal :=
     idtac;
@@ -680,8 +807,68 @@ Section recursive_descent_parser.
   Definition parse_nonterminal_opt'0
              (str : String)
              (nt : String.string)
-  : { b : bool | b = parse_nonterminal str nt }.
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
   Proof.
+    exists (parse_nonterminal (data := optdata) str nt).
+    reflexivity.
+  Defined.
+
+  Local Ltac optsplit_t' :=
+    idtac;
+    match goal with
+      | [ |- _ = ?f match ?v with nil => ?N | x::xs => @?C x xs end ]
+        => let RHS := match goal with |- _ = ?RHS => RHS end in
+           let P := match (eval pattern v in RHS) with ?P _ => P end in
+           transitivity (match v with
+                           | nil => P nil
+                           | x::xs => P (x::xs)
+                         end);
+             [ simpl | destruct v; reflexivity ]
+      | [ |- _ = ?f match ?v with Terminal t => @?T t | NonTerminal nt => @?NT nt end ]
+        => let RHS := match goal with |- _ = ?RHS => RHS end in
+           let P := match (eval pattern v in RHS) with ?P _ => P end in
+           transitivity (match v with
+                           | Terminal t => P (Terminal t)
+                           | NonTerminal nt => P (NonTerminal nt)
+                         end);
+             [ simpl | destruct v; reflexivity ]
+      | [ |- ?e = match ?v with nil => _ | x::xs => _ end ]
+        => refine (_ : list_caset (fun _ => _) _ _ v = _);
+          refine (match v as v'
+                        return list_caset (fun _ => _) _ _ v' = match v' with nil => _ | _ => _ end
+                  with
+                    | nil => _
+                    | _ => _
+                  end);
+          simpl @list_caset
+      | [ |- ?e = match ?v with Terminal _ => _ | NonTerminal _ => _ end ]
+        => refine (_ : item_rect _ _ _ v = _);
+          set_evars;
+          refine (match v as v'
+                        return item_rect _ _ _ v' = match v' with Terminal t => _ | _ => _ end
+                  with
+                    | Terminal _ => _
+                    | _ => _
+                  end);
+          repeat match goal with
+                   | [ H := ?e |- _ ] => is_evar e; subst H
+                 end;
+          simpl @item_rect
+      | [ |- _ = _::_ ] => etransitivity_rev (_::_);
+                          [ apply f_equal2
+                          | reflexivity ]
+      | _ => progress fin_step_opt
+    end.
+
+  Definition parse_nonterminal_opt'1
+             (str : String)
+             (nt : String.string)
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
+  Proof.
+    let c := constr:(parse_nonterminal_opt'0 str nt) in
+    let h := head c in
+    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort list_to_grammar].
     change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k l => @parse_nonterminal_step Char b c d e f g h i j k l); cbv beta.
     evar (b' : bool).
@@ -692,7 +879,6 @@ Section recursive_descent_parser.
     simpl @fst; simpl @snd.
     cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
     simpl.
-    unfold parse_production', parse_production'_for, parse_item', productions, production.
     cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
     cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
     (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
@@ -709,20 +895,153 @@ Section recursive_descent_parser.
                subst f'
       end;
       reflexivity ].
-    progress cbv beta iota zeta delta [rdp_list_production_tl].
     refine_Fix2_5_Proper_eq.
     rewrite uniquize_idempotent.
     etransitivity_rev _.
     { fix2_trans;
       [
-      | solve [ t_reduce_fix;
+      | unfold parse_production', parse_production'_for, parse_item', productions, production;
+        solve [ t_reduce_fix;
                 t_reduce_list;
                 t_reduce_fix ] ].
+
+      (** Now we take advantage of the optimized splitter *)
+      etransitivity_rev _.
+      { step_opt'; [ | reflexivity ].
+        step_opt'.
+        step_opt'.
+        step_opt'; [ | reflexivity ].
+        unfold parse_production', parse_production'_for.
+        simpl.
+        etransitivity_rev _.
+        { t_reduce_list_evar_with_hyp;
+          [ reflexivity
+          |
+          | ].
+          { rewrite rdp_list_production_tl_correct.
+            match goal with
+              | [ H : _ = ?x |- context[?x] ]
+                => rewrite <- H; reflexivity
+            end. }
+          { match goal with
+              | [ H : _ = ?x |- context[match ?x with _ => _ end] ]
+                => rewrite <- H
+            end.
+            reflexivity. } }
+        (** Pull out the nil case once and for all *)
+        etransitivity_rev _.
+        { match goal with
+            | [ |- _ = list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ?d ]
+              => let P0 := fresh in
+                 let N0 := fresh in
+                 let C0 := fresh in
+                 set (P0 := P);
+                   set (N0 := N);
+                   set (C0 := C);
+                   let IH := fresh "IH" in
+                   let xs := fresh "xs" in
+                   refine (list_rect
+                             (fun ls' => forall a' (pf : ls' = f a') b' c' d',
+                                           (bool_rect
+                                              (fun _ => _)
+                                              (N0 a' b' c' d')
+                                              (list_rect P0 (fun _ _ _ _ => true) C0 ls' a' b' c' d')
+                                              (EqNat.beq_nat (List.length ls') 0))
+                                           = list_rect P0 N0 C0 ls' a' b' c' d')
+                             _
+                             _
+                             (f a) a eq_refl b c d);
+                     simpl @list_rect;
+                     [ subst P0 N0 C0; intros; cbv beta
+                     | intros ? xs IH; intros; unfold C0 at 1 3; cbv beta;
+                       match goal with
+                         | [ |- appcontext[list_rect P0 N0 C0 ?ls'' ?a''] ]
+                           => specialize (IH a'')
+                       end;
+                       let T := match type of IH with ?T -> _ => T end in
+                       let H_helper := fresh in
+                       assert (H_helper : T);
+                         [
+                         | specialize (IH H_helper);
+                           setoid_rewrite <- IH; clear IH ] ]
+          end.
+          { reflexivity. }
+          { rewrite rdp_list_production_tl_correct.
+            match goal with
+              | [ H : _ = ?x |- context[?x] ]
+                => rewrite <- H; reflexivity
+            end. }
+          { simpl.
+            unfold parse_item'.
+            step_opt';
+            repeat match goal with
+                     | [ |- context[List.map _ match ?e with _ => _ end] ]
+                       => is_var e; destruct e
+                     | _ => progress simpl
+                     | [ |- ?x = ?x ] => reflexivity
+                     | _ => progress rewrite ?Bool.andb_true_r, ?Min.min_idempotent, ?Minus.minus_diag
+                     | [ H : EqNat.beq_nat _ _ = true |- _ ]
+                       => apply EqNat.beq_nat_true in H
+                     | _ => progress subst
+                     | [ |- context[EqNat.beq_nat ?x ?y] ]
+                       => is_var x; destruct (EqNat.beq_nat x y) eqn:?
+                     | [ H := _ |- _ ] => subst H
+                   end. } }
+        cbv beta.
+        step_opt'; [ | reflexivity ].
+        etransitivity_rev _.
+        { t_reduce_list_evar; [ reflexivity | ].
+          etransitivity_rev _.
+          { step_opt'.
+            etransitivity_rev _.
+            { repeat optsplit_t'.
+              { apply (f_equal2 andb); [ | reflexivity ].
+                rewrite Min.min_idempotent at 2.
+                match goal with
+                  | [ |- _ = ?f ?b ?c ?d ?e ]
+                    => refine (f_equal (fun b' => f b' c d e) _)
+                end.
+                match goal with
+                  | [ |- _ = ?f (min ?x ?x) (?pf_f ?pf ?k) ]
+                    => etransitivity_rev (f x pf);
+                      [ generalize (pf_f pf k); rewrite Min.min_idempotent; intro
+                      | ]
+                end.
+                { f_equal; apply Le.le_proof_irrelevance. }
+                { reflexivity. } }
+              { etransitivity_rev _.
+                { repeat optsplit_t'; [ | reflexivity ].
+                  apply (f_equal2 andb); [ | reflexivity ].
+                  apply (f_equal2 andb); [ | reflexivity ].
+                  match goal with
+                    | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
+                      => refine (_ : Compare_dec.leb v x = _)
+                  end.
+                  match goal with
+                    | [ |- leb 1 ?x = _ ]
+                      => is_var x; destruct x as [|[|]]; try reflexivity
+                  end. }
+                higher_order_reflexivity. } }
+            reflexivity. }
+          etransitivity_rev _.
+          { rewrite !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ].
+            unfold parse_item'.
+            repeat optsplit_t'; repeat step_opt';
+            [ | reflexivity | reflexivity | reflexivity ].
+            apply (f_equal2 andb);
+            repeat optsplit_t'; repeat step_opt';
+            reflexivity. }
+          reflexivity. }
+        reflexivity. }
+
+      unfold parse_production', parse_production'_for, parse_item', productions, production.
+      cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
+      cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
+
       step_opt'; [ | reflexivity ].
       step_opt'.
       etransitivity_rev _.
-      { step_opt'.
-        cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
+      { cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
         simpl rewrite list_to_productions_to_nonterminal.
         etransitivity_rev _.
         { step_opt'; [ reflexivity | ].
@@ -734,7 +1053,7 @@ Section recursive_descent_parser.
           rewrite map_length.
           reflexivity. }
         rewrite_map_nth_rhs; rewrite !map_map; simpl.
-        apply f_equal2; [ | reflexivity ].
+        apply (f_equal2 (@nth _ _)); [ | reflexivity ].
         step_opt'; [ | reflexivity ].
         rewrite !map_map; simpl.
         reflexivity. }
@@ -756,27 +1075,31 @@ Section recursive_descent_parser.
                      | step_opt'
                      | t_reduce_list_evar
                      | apply (f_equal2 andb)
-                     | t_refine_item_match ].
-        { progress unfold rdp_list_of_nonterminal; simpl.
-          rewrite !uniquize_idempotent.
-          reflexivity. }
-        { match goal with
-            | [ |- _ = ?f ?A ?b ?c ?d ]
-              => refine (f_equal (fun A' => f A' b c d) _)
-          end.
-          progress unfold Carriers.default_production_tl; simpl.
-          repeat step_opt'; [ reflexivity | ].
-          simpl rewrite list_to_productions_to_nonterminal.
-          unfold productions, production.
-          rewrite_map_nth_rhs; simpl.
-          rewrite <- nth'_nth.
-          rewrite_map_nth_dep_rhs; simpl.
-          step_opt'; simpl.
-          rewrite !nth'_nth; simpl.
-          rewrite map_length.
-          rewrite <- !nth'_nth.
-          change @nth' with @inner_nth'.
-          reflexivity. } }
+                     | apply (f_equal2 (@cons _))
+                     | t_refine_item_match ];
+        first [ progress unfold rdp_list_of_nonterminal; simpl;
+                rewrite !uniquize_idempotent;
+                reflexivity
+              | idtac;
+                match goal with
+                  | [ |- _ = ?f ?A ?b ?c ?d ]
+                    => refine (f_equal (fun A' => f A' b c d) _)
+                end;
+                progress unfold Carriers.default_production_tl; simpl;
+                repeat step_opt'; [ reflexivity | ];
+                simpl rewrite list_to_productions_to_nonterminal;
+                unfold productions, production;
+                rewrite_map_nth_rhs; simpl;
+                rewrite <- nth'_nth;
+                rewrite_map_nth_dep_rhs; simpl;
+                step_opt'; simpl;
+                rewrite !nth'_nth; simpl;
+                rewrite map_length;
+                rewrite <- !nth'_nth;
+                change @nth' with @inner_nth';
+                reflexivity
+              | idtac ].
+        reflexivity. }
       etransitivity_rev _.
       { repeat first [ idtac;
                        match goal with
@@ -785,32 +1108,63 @@ Section recursive_descent_parser.
                        end
                      | rewrite rdp_list_to_production_opt_correct
                      | step_opt'
-                     | t_reduce_list_evar ]. }
-      match goal with
-        | [ |- appcontext[@rdp_list_to_production] ] => fail 1
-        | _ => idtac
-      end.
+                     | t_reduce_list_evar ].
+        reflexivity. }
       etransitivity_rev _.
       { step_opt'; [ | reflexivity ].
+        step_opt'.
         step_opt'.
         step_opt'; [ | reflexivity ].
         unfold rdp_list_to_production_opt at 1; simpl.
         change @inner_nth' with @nth' at 3.
         etransitivity_rev _.
-        { repeat step_opt'.
-          rewrite nth'_nth.
-          rewrite_map_nth_rhs; rewrite !map_map; simpl.
-          rewrite <- nth'_nth.
-          change @nth' with @inner_nth'.
-          apply f_equal2; [ | reflexivity ].
-          step_opt'; [ | reflexivity ].
-          rewrite map_id.
-          change @inner_nth' with @nth' at 3.
-          rewrite nth'_nth.
-          rewrite_map_nth_rhs; simpl.
-          rewrite <- nth'_nth.
-          change @nth' with @inner_nth'.
-          apply f_equal2; [ | reflexivity ].
+        { step_opt'.
+          etransitivity_rev _.
+          { repeat step_opt'; [ | reflexivity ].
+            rewrite nth'_nth.
+            rewrite_map_nth_rhs; rewrite !map_map; simpl.
+            rewrite <- nth'_nth.
+            change @nth' with @inner_nth'.
+            apply f_equal2; [ | reflexivity ].
+            step_opt'; [ | reflexivity ].
+            rewrite map_id.
+            change @inner_nth' with @nth' at 3.
+            rewrite nth'_nth.
+            rewrite_map_nth_rhs; simpl.
+            rewrite <- nth'_nth.
+            change @nth' with @inner_nth'.
+            apply f_equal2; [ | reflexivity ].
+            reflexivity. }
+          etransitivity_rev _.
+          { change @inner_nth' with @nth' at 1.
+            rewrite nth'_nth.
+            rewrite_map_nth_rhs; rewrite !map_map; simpl.
+            rewrite <- nth'_nth.
+            change @nth' with @inner_nth' at 1.
+            reflexivity. }
+          etransitivity_rev _.
+          { apply f_equal2; [ reflexivity | ].
+            rewrite bool_rect_andb; simpl.
+            rewrite Bool.andb_true_r.
+            match goal with
+            | [ |- _ = (orb (negb (EqNat.beq_nat ?x 0)) (andb (EqNat.beq_nat ?x 0) ?y)) ]
+              => let z := fresh in
+                 let y' := fresh in
+                 set (z := x);
+                   set (y' := y);
+                   refine (_ : orb (Compare_dec.leb 1 x) y = _);
+                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (EqNat.beq_nat z 0)) (andb (EqNat.beq_nat z 0) y'));
+                   destruct z, y'; reflexivity
+            end. }
+          etransitivity_rev _.
+          { apply (f_equal2 (inner_nth' _)); [ | reflexivity ].
+            step_opt'; [ | reflexivity ].
+            change @inner_nth' with @nth' at 1.
+            rewrite nth'_nth.
+            rewrite_map_nth_rhs; rewrite !map_map; simpl.
+            rewrite <- nth'_nth.
+            change @nth' with @inner_nth' at 1.
+            reflexivity. }
           reflexivity. }
         (*etransitivity_rev _.
         { change @inner_nth' with @nth' at 1.
@@ -828,14 +1182,33 @@ Section recursive_descent_parser.
         reflexivity. }
       reflexivity. }
     etransitivity_rev _.
-    { repeat first [ step_opt' | apply (f_equal2 (inner_nth' _)); fin_step_opt ];
-      [ | reflexivity | reflexivity | reflexivity | ].
+    { repeat first [ step_opt'
+                   | apply (f_equal2 (inner_nth' _)); fin_step_opt
+                   | apply (f_equal2 orb); fin_step_opt
+                   | idtac;
+                     match goal with
+                     | [ |- _ = uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls ]
+                       => reflexivity
+                     | [ |- _ = combine _ (map _ (uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls)) ]
+                       => reflexivity
+                     | [ |- _ = List.length (rdp_list_to_production_opt _) ]
+                       => progress unfold rdp_list_to_production_opt at 1; simpl;
+                          change @inner_nth' with @nth';
+                          match goal with
+                          | [ |- _ = @List.length ?A ?ls ]
+                            => refine (f_equal (@List.length A) _)
+                          end;
+                          repeat step_opt';
+                          [ progress simpl; reflexivity
+                          | reflexivity ]
+                     end ];
+      [ | reflexivity | ].
       { t_reduce_list_evar; [ reflexivity | ].
-        repeat step_opt'; [ | reflexivity ].
-        apply f_equal2; [ | ].
-        { step_opt'; [ | reflexivity ].
-          t_reduce_fix.
-          reflexivity. }
+        repeat first [ step_opt'
+                     | apply (f_equal2 andb)
+                     | progress fin_step_opt ].
+        { reflexivity. }
+        { reflexivity. }
         { match goal with
             | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
               => let f' := fresh in
@@ -849,201 +1222,513 @@ Section recursive_descent_parser.
               => generalize y; generalize y'
           end.
           rewrite minusr_minus; intros; f_equal.
-          apply Le.le_proof_irrelevance. } }
+          apply Le.le_proof_irrelevance. }
+        { reflexivity. }
+        { etransitivity_rev _.
+          { match goal with
+              | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
+                => let f' := fresh in
+                   set (f' := f);
+                     let ty := constr:(f' (x - y)%natr (@opt_helper_minusr_proof a b c d) = f' (x - y) (pf a b c d )) in
+                     refine (_ : ty); change ty;
+                     clearbody f'
+            end.
+            match goal with
+              | [ |- ?f ?x ?y = ?f ?x' ?y' ]
+                => generalize y; generalize y'
+            end.
+            rewrite minusr_minus; intros; f_equal.
+            apply Le.le_proof_irrelevance. }
+          simpl; rewrite Plus.plus_comm; progress simpl.
+          reflexivity. }
+        { reflexivity. }
+        { match goal with
+            | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
+              => let f' := fresh in
+                 set (f' := f);
+                   let ty := constr:(f' (x - y)%natr (@opt_helper_minusr_proof a b c d) = f' (x - y) (pf a b c d )) in
+                   refine (_ : ty); change ty;
+                   clearbody f'
+          end.
+          match goal with
+            | [ |- ?f ?x ?y = ?f ?x' ?y' ]
+              => generalize y; generalize y'
+          end.
+          rewrite minusr_minus; intros; f_equal.
+          apply Le.le_proof_irrelevance. }
+        { reflexivity. } }
+      { reflexivity. } }
+    reflexivity.
+  Defined.
+
+  Definition parse_nonterminal_opt'2
+             (str : String)
+             (nt : String.string)
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
+  Proof.
+    let c := constr:(parse_nonterminal_opt'1 str nt) in
+    let h := head c in
+    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
+    refine_Fix2_5_Proper_eq.
+    etransitivity_rev _.
+    { fix2_trans;
+      [
+      | solve [ change @opt3.nth' with @nth';
+                change @opt2.map with @List.map;
+                change @inner_nth' with @nth';
+                t_reduce_fix;
+                t_postreduce_list;
+                unfold item_rect;
+                t_reduce_fix ] ].
       reflexivity. }
+
     (** [nth'] is useful when the index is unknown at top-level, but performs poorly in [simpl] when the index is eventually known at compile-time.  So we need to remove the [nth'] *)
     etransitivity_rev _.
     { change @inner_nth' with @nth'.
       step_opt'; [ | reflexivity ].
+      step_opt'; [].
       apply (f_equal2 (nth' _)); [ | reflexivity ].
       step_opt'; [ | reflexivity ].
-      step_opt'.
-      step_opt'.
-      rewrite nth'_nth; apply (f_equal2 (nth _)); [ | reflexivity ].
-      step_opt'; [ | reflexivity ].
-      rewrite nth'_nth; apply (f_equal2 (nth _)); [ | reflexivity ].
-      step_opt'.
-      t_reduce_list_evar; [ reflexivity | ].
-      step_opt'.
-      step_opt'; [ | reflexivity ].
-      rewrite nth'_nth.
-      apply (f_equal2 andb); [ reflexivity | ].
-      match goal with
-        | [ |- _ = ?f ?x ?a ?b ?c ]
-          => refine (f_equal (fun x' => f x' a b c) _)
-      end.
-      fin_step_opt; [ reflexivity | ].
-      apply (f_equal2 (nth _)); [ | reflexivity ].
-      step_opt'; [ | reflexivity ].
-      rewrite nth'_nth; reflexivity. }
+      step_opt'; [].
+      rewrite !nth'_nth; apply (f_equal2 (nth _)); [ | ].
+      { step_opt'; [ | reflexivity ].
+        rewrite !nth'_nth; apply (f_equal2 (nth _)); [ | ].
+        { step_opt'; [].
+          match goal with
+          | [ |- _ = @bool_rect (fun _ => ?P) _ _ _ ]
+            => apply (f_equal3 (bool_rect (fun _ => P)))
+          end; [ reflexivity | | ];
+          fin_step_opt.
+          { t_reduce_list_evar; [ reflexivity | ].
+            step_opt'; [].
+            step_opt'; [ | ].
+            { rewrite nth'_nth.
+              apply (f_equal2 andb); [ reflexivity | ].
+              etransitivity_rev _.
+              { match goal with
+                | [ |- _ = ?f (minusr ?x ?x) ?pf ]
+                  => generalize pf;
+                    rewrite (minusr_minus x x), Minus.minus_diag;
+                    let pf' := fresh in
+                    intro pf';
+                      assert (Le.le_0_n _ = pf') by apply Le.le_proof_irrelevance;
+                      subst pf'
+                end.
+                reflexivity. }
+              match goal with
+              | [ |- _ = ?f ?x ?a ?b ?c ]
+                => refine (f_equal (fun x' => f x' a b c) _)
+              end.
+              fin_step_opt; [ reflexivity | ].
+              apply (f_equal2 (nth _)); [ | reflexivity ].
+              step_opt'; [ | reflexivity ].
+              rewrite nth'_nth; reflexivity. }
+            { step_opt'.
+              { apply (f_equal2 andb); [ reflexivity | ].
+                rewrite nth'_nth.
+                match goal with
+                | [ |- _ = ?f ?x ?a ?b ?c ]
+                  => refine (f_equal (fun x' => f x' a b c) _)
+                end.
+                fin_step_opt; [ reflexivity | ].
+                apply (f_equal2 (nth _)); [ | reflexivity ].
+                step_opt'; [ | reflexivity ].
+                rewrite nth'_nth; reflexivity. }
+              { step_opt'; [ | reflexivity ].
+                apply (f_equal2 andb); [ reflexivity | ].
+                rewrite nth'_nth.
+                match goal with
+                | [ |- _ = ?f ?x ?a ?b ?c ]
+                  => refine (f_equal (fun x' => f x' a b c) _)
+                end.
+                fin_step_opt; [ reflexivity | ].
+                apply (f_equal2 (nth _)); [ | reflexivity ].
+                step_opt'; [ | reflexivity ].
+                rewrite nth'_nth; reflexivity. } } }
+          { match goal with
+            | [ |- _ = @List.length ?A ?ls ]
+              => refine (f_equal (@List.length A) _)
+            end.
+            apply (f_equal2 (nth _)); [ | reflexivity ].
+            step_opt'; [ | reflexivity ].
+            rewrite nth'_nth.
+            apply (f_equal2 (nth _)); [ | reflexivity ].
+            reflexivity. } }
+        { match goal with
+          | [ |- _ = @bool_rect (fun _ => ?P) _ _ _ ]
+            => apply (f_equal3 (bool_rect (fun _ => P)))
+          end;
+          fin_step_opt; [].
+          match goal with
+          | [ |- _ = @List.length ?A ?ls ]
+            => refine (f_equal (@List.length A) _)
+          end.
+          apply (f_equal2 (nth _)); [ | reflexivity ].
+          step_opt'; [ | reflexivity ].
+          rewrite nth'_nth.
+          apply (f_equal2 (nth _)); [ | reflexivity ].
+          reflexivity. } }
+      { apply (f_equal2 orb); fin_step_opt; [].
+        match goal with
+        | [ |- _ = @List.length ?A ?ls ]
+          => refine (f_equal (@List.length A) _)
+        end.
+        apply (f_equal2 (nth _)); [ | reflexivity ].
+        step_opt'; [ | reflexivity ].
+        rewrite nth'_nth.
+        rewrite map_id.
+        apply (f_equal2 (nth _)); [ | reflexivity ].
+        reflexivity. } }
     change @nth' with @inner_nth' at 1.
     match goal with
       | [ |- appcontext[@nth'] ] => fail 1
       | _ => change @inner_nth' with @nth'
     end.
-    unfold item_rect.
+    etransitivity_rev _.
+    { step_opt'; [ | reflexivity ].
+      rewrite nth'_nth at 1.
+      rewrite_map_nth_rhs; rewrite !map_map; simpl.
+      rewrite <- nth'_nth at 1.
+      reflexivity. }
+
     reflexivity.
   Defined.
 
-  Local Ltac change_opt' ls nt str :=
+  Local Ltac safe_change_opt' :=
     idtac;
     match goal with
-      | _ => progress change (map fst ls) with (opt.map opt.fst ls)
-      | [ |- appcontext G[snd (of_string str)] ]
-        => let G' := context G[opt.snd (of_string str)] in
-           change G'
-      | _ => progress change (string_beq nt) with (opt.string_beq nt)
-      | _ => progress change (uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls)
-             with (opt.uniquize (fun x0 y0 => opt.string_beq (opt.fst x0) (opt.fst y0)) ls)
-      | [ |- context G[uniquize string_beq (opt.map ?f ?ls)] ]
-        => progress change (uniquize string_beq (opt.map f ls))
-           with (opt.uniquize opt.string_beq (opt.map f ls))
-      | [ |- context G[List.length (opt.uniquize ?beq ?ls)] ]
-        => progress change (List.length (opt.uniquize beq ls))
-           with (opt.length (opt.uniquize beq ls))
-      | [ |- context G[first_index_default (opt.string_beq ?x) (opt.length ?ls) (opt.uniquize ?beq ?ls')] ]
-        => let G' := context G[opt.first_index_default (opt.string_beq x) (opt.length ls) (opt.uniquize beq ls')] in
-           change G'
-      | [ |- context G[up_to (opt.length ?ls)] ]
-        => let G' := context G[opt.up_to (opt.length ls)] in
-           change G'
-      | [ |- context G[rev (opt.up_to ?ls)] ]
-        => let G' := context G[opt.rev (opt.up_to ls)] in
-           change G'
-      | [ |- context G[map (fun x0 : ?T => up_to (Datatypes.length (snd x0)))
-                           (opt.uniquize ?beq ?ls)] ]
-        => let G' := context G[opt.map (fun x0 : T => opt.up_to (opt.length (opt.snd x0)))
-                                       (opt.uniquize beq ls)] in
-           change G'
-      | [ |- context G[combine (opt.rev ?ls) (opt.map ?f ?ls')] ]
-        => let G' := context G[opt.combine (opt.rev ls) (opt.map f ls')] in
-           change G'
-      | [ |- context G[List.hd ?d (opt.uniquize ?beq ?ls)] ]
-        => let G' := context G[opt.hd d (opt.uniquize beq ls)] in
-           change G'
-      | [ |- context G[List.map (@snd _ _) (opt.uniquize ?beq ?ls)] ]
-        => let G' := context G[opt.map (@opt.snd _ _) (opt.uniquize beq ls)] in
-           change G'
-      | [ |- context G[fst (of_string ?str')] ]
-        => let G' := context G[opt.fst (of_string str')] in
-           change G'
-      | [ |- context G[snd (of_string ?str')] ]
-        => let G' := context G[opt.snd (of_string str')] in
-           change G'
-      | [ |- context G[List.length (opt.snd ?x)] ]
-        => let G' := context G[opt.length (opt.snd x)] in
-           change G'
-      | [ |- context G[fst (opt.fst ?x)] ]
-        => let G' := context G[opt.fst (opt.fst x)] in
-           change G'
-      | [ |- context G[snd (opt.fst ?x)] ]
-        => let G' := context G[opt.snd (opt.fst x)] in
-           change G'
-      | [ |- context G[fst (opt.snd ?x)] ]
-        => let G' := context G[opt.fst (opt.snd x)] in
-           change G'
-      | [ |- context G[snd (opt.snd ?x)] ]
-        => let G' := context G[opt.snd (opt.snd x)] in
-           change G'
+    | [ |- context G[minusr (opt.id ?x) (opt.id ?y)] ]
+      => let G' := context G[opt.id (opt.minusr x y)] in
+         change G'
+    | [ |- context G[minusr (opt.id ?x) (opt2.id ?y)] ]
+      => let G' := context G[opt2.id (opt2.minusr x y)] in
+         change G'
+    | [ |- context G[fst (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.fst x)] in
+         change G'
+    | [ |- context G[snd (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.snd x)] in
+         change G'
+    | [ |- context G[fst (opt2.id ?x)] ]
+      => let G' := context G[opt2.id (opt2.fst x)] in
+         change G'
+    | [ |- context G[snd (opt2.id ?x)] ]
+      => let G' := context G[opt2.id (opt2.snd x)] in
+         change G'
+    | [ |- appcontext G[nth (opt2.id ?x) ?ls ?d] ]
+      => let G' := context G[opt2.id (opt2.nth x ls d)] in
+         change G'
+    | [ |- context G[StringLike.length (opt.id ?str)] ]
+      => let G' := context G[StringLike.length str] in
+         change G'
+    | [ |- context G[map (opt.id ?f) (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.map f x)] in
+         change G'
+    | [ |- context G[map fst (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.map opt.fst x)] in
+         change G'
+    | [ |- context G[map snd (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.map opt.snd x)] in
+         change G'
+    (*| [ |- appcontext G[snd (of_string (opt.id ?x))] ]
+               => let G' := context G[opt.snd (of_string x)] in
+                  change G'*)
+    | [ |- context G[string_beq (opt.id ?x)] ]
+      => let G' := context G[opt.id (opt.string_beq x)] in
+         change G'
+    | [ |- context G[fun x0 y0 : ?T => string_beq (fst x0) (fst y0)] ]
+      => let G' := context G[opt.id (fun x0 y0 : T => opt.string_beq (opt.fst x0) (opt.fst y0))] in
+         change G'
+    | [ |- context G[uniquize (opt.id ?beq) (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.uniquize beq ls)] in
+         change G'
+    | [ |- context G[uniquize string_beq (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.uniquize opt.string_beq ls)] in
+         change G'
+    | [ |- context G[List.length (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.length ls)] in
+         change G'
+    | [ |- context G[List.length (opt2.id ?ls)] ]
+      => let G' := context G[opt2.id (opt2.length ls)] in
+         change G'
+    | [ |- context G[first_index_default (opt.id ?x) (opt.id ?y) (opt.id ?z)] ]
+      => let G' := context G[opt.id (opt.first_index_default x y z)] in
+         change G'
+    | [ |- context G[up_to (opt.id ?n)] ]
+      => let G' := context G[opt.id (opt.up_to n)] in
+         change G'
+    | [ |- context G[pred (opt.id ?n)] ]
+      => let G' := context G[opt.id (opt.pred n)] in
+         change G'
+    | [ |- context G[rev (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.rev ls)] in
+         change G'
+    | [ |- context G[fun x0 : ?T => up_to (Datatypes.length (snd x0))] ]
+      => let G' := context G[opt.id (fun x0 : T => opt.up_to (opt.length (opt.snd x0)))] in
+         change G'
+    | [ |- context G[combine (opt.id ?ls) (opt.id ?ls')] ]
+      => let G' := context G[opt.id (opt.combine ls ls')] in
+         change G'
+    | [ |- context G[List.hd ?d (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.hd d ls)] in
+         change G'
+    | [ |- context G[fst (of_string ?str')] ]
+      => let G' := context G[opt.id (opt.fst (of_string str'))] in
+         change G'
+    | [ |- context G[snd (of_string ?str')] ]
+      => let G' := context G[opt.id (opt.snd (of_string str'))] in
+         change G'
+    | [ |- context G[EqNat.beq_nat (opt2.id ?x) 0] ]
+      => let G' := context G[opt2.id (opt2.beq_nat x 0)] in
+         change G'
+    | [ |- context G[(opt2.id ?x, 0)] ]
+      => let G' := context G[opt2.id (x, 0)] in
+         change G'
+    | [ |- context G[(opt2.id ?x, opt2.id ?y)] ]
+      => let G' := context G[opt2.id (x, y)] in
+         change G'
+    | [ |- context G[EqNat.beq_nat (opt.id ?x) 0] ]
+      => let G' := context G[opt.id (opt.beq_nat x 0)] in
+         change G'
+    | [ |- context G[S (opt2.id ?x)] ]
+      => let G' := context G[opt2.id (S x)] in
+         change G'
+    | [ |- context G[S (opt.id ?x)] ]
+      => let G' := context G[opt.id (S x)] in
+         change G'
+    | [ |- context G[leb (opt2.id ?x) (opt.id ?y)] ]
+      => let G' := context G[opt2.id (opt2.leb x y)] in
+         change G'
+    | [ |- context G[leb 1 (opt2.id ?x)] ]
+      => let G' := context G[opt2.id (opt2.leb 1 x)] in
+         change G'
+    | [ |- context G[leb 1 (opt2.length ?x)] ]
+      => let G' := context G[opt2.id (opt2.leb 1 (opt2.length x))] in
+         change G'
     end.
 
-  Local Ltac change_opt ls nt str := repeat change_opt' ls nt str.
+  Local Ltac change_opt_reduce' :=
+    idtac;
+    match goal with
+    | _ => progress safe_change_opt'
+    | [ |- ?LHS = _ ]
+      => match LHS with
+         | appcontext[opt.id] => unfold opt.id at 1
+         | appcontext[opt2.id] => unfold opt2.id at 1
+         | appcontext[opt3.id] => unfold opt3.id at 1
+         end
+    | [ |- ?e = opt.id ?x ]
+      => progress change (e = x)
+    | [ |- ?e = opt2.id ?x ]
+      => progress change (e = x)
+    | [ |- _ = opt2.map _ _ ]
+      => apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
+                : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt2.map _ _));
+        [ let x := fresh in intro x; change x with (opt2.id x)
+        | ]
+    | [ |- _ = opt.map _ _ ]
+      => apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
+                : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt.map _ _));
+        [ let x := fresh in intro x; change x with (opt.id x)
+        | ]
+    | [ |- _ = @opt.fold_left ?A ?B orb _ false ]
+      => refine (_ : opt.fold_left orb _ false = _);
+        apply ((_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B))
+               : Proper _ (@opt.fold_left A B));
+        repeat (let x := fresh in intro x; change x with (opt.id x))
+    | [ |- _ = @opt.list_caset ?A (fun _ => ?P) _ _ _ ]
+      => refine (_ : @opt.list_caset A (fun _ => P) _ _ _ = _);
+        apply ((_ : Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> _ ==> _) (@list_caset A (fun _ => P)))
+               : Proper _ (@opt.list_caset A (fun _ => P)));
+        repeat (let x := fresh in intro x; change x with (opt.id x))
+    | _ => progress cbv beta
+    | [ |- _ = opt2.nth _ _ _ ]
+      => apply (f_equal2 (opt2.nth _))
+    | [ |- _ = opt2.bool_rect ?P _ _ _ ]
+      => apply (f_equal3 (opt2.bool_rect P))
+    | _ => progress fin_step_opt
+    | [ |- _ = orb _ _ ] => apply (f_equal2 orb)
+    | [ |- _ = andb _ _ ] => apply (f_equal2 andb)
+    | [ |- ?e = List.map ?f (opt2.id ?x) ]
+      => progress change (e = opt2.map f x)
+    | [ |- context G[List.map ?f (opt.id ?ls)] ]
+      => let G' := context G[opt.id (opt.map f ls)] in
+         change G'
+    | [ |- context G[bool_rect ?x ?y ?z (opt.id ?w)] ]
+      => let G' := context G[opt.id (opt.bool_rect x y z w)] in
+         change G'
+    | [ |- context G[bool_rect ?x ?y ?z (opt2.id ?w)] ]
+      => let G' := context G[opt2.id (opt2.bool_rect x y z w)] in
+         change G'
+    | [ |- context G[list_caset ?x ?y ?z (opt.id ?w)] ]
+      => let G' := context G[opt.id (opt.list_caset x y z w)] in
+         change G'
+    | [ |- context G[item_rect ?x ?y ?z (opt.id ?w)] ]
+      => let G' := context G[opt.id (opt.item_rect x y z w)] in
+         change G'
+    | [ |- context G[List.fold_left orb (opt.id ?ls) false] ]
+      => let G' := context G[opt.id (opt.fold_left orb ls false)] in
+         change G'
+    | [ |- _ = list_rect ?P ?N ?C (opt.id ?ls) (opt2.id ?idx) ?offset ?len ?pf ]
+      => t_reduce_list_evar;
+        [
+               | match goal with
+                 | [ |- ?e ?x ?xs ?H ?a ?b ?c ?d = _ ]
+                   => is_evar e;
+                     change x with (opt.id x);
+                     change xs with (opt.id xs);
+                     change a with (opt2.id a)
+                 end ]
+    | [ |- _ = opt.item_rect ?T ?A ?B ?c ] (* evar kludge following *)
+      => revert c;
+        let RHS := match goal with |- forall c', _ = ?RHS c' => RHS end in
+        let f := constr:(fun TC NC =>
+                           forall c, opt.item_rect T TC NC c = RHS c) in
+        let f := (eval cbv beta in f) in
+        let e1 := fresh in
+        let e2 := fresh in
+        match type of f with
+        | ?X -> ?Y -> _
+          => evar (e1 : X); evar (e2 : Y)
+        end;
+          intro c;
+          let ty := constr:(opt.item_rect T e1 e2 c = RHS c) in
+          etransitivity_rev _; [ refine (_ : ty) | reflexivity ];
+          revert c;
+          refine (item_rect
+                    (fun c => opt.item_rect T e1 e2 c = RHS c)
+                    _ _);
+          intro c; simpl @opt.item_rect; subst e1 e2;
+          change c with (opt.id c)
+    | [ |- _ = opt2.beq_nat _ _ ] => apply (f_equal2 opt2.beq_nat)
+    | [ |- _ = opt2.leb _ _ ] => apply (f_equal2 opt2.leb)
+    | [ |- _ = opt2.length _ ] => apply f_equal
+    | [ |- _ = opt.snd _ ] => apply f_equal
+    | [ |- _ = opt2.snd _ ] => apply f_equal
+    | [ |- _ = opt.fst _ ] => apply f_equal
+    | [ |- _ = opt2.fst _ ] => apply f_equal
+    | [ |- _ = opt.uniquize _ _ ] => reflexivity
+    | [ |- _ = opt.combine _ _ ] => reflexivity
+    | [ |- _ = char_at_matches _ _ _ ] => apply f_equal3
+    end.
 
-  Definition parse_nonterminal_opt'1
+  Local Ltac safe_change_opt := repeat safe_change_opt'.
+  Local Ltac change_opt_reduce := repeat change_opt_reduce'.
+
+  Definition parse_nonterminal_opt'3
              (str : String)
              (nt : String.string)
-  : { b : bool | b = parse_nonterminal str nt }.
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
   Proof.
-    let c := constr:(parse_nonterminal_opt'0 str nt) in
+    let c := constr:(parse_nonterminal_opt'2 str nt) in
     let h := head c in
     let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
     sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
     evar (b' : bool).
     sigL_transitivity b'; subst b'.
     Focus 2.
-    { unfold rdp_list_of_nonterminal; simpl.
+    { progress unfold rdp_list_of_nonterminal; simpl.
+
+      match goal with
+        | [ |- _ = ?f ?x ]
+          => set (F := f)
+      end.
       rewrite !uniquize_idempotent.
+      subst F.
       (** TODO: Come up with a robust (possibly reflective) version of
       this, based or wheich things are recursively accessible *)
-      change_opt ls nt str.
+      change @nth' with @opt3.nth' at 1.
+      change @List.map with @opt2.map at 1.
+      change ls with (opt.id ls).
+      change nt with (opt.id nt).
+      change str with (opt.id str).
+      safe_change_opt.
+      change (opt.id ls) with ls.
+      change (opt.id nt) with nt.
+      change (opt.id str) with str.
       reflexivity. }
     Unfocus.
     refine_Fix2_5_Proper_eq.
     etransitivity_rev _.
     { fix2_trans;
       [
-      | solve [ t_reduce_fix;
-                t_reduce_list;
+      | solve [ change @opt3.nth' with @nth';
+                change @opt2.map with @List.map;
                 t_reduce_fix;
-                match goal with
-                | [ H : forall idx0 l0 y0, list_rect _ _ _ _ _ _ _ _ = _ |- list_rect ?T _ _ _ ?idx _ _ ?pf = _ ]
-                  => generalize pf;
-                    rewrite minusr_minus; intro;
-                    rewrite H; reflexivity
-                end ] ].
+                t_postreduce_list;
+                unfold item_rect;
+                t_reduce_fix ] ].
+
       step_opt'; [ | reflexivity ].
-      apply f_equal2; [ | reflexivity ].
-      step_opt'; [ | reflexivity ].
-      step_opt'.
-      step_opt'.
-      apply f_equal2; [ | reflexivity ].
-      change @List.map with @opt.map at 1.
-      apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
-             : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt.map _ _));
-        [
-        | reflexivity ].
-      let x := fresh in
-      intro x;
-        change (snd x) with (opt.snd x);
-        change (fst x) with (opt.fst x).
-      etransitivity_rev _.
-      { apply f_equal2; [ | reflexivity ].
-        change @List.map with @opt.map at 1.
-        apply ((_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
-               : Proper (pointwise_relation _ _ ==> eq ==> eq) (@opt.map _ _));
-          [ intro
-          | reflexivity ].
-        etransitivity_rev _.
-        { t_reduce_list_evar; [ reflexivity | ].
-          unfold Carriers.default_production_carrierT in *.
-          let idx := match reverse goal with idx : (nat * (nat * nat))%type |- _ => idx end in
-          change (fst idx) with (opt.fst idx);
-            change (snd idx) with (opt.snd idx);
-            change_opt ls nt str.
-          etransitivity_rev _.
-          { step_opt'.
-            step_opt'; [ | reflexivity ].
-            apply (f_equal2 andb); [ reflexivity | ].
-            change @List.map with @opt.map at 1 2.
-            change @snd with @opt.snd at 1 2.
-            change @List.length with @opt.length at 1 2.
-            reflexivity. }
-          change @fold_left with @opt2.fold_left at 1.
-          change @map with @opt2.map at 1.
-          reflexivity. }
-        change @list_rect with @opt.list_rect at 1.
+      apply (f_equal2 (opt3.nth' _)); [ | reflexivity ].
+      change_opt_reduce; [].
+      step_opt';
+      change_opt_reduce; [ | | | ].
+      { match goal with
+        | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
+          => unfold opt.id
+        end.
         reflexivity. }
-      progress change_opt ls nt str.
-      change @nth with @opt3.nth at 1.
-      reflexivity. }
-    change @map with @opt3.map at 1 2.
+      { match goal with
+        | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
+          => refine (f_equal (fun x' => f x' y z w) _)
+        end.
+        change_opt_reduce; [].
+        match goal with
+        | [ |- _ = if opt2.id _ then opt2.id _ else opt2.id _ ]
+          => unfold opt2.id; reflexivity
+        end. }
+      { match goal with
+        | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
+          => refine (f_equal (fun x' => f x' y z w) _)
+        end.
+        change_opt_reduce; [].
+        match goal with
+        | [ |- _ = if opt2.id _ then opt2.id _ else opt2.id _ ]
+          => unfold opt2.id; reflexivity
+        end. }
+      { change @List.map with @opt2.map at 1. (** FIXME: is this right? *)
+        change_opt_reduce; [ | | progress unfold opt2.id; reflexivity ].
+        { match goal with
+          | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
+            => unfold opt.id
+          end.
+          reflexivity. }
+        { match goal with
+          | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
+            => refine (f_equal (fun x' => f x' y z w) _)
+          end.
+          change_opt_reduce; [].
+          match goal with
+          | [ |- _ = if opt2.id _ then opt2.id _ else opt2.id _ ]
+            => unfold opt2.id; reflexivity
+          end. } } }
     change @fold_left with @opt3.fold_left at 1.
-    change @nth' with @opt3.nth' at 1.
-    change @nth with @opt3.nth at 1 2 3.
-    change @fst with @opt3.fst at 1 2.
-    change @snd with @opt3.snd at 1.
+    change @list_rect with @opt.list_rect at 1.
     reflexivity.
   Defined.
 
   Definition parse_nonterminal_opt
              (str : String)
              (nt : String.string)
-  : { b : bool | b = parse_nonterminal str nt }.
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
   Proof.
-    let c := constr:(parse_nonterminal_opt'1 str nt) in
+    let c := constr:(parse_nonterminal_opt'3 str nt) in
     let h := head c in
-    let impl := (eval cbv beta iota zeta delta [h proj1_sig] in (proj1_sig c)) in
+    let impl := (eval cbv beta iota zeta delta [h proj1_sig item_rect list_caset] in (proj1_sig c)) in
     (exists impl);
       abstract (exact (proj2_sig c)).
   Defined.
+
+  Lemma parse_nonterminal_opt_eq
+        {HSLP : StringLikeProperties Char}
+        {splitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G data}
+        (str : String)
+        (nt : String.string)
+    : proj1_sig (parse_nonterminal_opt str nt) = parse_nonterminal (data := data) str nt.
+  Proof.
+    rewrite <- parse_nonterminal_optdata_eq.
+    apply proj2_sig.
+  Qed.
 End recursive_descent_parser.

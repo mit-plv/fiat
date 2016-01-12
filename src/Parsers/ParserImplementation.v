@@ -2,7 +2,9 @@
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -17,15 +19,26 @@ Set Implicit Arguments.
 Local Open Scope list_scope.
 
 Section implementation.
-  Context {Char} {G : grammar Char}.
+  Context {Char}
+          {ls : list (String.string * productions Char)}.
+
+  Local Notation G := (list_to_grammar nil ls) (only parsing).
+
   Context (splitter : Splitter G).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
-  Local Instance parser_split_data : @split_dataT Char _ _ :=
-    { split_string_for_production idx str
-      := splits_for splitter str idx }.
+  Let parser_presplit_data : @split_dataT Char _ _ :=
+    {| split_string_for_production idx str
+       := splits_for splitter str idx |}.
+
+  Local Instance parser_split_data : @split_dataT Char splitter predata
+    := @optsplitdata _ _ _ parser_presplit_data.
+
+  Local Instance preparser_data : @boolean_parser_dataT Char _ :=
+    { predata := rdp_list_predata (G := G);
+      split_data := parser_presplit_data }.
 
   Local Instance parser_data : @boolean_parser_dataT Char _ :=
     { predata := rdp_list_predata (G := G);
@@ -33,7 +46,7 @@ Section implementation.
 
   Local Arguments split_string_for_production : simpl never.
 
-  Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ _ G parser_data
+  Local Instance parser_precompleteness_data : @boolean_parser_completeness_dataT' Char _ _ G preparser_data
     := { split_string_for_production_complete len0 valid str offset len pf nt Hvalid := _ }.
   Proof.
     apply initial_nonterminals_correct in Hvalid.
@@ -95,7 +108,10 @@ Section implementation.
           { eapply (@parse_of_item__of__minimal_parse_of_item Char splitter _ _ _ _); eassumption. }
           { eapply (@parse_of_production__of__minimal_parse_of_production Char splitter _ _ _ _ _); eassumption. } } } }
   Qed.
-Set Printing Implicit. Set Printing Coercions.
+
+  Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ _ G parser_data
+    := optsplitdata_correct.
+
   Program Definition parser (Hvalid : grammar_valid G) : Parser G splitter
     := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);
           has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) Hvalid _ _ Hparse;

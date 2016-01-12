@@ -56,8 +56,11 @@ Section parser.
              str
              new_string_of_base_string_R)).
 
-  Local Instance split_dataProj : @split_dataT _ (adt_based_StringLikeMin_lite splitter_impl) (RDPList.rdp_list_predata (G := G))
+  Local Instance split_dataProj' : @split_dataT _ (adt_based_StringLikeMin_lite splitter_impl) (RDPList.rdp_list_predata (G := G))
     := { split_string_for_production idx str offset len := msplits splitter_impl idx offset len str }.
+
+  Local Instance split_dataProj : @split_dataT _ (adt_based_splitter splitter_impl) (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
+    := { split_string_for_production idx str offset len := msplits splitter_impl idx offset len (proj1_sig str) }.
 
   Local Instance adtProj
   : @StringLikeProj
@@ -65,7 +68,8 @@ Section parser.
       (adt_based_splitter splitter_impl)
       (adt_based_StringLikeMin_lite splitter_impl)
       (ParserImplementation.parser_data (adt_based_splitter splitter_impl))
-      split_dataProj
+      (ParserImplementation.parser_split_data (adt_based_splitter splitter_impl))
+      (@BooleanRecognizerPreOptimized.optsplitdata _ _ _ split_dataProj')
     := { proj := @proj1_sig _ _ }.
   Proof.
     reflexivity.
@@ -78,12 +82,13 @@ Section parser.
     refine (@parser ls Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLikeMin_lite splitter_impl)
                     _
-                    adtProj
+                    _
                     stringlike_stringlikemin
                     stringlike_stringlike
                     new_string_of_string
                     (fun rep str => AbsR (projT2 splitter_impl) str (` rep))
-                    (@new_string_of_base_string_R) _
+                    (@new_string_of_base_string_R)
+                    _
                     _);
     abstract (
         split;
@@ -185,7 +190,7 @@ Definition parser
 Proof.
   let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP ls Hvalid splitter_impl)) in
   refine (term _ _).
-  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata data' BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget].
+  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget].
   change_opt ls nt str.
   match goal with
     | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)

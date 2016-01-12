@@ -1,6 +1,7 @@
 (** * Implementation of simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
@@ -70,7 +71,7 @@ Section implementation.
   Context {string_like_min_lite : StringLikeMin Ascii.ascii}
           {string_like_lite : @StringLike Ascii.ascii string_like_min_lite}
           split_string_for_production_lite
-          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_min_lite (parser_data splitter) split_string_for_production_lite).
+          (HSLPr : @StringLikeProj Ascii.ascii splitter string_like_min_lite (parser_data splitter) (parser_split_data splitter) (@optsplitdata _ _ _ split_string_for_production_lite)).
   Context (stringlike_stringlikemin : StringLikeMin Ascii.ascii)
           (stringlike_stringlike : @StringLike Ascii.ascii stringlike_stringlikemin)
           (make_string : @String _ stringlike_stringlikemin -> @String _ splitter)
@@ -80,16 +81,24 @@ Section implementation.
           (R_flip_respectful : transfer_respectful (Basics.flip R)).
 
   Local Instance pdata : @boolean_parser_dataT Ascii.ascii string_like_min_lite
-    := @data' _ splitter string_like_min_lite (parser_data splitter) split_string_for_production_lite.
-  Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
+    := { split_data := split_string_for_production_lite }.
+
+  Local Instance pdataopt : @boolean_parser_dataT Ascii.ascii string_like_min_lite
+    := { split_data := @optsplitdata _ _ _ split_string_for_production_lite }.
+
+ Local Instance pdata' : @boolean_parser_dataT Ascii.ascii splitter
     := parser_data splitter.
+
+  Local Instance splitdata_correct' : @boolean_parser_completeness_dataT' _ _ _ G pdata'
+    := parser_completeness_data splitter.
 
   Local Arguments Compare_dec.leb !_ !_.
 
   Definition parser : Parser G stringlike_stringlike.
   Proof.
+    pose proof Hvalid as Hrvalid.
     apply grammar_rvalid_correct in Hvalid.
-    let impl0 := constr:(fun str => (parse_nonterminal_opt (ls := ls) (splitdata := pdata) (proj (make_string str)) (Start_symbol G))) in
+    let impl0 := constr:(fun str => parse_nonterminal_opt (ls := ls) (splitdata := pdata) (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in
@@ -100,7 +109,7 @@ Section implementation.
               impl
               (fun str => eq_trans
                             (implH str)
-                            (@parse_nonterminal_proj _ splitter string_like_min_lite G pdata' _ _ HSLPr _ _))
+                            (@parse_nonterminal_proj _ splitter string_like_min_lite G pdata' _ _ _ HSLPr _ _))
               R R_make _ _).
   Defined.
 
