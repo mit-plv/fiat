@@ -376,7 +376,7 @@ Proof.
   intros ??? ?? H [|? ?]; subst; eauto.
 Qed.
 
-Global Instance list_caset_Proper {A P}
+Global Instance list_caset_Proper' {A P}
 : Proper (eq
             ==> pointwise_relation _ (pointwise_relation _ eq)
             ==> eq
