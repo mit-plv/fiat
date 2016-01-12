@@ -1,5 +1,5 @@
 (** Useful list operations *)
-Require Import Coq.Lists.List Coq.Classes.Morphisms.
+Require Import Coq.Lists.List.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
@@ -12,23 +12,6 @@ Module Export List.
          | nil => N
          | x::xs => C x xs
        end.
-
-  Global Instance list_caset_Proper_forall {A P}
-  : Proper (eq ==> forall_relation (fun _ => forall_relation (fun _ => eq)) ==> forall_relation (fun _ => eq))
-           (@list_caset A P).
-  Proof.
-    lazy.
-    intros ??? ?? H [|? ?]; subst; eauto.
-  Qed.
-  Global Instance list_caset_Proper {A P}
-  : Proper (eq
-              ==> pointwise_relation _ (pointwise_relation _ eq)
-              ==> pointwise_relation _ eq)
-           (@list_caset A (fun _ => P)).
-  Proof.
-    lazy.
-    intros ??? ?? H [|? ?]; subst; eauto.
-  Qed.
 
   Section InT.
     Context {A : Type} (a : A).
