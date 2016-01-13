@@ -239,6 +239,7 @@ Section recursive_descent_parser.
              | [ |- ?x = ?x ] => reflexivity
              | [ |- bool_rect ?P _ _ ?b = bool_rect ?P _ _ ?b ] => apply f_equal3
              | [ |- andb _ _ = andb _ _ ] => apply f_equal2
+             | [ |- andbr _ _ = andbr _ _ ] => apply f_equal2
              | [ |- orb _ _ = orb _ _ ] => apply f_equal2
              | [ |- match ?it with Terminal _ => _ | _ => _ end = match ?it with _ => _ end ] => is_var it; destruct it
              | [ |- context[(fst ?x, snd ?x)] ] => rewrite <- !surjective_pairing
@@ -246,6 +247,10 @@ Section recursive_descent_parser.
              | [ |- context[andb true _] ] => rewrite Bool.andb_true_l
              | [ |- context[andb _ false] ] => rewrite Bool.andb_false_r
              | [ |- context[andb false _] ] => rewrite Bool.andb_false_l
+             | [ |- context[andb ?x true] ] => rewrite (andbr_andb x true)
+             | [ |- context[andb true _] ] => rewrite (andbr_andb true)
+             | [ |- context[andb ?x false] ] => rewrite (andbr_andb x false)
+             | [ |- context[andbr false _] ] => rewrite (andbr_andb false)
              | [ |- context[orb _ true] ] => rewrite Bool.orb_true_r
              | [ |- context[orb true _] ] => rewrite Bool.orb_true_l
              | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
@@ -373,6 +378,8 @@ Section recursive_descent_parser.
              | _ => progress cbv beta
              | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
              | [ |- context[orb _ true] ] => rewrite Bool.orb_true_r
+             | [ |- context[andbr _ false] ] => rewrite (andbr_andb _ false)
+             | [ |- context[andbr _ true] ] => rewrite (andbr_andb _ true)
              | [ |- context[andb _ false] ] => rewrite Bool.andb_false_r
              | [ |- context[andb _ true] ] => rewrite Bool.andb_true_r
            end.
@@ -393,6 +400,9 @@ Section recursive_descent_parser.
         => rewrite <- !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ]
       | [ |- _ = @fold_left ?A ?B orb _ false ]
         => refine (_ : fold_left orb _ false = _);
+          apply (_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B)); repeat intro
+      | [ |- _ = @fold_left ?A ?B orbr _ false ]
+        => refine (_ : fold_left orbr _ false = _);
           apply (_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B)); repeat intro
       | [ |- _ = @fold_right ?A ?B (fun x y => _) _ _ ]
         => refine (_ : fold_right (fun x y => _) _ _ = _);
@@ -995,7 +1005,8 @@ Section recursive_descent_parser.
           { step_opt'.
             etransitivity_rev _.
             { repeat optsplit_t'.
-              { apply (f_equal2 andb); [ | reflexivity ].
+              { rewrite <- andbr_andb.
+                apply (f_equal2 andbr); [ | reflexivity ].
                 rewrite Min.min_idempotent at 2.
                 match goal with
                   | [ |- _ = ?f ?b ?c ?d ?e ]
@@ -1206,10 +1217,22 @@ Section recursive_descent_parser.
       { t_reduce_list_evar; [ reflexivity | ].
         repeat first [ step_opt'
                      | apply (f_equal2 andb)
+                     | apply (f_equal2 andbr)
+                     | apply (f_equal3 char_at_matches)
                      | progress fin_step_opt ].
-        { reflexivity. }
-        { reflexivity. }
         { match goal with
+          | [ |- _ = ?f (?x - ?x) ?pf ]
+            => generalize pf;
+              rewrite Minus.minus_diag;
+              let pf' := fresh in
+              intro pf';
+                assert (Le.le_0_n _ = pf') by apply Le.le_proof_irrelevance;
+                subst pf'
+          end.
+          reflexivity. }
+        { reflexivity. }
+        { rewrite Plus.plus_comm; progress simpl.
+          match goal with
             | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
               => let f' := fresh in
                  set (f' := f);
@@ -1223,24 +1246,6 @@ Section recursive_descent_parser.
           end.
           rewrite minusr_minus; intros; f_equal.
           apply Le.le_proof_irrelevance. }
-        { reflexivity. }
-        { etransitivity_rev _.
-          { match goal with
-              | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
-                => let f' := fresh in
-                   set (f' := f);
-                     let ty := constr:(f' (x - y)%natr (@opt_helper_minusr_proof a b c d) = f' (x - y) (pf a b c d )) in
-                     refine (_ : ty); change ty;
-                     clearbody f'
-            end.
-            match goal with
-              | [ |- ?f ?x ?y = ?f ?x' ?y' ]
-                => generalize y; generalize y'
-            end.
-            rewrite minusr_minus; intros; f_equal.
-            apply Le.le_proof_irrelevance. }
-          simpl; rewrite Plus.plus_comm; progress simpl.
-          reflexivity. }
         { reflexivity. }
         { match goal with
             | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
@@ -1304,18 +1309,8 @@ Section recursive_descent_parser.
             step_opt'; [].
             step_opt'; [ | ].
             { rewrite nth'_nth.
-              apply (f_equal2 andb); [ reflexivity | ].
-              etransitivity_rev _.
-              { match goal with
-                | [ |- _ = ?f (minusr ?x ?x) ?pf ]
-                  => generalize pf;
-                    rewrite (minusr_minus x x), Minus.minus_diag;
-                    let pf' := fresh in
-                    intro pf';
-                      assert (Le.le_0_n _ = pf') by apply Le.le_proof_irrelevance;
-                      subst pf'
-                end.
-                reflexivity. }
+              rewrite <- andbr_andb at 1.
+              apply (f_equal2 andbr); [ | reflexivity ].
               match goal with
               | [ |- _ = ?f ?x ?a ?b ?c ]
                 => refine (f_equal (fun x' => f x' a b c) _)
@@ -1325,7 +1320,8 @@ Section recursive_descent_parser.
               step_opt'; [ | reflexivity ].
               rewrite nth'_nth; reflexivity. }
             { step_opt'.
-              { apply (f_equal2 andb); [ reflexivity | ].
+              { rewrite <- andbr_andb at 1.
+                apply (f_equal2 andbr); [ reflexivity | ].
                 rewrite nth'_nth.
                 match goal with
                 | [ |- _ = ?f ?x ?a ?b ?c ]
@@ -1355,11 +1351,20 @@ Section recursive_descent_parser.
             rewrite nth'_nth.
             apply (f_equal2 (nth _)); [ | reflexivity ].
             reflexivity. } }
-        { match goal with
-          | [ |- _ = @bool_rect (fun _ => ?P) _ _ _ ]
-            => apply (f_equal3 (bool_rect (fun _ => P)))
-          end;
-          fin_step_opt; [].
+        { etransitivity_rev _.
+          { rewrite bool_rect_andb.
+            rewrite Bool.andb_true_r.
+            match goal with
+            | [ |- _ = (orb (negb (EqNat.beq_nat ?x 0)) (andb (EqNat.beq_nat ?x 0) ?y)) ]
+              => let z := fresh in
+                 let y' := fresh in
+                 set (z := x);
+                   set (y' := y);
+                   refine (_ : orb (Compare_dec.leb 1 x) y = _);
+                   change (orb (Compare_dec.leb 1 z) y' = orb (negb (EqNat.beq_nat z 0)) (andb (EqNat.beq_nat z 0) y'));
+                   destruct z, y'; reflexivity
+            end. }
+          apply (f_equal2 orb); fin_step_opt; [].
           match goal with
           | [ |- _ = @List.length ?A ?ls ]
             => refine (f_equal (@List.length A) _)
@@ -1367,6 +1372,7 @@ Section recursive_descent_parser.
           apply (f_equal2 (nth _)); [ | reflexivity ].
           step_opt'; [ | reflexivity ].
           rewrite nth'_nth.
+          rewrite map_id.
           apply (f_equal2 (nth _)); [ | reflexivity ].
           reflexivity. } }
       { apply (f_equal2 orb); fin_step_opt; [].
@@ -1537,6 +1543,11 @@ Section recursive_descent_parser.
         apply ((_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B))
                : Proper _ (@opt.fold_left A B));
         repeat (let x := fresh in intro x; change x with (opt.id x))
+    | [ |- _ = @opt.fold_left ?A ?B orbr _ false ]
+      => refine (_ : opt.fold_left orbr _ false = _);
+        apply ((_ : Proper (_ ==> _ ==> _ ==> _) (@fold_left A B))
+               : Proper _ (@opt.fold_left A B));
+        repeat (let x := fresh in intro x; change x with (opt.id x))
     | [ |- _ = @opt.list_caset ?A (fun _ => ?P) _ _ _ ]
       => refine (_ : @opt.list_caset A (fun _ => P) _ _ _ = _);
         apply ((_ : Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> _ ==> _) (@list_caset A (fun _ => P)))
@@ -1549,7 +1560,9 @@ Section recursive_descent_parser.
       => apply (f_equal3 (opt2.bool_rect P))
     | _ => progress fin_step_opt
     | [ |- _ = orb _ _ ] => apply (f_equal2 orb)
+    | [ |- _ = orbr _ _ ] => apply (f_equal2 orbr)
     | [ |- _ = andb _ _ ] => apply (f_equal2 andb)
+    | [ |- _ = andbr _ _ ] => apply (f_equal2 andbr)
     | [ |- ?e = List.map ?f (opt2.id ?x) ]
       => progress change (e = opt2.map f x)
     | [ |- context G[List.map ?f (opt.id ?ls)] ]
@@ -1569,6 +1582,9 @@ Section recursive_descent_parser.
          change G'
     | [ |- context G[List.fold_left orb (opt.id ?ls) false] ]
       => let G' := context G[opt.id (opt.fold_left orb ls false)] in
+         change G'
+    | [ |- context G[List.fold_left orbr (opt.id ?ls) false] ]
+      => let G' := context G[opt.id (opt.fold_left orbr ls false)] in
          change G'
     | [ |- _ = list_rect ?P ?N ?C (opt.id ?ls) (opt2.id ?idx) ?offset ?len ?pf ]
       => t_reduce_list_evar;
@@ -1666,11 +1682,6 @@ Section recursive_descent_parser.
       step_opt';
       change_opt_reduce; [ | | | ].
       { match goal with
-        | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
-          => unfold opt.id
-        end.
-        reflexivity. }
-      { match goal with
         | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
           => refine (f_equal (fun x' => f x' y z w) _)
         end.
@@ -1679,6 +1690,11 @@ Section recursive_descent_parser.
         | [ |- _ = if opt2.id _ then opt2.id _ else opt2.id _ ]
           => unfold opt2.id; reflexivity
         end. }
+      { match goal with
+        | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
+          => unfold opt.id
+        end.
+        reflexivity. }
       { match goal with
         | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
           => refine (f_equal (fun x' => f x' y z w) _)

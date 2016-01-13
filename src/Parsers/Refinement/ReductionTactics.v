@@ -3,6 +3,7 @@ Require Fiat.Parsers.BooleanRecognizerOptimized.
 Require Fiat.Parsers.ParserInterface Fiat.Parsers.ParserFromParserADT.
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Import Fiat.Common.
+Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.Wf Fiat.Common.Wf2.
 Require Import Fiat.Common.List.Operations.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.

@@ -5,6 +5,7 @@ Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.NatFacts.
 Require Import Coq.ZArith.BinInt.
 Require Export Fiat.Parsers.Refinement.Tactics.
+Require Export Fiat.Common.BoolFacts.
 Require Export Fiat.ADTNotation.BuildComputationalADT.
 Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
@@ -21,6 +22,8 @@ Extract Inlined Constant Compare_dec.lt_dec => "(<)".
 Extract Inlined Constant Sumbool.sumbool_of_bool => "(fun x -> x)".
 Extract Inlined Constant Equality.ascii_beq => "(=)".
 Extract Inlined Constant ascii_eq_dec => "(=)".
+Extract Inlined Constant orbr => "(||)".
+Extract Inlined Constant andbr => "(&&)".
 Extract Constant minusr => "fun (n : int) (m : int) -> let v = n - m in if v < 0 then 0 else v".
 Extract Constant minus => "fun (n : int) (m : int) -> let v = n - m in if v < 0 then 0 else v".
 Extract Constant pred => "fun (n : int) -> if n < 1 then 0 else n - 1".
