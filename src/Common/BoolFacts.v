@@ -1,6 +1,35 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
 
+Module Export Bool.
+  Delimit Scope boolr_scope with boolr.
+  Definition orbr (b1 b2 : bool) := if b2 then true else b1.
+  Definition andbr (b1 b2 : bool) := if b2 then b1 else false.
+  Global Arguments orbr _ !_ / .
+  Global Arguments andbr _ !_ / .
+  Infix "||" := orbr : boolr_scope.
+  Infix "&&" := andbr : boolr_scope.
+End Bool.
+
 Section BoolFacts.
+  Lemma orbr_orb b1 b2 : orbr b1 b2 = orb b1 b2.
+  Proof. destruct b1, b2; reflexivity. Qed.
+  Lemma andbr_andb b1 b2 : andbr b1 b2 = andb b1 b2.
+  Proof. destruct b1, b2; reflexivity. Qed.
+  Lemma fold_left_andb_andbr ls
+    : forall b, List.fold_left andbr ls b = List.fold_left andb ls b.
+  Proof.
+    induction ls; simpl; trivial.
+    intro; rewrite IHls, andbr_andb.
+    reflexivity.
+  Qed.
+  Lemma fold_left_orb_orbr ls
+    : forall b, List.fold_left orbr ls b = List.fold_left orb ls b.
+  Proof.
+    induction ls; simpl; trivial.
+    intro; rewrite IHls, orbr_orb.
+    reflexivity.
+  Qed.
+
   Lemma collapse_ifs_dec :
     forall P (b: {P} + {~P}),
       (if (if b then true else false) then true else false) =
