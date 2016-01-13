@@ -107,11 +107,11 @@ Section recursive_descent_parser.
                   | assert T by (clear -H H'; destruct H; try assumption; try omega); clear H ]
            | [ |- (_ * _)%type ] => split
            | [ |- { _ : nat & _ } ] => eexists; repeat split; [ left; reflexivity | .. ]
-           | [ H : ?x + ?y <= _ |- context[?y + ?x] ]
+           | [ H : ?x + ?y <= _ |- context[(?y + ?x)%nat] ]
              => not constr_eq x y; rewrite (Plus.plus_comm y x)
-           | [ H : ?x + ?y <= _, H' : context[?y + ?x] |- _ ]
+           | [ H : ?x + ?y <= _, H' : context[(?y + ?x)%nat] |- _ ]
              => not constr_eq x y; rewrite (Plus.plus_comm y x) in H'
-           | [ H : context[?x + 1] |- _ ] => rewrite (Plus.plus_comm x 1) in H; simpl plus in H
+           | [ H : context[(?x + 1)%nat] |- _ ] => rewrite (Plus.plus_comm x 1) in H; simpl plus in H
            | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite (Min.min_r x y) in H by assumption
            | [ H' : ?y <= ?x |- context[min ?x ?y] ] => rewrite (Min.min_r x y) by assumption
            | [ H : _ - _ = 0 |- _ ] => apply Nat.sub_0_le in H
