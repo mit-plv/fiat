@@ -76,7 +76,7 @@ Section transfer.
       { f_equal; [].
         rewrite ?Heq.
         apply parse_item_proj; trivial. }
-      { rewrite production_tl_correct, Heq; reflexivity. } }
+      { simpl; rewrite production_tl_correct, Heq; reflexivity. } }
   Qed.
 
   Lemma parse_productions_proj
