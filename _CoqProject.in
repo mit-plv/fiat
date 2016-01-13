@@ -32,10 +32,11 @@ src/ADTRefinement/Refinements/DelegateMethods.v
 src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
-src/BinEncoders/Examples.v
-src/BinEncoders/Helpers.v
-src/BinEncoders/Playground.v
 src/BinEncoders/Specs.v
+src/BinEncoders/Examples/Sample1.v
+src/BinEncoders/Examples/Sample2.v
+src/BinEncoders/Libraries/Core.v
+src/BinEncoders/Libraries/FixInt.v
 src/CertifiedExtraction/Core.v
 src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/ExtendedLemmas.v
