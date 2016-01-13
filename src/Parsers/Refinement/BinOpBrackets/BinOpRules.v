@@ -539,7 +539,7 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
           end;
             let nt := match p with NonTerminal ?nt => nt end in
             let its := (eval simpl in (List.tl ps)) in
-            let lem := constr:(fun its H' ch H0 H1 => lem G eq_refl str offset len nt ch its H0 H1 idx H') in
+            let lem := constr:(fun its' H' ch H0 H1 => lem G eq_refl str offset len nt ch its' H0 H1 idx H') in
             let lem := constr:(lem its eq_refl) in
             let chT := match type of lem with forall ch : ?chT, _ => chT end in
             let chE := fresh "ch" in
