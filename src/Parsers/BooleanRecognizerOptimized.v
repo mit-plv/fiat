@@ -842,28 +842,52 @@ Section recursive_descent_parser.
                            | NonTerminal nt => P (NonTerminal nt)
                          end);
              [ simpl | destruct v; reflexivity ]
-      | [ |- ?e = match ?v with nil => _ | x::xs => _ end ]
-        => refine (_ : list_caset (fun _ => _) _ _ v = _);
-          refine (match v as v'
-                        return list_caset (fun _ => _) _ _ v' = match v' with nil => _ | _ => _ end
-                  with
-                    | nil => _
-                    | _ => _
-                  end);
-          simpl @list_caset
-      | [ |- ?e = match ?v with Terminal _ => _ | NonTerminal _ => _ end ]
-        => refine (_ : item_rect _ _ _ v = _);
-          set_evars;
-          refine (match v as v'
-                        return item_rect _ _ _ v' = match v' with Terminal t => _ | _ => _ end
-                  with
-                    | Terminal _ => _
-                    | _ => _
-                  end);
+      | [ |- ?e = match ?v with nil => ?N | x::xs => @?C x xs end :> ?T ]
+        => idtac;
           repeat match goal with
-                   | [ H := ?e |- _ ] => is_evar e; subst H
+                 | [ H : context[v] |- _ ]
+                   => hnf in H;
+                     match type of H with
+                     | context[v] => fail 1
+                     | _ => idtac
+                     end
                  end;
-          simpl @item_rect
+          let P := match (eval pattern v in T) with ?P _ => P end in
+          change (e = list_caset P N C v);
+            revert v;
+            let NT := type of N in
+            let CT := type of C in
+            let N' := fresh in
+            let C' := fresh in
+            evar (N' : NT);
+              evar (C' : CT);
+              intro v;
+              refine (_ : list_caset P N' C' v = list_caset P N C v);
+              refine (list_caset
+                        (fun v' => list_caset P N' C' v' = list_caset P N C v')
+                        _
+                        _
+                        v);
+              subst N' C'; simpl @list_caset; repeat intro
+      | [ |- ?e = match ?v with Terminal t => @?T t | NonTerminal nt => @?NT nt end ]
+        => idtac; let TT := type of T in
+                  let NTT := type of NT in
+                  let T' := fresh in
+                  let NT' := fresh in
+                  revert v;
+                    evar (T' : TT);
+                    evar (NT' : NTT);
+                    let P := match goal with |- forall v', _ = _ :> @?P v' => P end in
+                    intro v;
+                      change (e = item_rect P T NT v);
+                      refine (_ : item_rect P T' NT' v = item_rect P T NT v);
+                      refine (item_rect
+                                (fun v' => item_rect P T' NT' v' = item_rect P T NT v')
+                                _
+                                _
+                                v);
+                      subst T' NT';
+                      simpl @item_rect; intro
       | [ |- _ = _::_ ] => etransitivity_rev (_::_);
                           [ apply f_equal2
                           | reflexivity ]
@@ -1020,19 +1044,17 @@ Section recursive_descent_parser.
                 end.
                 { f_equal; apply Le.le_proof_irrelevance. }
                 { reflexivity. } }
-              { etransitivity_rev _.
-                { repeat optsplit_t'; [ | reflexivity ].
-                  apply (f_equal2 andb); [ | reflexivity ].
-                  apply (f_equal2 andb); [ | reflexivity ].
-                  match goal with
-                    | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
-                      => refine (_ : Compare_dec.leb v x = _)
-                  end.
-                  match goal with
-                    | [ |- leb 1 ?x = _ ]
-                      => is_var x; destruct x as [|[|]]; try reflexivity
-                  end. }
-                higher_order_reflexivity. } }
+              { apply (f_equal2 andb); [ | reflexivity ].
+                apply (f_equal2 andb); [ | reflexivity ].
+                match goal with
+                | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
+                  => refine (_ : Compare_dec.leb v x = _)
+                end.
+                match goal with
+                | [ |- leb 1 ?x = _ ]
+                  => is_var x; destruct x as [|[|]]; try reflexivity
+                end. }
+              { reflexivity. } }
             reflexivity. }
           etransitivity_rev _.
           { rewrite !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ].
