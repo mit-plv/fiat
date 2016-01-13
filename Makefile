@@ -1,9 +1,9 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
-.PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples \
-	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick \
-	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples \
+.PHONY: fiat fiat-core querystructures parsers parsers-all finitesets dns compiler facade-test ics fiat4monitors examples binencoders \
+	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick binencoders-quick \
+	install install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-binencoders \
 	pdf doc clean-doc \
 	test-parsers test-parsers-profile test-parsers-profile-graph
 
@@ -106,6 +106,7 @@ FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
+BINENCODERS_VO := $(filter src/BinEncoders/%.vo,$(VOFILES))
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
 
@@ -121,7 +122,8 @@ extraction: $(EXTRACTION_VO)
 facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
-examples:  $(EXAMPLES_VO)
+examples: $(EXAMPLES_VO)
+binencoders: $(BINENCODERS_VO)
 
 fiat-quick: $(addsuffix .vio,$(basename $(FIAT_VO))) $(TACTICS_TARGETS)
 fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO))) $(TACTICS_TARGETS)
@@ -135,6 +137,7 @@ facade-test-quick: $(addsuffix .vio,$(basename $(FACADE_TEST_VO)))
 ics-quick: $(addsuffix .vio,$(basename $(ICS_VO)))
 fiat4monitors-quick: $(addsuffix .vio,$(basename $(FIAT4MONITORS_VO)))
 examples-quick: $(addsuffix .vio,$(basename $(EXAMPLES_VO)))
+binencoders-quick: $(addsuffix .vio,$(basename $(BINENCODERS_VO)))
 
 install-fiat: T = $(FIAT_VO)
 install-fiat-core: T = $(FIAT_CORE_VO)
@@ -146,8 +149,9 @@ install-compiler: T = $(COMPILER_VO)
 install-ics: T = $(ICS_VO)
 install-fiat4monitors: T = $(FIAT4MONITORS_VO)
 install-examples: T = $(EXAMPLES_VO)
+install-binencoders: T = $(BINENCODERS_VO)
 
-install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-fiat4monitors install-examples:
+install-fiat install-fiat-core install-querystructures install-parsers install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
 	$(VECHO) "MAKE -f Makefile.coq INSTALL"
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
