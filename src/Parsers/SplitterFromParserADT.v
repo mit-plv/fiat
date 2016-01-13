@@ -455,15 +455,17 @@ Section parser.
            (offset : nat) (len : nat),
       split_list_is_complete_idx G str offset len idx (msplits idx offset len (` str)).
   Proof.
-    repeat intro.
+    repeat (hnf; cbv zeta; intro).
     destruct_head_hnf' sig.
     destruct_head' ex.
     unfold length, take, drop, adt_based_StringLike, adt_based_StringLikeMin, proj1_sig in *.
     (* if we use [match_erewrite_by], it picks up [mlength] inside of
     a [StringLike] type, under binders, and the rewrite fails
     (slowly). *)
-    repeat match_erewrite_by (@mlength) (@mlength_eq) ltac:eassumption.
-    repeat match_erewrite_by (@mlength) (@mlength_eq) ltac:(eapply mtake_R, mdrop_R; eassumption).
+    repeat match goal with
+           | [ H : context[_ <= mlength _] |- _ ] => erewrite @mlength_eq in H by first [ eassumption | eapply mtake_R, mdrop_R; eassumption ]
+           | _ => erewrite @mlength_eq by first [ eassumption | eapply mtake_R, mdrop_R; eassumption ]
+           end.
     match goal with
       | [ H : AbsR ?Ok ?str ?st
           |- appcontext[msplits ?arg1 ?arg2 ?arg3 ?st] ]
