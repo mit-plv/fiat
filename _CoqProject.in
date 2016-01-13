@@ -37,6 +37,7 @@ src/BinEncoders/Examples/Sample1.v
 src/BinEncoders/Examples/Sample2.v
 src/BinEncoders/Libraries/Core.v
 src/BinEncoders/Libraries/FixInt.v
+src/BinEncoders/Libraries/List.v
 src/CertifiedExtraction/Core.v
 src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/ExtendedLemmas.v

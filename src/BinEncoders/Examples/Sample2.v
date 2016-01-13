@@ -1,24 +1,21 @@
 Require Import Fiat.BinEncoders.Specs
                Fiat.BinEncoders.Libraries.Core
-               Fiat.BinEncoders.Libraries.FixInt.
+               Fiat.BinEncoders.Libraries.FixInt
+               Fiat.BinEncoders.Libraries.List.
 
 Set Implicit Arguments.
 
 Section Sample2.
 
-  Variable List_encode : forall (A : Type) (encode_A : A -> bin), list A -> bin.
   Variable Nat_encode : nat -> bin.
-
-  Global Instance List_decoder
-         (A : Type)
-         (encode_A : A -> bin)
-         (A_Decoder : decoder (fun _ => True) encode_A)
-         (size : nat)
-    : decoder (fun data => length data = size) (List_encode encode_A).
-  Admitted.
+  Variable Nat_pairencode : nat * bin -> bin.
 
   Global Instance Nat_decoder
     : decoder (fun _ => True) Nat_encode.
+  Admitted.
+
+  Global Instance Nat_pairdecoder
+    : decoder (fun _ => True) Nat_pairencode.
   Admitted.
 
   Global Instance App_decoder2
@@ -39,7 +36,7 @@ Section Sample2.
   Admitted.
 
   Definition DepSS_encode (data : list nat) :=
-    Nat_encode (length data) ++ (List_encode Nat_encode data).
+    Nat_encode (length data) ++ (List_encode Nat_pairencode data).
 
   Definition DepSS_decode :
     { DepSS_decode | DepSS_encode <+> DepSS_decode }.
