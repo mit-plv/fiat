@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.

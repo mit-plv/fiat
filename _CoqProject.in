@@ -282,6 +282,7 @@ src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
 src/Parsers/ContextFreeGrammar/Notations.v
+src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/Transfer.v
 src/Parsers/ContextFreeGrammar/TransferProperties.v

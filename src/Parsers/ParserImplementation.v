@@ -2,7 +2,7 @@
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
 Require Import Fiat.Parsers.Splitters.RDPList.

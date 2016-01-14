@@ -1,5 +1,5 @@
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
-Require Export Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
 Require Export Fiat.Computation.Core.

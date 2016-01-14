@@ -2,7 +2,6 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 Definition paren_expr_grammar : grammar Ascii.ascii :=
-  [[[ ("expr" ::== << $< "number" >$
-                    | $< #"(" $ "expr" $ #")" >$ >>);;
-      ("number" ::== << [0-9] | $< [0-9] $ "number" >$ >>)
+  [[[ ("expr" ::== "number" || "(" "expr" ")");;
+      ("number" ::== [0-9] || [0-9] "number")
   ]]].

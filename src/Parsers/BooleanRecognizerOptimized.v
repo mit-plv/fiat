@@ -4,7 +4,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.

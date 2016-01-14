@@ -26,11 +26,11 @@ Ltac splitter_red term :=
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
-Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar item_ascii_cons item_of_char list_to_productions projT1 projT2 proj1_sig proj2_sig].
+Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig].
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect item_of_string].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect].
 Declare Reduction parser_red5 := opt_red.
 Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.

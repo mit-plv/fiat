@@ -1,7 +1,7 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common.

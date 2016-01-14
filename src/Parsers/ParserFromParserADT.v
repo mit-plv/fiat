@@ -5,7 +5,7 @@ Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.ADTNotation.BuildADTSig.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
