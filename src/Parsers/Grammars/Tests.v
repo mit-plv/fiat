@@ -9,10 +9,16 @@ Require Import Fiat.Parsers.Grammars.ExpressionNumPlus.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
 Require Import Fiat.Parsers.Grammars.ExpressionParen.
 Require Import Fiat.Parsers.Grammars.StringLiteral.
+Require Import Fiat.Parsers.Grammars.FlatComments.
+Require Import Fiat.Parsers.Grammars.JSComment.
 
 Local Arguments Equality.ascii_beq !_ !_.
 Local Arguments Equality.string_beq !_ !_.
 Local Arguments list_to_productions / .
+Local Arguments ascii_of_nat !_ / .
+Local Arguments ascii_of_pos !_ / .
+
+Local Notation newline := (String.String (ascii_of_nat 10) EmptyString).
 
 Local Ltac safe_step :=
   idtac;
@@ -26,6 +32,8 @@ Local Ltac safe_step :=
      => apply ParseProductionCons with (n := StringLike.length s)
    | [ |- parse_of_production _ ?s (_ :: Terminal _ :: nil) ]
      => apply ParseProductionCons with (n := StringLike.length s - 1)
+   | [ |- parse_of_production _ ?s (_ :: Terminal _ :: Terminal _ :: nil) ]
+     => apply ParseProductionCons with (n := StringLike.length s - 2)
    | [ |- parse_of_production _ _ nil ]
      => apply ParseProductionNil
    | [ |- parse_of_item _ _ (Terminal _) ]
@@ -39,6 +47,9 @@ Local Ltac safe_step :=
    | [ |- parse_of _ ?s (nil::_) ]
      => first [ unify s ""%string; apply ParseHead
               | apply ParseTail ]
+    | [ |- parse_of _ (String.String ?ch _) (((Terminal (Equality.ascii_beq ?ch')):: _)::_) ]
+      => first [ unify ch ch'; fail 1
+               | apply ParseTail ]
    | [ |- is_true (is_char (take 1 _) _) ] => apply get_0
    | _ => progress simpl
    | _ => tauto
@@ -199,7 +210,32 @@ Section string_literal.
     apply ParseProductionCons with (n := 1); repeat safe_step.
     apply ParseHead; repeat safe_step; [].
     apply ParseProductionCons with (n := 1); repeat safe_step.
-    apply ParseTail, ParseHead; repeat safe_step; [].
     apply ParseProductionCons with (n := 1); repeat safe_step.
   Qed.
 End string_literal.
+
+Section js_comment.
+  Example js_comment_parses_singleline : parse_of_grammar ("// asdf // /* */ /* adfs" ++ newline)%string js_comment_grammar.
+  Proof.
+    hnf; simpl.
+    apply ParseHead; repeat safe_step.
+  Qed.
+
+  Example js_comment_parses_multiple : parse_of_grammar "/******/"%string js_comment_grammar.
+  Proof.
+    hnf; simpl.
+    apply ParseTail; repeat safe_step.
+    apply ParseTail, ParseHead; repeat safe_step.
+    apply ParseTail, ParseHead; repeat safe_step.
+  Qed.
+
+  Example js_comment_parses_multiline : parse_of_grammar ("/* x *" ++ newline ++ "a // as/*" ++ newline ++ "a* / */")%string js_comment_grammar.
+  Proof.
+    hnf; simpl.
+    apply ParseTail; repeat safe_step.
+    apply ParseTail; repeat safe_step.
+    apply ParseHead; repeat safe_step.
+    apply ParseTail, ParseHead; repeat safe_step.
+    apply ParseTail, ParseHead; repeat safe_step.
+  Qed.
+End js_comment.

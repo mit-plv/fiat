@@ -53,10 +53,16 @@ Definition or_chars (c1 c2 : char_test) : char_test
 Definition neg_chars (c1 : char_test) : char_test
   := fun c => negb (c1 c).
 
+(*Definition magic_juxta_append_from_char_test (ch : char_test) (p : production ascii) : production ascii
+  := (Terminal ch)::p.
+Coercion magic_juxta_append_from_char_test : char_test >-> Funclass.*)
+
 Notation "p || p'" := (or_chars p%char p'%char) : char_scope.
 
 Notation "~ p" := (neg_chars p%char) : char_scope.
-Notation "¬ p" := (neg_chars p%char) (at level 75, right associativity) : char_scope.
+Notation "¬ p" := ((~p)%char) (at level 75, right associativity) : char_scope.
+Notation "~ p" := ((~p)%char : production _) : productions_scope.
+Notation "¬ p" := ((~p)%productions) (at level 75, right associativity) : productions_scope.
 
 Coercion production_of_chartest (c : char_test) : production Ascii.ascii
   := (Terminal c :: nil)%list.
@@ -70,6 +76,7 @@ Global Arguments production_of_string / .
 Global Arguments magic_juxta_append_production / .
 Global Arguments productions_of_production / .
 Global Arguments magic_juxta_append_productions / .
+(*Global Arguments magic_juxta_append_from_char_test / .*)
 
 Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions) (at level 100) : production_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
