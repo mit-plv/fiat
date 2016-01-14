@@ -297,6 +297,7 @@ src/Parsers/Grammars/ExpressionParen.v
 src/Parsers/Grammars/FlatComments.v
 src/Parsers/Grammars/JSComment.v
 src/Parsers/Grammars/JSON.v
+src/Parsers/Grammars/JSONTests.v
 src/Parsers/Grammars/StringLiteral.v
 src/Parsers/Grammars/Tests.v
 src/Parsers/Grammars/Trivial.v
