@@ -293,6 +293,7 @@ src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
+src/Parsers/Grammars/StringLiteral.v
 src/Parsers/Grammars/Tests.v
 src/Parsers/Grammars/Trivial.v
 src/Parsers/Reachable/All/MinimalReachable.v
@@ -329,6 +330,7 @@ src/Parsers/Refinement/SharpenedABStar.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v
+src/Parsers/Refinement/SharpenedStringLiteral.v
 src/Parsers/Refinement/Tactics.v
 src/Parsers/Refinement/BinOpBrackets/BinOpRules.v
 src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v

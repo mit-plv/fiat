@@ -8,8 +8,41 @@ Require Import Fiat.Parsers.Grammars.ABStar.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlus.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
 Require Import Fiat.Parsers.Grammars.ExpressionParen.
+Require Import Fiat.Parsers.Grammars.StringLiteral.
 
 Local Arguments Equality.ascii_beq !_ !_.
+Local Arguments Equality.string_beq !_ !_.
+Local Arguments list_to_productions / .
+
+Local Ltac safe_step :=
+  idtac;
+  (match goal with
+   | _ => reflexivity
+   | [ |- parse_of_production _ ?s (Terminal _ :: _) ]
+     => apply ParseProductionCons with (n := 1)
+   | [ |- parse_of_production _ ?s (_ :: nil) ]
+     => apply ParseProductionCons with (n := String.length s)
+   | [ |- parse_of_production _ ?s (_ :: nil) ]
+     => apply ParseProductionCons with (n := StringLike.length s)
+   | [ |- parse_of_production _ ?s (_ :: Terminal _ :: nil) ]
+     => apply ParseProductionCons with (n := StringLike.length s - 1)
+   | [ |- parse_of_production _ _ nil ]
+     => apply ParseProductionNil
+   | [ |- parse_of_item _ _ (Terminal _) ]
+     => (refine (ParseTerminal _ _ _ _ _ _);
+          simpl;
+          erewrite ?Equality.ascii_lb by reflexivity;
+          reflexivity)
+   | [ |- parse_of_item _ _ (NonTerminal _) ]
+     => apply ParseNonTerminal
+   | [ |- parse_of _ _ (_::nil) ] => apply ParseHead
+   | [ |- parse_of _ ?s (nil::_) ]
+     => first [ unify s ""%string; apply ParseHead
+              | apply ParseTail ]
+   | [ |- is_true (is_char (take 1 _) _) ] => apply get_0
+   | _ => progress simpl
+   | _ => tauto
+   end).
 
 Section ab_star.
   Example ab_star_parses_empty : parse_of_grammar ""%string ab_star_grammar.
@@ -21,68 +54,17 @@ Section ab_star.
   Example ab_star_parses_ab : parse_of_grammar "ab"%string ab_star_grammar.
   Proof.
     hnf; simpl.
-    apply ParseTail, ParseHead.
-    apply ParseProductionCons with (n := 1); simpl.
-    { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
-    { apply ParseProductionCons with (n := 1); simpl.
-      { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
-      { apply ParseProductionCons with (n := 1); simpl;
-        repeat (simpl; constructor). } }
+    apply ParseTail, ParseHead; repeat safe_step.
   Defined.
 
   Example ab_star_parses_abab : parse_of_grammar "abab"%string ab_star_grammar.
   Proof.
     hnf; simpl.
-    apply ParseTail, ParseHead.
-    apply ParseProductionCons with (n := 1); simpl.
-    { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
-    { apply ParseProductionCons with (n := 1); simpl.
-      { refine (ParseTerminal _ _ _ _ _ _); try eapply Equality.ascii_lb; reflexivity. }
-      { apply ParseProductionCons with (n := 2); simpl;
-        try solve [ repeat (simpl; constructor) ].
-        constructor; simpl; try tauto.
-        apply ab_star_parses_ab. } }
+    apply ParseTail, ParseHead; repeat safe_step.
   Defined.
 End ab_star.
 
 Section num_paren.
-  (*Context {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}.*)
-  Local Arguments append : simpl never.
-
-  Local Ltac safe_step :=
-    idtac;
-    (match goal with
-       | _ => reflexivity
-       | [ |- parse_of_production _ ?s (Terminal _ :: _) ]
-         => apply ParseProductionCons with (n := 1)
-       | [ |- parse_of_production _ ?s (_ :: nil) ]
-         => apply ParseProductionCons with (n := String.length s)
-       | [ |- parse_of_production _ ?s (_ :: nil) ]
-         => apply ParseProductionCons with (n := StringLike.length s)
-       | [ |- parse_of_production _ ?s (_ :: Terminal _ :: nil) ]
-         => apply ParseProductionCons with (n := StringLike.length s - 1)
-       | [ |- parse_of_production _ _ nil ]
-         => apply ParseProductionNil
-       | [ |- parse_of_item _ _ (Terminal _) ]
-         => (refine (ParseTerminal _ _ _ _ _ _);
-             simpl;
-             erewrite ?Equality.ascii_lb by reflexivity;
-             reflexivity)
-       | [ |- parse_of_item _ _ (NonTerminal _) ]
-         => apply ParseNonTerminal
-       | [ |- is_true (is_char (take 1 _) _) ] => apply get_0
-       (*| [ |- context[StringLike.get _ (of_string _)] ] => (rewrite !get_of_string; simpl)*)
-       (*| [ |- context[StringLike.length _] ] => (progress rewrite ?take_length, ?drop_length, ?of_string_length; simpl List.length; simpl minus)*)
-       (*| [ |- context[StringLike.get _ _] ] => (progress repeat rewrite ?take_of_string, ?drop_of_string; simpl; rewrite get_of_string; reflexivity)*)
-       | _ => progress simpl
-       | _ => tauto
-     end).
-
-  Local Ltac fin :=
-    repeat first [ safe_step
-                 | apply ParseProductionCons with (n := 1); solve [ fin ]
-                 | constructor (solve [ fin ]) ].
-
   Example paren_expr_parses_1 : parse_of_grammar ((*of_string*) ((*list_of_string*) "(((123)))"%string)) paren_expr_grammar.
   Proof.
     hnf; simpl.
@@ -201,3 +183,23 @@ Section num_plus_paren.
       apply ParseProductionCons with (n := 1); fin. }
   Defined.
 End num_plus_paren.
+
+Section string_literal.
+  Example string_literal_parses_empty : parse_of_grammar """"""%string string_grammar.
+  Proof.
+    hnf; simpl.
+    repeat safe_step.
+  Qed.
+
+  Example string_literal_parses_escapes : parse_of_grammar """\""\\a"""%string string_grammar.
+  Proof.
+    hnf; simpl.
+    apply ParseHead; repeat safe_step; [].
+    apply ParseHead; repeat safe_step; [].
+    apply ParseProductionCons with (n := 1); repeat safe_step.
+    apply ParseHead; repeat safe_step; [].
+    apply ParseProductionCons with (n := 1); repeat safe_step.
+    apply ParseTail, ParseHead; repeat safe_step; [].
+    apply ParseProductionCons with (n := 1); repeat safe_step.
+  Qed.
+End string_literal.

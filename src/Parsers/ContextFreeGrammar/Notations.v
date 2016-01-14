@@ -40,8 +40,32 @@ Coercion productions_of_production {T} (p : production T) : productions T
 Definition magic_juxta_append_productions {T} (p ps : productions T) : productions T
   := Eval compute in p ++ ps.
 
-Notation "p || p'" := (magic_juxta_append_productions (p%productions)(p'%productions)) : productions_scope.
+Notation "p || p'" := (magic_juxta_append_productions p%productions p'%productions) : productions_scope.
 
+Definition char_test := Ascii.ascii -> bool.
+
+Coercion char_to_test_eq (c : Ascii.ascii) : char_test
+  := Equality.ascii_beq c.
+
+Definition or_chars (c1 c2 : char_test) : char_test
+  := fun c => (c1 c || c2 c)%bool.
+
+Definition neg_chars (c1 : char_test) : char_test
+  := fun c => negb (c1 c).
+
+Notation "p || p'" := (or_chars p%char p'%char) : char_scope.
+
+Notation "~ p" := (neg_chars p%char) : char_scope.
+Notation "¬ p" := (neg_chars p%char) (at level 75, right associativity) : char_scope.
+
+Coercion production_of_chartest (c : char_test) : production Ascii.ascii
+  := (Terminal c :: nil)%list.
+
+Global Arguments char_test / .
+Global Arguments char_to_test_eq / .
+Global Arguments or_chars / .
+Global Arguments neg_chars / .
+Global Arguments production_of_chartest / .
 Global Arguments production_of_string / .
 Global Arguments magic_juxta_append_production / .
 Global Arguments productions_of_production / .

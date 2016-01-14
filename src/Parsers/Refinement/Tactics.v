@@ -68,3 +68,17 @@ Tactic Notation "finish" "honing" "parser" "method"
 
 Ltac finish_Sharpening_SplitterADT
   := solve [ refine finish_Sharpening_SplitterADT ].
+
+Ltac splitter_start :=
+  start sharpening ADT;
+  start honing parser using indexed representation;
+  hone method "splits";
+  [ simplify parser splitter
+  | ].
+
+Ltac splitter_finish :=
+  idtac;
+  lazymatch goal with
+  | [ |- refine _ _ ] => finish honing parser method
+  | [ |- Sharpened _ ] => finish_Sharpening_SplitterADT
+  end.
