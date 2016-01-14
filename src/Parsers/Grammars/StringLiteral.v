@@ -7,5 +7,5 @@ Definition string_grammar : grammar ascii :=
        || "\" "special_character" "inner_string"
        || "unspecial_character" "inner_string");;
       ("special_character" ::== ("""" || "\")%char);;
-      ("unspecial_character" ::== (¬("""" || "\"))%char)
+      ("unspecial_character" ::== ¬("""" || "\"))
   ]]]%grammar.

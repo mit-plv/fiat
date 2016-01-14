@@ -2,7 +2,7 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 Definition ab_star_grammar : grammar ascii :=
-  [[[ ("(ab)*" ::== "" || "a" "b" "(ab)*") ]]]%grammar.
+  [[[ "(ab)*" ::== "" || "a" "b" "(ab)*" ]]]%grammar.
 
 Local Open Scope list_scope.
 
