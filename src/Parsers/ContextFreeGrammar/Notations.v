@@ -58,6 +58,7 @@ Definition neg_chars (c1 : char_test) : char_test
 Coercion magic_juxta_append_from_char_test : char_test >-> Funclass.*)
 
 Notation "p || p'" := (or_chars p%char p'%char) : char_scope.
+Notation "p || p'" := ((p || p')%char : production _) : production_scope.
 
 Notation "~ p" := (neg_chars p%char) : char_scope.
 Notation "¬ p" := ((~p)%char) (at level 75, right associativity) : char_scope.
@@ -100,3 +101,28 @@ Notation "'[A-Z]'" := ([A-Z]%production) : productions_scope.
 Notation "'[a-z]'" := (Terminal (fun ch => code_in_range ch "a" "z")) : item_scope.
 Notation "'[a-z]'" := (([a-z]%item::nil) : production _) : production_scope.
 Notation "'[a-z]'" := ([a-z]%production) : productions_scope.
+
+Local Notation LF := (ascii_of_nat 10).
+Local Notation CR := (ascii_of_nat 13).
+Local Notation TAB := (ascii_of_nat 9).
+Local Notation SPACE := " "%char.
+
+(** Notation for whitespace: space, tab, line feed, carriage return *)
+Notation "'[\s]'" := (LF || CR || SPACE || TAB)%char : item_scope.
+Notation "'[\s]'" := (([\s]%item) : production _) : production_scope.
+Notation "'[\s]'" := [\s]%production : productions_scope.
+Notation "'[0-9a-fA-F]'" := (Terminal (fun ch => code_in_range ch "0" "9"
+                                                 || code_in_range ch "a" "f"
+                                                 || code_in_range ch "A" "F")%bool) : item_scope.
+Notation "'[0-9a-fA-F]'" := (([0-9a-fA-F]%item::nil)%list : production _) : production_scope.
+Notation "'[0-9a-fA-F]'" := [0-9a-fA-F]%production : productions_scope.
+Notation "'[1-9]'" := (Terminal (fun ch => code_in_range ch "1" "9")) : item_scope.
+Notation "'[1-9]'" := (([1-9]%item::nil)%list : production _) : production_scope.
+Notation "'[1-9]'" := ([1-9]%production) : productions_scope.
+
+Global Arguments Equality.ascii_beq !_ !_.
+Global Arguments Equality.string_beq !_ !_.
+Global Arguments ascii_of_nat !_ / .
+Global Arguments ascii_of_pos !_ / .
+
+Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero].
