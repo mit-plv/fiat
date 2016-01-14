@@ -190,17 +190,28 @@ Section FixInt_encode_decode.
       | exist n' _ => encode n'
     end.
 
+  Definition FixInt_encode_pair (p : ({n | n < exp2 size})%N * bin) :=
+    match (fst p) with
+      | exist n' _ => encode n' ++ (snd p)
+    end.
+
   Lemma FixInt_decode'_size :
     forall s b, (fst (decode' b s) < exp2 s)%N.
   Proof.
     intro s; induction s as [ | s' ]; intuition.
-    { admit. }
-    { admit. }
+    { apply N.compare_gt_iff. reflexivity. }
+    { simpl. destruct b as [ | x b' ].
+      { simpl. admit. }
+      { destruct x. admit. admit. } }
   Qed.
 
-  Definition FixInt_decode : bin -> ({n | n < exp2 size}%N).
-  Proof.
-    refine (fun b => exist _ (fst (decode b)) _).
+  Definition FixInt_decode (b : bin) : ({n | n < exp2 size}%N).
+    refine (exist _ (fst (decode b)) _).
+    eapply FixInt_decode'_size.
+  Defined.
+
+  Definition FixInt_decode_pair (b : bin) : ({n | n < exp2 size})%N * bin.
+    refine (exist _ (fst (decode b)) _, snd (decode b)).
     eapply FixInt_decode'_size.
   Defined.
 
@@ -216,6 +227,14 @@ Section FixInt_encode_decode.
     rewrite <- app_nil_r with (l:=encode data).
     rewrite encode_correct; eauto. (* rewrite <- H. *)
     (* apply proof_irrelevance *)
+    admit.
+  Defined.
+
+  Global Instance FixInt_decoder_pair
+    : decoder (fun _ => True) FixInt_encode_pair :=
+    { decode := FixInt_decode_pair;
+      decode_correct := _ }.
+  Proof.
     admit.
   Defined.
 
@@ -254,16 +273,3 @@ Section FixInt_encode_decode.
        shorten_R   := decode_shorten |}. *)
 
 End FixInt_encode_decode.
-
-(*
-  Variable FixNat_encode : forall size, {n | n < exp2 size} -> bin.
-  Variable List1_encode : forall (A : Type) (encode_A : A -> bin) (size : nat), {ls : list A | length ls < exp2 size} -> bin.
-  Variable List_encode : forall (A : Type) (encode_A : A -> bin), list A -> bin.
-  Variable Nat_encode : nat -> bin.
-  Variable Bin_encode : forall (A : Type) (encode_A : A -> bin), A * bin -> bin.
-
-  Global Instance FixNat_decoder
-         (size : nat)
-    : decoder (fun _ => True) (FixNat_encode size).
-  Admitted.
-*)

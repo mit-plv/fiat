@@ -40,6 +40,7 @@ src/BinEncoders/Libraries/Char.v
 src/BinEncoders/Libraries/Core.v
 src/BinEncoders/Libraries/FixInt.v
 src/BinEncoders/Libraries/List.v
+src/BinEncoders/Libraries/VList.v
 src/CertifiedExtraction/Core.v
 src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/ExtendedLemmas.v
