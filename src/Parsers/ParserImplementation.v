@@ -29,9 +29,11 @@ Section implementation.
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
-  Let parser_presplit_data : @split_dataT Char _ _ :=
-    {| split_string_for_production idx str
-       := splits_for splitter str idx |}.
+  Let parser_presplit_data : @split_dataT Char (string_type_min splitter) _.
+  Proof.
+    refine {| split_string_for_production idx str
+              := splits_for splitter str idx |}.
+  Defined.
 
   Local Instance parser_split_data : @split_dataT Char splitter predata
     := @optsplitdata _ _ _ parser_presplit_data.
