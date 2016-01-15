@@ -138,7 +138,18 @@ End opt3.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
-          {ls : list (String.string * productions Char)}.
+          {ls : list (String.string * productions Char)}
+          {HNoDup : NoDupR string_beq (map fst ls)}.
+
+  Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) ls.
+  Proof.
+    hnf in HNoDup |- *.
+    rewrite uniquize_map in HNoDup.
+    apply uniquize_length.
+    apply (f_equal (@List.length _)) in HNoDup.
+    rewrite !map_length, uniquize_length in HNoDup.
+    rewrite HNoDup; reflexivity.
+  Qed.
 
   Local Notation G := (list_to_grammar nil ls) (only parsing).
 
@@ -615,34 +626,26 @@ Section recursive_descent_parser.
   : list_to_productions default ls (to_nonterminal nt)
     = nth
         nt
-        (map
-           snd
-           (uniquize
-              (fun x y =>
-                 string_beq (fst x) (fst y)) ls))
+        (map snd ls)
         default.
   Proof.
     unfold list_to_productions at 1, to_nonterminal at 1; simpl.
     unfold productions, production in *.
-    rewrite <- (@uniquize_idempotent _ string_beq (map fst ls)).
-    change (uniquize string_beq (map fst ls)) with (Valid_nonterminals G).
+    rewrite <- find_first_index_error by exact bl.
+    hnf in HNoDup'.
+    let LHS := match type of HNoDup' with ?LHS = _ => LHS end in
+    replace ls with LHS at 3 by (rewrite HNoDup'; reflexivity).
+    rewrite <- uniquize_map.
+    change (map fst ls) with (Valid_nonterminals G).
     rewrite rdp_list_find_to_nonterminal.
+    simpl.
+    hnf in HNoDup.
+    unfold productions, production in *.
+    rewrite HNoDup.
+    rewrite map_length.
+
     rewrite pull_bool_rect; simpl.
-    rewrite uniquize_idempotent.
-    change (uniquize string_beq (map fst ls)) with (Valid_nonterminals G).
-    change default with (snd (EmptyString, default)).
-    rewrite map_nth; simpl.
-    rewrite uniquize_map.
-    match goal with
-      | [ |- context[uniquize ?beq ?ls] ]
-        => set (ls' := uniquize beq ls)
-    end.
-    repeat match goal with
-             | [ |- context G[uniquize ?beq ?ls] ]
-               => let G' := context G[ls'] in
-                  change G'
-           end.
-    clearbody ls'.
+    set (ls' := ls); clearbody ls'.
     revert nt; induction ls' as [|x xs IHxs]; simpl; intro nt;
     destruct nt; simpl; trivial.
   Qed.
@@ -916,21 +919,14 @@ Section recursive_descent_parser.
     cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
     cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
     (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
+    hnf in HNoDup.
     evar (b' : bool).
     sigL_transitivity b'; subst b';
     [
-    | rewrite length_up_to;
-      simpl;
-      match goal with
-        | [ |- _ = ?f _ _ _ _ _ _ ]
-          => let f' := fresh in
-             set (f' := f);
-               rewrite !uniquize_idempotent;
-               subst f'
-      end;
+    | simpl;
+      rewrite !HNoDup, !map_length, !length_up_to;
       reflexivity ].
     refine_Fix2_5_Proper_eq.
-    rewrite uniquize_idempotent.
     etransitivity_rev _.
     { fix2_trans;
       [
@@ -1111,7 +1107,7 @@ Section recursive_descent_parser.
                      | apply (f_equal2 (@cons _))
                      | t_refine_item_match ];
         first [ progress unfold rdp_list_of_nonterminal; simpl;
-                rewrite !uniquize_idempotent;
+                rewrite HNoDup, !map_length;
                 reflexivity
               | idtac;
                 match goal with
@@ -1159,7 +1155,7 @@ Section recursive_descent_parser.
             rewrite <- nth'_nth.
             change @nth' with @inner_nth'.
             apply f_equal2; [ | reflexivity ].
-            step_opt'; [ | reflexivity ].
+            step_opt'; [].
             rewrite map_id.
             change @inner_nth' with @nth' at 3.
             rewrite nth'_nth.
@@ -1191,7 +1187,7 @@ Section recursive_descent_parser.
             end. }
           etransitivity_rev _.
           { apply (f_equal2 (inner_nth' _)); [ | reflexivity ].
-            step_opt'; [ | reflexivity ].
+            step_opt'; [ ].
             change @inner_nth' with @nth' at 1.
             rewrite nth'_nth.
             rewrite_map_nth_rhs; rewrite !map_map; simpl.
@@ -1227,15 +1223,20 @@ Section recursive_descent_parser.
                      | [ |- _ = List.length (rdp_list_to_production_opt _) ]
                        => progress unfold rdp_list_to_production_opt at 1; simpl;
                           change @inner_nth' with @nth';
-                          match goal with
-                          | [ |- _ = @List.length ?A ?ls ]
-                            => refine (f_equal (@List.length A) _)
-                          end;
-                          repeat step_opt';
-                          [ progress simpl; reflexivity
-                          | reflexivity ]
+                          repeat match goal with
+                                   | _ => progress simpl
+                                   | _ => progress fin_step_opt
+                                   | [ |- _ = @List.length ?A ?ls ]
+                                     => refine (f_equal (@List.length A) _)
+                                   | [ |- _ = nth' ?n ?ls ?d ]
+                                     => refine (f_equal2 (nth' n) _ _)
+                                   | [ |- _ = map (fun _ => nth' _ _ _) _ ]
+                                     => progress step_opt'
+                                 end;
+                          rewrite map_id;
+                          fin_step_opt
                      end ];
-      [ | reflexivity | ].
+      [ | reflexivity | reflexivity | ].
       { t_reduce_list_evar; [ reflexivity | ].
         repeat first [ step_opt'
                      | apply (f_equal2 andb)
@@ -1319,7 +1320,7 @@ Section recursive_descent_parser.
       step_opt'; [ | reflexivity ].
       step_opt'; [].
       rewrite !nth'_nth; apply (f_equal2 (nth _)); [ | ].
-      { step_opt'; [ | reflexivity ].
+      { step_opt'; [ ].
         rewrite !nth'_nth; apply (f_equal2 (nth _)); [ | ].
         { step_opt'; [].
           match goal with
@@ -1369,7 +1370,8 @@ Section recursive_descent_parser.
               => refine (f_equal (@List.length A) _)
             end.
             apply (f_equal2 (nth _)); [ | reflexivity ].
-            step_opt'; [ | reflexivity ].
+            step_opt'; [ ].
+            step_opt'; [ progress simpl ].
             rewrite nth'_nth.
             apply (f_equal2 (nth _)); [ | reflexivity ].
             reflexivity. } }
@@ -1392,9 +1394,9 @@ Section recursive_descent_parser.
             => refine (f_equal (@List.length A) _)
           end.
           apply (f_equal2 (nth _)); [ | reflexivity ].
-          step_opt'; [ | reflexivity ].
+          step_opt'; [ ].
+          step_opt'; [ progress simpl ].
           rewrite nth'_nth.
-          rewrite map_id.
           apply (f_equal2 (nth _)); [ | reflexivity ].
           reflexivity. } }
       { apply (f_equal2 orb); fin_step_opt; [].
@@ -1403,9 +1405,9 @@ Section recursive_descent_parser.
           => refine (f_equal (@List.length A) _)
         end.
         apply (f_equal2 (nth _)); [ | reflexivity ].
-        step_opt'; [ | reflexivity ].
+        step_opt'; [ ].
+        step_opt'; [ progress simpl ].
         rewrite nth'_nth.
-        rewrite map_id.
         apply (f_equal2 (nth _)); [ | reflexivity ].
         reflexivity. } }
     change @nth' with @inner_nth' at 1.
@@ -1654,6 +1656,8 @@ Section recursive_descent_parser.
   Local Ltac safe_change_opt := repeat safe_change_opt'.
   Local Ltac change_opt_reduce := repeat change_opt_reduce'.
 
+  Let flip_map A ls B f := @List.map A B f ls.
+
   Definition parse_nonterminal_opt'3
              (str : String)
              (nt : String.string)
@@ -1667,12 +1671,12 @@ Section recursive_descent_parser.
     sigL_transitivity b'; subst b'.
     Focus 2.
     { progress unfold rdp_list_of_nonterminal; simpl.
-
+      hnf in HNoDup.
       match goal with
         | [ |- _ = ?f ?x ]
           => set (F := f)
       end.
-      rewrite !uniquize_idempotent.
+      rewrite HNoDup, map_length.
       subst F.
       (** TODO: Come up with a robust (possibly reflective) version of
       this, based or wheich things are recursively accessible *)
@@ -1698,11 +1702,16 @@ Section recursive_descent_parser.
                 unfold item_rect;
                 t_reduce_fix ] ].
 
+      change @List.map with (fun A B f ls => @flip_map A ls B f).
+      cbv beta.
+      change (@flip_map _ ls) with (@flip_map _ (opt.id ls)).
+      unfold flip_map.
+
       step_opt'; [ | reflexivity ].
       apply (f_equal2 (opt3.nth' _)); [ | reflexivity ].
-      change_opt_reduce; [].
+      change_opt_reduce.
       step_opt';
-      change_opt_reduce; [ | | | ].
+        change_opt_reduce; [ | | | ].
       { match goal with
         | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
           => refine (f_equal (fun x' => f x' y z w) _)

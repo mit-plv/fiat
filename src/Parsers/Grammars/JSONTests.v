@@ -83,39 +83,7 @@ Local Ltac safe_step :=
 Section json.
   Example json_parses_singleline : parse_of_grammar ("[ " ++ CR ++ LF ++ TAB ++ """xy ]z\"""" ]")%string json_grammar.
   Proof.
-    hnf.
-    Opaque json_grammar.
-    simpl.
-    Transparent json_grammar.
-    set (x := json_grammar).
-    set (y := Start_productions x).
-    unfold json_grammar in x; simpl in x.
-    unfold list_to_grammar in x.
-    simpl @map in x.
-    unfold list_to_productions in x.
-    repeat
-    match eval unfold x in x with
-    | context[Operations.List.uniquize ?beq ?ls]
-      => let c := constr:(Operations.List.uniquize beq ls) in
-         change c with ls in (value of x)
-    end.
-    simpl @map in x.
-    simpl @hd in x.
-    unfold Start_productions in y.
-    Set Printing Coercions.
-    unfold Start_symbol in y.
-    unfold x at 2 in (value of y).
-    unfold Lookup in y.
-    unfold x in y.
-    Time match eval unfold y in y with
-    | context[Operations.List.first_index_error ?f ?ls]
-      => let c := constr:(Operations.List.first_index_error f ls) in
-         let c' := (eval cbv in c) in
-         change c with c' in (value of y)
-         end.
-    unfold option_rect in y.
-    unfold nth in y.
-    subst y.
+    hnf; simpl.
     apply ParseTail; repeat safe_step.
     apply ParseHead; repeat safe_step.
     apply ParseProductionCons with (n := 4); repeat safe_step.

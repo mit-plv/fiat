@@ -64,7 +64,8 @@ Defined.
 Arguments transfer_parser {_ _ _ _ _ _} _ _ _ _ _ _ _ _.
 
 Section implementation.
-  Context {ls : list (String.string * productions Ascii.ascii)}.
+  Context {ls : list (String.string * productions Ascii.ascii)}
+          {HNoDup : NoDupR Equality.string_beq (List.map fst ls)}.
   Local Notation G := (list_to_grammar nil ls) (only parsing).
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).

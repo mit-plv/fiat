@@ -22,19 +22,23 @@ Bind Scope productions_scope with productions.
 Delimit Scope grammar_scope with grammar.
 Bind Scope grammar_scope with grammar.
 
+Class NoDupR {T} beq (ls : list T) := nodupr : uniquize beq ls = ls.
+Hint Extern 1 (NoDupR _ _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
+
 Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
   := fun nt
      => option_rect
           (fun _ => T)
-          (fun idx => nth idx (map snd (uniquize (fun x y => string_beq (fst x) (fst y)) ls)) default)
+          snd
           default
-          (first_index_error (string_beq nt) (uniquize string_beq (map fst ls))).
+          (find (fun k => string_beq nt (fst k)) ls).
 
 Definition list_to_grammar {T} (default : productions T) (ls : list (string * productions T)) : grammar T
-  := {| Start_symbol := hd ""%string (uniquize string_beq (map fst ls));
+  := {| Start_symbol := hd ""%string (map fst ls);
         Lookup := list_to_productions default ls;
-        Valid_nonterminals := uniquize string_beq (map fst ls) |}.
+        Valid_nonterminals := map fst ls |}.
 
+Global Arguments list_to_grammar {_} _ _.
 Global Arguments nat_of_ascii !_ / .
 Global Arguments Compare_dec.leb !_ !_ / .
 Global Arguments BinPos.Pos.to_nat !_ / .
