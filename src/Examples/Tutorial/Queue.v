@@ -277,4 +277,130 @@ Section data.
 
     finalize.
   Defined.
+
+
+  (* OK, we just spent all that effort on automating the derivation.
+   * Ideally the same automation will keep working with different implementations.
+   * Let's try another (dumb, slow) one. *)
+  Definition dumbAbsRel (abs conc : list data) := conc = rev abs.
+
+  Fixpoint getLast (ls : list data) : (list data * data) :=
+    match ls with
+    | nil => (nil, dummy)
+    | d :: nil => (nil, d)
+    | d :: ls' =>
+      let p := getLast ls' in
+      (d :: fst p, snd p)
+    end.
+
+  Lemma dumbAbsRel_initial : dumbAbsRel nil nil.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma dumbAbsRel_push : forall abs conc d,
+    dumbAbsRel abs conc
+    -> dumbAbsRel (abs ++ d :: nil) (d :: conc).
+  Proof.
+    unfold dumbAbsRel; simpl; intros.
+    rewrite rev_unit.
+    congruence.
+  Qed.
+
+  Lemma dumbAbsRel_must_be_nil : forall abs conc,
+    dumbAbsRel abs conc
+    -> conc = nil
+    -> abs = nil.
+  Proof.
+    unfold dumbAbsRel; simpl; intros.
+    subst.
+    destruct abs; simpl in *; intuition.
+    exfalso; eauto.
+  Qed.
+
+  Lemma dumbAbsRel_eta : forall abs conc,
+    dumbAbsRel abs conc
+    -> conc <> nil
+    -> abs = hd dummy abs :: tl abs.
+  Proof.
+    unfold dumbAbsRel; simpl; intros.
+    subst.
+    destruct abs; intuition.
+  Qed.
+
+  Lemma dumbAbsRel_pop_rep : forall abs conc r,
+    dumbAbsRel abs conc
+    -> conc <> nil
+    -> r = getLast conc
+    -> dumbAbsRel (tl abs) (fst r).
+  Proof.
+    unfold dumbAbsRel; intros; subst.
+    destruct abs; simpl in *; intuition.
+
+    Lemma getLast_append_list : forall ls d,
+      fst (getLast (ls ++ d :: nil)) = ls.
+    Proof.
+      induction ls; simpl; intuition.
+      destruct (ls ++ d :: nil) eqn:Heq.
+      exfalso; eauto.
+      rewrite <- Heq.
+      rewrite IHls.
+      auto.
+    Qed.
+
+    apply getLast_append_list.
+  Qed.
+
+  Lemma dumbAbsRel_pop_data : forall abs conc r,
+    dumbAbsRel abs conc
+    -> conc <> nil
+    -> r = getLast conc
+    -> hd dummy abs = snd r.
+  Proof.
+    unfold dumbAbsRel; intros; subst.
+    destruct abs; simpl in *; intuition.
+
+    Lemma getLast_append_data : forall ls d,
+      snd (getLast (ls ++ d :: nil)) = d.
+    Proof.
+      induction ls; auto.
+
+      intros.
+      simpl app.
+      unfold getLast.
+      fold getLast.
+      destruct (ls ++ d :: nil) eqn:Heq.
+      exfalso; eauto.
+      rewrite <- Heq.
+      rewrite IHls.
+      auto.
+    Qed.
+
+    rewrite getLast_append_data; auto.
+  Qed.
+
+  Hint Resolve dumbAbsRel_initial dumbAbsRel_push dumbAbsRel_must_be_nil dumbAbsRel_pop_rep.
+
+  (* Here's our first derivation, showing a bit more manual perspective. *)
+  Theorem dumb_implementation : FullySharpened spec.
+  Proof.
+    start sharpening ADT.
+    hone representation using dumbAbsRel; try queue.
+
+    refine_testnil r_n.
+
+    assert (r_o = nil) by eauto.
+    subst.
+    queue.
+
+    refine_let (getLast r_n).
+    erewrite dumbAbsRel_eta with (abs := r_o) by eauto.
+    erewrite dumbAbsRel_pop_data by eauto.
+    queue.
+
+    cleanup.
+    done.
+
+    finalize.
+  Defined.
 End data.

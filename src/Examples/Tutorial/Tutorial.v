@@ -108,3 +108,15 @@ Proof.
 Qed.
 
 Hint Resolve tl_cons.
+
+Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil
+  -> False.
+Proof.
+  intros.
+  apply (f_equal (@length _)) in H.
+  rewrite app_length in H.
+  simpl in *; omega.
+Qed.
+
+Hint Immediate appendone_contra.
+  
