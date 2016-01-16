@@ -23,11 +23,7 @@ Section IndexedImpl.
     set (y := Valid_nonterminals x).
     set (z := Lookup x).
     unfold json_grammar, list_to_grammar in x.
-    repeat match eval unfold x in x with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of x)
-           | _ => progress simpl @List.hd in x
-           end.
+    simpl in x.
     repeat match goal with
            | [ |- context[Operations.List.uniquize ?beq ?ls] ]
              => change (Operations.List.uniquize beq ls) with ls
@@ -40,7 +36,6 @@ Section IndexedImpl.
            | [ |- context[Operations.List.uniquize ?beq ?ls] ]
              => change (Operations.List.uniquize beq ls) with ls
            end.
-    About Carriers.default_to_nonterminal.
     match goal with
     | [ |- context[@Carriers.default_to_nonterminal ?x ?y ?z] ]
       => set (v := @Carriers.default_to_nonterminal x y)
@@ -76,12 +71,12 @@ Section IndexedImpl.
                   unfold option_rect, List.nth in z';
                   subst z'
            end.
-    Timeout 5 simpl @List.length.
-    Timeout 5 simpl @Operations.List.up_to.
+    simpl @List.length.
+    simpl @Operations.List.up_to.
     unfold List.flat_map.
-    Timeout 5 simpl @List.length.
-    Timeout 5 simpl @List.map.
-    Timeout 5 simpl @List.app.
+    simpl @List.length.
+    simpl @List.map.
+    simpl @List.app.
     unfold List.fold_right at 1.
     unfold RDPList.rdp_list_to_production.
     match goal with
@@ -119,6 +114,11 @@ Section IndexedImpl.
                   simpl in z';
                   subst z'
            end.
+      lazymatch goal with
+           | [ |- context[v ?nt] ]
+             => let z' := fresh "z'" in
+                set (z' := v nt);
+                  unfold v in z'           end.
     simpl_lookup v.
     simpl_lookup v.
     simpl_lookup v.
