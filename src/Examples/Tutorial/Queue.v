@@ -37,11 +37,13 @@ Section data.
   Definition absRel (abs : list data) (conc : list data * list data) :=
     abs = fst conc ++ rev (snd conc).
 
+  (* The appropriate initial states are related. *)
   Lemma absRel_initial : absRel nil (nil, nil).
   Proof.
     reflexivity.
   Qed.
 
+  (* The simple implementation of "push" preserves the relation. *)
   Lemma absRel_push : forall d abs conc, absRel abs conc
     -> absRel (abs ++ d :: nil) (fst conc, d :: snd conc).
   Proof.
@@ -49,15 +51,7 @@ Section data.
     rewrite app_assoc; reflexivity.
   Qed.
 
-  Lemma tl_cons : forall A (x : A) ls1 ls2,
-    x :: ls1 = ls2
-    -> ls1 = tl ls2.
-  Proof.
-    destruct ls2; simpl; congruence.
-  Qed.
-
-  Hint Resolve absRel_initial absRel_push tl_cons.
-
+  (* When the concrete state is empty, so must be the abstract state. *)
   Lemma absRel_must_be_nil : forall abs conc,
     absRel abs conc
     -> fst conc = nil
@@ -67,8 +61,9 @@ Section data.
     unfold absRel; destruct conc; simpl; intros; subst; reflexivity.
   Qed.
 
-  Hint Resolve absRel_must_be_nil.
-
+  (* The abstract queue may be expanded into its first element and tail,
+   * if it's related to a concrete state with nonempty first list.
+   * In general, such a property depends on a list being nonempty. *)
   Lemma eta_abs_fst : forall abs conc,
     absRel abs conc
     -> fst conc <> nil
@@ -78,6 +73,8 @@ Section data.
     destruct (fst conc); simpl in *; intuition congruence.
   Qed.
 
+  (* The abstract queue may be expanded into its first element and tail,
+   * if it's related to a concrete state with nonempty second list. *)
   Lemma eta_abs_snd : forall abs conc,
     absRel abs conc
     -> snd conc <> nil
@@ -91,6 +88,8 @@ Section data.
     auto.
   Qed.
 
+  (* The case for preserving the relation on "pop",
+   * when we need to reverse the second list. *)
   Lemma absRel_reversed_rep : forall abs conc r,
     absRel abs conc
     -> fst conc = nil
@@ -102,6 +101,8 @@ Section data.
     autorewrite with core; auto.
   Qed.
 
+  (* The case for returning the right data value on "pop",
+   * when we need to reverse the second list. *)
   Lemma absRel_reversed_data : forall abs conc r,
     absRel abs conc
     -> fst conc = nil
@@ -112,6 +113,8 @@ Section data.
     unfold absRel; intuition simpl in *; subst; auto.
   Qed.
 
+  (* The case for preserving the relation on "pop",
+   * in the fast path where the first list is not empty. *)
   Lemma absRel_fast_rep : forall abs conc,
     absRel abs conc
     -> fst conc <> nil
@@ -121,6 +124,8 @@ Section data.
     destruct (fst conc); simpl in *; tauto.
   Qed.
 
+  (* The case for returning the right data value on "pop",
+   * in the fast path where the first list is not empty. *)
   Lemma absRel_fast_data : forall abs conc,
     absRel abs conc
     -> fst conc <> nil
@@ -130,57 +135,59 @@ Section data.
     destruct (fst conc); simpl in *; tauto.
   Qed.
 
-  Hint Resolve absRel_reversed_rep absRel_fast_rep.
-
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
   Theorem implementation : FullySharpened spec.
   Proof.
     start sharpening ADT.
     hone representation using absRel.
 
-    simplify with monad laws.
-    pick.
-    finish honing.
+    monad_simpl.
+    pick_by absRel_initial.
+    done.
 
-    simplify with monad laws.
-    pick.
-    finish honing.
+    monad_simpl.
+    pick_by absRel_push.
+    done.
 
     refine_testnil (fst r_n).
 
     refine_testnil (snd r_n).
 
-    assert (r_o = nil) by eauto; subst.
+    assert (r_o = nil) by (eapply absRel_must_be_nil; eauto).
+    subst.
     monad_simpl.
-    pick.
+    pick_by absRel_initial.
     monad_simpl.
-    finish honing.
+    done.
 
     apply refine_let with (v := rev (snd r_n)); intros.
 
     erewrite (eta_abs_snd (abs := r_o)) by eauto.
     monad_simpl.
-    pick.
+    pick_by absRel_reversed_rep.
     monad_simpl.
     erewrite absRel_reversed_data by eauto.
-    finish honing.
+    done.
 
     cbv beta.
-    finish honing.
+    done.
 
     erewrite (eta_abs_fst (abs := r_o)) by eauto.
     monad_simpl.
-    pick.
+    pick_by absRel_fast_rep.
     monad_simpl.
     erewrite absRel_fast_data with (abs := r_o) by eauto.
-    finish honing.
+    done.
 
-    cleanup.
-    finish honing.
+    rewrite refine_let_ret.
+    rewrite refine_testnil_ret.
+    rewrite refine_testnil_ret.
+    done.
 
     finalize.
   Defined.
 
+  (* We can now extract a standlone Gallina term for this ADT. *)
   Definition impl := Eval simpl in projT1 implementation.
   Print impl.
 End data.

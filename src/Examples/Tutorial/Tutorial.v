@@ -21,6 +21,7 @@ Export Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
 
 Ltac pick := erewrite refine_pick_val by eauto.
+Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto).
 
 Hint Resolve refine_pick_val.
 Hint Rewrite <- app_nil_end.
@@ -91,5 +92,17 @@ Ltac monad_simpl := autosetoid_rewrite with refine_monad; simpl.
 
 Hint Rewrite refine_let_ret refine_testnil_ret : cleanup.
 
+Ltac done := try match goal with
+                 | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a)
+                 end; finish honing.
 Ltac cleanup := autorewrite with cleanup.
 Ltac finalize := finish_SharpeningADT_WithoutDelegation.
+
+Lemma tl_cons : forall A (x : A) ls1 ls2,
+  x :: ls1 = ls2
+  -> ls1 = tl ls2.
+Proof.
+  destruct ls2; simpl; congruence.
+Qed.
+
+Hint Resolve tl_cons.
