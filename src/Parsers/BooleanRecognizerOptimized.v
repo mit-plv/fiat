@@ -1656,7 +1656,21 @@ Section recursive_descent_parser.
   Local Ltac safe_change_opt := repeat safe_change_opt'.
   Local Ltac change_opt_reduce := repeat change_opt_reduce'.
 
-  Let flip_map A ls B f := @List.map A B f ls.
+  Local Ltac do_flip_map ls :=
+    idtac;
+    progress
+      (repeat let A := match goal with |- appcontext[@List.map ?A ?B] => A end in
+              let B := match goal with |- appcontext[@List.map A ?B] => B end in
+              let flip_map := fresh "flip_map" in
+              pose (flip_map ls f := @List.map A B f ls);
+                progress change (@List.map A B) with (fun f ls => @flip_map ls f);
+                cbv beta;
+                try change (@flip_map ls) with (@flip_map (opt.id ls)));
+    repeat match goal with
+           | [ flip_map := fun ls f => @List.map _ _ f ls |- _ ]
+             => subst flip_map
+           end;
+    cbv beta.
 
   Definition parse_nonterminal_opt'3
              (str : String)
@@ -1702,10 +1716,7 @@ Section recursive_descent_parser.
                 unfold item_rect;
                 t_reduce_fix ] ].
 
-      change @List.map with (fun A B f ls => @flip_map A ls B f).
-      cbv beta.
-      change (@flip_map _ ls) with (@flip_map _ (opt.id ls)).
-      unfold flip_map.
+      do_flip_map ls.
 
       step_opt'; [ | reflexivity ].
       apply (f_equal2 (opt3.nth' _)); [ | reflexivity ].
