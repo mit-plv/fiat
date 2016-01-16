@@ -336,6 +336,7 @@ src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v
 src/Parsers/Refinement/SharpenedJSComment.v
+src/Parsers/Refinement/SharpenedJSON.v
 src/Parsers/Refinement/SharpenedStringLiteral.v
 src/Parsers/Refinement/Tactics.v
 src/Parsers/Refinement/BinOpBrackets/BinOpRules.v
