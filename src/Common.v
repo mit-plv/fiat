@@ -1722,13 +1722,13 @@ Ltac replace_with_at_by x y set_tac tac :=
   let x' := fresh in
   set_tac x' x;
   assert (H : x' = y) by (subst x'; tac);
-  clearbody x'; symmetry in H; destruct H; clear x'.
+  clearbody x'; symmetry in H; destruct H.
 Ltac replace_with_at x y set_tac :=
   let H := fresh in
   let x' := fresh in
   set_tac x' x;
   cut (x' = y);
-  [ intro H; symmetry in H; destruct H; clear x'
+  [ intro H; symmetry in H; destruct H
   | subst x' ].
 Tactic Notation "replace" constr(x) "with" constr(y) :=
   replace_with_at x y ltac:(fun x' x => set (x' := x) ).
