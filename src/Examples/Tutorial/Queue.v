@@ -403,4 +403,36 @@ Section data.
 
     finalize.
   Defined.
+
+  (* We use a double colon to override the prior definition. *)
+  Ltac queue' ::=
+    repeat match goal with
+           | _ => progress monad_simpl
+           | _ => pick
+           | [ H : dumbAbsRel ?abs _ |- _ ] =>
+             match abs with
+             | nil => fail 1
+             | _ => assert (abs = nil) by eauto; subst
+             end
+           | [ _ : dumbAbsRel ?abs ?conc |- context[match ?abs with nil => _ | _ :: _ => _ end] ] =>
+             erewrite (dumbAbsRel_eta (abs := abs)) by eauto
+           | [ |- context[hd dummy _] ] =>
+             erewrite dumbAbsRel_pop_data by eauto
+           end.
+
+  (* Now let's automate it more. *)
+  Theorem more_automated_dumb_implementation : FullySharpened spec.
+  Proof.
+    start sharpening ADT.
+    hone representation using dumbAbsRel; try queue.
+
+    refine_testnil r_n; [ queue |
+      refine_let (getLast r_n); queue | ].
+
+    queue'.
+    cleanup.
+    done.
+
+    finalize.
+  Defined.
 End data.
