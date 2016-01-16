@@ -112,12 +112,36 @@ Section data.
     pick.
     finish honing.
 
+    Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
+      match ls with
+      | nil => cnil
+      | _ :: _ => ccons
+      end.
+
     Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B),
       (ls = nil -> refine c1 cnil)
       -> (ls <> nil -> refine c1 ccons)
-      -> refine c1 (match ls with nil => cnil | _ :: _ => ccons end).
+      -> refine c1 (testnil ls cnil ccons).
     Proof.
       destruct ls; intuition congruence.
+    Qed.
+
+    Add Parametric Morphism A B
+    : (@testnil A (Comp B))
+        with signature
+        @eq (list A)
+          ==> @refine B
+          ==> @refine B
+          ==> @refine B
+          as refine_testnil_morphism.
+    Proof.
+      destruct y; auto.
+    Qed.
+
+    Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B),
+      refine (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)).
+    Proof.
+      destruct ls; reflexivity.
     Qed.
 
     etransitivity.
@@ -244,7 +268,12 @@ Section data.
     erewrite absRel_fast_data with (abs := r_o) by eauto.
     finish honing.
 
+    repeat rewrite refine_testnil_ret.
     finish honing.
 
     finish_SharpeningADT_WithoutDelegation.
-Abort.
+  Defined.
+
+  Definition impl := Eval simpl in projT1 implementation.
+  Print impl.
+End data.
