@@ -80,7 +80,7 @@ Proof.
   unfold let_; auto.
 Qed.
 
-Ltac refine_let := apply refine_let.
+Ltac refine_let x := apply (refine_let (v := x)); intros.
 
 Lemma refine_let_ret : forall A B (v : A) (f : A -> B),
   let_ v (fun x => ret (f x)) =  ret (let_ v f).
@@ -91,6 +91,8 @@ Qed.
 Ltac monad_simpl := autosetoid_rewrite with refine_monad; simpl.
 
 Hint Rewrite refine_let_ret refine_testnil_ret : cleanup.
+
+Global Opaque let_.
 
 Ltac done := try match goal with
                  | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a)

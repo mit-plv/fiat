@@ -160,7 +160,7 @@ Section data.
     monad_simpl.
     done.
 
-    apply refine_let with (v := rev (snd r_n)); intros.
+    refine_let (rev (snd r_n)).
 
     erewrite (eta_abs_snd (abs := r_o)) by eauto.
     monad_simpl.
@@ -190,4 +190,91 @@ Section data.
   (* We can now extract a standlone Gallina term for this ADT. *)
   Definition impl := Eval simpl in projT1 implementation.
   Print impl.
+
+  (* Let's try that again, with more automation. *)
+  Hint Resolve absRel_initial absRel_push absRel_must_be_nil absRel_reversed_rep absRel_fast_rep.
+
+  Theorem more_automated_implementation : FullySharpened spec.
+  Proof.
+    start sharpening ADT.
+    hone representation using absRel.
+
+    monad_simpl.
+    pick.
+    done.
+
+    monad_simpl.
+    pick.
+    done.
+
+    refine_testnil (fst r_n).
+
+    refine_testnil (snd r_n).
+
+    assert (r_o = nil) by eauto.
+    subst.
+    monad_simpl.
+    pick.
+    monad_simpl.
+    done.
+
+    refine_let (rev (snd r_n)).
+
+    erewrite (eta_abs_snd (abs := r_o)) by eauto.
+    monad_simpl.
+    pick.
+    monad_simpl.
+    erewrite absRel_reversed_data by eauto.
+    done.
+
+    cbv beta.
+    done.
+
+    erewrite (eta_abs_fst (abs := r_o)) by eauto.
+    monad_simpl.
+    pick.
+    monad_simpl.
+    erewrite absRel_fast_data with (abs := r_o) by eauto.
+    done.
+
+    cleanup.
+    done.
+
+    finalize.
+  Defined.
+
+  (* We can go further, building tactics to automate most of our strategy. *)
+
+  Ltac queue' :=
+    repeat match goal with
+           | _ => progress monad_simpl
+           | _ => pick
+           | [ H : absRel ?abs _ |- _ ] =>
+             match abs with
+             | nil => fail 1
+             | _ => assert (abs = nil) by eauto; subst
+             end
+           | [ _ : absRel ?abs ?conc |- context[match ?abs with nil => _ | _ :: _ => _ end] ] =>
+             (erewrite (eta_abs_fst (abs := abs)) by eauto)
+             || (erewrite (eta_abs_snd (abs := abs)) by eauto)
+           | [ |- context[hd dummy _] ] =>
+             (erewrite absRel_reversed_data by eauto)
+             || (erewrite absRel_fast_data by eauto)
+           end.
+
+  Ltac queue := queue'; done.
+
+  Theorem even_more_automated_implementation : FullySharpened spec.
+  Proof.
+    start sharpening ADT.
+    hone representation using absRel; try queue.
+
+    refine_testnil (fst r_n); [
+      refine_testnil (snd r_n); [ queue |
+        refine_let (rev (snd r_n)); queue | queue ] | queue | ].
+
+    cleanup; done.
+
+    finalize.
+  Defined.
 End data.
