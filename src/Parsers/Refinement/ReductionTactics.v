@@ -83,6 +83,12 @@ Ltac parser_red_gen term do_simpl_list_map :=
 Class eq_refl_vm_cast T := by_vm_cast : T.
 Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
 
+(* Work around an anomaly in 8.5 *)
+Local Notation type_of x := ((fun T (y : T) => T) _ x).
+Ltac type_of_no_anomaly x :=
+  let T := constr:(type_of x) in
+  (eval cbv beta in T).
+
 Ltac make_parser_gen splitter do_simpl_list_map :=
   idtac;
   let str := match goal with
@@ -90,7 +96,7 @@ Ltac make_parser_gen splitter do_simpl_list_map :=
                | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
              end in
   let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
-  let T := match type of b0 with ?T -> _ => constr:T end in
+  let T := match type_of_no_anomaly b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in
   let b' := parser_red_gen b do_simpl_list_map in
