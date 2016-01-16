@@ -1884,4 +1884,36 @@ Section ListFacts.
                  | _ => intro
                end. } }
   Qed.
+
+  Lemma find_first_index_error {A} {beq : A -> A -> bool} (bl : forall x y, beq x y = true -> x = y)
+        {B C} (f : A * B -> C) x ls default
+  : option_rect
+      (fun _ => C)
+      (fun idx => nth idx (map f ls) default)
+      default
+      (List.first_index_error
+         (beq x)
+         (map fst ls))
+    = option_rect
+        (fun _ => C)
+        f
+        default
+        (find (fun k => beq x (fst k)) ls).
+  Proof.
+    induction ls as [|l ls IHls]; simpl; [ reflexivity | ].
+    repeat match goal with
+             | _ => rewrite <- IHls; clear IHls
+             | _ => reflexivity
+             | [ |- context[if ?e then _ else _] ] => destruct e eqn:?; simpl
+           end; [].
+    rewrite first_index_helper_first_index_error; simpl.
+    match goal with
+      | [ |- _ = option_rect _ _ _ ?x ]
+        => destruct x eqn:Heq'
+    end; simpl.
+    { apply first_index_error_Some_correct in Heq'.
+      destruct Heq' as [[? [Heq' ?]] ?].
+      rewrite Heq'; simpl; reflexivity. }
+    { reflexivity. }
+  Qed.
 End ListFacts.
