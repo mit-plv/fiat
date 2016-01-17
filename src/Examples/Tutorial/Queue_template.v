@@ -171,7 +171,6 @@ Section data.
     erewrite absRel_reversed_data by eauto.
     done.
 
-    cbv beta.
     done.
 
     erewrite eta_abs_fst with (abs := r_o) by eauto.
@@ -192,38 +191,6 @@ Section data.
   (* We can now extract a standlone Gallina term for this ADT. *)
   Definition impl := Eval simpl in projT1 implementation.
   Print impl.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   (* We can go further, building tactics to automate most of our strategy. *)
 
@@ -261,6 +228,31 @@ Section data.
 
     finalize.
   Defined.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   (* OK, we just spent all that effort on automating the derivation.
