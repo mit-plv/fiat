@@ -1,4 +1,7 @@
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
+(* Let's look at the standard Bookstore example in more detail,
+ * performing some steps manually. *)
+
+Require Import Tutorial.
 
 (* Our bookstore has two relations (tables):
    - The [Books] relation contains the books in the
@@ -100,10 +103,56 @@ Definition BookStoreSpec : ADT BookStoreSig :=
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
-  master_plan EqIndexTactics.
-Time Defined.
+  start sharpening ADT.
+  start_honing_QueryStructure'.
+  chooseIndexes.
 
-Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
+  Focus 6.
+  simpl in *.
+
+  monad_simpl.
+  Focused_refine_Query.
+  implement_In_opt.
+  distribute_filters_to_joins.
+  implement_filters_using_find.
+  (* unfold Join_Comp_Lists; simpl. *)
+  monad_simpl.
+  pick_new_database.
+  finish honing.
+
+  Focus 6.
+  simpl in *.
+
+  monad_simpl.
+  Focused_refine_Query.
+  implement_In_opt.
+  distribute_filters_to_joins.
+  implement_filters_using_find.
+  monad_simpl.
+  pick_new_database.
+  finish honing.
+  
+  (* Now let's finish off the others with standard automation,
+   * so that we can move on to more interesting stuff. *)
+  planOne.
+  planOne.
+  planOne.
+  planOne.
+  planOne.
+
+  (* The final steps involve getting the program into functional, executable form. *)
+  final_optimizations.
+
+  determinize.            (* Put the program into a form where it's obviously
+                           * deterministic, given an implementation of each
+                           * index data structure. *)
+  choose_data_structures. (* Choose an implementation for each index data structure. *)
+  final_simplification.   (* Perform any more algebraic simplfications that are possible,
+                           * now that we know each concrete data structure. *)
+  use_this_one.           (* Now commit to this precise implementation. *)
+Defined.
+
+Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=
   Eval simpl in projT1 SharpenedBookStore.
 
 Print BookstoreImpl.
