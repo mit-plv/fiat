@@ -1,4 +1,5 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
+Require Import Coq.Classes.Morphisms.
 
 Module Export Bool.
   Delimit Scope boolr_scope with boolr.
@@ -8,6 +9,11 @@ Module Export Bool.
   Global Arguments andbr _ !_ / .
   Infix "||" := orbr : boolr_scope.
   Infix "&&" := andbr : boolr_scope.
+
+  Global Instance orbr_Proper_eq : Proper (eq ==> eq ==> eq) orbr.
+  Proof. lazy; intros; subst; reflexivity. Qed.
+  Global Instance andr_Proper_eq : Proper (eq ==> eq ==> eq) andbr.
+  Proof. lazy; intros; subst; reflexivity. Qed.
 End Bool.
 
 Section BoolFacts.
