@@ -195,6 +195,8 @@ src/Examples/QueryStructure/StocksFacade.v
 src/Examples/QueryStructure/Weather.v
 src/Examples/QueryStructure/WeatherFacade.v
 src/Examples/Smtp/Smtp.v
+src/Examples/Tutorial/BookstoreMoreManual.v
+src/Examples/Tutorial/NotInList.v
 src/Examples/Tutorial/Queue.v
 src/Examples/Tutorial/Tutorial.v
 src/Fiat4Monitors/LandsharkNodes.v
