@@ -386,3 +386,13 @@ Proof.
   lazy.
   intros ??? ?? H [|? ?] ??; subst; eauto.
 Qed.
+
+Global Instance list_caset_Proper_forall' {A P}
+: Proper (eq
+            ==> pointwise_relation _ (pointwise_relation _ eq)
+            ==> forall_relation (fun _ => eq))
+         (@list_caset A (fun _ => P)).
+Proof.
+  lazy.
+  intros ??? ?? H [|? ?]; subst; eauto.
+Qed.
