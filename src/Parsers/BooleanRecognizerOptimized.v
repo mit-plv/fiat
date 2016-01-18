@@ -1630,12 +1630,12 @@ Section recursive_descent_parser.
       (repeat let A := match goal with |- appcontext[@List.map ?A ?B] => A end in
               let B := match goal with |- appcontext[@List.map A ?B] => B end in
               let flip_map := fresh "flip_map" in
-              pose (flip_map ls f := @List.map A B f ls);
-                progress change (@List.map A B) with (fun f ls => @flip_map ls f);
+              pose (flip_map ls' f := @List.map A B f ls');
+                progress change (@List.map A B) with (fun f ls' => @flip_map ls' f);
                 cbv beta;
                 try change (@flip_map ls) with (@flip_map (opt.id ls)));
     repeat match goal with
-           | [ flip_map := fun ls f => @List.map _ _ f ls |- _ ]
+           | [ flip_map := fun ls' f => @List.map _ _ f ls' |- _ ]
              => subst flip_map
            end;
     cbv beta.
