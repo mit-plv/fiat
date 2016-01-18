@@ -207,6 +207,7 @@ Module Export PrettyNotations.
   Global Arguments Compare_dec.leb !_ !_.
 
   Infix "=p" := default_production_carrierT_beq (at level 70, no associativity).
+  Infix "=ℕ" := EqNat.beq_nat (at level 70, no associativity).
 End PrettyNotations.
 
 Section IndexedImpl.
@@ -220,13 +221,40 @@ Section IndexedImpl.
 
   Local Notation T := (String)%type (only parsing).
 
+  Definition to_production_opt_sig p : { p' : _ | p' = to_production p }.
+  Proof.
+    unfold to_production, predata, rdp_list_predata, rdp_list_to_production, default_to_production.
+    eexists.
+    unfold Lookup_idx.
+    eapply (f_equal (Operations.List.drop _)).
+    eapply (f_equal3 (@nth _)).
+    { let RHS := match goal with |- _ = ?RHS => RHS end in
+      let v := match RHS with context[@nth ?a ?b ?c ?d] => constr:(@nth a b c d) end in
+      let f := match (eval pattern v in RHS) with ?f _ => f end in
+      rewrite <- (map_nth f); simpl.
+      apply (f_equal2 (nth _)); [ | reflexivity ].
+      rewrite map_map; simpl.
+      reflexivity. }
+    { reflexivity. }
+    { reflexivity. }
+  Defined.
+
+  Definition to_production_opt p :=
+    Eval cbv beta iota zeta delta [proj1_sig to_production_opt_sig] in
+      proj1_sig (to_production_opt_sig p).
+  Lemma to_production_opt_correct p
+    : to_production_opt p = to_production p.
+  Proof.
+    exact (proj2_sig (to_production_opt_sig p)).
+  Qed.
+
   Definition expanded_fallback_list'_body
              (P : String -> nat -> nat -> @production_carrierT _ predata -> production _ -> @production_carrierT _ predata -> production _ -> list nat -> Prop)
              (s : T)
              (offset len : nat)
              (dummy : list nat)
              (idx p : @production_carrierT _ predata)
-    := match to_production p return Comp (list nat) with
+    := match to_production_opt p return Comp (list nat) with
          | nil => ret dummy
          | _::nil => ret [len]
          | (Terminal _):: _ :: _ => ret [1]
@@ -865,6 +893,7 @@ Section IndexedImpl.
     end.
 
     repeat match goal with
+             | [ H : appcontext[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
              | [ H : appcontext[forall_reachable_productions_if_eq] |- _ ]
                => rewrite forall_reachable_productions_if_eq_correct_reachable in H by assumption
              | _ => progress simpl in *

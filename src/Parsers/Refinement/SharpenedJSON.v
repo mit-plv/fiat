@@ -8,7 +8,6 @@ Section IndexedImpl.
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringEqProperties Ascii.ascii}.
 
-  Local Opaque json_pregrammar.
 
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec json_grammar HSL).
@@ -16,35 +15,6 @@ Section IndexedImpl.
 
     start sharpening ADT.
     start honing parser using indexed representation.
-
-    Local Transparent json_pregrammar.
-
-    simpl @Operations.List.up_to.
-    unfold List.flat_map at 1.
-    simpl @Operations.List.up_to.
-    unfold List.flat_map at -1.
-    simpl @Lookup_idx.
-    simpl @Operations.List.up_to.
-    simpl @List.length.
-    simpl List.app.
-    unfold List.fold_right.
-    unfold RDPList.rdp_list_to_production.
-    unfold Carriers.default_to_production.
-    simpl @Operations.List.drop.
-    cbv beta iota.
-    simpl @fst.
-    simpl @snd.
-    Set Printing Depth 100000.
-    repeat match goal with
-             | [ |- appcontext[@FixedLengthLemmas.length_of_any ?a ?b ?c] ]
-               => let x := constr:(@FixedLengthLemmas.length_of_any a b c) in
-                  let x' := (eval vm_compute in x) in
-                  change x with x'
-           end.
-    simpl @has_only_terminals.
-    simpl @FixedLengthLemmas.collapse_length_result.
-    unfold option_rect.
-    simpl.
 
     hone method "splits".
     {
