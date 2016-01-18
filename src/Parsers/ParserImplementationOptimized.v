@@ -64,9 +64,7 @@ Defined.
 Arguments transfer_parser {_ _ _ _ _ _} _ _ _ _ _ _ _ _.
 
 Section implementation.
-  Context {ls : list (String.string * productions Ascii.ascii)}
-          {HNoDup : NoDupR Equality.string_beq (List.map fst ls)}.
-  Local Notation G := (list_to_grammar nil ls) (only parsing).
+  Context {G : pregrammar Ascii.ascii}.
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).
   Context {string_like_min_lite : StringLikeMin Ascii.ascii}
@@ -99,7 +97,7 @@ Section implementation.
   Proof.
     pose proof Hvalid as Hrvalid.
     apply grammar_rvalid_correct in Hvalid.
-    let impl0 := constr:(fun str => parse_nonterminal_opt (ls := ls) (splitdata := pdata) (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
+    let impl0 := constr:(fun str => parse_nonterminal_opt (G := G) (splitdata := pdata) (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in

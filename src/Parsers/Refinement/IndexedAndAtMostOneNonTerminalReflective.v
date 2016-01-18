@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
@@ -42,7 +43,7 @@ Local Open Scope string_scope.
 
 (** Reflective version of [split_list_is_complete] and [production_is_reachable] *)
 Section forall_reachable_productions.
-  Context {Char} (G : grammar Char) {T : Type}.
+  Context {Char} (G : pregrammar Char) {T : Type}.
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
@@ -212,7 +213,7 @@ Section IndexedImpl.
   Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}.
-  Context (G : grammar Ascii.ascii).
+  Context (G : pregrammar Ascii.ascii).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
@@ -920,7 +921,7 @@ Section IndexedImpl.
                  | _ => reflexivity
                  end
         ). }
-    {  abstract (
+    { abstract (
           repeat match goal with
                    | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
                    | _ => progress subst
@@ -928,7 +929,7 @@ Section IndexedImpl.
                      => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
                    | _ => intro
                    | [ H : length_of_any ?G ?nt = same_length ?n,
-                           p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
+                           p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
                      => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
                  end;
           fin2
@@ -957,7 +958,7 @@ Section IndexedImpl.
                      => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
                    | _ => intro
                    | [ H : length_of_any ?G ?nt = same_length ?n,
-                           p : parse_of_item ?G ?str (NonTerminal ?nt) |- _ ]
+                           p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
                      => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
                  end;
           fin2

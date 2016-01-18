@@ -9,6 +9,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
@@ -31,7 +32,7 @@ Section parser.
           {stringlike_stringiso : StringIso Ascii.ascii}
           {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}
           {stringlike_stringiso_properties : StringIsoProperties Ascii.ascii}.
-  Context (G : grammar Ascii.ascii).
+  Context (G : pregrammar Ascii.ascii).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).

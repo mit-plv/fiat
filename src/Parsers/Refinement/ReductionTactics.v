@@ -26,11 +26,11 @@ Ltac splitter_red term :=
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
-Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig char_test char_to_test_eq or_chars neg_chars production_of_chartest (*magic_juxta_append_from_char_test*)].
+Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar_productions production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig char_test char_to_test_eq or_chars neg_chars production_of_chartest (*magic_juxta_append_from_char_test*)].
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar_productions].
 Declare Reduction parser_red5 := opt_red.
 Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
@@ -52,7 +52,7 @@ Declare Reduction parser_red15 := simpl @BooleanRecognizerOptimized.inner_nth'.
 (*Declare Reduction parser_red16 := simpl List.map.*)
 Declare Reduction parser_red17 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].*)
 
-Ltac parser_red_gen term do_simpl_list_map :=
+Ltac parser_red_gen term :=
   let term := match term with
                 | context[ParserFromParserADT.parser _ ?splitter]
                   => let splitter' := head splitter in
@@ -89,7 +89,7 @@ Ltac type_of_no_anomaly x :=
   let T := constr:(type_of x) in
   (eval cbv beta in T).
 
-Ltac make_parser_gen splitter do_simpl_list_map :=
+Ltac make_parser splitter :=
   idtac;
   let str := match goal with
                | [ str : String.string |- _ ] => constr:str
@@ -99,11 +99,8 @@ Ltac make_parser_gen splitter do_simpl_list_map :=
   let T := match type_of_no_anomaly b0 with ?T -> _ => constr:T end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in
-  let b' := parser_red_gen b do_simpl_list_map in
+  let b' := parser_red_gen b in
   exact_no_check b'.
-
-Ltac make_parser splitter := make_parser_gen splitter true.
-Ltac make_parser_without_simpl_list_map splitter := make_parser_gen splitter false.
 
 Ltac make_simplified_splitter' splitter :=
   idtac;

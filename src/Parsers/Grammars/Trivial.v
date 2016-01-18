@@ -1,16 +1,17 @@
 (** * Definition of ε, the CFG accepting only "" *)
 Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 
 Set Implicit Arguments.
 
 Section generic.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
 
-  Definition trivial_grammar : grammar Char :=
-    {| Start_symbol := "";
-       Lookup := fun _ => nil::nil;
-       Valid_nonterminals := ""%string::nil |}.
+  Definition trivial_pregrammar : pregrammar Char :=
+    {| pregrammar_productions := (""%string, nil::nil)::nil |}.
+
+  Definition trivial_grammar : grammar Char := trivial_pregrammar.
 
   Definition trivial_grammar_parses_empty_string {s} (H : length s = 0)
   : parse_of_grammar s trivial_grammar.

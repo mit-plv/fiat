@@ -27,9 +27,7 @@ Section parser.
   Context {stringlike_stringlikemin : StringLikeMin Ascii.ascii}
           {stringlike_stringlike : StringLike Ascii.ascii}
           {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}.
-  Context {ls : list (String.string * productions Ascii.ascii)}
-          {HNoDup : NoDupR Equality.string_beq (List.map fst ls)}.
-  Local Notation G := (list_to_grammar nil ls) (only parsing).
+  Context {G : pregrammar Ascii.ascii}.
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
@@ -80,7 +78,7 @@ Section parser.
 
   Definition parser' : Parser G stringlike_stringlike.
   Proof.
-    refine (@parser ls HNoDup Hvalid (adt_based_splitter splitter_impl)
+    refine (@parser G Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLikeMin_lite splitter_impl)
                     _
                     _
@@ -110,11 +108,11 @@ End parser.
 
 Definition parser''
            {HSLM HSL HSLP}
-           {ls HNoDup}
+           {G}
            Hvalid
            splitter_impl
-           val (H : val = has_parse (@parser' HSLM HSL HSLP ls HNoDup Hvalid splitter_impl))
-: Parser (list_to_grammar nil ls) HSL.
+           val (H : val = has_parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
+: Parser G HSL.
 Proof.
   refine {| has_parse := val |};
   abstract (subst val; apply parser').
@@ -184,40 +182,39 @@ Definition parser
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSLP : StringLikeProperties Ascii.ascii}
-           {ls : list (string * productions Ascii.ascii)}
-           {HNoDup : NoDupR Equality.string_beq (List.map fst ls)}
-           (Hvalid : is_true (grammar_rvalid (list_to_grammar nil ls)))
-           (splitter_impl : FullySharpened (string_spec (list_to_grammar nil ls) HSL))
-: Parser (list_to_grammar nil ls) HSL.
+           {G : pregrammar Ascii.ascii}
+           (Hvalid : is_true (grammar_rvalid G))
+           (splitter_impl : FullySharpened (string_spec G HSL))
+: Parser G HSL.
 Proof.
-  let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP ls HNoDup Hvalid splitter_impl)) in
+  let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP G Hvalid splitter_impl)) in
   refine (term _ _).
   cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget].
-  change_opt ls nt str.
+  change_opt (pregrammar_productions G) nt str.
   lazymatch goal with
     | [ |- appcontext[BooleanRecognizerOptimized.opt.opt.id
                         (BooleanRecognizerOptimized.opt.opt.first_index_default
                            ?a ?b
                            (BooleanRecognizerOptimized.opt.opt.map
-                              BooleanRecognizerOptimized.opt.opt.fst ls))] ]
+                              BooleanRecognizerOptimized.opt.opt.fst (pregrammar_productions G)))] ]
       => replace (BooleanRecognizerOptimized.opt.opt.id
                     (BooleanRecognizerOptimized.opt.opt.first_index_default
                        a
                        b
                        (BooleanRecognizerOptimized.opt.opt.map
-                          BooleanRecognizerOptimized.opt.opt.fst ls)))
+                          BooleanRecognizerOptimized.opt.opt.fst (pregrammar_productions G))))
          with (BooleanRecognizerOptimized.opt.opt.list_caset
                  (fun _ => _)
                  b
                  (fun _ _ => 0)
-                 ls)
+                 (pregrammar_productions G))
   end.
   { match goal with
       | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
     end. }
   { abstract (
         clear;
-        destruct ls; unfold BooleanRecognizerOptimized.opt.opt.first_index_default, BooleanRecognizerOptimized.opt.opt.id; simpl;
+        destruct (pregrammar_productions G); unfold BooleanRecognizerOptimized.opt.opt.first_index_default, BooleanRecognizerOptimized.opt.opt.id; simpl;
         [ reflexivity | ];
         change @BooleanRecognizerOptimized.opt.opt.string_beq with Equality.string_beq;
         rewrite Equality.string_lb by reflexivity;
@@ -225,4 +222,4 @@ Proof.
       ). }
 Defined.
 
-Global Arguments parser {HSLM HSL HSLP} {ls HNoDup} Hvalid splitter_impl / .
+Global Arguments parser {HSLM HSL HSLP} {G} Hvalid splitter_impl / .

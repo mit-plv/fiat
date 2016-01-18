@@ -1,5 +1,6 @@
 (** * A general [fold] over grammars *)
 Require Import Coq.Lists.List.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
@@ -22,7 +23,7 @@ Section general_fold.
       combine_production : T -> T -> T;
       on_nil_productions : T;
       combine_productions : T -> T -> T }.
-  Context `{fold_grammar_data} (G : grammar Char).
+  Context `{fold_grammar_data} (G : pregrammar Char).
 
   Definition fold_production' (fold_nt : String.string -> T)
              (its : production Char)
@@ -115,7 +116,7 @@ Global Arguments fold_grammar_data : clear implicits.
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
   Context {FGD : fold_grammar_data Char T}
-          (G : grammar Char).
+          (G : pregrammar Char).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.

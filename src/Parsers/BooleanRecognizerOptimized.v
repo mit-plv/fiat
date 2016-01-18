@@ -6,6 +6,7 @@ Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common Fiat.Common.Wf Fiat.Common.Wf2 Fiat.Common.Telescope.Core.
@@ -138,20 +139,18 @@ End opt3.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
-          {ls : list (String.string * productions Char)}
-          {HNoDup : NoDupR string_beq (map fst ls)}.
+          {G : pregrammar Char}.
 
-  Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) ls.
+  Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) (pregrammar_productions G).
   Proof.
-    hnf in HNoDup |- *.
+    pose proof (nonterminals_unique G) as HNoDup.
+    hnf in HNoDup |- *; unfold pregrammar_nonterminals in *; simpl in *.
     rewrite uniquize_map in HNoDup.
     apply uniquize_length.
     apply (f_equal (@List.length _)) in HNoDup.
     rewrite !map_length, uniquize_length in HNoDup.
     rewrite HNoDup; reflexivity.
   Qed.
-
-  Local Notation G := (list_to_grammar nil ls) (only parsing).
 
   Context (Hvalid : is_true (grammar_rvalid G)).
 
@@ -384,6 +383,7 @@ Section recursive_descent_parser.
              | [ |- _ = string_beq _ _ ] => apply f_equal2
              | [ |- _ = fst ?x ] => is_var x; reflexivity
              | [ |- _ = snd ?x ] => is_var x; reflexivity
+             | [ |- _ = pregrammar_productions ?x ] => is_var x; reflexivity
              | [ |- context[(0 - _)%natr] ] => rewrite (minusr_minus 0); simpl (minus 0)
              | [ |- _ = (_, _) ] => apply f_equal2
              | _ => progress cbv beta
@@ -622,34 +622,6 @@ Section recursive_descent_parser.
   Local Arguments leb !_ !_.
   Local Arguments to_nonterminal / .
 
-  Lemma list_to_productions_to_nonterminal nt default
-  : list_to_productions default ls (to_nonterminal nt)
-    = nth
-        nt
-        (map snd ls)
-        default.
-  Proof.
-    unfold list_to_productions at 1, to_nonterminal at 1; simpl.
-    unfold productions, production in *.
-    rewrite <- find_first_index_error by exact bl.
-    hnf in HNoDup'.
-    let LHS := match type of HNoDup' with ?LHS = _ => LHS end in
-    replace ls with LHS at 3 by (rewrite HNoDup'; reflexivity).
-    rewrite <- uniquize_map.
-    change (map fst ls) with (Valid_nonterminals G).
-    rewrite rdp_list_find_to_nonterminal.
-    simpl.
-    hnf in HNoDup.
-    unfold productions, production in *.
-    rewrite HNoDup.
-    rewrite map_length.
-
-    rewrite pull_bool_rect; simpl.
-    set (ls' := ls); clearbody ls'.
-    revert nt; induction ls' as [|x xs IHxs]; simpl; intro nt;
-    destruct nt; simpl; trivial.
-  Qed.
-
   Local Instance good_nth_proper {A}
   : Proper (eq ==> _ ==> _ ==> eq) (nth (A:=A))
     := _.
@@ -714,8 +686,8 @@ Section recursive_descent_parser.
   Let Let_In' {A B} (x : A) (f : forall y : A, B y) : B x
     := let y := x in f y.
 
+  Local Notation "@ 'Let_In' A B" := (@Let_In' A B) (at level 10, A at level 8, B at level 8, format "@ 'Let_In'  A  B").
   Local Notation Let_In := (@Let_In' _ _).
-  Local Notation "@ 'Let_In' A B" := (@Let_In' A B) (at level 10, A at level 8, B at level 8, format "@ 'Let_In' A B").
 
   Let Let_In_Proper {A B} x
   : Proper (forall_relation (fun _ => eq) ==> eq) (@Let_In A B x).
@@ -754,7 +726,7 @@ Section recursive_descent_parser.
       | [ |- Let_In ?x ?P = ?R ]
         => subst R; refine (@Let_In_Proper _ _ x _ _ _); intro; set_evars
     end.
-    simpl rewrite list_to_productions_to_nonterminal; simpl.
+    unfold Lookup_idx.
     symmetry; rewrite_map_nth_rhs; symmetry.
     repeat match goal with
              | [ |- appcontext G[@Let_In ?A ?B ?k ?f] ]
@@ -919,12 +891,12 @@ Section recursive_descent_parser.
     cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
     cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
     (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
-    hnf in HNoDup.
+    simpl; unfold pregrammar_nonterminals; simpl.
     evar (b' : bool).
     sigL_transitivity b'; subst b';
     [
     | simpl;
-      rewrite !HNoDup, !map_length, !length_up_to;
+      rewrite !map_length, !length_up_to;
       reflexivity ].
     refine_Fix2_5_Proper_eq.
     etransitivity_rev _.
@@ -1071,7 +1043,7 @@ Section recursive_descent_parser.
       step_opt'.
       etransitivity_rev _.
       { cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
-        simpl rewrite list_to_productions_to_nonterminal.
+        simpl rewrite list_to_productions_to_nonterminal; unfold Lookup_idx.
         etransitivity_rev _.
         { step_opt'; [ reflexivity | ].
           etransitivity_rev _.
@@ -1106,8 +1078,8 @@ Section recursive_descent_parser.
                      | apply (f_equal2 andb)
                      | apply (f_equal2 (@cons _))
                      | t_refine_item_match ];
-        first [ progress unfold rdp_list_of_nonterminal; simpl;
-                rewrite HNoDup, !map_length;
+        first [ progress unfold rdp_list_of_nonterminal, Valid_nonterminals, grammar_of_pregrammar, pregrammar_nonterminals; simpl;
+                rewrite !map_length;
                 reflexivity
               | idtac;
                 match goal with
@@ -1116,7 +1088,7 @@ Section recursive_descent_parser.
                 end;
                 progress unfold Carriers.default_production_tl; simpl;
                 repeat step_opt'; [ reflexivity | ];
-                simpl rewrite list_to_productions_to_nonterminal;
+                unfold Lookup_idx;
                 unfold productions, production;
                 rewrite_map_nth_rhs; simpl;
                 rewrite <- nth'_nth;
@@ -1154,7 +1126,7 @@ Section recursive_descent_parser.
             rewrite_map_nth_rhs; rewrite !map_map; simpl.
             rewrite <- nth'_nth.
             change @nth' with @inner_nth'.
-            apply f_equal2; [ | reflexivity ].
+            apply (f_equal2 (inner_nth' _)); [ | reflexivity ].
             step_opt'; [].
             rewrite map_id.
             change @inner_nth' with @nth' at 3.
@@ -1216,10 +1188,6 @@ Section recursive_descent_parser.
                    | apply (f_equal2 orb); fin_step_opt
                    | idtac;
                      match goal with
-                     | [ |- _ = uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls ]
-                       => reflexivity
-                     | [ |- _ = combine _ (map _ (uniquize (fun x0 y0 => string_beq (fst x0) (fst y0)) ls)) ]
-                       => reflexivity
                      | [ |- _ = List.length (rdp_list_to_production_opt _) ]
                        => progress unfold rdp_list_to_production_opt at 1; simpl;
                           change @inner_nth' with @nth';
@@ -1685,22 +1653,22 @@ Section recursive_descent_parser.
     sigL_transitivity b'; subst b'.
     Focus 2.
     { progress unfold rdp_list_of_nonterminal; simpl.
-      hnf in HNoDup.
+      unfold pregrammar_nonterminals; simpl.
       match goal with
         | [ |- _ = ?f ?x ]
           => set (F := f)
       end.
-      rewrite HNoDup, map_length.
+      rewrite map_length.
       subst F.
       (** TODO: Come up with a robust (possibly reflective) version of
       this, based or wheich things are recursively accessible *)
       change @nth' with @opt3.nth' at 1.
       change @List.map with @opt2.map at 1.
-      change ls with (opt.id ls).
+      change (pregrammar_productions G) with (opt.id (pregrammar_productions G)).
       change nt with (opt.id nt).
       change str with (opt.id str).
       safe_change_opt.
-      change (opt.id ls) with ls.
+      change (opt.id (pregrammar_productions G)) with (pregrammar_productions G).
       change (opt.id nt) with nt.
       change (opt.id str) with str.
       reflexivity. }
@@ -1716,7 +1684,7 @@ Section recursive_descent_parser.
                 unfold item_rect;
                 t_reduce_fix ] ].
 
-      do_flip_map ls.
+      do_flip_map (pregrammar_productions G).
 
       step_opt'; [ | reflexivity ].
       apply (f_equal2 (opt3.nth' _)); [ | reflexivity ].

@@ -3,6 +3,7 @@ Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
@@ -78,16 +79,16 @@ Section all_possible.
          combine_productions := @app _;
          on_nonterminal nt v := v }.
 
-  Definition possible_terminals_of : grammar Char -> String.string -> possible_terminals
+  Definition possible_terminals_of : pregrammar Char -> String.string -> possible_terminals
     := @fold_nt _ _ all_possible_fold_data.
-  Definition possible_terminals_of_productions : grammar Char -> productions Char -> possible_terminals
+  Definition possible_terminals_of_productions : pregrammar Char -> productions Char -> possible_terminals
     := @fold_productions _ _ all_possible_fold_data.
-  Definition possible_terminals_of_production : grammar Char -> production Char -> possible_terminals
+  Definition possible_terminals_of_production : pregrammar Char -> production Char -> possible_terminals
     := @fold_production _ _ all_possible_fold_data.
 End all_possible.
 
 Section only_first.
-  Context (G : grammar Ascii.ascii)
+  Context (G : pregrammar Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}.
@@ -204,7 +205,7 @@ Section all_possible_correctness.
     { abstract t. }
   Defined.
 
-  Lemma possible_terminals_of_correct (G : grammar Char)
+  Lemma possible_terminals_of_correct (G : pregrammar Char)
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) nt
@@ -226,7 +227,7 @@ Section all_possible_correctness.
 End all_possible_correctness.
 
 Section only_first_correctness.
-  Context (G : grammar Ascii.ascii)
+  Context (G : pregrammar Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
@@ -253,7 +254,7 @@ Section only_first_correctness.
   Local Ltac t' :=
     idtac;
     match goal with
-      | [ Hvalid : is_true (grammar_rvalid G) |- grammar_valid G ] => apply grammar_rvalid_correct; assumption
+      | [ Hvalid : is_true (grammar_rvalid _) |- grammar_valid _ ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
       | [ H : context[?b = true] |- _ ] => change (b = true) with (is_true b) in H
@@ -320,8 +321,8 @@ Section only_first_correctness.
            eapply parse_of_nonterminal_complete; destruct_head sigT;
            first [ assumption
                  | apply rdp_list_initial_nonterminals_correct; assumption ]
-      | [ Hvalid : is_true (grammar_rvalid G) |- _ ] => apply grammar_rvalid_correct in Hvalid
-      | [ Hvalid : grammar_valid G, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
+      | [ Hvalid : is_true (grammar_rvalid _) |- _ ] => apply grammar_rvalid_correct in Hvalid
+      | [ Hvalid : grammar_valid _, Hnt : is_true (is_valid_nonterminal _ _), p : parse_of_item _ _ _ |- _ ]
         => idtac;
           let pf := constr:(fun k => Forall_parse_of_item_valid Hvalid k p) in
           let pf' := constr:(pf Hnt) in
@@ -414,7 +415,7 @@ Local Open Scope string_like_scope.
 
 Local Arguments string_beq : simpl never.
 
-Lemma terminals_disjoint_search_for_not' {G : grammar Ascii.ascii}
+Lemma terminals_disjoint_search_for_not' {G : pregrammar Ascii.ascii}
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -467,7 +468,7 @@ Proof.
     find_production_valid. }
 Qed.
 
-Lemma terminals_disjoint_search_for_not {G : grammar Ascii.ascii}
+Lemma terminals_disjoint_search_for_not {G : pregrammar Ascii.ascii}
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -499,7 +500,7 @@ Proof.
   apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
 Qed.
 
-Lemma terminals_disjoint_search_for' {G : grammar Ascii.ascii}
+Lemma terminals_disjoint_search_for' {G : pregrammar Ascii.ascii}
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -550,7 +551,7 @@ Proof.
       find_production_valid. } }
 Qed.
 
-Lemma terminals_disjoint_search_for {G : grammar Ascii.ascii}
+Lemma terminals_disjoint_search_for {G : pregrammar Ascii.ascii}
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}

@@ -8,7 +8,7 @@ Section IndexedImpl.
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringEqProperties Ascii.ascii}.
 
-  Local Opaque json_grammar.
+  Local Opaque json_pregrammar.
 
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec json_grammar HSL).
@@ -17,290 +17,49 @@ Section IndexedImpl.
     start sharpening ADT.
     start honing parser using indexed representation.
 
-    Local Transparent json_grammar.
+    Local Transparent json_pregrammar.
 
-    set (x := json_grammar).
-    set (y := Valid_nonterminals x).
-    set (z := Lookup x).
-    unfold json_grammar, list_to_grammar in x.
-    simpl in x.
-    repeat match goal with
-           | [ |- context[Operations.List.uniquize ?beq ?ls] ]
-             => change (Operations.List.uniquize beq ls) with ls
-           end.
-    set (w := Operations.List.up_to (List.length y)).
-    cbv in w.
-    subst w.
-    unfold List.flat_map at 1.
-    repeat match goal with
-           | [ |- context[Operations.List.uniquize ?beq ?ls] ]
-             => change (Operations.List.uniquize beq ls) with ls
-           end.
-    match goal with
-    | [ |- context[@Carriers.default_to_nonterminal ?x ?y ?z] ]
-      => set (v := @Carriers.default_to_nonterminal x y)
-    end.
-    unfold Carriers.default_to_nonterminal in v.
-    repeat match eval unfold v in v with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of v)
-           end.
-    unfold Valid_nonterminals, x in y.
-    simpl in y.
-    change (Valid_nonterminals x) with y in (value of v).
-    unfold y in v.
-    unfold List.nth in v.
-    unfold v; subst v.
-    unfold Lookup, x, list_to_productions in z.
-    repeat match eval unfold z in z with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of z)
-           end.
-    simpl @List.map in z.
-    repeat match goal with
-           | [ |- context[z ?nt] ]
-             => let z' := fresh "z'" in
-                set (z' := z nt);
-                  unfold z in z';
-                  match eval unfold z' in z' with
-                  | context[Operations.List.first_index_error ?f ?ls]
-                    => let c := constr:(Operations.List.first_index_error f ls) in
-                       let c' := (eval cbv in c) in
-                       change c with c' in (value of z')
-                  end;
-                  unfold option_rect, List.nth in z';
-                  subst z'
-           end.
-    simpl @List.length.
     simpl @Operations.List.up_to.
-    unfold List.flat_map.
+    unfold List.flat_map at 1.
+    simpl @Operations.List.up_to.
+    unfold List.flat_map at -1.
+    simpl @Lookup_idx.
+    simpl @Operations.List.up_to.
     simpl @List.length.
-    simpl @List.map.
-    simpl @List.app.
-    unfold List.fold_right at 1.
+    simpl List.app.
+    unfold List.fold_right.
     unfold RDPList.rdp_list_to_production.
-    match goal with
-    | [ |- context[@Carriers.default_to_production ?x ?y ?z] ]
-      => set (v := @Carriers.default_to_production x y)
-    end.
-    unfold Carriers.default_to_production, Carriers.default_to_nonterminal in v.
-    repeat match eval unfold v in v with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of v)
-           end.
-    change (Valid_nonterminals x) with y in (value of v).
-    unfold y in v.
-    unfold Lookup, x, list_to_productions in v.
-    repeat match eval unfold v in v with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of v)
-           end.
-    simpl @List.map in v.
-    Local Ltac simpl_lookup v :=
-      match goal with
-           | [ |- context[v ?nt] ]
-             => let z' := fresh "z'" in
-                set (z' := v nt);
-                  unfold v in z';
-                  match eval unfold z' in z' with
-                  | context[Operations.List.first_index_error ?f ?ls]
-                    => let c := constr:(Operations.List.first_index_error f ls) in
-                       let c' := (eval cbv in c) in
-                       change c with c' in (value of z')
-                  end;
-                  unfold option_rect in z';
-                  unfold List.nth at 2 3 in (value of z');
-                  unfold Datatypes.length in z';
-                  simpl in z';
-                  subst z'
-           end.
-      lazymatch goal with
-           | [ |- context[v ?nt] ]
-             => let z' := fresh "z'" in
-                set (z' := v nt);
-                  unfold v in z'           end.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
-    simpl_lookup v.
+    unfold Carriers.default_to_production.
+    simpl @Operations.List.drop.
     cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
     simpl @fst.
     simpl @snd.
-    Set Printing Depth 1000000.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    simpl_lookup v; cbv beta iota.
-    unfold has_only_terminals.
-    simpl @List.length.
-    set (k := FixedLengthLemmas.collapse_length_result (FixedLengthLemmas.length_of_any x "HEX")).
-    cbv in k.
-    subst k.
-    Local Ltac simpl_collapse :=
-      match goal with
-      | [ |- context[FixedLengthLemmas.collapse_length_result ?v] ]
-        => let k := fresh "k" in
-           set (k := FixedLengthLemmas.collapse_length_result v);
-           vm_compute in k;
-           subst k
-      end.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Time simpl_collapse.
-    Fail simpl_collapse.
+    Set Printing Depth 100000.
+    repeat match goal with
+             | [ |- appcontext[@FixedLengthLemmas.length_of_any ?a ?b ?c] ]
+               => let x := constr:(@FixedLengthLemmas.length_of_any a b c) in
+                  let x' := (eval vm_compute in x) in
+                  change x with x'
+           end.
+    simpl @has_only_terminals.
+    simpl @FixedLengthLemmas.collapse_length_result.
     unfold option_rect.
-    change x with json_grammar.
-    clear x y z v.
-    Local Opaque json_grammar.
-    Time simpl.
+    simpl.
 
     hone method "splits".
     {
       (*simplify parser splitter.*)
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
+      simplify_parser_splitter'.
       simplify_parser_splitter'.
       simplify_parser_splitter'.
       simplify_parser_splitter'.

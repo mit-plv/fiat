@@ -1,6 +1,7 @@
 (** * Simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.ContextFreeGrammar.Carriers.
 
 Set Implicit Arguments.
@@ -8,8 +9,8 @@ Set Implicit Arguments.
 Local Open Scope list_scope.
 Reserved Infix "~=" (at level 70).
 
-Section interface.
-  Context {Char} (G : grammar Char).
+Section preinterface.
+  Context {Char} (G : pregrammar Char).
 
   (** A list of splits is complete if, for every reachable production,
       it contains every index of the string that yields a parse tree
@@ -56,18 +57,19 @@ Section interface.
   Global Existing Instance string_type_min.
   Global Existing Instance string_type.
   Global Existing Instance string_type_properties.
+End preinterface.
 
-  Record Parser {HSLM : StringLikeMin Char} (HSL : StringLike Char) :=
-    {
-      has_parse : @String Char HSLM -> bool;
-      (** does this string parse as the start symbol of the grammar? *)
+Record Parser {Char} (G : grammar Char)
+       {HSLM : StringLikeMin Char} (HSL : StringLike Char) :=
+  {
+    has_parse : @String Char HSLM -> bool;
+    (** does this string parse as the start symbol of the grammar? *)
 
-      has_parse_sound : forall str,
-                          has_parse str = true
-                          -> parse_of_item G str (NonTerminal (Start_symbol G));
+    has_parse_sound : forall str,
+                        has_parse str = true
+                        -> parse_of_item G str (NonTerminal (Start_symbol G));
 
-      has_parse_complete : forall str,
-                             parse_of_item G str (NonTerminal (Start_symbol G))
-                             -> has_parse str = true
-    }.
-End interface.
+    has_parse_complete : forall str,
+                           parse_of_item G str (NonTerminal (Start_symbol G))
+                           -> has_parse str = true
+  }.

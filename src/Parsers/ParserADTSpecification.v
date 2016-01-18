@@ -4,6 +4,7 @@ Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
@@ -46,11 +47,11 @@ Section ReferenceImpl.
       }.
   End GenericSig.
 
-  Context (G : grammar Ascii.ascii) (HSLM : StringLikeMin Ascii.ascii) (HSL : StringLike Ascii.ascii).
+  Context (G : pregrammar Ascii.ascii) (HSLM : StringLikeMin Ascii.ascii) (HSL : StringLike Ascii.ascii).
   Local Open Scope ADTParsing_scope.
 
   (** Reference implementation of a [String] that can be split *)
-  Definition string_spec : ADT (string_rep Ascii.ascii String default_production_carrierT) := ADTRep String {
+  Definition string_spec' : ADT (string_rep Ascii.ascii String default_production_carrierT) := ADTRep String {
     Def Constructor1 "new"(s : String) : rep :=
       ret s,
 
@@ -79,3 +80,16 @@ Section ReferenceImpl.
       ret (s, ls)
   }.
 End ReferenceImpl.
+
+Class ceq {A} (x y : A) := ceq' : x = y.
+Global Instance ceq_refl {A} (x : A) : ceq x x := eq_refl.
+
+Definition string_spec
+           (G : grammar Ascii.ascii)
+           {G' : pregrammar Ascii.ascii}
+           {HGeq : ceq G G'}
+           (HSLM : StringLikeMin Ascii.ascii)
+           (HSL : StringLike Ascii.ascii)
+  := string_spec' G' HSL.
+
+Arguments string_spec G {G' HGeq} [HSLM] HSL.

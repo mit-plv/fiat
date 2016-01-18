@@ -2,10 +2,7 @@ Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Equality.
-
-Export Coq.Strings.Ascii.
-Export Coq.Strings.String.
-Export Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Common.Gensym.
 
 Global Arguments nat_of_ascii !_ / .
 Global Arguments Compare_dec.leb !_ !_ / .
@@ -22,8 +19,9 @@ Bind Scope productions_scope with productions.
 Delimit Scope grammar_scope with grammar.
 Bind Scope grammar_scope with grammar.
 
+(** [abstract] doesn't work in definitions *)
 Class NoDupR {T} beq (ls : list T) := nodupr : uniquize beq ls = ls.
-Hint Extern 1 (NoDupR _ _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
+Hint Extern 5 (NoDupR _ _) => clear; (*abstract*) (vm_compute; reflexivity) : typeclass_instances.
 
 Definition list_to_productions {T} (default : T) (ls : list (string * T)) : string -> T
   := fun nt
@@ -32,6 +30,37 @@ Definition list_to_productions {T} (default : T) (ls : list (string * T)) : stri
           snd
           default
           (find (fun k => string_beq nt (fst k)) ls).
+
+Record pregrammar (Char : Type) :=
+  {
+    pregrammar_productions :> list (string * productions Char);
+    pregrammar_nonterminals : list string
+    := map fst pregrammar_productions;
+    invalid_nonterminal : string
+    := gensym pregrammar_nonterminals;
+    Lookup_idx : nat -> productions Char
+    := fun n => nth n (map snd pregrammar_productions) nil;
+    Lookup_string : string -> productions Char
+    := list_to_productions nil pregrammar_productions;
+    nonterminals_unique
+    : NoDupR string_beq pregrammar_nonterminals
+  }.
+
+Global Arguments pregrammar_nonterminals / .
+Global Arguments Lookup_idx {_} !_ !_  / .
+Global Arguments Lookup_string {_} !_ !_ / .
+
+Existing Instance nonterminals_unique.
+Arguments nonterminals_unique {_} _.
+
+Coercion grammar_of_pregrammar {Char} (g : pregrammar Char) : grammar Char
+  := {| Start_symbol := hd ""%string (pregrammar_nonterminals g);
+        Lookup := Lookup_string g;
+        Valid_nonterminals := (pregrammar_nonterminals g) |}.
+
+Global Instance valid_nonterminals_unique {Char} {G : pregrammar Char}
+: NoDupR string_beq (Valid_nonterminals G)
+  := nonterminals_unique _.
 
 Definition list_to_grammar {T} (default : productions T) (ls : list (string * productions T)) : grammar T
   := {| Start_symbol := hd ""%string (map fst ls);

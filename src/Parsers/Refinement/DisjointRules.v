@@ -21,7 +21,7 @@ Definition search_for_condition
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
-           (G : grammar Ascii.ascii)
+           (G : pregrammar Ascii.ascii)
            str its (n : nat)
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
@@ -35,7 +35,7 @@ Lemma refine_disjoint_search_for'
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      (G : grammar Ascii.ascii)
+      (G : pregrammar Ascii.ascii)
       (Hvalid : grammar_rvalid G)
       {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
@@ -70,7 +70,7 @@ Definition search_for_not_condition
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
-           (G : grammar Ascii.ascii)
+           (G : pregrammar Ascii.ascii)
            str nt its n
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
@@ -84,7 +84,7 @@ Lemma refine_disjoint_search_for_not'
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii}
+      {G : pregrammar Ascii.ascii}
       (Hvalid : grammar_rvalid G)
       {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
@@ -214,7 +214,7 @@ Lemma refine_disjoint_search_for
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii}
+      {G : pregrammar Ascii.ascii}
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
@@ -238,7 +238,8 @@ Lemma refine_disjoint_search_for_not
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii} {str offset len nt its}
+      {G : pregrammar Ascii.ascii}
+      {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
                              (possible_terminals_of G nt)
@@ -261,7 +262,7 @@ Lemma refine_disjoint_search_for_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii}
+      {G : pregrammar Ascii.ascii}
       {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
@@ -287,7 +288,8 @@ Lemma refine_disjoint_search_for_not_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : grammar Ascii.ascii} {str offset len nt its idx}
+      {G : pregrammar Ascii.ascii}
+      {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
       (H_disjoint : disjoint ascii_beq

@@ -3,6 +3,7 @@ Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
@@ -26,7 +27,7 @@ Section specific.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {CharE : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
-  Context (G : grammar Char).
+  Context (G : pregrammar Char).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 
@@ -307,7 +308,7 @@ Section paren_balanced_nonterminals.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
   Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
-          (G : grammar Char)
+          (G : pregrammar Char)
           (hiding : bool).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
@@ -373,7 +374,7 @@ Section with_lists.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
-  Context (G : grammar Char).
+  Context (G : pregrammar Char).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 

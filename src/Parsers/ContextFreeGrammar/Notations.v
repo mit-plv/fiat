@@ -83,7 +83,7 @@ Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : productions _)%productions
 Notation "[[[ x ;; .. ;; y ]]]" :=
   (list_to_productions nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
-  (list_to_grammar nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : grammar_scope.
+  ({| pregrammar_productions := (cons x%prod_assignment .. (cons y%prod_assignment nil) .. ) |}) : grammar_scope.
 
 Local Open Scope string_scope.
 Global Open Scope grammar_scope.

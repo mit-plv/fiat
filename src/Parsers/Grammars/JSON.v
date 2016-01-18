@@ -11,7 +11,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 grammar JSON;
 >> *)
 
-Definition json_grammar : grammar ascii :=
+Definition json_pregrammar : pregrammar ascii :=
   Eval grammar_red in
   [[[
        (**
@@ -159,3 +159,5 @@ WS
       ::== "" || [\s]%production "WS*"
 
   ]]]%grammar.
+
+Definition json_grammar : grammar ascii := json_pregrammar.

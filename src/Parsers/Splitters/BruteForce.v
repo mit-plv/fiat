@@ -1,6 +1,7 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.MinimalParseOfParse.
@@ -17,7 +18,8 @@ Section brute_force_splitter.
   Definition make_all_single_splits (str : String) (offset len : nat) : list nat
     := len::up_to len.
 
-  Context (G : grammar Char).
+  Context (G : pregrammar Char).
+
 
   Global Instance brute_force_split_data : @split_dataT Char _ (rdp_list_predata (G := G))
     := { split_string_for_production p := make_all_single_splits }.

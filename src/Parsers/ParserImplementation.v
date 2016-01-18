@@ -20,9 +20,7 @@ Local Open Scope list_scope.
 
 Section implementation.
   Context {Char}
-          {ls : list (String.string * productions Char)}.
-
-  Local Notation G := (list_to_grammar nil ls) (only parsing).
+          {G : pregrammar Char}.
 
   Context (splitter : Splitter G).
 

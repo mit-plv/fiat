@@ -17,9 +17,7 @@ Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
-          {ls : list (String.string * productions Char)}.
-
-  Local Notation G := (list_to_grammar nil ls) (only parsing).
+          {G : pregrammar Char}.
 
   Context (Hvalid : is_true (grammar_rvalid G)).
 
