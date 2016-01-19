@@ -49,27 +49,30 @@ Ltac start_honing :=
   unfold rindexed_spec, rindexed_spec';
   cbv beta iota zeta delta [expanded_fallback_list' BaseTypes.production_carrierT BaseTypes.nonterminals_listT BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT BaseTypes.to_production RDPList.rdp_list_to_production expanded_fallback_list'_body forall_reachable_productions_if_eq];
   lazymatch goal with
-  | [ |- context[List.fold_right _ _ ?ls] ]
+  | [ |- context[List.fold_right _ _ (Operations.List.uniquize _ (List.map _ ?ls))] ]
     => let ls' := (eval lazy in ls) in
        change ls with ls'
   end;
+  lazymatch goal with
+  | [ |- context[List.fold_right _ _ (Operations.List.uniquize _ ?ls)] ]
+    => let ls' := (eval lazy in ls) in
+       change ls with ls'
+  end;
+  lazymatch goal with
+  | [ |- context[List.fold_right _ _ (Operations.List.uniquize ?beq ?ls)] ]
+    => let x := constr:(Operations.List.uniquize beq ls) in
+       let x' := (eval lazy in x) in
+       change x with x'
+  end;
   change @List.length with @BooleanRecognizerOptimized.opt2.opt2.length;
-  change @fst with @BooleanRecognizerOptimized.opt2.opt2.fst at 1 3;
-  change @snd with @BooleanRecognizerOptimized.opt2.opt2.snd at 1 3 4;
-  cbv beta iota zeta delta [to_production_opt fst snd Lookup_idx];
-  simpl @List.map;
-  cbv beta iota zeta delta [List.fold_right List.nth Operations.List.drop has_only_terminals];
-  simpl @List.length;
+  change @fst with @BooleanRecognizerOptimized.opt2.opt2.fst at 2 4;
+  change @snd with @BooleanRecognizerOptimized.opt2.opt2.snd at 2 5 6;
+  cbv beta iota zeta delta [to_production_opt Lookup_idx List.combine ret_cases_to_comp fst snd List.map ret_cases_BoolDecR];
   change @BooleanRecognizerOptimized.opt2.opt2.length with @List.length;
   change @BooleanRecognizerOptimized.opt2.opt2.fst with @fst;
   change @BooleanRecognizerOptimized.opt2.opt2.snd with @snd;
-  simpl @List.length;
-  repeat match goal with
-         | [ |- appcontext G[FixedLengthLemmas.collapse_length_result ?x] ]
-           => let a := constr:(FixedLengthLemmas.collapse_length_result x) in
-              let a' := (eval lazy in a) in
-              progress change a with a'
-         end;
+  cbv beta iota zeta delta [List.fold_right ret_cases_beq Equality.ImproperlyRecursiveProdBeq.prod_beq internal_nat_beq];
+  simpl orb; simpl andb;
   simpl.
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)

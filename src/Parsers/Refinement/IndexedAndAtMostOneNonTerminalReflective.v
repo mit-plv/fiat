@@ -125,6 +125,35 @@ Section forall_reachable_productions.
     subst ls.
     unfold Lookup_idx.
     simpl.
+    etransitivity_rev _.
+    { apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_right _ _)); [ | reflexivity.. ];
+      intros ??.
+      apply (f_equal3 (@If_Then_Else _)); [ | reflexivity | reflexivity ].
+      eapply (f_equal (fold_right orb false)).
+      match goal with
+      | [ |- _ = map (fun x => if @?A x then @?B x else @?C x) ?ls ]
+        => etransitivity;
+             [
+             | exact (map_combine_id (fun xx' => if A (fst xx') then B (snd xx') else C (snd xx')) ls) ];
+             cbv beta
+      end.
+      match goal with
+      | [ |- _ = map ?f ?ls ]
+        => let f' := constr:(fun x y => f (x, y)) in
+           let f' := (eval cbv beta in f') in
+           let f' := (eval simpl @fst in f') in
+           let f' := (eval simpl @snd in f') in
+           match f' with
+           | fun x y => if ?R (@?A x) ?z then @?B y else @?C y
+             => transitivity (map (fun xx' => if R (fst xx') z then B (snd xx') else C (snd xx'))
+                                  (map (fun xx' => (A (fst xx'), snd xx'))
+                                       ls));
+                  [
+                  | rewrite map_map; reflexivity ]
+           end
+      end.
+      rewrite <- combine_map_l.
+      reflexivity. }
     reflexivity.
   Defined.
 
