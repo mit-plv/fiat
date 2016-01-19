@@ -155,7 +155,8 @@ Notation "'\r'" := CR : char_scope.
 Notation "'\r'" := (String.String \r%char EmptyString) : string_scope.
 Notation "'\t'" := TAB : char_scope.
 Notation "'\t'" := (String.String \t%char EmptyString) : string_scope.
-Notation "'[\s]'" := (\n || \r || " " || \t)%char : item_scope.
+Notation "'[\s]'" := (\n || \r || " " || \t)%char : char_scope.
+Notation "'[\s]'" := ([\s])%char : item_scope.
 Notation "'[\s]'" := (([\s]%item) : production _) : production_scope.
 Notation "'[\s]'" := [\s]%production : productions_scope.
 Notation "'[0-9a-fA-F]'" := (Terminal (fun ch => code_in_range ch "0" "9"

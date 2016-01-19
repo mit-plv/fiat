@@ -197,7 +197,9 @@ src/Examples/QueryStructure/WeatherFacade.v
 src/Examples/Smtp/Smtp.v
 src/Examples/Tutorial/BookstoreMoreManual.v
 src/Examples/Tutorial/NotInList.v
+src/Examples/Tutorial/NotInList_template.v
 src/Examples/Tutorial/Queue.v
+src/Examples/Tutorial/Queue_template.v
 src/Examples/Tutorial/Tutorial.v
 src/Fiat4Monitors/LandsharkNodes.v
 src/Fiat4Monitors/LandsharkTopics.v
@@ -302,6 +304,7 @@ src/Parsers/Grammars/ExpressionParen.v
 src/Parsers/Grammars/FlatComments.v
 src/Parsers/Grammars/JSComment.v
 src/Parsers/Grammars/JSON.v
+src/Parsers/Grammars/JSONImpoverished.v
 src/Parsers/Grammars/JSONTests.v
 src/Parsers/Grammars/StringLiteral.v
 src/Parsers/Grammars/Tests.v
