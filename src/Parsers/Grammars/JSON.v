@@ -156,7 +156,7 @@ WS
    ;
 >> *)
     "WS*"
-      ::== "" || [\s]%production "WS*"
+      ::== "" || [\s] "WS*"
 
   ]]]%grammar.
 
