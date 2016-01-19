@@ -1,5 +1,5 @@
 (** Sharpened ADT for JSON *)
-Require Import Fiat.Parsers.Grammars.JSON.
+Require Import Fiat.Parsers.Grammars.JSONImpoverished.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
@@ -13,7 +13,7 @@ Section IndexedImpl.
           {HSIP : StringIsoProperties Ascii.ascii}.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec json_grammar HSL).
+  : FullySharpened (string_spec json'_grammar HSL).
   Proof.
 
     start sharpening ADT.
@@ -82,33 +82,37 @@ total time:     21.428s
           => vm_compute; try reflexivity
         end.
 
-      let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
-      let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL _ _ _ G) in
-      assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
-        let lem' := match goal with
-                    | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
-                      => constr:(fun idx nt its => lem' str offset len nt its idx H')
-                    end in
-        pose proof lem' as lem.
-      repeat let G := lazymatch goal with
-          | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
-            => G
-          end in
-      let lem' := fresh in
-      lazymatch goal with
-      | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
-        => pose proof (lem idx) as lem'
-      end;
-        do 2 lazymatch type of lem' with
-           | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
-           end;
-        let T := match type of lem' with forall a : ?T, _ => T end in
-        let H' := fresh in
-        assert (H' : T) by solve_disjoint_side_conditions;
-          specialize (lem' H'); clear H';
+      Ltac pose_disjoint_search_for lem :=
+        idtac;
+        let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
+        let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL _ _ _ G) in
+        assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
+          let lem' := match goal with
+                        | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+                          => constr:(fun idx nt its => lem' str offset len nt its idx H')
+                      end in
+          pose proof lem' as lem.
+      Ltac rewrite_once_disjoint_search_for lem :=
+        idtac;
+        let G := (lazymatch goal with
+                 | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+                   => G
+                  end) in
+        let lem' := fresh in
+        (lazymatch goal with
+        | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+          => pose proof (lem idx) as lem'
+         end);
+          do 2 (lazymatch type of lem' with
+               | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
+                end);
+          let T := match type of lem' with forall a : ?T, _ => T end in
+          let H' := fresh in
+          assert (H' : T) by solve_disjoint_side_conditions;
+            specialize (lem' H'); clear H';
             let x := match type of lem' with
-                     | context[DisjointLemmas.actual_possible_first_terminals ?ls]
-                       => constr:(DisjointLemmas.actual_possible_first_terminals ls)
+                       | context[DisjointLemmas.actual_possible_first_terminals ?ls]
+                         => constr:(DisjointLemmas.actual_possible_first_terminals ls)
                      end in
             let x' := (eval vm_compute in x) in
             change x with x' in lem';
@@ -117,9 +121,26 @@ total time:     21.428s
               let H' := fresh in
               assert (H' : T) by solve_disjoint_side_conditions;
                 specialize (lem' H'); clear H';
-                  setoid_rewrite lem'; clear lem'.
+                setoid_rewrite lem'; clear lem'.
+      Ltac rewrite_disjoint_search_for_no_clear lem :=
+        pose_disjoint_search_for lem;
+        repeat rewrite_once_disjoint_search_for lem.
+      Ltac rewrite_disjoint_search_for :=
+        idtac;
+        let lem := fresh "lem" in
+        rewrite_disjoint_search_for_no_clear lem;
+          clear lem.
+
+      Time rewrite_disjoint_search_for_no_clear lem.
       Time simplify parser splitter.
       setoid_rewrite lem; [ | try solve [ solve_disjoint_side_conditions ].. ].
+      Focus 4.
+      lazymatch goal with
+        | [ |- is_true (?d _ ?x ?y) ]
+          => set (x' := x); set (y' := y)
+      end.
+      vm_compute in x'.
+      vm_compute in y'.
       exfalso.
       clear -l.
       vm_compute in l.

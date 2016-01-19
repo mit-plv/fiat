@@ -32,11 +32,11 @@ object
    ;
 >> *)
        "object"
-         ::== "{" "WS*" "pair" "WS*" "(',' pair WS*)*" "}"
+         ::== "{" "WS*" "pair WS*" "(',' pair WS*)*" "}"
            || "{" "WS*" "}";;
        "(',' pair WS*)*"
          ::== ""
-           || "," "WS*" "pair" "WS*" "(',' pair WS*)*";;
+           || "," "WS*" "pair WS*" "(',' pair WS*)*";;
   (**
 <<
 pair
@@ -45,6 +45,8 @@ pair
 >> *)
        "pair"
          ::== "STRING" "WS*" ":" "WS*" "value";;
+       "pair WS*"
+         ::== "STRING" "WS*" ":" "WS*" "value" "WS*";;
   (**
 <<
 array
@@ -53,11 +55,11 @@ array
    ;
 >> *)
        "array"
-         ::== "[" "WS*" "value" "WS*" "(',' value WS*)*" "]"
+         ::== "[" "WS*" "value WS*" "(',' value WS*)*" "]"
            || "[" "WS*" "]";;
        "(',' value WS*)*"
          ::== ""
-           || "," "WS*" "value" "WS*" "(',' value WS*)*";;
+           || "," "WS*" "value WS*" "(',' value WS*)*";;
   (**
 <<
 value
@@ -78,6 +80,8 @@ value
            || "t" "r" "u" "e"
            || "f" "a" "l" "s" "e"
            || "n" "u" "l" "l";;
+       "value WS*"
+         ::== "value" "WS*";;
   (**
 <<
 STRING
@@ -97,8 +101,8 @@ fragment ESC
        "special_character"
          ::== ("""" || "\" || "/" || "b" || "f" || "n" || "r" || "t")%char;;
        "unspecial_character"
-       (** We remove characters that we use as binary operations, namely, \s *)
-         ::== ¬("""" || "\" || [\s]);;
+       (** We remove characters that we use as binary operations, namely, \s, ":" *)
+         ::== ¬("""" || "\" || [\s] || ":");;
   (**
 <<
 fragment UNICODE
