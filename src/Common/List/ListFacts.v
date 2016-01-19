@@ -1916,4 +1916,10 @@ Section ListFacts.
       rewrite Heq'; simpl; reflexivity. }
     { reflexivity. }
   Qed.
+
+  Lemma map_combine_id {A B} (f : A * A -> B) (ls : list A)
+    : List.map f (combine ls ls) = List.map (fun x => f (x, x)) ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl; [ | rewrite IHls ]; reflexivity.
+  Qed.
 End ListFacts.
