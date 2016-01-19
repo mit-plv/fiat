@@ -98,7 +98,7 @@ total time:     21.428s
                  | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                    => G
                   end) in
-        let lem' := fresh in
+        let lem' := fresh "lem'" in
         (lazymatch goal with
         | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
           => pose proof (lem idx) as lem'
@@ -131,8 +131,94 @@ total time:     21.428s
         rewrite_disjoint_search_for_no_clear lem;
           clear lem.
 
-      Time rewrite_disjoint_search_for_no_clear lem.
+      Time rewrite_disjoint_search_for.
       Time simplify parser splitter.
+Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
+About possible_open_closes.
+      idtac;
+        match goal with
+                      | [ |- context[{ splits : list nat
+                                     | ParserInterface.split_list_is_complete_idx
+                                         ?G ?str ?offset ?len ?idx splits }%comp] ]
+                        => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                     G str offset len idx) in
+      idtac;
+        let lem := constr:(@refine_binop_table_idx _ _ _ _ _) in
+        let G := match args with ParserInterface.split_list_is_complete_idx
+                                   ?G ?str ?offset ?len ?idx => G end in
+        let str := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => str end in
+        let offset := match args with ParserInterface.split_list_is_complete_idx
+                                        ?G ?str ?offset ?len ?idx => offset end in
+        let len := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => len end in
+        let idx := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => idx end in
+        let ps := (eval hnf in (Carriers.default_to_production (G := G) idx)) in
+        match ps with
+          | nil => fail 1 "The index" idx "maps to the empty production," "which is not valid for the binop-brackets rule"
+          | _ => idtac
+        end;
+          let p := match ps with ?p::_ => p end in
+          let p := (eval hnf in p) in
+          match p with
+            | NonTerminal _ => idtac
+            | _ => fail 1 "The index" idx "maps to a production starting with" p "which is not a nonterminal; the index must begin with a nonterminal to apply the binop-brackets rule"
+          end;
+            let nt := match p with NonTerminal ?nt => nt end in
+            let its := (eval simpl in (List.tl ps)) in
+            let lem := constr:(fun its' H' ch H0 H1 => lem G eq_refl str offset len nt ch its' H0 H1 idx H') in
+            let lem := constr:(lem its eq_refl) in
+            let chT := match type of lem with forall ch : ?chT, _ => chT end in
+            let chE := fresh "ch" in
+            evar (chE : chT);
+              let ch := (eval unfold chE in chE) in
+              let lem := constr:(lem ch) in
+              let H0 := fresh in
+              let T0 := match type of lem with ?T0 -> _ => T0 end in
+              first [ assert (H0 : T0) by (clear; lazy; repeat esplit)
+                    | fail 1 "Could not find a single binary operation to solve" T0 ];
+                subst chE;
+                let lem := constr:(lem H0) in
+                let H := fresh in
+                pose proof lem as H; clear H0;
+                unfold correct_open_close in H;
+                let c := match type of H with
+                           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
+                             => constr:(@possible_valid_open_closes G nt ch)
+                         end in
+                match type of H with
+                  | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
+                    => pose (@possible_open_closes_pre G nt) as c'''
+                end;
+                let c0 := fresh in
+                set (c0 := c) in H;
+                  lazy in c0
+end.
+lazy in c'''.
+Print possible_open_closes_pre.
+
+                  first [ subst c0; specialize (H eq_refl)
+                        | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
+                  let c := match type of H with
+                             | context[@default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]
+                               => constr:(@default_list_of_next_bin_ops_opt_data HSLM HSL data)
+                           end in
+                  let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
+                  let c' := match c' with
+                              | appcontext[@StringLike.get _ ?HSLM ?HSL]
+                                => let HSLM' := head HSLM in
+                                   let HSL' := head HSL in
+                                   (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')
+                              | _ => c'
+                            end in
+                  change c with c' in H;
+                    first [ setoid_rewrite H
+                          | let T := type of H in
+                            fail 1 "Unexpeected failure to setoid_rewrite with" T ];
+                    clear H.
+
+
       setoid_rewrite lem; [ | try solve [ solve_disjoint_side_conditions ].. ].
       Focus 4.
       lazymatch goal with
