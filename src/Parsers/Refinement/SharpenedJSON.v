@@ -1,13 +1,16 @@
 (** Sharpened ADT for JSON *)
 Require Import Fiat.Parsers.Grammars.JSON.
 Require Import Fiat.Parsers.Refinement.Tactics.
+Require Import Fiat.Parsers.Refinement.DisjointRules.
+Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
 
 Section IndexedImpl.
   Context {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
-          {HSIP : StringEqProperties Ascii.ascii}.
-
+          {HSEP : StringEqProperties Ascii.ascii}
+          {HSIP : StringIsoProperties Ascii.ascii}.
 
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec json_grammar HSL).
@@ -18,426 +21,144 @@ Section IndexedImpl.
 
     hone method "splits".
     {
-      (*simplify parser splitter.*)
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-Lemma c_if_aggregate4 {A} (b1 b2 b3 b4 b5 : bool) (x y z w v : A) (H : b1 = false -> (b2 || b3 || b4)%bool = true -> b5 = true -> False)
-  : (if b1 then x else if b2 then y else if b3 then z else if b4 then w else if b5 then x else v) = (if (b1 || b5)%bool then x else if b2 then y else if b3 then z else if b4 then w else v).
-Proof.
-  destruct b1, b2, b3, b4, b5; simpl in *; try reflexivity; specialize_by ltac:(exact eq_refl);
-    destruct_head False.
-Qed.
-Definition if_aggregate4 {A} (b1 b2 b3 b4 b5 : bool) (x y z w v : A) (H : b1 = false -> (b2 || b3 || b4)%bool = true -> b5 = true -> False)
-: (If b1 Then x Else If b2 Then y Else If b3 Then z Else If b4 Then w Else If b5 Then x Else v) = (If (b1 || b5)%bool Then x Else If b2 Then y Else If b3 Then z Else If b4 Then w Else v)
-  := @c_if_aggregate4 _ _ _ _ _ _ x y z w v H.
-rewrite !if_aggregate4 by solve_prod_beq.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-Lemma c_swap_if {A} (b1 b2 : bool) (x y z : A) (H : b1 = true -> b2 = true -> False)
-: (if b1 then x else if b2 then y else z) = (if b2 then y else if b1 then x else z).
-Proof.
-  destruct b1, b2; try reflexivity; specialize_by ltac:(exact eq_refl);
-    destruct_head False.
-Qed.
-Definition swap_if {A} (b1 b2 : bool) (x y z : A) (H : b1 = true -> b2 = true -> False)
-: (If b1 Then x Else If b2 Then y Else z) = (If b2 Then y Else If b1 Then x Else z)
-  := @c_swap_if A b1 b2 x y z H.
- match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
+      (*Start Profiling.*)
+      Time simplify parser splitter.
+      (*Show Profile.*)
+      (*
+total time:     21.428s
 
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─simplify parser splitter --------------   0.0% 100.0%       1   21.428s
+─simplify ------------------------------   0.0% 100.0%       1   21.428s
+─simplify_parser_splitter' -------------   0.1% 100.0%      19    5.232s
+─rewrite <- !BoolFacts.andb_orb_distrib_  22.5%  22.5%       7    4.424s
+─simplify with monad laws --------------   0.0%  17.3%      13    0.728s
+─simplify_with_applied_monad_laws ------   0.1%  17.3%      13    0.728s
+─rewrite !Bool.orb_false_r -------------  11.0%  11.0%      17    1.732s
+─rewrite <- !Bool.andb_orb_distrib_r ---   8.8%   8.8%      28    0.420s
+─rewrite <- !Bool.orb_assoc ------------   8.5%   8.5%       9    1.396s
+─unguard -------------------------------   0.0%   8.1%      19    0.584s
+─rewrite ?(unguard [0]) ----------------   7.8%   8.1%      19    0.584s
+─rewrite <- !Bool.andb_orb_distrib_l ---   5.9%   5.9%      12    0.620s
+─autounfold  with parser_sharpen_db ----   4.6%   4.6%      18    0.132s
+─eapply refine_under_bind_helper -------   3.6%   3.6%      98    0.044s
+─eapply refine_under_bind_helper_1 -----   3.4%   3.4%      98    0.040s
+─eapply refine_under_bind_helper_2 -----   3.4%   3.4%      98    0.040s
+─parser_pull_tac -----------------------   0.1%   2.8%       3    0.604s
+─apply refine_bind_bind_helper ---------   2.5%   2.5%     100    0.036s
+─apply refine_bind_unit_helper ---------   2.3%   2.3%     102    0.028s
 
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─simplify parser splitter --------------   0.0% 100.0%       1   21.428s
+└simplify ------------------------------   0.0% 100.0%       1   21.428s
+└simplify_parser_splitter' -------------   0.1% 100.0%      19    5.232s
+ ├─rewrite <- !BoolFacts.andb_orb_distri  22.5%  22.5%       7    4.424s
+ ├─simplify with monad laws ------------   0.0%  17.3%      13    0.728s
+ │└simplify_with_applied_monad_laws ----   0.1%  17.3%      13    0.728s
+ │ ├─eapply refine_under_bind_helper ---   3.6%   3.6%      98    0.044s
+ │ ├─eapply refine_under_bind_helper_1 -   3.4%   3.4%      98    0.040s
+ │ ├─eapply refine_under_bind_helper_2 -   3.4%   3.4%      98    0.040s
+ │ ├─apply refine_bind_bind_helper -----   2.5%   2.5%     100    0.036s
+ │ └─apply refine_bind_unit_helper -----   2.3%   2.3%     102    0.028s
+ ├─rewrite !Bool.orb_false_r -----------  11.0%  11.0%      17    1.732s
+ ├─rewrite <- !Bool.andb_orb_distrib_r -   8.8%   8.8%      28    0.420s
+ ├─rewrite <- !Bool.orb_assoc ----------   8.5%   8.5%       9    1.396s
+ ├─unguard -----------------------------   0.0%   8.1%      19    0.584s
+ │└rewrite ?(unguard [0]) --------------   7.8%   8.1%      19    0.584s
+ ├─rewrite <- !Bool.andb_orb_distrib_l -   5.9%   5.9%      12    0.620s
+ ├─autounfold  with parser_sharpen_db --   4.6%   4.6%      18    0.132s
+ └─parser_pull_tac ---------------------   0.1%   2.8%       3    0.604s
+ *)
 
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 try
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       Set Printing Width 10000.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 10 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
+      Ltac solve_disjoint_side_conditions :=
+        idtac;
+        lazymatch goal with
+        | [ |- Carriers.default_to_production (G := ?G) ?k = ?e ]
+          => cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions List.length List.nth minus Operations.List.drop G];
+             try reflexivity
+        | [ |- is_true (Operations.List.disjoint _ _ _) ]
+          => vm_compute; try reflexivity
+        end.
 
-
-      simplify_parser_splitter'.
-
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-
-
-      simplify_parser_splitter'.
-
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-
-
-      simplify_parser_splitter'.
-
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-
-
-      simplify_parser_splitter'.
-
-      simplify_parser_splitter'.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-
-Notation "'If' c 'ThenT' t 'Else' e" :=
-  (If_Then_Else c t e)
-    (at level 70, format "'[hv  ' 'If'  c  'ThenT' '//' '[' t ']' ']' '//' 'Else'  '[' e ']'").
-
-      simplify_parser_splitter'.
-
-
-
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-       do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
- do 5 match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-        match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-        match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-        match goal with
-       | [ |- context[If _ Then ret ?v Else If _ Then Pick ?P Else _] ]
-         => rewrite !(@swap_if _ _ _ (ret v) (Pick P) _) by solve_prod_beq
-       end.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      match goal with
-      | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G _ _ _ ?idx] ]
-        => set (v := Carriers.default_to_production (G := G) idx)
+      let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
+      let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL _ _ _ G) in
+      assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
+        let lem' := match goal with
+                    | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+                      => constr:(fun idx nt its => lem' str offset len nt its idx H')
+                    end in
+        pose proof lem' as lem.
+      let G := lazymatch goal with
+          | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+            => G
+          end in
+      let lem' := fresh in
+      lazymatch goal with
+      | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+        => pose proof (lem idx) as lem'
+      end;
+        do 2 lazymatch type of lem' with
+           | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
+           end;
+        let T := match type of lem' with forall a : ?T, _ => T end in
+        let H' := fresh in
+        assert (H' : T) by solve_disjoint_side_conditions;
+          specialize (lem' H'); clear H';
+            let x := match type of lem' with
+                     | context[DisjointLemmas.actual_possible_first_terminals ?ls]
+                       => constr:(DisjointLemmas.actual_possible_first_terminals ls)
+                     end in
+            let x' := x in
+            let x' := (eval cbv beta iota zeta delta [G] in x') in
+            pose x'.
+      exfalso.
+      clear -l.
+      cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step] in l.
+      About FoldGrammar.fold_nt'.
+      lazymatch (eval unfold l in l) with
+      | appcontext[@FoldGrammar.fold_nt' ?Char ?T ?FGD ?G ?initial]
+        => change (@FoldGrammar.fold_nt' Char T FGD G initial) with (@FoldGrammar.fold_nt_step Char T FGD G initial (@FoldGrammar.fold_nt' Char T FGD G)) in l
       end.
-      unfold Carriers.default_to_production in v.
-      unfold Carriers.default_to_production, Carriers.default_to_nonterminal in v.
-      Transparent json_grammar.
-      repeat match eval unfold v in v with
-             | context[Operations.List.uniquize ?beq ?ls]
-               => change (Operations.List.uniquize beq ls) with ls in (value of v)
+      cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step BaseTypes.is_valid_nonterminal BaseTypes.of_nonterminal FoldGrammar.fold_productions' BaseTypes.remove_nonterminal RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_of_nonterminal RDPList.list_bin_eq Operations.List.first_index_default FoldGrammar.on_redundant_nonterminal option_rect grammar_of_pregrammar Lookup] in l.
+Set Printing Coercions.
+cbv beta iota zeta delta [] in l.
+
+
+
+      unfold FoldGrammar.fold_nt_step in
+      Print FoldGrammar.fold_nt'.
+      simpl in l.
+
+      unfold FoldGrammar.fold_nt' in l; fold @FoldGrammar.fold_nt' in l.
+      unfold FoldGrammar.fold_nt_step at 1 in (value of l).
+      cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step] in l.
+      cbv beta iota zeta delta
+      cbv beta iota zeta delta [] in l.
+      cbv beta iota zeta delta [FoldGrammar.fold_nt_step] in l.
+solve_disjoint_side_conditions.
+                    [ | solve [ solve_disjoint_side_conditions ].. ]
              end.
-      set (y := Valid_nonterminals json_grammar) in (value of v).
-      unfold Valid_nonterminals, json_grammar, list_to_grammar, list_to_productions in y.
-      repeat match eval unfold y in y with
-             | context[Operations.List.uniquize ?beq ?ls]
-               => change (Operations.List.uniquize beq ls) with ls in (value of y)
-             end.
-      simpl in y.
-      unfold y in v.
-      simpl @fst in v.
-      unfold Lookup, json_grammar, list_to_grammar, list_to_productions in v.
-    repeat match eval unfold v in v with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of v)
-           end.
-    simpl @List.map in v.
-    simpl @snd in v.
-    unfold List.nth at 3 6 in (value of v).
-    lazymatch eval unfold v in v with
-    | context[Operations.List.first_index_error ?f ?ls]
-      => let c := constr:(Operations.List.first_index_error f ls) in
-         let c' := (eval cbv in c) in
-         change c with c' in (value of v)
-    end.
-    unfold option_rect in v.
-    unfold List.nth in v.
-    unfold List.length in v.
-    simpl in v.
-Require Import Fiat.Parsers.Refinement.DisjointRules.
-Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
-Set Printing Implicit.
-Axiom HSI : StringIso Ascii.ascii.
-Axiom HSIIP : StringIsoProperties Ascii.ascii.
-set (x := json_grammar).
-unfold json_grammar, list_to_grammar in x.
-    repeat match eval unfold x in x with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of x)
-           | _ => progress simpl @List.hd in x
-           end.
-Unset Printing Implicit.
-simpl @List.map in x.
-unfold list_to_productions in x.
-    repeat match eval unfold x in x with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of x)
-           | _ => progress simpl @List.hd in x
-           end.
-    simpl @List.map in x.
-assert (H' : ValidReflective.grammar_rvalid x).
-{ Time lazy.
-  reflexivity. }
-set (z := Carriers.default_to_production (G := x)).
-unfold Carriers.default_to_production, Carriers.default_to_nonterminal in z.
-simpl @Valid_nonterminals in z.
-    repeat match eval unfold z in z with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of z)
-           end.
-unfold Lookup, x in z.
-    repeat match eval unfold z in z with
-           | context[Operations.List.uniquize ?beq ?ls]
-             => change (Operations.List.uniquize beq ls) with ls in (value of z)
-           end.
+Focus 2.
+match goal with
+ end.
+          (DisjointLemmas.possible_terminals_of json_pregrammar nt)
+          (DisjointLemmas.actual_possible_first_terminals
+             (DisjointLemmas.possible_first_terminals_of_production json_pregrammar its)) ->
+        refine
+          {splits
+Focus 2.
+
+
+Locate "-".
+Set Printing Coercions.
+list_to_grammar
+change (z k = e);
+
+match
+
+
 Local Ltac special_solve_side z :=
 lazymatch goal with
 | [ H : is_true (ValidReflective.grammar_rvalid ?G) |- is_true (ValidReflective.grammar_rvalid ?G) ]
@@ -462,6 +183,38 @@ lazymatch goal with
 | [ |- is_true (Operations.List.disjoint ?beq ?A ?B) ]
   => timeout 10 vm_compute; reflexivity
 end.
+
+      Set Printing Implicit.
+      set (x := json_grammar).
+      unfold json_grammar, list_to_grammar in x.
+      repeat match eval unfold x in x with
+             | context[Operations.List.uniquize ?beq ?ls]
+               => change (Operations.List.uniquize beq ls) with ls in (value of x)
+             | _ => progress simpl @List.hd in x
+             end.
+      Unset Printing Implicit.
+simpl @List.map in x.
+unfold list_to_productions in x.
+    repeat match eval unfold x in x with
+           | context[Operations.List.uniquize ?beq ?ls]
+             => change (Operations.List.uniquize beq ls) with ls in (value of x)
+           | _ => progress simpl @List.hd in x
+           end.
+    simpl @List.map in x.
+{ Time lazy.
+  reflexivity. }
+set (z := Carriers.default_to_production (G := x)).
+unfold Carriers.default_to_production, Carriers.default_to_nonterminal in z.
+simpl @Valid_nonterminals in z.
+    repeat match eval unfold z in z with
+           | context[Operations.List.uniquize ?beq ?ls]
+             => change (Operations.List.uniquize beq ls) with ls in (value of z)
+           end.
+unfold Lookup, x in z.
+    repeat match eval unfold z in z with
+           | context[Operations.List.uniquize ?beq ?ls]
+             => change (Operations.List.uniquize beq ls) with ls in (value of z)
+           end.
 Time let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL HSI HSLP HSIIP) in
 pose proof lem' as lem.
 match goal with
