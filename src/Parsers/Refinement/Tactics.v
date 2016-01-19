@@ -67,11 +67,11 @@ Ltac start_honing :=
   change @List.length with @BooleanRecognizerOptimized.opt2.opt2.length;
   change @fst with @BooleanRecognizerOptimized.opt2.opt2.fst at 2 4;
   change @snd with @BooleanRecognizerOptimized.opt2.opt2.snd at 2 5 6;
-  cbv beta iota zeta delta [to_production_opt Lookup_idx List.combine ret_cases_to_comp fst snd List.map ret_cases_BoolDecR];
+  cbv beta iota zeta delta [to_production_opt Lookup_idx List.combine ret_cases_to_comp fst snd List.map];
   change @BooleanRecognizerOptimized.opt2.opt2.length with @List.length;
   change @BooleanRecognizerOptimized.opt2.opt2.fst with @fst;
   change @BooleanRecognizerOptimized.opt2.opt2.snd with @snd;
-  cbv beta iota zeta delta [List.fold_right ret_cases_beq Equality.ImproperlyRecursiveProdBeq.prod_beq internal_nat_beq];
+  cbv beta iota zeta delta [List.fold_right ret_cases_BoolDecR beq_nat_opt andb_opt];
   simpl orb; simpl andb;
   simpl.
 

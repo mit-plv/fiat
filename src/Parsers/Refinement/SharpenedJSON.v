@@ -116,7 +116,6 @@ total time:     21.428s
       exfalso.
       clear -l.
       cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step] in l.
-      About FoldGrammar.fold_nt'.
       lazymatch (eval unfold l in l) with
       | appcontext[@FoldGrammar.fold_nt' ?Char ?T ?FGD ?G ?initial]
         => change (@FoldGrammar.fold_nt' Char T FGD G initial) with (@FoldGrammar.fold_nt_step Char T FGD G initial (@FoldGrammar.fold_nt' Char T FGD G)) in l

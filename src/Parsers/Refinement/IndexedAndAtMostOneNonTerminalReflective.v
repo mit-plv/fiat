@@ -263,14 +263,15 @@ Module Export PrettyNotations.
   Infix "=ℕ" := EqNat.beq_nat (at level 70, no associativity).
 End PrettyNotations.
 
-Local Set Boolean Equality Schemes.
+Definition beq_nat_opt := Eval compute in EqNat.beq_nat.
+Definition andb_opt := Eval compute in andb.
+
 Inductive ret_cases : Set :=
 | ret_dummy
 | ret_length_less (n : nat)
 | ret_nat (n : nat)
 | ret_pick (idx : nat * (nat * nat))
 | invalid.
-Local Unset Boolean Equality Schemes.
 
 Local Ltac t_ret_cases :=
   intros x y; destruct x, y; unfold Equality.beq; simpl; try congruence;
@@ -278,8 +279,11 @@ Local Ltac t_ret_cases :=
          | _ => reflexivity
          | _ => intro
          | _ => progress subst
+         | _ => congruence
          | [ H : ?f ?x ?y = ?b |- _ ] => progress change (EqNat.beq_nat x y = b) in H
          | [ |- ?f ?x ?y = ?b ] => progress change (EqNat.beq_nat x y = b)
+         | [ H : ?f ?x ?y = ?b |- _ ] => progress change (andb x y = b) in H
+         | [ |- ?f ?x ?y = ?b ] => progress change (andb x y = b)
          | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
          | [ |- EqNat.beq_nat _ _ = true ] => apply EqNat.beq_nat_true_iff
          | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
@@ -293,7 +297,20 @@ Local Ltac t_ret_cases :=
          | _ => progress simpl in *
          end.
 
-Global Instance ret_cases_BoolDecR : BoolDecR ret_cases := ret_cases_beq.
+Global Instance ret_cases_BoolDecR : BoolDecR ret_cases
+  := fun x y => match x, y with
+                | ret_dummy, ret_dummy => true
+                | ret_dummy, _ => false
+                | ret_length_less n, ret_length_less m => beq_nat_opt n m
+                | ret_length_less _, _ => false
+                | ret_nat n, ret_nat m => beq_nat_opt n m
+                | ret_nat _, _ => false
+                | ret_pick (a, (b, c)), ret_pick (a', (b', c'))
+                  => andb_opt (beq_nat_opt a a') (andb_opt (beq_nat_opt b b') (beq_nat_opt c c'))
+                | ret_pick _, _ => false
+                | invalid, invalid => true
+                | invalid, _ => false
+                end.
 Global Instance ret_cases_bl : BoolDec_bl (@eq ret_cases).
 Proof. t_ret_cases. Qed.
 Global Instance ret_cases_lb : BoolDec_lb (@eq ret_cases).
