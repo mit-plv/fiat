@@ -90,7 +90,7 @@ total time:     21.428s
                       => constr:(fun idx nt its => lem' str offset len nt its idx H')
                     end in
         pose proof lem' as lem.
-      let G := lazymatch goal with
+      repeat let G := lazymatch goal with
           | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
             => G
           end in
@@ -110,17 +110,26 @@ total time:     21.428s
                      | context[DisjointLemmas.actual_possible_first_terminals ?ls]
                        => constr:(DisjointLemmas.actual_possible_first_terminals ls)
                      end in
-            let x' := x in
-            let x' := (eval cbv beta iota zeta delta [G] in x') in
-            pose x'.
+            let x' := (eval vm_compute in x) in
+            change x with x' in lem';
+              simpl @Equality.list_bin in lem';
+              let T := match type of lem' with forall a : ?T, _ => T end in
+              let H' := fresh in
+              assert (H' : T) by solve_disjoint_side_conditions;
+                specialize (lem' H'); clear H';
+                  setoid_rewrite lem'; clear lem'.
+      Time simplify parser splitter.
+      setoid_rewrite lem; [ | try solve [ solve_disjoint_side_conditions ].. ].
       exfalso.
       clear -l.
+      vm_compute in l.
       cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step] in l.
       lazymatch (eval unfold l in l) with
       | appcontext[@FoldGrammar.fold_nt' ?Char ?T ?FGD ?G ?initial]
         => change (@FoldGrammar.fold_nt' Char T FGD G initial) with (@FoldGrammar.fold_nt_step Char T FGD G initial (@FoldGrammar.fold_nt' Char T FGD G)) in l
       end.
       Time cbv beta iota zeta delta [FoldGrammar.fold_nt_step BaseTypes.is_valid_nonterminal BaseTypes.of_nonterminal RDPList.rdp_list_predata RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_of_nonterminal] in l.
+      change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in l.
 
       cbv
       cbv beta iota zeta delta [pregrammar_productions DisjointLemmas.actual_possible_first_terminals DisjointLemmas.possible_first_terminals_of_production FoldGrammar.fold_production FoldGrammar.fold_production' List.map FoldGrammar.on_nonterminal DisjointLemmas.only_first_fold_data FoldGrammar.on_nil_production FoldGrammar.combine_production List.fold_right FoldGrammar.fold_nt DisjointLemmas.might_be_empty BaseTypes.initial_nonterminals_data RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data fst snd Datatypes.length Operations.List.up_to BaseTypes.nonterminals_length FoldGrammar.fold_nt_step BaseTypes.is_valid_nonterminal BaseTypes.of_nonterminal FoldGrammar.fold_productions' BaseTypes.remove_nonterminal RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_of_nonterminal RDPList.list_bin_eq Operations.List.first_index_default FoldGrammar.on_redundant_nonterminal option_rect grammar_of_pregrammar Lookup orb Operations.List.first_index_helper] in l.
