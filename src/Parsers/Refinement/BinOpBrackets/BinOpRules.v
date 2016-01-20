@@ -361,7 +361,7 @@ Section refine_rules.
       := fold_right
            (@app _)
            nil
-           (map maybe_open_closes (Lookup G nt)).
+           (map maybe_open_closes (Lookup_string G nt)).
 
     Definition possible_open_closes
     : list (Ascii.ascii * Ascii.ascii)
