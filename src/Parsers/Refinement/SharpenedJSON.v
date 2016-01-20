@@ -134,7 +134,6 @@ total time:     21.428s
 
       Time rewrite_disjoint_search_for.
       Time simplify parser splitter.
-About possible_open_closes.
       idtac;
         match goal with
                       | [ |- context[{ splits : list nat
@@ -189,13 +188,133 @@ About possible_open_closes.
                          end in
                 match type of H with
                   | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
-                    => pose (@possible_open_closes_pre G nt) as c'''
+                    => pose (@possible_open_closes_pre G) as c'''
                 end;
                 let c0 := fresh in
-                set (c0 := c) in H;
-                  lazy in c0
+                set (c0 := c) in H(*;
+                  lazy in c0*)
 end.
-lazy in c'''.
+exfalso.
+clear H3.
+clear c'''.
+cbv beta iota delta [possible_valid_open_closes possible_balanced_open_closes] in H4.
+set (x := (@possible_open_closes json'_pregrammar)) in H4.
+Timeout 5 vm_compute in x.
+subst x.
+match (eval cbv delta [H4] in H4) with
+| context[List.filter ?f ?ls] => set (x := (List.filter f ls)) in H4
+end.
+Timeout 1 cbv beta iota delta [List.filter] in x.
+Print List.filter.
+unfold List.filter in x.
+About ParenBalancedGrammar.paren_balanced_correctness_type.
+repeat match (eval cbv delta [x] in x) with
+       | context[@ParenBalancedGrammar.paren_balanced_correctness_type ?a ?b ?c ?d ?e]
+         => let H := fresh in set (H := @ParenBalancedGrammar.paren_balanced_correctness_type a b c d e) in (value of x)
+       end.
+clear -H2.
+cbv beta zeta delta [ParenBalancedGrammar.paren_balanced_correctness_type] in H2.
+match (eval cbv delta [H2] in H2) with
+| context[@BaseTypes.of_nonterminal ?a ?b ?c]
+  => set (x := @BaseTypes.of_nonterminal a b c) in (value of H2)
+end.
+vm_compute in x.
+subst x.
+match (eval cbv delta [H2] in H2) with
+| context[@ParenBalancedGrammar.paren_balanced_nonterminals ?a ?b ?c ?d ?e]
+  => set (x := @ParenBalancedGrammar.paren_balanced_nonterminals a b c d e) in (value of H2)
+end.
+cbv beta zeta iota delta [ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT FoldGrammar.fold_nt] in x.
+Timeout 2 cbv beta zeta iota delta [BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.map list_to_productions pregrammar_productions json'_pregrammar List.length Operations.List.up_to] in x.
+Opaque FoldGrammar.fold_nt_step.
+Timeout 2 simpl in x.
+Transparent FoldGrammar.fold_nt_step.
+Timeout 2 cbv beta iota zeta delta [FoldGrammar.fold_nt_step] in x.
+Timeout 5 simpl @BaseTypes.is_valid_nonterminal in x.
+cbv beta iota in x.
+match (eval cbv delta [x] in x) with
+| context[@BaseTypes.of_nonterminal ?a ?b ?c]
+  => set (y := @BaseTypes.of_nonterminal a b c) in (value of x)
+end.
+vm_compute in y.
+subst y.
+match (eval cbv delta [x] in x) with
+| context[@BaseTypes.remove_nonterminal ?a ?b ?c ?d]
+  => set (y := @BaseTypes.remove_nonterminal a b c d) in (value of x)
+end.
+vm_compute in y.
+subst y.
+Timeout 5 cbv beta iota zeta delta [FoldGrammar.fold_productions' List.map list_to_productions ParenBalancedGrammar.paren_balanced_nonterminals_T BaseTypes.nonterminal_carrierT List.fold_right RDPList.rdp_list_predata pregrammar_productions Carriers.default_nonterminal_carrierT list_to_productions Lookup grammar_of_pregrammar Lookup_string option_rect List.find fst snd FoldGrammar.on_nil_productions (*ParenBalancedGrammar.paren_balanced_nonterminals_fold_data FoldGrammar.fold_production' FoldGrammar.on_nil_production (*FoldGrammar.combine_productions  FoldGrammar.fold_production' ParenBalancedGrammar.paren_balanced_nonterminals_fold_data (*FoldGrammar.combine_production*) FoldGrammar.on_nonterminal FoldGrammar.on_nil_production (*BaseTypes.of_nonterminal Compare_dec.gt_dec List.app*)*)*)] in  x;
+change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in x;
+cbv beta iota zeta delta [BooleanRecognizerOptimized.opt.opt.string_beq] in x.
+match (eval cbv delta [x] in x) with
+| context[@FoldGrammar.fold_nt' ?a ?b ?c ?d ?e ?f ?g]
+  => set (y := @FoldGrammar.fold_nt' a b c d e f g)
+end.
+clear -y.
+unfold ParenBalancedGrammar.paren_balanced_nonterminals_T, BaseTypes.nonterminal_carrierT, RDPList.rdp_list_predata, Carriers.default_nonterminal_carrierT in *.
+Opaque FoldGrammar.fold_nt_step.
+Timeout 2 simpl in y.
+Transparent FoldGrammar.fold_nt_step.
+Timeout 2 cbv beta iota zeta delta [FoldGrammar.fold_nt_step] in y.
+
+Print FoldGrammar.fold_nt'.
+set (z := Compare_dec.lt_dec 0 0) in (value of x).
+hnf in z.
+subst z.
+cbv beta iota zeta in x.
+vm_compute in z.
+Timeout 5 simpl @Compare_dec.lt_dec in x.
+Timeout 5 unfold bool_of_sumbool in x.
+set (z :=
+Timeout 5 cbv beta iota zeta delta [] in x.
+
+change Equality.
+Timeout 2 cbv beta iota zeta delta [BaseTypes.remove_nonterminal BaseTypes.of_nonterminal RDPList.rdp_list_predata] in x.
+Timeout 2 vm_compute in x.
+subst x.
+
+cbv iota
+Timeout 5 cbv beta iota zeta delta [ParenBalancedGrammar.paren_balanced_correctness_type fst snd] in H2.
+Timeout 5 cbv beta iota zeta delta [ParenBalancedGrammar.paren_balanced''_nt] in H2.
+
+Timeout 5 vm_compute in H2.
+Set Printing Implicit.
+Timeout 2 vm_compute in H4.
+lazymatch (eval unfold c''' in c''') with
+      | @possible_open_closes_pre ?G =>
+                      pose (@possible_open_closes G) as c''''
+end.
+(*Print possible_open_closes.
+lazymatch (eval unfold c''' in c''') with
+      | @possible_open_closes_pre ?G ?nt =>
+                      pose (@DisjointLemmas.possible_first_terminals_of G _ _ nt) as c'''''
+end.
+*)
+(*
+
+lazy in c'''.*)
+exfalso.
+vm_compute in c''''.
+Timeout 2 vm_compute in c'''.
+Start Profiling. (lazy in c''''). Show Profile.
+unfold possible_open_closes, possible_open_closes_pre in c''''.
+unfold List.flat_map at 2 3 in (value of c'''').
+cbv beta iota zeta delta [possible_open_closes possible_open_closes_pre maybe_open_closes pregrammar_productions grammar_of_pregrammar list_to_productions Lookup_string json'_pregrammar List.map fst snd] in c''''.
+cbv beta iota zeta delta [possible_open_closes possible_open_closes_pre maybe_open_closes pregrammar_productions grammar_of_pregrammar list_to_productions Lookup_string json'_pregrammar List.map fst snd List.hd List.rev] in c''''.
+cbv beta iota zeta delta [possible_open_closes possible_open_closes_pre maybe_open_closes pregrammar_productions grammar_of_pregrammar list_to_productions Lookup_string json'_pregrammar List.map fst snd List.hd List.rev List.app] in c''''.
+vm_compute in c''''.
+cbv b
+change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in c''''.
+cbv beta iota zeta delta [List.find] in c''''.
+cbv beta iota zeta delta [fst snd BooleanRecognizerOptimized.opt.opt.string_beq option_rect] in c''''.
+
+cbv beta iota zeta delta [List.find fst snd BooleanRecognizerOptimized.opt.opt.string_beq option_rect] in c''''.
+
+
+Timeout 1 cbv beta iota zeta delta [BooleanRecognizerOptimized.opt.opt.string_beq app List.rev List.app List.fold_right] in c''''.
+idtac.
+lazy in c''''.
 Print possible_open_closes_pre.
 
                   first [ subst c0; specialize (H eq_refl)

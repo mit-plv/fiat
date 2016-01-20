@@ -417,6 +417,14 @@ Section with_lists.
 
     Global Arguments paren_balanced_hiding_correctness_type / .
 
+    (** Just check for paren-balanced-ness, not for that it hides the binary operation. *)
+    Definition paren_balanced_correctness_type
+      := (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
+           && (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pbh_nts))
+           && (paren_balanced''_nt pb_nts pbh_nts false (of_nonterminal nt)).
+
+    Global Arguments paren_balanced_hiding_correctness_type / .
+
     Lemma paren_balanced_hiding_nt_correct
           (Hvalid : paren_balanced_hiding_correctness_type)
     : forall str', parse_of_item G str' (NonTerminal nt)

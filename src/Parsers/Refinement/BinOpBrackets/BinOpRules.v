@@ -341,11 +341,15 @@ Section refine_rules.
   End derive_table.
 
   Section derive_pbhd.
-    Definition bin_op_data_of (open close : Ascii.ascii)
+    Definition bin_op_data_of_gen_bin_op (f_bin_op : Ascii.ascii -> bool) (open close : Ascii.ascii)
     : paren_balanced_hiding_dataT Ascii.ascii
-      := {| is_bin_op := ascii_beq ch;
+      := {| is_bin_op := f_bin_op;
             is_open := ascii_beq open;
             is_close := ascii_beq close |}.
+
+    Definition bin_op_data_of (open close : Ascii.ascii)
+    : paren_balanced_hiding_dataT Ascii.ascii
+      := bin_op_data_of_gen_bin_op (ascii_beq ch) open close.
 
     Definition maybe_open_closes {Char} {HEC : Enumerable.Enumerable Char}
                (p : production Char)
@@ -358,10 +362,7 @@ Section refine_rules.
 
     Definition possible_open_closes_pre
     : list ((Ascii.ascii -> bool) * (Ascii.ascii -> bool))
-      := fold_right
-           (@app _)
-           nil
-           (map maybe_open_closes (Lookup_string G nt)).
+      := flat_map (flat_map maybe_open_closes) (map snd (pregrammar_productions G)).
 
     Definition possible_open_closes
     : list (Ascii.ascii * Ascii.ascii)
@@ -377,34 +378,53 @@ Section refine_rules.
                end)
            possible_open_closes_pre.
 
-    Definition possible_valid_open_closes
+    Definition possible_balanced_open_closes
     : list (Ascii.ascii * Ascii.ascii)
-      := fold_right
-           (@app _)
-           nil
-           (map
-              (fun oc
-               => if paren_balanced_hiding_correctness_type (pdata := bin_op_data_of (fst oc) (snd oc)) G nt
-                  then [oc]
-                  else nil)
-              possible_open_closes).
+      := List.filter
+           (fun oc => paren_balanced_correctness_type
+                        (pdata := {| is_bin_op := fun _ => false;
+                                     is_open := ascii_beq (fst oc);
+                                     is_close := ascii_beq (snd oc) |})
+                        G nt)
+           possible_open_closes.
 
-    Definition bin_op_data_of_maybe (oc : option (Ascii.ascii * Ascii.ascii))
+    Let make_f := fun ls ch' => List.fold_right orb false (List.map (ascii_beq ch') ls).
+
+
+    Definition possible_valid_open_closes
+    : option (list Ascii.ascii * list Ascii.ascii)
+      := let possible_opens := List.map fst possible_balanced_open_closes in
+         let possible_closes := List.map snd possible_balanced_open_closes in
+         let open_f := make_f possible_opens in
+         let close_f := make_f possible_closes in
+         if paren_balanced_hiding_correctness_type
+              (pdata := {| is_bin_op := ascii_beq ch;
+                           is_open := open_f;
+                           is_close := close_f |})
+              G nt
+         then Some (possible_opens, possible_closes)
+         else None.
+
+    Definition bin_op_gen_ch_data_of_maybe (is_bin_op_f : Ascii.ascii -> bool)
+               (oc : option (list Ascii.ascii * list Ascii.ascii))
     : paren_balanced_hiding_dataT Ascii.ascii
-      := {| is_bin_op := ascii_beq ch;
+      := {| is_bin_op := is_bin_op_f;
             is_open ch' := match oc with
-                             | Some oc' => ascii_beq (fst oc') ch'
+                             | Some oc' => make_f (fst oc') ch'
                              | None => false
                            end;
             is_close ch' := match oc with
-                              | Some oc' => ascii_beq (snd oc') ch'
+                              | Some oc' => make_f (snd oc') ch'
                               | None => false
                             end |}.
 
+    Definition bin_op_data_of_maybe (oc : option (list Ascii.ascii * list Ascii.ascii))
+    : paren_balanced_hiding_dataT Ascii.ascii
+      := bin_op_gen_ch_data_of_maybe (ascii_beq ch) oc.
+
     Definition correct_open_close
     : paren_balanced_hiding_dataT Ascii.ascii
-      := bin_op_data_of_maybe
-           (hd None (map Some possible_valid_open_closes)).
+      := bin_op_data_of_maybe possible_valid_open_closes.
 
     Section lemmas.
       Let predata := rdp_list_predata (G := G).
@@ -414,7 +434,7 @@ Section refine_rules.
 
       Context (H_nt_hiding
                : match possible_valid_open_closes with
-                   | nil => false
+                   | None => false
                    | _ => true
                  end).
 
@@ -426,18 +446,12 @@ Section refine_rules.
         unfold correct_open_close, possible_valid_open_closes in *.
         subst pdata.
         revert H_nt_hiding.
-        generalize possible_open_closes.
-        intro ls.
-        induction ls; simpl.
-        { intro; congruence. }
-        { match goal with
-            | [ |- context[if ?e then _ else nil] ] => destruct e eqn:?
-          end; simpl;
-          [ | assumption ].
-          intro.
+        destruct (paren_balanced_hiding_correctness_type G nt) eqn:Heq.
+        { intros _.
           apply refine_binop_table'''.
           { apply ascii_lb; reflexivity. }
           { assumption. } }
+        { intro; congruence. }
       Qed.
 
       Section idx.
