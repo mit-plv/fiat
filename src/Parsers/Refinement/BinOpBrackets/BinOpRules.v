@@ -369,12 +369,12 @@ Section refine_rules.
            (fun openf_closef
             => let openf := fst openf_closef in
                let closef := snd openf_closef in
-               List.flat_map
-                 (fun open
-                  => List.map
-                       (fun close => (open, close))
-                       (filter closef (Enumerable.enumerate Ascii.ascii)))
-                 (filter openf (Enumerable.enumerate Ascii.ascii)))
+               let opens := List.filter openf (Enumerable.enumerate Ascii.ascii) in
+               let closes := List.filter closef (Enumerable.enumerate Ascii.ascii) in
+               match opens, closes with
+                 | cho::nil, chc::nil => [(cho, chc)]
+                 | _, _ => nil
+               end)
            possible_open_closes_pre.
 
     Definition possible_valid_open_closes

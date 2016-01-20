@@ -101,8 +101,8 @@ fragment ESC
        "special_character"
          ::== ("""" || "\" || "/" || "b" || "f" || "n" || "r" || "t")%char;;
        "unspecial_character"
-       (** We remove characters that we use as binary operations, namely, \s, ":" *)
-         ::== ¬("""" || "\" || [\s] || ":");;
+       (** We remove characters that we use as binary operations, namely, \s, ":", "{", "}", "[", "]" *)
+         ::== ¬("""" || "\" || [\s] || ":" || "{" || "}" || "[" || "]");;
   (**
 <<
 fragment UNICODE
