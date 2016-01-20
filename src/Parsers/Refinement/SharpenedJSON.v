@@ -3,6 +3,7 @@ Require Import Fiat.Parsers.Grammars.JSONImpoverished.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
+Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 
 Section IndexedImpl.
   Context {HSLM : StringLikeMin Ascii.ascii}
@@ -133,7 +134,6 @@ total time:     21.428s
 
       Time rewrite_disjoint_search_for.
       Time simplify parser splitter.
-Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 About possible_open_closes.
       idtac;
         match goal with
