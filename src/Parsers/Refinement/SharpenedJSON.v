@@ -199,10 +199,6 @@ exfalso.
 clear H3.
 cbv [DisjointLemmas.possible_first_terminals_of] in c'''''.
 unfold possible_open_closes_pre in c'''.
-unfold List.flat_map in c'''.
-Set Printing All.
-Show.
-Check fun x => match x with pair a b => 1 end.
 cbv beta iota delta [possible_valid_open_closes possible_balanced_open_closes] in H4.
 set (x := (@possible_open_closes json'_pregrammar)) in H4.
 Timeout 5 vm_compute in x.
@@ -228,7 +224,6 @@ match (eval cbv delta [x] in x) with
        subst y';
        cbv beta in y
 end.
-clear -y.
 cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of FoldGrammar.fold_nt BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.length Operations.List.up_to] in y.
 simpl @List.map in y.
 cbv beta iota zeta in y.
@@ -254,7 +249,308 @@ match (eval cbv delta [y] in y) with
 end.
 cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect] in z.
 change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in z.
-cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect BooleanRecognizerOptimized.opt.opt.string_beq] in z.
+cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect BooleanRecognizerOptimized.opt.opt.string_beq List.find pregrammar_productions fst snd] in z.
+subst z.
+Opaque FoldGrammar.fold_nt'.
+Timeout 5 simpl in y.
+cbv [FoldGrammar.fold_production' List.map] in y.
+Timeout 5 simpl in y.
+repeat match (eval cbv delta [y] in y) with
+       | appcontext[@RDPList.rdp_list_of_nonterminal ?a ?b ?c]
+         => let z := fresh in
+            set (z := @RDPList.rdp_list_of_nonterminal a b c) in (value of y);
+              vm_compute in z; subst z; cbv iota
+       end.
+Local Ltac do_step y :=
+  cbv [FoldGrammar.fold_nt_step BaseTypes.nonterminals_listT ParenBalancedGrammar.paren_balanced_nonterminals_T RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT BaseTypes.nonterminal_carrierT Carriers.default_nonterminal_carrierT FoldGrammar.fold_nt_step] in y;
+  let z := fresh "z" in
+  try (match (eval cbv delta [y] in y) with
+       | context[if ?e then _ else _]
+         => set (z := e) in (value of y)
+       end;
+       vm_compute in z; subst z; cbv iota in y);
+  try (match (eval cbv delta [y] in y) with
+       | context[@BaseTypes.remove_nonterminal ?a ?b ?c ?d]
+         => set (z := @BaseTypes.remove_nonterminal a b c d) in (value of y)
+       end;
+       vm_compute in z; subst z; cbv iota in y);
+  try (match (eval cbv delta [y] in y) with
+       | context[@Lookup ?a ?b ?c]
+         => set (z := @Lookup a b c) in (value of y)
+       end;
+       cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect] in z;
+       change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in z;
+       cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect BooleanRecognizerOptimized.opt.opt.string_beq List.find pregrammar_productions fst snd FoldGrammar.fold_productions'] in z;
+       subst z);
+  cbv [FoldGrammar.fold_productions' FoldGrammar.fold_production'] in y;
+  simpl in y.
+Local Ltac pre_do_step y y0 :=
+  idtac;
+  let y0' := fresh in
+  lazymatch (eval cbv delta [y] in y) with
+  | appcontext[@FoldGrammar.fold_nt' ?a ?b _ ?d ?e ?f ?g]
+    => pose (fun d' e' f' g' c => @FoldGrammar.fold_nt' a b c d' e' f' g') as y0';
+       change (@FoldGrammar.fold_nt' a b) with (fun c d' e' f' g' => y0' d' e' f' g' c) in (value of y);
+       cbv beta in y;
+       set (y0 := y0' d e f g) in (value of y);
+       cbv beta delta [y0'] in y0
+  end;
+  subst y0';
+  cbv beta in y.
+repeat let y0 := fresh "y0" in
+       pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0, y1. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; do_step y1.
+repeat let y2 := fresh "y0" in
+       pre_do_step y0 y2.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y2. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y2.
+subst y2; cbv beta iota in y0.
+subst y0; cbv beta iota in y.
+repeat let y2 := fresh "y0" in
+       pre_do_step y1 y2.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0, y2, y3, y4. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; do_step y2; do_step y3; do_step y4.
+repeat let y2 := fresh "y0" in
+       pre_do_step y0 y2.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y5. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y5.
+repeat let y2 := fresh "y0" in
+       pre_do_step y5 y2.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y6, y7, y8, y9. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y6; do_step y7; do_step y8; do_step y9.
+subst y6 y7 y9.
+repeat let y2 := fresh "y0" in
+       pre_do_step y8 y2.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y6. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y6.
+subst y6.
+cbv beta in y8.
+subst y8.
+cbv beta in y5.
+subst y5.
+subst y0.
+repeat let yv := fresh "y" in
+       pre_do_step y2 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0, y5, y6, y7, y8. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; do_step y5; do_step y6; do_step y7; do_step y8.
+subst y0.
+repeat let yv := fresh "y" in
+       pre_do_step y5 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0.
+repeat let yv := fresh "y" in
+       pre_do_step y0 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y9. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y9.
+subst y9; cbv beta in y0.
+subst y0 y5.
+repeat let yv := fresh "y" in
+       pre_do_step y6 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0.
+subst y0; cbv beta in y6.
+subst y6.
+repeat let yv := fresh "y" in
+       pre_do_step y7 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0.
+repeat let yv := fresh "y" in
+       pre_do_step y0 yv.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y5. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y5.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y5 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y6.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y6 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y9.
+subst y9 y6 y5 y7 y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y8 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y0 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y5.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y5 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y6.
+subst y6 y5 y0.
+cbv beta in y8.
+subst y8.
+subst y2.
+cbv beta in y1.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y3 yv;
+                     simpl in yv);
+                    repeat let yv := fresh "y" in
+                  (pre_do_step y4 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; do_step y7; do_step y8.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y0 yv;
+                     simpl in yv);
+                    repeat let yv := fresh "y" in
+                  (pre_do_step y7 yv;
+                     simpl in yv);
+                    repeat let yv := fresh "y" in
+                  (pre_do_step y8 yv;
+                     simpl in yv).
+
+ +([^ :][^:]*[^ :]) +a
+
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; do_step y7; do_step y8.
+
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat let yv := fresh "y" in
+                  (pre_do_step y6 yv;
+                     simpl in yv).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y.
+Transparent FoldGrammar.fold_nt'.
+Timeout 5 simpl in y0.
+subst
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+pre_do_step y y0.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'. Timeout 2 simpl in y0. Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y0; subst y0; cbv beta in y.
+clear -y.
+subst y0 y0'.
+cbv beta in y.
+clear -y.
+Timeout 5 simpl in y.
+Timeout
+Timeout 5 cbv [FoldGrammar.fold_nt_step BaseTypes.nonterminals_listT ParenBalancedGrammar.paren_balanced_nonterminals_T RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT BaseTypes.nonterminal_carrierT Carriers.default_nonterminal_carrierT FoldGrammar.fold_nt_step] in y0.
+
+
+
 simpl @grammar_of_pregrammar in
 Timeout 1 cbv [ParenBalancedGrammar.paren_balanced_correctness_type] in y.
 Timeout 1 cbv beta iota delta [List.filter] in x.
