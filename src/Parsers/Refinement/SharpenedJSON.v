@@ -188,7 +188,8 @@ total time:     21.428s
                          end in
                 match type of H with
                   | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
-                    => pose (@possible_open_closes_pre G) as c'''
+                    => pose (@possible_open_closes_pre G) as c''';
+                      pose (@DisjointLemmas.possible_first_terminals_of G _ _ nt) as c'''''
                 end;
                 let c0 := fresh in
                 set (c0 := c) in H(*;
@@ -196,7 +197,12 @@ total time:     21.428s
 end.
 exfalso.
 clear H3.
-clear c'''.
+cbv [DisjointLemmas.possible_first_terminals_of] in c'''''.
+unfold possible_open_closes_pre in c'''.
+unfold List.flat_map in c'''.
+Set Printing All.
+Show.
+Check fun x => match x with pair a b => 1 end.
 cbv beta iota delta [possible_valid_open_closes possible_balanced_open_closes] in H4.
 set (x := (@possible_open_closes json'_pregrammar)) in H4.
 Timeout 5 vm_compute in x.
@@ -286,10 +292,6 @@ lazymatch (eval unfold c''' in c''') with
                       pose (@possible_open_closes G) as c''''
 end.
 (*Print possible_open_closes.
-lazymatch (eval unfold c''' in c''') with
-      | @possible_open_closes_pre ?G ?nt =>
-                      pose (@DisjointLemmas.possible_first_terminals_of G _ _ nt) as c'''''
-end.
 *)
 (*
 
