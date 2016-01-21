@@ -404,22 +404,45 @@ Timeout 10 repeat let yv := fresh "y" in
                      simpl in yv).
 Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
 Timeout 5 do_step y0; do_step y7; do_step y8.
-Timeout 10 repeat let yv := fresh "y" in
-                  (pre_do_step y0 yv;
-                     simpl in yv);
-                    repeat let yv := fresh "y" in
-                  (pre_do_step y7 yv;
-                     simpl in yv);
-                    repeat let yv := fresh "y" in
-                  (pre_do_step y8 yv;
-                     simpl in yv).
-
- +([^ :][^:]*[^ :]) +a
-
-Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
-Timeout 5 do_step y0; do_step y7; do_step y8.
-
 Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat (let yv := fresh "y" in
+                   (pre_do_step y0 yv;
+                      simpl in yv; move yv at top));
+  repeat (let yv := fresh "y" in
+          (pre_do_step y7 yv;
+             simpl in yv; move yv at top));
+  repeat (let yv := fresh "y" in
+          (pre_do_step y8 yv;
+             simpl in yv; move yv at top)).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y9; do_step y10; do_step y11; do_step y12; do_step y13; do_step y14; do_step y15.
+subst y15 y12 y9.
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+Timeout 10 repeat (let yv := fresh "y" in
+                   (pre_do_step y14 yv;
+                      simpl in yv; move yv at top));
+  repeat (let yv := fresh "y" in
+          (pre_do_step y13 yv;
+             simpl in yv; move yv at top));
+  repeat (let yv := fresh "y" in
+          (pre_do_step y11 yv;
+             simpl in yv; move yv at top));
+  repeat (let yv := fresh "y" in
+          (pre_do_step y10 yv;
+             simpl in yv; move yv at top)).
+Transparent FoldGrammar.fold_nt_step. Opaque FoldGrammar.fold_nt'.
+Timeout 5 do_step y18; do_step y17; do_step y16; do_step y15; do_step y12; do_step y9.
+Local Ltac pre_do_step' :=
+  idtac;
+  match goal with
+  | [ H := appcontext[@FoldGrammar.fold_nt'] |- _ ]
+    => let yv := fresh "y" in
+       pre_do_step H yv;
+       simpl in yv; move yv at top
+  end.
+Timeout 10 repeat do
+Opaque FoldGrammar.fold_nt_step. Transparent FoldGrammar.fold_nt'.
+
 Timeout 10 repeat let yv := fresh "y" in
                   (pre_do_step y6 yv;
                      simpl in yv).
