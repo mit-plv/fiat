@@ -90,7 +90,7 @@ total time:     21.428s
         assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
           let lem' := match goal with
                         | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
-                          => constr:(fun idx nt its => lem' str offset len nt its idx H')
+                          => constr:(fun idx' nt its => lem' str offset len nt its idx' H')
                       end in
           pose proof lem' as lem.
       Ltac rewrite_once_disjoint_search_for lem :=
@@ -210,6 +210,53 @@ subst x.
 match (eval cbv delta [H4] in H4) with
 | context[List.filter ?f ?ls] => set (x := (List.filter f ls)) in H4
 end.
+Timeout 1 cbv [ParenBalancedGrammar.paren_balanced_correctness_type] in x.
+clear -x.
+match (eval cbv delta [x] in x) with
+| context[@BaseTypes.of_nonterminal ?a ?b ?c]
+  => set (y := @BaseTypes.of_nonterminal a b c) in (value of x)
+end.
+vm_compute in y.
+subst y.
+match (eval cbv delta [x] in x) with
+| appcontext[@ParenBalancedGrammar.paren_balanced_nonterminals ?a ?b _ ?d ?e]
+  => set (y' := fun d' e' c => @ParenBalancedGrammar.paren_balanced_nonterminals a b c d' e') in (value of x);
+       change (@ParenBalancedGrammar.paren_balanced_nonterminals a b)
+       with (fun c' d' e' => y' d' e' c') in (value of x);
+       cbv beta in x;
+       set (y := y' d e) in (value of x);
+       subst y';
+       cbv beta in y
+end.
+clear -y.
+cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of FoldGrammar.fold_nt BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.length Operations.List.up_to] in y.
+simpl @List.map in y.
+cbv beta iota zeta in y.
+Opaque FoldGrammar.fold_nt_step.
+simpl in y.
+Transparent FoldGrammar.fold_nt_step.
+Opaque FoldGrammar.fold_nt'.
+Timeout 5 cbv [FoldGrammar.fold_nt_step BaseTypes.nonterminals_listT ParenBalancedGrammar.paren_balanced_nonterminals_T RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT BaseTypes.nonterminal_carrierT Carriers.default_nonterminal_carrierT FoldGrammar.fold_nt_step] in y.
+match (eval cbv delta [y] in y) with
+| context[if ?e then _ else _]
+  => set (z := e) in (value of y)
+end.
+vm_compute in z.
+subst z; cbv iota in y.
+match (eval cbv delta [y] in y) with
+| context[@BaseTypes.remove_nonterminal ?a ?b ?c ?d]
+  => set (z := @BaseTypes.remove_nonterminal a b c d) in (value of y)
+end.
+vm_compute in z; subst z; cbv iota in y.
+match (eval cbv delta [y] in y) with
+| context[@Lookup ?a ?b ?c]
+  => set (z := @Lookup a b c) in (value of y)
+end.
+cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect] in z.
+change Equality.string_beq with BooleanRecognizerOptimized.opt.opt.string_beq in z.
+cbv [Lookup grammar_of_pregrammar json'_pregrammar list_to_productions Lookup_string option_rect BooleanRecognizerOptimized.opt.opt.string_beq] in z.
+simpl @grammar_of_pregrammar in
+Timeout 1 cbv [ParenBalancedGrammar.paren_balanced_correctness_type] in y.
 Timeout 1 cbv beta iota delta [List.filter] in x.
 Print List.filter.
 unfold List.filter in x.
@@ -218,18 +265,8 @@ repeat match (eval cbv delta [x] in x) with
        | context[@ParenBalancedGrammar.paren_balanced_correctness_type ?a ?b ?c ?d ?e]
          => let H := fresh in set (H := @ParenBalancedGrammar.paren_balanced_correctness_type a b c d e) in (value of x)
        end.
-clear -H2.
+clear -x.
 cbv beta zeta delta [ParenBalancedGrammar.paren_balanced_correctness_type] in H2.
-match (eval cbv delta [H2] in H2) with
-| context[@BaseTypes.of_nonterminal ?a ?b ?c]
-  => set (x := @BaseTypes.of_nonterminal a b c) in (value of H2)
-end.
-vm_compute in x.
-subst x.
-match (eval cbv delta [H2] in H2) with
-| context[@ParenBalancedGrammar.paren_balanced_nonterminals ?a ?b ?c ?d ?e]
-  => set (x := @ParenBalancedGrammar.paren_balanced_nonterminals a b c d e) in (value of H2)
-end.
 cbv beta zeta iota delta [ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT FoldGrammar.fold_nt] in x.
 Timeout 2 cbv beta zeta iota delta [BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.map list_to_productions pregrammar_productions json'_pregrammar List.length Operations.List.up_to] in x.
 Opaque FoldGrammar.fold_nt_step.
