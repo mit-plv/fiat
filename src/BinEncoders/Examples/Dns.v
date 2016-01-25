@@ -228,9 +228,9 @@ Record packet_t :=
   { pid : { s : list bool | length s = 16 };
     pmask : { s : list bool | length s = 16 };
     pquestion : { s : list question_t | length s < exp2_nat 16 };
-    panswer : { s : list question_t | length s < exp2_nat 16 };
-    pauthority : { s : list question_t | length s < exp2_nat 16 };
-    padditional : { s : list question_t | length s < exp2_nat 16 } }.
+    panswer : { s : list resource_t | length s < exp2_nat 16 };
+    pauthority : { s : list resource_t | length s < exp2_nat 16 };
+    padditional : { s : list resource_t | length s < exp2_nat 16 } }.
 
 Definition encode_packet (bundle : packet_t * bin_t) :=
   FixList2_encode (bin_encode_transform_pair Bool_encode) (pid (fst bundle),
@@ -240,9 +240,9 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (pauthority (fst bundle)),
   bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (padditional (fst bundle)),
   FixList_encode encode_question (pquestion (fst bundle),
-  FixList_encode encode_question (panswer (fst bundle),
-  FixList_encode encode_question (pauthority (fst bundle),
-  FixList_encode encode_question (padditional (fst bundle), snd bundle)))))))))).
+  FixList_encode encode_resource (panswer (fst bundle),
+  FixList_encode encode_resource (pauthority (fst bundle),
+  FixList_encode encode_resource (padditional (fst bundle), snd bundle)))))))))).
 
 Global Instance packet_decoder
   : decoder (fun _ => True) encode_packet.
@@ -290,39 +290,77 @@ Proof.
   intro.
 
   eapply decode_unpack with
-    (encode1:=FixList_encode encode_question).
+    (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj2 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
   eapply FixList_decoder.
-  eapply question_decoder.
+  eapply resource_decoder.
   intro.
 
   eapply decode_unpack with
-    (encode1:=FixList_encode encode_question).
+    (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj3 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
   eapply FixList_decoder.
-  eapply question_decoder.
+  eapply resource_decoder.
   intro.
 
   eapply decode_unpack with
-    (encode1:=FixList_encode encode_question).
+    (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj4 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
   eapply FixList_decoder.
-  eapply question_decoder.
+  eapply resource_decoder.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b)).
   intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
 Defined.
 
+
+Section Example.
+  Notation " [ x ; .. ; y ] " := (cons x .. (cons y nil) ..).
+  Definition packet1 := [true; true; false; true; true; false; true; true; false; true;
+                         false; false; false; false; true; false; false; false; false; false;
+                         false; false; false; true; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; true; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; true; true; false; true; true; true; false; true;
+                         true; true; false; true; true; true; false; true; true; true;
+                         false; true; true; true; false; true; true; true; false; false;
+                         false; false; true; true; false; false; false; true; true; false;
+                         true; true; true; false; false; true; true; false; true; true;
+                         true; true; false; true; true; true; false; false; true; false;
+                         false; true; true; true; false; true; false; false; false; true;
+                         true; false; true; false; false; false; false; true; true; false;
+                         false; true; false; true; false; true; true; false; false; false;
+                         false; true; false; true; true; true; false; false; true; true;
+                         false; true; true; true; false; true; false; false; false; true;
+                         true; false; false; true; false; true; false; true; true; true;
+                         false; false; true; false; false; true; true; false; true; true;
+                         true; false; false; false; false; false; false; false; true; true;
+                         false; true; true; false; false; true; false; true; false; true;
+                         true; false; false; true; false; false; false; true; true; true;
+                         false; true; false; true; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; false; false; false; false; true; false; false;
+                         false; false; false; false; false; false; false; false; false; false;
+                         false; false; false; true].
+End Example.
+
+
 Extract Inductive bool => "bool" [ "true" "false" ].
 Extract Inductive sumbool => "bool" [ "true" "false" ].
 Extract Inductive list => "list" [ "[]" "(::)" ].
 Extract Inductive prod => "(*)"  [ "(,)" ].
 Extract Inductive ascii => char [
-"(* If this appears, you're using Ascii internals. Please don't *) (fun (b0,b1,b2,b3,b4,b5,b6,b7) -> let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
+"(fun (b0,b1,b2,b3,b4,b5,b6,b7) -> let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
 ]
-"(* If this appears, you're using Ascii internals. Please don't *) (fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
-Recursive Extraction packet_decoder.
+"(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
+
+Extraction "Extracted.ml" packet_decoder packet1.
