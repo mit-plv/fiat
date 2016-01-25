@@ -1,14 +1,14 @@
 Require Export Coq.Numbers.BinNums
                Coq.NArith.BinNat.
 Require Import Coq.omega.Omega
-               Coq.Logic.ProofIrrelevance.
-Require Import Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.Core.
+               Fiat.BinEncoders.Specs
+               Fiat.BinEncoders.Libraries.Sig
+               Fiat.BinEncoders.Libraries.BinCore.
 
-Section FixInt_encode_decode.
+Set Implicit Arguments.
 
+Section FixIntBinEncoder.
   Variable size : nat.
-  (* Hypothesis size_nonzero : 0 < size. *)
 
   Fixpoint exp2' (l : nat) :=
     match l with
@@ -18,9 +18,11 @@ Section FixInt_encode_decode.
 
   Definition exp2 (l : nat) := Npos (exp2' l).
 
-  Definition predicate (n : N) := (n < exp2 size)%N.
+  Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
 
-  Fixpoint encode''(pos : positive) (acc : bin) :=
+  (* Definition FixInt_predicate (n : N) := (n < exp2 size)%N. *)
+
+  Fixpoint encode''(pos : positive) (acc : bin_t) :=
     match pos with
       | xI pos' => encode'' pos' (true :: acc)
       | xO pos' => encode'' pos' (false :: acc)
@@ -33,19 +35,19 @@ Section FixInt_encode_decode.
       | Npos pos => encode'' pos nil
     end.
 
-  Fixpoint pad (b : bin) (l : nat) :=
+  Fixpoint pad (b : bin_t) (l : nat) :=
     match l with
       | O    => b
       | S l' => false :: pad b l'
     end.
 
-  Definition encode (n : N) :=
-    let b := encode' n
-    in pad b (size - (length b)).
+  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) :=
+    let b := encode' (proj1_sig n)
+    in  pad b (size - (length b)).
 
-  Fixpoint decode'' (b : bin) (l : nat) (acc : positive) :=
+  Fixpoint decode'' (b : bin_t) (l : nat) (acc : positive) :=
     match l with
-      | O => (acc, b)
+      | O    => (acc, b)
       | S l' =>
         match b with
           | nil         => (acc, nil)
@@ -54,21 +56,36 @@ Section FixInt_encode_decode.
         end
     end.
 
-  Fixpoint decode' (b : bin) (l : nat) {struct l} :=
+  Fixpoint decode' (b : bin_t) (l : nat) {struct l} :=
     match l with
       | O    => (N0, b)
       | S l' =>
         match b with
           | nil         => (N0, nil)
           | false :: b' => decode' b' l'
-          | true :: b'  =>
+          | true  :: b' =>
             match decode'' b' l' xH with
               | (pos, b'') => (Npos pos, b'')
             end
         end
     end.
 
-  Definition decode (b : bin) := decode' b size.
+  Lemma decode'_size : forall s b, N.lt (fst (decode'  b s)) (exp2 s).
+  Proof.
+    induction s; intuition eauto; simpl.
+    rewrite <- N.compare_lt_iff; eauto.
+    destruct b; simpl.
+    - rewrite <- N.compare_lt_iff; eauto.
+    - destruct b; simpl.
+      + admit.
+      + etransitivity; eauto; unfold exp2.
+        admit.
+  Qed.
+
+  Definition FixInt_decode (b : bin_t) : {n : N | (n < exp2 size)%N} * bin_t.
+    refine (exist _ (fst (decode' b size)) _, snd (decode' b size)).
+    eapply decode'_size.
+  Defined.
 
   Lemma encode''_pull : forall pos acc, encode'' pos acc =  encode'' pos nil ++ acc.
   Proof.
@@ -174,102 +191,15 @@ Section FixInt_encode_decode.
     }
   Qed.
 
-  Theorem encode_correct :
-    forall val ext, predicate val -> decode ((encode val) ++ ext) = (val, ext).
+  Theorem FixInt_encode_correct : bin_encode_correct FixInt_encode FixInt_decode.
   Proof.
-    unfold predicate, encode, decode.
-    intros n ext P; apply encode'_size in P.
-    unfold encode, decode in *.
-    rewrite decode'_pad; eauto; clear P.
-    destruct n; simpl; eauto; rewrite decode'_length.
-    rewrite encode_correct'. reflexivity.
+    unfold bin_encode_correct, FixInt_encode, FixInt_decode.
+    intros [n P] ext; simpl; f_equal;
+    [  eapply sig_equivalence; change n with (fst (n, ext)) |
+       change ext with (snd (n, ext)) ]; f_equal;
+    apply encode'_size in P;
+    rewrite decode'_pad; eauto; clear P;
+    destruct n; simpl; eauto; rewrite decode'_length;
+    rewrite encode_correct'; reflexivity.
   Qed.
-
-  Definition FixInt_encode (n : ({n | n < exp2 size})%N) :=
-    match n with
-      | exist n' _ => encode n'
-    end.
-
-  Definition FixInt_encode_pair (p : ({n | n < exp2 size})%N * bin) :=
-    match (fst p) with
-      | exist n' _ => encode n' ++ (snd p)
-    end.
-
-  Lemma FixInt_decode'_size :
-    forall s b, (fst (decode' b s) < exp2 s)%N.
-  Proof.
-    intro s; induction s as [ | s' ]; intuition.
-    { apply N.compare_gt_iff. reflexivity. }
-    { simpl. destruct b as [ | x b' ].
-      { simpl. admit. }
-      { destruct x. admit. admit. } }
-  Qed.
-
-  Definition FixInt_decode (b : bin) : ({n | n < exp2 size}%N).
-    refine (exist _ (fst (decode b)) _).
-    eapply FixInt_decode'_size.
-  Defined.
-
-  Definition FixInt_decode_pair (b : bin) : ({n | n < exp2 size})%N * bin.
-    refine (exist _ (fst (decode b)) _, snd (decode b)).
-    eapply FixInt_decode'_size.
-  Defined.
-
-  Global Instance FixInt_decoder
-    : decoder (fun _ => True) FixInt_encode :=
-    { decode := FixInt_decode;
-      decode_correct := _ }.
-  Proof.
-    unfold encode_decode_correct, FixInt_decode, FixInt_encode.
-    intros [data data_pf] _.
-    Set Printing Implicit. idtac.
-    assert (fst (decode (encode data)) = data).
-    rewrite <- app_nil_r with (l:=encode data).
-    rewrite encode_correct; eauto. (* rewrite <- H. *)
-    (* apply proof_irrelevance *)
-    admit.
-  Defined.
-
-  Global Instance FixInt_decoder_pair
-    : decoder (fun _ => True) FixInt_encode_pair :=
-    { decode := FixInt_decode_pair;
-      decode_correct := _ }.
-  Proof.
-    admit.
-  Defined.
-
-(*
-  Lemma decode''_shorten' :
-    forall b l acc, length (snd (decode'' b l acc)) <= length b.
-  Proof.
-    induction b; destruct l; intuition eauto; simpl.
-    econstructor; destruct a; eauto.
-  Qed.
-
-  Lemma decode'_shorten' :
-    forall b l, length (snd (decode' b l)) <= length b.
-  Proof.
-    induction b; destruct l; intuition eauto; simpl.
-    destruct a; eauto.
-    pose proof (decode''_shorten' b l 1).
-    destruct (decode'' b l 1); eauto.
-  Qed.
-
-  Theorem decode_shorten : decode_shorten decode.
-  Proof.
-    unfold decode_shorten, decode.
-    destruct size; [ inversion size_nonzero | clear size_nonzero ].
-    destruct ls; intuition eauto; destruct b; simpl.
-    { pose proof (decode''_shorten' ls n 1).
-      destruct (decode'' ls n 1); eauto. }
-    { eapply decode'_shorten'. }
-  Qed.
-
-  Definition FixInt_encode_decode :=
-    {| predicate_R := predicate;
-       encode_R    := encode;
-       decode_R    := decode;
-       proof_R     := encode_correct;
-       shorten_R   := decode_shorten |}. *)
-
-End FixInt_encode_decode.
+End FixIntBinEncoder.
