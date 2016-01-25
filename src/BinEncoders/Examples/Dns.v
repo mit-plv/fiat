@@ -118,9 +118,7 @@ Proof.
 
   eapply decode_unpack with
     (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
-                              (FixInt_of_type (fst bundle), snd bundle))
-    (encode2:=fun data => bin_encode_transform_pair (FixInt_encode (size:=16))
-                            (FixInt_of_class (qclass (fst data)), snd data)).
+                              (FixInt_of_type (fst bundle), snd bundle)).
   instantiate (1:=fun _ => True). intuition. cbv beta.
   eapply Nested_decoder with
     (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
@@ -141,6 +139,88 @@ Proof.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_question_t _ _ _, b)).
+  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+Defined.
+
+Record resource_t :=
+  { rname : name_t;
+    rtype : type_t;
+    rclass : class_t;
+    rttl : { n : N | (n < exp2 32)%N };
+    rdata : { s : list bool |  length s < exp2_nat 16 } }.
+
+Definition encode_resource (bundle : resource_t * bin_t) :=
+  encode_name (rname (fst bundle),
+  bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_type (rtype (fst bundle)),
+  bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_class (rclass (fst bundle)),
+  bin_encode_transform_pair (@FixInt_encode _) (rttl (fst bundle),
+  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (rdata (fst bundle)),
+  FixList_encode (bin_encode_transform_pair Bool_encode) (rdata (fst bundle), snd bundle)))))).
+
+Global Instance resource_decoder
+  : decoder (fun _ => True) encode_resource.
+Proof.
+  unfold encode_resource.
+
+  eapply decode_unpack.
+  instantiate (1:=fun ls => True /\ (forall x, In x (proj1_sig ls) -> True)). intuition. cbv beta.
+  eapply name_decoder.
+  intro.
+
+  eapply decode_unpack with
+    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
+                              (FixInt_of_type (fst bundle), snd bundle))
+    (encode2:=fun data => bin_encode_transform_pair (FixInt_encode (size:=16))
+                            (FixInt_of_class (rclass (fst data)),
+                          bin_encode_transform_pair (FixInt_encode (size:=32))
+                            (rttl (fst data),
+                          bin_encode_transform_pair (FixInt_encode (size:=16))
+                            (FixList_getlength (rdata (fst data)),
+                          FixList_encode (bin_encode_transform_pair Bool_encode)
+                            (rdata (fst data), snd data))))).
+  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply Nested_decoder with
+    (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
+    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
+  eapply Unprod_decoder. eapply type_to_FixInt_decoder.
+  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  intro.
+
+  eapply decode_unpack with
+    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
+                              (FixInt_of_class (fst bundle), snd bundle))
+    (encode2:=fun data => bin_encode_transform_pair (FixInt_encode (size:=32))
+                            (rttl (fst data),
+                          bin_encode_transform_pair (FixInt_encode (size:=16))
+                            (FixList_getlength (rdata (fst data)),
+                          FixList_encode (bin_encode_transform_pair Bool_encode)
+                            (rdata (fst data), snd data)))).
+  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply Nested_decoder with
+    (encodeA:=fun data => (FixInt_of_class (fst data), snd data))
+    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
+  eapply Unprod_decoder. eapply class_to_FixInt_decoder.
+  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  intro.
+
+  eapply decode_unpack.
+  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  intro.
+
+  eapply decode_unpack.
+  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  intro.
+
+  eapply decode_unpack.
+  instantiate (1:=fun data => FixList_getlength data = proj3 /\
+                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply FixList_decoder.
+  eapply bin_encode_transform_pair_Decoder. eapply Bool_encode_correct.
+  intro.
+
+  eexists. instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b)).
   intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
 Defined.
 
@@ -208,6 +288,7 @@ Proof.
   eapply FixList_decoder.
   eapply question_decoder.
   intro.
+
   eapply decode_unpack with
     (encode1:=FixList_encode encode_question).
   instantiate (1:=fun data => FixList_getlength data = proj2 /\
@@ -215,6 +296,7 @@ Proof.
   eapply FixList_decoder.
   eapply question_decoder.
   intro.
+
   eapply decode_unpack with
     (encode1:=FixList_encode encode_question).
   instantiate (1:=fun data => FixList_getlength data = proj3 /\
@@ -222,6 +304,7 @@ Proof.
   eapply FixList_decoder.
   eapply question_decoder.
   intro.
+
   eapply decode_unpack with
     (encode1:=FixList_encode encode_question).
   instantiate (1:=fun data => FixList_getlength data = proj4 /\
@@ -239,7 +322,7 @@ Extract Inductive sumbool => "bool" [ "true" "false" ].
 Extract Inductive list => "list" [ "[]" "(::)" ].
 Extract Inductive prod => "(*)"  [ "(,)" ].
 Extract Inductive ascii => char [
-"(* If this appears, you're using Ascii internals. Please don't *) (fun (b0,b1,b2,b3,b4,b5,b6,b7) → let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
+"(* If this appears, you're using Ascii internals. Please don't *) (fun (b0,b1,b2,b3,b4,b5,b6,b7) -> let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
 ]
-"(* If this appears, you're using Ascii internals. Please don't *) (fun f c → let n = Char.code c in let h i = (n land (1 lsl i)) ≠ 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
+"(* If this appears, you're using Ascii internals. Please don't *) (fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 Recursive Extraction packet_decoder.
