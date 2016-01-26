@@ -2,7 +2,7 @@ Require Import Fiat.BinEncoders.Specs.
 
 Set Implicit Arguments.
 
-Global Instance decode_unpack
+Global Instance unpacking_decoder
        (data_t : Type)
        (bin_t  : Type)
        (proj_t : Type)
@@ -28,7 +28,7 @@ Proof.
   rewrite decode2_pf; eauto.
 Defined.
 
-Global Instance strengthen_Decoder
+Global Instance strengthening_decoder
        (data_t : Type)
        (bin_t : Type)
        (predicate : data_t -> Prop)
@@ -43,7 +43,7 @@ Proof.
   unfold encode_decode_correct in *. eauto.
 Defined.
 
-Global Instance Nested_decoder A B C
+Global Instance nesting_decoder A B C
        (encodeA : A -> B)
        (encodeB : B -> C)
        (A_decoder : decoder (fun _ => True) encodeA)
@@ -56,7 +56,7 @@ Proof.
   repeat rewrite decode_correct; eauto.
 Defined.
 
-Global Instance Unprod_decoder A B Z
+Global Instance unproding_decoder A B Z
        (encodeA : A -> B)
        (A_decoder : decoder (fun _ => True) encodeA)
   : decoder (fun _ => True) (fun bundle : A * Z => (encodeA (fst bundle), snd bundle)) :=

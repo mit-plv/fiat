@@ -10,7 +10,7 @@ Definition bin_encode_correct
            (decode : bin_t -> data_t * bin_t) :=
     forall data ext, decode (encode data ++ ext) = (data, ext).
 
-Global Instance bin_encode_Decoder
+Global Instance bin_encode_decoder
        (data_t : Type)
        (encode : data_t -> bin_t)
        (decode : bin_t -> data_t * bin_t)
@@ -30,7 +30,7 @@ Definition bin_encode_transform_pair
   fun bundle : data_t * bin_t => let (_data, _bin) := bundle
                                  in  encode _data ++ _bin.
 
-Global Instance bin_encode_transform_pair_Decoder
+Global Instance bin_encode_transform_pair_decoder
        (data_t : Type)
        (encode : data_t -> bin_t)
        (decode : bin_t -> data_t * bin_t)

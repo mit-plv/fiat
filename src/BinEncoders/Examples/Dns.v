@@ -29,21 +29,22 @@ Defined.
 Definition name_t := { s : list word_t | length s <= 255 /\ forall x, In x s -> x <> halt }.
 
 Definition encode_word (bundle : word_t * bin_t) :=
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (fst bundle),
-    FixList_encode (bin_encode_transform_pair Char_encode) bundle).
+  FixInt_encode (FixList_getlength (fst bundle),
+  FixList_encode Char_encode bundle).
 
 Global Instance word_decoder
   : decoder (fun _ => True) encode_word.
 Proof.
   unfold encode_word.
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro proj.
-  eapply strengthen_Decoder.
+
+  eapply strengthening_decoder.
   eapply FixList_decoder with (size:=8) (len:=proj).
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply Char_encode_correct.
+  instantiate (1:=fun _ => True).
+  eauto with typeclass_instances.
   firstorder.
 Defined.
 
@@ -54,7 +55,7 @@ Global Instance name_decoder
 Proof.
   eapply SteppingList_decoder.
   eapply halt_dec.
-  eapply word_decoder.
+  eauto with typeclass_instances.
 Defined.
 
 Inductive type_t := A | CNAME | NS | MX.
@@ -103,39 +104,35 @@ Record question_t :=
 
 Definition encode_question (bundle : question_t * bin_t) :=
   encode_name (qname (fst bundle),
-    bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_type (qtype (fst bundle)),
-      bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_class (qclass (fst bundle)), snd bundle))).
+  FixInt_encode (FixInt_of_type (qtype (fst bundle)),
+  FixInt_encode (FixInt_of_class (qclass (fst bundle)), snd bundle))).
 
 Global Instance question_decoder
   : decoder (fun _ => True) encode_question.
 Proof.
   unfold encode_question.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun ls => True /\ (forall x, In x (proj1_sig ls) -> True)). intuition. cbv beta.
-  eapply name_decoder.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
-    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
-                              (FixInt_of_type (fst bundle), snd bundle)).
+  eapply unpacking_decoder with
+    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle)).
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply Nested_decoder with
+  eapply nesting_decoder with
     (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
-    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
-  eapply Unprod_decoder. eapply type_to_FixInt_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+    (encodeB:=FixInt_encode (size:=16)).
+  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
-    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
-                              (FixInt_of_class (fst bundle), snd bundle)).
+  eapply unpacking_decoder with
+    (encode1:=fun bundle => FixInt_encode (FixInt_of_class (fst bundle), snd bundle)).
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply Nested_decoder with
+  eapply nesting_decoder with
     (encodeA:=fun data => (FixInt_of_class (fst data), snd data))
-    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
-  eapply Unprod_decoder. eapply class_to_FixInt_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+    (encodeB:=FixInt_encode (size:=16)).
+  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_question_t _ _ _, b)).
@@ -151,73 +148,61 @@ Record resource_t :=
 
 Definition encode_resource (bundle : resource_t * bin_t) :=
   encode_name (rname (fst bundle),
-  bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_type (rtype (fst bundle)),
-  bin_encode_transform_pair (@FixInt_encode _) (FixInt_of_class (rclass (fst bundle)),
-  bin_encode_transform_pair (@FixInt_encode _) (rttl (fst bundle),
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (rdata (fst bundle)),
-  FixList_encode (bin_encode_transform_pair Bool_encode) (rdata (fst bundle), snd bundle)))))).
+  FixInt_encode (FixInt_of_type (rtype (fst bundle)),
+  FixInt_encode (FixInt_of_class (rclass (fst bundle)),
+  FixInt_encode (rttl (fst bundle),
+  FixInt_encode (FixList_getlength (rdata (fst bundle)),
+  FixList_encode Bool_encode (rdata (fst bundle), snd bundle)))))).
 
 Global Instance resource_decoder
   : decoder (fun _ => True) encode_resource.
 Proof.
   unfold encode_resource.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun ls => True /\ (forall x, In x (proj1_sig ls) -> True)). intuition. cbv beta.
   eapply name_decoder.
   intro.
 
-  eapply decode_unpack with
-    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
-                              (FixInt_of_type (fst bundle), snd bundle))
-    (encode2:=fun data => bin_encode_transform_pair (FixInt_encode (size:=16))
-                            (FixInt_of_class (rclass (fst data)),
-                          bin_encode_transform_pair (FixInt_encode (size:=32))
-                            (rttl (fst data),
-                          bin_encode_transform_pair (FixInt_encode (size:=16))
-                            (FixList_getlength (rdata (fst data)),
-                          FixList_encode (bin_encode_transform_pair Bool_encode)
-                            (rdata (fst data), snd data))))).
+  eapply unpacking_decoder with
+    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle))
+    (encode2:=fun data => FixInt_encode (FixInt_of_class (rclass (fst data)),
+                          FixInt_encode (rttl (fst data),
+                          FixInt_encode (FixList_getlength (rdata (fst data)),
+                          FixList_encode Bool_encode (rdata (fst data), snd data))))).
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply Nested_decoder with
+  eapply nesting_decoder with
     (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
-    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
-  eapply Unprod_decoder. eapply type_to_FixInt_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+    (encodeB:=FixInt_encode (size:=16)).
+  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
-    (encode1:=fun bundle => bin_encode_transform_pair (FixInt_encode (size:=16))
-                              (FixInt_of_class (fst bundle), snd bundle))
-    (encode2:=fun data => bin_encode_transform_pair (FixInt_encode (size:=32))
-                            (rttl (fst data),
-                          bin_encode_transform_pair (FixInt_encode (size:=16))
-                            (FixList_getlength (rdata (fst data)),
-                          FixList_encode (bin_encode_transform_pair Bool_encode)
-                            (rdata (fst data), snd data)))).
+  eapply unpacking_decoder with
+    (encode1:=fun bundle => FixInt_encode (FixInt_of_class (fst bundle), snd bundle))
+    (encode2:=fun data => FixInt_encode (rttl (fst data),
+                          FixInt_encode (FixList_getlength (rdata (fst data)),
+                          FixList_encode Bool_encode (rdata (fst data), snd data)))).
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply Nested_decoder with
+  eapply nesting_decoder with
     (encodeA:=fun data => (FixInt_of_class (fst data), snd data))
-    (encodeB:=bin_encode_transform_pair (FixInt_encode (size:=16))).
-  eapply Unprod_decoder. eapply class_to_FixInt_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+    (encodeB:=FixInt_encode (size:=16)).
+  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun data => FixList_getlength data = proj3 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
-  eapply FixList_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply Bool_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b)).
@@ -233,12 +218,12 @@ Record packet_t :=
     padditional : { s : list resource_t | length s < exp2_nat 16 } }.
 
 Definition encode_packet (bundle : packet_t * bin_t) :=
-  FixList2_encode (bin_encode_transform_pair Bool_encode) (pid (fst bundle),
-  FixList2_encode (bin_encode_transform_pair Bool_encode) (pmask (fst bundle),
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (pquestion (fst bundle)),
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (panswer (fst bundle)),
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (pauthority (fst bundle)),
-  bin_encode_transform_pair (@FixInt_encode _) (FixList_getlength (padditional (fst bundle)),
+  FixList2_encode Bool_encode (pid (fst bundle),
+  FixList2_encode Bool_encode (pmask (fst bundle),
+  FixInt_encode (FixList_getlength (pquestion (fst bundle)),
+  FixInt_encode (FixList_getlength (panswer (fst bundle)),
+  FixInt_encode (FixList_getlength (pauthority (fst bundle)),
+  FixInt_encode (FixList_getlength (padditional (fst bundle)),
   FixList_encode encode_question (pquestion (fst bundle),
   FixList_encode encode_resource (panswer (fst bundle),
   FixList_encode encode_resource (pauthority (fst bundle),
@@ -249,68 +234,62 @@ Global Instance packet_decoder
 Proof.
   unfold encode_packet.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun ls => forall x, In x (proj1_sig ls) -> True). intuition. cbv beta.
-  eapply FixList2_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply Bool_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun ls => forall x, In x (proj1_sig ls) -> True). intuition. cbv beta.
-  eapply FixList2_decoder.
-  eapply bin_encode_transform_pair_Decoder. eapply Bool_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack.
+  eapply unpacking_decoder.
   instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply bin_encode_transform_pair_Decoder. eapply FixInt_encode_correct.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
+  eapply unpacking_decoder with
     (encode1:=FixList_encode encode_question).
   instantiate (1:=fun data => FixList_getlength data = proj1 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
-  eapply FixList_decoder.
-  eapply question_decoder.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
+  eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj2 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
-  eapply FixList_decoder.
-  eapply resource_decoder.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
+  eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj3 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
-  eapply FixList_decoder.
-  eapply resource_decoder.
+  eauto with typeclass_instances.
   intro.
 
-  eapply decode_unpack with
+  eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
   instantiate (1:=fun data => FixList_getlength data = proj4 /\
                               forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
-  eapply FixList_decoder.
-  eapply resource_decoder.
+  eauto with typeclass_instances.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b)).
@@ -363,4 +342,4 @@ Extract Inductive ascii => char [
 ]
 "(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 
-Extraction "Extracted.ml" packet_decoder packet1.
+(* Extraction "Extracted.ml" packet_decoder packet1. *)

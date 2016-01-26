@@ -20,8 +20,6 @@ Section FixIntBinEncoder.
 
   Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
 
-  (* Definition FixInt_predicate (n : N) := (n < exp2 size)%N. *)
-
   Fixpoint encode''(pos : positive) (acc : bin_t) :=
     match pos with
       | xI pos' => encode'' pos' (true :: acc)
@@ -41,7 +39,7 @@ Section FixIntBinEncoder.
       | S l' => false :: pad b l'
     end.
 
-  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) :=
+  Definition FixInt_encode_inner (n : {n : N | (n < exp2 size)%N}) :=
     let b := encode' (proj1_sig n)
     in  pad b (size - (length b)).
 
@@ -191,9 +189,9 @@ Section FixIntBinEncoder.
     }
   Qed.
 
-  Theorem FixInt_encode_correct : bin_encode_correct FixInt_encode FixInt_decode.
+  Theorem FixInt_encode_correct : bin_encode_correct FixInt_encode_inner FixInt_decode.
   Proof.
-    unfold bin_encode_correct, FixInt_encode, FixInt_decode.
+    unfold bin_encode_correct, FixInt_encode_inner, FixInt_decode.
     intros [n P] ext; simpl; f_equal;
     [  eapply sig_equivalence; change n with (fst (n, ext)) |
        change ext with (snd (n, ext)) ]; f_equal;
@@ -203,3 +201,11 @@ Section FixIntBinEncoder.
     rewrite encode_correct'; reflexivity.
   Qed.
 End FixIntBinEncoder.
+
+Definition FixInt_encode (size : nat) :=
+  bin_encode_transform_pair (FixInt_encode_inner (size:=size)).
+
+Global Instance FixInt_decoder
+       (size : nat)
+  : decoder (fun _ => True) (FixInt_encode (size:=size)) :=
+  bin_encode_transform_pair_decoder (@FixInt_encode_correct size).
