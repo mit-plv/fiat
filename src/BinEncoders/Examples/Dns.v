@@ -63,12 +63,13 @@ Ltac solve_unpack' e1 e2 ex proj d_t b_t :=
   match proj with
   | (fun bundle => FixList_getlength _) =>
                    eapply unpacking_decoder with
+                    (project:=proj)
                     (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
                     (encode2:=e2)
-                   (* how to make it not unfolding FixLit_getlength? *)
   | (fun bundle => (?proj1 (@?proj2 bundle))) =>
     match type of proj1 with
     | d_t -> _ => eapply unpacking_decoder with
+                    (project:=proj)
                     (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
                     (encode2:=e2)
     | ?d_t' -> _ => solve_unpack' e1 e2 (fun data : d_t' => ex (proj1 data)) proj2 d_t b_t
@@ -85,36 +86,37 @@ Ltac solve_unpack :=
         match type of e1 with
         | ?o_t * _ -> _ =>
           solve_unpack' e1 e2 (fun data : o_t => data) proj d_t b_t;
-          (* why? *) try rewrite func_unprod
+          (* why? *) repeat rewrite func_unprod
         end
       end
     end
   end.
+
+Ltac solve_decoder :=
+  (eauto with typeclass_instances) ||
+  (match goal with
+   | |- context [ SteppingList_encode _ ] => eapply SteppingList_decoder;
+                                                        try eapply halt_dec
+   | |- context [ FixList_encode _  ] => eapply FixList_decoder
+   | |- context [ FixList2_encode _ ] => eapply FixList2_decoder
+   end).
+
+Ltac solve_step' :=
+  eapply strengthening_decoder; [ solve_decoder; solve_step' | solve_predicate ].
+
+Ltac solve_step :=
+  solve_unpack;
+  [ solve_step' | solve_predicate | intro ].
 
 Global Instance word_decoder
   : Decoder of encode_word.
 Proof.
   unfold encode_word.
 
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
+  repeat solve_step.
 
   eexists; instantiate (1:=fun b => (Build_word_t _, b));
-  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
+  intro data; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Definition encode_name (bundle : name_t * bin_t) :=
@@ -125,19 +127,10 @@ Global Instance name_decoder
 Proof.
   unfold encode_name.
 
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply SteppingList_decoder.
-  (* special! *) eapply halt_dec.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
+  solve_step.
 
   eexists; instantiate (1:=fun b => (Build_name_t _, b));
-  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
+  intro data; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Inductive type_t := A | CNAME | NS | MX.
@@ -225,32 +218,10 @@ Global Instance question_decoder
 Proof.
   unfold encode_question.
 
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
+  repeat solve_step.
 
   eexists; instantiate (1:=fun b => (Build_question_t _ _ _, b));
-  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
+  intro data; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Record resource_t :=
@@ -273,56 +244,7 @@ Global Instance resource_decoder
 Proof.
   unfold encode_resource.
 
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  (* solve_unpack. *) eapply unpacking_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
+  repeat solve_step.
 
   eexists; instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b));
   intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
@@ -353,106 +275,10 @@ Global Instance packet_decoder
 Proof.
   unfold encode_packet.
 
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList2_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList2_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  (* solve_unpack. *) eapply unpacking_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  (* solve_unpack. *) eapply unpacking_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  (* solve_unpack. *) eapply unpacking_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  (* solve_unpack. *) eapply unpacking_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
-
-  solve_unpack.
-  eapply strengthening_decoder.
-  eapply FixList_decoder.
-  eapply strengthening_decoder.
-  eauto with typeclass_instances.
-
-  solve_predicate.
-  solve_predicate.
-  solve_predicate.
-  intro.
+  repeat solve_step.
 
   eexists; instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b));
-  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
+  intro data; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Section Example.
