@@ -21,4 +21,4 @@ Section Specifications.
 
 End Specifications.
 
-Infix "<+>" := (encode_decode_correct (fun _ => True)) (at level 20, no associativity).
+Notation "'Decoder' 'of' encode" := (decoder (fun _ => True) encode) (at level 20, no associativity).

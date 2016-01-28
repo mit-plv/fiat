@@ -12,6 +12,14 @@ Require Import Fiat.BinEncoders.Specs
 
 Set Implicit Arguments.
 
+Lemma func_unprod :
+  forall (A B C : Type) (f : A * B -> C), (fun x => f (fst x, snd x)) = f.
+Proof.
+  Require Import Coq.Logic.FunctionalExtensionality.
+  intuition.
+  eapply functional_extensionality; intro x; destruct x; eauto.
+Qed.
+
 Record word_t :=
   { word_attr : { s : list ascii | length s < exp2_nat 8 } }.
 
@@ -47,24 +55,55 @@ Ltac solve_predicate :=
     | |- context[ @fst ?a ?b hdata ] => solve [ pattern (@fst a b hdata); eauto ]
     | |- _ => solve [ intuition eauto ]
     | |- ?func _ =>
-      match type of func with
-      | ?func_t => solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
-      end
+      let func_t := type of func
+      in  solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
     end.
 
+Ltac solve_unpack' e1 e2 ex proj d_t b_t :=
+  match proj with
+  | (fun bundle => FixList_getlength _) =>
+                   eapply unpacking_decoder with
+                    (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
+                    (encode2:=e2)
+                   (* how to make it not unfolding FixLit_getlength? *)
+  | (fun bundle => (?proj1 (@?proj2 bundle))) =>
+    match type of proj1 with
+    | d_t -> _ => eapply unpacking_decoder with
+                    (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
+                    (encode2:=e2)
+    | ?d_t' -> _ => solve_unpack' e1 e2 (fun data : d_t' => ex (proj1 data)) proj2 d_t b_t
+    end
+  end.
+
+Ltac solve_unpack :=
+  match goal with
+  | |- decoder _ ?encode =>
+    match type of encode with
+    | ?d_t * ?b_t -> _ =>
+      match goal with
+      | |- decoder _ (fun data => ?e1 (@?proj data, @?e2 data)) =>
+        match type of e1 with
+        | ?o_t * _ -> _ =>
+          solve_unpack' e1 e2 (fun data : o_t => data) proj d_t b_t;
+          (* why? *) try rewrite func_unprod
+        end
+      end
+    end
+  end.
+
 Global Instance word_decoder
-  : decoder (fun _ => True) encode_word.
+  : Decoder of encode_word.
 Proof.
   unfold encode_word.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
   solve_predicate.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -74,19 +113,19 @@ Proof.
   solve_predicate.
   intro.
 
-  eexists. instantiate (1:=fun b => (Build_word_t _, b)).
-  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+  eexists; instantiate (1:=fun b => (Build_word_t _, b));
+  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Definition encode_name (bundle : name_t * bin_t) :=
   @SteppingList_encode _ _ halt 255 encode_word (name_attr (fst bundle), snd bundle).
 
 Global Instance name_decoder
-  : decoder (fun _ => True) encode_name.
+  : Decoder of encode_name.
 Proof.
   unfold encode_name.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eapply SteppingList_decoder.
   (* special! *) eapply halt_dec.
@@ -97,8 +136,8 @@ Proof.
   solve_predicate.
   solve_predicate.
 
-  eexists. instantiate (1:=fun b => (Build_name_t _, b)).
-  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+  eexists; instantiate (1:=fun b => (Build_name_t _, b));
+  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Inductive type_t := A | CNAME | NS | MX.
@@ -121,14 +160,7 @@ Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
           end); rewrite <- N.compare_lt_iff; eauto.
 Defined.
 
-Global Instance type_to_FixInt_decoder
-  : decoder (fun _ => True) FixInt_of_type.
-Proof.
-  eexists.
-
-  intros data _.
-  destruct data.
-
+Ltac enum_part eq_dec :=
   simpl;
   match goal with
   | |- ?func ?arg = ?res =>
@@ -136,35 +168,12 @@ Proof.
     | ?func_t =>
       let h := fresh
       in  evar (h:func_t);
-          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          unify (fun n => if eq_dec n arg then res else h n) func;
           reflexivity
     end
   end.
 
-  simpl;
-  match goal with
-  | |- ?func ?arg = ?res =>
-    match type of func with
-    | ?func_t =>
-      let h := fresh
-      in  evar (h:func_t);
-          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
-          reflexivity
-    end
-  end.
-
-  simpl;
-  match goal with
-  | |- ?func ?arg = ?res =>
-    match type of func with
-    | ?func_t =>
-      let h := fresh
-      in  evar (h:func_t);
-          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
-          reflexivity
-    end
-  end.
-
+Ltac enum_finish :=
   simpl;
   match goal with
   | |- ?func ?arg = ?res =>
@@ -173,48 +182,32 @@ Proof.
                  reflexivity
     end
   end.
+
+Global Instance type_to_FixInt_decoder
+  : Decoder of FixInt_of_type.
+Proof.
+  eexists.
+
+  intros data _.
+  destruct data.
+
+  enum_part (@FixInt_eq_dec 16).
+  enum_part (@FixInt_eq_dec 16).
+  enum_part (@FixInt_eq_dec 16).
+  enum_finish.
 Defined.
 
 Global Instance class_to_FixInt_decoder
-  : decoder (fun _ => True) FixInt_of_class.
+  : Decoder of FixInt_of_class.
 Proof.
   eexists.
 
   intros data _.
   destruct data.
 
-  simpl;
-  match goal with
-  | |- ?func ?arg = ?res =>
-    match type of func with
-    | ?func_t =>
-      let h := fresh
-      in  evar (h:func_t);
-          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
-          reflexivity
-    end
-  end.
-
-  simpl;
-  match goal with
-  | |- ?func ?arg = ?res =>
-    match type of func with
-    | ?func_t =>
-      let h := fresh
-      in  evar (h:func_t);
-          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
-          reflexivity
-    end
-  end.
-
-  simpl;
-  match goal with
-  | |- ?func ?arg = ?res =>
-    match type of func with
-    | ?func_t => unify ((fun _  => res) : func_t) func;
-                 reflexivity
-    end
-  end.
+  enum_part (@FixInt_eq_dec 16).
+  enum_part (@FixInt_eq_dec 16).
+  enum_finish.
 Defined.
 
 Record question_t :=
@@ -228,11 +221,11 @@ Definition encode_question (bundle : question_t * bin_t) :=
   FixInt_encode (FixInt_of_class (qclass (fst bundle)), snd bundle))).
 
 Global Instance question_decoder
-  : decoder (fun _ => True) encode_question.
+  : Decoder of encode_question.
 Proof.
   unfold encode_question.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -240,9 +233,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle))
-    (encode2:=fun data => FixInt_encode (FixInt_of_class (qclass (fst data)), snd data)).
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -250,8 +241,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=fun bundle => FixInt_encode (FixInt_of_class (fst bundle), snd bundle)).
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -259,8 +249,8 @@ Proof.
   solve_predicate.
   intro.
 
-  eexists. instantiate (1:=fun b => (Build_question_t _ _ _, b)).
-  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+  eexists; instantiate (1:=fun b => (Build_question_t _ _ _, b));
+  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Record resource_t :=
@@ -279,11 +269,11 @@ Definition encode_resource (bundle : resource_t * bin_t) :=
   FixList_encode Bool_encode (rdata (fst bundle), snd bundle)))))).
 
 Global Instance resource_decoder
-  : decoder (fun _ => True) encode_resource.
+  : Decoder of encode_resource.
 Proof.
   unfold encode_resource.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -291,12 +281,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle))
-    (encode2:=fun data => FixInt_encode (FixInt_of_class (rclass (fst data)),
-                          FixInt_encode (rttl (fst data),
-                          FixInt_encode (FixList_getlength (rdata (fst data)),
-                          FixList_encode Bool_encode (rdata (fst data), snd data))))).
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -304,11 +289,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=fun bundle => FixInt_encode (FixInt_of_class (fst bundle), snd bundle))
-    (encode2:=fun data => FixInt_encode (rttl (fst data),
-                          FixInt_encode (FixList_getlength (rdata (fst data)),
-                          FixList_encode Bool_encode (rdata (fst data), snd data)))).
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -316,7 +297,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -324,7 +305,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  (* solve_unpack. *) eapply unpacking_decoder.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -332,7 +313,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -343,8 +324,8 @@ Proof.
   solve_predicate.
   intro.
 
-  eexists. instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b)).
-  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+  eexists; instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b));
+  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Record packet_t :=
@@ -368,11 +349,11 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   FixList_encode encode_resource (padditional (fst bundle), snd bundle)))))))))).
 
 Global Instance packet_decoder
-  : decoder (fun _ => True) encode_packet.
+  : Decoder of encode_packet.
 Proof.
   unfold encode_packet.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList2_decoder.
   eapply strengthening_decoder.
@@ -383,7 +364,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList2_decoder.
   eapply strengthening_decoder.
@@ -394,7 +375,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  (* solve_unpack. *) eapply unpacking_decoder.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -402,7 +383,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  (* solve_unpack. *) eapply unpacking_decoder.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -410,7 +391,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  (* solve_unpack. *) eapply unpacking_decoder.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -418,7 +399,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder.
+  (* solve_unpack. *) eapply unpacking_decoder.
   eapply strengthening_decoder.
   eauto with typeclass_instances.
 
@@ -426,8 +407,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=FixList_encode encode_question).
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -438,8 +418,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=FixList_encode encode_resource).
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -450,8 +429,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=FixList_encode encode_resource).
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -462,8 +440,7 @@ Proof.
   solve_predicate.
   intro.
 
-  eapply unpacking_decoder with
-    (encode1:=FixList_encode encode_resource).
+  solve_unpack.
   eapply strengthening_decoder.
   eapply FixList_decoder.
   eapply strengthening_decoder.
@@ -474,8 +451,8 @@ Proof.
   solve_predicate.
   intro.
 
-  eexists. instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b)).
-  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
+  eexists; instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b));
+  intro; intuition; destruct data as [rdata bin]; destruct rdata; simpl in *; subst; eauto.
 Defined.
 
 Section Example.
