@@ -12,50 +12,93 @@ Require Import Fiat.BinEncoders.Specs
 
 Set Implicit Arguments.
 
-Definition word_t := { s : list ascii | length s < exp2_nat 8 }.
+Record word_t :=
+  { word_attr : { s : list ascii | length s < exp2_nat 8 } }.
 
 Definition halt : word_t.
-  refine (exist _ nil _).
+  refine (Build_word_t (exist _ nil _)).
   rewrite Compare_dec.nat_compare_lt; eauto.
 Defined.
 
 Definition halt_dec (a : word_t) : {a = halt} + {a <> halt}.
   unfold halt; destruct a as [word word_pf].
-  destruct word eqn: eq; subst.
-  - left. subst. eapply sig_equivalence. eauto.
+  destruct word as [ w ]. destruct w eqn: eq; subst.
+  - left. subst. f_equal. eapply sig_equivalence. eauto.
   - right. intro. inversion H.
 Defined.
 
-Definition name_t := { s : list word_t | length s <= 255 /\ forall x, In x s -> x <> halt }.
+Record name_t :=
+  { name_attr : { s : list word_t | length s <= 255 /\ forall x, In x s -> x <> halt } }.
 
 Definition encode_word (bundle : word_t * bin_t) :=
-  FixInt_encode (FixList_getlength (fst bundle),
-  FixList_encode Char_encode bundle).
+  FixInt_encode (FixList_getlength (word_attr (fst bundle)),
+  FixList_encode Char_encode (word_attr (fst bundle), snd bundle)).
+
+Ltac let's_unfold :=
+  unfold SteppingList_predicate,
+         FixList_predicate,
+         FixList2_predicate,
+         FixList.data_t in *.
+
+Ltac solve_predicate :=
+  let hdata := fresh
+  in  intro hdata; intuition; let's_unfold;
+    match goal with
+    | |- context[ @fst ?a ?b hdata ] => solve [ pattern (@fst a b hdata); eauto ]
+    | |- _ => solve [ intuition eauto ]
+    | |- ?func _ =>
+      match type of func with
+      | ?func_t => solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
+      end
+    end.
 
 Global Instance word_decoder
   : decoder (fun _ => True) encode_word.
 Proof.
   unfold encode_word.
-  eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eauto with typeclass_instances.
-  intro proj.
 
+  eapply unpacking_decoder.
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+  solve_predicate.
+  solve_predicate.
+  intro.
+
+  eapply unpacking_decoder.
   eapply strengthening_decoder.
   eapply FixList_decoder.
-  instantiate (1:=fun _ => True).
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
-  firstorder eauto.
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
+  intro.
+
+  eexists. instantiate (1:=fun b => (Build_word_t _, b)).
+  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
 Defined.
 
-Definition encode_name := @SteppingList_encode _ _ halt 255 encode_word.
+Definition encode_name (bundle : name_t * bin_t) :=
+  @SteppingList_encode _ _ halt 255 encode_word (name_attr (fst bundle), snd bundle).
 
 Global Instance name_decoder
-  : decoder (SteppingList_predicate (fun _ => True)) encode_name.
+  : decoder (fun _ => True) encode_name.
 Proof.
+  unfold encode_name.
+
+  eapply unpacking_decoder.
+  eapply strengthening_decoder.
   eapply SteppingList_decoder.
-  eapply halt_dec.
+  (* special! *) eapply halt_dec.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
+
+  eexists. instantiate (1:=fun b => (Build_name_t _, b)).
+  intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
 Defined.
 
 Inductive type_t := A | CNAME | NS | MX.
@@ -183,25 +226,6 @@ Definition encode_question (bundle : question_t * bin_t) :=
   encode_name (qname (fst bundle),
   FixInt_encode (FixInt_of_type (qtype (fst bundle)),
   FixInt_encode (FixInt_of_class (qclass (fst bundle)), snd bundle))).
-
-Ltac let's_unfold :=
-  unfold SteppingList_predicate,
-         FixList_predicate,
-         FixList2_predicate,
-         FixList.data_t in *.
-
-Ltac solve_predicate :=
-  let hdata := fresh
-  in  intro hdata; intuition; let's_unfold;
-    match goal with
-    | |- context[ @fst ?a ?b hdata ] => solve [ pattern (@fst a b hdata); eauto ]
-    | |- _ => solve [ intuition eauto ]
-    | |- ?func _ =>
-      match type of func with
-      | ?func_t => solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
-      end
-    end.
-
 
 Global Instance question_decoder
   : decoder (fun _ => True) encode_question.
