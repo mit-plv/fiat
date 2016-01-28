@@ -1,5 +1,5 @@
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
-Require Export Fiat.Parsers.ContextFreeGrammar.Notations.
+Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.String.
 Require Export Fiat.Computation.Core.
@@ -10,7 +10,10 @@ Require Export Fiat.Common.
 Require Export Fiat.Parsers.StringLike.Core.
 
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.BoolFacts.
+Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Computation.Refinements.General.
 
 Global Open Scope string_scope.
@@ -22,6 +25,13 @@ Global Arguments production_beq : simpl never.
 Global Arguments productions_beq : simpl never.
 Delimit Scope char_scope with char.
 Infix "=p" := (production_beq _) (at level 70, no associativity).
+
+(** Unfolding rules for enumerated ascii *)
+Global Arguments Ascii.one / .
+Global Arguments Ascii.shift _ !_ / .
+Global Arguments Ascii.ascii_of_pos !_ / .
+Global Arguments Ascii.ascii_of_nat !_ / .
+Global Arguments Carriers.default_nonterminal_carrierT / .
 
 Section tac_helpers.
   Lemma pull_match_list {A R R' rn rc} {ls : list A} (f : R -> R')
@@ -105,17 +115,20 @@ Ltac unguard :=
   rewrite ?(unguard [0]).
 
 Ltac solve_prod_beq :=
-  repeat match reverse goal with
-           | _ => intro
-           | [ H : production_beq _ _ _ = true |- _ ] => apply (production_bl (@ascii_bl)) in H
-           | [ H : (_ || _)%bool = true |- _ ] => apply Bool.orb_true_iff in H
-           | [ H : (_::_) = (_::_) |- _ ] => inversion H; clear H
-           | [ H : _ = fst ?x |- _ ] => atomic x; destruct x
-           | [ H : [] = (_::_) |- _ ] => exfalso; clear -H; inversion H
-           | _ => progress subst
-           | _ => progress simpl @fst in *
-           | _ => progress simpl @snd in *
-           | [ H : _ \/ _ |- _ ] => destruct H
+  clear;
+  repeat match goal with
+           | [ |- context[true = false] ] => congruence
+           | [ |- context[false = true] ] => congruence
+           | [ |- context[EqNat.beq_nat ?x ?y] ]
+             => is_var x;
+               let H := fresh in
+               destruct (EqNat.beq_nat x y) eqn:H;
+                 [ apply EqNat.beq_nat_true in H; subst x
+                 | ];
+                 simpl
+           | [ |- context[EqNat.beq_nat ?x ?y] ]
+             => first [ is_var x; fail 1
+                      | generalize x; intro ]
          end.
 
 Definition if_aggregate {A} (b1 b2 : bool) (x y : A)
@@ -128,17 +141,35 @@ Definition if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false 
 : (If b1 Then x Else If b2 Then y Else If b3 Then z Else If b4 Then x Else w) = (If (b1 || b4)%bool Then x Else If b2 Then y Else If b3 Then z Else w)
   := if_aggregate3 _ _ x y z w H.
 
+Ltac simplify_parser_splitter' :=
+  first [ progress unguard
+        | progress autounfold with parser_sharpen_db;
+          cbv beta iota zeta;
+          simpl @Operations.List.uniquize;
+          simpl @List.fold_right
+        | rewrite !Bool.orb_false_r
+        | rewrite <- !Bool.andb_orb_distrib_r
+        | progress simplify with monad laws
+        | rewrite <- !Bool.andb_orb_distrib_r
+        | rewrite <- !Bool.andb_orb_distrib_l
+        | rewrite <- !Bool.orb_andb_distrib_r
+        | rewrite <- !Bool.orb_andb_distrib_l
+        | rewrite <- !Bool.andb_assoc
+        | rewrite <- !Bool.orb_assoc
+        | rewrite <- !andb_orb_distrib_r_assoc
+        | rewrite !if_aggregate
+        | rewrite !beq_0_1_leb
+        | rewrite !beq_S_leb
+        | idtac;
+          match goal with
+            | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
+              => idtac
+          end;
+          progress repeat setoid_rewrite if_aggregate
+        | rewrite !if_aggregate2 by solve_prod_beq
+        | rewrite !if_aggregate3 by solve_prod_beq
+        | progress parser_pull_tac
+        | progress (simpl @fst; simpl @snd) ].
+
 Tactic Notation "simplify" "parser" "splitter" :=
-  repeat first [ progress unguard
-               | progress simplify with monad laws
-               | rewrite !if_aggregate
-               | idtac;
-                 match goal with
-                   | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
-                     => idtac
-                 end;
-                 progress repeat setoid_rewrite if_aggregate
-               | rewrite !if_aggregate2 by solve_prod_beq
-               | rewrite !if_aggregate3 by solve_prod_beq
-               | progress parser_pull_tac
-               | progress (simpl @fst; simpl @snd) ].
+  repeat simplify_parser_splitter'.

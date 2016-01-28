@@ -264,6 +264,71 @@ Proof.
   decide equality.
 Defined.
 
+Class BoolDecR A := beq : A -> A -> bool.
+Global Arguments beq {A _} _ _.
+Class BoolDec_bl `{BoolDecR A} (R : relation A)
+  := bl : forall x y, beq x y = true -> R x y.
+Global Arguments bl {A _ R _} [_ _] _.
+Class BoolDec_lb `{BoolDecR A} (R : relation A)
+  := lb : forall x y, R x y -> beq x y = true.
+Global Arguments lb {A _ R _} [_ _] _.
+
+Section lift.
+  Context {A : Type} {R : relation A}
+          {dec : @BoolDecR A}
+          {Hbl : @BoolDec_bl A dec R}
+          {Hlb : @BoolDec_lb A dec R}.
+
+  Instance beq_Reflexive {_ : @Reflexive A R} : Reflexive beq.
+  Proof.
+    clear Hbl.
+    lazy in *; eauto with nocore.
+  Qed.
+
+  Instance beq_Symmetric {_ : @Symmetric A R} : Symmetric beq.
+  Proof. lazy in *; eauto with nocore. Qed.
+
+  Instance beq_Transitive {_ : @Transitive A R} : Transitive beq.
+  Proof. lazy in *; eauto with nocore. Qed.
+
+  Instance beq_Asymmetric {_ : @Asymmetric A R} : Asymmetric beq.
+  Proof. lazy in *; eauto with nocore. Qed.
+
+  Instance beq_Antisymmetric {ER} {_ : Equivalence ER} {_ : @Antisymmetric A ER _ R}
+  : Antisymmetric A ER beq.
+  Proof. lazy in *; eauto with nocore. Qed.
+End lift.
+
+Section of_dec.
+  Context {A} {R : relation A}
+          (dec : forall x y, {R x y} + {~R x y}).
+
+  Local Instance BoolDecR_of_R_dec : BoolDecR A := dec.
+  Local Instance BoolDec_lb_of_R_dec : BoolDec_lb R.
+  Proof.
+    lazy; intros; edestruct dec; [ reflexivity | exfalso; eauto with nocore ].
+  Qed.
+  Local Instance BoolDec_bl_of_R_dec : BoolDec_bl R.
+  Proof.
+    lazy; intros; edestruct dec; [ assumption | discriminate ].
+  Qed.
+End of_dec.
+
+Section to_dec.
+  Context {A} {R : relation A}
+          {Hbeq : BoolDecR A}
+          {Hbl : BoolDec_bl R}
+          {Hlb : BoolDec_lb R}.
+
+  Definition dec_of_booldec : forall x y, {R x y} + {~R x y}.
+  Proof.
+    intros x y.
+    destruct (Utils.dec (beq x y)) as [H|H]; [ left | right; intro H' ].
+    { apply bl in H; assumption. }
+    { apply lb in H'; lazy in *; clear -H H'; abstract congruence. }
+  Defined.
+End to_dec.
+
 Scheme Equality for unit.
 Scheme Equality for Empty_set.
 Scheme Equality for bool.
@@ -271,27 +336,78 @@ Scheme Equality for Ascii.ascii.
 Scheme Equality for string.
 Scheme Equality for list.
 Scheme Equality for option.
+Scheme Equality for sum.
+
+Module ImproperlyRecursiveProdBeq.
+  Scheme Equality for prod.
+End ImproperlyRecursiveProdBeq.
+
+Definition prod_beq {A B} eq_A eq_B (x y : A * B) : bool
+  := Eval unfold ImproperlyRecursiveProdBeq.prod_beq in
+      @ImproperlyRecursiveProdBeq.prod_beq A B eq_A eq_B (fst x, snd x) (fst y, snd y).
+Definition prod_eq_dec := ImproperlyRecursiveProdBeq.prod_eq_dec.
+Definition internal_prod_dec_bl {A B} eq_A eq_B A_bl B_bl x y
+           (H : @prod_beq A B eq_A eq_B x y = true)
+: x = y
+  := eq_trans
+       (surjective_pairing _)
+       (eq_trans
+          (@ImproperlyRecursiveProdBeq.internal_prod_dec_bl
+             A B eq_A eq_B A_bl B_bl
+             (fst x, snd x) (fst y, snd y) H)
+          (eq_sym (surjective_pairing _))).
+Definition internal_prod_dec_lb {A B} eq_A eq_B A_lb B_lb x y
+           (H : x = y)
+: @prod_beq A B eq_A eq_B x y = true
+  := @ImproperlyRecursiveProdBeq.internal_prod_dec_lb
+       A B eq_A eq_B A_lb B_lb
+       (fst x, snd x) (fst y, snd y)
+       (eq_trans
+          (eq_sym (surjective_pairing _))
+          (eq_trans
+             H
+             (surjective_pairing _))).
+
+Global Instance nat_BoolDecR : BoolDecR nat := EqNat.beq_nat.
+Global Instance nat_BoolDec_bl : BoolDec_bl (@eq nat) := @EqNat.beq_nat_true.
+Global Instance nat_BoolDec_lb : BoolDec_lb (@eq nat) :=
+  fun x y => proj2 (@EqNat.beq_nat_true_iff x y).
 
 Lemma unit_bl {x y} : unit_beq x y = true -> x = y.
 Proof. apply internal_unit_dec_bl. Qed.
 Lemma unit_lb {x y} : x = y -> unit_beq x y = true.
 Proof. apply internal_unit_dec_lb. Qed.
+Global Instance unit_BoolDecR : BoolDecR unit := unit_beq.
+Global Instance unit_BoolDec_bl : BoolDec_bl (@eq unit) := @unit_bl.
+Global Instance unit_BoolDec_lb : BoolDec_lb (@eq unit) := @unit_lb.
 Lemma Empty_set_bl {x y} : Empty_set_beq x y = true -> x = y.
 Proof. apply internal_Empty_set_dec_bl. Qed.
 Lemma Empty_set_lb {x y} : x = y -> Empty_set_beq x y = true.
 Proof. apply internal_Empty_set_dec_lb. Qed.
+Global Instance Empty_set_BoolDecR : BoolDecR Empty_set := Empty_set_beq.
+Global Instance Empty_set_BoolDec_bl : BoolDec_bl (@eq Empty_set) := @Empty_set_bl.
+Global Instance Empty_set_BoolDec_lb : BoolDec_lb (@eq Empty_set) := @Empty_set_lb.
 Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
 Proof. apply internal_bool_dec_bl. Qed.
 Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
 Proof. apply internal_bool_dec_lb. Qed.
+Global Instance bool_BoolDecR : BoolDecR bool := bool_beq.
+Global Instance bool_BoolDec_bl : BoolDec_bl (@eq bool) := @bool_bl.
+Global Instance bool_BoolDec_lb : BoolDec_lb (@eq bool) := @bool_lb.
 Lemma ascii_bl {x y} : ascii_beq x y = true -> x = y.
 Proof. apply internal_ascii_dec_bl. Qed.
 Lemma ascii_lb {x y} : x = y -> ascii_beq x y = true.
 Proof. apply internal_ascii_dec_lb. Qed.
+Global Instance ascii_BoolDecR : BoolDecR Ascii.ascii := ascii_beq.
+Global Instance ascii_BoolDec_bl : BoolDec_bl (@eq Ascii.ascii) := @ascii_bl.
+Global Instance ascii_BoolDec_lb : BoolDec_lb (@eq Ascii.ascii) := @ascii_lb.
 Lemma string_bl {x y} : string_beq x y = true -> x = y.
 Proof. apply internal_string_dec_bl. Qed.
 Lemma string_lb {x y} : x = y -> string_beq x y = true.
 Proof. apply internal_string_dec_lb. Qed.
+Global Instance string_BoolDecR : BoolDecR string := string_beq.
+Global Instance string_BoolDec_bl : BoolDec_bl (@eq string) := @string_bl.
+Global Instance string_BoolDec_lb : BoolDec_lb (@eq string) := @string_lb.
 Lemma list_beq_eqlistA_iff {A eq_A} {x y : list A}
 : list_beq eq_A x y = true <-> SetoidList.eqlistA eq_A x y.
 Proof.
@@ -331,12 +447,50 @@ Proof. apply internal_list_dec_bl; assumption. Qed.
 Lemma list_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
 : x = y -> list_beq eq_A x y = true.
 Proof. apply internal_list_dec_lb; assumption. Qed.
+Global Instance list_BoolDecR {A} {eq_A : BoolDecR A} : BoolDecR (list A) := list_beq eq_A.
+Global Instance list_BoolDec_blA {A eq_A R} {A_bl : @BoolDec_bl A eq_A R} : BoolDec_bl (SetoidList.eqlistA R)
+  := @list_blA A eq_A R A_bl.
+Global Instance list_BoolDec_lbA {A eq_A R} {A_lb : @BoolDec_lb A eq_A R} : BoolDec_lb (SetoidList.eqlistA R)
+  := @list_lbA A eq_A R A_lb.
+Global Instance list_BoolDec_bl {A eq_A} {A_bl : @BoolDec_bl A eq_A eq} : BoolDec_bl (@eq (list A))
+  := @list_bl A eq_A A_bl.
+Global Instance list_BoolDec_lb {A eq_A} {A_lb : @BoolDec_lb A eq_A eq} : BoolDec_lb (@eq (list A))
+  := @list_lb A eq_A A_lb.
 Lemma option_bl {A eq_A} (A_bl : forall x y : A, eq_A x y = true -> x = y) {x y}
 : option_beq eq_A x y = true -> x = y.
 Proof. apply internal_option_dec_bl; assumption. Qed.
 Lemma option_lb {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {x y}
 : x = y -> option_beq eq_A x y = true.
 Proof. apply internal_option_dec_lb; assumption. Qed.
+Global Instance option_BoolDecR {A} {eq_A : BoolDecR A} : BoolDecR (option A) := option_beq eq_A.
+Global Instance option_BoolDec_bl {A eq_A} {A_bl : @BoolDec_bl A eq_A eq} : BoolDec_bl (@eq (option A))
+  := @option_bl A eq_A A_bl.
+Global Instance option_BoolDec_lb {A eq_A} {A_lb : @BoolDec_lb A eq_A eq} : BoolDec_lb (@eq (option A))
+  := @option_lb A eq_A A_lb.
+Lemma prod_bl {A B eq_A eq_B} (A_bl : forall x y : A, eq_A x y = true -> x = y) (B_bl : forall x y : B, eq_B x y = true -> x = y) {x y}
+: prod_beq eq_A eq_B x y = true -> x = y.
+Proof. apply internal_prod_dec_bl; assumption. Qed.
+Lemma prod_lb {A B eq_A eq_B} (A_lb : forall x y : A, x = y -> eq_A x y = true) (B_lb : forall x y : B, x = y -> eq_B x y = true) {x y}
+: x = y -> prod_beq eq_A eq_B x y = true.
+Proof. apply internal_prod_dec_lb; assumption. Qed.
+Global Instance prod_BoolDecR {A B} {eq_A : BoolDecR A} {eq_B : BoolDecR B}
+: BoolDecR (prod A B) := prod_beq eq_A eq_B.
+Global Instance prod_BoolDec_bl {A B eq_A eq_B} {A_bl : @BoolDec_bl A eq_A eq} {B_bl : @BoolDec_bl B eq_B eq} : BoolDec_bl (@eq (prod A B))
+  := @prod_bl A B eq_A eq_B A_bl B_bl.
+Global Instance prod_BoolDec_lb {A B eq_A eq_B} {A_lb : @BoolDec_lb A eq_A eq} {B_lb : @BoolDec_lb B eq_B eq} : BoolDec_lb (@eq (prod A B))
+  := @prod_lb A B eq_A eq_B A_lb B_lb.
+Lemma sum_bl {A B eq_A eq_B} (A_bl : forall x y : A, eq_A x y = true -> x = y) (B_bl : forall x y : B, eq_B x y = true -> x = y) {x y}
+: sum_beq eq_A eq_B x y = true -> x = y.
+Proof. apply internal_sum_dec_bl; assumption. Qed.
+Lemma sum_lb {A B eq_A eq_B} (A_lb : forall x y : A, x = y -> eq_A x y = true) (B_lb : forall x y : B, x = y -> eq_B x y = true) {x y}
+: x = y -> sum_beq eq_A eq_B x y = true.
+Proof. apply internal_sum_dec_lb; assumption. Qed.
+Global Instance sum_BoolDecR {A B} {eq_A : BoolDecR A} {eq_B : BoolDecR B}
+: BoolDecR (sum A B) := sum_beq eq_A eq_B.
+Global Instance sum_BoolDec_bl {A B eq_A eq_B} {A_bl : @BoolDec_bl A eq_A eq} {B_bl : @BoolDec_bl B eq_B eq} : BoolDec_bl (@eq (sum A B))
+  := @sum_bl A B eq_A eq_B A_bl B_bl.
+Global Instance sum_BoolDec_lb {A B eq_A eq_B} {A_lb : @BoolDec_lb A eq_A eq} {B_lb : @BoolDec_lb B eq_B eq} : BoolDec_lb (@eq (sum A B))
+  := @sum_lb A B eq_A eq_B A_lb B_lb.
 
 Section beq_correct.
   Local Ltac t rew_t :=

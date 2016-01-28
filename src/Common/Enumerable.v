@@ -3,6 +3,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 
@@ -168,7 +169,7 @@ Proof.
 Defined.
 
 Definition enumerate_ascii : list Ascii.ascii
-  := List.map Ascii.ascii_of_nat (up_to 256).
+  := Eval compute in List.map Ascii.ascii_of_nat (up_to 256).
 
 Global Instance enumerable_ascii : Enumerable Ascii.ascii
   := { enumerate := enumerate_ascii }.
@@ -176,7 +177,28 @@ Proof.
   intro x.
   abstract (
       rewrite <- (Ascii.ascii_nat_embedding x);
-      unfold enumerate_ascii;
+      change enumerate_ascii with (List.map Ascii.ascii_of_nat (up_to 256));
       apply List.in_map, in_up_to, nat_of_ascii_small
     ).
 Defined.
+
+Lemma filter_enumerate {A} {HE : Enumerable A} P a (H : List.filter P (enumerate A) = a::nil)
+  : (forall a', is_true (P a') <-> a = a').
+Proof.
+  intro a'; split; intros;
+  assert (H' : In a' (filter P (enumerate A)) <-> In a' (a::nil))
+    by (rewrite H; reflexivity);
+  clear H; subst; simpl in *;
+  rewrite filter_In in H';
+  split_iff; split_and;
+  repeat match goal with
+         | [ H : _ \/ False -> _ |- _ ] => specialize (fun k => H (or_introl k))
+         | [ H : _ /\ _ -> _ |- _ ] => specialize (fun a b => H (conj a b))
+         | _ => progress specialize_by ltac:(apply enumerate_correct)
+         | _ => progress specialize_by assumption
+         | _ => progress specialize_by ltac:(exact eq_refl)
+         | _ => progress destruct_head or
+         | _ => progress destruct_head False
+         | _ => assumption
+         end.
+Qed.

@@ -4,6 +4,7 @@ Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Coq.Program.Equality.
@@ -123,44 +124,60 @@ Proof.
     rewrite IHb; reflexivity.
 Qed.
 
-Definition length_of_any_nt_step {Char} (G : grammar Char) (predata := @rdp_list_predata _ G)
+Definition length_of_any_nt_step
+           {Char} (G : pregrammar Char)
+           (predata := @rdp_list_predata _ G)
+           (length_of_any_nt : forall (valid0_len : nat) (valid0 : nonterminals_listT),
+                                 String.string -> length_result)
+           (valid0_len : nat)
            (valid0 : nonterminals_listT)
-           (length_of_any_nt : forall valid, nonterminals_listT_R valid valid0
-                                             -> String.string -> length_result)
            (nt : String.string)
-: length_result.
-Proof.
-  refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
-          then length_of_any_productions'
-                 (@length_of_any_nt (remove_nonterminal valid0 (of_nonterminal nt)) (remove_nonterminal_dec _ _ _))
-                 (Lookup G nt)
-          else different_lengths);
-  assumption.
-Defined.
+: length_result
+  := match valid0_len with
+       | 0 => different_lengths
+       | S valid0_len'
+         => if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
+            then length_of_any_productions'
+                   (@length_of_any_nt valid0_len' (remove_nonterminal valid0 (of_nonterminal nt)))
+                   (Lookup G nt)
+            else different_lengths
+     end.
 
 Lemma length_of_any_nt_step_ext {Char G}
-      x0 f g
+      x0 x1 f g
       (ext : forall y p b, f y p b = g y p b)
       b
-: @length_of_any_nt_step Char G x0 f b = length_of_any_nt_step g b.
+: @length_of_any_nt_step Char G f x0 x1 b = length_of_any_nt_step g x0 x1 b.
 Proof.
   unfold length_of_any_nt_step.
   edestruct Sumbool.sumbool_of_bool; trivial.
+  destruct x0; trivial.
   apply length_of_any_productions'_ext; eauto.
 Qed.
 
-Definition length_of_any_nt {Char} (G : grammar Char) initial : String.string -> length_result
-  := let predata := @rdp_list_predata _ G in
-     @Fix _ _ ntl_wf _
-          (@length_of_any_nt_step _ G)
-          initial.
+Fixpoint length_of_any_nt'
+         {Char} (G : pregrammar Char)
+         (valid0_len : nat)
+: forall (valid0 : nonterminals_listT)
+         (nt : String.string),
+    length_result
+  := @length_of_any_nt_step Char G (@length_of_any_nt' Char G) valid0_len.
 
-Definition length_of_any {Char} (G : grammar Char) : String.string -> length_result
+Global Arguments length_of_any_nt' _ _ !_ _ _ / .
+
+Definition length_of_any_nt {Char} (G : pregrammar Char)
+           initial
+: String.string -> length_result
+  := @length_of_any_nt' Char G (nonterminals_length initial) initial.
+
+Definition length_of_any {Char} (G : pregrammar Char)
+: String.string -> length_result
   := @length_of_any_nt Char G initial_nonterminals_data.
 
 Definition length_of_any_productions {Char} G := @length_of_any_productions' Char (@length_of_any Char G).
 
 Lemma has_only_terminals_parse_of_production_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       (G : grammar Ascii.ascii) {n}
@@ -218,9 +235,11 @@ Proof.
 Qed.
 
 Lemma has_only_terminals_parse_of_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
-      (G : grammar Ascii.ascii) {n}
+      (G : pregrammar Ascii.ascii) {n}
+      (predata := @rdp_list_predata _ G)
       nt
       (H : length_of_any G nt = same_length n)
       str
@@ -228,18 +247,30 @@ Lemma has_only_terminals_parse_of_length
 : length str = n.
 Proof.
   unfold length_of_any, length_of_any_nt in H.
-  revert n nt H str p.
+  revert nt str n H p.
   match goal with
-    | [ |- forall a b, Fix ?wf _ _ ?x _ = _ -> _ ]
-      => induction (wf x)
+    | [ |- context[nonterminals_length ?ls] ]
+      => set (len := nonterminals_length ls);
+        generalize (reflexivity _ : nonterminals_length ls <= len);
+        clearbody len;
+        generalize ls
   end.
-  intros ? ?.
-  rewrite Fix1_eq by apply length_of_any_nt_step_ext.
-  unfold length_of_any_nt_step at 1; simpl.
-  edestruct dec; simpl;
-  [
+  induction len as [|len IHlen];
+    [ intros [|??]; simpl; intros; congruence
+    | ].
+  intro valid.
+  unfold length_of_any_nt'; fold @length_of_any_nt'.
+  unfold length_of_any_nt_step.
+  intros H' nt.
+  specialize (IHlen (remove_nonterminal valid (of_nonterminal nt))).
+  pose proof (rdp_list_remove_nonterminal_dec valid (of_nonterminal nt)) as H''.
+  unfold rdp_list_nonterminals_listT_R, ltof, lt in H''.
+  pose proof (fun pf => le_S_n _ _ (transitivity (H'' pf) H')) as H; clear H' H''.
+  specialize (fun pf => IHlen (H pf)); clear H.
+  edestruct dec; simpl in *;
+  [ specialize_by assumption
   | solve [ intros; discriminate ] ].
-  generalize dependent (G nt).
+  generalize dependent (Lookup_string G nt).
   intros.
   unfold length_of_any_productions' in *.
   let p := match goal with H : parse_of _ _ _ |- _ => constr:H end in
@@ -259,7 +290,7 @@ Proof.
                  let H'' := fresh in
                  rename H into H'';
                    specialize (fun nt' str0 n' H0 => H'' n' nt' H0 str0)
-             | [ H : length_of_any_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption.. ]
+             | [ H : length_of_any_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption'.. ]
              | _ => reflexivity
              | _ => discriminate
              | _ => progress subst
@@ -287,9 +318,10 @@ Proof.
 Qed.
 
 Lemma has_only_terminals_parse_of_item_length
+      {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
-      (G : grammar Ascii.ascii) {n}
+      (G : pregrammar Ascii.ascii) {n}
       nt
       (H : length_of_any G nt = same_length n)
       str

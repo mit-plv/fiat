@@ -1,4 +1,5 @@
 (** * Common facts about UIP and proof irrelevance *)
+Require Coq.Strings.String.
 Require Import Coq.Logic.EqdepFacts.
 
 Set Implicit Arguments.
@@ -59,3 +60,15 @@ Proof.
     edestruct @dec_eq_adjust' as [|n]; try reflexivity.
     destruct (n p). }
 Qed.
+
+Ltac UIP_by_decide_equality :=
+  intros; apply dec_eq_uip; repeat decide equality.
+
+Lemma UIP_bool {x y : bool} (p q : x = y) : p = q.
+Proof. UIP_by_decide_equality. Qed.
+Lemma UIP_unit {x y : unit} (p q : x = y) : p = q.
+Proof. UIP_by_decide_equality. Qed.
+Lemma UIP_ascii {x y : Ascii.ascii} (p q : x = y) : p = q.
+Proof. UIP_by_decide_equality. Qed.
+Lemma UIP_string {x y : String.string} (p q : x = y) : p = q.
+Proof. UIP_by_decide_equality. Qed.

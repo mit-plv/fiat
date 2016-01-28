@@ -4,7 +4,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.Reachable.Maybe
 Require Import Fiat.Parsers.BaseTypes.
 
 Section rel.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {predata : @parser_computational_predataT Char} {G : grammar Char}.
 
   Section size.
     Context {ch : Char} {valid : nonterminals_listT}.

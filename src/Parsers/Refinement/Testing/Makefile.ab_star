@@ -28,11 +28,16 @@ ab10.0 ab10.0.0 ab10.0.0.0 ab10.0.0.0.0 ab10.0.0.0.0.0 ab10.0.0.0.0.0.0 ab10.0.0
 	@cat $< >> $@
 	@cat $< >> $@
 
+ifeq ($(LONG),2)
+  PROF_FILE = ab10.0.0.0.0.0
+else
 ifeq ($(LONG),1)
   PROF_FILE = ab10.0.0.0.0
 else
   PROF_FILE = ab10.0.0.0
 endif
+endif
+
 ocamlprof.dump: test_ab_star_p.exe $(PROF_FILE)
 	./test_ab_star_p.exe $(PROF_FILE)
 

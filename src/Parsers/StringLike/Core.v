@@ -15,11 +15,16 @@ Generalizable All Variables.
 Reserved Notation "[ x ]".
 
 Module Export StringLike.
-  Class StringLike {Char : Type} :=
+  Class StringLikeMin {Char : Type} :=
     {
       String :> Type;
+      char_at_matches : nat -> String -> (Char -> bool) -> bool;
+      length : String -> nat
+    }.
+
+  Class StringLike {Char : Type} {HSLM : @StringLikeMin Char} :=
+    {
       is_char : String -> Char -> bool;
-      length : String -> nat;
       take : nat -> String -> String;
       drop : nat -> String -> String;
       get : nat -> String -> option Char;
@@ -28,26 +33,23 @@ Module Export StringLike.
       beq : relation String := fun x y => bool_eq x y
     }.
 
-  Class StringIso {Char} {HSL : @StringLike Char} :=
+  Class StringIso {Char} {HSLM : @StringLikeMin Char} :=
     {
       of_string : list Char -> String
     }.
 
-  Coercion StringLike_of_StringIso {Char} {HSL : @StringLike Char} (x : @StringIso Char HSL) := HSL.
-
-  Arguments StringLike : clear implicits.
-  Arguments StringIso Char {HSL}.
+  Arguments StringLikeMin : clear implicits.
+  Arguments StringLike Char {HSLM}.
+  Arguments StringIso Char {HSLM}.
   Bind Scope string_like_scope with String.
   Delimit Scope string_like_scope with string_like.
-  Infix "=s" := (@beq _ _) (at level 70, no associativity) : type_scope.
-  Infix "=s" := (@bool_eq _ _) (at level 70, no associativity) : string_like_scope.
+  Infix "=s" := (@beq _ _ _) (at level 70, no associativity) : type_scope.
+  Infix "=s" := (@bool_eq _ _ _) (at level 70, no associativity) : string_like_scope.
   Notation "s ~= [ ch ]" := (is_char s ch) (at level 70, no associativity) : string_like_scope.
   Local Open Scope string_like_scope.
   Local Open Scope type_scope.
 
-  Hint Extern 0 (@StringLike (@String ?string ?H)) => exact H : typeclass_instances.
-
-  Definition fold' {Char} {HSL : StringLike Char} {A}
+  Definition fold' {Char} {HSLM} {HSL : @StringLike Char HSLM} {A}
              (f : Char -> A -> A)
              (init : A)
              (str : String) (len : nat)
@@ -62,7 +64,7 @@ Module Export StringLike.
              end)
          len.
 
-  Definition fold {Char} {HSL : StringLike Char} {A}
+  Definition fold {Char} {HSLM} {HSL : @StringLike Char HSLM} {A}
              (f : Char -> A -> A)
              (init : A)
              (str : String)
@@ -71,7 +73,7 @@ Module Export StringLike.
 
   Notation to_string str := (fold (@List.cons _) (@List.nil _) str).
 
-  Definition str_le `{StringLike Char} (s1 s2 : String)
+  Definition str_le `{@StringLike Char HSLM} (s1 s2 : String)
     := length s1 < length s2 \/ s1 =s s2.
   Infix "≤s" := str_le (at level 70, right associativity).
 
@@ -81,6 +83,7 @@ Module Export StringLike.
     {
       singleton_unique : forall s ch ch', s ~= [ ch ] -> s ~= [ ch' ] -> ch = ch';
       singleton_exists : forall s, length s = 1 -> exists ch, s ~= [ ch ];
+      char_at_matches_correct : forall s n P ch, get n s = Some ch -> (char_at_matches n s P = P ch);
       get_0 : forall s ch, take 1 s ~= [ ch ] <-> get 0 s = Some ch;
       get_S : forall n s, get (S n) s = get n (drop 1 s);
       unsafe_get_correct : forall n s ch, get n s = Some ch -> unsafe_get n s = ch;
@@ -103,12 +106,12 @@ Module Export StringLike.
       bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str'
     }.
 
-  Class StringIsoProperties {Char} {HSL : @StringLike Char} {HSI : @StringIso Char HSL} :=
+  Class StringIsoProperties {Char} {HSLM} {HSL : @StringLike Char HSLM} {HSI : @StringIso Char HSLM} :=
     {
       get_of_string : forall n str, get n (of_string str) = List.nth_error str n
     }.
 
-  Class StringEqProperties {Char} {HSL : @StringLike Char} :=
+  Class StringEqProperties {Char} {HSLM} {HSL : @StringLike Char HSLM} :=
     {
       bool_eq_bl : forall s s', s =s s' -> s = s';
       bool_eq_lb : forall s s', s = s' -> s =s s'
@@ -118,7 +121,7 @@ Module Export StringLike.
   Global Existing Instance Equivalence_Symmetric.
   Global Existing Instance Equivalence_Transitive.
 
-  Arguments StringLikeProperties Char {_}.
-  Arguments StringIsoProperties Char {_ _}.
-  Arguments StringEqProperties Char {_}.
+  Arguments StringLikeProperties Char {_ _}.
+  Arguments StringIsoProperties Char {_ _ _}.
+  Arguments StringEqProperties Char {_ _}.
 End StringLike.

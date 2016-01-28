@@ -1,6 +1,6 @@
 Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Lists.SetoidList Coq.Bool.Bool
-        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality.
+        Fiat.Common Fiat.Common.List.Operations Fiat.Common.Equality Fiat.Common.List.FlattenList Fiat.Common.LogicFacts.
 
 Unset Implicit Arguments.
 
@@ -1449,5 +1449,477 @@ Section ListFacts.
     { reflexivity. }
     { intros; apply H; right; assumption. }
     { left; reflexivity. }
+  Qed.
+
+  Lemma list_bin_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A) x
+  : list_bin beq (f x) (map f ls) = list_bin (fun x y => beq (f x) (f y)) x ls.
+  Proof.
+    induction ls; trivial; simpl.
+    rewrite IHls; reflexivity.
+  Qed.
+
+  Lemma uniquize_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A)
+  : uniquize beq (map f ls) = map f (uniquize (fun x y => beq (f x) (f y)) ls).
+  Proof.
+    induction ls; trivial; simpl.
+    rewrite !IHls, list_bin_map.
+    edestruct @list_bin; simpl; reflexivity.
+  Qed.
+
+  Definition list_rect_In {A} (P : list A -> Type)
+             (ls : list A)
+             (Hnil : P nil)
+             (Hcons : forall x xs, In x ls -> P xs -> P (x::xs))
+  : P ls.
+  Proof.
+    induction ls as [|x xs IHxs]; [ assumption | ].
+    apply Hcons.
+    { left; reflexivity. }
+    { apply IHxs; intros x' xs' H'.
+      apply Hcons.
+      right; exact H'. }
+  Defined.
+
+  Lemma fold_right_and_True_app ls ls'
+  : fold_right and True (ls ++ ls') <-> (fold_right and True ls /\ fold_right and True ls').
+  Proof.
+    revert ls'; induction ls as [|?? IHls]; simpl; intros; try tauto.
+    rewrite IHls; clear IHls.
+    tauto.
+  Qed.
+
+  Lemma fold_right_and_True_flatten ls
+  : fold_right and True (flatten ls) <-> fold_right and True (map (fold_right and True) ls).
+  Proof.
+    induction ls as [|?? IHls]; try tauto; simpl.
+    rewrite <- IHls; clear IHls.
+    rewrite fold_right_and_True_app; reflexivity.
+  Qed.
+
+  Lemma NoDup_app {A} (ls ls' : list A)
+  : NoDup (ls ++ ls') -> NoDup ls /\ NoDup ls'.
+  Proof.
+    induction ls; simpl; intro H; split; trivial; try constructor;
+    simpl in *.
+    { inversion H; subst.
+      eauto using in_or_app. }
+    { apply IHls.
+      inversion H; subst; assumption. }
+    { apply IHls; inversion H; subst; assumption. }
+  Qed.
+  Lemma NoDup_app_in {A} (ls ls' : list A) (x : A) (H : NoDup (ls ++ ls'))
+  : In x ls' -> In x ls -> False.
+  Proof.
+    intros H0 H1.
+    induction ls as [|?? IHls]; simpl in *; trivial.
+    destruct H1; inversion H; clear H; subst; eauto.
+    rewrite in_app_iff in *.
+    eauto.
+  Qed.
+
+  Lemma NoDup_app_in_iff {A} (ls ls' : list A)
+  : NoDup (ls ++ ls') <-> (NoDup ls /\ NoDup ls' /\
+                           forall x, In x ls' -> In x ls -> False).
+  Proof.
+    induction ls as [|?? IHls]; simpl in *; trivial;
+    repeat (split || intro);
+    repeat match goal with
+             | _ => solve [ constructor ]
+             | _ => assumption
+             | _ => progress simpl in *
+             | _ => progress destruct_head and
+             | _ => progress destruct_head iff
+             | _ => progress split_and
+             | _ => progress subst
+             | _ => progress specialize_by assumption
+             | _ => progress specialize_by tauto
+             | [ H : NoDup (_::_) |- _ ] => inversion H; clear H
+             | [ |- NoDup (_::_) ] => constructor
+             | [ H : _ |- _ ] => rewrite in_app_iff in H
+             | _ => rewrite in_app_iff
+             | [ H : ~(_ \/ _) |- _ ] => apply Decidable.not_or in H
+             | _ => progress destruct_head or
+             | _ => solve [ eauto using eq_refl with nocore ]
+             | [ |- ~(?A \/ ?B) ] => cut (~A /\ ~B); [ tauto | ]
+             | [ |- _ /\ _ ] => split
+             | [ H : ?T, H' : ?T /\ _ -> ?B |- _ ] => specialize (fun X => H' (conj H X))
+             | _ => progress split_in_context_by or (fun a b : Type => a) (fun a b : Type => b) ltac:(fun H => intuition eauto)
+             | [ H : forall x, _ -> _ = x -> _ |- _ ] => specialize (fun k => H _ k eq_refl)
+           end.
+  Qed.
+  Lemma NoDup_rev {A} (ls : list A)
+  : NoDup (rev ls) <-> NoDup ls.
+  Proof.
+    induction ls as [|?? IHls]; simpl.
+    { split; intro; constructor. }
+    { split; intro H.
+      { constructor.
+        { rewrite in_rev.
+          rapply @NoDup_app_in; [ eassumption | left; reflexivity ]. }
+        { apply NoDup_app in H; apply IHls, H. } }
+      { rewrite NoDup_app_in_iff, IHls.
+        inversion H; clear H; subst.
+        repeat split; simpl; trivial.
+        { repeat constructor; simpl; intro; trivial. }
+        { intros; destruct_head or; destruct_head False; subst.
+          rewrite <- in_rev in *.
+          eauto with nocore. } } }
+  Qed.
+
+  Lemma uniquize_nonnil {A} beq (ls : list A)
+  : ls <> nil <-> Operations.List.uniquize beq ls <> nil.
+  Proof.
+    induction ls as [|a ls IHls]; simpl.
+    { reflexivity. }
+    { split; intros H H'.
+      { destruct (list_bin beq a (Operations.List.uniquize beq ls)) eqn:Heq.
+        { rewrite H' in IHls.
+          destruct ls; simpl in *; try congruence.
+          destruct IHls.
+          specialize_by congruence.
+          congruence. }
+        { congruence. } }
+      { congruence. } }
+  Qed.
+  Lemma rev_nonnil {A} (ls : list A)
+  : ls <> nil <-> rev ls <> nil.
+  Proof.
+    destruct ls; simpl.
+    { reflexivity. }
+    { split; intros H H';
+      apply (f_equal (@List.length _)) in H';
+      rewrite ?app_length in H';
+      simpl in *;
+      omega. }
+  Qed.
+
+  Lemma Forall_tl {A} P (ls : list A)
+  : List.Forall P ls -> List.Forall P (tl ls).
+  Proof.
+    intro H; destruct H; simpl; try constructor; assumption.
+  Qed.
+  Lemma Forall_inv_iff {A} P x (xs : list A)
+  : List.Forall P (x::xs) <-> (P x /\ List.Forall P xs).
+  Proof.
+    split; intro H.
+    { inversion H; subst; split; assumption. }
+    { constructor; apply H. }
+  Qed.
+
+  Lemma app_take_drop {A} (ls : list A) n
+  : (Operations.List.take n ls ++ Operations.List.drop n ls)%list = ls.
+  Proof.
+    revert ls; induction n as [|n IHn]; intros.
+    { reflexivity. }
+    { destruct ls as [|x xs]; simpl; trivial.
+      apply f_equal.
+      apply IHn. }
+  Qed.
+
+  Lemma map_proj1_sig_sig_In {A} (ls : list A)
+  : List.map (@proj1_sig _ _) (sig_In ls) = ls.
+  Proof.
+    induction ls; simpl; f_equal; rewrite map_map; simpl; assumption.
+  Qed.
+
+  Lemma in_sig_uip {A} {P : A -> Prop} (UIP : forall x (p q : P x), p = q)
+        (ls : list { x : A | P x })
+        x
+  : List.In x ls <-> List.In (proj1_sig x) (List.map (@proj1_sig _ _) ls).
+  Proof.
+    induction ls as [|y ys IHls]; simpl.
+    { reflexivity. }
+    { repeat match goal with
+               | [ |- ?x = ?x \/ _ ] => left; reflexivity
+               | [ H : ?A |- _ \/ ?A ] => right; assumption
+               | [ |- exist _ ?x _ = exist _ ?x _ \/ _ ] => left; apply f_equal
+               | _ => progress subst
+               | _ => progress simpl in *
+               | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+               | [ H : _ <-> _ |- _ ] => destruct H
+               | [ |- _ <-> _ ] => split
+               | _ => intro
+               | [ H : _ \/ _ |- _ ] => destruct H
+               | [ H : proj1_sig ?x = _ |- _ ] => is_var x; destruct x
+               | [ |- context[exist _ _ _ = ?x] ] => is_var x; destruct x
+               | _ => solve [ eauto with nocore ]
+             end. }
+  Qed.
+
+  Lemma step_rev_up_to {n}
+  : List.rev (up_to n)
+    = match n with
+        | 0 => nil
+        | S n' => 0::map S (List.rev (up_to n'))
+      end.
+  Proof.
+    induction n; simpl; [ reflexivity | ].
+    etransitivity; [ rewrite IHn | reflexivity ].
+    destruct n; simpl; [ reflexivity | ].
+    rewrite map_app; reflexivity.
+  Qed.
+
+  Lemma map_nth_dep_helper {A B} (f' : nat -> nat) (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
+  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+               (combine (List.map f' (List.rev (up_to (List.length l)))) l))
+        (f (f' n) d)
+    = f (f' n) (nth n l d).
+  Proof.
+    rewrite <- (map_nth (f (f' n))).
+    rewrite step_rev_up_to.
+    revert f' n; induction l as [|x xs IHxs]; intros.
+    { destruct n; simpl; reflexivity. }
+    { destruct n; simpl; [ reflexivity | ].
+      specialize (IHxs (fun x => f' (S x))).
+      rewrite <- IHxs; clear IHxs.
+      rewrite map_map.
+      rewrite <- step_rev_up_to.
+      reflexivity. }
+  Qed.
+
+  Lemma map_nth_dep {A B} (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
+  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+               (combine (List.rev (up_to (List.length l))) l))
+        (f n d)
+    = f n (nth n l d).
+  Proof.
+    rewrite <- (map_nth_dep_helper (fun x => x)).
+    rewrite List.map_id; reflexivity.
+  Qed.
+
+  Lemma combine_map_l {A A' B} (g : A -> A') ls ls'
+  : List.combine (List.map g ls) ls'
+    = List.map (fun x : A * B => (g (fst x), snd x))
+               (List.combine ls ls').
+  Proof.
+    revert ls'; induction ls as [|l ls IHls];
+    intros [|l' ls']; simpl; f_equal.
+    eauto with nocore.
+  Qed.
+
+  Lemma combine_map_r {A B B'} (g : B -> B') ls ls'
+  : List.combine ls (List.map g ls')
+    = List.map (fun x : A * B => (fst x, g (snd x)))
+               (List.combine ls ls').
+  Proof.
+    revert ls'; induction ls as [|l ls IHls];
+    intros [|l' ls']; simpl; f_equal.
+    eauto with nocore.
+  Qed.
+
+  Section fold_right_beq.
+    Context {A}
+            {eq_A : BoolDecR A}
+            {Abl : BoolDec_bl (@eq A)}
+            {R}
+            (f : A -> R)
+            (x : A)
+            (base : R).
+
+    Lemma fold_right_beq_in_correct ls
+      : List.fold_right
+          (fun y else_case => If beq y x Then f y Else else_case)
+          base
+          ls
+        = (if list_bin beq x ls then f x else base).
+    Proof.
+      induction ls as [|y ys IHys].
+      { simpl; reflexivity. }
+      { simpl; rewrite IHys; clear IHys.
+        destruct (beq y x) eqn:Heq; simpl.
+        { apply bl in Heq; subst.
+          rewrite Bool.orb_true_r; reflexivity. }
+        { rewrite Bool.orb_false_r; reflexivity. } }
+    Qed.
+  End fold_right_beq.
+
+  Section fold_right_beq'.
+    Context {A}
+            {eq_A : BoolDecR A}
+            {Abl : BoolDec_bl (@eq A)}
+            {Alb : BoolDec_lb (@eq A)}
+            {R}
+            (f : A -> R)
+            (x : A)
+            (base : R).
+
+    Lemma fold_right_beq_in_correct' ls
+      : List.fold_right
+          (fun y else_case => If beq x y Then f y Else else_case)
+          base
+          ls
+        = (if list_bin beq x ls then f x else base).
+    Proof.
+      induction ls as [|y ys IHys].
+      { simpl; reflexivity. }
+      { simpl; rewrite IHys; clear IHys.
+        destruct (beq y x) eqn:Heq; simpl.
+        { apply bl in Heq; subst.
+          rewrite lb by reflexivity.
+          rewrite Bool.orb_true_r; reflexivity. }
+        { destruct (beq x y) eqn:Heq'; simpl.
+          { apply bl in Heq'; subst.
+            rewrite lb in Heq by reflexivity.
+            congruence. }
+          { rewrite Bool.orb_false_r; reflexivity. } } }
+    Qed.
+  End fold_right_beq'.
+
+  Lemma fold_right_uniquize {A B}
+        {eq_A : BoolDecR A}
+        {Abl : BoolDec_bl (@eq A)}
+        {Alb : BoolDec_lb (@eq A)}
+        (f : A -> B) ls x base
+  : List.fold_right
+      (fun y else_case => If beq x y Then f y Else else_case)
+      base
+      (uniquize beq ls)
+    = List.fold_right
+        (fun y else_case => If beq x y Then f y Else else_case)
+        base
+        ls.
+  Proof.
+    rewrite !fold_right_beq_in_correct'.
+    destruct (list_bin beq x ls) eqn:Heq;
+      destruct (list_bin beq x (uniquize beq ls)) eqn:Heq';
+      try reflexivity;
+      exfalso;
+      first [ apply (list_in_bl bl) in Heq
+            | apply (list_in_bl bl) in Heq' ];
+      first [ rewrite (list_in_lb lb)
+              in Heq
+              by (eapply uniquize_In; eassumption)
+            | rewrite (list_in_lb lb)
+              in Heq'
+              by (eapply (uniquize_In_refl _ _ _ (lb eq_refl) bl); assumption) ];
+      try congruence.
+  Qed.
+
+  Lemma uniquize_nil {A beq} (ls : list A)
+  : uniquize beq ls = nil <-> ls = nil.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { destruct (Equality.list_bin beq l (uniquize beq ls)) eqn:Heq.
+      { apply Equality.list_inA_bl in Heq.
+        rewrite SetoidList.InA_altdef, Exists_exists in Heq.
+        destruct_head ex.
+        destruct_head and.
+        split; intro H'; try congruence.
+        rewrite H' in *; simpl in *.
+        destruct_head False. }
+      { split; congruence. } }
+  Qed.
+
+  Lemma uniquize_singleton {A beq}
+        (bl : forall x y : A, beq x y = true -> x = y)
+        (lb : forall x y : A, x = y -> beq x y)
+        (ls : list A) (x : A)
+  : uniquize beq ls = [x] <-> (forall y, In y ls <-> x = y).
+  Proof.
+    induction ls; simpl.
+    { intuition (subst; eauto; split_iff; try congruence). }
+    { destruct (uniquize beq ls) eqn:Heq.
+      { rewrite uniquize_nil in Heq; subst; simpl in *.
+        clear IHls.
+        setoid_rewrite or_false.
+        repeat first [ split
+                     | intro
+                     | progress split_iff
+                     | progress subst
+                     | congruence
+                     | progress f_equal; []
+                     | solve [ eauto ] ]. }
+      { repeat match goal with
+                 | [ |- context[Equality.list_bin ?beq ?x ?ls] ]
+                   => destruct (Equality.list_bin beq x ls) eqn:?
+                 | [ H : Equality.list_bin _ _ _ = true |- _ ]
+                   => apply (Equality.list_in_bl bl) in H
+                 | _ => progress split_iff
+                 | _ => progress simpl in *
+                 | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
+                 | [ H : orb _ _ = false |- _ ] => apply Bool.orb_false_iff in H
+                 | _ => progress subst
+                 | _ => progress split_and
+                 | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
+                 | _ => progress specialize_by ltac:(exact eq_refl)
+                 | _ => congruence
+                 | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
+                   => pose proof (H _ (or_introl eq_refl)); subst a
+                 | [ H : forall y, ?x = y \/ @?P y -> ?x = y |- _ ]
+                   => assert (forall y, P y -> x = y)
+                     by (intros; apply H; right; assumption);
+                     clear H
+                 | [ H : forall y, @?P y -> @?P y \/ _ |- _ ]
+                   => clear H
+                 | [ H : (forall x, @?A x <-> @?B x) -> _,
+                         H' : forall x, @?A x -> @?B x
+                                        |- _ ]
+                   => specialize (fun H'' => H (fun x => conj (H' x) (H'' x)))
+                 | [ H : (forall x, ?a = x -> @?P x) -> _ |- _ ]
+                   => specialize (fun pf' : P a
+                                  => H (fun x pf => match pf in (_ = y) return P y with
+                                                      | eq_refl => pf'
+                                                    end))
+                 | [ H : forall y, In y ?ls -> _ = y,
+                       H' : In ?y' ?ls |- _ ]
+                   => pose proof (H _ H'); subst y'
+                 | [ |- ?x = ?x \/ _ ] => left; reflexivity
+                 | [ |- ?x::_ = ?x::_ ] => apply f_equal
+                 | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
+                 | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
+                   => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
+                                                   rewrite Heq; first [ left; reflexivity
+                                                                      | right; assumption ])
+                 | _ => progress destruct_head False
+                 | [ Heq : uniquize ?beq ?ls = ?x::_, H' : forall y, In y ?ls -> _ = y |- _ ]
+                   => let H := fresh in
+                      assert (H : In x ls)
+                        by (apply (ListFacts.uniquize_In _ beq);
+                            rewrite Heq; left; reflexivity);
+                        pose proof (H' _ H); subst x
+                 | [ H : context[beq ?x ?x] |- _ ] => rewrite lb in H by reflexivity
+                 | _ => progress destruct_head or
+                 | _ => split
+                 | _ => intro
+               end. } }
+  Qed.
+
+  Lemma find_first_index_error {A} {beq : A -> A -> bool} (bl : forall x y, beq x y = true -> x = y)
+        {B C} (f : A * B -> C) x ls default
+  : option_rect
+      (fun _ => C)
+      (fun idx => nth idx (map f ls) default)
+      default
+      (List.first_index_error
+         (beq x)
+         (map fst ls))
+    = option_rect
+        (fun _ => C)
+        f
+        default
+        (find (fun k => beq x (fst k)) ls).
+  Proof.
+    induction ls as [|l ls IHls]; simpl; [ reflexivity | ].
+    repeat match goal with
+             | _ => rewrite <- IHls; clear IHls
+             | _ => reflexivity
+             | [ |- context[if ?e then _ else _] ] => destruct e eqn:?; simpl
+           end; [].
+    rewrite first_index_helper_first_index_error; simpl.
+    match goal with
+      | [ |- _ = option_rect _ _ _ ?x ]
+        => destruct x eqn:Heq'
+    end; simpl.
+    { apply first_index_error_Some_correct in Heq'.
+      destruct Heq' as [[? [Heq' ?]] ?].
+      rewrite Heq'; simpl; reflexivity. }
+    { reflexivity. }
+  Qed.
+
+  Lemma map_combine_id {A B} (f : A * A -> B) (ls : list A)
+    : List.map f (combine ls ls) = List.map (fun x => f (x, x)) ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl; [ | rewrite IHls ]; reflexivity.
   Qed.
 End ListFacts.

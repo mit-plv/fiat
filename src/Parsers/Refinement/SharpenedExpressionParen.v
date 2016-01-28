@@ -7,17 +7,7 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec paren_expr_grammar string_stringlike).
   Proof.
-
-    start sharpening ADT.
-    start honing parser using indexed representation.
-
-    hone method "splits".
-    {
-      simplify parser splitter.
-      finish honing parser method.
-    }
-
-    finish_Sharpening_SplitterADT.
+    splitter_start; splitter_finish.
   Defined.
 
   Lemma ComputationalSplitter

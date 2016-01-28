@@ -7,15 +7,6 @@ Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.ListMorphisms.
-(*Require Import Coq.Lists.List.
-Require Import Coq.Arith.EqNat.
-Require Import Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
-Require Import Coq.omega.Omega.
-Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Parsers.ContextFreeGrammar.
-Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Common Fiat.Common.Wf.*)
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -28,11 +19,14 @@ Local Ltac subst_le_proof :=
   end.
 
 Section recursive_descent_parser.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
-  Context {data : @boolean_parser_dataT Char _}.
+  Context {Char} {HSL : StringLikeMin Char} {G : grammar Char}.
+  Context {data : @boolean_parser_dataT Char _}
+          {rdata : @parser_removal_dataT' _ G _}.
 
   Create HintDb boolr_ext_db discriminated.
   Hint Unfold Proper respectful respectful_hetero pointwise_relation forall_relation pointwise2_relation sumbool_rect : boolr_ext_db.
+  (** Dummy hint for [boolr_ext_db] to work around https://coq.inria.fr/bugs/show_bug.cgi?id=4479 *)
+  Hint Rewrite production_tl_correct : boolr_ext_db.
 
   Local Ltac expand' :=
     idtac;
@@ -73,21 +67,24 @@ Section recursive_descent_parser.
       | [ H : _ |- _ ] => rewrite H
       | _ => progress autorewrite with boolr_ext_db
       | _ => progress simpl option_rect
+      | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
     end.
 
   Local Ltac t_ext tac := repeat (t_ext' || tac).
 
   Global Instance parse_item'_Proper
-  : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq) (parse_item').
+  : Proper (eq ==> pointwise_relation _ eq ==> eq ==> eq ==> eq ==> eq) (parse_item').
   Proof. t_ext expand'. Qed.
 
   Lemma parse_item'_ext
+        (str : String)
         (str_matches_nonterminal str_matches_nonterminal' : nonterminal_carrierT -> bool)
         (ext : forall s, str_matches_nonterminal s = str_matches_nonterminal' s)
-        (str : String)
+        (offset : nat)
+        (len : nat)
         (it : item Char)
-  : parse_item' str_matches_nonterminal str it
-    = parse_item' str_matches_nonterminal' str it.
+  : parse_item' str str_matches_nonterminal offset len it
+    = parse_item' str str_matches_nonterminal' offset len it.
   Proof.
     change ((pointwise_relation _ eq) str_matches_nonterminal str_matches_nonterminal') in ext.
     rewrite ext; reflexivity.
@@ -97,110 +94,137 @@ Section recursive_descent_parser.
 
   Inductive drop_takeT := drop_of (n : nat) | take_of (n : nat).
 
-  Fixpoint drop_takes (ns : list drop_takeT) (str : String)
+  Fixpoint drop_takes_offset (ns : list drop_takeT) (offset : nat)
     := match ns with
-         | nil => str
-         | cons (drop_of n) ns' => drop n (drop_takes ns' str)
-         | cons (take_of n) ns' => take n (drop_takes ns' str)
+         | nil => offset
+         | cons (drop_of n) ns' => drop_takes_offset ns' offset + n
+         | cons (take_of n) ns' => drop_takes_offset ns' offset
        end.
+
+  Fixpoint drop_takes_len (ns : list drop_takeT) (len : nat)
+    := match ns with
+         | nil => len
+         | cons (drop_of n) ns' => drop_takes_len ns' len - n
+         | cons (take_of n) ns' => min n (drop_takes_len ns' len)
+       end.
+
+  Fixpoint drop_takes_len_pf {len0} (ns : list drop_takeT) (len : nat) (pf : len <= len0) {struct ns}
+  : drop_takes_len ns len <= len0.
+  Proof.
+    refine match ns return drop_takes_len ns len <= len0 with
+             | nil => pf
+             | cons (drop_of n) ns' => Le.le_trans _ _ _ (Minus.le_minus _ _) (@drop_takes_len_pf len0 ns' _ pf)
+             | cons (take_of n) ns' => Le.le_trans _ _ _ (Min.le_min_r _ _) (@drop_takes_len_pf len0 ns' _ pf)
+           end.
+  Defined.
 
   Section production_drop_take.
     Context {len0}
             (parse_nonterminal parse_nonterminal'
-             : forall (str : String) (len : nat),
+             : forall (offset : nat) (len : nat),
                  len <= len0
                  -> nonterminal_carrierT
                  -> bool).
 
     Lemma parse_production'_for_ext_drop_take
-          splits splits'
-          (Hsplits : forall idx it its, splits idx it its = splits' idx it its)
           (str : String)
-          (ext : forall ns len pf nt,
-                     @parse_nonterminal (drop_takes ns str) len pf nt
-                     = @parse_nonterminal' (drop_takes ns str) len pf nt)
+          splits splits'
+          (offset : nat)
           (len : nat)
-          (pf pf' : len <= len0)
-          (prod : production Char)
+          (Hsplits : forall idx len ns, splits idx str (drop_takes_offset ns offset) (drop_takes_len ns len) = splits' idx str (drop_takes_offset ns offset) (drop_takes_len ns len))
+          (ext : forall ns offset len pf nt,
+                     @parse_nonterminal (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt
+                     = @parse_nonterminal' (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt)
           (ns : list _)
-    : parse_production'_for parse_nonterminal splits (drop_takes ns str) pf prod
-      = parse_production'_for parse_nonterminal' splits' (drop_takes ns str) pf' prod.
+          (pf pf' : drop_takes_len ns len <= len0)
+          prod_idx
+    : parse_production'_for str parse_nonterminal splits (drop_takes_offset ns offset) pf prod_idx
+      = parse_production'_for str parse_nonterminal' splits' (drop_takes_offset ns offset) pf' prod_idx.
     Proof.
-      revert ns splits splits' Hsplits str ext len pf pf'; induction prod; simpl; intros;
+      remember (to_production prod_idx) as prod eqn:Heq.
+      unfold parse_production'_for.
+      revert prod_idx Heq ns offset len splits splits' Hsplits ext pf pf'; induction prod; simpl; intros;
+      rewrite <- Heq; simpl;
+      subst_le_proof;
       t_ext idtac.
       erewrite parse_item'_ext.
       { apply f_equal.
-        specialize (fun n ns => IHprod (drop_of n :: ns)%list); simpl in IHprod.
-        auto with nocore. }
+        specialize (IHprod (production_tl prod_idx)).
+        rewrite production_tl_correct in IHprod.
+        generalize dependent (to_production prod_idx); intros; subst.
+        specialize (fun n ns => IHprod eq_refl (drop_of n :: ns)%list); simpl in IHprod.
+        apply IHprod; clear IHprod; auto with nocore. }
       { specialize (fun n ns => ext (take_of n :: ns)%list); simpl in ext.
         auto with nocore. }
     Qed.
 
     Definition parse_production'_ext_drop_take
                (str : String)
-               (ext : forall ns len pf nt,
-                        @parse_nonterminal (drop_takes ns str) len pf nt
-                        = @parse_nonterminal' (drop_takes ns str) len pf nt)
+               (offset : nat)
                (len : nat)
-               (pf pf' : len <= len0)
-               (prod : production Char)
+               (ext : forall ns offset len pf nt,
+                        @parse_nonterminal (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt
+                        = @parse_nonterminal' (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt)
                (ns : list _)
-    : parse_production' parse_nonterminal (drop_takes ns str) pf prod
-      = parse_production' parse_nonterminal' (drop_takes ns str) pf' prod
-      := parse_production'_for_ext_drop_take _ _ (fun _ _ _ => eq_refl) str ext pf pf' prod ns.
+               (pf pf' : drop_takes_len ns len <= len0)
+               prod_idx
+    : parse_production' str parse_nonterminal (drop_takes_offset ns offset) pf prod_idx
+      = parse_production' str parse_nonterminal' (drop_takes_offset ns offset) pf prod_idx
+      := parse_production'_for_ext_drop_take _ _ _ _ _ (fun _ _ _ => eq_refl) ext _ _ _ _.
   End production_drop_take.
 
   Section production.
-    Context {len0}
+    Context {len0} (str : String)
             (parse_nonterminal parse_nonterminal'
-             : forall (str : String) (len : nat),
+             : forall (offset : nat) (len : nat),
                  len <= len0
                  -> nonterminal_carrierT
                  -> bool)
-            (ext : forall str len pf nt,
-                     parse_nonterminal str len pf nt
-                     = parse_nonterminal' str len pf nt).
+            (ext : forall offset len pf nt,
+                     parse_nonterminal offset len pf nt
+                     = parse_nonterminal' offset len pf nt).
 
     Lemma parse_production'_for_ext
           splits splits'
-          (Hsplits : forall idx it its, splits idx it its = splits' idx it its)
-          (str : String)
+          (Hsplits : forall idx offset len, splits idx str offset len = splits' idx str offset len)
+          (offset : nat)
           (len : nat)
           (pf pf' : len <= len0)
-          (prod : production Char)
-    : parse_production'_for parse_nonterminal splits str pf prod
-      = parse_production'_for parse_nonterminal' splits' str pf' prod.
+          prod_idx
+    : parse_production'_for str parse_nonterminal splits offset pf prod_idx
+      = parse_production'_for str parse_nonterminal' splits' offset pf' prod_idx.
     Proof.
       apply parse_production'_for_ext_drop_take with (ns := nil); auto with nocore.
     Qed.
 
     Definition parse_production'_ext
-               (str : String)
+               (offset : nat)
                (len : nat)
                (pf pf' : len <= len0)
-               (prod : production Char)
-    : parse_production' parse_nonterminal str pf prod
-      = parse_production' parse_nonterminal' str pf' prod
-      := parse_production'_for_ext _ _ (fun _ _ _ => eq_refl) str pf pf' prod.
+               prod_idx
+    : parse_production' str parse_nonterminal offset pf prod_idx
+      = parse_production' str parse_nonterminal' offset pf' prod_idx
+      := parse_production'_for_ext _ _ (fun _ _ _ => eq_refl) _ _ _ _.
   End production.
 
   Global Instance parse_production'_for_Proper
   : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
-              ==> (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq)))
+              ==> (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ (pointwise_relation _ eq))))
               ==> eq
               ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
-           (parse_production'_for (len0 := len0)).
+           (parse_production'_for str (len0 := len0)).
   Proof.
     repeat intro; subst.
     apply parse_production'_for_ext;
-    assumption.
+    unfold pointwise_relation in *;
+    eauto with nocore.
   Qed.
 
   Global Instance parse_production'_Proper
-  : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
-              ==> eq
-              ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
-           (parse_production' (len0 := len0)).
+    : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
+                ==> eq
+                ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
+             (parse_production' str (len0 := len0)).
   Proof.
     repeat intro; subst.
     apply parse_production'_ext.
@@ -208,33 +232,33 @@ Section recursive_descent_parser.
   Qed.
 
   Section productions_drop_take.
-    Context {len0}
+    Context {len0} (str : String)
             (parse_nonterminal parse_nonterminal'
-             : forall (str : String)
+             : forall (offset : nat)
                       (len : nat)
                       (pf : len <= len0),
                  nonterminal_carrierT -> bool).
 
     Lemma parse_productions'_ext_drop_take
-          (str : String)
-          (ext : forall ns str len pf nt,
-                   @parse_nonterminal (drop_takes ns str) len pf nt
-                   = @parse_nonterminal' (drop_takes ns str) len pf nt)
+          (ext : forall ns offset len pf nt,
+                   @parse_nonterminal (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt
+                   = @parse_nonterminal' (drop_takes_offset ns offset) (drop_takes_len ns len) pf nt)
+          (offset : nat)
           (len : nat)
-          (pf pf' : len <= len0)
-          (prods : productions Char)
           ns
-    : parse_productions' parse_nonterminal (drop_takes ns str) pf prods
-      = parse_productions' parse_nonterminal' (drop_takes ns str) pf' prods.
+          (pf pf' : drop_takes_len ns len <= len0)
+          (prods : list production_carrierT)
+    : parse_productions' str parse_nonterminal (drop_takes_offset ns offset) pf prods
+      = parse_productions' str parse_nonterminal' (drop_takes_offset ns offset) pf' prods.
     Proof.
       t_ext ltac:(erewrite parse_production'_for_ext_drop_take || expand').
     Qed.
   End productions_drop_take.
 
   Section productions.
-    Context {len0}
+    Context {len0} (str : String)
             (parse_nonterminal parse_nonterminal'
-             : forall (str : String)
+             : forall (offset : nat)
                       (len : nat)
                       (pf : len <= len0),
                  nonterminal_carrierT -> bool)
@@ -243,12 +267,12 @@ Section recursive_descent_parser.
                      = parse_nonterminal' str len pf nt).
 
     Lemma parse_productions'_ext
-               (str : String)
-               (len : nat)
-               (pf pf' : len <= len0)
-               (prods : productions Char)
-    : parse_productions' parse_nonterminal str pf prods
-      = parse_productions' parse_nonterminal' str pf' prods.
+          (offset : nat)
+          (len : nat)
+          (pf pf' : len <= len0)
+          (prods : list production_carrierT)
+    : parse_productions' str parse_nonterminal offset pf prods
+      = parse_productions' str parse_nonterminal' offset pf' prods.
     Proof.
       apply parse_productions'_ext_drop_take with (ns := nil); auto with nocore.
     Qed.
@@ -258,7 +282,7 @@ Section recursive_descent_parser.
   : Proper ((pointwise_relation _ (forall_relation (fun _ => pointwise_relation _ (pointwise_relation _ eq))))
               ==> eq
               ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
-           (parse_productions' (len0 := len0)).
+           (parse_productions' str (len0 := len0)).
   Proof.
     repeat intro; subst.
     apply parse_productions'_ext.
@@ -267,38 +291,38 @@ Section recursive_descent_parser.
 
   Section nonterminals.
     Section step_drop_take.
-      Context {len0 valid_len}
+      Context {len0 valid_len} (str : String)
               (parse_nonterminal parse_nonterminal'
                : forall (p : nat * nat),
                    Wf.prod_relation lt lt p (len0, valid_len)
                    -> forall (valid : nonterminals_listT)
-                             (str : String) (len : nat),
+                             (offset : nat) (len : nat),
                         len <= fst p -> nonterminal_carrierT -> bool).
 
       Definition parse_nonterminal_step_ext_drop_take
                  (valid : nonterminals_listT)
-                 (str : String)
-                 (ext : forall ns p pf valid str len pf' nt,
-                          @parse_nonterminal p pf valid (drop_takes ns str) len pf' nt
-                          = @parse_nonterminal' p pf valid (drop_takes ns str) len pf' nt)
+                 (ext : forall ns p pf valid offset len pf' nt,
+                          @parse_nonterminal p pf valid (drop_takes_offset ns offset) (drop_takes_len ns len) pf' nt
+                          = @parse_nonterminal' p pf valid (drop_takes_offset ns offset) (drop_takes_len ns len) pf' nt)
+                 (offset : nat)
                  (len : nat)
-                 (pf pf' : len <= len0)
-                 (nt : nonterminal_carrierT)
                  ns
-      : parse_nonterminal_step (G := G) parse_nonterminal valid (drop_takes ns str) pf nt
-        = parse_nonterminal_step (G := G) parse_nonterminal' valid (drop_takes ns str) pf' nt.
+                 (pf pf' : drop_takes_len ns len <= len0)
+                 (nt : nonterminal_carrierT)
+      : parse_nonterminal_step str parse_nonterminal valid (drop_takes_offset ns offset) pf nt
+        = parse_nonterminal_step str parse_nonterminal' valid (drop_takes_offset ns offset) pf' nt.
       Proof.
         t_ext ltac:(erewrite parse_productions'_ext_drop_take || expand').
       Qed.
     End step_drop_take.
 
     Section step.
-      Context {len0 valid_len}
+      Context {len0 valid_len} (str : String)
               (parse_nonterminal parse_nonterminal'
                : forall (p : nat * nat),
                    Wf.prod_relation lt lt p (len0, valid_len)
                    -> forall (valid : nonterminals_listT)
-                             (str : String) (len : nat),
+                             (offset : nat) (len : nat),
                         len <= fst p -> nonterminal_carrierT -> bool)
               (ext : forall p pf valid str len pf' nt,
                        parse_nonterminal p pf valid str len pf' nt
@@ -306,12 +330,12 @@ Section recursive_descent_parser.
 
       Definition parse_nonterminal_step_ext
                  (valid : nonterminals_listT)
-                 (str : String)
+                 (offset : nat)
                  (len : nat)
                  (pf pf' : len <= len0)
                  (nt : nonterminal_carrierT)
-      : parse_nonterminal_step (G := G) parse_nonterminal valid str pf nt
-        = parse_nonterminal_step (G := G) parse_nonterminal' valid str pf' nt.
+      : parse_nonterminal_step str parse_nonterminal valid offset pf nt
+        = parse_nonterminal_step str parse_nonterminal' valid offset pf' nt.
       Proof.
         apply parse_nonterminal_step_ext_drop_take with (ns := nil); auto with nocore.
       Qed.
@@ -322,7 +346,7 @@ Section recursive_descent_parser.
                 ==> eq
                 ==> eq
                 ==> forall_relation (fun _ => (fun _ _ => True) ==> eq ==> eq))
-             (parse_nonterminal_step (G := G) (len0 := len0) (valid_len := valid_len)).
+             (parse_nonterminal_step str (len0 := len0) (valid_len := valid_len)).
     Proof.
       repeat intro; subst.
       apply parse_nonterminal_step_ext.

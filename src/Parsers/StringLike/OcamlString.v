@@ -1,12 +1,12 @@
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.Strings.String.
-Require Import Fiat.Parsers.ExtrOcamlPrimitives.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Coq.ZArith.BinInt.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.
+Require Import Fiat.Parsers.ExtrOcamlPrimitives.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Import Fiat.Parsers.ExtrOcamlPrimitives.Ocaml.
 
@@ -93,6 +93,10 @@ Local Ltac t' :=
       => cut (Ocaml.implode (Ocaml.explode x) = Ocaml.implode (Ocaml.explode y));
         [ autorewrite with ocaml; exact (fun z => z)
         | apply f_equal ]
+    | [ H : context[String.get ?s ?n], H' : Strings.String.get ?n (Ocaml.explode ?s) = Some _ |- _ ]
+      => rewrite (proj2 (@StringProperties.get_correct s n _) H') in H
+    | [ H' : Strings.String.get ?n (Ocaml.explode ?s) = Some _ |- context[String.get ?s ?n] ]
+      => rewrite (proj2 (@StringProperties.get_correct s n _) H')
     | [ H : forall n, String.safe_get ?str n = String.safe_get ?str' n |- _ ]
       => assert (forall n, Coq.Strings.String.get n (Ocaml.explode str) = Coq.Strings.String.get n (Ocaml.explode str'))
         by (intro n; specialize (H n); autorewrite with ocaml in H; exact H);
@@ -106,10 +110,13 @@ Local Ltac t' :=
 Local Ltac t := repeat t'.
 
 Module Export Ocaml.
-  Global Instance string_stringlike : StringLike Ascii.ascii
+  Global Instance string_stringlikemin : StringLikeMin Ascii.ascii
     := { String := Ocaml.string;
          length := String.length;
-         get n s := String.safe_get s n;
+         char_at_matches n str P := P (String.get str n) }.
+
+  Global Instance string_stringlike : StringLike Ascii.ascii
+    := { get n s := String.safe_get s n;
          unsafe_get n s := String.get s n;
          take n s := String.sub s 0 n;
          drop n s := String.sub s n (String.length s - n);
@@ -122,7 +129,7 @@ Module Export Ocaml.
 
   Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
   Proof.
-    split; abstract t.
+    split; try abstract t.
   Qed.
 
   Global Instance string_stringiso_properties : StringIsoProperties Ascii.ascii.

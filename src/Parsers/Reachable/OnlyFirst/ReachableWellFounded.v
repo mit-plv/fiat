@@ -4,7 +4,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.Reachable.OnlyF
 Require Import Fiat.Parsers.BaseTypes.
 
 Section rel.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT} {G : grammar Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {predata : @parser_computational_predataT Char} {G : grammar Char}.
 
   Section size.
     Context {ch : Char} {valid : nonterminals_listT}.
@@ -12,7 +12,7 @@ Section rel.
                (size_of_reachable_from_productions : forall {pats}, reachable_from_productions G ch valid pats -> nat)
                {it} (p : reachable_from_item G ch valid it) : nat
       := match p with
-           | ReachableTerminal => 0
+           | ReachableTerminal _ _ => 0
            | ReachableNonTerminal _ _ p' => S (size_of_reachable_from_productions p')
          end.
 

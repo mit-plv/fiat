@@ -12,8 +12,8 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
-  Context {predata : parser_computational_predataT}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}
           {pdata : paren_balanced_hiding_dataT Char}.
 
@@ -43,7 +43,7 @@ Section cfg.
          : generic_pb'_production G transform2 valid0 n0 pat.
     Proof.
       { simpl in *; destruct H; [ left | right ]; eauto. }
-      { simpl in *; subst; destruct H; [ constructor 1 | constructor 2 | constructor 3 ]; eauto.
+      { simpl in *; subst; destruct H; [ constructor 1 | constructor 2 | econstructor 3 ]; eauto.
         { eapply expand_generic_pb'_productions; [ .. | eassumption ]; try apply transform12; trivial. }
         (*{ eapply pb_check_level_le; eassumption. }*)
         (*{ eapply expand_generic_pb'_production; [ .. | eassumption ]; trivial; [].
@@ -123,10 +123,10 @@ Section cfg.
       Proof.
         hnf in H'; unfold alt_option.
         repeat match goal with
-                 | [ |- sigT _ -> _ ] => intros []
-                 | [ |- sig _ -> _ ] => intros []
-                 | [ |- prod _ _ -> _ ] => intros []
-                 | [ |- and _ _ -> _ ] => intros []
+                 | [ |- sigT _ -> _ ] => intros_destruct
+                 | [ |- sig _ -> _ ] => intros_destruct
+                 | [ |- prod _ _ -> _ ] => intros_destruct
+                 | [ |- and _ _ -> _ ] => intros_destruct
                  | _ => intro
                  | _ => progress subst
                  | [ H : size_of_pb'_productions ?x < _ |- _ ] => is_var x; erewrite <- expand_size_of_pb'_productions in H
@@ -223,7 +223,7 @@ Section cfg.
           specialize (minimal_pb'_production__of__pb'_production' h' (fun h'' pf => minimal_pb'_item__of__pb'_item' _ (le_S _ _ pf))).
           specialize (minimal_pb'_item__of__pb'_item' h' (Lt.lt_n_Sn _)).
           subst_body.
-          destruct p as [ | ?? nt' ?? p0' p1' | valid ???? p' ]; simpl_size_of.
+          destruct p as [ | ?? nt' ?? p0' p1' | valid ?????? p' ]; simpl_size_of.
           { left; eexists (PBProductionNil _ _ _); reflexivity. }
           { assert (size_of_pb'_productions p0' < h') by exact (lt_helper_1 H_h).
             assert (size_of_pb'_production p1' < h') by exact (lt_helper_2 H_h).
@@ -270,7 +270,7 @@ Section cfg.
               | right ];
               unfold pb'_production__of__minimal_pb'_production, pb'_productions__of__minimal_pb'_productions in *; simpl;
               rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
-            { eexists (PBProductionConsTerminal _ _ _ p0'').
+            { eexists (PBProductionConsTerminal _ _ _ _ p0'').
               rewrite ?expand_size_of_pb'_production, ?expand_size_of_pb'_productions in *.
               simpl_size_of.
               apply Le.le_n_S; assumption. }
@@ -282,6 +282,7 @@ Section cfg.
                         | reflexivity
                         | omega ]. } }
           Grab Existential Variables.
+          assumption.
           assumption.
         Defined.
       End production.

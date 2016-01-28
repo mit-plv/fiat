@@ -11,7 +11,7 @@ Lemma nat_of_ascii_small x
 Proof.
   apply Compare_dec.leb_complete.
   revert x.
-  repeat intros []; lazy; reflexivity.
+  intros [[] [] [] [] [] [] [] []]; lazy; reflexivity.
 Qed.
 
 Lemma substring_correct3 {s : string} m (H : length s <= m)
@@ -233,4 +233,10 @@ Proof.
   apply Min.min_case_strong; try reflexivity.
   intro H.
   apply substring_correct4; omega.
+Qed.
+
+Lemma string_copy_length n ch
+: String.length (string_copy n ch) = n.
+Proof.
+  induction n; simpl; eauto.
 Qed.

@@ -5,6 +5,14 @@ Require Import Fiat.Common.Equality.
 Set Implicit Arguments.
 
 Module Export List.
+  Definition list_caset A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs))
+             ls
+  : P ls
+    := match ls with
+         | nil => N
+         | x::xs => C x xs
+       end.
+
   Section InT.
     Context {A : Type} (a : A).
 
@@ -222,5 +230,15 @@ Module Export List.
              | None => option_map (fun ab => (S (fst ab), snd ab)) (first_index_recr f xs ys)
              | Some r => Some (0, r)
            end
+       end.
+
+  Fixpoint sig_In {A} (ls : list A) : list { x : A | List.In x ls }
+    := match ls return list { x : A | List.In x ls } with
+         | nil => nil
+         | x::xs
+           => (exist _ x (or_introl eq_refl))
+                :: (List.map
+                      (fun xp => exist _ (proj1_sig xp) (or_intror (proj2_sig xp)))
+                      (@sig_In A xs))
        end.
 End List.

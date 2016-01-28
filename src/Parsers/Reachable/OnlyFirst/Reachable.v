@@ -11,7 +11,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {predata : parser_computational_predataT} (G : grammar Char).
+  Context {Char} {HSLM : StringLikeMin Char} {predata : @parser_computational_predataT Char} (G : grammar Char).
 
   Context (ch : Char) (valid : nonterminals_listT).
 
@@ -28,7 +28,7 @@ Section cfg.
                                              -> reachable_from_production its
                                              -> reachable_from_production (it::its)
   with reachable_from_item : item Char -> Type :=
-  | ReachableTerminal : reachable_from_item (Terminal ch)
+  | ReachableTerminal : forall P, is_true (P ch) -> reachable_from_item (Terminal P)
   | ReachableNonTerminal : forall nt, is_valid_nonterminal valid (of_nonterminal nt)
                                       -> reachable_from_productions (Lookup G nt)
                                       -> reachable_from_item (NonTerminal nt).

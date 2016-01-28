@@ -1,10 +1,11 @@
 (** * Definition of Context Free Grammars *)
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 Require Export Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
+Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 
 Set Implicit Arguments.
 
@@ -12,7 +13,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char).
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} (G : pregrammar Char).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.

@@ -13,13 +13,94 @@ Section IndexedImpl.
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     start sharpening ADT.
-    start honing parser using indexed representation.
+    Time start honing parser using indexed representation.
 
     Time hone method "splits".
     {
-      simplify parser splitter.
-      let lem := constr:(@refine_binop_table _ _ _ _) in
-      setoid_rewrite lem; [ | solve [reflexivity | repeat esplit].. ]; presimpl_after_refine_binop_table.
+      (*Start Profiling.*)
+      Time simplify parser splitter.
+      (*Show Profile.*)
+      (*
+
+total time:      3.578s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─simplify parser splitter --------------   0.0% 100.0%       1    3.578s
+─simplify_parser_splitter' -------------   0.4% 100.0%      13    0.406s
+─simplify ------------------------------   0.0% 100.0%       1    3.578s
+─simplify with monad laws --------------   0.0%  37.1%      12    0.281s
+─simplify_with_applied_monad_laws ------   1.7%  37.1%      12    0.281s
+─unguard -------------------------------   0.0%  10.9%      13    0.188s
+─rewrite ?(unguard [0]) ----------------  10.5%  10.9%      13    0.188s
+─rewrite !if_aggregate3 by solve_prod_be   3.9%   7.9%       4    0.172s
+─eapply refine_under_bind_helper -------   7.9%   7.9%      91    0.016s
+─rewrite !if_aggregate2 by solve_prod_be   4.8%   7.0%       6    0.109s
+─eapply refine_under_bind_helper_1 -----   6.6%   6.6%      91    0.031s
+─rewrite <- !Bool.andb_orb_distrib_r ---   6.6%   6.6%      11    0.078s
+─eapply refine_under_bind_helper_2 -----   6.6%   6.6%      91    0.031s
+─solve_prod_beq ------------------------   0.9%   6.1%       8    0.063s
+─rewrite !if_aggregate -----------------   5.2%   5.2%       8    0.109s
+─rewrite <- !Bool.andb_orb_distrib_l ---   5.2%   5.2%       9    0.063s
+─apply refine_bind_bind_helper ---------   4.8%   4.8%      93    0.016s
+─apply refine_unit_bind_helper ---------   4.8%   4.8%      93    0.016s
+─apply refine_bind_unit_helper ---------   3.9%   3.9%      95    0.016s
+─rewrite !beq_0_1_leb ------------------   3.5%   3.5%       7    0.031s
+─rewrite <- !BoolFacts.andb_orb_distrib_   3.5%   3.5%       8    0.031s
+─rewrite <- !Bool.andb_assoc -----------   3.1%   3.1%       8    0.031s
+─rewrite <- !Bool.orb_andb_distrib_l ---   2.6%   2.6%       8    0.016s
+─rewrite <- !Bool.orb_assoc ------------   2.6%   2.6%       8    0.031s
+─rewrite <- !Bool.orb_andb_distrib_r ---   2.6%   2.6%       8    0.016s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─simplify parser splitter --------------   0.0% 100.0%       1    3.578s
+└simplify ------------------------------   0.0% 100.0%       1    3.578s
+└simplify_parser_splitter' -------------   0.4% 100.0%      13    0.406s
+ ├─simplify with monad laws ------------   0.0%  37.1%      12    0.281s
+ │└simplify_with_applied_monad_laws ----   1.7%  37.1%      12    0.281s
+ │ ├─eapply refine_under_bind_helper ---   7.9%   7.9%      91    0.016s
+ │ ├─eapply refine_under_bind_helper_1 -   6.6%   6.6%      91    0.031s
+ │ ├─eapply refine_under_bind_helper_2 -   6.6%   6.6%      91    0.031s
+ │ ├─apply refine_unit_bind_helper -----   4.8%   4.8%      93    0.016s
+ │ ├─apply refine_bind_bind_helper -----   4.8%   4.8%      93    0.016s
+ │ └─apply refine_bind_unit_helper -----   3.9%   3.9%      95    0.016s
+ ├─unguard -----------------------------   0.0%  10.9%      13    0.188s
+ │└rewrite ?(unguard [0]) --------------  10.5%  10.9%      13    0.188s
+ ├─rewrite !if_aggregate3 by solve_prod_   3.9%   7.9%       4    0.172s
+ │└solve_prod_beq ----------------------   0.0%   3.9%       4    0.063s
+ ├─rewrite !if_aggregate2 by solve_prod_   4.8%   7.0%       6    0.109s
+ │└solve_prod_beq ----------------------   0.9%   2.2%       4    0.047s
+ ├─rewrite <- !Bool.andb_orb_distrib_r -   6.6%   6.6%      11    0.078s
+ ├─rewrite !if_aggregate ---------------   5.2%   5.2%       8    0.109s
+ ├─rewrite <- !Bool.andb_orb_distrib_l -   5.2%   5.2%       9    0.063s
+ ├─rewrite !beq_0_1_leb ----------------   3.5%   3.5%       7    0.031s
+ ├─rewrite <- !BoolFacts.andb_orb_distri   3.5%   3.5%       8    0.031s
+ ├─rewrite <- !Bool.andb_assoc ---------   3.1%   3.1%       8    0.031s
+ ├─rewrite <- !Bool.orb_andb_distrib_l -   2.6%   2.6%       8    0.016s
+ ├─rewrite <- !Bool.orb_andb_distrib_r -   2.6%   2.6%       8    0.016s
+ └─rewrite <- !Bool.orb_assoc ----------   2.6%   2.6%       8    0.031s
+ *)
+      (*Start Profiling.*)
+      Time refine_binop_table.
+      (*Show Profile.*)
+      (*
+total time:      6.094s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─setoid_rewrite_refine_binop_table_idx -   1.0% 100.0%       1    6.094s
+─refine_binop_table --------------------   0.0% 100.0%       1    6.094s
+─lazy beta iota zeta delta in c0 -------  92.1%  92.1%       1    5.609s
+─setoid_rewrite H ----------------------   4.1%   5.4%       1    0.328s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─refine_binop_table --------------------   0.0% 100.0%       1    6.094s
+└setoid_rewrite_refine_binop_table_idx -   1.0% 100.0%       1    6.094s
+ ├─lazy beta iota zeta delta in c0 -----  92.1%  92.1%       1    5.609s
+ └─setoid_rewrite H --------------------   4.1%   5.4%       1    0.328s
+ *)
       finish honing parser method.
     }
 

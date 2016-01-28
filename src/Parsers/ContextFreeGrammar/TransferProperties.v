@@ -10,29 +10,31 @@ Set Implicit Arguments.
 Local Open Scope list_scope.
 
 Section cfg.
-  Context {Char} {HSL1 HSL2 : StringLike Char}
+  Context {Char} {HSLM1 HSLM2 : StringLikeMin Char}
+          {HSL1 : @StringLike Char HSLM1}
+          {HSL2 : @StringLike Char HSLM2}
           {G : grammar Char}
-          {R : @String Char HSL1 -> @String Char HSL2 -> Prop}
+          {R : @String Char HSLM1 -> @String Char HSLM2 -> Prop}
           {TR : transfer_respectful R}.
   Context {P : String.string -> Type}.
 
   Definition transfer_forall_parse_of_item'
         (transfer_forall_parse_of
          : forall str1 str2 it (HR : R str1 str2) p,
-             @Forall_parse_of Char _ G (fun _ => P) str1 it p
-             -> @Forall_parse_of Char _ G (fun _ => P) str2 it (transfer_parse_of HR p))
+             @Forall_parse_of Char _ _ G (fun _ => P) str1 it p
+             -> @Forall_parse_of Char _ _ G (fun _ => P) str2 it (transfer_parse_of HR p))
         {str1 str2 it}
         (HR : R str1 str2)
         {p}
-  : @Forall_parse_of_item' Char HSL1 G (fun _ => P) (@Forall_parse_of _ _ _ (fun _ => P)) str1 it p
-    -> @Forall_parse_of_item' Char HSL2 G (fun _ => P) (@Forall_parse_of _ _ _ (fun _ => P)) str2 it (transfer_parse_of_item HR p)
+  : @Forall_parse_of_item' Char _ HSL1 G (fun _ => P) (@Forall_parse_of _ _ _ _ (fun _ => P)) str1 it p
+    -> @Forall_parse_of_item' Char _ HSL2 G (fun _ => P) (@Forall_parse_of _ _ _ _ (fun _ => P)) str2 it (transfer_parse_of_item HR p)
     := match
         p in (parse_of_item _ _ it)
         return
-        (@Forall_parse_of_item' Char HSL1 G (fun _ => P) (@Forall_parse_of _ _ _ (fun _ => P)) str1 it p
-         -> @Forall_parse_of_item' Char HSL2 G (fun _ => P) (@Forall_parse_of _ _ _ (fun _ => P)) str2 it (transfer_parse_of_item HR p))
+        (@Forall_parse_of_item' Char _ HSL1 G (fun _ => P) (@Forall_parse_of _ _ _ _ (fun _ => P)) str1 it p
+         -> @Forall_parse_of_item' Char _ HSL2 G (fun _ => P) (@Forall_parse_of _ _ _ _ (fun _ => P)) str2 it (transfer_parse_of_item HR p))
       with
-        | ParseTerminal _ _ => fun x => x
+        | ParseTerminal _ _ _ _ => fun x => x
         | ParseNonTerminal _ H' p' => fun xy => (fst xy, transfer_forall_parse_of _ _ _ _ p' (snd xy))
       end.
 
@@ -41,13 +43,13 @@ Section cfg.
            (HR : R str1 str2)
            {p}
            {struct p}
-  : @Forall_parse_of Char HSL1 G (fun _ => P) str1 pats p
-    -> @Forall_parse_of Char HSL2 G (fun _ => P) str2 pats (transfer_parse_of HR p)
+  : @Forall_parse_of Char _ HSL1 G (fun _ => P) str1 pats p
+    -> @Forall_parse_of Char _ HSL2 G (fun _ => P) str2 pats (transfer_parse_of HR p)
     := match
         p in (parse_of _ _ pats)
         return
-        (@Forall_parse_of Char HSL1 G (fun _ => P) str1 pats p
-         -> @Forall_parse_of Char HSL2 G (fun _ => P) str2 pats (transfer_parse_of HR p))
+        (@Forall_parse_of Char _ HSL1 G (fun _ => P) str1 pats p
+         -> @Forall_parse_of Char _ HSL2 G (fun _ => P) str2 pats (transfer_parse_of HR p))
       with
         | ParseHead _ _ p' => @transfer_forall_parse_of_production _ _ _ _ p'
         | ParseTail _ _ p' => @transfer_forall_parse_of _ _ _ _ p'
@@ -57,13 +59,13 @@ Section cfg.
          (HR : R str1 str2)
          {p}
          {struct p}
-       : @Forall_parse_of_production Char HSL1 G (fun _ => P) str1 pat p
-         -> @Forall_parse_of_production Char HSL2 G (fun _ => P) str2 pat (transfer_parse_of_production HR p)
+       : @Forall_parse_of_production Char _ HSL1 G (fun _ => P) str1 pat p
+         -> @Forall_parse_of_production Char _ HSL2 G (fun _ => P) str2 pat (transfer_parse_of_production HR p)
        := match
            p in (parse_of_production _ _ pat)
            return
-           (@Forall_parse_of_production Char HSL1 G (fun _ => P) str1 pat p
-            -> @Forall_parse_of_production Char HSL2 G (fun _ => P) str2 pat (transfer_parse_of_production HR p))
+           (@Forall_parse_of_production Char _ HSL1 G (fun _ => P) str1 pat p
+            -> @Forall_parse_of_production Char _ HSL2 G (fun _ => P) str2 pat (transfer_parse_of_production HR p))
          with
            | ParseProductionNil _ => fun x => x
            | ParseProductionCons _ _ _ p0 p1
@@ -79,7 +81,7 @@ Section cfg.
              {str1 str2 it}
              (HR : R str1 str2)
              {p}
-  : @Forall_parse_of_item Char HSL1 G (fun _ => P) str1 it p
-    -> @Forall_parse_of_item Char HSL2 G (fun _ => P) str2 it (transfer_parse_of_item HR p)
+  : @Forall_parse_of_item Char _ HSL1 G (fun _ => P) str1 it p
+    -> @Forall_parse_of_item Char _ HSL2 G (fun _ => P) str2 it (transfer_parse_of_item HR p)
     := @transfer_forall_parse_of_item' (@transfer_forall_parse_of) str1 str2 it HR p.
 End cfg.

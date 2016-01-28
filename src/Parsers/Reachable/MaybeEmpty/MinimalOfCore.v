@@ -13,8 +13,8 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
-  Context {predata : parser_computational_predataT}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {G : grammar Char}.
+  Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
   Definition maybe_empty_item__of__minimal_maybe_empty_item'
@@ -137,10 +137,10 @@ Section cfg.
     Proof.
       hnf in H'; unfold alt_option.
       repeat match goal with
-               | [ |- sigT _ -> _ ] => intros []
-               | [ |- sig _ -> _ ] => intros []
-               | [ |- prod _ _ -> _ ] => intros []
-               | [ |- and _ _ -> _ ] => intros []
+               | [ |- sigT _ -> _ ] => intros_destruct
+               | [ |- sig _ -> _ ] => intros_destruct
+               | [ |- prod _ _ -> _ ] => intros_destruct
+               | [ |- and _ _ -> _ ] => intros_destruct
                | _ => intro
                | _ => progress subst
                | [ |- sigT _ ] => esplit

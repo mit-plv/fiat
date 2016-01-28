@@ -2,6 +2,7 @@
 Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
 Require Export Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
@@ -13,8 +14,8 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} (G : grammar Char)
+          {predata : @parser_computational_predataT Char}
           (Hvalid : grammar_valid G).
 
   Local Notation P' nt := (is_true (is_valid_nonterminal initial_nonterminals_data nt)) (only parsing).
@@ -70,11 +71,39 @@ Section cfg.
              (p : parse_of_item G str it)
   : Forall_parse_of_item (fun _ nt' => P nt') p
     := @Forall_parse_of_item_valid' (@Forall_parse_of_valid) str it Hit p.
+
+  Global Instance item_valid_Proper_iff
+  : Proper (item_code ==> iff) (@item_valid Char _).
+  Proof.
+    intros [?|?] [?|?] Heq; simpl in *; subst;
+    try solve [ reflexivity
+              | destruct Heq ].
+  Qed.
+
+  Global Instance production_valid_Proper_iff
+  : Proper (production_code ==> iff) (@production_valid Char _).
+  Proof.
+    intros ?? Heq; induction Heq; try reflexivity.
+    split; intro H'; inversion_clear H'; constructor;
+    setoid_subst_rel (@item_code Char);
+    try assumption;
+    split_iff; unfold production_valid in *; eauto with nocore.
+  Qed.
+
+  Global Instance productions_valid_Proper_iff
+  : Proper (productions_code ==> iff) (@productions_valid Char _).
+  Proof.
+    intros ?? Heq; induction Heq; try reflexivity.
+    split; intro H'; inversion_clear H'; constructor;
+    setoid_subst_rel (@production_code Char);
+    try assumption;
+    split_iff; unfold productions_valid in *; eauto with nocore.
+  Qed.
 End cfg.
 
 Section uip.
-  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}.
+  Context {Char : Type} {HSLM : StringLikeMin Char} (G : grammar Char)
+          {predata : @parser_computational_predataT Char}.
 
   Lemma item_valid_proof_irrelevance {it : item Char} (x y : item_valid it)
   : x = y.
@@ -100,8 +129,8 @@ Section uip.
 End uip.
 
 Section app.
-  Context {Char : Type} {HSL : StringLike Char} (G : grammar Char)
-          {predata : parser_computational_predataT}.
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} (G : grammar Char)
+          {predata : @parser_computational_predataT Char}.
 
   Lemma hd_production_valid
         (it : item Char)
@@ -175,7 +204,8 @@ Section app.
       specialize (Hvalid nt Hreach).
       unfold productions_valid in Hvalid.
       rewrite Forall_forall in Hvalid.
-      eapply production_valid_app, Hvalid; eassumption.
+      eapply production_valid_app.
+      apply Hvalid; eassumption.
     Qed.
   End convenience.
 End app.

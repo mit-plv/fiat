@@ -2,10 +2,7 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 Definition plus_expr_grammar : grammar Ascii.ascii :=
-  [[[ ("expr" ::== << $< "pexpr" >$
-                    | $< "pexpr" $ #"+" $ "expr" >$ >>);;
-      ("pexpr" ::== << $< "number" >$
-                     | $< #"(" $ "expr" $ #")" >$ >>);;
-      ("digit" ::== << $< #"0" >$ | $< #"1" >$ | $< #"2" >$ | $< #"3" >$ | $< #"4" >$ | $< #"5" >$ | $< #"6" >$ | $< #"7" >$ | $< #"8" >$ | $< #"9" >$ >>);;
-      ("number" ::== << $< "digit" >$ | $< "digit" $ "number" >$ >>)
+  [[[ "expr" ::== "pexpr" || "pexpr" "+" "expr";;
+      "pexpr" ::== "number" || "(" "expr" ")";;
+      "number" ::== [0-9] || [0-9] "number"
   ]]].

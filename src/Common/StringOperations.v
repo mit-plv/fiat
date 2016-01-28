@@ -16,3 +16,9 @@ Fixpoint string_of_list (ls : list Ascii.ascii) : string
        | nil => ""
        | ch :: ls' => String ch (string_of_list ls')
      end.
+
+Fixpoint string_copy (n : nat) (ch : Ascii.ascii)
+  := match n with
+       | 0 => EmptyString
+       | S n' => String.String ch (string_copy n' ch)
+     end.

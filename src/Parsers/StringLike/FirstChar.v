@@ -12,7 +12,7 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section for_first_char.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition for_first_char (str : String) (P : Char -> Prop)
     := forall ch,

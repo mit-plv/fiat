@@ -4,40 +4,51 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 
 Set Implicit Arguments.
 
+Class ceq {A} (x y : A) := ceq' : x = y.
+Global Instance ceq_refl {A} (x : A) : ceq x x := eq_refl.
+
 Section example_parse_string_grammar.
   Context (G : grammar Ascii.ascii)
-          {HSL : StringLike Ascii.ascii}
-          {HSLP : StringLikeProperties Ascii.ascii}.
+          {G' : pregrammar Ascii.ascii}
+          {HGeq : ceq G G'}
+          {HSLM : StringLikeMin Ascii.ascii}.
 
   Definition brute_force_parse_nonterminal
   : @String Ascii.ascii _
     -> String.string
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_nonterminal (G := G).
+    := let dummy := HGeq in let data := @brute_force_data Ascii.ascii _ G' in parse_nonterminal.
 
   Definition brute_force_parse_production
              (str : @String Ascii.ascii _)
-  : production Ascii.ascii
+  : BaseTypes.production_carrierT
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_production (G := G) str.
+    := let dummy := HGeq in let data := @brute_force_data Ascii.ascii _ G' in parse_production str.
 
   Definition brute_force_parse_productions
              (str : @String Ascii.ascii _)
-  : productions Ascii.ascii
+  : list BaseTypes.production_carrierT
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_productions (G := G) str.
+    := let dummy := HGeq in let data := @brute_force_data Ascii.ascii _ G' in parse_productions str.
 
   Definition brute_force_parse_item
              (str : @String Ascii.ascii _)
   : item Ascii.ascii
     -> bool
-    := let data := @brute_force_data Ascii.ascii _ G in parse_item (G := G) str.
+    := let dummy := HGeq in let data := @brute_force_data Ascii.ascii _ G' in parse_item str.
 
   Definition brute_force_parse
   : String -> bool
     := fun str => brute_force_parse_nonterminal str G.
 End example_parse_string_grammar.
+
+Arguments brute_force_parse G {G' HGeq _} _.
+Arguments brute_force_parse_item G {G' HGeq _} _ _.
+Arguments brute_force_parse_production G {G' HGeq _} _ _.
+Arguments brute_force_parse_productions G {G' HGeq _} _ _.
+Arguments brute_force_parse_nonterminal G {G' HGeq _} _ _.

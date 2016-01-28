@@ -33,7 +33,7 @@ Definition BookStoreSchema :=
               schema <sAUTHOR :: string,
                       sTITLE :: string,
                       sISBN :: nat>
-                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
+              where attributes [sTITLE; sAUTHOR] depend on [sISBN];
       relation sORDERS has
               schema <sISBN :: nat,
                       sDATE :: nat> ]
@@ -71,31 +71,31 @@ Definition BookStoreSpec : ADT BookStoreSig :=
     QueryADTRep BookStoreSchema {
     Def Constructor0 "Init" : rep := empty,
 
-    Def Method1 "PlaceOrder" ( r : rep) (o : Order ) : rep * bool :=
+    Def Method1 "PlaceOrder" (r : rep) (o : Order) : rep * bool :=
         Insert o into r!sORDERS,
 
     Def Method1 "DeleteOrder" (r : rep) (oid : nat) : rep * list Order :=
-       Delete o from r!sORDERS where o!sISBN = oid,
+        Delete o from r!sORDERS where o!sISBN = oid,
 
-    Def Method1 "AddBook" (r : rep) (b : Book ) : rep * bool :=
-        Insert b into r!sBOOKS ,
+    Def Method1 "AddBook" (r : rep) (b : Book) : rep * bool :=
+        Insert b into r!sBOOKS,
 
-    Def Method1 "DeleteBook" ( r : rep) (id : nat ) : rep * list Book :=
+    Def Method1 "DeleteBook" (r : rep) (id : nat) : rep * list Book :=
         Delete book from r!sBOOKS where book!sISBN = id,
 
     Def Method1 "GetTitles" (r : rep) (author : string) : rep * list string :=
-        titles <- For (b in r ! sBOOKS)
-               Where (author = b!sAUTHOR)
-               Return (b!sTITLE);
-    ret (r, titles),
+        titles <- For (b in r!sBOOKS)
+                  Where (author = b!sAUTHOR)
+                  Return (b!sTITLE);
+        ret (r, titles),
 
-    Def Method1 "NumOrders" (r : rep) (author : string ) : rep * nat :=
-      count <- Count (For (o in r!sORDERS) (b in r!sBOOKS)
-                              Where (author = b!sAUTHOR)
-                              Where (o!sISBN = b!sISBN)
-                              Return ());
-      ret (r, count)
-}%methDefParsing.
+    Def Method1 "NumOrders" (r : rep) (author : string) : rep * nat :=
+        count <- Count (For (o in r!sORDERS) (b in r!sBOOKS)
+                        Where (author = b!sAUTHOR)
+                        Where (o!sISBN = b!sISBN)
+                        Return ());
+        ret (r, count)
+  }%methDefParsing.
 
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
@@ -248,7 +248,7 @@ Proof.
         (* abstract ones, i.e. lists for sets. The type's *)
         (* parametricity is witnessed by FunctorRepT. *)
         (pRepT : (Fin.t DelegateIDs -> Type) -> Type)
-        
+
         (* The initial representation type. *)
         (RepT := pRepT AbstractReps)
 
@@ -484,7 +484,7 @@ Proof.
                       ltac:(fun a =>
                               k ({| prim_fst := a;
                                    prim_snd := b |})))
-        end.      
+        end.
 
       Iterate_Dep_Type_BoundedIndex_evar 2
                                          (fun idx : Fin.t (numRawQSschemaSchemas BookStoreSchema) =>
@@ -511,47 +511,47 @@ Proof.
     |- FullySharpenedUnderDelegates (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
     (* We build a bunch of evars in order to decompose the goal *)
     (* into a single subgoal for each constructor. *)
-    let DelegateIDs := (eval compute in DelegateIDs') in 
+    let DelegateIDs := (eval compute in DelegateIDs') in
     make_Vector_of_evar DelegateIDs nat
-      ltac:(fun numDelegateConstructors' => 
-        let numDelegateConstructors := constr:(Vector.nth numDelegateConstructors') in 
+      ltac:(fun numDelegateConstructors' =>
+        let numDelegateConstructors := constr:(Vector.nth numDelegateConstructors') in
     make_Vector_of_evar DelegateIDs nat
       ltac:(fun numDelegateMethods' =>
-        let numDelegateMethods := constr:(Vector.nth numDelegateMethods') in 
-    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs 
-                (fun (idx : Fin.t DelegateIDs)=> 
-                   Vector.t consSig (numDelegateConstructors idx))
-      ltac:(fun DelegateConstructorSigs' => 
+        let numDelegateMethods := constr:(Vector.nth numDelegateMethods') in
     Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
-                (fun (idx : Fin.t DelegateIDs)=> 
+                (fun (idx : Fin.t DelegateIDs)=>
+                   Vector.t consSig (numDelegateConstructors idx))
+      ltac:(fun DelegateConstructorSigs' =>
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
+                (fun (idx : Fin.t DelegateIDs)=>
                    Vector.t methSig (numDelegateMethods idx))
       ltac:(fun DelegateMethodSigs' =>
         let DelegateConstructorSigs :=
             constr:(Lookup_Iterate_Dep_Type
-                      (fun (idx : Fin.t DelegateIDs)=> 
+                      (fun (idx : Fin.t DelegateIDs)=>
                          Vector.t consSig (numDelegateConstructors idx))
                       DelegateConstructorSigs') in
         let DelegateMethodSigs :=
             constr:(Lookup_Iterate_Dep_Type
-                      (fun (idx : Fin.t DelegateIDs)=> 
+                      (fun (idx : Fin.t DelegateIDs)=>
                          Vector.t methSig (numDelegateMethods idx))
                       DelegateMethodSigs') in
         let DelegateSigs :=
             constr:(fun idx =>
                       BuildADTSig (DelegateConstructorSigs idx) (DelegateMethodSigs idx)) in
     Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
-                          (fun (idx : Fin.t DelegateIDs) => 
+                          (fun (idx : Fin.t DelegateIDs) =>
                              ilist (B := consDef (Rep := AbstractReps idx))
                                    (DelegateConstructorSigs idx))
-      ltac:(fun DelegateConstructorSpecs' => 
+      ltac:(fun DelegateConstructorSpecs' =>
     Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
                 (fun (idx : Fin.t DelegateIDs) =>
                   ilist (B := methDef (Rep := AbstractReps idx))
                         (DelegateMethodSigs idx))
-      ltac:(fun DelegateMethodSpecs' => 
+      ltac:(fun DelegateMethodSpecs' =>
         let DelegateConstructorSpecs :=
             constr:(Lookup_Iterate_Dep_Type
-                      (fun (idx : Fin.t DelegateIDs) => 
+                      (fun (idx : Fin.t DelegateIDs) =>
                          ilist (B := consDef (Rep := AbstractReps idx))
                                (DelegateConstructorSigs idx))
                       DelegateConstructorSpecs') in
@@ -563,7 +563,7 @@ Proof.
                       DelegateMethodSpecs') in
         let DelegateSpecs :=
             constr:(fun idx =>
-                      BuildADT (DelegateConstructorSpecs idx) (DelegateMethodSpecs idx)) in 
+                      BuildADT (DelegateConstructorSpecs idx) (DelegateMethodSpecs idx)) in
       ilist_of_evar_dep' n
         (Fin.t DelegateIDs -> Type)
         (fun D =>
@@ -616,7 +616,7 @@ Proof.
     identify_Abstract_Rep_Use
       ltac:(type of r_o)
       AbstractReps ltac:(k r_o)
-      
+
   end.
 
 FullySharpenEachMethod_w_Delegates
@@ -642,13 +642,13 @@ find_Abstract_Rep
           (* operation conversion. *)
           makeEvar (DelegateReps n)
                               ltac:(fun r_n' =>
-                                      let AbsR_r_o := fresh in 
+                                      let AbsR_r_o := fresh in
                                       assert (AbsR (ValidImpls n) r_o r_n')
                                         as AbsR_r_o by intuition eauto);
         (* Generalize the refineADT proof for the concrete representation*)
         (* type [r_n'] so that we can add a new method to its spec. *)
         let ValidImplT' := (type of (ValidImpls n)) in
-        let ValidImplT := (eval simpl in ValidImplT') in 
+        let ValidImplT := (eval simpl in ValidImplT') in
         pose (ValidImpls n : ValidImplT)
        ).
 
@@ -724,7 +724,7 @@ Fixpoint refineObserver' {oldRep newRep}
          (dom : list Type)
          (cod : option Type) {struct dom} :=
   match
-    dom as dom'             
+    dom as dom'
     return
     (observerType' oldRep dom' cod
      -> methodType' newRep dom' cod
@@ -734,7 +734,7 @@ Fixpoint refineObserver' {oldRep newRep}
     match cod as cod' return
           (observerType' oldRep [] cod' -> methodType' newRep [] cod' -> Prop)
     with
-    | Some cod' => 
+    | Some cod' =>
       fun oldObserver newMethod =>
         refine oldObserver
                (r <- newMethod; ret (snd r))
@@ -751,7 +751,7 @@ Definition refineObserver {oldRep newRep}
            (AbsR : oldRep -> newRep -> Prop)
            (dom : list Type) (cod : option Type)
            (oldObserver : observerType oldRep dom cod)
-           (newMethod : methodType newRep dom cod) := 
+           (newMethod : methodType newRep dom cod) :=
   forall (r_o : oldRep) (r_n : newRep),
     AbsR r_o r_n
     -> refineObserver' AbsR dom cod (oldObserver r_o) (newMethod r_n).
@@ -781,7 +781,7 @@ Proof.
       intros v Comp_v; computes_to_inv; subst; computes_to_econstructor.
   - intros.
     eapply IHdom with
-    (oldObserver := fun r_o => oldObserver r_o d)            
+    (oldObserver := fun r_o => oldObserver r_o d)
       (oldMethod := fun r_o => oldMethod r_o d)
       (newMethod := fun r_n => newMethod r_n d);
     intros; subst; eauto.
@@ -796,12 +796,12 @@ Fixpoint liftObserverToMethod'
          (r : rep)
          {struct dom}
   : methodType' rep dom cod :=
-  match dom as dom' return 
+  match dom as dom' return
         observerType' rep dom' cod
         -> methodType' rep dom' cod
   with
   | [] =>
-    match cod as cod' return 
+    match cod as cod' return
         observerType' rep [ ] cod'
         -> methodType' rep [ ] cod' with
     | Some cod' => fun observer => r' <- observer; ret (r, r')
@@ -889,7 +889,7 @@ Definition
       eapply (ADTRefinementPreservesMethods ValidImpl midx).
       Qed.
       idtac.
-      
+
 match goal with
   H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
                 _
@@ -916,7 +916,7 @@ match goal with
                               methCod := Some (nat : Type) |}
                                            (fun (r_o : Rep) (d : Order) =>
                                               idx <- { idx | UnConstrFreshIdx r_o idx};
-                                            ret (r_o, idx)))        
+                                            ret (r_o, idx)))
                            methDefs');
              apply (@Implement_Abstract_Observer Rep n consSigs (S n'')
                                                  methSigs
@@ -945,20 +945,20 @@ find_Abstract_Rep
           (* operation conversion. *)
           makeEvar (DelegateReps n)
                               ltac:(fun r_n' =>
-                                      let AbsR_r_o := fresh in 
+                                      let AbsR_r_o := fresh in
                                       assert (AbsR (ValidImpls n) r_o r_n')
                                         as AbsR_r_o by intuition eauto);
         (* Generalize the refineADT proof for the concrete representation*)
         (* type [r_n'] so that we can add a new method to its spec. *)
         let ValidImplT' := (type of (ValidImpls n)) in
-        let ValidImplT := (eval simpl in ValidImplT') in 
+        let ValidImplT := (eval simpl in ValidImplT') in
         pose (ValidImpls n : ValidImplT)
        ).
 
 match goal with
   H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
                 _
-  |- refine ?c ?H0 => 
+  |- refine ?c ?H0 =>
   makeEvar nat
     ltac:(fun n'' =>
   makeEvar (Vector.t methSig n'')
@@ -968,7 +968,7 @@ match goal with
   makeEvar methSig
      ltac:(fun methSig' =>
   makeEvar (@methDef Rep methSig')
-     ltac:(fun methDef' =>              
+     ltac:(fun methDef' =>
              unify methDefs
                    (icons
                      (@Build_methDef
@@ -984,7 +984,7 @@ match goal with
            GetAttributeRaw d Fin.F1 =
            GetAttributeRaw r1 (Fin.FS (Fin.FS Fin.F1)))) queriedList})))
                      methDefs');
-           
+
              apply (@Implement_Abstract_Observer
                      Rep
                      n consSigs (S n'')
@@ -1045,7 +1045,7 @@ Show Existentials.
 finish honing.
 simpl in *.
 simpl in *.
-               
+
              assert (@refineMethod _ _ (AbsR (ValidImpls (Fin.FS Fin.F1)))
                                    [Order]
                                    (Some nat : option Type)
@@ -1069,7 +1069,7 @@ intros; apply r0.
 
 simpl in m.
 unfold methodType in m; simpl in m.
-Lemma 
+Lemma
 
 pose (ValidImpls (Fin
 specialize (Iterate_Dep_Type_equiv'' _ ValidImpls).
@@ -1096,7 +1096,7 @@ Focus 2.
         Focus 2.
         simpl.
         intuition.
-        
+
         simpl in *.
 
       eapply SharpenFully_w_Delegates with
@@ -1353,9 +1353,6 @@ simpl.
   }
 
   master_plan EqIndexTactics.
-      (* Uncomment this to see the mostly sharpened implementation *)
-  (* partial_master_plan EqIndexTactics. *)
-
 Time Defined.
 
 Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=

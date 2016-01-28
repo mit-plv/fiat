@@ -1,5 +1,6 @@
 (** * A general [fold] over grammars *)
 Require Import Coq.Lists.List.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
@@ -15,14 +16,14 @@ Section general_fold.
   Context {Char : Type} {T : Type}.
 
   Class fold_grammar_data :=
-    { on_terminal : Char -> T;
+    { on_terminal : (Char -> bool) -> T;
       on_redundant_nonterminal : String.string -> T;
       on_nonterminal : String.string -> T -> T;
       on_nil_production : T;
       combine_production : T -> T -> T;
       on_nil_productions : T;
       combine_productions : T -> T -> T }.
-  Context `{fold_grammar_data} (G : grammar Char).
+  Context `{fold_grammar_data} (G : pregrammar Char).
 
   Definition fold_production' (fold_nt : String.string -> T)
              (its : production Char)
@@ -64,39 +65,46 @@ Section general_fold.
 
   Definition fold_nt_step
              (predata := @rdp_list_predata _ G)
+             (valid0_len : nat)
+             (fold_nt : forall valid_len : nat,
+                          nonterminals_listT
+                          -> String.string -> T)
              (valid0 : nonterminals_listT)
-             (fold_nt : forall valid, nonterminals_listT_R valid valid0
-                                      -> String.string -> T)
              (nt : String.string)
   : T.
   Proof.
-    refine (if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
-            then fold_productions'
-                   (@fold_nt (remove_nonterminal valid0 (of_nonterminal nt)) (remove_nonterminal_dec _ _ _))
-                   (Lookup G nt)
-            else on_redundant_nonterminal nt);
-    assumption.
+    refine match valid0_len with
+             | 0 => on_redundant_nonterminal nt
+             | S valid0_len'
+               => if is_valid_nonterminal valid0 (of_nonterminal nt)
+                  then fold_productions'
+                         (@fold_nt valid0_len' (remove_nonterminal valid0 (of_nonterminal nt)))
+                         (Lookup G nt)
+                  else on_redundant_nonterminal nt
+           end.
   Defined.
 
   Lemma fold_nt_step_ext
-        {x0 f g}
+        {x0 x0' f g}
         (ext : forall y p b, f y p b = g y p b)
         b
-  : @fold_nt_step x0 f b = fold_nt_step g b.
+  : @fold_nt_step x0 f x0' b = @fold_nt_step x0 g x0' b.
   Proof.
     unfold fold_nt_step.
-    edestruct Sumbool.sumbool_of_bool; trivial.
+    repeat match goal with
+             | [ |- context[match ?x with _ => _ end] ]
+               => destruct x eqn:?
+             | _ => reflexivity
+           end.
     apply fold_productions'_ext; eauto.
   Qed.
 
-  Definition fold_nt' initial : String.string -> T
-    := let predata := @rdp_list_predata _ G in
-       @Fix _ _ ntl_wf _
-            (@fold_nt_step)
-            initial.
+  Fixpoint fold_nt' initial : nonterminals_listT -> String.string -> T
+    := @fold_nt_step initial (@fold_nt').
 
   Definition fold_nt : String.string -> T
-    := @fold_nt' initial_nonterminals_data.
+    := let predata := @rdp_list_predata _ G in
+       @fold_nt' (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
 
   Definition fold_production := @fold_production' (@fold_nt).
 
@@ -108,12 +116,15 @@ Global Arguments fold_grammar_data : clear implicits.
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
   Context {FGD : fold_grammar_data Char T}
-          (G : grammar Char).
+          (G : pregrammar Char).
+
+  Let predata := @rdp_list_predata _ G.
+  Local Existing Instance predata.
 
   Class fold_grammar_correctness_computational_data :=
-    { Pnt : @nonterminals_listT (@rdp_list_predata _ G) -> String.string -> T -> Type;
-      Ppat : @nonterminals_listT (@rdp_list_predata _ G) -> production Char -> T -> Type;
-      Ppats : @nonterminals_listT (@rdp_list_predata _ G) -> productions Char -> T -> Type }.
+    { Pnt : nonterminals_listT -> String.string -> T -> Type;
+      Ppat : nonterminals_listT -> production Char -> T -> Type;
+      Ppats : nonterminals_listT -> productions Char -> T -> Type }.
   Class fold_grammar_correctness_data :=
     { fgccd :> fold_grammar_correctness_computational_data;
       Pnt_lift : forall valid0 nt value,
@@ -178,26 +189,55 @@ Section fold_correctness.
       { apply fold_production'_correct; trivial. } }
   Qed.
 
-  Lemma Fix_fold_nt_step_correct
+  Section step.
+    Context (fold_nt : forall valid_len : nat,
+                         nonterminals_listT
+                         -> String.string -> T).
+
+    Lemma fold_nt_step_correct0
+          (valid0 : nonterminals_listT)
+          (Hlen : nonterminals_length valid0 <= 0)
+          (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
+    : forall nt,
+        Pnt valid0 nt (fold_nt_step 0 fold_nt valid0 nt).
+    Proof.
+      assert (Hlen' : nonterminals_length valid0 = 0) by omega; clear Hlen.
+      simpl; intro nt.
+      apply Pnt_redundant; [ assumption | ].
+      destruct (is_valid_nonterminal valid0 (of_nonterminal nt)) eqn:Hvalid; trivial.
+      assert (nonterminals_length (remove_nonterminal valid0 (of_nonterminal nt)) < nonterminals_length valid0)
+        by (apply remove_nonterminal_dec; assumption).
+      omega.
+    Qed.
+  End step.
+
+  Local Opaque rdp_list_predata.
+
+  Lemma fold_nt'_correct
         (valid0 : nonterminals_listT)
+        (valid0_len : nat)
+        (Hlen : nonterminals_length valid0 <= valid0_len)
         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
   : forall nt,
-      Pnt valid0 nt (Fix ntl_wf _ (fold_nt_step (G:=G)) valid0 nt).
+      Pnt valid0 nt (fold_nt' valid0_len valid0 nt).
   Proof.
-    induction (ntl_wf valid0) as [ ? ? IH ]; intros.
-    rewrite Fix1_eq; [ | solve [ apply fold_nt_step_ext ] ].
-    unfold fold_nt_step at 1; cbv beta zeta.
-    match goal with
-      | [ |- context[dec ?x] ] => destruct x eqn:?
-    end;
-      simpl;
-      [ | apply Pnt_redundant; assumption ].
-    let H := match goal with H : is_valid_nonterminal ?x ?nt = true |- _ => constr:H end in
-    specialize (IH _ (remove_nonterminal_dec _ _ H)).
-    apply Pnt_lift; trivial.
-    specialize_by ltac:(rewrite sub_nonterminals_listT_remove; assumption).
-    apply fold_productions'_correct; eauto.
-    rewrite sub_nonterminals_listT_remove; assumption.
+    revert valid0 Hsub Hlen.
+    induction valid0_len as [|valid0_len IH].
+    { intros; apply fold_nt_step_correct0; assumption. }
+    { simpl.
+      intros valid0 Hsub Hlen nt.
+      match goal with
+        | [ |- context[if ?e then _ else _] ] => destruct e eqn:Hvalid
+      end.
+      { apply Pnt_lift; [ assumption.. | ].
+        apply fold_productions'_correct.
+        { apply sub_nonterminals_listT_remove_2; assumption. }
+        { apply IH.
+          { apply sub_nonterminals_listT_remove_2; assumption. }
+          { apply Le.le_S_n.
+            etransitivity; [ | exact Hlen ].
+            apply (remove_nonterminal_dec valid0 (of_nonterminal nt) Hvalid). } } }
+      { apply Pnt_redundant; assumption. } }
   Qed.
 
   Lemma fold_nt_correct
@@ -205,7 +245,7 @@ Section fold_correctness.
   : Pnt initial_nonterminals_data nt (fold_nt G nt).
   Proof.
     unfold fold_nt, fold_nt'.
-    apply Fix_fold_nt_step_correct.
+    apply fold_nt'_correct;
     reflexivity.
   Qed.
 

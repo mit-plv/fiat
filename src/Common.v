@@ -1,9 +1,9 @@
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
@@ -298,13 +298,15 @@ Ltac apply_in_hyp_no_cbv_match lem :=
 
 (* Coq's build in tactics don't work so well with things like [iff]
    so split them up into multiple hypotheses *)
-Ltac split_in_context ident funl funr :=
+Ltac split_in_context_by ident funl funr tac :=
   repeat match goal with
          | [ H : context p [ident] |- _ ] =>
-           let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (apply H);
-                                          let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (apply H);
+           let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (tac H);
+                                          let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (tac H);
                                                                          clear H
          end.
+Ltac split_in_context ident funl funr :=
+  split_in_context_by ident funl funr ltac:(fun H => apply H).
 
 Ltac split_iff := split_in_context iff (fun a b : Prop => a -> b) (fun a b : Prop => b -> a).
 
@@ -1281,14 +1283,20 @@ Proof.
          end.
 Qed.
 
+Lemma fold_right_andb_map_in_iff {A P} {ls : list A}
+: fold_right andb true (map P ls) = true
+  <-> (forall x, List.In x ls -> P x = true).
+Proof.
+  induction ls; simpl;
+  [
+  | rewrite Bool.andb_true_iff, IHls; clear IHls ];
+  intuition (subst; eauto).
+Qed.
+
 Lemma fold_right_andb_map_in {A P} {ls : list A} (H : fold_right andb true (map P ls) = true)
   : forall x, List.In x ls -> P x = true.
 Proof.
-  induction ls; simpl; auto.
-  simpl in *.
-  apply Bool.andb_true_iff in H; destruct H as [H0 H1].
-  specialize (IHls H1).
-  intros x [?|?]; subst; simpl in *; auto.
+  rewrite fold_right_andb_map_in_iff in H; assumption.
 Qed.
 
 Lemma if_ext {T} (b : bool) (f1 f2 : b = true -> T true) (g1 g2 : b = false -> T false)
@@ -1672,6 +1680,12 @@ Fixpoint apply_n {A} (n : nat) (f : A -> A) (a : A) : A :=
     | S n' => apply_n n' f (f a)
   end.
 
+Lemma apply_n_commute {A} n (f : A -> A) v
+: apply_n n f (f v) = f (apply_n n f v).
+Proof.
+  revert v; induction n; simpl; trivial.
+Qed.
+
 (** Transparent versions of [proj1], [proj2] *)
 Definition proj1' : forall {A B}, A /\ B -> A.
 Proof. intros ?? [? ?]; assumption. Defined.
@@ -1685,3 +1699,86 @@ Proof.
   intros; destruct p1, p2; simpl in *; subst; reflexivity.
 Defined.
 Global Arguments injective_projections' {_ _ _ _} !_ !_.
+
+Module opt.
+  Definition fst {A B} := Eval compute in @fst A B.
+  Definition snd {A B} := Eval compute in @snd A B.
+End opt.
+
+(** Work around broken [intros []] in trunk (https://coq.inria.fr/bugs/show_bug.cgi?id=4470) *)
+Definition intros_destruct_dummy := True.
+Ltac intros_destruct :=
+  assert intros_destruct_dummy by constructor;
+  let H := fresh in
+  intro H; destruct H;
+  repeat match goal with
+         | [ H' : ?T |- _ ] => first [ constr_eq T intros_destruct_dummy;
+                                       fail 2
+                                     | revert H' ]
+         end;
+  match goal with
+  | [ H : intros_destruct_dummy |- _ ] => clear H
+  end.
+
+(** Work around bug 4494, https://coq.inria.fr/bugs/show_bug.cgi?id=4494 (replace is slow and broken under binders *)
+Ltac replace_with_at_by x y set_tac tac :=
+  let H := fresh in
+  let x' := fresh in
+  set_tac x' x;
+  assert (H : y = x') by (subst x'; tac);
+  clearbody x'; induction H.
+Ltac replace_with_at x y set_tac :=
+  let H := fresh in
+  let x' := fresh in
+  set_tac x' x;
+  cut (y = x');
+  [ intro H; induction H
+  | subst x' ].
+Tactic Notation "replace" constr(x) "with" constr(y) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) ).
+Tactic Notation "replace" constr(x) "with" constr(y) "at" ne_integer_list(n) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) at n ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in * ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "at" ne_integer_list(n) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in * at n ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in * |- ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" "*" :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in * |- * ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" "*" "at" ne_integer_list(n) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in * |- * at n ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" "*" :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in H |- * ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" "*" "at" ne_integer_list(n) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in H |- * at n ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in H |- ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in H ).
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "at" ne_integer_list(n) :=
+  replace_with_at x y ltac:(fun x' x => set (x' := x) in H at n ).
+Tactic Notation "replace" constr(x) "with" constr(y) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "at" ne_integer_list(n) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) at n ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in * ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "at" ne_integer_list(n) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in * at n ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in * |- ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" "*" "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in * |- * ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" "*" "|-" "*" "at" ne_integer_list(n) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in * |- * at n ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" "*" "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H |- * ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" "*" "at" ne_integer_list(n) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H |- * at n ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "|-" "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H |- ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H ) tac.
+Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "at" ne_integer_list(n) "by" tactic3(tac) :=
+  replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H at n ) tac.

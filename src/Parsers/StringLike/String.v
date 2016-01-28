@@ -2,9 +2,9 @@
 Require Import Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
+Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
@@ -15,10 +15,16 @@ Proof.
   repeat constructor.
 Qed.
 
-Global Instance string_stringlike : StringLike Ascii.ascii
+Global Instance string_stringlikemin : StringLikeMin Ascii.ascii
   := { String := string;
-       is_char str ch := string_beq str (String.String ch ""%string);
-       length := String.length;
+       char_at_matches n str P := match String.get n str with
+                                    | Some ch => P ch
+                                    | None => true
+                                  end;
+       length := String.length }.
+
+Global Instance string_stringlike : StringLike Ascii.ascii
+  := { is_char str ch := string_beq str (String.String ch ""%string);
        take n s := String.substring 0 n s;
        drop n s := String.substring n (String.length s) s;
        get := String.get;
@@ -35,6 +41,7 @@ Local Ltac t :=
   repeat match goal with
            | _ => intro
            | [ |- _ = _ ] => reflexivity
+           | _ => assumption
            | [ |- is_true true ] => reflexivity
            | [ |- is_true false ] => exfalso
            | [ |- String.get _ (string_of_list _) = List.nth_error _ _ ]
@@ -91,6 +98,11 @@ Local Ltac t :=
                | rewrite substring_correct2 by omega ]
            | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
            | [ H : forall n, String.get n _ = String.get n _ |- _ ] => apply get_correct in H
+           | [ H : appcontext[match ?e with _ => _ end], H' : ?e = Some _ |- _ ]
+             => rewrite H' in H
+           | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+           | [ H : forall x, Some x = Some _ -> _ |- _ ] => specialize (H _ eq_refl)
+           | [ H : forall x, Some _ = Some x -> _ |- _ ] => specialize (H _ eq_refl)
          end.
 
 Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
@@ -123,14 +135,14 @@ Global Instance eq_string_beq_Proper
 : Proper (beq ==> beq ==> eq) (@eq String.string).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_Proper'
-: Proper (beq ==> beq ==> eq) (@eq (@StringLike.String _ string_stringlike)).
+: Proper (beq ==> beq ==> eq) (@eq (@StringLike.String _ string_stringlikemin)).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_impl_Proper
 : Proper (beq ==> beq ==> impl) (@eq String.string).
 Proof. eq_Proper_t. Qed.
 Global Instance eq_string_beq_impl_Proper'
-: Proper (beq ==> beq ==> impl) (@eq (@StringLike.String _ string_stringlike)).
+: Proper (beq ==> beq ==> impl) (@eq (@StringLike.String _ string_stringlikemin)).
 Proof. eq_Proper_t. Qed.
 Global Instance beq_string_Equivalence
-: (@Equivalence String.string (@beq Ascii.ascii string_stringlike))
+: (@Equivalence String.string (@beq Ascii.ascii string_stringlikemin _))
   := bool_eq_Equivalence.

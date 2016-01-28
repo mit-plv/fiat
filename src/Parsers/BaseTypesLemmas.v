@@ -12,8 +12,8 @@ Local Open Scope string_like_scope.
 Local Coercion is_true : bool >-> Sortclass.
 
 Section recursive_descent_parser.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}
-          {predata : parser_computational_predataT}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {G : grammar Char}
+          {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G _}.
 
   Lemma remove_nonterminal_3

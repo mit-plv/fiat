@@ -15,7 +15,7 @@ Local Open Scope list_scope.
 Set Implicit Arguments.
 
 Section String.
-  Context {Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition bool_eq_refl {x : String} : x =s x.
   Proof.
@@ -222,7 +222,8 @@ Section String.
 
   Definition get_first_char_nonempty' str (H' : length str <> 0) : Char.
   Proof.
-    refine (match get 0 str as ch return get 0 str = ch -> Char with
+    let ret := constr:(get 0 str) in
+    refine (match get 0 str as ch return ret = ch -> Char with
               | Some ch => fun _ => ch
               | None => fun H'' => match _ : False with end
             end eq_refl).
@@ -722,10 +723,74 @@ Section String.
       reflexivity.
     Qed.
   End substring.
+
+  Lemma char_at_matches_is_char_no_ex offset len str P
+        (Hlen : offset + len <= length str)
+  : (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool = true
+    <-> match get offset str with
+          | Some ch => (P ch /\ substring offset len str ~= [ch])%string_like
+          | None => False
+        end.
+  Proof.
+    destruct (get offset str) as [ch|] eqn:Heq.
+    { split; intro H.
+      { apply Bool.andb_true_iff in H.
+        destruct H as [H0 H1].
+        apply EqNat.beq_nat_true in H0; subst.
+        erewrite char_at_matches_correct in H1 by eassumption.
+        split; try assumption.
+        rewrite get_drop in Heq.
+        generalize dependent (drop offset str); clear Hlen offset str; intro str.
+        intro H.
+        apply get_0; assumption. }
+      { destruct H as [H0 H1].
+        erewrite char_at_matches_correct by eassumption.
+        apply Bool.andb_true_iff; split; [ | eassumption ].
+        apply length_singleton in H1.
+        rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub in H1.
+        apply EqNat.beq_nat_true_iff.
+        revert H1.
+        apply Min.min_case_strong; intros; omega. } }
+    { split; [ intro H | intros [] ].
+      rewrite get_drop in Heq.
+      apply no_first_char_empty in Heq.
+      rewrite drop_length in Heq.
+      apply Bool.andb_true_iff in H.
+      destruct H as [H0 H1].
+      apply EqNat.beq_nat_true in H0; subst.
+      omega. }
+  Qed.
+
+  Lemma char_at_matches_is_char offset len str P
+        (Hlen : offset + len <= length str)
+  : (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool = true
+    <-> (exists ch, P ch /\ substring offset len str ~= [ch])%string_like.
+  Proof.
+    rewrite char_at_matches_is_char_no_ex by assumption.
+    destruct (get offset str) as [ch|] eqn:Heq.
+    { split; intro H; [ exists ch; assumption | ].
+      destruct H as [ch' H].
+      assert (ch = ch');
+        [
+        | subst; assumption ].
+      destruct H as [H0 H1].
+      apply take_n_1_singleton in H1.
+      apply get_0 in H1.
+      rewrite get_drop in Heq.
+      congruence. }
+    { split; [ intros [] | intros [ch [H0 H1]] ].
+      rewrite get_drop in Heq.
+      apply no_first_char_empty in Heq.
+      rewrite drop_length in Heq.
+      apply length_singleton in H1.
+      assert (len = 0) by omega; subst.
+      rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, Min.min_0_r in H1.
+      omega. }
+  Qed.
 End String.
 
 Section Iso.
-  Context {Char} {HSL : StringLike Char} {HSI : StringIso Char}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSI : StringIso Char}
           {HSLP : StringLikeProperties Char} {HSIP : StringIsoProperties Char}.
 
   Lemma length_of_string_nil
@@ -750,7 +815,7 @@ Section Iso.
     { apply bool_eq_empty; rewrite ?take_length, ?drop_length; trivial.
       apply length_of_string_nil. }
     { apply bool_eq_from_get.
-      intros [].
+      intros_destruct.
       { destruct str as [|ch str]; simpl;
         repeat match goal with
                  | _ => progress simpl

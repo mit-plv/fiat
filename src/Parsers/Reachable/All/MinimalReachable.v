@@ -10,8 +10,8 @@ Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Section cfg.
-  Context {Char} {HSL : StringLike Char} {G : grammar Char}.
-  Context {predata : @parser_computational_predataT}
+  Context {Char} {HSLM : StringLikeMin Char} {G : grammar Char}.
+  Context {predata : @parser_computational_predataT Char}
           {rdata' : @parser_removal_dataT' _ G predata}.
 
   Context (ch : Char).
@@ -27,7 +27,7 @@ Section cfg.
   | MinReachableProductionTail : forall valid it its, minimal_reachable_from_production valid its
                                                       -> minimal_reachable_from_production valid (it::its)
   with minimal_reachable_from_item : nonterminals_listT -> item Char -> Type :=
-  | MinReachableTerminal : forall valid, minimal_reachable_from_item valid (Terminal ch)
+  | MinReachableTerminal : forall valid P, is_true (P ch) -> minimal_reachable_from_item valid (Terminal P)
   | MinReachableNonTerminal : forall valid nt, is_valid_nonterminal valid (of_nonterminal nt)
                                                -> minimal_reachable_from_productions (remove_nonterminal valid (of_nonterminal nt)) (Lookup G nt)
                                                -> minimal_reachable_from_item valid (NonTerminal nt).
