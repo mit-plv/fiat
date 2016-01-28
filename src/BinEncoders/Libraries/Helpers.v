@@ -11,8 +11,8 @@ Global Instance unpacking_decoder
        (predicate' : proj_t -> Prop)
        (encode1 : proj_t * bin_t -> bin_t)
        (encode2 : data_t -> bin_t)
-       (pred_pf : forall data, predicate data -> predicate' (project data))
        (decoder1 : decoder (fun data => predicate' (fst data)) encode1)
+       (pred_pf : forall data, predicate data -> predicate' (project data))
        (decoder2 : forall proj, decoder (fun data => predicate data /\ project data = proj) encode2)
 : decoder predicate (fun data => encode1 (project data, encode2 data)) :=
     { decode := fun bin => let (proj, ext) := @decode _ _ _ _ decoder1 bin

@@ -42,10 +42,10 @@ Proof.
   intro proj.
 
   eapply strengthening_decoder.
-  eapply FixList_decoder with (size:=8) (len:=proj).
+  eapply FixList_decoder.
   instantiate (1:=fun _ => True).
   eauto with typeclass_instances.
-  firstorder.
+  firstorder eauto.
 Defined.
 
 Definition encode_name := @SteppingList_encode _ _ halt 255 encode_word.
@@ -79,22 +79,99 @@ Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
 Defined.
 
 Global Instance type_to_FixInt_decoder
-  : decoder (fun _ => True) FixInt_of_type :=
-  { decode := fun n => if N.eq_dec (proj1_sig n) (1%N) then A
-                       else if N.eq_dec (proj1_sig n) (5%N) then CNAME
-                       else if N.eq_dec (proj1_sig n) (2%N) then NS
-                       else MX }.
+  : decoder (fun _ => True) FixInt_of_type.
 Proof.
-  intros data _; destruct data; eauto.
+  eexists.
+
+  intros data _.
+  destruct data.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t =>
+      let h := fresh
+      in  evar (h:func_t);
+          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          reflexivity
+    end
+  end.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t =>
+      let h := fresh
+      in  evar (h:func_t);
+          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          reflexivity
+    end
+  end.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t =>
+      let h := fresh
+      in  evar (h:func_t);
+          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          reflexivity
+    end
+  end.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t => unify ((fun _  => res) : func_t) func;
+                 reflexivity
+    end
+  end.
 Defined.
 
 Global Instance class_to_FixInt_decoder
-  : decoder (fun _ => True) FixInt_of_class :=
-  { decode := fun n => if N.eq_dec (proj1_sig n) (1%N) then IN
-                       else if N.eq_dec (proj1_sig n) (3%N) then CH
-                       else HS }.
+  : decoder (fun _ => True) FixInt_of_class.
 Proof.
-  intros data _; destruct data; eauto.
+  eexists.
+
+  intros data _.
+  destruct data.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t =>
+      let h := fresh
+      in  evar (h:func_t);
+          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          reflexivity
+    end
+  end.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t =>
+      let h := fresh
+      in  evar (h:func_t);
+          unify (fun n => if FixInt_eq_dec n arg then res else h n) func;
+          reflexivity
+    end
+  end.
+
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    match type of func with
+    | ?func_t => unify ((fun _  => res) : func_t) func;
+                 reflexivity
+    end
+  end.
 Defined.
 
 Record question_t :=
@@ -107,32 +184,55 @@ Definition encode_question (bundle : question_t * bin_t) :=
   FixInt_encode (FixInt_of_type (qtype (fst bundle)),
   FixInt_encode (FixInt_of_class (qclass (fst bundle)), snd bundle))).
 
+Ltac let's_unfold :=
+  unfold SteppingList_predicate,
+         FixList_predicate,
+         FixList2_predicate,
+         FixList.data_t in *.
+
+Ltac solve_predicate :=
+  let hdata := fresh
+  in  intro hdata; intuition; let's_unfold;
+    match goal with
+    | |- context[ @fst ?a ?b hdata ] => solve [ pattern (@fst a b hdata); eauto ]
+    | |- _ => solve [ intuition eauto ]
+    | |- ?func _ =>
+      match type of func with
+      | ?func_t => solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
+      end
+    end.
+
+
 Global Instance question_decoder
   : decoder (fun _ => True) encode_question.
 Proof.
   unfold encode_question.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun ls => True /\ (forall x, In x (proj1_sig ls) -> True)). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
-    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle)).
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply nesting_decoder with
-    (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
-    (encodeB:=FixInt_encode (size:=16)).
-  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
+    (encode1:=fun bundle => FixInt_encode (FixInt_of_type (fst bundle), snd bundle))
+    (encode2:=fun data => FixInt_encode (FixInt_of_class (qclass (fst data)), snd data)).
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
     (encode1:=fun bundle => FixInt_encode (FixInt_of_class (fst bundle), snd bundle)).
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply nesting_decoder with
-    (encodeA:=fun data => (FixInt_of_class (fst data), snd data))
-    (encodeB:=FixInt_encode (size:=16)).
-  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_question_t _ _ _, b)).
@@ -160,8 +260,11 @@ Proof.
   unfold encode_resource.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun ls => True /\ (forall x, In x (proj1_sig ls) -> True)). intuition. cbv beta.
-  eapply name_decoder.
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
@@ -170,11 +273,11 @@ Proof.
                           FixInt_encode (rttl (fst data),
                           FixInt_encode (FixList_getlength (rdata (fst data)),
                           FixList_encode Bool_encode (rdata (fst data), snd data))))).
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply nesting_decoder with
-    (encodeA:=fun data => (FixInt_of_type (fst data), snd data))
-    (encodeB:=FixInt_encode (size:=16)).
-  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
@@ -182,27 +285,38 @@ Proof.
     (encode2:=fun data => FixInt_encode (rttl (fst data),
                           FixInt_encode (FixList_getlength (rdata (fst data)),
                           FixList_encode Bool_encode (rdata (fst data), snd data)))).
-  instantiate (1:=fun _ => True). intuition. cbv beta.
-  eapply nesting_decoder with
-    (encodeA:=fun data => (FixInt_of_class (fst data), snd data))
-    (encodeB:=FixInt_encode (size:=16)).
-  eapply unproding_decoder. eauto with typeclass_instances. eauto with typeclass_instances.
+  eapply strengthening_decoder.
+  eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun data => FixList_getlength data = proj3 /\
-                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_resource_t _ _ _ _ _, b)).
@@ -235,67 +349,110 @@ Proof.
   unfold encode_packet.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun ls => forall x, In x (proj1_sig ls) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList2_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun ls => forall x, In x (proj1_sig ls) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList2_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder.
-  instantiate (1:=fun _ => True). intuition. cbv beta.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
     (encode1:=FixList_encode encode_question).
-  instantiate (1:=fun data => FixList_getlength data = proj1 /\
-                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
-  instantiate (1:=fun data => FixList_getlength data = proj2 /\
-                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
-  instantiate (1:=fun data => FixList_getlength data = proj3 /\
-                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eapply unpacking_decoder with
     (encode1:=FixList_encode encode_resource).
-  instantiate (1:=fun data => FixList_getlength data = proj4 /\
-                              forall x, In x (proj1_sig data) -> True). intuition. cbv beta.
+  eapply strengthening_decoder.
+  eapply FixList_decoder.
+  eapply strengthening_decoder.
   eauto with typeclass_instances.
+
+  solve_predicate.
+  solve_predicate.
+  solve_predicate.
   intro.
 
   eexists. instantiate (1:=fun b => (Build_packet_t _ _ _ _ _ _, b)).
   intro. intuition. destruct data as [rdata bin]. destruct rdata. simpl in *. subst. eauto.
 Defined.
-
 
 Section Example.
   Notation " [ x ; .. ; y ] " := (cons x .. (cons y nil) ..).
@@ -343,3 +500,27 @@ Extract Inductive ascii => char [
 "(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 
 (* Extraction "Extracted.ml" packet_decoder packet1. *)
+(* #use "Extracted.ml";; *)
+(* packet_decoder packet1;; *)
+
+
+
+
+(*
+
+  Focus 2.
+  eapply strengthening_decoder.
+  eapply FixList2_decoder.
+  Focus 2. unfold FixList2_predicate. intros ? ?.
+
+  match goal with
+  | |- context[ @fst ?a ?b data ] => pattern (@fst a b data)
+  end. eapply H.
+
+unfold data_t. pattern (fst data). eapply H.
+  eapply strengthening_decoder.
+  eapply Bool_decoder.
+  simpl. intros ? ?.  unfold data_t. pattern (fst data). eapply H. simpl. intuition.
+
+  Focus 2. intros. unfold FixList2_predicate. intro. pattern (fst data). eapply H.
+  eapply Bool_decoder. *)

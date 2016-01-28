@@ -75,7 +75,7 @@ Section FixIntBinEncoder.
     destruct b; simpl.
     - rewrite <- N.compare_lt_iff; eauto.
     - destruct b; simpl.
-      + admit.
+      + simpl. admit.
       + etransitivity; eauto; unfold exp2.
         admit.
   Qed.
@@ -201,6 +201,11 @@ Section FixIntBinEncoder.
     rewrite encode_correct'; reflexivity.
   Qed.
 End FixIntBinEncoder.
+
+Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
+  refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
+  destruct n; destruct m; [ eapply sig_equivalence; intuition | congruence ].
+Defined.
 
 Definition FixInt_encode (size : nat) :=
   bin_encode_transform_pair (FixInt_encode_inner (size:=size)).
