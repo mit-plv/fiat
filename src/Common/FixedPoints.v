@@ -118,4 +118,26 @@ Section listpair.
     { intros; apply step_monotonic. }
     { intros; apply step_eq; assumption. }
   Qed.
+
+  Lemma greatest_fixpoint_of_lists_correct_1
+        (lsA := fst greatest_fixpoint_of_lists)
+        (lsB := snd greatest_fixpoint_of_lists)
+    : fold_right andb true (map (fA lsA lsB) lsA) = true.
+  Proof.
+    unfold lsA at 2.
+    rewrite <- greatest_fixpoint_of_lists_fixpoint.
+    unfold step; simpl.
+    apply fold_right_andb_true_map_filter.
+  Qed.
+
+  Lemma greatest_fixpoint_of_lists_correct_2
+        (lsA := fst greatest_fixpoint_of_lists)
+        (lsB := snd greatest_fixpoint_of_lists)
+    : fold_right andb true (map (fB lsA lsB) lsB) = true.
+  Proof.
+    unfold lsB at 2.
+    rewrite <- greatest_fixpoint_of_lists_fixpoint.
+    unfold step; simpl.
+    apply fold_right_andb_true_map_filter.
+  Qed.
 End listpair.
