@@ -1932,4 +1932,17 @@ Section ListFacts.
       try apply le_S;
       apply IHls. }
   Qed.
+
+  Lemma length_filter_eq {A f} {ls : list A} (H : length (filter f ls) = length ls)
+    : filter f ls = ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl in *.
+    { reflexivity. }
+    { edestruct f; simpl in *;
+      f_equal;
+      try apply IHls;
+      try omega.
+      { pose proof (length_filter f ls).
+        omega. } }
+  Qed.
 End ListFacts.
