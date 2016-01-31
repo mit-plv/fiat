@@ -12,6 +12,7 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Enumerable.
+Require Import Fiat.Common.FixedPoints.
 
 Local Open Scope bool_scope.
 Local Open Scope string_like_scope.
@@ -322,59 +323,12 @@ Section paren_balanced_nonterminals.
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 
-  Local Notation targetT
-    := (option nat * (list nonterminal_carrierT * list nonterminal_carrierT))%type
-         (only parsing).
-
-  Definition paren_balanced_nonterminals_T
-    := nat -> targetT.
-
-  Local Instance paren_balanced_nonterminals_fold_data : fold_grammar_data Char paren_balanced_nonterminals_T
-    := { on_terminal P level
-         := (match pb_new_level_fun P level with
-               | new_level::nil => Some new_level
-               | _ => None
-             end,
-             (nil, nil));
-         on_redundant_nonterminal nt level
-         := (Some 0, (nil, nil));
-         on_nil_production level
-         := (Some level,
-             (nil, nil));
-         combine_production f1 f2 level
-         := let '(level1, (pb_ls1, pbh_ls1)) := eta2 (f1 level) in
-            option_rect
-              (fun _ => targetT)
-              (fun level1'
-               => let '(level2, (pb_ls2, pbh_ls2)) := eta2 (f2 level1') in
-                  (level2, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2)))
-              (None, (pb_ls1, pbh_ls1))
-              level1;
-         on_nil_productions level := (Some 0, (nil, nil));
-         combine_productions f1 f2 level
-         := let '(level1, (pb_ls1, pbh_ls1)) := eta2 (f1 0) in
-            let '(level2, (pb_ls2, pbh_ls2)) := eta2 (f2 0) in
-            (Some 0, (pb_ls1 ++ pb_ls2, pbh_ls1 ++ pbh_ls2));
-         on_nonterminal nt f level
-         := (option_map (fun _ => level) (fst (f level)),
-             let '(pb_ls, pbh_ls) := eta (snd (f level)) in
-             ((of_nonterminal nt::pb_ls)
-                ++ (if Compare_dec.gt_dec level 0
-                    then pbh_ls
-                    else nil),
-              if Compare_dec.gt_dec level 0
-              then nil
-              else of_nonterminal nt::pbh_ls)) }.
-
-  Definition paren_balanced_nonterminals_of : String.string -> paren_balanced_nonterminals_T
-    := @fold_nt _ _ paren_balanced_nonterminals_fold_data G.
-  Definition paren_balanced_nonterminals_of_productions : productions Char -> paren_balanced_nonterminals_T
-    := @fold_productions _ _ paren_balanced_nonterminals_fold_data G.
-  Definition paren_balanced_nonterminals_of_production : production Char -> paren_balanced_nonterminals_T
-    := @fold_production _ _ paren_balanced_nonterminals_fold_data G.
-
-  Definition paren_balanced_nonterminals nt : list nonterminal_carrierT * list nonterminal_carrierT
-    := snd (paren_balanced_nonterminals_of nt 0).
+  Definition paren_balanced_nonterminals (nt : String.string) : list nonterminal_carrierT * list nonterminal_carrierT
+    := greatest_fixpoint_of_lists
+         (fun pb_nts pbh_nts => paren_balanced''_nt (G := G) pb_nts pbh_nts false)
+         (fun pb_nts pbh_nts => paren_balanced''_nt (G := G) pb_nts pbh_nts true)
+         initial_nonterminals_data
+         initial_nonterminals_data.
 End paren_balanced_nonterminals.
 
 Local Transparent rdp_list_predata.
@@ -396,8 +350,14 @@ Section with_lists.
     Let pbh_nts : nonterminals_listT
       := snd (paren_balanced_nonterminals G nt).
 
-    Context (H_pb : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
-            (H_pbh : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts true) pbh_nts)).
+    Let H_pb : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts).
+    Proof.
+      rapply @greatest_fixpoint_of_lists_correct_1.
+    Qed.
+    Let H_pbh : fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts true) pbh_nts).
+    Proof.
+      rapply @greatest_fixpoint_of_lists_correct_2.
+    Qed.
 
     Lemma paren_balanced_nt_correct
           (H_p : paren_balanced''_nt pb_nts pbh_nts hiding (of_nonterminal nt))
@@ -420,17 +380,17 @@ Section with_lists.
       := snd (paren_balanced_nonterminals G nt).
 
     Definition paren_balanced_hiding_correctness_type
-      := (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
+      := (*(fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
            && (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts true) pbh_nts))
-           && (paren_balanced''_nt pb_nts pbh_nts true (of_nonterminal nt)).
+           && *)(paren_balanced''_nt pb_nts pbh_nts true (of_nonterminal nt)).
 
     Global Arguments paren_balanced_hiding_correctness_type / .
 
     (** Just check for paren-balanced-ness, not for that it hides the binary operation. *)
     Definition paren_balanced_correctness_type
-      := (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
+      := (*(fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pb_nts))
            && (fold_right andb true (map (paren_balanced''_nt pb_nts pbh_nts false) pbh_nts))
-           && (paren_balanced''_nt pb_nts pbh_nts false (of_nonterminal nt)).
+           &&*) (paren_balanced''_nt pb_nts pbh_nts false (of_nonterminal nt)).
 
     Global Arguments paren_balanced_hiding_correctness_type / .
 
@@ -440,8 +400,6 @@ Section with_lists.
                    -> paren_balanced_hiding str'.
     Proof.
       simpl in Hvalid.
-      do 2 setoid_rewrite Bool.andb_true_iff in Hvalid.
-      destruct Hvalid as [[? ?] ?].
       apply (paren_balanced_nt_correct true);
       assumption.
     Qed.
