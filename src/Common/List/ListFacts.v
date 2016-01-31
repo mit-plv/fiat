@@ -1922,4 +1922,14 @@ Section ListFacts.
   Proof.
     induction ls as [|l ls IHls]; simpl; [ | rewrite IHls ]; reflexivity.
   Qed.
+
+  Lemma length_filter {A} f (ls : list A) : length (filter f ls) <= length ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { edestruct f; simpl;
+      try apply le_n_S;
+      try apply le_S;
+      apply IHls. }
+  Qed.
 End ListFacts.
