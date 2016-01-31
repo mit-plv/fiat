@@ -83,7 +83,7 @@ Section specific.
          (paren_balanced''_productions
             hiding
             0
-            (Lookup G (to_nonterminal nt))).
+            (Lookup_idx G nt)).
 
     Section correct.
       Context (H_pb : forall nt, is_valid_nonterminal pb_nts nt
@@ -219,6 +219,8 @@ Section specific.
                   unfold paren_balanced''_nt in *.
                   (*apply Bool.andb_true_iff in H_pbh;
                   destruct H_pbh as [H_pbh0 H_pbh1]; clear H_pbh.*)
+                  rewrite <- Carriers.list_to_productions_to_nonterminal in H_pbh.
+                  change Carriers.default_to_nonterminal with to_nonterminal in H_pbh.
                   rewrite to_of_nonterminal in H_pbh by assumption.
                   specialize (paren_balanced_productions_correct _ _ H_pbh).
                   simpl in *.
@@ -227,6 +229,8 @@ Section specific.
                   unfold paren_balanced''_nt in *.
                   (*apply Bool.andb_true_iff in H_pb;
                   destruct H_pb as [H_pb0 H_pb1]; clear H_pb.*)
+                  rewrite <- Carriers.list_to_productions_to_nonterminal in H_pb.
+                  change Carriers.default_to_nonterminal with to_nonterminal in H_pb.
                   rewrite to_of_nonterminal in H_pb by assumption.
                   specialize (paren_balanced_productions_correct _ _ H_pb).
                   simpl in *.
@@ -237,6 +241,8 @@ Section specific.
                 unfold paren_balanced''_nt in *.
                 (*apply Bool.andb_true_iff in H_pb;
                 destruct H_pb as [H_pb0 H_pb1]; clear H_pb.*)
+                rewrite <- Carriers.list_to_productions_to_nonterminal in H_pb.
+                change Carriers.default_to_nonterminal with to_nonterminal in H_pb.
                 rewrite to_of_nonterminal in H_pb by assumption.
                 specialize (paren_balanced_productions_correct _ _ H_pb).
                 simpl in *.
@@ -255,7 +261,10 @@ Section specific.
       Proof.
         dependent destruction p.
         eapply paren_balanced_productions_correct;
-          try eassumption; instantiate; rewrite ?to_of_nonterminal; eassumption.
+          try eassumption; instantiate;
+            rewrite <- Carriers.list_to_productions_to_nonterminal;
+            change Carriers.default_to_nonterminal with to_nonterminal;
+            rewrite ?to_of_nonterminal; eassumption.
       Qed.
     End correct.
 

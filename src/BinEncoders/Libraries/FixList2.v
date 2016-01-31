@@ -67,3 +67,5 @@ Global Instance FixList2_decoder
   : decoder (FixList2_predicate predicate_A) (FixList2_encode (size:=size) encode_A) :=
   { decode := FixList2_decode size predicate_A decoder_A;
     decode_correct := @FixList2_encode_decode_correct _ _ _ _ _ _ }.
+
+Arguments FixList2_predicate / _ _ _ _ _.

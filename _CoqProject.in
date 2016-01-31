@@ -33,6 +33,7 @@ src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/BinEncoders/Specs.v
+src/BinEncoders/Automation/Solver.v
 src/BinEncoders/Examples/Dns.v
 src/BinEncoders/Libraries/BinCore.v
 src/BinEncoders/Libraries/Bool.v
@@ -87,6 +88,7 @@ src/Common/Ensembles.v
 src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
+src/Common/FixedPoints.v
 src/Common/Gensym.v
 src/Common/Instances.v
 src/Common/IterateBoundedIndex.v

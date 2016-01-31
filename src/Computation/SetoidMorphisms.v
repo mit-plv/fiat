@@ -218,6 +218,51 @@ Proof.
   apply H0, IHls; assumption.
 Qed.
 
+Add Parametric Morphism A B
+: (@fold_left (Comp A) B)
+  with signature
+  (@refine A ==> eq ==> @refine A) ++> eq ++> (@refine A) ==> (@refine A)
+    as refine_fold_left.
+Proof.
+  intros ?? H0 ls x0 y0 H1; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  unfold respectful in H0.
+  exact (IHls _ _ (H0 _ _ H1 a _ eq_refl)).
+Qed.
+
+Add Parametric Morphism A B
+: (@fold_left (Comp A) B)
+  with signature
+  (@refineEquiv A ==> eq ==> @refineEquiv A)
+    ++> eq ++> (@refineEquiv A) ==> (@refineEquiv A)
+    as refineEquiv_fold_left.
+Proof.
+  intros ?? H0 ls x0 y0 H1; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  exact (IHls _ _ (H0 _ _ H1 a _ eq_refl)).
+Qed.
+
+Add Parametric Morphism A B
+: (@fold_left (Comp A) B)
+  with signature
+  (Basics.flip (@refine A) ==> eq ==> Basics.flip (@refine A))
+    ++> eq ++> (Basics.flip (@refine A)) ==> (Basics.flip (@refine A))
+    as refine_fold_left_flip.
+Proof.
+  intros ?? H0 ls x0 y0 H1; intros; subst.
+  revert x0 y0 H1.
+  induction ls; simpl; trivial; [].
+  intros ?? H1.
+  unfold pointwise_relation in *.
+  exact (IHls _ _ (H0 _ _ H1 a _ eq_refl)).
+Qed.
+
 Lemma equiv_refl {A} :
   Reflexive (@Monad.equiv A).
 Proof.
