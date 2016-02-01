@@ -221,8 +221,16 @@ do 1 match goal with
         repeat match goal with
                | [ H := ?x, H' := ?x |- _ ] => clear H'
                end.
-let lem := fresh "lem" in
 pose_disjoint_search_for lem.
+progress rewrite_once_disjoint_search_for lem.
+
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
 idtac;
         let G := (lazymatch goal with
                  | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
@@ -254,7 +262,7 @@ idtac;
               let T := match type of lem' with forall a : ?T, _ => T end in
               let H' := fresh in
               assert (H' : T) by solve_disjoint_side_conditions;
-                specialize (lem' H'); clear H';
+                specialize (lem' H'); clear H'.
                 setoid_rewrite lem'; clear lem'.
 
 idtac;
