@@ -217,15 +217,122 @@ subst y.
 match (eval cbv delta [x] in x) with
 | appcontext[@ParenBalancedGrammar.paren_balanced_nonterminals ?a ?b _ ?d ?e]
   => set (y' := fun d' e' c => @ParenBalancedGrammar.paren_balanced_nonterminals a b c d' e') in (value of x);
+       set (y'' := @ParenBalancedGrammar.paren_balanced_nonterminals a b) in (value of x);
        change (@ParenBalancedGrammar.paren_balanced_nonterminals a b)
-       with (fun c' d' e' => y' d' e' c') in (value of x);
+       with (fun c' d' e' => y' d' e' c') in (value of y'');
+       subst y'';
        cbv beta in x;
        set (y := y' d e) in (value of x);
        subst y';
        cbv beta in y
 end.
-cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of FoldGrammar.fold_nt BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.length Operations.List.up_to] in y.
-simpl @List.map in y.
+cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data ParenBalancedGrammar.paren_balanced_nonterminals] in y.
+simpl @Operations.List.up_to in y.
+cbv [FixedPoints.greatest_fixpoint_of_lists FixedPoints.greatest_fixpoint] in y.
+unfold FixedPoints.greatest_fixpoint', FixedPoints.sizeof_pair in y.
+simpl @List.length in y.
+simpl plus in y.
+cbv beta iota zeta in y.
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of y).
+repeat progress match (eval cbv delta [y] in y) with
+                | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of y)
+                | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of y)
+                end.
+cbv beta iota zeta in y.
+Print List.filter.
+lazymatch (eval cbv delta [x] in x) with
+| List.filter ?f (?y::?ys)
+  => set (f' := f) in (value of x)
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x);
+         timeout 5 vm_compute in fy;
+         subst fy;
+         cbv iota in x
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x);
+         timeout 5 vm_compute in fy;
+         subst fy;
+         cbv iota in x
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x)
+end.
+clear -fy.
+subst f'; clear -fy.
+cbv beta in fy.
+match (eval cbv delta [fy] in fy) with
+| appcontext[y ?v] => set (fy' := y v) in (value of fy)
+end.
+clear -fy'.
+simpl @fst in fy'.
+simpl @snd in fy'.
+subst y.
+cbv beta in fy'.
+repeat match (eval cbv delta [fy'] in fy') with
+| context G[List.filter ?f ?ls] =>
+  set (e' := List.filter f ls) in (value of fy');
+    let G' := context G[e'] in
+    let fy'' := fresh "fy'" in
+    rename fy' into fy'';
+      pose G' as fy';
+      clear fy'';
+      timeout 5 vm_compute in e';
+      subst e';
+      cbv iota in fy'
+end.
+unfold fst at 1, snd at 1 in (value of fy').
+unfold List.length, Compare_dec.leb, plus in (value of fy').
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy').
+repeat progress match (eval cbv delta [fy'] in fy') with
+                | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                end.
+cbv beta iota zeta in fy'.
+unfold snd at 1 in (value of fy').
+unfold List.length at 1 2 in (value of fy').
+unfold plus at 1 in (value of fy').
+unfold Compare_dec.leb at 1 in (value of fy').
+unfold List.length at 1 in (value of fy').
+
+
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy').
+cbv beta iota zeta in fy'.
+Timeout 5 vm_compute in e'.
+
+pose (y {| is_open := Equality.ascii_beq "{"%char ; is_close := Equality.ascii_beq "}"%char ; is_bin_op := fun _ => false |}) as z.
+unfold y in z.
+clear -z.
+Timeout 5 vm_compute in z.
+
+unfold List.filter in x.
+lazymatch (eval cbv delta [y] in y) with
+| appcontext[List.filter ?f ?ls] => set (z := List.filter f ls) in (value of y)
+end.
+cbv beta iota delta [List.filter] in y.
+unfold List.filter at 1 in (value of y).
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of y).
+simpl @fst in y.
+simpl
+Print
+
+Timeout 5 vm_compute in y.
 cbv beta iota zeta in y.
 Opaque FoldGrammar.fold_nt_step.
 simpl in y.
