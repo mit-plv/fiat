@@ -362,6 +362,7 @@ src/Parsers/StringLike/Core.v
 src/Parsers/StringLike/FirstChar.v
 src/Parsers/StringLike/FirstCharSuchThat.v
 src/Parsers/StringLike/ForallChars.v
+src/Parsers/StringLike/LastChar.v
 src/Parsers/StringLike/OcamlString.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v
