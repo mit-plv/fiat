@@ -181,6 +181,16 @@ total time:     21.428s
                 let lem := constr:(lem H0) in
                 let H := fresh in
                 pose proof lem as H; clear H0;
+                  let c' := fresh in
+                  let c := match type of H with
+                           | context[is_true ?e]
+                             => constr:(is_true e)
+                           end in
+                  set (c' := c) in H;
+                    vm_compute in c';
+                    subst c';
+                    specialize (H eq_refl)
+end.
                 unfold correct_open_close, possible_valid_open_closes in H;
                 let c' := fresh in
                 let c := match type of H with
@@ -198,6 +208,19 @@ total time:     21.428s
                     vm_compute in c';
                     subst c'
         end.
+exfalso.
+unfold ParenBalancedGrammar.paren_balanced_hiding_correctness_type in H4.
+clear H3.
+set (k := (ParenBalancedGrammar.paren_balanced_nonterminals json'_pregrammar "value WS*")) in (value of H4).
+Timeout 10 vm_compute in k.
+subst k.
+simpl @fst in H4.
+simpl @snd in H4.
+set (k := (BaseTypes.of_nonterminal "value WS*")) in (value of H4).
+vm_compute in k.
+subst k.
+vm_compute in H4.
+Set Printing Implicit.
 Timeout 10 vm_compute in H4.
 About ParenBalancedGrammar.paren_balanced_hiding_correctness_type.
 
