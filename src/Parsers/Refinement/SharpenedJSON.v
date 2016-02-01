@@ -181,11 +181,29 @@ total time:     21.428s
                 let lem := constr:(lem H0) in
                 let H := fresh in
                 pose proof lem as H; clear H0;
-                unfold correct_open_close in H;
+                unfold correct_open_close, possible_valid_open_closes in H;
+                let c' := fresh in
                 let c := match type of H with
-                           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
-                             => constr:(@possible_valid_open_closes G nt ch)
+                         | appcontext[@possible_balanced_open_closes ?G ?nt]
+                           => constr:(@possible_balanced_open_closes G nt)
                          end in
+                set (c' := c) in H;
+                  vm_compute in c';
+                  subst c';
+                  let c := match type of H with
+                           | context[@ParenBalancedGrammar.paren_balanced_hiding_correctness_type ?a ?b ?c ?d ?e]
+                             => constr:(@ParenBalancedGrammar.paren_balanced_hiding_correctness_type a b c d e)
+                           end in
+                  set (c' := c) in H;
+                    vm_compute in c';
+                    subst c'
+        end.
+Timeout 10 vm_compute in H4.
+About ParenBalancedGrammar.paren_balanced_hiding_correctness_type.
+
+
+
+;
                 match type of H with
                   | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
                     => pose (@possible_open_closes_pre G) as c''';
@@ -195,18 +213,20 @@ total time:     21.428s
                 set (c0 := c) in H(*;
                   lazy in c0*)
 end.
+
 exfalso.
 clear H3.
 cbv [DisjointLemmas.possible_first_terminals_of] in c'''''.
 unfold possible_open_closes_pre in c'''.
 cbv beta iota delta [possible_valid_open_closes possible_balanced_open_closes] in H4.
 set (x := (@possible_open_closes json'_pregrammar)) in H4.
-Timeout 5 vm_compute in x.
+Time Timeout 25 vm_compute in x.
 subst x.
 match (eval cbv delta [H4] in H4) with
 | context[List.filter ?f ?ls] => set (x := (List.filter f ls)) in H4
 end.
 Timeout 1 cbv [ParenBalancedGrammar.paren_balanced_correctness_type] in x.
+Time Timeout 25 vm_compute in x.
 clear -x.
 match (eval cbv delta [x] in x) with
 | context[@BaseTypes.of_nonterminal ?a ?b ?c]
@@ -274,6 +294,7 @@ lazymatch (eval cbv delta [x] in x) with
        pose G' as x;
          set (fy := f' y) in (value of x)
 end.
+Time Timeout 10 vm_compute in x.
 clear -fy.
 subst f'; clear -fy.
 cbv beta in fy.
@@ -281,6 +302,7 @@ match (eval cbv delta [fy] in fy) with
 | appcontext[y ?v] => set (fy' := y v) in (value of fy)
 end.
 clear -fy'.
+Timeout 5 vm_compute in fy'.
 simpl @fst in fy'.
 simpl @snd in fy'.
 subst y.
@@ -298,13 +320,64 @@ repeat match (eval cbv delta [fy'] in fy') with
       cbv iota in fy'
 end.
 unfold fst at 1, snd at 1 in (value of fy').
-unfold List.length, Compare_dec.leb, plus in (value of fy').
+unfold List.length at 1 2, Compare_dec.leb at 1, plus at 1 in (value of fy').
+Ltac do_step fy' :=
+  unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy');
+  repeat progress match (eval cbv delta [fy'] in fy') with
+                  | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                  | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                  end;
+  cbv beta iota zeta in fy';
+  repeat match (eval cbv delta [fy'] in fy') with
+         | context G[List.filter ?f ?ls] =>
+           set (e' := List.filter f ls) in (value of fy');
+           let G' := context G[e'] in
+           let fy'' := fresh "fy'" in
+           rename fy' into fy'';
+           pose G' as fy';
+           clear fy'';
+           timeout 5 vm_compute in e';
+           subst e';
+           cbv iota in fy'
+         end;
+  unfold fst at 1, snd at 1 in (value of fy');
+  unfold List.length at 1 2, Compare_dec.leb at 1, plus at 1 in (value of fy').
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+  unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy');
+  repeat progress match (eval cbv delta [fy'] in fy') with
+                  | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                  | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                  end;
+  cbv beta iota zeta in fy';
+  repeat match (eval cbv delta [fy'] in fy') with
+         | context G[List.filter ?f ?ls] =>
+           set (e' := List.filter f ls) in (value of fy');
+           let G' := context G[e'] in
+           let fy'' := fresh "fy'" in
+           rename fy' into fy'';
+           pose G' as fy';
+           clear fy'';
+           timeout 5 vm_compute in e';
+           subst e';
+           cbv iota in fy'
+         end.
+
+
 unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy').
 repeat progress match (eval cbv delta [fy'] in fy') with
                 | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
                 | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
                 end.
 cbv beta iota zeta in fy'.
+
 unfold snd at 1 in (value of fy').
 unfold List.length at 1 2 in (value of fy').
 unfold plus at 1 in (value of fy').
