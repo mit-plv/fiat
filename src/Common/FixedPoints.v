@@ -4,6 +4,8 @@ Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.
 Set Implicit Arguments.
 
+Local Arguments leb !_ !_.
+
 Section fixedpoints.
   Context {A : Type}
           (sizeof : A -> nat)
@@ -21,8 +23,9 @@ Section fixedpoints.
        | 0 => a
        | S sz'
          => let a' := step a in
-            let sz'' := sizeof a' in
-            if leb (S sz'') sz
+            let sza := sizeof a in
+            let sza' := sizeof a' in
+            if leb (S sza') sza
             then greatest_fixpoint sz' a'
             else a
        end.
@@ -56,13 +59,20 @@ Section fixedpoints.
              | _ => solve [ eauto with nocore ]
              | [ |- step _ = _ ] => apply step_eq
              | _ => omega
+             | [ H : forall a, _ -> _ = _ |- _ ] => rewrite H by omega
              | [ H : _ < _ |- _ ] => hnf in H
+             | [ H : S _ <= S _ |- _ ] => apply Le.le_S_n in H
              | [ H : sizeof ?x <= ?y, H' : ?y <= sizeof (step ?x) |- _ ]
                => let H'' := fresh in
                   assert (H'' : sizeof (step x) <= sizeof x) by apply step_monotonic;
                     assert (sizeof x = y) by omega;
                     assert (y = sizeof (step x)) by omega;
                     clear H H' H''
+             | [ H : sizeof ?x <= sizeof (step ?x) |- _ ]
+               => let H'' := fresh in
+                  assert (H'' : sizeof (step x) <= sizeof x) by apply step_monotonic;
+                    assert (sizeof x = sizeof (step x)) by omega;
+                    clear H H''
              end. }
   Qed.
 End fixedpoints.
