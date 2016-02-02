@@ -927,7 +927,7 @@ Section search_backward.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
   Qed.*)
 
-  (*Lemma terminals_disjoint_rev_search_for' {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for' {G : pregrammar Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -954,16 +954,13 @@ Section search_backward.
     pose proof HinV as HinV';
       rewrite <- (@initial_nonterminals_correct _ G (@rdp_list_predata _ G) (@rdp_list_rdata' _ G)) in HinV'.
     apply and_comm; split.
-    { destruct (Compare_dec.le_dec (length str) n); [ left | right ].
-      { split; trivial.
-        pose proof (drop_length str n) as H.
-        rewrite (proj2 (Nat.sub_0_le (length str) n)) in H by assumption.
-        generalize dependent (drop n str); clear -pit HinV' HinL Hvalid Hvalid' HSLP HSIP.
-        intros.
-        eapply possible_first_terminals_of_production_empty_correct; try eassumption.
-        find_production_valid. }
-      { split; try omega; try assumption.
-        apply possible_first_terminals_of_production_correct; try assumption.
+    { destruct (Compare_dec.zerop n); [ left | right ].
+      { split; trivial; [].
+        eapply possible_last_terminals_of_empty_correct; try eassumption;
+        find_production_valid; [].
+        rewrite take_length; subst; reflexivity. }
+      { split; try omega; try assumption; [].
+        apply possible_last_terminals_of_correct; try assumption.
         find_production_valid. } }
     { eapply forall_chars__char_in__impl__forall_chars.
       { intros ch H'.
@@ -973,12 +970,12 @@ Section search_backward.
         eapply fold_right_andb_map_in in H_disjoint; [ | eassumption ].
         apply Bool.negb_true_iff, Bool.not_true_iff_false in H_disjoint.
         apply H_disjoint.
-        apply list_in_lb; [ apply (@ascii_lb) | assumption ]. }
-      { apply possible_terminals_of_correct; try assumption.
+        apply list_in_lb; [ apply (@ascii_lb) | eassumption ]. }
+      { apply possible_terminals_of_production_correct; try assumption.
         find_production_valid. } }
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for {G : pregrammar Ascii.ascii}
+  (*Lemma terminals_disjoint_rev_search_for {G : pregrammar Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -987,16 +984,16 @@ Section search_backward.
         (Hvalid : grammar_rvalid G)
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of G nt) (possible_terminals_of_production G its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-    : is_first_char_such_that
-        (might_be_empty (possible_first_terminals_of_production G its))
+    : is_last_char_such_that
+        (might_be_empty' (possible_last_terminals_of G nt))
         str
         n
-        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
+        (fun ch => list_bin ascii_beq ch (possible_last_terminals_of G nt)).
   Proof.
     pose proof (terminals_disjoint_rev_search_for' Hvalid _ H_disjoint pit pits H_reachable) as H.
     split;
