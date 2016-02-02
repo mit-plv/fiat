@@ -35,6 +35,7 @@ src/ADTRefinement/Refinements/SimplifyRep.v
 src/BinEncoders/Specs.v
 src/BinEncoders/Automation/Solver.v
 src/BinEncoders/Examples/Dns.v
+src/BinEncoders/Examples/Tcp.v
 src/BinEncoders/Libraries/BinCore.v
 src/BinEncoders/Libraries/Bool.v
 src/BinEncoders/Libraries/Char.v
