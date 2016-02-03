@@ -82,6 +82,39 @@ Section for_last_char.
                        end.
   Qed.
 
+  Lemma for_last_char__add_drop n (str : String) P
+  : for_last_char str P
+    -> for_last_char (drop n str) P.
+  Proof.
+    unfold for_last_char;
+      repeat match goal with
+             | [ |- (forall x, _) -> (forall x, _) ]
+               => let x' := fresh in
+                  let H := fresh in
+                  intros H x'; specialize (H x'); revert H
+             | [ |- (_ -> ?T) -> (_ -> ?T) ]
+               => let x' := fresh in
+                  let H := fresh in
+                  intros H x'; apply H; revert x'
+             | [ H : _ /\ _ |- _ ] => destruct H
+             | _ => setoid_rewrite drop_length
+             | _ => setoid_rewrite drop_drop
+             | _ => setoid_rewrite is_char_parts
+             | _ => intro
+             | [ H : context[min 1 ?x] |- _ ] => destruct x eqn:?; simpl in H
+             | [ H : is_true (take 0 _ ~= [ _ ]) |- _ ] => exfalso; apply length_singleton in H
+             | [ H : ?x < ?y, H' : context[pred (?y - ?x)] |- _ ]
+               => replace (pred (y - x)) with (pred y - x) in H' by omega
+             | [ H' : context[pred (?y - ?x) + ?x] |- _ ]
+               => replace (pred (y - x) + x) with (pred y) in H' by omega
+             | [ H : context[?x - ?y + ?y] |- _ ] => rewrite Nat.sub_add in H by omega
+             | [ |- _ /\ _ ] => split
+             | _ => omega
+             | _ => progress simpl in *; omega
+             | _ => solve [ eauto ]
+             end.
+  Qed.
+
   Global Arguments for_last_char__drop : clear implicits.
 
   Lemma for_last_char_singleton (str : String) P ch
