@@ -375,4 +375,22 @@ Section for_last_char.
       reflexivity. }
   Qed.
 
+  Lemma forall_chars_for_last_char_overlap {P Q} {R : Prop} {str dn tn}
+        (H0 : forall_chars (drop dn str) P)
+        (H1 : for_last_char (take tn str) Q)
+        (Hshort : dn < length str)
+        (Hcompat : dn < tn)
+        (HR : forall ch, P ch -> Q ch -> R)
+    : R.
+  Proof.
+    apply forall_chars_take with (n := tn - dn - 1) in H0.
+    rewrite take_drop in H0.
+    replace (S (tn - dn - 1) + dn) with tn in H0 by omega.
+    apply for_last_char__add_drop with (n := dn) in H1.
+    apply forall_chars__impl__for_last_char in H0.
+    destruct (for_last_char_combine HR H0 H1) as [H2|]; [ | assumption ].
+    contradict H2.
+    rewrite drop_length, take_length.
+    apply Min.min_case_strong; omega.
+  Qed.
 End for_last_char.
