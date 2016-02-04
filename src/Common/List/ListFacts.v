@@ -1945,4 +1945,12 @@ Section ListFacts.
       { pose proof (length_filter f ls).
         omega. } }
   Qed.
+
+  Lemma fold_right_andb_true_map_filter {A} (f : A -> bool) (ls : list A)
+    : fold_right andb true (map f (filter f ls)) = true.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { destruct (f l) eqn:H; simpl; rewrite ?H; simpl; assumption. }
+  Qed.
 End ListFacts.
