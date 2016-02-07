@@ -312,7 +312,8 @@ Ltac solve_disjoint_side_conditions :=
   idtac;
   lazymatch goal with
   | [ |- Carriers.default_to_production (G := ?G) ?k = ?e ]
-    => cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions List.length List.nth minus Operations.List.drop G];
+    => try cbv delta [G];
+       cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions List.length List.nth minus Operations.List.drop];
        try reflexivity
   | [ |- is_true (Operations.List.disjoint _ _ _) ]
     => vm_compute; try reflexivity
@@ -330,44 +331,47 @@ Ltac pose_disjoint_search_for lem :=
               | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                 => constr:(fun idx' nt its => lem' str offset len nt its idx' H')
               end in
-  pose proof lem' as lem.
-Ltac rewrite_once_disjoint_search_for lem :=
+  pose proof lem' as lem;
+  clear H'.
+Ltac rewrite_once_disjoint_search_for_specialize lem lem' :=
   idtac;
   let G := (lazymatch goal with
              | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                => G
              end) in
+  match goal with
+  | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+    => pose proof (lem idx) as lem';
+       do 2 (lazymatch type of lem' with
+              | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
+              end);
+       let T := match type of lem' with forall a : ?T, _ => T end in
+       let H' := fresh in
+       assert (H' : T) by solve_disjoint_side_conditions;
+       specialize (lem' H'); clear H';
+       let x := match type of lem' with
+                | context[DisjointLemmas.actual_possible_first_terminals ?ls]
+                  => constr:(DisjointLemmas.actual_possible_first_terminals ls)
+                end in
+       let x' := fresh in
+       set (x' := x) in lem';
+       vm_compute in x';
+       subst x';
+       unfold Equality.list_bin in lem';
+       change (orb false) with (fun bv : bool => bv) in lem';
+       cbv beta in lem';
+       let T := match type of lem' with forall a : ?T, _ => T end in
+       let H' := fresh in
+       assert (H' : T) by solve_disjoint_side_conditions;
+       specialize (lem' H'); clear H'
+  end.
+Ltac rewrite_once_disjoint_search_for lem :=
   let lem' := fresh "lem'" in
-  (lazymatch goal with
-    | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
-      => pose proof (lem idx) as lem'
-    end);
-  do 2 (lazymatch type of lem' with
-         | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
-         end);
-  let T := match type of lem' with forall a : ?T, _ => T end in
-  let H' := fresh in
-  assert (H' : T) by solve_disjoint_side_conditions;
-  specialize (lem' H'); clear H';
-  let x := match type of lem' with
-           | context[DisjointLemmas.actual_possible_first_terminals ?ls]
-             => constr:(DisjointLemmas.actual_possible_first_terminals ls)
-           end in
-  let x' := fresh in
-  set (x' := x) in lem';
-  vm_compute in x';
-  subst x';
-  unfold Equality.list_bin in lem';
-  change (orb false) with (fun bv : bool => bv) in lem';
-  cbv beta in lem';
-  let T := match type of lem' with forall a : ?T, _ => T end in
-  let H' := fresh in
-  assert (H' : T) by solve_disjoint_side_conditions;
-  specialize (lem' H'); clear H';
+  rewrite_once_disjoint_search_for_specialize lem lem';
   setoid_rewrite lem'; clear lem'.
 Ltac rewrite_disjoint_search_for_no_clear lem :=
   pose_disjoint_search_for lem;
-  repeat rewrite_once_disjoint_search_for lem.
+  progress repeat rewrite_once_disjoint_search_for lem.
 Ltac rewrite_disjoint_search_for :=
   idtac;
   let lem := fresh "lem" in
