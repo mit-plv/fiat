@@ -350,6 +350,7 @@ src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
 src/Parsers/Refinement/PreTactics.v
 src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
+src/Parsers/Refinement/SharpenedABStarParseTree.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v

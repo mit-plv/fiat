@@ -89,18 +89,41 @@ Ltac type_of_no_anomaly x :=
   let T := constr:(type_of x) in
   (eval cbv beta in T).
 
+Ltac make_Parser splitter :=
+  let b0 := constr:(fun pf => ParserFromParserADT.parser pf splitter) in
+  let T := match type_of_no_anomaly b0 with ?T -> _ => constr:T end in
+  let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
+  let b := constr:(b0 quicker_opaque_eq_refl) in
+  b.
+
 Ltac make_parser splitter :=
   idtac;
   let str := match goal with
                | [ str : String.string |- _ ] => constr:str
                | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
              end in
-  let b0 := constr:(fun pf => ParserInterface.has_parse (ParserFromParserADT.parser pf splitter) str) in
-  let T := match type_of_no_anomaly b0 with ?T -> _ => constr:T end in
-  let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
-  let b := constr:(b0 quicker_opaque_eq_refl) in
+  let b := make_Parser splitter in
+  let b := constr:(ParserInterface.has_parse b str) in
   let b' := parser_red_gen b in
   exact_no_check b'.
+
+Ltac make_parser_informative splitter :=
+  idtac;
+  let str := match goal with
+               | [ str : String.string |- _ ] => constr:str
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+             end in
+  let b := make_Parser splitter in
+  let b := (eval cbv beta in b) in
+  let G := match type of b with @ParserInterface.Parser _ ?G _ _ => G end in
+  let sound := constr:(ParserInterface.has_parse_sound b str) in
+  let b := constr:(ParserInterface.has_parse b str) in
+  let b' := parser_red_gen b in
+  let v := constr:(match b' as b'' return b = b'' -> option (parse_of_item G str (NonTerminal (Start_symbol G))) with
+                   | true => fun pf => Some (sound pf)
+                   | false => fun _ => None
+                   end (eq_refl b')) in
+  exact_no_check v.
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
