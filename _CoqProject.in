@@ -354,6 +354,7 @@ src/Parsers/Refinement/SharpenedABStarParseTree.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v
+src/Parsers/Refinement/SharpenedExpressionPlusParenParseTree.v
 src/Parsers/Refinement/SharpenedJSComment.v
 src/Parsers/Refinement/SharpenedJSON.v
 src/Parsers/Refinement/SharpenedStringLiteral.v
