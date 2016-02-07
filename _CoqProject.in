@@ -303,6 +303,7 @@ src/Parsers/ContextFreeGrammar/Valid.v
 src/Parsers/ContextFreeGrammar/ValidProperties.v
 src/Parsers/ContextFreeGrammar/ValidReflective.v
 src/Parsers/Grammars/ABStar.v
+src/Parsers/Grammars/EvalGrammarTactics.v
 src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
