@@ -185,7 +185,7 @@ Section is_after_last_char_such_that.
                | [ H : forall_chars ?str ?P, H' : for_last_char (take (S ?n) ?str) ?P' |- ?R ]
                  => rewrite forall_chars_take in H; specialize (H n); apply forall_chars__impl__for_last_char in H
                | [ H : for_last_char ?s ?P, H' : for_last_char ?s ?P' |- ?T' ]
-                 => destruct (fun pf => for_last_char_combine (T := T') pf H H'); [ tauto | | ];
+                 => destruct (fun pf => for_last_char_combine (T := T') pf H H'); [ cbv beta; tauto | | ];
                     clear H H'
                | [ H : length (take _ _) = 0 |- _ ] => rewrite take_length in H
                | [ H : min ?x ?y = 0 |- _ ] => revert H; apply (Min.min_case_strong x y)
