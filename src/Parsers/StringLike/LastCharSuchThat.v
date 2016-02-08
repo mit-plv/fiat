@@ -26,6 +26,19 @@ Section is_after_last_char_such_that.
        /\ for_last_char (take n str) P (*/\ 0 < min n (length str))
            \/ (might_be_empty /\ min n (length str) = 0))*).
 
+  Lemma after_last_char_such_that_nil
+        (str : String)
+        (n : nat)
+        P
+        (Hlen : length str = 0)
+  : is_after_last_char_such_that str n P.
+  Proof.
+    unfold is_after_last_char_such_that.
+    split; [ apply forall_chars_nil | apply for_last_char_nil ];
+    rewrite ?take_length, ?drop_length;
+    try apply Min.min_case_strong; omega.
+  Qed.
+
   (*Lemma after_last_char_such_that_0
         (might_be_empty : Prop)
         (str : String)
