@@ -115,7 +115,7 @@ Ltac make_parser_informative splitter :=
              end in
   let b := make_Parser splitter in
   let b := (eval cbv beta in b) in
-  let G := match type of b with @ParserInterface.Parser _ ?G _ _ => G end in
+  let G := match type_of_no_anomaly b with @ParserInterface.Parser _ ?G _ _ => G end in
   let sound := constr:(ParserInterface.has_parse_sound b str) in
   let b := constr:(ParserInterface.has_parse b str) in
   let b' := parser_red_gen b in
