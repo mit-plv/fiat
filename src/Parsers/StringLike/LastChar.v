@@ -75,7 +75,7 @@ Section for_last_char.
                          | [ H : is_true (take 0 _ ~= [ _ ]) |- _ ] => exfalso; apply length_singleton in H
                          | [ H : ?x < ?y, H' : context[pred (?y - ?x)] |- _ ]
                            => replace (pred (y - x)) with (pred y - x) in H' by omega
-                         | [ H : context[?x - ?y + ?y] |- _ ] => rewrite Nat.sub_add in H by omega
+                         | [ H : context[(?x - ?y + ?y)%nat] |- _ ] => rewrite Nat.sub_add in H by omega
                          | _ => omega
                          | _ => progress simpl in *; omega
                          | _ => solve [ eauto ]
@@ -105,9 +105,9 @@ Section for_last_char.
              | [ H : is_true (take 0 _ ~= [ _ ]) |- _ ] => exfalso; apply length_singleton in H
              | [ H : ?x < ?y, H' : context[pred (?y - ?x)] |- _ ]
                => replace (pred (y - x)) with (pred y - x) in H' by omega
-             | [ H' : context[pred (?y - ?x) + ?x] |- _ ]
+             | [ H' : context[(pred (?y - ?x) + ?x)%nat] |- _ ]
                => replace (pred (y - x) + x) with (pred y) in H' by omega
-             | [ H : context[?x - ?y + ?y] |- _ ] => rewrite Nat.sub_add in H by omega
+             | [ H : context[(?x - ?y + ?y)%nat] |- _ ] => rewrite Nat.sub_add in H by omega
              | [ |- _ /\ _ ] => split
              | _ => omega
              | _ => progress simpl in *; omega
