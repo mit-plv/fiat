@@ -151,8 +151,8 @@ Proof.
   clearbody len.
   generalize dependent str; revert n.
   induction len; simpl; intros n str IH Hlen.
-  { apply first_char_such_that_0.
-    rewrite drop_length.
+  { apply after_last_char_such_that_nil.
+    rewrite drop_length; omega. }
     rewrite NPeano.Nat.sub_0_r in IH |- *.
     rewrite Minus.minus_diag.
     split.
