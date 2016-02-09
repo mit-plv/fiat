@@ -17,6 +17,8 @@ Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
+Local Arguments minus !_ !_.
+
 Definition rev_search_for_condition
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
@@ -153,6 +155,12 @@ Proof.
   induction len; simpl; intros n str IH Hlen.
   { apply after_last_char_such_that_nil.
     rewrite drop_length; omega. }
+  { destruct (get len str) as [ch|] eqn:Hget.
+    { destruct (P ch) eqn:HP.
+      { simpl.
+        About is_after_last_char_such_that_drop.
+        SearchAbout is_after_last_char_such_that.
+
     rewrite NPeano.Nat.sub_0_r in IH |- *.
     rewrite Minus.minus_diag.
     split.
