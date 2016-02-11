@@ -346,6 +346,11 @@ Section SharpenedBagImplementation.
       assumption.
   Qed.
 
+  Local Instance DecideableEnsemble_bool
+        {A} (f : A -> bool)
+    : DecideableEnsemble (fun a => f a = true) :=
+    {| dec := f |}. Proof. intuition. Defined.
+    
   Lemma refine_Update_invalid
   : forall or nr search_term update_term,
       or ≃ benumerate nr
@@ -479,13 +484,19 @@ Section SharpenedBagImplementation.
       intuition.
       pose proof (bfind_correct r_n d H2).
       destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l]].
-      refine pick val l.
+      refine pick val (bfind r_n d).
       simplify with monad laws; simpl.
       refine pick val r_n; eauto.
       simplify with monad laws; simpl.
-      simpl in *; rewrite l_eq.
       finish honing.
-      eapply Permutation_EnsembleIndexedListEquivalence; simpl in *; eauto.
+      rewrite <- l_eq.
+      destruct H1; constructor.
+      - destruct H1 as [idx H1]; eexists idx.
+        unfold UnConstrFreshIdx; intros; eapply H1.
+        unfold IndexedEnsemble_Intersection in *; intuition.
+      - eapply UnIndexedEnsembleListEquivalence_filter with
+        (P_dec := DecideableEnsemble_bool (bfind_matcher d)); eauto.
+        eapply Permutation_UnIndexedEnsembleListEquivalence; simpl in *; eauto.
     }
 
     (* sEnumerate. *)

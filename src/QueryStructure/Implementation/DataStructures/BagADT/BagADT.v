@@ -45,10 +45,11 @@ Section BagADT.
         Def Constructor0 sEmpty : rep :=
           ret (Empty_set _),
 
-          Def Method1 sFind (r : rep) (f : SearchTermType)
+        Def Method1 sFind (r : rep) (f : SearchTermType)
           : rep * (list ElementType) :=
-            results <- {l | EnsembleIndexedListEquivalence r l};
-            ret (r, filter (MatchSearchTerm f) results),
+            results <- {l | EnsembleIndexedListEquivalence
+                              (IndexedEnsemble_Intersection r (fun x => MatchSearchTerm f x = true)) l};
+            ret (r, results),
 
         Def Method0 sEnumerate (r : rep)
           : rep * (list ElementType) :=
