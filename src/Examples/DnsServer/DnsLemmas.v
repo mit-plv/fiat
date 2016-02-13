@@ -1083,8 +1083,9 @@ this is because x is a list of tuples that all came from r *)
   { eapply Permutation_in. apply H7. auto. }
   assert (List.In t' x).
   { eapply Permutation_in. apply H7. auto. }
+  simpl in H5.
 
-  eapply In_Where_Intersection in H5; eauto with typeclass_instances.
+  eapply refine_In_Where_Intersection in H5; eauto with typeclass_instances.
   unfold QueryResultComp in H5; computes_to_inv.
   destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
   rewrite <- Equiv in *.
