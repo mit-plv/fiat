@@ -1922,4 +1922,35 @@ Section ListFacts.
   Proof.
     induction ls as [|l ls IHls]; simpl; [ | rewrite IHls ]; reflexivity.
   Qed.
+
+  Lemma length_filter {A} f (ls : list A) : length (filter f ls) <= length ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { edestruct f; simpl;
+      try apply le_n_S;
+      try apply le_S;
+      apply IHls. }
+  Qed.
+
+  Lemma length_filter_eq {A f} {ls : list A} (H : length (filter f ls) = length ls)
+    : filter f ls = ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl in *.
+    { reflexivity. }
+    { edestruct f; simpl in *;
+      f_equal;
+      try apply IHls;
+      try omega.
+      { pose proof (length_filter f ls).
+        omega. } }
+  Qed.
+
+  Lemma fold_right_andb_true_map_filter {A} (f : A -> bool) (ls : list A)
+    : fold_right andb true (map f (filter f ls)) = true.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { destruct (f l) eqn:H; simpl; rewrite ?H; simpl; assumption. }
+  Qed.
 End ListFacts.

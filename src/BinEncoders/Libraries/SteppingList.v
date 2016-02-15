@@ -89,3 +89,5 @@ Global Instance SteppingList_decoder
             (SteppingList_encode encode_A) :=
   { decode := SteppingList_decode halt_dec fuel predicate_A decoder_A;
     decode_correct := SteppingList_encode_decode_correct _ _ }.
+
+Arguments SteppingList_predicate / _ _ _ _ _ _.

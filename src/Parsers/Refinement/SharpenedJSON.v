@@ -87,6 +87,7 @@ total time:     21.428s
         idtac;
         let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
         let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL _ _ _ G) in
+        let H' := fresh in
         assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
           let lem' := match goal with
                         | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
@@ -115,9 +116,13 @@ total time:     21.428s
                        | context[DisjointLemmas.actual_possible_first_terminals ?ls]
                          => constr:(DisjointLemmas.actual_possible_first_terminals ls)
                      end in
-            let x' := (eval vm_compute in x) in
-            change x with x' in lem';
-              simpl @Equality.list_bin in lem';
+            let x' := fresh in
+            set (x' := x) in lem';
+              vm_compute in x';
+              subst x';
+              unfold Equality.list_bin in lem';
+              change (orb false) with (fun bv : bool => bv) in lem';
+              cbv beta in lem';
               let T := match type of lem' with forall a : ?T, _ => T end in
               let H' := fresh in
               assert (H' : T) by solve_disjoint_side_conditions;
@@ -134,14 +139,317 @@ total time:     21.428s
 
       Time rewrite_disjoint_search_for.
       Time simplify parser splitter.
+      Start Profiling.
       idtac;
         match goal with
-                      | [ |- context[{ splits : list nat
-                                     | ParserInterface.split_list_is_complete_idx
-                                         ?G ?str ?offset ?len ?idx splits }%comp] ]
-                        => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                     G str offset len idx) in
-      idtac;
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time simplify parser splitter.
+        Set Printing Depth 100000.
+        (*repeat match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             let lem := constr:(Operations.List.take 2 (Carriers.default_to_production (G := G) idx)) in
+             let lem' := (eval hnf in lem) in
+             let lem' := (eval simpl in lem') in
+             pose lem';
+               let k := fresh in set (k := args); move k at top
+        end.
+        repeat match goal with
+               | [ H := ?x, H' := ?x |- _ ] => clear H'
+               end.*)
+do 1 match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             let lem := constr:(Operations.List.take 2 (Carriers.default_to_production (G := G) idx)) in
+             let lem' := (eval hnf in lem) in
+             let lem' := (eval simpl in lem') in
+             pose lem';
+               let k := fresh in set (k := args); move k at top
+        end.
+        repeat match goal with
+               | [ H := ?x, H' := ?x |- _ ] => clear H'
+               end.
+pose_disjoint_search_for lem.
+progress rewrite_once_disjoint_search_for lem.
+
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+progress rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
+rewrite_disjoint_search_for.
+idtac;
+        let G := (lazymatch goal with
+                 | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+                   => G
+                  end) in
+        let lem' := fresh "lem'" in
+        (lazymatch goal with
+        | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+          => pose proof (lem idx) as lem'
+         end);
+          do 2 (lazymatch type of lem' with
+               | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
+                end);
+          let T := match type of lem' with forall a : ?T, _ => T end in
+          let H' := fresh in
+          assert (H' : T) by solve_disjoint_side_conditions;
+            specialize (lem' H'); clear H';
+            let x := match type of lem' with
+                       | context[DisjointLemmas.actual_possible_first_terminals ?ls]
+                         => constr:(DisjointLemmas.actual_possible_first_terminals ls)
+                     end in
+            let x' := fresh in
+            set (x' := x) in lem';
+              vm_compute in x';
+              subst x';
+              unfold Equality.list_bin in lem';
+              change (orb false) with (fun bv : bool => bv) in lem';
+              cbv beta in lem';
+              let T := match type of lem' with forall a : ?T, _ => T end in
+              let H' := fresh in
+              assert (H' : T) by solve_disjoint_side_conditions;
+                specialize (lem' H'); clear H'.
+                setoid_rewrite lem'; clear lem'.
+
+idtac;
+  let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
+  let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL _ _ _ G) in
+  assert (H' : ValidReflective.grammar_rvalid G) by (vm_compute; reflexivity);
+    let lem' := match goal with
+                | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+                  => constr:(fun idx' nt its => lem' str offset len nt its idx' H')
+                end in
+    pose proof lem' as lem.
+
+        repeat rewrite_once_disjoint_search_for lem.
+
+hnf in l.
+simpl in l.
+simpl @Lookup_idx in l.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+        Time match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          => let args := constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx) in
+             setoid_rewrite_refine_binop_table_idx args
+        end.
+      Show Profile.
+        idtac;
         let lem := constr:(@refine_binop_table_idx _ _ _ _ _) in
         let G := match args with ParserInterface.split_list_is_complete_idx
                                    ?G ?str ?offset ?len ?idx => G end in
@@ -186,6 +494,117 @@ total time:     21.428s
                            | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
                              => constr:(@possible_valid_open_closes G nt ch)
                          end in
+                let c0 := fresh in
+                set (c0 := c) in H;
+                  vm_compute in c0;
+                  first [ subst c0; specialize (H eq_refl)
+                        | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
+                  let c := match type of H with
+                             | context[@MakeBinOpTable.default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]
+                               => constr:(@MakeBinOpTable.default_list_of_next_bin_ops_opt_data HSLM HSL data)
+                           end in
+                  let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
+                  let c' := match c' with
+                              | appcontext[@StringLike.get _ ?HSLM ?HSL]
+                                => let HSLM' := head HSLM in
+                                   let HSL' := head HSL in
+                                   (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')
+                              | _ => c'
+                            end in
+                  change c with c' in H;
+                    first [ setoid_rewrite H
+                          | let T := type of H in
+                            fail 1 "Unexpeected failure to setoid_rewrite with" T ];
+                    clear H
+        end.
+      idtac;
+        let lem := constr:(@refine_binop_table_idx _ _ _ _ _) in
+        let G := match args with ParserInterface.split_list_is_complete_idx
+                                   ?G ?str ?offset ?len ?idx => G end in
+        let str := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => str end in
+        let offset := match args with ParserInterface.split_list_is_complete_idx
+                                        ?G ?str ?offset ?len ?idx => offset end in
+        let len := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => len end in
+        let idx := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => idx end in
+        let ps := (eval hnf in (Carriers.default_to_production (G := G) idx)) in
+        match ps with
+          | nil => fail 1 "The index" idx "maps to the empty production," "which is not valid for the binop-brackets rule"
+          | _ => idtac
+        end;
+          let p := match ps with ?p::_ => p end in
+          let p := (eval hnf in p) in
+          match p with
+            | NonTerminal _ => idtac
+            | _ => fail 1 "The index" idx "maps to a production starting with" p "which is not a nonterminal; the index must begin with a nonterminal to apply the binop-brackets rule"
+          end;
+            let nt := match p with NonTerminal ?nt => nt end in
+            let its := (eval simpl in (List.tl ps)) in
+            let lem := constr:(fun its' H' ch H0 H1 => lem G eq_refl str offset len nt ch its' H0 H1 idx H') in
+            let lem := constr:(lem its eq_refl) in
+            let chT := match type of lem with forall ch : ?chT, _ => chT end in
+            let chE := fresh "ch" in
+            evar (chE : chT);
+              let ch := (eval unfold chE in chE) in
+              let lem := constr:(lem ch) in
+              let H0 := fresh in
+              let T0 := match type of lem with ?T0 -> _ => T0 end in
+              first [ assert (H0 : T0) by (clear; lazy; repeat esplit)
+                    | fail 1 "Could not find a single binary operation to solve" T0 ];
+                subst chE;
+                let lem := constr:(lem H0) in
+                let H := fresh in
+                pose proof lem as H; clear H0;
+                  let c' := fresh in
+                  let c := match type of H with
+                           | context[is_true ?e]
+                             => constr:(is_true e)
+                           end in
+                  set (c' := c) in H;
+                    vm_compute in c';
+                    subst c';
+                    specialize (H eq_refl);
+                    setoid_rewrite H;
+                    clear H
+end.
+                unfold correct_open_close, possible_valid_open_closes in H;
+                let c' := fresh in
+                let c := match type of H with
+                         | appcontext[@possible_balanced_open_closes ?G ?nt]
+                           => constr:(@possible_balanced_open_closes G nt)
+                         end in
+                set (c' := c) in H;
+                  vm_compute in c';
+                  subst c';
+                  let c := match type of H with
+                           | context[@ParenBalancedGrammar.paren_balanced_hiding_correctness_type ?a ?b ?c ?d ?e]
+                             => constr:(@ParenBalancedGrammar.paren_balanced_hiding_correctness_type a b c d e)
+                           end in
+                  set (c' := c) in H;
+                    vm_compute in c';
+                    subst c'
+        end.
+exfalso.
+unfold ParenBalancedGrammar.paren_balanced_hiding_correctness_type in H4.
+clear H3.
+set (k := (ParenBalancedGrammar.paren_balanced_nonterminals json'_pregrammar "value WS*")) in (value of H4).
+Timeout 10 vm_compute in k.
+subst k.
+simpl @fst in H4.
+simpl @snd in H4.
+set (k := (BaseTypes.of_nonterminal "value WS*")) in (value of H4).
+vm_compute in k.
+subst k.
+vm_compute in H4.
+Set Printing Implicit.
+Timeout 10 vm_compute in H4.
+About ParenBalancedGrammar.paren_balanced_hiding_correctness_type.
+
+
+
+;
                 match type of H with
                   | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
                     => pose (@possible_open_closes_pre G) as c''';
@@ -195,18 +614,20 @@ total time:     21.428s
                 set (c0 := c) in H(*;
                   lazy in c0*)
 end.
+
 exfalso.
 clear H3.
 cbv [DisjointLemmas.possible_first_terminals_of] in c'''''.
 unfold possible_open_closes_pre in c'''.
 cbv beta iota delta [possible_valid_open_closes possible_balanced_open_closes] in H4.
 set (x := (@possible_open_closes json'_pregrammar)) in H4.
-Timeout 5 vm_compute in x.
+Time Timeout 25 vm_compute in x.
 subst x.
 match (eval cbv delta [H4] in H4) with
 | context[List.filter ?f ?ls] => set (x := (List.filter f ls)) in H4
 end.
 Timeout 1 cbv [ParenBalancedGrammar.paren_balanced_correctness_type] in x.
+Time Timeout 25 vm_compute in x.
 clear -x.
 match (eval cbv delta [x] in x) with
 | context[@BaseTypes.of_nonterminal ?a ?b ?c]
@@ -217,15 +638,175 @@ subst y.
 match (eval cbv delta [x] in x) with
 | appcontext[@ParenBalancedGrammar.paren_balanced_nonterminals ?a ?b _ ?d ?e]
   => set (y' := fun d' e' c => @ParenBalancedGrammar.paren_balanced_nonterminals a b c d' e') in (value of x);
+       set (y'' := @ParenBalancedGrammar.paren_balanced_nonterminals a b) in (value of x);
        change (@ParenBalancedGrammar.paren_balanced_nonterminals a b)
-       with (fun c' d' e' => y' d' e' c') in (value of x);
+       with (fun c' d' e' => y' d' e' c') in (value of y'');
+       subst y'';
        cbv beta in x;
        set (y := y' d e) in (value of x);
        subst y';
        cbv beta in y
 end.
-cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT ParenBalancedGrammar.paren_balanced_nonterminals ParenBalancedGrammar.paren_balanced_nonterminals_of FoldGrammar.fold_nt BaseTypes.nonterminals_length BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data fst List.length Operations.List.up_to] in y.
-simpl @List.map in y.
+cbv [BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_nonterminal_carrierT BaseTypes.initial_nonterminals_data RDPList.rdp_list_initial_nonterminals_data ParenBalancedGrammar.paren_balanced_nonterminals] in y.
+simpl @Operations.List.up_to in y.
+cbv [FixedPoints.greatest_fixpoint_of_lists FixedPoints.greatest_fixpoint] in y.
+unfold FixedPoints.greatest_fixpoint', FixedPoints.sizeof_pair in y.
+simpl @List.length in y.
+simpl plus in y.
+cbv beta iota zeta in y.
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of y).
+repeat progress match (eval cbv delta [y] in y) with
+                | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of y)
+                | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of y)
+                end.
+cbv beta iota zeta in y.
+Print List.filter.
+lazymatch (eval cbv delta [x] in x) with
+| List.filter ?f (?y::?ys)
+  => set (f' := f) in (value of x)
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x);
+         timeout 5 vm_compute in fy;
+         subst fy;
+         cbv iota in x
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x);
+         timeout 5 vm_compute in fy;
+         subst fy;
+         cbv iota in x
+end.
+lazymatch (eval cbv delta [x] in x) with
+| context G[List.filter f' (?y::?ys)]
+  => let x' := fresh "x'" in
+     rename x into x';
+       let G' := context G[if f' y then y::List.filter f' ys else List.filter f' ys] in
+       pose G' as x;
+         set (fy := f' y) in (value of x)
+end.
+Time Timeout 10 vm_compute in x.
+clear -fy.
+subst f'; clear -fy.
+cbv beta in fy.
+match (eval cbv delta [fy] in fy) with
+| appcontext[y ?v] => set (fy' := y v) in (value of fy)
+end.
+clear -fy'.
+Timeout 5 vm_compute in fy'.
+simpl @fst in fy'.
+simpl @snd in fy'.
+subst y.
+cbv beta in fy'.
+repeat match (eval cbv delta [fy'] in fy') with
+| context G[List.filter ?f ?ls] =>
+  set (e' := List.filter f ls) in (value of fy');
+    let G' := context G[e'] in
+    let fy'' := fresh "fy'" in
+    rename fy' into fy'';
+      pose G' as fy';
+      clear fy'';
+      timeout 5 vm_compute in e';
+      subst e';
+      cbv iota in fy'
+end.
+unfold fst at 1, snd at 1 in (value of fy').
+unfold List.length at 1 2, Compare_dec.leb at 1, plus at 1 in (value of fy').
+Ltac do_step fy' :=
+  unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy');
+  repeat progress match (eval cbv delta [fy'] in fy') with
+                  | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                  | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                  end;
+  cbv beta iota zeta in fy';
+  repeat match (eval cbv delta [fy'] in fy') with
+         | context G[List.filter ?f ?ls] =>
+           set (e' := List.filter f ls) in (value of fy');
+           let G' := context G[e'] in
+           let fy'' := fresh "fy'" in
+           rename fy' into fy'';
+           pose G' as fy';
+           clear fy'';
+           timeout 5 vm_compute in e';
+           subst e';
+           cbv iota in fy'
+         end;
+  unfold fst at 1, snd at 1 in (value of fy');
+  unfold List.length at 1 2, Compare_dec.leb at 1, plus at 1 in (value of fy').
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+do_step fy'.
+  unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy');
+  repeat progress match (eval cbv delta [fy'] in fy') with
+                  | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                  | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                  end;
+  cbv beta iota zeta in fy';
+  repeat match (eval cbv delta [fy'] in fy') with
+         | context G[List.filter ?f ?ls] =>
+           set (e' := List.filter f ls) in (value of fy');
+           let G' := context G[e'] in
+           let fy'' := fresh "fy'" in
+           rename fy' into fy'';
+           pose G' as fy';
+           clear fy'';
+           timeout 5 vm_compute in e';
+           subst e';
+           cbv iota in fy'
+         end.
+
+
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy').
+repeat progress match (eval cbv delta [fy'] in fy') with
+                | appcontext[fst (?a, ?b)] => change (fst (a, b)) with a in (value of fy')
+                | appcontext[snd (?a, ?b)] => change (snd (a, b)) with b in (value of fy')
+                end.
+cbv beta iota zeta in fy'.
+
+unfold snd at 1 in (value of fy').
+unfold List.length at 1 2 in (value of fy').
+unfold plus at 1 in (value of fy').
+unfold Compare_dec.leb at 1 in (value of fy').
+unfold List.length at 1 in (value of fy').
+
+
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of fy').
+cbv beta iota zeta in fy'.
+Timeout 5 vm_compute in e'.
+
+pose (y {| is_open := Equality.ascii_beq "{"%char ; is_close := Equality.ascii_beq "}"%char ; is_bin_op := fun _ => false |}) as z.
+unfold y in z.
+clear -z.
+Timeout 5 vm_compute in z.
+
+unfold List.filter in x.
+lazymatch (eval cbv delta [y] in y) with
+| appcontext[List.filter ?f ?ls] => set (z := List.filter f ls) in (value of y)
+end.
+cbv beta iota delta [List.filter] in y.
+unfold List.filter at 1 in (value of y).
+unfold FixedPoints.greatest_fixpoint_step at 1 in (value of y).
+simpl @fst in y.
+simpl
+Print
+
+Timeout 5 vm_compute in y.
 cbv beta iota zeta in y.
 Opaque FoldGrammar.fold_nt_step.
 simpl in y.

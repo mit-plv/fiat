@@ -139,3 +139,6 @@ Global Instance FixList_decoder
             (FixList_encode (size:=size) encode_A) :=
   { decode := FixList_decode size predicate_A decoder_A (nat_of_N (proj1_sig len));
     decode_correct := @FixList_encode_decode_correct _ _ _ _ _ _ _ }.
+
+Arguments FixList_predicate / _ _ _ _ _ _.
+Arguments FixList.data_t / _ _.
