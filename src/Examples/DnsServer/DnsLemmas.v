@@ -298,6 +298,7 @@ Hint Resolve refine_count_constraint_broken.
 (* refine a check into a filter, given the results of a sub-check
 uses P' decision procedure invisibly in DecideableEnsembles.dec by the magic of typeclasses
 (try Set Printing Implicit) *)
+
 Lemma refine_subcheck_to_filter {heading}
 : forall (R : Ensemble (@IndexedTuple heading))
          (P : Ensemble Tuple) (P_dec : DecideableEnsemble P)
@@ -316,7 +317,7 @@ Lemma refine_subcheck_to_filter {heading}
                                   (Return tup))))
         (ret (filter DecideableEnsembles.dec l)).
 Proof.
-  Local Transparent Query_For.
+  Local Transparent Query_For QueryResultComp.
   unfold Query_For, QueryResultComp, Query_Return;
     intros; computes_to_inv.
   refine pick val _; eauto.
@@ -1084,7 +1085,7 @@ this is because x is a list of tuples that all came from r *)
   assert (List.In t' x).
   { eapply Permutation_in. apply H7. auto. }
 
-  eapply In_Where_Intersection in H5; eauto with typeclass_instances.
+  eapply refine_Intersection_Where in H5; eauto with typeclass_instances.
   unfold QueryResultComp in H5; computes_to_inv.
   destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
   rewrite <- Equiv in *.
