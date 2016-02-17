@@ -24,6 +24,7 @@ Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Import Fiat.Parsers.StringLike.LastChar.
+Require Import Fiat.Parsers.StringLike.LastCharSuchThat.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
@@ -895,7 +896,7 @@ Section search_backward.
       find_production_valid. }
   Qed.
 
-  (*Lemma terminals_disjoint_rev_search_for_not {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for_not {G : pregrammar Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -909,23 +910,28 @@ Section search_backward.
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-    : is_last_char_such_that
-        (might_be_empty' (possible_last_terminals_of G nt))
+    : is_after_last_char_such_that
+        (*(might_be_empty' (possible_last_terminals_of G nt))*)
         str
         n
-        (fun ch => negb (list_bin ascii_beq ch (possible_last_terminals_of_production G its))).
+        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production G its))).
   Proof.
     pose proof (terminals_disjoint_rev_search_for_not' Hvalid _ H_disjoint pit pits H_reachable) as H.
     split;
       [ destruct H as [H0 H1]
-      | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
+      | destruct H as [H0 [[H1 H2] | H1]];
+        destruct_head and;
+        try solve [ left; eauto
+                  | right; eauto
+                  | assumption
+                  | apply for_last_char_nil; rewrite ?take_length; apply Min.min_case_strong; omega ] ].
     revert H0.
     apply forall_chars__char_in__impl__forall_chars.
     intros ch H' H''.
     apply Bool.negb_true_iff, Bool.not_true_iff_false in H''.
-    apply H''.
+    apply H''; clear H''.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
-  Qed.*)
+  Qed.
 
   Lemma terminals_disjoint_rev_search_for' {G : pregrammar Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
@@ -975,7 +981,7 @@ Section search_backward.
         find_production_valid. } }
   Qed.
 
-  (*Lemma terminals_disjoint_rev_search_for {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for {G : pregrammar Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -989,8 +995,8 @@ Section search_backward.
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-    : is_last_char_such_that
-        (might_be_empty' (possible_last_terminals_of G nt))
+    : is_after_last_char_such_that
+        (*(might_be_empty' (possible_last_terminals_of G nt))*)
         str
         n
         (fun ch => list_bin ascii_beq ch (possible_last_terminals_of G nt)).
@@ -998,7 +1004,11 @@ Section search_backward.
     pose proof (terminals_disjoint_rev_search_for' Hvalid _ H_disjoint pit pits H_reachable) as H.
     split;
       [ destruct H as [H0 H1]
-      | destruct H as [H0 [[H1 H2] | [H1 ?]]]; [ right | left; split ]; eauto ].
+      | destruct H as [H0 [[H1 H2] | [H1 ?]]];
+        try solve [ right; eauto
+                  | left; split; eauto
+                  | assumption
+                  | apply for_last_char_nil; rewrite ?take_length; apply Min.min_case_strong; omega ] ].
     { revert H0.
       apply forall_chars_Proper; [ reflexivity | ].
       intros ch H' H''.
@@ -1006,9 +1016,8 @@ Section search_backward.
       apply H'.
       assumption. }
     { revert H1.
-      apply first_char_in__impl__for_first_char.
+      apply last_char_in__impl__for_last_char.
       intros ch H'.
       apply list_in_lb; [ apply (@ascii_lb) | ]; assumption. }
   Qed.
-*)
 End search_backward.

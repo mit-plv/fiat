@@ -975,7 +975,7 @@ Ltac convert_filter_to_find' :=
     match f with
     | fun a => ?MatchIndexSearchTerm ?st (ilist2_hd (ilist2_tl a)) =>
       let b := fresh in
-      pose proof (fun foo => @refine_Join_Comp_Lists_filter_search_term_fst _ _ _ r_n idx _ cl st resultComp foo filter_rest) as b;
+      pose proof (fun foo => @refine_Join_Comp_Lists_filter_search_term_fst _ _ _ r_o r_n H idx _ cl st resultComp foo filter_rest) as b;
         simpl in b; setoid_rewrite b;
         [ clear b
         | match goal with
@@ -997,7 +997,7 @@ Ltac convert_filter_to_find' :=
     | fun a => ?MatchIndexSearchTerm (Dep_SearchTerm_Wrapper ?st' (ilist2_hd (ilist2_tl a)))
                 (ilist2_hd a) =>
       let b := fresh in
-      pose proof (@refine_Join_Comp_Lists_filter_filter_search_term_snd_dep' _ _ _ r_n idx idx'
+      pose proof (@refine_Join_Comp_Lists_filter_filter_search_term_snd_dep' _ _ _ r_o r_n H idx idx'
                                                                              (fun a => Dep_SearchTerm_Wrapper st' (ilist2_hd a))
                                                                              resultComp filter_rest st) as b;
         unfold Dep_SearchTerm_Wrapper in b; simpl in b; setoid_rewrite b; clear b

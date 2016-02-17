@@ -430,6 +430,76 @@ Section BagsQueryStructureRefinements.
     repeat (econstructor; eauto).
   Qed.*)
 
+  Lemma refine_BagFind_filter
+  : forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      ->
+      forall (idx : Fin.t _)
+             filter_dec
+             search_pattern,
+        ExtensionalEq filter_dec
+                      (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
+        -> refine (l <- {l | EnsembleIndexedListEquivalence (GetIndexedRelation r_n idx) l};
+                   ret (r_n, filter filter_dec l))
+                  (CallBagFind idx r_n search_pattern).
+  Proof.
+    unfold UnConstrQuery_In, QueryResultComp, CallBagEnumerate,
+    CallBagFind, CallBagMethod, Query_For;
+    intros; simpl.
+    repeat setoid_rewrite refineEquiv_bind_bind;
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+    setoid_rewrite (filter_by_equiv _ _ H0).
+    intros v Comp_v.
+    computes_to_inv.
+    destruct (H idx) as [l [? ?] ].
+    destruct H2.
+    pose proof (UnIndexedEnsembleListEquivalence_filter
+                  (DecideableEnsemble_bool (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)) H3).
+    destruct Comp_v as [? ?].
+    pose proof (Permutation_UnIndexedEnsembleListEquivalence' H4 H6).
+    apply permutation_filter in H7; destruct H7 as [l' [? ? ] ]; subst.
+    repeat computes_to_econstructor.
+    econstructor; [eauto | ].
+    eapply Permutation_UnIndexedEnsembleListEquivalence; eauto.
+    unfold UpdateIndexedRelation, GetIndexedRelation.
+    rewrite replace3_Index3_eq.
+    computes_to_econstructor.
+  Qed.
+
+    Lemma refine_filter_BagFind
+  : forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n
+      ->
+      forall (idx : Fin.t _)
+             filter_dec
+             search_pattern,
+        ExtensionalEq filter_dec
+                      (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
+        -> refine (CallBagFind idx r_n search_pattern)
+                  (l <- {l | EnsembleIndexedListEquivalence (GetIndexedRelation r_n idx) l};
+                   ret (r_n, filter filter_dec l)).
+  Proof.
+    unfold UnConstrQuery_In, QueryResultComp, CallBagEnumerate,
+    CallBagFind, CallBagMethod, Query_For;
+    intros; simpl.
+    repeat setoid_rewrite refineEquiv_bind_bind;
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+    setoid_rewrite (filter_by_equiv _ _ H0).
+    intros v Comp_v.
+    computes_to_inv.
+    subst.
+    destruct Comp_v as [? ?].
+    pose proof (UnIndexedEnsembleListEquivalence_filter
+                  (DecideableEnsemble_bool (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)) H2).
+    repeat computes_to_econstructor.
+    eexists; eauto.
+    destruct H1 as [? H1]; eexists; intros ? ?; try eapply H1.
+    apply H4.
+    unfold UpdateIndexedRelation, GetIndexedRelation.
+    rewrite replace3_Index3_eq.
+    computes_to_econstructor.
+  Qed.
+
   Lemma refine_Query_For_In_Find
         (ResultT : Type)
   : forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
@@ -446,14 +516,13 @@ Section BagsQueryStructureRefinements.
                   (l <- CallBagFind idx r_n search_pattern;
                    List_Query_In (snd l) resultComp).
   Proof.
+    intros. setoid_rewrite <- refine_BagFind_filter; eauto.
     unfold UnConstrQuery_In, QueryResultComp, CallBagEnumerate,
     CallBagFind, CallBagMethod, Query_For;
     intros; simpl.
     simplify with monad laws.
     repeat setoid_rewrite refineEquiv_bind_bind;
-      repeat setoid_rewrite refineEquiv_bind_unit; simpl; f_equiv; intro.
-    unfold List_Query_In.
-    rewrite (filter_by_equiv _ _ H0).
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     reflexivity.
   Qed.
 
@@ -478,25 +547,27 @@ Section BagsQueryStructureRefinements.
     induction l1.
     - simplify with monad laws; reflexivity.
     - Local Transparent CallBagMethod.
-      unfold CallBagMethod, CallBagEnumerate, CallBagFind.
       simpl.
-      setoid_rewrite refineEquiv_bind_bind.
-      setoid_rewrite refineEquiv_bind_bind.
-      setoid_rewrite refineEquiv_bind_bind.
-      setoid_rewrite refineEquiv_bind_bind.
-      setoid_rewrite refineEquiv_bind_bind at 1.
-      repeat setoid_rewrite refineEquiv_bind_unit; simpl;
-      f_equiv; intro.
-      setoid_rewrite refineEquiv_bind_bind at 1.
-      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
-      intros v Comp_v.
-       computes_to_inv; subst.
-       generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
-       computes_to_econstructor; subst; eauto.
-      rewrite filter_app, filter_map.
-      simpl.
-      erewrite filter_by_equiv; eauto.
-      unfold ExtensionalEq; intros; rewrite andb_true_r; auto.
+        setoid_rewrite refineEquiv_bind_bind.
+        setoid_rewrite refineEquiv_bind_bind.
+        etransitivity;
+          [ | apply refine_bind;
+              [ eapply (@refine_BagFind_filter _ _ H idx (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern) search_pattern); unfold ExtensionalEq; intuition
+              | unfold pointwise_relation; intros; finish honing] ].
+        setoid_rewrite refineEquiv_bind_bind.
+        setoid_rewrite refineEquiv_bind_bind at 1.
+        setoid_rewrite refineEquiv_bind_bind at 1.
+        setoid_rewrite refineEquiv_bind_bind at 1.
+        repeat setoid_rewrite refineEquiv_bind_unit; simpl;
+        f_equiv; intro.
+        intros v Comp_v.
+        computes_to_inv; subst.
+        generalize (IHl1 _ Comp_v); intros;  computes_to_inv.
+        computes_to_econstructor; subst; eauto.
+        rewrite filter_app, filter_map.
+        simpl.
+        erewrite filter_by_equiv; eauto.
+        unfold ExtensionalEq; intros; rewrite andb_true_r; auto.
   Qed.
 
   Lemma refine_Join_Comp_Lists_To_Find_dep {n}
@@ -525,8 +596,12 @@ Section BagsQueryStructureRefinements.
       simpl.
       setoid_rewrite refineEquiv_bind_bind.
       setoid_rewrite refineEquiv_bind_bind.
+      etransitivity;
+        [ | apply refine_bind;
+            [ eapply (@refine_BagFind_filter _ _ H idx (BagMatchSearchTerm (ith3 BagIndexKeys idx) (search_pattern a)) (search_pattern a)); unfold ExtensionalEq; intuition
+            | unfold pointwise_relation; intros; finish honing] ].
       setoid_rewrite refineEquiv_bind_bind.
-      setoid_rewrite refineEquiv_bind_bind.
+      setoid_rewrite refineEquiv_bind_bind at 1.
       setoid_rewrite refineEquiv_bind_bind at 1.
       repeat setoid_rewrite refineEquiv_bind_unit; simpl;
       f_equiv; intro.
@@ -667,6 +742,7 @@ Section BagsQueryStructureRefinements.
                    List_Query_In (Build_single_Tuple_list (snd l)) resultComp).
   Proof.
     simpl; intros.
+    setoid_rewrite <- refine_BagFind_filter; eauto.
     setoid_rewrite filter_Build_single_Tuple_list.
     unfold UnConstrQuery_In, QueryResultComp, CallBagMethod,
     CallBagFind, CallBagEnumerate, Query_For;
@@ -674,9 +750,6 @@ Section BagsQueryStructureRefinements.
     simplify with monad laws.
     repeat setoid_rewrite refineEquiv_bind_bind;
       repeat setoid_rewrite refineEquiv_bind_unit; simpl; f_equiv; intro.
-    unfold List_Query_In.
-    rewrite (filter_by_equiv _ _ H0).
-    reflexivity.
   Qed.
 
   Corollary refine_Query_For_In_Find_single
@@ -693,6 +766,8 @@ Section BagsQueryStructureRefinements.
                (l <- CallBagFind idx r_n search_pattern;
                 List_Query_In (filter filter_rest (Build_single_Tuple_list (snd l))) resultComp).
   Proof.
+    simpl; intros.
+    setoid_rewrite <- refine_BagFind_filter; eauto.
     unfold CallBagMethod, CallBagEnumerate, CallBagFind; simpl; intros.
     simplify with monad laws.
     repeat setoid_rewrite refineEquiv_bind_bind;
@@ -700,6 +775,7 @@ Section BagsQueryStructureRefinements.
       f_equiv; intro.
     setoid_rewrite <- filter_Build_single_Tuple_list; rewrite filter_and;
     f_equiv.
+    intro; reflexivity.
   Qed.
 
   Add Parametric Morphism
@@ -740,7 +816,7 @@ Section BagsQueryStructureRefinements.
     try econstructor; eauto.
   Qed.
 
-  Lemma refine_Join_Comp_Lists_filter_search_term_snd
+  (*Lemma refine_Join_Comp_Lists_filter_search_term_snd
         {n}
         (ResultT : Type) :
     forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
@@ -760,7 +836,9 @@ Section BagsQueryStructureRefinements.
                                       ret (snd l)));
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
-    intros; unfold CallBagMethod, CallBagFind, CallBagEnumerate; simpl.
+    intros; unfold CallBagMethod, CallBagEnumerate; simpl.
+    setoid_rewrite <- (refineEquiv_BagFind_filter H); eauto.
+    setoid_rewrite <-
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     match goal with
@@ -799,7 +877,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros; apply refine_bind; [reflexivity | intro].
     apply refine_Join_Comp_Lists_filter_search_term_snd.
-  Qed.
+  Qed. *)
 
   Lemma refine_List_Query_In_Return
         (ElementT ResultT : Type):
@@ -853,7 +931,8 @@ Section BagsQueryStructureRefinements.
   Lemma refine_Join_Comp_Lists_filter_search_term_snd_dep
         {n}
         (ResultT : Type) :
-    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+           (_ : DelegateToBag_AbsR r_o r_n)
            (headings : Vector.t _ n)
            idx'
            (search_pattern : _ -> _)
@@ -871,6 +950,11 @@ Section BagsQueryStructureRefinements.
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
     intros; unfold CallBagMethod; simpl.
+    etransitivity;
+      [ 
+      | rewrite <- refine_Join_Comp_Lists; [reflexivity |
+                                            intro;
+                                              setoid_rewrite <- (@refine_BagFind_filter _ _ H idx' (BagMatchSearchTerm (ith3 BagIndexKeys idx') (search_pattern a)) (search_pattern a)); [finish honing | intro; reflexivity] ] ].
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     match goal with
@@ -914,13 +998,17 @@ Section BagsQueryStructureRefinements.
                (ret v).
   Proof.
     intros; destruct (H idx) as [l [l_eqv l_eqv'] ].
-    eexists (filter _ l); unfold CallBagFind, CallBagMethod; simpl; eauto.
-    computes_to_econstructor; eauto.
+    eexists (filter _ l).
+      setoid_rewrite (refine_filter_BagFind H).
+      simplify with monad laws.
+      repeat computes_to_econstructor; eauto.
+      intro; finish honing.
   Qed.
 
   Corollary refine_Join_Comp_Lists_filter_search_term_snd_dep'
             (ResultT : Type) :
-    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+           (_ : DelegateToBag_AbsR r_o r_n)
            idx idx'
            (search_pattern : _ -> _)
            (resultComp : ilist2 (B:= @RawTuple) [_; _] -> Comp (list ResultT))
@@ -940,12 +1028,13 @@ Section BagsQueryStructureRefinements.
     intros; apply refine_bind;
     [reflexivity
     | intro;
-      apply refine_Join_Comp_Lists_filter_search_term_snd_dep].
+      eapply refine_Join_Comp_Lists_filter_search_term_snd_dep; eauto].
   Qed.
 
   Lemma refine_Join_Comp_Lists_filter_search_term_fst
         (ResultT : Type) :
-    forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+    forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+           (_ : DelegateToBag_AbsR r_o r_n)
            idx
            heading
            cl
@@ -961,6 +1050,8 @@ Section BagsQueryStructureRefinements.
               l' <- Join_Comp_Lists (Build_single_Tuple_list (snd l)) cl;
               List_Query_In (filter filter_rest l') resultComp).
   Proof.
+    intros.
+    setoid_rewrite <- (@refine_BagFind_filter _ _ H idx (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern) search_pattern).
     intros; unfold CallBagFind, CallBagEnumerate, CallBagMethod; simpl.
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
@@ -979,6 +1070,7 @@ Section BagsQueryStructureRefinements.
     repeat rewrite filter_map; f_equiv.
     setoid_rewrite refineEquiv_bind_bind; setoid_rewrite refineEquiv_unit_bind;
     reflexivity.
+    intro; reflexivity.
   Qed.
 
   Require Import Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
@@ -1025,14 +1117,16 @@ Section BagsQueryStructureRefinements.
     setoid_rewrite <- refineEquiv_bind_bind at 1.
     rewrite (refine_Query_For_In_Find_snd' H _ H0).
     setoid_rewrite refine_List_Query_In_Return.
+    setoid_rewrite refine_filter_BagFind; eauto; simplify with monad laws.
     unfold Build_single_Tuple_list; setoid_rewrite map_map; simpl.
     setoid_rewrite map_id.
     unfold CallBagFind, CallBagDelete, CallBagMethod;
-      simpl; simplify with monad laws;
+      simpl; try simplify with monad laws;
       repeat setoid_rewrite refineEquiv_bind_bind;
       repeat setoid_rewrite refineEquiv_bind_unit; simpl;
       f_equiv; intro.
     refine pick val _; eauto.
+    erewrite filter_by_equiv; eauto.
     reflexivity.
   Qed.
 
@@ -1278,7 +1372,8 @@ Admitted.
 
 Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
           (ResultT : Type) :
-  forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+  forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+           (_ : DelegateToBag_AbsR r_o r_n)
          idx idx'
          (search_pattern : _ -> _)
          (resultComp : ilist2 (B:= @RawTuple) [_; _] -> Comp (list ResultT))
@@ -1296,7 +1391,7 @@ Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
             List_Query_In (filter filter_rest l') resultComp).
 Proof.
   intros; f_equiv; intro;
-  apply refine_Join_Comp_Lists_filter_search_term_snd_dep.
+  eapply refine_Join_Comp_Lists_filter_search_term_snd_dep; eauto.
 Qed.
 
 End BagsQueryStructureRefinements.

@@ -303,6 +303,7 @@ src/Parsers/ContextFreeGrammar/Valid.v
 src/Parsers/ContextFreeGrammar/ValidProperties.v
 src/Parsers/ContextFreeGrammar/ValidReflective.v
 src/Parsers/Grammars/ABStar.v
+src/Parsers/Grammars/EvalGrammarTactics.v
 src/Parsers/Grammars/ExpressionNumPlus.v
 src/Parsers/Grammars/ExpressionNumPlusParen.v
 src/Parsers/Grammars/ExpressionParen.v
@@ -343,6 +344,7 @@ src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/DisjointRules.v
+src/Parsers/Refinement/DisjointRulesRev.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
@@ -350,9 +352,11 @@ src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
 src/Parsers/Refinement/PreTactics.v
 src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
+src/Parsers/Refinement/SharpenedABStarParseTree.v
 src/Parsers/Refinement/SharpenedExpressionParen.v
 src/Parsers/Refinement/SharpenedExpressionPlus.v
 src/Parsers/Refinement/SharpenedExpressionPlusParen.v
+src/Parsers/Refinement/SharpenedExpressionPlusParenParseTree.v
 src/Parsers/Refinement/SharpenedJSComment.v
 src/Parsers/Refinement/SharpenedJSON.v
 src/Parsers/Refinement/SharpenedStringLiteral.v
@@ -369,6 +373,7 @@ src/Parsers/StringLike/FirstChar.v
 src/Parsers/StringLike/FirstCharSuchThat.v
 src/Parsers/StringLike/ForallChars.v
 src/Parsers/StringLike/LastChar.v
+src/Parsers/StringLike/LastCharSuchThat.v
 src/Parsers/StringLike/OcamlString.v
 src/Parsers/StringLike/Properties.v
 src/Parsers/StringLike/String.v

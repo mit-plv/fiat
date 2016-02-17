@@ -268,6 +268,24 @@ Section i3list_replace.
 
 End i3list_replace.
 
+  Lemma replace3_Index3_eq:
+    forall (A : Type) (B : A -> Type) (C : forall a : A, B a -> Type)
+           (m : nat) (As : Vector.t A m) (Bs : ilist3 As)
+           (i3l : i3list C Bs) (n : Fin.t m),
+      replace3_Index3 B C i3l n (i3th i3l n) = i3l.
+  Proof.
+    induction As.
+    - intros; inversion n.
+    - intros; revert As Bs i3l IHAs; pattern n, n0.
+      match goal with
+        |- ?P n n0 => simpl; apply (@Fin.caseS P); clear n n0; simpl in *; eauto
+      end.
+      + destruct i3l; simpl; reflexivity.
+      + destruct i3l; simpl; intros.
+        unfold i3cons; f_equal.
+        eapply IHAs; eauto.
+  Qed.
+
 Lemma ilist3_eq_ith3
   : forall (A : Type) (B : A -> Type) C (m : nat) (As : Vector.t A m)
            (Bs : ilist3 As)

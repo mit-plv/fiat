@@ -117,8 +117,7 @@ total time:     23.641s
  ├─rewrite <- !Bool.andb_orb_distrib_r -   3.2%   3.2%      36    0.203s
  ├─rewrite <- !Bool.andb_orb_distrib_l -   2.9%   2.9%      31    0.156s
  └─rewrite <- !Bool.orb_assoc ----------   2.3%   2.3%      23    0.141s *)
-      let lem := constr:(@refine_disjoint_search_for_idx _ _ _ _ _) in
-      setoid_rewrite lem; [ | reflexivity.. ].
+      rewrite_disjoint_search_for.
       simpl.
       finish honing parser method.
     }
