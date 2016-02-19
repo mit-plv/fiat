@@ -8,7 +8,7 @@ Require Import Fiat.BinEncoders.Specs
                Fiat.BinEncoders.Libraries.FixList2
                Fiat.BinEncoders.Libraries.Char
                Fiat.BinEncoders.Libraries.Bool
-               Fiat.BinEncoders.Automation.Solver
+               (* Fiat.BinEncoders.Automation.Solver *)
                Coq.Strings.Ascii.
 
 Set Implicit Arguments.
@@ -101,65 +101,155 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   FixList_encode encode_resource (pauthority (fst bundle),
   FixList_encode encode_resource (padditional (fst bundle), snd bundle)))))))))).
 
+Ltac idtac' :=
+  match goal with
+    | |- _ => idtac (* I NEED THIS FOR SOME UNKNOWN REASON *)
+  end.
+
+Ltac enum_part eq_dec :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func in
+    let h := fresh in
+      evar (h:func_t);
+      unify (fun n => if eq_dec _ n arg then res else h n) func;
+      reflexivity
+  end.
+
+Ltac enum_finish :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func
+    in  unify ((fun _  => res) : func_t) func;
+        reflexivity
+  end.
+
+Ltac solve_enum :=
+  let h := fresh in
+  eexists; intros h _; destruct h;
+  [ idtac'; enum_part FixInt_eq_dec ..
+  | idtac'; enum_finish ].
+
 Global Instance type_to_FixInt_decoder
   : Decoder of FixInt_of_type.
 Proof.
-  eexists.
-  intros data _; destruct data.
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_finish.
+  solve_enum.
 Defined.
 
 Global Instance class_to_FixInt_decoder
   : Decoder of FixInt_of_class.
 Proof.
-  eexists.
-  intros data _; destruct data.
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_finish.
+  solve_enum.
 Defined.
+
+Lemma func_unprod :
+  forall (A B C : Type) (f : A * B -> C), (fun x => f (fst x, snd x)) = f.
+Proof.
+  Require Import Coq.Logic.FunctionalExtensionality.
+  intuition.
+  eapply functional_extensionality; intro x; destruct x; eauto.
+Qed.
+
+Ltac solve_predicate :=
+  let hdata := fresh
+  in  intro hdata; intuition; simpl in *;
+    match goal with
+    | |- context[ @fst ?a ?b hdata ] => solve [ pattern (@fst a b hdata); eauto ]
+    | |- _ => solve [ intuition eauto ]
+    | |- ?func _ =>
+      let func_t := type of func
+      in  solve [ unify ((fun _ => True) : func_t) func; intuition eauto ]
+    end.
+
+Ltac solve_unpack' e1 e2 ex proj d_t b_t :=
+  match proj with
+  | (fun bundle => FixList_getlength _) =>
+                   eapply unpacking_decoder with
+                    (project:=proj)
+                    (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
+                    (encode2:=e2)
+  | (fun bundle => (?proj1 (@?proj2 bundle))) =>
+    match type of proj1 with
+    | d_t -> _ => eapply unpacking_decoder with
+                    (project:=proj)
+                    (encode1:=fun bundle => e1 (ex (fst bundle), snd bundle))
+                    (encode2:=e2)
+    | ?d_t' -> _ => solve_unpack' e1 e2 (fun data : d_t' => ex (proj1 data)) proj2 d_t b_t
+    end
+  end.
+
+Ltac solve_unpack :=
+  match goal with
+  | |- decoder _ ?encode =>
+    match type of encode with
+    | ?d_t * ?b_t -> _ =>
+      match goal with
+      | |- decoder _ (fun data => ?e1 (@?proj data, @?e2 data)) =>
+        match type of e1 with
+        | ?o_t * _ -> _ =>
+          solve_unpack' e1 e2 (fun data : o_t => data) proj d_t b_t;
+          repeat rewrite func_unprod
+        end
+      end
+    end
+  end.
+
+Ltac solve_decoder :=
+  (eauto with typeclass_instances) ||
+  (match goal with
+   | |- context [ SteppingList_encode _ ] => eapply SteppingList_decoder; eauto
+   | |- context [ FixList_encode _  ] => eapply FixList_decoder
+   | |- context [ FixList2_encode _ ] => eapply FixList2_decoder
+   end).
+
+Ltac solve_step' :=
+  eapply strengthening_decoder; [ solve_decoder; solve_step' | solve_predicate ].
+
+Ltac solve_step :=
+  solve_unpack;
+  [ solve_step' | solve_predicate | intro ].
+
+Ltac solve_done :=
+  let hdata := fresh in
+  let hdata' := fresh in
+  eexists; intro hdata; destruct hdata as [hdata' ?]; destruct hdata';
+  intuition; simpl in *; subst; instantiate (1:=fun b => (_, b)); eauto.
+
+Ltac solve' :=
+  match goal with
+  | |- decoder _ ?e => unfold e; repeat solve_step; solve_done
+  end.
 
 Global Instance word_decoder
   : Decoder of encode_word.
 Proof.
-  unfold encode_word.
-  repeat solve_step.
-  solve_done.
+  solve'.
 Defined.
 
 Global Instance name_decoder
   : Decoder of encode_name.
 Proof.
-  unfold encode_name.
-  repeat solve_step.
-  solve_done.
+  solve'.
 Defined.
 
 Global Instance question_decoder
   : Decoder of encode_question.
 Proof.
-  unfold encode_question.
-  repeat solve_step.
-  solve_done.
+  solve'.
 Defined.
 
 Global Instance resource_decoder
   : Decoder of encode_resource.
 Proof.
-  unfold encode_resource.
-  repeat solve_step.
-  solve_done.
+  solve'.
 Defined.
 
 Global Instance packet_decoder
   : Decoder of encode_packet.
 Proof.
-  unfold encode_packet.
-  repeat solve_step.
-  solve_done.
+  solve'.
 Defined.
 
 Section Example.
@@ -207,4 +297,4 @@ Extract Inductive ascii => char [
 ]
 "(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 
-Extraction "extracted.ml" encode_packet packet_decoder.
+(* Extraction "extracted.ml" encode_packet packet_decoder. *)
