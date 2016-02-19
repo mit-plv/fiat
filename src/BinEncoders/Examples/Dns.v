@@ -33,23 +33,23 @@ Record name_t :=
   { name_attr : { s : list word_t | length s <= 255 /\ forall x, In x s -> x <> halt } }.
 
 Record question_t :=
-  { qname : name_t;
-    qtype : type_t;
+  { qname  : name_t;
+    qtype  : type_t;
     qclass : class_t }.
 
 Record resource_t :=
-  { rname : name_t;
-    rtype : type_t;
+  { rname  : name_t;
+    rtype  : type_t;
     rclass : class_t;
-    rttl : { n : N | (n < exp2 32)%N };
-    rdata : { s : list bool |  length s < exp2_nat 16 } }.
+    rttl   : uint 32;
+    rdata  : { s : list bool |  length s < exp2_nat 16 } }.
 
 Record packet_t :=
-  { pid : { s : list bool | length s = 16 };
-    pmask : { s : list bool | length s = 16 };
-    pquestion : { s : list question_t | length s < exp2_nat 16 };
-    panswer : { s : list resource_t | length s < exp2_nat 16 };
-    pauthority : { s : list resource_t | length s < exp2_nat 16 };
+  { pid         : { s : list bool | length s = 16 };
+    pmask       : { s : list bool | length s = 16 };
+    pquestion   : { s : list question_t | length s < exp2_nat 16 };
+    panswer     : { s : list resource_t | length s < exp2_nat 16 };
+    pauthority  : { s : list resource_t | length s < exp2_nat 16 };
     padditional : { s : list resource_t | length s < exp2_nat 16 } }.
 
 Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
@@ -74,7 +74,7 @@ Definition encode_word (bundle : word_t * bin_t) :=
   FixList_encode Char_encode (word_attr (fst bundle), snd bundle)).
 
 Definition encode_name (bundle : name_t * bin_t) :=
-  @SteppingList_encode _ _ halt 255 encode_word (name_attr (fst bundle), snd bundle).
+  @SteppingList_encode _ _ halt _ encode_word (name_attr (fst bundle), snd bundle).
 
 Definition encode_question (bundle : question_t * bin_t) :=
   encode_name (qname (fst bundle),

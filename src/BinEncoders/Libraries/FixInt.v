@@ -242,6 +242,8 @@ Section FixIntBinEncoder.
   Qed.
 End FixIntBinEncoder.
 
+Definition uint (size : nat) : Type :=  ({n | (n < exp2 size)%N }).
+
 Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
   refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
   destruct n; destruct m; [ eapply sig_equivalence; intuition | congruence ].
