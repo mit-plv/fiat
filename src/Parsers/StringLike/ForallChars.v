@@ -17,6 +17,15 @@ Section forall_chars.
          take 1 (drop n str) ~= [ ch ]
          -> P ch.
 
+  Lemma forall_chars_from_get (str : String) (P : Char -> Prop)
+  : (forall n ch, get n str = Some ch -> P ch) -> forall_chars str P.
+  Proof.
+    unfold forall_chars.
+    intros H n ch Heq.
+    apply (H n); clear H.
+    rewrite get_drop, <- get_0; assumption.
+  Qed.
+
   Global Instance forall_chars_Proper
   : Proper (beq ==> pointwise_relation _ impl ==> impl) forall_chars.
   Proof.
@@ -186,6 +195,23 @@ Section forall_chars.
     { intro H.
       specialize (H 0).
       rewrite drop_0 in H; assumption. }
+  Qed.
+
+  Lemma forall_chars_get (str : String) P
+  : forall_chars str P <-> (forall n ch, get n str = Some ch -> P ch).
+  Proof.
+    split.
+    { intros H n ch Heq.
+      rewrite get_drop in Heq.
+      apply get_0 in Heq.
+      apply forall_chars__split with (n := n) in H.
+      destruct H as [_ H].
+      apply forall_chars__split with (n := 1) in H.
+      destruct H as [H _].
+      rewrite forall_chars_singleton_length in H.
+      { auto. }
+      { apply length_singleton in Heq; assumption. } }
+    { apply forall_chars_from_get. }
   Qed.
 
   Definition forall_chars__char_in (str : String) (ls : list Char)
