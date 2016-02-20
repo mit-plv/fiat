@@ -128,8 +128,8 @@ Ltac solve'' solve' :=
     solve_unpack; [ eauto' solve' | solve_predicate | intro; solve'' solve' ]
   end.
 
-Ltac solve' :=
+Ltac decoder_from_encoder :=
   idtac; (* I actually need this idtac for some unknown reason *)
   match goal with
-  | |- Decoder of ?e => unfold e; solve'' solve'
+  | |- Decoder of ?e => unfold e; solve'' decoder_from_encoder
   end.

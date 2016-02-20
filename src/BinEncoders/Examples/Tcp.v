@@ -36,7 +36,7 @@ Require Import Fiat.BinEncoders.Automation.Solver.
 Global Instance packet_decoder
   : Decoder of encode_packet.
 Proof.
-  solve'.
+  decoder_from_encoder.
 Defined.
 
 Extract Inductive bool => "bool" [ "true" "false" ].

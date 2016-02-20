@@ -104,7 +104,7 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
 Global Instance packet_decoder
   : Decoder of encode_packet.
 Proof.
-  solve'.
+  decoder_from_encoder.
 Defined.
 
 Section Example.
