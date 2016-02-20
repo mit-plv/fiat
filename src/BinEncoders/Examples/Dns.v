@@ -102,7 +102,7 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   FixList_encode encode_resource (padditional (fst bundle), snd bundle)))))))))).
 
 Global Instance packet_decoder
-  : Decoder of encode_question.
+  : Decoder of encode_packet.
 Proof.
   solve'.
 Defined.
