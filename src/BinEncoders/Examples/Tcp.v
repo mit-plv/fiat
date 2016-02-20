@@ -5,7 +5,7 @@ Require Import Fiat.BinEncoders.Specs
                Fiat.BinEncoders.Libraries.FixInt
                Fiat.BinEncoders.Libraries.FixList2
                Fiat.BinEncoders.Libraries.Bool
-               Fiat.BinEncoders.Automation.Solver.
+               Fiat.BinEncoders.Automation.Solver_original.
 
 Set Implicit Arguments.
 
