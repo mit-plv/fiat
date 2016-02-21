@@ -26,6 +26,14 @@ Section is_after_last_char_such_that.
        /\ for_last_char (take n str) P (*/\ 0 < min n (length str))
            \/ (might_be_empty /\ min n (length str) = 0))*).
 
+  Lemma unfold_is_after_last_char_such_that str n P
+  : is_after_last_char_such_that str n P
+    <-> (forall_chars (drop n str) (fun ch => ~P ch)
+         /\ for_last_char (take n str) P).
+  Proof.
+    reflexivity.
+  Qed.
+
   Lemma after_last_char_such_that_nil
         (str : String)
         (n : nat)
@@ -39,27 +47,30 @@ Section is_after_last_char_such_that.
     try apply Min.min_case_strong; omega.
   Qed.
 
-  (*Lemma after_last_char_such_that_0
-        (might_be_empty : Prop)
+  Lemma after_last_char_such_that_0
+        (*might_be_empty : Prop*)
         (str : String)
-        (n : nat)
         P
-        (H' : is_after_last_char_such_that might_be_empty str 0 P)
-  : might_be_empty.
+  : is_after_last_char_such_that (*might_be_empty*) str 0 P
+    <-> forall_chars str (fun ch => ~P ch).
   Proof.
-    destruct_head_hnf and.
-    destruct_head_hnf or;
-      destruct_head_hnf and; trivial.
-    destruct (length str);
-      simpl in *;
-      exfalso; omega.
-  Qed.*)
+    unfold is_after_last_char_such_that.
+    rewrite drop_0.
+    split.
+    { intros; destruct_head and.
+      assumption. }
+    { split; [ assumption | ].
+      apply for_last_char_nil.
+      rewrite take_length; reflexivity. }
+  Qed.
 
-  Lemma after_last_char_such_that_end
+  Lemma after_last_char_such_that_after_end
         (*{might_be_empty : Prop}*)
         {str : String}
         {P}
-  : is_after_last_char_such_that (*might_be_empty*) str (length str) P
+        {n}
+        (Hle : length str <= n)
+  : is_after_last_char_such_that (*might_be_empty*) str n P
     <-> for_last_char str P(* /\ (might_be_empty \/ 0 < length str))*).
   Proof.
     unfold is_after_last_char_such_that.
@@ -76,6 +87,16 @@ Section is_after_last_char_such_that.
                 | destruct (length str);
                   try solve [ left; repeat split; eauto; omega
                             | right; repeat split; eauto; omega ] ].
+  Qed.
+
+  Lemma after_last_char_such_that_end
+        (*{might_be_empty : Prop}*)
+        {str : String}
+        {P}
+  : is_after_last_char_such_that (*might_be_empty*) str (length str) P
+    <-> for_last_char str P(* /\ (might_be_empty \/ 0 < length str))*).
+  Proof.
+    apply after_last_char_such_that_after_end; reflexivity.
   Qed.
 
   Lemma is_after_last_char_such_that_drop
@@ -219,49 +240,133 @@ Definition find_after_last_char_such_that' {Char} {HSLM : StringLikeMin Char} {H
            (len : nat)
            (str : String)
   : nat
-  := length str
-     - nat_rect
-         (fun _ => nat)
-         0
-         (fun len' find_after_last_char_such_that'
-          => let otherwise := S find_after_last_char_such_that' in
-             match get len' str with
+  := nat_rect
+       (fun _ => nat)
+       0
+       (fun len' otherwise
+        => match get len' str with
              | Some ch => if P ch
-                          then 0
+                          then S len'
                           else otherwise
              | None => otherwise
-             end)
-         len.
+           end)
+       len.
 
-(*Lemma find_after_last_char_such_that'_S {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
+Lemma find_after_last_char_such_that'_S {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
       (P : Char -> bool)
       (len : nat)
       (str : String)
   : find_after_last_char_such_that' P (S len) str
-    = length str
-      - let otherwise := S (length str - find_after_last_char_such_that' P len str) in
-        match get len str with
-        | Some ch => if P ch
-                     then 0
-                     else otherwise
-        | None => otherwise
-        end.
+    = let v := S (find_after_last_char_such_that' P len (drop 1 str)) in
+      match get 0 str with
+        | Some ch => match find_after_last_char_such_that' P len (drop 1 str) with
+                       | 0 => if P ch then 1 else 0
+                       | _ => v
+                     end
+        | None => 0
+      end.
 Proof.
-  unfold find_after_last_char_such_that'.
-  match goal with
-  | [ |- appcontext[@nat_rect ?P ?Z ?Sc (S ?n)] ]
-    => change (nat_rect P Z Sc (S n)) with (Sc n (@nat_rect P Z Sc n))
-  end.
-  cbv beta zeta.
-  apply f_equal.
-  edestruct get.
-  SearchAbout (?x - (?y - _)).
-unfold nat_rect; fold nat_rect.
-
-  cbv beta.
-  simpl.
-  reflexivity.
-Qed.*)
+  cbv zeta.
+  revert str; induction len as [|len IHlen]; intros.
+  { reflexivity. }
+  { simpl in *.
+    rewrite IHlen; clear IHlen.
+    repeat match goal with
+             | [ |- appcontext[get ?n'] ]
+               => not constr_eq n' 0; rewrite (get_drop (n := n'))
+             | [ H : appcontext[get ?n'] |- _ ]
+               => not constr_eq n' 0; setoid_rewrite (get_drop (n := n')) in H
+           end.
+    replace (get 0 (drop len (drop 1 str))) with (get 0 (drop (S len) str))
+      by (rewrite drop_drop; do 2 f_equal; omega).
+    destruct (get 0 str) eqn:Hg0.
+    { destruct (get 0 (drop (S len) str)) eqn:Hg1; [ | reflexivity ].
+      edestruct P; reflexivity. }
+    { apply no_first_char_empty in Hg0.
+      rewrite has_first_char_nonempty
+        by (rewrite drop_length, Hg0; reflexivity).
+      reflexivity. } }
+Qed.
 
 Definition find_after_last_char_such_that {Char} {HSLM} {HSL} str P
   := @find_after_last_char_such_that' Char HSLM HSL P (length str) str.
+
+Lemma find_after_last_char_such_that_drop {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+      (str : String)
+      (P : Char -> bool)
+  : find_after_last_char_such_that str P
+    = let v := S (find_after_last_char_such_that (drop 1 str) P) in
+      match get 0 str with
+        | Some ch => match find_after_last_char_such_that (drop 1 str) P with
+                       | 0 => if P ch then 1 else 0
+                       | _ => v
+                     end
+        | None => 0
+      end.
+Proof.
+  unfold find_after_last_char_such_that.
+  destruct (length str) eqn:Hlen.
+  { rewrite has_first_char_nonempty by assumption; simpl; reflexivity. }
+  { rewrite find_after_last_char_such_that'_S; simpl.
+    rewrite drop_length, Hlen; simpl.
+    rewrite Nat.sub_0_r.
+    reflexivity. }
+Qed.
+
+Lemma is_after_last_char_such_that__find_after_last_char_such_that {Char} {HSLM HSL} {HSLP : @StringLikeProperties Char HSLM HSL} str P
+      (*might_be_empty*)
+      (H : exists n, is_after_last_char_such_that (*might_be_empty*) str n (fun ch => is_true (P ch)))
+: is_after_last_char_such_that (*might_be_empty*) str (@find_after_last_char_such_that Char HSLM HSL str P) (fun ch => is_true (P ch)).
+Proof.
+  destruct H as [n H].
+  rewrite unfold_is_after_last_char_such_that in H |- *.
+  destruct H as [H0 H1].
+  generalize dependent str.
+  induction n as [|n IHn]; intros.
+  { cut (find_after_last_char_such_that str P = 0);
+    [ intro Heq; rewrite Heq; split; assumption
+    | ].
+    rewrite drop_0 in H0.
+    unfold find_after_last_char_such_that, find_after_last_char_such_that'.
+    induction (length str) as [|len IHlen]; simpl;
+    [ reflexivity | rewrite IHlen; clear IHlen ].
+    rewrite forall_chars_get in H0.
+    specialize (H0 len).
+    edestruct get; [ | reflexivity ].
+    specialize (H0 _ eq_refl).
+    edestruct P; simpl in *; intuition. }
+  { specialize (IHn (drop 1 str)).
+    rewrite !drop_drop, !take_drop, !Nat.add_1_r in IHn.
+    specialize_by assumption.
+    specialize_by ltac:(apply for_last_char__add_drop; assumption).
+    rewrite find_after_last_char_such_that_drop; simpl.
+    destruct (get 0 str) eqn:Hg0.
+    { destruct (find_after_last_char_such_that (drop 1 str) P) eqn:Hf.
+      { destruct_head and.
+        destruct (P c) eqn:Hp.
+        { split; try assumption; [].
+          rewrite <- for_last_char_singleton; [ | apply get_0 ]; eassumption. }
+        { rewrite drop_0.
+          split; [ | apply for_last_char_nil; rewrite take_length; reflexivity ].
+          apply (forall_chars__split _ _ 1); split; try assumption; [].
+          rewrite <- forall_chars_singleton; [ | apply get_0; eassumption ].
+          congruence. } }
+      { destruct_head and; split; try assumption; [].
+        rewrite for_last_char__drop; [ eassumption | ].
+        rewrite take_length; simpl.
+        destruct (length str) as [|[|]] eqn:Hlen;
+          [ exfalso
+          | exfalso
+          | ].
+        { rewrite has_first_char_nonempty in Hg0 by assumption; congruence. }
+        { move Hf at bottom.
+          unfold find_after_last_char_such_that in Hf.
+          rewrite drop_length, Hlen in Hf.
+          simpl in Hf.
+          congruence. }
+        { simpl; omega. } } }
+    { rewrite drop_0.
+      apply no_first_char_empty in Hg0.
+      split; [ apply forall_chars_nil | apply for_last_char_nil ];
+      rewrite ?take_length, Hg0; reflexivity. } }
+Qed.
