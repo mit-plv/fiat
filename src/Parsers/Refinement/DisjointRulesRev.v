@@ -119,105 +119,40 @@ Proof.
   omega.
 Qed.
 
-(*Lemma find_after_last_char_such_that'_short {Char HSLM HSL}
+Lemma find_after_last_char_such_that'_short {Char HSLM HSL}
       str P len
 : @find_after_last_char_such_that' Char HSLM HSL P len str <= len.
 Proof.
-  revert str; induction len; simpl; intros; [ reflexivity | ].
-  destruct (get (length str - S len) str) eqn:H.
+  revert str; induction len; simpl; intros; [ omega | ].
+  destruct (get len str) eqn:H.
   { edestruct P; try omega.
-    apply Le.le_n_S, IHlen. }
-  { apply Le.le_n_S, IHlen. }
+    rewrite IHlen; omega. }
+  { rewrite IHlen; omega. }
 Qed.
 
-Lemma find_first_char_such_that_short {Char HSLM HSL}
+Lemma find_after_last_char_such_that_short {Char HSLM HSL}
       str P
-: @find_first_char_such_that Char HSLM HSL str P <= length str.
+: @find_after_last_char_such_that Char HSLM HSL str P <= length str.
 Proof.
-  apply find_first_char_such_that'_short.
-Qed.*)
-
-Lemma is_after_last_char_such_that__find_after_last_char_such_that {Char} {HSLM HSL} {HSLP : @StringLikeProperties Char HSLM HSL} str P
-      (*might_be_empty*)
-      (H : exists n, is_after_last_char_such_that (*might_be_empty*) str n (fun ch => is_true (P ch)))
-: is_after_last_char_such_that (*might_be_empty*) str (@find_after_last_char_such_that Char HSLM HSL str P) (fun ch => is_true (P ch)).
-Proof.
-  unfold find_after_last_char_such_that, find_after_last_char_such_that'.
-  destruct H as [n H].
-  set (len := length str).
-  setoid_replace str with (drop (length str - len) str) at 1
-    by (subst; rewrite Minus.minus_diag, drop_0; reflexivity).
-  setoid_replace str with (drop (length str - len) str) in H
-    by (subst; rewrite Minus.minus_diag, drop_0; reflexivity).
-  assert (len <= length str) by reflexivity.
-  clearbody len.
-  generalize dependent str; revert n.
-  induction len; simpl; intros n str IH Hlen.
-  { apply after_last_char_such_that_nil.
-    rewrite drop_length; omega. }
-  { destruct (get len str) as [ch|] eqn:Hget.
-    { destruct (P ch) eqn:HP.
-      { simpl.
-        About is_after_last_char_such_that_drop.
-        SearchAbout is_after_last_char_such_that.
-
-    rewrite NPeano.Nat.sub_0_r in IH |- *.
-    rewrite Minus.minus_diag.
-    split.
-    { apply for_first_char_nil.
-      rewrite drop_length; omega. }
-    { generalize dependent str.
-      induction n; intros str H Hlen.
-      { apply first_char_such_that_0 in H.
-        rewrite drop_length, Minus.minus_diag in H.
-        destruct_head and; trivial. }
-      { apply first_char_such_that_past_end in H; [ | rewrite drop_length; omega ].
-        left; assumption. } } }
-  { pose proof (singleton_exists (take 1 (drop (length str - S len) str))) as H'.
-    rewrite take_length, drop_length in H'.
-    destruct H' as [ch H']; [ apply Min.min_case_strong; intros; omega | ].
-    rewrite get_drop.
-    rewrite (proj1 (get_0 _ _) H').
-    destruct (P ch) eqn:H''.
-    { apply first_char_such_that_0.
-      rewrite drop_length.
-      split; [ | right; omega ].
-      apply (for_first_char__take 0).
-      rewrite <- for_first_char_singleton by eassumption; trivial. }
-    { apply is_first_char_such_that_drop.
-      destruct n.
-      { apply first_char_such_that_0 in IH.
-        destruct IH as [IH _].
-        apply (for_first_char__take 0) in IH.
-        rewrite <- for_first_char_singleton in IH by eassumption; unfold is_true in *; congruence. }
-      { apply is_first_char_such_that_drop in IH.
-        destruct IH as [IH _].
-        rewrite drop_drop in IH |- *; simpl in IH |- *.
-        replace (S (length str - S len)) with (length str - len) in IH |- * by omega.
-        split.
-        { eapply IHlen; try eassumption; [].
-          omega. }
-        { apply (for_first_char__take 0).
-          rewrite <- for_first_char_singleton by eassumption; congruence. } } } }
+  apply find_after_last_char_such_that'_short.
 Qed.
 
-Lemma refine_find_first_char_such_that {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
+Lemma refine_find_after_last_char_such_that {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
       (str : String)
       (P : Char -> bool)
-      might_be_empty
 : refine { n : nat | n <= length str
-                     /\ ((exists n', is_first_char_such_that might_be_empty str n' P)
-                         -> is_first_char_such_that might_be_empty str n P) }
-         (ret (find_first_char_such_that str P)).
+                     /\ ((exists n', is_after_last_char_such_that str n' P)
+                         -> is_after_last_char_such_that str n P) }
+         (ret (find_after_last_char_such_that str P)).
 Proof.
   intros v H.
   computes_to_inv; subst.
   apply PickComputes.
-  split; [ apply find_first_char_such_that_short | ].
-  apply is_first_char_such_that__find_first_char_such_that.
+  split; [ apply find_after_last_char_such_that_short | ].
+  apply is_after_last_char_such_that__find_after_last_char_such_that.
 Qed.
 
-Lemma refine_disjoint_search_for
+Lemma refine_disjoint_rev_search_for
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -227,21 +162,21 @@ Lemma refine_disjoint_search_for
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
-                             (possible_terminals_of G nt)
-                             (possible_first_terminals_of_production G its))
+                             (possible_last_terminals_of G nt)
+                             (possible_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
              G str offset len
              (NonTerminal nt::its)
              splits}
-         (ret [find_first_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
+         (ret [find_after_last_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_last_terminals_of G nt))]).
 Proof.
-  rewrite refine_disjoint_search_for' by assumption.
-  setoid_rewrite refine_find_first_char_such_that.
+  rewrite refine_disjoint_rev_search_for' by assumption.
+  setoid_rewrite refine_find_after_last_char_such_that.
   simplify with monad laws; reflexivity.
 Qed.
 
-Lemma refine_disjoint_search_for_not
+Lemma refine_disjoint_rev_search_for_not
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -251,21 +186,21 @@ Lemma refine_disjoint_search_for_not
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
-                             (possible_terminals_of G nt)
-                             (possible_first_terminals_of_production G its))
+                             (possible_last_terminals_of G nt)
+                             (possible_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete
              G str offset len
              (NonTerminal nt::its)
              splits}
-         (ret [find_first_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
+         (ret [find_after_last_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production G its)))]).
 Proof.
-  rewrite refine_disjoint_search_for_not' by assumption.
-  setoid_rewrite refine_find_first_char_such_that.
+  rewrite refine_disjoint_rev_search_for_not' by assumption.
+  setoid_rewrite refine_find_after_last_char_such_that.
   simplify with monad laws; reflexivity.
 Qed.
 
-Lemma refine_disjoint_search_for_idx
+Lemma refine_disjoint_rev_search_for_idx
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -276,22 +211,22 @@ Lemma refine_disjoint_search_for_idx
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
       (H_disjoint : disjoint ascii_beq
-                             (possible_terminals_of G nt)
-                             (possible_first_terminals_of_production G its))
+                             (possible_last_terminals_of G nt)
+                             (possible_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete_idx
              G str offset len
              idx
              splits}
-         (ret [find_first_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its))]).
+         (ret [find_after_last_char_such_that (substring offset len str) (fun ch => list_bin ascii_beq ch (possible_last_terminals_of G nt))]).
 Proof.
   unfold split_list_is_complete_idx.
-  erewrite <- refine_disjoint_search_for by eassumption.
+  erewrite <- refine_disjoint_rev_search_for by eassumption.
   rewrite Heq.
   apply refine_pick_pick; intro; trivial.
 Qed.
 
-Lemma refine_disjoint_search_for_not_idx
+Lemma refine_disjoint_rev_search_for_not_idx
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSI : StringIso Ascii.ascii}
@@ -302,17 +237,17 @@ Lemma refine_disjoint_search_for_not_idx
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
       (H_disjoint : disjoint ascii_beq
-                             (possible_terminals_of G nt)
-                             (possible_first_terminals_of_production G its))
+                             (possible_last_terminals_of G nt)
+                             (possible_terminals_of_production G its))
 : refine {splits : list nat
          | split_list_is_complete_idx
              G str offset len
              idx
              splits}
-         (ret [find_first_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))]).
+         (ret [find_after_last_char_such_that (substring offset len str) (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production G its)))]).
 Proof.
   unfold split_list_is_complete_idx.
-  erewrite <- refine_disjoint_search_for_not by eassumption.
+  erewrite <- refine_disjoint_rev_search_for_not by eassumption.
   rewrite Heq.
   apply refine_pick_pick; intro; trivial.
 Qed.
