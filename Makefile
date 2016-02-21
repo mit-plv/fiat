@@ -7,12 +7,19 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 	pdf doc clean-doc \
 	test-parsers test-parsers-profile test-parsers-profile-graph
 
-submodule-update: .gitmodules
+ifneq (,$(wildcard .git)) # if we're in a git repo
+
+# if the submodule changed, update it
+SUBMODULE_DIFF=$(shell git diff etc/coq-scripts 2>&1)
+ifneq (,$(SUBMODULE_DIFF))
+submodule-update::
 	git submodule sync && \
 	git submodule update --init && \
 	touch "$@"
+else
+submodule-update::
+endif
 
-ifneq (,$(wildcard .git)) # if we're in a git repo
 etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
 	@ touch "$@"
 endif
