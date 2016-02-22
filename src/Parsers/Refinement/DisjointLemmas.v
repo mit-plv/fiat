@@ -33,6 +33,7 @@ Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+Require Import Fiat.Common.BoolFacts.
 Require Fiat.Parsers.Reachable.All.MinimalReachable.
 Require Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
 Require Fiat.Parsers.Reachable.All.ReachableParse.
@@ -71,6 +72,26 @@ Local Ltac find_production_valid
               | _ => assumption
             end.
 
+Section maybe_empty.
+  Context {Char : Type}.
+
+  Local Instance maybe_empty_fold_data : fold_grammar_data Char bool
+    := { on_terminal P := false;
+         on_redundant_nonterminal nt := false;
+         on_nil_production := true;
+         combine_production := andb;
+         on_nil_productions := false;
+         combine_productions := orb;
+         on_nonterminal nt v := v }.
+
+  Definition maybe_empty_of : pregrammar Char -> String.string -> bool
+    := @fold_nt _ _ maybe_empty_fold_data.
+  Definition maybe_empty_of_productions : pregrammar Char -> productions Char -> bool
+    := @fold_productions _ _ maybe_empty_fold_data.
+  Definition maybe_empty_of_production : pregrammar Char -> production Char -> bool
+    := @fold_production _ _ maybe_empty_fold_data.
+End maybe_empty.
+
 Section all_possible.
   Context {Char : Type} {HEC : Enumerable Char}.
   Definition possible_terminals := list Char.
@@ -106,7 +127,7 @@ Section only_first.
     := { on_terminal P
          := {| actual_possible_first_terminals := filter P (Enumerable.enumerate Ascii.ascii);
                might_be_empty := false |};
-         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) && brute_force_parse_nonterminal G (of_string nil) nt |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := maybe_empty_of G nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -147,7 +168,7 @@ Section only_last.
     := { on_terminal P
          := {| actual_possible_last_terminals := filter P (Enumerable.enumerate Ascii.ascii);
                might_be_empty' := false |};
-         on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) && brute_force_parse_nonterminal G (of_string nil) nt |};
+         on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := maybe_empty_of G nt |};
          on_nil_production := {| actual_possible_last_terminals := nil ; might_be_empty' := true |};
          on_nil_productions := {| actual_possible_last_terminals := nil ; might_be_empty' := false |};
          combine_production last_of_first last_of_rest
@@ -173,6 +194,161 @@ Section only_last.
   Definition possible_last_terminals_of_production : production Ascii.ascii -> possible_last_terminals
     := @fold_production _ _ only_last_fold_data G.
 End only_last.
+
+Section maybe_empty_correctness.
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {HEC : Enumerable Char}.
+  Local Open Scope string_like_scope.
+
+  Local Existing Instance maybe_empty_fold_data.
+
+  Local Ltac dependent_destruction_head h :=
+    idtac;
+    match goal with
+      | [ H : ?T |- _ ] => let x := head T in
+                           constr_eq h x;
+                             let H' := fresh in
+                             rename H into H';
+                               dependent destruction H'
+    end.
+
+  Local Ltac ddestruction H
+    := let p := fresh in rename H into p; dependent destruction p.
+
+  Local Ltac t' :=
+    idtac;
+    match goal with
+      | _ => rewrite in_app_iff
+      | _ => progress simpl in *
+      | _ => intro
+      | _ => progress bool_congr
+      | _ => progress specialize_by ltac:(exact eq_refl)
+      | _ => progress specialize_by assumption
+      | _ => progress specialize_by ltac:(constructor; assumption)
+      | _ => progress destruct_head iff
+      | _ => progress destruct_head and
+      | _ => progress destruct_head inhabited
+      | _ => progress subst
+      | _ => reflexivity
+      | _ => congruence
+      | _ => tauto
+      | [ ch : Char, H : forall ch : Char, _ |- _ ] => specialize (H ch)
+      | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
+      | _ => progress destruct_head or
+      | [ |- _ <-> _ ] => split
+      | [ |- _ /\ _ ] => split
+      | [ |- inhabited _ ] => constructor
+      | _ => assumption
+      | _ => constructor; assumption
+      | _ => left; assumption
+      | _ => right; assumption
+      | [ H : ?A -> ?B |- ?B ] => apply H; clear H
+      | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
+      | [ |- context[In _ (filter _ _)] ] => rewrite filter_In
+      | [ |- In _ (Enumerable.enumerate _) ] => apply enumerate_correct
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_item _ (NonTerminal _) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_item _ (Terminal _) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ nil |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ (_::_) |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ nil |- _ ] => ddestruction H
+      | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ (_::_) |- _ ] => ddestruction H
+    end.
+
+  Local Ltac t := repeat first [ t' | left; solve [ t ] | right; solve [ t ] ].
+
+  Local Instance maybe_empty_ccdata : @fold_grammar_correctness_computational_data Char _ G
+    := { Pnt valid0 nt b
+         := b = true <-> inhabited (MaybeEmpty.Minimal.minimal_maybe_empty_item (G := G) valid0 (NonTerminal nt));
+         Ppat valid0 pat b
+         := b = true <-> inhabited (MaybeEmpty.Minimal.minimal_maybe_empty_production (G := G) valid0 pat);
+         Ppats valid0 pats b
+         := b = true <-> inhabited (MaybeEmpty.Minimal.minimal_maybe_empty_productions (G := G) valid0 pats) }.
+
+  Local Arguments is_valid_nonterminal : simpl never.
+  Local Arguments remove_nonterminal : simpl never.
+
+  Local Instance maybe_empty_cdata : @fold_grammar_correctness_data Char _ maybe_empty_fold_data G
+    := { fgccd := maybe_empty_ccdata }.
+  Proof.
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+    { abstract t. }
+  Defined.
+
+  Lemma maybe_empty_of_correct (G : pregrammar Char)
+        (predata := @rdp_list_predata _ G)
+        nt
+    : maybe_empty_of G nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
+  Proof.
+    simpl rewrite (fold_nt_correct (G := G) nt).
+    simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__iff__maybe_empty_item; reflexivity.
+  Qed.
+
+  Lemma maybe_empty_of_production_correct (G : pregrammar Char)
+        (predata := @rdp_list_predata _ G)
+        pat
+    : maybe_empty_of_production G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
+  Proof.
+    simpl rewrite (fold_production_correct (G := G) pat).
+    simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__iff__maybe_empty_production; reflexivity.
+  Qed.
+
+  Lemma maybe_empty_of_productions_correct (G : pregrammar Char)
+        (predata := @rdp_list_predata _ G)
+        pat
+    : maybe_empty_of_productions G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
+  Proof.
+    simpl rewrite (fold_productions_correct (G := G) pat).
+    simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_productions__iff__maybe_empty_productions; reflexivity.
+  Qed.
+
+  (*Lemma maybe_empty_correct (G : pregrammar Char)
+        (Hvalid : grammar_rvalid G)
+        (predata := @rdp_list_predata _ G)
+        nt
+        (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
+    : maybe_empty_of G nt = true <-> forall str, parse_of_item G str (NonTerminal nt) -> length str = 0.
+  Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
+    let f := constr:(fold_nt_correct (G := G) nt) in
+    simpl rewrite f.
+    pose @MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_item.
+    pose @MaybeEmpty.OfParse.parse_empty_minimal_maybe_empty_parse_of_item.
+    simpl in p.
+    apply (f ch).
+    pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_item p (Forall_parse_of_item_valid Hvalid' k p)) as H.
+    specialize (H His_valid).
+    revert H.
+    setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item (reflexivity _)).
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    let f := constr:(fold_nt_correct (G := G) nt) in
+    apply (f ch).
+  Qed.
+
+  Lemma maybe_empty_production_correct (G : pregrammar Char)
+        (Hvalid : grammar_rvalid G)
+        (predata := @rdp_list_predata _ G)
+        (str : String) pat
+        (His_valid : production_valid pat)
+        (p : parse_of_production G str pat)
+  : forall_chars__char_in str (maybe_empty_production G pat).
+  Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
+    unfold possible_terminals_of.
+    pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_production p (Forall_parse_of_production_valid Hvalid' k p)) as H.
+    specialize (H His_valid).
+    revert H.
+    setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production (reflexivity _)).
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    let f := constr:(fold_production_correct (G := G) pat) in
+    apply (f ch).
+  Qed.*)
+End maybe_empty_correctness.
 
 Section all_possible_correctness.
   Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} {HEC : Enumerable Char}.
@@ -323,6 +499,12 @@ Section only_first_correctness.
       | [ Hvalid : is_true (grammar_rvalid _) |- grammar_valid _ ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
+      | [ |- context[maybe_empty_of _ _] ]
+        => setoid_rewrite maybe_empty_of_correct
+      | [ |- context[maybe_empty_of_production _ _] ]
+        => setoid_rewrite maybe_empty_of_production_correct
+      | [ |- context[maybe_empty_of_productions _ _] ]
+        => setoid_rewrite maybe_empty_of_productions_correct
       | [ H : context[?b = true] |- _ ] => change (b = true) with (is_true b) in H
       | _ => intro
       | _ => progress destruct_head inhabited
@@ -508,6 +690,12 @@ Section only_last_correctness.
       | [ Hvalid : is_true (grammar_rvalid _) |- grammar_valid _ ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
+      | [ |- context[maybe_empty_of _ _] ]
+        => setoid_rewrite maybe_empty_of_correct
+      | [ |- context[maybe_empty_of_production _ _] ]
+        => setoid_rewrite maybe_empty_of_production_correct
+      | [ |- context[maybe_empty_of_productions _ _] ]
+        => setoid_rewrite maybe_empty_of_productions_correct
       | [ H : context[?b = true] |- _ ] => change (b = true) with (is_true b) in H
       | _ => intro
       | _ => progress destruct_head inhabited

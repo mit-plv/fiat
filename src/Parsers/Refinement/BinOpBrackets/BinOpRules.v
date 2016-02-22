@@ -533,7 +533,7 @@ Local Ltac presimpl_after_refine_binop_table :=
 >>> *)
 Ltac setoid_rewrite_refine_binop_table_idx args :=
         idtac;
-        let lem := constr:(@refine_binop_table_idx _ _ _ _ _) in
+        let lem := constr:(@refine_binop_table_idx _ _ _) in
         let G := match args with ParserInterface.split_list_is_complete_idx
                                    ?G ?str ?offset ?len ?idx => G end in
         let str := match args with ParserInterface.split_list_is_complete_idx
