@@ -131,6 +131,85 @@ do 1 match goal with
                | [ H := ?x, H' := ?x |- _ ] => clear H'
                end.
 (* HERE *)
+        let args := match goal with
+        | [ |- context[{ splits : list nat
+                       | ParserInterface.split_list_is_complete_idx
+                           ?G ?str ?offset ?len ?idx splits }%comp] ]
+          =>  constr:(ParserInterface.split_list_is_complete_idx
+                                   G str offset len idx)
+                    end in
+                idtac;
+        let lem := constr:(@refine_binop_table_idx _ _ _ _ _) in
+        let G := match args with ParserInterface.split_list_is_complete_idx
+                                   ?G ?str ?offset ?len ?idx => G end in
+        let str := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => str end in
+        let offset := match args with ParserInterface.split_list_is_complete_idx
+                                        ?G ?str ?offset ?len ?idx => offset end in
+        let len := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => len end in
+        let idx := match args with ParserInterface.split_list_is_complete_idx
+                                     ?G ?str ?offset ?len ?idx => idx end in
+        let ps := (eval hnf in (Carriers.default_to_production (G := G) idx)) in
+        match ps with
+          | nil => fail 1 "The index" idx "maps to the empty production," "which is not valid for the binop-brackets rule"
+          | _ => idtac
+        end;
+          let p := match ps with ?p::_ => p end in
+          let p := (eval hnf in p) in
+          match p with
+            | NonTerminal _ => idtac
+            | _ => fail 1 "The index" idx "maps to a production starting with" p "which is not a nonterminal; the index must begin with a nonterminal to apply the binop-brackets rule"
+          end;
+            let nt := match p with NonTerminal ?nt => nt end in
+            let its := (eval simpl in (List.tl ps)) in
+            let lem := constr:(fun its' H' ch H0 H1 => lem G eq_refl str offset len nt ch its' H0 H1 idx H') in
+            let lem := constr:(lem its eq_refl) in
+            let chT := match type of lem with forall ch : ?chT, _ => chT end in
+            let chE := fresh "ch" in
+            evar (chE : chT);
+              let ch := (eval unfold chE in chE) in
+              let lem := constr:(lem ch) in
+              let H0 := fresh in
+              let T0 := match type of lem with ?T0 -> _ => T0 end in
+              assert (H0 : T0).
+(* HERE *)
+        clear; lazy.
+              first [ assert (H0 : T0) by (clear; lazy; repeat esplit)
+                    | fail 1 "Could not find a single binary operation to solve" T0 ];
+                subst chE;
+                let lem := constr:(lem H0) in
+                let H := fresh in
+                pose proof lem as H; clear H0;
+                unfold correct_open_close in H;
+                let c := match type of H with
+                           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
+                             => constr:(@possible_valid_open_closes G nt ch)
+                         end in
+                let c0 := fresh in
+                set (c0 := c) in H;
+                  vm_compute in c0;
+                  first [ subst c0; specialize (H eq_refl)
+                        | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
+                  let c := match type of H with
+                             | context[@default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]
+                               => constr:(@default_list_of_next_bin_ops_opt_data HSLM HSL data)
+                           end in
+                  let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
+                  let c' := match c' with
+                              | appcontext[@StringLike.get _ ?HSLM ?HSL]
+                                => let HSLM' := head HSLM in
+                                   let HSL' := head HSL in
+                                   (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')
+                              | _ => c'
+                            end in
+                  change c with c' in H;
+                    first [ setoid_rewrite H
+                          | let T := type of H in
+                            fail 1 "Unexpeected failure to setoid_rewrite with" T ];
+                    clear H.
+
+
 pose_disjoint_search_for lem.
 progress rewrite_once_disjoint_search_for lem.
 
