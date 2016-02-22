@@ -28,7 +28,7 @@ Section IndexedImpl.
       Time simplify parser splitter.
       Time rewrite_disjoint_search_for.
       Time rewrite_disjoint_rev_search_for.
-      Time refine_binop_table.
+      Time progress repeat refine_binop_table.
       Time simplify parser splitter.
       Show Profile.
       (*
@@ -93,19 +93,24 @@ total time:    134.820s
 └rewrite_once_disjoint_rev_search_for_sp   0.0%   4.1%       2    4.652s
 └vm_compute in x' ----------------------   2.7%   2.7%       5    0.780s
  *)
-
-      Time simplify parser splitter.
       Set Printing Depth 1000000.
       Start Profiling.
-      idtac;
-        match goal with
+do 2 match goal with
         | [ |- context[{ splits : list nat
                        | ParserInterface.split_list_is_complete_idx
                            ?G ?str ?offset ?len ?idx splits }%comp] ]
           => let args := constr:(ParserInterface.split_list_is_complete_idx
                                    G str offset len idx) in
-             setoid_rewrite_refine_binop_table_idx args
+             let lem := constr:(Operations.List.take 5 (Carriers.default_to_production (G := G) idx)) in
+             let lem' := (eval hnf in lem) in
+             let lem' := (eval simpl in lem') in
+             pose lem';
+               let k := fresh in set (k := args); move k at top
         end.
+(*** HERE *)
+        repeat match goal with
+               | [ H := ?x, H' := ?x |- _ ] => clear H'
+               end.
         match goal with
         | [ |- context[{ splits : list nat
                        | ParserInterface.split_list_is_complete_idx
@@ -131,21 +136,6 @@ total time:    134.820s
         repeat match goal with
                | [ H := ?x, H' := ?x |- _ ] => clear H'
                end.*)
-do 1 match goal with
-        | [ |- context[{ splits : list nat
-                       | ParserInterface.split_list_is_complete_idx
-                           ?G ?str ?offset ?len ?idx splits }%comp] ]
-          => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                   G str offset len idx) in
-             let lem := constr:(Operations.List.take 2 (Carriers.default_to_production (G := G) idx)) in
-             let lem' := (eval hnf in lem) in
-             let lem' := (eval simpl in lem') in
-             pose lem';
-               let k := fresh in set (k := args); move k at top
-        end.
-        repeat match goal with
-               | [ H := ?x, H' := ?x |- _ ] => clear H'
-               end.
 (* HERE *)
         let args := match goal with
         | [ |- context[{ splits : list nat
