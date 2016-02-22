@@ -24,9 +24,13 @@ Section IndexedImpl.
 
     hone method "splits".
     {
-      (*Start Profiling.*)
+      Start Profiling.
       Time simplify parser splitter.
-      (*Show Profile.*)
+      Time rewrite_disjoint_search_for.
+      Time rewrite_disjoint_rev_search_for.
+      Time refine_binop_table.
+      Time simplify parser splitter.
+      Show Profile.
       (*
 total time:     21.428s
 
@@ -75,9 +79,6 @@ total time:     21.428s
  └─parser_pull_tac ---------------------   0.1%   2.8%       3    0.604s
  *)
 
-      Time rewrite_disjoint_search_for.
-      Time simplify parser splitter.
-      Time rewrite_disjoint_rev_search_for.
       Time simplify parser splitter.
       Set Printing Depth 1000000.
       Start Profiling.
