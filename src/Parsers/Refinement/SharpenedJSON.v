@@ -2,19 +2,21 @@
 Require Import Fiat.Parsers.Grammars.JSONImpoverished.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
+Require Import Fiat.Parsers.Refinement.DisjointRulesRev.
 Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first_char_such_that] *)
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
+Require Import Fiat.Parsers.StringLike.String.
 
 Section IndexedImpl.
-  Context {HSLM : StringLikeMin Ascii.ascii}
+  (*Context {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}
-          {HSIP : StringIsoProperties Ascii.ascii}.
+          {HSIP : StringIsoProperties Ascii.ascii}.*)
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec json'_grammar HSL).
+  : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
 
     start sharpening ADT.
@@ -75,6 +77,9 @@ total time:     21.428s
 
       Time rewrite_disjoint_search_for.
       Time simplify parser splitter.
+      Time rewrite_disjoint_rev_search_for.
+      Time simplify parser splitter.
+      Set Printing Depth 1000000.
       Start Profiling.
       idtac;
         match goal with
@@ -86,38 +91,6 @@ total time:     21.428s
              setoid_rewrite_refine_binop_table_idx args
         end.
         match goal with
-        | [ |- context[{ splits : list nat
-                       | ParserInterface.split_list_is_complete_idx
-                           ?G ?str ?offset ?len ?idx splits }%comp] ]
-          => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                   G str offset len idx) in
-             setoid_rewrite_refine_binop_table_idx args
-        end.
-        Time match goal with
-        | [ |- context[{ splits : list nat
-                       | ParserInterface.split_list_is_complete_idx
-                           ?G ?str ?offset ?len ?idx splits }%comp] ]
-          => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                   G str offset len idx) in
-             setoid_rewrite_refine_binop_table_idx args
-        end.
-        Time match goal with
-        | [ |- context[{ splits : list nat
-                       | ParserInterface.split_list_is_complete_idx
-                           ?G ?str ?offset ?len ?idx splits }%comp] ]
-          => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                   G str offset len idx) in
-             setoid_rewrite_refine_binop_table_idx args
-        end.
-        Time match goal with
-        | [ |- context[{ splits : list nat
-                       | ParserInterface.split_list_is_complete_idx
-                           ?G ?str ?offset ?len ?idx splits }%comp] ]
-          => let args := constr:(ParserInterface.split_list_is_complete_idx
-                                   G str offset len idx) in
-             setoid_rewrite_refine_binop_table_idx args
-        end.
-        Time match goal with
         | [ |- context[{ splits : list nat
                        | ParserInterface.split_list_is_complete_idx
                            ?G ?str ?offset ?len ?idx splits }%comp] ]
@@ -157,6 +130,7 @@ do 1 match goal with
         repeat match goal with
                | [ H := ?x, H' := ?x |- _ ] => clear H'
                end.
+(* HERE *)
 pose_disjoint_search_for lem.
 progress rewrite_once_disjoint_search_for lem.
 
