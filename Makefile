@@ -17,7 +17,12 @@ submodule-update::
 	git submodule update --init && \
 	touch "$@"
 else
+ifeq (,$(wildcard submodule-update))
 submodule-update::
+	touch "$@"
+else
+submodule-update::
+endif
 endif
 
 etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
