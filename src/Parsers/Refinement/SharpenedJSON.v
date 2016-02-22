@@ -32,51 +32,66 @@ Section IndexedImpl.
       Time simplify parser splitter.
       Show Profile.
       (*
-total time:     21.428s
+total time:    134.820s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1   21.428s
-─simplify ------------------------------   0.0% 100.0%       1   21.428s
-─simplify_parser_splitter' -------------   0.1% 100.0%      19    5.232s
-─rewrite <- !BoolFacts.andb_orb_distrib_  22.5%  22.5%       7    4.424s
-─simplify with monad laws --------------   0.0%  17.3%      13    0.728s
-─simplify_with_applied_monad_laws ------   0.1%  17.3%      13    0.728s
-─rewrite !Bool.orb_false_r -------------  11.0%  11.0%      17    1.732s
-─rewrite <- !Bool.andb_orb_distrib_r ---   8.8%   8.8%      28    0.420s
-─rewrite <- !Bool.orb_assoc ------------   8.5%   8.5%       9    1.396s
-─unguard -------------------------------   0.0%   8.1%      19    0.584s
-─rewrite ?(unguard [0]) ----------------   7.8%   8.1%      19    0.584s
-─rewrite <- !Bool.andb_orb_distrib_l ---   5.9%   5.9%      12    0.620s
-─autounfold  with parser_sharpen_db ----   4.6%   4.6%      18    0.132s
-─eapply refine_under_bind_helper -------   3.6%   3.6%      98    0.044s
-─eapply refine_under_bind_helper_1 -----   3.4%   3.4%      98    0.040s
-─eapply refine_under_bind_helper_2 -----   3.4%   3.4%      98    0.040s
-─parser_pull_tac -----------------------   0.1%   2.8%       3    0.604s
-─apply refine_bind_bind_helper ---------   2.5%   2.5%     100    0.036s
-─apply refine_bind_unit_helper ---------   2.3%   2.3%     102    0.028s
+─rewrite_disjoint_search_for -----------   0.0%  56.4%       1   76.056s
+─rewrite_disjoint_search_for_no_clear --   0.0%  56.4%       1   76.048s
+─rewrite_once_disjoint_search_for ------   0.0%  56.4%      17    9.108s
+─rewrite_once_disjoint_search_for_specia   0.1%  37.6%      17    6.676s
+─simplify parser splitter --------------   0.0%  28.7%       2   22.760s
+─simplify ------------------------------   0.0%  28.7%       2   22.760s
+─simplify_parser_splitter' -------------   0.0%  28.7%      34    5.524s
+─vm_compute in x' ----------------------  24.7%  24.7%      67    1.536s
+─setoid_rewrite lem' -------------------  17.9%  20.2%      17    2.424s
+─vm_compute ----------------------------  13.0%  13.0%      69    0.412s
+─assert T as H' by DisjointRules.solve_d   0.0%  12.1%     124    0.364s
+─DisjointRules.solve_disjoint_side_condi   0.0%  12.1%     124    0.364s
+─setoid_rewrite_refine_binop_table_idx -   0.2%   9.1%       1   12.304s
+─refine_binop_table --------------------   0.0%   9.1%       1   12.304s
+─vm_compute in c0 ----------------------   7.3%   7.3%       1    9.888s
+─simplify with monad laws --------------   0.0%   6.2%      25    0.736s
+─simplify_with_applied_monad_laws ------   0.0%   6.2%      25    0.736s
+─rewrite_disjoint_rev_search_for -------   0.0%   5.8%       1    7.760s
+─rewrite_disjoint_rev_search_for_no_clea   0.0%   5.7%       1    7.748s
+─rewrite_once_disjoint_rev_search_for --   0.0%   5.7%       2    4.652s
+─rewrite <- !andb_orb_distrib_r_assoc --   4.1%   4.1%      14    4.684s
+─rewrite_once_disjoint_rev_search_for_sp   0.0%   4.1%       2    4.652s
+─rewrite <- !Bool.andb_orb_distrib_r ---   2.8%   2.8%      55    0.408s
+─rewrite !Bool.orb_false_r -------------   2.6%   2.6%      32    1.960s
+─unguard -------------------------------   0.0%   2.4%      34    0.568s
+─rewrite ?(unguard [0]) ----------------   2.3%   2.4%      34    0.564s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1   21.428s
-└simplify ------------------------------   0.0% 100.0%       1   21.428s
-└simplify_parser_splitter' -------------   0.1% 100.0%      19    5.232s
- ├─rewrite <- !BoolFacts.andb_orb_distri  22.5%  22.5%       7    4.424s
- ├─simplify with monad laws ------------   0.0%  17.3%      13    0.728s
- │└simplify_with_applied_monad_laws ----   0.1%  17.3%      13    0.728s
- │ ├─eapply refine_under_bind_helper ---   3.6%   3.6%      98    0.044s
- │ ├─eapply refine_under_bind_helper_1 -   3.4%   3.4%      98    0.040s
- │ ├─eapply refine_under_bind_helper_2 -   3.4%   3.4%      98    0.040s
- │ ├─apply refine_bind_bind_helper -----   2.5%   2.5%     100    0.036s
- │ └─apply refine_bind_unit_helper -----   2.3%   2.3%     102    0.028s
- ├─rewrite !Bool.orb_false_r -----------  11.0%  11.0%      17    1.732s
- ├─rewrite <- !Bool.andb_orb_distrib_r -   8.8%   8.8%      28    0.420s
- ├─rewrite <- !Bool.orb_assoc ----------   8.5%   8.5%       9    1.396s
- ├─unguard -----------------------------   0.0%   8.1%      19    0.584s
- │└rewrite ?(unguard [0]) --------------   7.8%   8.1%      19    0.584s
- ├─rewrite <- !Bool.andb_orb_distrib_l -   5.9%   5.9%      12    0.620s
- ├─autounfold  with parser_sharpen_db --   4.6%   4.6%      18    0.132s
- └─parser_pull_tac ---------------------   0.1%   2.8%       3    0.604s
+─rewrite_disjoint_search_for -----------   0.0%  56.4%       1   76.056s
+└rewrite_disjoint_search_for_no_clear --   0.0%  56.4%       1   76.048s
+└rewrite_once_disjoint_search_for ------   0.0%  56.4%      17    9.108s
+ ├─rewrite_once_disjoint_search_for_spec   0.1%  37.6%      17    6.676s
+ │ ├─vm_compute in x' ------------------  22.0%  22.0%      62    1.536s
+ │ └─assert T as H' by DisjointRules.sol   0.0%  12.1%     124    0.364s
+ │  └DisjointRules.solve_disjoint_side_c   0.0%  12.1%     124    0.364s
+ │  └vm_compute ------------------------  11.9%  11.9%      62    0.360s
+ └─setoid_rewrite lem' -----------------  16.5%  18.7%      16    2.424s
+─simplify parser splitter --------------   0.0%  28.7%       2   22.760s
+└simplify ------------------------------   0.0%  28.7%       2   22.760s
+└simplify_parser_splitter' -------------   0.0%  28.7%      34    5.524s
+ ├─simplify with monad laws ------------   0.0%   6.2%      25    0.736s
+ │└simplify_with_applied_monad_laws ----   0.0%   6.2%      25    0.736s
+ ├─rewrite <- !andb_orb_distrib_r_assoc    4.1%   4.1%      14    4.684s
+ ├─rewrite <- !Bool.andb_orb_distrib_r -   2.8%   2.8%      55    0.408s
+ ├─rewrite !Bool.orb_false_r -----------   2.6%   2.6%      32    1.960s
+ └─unguard -----------------------------   0.0%   2.4%      34    0.568s
+  └rewrite ?(unguard [0]) --------------   2.3%   2.4%      34    0.564s
+─refine_binop_table --------------------   0.0%   9.1%       1   12.304s
+└setoid_rewrite_refine_binop_table_idx -   0.2%   9.1%       1   12.304s
+└vm_compute in c0 ----------------------   7.3%   7.3%       1    9.888s
+─rewrite_disjoint_rev_search_for -------   0.0%   5.8%       1    7.760s
+└rewrite_disjoint_rev_search_for_no_clea   0.0%   5.7%       1    7.748s
+└rewrite_once_disjoint_rev_search_for --   0.0%   5.7%       2    4.652s
+└rewrite_once_disjoint_rev_search_for_sp   0.0%   4.1%       2    4.652s
+└vm_compute in x' ----------------------   2.7%   2.7%       5    0.780s
  *)
 
       Time simplify parser splitter.
