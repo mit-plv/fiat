@@ -172,12 +172,17 @@ ifeq ($(IS_FAST),0)
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
+ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
+EXPECTED_EXT:=.v84
+ML_DESCRIPTION := "Coq v8.4"
+else
 ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 else
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
+endif
 endif
 
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
