@@ -23,12 +23,14 @@ Definition transfer_parser_keep_string {Char G} {HSLM HSL}
            (H : forall s, new s = has_parse old s)
 : @Parser Char G HSLM HSL.
 Proof.
-  refine {| has_parse := new |};
+  refine {| has_parse := new;
+            parse := parse old |};
   abstract (
       intros;
       rewrite H in *;
         first [ apply (has_parse_sound old); assumption
-              | eapply (has_parse_complete old); eassumption ]
+              | eapply (has_parse_complete old); eassumption
+              | eapply (parse_correct old); eassumption ]
     ).
 Defined.
 
@@ -45,7 +47,8 @@ Definition transfer_parser {Char G} {HSLM1 HSLM2 HSL1 HSL2}
            (R_flip_respectful : transfer_respectful (Basics.flip R))
 : @Parser Char G HSLM2 HSL2.
 Proof.
-  refine {| has_parse := new |}.
+  refine {| has_parse := new;
+            parse str := parse old (make_string str) |}.
   { abstract (
         intros str H';
         rewrite H in H';
@@ -58,6 +61,10 @@ Proof.
         pose (@transfer_parse_of_item Char _ _ _ _ G (Basics.flip R) R_flip_respectful str (make_string str) (NonTerminal G) (R_make str) p) as p';
         apply (has_parse_complete old p'); subst p';
         exact (transfer_forall_parse_of_item _ H')
+      ). }
+  { abstract (
+        intros str;
+        rewrite H, parse_correct; reflexivity
       ). }
 Defined.
 

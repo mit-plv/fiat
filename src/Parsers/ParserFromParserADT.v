@@ -114,7 +114,7 @@ Definition parser''
            val (H : val = has_parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
 : Parser G HSL.
 Proof.
-  refine {| has_parse := val |};
+  refine {| has_parse := val ; parse := parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl) |};
   abstract (subst val; apply parser').
 Defined.
 
