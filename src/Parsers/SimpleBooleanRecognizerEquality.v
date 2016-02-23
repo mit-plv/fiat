@@ -18,7 +18,8 @@ Coercion bool_of_option {A} (x : option A) : bool :=
 
 Section eq.
   Context {Char} {HSLM : StringLikeMin Char} {G : grammar Char}.
-  Context {data : @boolean_parser_dataT Char _}.
+  Context {data : @boolean_parser_dataT Char _}
+          {rdata : @parser_removal_dataT' _ G _}.
   Context (str : String).
 
   Local Notation simple_parse_of := (@simple_parse_of Char) (only parsing).
@@ -34,12 +35,12 @@ Section eq.
              let y' := head y in
              unfold x' at 1, y' at 1
       end.
-    Local Ltac t lem :=
+    Local Ltac t tac :=
       try pre_t;
       repeat match goal with
                | _ => progress subst
                | [ |- _ = _ ] => reflexivity
-               | _ => rewrite !lem
+               | _ => progress tac
                | _ => rewrite !map_map
                | [ H : ?x <= ?y, H' : ?x <= ?y |- _ ]
                  => assert (H = H') by apply Le.le_proof_irrelevance;
@@ -57,6 +58,7 @@ Section eq.
                    [ intro | reflexivity ]
                | _ => progress simpl in *
                | _ => congruence
+               | _ => progress intros
              end.
 
     Lemma parse_item'_eq
@@ -68,7 +70,7 @@ Section eq.
           (it : item Char)
     : BooleanRecognizer.parse_item' str str_matches_nonterminal offset len it = SimpleRecognizer.parse_item' str str_matches_nonterminal' offset len it.
     Proof.
-      t str_matches_nonterminal_eq.
+      t ltac:(rewrite !str_matches_nonterminal_eq).
     Qed.
 
     Section production.
@@ -123,13 +125,10 @@ Section eq.
         revert prod_idx offset len pf.
         induction ps as [|p ps IHps].
         { simpl; intros; t I. }
-        { simpl; intros.
-          pre_t.
-          apply fold_left_option_orb_eq; [ reflexivity | ].
-          t I.
-          erewrite parse_item'_eq by (intros; eapply parse_nonterminal_eq).
-          rewrite IHps; clear IHps.
-          t I. }
+        { t ltac:(first [ apply fold_left_option_orb_eq; [ reflexivity | ]
+                        | erewrite parse_item'_eq by (intros; eapply parse_nonterminal_eq)
+                        | rewrite IHps; clear IHps
+                        | progress pre_t ]). }
       Qed.
 
       Lemma parse_production'_eq
@@ -183,11 +182,9 @@ Section eq.
       : BooleanRecognizer.parse_productions' str parse_nonterminal offset pf prods
         = SimpleRecognizer.parse_productions' str parse_nonterminal' offset pf prods.
       Proof.
-        pre_t.
-        apply fold_right_option_simple_parse_of_orb_eq; [ reflexivity | ].
-        t I.
-        erewrite parse_production'_eq; [ reflexivity | ].
-        intros; rewrite parse_nonterminal_eq; reflexivity.
+        t ltac:(first [ apply fold_right_option_simple_parse_of_orb_eq; [ reflexivity | ]
+                      | erewrite parse_production'_eq; [ reflexivity | ]
+                      | rewrite parse_nonterminal_eq ]).
       Qed.
     End productions.
 
@@ -228,7 +225,7 @@ Section eq.
           pre_t.
           edestruct dec; simpl; edestruct lt_dec; simpl; try reflexivity;
           (erewrite parse_productions'_eq; [ reflexivity | ]);
-          intros; rewrite <- parse_nonterminal_eq; try reflexivity.
+          intros; rewrite <- parse_nonterminal_eq; try reflexivity;
           repeat (f_equal; []); intros.
           apply Le.le_proof_irrelevance.
         Qed.
@@ -245,6 +242,26 @@ Section eq.
             = SimpleRecognizer.parse_nonterminal_or_abort str p valid offset pf nt.
         Proof.
           intros.
+          pre_t.
+          match goal with
+            | [ |- Fix ?rwf ?P ?F ?x ?a ?b ?c ?d ?e
+                   = bool_of_option (Fix ?rwf ?Q ?G ?x ?a ?b ?c ?d ?e) ]
+              => revert a b c d e;
+                induction (rwf x);
+                intros;
+                rewrite !Fix5_eq
+          end;
+            cbv beta; intros;
+            erewrite <- ?parse_nonterminal_step_eq by reflexivity; try reflexivity.
+          { apply BooleanRecognizerExt.parse_nonterminal_step_ext.
+            intros; eauto with nocore. }
+          { erewrite <- !parse_nonterminal_step_eq.
+
+
+          end.
+          {
+          rewrite Fix5_eq
+          Searc
                  :
             -> option simple_parse_of
           := @Fix

@@ -290,6 +290,7 @@ src/Parsers/ParserImplementationOptimized.v
 src/Parsers/ParserInterface.v
 src/Parsers/SimpleBooleanRecognizerEquality.v
 src/Parsers/SimpleRecognizer.v
+src/Parsers/SimpleRecognizerExt.v
 src/Parsers/Specification.v
 src/Parsers/SplitterFromParserADT.v
 src/Parsers/StringLike.v
