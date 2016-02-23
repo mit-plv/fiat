@@ -12,7 +12,6 @@ Require Import Fiat.Parsers.MinimalParse.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
-Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 (*Require Import Coq.Logic.Eqdep_dec.*)
