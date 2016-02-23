@@ -80,7 +80,6 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/SimpleBooleanRecognizerEquality.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo
 
 FIAT4MONITORS_UNMADE_VO := \

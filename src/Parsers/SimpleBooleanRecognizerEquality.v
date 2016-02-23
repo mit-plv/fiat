@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common Fiat.Common.Wf.
 Require Fiat.Parsers.BooleanRecognizer.
 Require Fiat.Parsers.SimpleRecognizer.
+Require Fiat.Parsers.SimpleRecognizerExt.
 Require Fiat.Parsers.BooleanRecognizerExt.
 
 Coercion bool_of_option {A} (x : option A) : bool :=
@@ -252,55 +253,49 @@ Section eq.
                 rewrite !Fix5_eq
           end;
             cbv beta; intros;
-            erewrite <- ?parse_nonterminal_step_eq by reflexivity; try reflexivity.
-          { apply BooleanRecognizerExt.parse_nonterminal_step_ext.
-            intros; eauto with nocore. }
-          { erewrite <- !parse_nonterminal_step_eq.
+            erewrite <- ?parse_nonterminal_step_eq by reflexivity; try reflexivity;
+            first [ apply BooleanRecognizerExt.parse_nonterminal_step_ext;
+                    intros; eauto with nocore
+                  | apply SimpleRecognizerExt.parse_nonterminal_step_ext;
+                    intros; eauto with nocore ].
+        Qed.
 
-
-          end.
-          {
-          rewrite Fix5_eq
-          Searc
-                 :
-            -> option simple_parse_of
-          := @Fix
-               (nat * nat)
-               _
-               (well_founded_prod_relation lt_wf lt_wf)
-               _
-               (fun sl => @parse_nonterminal_step (fst sl) (snd sl)).
-
-        Definition parse_nonterminal'
+        Definition parse_nonterminal'_eq
                    (nt : nonterminal_carrierT)
-        : option simple_parse_of
-          := @parse_nonterminal_or_abort
-               (length str, nonterminals_length initial_nonterminals_data)
-               initial_nonterminals_data
-               0 (length str)
-               (le_n _) nt.
+        : BooleanRecognizer.parse_nonterminal' str nt
+          = SimpleRecognizer.parse_nonterminal' str nt.
+        Proof.
+          pre_t.
+          apply parse_nonterminal_or_abort_eq.
+        Qed.
 
-        Definition parse_nonterminal
+        Definition parse_nonterminal_eq
                    (nt : String.string)
-        : option simple_parse_of
-          := parse_nonterminal' (of_nonterminal nt).
+        : BooleanRecognizer.parse_nonterminal str nt
+          = SimpleRecognizer.parse_nonterminal str nt.
+        Proof.
+          pre_t.
+          apply parse_nonterminal'_eq.
+        Qed.
       End wf.
     End nonterminals.
 
-    Definition parse_item
+    Definition parse_item_eq
                (it : item Char)
-    : option simple_parse_of_item
-      := parse_item' parse_nonterminal' 0 (length str) it.
+    : BooleanRecognizer.parse_item str it
+      = SimpleRecognizer.parse_item str it
+      := parse_item'_eq _ _ parse_nonterminal'_eq _ _ _.
 
-    Definition parse_production
+    Definition parse_production_eq
                (pat : production_carrierT)
-    : option simple_parse_of_production
-      := parse_production' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 (reflexivity _) pat.
+    : BooleanRecognizer.parse_production str pat
+      = SimpleRecognizer.parse_production str pat
+      := parse_production'_eq _ _ (parse_nonterminal_or_abort_eq _ _) _ _ _.
 
-    Definition parse_productions
+    Definition parse_productions_eq
                (pats : list production_carrierT)
-    : option simple_parse_of
-      := parse_productions' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 (reflexivity _) pats.
-  End parts.
-End simple.
-End recursive_descent_parser.
+    : BooleanRecognizer.parse_productions str pats
+      = SimpleRecognizer.parse_productions str pats
+      := parse_productions'_eq _ _ (parse_nonterminal_or_abort_eq _ _) _ _ _.
+  End simple.
+End eq.
