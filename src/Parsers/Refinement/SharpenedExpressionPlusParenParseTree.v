@@ -4,10 +4,10 @@ Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.SharpenedExpressionPlusParen.
 Require Import Fiat.Parsers.Grammars.EvalGrammarTactics.
 
-Definition parser_informative (str : Coq.Strings.String.string)
+Definition parser_informative_opaque (str : Coq.Strings.String.string)
   : option (parse_of_item plus_expr_grammar str (NonTerminal (Start_symbol plus_expr_grammar))).
 Proof.
-  Time make_parser_informative ComputationalSplitter.
+  Time make_parser_informative_opaque ComputationalSplitter.
 Defined.
 
 Section eval.
@@ -73,10 +73,10 @@ Section eval.
   Defined.
 End eval.
 
-Definition parser_eval (str : Coq.Strings.String.string)
+Definition parser_eval_opaque (str : Coq.Strings.String.string)
   : option nat.
 Proof.
-  refine match parser_informative str with
+  refine match parser_informative_opaque str with
          | Some pt => let n := eval_item pt in
                       Some _
          | None => None

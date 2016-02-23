@@ -107,7 +107,7 @@ Ltac make_parser splitter :=
   let b' := parser_red_gen b in
   exact_no_check b'.
 
-Ltac make_parser_informative splitter :=
+Ltac make_parser_informative_opaque splitter :=
   idtac;
   let str := match goal with
                | [ str : String.string |- _ ] => constr:str
