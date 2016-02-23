@@ -20,7 +20,9 @@ Section IndexedImpl.
   Proof.
 
     Time start sharpening ADT.
+    Start Profiling.
     Time start honing parser using indexed representation.
+    Show Profile.
 
     Start Profiling.
     Time hone method "splits".

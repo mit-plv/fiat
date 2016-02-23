@@ -8,6 +8,7 @@ Require Import Fiat.Common.Wf Fiat.Common.Wf2.
 Require Import Fiat.Common.List.Operations.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.Refinement.FinishingLemma.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 Global Arguments min !_ !_.
@@ -15,14 +16,13 @@ Global Arguments max !_ !_.
 Global Arguments Compare_dec.leb !_ !_.
 Global Arguments List.nth {A} !_ !_ _.
 
-Declare Reduction splitter_red0 := cbv beta iota zeta delta [ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
+Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
 
 Ltac splitter_red term :=
-  let term0 := (eval simpl in term) in
-  let term1 := (eval splitter_red0 in term0) in
-  let term2 := (eval simpl in term1) in
-  let term3 := (eval splitter_red0 in term2) in
-  constr:(term3).
+  let term := (eval splitter_red0 in term) in
+  let term := (eval simpl @fst in term) in
+  let term := (eval simpl @snd in term) in
+  constr:(term).
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
@@ -138,7 +138,13 @@ Ltac make_parser_informative splitter :=
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
-  let impl := (splitter_red (projT1 splitter)) in
+  let term := constr:(projT1 splitter) in
+  let h := head splitter in
+  let term := match constr:Set with
+              | _ => (eval cbv [h] in term)
+              | _ => term
+              end in
+  let impl := (splitter_red term) in
   refine (existT _ impl _).
 
 Ltac make_simplified_splitter splitter :=

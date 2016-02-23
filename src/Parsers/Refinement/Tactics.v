@@ -4,6 +4,7 @@ Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Export Fiat.ADTNotation.BuildADTSig.
 Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
+Require Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflectiveOpt.
 Require Export Fiat.Parsers.ParserADTSpecification.
 Require Export Fiat.Parsers.Refinement.ReductionTactics.
 Require Export Fiat.Parsers.Refinement.PreTactics.
@@ -43,37 +44,40 @@ Ltac start_honing_ri repInv :=
   hone representation using repInv;
   parser_hone_cleanup.
 
+Ltac change_with_cbv c :=
+    let c' := (eval cbv in c) in
+    change c with c'.
+
+Ltac replace_with_vm_compute c :=
+  let c' := (eval vm_compute in c) in
+  (* we'd like to just do: *)
+  (* replace c with c' by (clear; abstract (vm_compute; reflexivity)) *)
+  (* but [set] is too slow in 8.4, so we write our own version (see https://coq.inria.fr/bugs/show_bug.cgi?id=3280#c13 *)
+  let set_tac := (fun x' x
+                  => pose x as x';
+                     change x with x') in
+  replace_with_at_by c c' set_tac ltac:(clear; abstract (vm_compute; reflexivity)).
+
 Ltac start_honing :=
   eapply SharpenStep;
   [ solve [ apply FirstStep ] | ];
-  unfold rindexed_spec, rindexed_spec';
-  cbv beta iota zeta delta [expanded_fallback_list' BaseTypes.production_carrierT BaseTypes.nonterminals_listT BaseTypes.nonterminal_carrierT RDPList.rdp_list_predata Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT BaseTypes.to_production RDPList.rdp_list_to_production expanded_fallback_list'_body forall_reachable_productions_if_eq];
-  lazymatch goal with
-  | [ |- context[List.fold_right _ _ (Operations.List.uniquize _ (List.map _ ?ls))] ]
-    => let ls' := (eval lazy in ls) in
-       change ls with ls'
-  end;
-  lazymatch goal with
-  | [ |- context[List.fold_right _ _ (Operations.List.uniquize _ ?ls)] ]
-    => let ls' := (eval lazy in ls) in
-       change ls with ls'
-  end;
-  lazymatch goal with
-  | [ |- context[List.fold_right _ _ (Operations.List.uniquize ?beq ?ls)] ]
-    => let x := constr:(Operations.List.uniquize beq ls) in
-       let x' := (eval lazy in x) in
-       change x with x'
-  end;
-  change @List.length with @BooleanRecognizerOptimized.opt2.opt2.length;
-  change @fst with @BooleanRecognizerOptimized.opt2.opt2.fst at 2 4;
-  change @snd with @BooleanRecognizerOptimized.opt2.opt2.snd at 2 5 6;
-  cbv beta iota zeta delta [to_production_opt Lookup_idx List.combine ret_cases_to_comp fst snd List.map];
-  change @BooleanRecognizerOptimized.opt2.opt2.length with @List.length;
-  change @BooleanRecognizerOptimized.opt2.opt2.fst with @fst;
-  change @BooleanRecognizerOptimized.opt2.opt2.snd with @snd;
-  cbv beta iota zeta delta [List.fold_right ret_cases_BoolDecR beq_nat_opt andb_opt];
-  simpl orb; simpl andb;
-  simpl.
+  unfold opt_rindexed_spec;
+  (*
+  let p' := fresh "p'" in
+  match goal with
+  | [ |- appcontext[pregrammar_productions ?G] ]
+    => let p := constr:(pregrammar_productions G) in
+       set (p' := p);
+       hnf in p'
+  end; *)
+  do 2 match goal with
+       | [ |- context[opt.combine ?ls ?ls'] ]
+         => replace_with_vm_compute (opt.combine ls ls')
+       | [ |- context[opt2.uniquize ?beq ?ls] ]
+         => replace_with_vm_compute (opt2.uniquize beq ls)
+       end;
+  cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
+  change (orb false) with (fun x : bool => x); cbv beta.
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
   := (lazymatch goal with
