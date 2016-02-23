@@ -288,6 +288,7 @@ src/Parsers/ParserFromParserADT.v
 src/Parsers/ParserImplementation.v
 src/Parsers/ParserImplementationOptimized.v
 src/Parsers/ParserInterface.v
+src/Parsers/SimpleRecognizer.v
 src/Parsers/Specification.v
 src/Parsers/SplitterFromParserADT.v
 src/Parsers/StringLike.v
