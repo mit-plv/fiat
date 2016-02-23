@@ -61,6 +61,22 @@ Section cfg.
                            List.In nt (Valid_nonterminals G)
                            -> parse_of str (Lookup G nt)
                            -> parse_of_item str (NonTerminal nt).
+
+    (** A simple parse tree is a simply typed version of the above *)
+    Inductive simple_parse_of :=
+    | SimpleParseHead : simple_parse_of_production -> simple_parse_of
+    | SimpleParseTail : simple_parse_of -> simple_parse_of
+    with simple_parse_of_production :=
+    | SimpleParseProductionNil : simple_parse_of_production
+    | SimpleParseProductionCons
+      : simple_parse_of_item
+        -> simple_parse_of_production
+        -> simple_parse_of_production
+    with simple_parse_of_item :=
+    | SimpleParseTerminal : Char -> simple_parse_of_item
+    | SimpleParseNonTerminal : forall nt : string,
+                                 simple_parse_of
+                                 -> simple_parse_of_item.
   End parse.
 
   Definition parse_of_grammar {HSLM} {HSL : @StringLike Char HSLM} (str : String) (G : grammar) :=
