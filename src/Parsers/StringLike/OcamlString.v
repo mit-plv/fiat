@@ -113,11 +113,11 @@ Module Export Ocaml.
   Global Instance string_stringlikemin : StringLikeMin Ascii.ascii
     := { String := Ocaml.string;
          length := String.length;
+         unsafe_get n s := String.get s n;
          char_at_matches n str P := P (String.get str n) }.
 
   Global Instance string_stringlike : StringLike Ascii.ascii
     := { get n s := String.safe_get s n;
-         unsafe_get n s := String.get s n;
          take n s := String.sub s 0 n;
          drop n s := String.sub s n (String.length s - n);
          is_char s ch := ((EqNat.beq_nat (String.length s) 1)

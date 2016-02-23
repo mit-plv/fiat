@@ -19,6 +19,7 @@ Module Export StringLike.
     {
       String :> Type;
       char_at_matches : nat -> String -> (Char -> bool) -> bool;
+      unsafe_get : nat -> String -> Char;
       length : String -> nat
     }.
 
@@ -28,7 +29,6 @@ Module Export StringLike.
       take : nat -> String -> String;
       drop : nat -> String -> String;
       get : nat -> String -> option Char;
-      unsafe_get : nat -> String -> Char;
       bool_eq : String -> String -> bool;
       beq : relation String := fun x y => bool_eq x y
     }.

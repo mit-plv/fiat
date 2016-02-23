@@ -300,13 +300,13 @@ Section parser.
   Local Instance adt_based_StringLikeMin_lite : StringLikeMin Ascii.ascii
     := { String := StringT_lite;
          length str := mlength str;
+         unsafe_get n str := mget n str;
          char_at_matches n str P := mchar_at_matches n P str }.
   Local Instance adt_based_StringLike_lite : StringLike Ascii.ascii
     := { take n str := mtake n str;
          drop n str := mdrop n str;
          is_char str ch := mis_char ch str;
          get n str := msafe_get n str;
-         unsafe_get n str := mget n str;
          bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
   Local Instance adt_based_StringIso_lite : @StringIso Ascii.ascii adt_based_StringLikeMin_lite
     := { of_string str := cnew (of_string str) }.
@@ -314,6 +314,7 @@ Section parser.
   Local Instance adt_based_StringLikeMin : StringLikeMin Ascii.ascii
     := { String := StringT;
          length str := mlength (proj1_sig str);
+         unsafe_get n str := mget n (proj1_sig str);
          char_at_matches n str P := mchar_at_matches n P (proj1_sig str) }.
 
   Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
@@ -321,7 +322,6 @@ Section parser.
          drop n str := mdrop n str;
          is_char str ch := mis_char ch str;
          get n str := msafe_get n str;
-         unsafe_get n str := mget n str;
          bool_eq s1 s2 := bool_eq (mto_string s1) (mto_string s2) }.
 
   Local Program Instance adt_based_StringIso : @StringIso Ascii.ascii adt_based_StringLikeMin
