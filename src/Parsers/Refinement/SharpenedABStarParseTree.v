@@ -24,6 +24,14 @@ Proof.
 Abort.
 
 Definition ab_star_parser_informative (str : Coq.Strings.String.string)
-  : option (@simple_parse_of_item Ascii.ascii).
+  : option (@simple_parse_of Ascii.ascii).
 Proof.
-Abort.
+  Time make_parser_informative (@ComputationalSplitter _ String.string_stringlike _ _). (* 0.124 s *)
+Defined.
+
+Goal exists s, ab_star_parser_informative "" = Some s.
+Proof.
+  eexists.
+  compute.
+  reflexivity.
+Qed.
