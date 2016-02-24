@@ -116,7 +116,7 @@ Section implementation.
 
   Program Definition parser (Hvalid : grammar_valid G) : Parser G splitter
     := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);
-          parse str := SimpleRecognizer.parse_nonterminal (data := parser_data) str (Start_symbol G);
+          parse str := option_map (SimpleParseNonTerminal (Start_symbol G)) (SimpleRecognizer.parse_nonterminal (data := parser_data) str (Start_symbol G));
           has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) Hvalid _ _ Hparse;
           has_parse_complete str p := _ |}.
   Next Obligation.
@@ -127,6 +127,8 @@ Section implementation.
   Qed.
   Next Obligation.
   Proof.
-    erewrite SimpleBooleanRecognizerEquality.parse_nonterminal_eq; reflexivity.
+    erewrite SimpleBooleanRecognizerEquality.parse_nonterminal_eq; simpl;
+    unfold option_map.
+    destruct SimpleRecognizer.parse_nonterminal; reflexivity.
   Qed.
 End implementation.

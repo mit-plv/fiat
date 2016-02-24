@@ -28,7 +28,7 @@ Section recursive_descent_parser.
       : option simple_parse_of_item
         := match it with
              | Terminal P => if EqNat.beq_nat len 1 && char_at_matches offset str P
-                             then Some (SimpleParseTerminal (unsafe_get 0 str))
+                             then Some (SimpleParseTerminal (unsafe_get offset str))
                              else None
              | NonTerminal nt => option_map
                                    (SimpleParseNonTerminal nt)

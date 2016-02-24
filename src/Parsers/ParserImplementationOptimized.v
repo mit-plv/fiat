@@ -113,7 +113,8 @@ Section implementation.
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in
     let impl := (eval simpl in impl') in
-    let s_impl0 := constr:(fun str => SimpleRecognizer.parse_nonterminal (make_string str) (Start_symbol G)) in
+    let s_impl0 := constr:(fun str => option_map (SimpleParseNonTerminal (Start_symbol G))
+                                                 (SimpleRecognizer.parse_nonterminal (make_string str) (Start_symbol G))) in
     let s_impl := (eval simpl in s_impl0) in
     let s_impl := (eval cbv [SimpleRecognizer.parse_nonterminal SimpleRecognizer.parse_nonterminal' nonterminals_length initial_nonterminals_data predata pdata RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data of_nonterminal RDPList.rdp_list_of_nonterminal SimpleRecognizer.parse_nonterminal_or_abort nonterminals_listT RDPList.rdp_list_nonterminals_listT default_nonterminal_carrierT nonterminal_carrierT SimpleRecognizer.parse_nonterminal_step SimpleRecognizer.parse_productions' nonterminal_to_production is_valid_nonterminal RDPList.rdp_list_is_valid_nonterminal remove_nonterminal RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminal_to_production RDPList.rdp_list_to_nonterminal default_to_nonterminal SimpleRecognizer.option_simple_parse_of_orb SimpleRecognizer.parse_production' SimpleRecognizer.parse_production'_for SimpleRecognizer.option_orb SimpleRecognizer.option_SimpleParseProductionCons SimpleRecognizer.parse_item'] in s_impl) in
     refine (transfer_parser
@@ -124,7 +125,7 @@ Section implementation.
               (fun str => eq_trans
                             (implH str)
                             (@parse_nonterminal_proj _ splitter string_like_min_lite G pdata' _ _ _ HSLPr _ _))
-              (fun str => eq_refl : s_impl0 str = SimpleRecognizer.parse_nonterminal (make_string str) G)
+              (fun str => eq_refl : s_impl0 str = _ (SimpleRecognizer.parse_nonterminal (make_string str) G))
               R R_make _ _).
   Defined.
 

@@ -97,3 +97,19 @@ Definition production_is_reachable {Char} (G : grammar Char) (p : production Cha
        /\ List.In
             (prefix ++ p)
             (Lookup G nt).
+
+Delimit Scope simple_parse_of_scope with simple_parse_of.
+Delimit Scope simple_parse_of_production_scope with simple_parse_of_production.
+Delimit Scope simple_parse_of_item_scope with simple_parse_of_item.
+Bind Scope simple_parse_of_scope with simple_parse_of.
+Bind Scope simple_parse_of_production_scope with simple_parse_of_production.
+Bind Scope simple_parse_of_item_scope with simple_parse_of_item.
+
+Arguments SimpleParseHead _%type _%simple_parse_of_production.
+Arguments SimpleParseTail _%type _%simple_parse_of.
+Arguments SimpleParseProductionNil _%type.
+Arguments SimpleParseProductionCons _%type _%simple_parse_of_item _%simple_parse_of_production.
+Arguments SimpleParseNonTerminal _%type _%string _%simple_parse_of.
+
+Infix "::" := SimpleParseProductionCons : simple_parse_of_production_scope.
+Notation "[ ]" := SimpleParseProductionNil : simple_parse_of_production_scope.
