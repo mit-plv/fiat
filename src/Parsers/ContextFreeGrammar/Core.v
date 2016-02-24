@@ -111,5 +111,9 @@ Arguments SimpleParseProductionNil _%type.
 Arguments SimpleParseProductionCons _%type _%simple_parse_of_item _%simple_parse_of_production.
 Arguments SimpleParseNonTerminal _%type _%string _%simple_parse_of.
 
+Arguments simple_parse_of {_}, _.
+Arguments simple_parse_of_production {_}, _.
+Arguments simple_parse_of_item {_}, _.
+
 Infix "::" := SimpleParseProductionCons : simple_parse_of_production_scope.
 Notation "[ ]" := SimpleParseProductionNil : simple_parse_of_production_scope.

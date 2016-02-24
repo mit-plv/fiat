@@ -290,6 +290,7 @@ src/Parsers/ParserImplementationOptimized.v
 src/Parsers/ParserInterface.v
 src/Parsers/SimpleBooleanRecognizerEquality.v
 src/Parsers/SimpleRecognizer.v
+src/Parsers/SimpleRecognizerCorrect.v
 src/Parsers/SimpleRecognizerExt.v
 src/Parsers/Specification.v
 src/Parsers/SplitterFromParserADT.v
@@ -302,6 +303,7 @@ src/Parsers/ContextFreeGrammar/Equality.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
+src/Parsers/ContextFreeGrammar/SimpleCorrectness.v
 src/Parsers/ContextFreeGrammar/Transfer.v
 src/Parsers/ContextFreeGrammar/TransferProperties.v
 src/Parsers/ContextFreeGrammar/Valid.v
