@@ -574,44 +574,338 @@ Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
 Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
 Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
 
-Require Import Bedrock.Platform.Facade.examples.QsADTs.
-Require Import Bedrock.Platform.Facade.examples.TuplesF.
+Require Bedrock.Platform.Facade.examples.QsADTs.
+Require Bedrock.Platform.Facade.examples.TuplesF.
 
 Ltac fiat_t :=
   repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
 
-Lemma CompileTuples2_findFirst :
-  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+Lemma CompileTuples2_findFirst : (* TODO change this theorem; it doesn't apply anymore *)
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
+    (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))) k2
     (table: FiatBag (S N)) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S N) => ((if Word.weq (ilist2.ilist2_hd tup) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S N))))),
-    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findFirst) env ->
+    (table':= ( results <- {l : list RawTuple |
+                   IndexedEnsembles.EnsembleIndexedListEquivalence
+                     (IndexedEnsembles.IndexedEnsemble_Intersection 
+                        (table)
+                        (fun x0 : RawTuple =>
+                         ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true)) l};
+                 ret (table, results))
+               : Comp (_ * list (FiatTuple (S N)))),
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findFirst) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
     Lifted_not_mapsto_adt ext tenv vret ->
     NoDuplicates [[[vret; vtable; vkey]]] ->
     vret ∉ ext ->
     vtable ∉ ext ->
-    functional (IndexedEnsemble_TupleToListW table) ->
+    (* IndexedEnsembles.UnConstrFreshIdx table idx -> *)
+    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+    TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
-      {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
-           :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
-           :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
+    {{ [[ table' as retv ]]
+         :: [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
+         :: [[ (@NTSome QsADTs.ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+         :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
 Proof.
+  Ltac facade_cleanup_call ::=  (* FIXME: Added a clear dependent instead of clear *)
+       match goal with
+       | _ => progress cbv beta iota delta [add_remove_many] in *
+       | _ => progress cbv beta iota delta [sel] in *
+       | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear dependent H
+       | [ H: PreCond ?f _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PreCond] in H
+       | [ H: PostCond ?f _ _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PostCond] in H
+       | [  |- PreCond ?f _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]
+       | [  |- PostCond ?f _ _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PostCond]
+       | [ H: WeakEq ?lhs _ |- _ ] => progress learn_all_WeakEq_remove H lhs
+       | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
+       | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
+       | [ H: List.combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
+       | [ |-  context[List.split (cons _ _)] ] => simpl
+       | [ H: context[List.split (cons _ _)] |- _ ] => may_touch H; simpl in H
+       | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear dependent H
+       | _ => GLabelMapUtils.normalize
+       | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
+       | [  |- exists _, _ ] => eexists
+       end.
+
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
+
   fiat_t.
+  3:solve[fiat_t].
+  2:solve[fiat_t].
+  2:simpl; f_equal; f_equal.
+  3:solve[repeat apply DropName_remove; eauto 1].
+
   wipe.
 
-  instantiate (1 := nil); admit.
-  fiat_t.
-  fiat_t.
-  admit.
+  Focus 2.
 
-  repeat apply DropName_remove; eauto 1.
+  Fixpoint TruncateList {A} (a: A) n l :=
+    match n, l with
+    | 0, _ => nil
+    | S n, nil => a :: TruncateList a n nil
+    | S n, h :: t => h :: TruncateList a n t
+    end.
+
+  Lemma TruncateList_length {A} n :
+    forall (a: A) (l: list A),
+      List.length (TruncateList a n l) = n.
+  Proof.
+    induction n, l; simpl; intuition.
+  Defined.
+
+  Lemma TruncateList_id {A} :
+    forall (a: A) (l: list A),
+      TruncateList a (List.length l) l = l.
+  Proof.
+    induction l; simpl; auto using f_equal.
+  Qed.
+
+  Definition ListWToTuple_Truncated n l : FiatTuple n :=
+    @eq_rect nat _ (fun n => FiatTuple n)
+             (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
+             n (TruncateList_length n _ _).
+
+
+  Definition ListWToTuple_Truncated' n (l: list W) : FiatTuple n :=
+    match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatTuple n0 with
+    | eq_refl => (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
+    end.
+
+  Lemma ListWToTuple_Truncated_id n l :
+    List.length l = n ->
+    l = TupleToListW (ListWToTuple_Truncated n l).
+  Proof.
+    intros; subst.
+    unfold ListWToTuple_Truncated'.
+    induction l.
+    trivial.
+    simpl.
+  Admitted.
+
+  lazymatch goal with
+  | [  |- ?x0 = map TupleToListW ?x ] => is_evar x; unify x (map (ListWToTuple_Truncated (S N)) x0)
+  end.
+
+  rewrite map_map.
+
+  Lemma map_id' :
+    forall `{f: A -> A} lst,
+    (forall x, List.In x lst -> f x = x) ->
+    map f lst = lst.
+  Proof.
+    induction lst; simpl; intros.
+    - eauto.
+    - f_equal; eauto.
+  Qed.
+
+  rewrite map_id'; [ eauto | intros; symmetry; apply ListWToTuple_Truncated_id ].
+
+  Definition AllOfLength_set {A} N ens :=
+    forall x, Ensembles.In _ ens x -> @List.length A (TuplesF.indexedElement x) = N.
+
+  Definition AllOfLength_list {A} N seq :=
+    forall x, List.In x seq -> @List.length A x = N.
+
+  Lemma keepEq_length:
+    forall (N : nat) ens (key k : W),
+      AllOfLength_set N ens ->
+      AllOfLength_set N (TuplesF.keepEq ens key k).
+  Proof.
+    unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
+  Qed.
+
+  Lemma TupleToListW_length':
+    forall (N : nat) (tuple : FiatTuple N),
+      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+      Datatypes.length (TupleToListW tuple) = N.
+  Proof.
+    cleanup;
+      erewrite <- Word.wordToNat_natToWord_idempotent;
+      eauto using TupleToListW_length.
+  Qed.
+
+  Lemma IndexedEnsemble_TupleToListW_length:
+    forall (N : nat) (table: FiatBag N),
+      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+      AllOfLength_set N (IndexedEnsemble_TupleToListW table).
+  Proof.
+    repeat match goal with
+           | _ => cleanup
+           | _ => progress destruct_conjs
+           | _ => progress unfold AllOfLength_set, IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW, Ensembles.In
+           | [ H: _ = _ |- _ ] => rewrite H
+           end; auto using TupleToListW_length'.
+  Qed.
+
+  Lemma UnIndexedEnsembleListEquivalence_AllOfLength:
+    forall (N : nat) A ens seq,
+      @TuplesF.UnIndexedEnsembleListEquivalence (list A) ens seq ->
+      AllOfLength_set N ens ->
+      AllOfLength_list N seq.
+  Proof.
+    repeat match goal with
+           | _ => cleanup
+           | [ H: _ /\ _ |- _ ] => destruct H
+           | [ H: exists _, _ |- _ ] => destruct H
+           | [ H: In _ (map _ _) |- _ ] => rewrite in_map_iff in H
+           | _ => progress unfold TuplesF.UnIndexedEnsembleListEquivalence,
+                 AllOfLength_set, AllOfLength_list in *
+           end; firstorder.
+  Qed.
+
+  Lemma EnsembleIndexedListEquivalence_AllOfLength:
+    forall (N : nat) A ens seq,
+      @TuplesF.EnsembleIndexedListEquivalence (list A) ens seq ->
+      AllOfLength_set N ens ->
+      AllOfLength_list N seq.
+  Proof.
+    unfold TuplesF.EnsembleIndexedListEquivalence; cleanup.
+    intuition eauto using UnIndexedEnsembleListEquivalence_AllOfLength.
+  Qed.
+
+  Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
+    forall {N : nat} {table k key seq},
+      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+      TuplesF.EnsembleIndexedListEquivalence
+        (TuplesF.keepEq (@IndexedEnsemble_TupleToListW N table) k key) seq ->
+      AllOfLength_list N seq.
+  Proof.
+    cleanup; eapply EnsembleIndexedListEquivalence_AllOfLength;
+    eauto using keepEq_length, IndexedEnsemble_TupleToListW_length.
+  Qed.
+
+  pose proof (EnsembleIndexedListEquivalence_keepEq_AllOfLength H6 H16) as sameLength.
+  unfold AllOfLength_list in sameLength.
+  deduplicate.
+
+  (* Lemma TuplesF_IndexedEnsembles_Equiv : *)
+  (*   forall A ens lst, *)
+  (*     TuplesF.EnsembleIndexedListEquivalence ens lst -> *)
+  (*     IndexedEnsembles.EnsembleIndexedListEquivalence ens lst. *)
+
+  Lemma EnsembleIndexedListEquivalence_TupleToListW :
+    forall n lst ens,
+      TuplesF.EnsembleIndexedListEquivalence
+        (IndexedEnsemble_TupleToListW ens) (map (TupleToListW (N := n)) lst) ->
+      IndexedEnsembles.EnsembleIndexedListEquivalence ens lst.
+  Proof.
+    induction lst; simpl; intros.
+
+    Ltac EnsembleIndexedListEquivalence_nil_t :=
+      repeat match goal with
+             | _ => cleanup
+             | _ => solve [constructor]
+             | _ => progress destruct_conjs
+             | _ => progress unfold IndexedEnsembles.EnsembleIndexedListEquivalence,
+                   IndexedEnsembles.UnIndexedEnsembleListEquivalence,
+                   TuplesF.EnsembleIndexedListEquivalence,
+                   TuplesF.UnIndexedEnsembleListEquivalence,
+                   Ensembles.Same_set, Ensembles.Included, Ensembles.In in *
+             | [  |- exists (_: list ?t), _ ] => exists (@nil t)
+             | [ H: map _ _ = nil |- _ ] => apply map_eq_nil in H
+             | [ H: context[In _ nil] |- _ ] =>
+               setoid_rewrite (fun A a => (fun A => proj1 (neg_false A)) _ (@in_nil A a)) in H
+             | _ => firstorder
+             end.
+
+    Lemma IndexedEnsembles_UnIndexedEnsembleListEquivalence_nil :
+      forall A ens, IndexedEnsembles.UnIndexedEnsembleListEquivalence ens (@nil A) <->
+               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+    Proof.
+      EnsembleIndexedListEquivalence_nil_t.
+    Qed.
+
+    Lemma IndexedEnsembles_EnsembleIndexedListEquivalence_nil :
+      forall A ens, IndexedEnsembles.EnsembleIndexedListEquivalence ens (@nil A) <->
+               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+    Proof.
+      EnsembleIndexedListEquivalence_nil_t.
+    Qed.
+
+    Lemma TuplesF_UnIndexedEnsembleListEquivalence_nil :
+      forall A ens, TuplesF.UnIndexedEnsembleListEquivalence ens (@nil A) <->
+               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+    Proof.
+      EnsembleIndexedListEquivalence_nil_t.
+    Qed.
+
+    Lemma TuplesF_EnsembleIndexedListEquivalence_nil :
+      forall A ens,
+        TuplesF.EnsembleIndexedListEquivalence ens (@nil A) <->
+        Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+    Proof.
+      EnsembleIndexedListEquivalence_nil_t.
+    Qed.
+
+    rewrite TuplesF_EnsembleIndexedListEquivalence_nil in H.
+    rewrite IndexedEnsembles_EnsembleIndexedListEquivalence_nil.
+
+    Lemma IndexedEnsemble_TupleToListW_empty :
+      forall N ens,
+      Ensembles.Same_set _ (@IndexedEnsemble_TupleToListW N ens) (Ensembles.Empty_set _) ->
+      Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+    Proof.
+      unfold IndexedEnsemble_TupleToListW, Ensembles.Same_set; cleanup.
+  (* unfold wrap, WrapInstance, wrap, QS_WrapBag2 in H21; simpl. *)
+  Lemma Fiat_Bedrock_Filters_Equivalence:
+    forall (N : nat) (table : FiatBag (S N)) (key : W) (x9 : list TuplesF.tupl)
+      (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
+      (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
+      TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
+      IndexedEnsembles.EnsembleIndexedListEquivalence
+        (IndexedEnsembles.IndexedEnsemble_Intersection
+           table
+           (fun x0 : FiatTuple (S N) =>
+              ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true))
+        (map (ListWToTuple_Truncated (S N)) x9).
+  Proof.
+    intros.
+    apply EnsembleIndexedListEquivalence_TupleToListW.
+    rewrite map_map.
+    rewrite map_id' by admit.
+
+    Lemma TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles :
+      forall A ens1 ens2,
+          Ensembles.Same_set _ ens1 ens2 ->
+          forall seq, @TuplesF.EnsembleIndexedListEquivalence A ens1 seq <->
+                 @TuplesF.EnsembleIndexedListEquivalence A ens2 seq.
+    Proof.
+      intros.
+      apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
+    Qed. (* FIXME can we use Ensemble extensionality? *)
+
+    rewrite TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles; try eassumption.
+    clear H.
+
+    unfold IndexedEnsemble_TupleToListW, TuplesF.keepEq, Ensembles.Included, Ensembles.In, IndexedEnsembles.IndexedEnsemble_Intersection, Array.sel in *.
+    Lemma Same_set_pointwise :
+      forall A s1 s2,
+        Ensembles.Same_set A s1 s2 <-> (forall x, s1 x <-> s2 x).
+    Proof.
+      firstorder.
+    Qed.
+
+    rewrite Same_set_pointwise.
+    intros.
+    split; repeat match goal with
+                  | _ => cleanup
+                  | _ => eassumption
+                  | _ => progress unfold RelatedIndexedTupleAndListW, TuplesF.tupl in *
+                  | [  |- exists _, _ ] => eexists
+                  | [ H: exists _, _ |- _ ] => destruct H
+                  | [  |- context[andb _ true] ] => rewrite Bool.andb_true_r
+                  | [ H: context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
+                  | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
+                  end.
+
+    - rewrite H2. admit.
+    - rewrite H1. admit.
+  Qed.
+
+  apply Fiat_Bedrock_Filters_Equivalence; assumption.
 Qed.
 
 Lemma Lifted_MapsTo_Ext:
@@ -1963,6 +2257,141 @@ Proof.
   - eexists; split.
     destruct H as [? [? ?] ].
     _compile.
+
+    match_ProgOk
+      ltac:(fun _prog _pre _post _ext _env =>
+              pose _env as env;
+              pose _ext as ext;
+              pose _post as post;
+              pose _pre as pre;
+              pose _prog as prog).
+
+    let pre := (eval unfold pre in pre) in
+    let post := (eval unfold post in post) in
+    lazymatch constr:(pre, post) with
+    | (Cons (NTSome (H := ?_h) ?_vdb) (ret (prim_fst ?_db)) (fun _ => ?_tenv), Cons NTNone ?_bf _) =>
+pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as h
+    end.
+
+    let bf := (eval unfold bf in bf) in
+    lazymatch bf with
+      | CallBagMethod Fin.F1 BagFind ?db ?_kwd =>
+        let vsnd := gensym "snd" in
+        let vtmp := gensym "tmp" in
+        pose _kwd as kwd;
+        eapply CompileSeq with ([[bf as retv]]
+                                  :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
+                                                                         (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                                         (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
+                                  :: [[`vsnd <-- snd retv as s]]
+                                  :: tenv);
+          [ try match kwd with
+            | (Some ?v, (None, fun _ => true)) =>
+              let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+              match vkwd with
+              | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
+              end
+            | (None, (Some ?v, fun _ => true)) =>
+              let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+              match vkwd with
+              | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
+              end
+            end | ]
+    end.
+
+
+    simpl.
+    cbv [CallBagMethod].
+    simpl.
+    unfold IndexSearchTerms.MatchIndexSearchTerm; simpl.
+    let kwd := (eval unfold kwd in kwd) in
+    lazymatch kwd with
+    | (Some ?v, (None, fun _ => true)) =>
+      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+      lazymatch vkwd with
+      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
+      end
+    | (None, (Some ?v, fun _ => true)) =>
+      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+      match vkwd with
+      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
+      end
+    end.
+
+    
+    
+    let pre := (eval unfold pre in pre) in
+    let post := (eval unfold post in post) in
+    lazymatch constr:(pre, post) with
+    | ([[NTSome ?vdb <-- prim_fst ?db as _]]::?tenv, [[?bf as kk]]::_) =>
+      pose bf
+    end.
+
+          lazymatch bf with
+      | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
+        let vsnd := gensym "snd" in
+        let vtmp := gensym "tmp" in
+        eapply
+          CompileSeq
+        with
+        ([[bf as retv]]
+           ::[[ ` vdb <--
+                 prim_fst
+                 (Refinements.UpdateIndexedRelation
+                    (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                    (icons3 SearchUpdateTerm inil3) db Fin.F1 
+                    (fst retv)) as _]]::
+           [[ ` vsnd <-- snd retv as s]]::tenv);
+          [ match kwd with
+            | (Some ?v, (None, fun _ => true)) =>
+              let vkwd := find_fast (wrap v) ext in
+              match vkwd with
+              | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey:=vkwd))
+              end
+            | (None, (Some ?v, fun _ => true)) =>
+              let vkwd := find_fast (wrap v) ext in
+              match vkwd with
+              | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey:=vkwd))
+              end
+            end
+          | idtac ]
+      end
+
+
+
+Ltac _compile_CallBagFind :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:(pre, post) with
+            | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
+              match bf with
+              | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
+                let vsnd := gensym "snd" in
+                let vtmp := gensym "tmp" in
+                eapply CompileSeq with ([[bf as retv]]
+                                          :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
+                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                                                                                 (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
+                                          :: [[`vsnd <-- snd retv as s]]
+                                          :: tenv);
+                  [ match kwd with
+                    | (Some ?v, (None, fun _ => true)) =>
+                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                      match vkwd with
+                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
+                      end
+                    | (None, (Some ?v, fun _ => true)) =>
+                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                      match vkwd with
+                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
+                      end
+                    end | ]
+              end
+            end).
+
+            
+
+    
     + unfold CallBagMethod in H1; simpl in *.
       computes_to_inv; subst.
       eapply H0.

@@ -4,8 +4,7 @@ Require Import Fiat.BinEncoders.Specs
                Fiat.BinEncoders.Libraries.BinCore
                Fiat.BinEncoders.Libraries.FixInt
                Fiat.BinEncoders.Libraries.FixList2
-               Fiat.BinEncoders.Libraries.Bool
-               Fiat.BinEncoders.Automation.Solver.
+               Fiat.BinEncoders.Libraries.Bool.
 
 Set Implicit Arguments.
 
@@ -32,12 +31,12 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   FixInt_encode (window (fst bundle),
   FixInt_encode (urgentptr (fst bundle), snd bundle))))))))).
 
+Require Import Fiat.BinEncoders.Automation.Solver.
+
 Global Instance packet_decoder
   : Decoder of encode_packet.
 Proof.
-  unfold encode_packet.
-  repeat solve_step.
-  solve_done.
+  decoder_from_encoder.
 Defined.
 
 Extract Inductive bool => "bool" [ "true" "false" ].

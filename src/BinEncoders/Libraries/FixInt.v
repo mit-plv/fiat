@@ -68,6 +68,41 @@ Section FixIntBinEncoder.
         end
     end.
 
+  Fixpoint bitlength (n : positive) : nat :=
+    match n with
+    | xH    => 1
+    | xI n' => 1 + bitlength n'
+    | xO n' => 1 + bitlength n'
+    end.
+
+  Lemma bitlength_exp2 : forall l, bitlength (exp2' l) = S l.
+  Proof.
+    induction l; simpl; eauto.
+  Qed.
+
+  Lemma bitlength_lt : forall n m, bitlength n < bitlength m -> (n < m)%positive.
+  Proof.
+    intros n m.
+    rewrite <- Pos.compare_lt_iff. unfold Pos.compare. generalize dependent m.
+    induction n; destruct m; intros; simpl in *; auto; try (solve [ inversion H; inversion H1 ]).
+    - apply IHn. apply lt_S_n. auto.
+    - rewrite Pos.compare_cont_Gt_Lt. rewrite <- Pos.compare_lt_iff. apply IHn. apply lt_S_n. auto.
+    - rewrite Pos.compare_cont_Lt_Lt. apply Pos.lt_le_incl. rewrite <- Pos.compare_lt_iff. apply IHn. apply lt_S_n. auto.
+    - apply IHn. apply lt_S_n. auto.
+  Qed.
+
+  Lemma bitlength_decode'' :
+    forall l b acc, bitlength (fst (decode'' b l acc)) <= l + bitlength acc.
+  Proof.
+    induction l; intros; simpl in *.
+    - destruct b; eauto.
+    - destruct b; simpl in *.
+      + omega.
+      + destruct b; simpl in *.
+        etransitivity. eauto. simpl. omega.
+        etransitivity. eauto. simpl. omega.
+  Qed.
+
   Lemma decode'_size : forall s b, N.lt (fst (decode'  b s)) (exp2 s).
   Proof.
     induction s; intuition eauto; simpl.
@@ -75,9 +110,14 @@ Section FixIntBinEncoder.
     destruct b; simpl.
     - rewrite <- N.compare_lt_iff; eauto.
     - destruct b; simpl.
-      + simpl. admit.
-      + etransitivity; eauto; unfold exp2.
-        admit.
+      + unfold exp2; simpl. clear IHs.
+        destruct (decode'' b0 s 1) eqn: eq.
+        simpl. rewrite <- N.compare_lt_iff. simpl.
+        rewrite Pos.compare_lt_iff. apply bitlength_lt. simpl.
+        rewrite bitlength_exp2.
+        pose proof (bitlength_decode'' s b0 xH). rewrite eq in H. simpl in *. omega.
+      + etransitivity; eauto; unfold exp2; simpl.
+        apply bitlength_lt. simpl. omega.
   Qed.
 
   Definition FixInt_decode (b : bin_t) : {n : N | (n < exp2 size)%N} * bin_t.
@@ -201,6 +241,8 @@ Section FixIntBinEncoder.
     rewrite encode_correct'; reflexivity.
   Qed.
 End FixIntBinEncoder.
+
+Definition uint (size : nat) : Type :=  ({n | (n < exp2 size)%N }).
 
 Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
   refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);

@@ -112,10 +112,11 @@ Definition parser''
            Hvalid
            splitter_impl
            val (H : val = has_parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
+           valp (Hp : valp = parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
 : Parser G HSL.
 Proof.
-  refine {| has_parse := val |};
-  abstract (subst val; apply parser').
+  refine {| has_parse := val ; parse := valp |};
+  abstract (subst val valp; apply parser').
 Defined.
 
 Module Import local_opt.
@@ -188,10 +189,10 @@ Definition parser
 : Parser G HSL.
 Proof.
   let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP G Hvalid splitter_impl)) in
-  refine (term _ _).
-  cbv beta iota zeta delta [has_parse parser' parser transfer_parser new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget].
-  change_opt (pregrammar_productions G) nt str.
-  lazymatch goal with
+  refine (term _ _ _ _);
+    cbv beta iota zeta delta [has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data BooleanRecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string];
+    change_opt (pregrammar_productions G) nt str.
+  { lazymatch goal with
     | [ |- appcontext[BooleanRecognizerOptimized.opt.opt.id
                         (BooleanRecognizerOptimized.opt.opt.first_index_default
                            ?a ?b
@@ -208,18 +209,19 @@ Proof.
                  b
                  (fun _ _ => 0)
                  (pregrammar_productions G))
-  end.
-  { match goal with
+    end.
+    { match goal with
       | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
-    end. }
-  { abstract (
-        clear;
-        destruct (pregrammar_productions G); unfold BooleanRecognizerOptimized.opt.opt.first_index_default, BooleanRecognizerOptimized.opt.opt.id; simpl;
-        [ reflexivity | ];
-        change @BooleanRecognizerOptimized.opt.opt.string_beq with Equality.string_beq;
-        rewrite Equality.string_lb by reflexivity;
-        reflexivity
-      ). }
+      end. }
+    { abstract (
+          clear;
+          destruct (pregrammar_productions G); unfold BooleanRecognizerOptimized.opt.opt.first_index_default, BooleanRecognizerOptimized.opt.opt.id; simpl;
+          [ reflexivity | ];
+          change @BooleanRecognizerOptimized.opt.opt.string_beq with Equality.string_beq;
+          rewrite Equality.string_lb by reflexivity;
+          reflexivity
+        ). } }
+  { reflexivity. }
 Defined.
 
 Global Arguments parser {HSLM HSL HSLP} {G} Hvalid splitter_impl / .

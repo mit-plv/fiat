@@ -1,4 +1,7 @@
 Require Import Fiat.BinEncoders.Specs
+               Fiat.BinEncoders.Libraries.Bool
+               Fiat.BinEncoders.Libraries.Char
+               Fiat.BinEncoders.Libraries.FixInt
                Fiat.BinEncoders.Libraries.FixList
                Fiat.BinEncoders.Libraries.FixList2
                Fiat.BinEncoders.Libraries.SteppingList
@@ -11,6 +14,37 @@ Proof.
   intuition.
   eapply functional_extensionality; intro x; destruct x; eauto.
 Qed.
+
+Ltac idtac' :=
+  match goal with
+    | |- _ => idtac (* I actually need this idtac for some unknown reason *)
+  end.
+
+Ltac enum_part eq_dec :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func in
+    let h := fresh in
+      evar (h:func_t);
+      unify (fun n => if eq_dec _ n arg then res else h n) func;
+      reflexivity
+  end.
+
+Ltac enum_finish :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func
+    in  unify ((fun _  => res) : func_t) func;
+        reflexivity
+  end.
+
+Ltac solve_enum :=
+  let h := fresh in
+  eexists; intros h _; destruct h;
+  [ idtac'; enum_part FixInt_eq_dec ..
+  | idtac'; enum_finish ].
 
 Ltac solve_predicate :=
   let hdata := fresh
@@ -56,43 +90,46 @@ Ltac solve_unpack :=
     end
   end.
 
-Ltac solve_decoder :=
-  (eauto with typeclass_instances) ||
-  (match goal with
-   | |- context [ SteppingList_encode _ ] => eapply SteppingList_decoder; eauto
-   | |- context [ FixList_encode _  ] => eapply FixList_decoder
-   | |- context [ FixList2_encode _ ] => eapply FixList2_decoder
-   end).
-
-Ltac solve_step' :=
-  eapply strengthening_decoder; [ solve_decoder; solve_step' | solve_predicate ].
-
-Ltac solve_step :=
-  solve_unpack;
-  [ solve_step' | solve_predicate | intro ].
-
 Ltac solve_done :=
   let hdata := fresh in
   let hdata' := fresh in
   eexists; intro hdata; destruct hdata as [hdata' ?]; destruct hdata';
   intuition; simpl in *; subst; instantiate (1:=fun b => (_, b)); eauto.
 
-Ltac enum_part eq_dec :=
-  simpl;
+Ltac eauto'_typeclass :=
   match goal with
-  | |- ?func ?arg = ?res =>
-    let func_t := type of func in
-    let h := fresh in
-      evar (h:func_t);
-      unify (fun n => if eq_dec n arg then res else h n) func;
-      reflexivity
+  | |- context [ Bool_encode ] => eapply Bool_decoder
+  | |- context [ Char_encode ] => eapply Char_decoder
+  | |- context [ FixInt_encode ] => eapply FixInt_decoder
+  | |- context [ FixList_encode _  ] => eapply FixList_decoder
+  | |- context [ FixList2_encode _ ] => eapply FixList2_decoder
+  | |- context [ SteppingList_encode _ ] => eapply SteppingList_decoder
+  end; eauto.
+
+Ltac eauto' solve' :=
+  repeat (eapply strengthening_decoder; [ (* nesting case *)
+                                          (eauto'_typeclass) ||
+                                          (* enum case *)
+                                          (eapply nesting_decoder; [ eapply unproding_decoder; solve_enum | ]) ||
+                                          (* new record case *)
+                                          (instantiate (1:=fun _ => True); solve')
+                                        | solve_predicate ]).
+
+Ltac solve'' solve' :=
+  match goal with
+  | |- _ =>
+    solve [ solve_enum ]
+    (* either try to resolve as an enum *)
+  | |- _ =>
+    (* or done! *)
+    solve [ solve_done ]
+  | |- _ =>
+    (* or unpacking *)
+    solve_unpack; [ eauto' solve' | solve_predicate | intro; solve'' solve' ]
   end.
 
-Ltac enum_finish :=
-  simpl;
+Ltac decoder_from_encoder :=
+  idtac; (* I actually need this idtac for some unknown reason *)
   match goal with
-  | |- ?func ?arg = ?res =>
-    let func_t := type of func
-    in  unify ((fun _  => res) : func_t) func;
-        reflexivity
+  | |- Decoder of ?e => unfold e; solve'' decoder_from_encoder
   end.

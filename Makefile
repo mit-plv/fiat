@@ -7,12 +7,31 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 	pdf doc clean-doc \
 	test-parsers test-parsers-profile test-parsers-profile-graph
 
-submodule-update: .gitmodules
+ifneq (,$(wildcard .git)) # if we're in a git repo
+
+# if the submodule changed, update it
+SUBMODULE_DIFF=$(shell git diff etc/coq-scripts 2>&1)
+SUBMODULE_DIRTY=$(shell git diff etc/coq-scripts 2>&1 | grep dirty)
+ifneq (,$(SUBMODULE_DIRTY))
+submodule-update::
+	@ echo "\[\033[0;31m\]The submodule is dirty; some scripts may fail.\[\033[0m\]"
+	@ echo "\[\033[0;31m\]Run (cd etc/coq-scripts && git clean -xfd && git reset --hard)\[\033[0m\]"
+else
+ifneq (,$(SUBMODULE_DIFF))
+submodule-update::
 	git submodule sync && \
 	git submodule update --init && \
 	touch "$@"
+endif
+endif
 
-ifneq (,$(wildcard .git)) # if we're in a git repo
+ifeq (,$(wildcard submodule-update))
+submodule-update::
+	touch "$@"
+else
+submodule-update::
+endif
+
 etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
 	@ touch "$@"
 endif
@@ -61,7 +80,6 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Refinement/DisjointRulesRev.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo
 
 FIAT4MONITORS_UNMADE_VO := \
@@ -166,12 +184,17 @@ ifeq ($(IS_FAST),0)
 # >= 8.5 if it exists
 NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
+ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
+EXPECTED_EXT:=.v84
+ML_DESCRIPTION := "Coq v8.4"
+else
 ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 else
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
+endif
 endif
 
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))

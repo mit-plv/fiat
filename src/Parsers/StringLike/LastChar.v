@@ -393,4 +393,14 @@ Section for_last_char.
     rewrite drop_length, take_length.
     apply Min.min_case_strong; omega.
   Qed.
+
+  Lemma for_last_char_exists_get (str : String) P (H : length str >= 1)
+  : for_last_char str P <-> (exists ch, get (pred (length str)) str = Some ch /\ P ch).
+  Proof.
+    rewrite for_last_char_exists by assumption.
+    split; intros [ch [H0 H1]]; exists ch; (split; [ | assumption ]); revert H0;
+    rewrite get_drop, <- get_0;
+    rewrite take_long by (rewrite drop_length; omega);
+    trivial.
+  Qed.
 End for_last_char.

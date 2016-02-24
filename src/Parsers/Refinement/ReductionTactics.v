@@ -30,7 +30,7 @@ Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar gramm
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar_productions].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.parse ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar_productions].
 Declare Reduction parser_red5 := opt_red.
 Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
@@ -107,7 +107,7 @@ Ltac make_parser splitter :=
   let b' := parser_red_gen b in
   exact_no_check b'.
 
-Ltac make_parser_informative splitter :=
+Ltac make_parser_informative_opaque splitter :=
   idtac;
   let str := match goal with
                | [ str : String.string |- _ ] => constr:str
@@ -124,6 +124,17 @@ Ltac make_parser_informative splitter :=
                    | false => fun _ => None
                    end (eq_refl b')) in
   exact_no_check v.
+
+Ltac make_parser_informative splitter :=
+  idtac;
+  let str := match goal with
+               | [ str : String.string |- _ ] => constr:str
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+             end in
+  let b := make_Parser splitter in
+  let b := constr:(ParserInterface.parse b str) in
+  let b' := parser_red_gen b in
+  exact_no_check b'.
 
 Ltac make_simplified_splitter' splitter :=
   idtac;

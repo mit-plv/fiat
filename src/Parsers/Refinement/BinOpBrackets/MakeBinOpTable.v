@@ -725,6 +725,7 @@ Section no_records.
 
       Local Instance temp_hslm : StringLikeMin Ascii.ascii
         := { length := length;
+             unsafe_get := unsafe_get;
              char_at_matches := char_at_matches }.
 
       Local Instance temp_hsl : StringLike Ascii.ascii
@@ -732,7 +733,6 @@ Section no_records.
              drop := drop;
              take := take;
              get := get;
-             unsafe_get := unsafe_get;
              bool_eq := bool_eq }.
 
       Local Arguments list_of_next_bin_ops'_opt / .

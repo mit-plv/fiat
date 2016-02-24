@@ -71,5 +71,11 @@ Record Parser {Char} (G : grammar Char)
 
     has_parse_complete : forall str,
                            parse_of_item G str (NonTerminal (Start_symbol G))
-                           -> has_parse str = true
+                           -> has_parse str = true;
+
+    parse : @String Char HSLM -> option (@simple_parse_of_item Char);
+    (** find the parse tree of the string as the start symbol of the grammar *)
+
+    parse_correct : forall str, has_parse str = if parse str then true else false
+
   }.

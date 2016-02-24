@@ -34,6 +34,7 @@ src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
 src/BinEncoders/Specs.v
 src/BinEncoders/Automation/Solver.v
+src/BinEncoders/Automation/Solver_original.v
 src/BinEncoders/Examples/Dns.v
 src/BinEncoders/Examples/Tcp.v
 src/BinEncoders/Libraries/BinCore.v
@@ -59,6 +60,7 @@ src/CertifiedExtraction/PureFacadeLemmas.v
 src/CertifiedExtraction/PureUtils.v
 src/CertifiedExtraction/StringMapUtils.v
 src/CertifiedExtraction/Utils.v
+src/CertifiedExtraction/Benchmarks/Microbenchmarks-inputs-and-outputs.v
 src/CertifiedExtraction/Benchmarks/Microbenchmarks.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
 src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
@@ -286,6 +288,9 @@ src/Parsers/ParserFromParserADT.v
 src/Parsers/ParserImplementation.v
 src/Parsers/ParserImplementationOptimized.v
 src/Parsers/ParserInterface.v
+src/Parsers/SimpleBooleanRecognizerEquality.v
+src/Parsers/SimpleRecognizer.v
+src/Parsers/SimpleRecognizerExt.v
 src/Parsers/Specification.v
 src/Parsers/SplitterFromParserADT.v
 src/Parsers/StringLike.v
@@ -311,6 +316,7 @@ src/Parsers/Grammars/FlatComments.v
 src/Parsers/Grammars/JSComment.v
 src/Parsers/Grammars/JSON.v
 src/Parsers/Grammars/JSONImpoverished.v
+src/Parsers/Grammars/JSONImpoverishedOriginal.v
 src/Parsers/Grammars/JSONTests.v
 src/Parsers/Grammars/StringLiteral.v
 src/Parsers/Grammars/Tests.v

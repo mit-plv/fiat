@@ -4,8 +4,14 @@ Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.SharpenedExpressionPlusParen.
 Require Import Fiat.Parsers.Grammars.EvalGrammarTactics.
 
-Definition parser_informative (str : Coq.Strings.String.string)
+Definition parser_informative_opaque (str : Coq.Strings.String.string)
   : option (parse_of_item plus_expr_grammar str (NonTerminal (Start_symbol plus_expr_grammar))).
+Proof.
+  Time make_parser_informative_opaque ComputationalSplitter.
+Defined.
+
+Definition parser_informative (str : Coq.Strings.String.string)
+  : option (@simple_parse_of_item Ascii.ascii).
 Proof.
   Time make_parser_informative ComputationalSplitter.
 Defined.
@@ -73,10 +79,10 @@ Section eval.
   Defined.
 End eval.
 
-Definition parser_eval (str : Coq.Strings.String.string)
+Definition parser_eval_opaque (str : Coq.Strings.String.string)
   : option nat.
 Proof.
-  refine match parser_informative str with
+  refine match parser_informative_opaque str with
          | Some pt => let n := eval_item pt in
                       Some _
          | None => None
@@ -88,3 +94,109 @@ Proof.
   destruct_parses.
   exact n.
 Defined.
+
+Section evals.
+  (* grammar_of_pregrammar
+  [[["expr" ::== "pexpr" || ("pexpr" "+") "expr";;
+  "pexpr" ::== "number" || ("(" "expr") ")";;
+  "number" ::== [0-9] || [0-9] "number"]]] *)
+  Fixpoint sevalT_productions (pt : @simple_parse_of Ascii.ascii) : Type
+  with sevalT_production (pt : @simple_parse_of_production Ascii.ascii) : Type
+  with sevalT_item (pt : @simple_parse_of_item Ascii.ascii) : Type.
+  Proof.
+    { refine match pt with
+               | SimpleParseHead pt' => sevalT_production pt'
+               | SimpleParseTail pt' => sevalT_productions pt'
+             end. }
+    { refine match pt return Type with
+               | SimpleParseProductionNil => unit
+               | SimpleParseProductionCons p ps => (sevalT_item p * sevalT_production ps)%type
+             end. }
+    { refine match pt return Type with
+               | SimpleParseTerminal ch => unit (*{ ch' : _ | ch' = ch }*)
+               | SimpleParseNonTerminal _ _ => nat
+             end. }
+  Defined.
+
+  Definition impossible {T} : T -> nat.
+  Proof.
+    intro; exact 0.
+  Qed.
+
+  Fixpoint seval_productions (pt : @simple_parse_of Ascii.ascii) : sevalT_productions pt
+  with seval_production (pt : @simple_parse_of_production Ascii.ascii) : sevalT_production pt
+  with seval_item (pt : @simple_parse_of_item Ascii.ascii) : sevalT_item pt.
+  Proof.
+    { destruct pt; simpl; eauto with nocore. }
+    { destruct pt; simpl; eauto using tt, pair with nocore. }
+    { destruct pt as [ch|nt pt]; simpl.
+      { eexists; reflexivity. }
+      { specialize (seval_productions pt).
+        revert seval_productions.
+        destruct (string_dec nt "number");
+          [
+          | destruct (string_dec nt "pexpr");
+            [
+            | destruct (string_dec nt "expr");
+              [
+              | exact impossible ] ] ].
+        { (* "number" ::== [0-9] || [0-9] "number"]]] *)
+          refine match pt return sevalT_productions pt -> nat with
+                   | SimpleParseHead
+                       (SimpleParseTerminal ch::[])
+                     (* [0-9] *)
+                     => fun _ => opt.nat_of_ascii ch - 48 (* opt.nat_of_ascii "0" is 48 *)
+                   | SimpleParseTail
+                       (SimpleParseHead
+                          (SimpleParseTerminal ch::SimpleParseNonTerminal number pt'::[]))
+                     (* [0-9] "number" *)
+                     => fun v
+                        => ((opt.nat_of_ascii ch - 48 (* opt.nat_of_ascii "0" is 48 *))
+                            * 10
+                            + fst (snd v))%nat
+                   | _ => impossible
+                 end. }
+        { (* "pexpr" ::== "number" || "(" "expr" ")";; *)
+          refine match pt return sevalT_productions pt -> nat with
+                   | SimpleParseHead
+                       (SimpleParseNonTerminal number pt'::[])
+                     (* "number" *)
+                     => fst
+                   | SimpleParseTail
+                       (SimpleParseHead
+                          (SimpleParseTerminal ch::SimpleParseNonTerminal expr pt'::SimpleParseTerminal ch'::[]))
+                     (* "(" "expr" ")" *)
+                     => fun v => fst (snd v)
+                   | _ => impossible
+                 end. }
+        { (* "expr" ::== "pexpr" || "pexpr" "+" "expr" *)
+          refine match pt return sevalT_productions pt -> nat with
+                   | SimpleParseHead
+                       (SimpleParseNonTerminal pexpr pt'::[])
+                     (* "pexpr" *)
+                     => fst
+                   | SimpleParseTail
+                       (SimpleParseHead
+                          (SimpleParseNonTerminal pexpr n1::SimpleParseTerminal plus::SimpleParseNonTerminal expr n2::[]))
+                     (* "pexpr" "+" "expr" *)
+                     => fun v => fst v + fst (snd (snd v))
+                   | _ => impossible
+                 end. } } }
+  Defined.
+End evals.
+
+Definition parser_eval (str : Coq.Strings.String.string)
+  : option nat.
+Proof.
+  refine match parser_informative str with
+         | Some (SimpleParseNonTerminal nt pt)
+           => let n := seval_item (SimpleParseNonTerminal nt pt) in
+              Some n
+         | Some (SimpleParseTerminal _) => None
+         | None => None
+         end.
+Defined.
+
+Check let n := 3 in eq_refl (Some n) <: parser_eval "(1+1)+1" = Some n.
+Check let n := 5 in eq_refl (Some n) <: parser_eval "((1+1)+(1+1))+1" = Some n.
+Check let n := 55 in eq_refl (Some n) <: parser_eval "(((((55)))))" = Some n.

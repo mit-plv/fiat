@@ -33,23 +33,23 @@ Record name_t :=
   { name_attr : { s : list word_t | length s <= 255 /\ forall x, In x s -> x <> halt } }.
 
 Record question_t :=
-  { qname : name_t;
-    qtype : type_t;
+  { qname  : name_t;
+    qtype  : type_t;
     qclass : class_t }.
 
 Record resource_t :=
-  { rname : name_t;
-    rtype : type_t;
+  { rname  : name_t;
+    rtype  : type_t;
     rclass : class_t;
-    rttl : { n : N | (n < exp2 32)%N };
-    rdata : { s : list bool |  length s < exp2_nat 16 } }.
+    rttl   : uint 32;
+    rdata  : { s : list bool |  length s < exp2_nat 16 } }.
 
 Record packet_t :=
-  { pid : { s : list bool | length s = 16 };
-    pmask : { s : list bool | length s = 16 };
-    pquestion : { s : list question_t | length s < exp2_nat 16 };
-    panswer : { s : list resource_t | length s < exp2_nat 16 };
-    pauthority : { s : list resource_t | length s < exp2_nat 16 };
+  { pid         : { s : list bool | length s = 16 };
+    pmask       : { s : list bool | length s = 16 };
+    pquestion   : { s : list question_t | length s < exp2_nat 16 };
+    panswer     : { s : list resource_t | length s < exp2_nat 16 };
+    pauthority  : { s : list resource_t | length s < exp2_nat 16 };
     padditional : { s : list resource_t | length s < exp2_nat 16 } }.
 
 Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
@@ -74,7 +74,7 @@ Definition encode_word (bundle : word_t * bin_t) :=
   FixList_encode Char_encode (word_attr (fst bundle), snd bundle)).
 
 Definition encode_name (bundle : name_t * bin_t) :=
-  @SteppingList_encode _ _ halt 255 encode_word (name_attr (fst bundle), snd bundle).
+  @SteppingList_encode _ _ halt _ encode_word (name_attr (fst bundle), snd bundle).
 
 Definition encode_question (bundle : question_t * bin_t) :=
   encode_name (qname (fst bundle),
@@ -101,65 +101,10 @@ Definition encode_packet (bundle : packet_t * bin_t) :=
   FixList_encode encode_resource (pauthority (fst bundle),
   FixList_encode encode_resource (padditional (fst bundle), snd bundle)))))))))).
 
-Global Instance type_to_FixInt_decoder
-  : Decoder of FixInt_of_type.
-Proof.
-  eexists.
-  intros data _; destruct data.
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_finish.
-Defined.
-
-Global Instance class_to_FixInt_decoder
-  : Decoder of FixInt_of_class.
-Proof.
-  eexists.
-  intros data _; destruct data.
-  enum_part (@FixInt_eq_dec 16).
-  enum_part (@FixInt_eq_dec 16).
-  enum_finish.
-Defined.
-
-Global Instance word_decoder
-  : Decoder of encode_word.
-Proof.
-  unfold encode_word.
-  repeat solve_step.
-  solve_done.
-Defined.
-
-Global Instance name_decoder
-  : Decoder of encode_name.
-Proof.
-  unfold encode_name.
-  repeat solve_step.
-  solve_done.
-Defined.
-
-Global Instance question_decoder
-  : Decoder of encode_question.
-Proof.
-  unfold encode_question.
-  repeat solve_step.
-  solve_done.
-Defined.
-
-Global Instance resource_decoder
-  : Decoder of encode_resource.
-Proof.
-  unfold encode_resource.
-  repeat solve_step.
-  solve_done.
-Defined.
-
 Global Instance packet_decoder
   : Decoder of encode_packet.
 Proof.
-  unfold encode_packet.
-  repeat solve_step.
-  solve_done.
+  decoder_from_encoder.
 Defined.
 
 Section Example.
@@ -207,4 +152,4 @@ Extract Inductive ascii => char [
 ]
 "(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 
-Extraction "extracted.ml" encode_packet packet_decoder.
+(* Extraction "extracted.ml" encode_packet packet_decoder. *)
