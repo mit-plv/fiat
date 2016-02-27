@@ -92,7 +92,7 @@ total time:    324.664s
 
     finish_Sharpening_SplitterADT.
 
-  Defined.
+  Time Defined.
 
   Lemma ComputationalSplitter
   : FullySharpened (string_spec json_grammar HSL).
