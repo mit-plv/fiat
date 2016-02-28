@@ -1,7 +1,7 @@
 Require Export Coq.Lists.List
-               Fiat.BinEncoders.Libraries.FixInt.
-Require Import Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.Sig
+               Fiat.BinEncoders.NoEnv.Libraries.FixInt.
+Require Import Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.Sig
                Coq.omega.Omega.
 
 Set Implicit Arguments.

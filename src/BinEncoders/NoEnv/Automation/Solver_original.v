@@ -1,8 +1,8 @@
-Require Import Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.FixList
-               Fiat.BinEncoders.Libraries.FixList2
-               Fiat.BinEncoders.Libraries.SteppingList
-               Fiat.BinEncoders.Libraries.Helpers.
+Require Import Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.FixList
+               Fiat.BinEncoders.NoEnv.Libraries.FixList2
+               Fiat.BinEncoders.NoEnv.Libraries.SteppingList
+               Fiat.BinEncoders.NoEnv.Libraries.Helpers.
 
 Lemma func_unprod :
   forall (A B C : Type) (f : A * B -> C), (fun x => f (fst x, snd x)) = f.

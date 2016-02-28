@@ -1,14 +1,14 @@
-Require Import Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.Helpers
-               Fiat.BinEncoders.Libraries.Sig
-               Fiat.BinEncoders.Libraries.BinCore
-               Fiat.BinEncoders.Libraries.FixInt
-               Fiat.BinEncoders.Libraries.SteppingList
-               Fiat.BinEncoders.Libraries.FixList
-               Fiat.BinEncoders.Libraries.FixList2
-               Fiat.BinEncoders.Libraries.Char
-               Fiat.BinEncoders.Libraries.Bool
-               Fiat.BinEncoders.Automation.Solver
+Require Import Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.Helpers
+               Fiat.BinEncoders.NoEnv.Libraries.Sig
+               Fiat.BinEncoders.NoEnv.Libraries.BinCore
+               Fiat.BinEncoders.NoEnv.Libraries.FixInt
+               Fiat.BinEncoders.NoEnv.Libraries.SteppingList
+               Fiat.BinEncoders.NoEnv.Libraries.FixList
+               Fiat.BinEncoders.NoEnv.Libraries.FixList2
+               Fiat.BinEncoders.NoEnv.Libraries.Char
+               Fiat.BinEncoders.NoEnv.Libraries.Bool
+               Fiat.BinEncoders.NoEnv.Automation.Solver
                Coq.Strings.Ascii.
 
 Set Implicit Arguments.
