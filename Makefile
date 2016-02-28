@@ -27,6 +27,8 @@ endif
 
 ifeq (,$(wildcard submodule-update))
 submodule-update::
+	git submodule sync && \
+	git submodule update --init && \
 	touch "$@"
 else
 submodule-update::
