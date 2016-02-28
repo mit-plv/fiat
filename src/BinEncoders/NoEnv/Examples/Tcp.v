@@ -44,4 +44,4 @@ Extract Inductive sumbool => "bool" [ "true" "false" ].
 Extract Inductive list => "list" [ "[]" "(::)" ].
 Extract Inductive prod => "(*)"  [ "(,)" ].
 
-Extraction "extracted-tcp.ml" encode_packet packet_decoder.
+(* Extraction "extracted-tcp.ml" encode_packet packet_decoder. *)
