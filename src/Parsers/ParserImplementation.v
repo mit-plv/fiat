@@ -5,6 +5,8 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BooleanRecognizer Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
+Require Fiat.Parsers.SimpleRecognizer.
+Require Fiat.Parsers.SimpleBooleanRecognizerEquality.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -114,6 +116,7 @@ Section implementation.
 
   Program Definition parser (Hvalid : grammar_valid G) : Parser G splitter
     := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);
+          parse str := option_map (SimpleParseNonTerminal (Start_symbol G)) (SimpleRecognizer.parse_nonterminal (data := parser_data) str (Start_symbol G));
           has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) Hvalid _ _ Hparse;
           has_parse_complete str p := _ |}.
   Next Obligation.
@@ -121,5 +124,11 @@ Section implementation.
     dependent destruction p.
     pose proof (fun pf => @parse_of_nonterminal_complete Char splitter _ _ G _ _ rdp_list_rdata' Hvalid str (Start_symbol G) pf p) as H'.
     apply H'; assumption.
+  Qed.
+  Next Obligation.
+  Proof.
+    erewrite SimpleBooleanRecognizerEquality.parse_nonterminal_eq; simpl;
+    unfold option_map.
+    destruct SimpleRecognizer.parse_nonterminal; reflexivity.
   Qed.
 End implementation.

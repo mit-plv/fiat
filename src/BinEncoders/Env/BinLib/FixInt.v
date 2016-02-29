@@ -1,14 +1,19 @@
-Require Export Coq.Numbers.BinNums
-               Coq.NArith.BinNat.
-Require Import Coq.omega.Omega
-               Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.Sig
-               Fiat.BinEncoders.Libraries.BinCore.
+Require Export
+        Coq.Numbers.BinNums
+        Coq.NArith.BinNat.
+Require Import
+        Coq.omega.Omega
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.Sig
+        Fiat.BinEncoders.Env.BinLib.Core.
 
 Set Implicit Arguments.
 
 Section FixIntBinEncoder.
   Variable size : nat.
+
+  Variable E E' : Type.
+  Variable Eequiv : E -> E' -> Prop.
 
   Fixpoint exp2' (l : nat) :=
     match l with
@@ -20,7 +25,7 @@ Section FixIntBinEncoder.
 
   Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
 
-  Fixpoint encode''(pos : positive) (acc : bin_t) :=
+  Fixpoint encode''(pos : positive) (acc : bin) :=
     match pos with
       | xI pos' => encode'' pos' (true :: acc)
       | xO pos' => encode'' pos' (false :: acc)
@@ -33,17 +38,17 @@ Section FixIntBinEncoder.
       | Npos pos => encode'' pos nil
     end.
 
-  Fixpoint pad (b : bin_t) (l : nat) :=
+  Fixpoint pad (b : bin) (l : nat) :=
     match l with
       | O    => b
       | S l' => false :: pad b l'
     end.
 
-  Definition FixInt_encode_inner (n : {n : N | (n < exp2 size)%N}) :=
+  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) (e : bctx E) : bin * bctx E :=
     let b := encode' (proj1_sig n)
-    in  pad b (size - (length b)).
+    in  (pad b (size - (length b)), (fst e, size + snd e)).
 
-  Fixpoint decode'' (b : bin_t) (l : nat) (acc : positive) :=
+  Fixpoint decode'' (b : bin) (l : nat) (acc : positive) :=
     match l with
       | O    => (acc, b)
       | S l' =>
@@ -54,7 +59,7 @@ Section FixIntBinEncoder.
         end
     end.
 
-  Fixpoint decode' (b : bin_t) (l : nat) {struct l} :=
+  Fixpoint decode' (b : bin) (l : nat) {struct l} :=
     match l with
       | O    => (N0, b)
       | S l' =>
@@ -120,8 +125,8 @@ Section FixIntBinEncoder.
         apply bitlength_lt. simpl. omega.
   Qed.
 
-  Definition FixInt_decode (b : bin_t) : {n : N | (n < exp2 size)%N} * bin_t.
-    refine (exist _ (fst (decode' b size)) _, snd (decode' b size)).
+  Definition FixInt_decode (b : bin) (e : bctx E') : {n : N | (n < exp2 size)%N} * bin * bctx E'.
+    refine (exist _ (fst (decode' b size)) _, snd (decode' b size), (fst e, size + snd e)).
     eapply decode'_size.
   Defined.
 
@@ -229,30 +234,21 @@ Section FixIntBinEncoder.
     }
   Qed.
 
-  Theorem FixInt_encode_correct : bin_encode_correct FixInt_encode_inner FixInt_decode.
+  Theorem FixInt_encode_correct :
+    forall predicate, encode_decode_correct (bctx_equiv Eequiv) btransformer predicate FixInt_encode FixInt_decode.
   Proof.
-    unfold bin_encode_correct, FixInt_encode_inner, FixInt_decode.
-    intros [n P] ext; simpl; f_equal;
-    [  eapply sig_equivalence; change n with (fst (n, ext)) |
-       change ext with (snd (n, ext)) ]; f_equal;
+    unfold encode_decode_correct, FixInt_encode, FixInt_decode.
+    intros predicate env env' xenv xenv' [n P] [n' P'] bin ext ext' Eeq _ Penc Pdec. simpl in *.
+    inversion Penc; clear Penc; inversion Pdec; clear Pdec; inversion Eeq; clear Eeq; subst; intuition;
+    [ split; simpl; auto | apply sig_equivalence | change ext with (snd (n, ext)); f_equal ];
     apply encode'_size in P;
-    rewrite decode'_pad; eauto; clear P;
-    destruct n; simpl; eauto; rewrite decode'_length;
+    rewrite decode'_pad; auto; clear P;
+    destruct n; simpl; auto; rewrite decode'_length;
     rewrite encode_correct'; reflexivity.
   Qed.
 End FixIntBinEncoder.
 
-Definition uint (size : nat) : Type :=  ({n | (n < exp2 size)%N }).
-
-Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
-  refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
-  destruct n; destruct m; [ eapply sig_equivalence; intuition | congruence ].
-Defined.
-
-Definition FixInt_encode (size : nat) :=
-  bin_encode_transform_pair (FixInt_encode_inner (size:=size)).
-
-Global Instance FixInt_decoder
-       (size : nat)
-  : decoder (fun _ => True) (FixInt_encode (size:=size)) :=
-  bin_encode_transform_pair_decoder (@FixInt_encode_correct size).
+Global Instance FixInt_decoder E E' size ctxequiv predicate
+  : decoder (bctx_equiv ctxequiv) btransformer predicate (FixInt_encode (size:=size) (E:=E)) :=
+  { decode := @FixInt_decode size E';
+    decode_correct := @FixInt_encode_correct _ _ _ _ _ }.

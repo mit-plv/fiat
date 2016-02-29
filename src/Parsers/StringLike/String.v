@@ -21,6 +21,10 @@ Global Instance string_stringlikemin : StringLikeMin Ascii.ascii
                                     | Some ch => P ch
                                     | None => true
                                   end;
+       unsafe_get n s := match String.get n s with
+                           | Some ch => ch
+                           | None => dummy_ch
+                         end;
        length := String.length }.
 
 Global Instance string_stringlike : StringLike Ascii.ascii
@@ -28,10 +32,6 @@ Global Instance string_stringlike : StringLike Ascii.ascii
        take n s := String.substring 0 n s;
        drop n s := String.substring n (String.length s) s;
        get := String.get;
-       unsafe_get n s := match String.get n s with
-                           | Some ch => ch
-                           | None => dummy_ch
-                         end;
        bool_eq := string_beq }.
 
 Global Instance string_stringiso : StringIso Ascii.ascii

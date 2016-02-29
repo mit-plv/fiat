@@ -61,6 +61,22 @@ Section cfg.
                            List.In nt (Valid_nonterminals G)
                            -> parse_of str (Lookup G nt)
                            -> parse_of_item str (NonTerminal nt).
+
+    (** A simple parse tree is a simply typed version of the above *)
+    Inductive simple_parse_of :=
+    | SimpleParseHead : simple_parse_of_production -> simple_parse_of
+    | SimpleParseTail : simple_parse_of -> simple_parse_of
+    with simple_parse_of_production :=
+    | SimpleParseProductionNil : simple_parse_of_production
+    | SimpleParseProductionCons
+      : simple_parse_of_item
+        -> simple_parse_of_production
+        -> simple_parse_of_production
+    with simple_parse_of_item :=
+    | SimpleParseTerminal : Char -> simple_parse_of_item
+    | SimpleParseNonTerminal : forall nt : string,
+                                 simple_parse_of
+                                 -> simple_parse_of_item.
   End parse.
 
   Definition parse_of_grammar {HSLM} {HSL : @StringLike Char HSLM} (str : String) (G : grammar) :=
@@ -81,3 +97,23 @@ Definition production_is_reachable {Char} (G : grammar Char) (p : production Cha
        /\ List.In
             (prefix ++ p)
             (Lookup G nt).
+
+Delimit Scope simple_parse_of_scope with simple_parse_of.
+Delimit Scope simple_parse_of_production_scope with simple_parse_of_production.
+Delimit Scope simple_parse_of_item_scope with simple_parse_of_item.
+Bind Scope simple_parse_of_scope with simple_parse_of.
+Bind Scope simple_parse_of_production_scope with simple_parse_of_production.
+Bind Scope simple_parse_of_item_scope with simple_parse_of_item.
+
+Arguments SimpleParseHead _%type _%simple_parse_of_production.
+Arguments SimpleParseTail _%type _%simple_parse_of.
+Arguments SimpleParseProductionNil _%type.
+Arguments SimpleParseProductionCons _%type _%simple_parse_of_item _%simple_parse_of_production.
+Arguments SimpleParseNonTerminal _%type _%string _%simple_parse_of.
+
+Arguments simple_parse_of {_}, _.
+Arguments simple_parse_of_production {_}, _.
+Arguments simple_parse_of_item {_}, _.
+
+Infix "::" := SimpleParseProductionCons : simple_parse_of_production_scope.
+Notation "[ ]" := SimpleParseProductionNil : simple_parse_of_production_scope.

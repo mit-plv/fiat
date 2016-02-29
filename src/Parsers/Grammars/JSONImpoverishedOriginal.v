@@ -32,12 +32,11 @@ object
    ;
 >> *)
        "object"
-         ::== "{" "WS*" "pair WS*" "(',' pair WS*)+" "}"
-           || "{" "WS*" "pair WS*" "}"
+         ::== "{" "WS*" "pair WS*" "(',' pair WS*)*" "}"
            || "{" "WS*" "}";;
-       "(',' pair WS*)+"
-         ::== "," "WS*" "pair WS*"
-           || "," "WS*" "pair WS*" "(',' pair WS*)+";;
+       "(',' pair WS*)*"
+         ::== ""
+           || "," "WS*" "pair WS*" "(',' pair WS*)*";;
   (**
 <<
 pair
@@ -56,12 +55,11 @@ array
    ;
 >> *)
        "array"
-         ::== "[" "WS*" "value WS*" "(',' value WS*)+" "]"
-           || "[" "WS*" "value WS*" "]"
+         ::== "[" "WS*" "value WS*" "(',' value WS*)*" "]"
            || "[" "WS*" "]";;
-       "(',' value WS*)+"
-         ::== "," "WS*" "value WS*"
-           || "," "WS*" "value WS*" "(',' value WS*)+";;
+       "(',' value WS*)*"
+         ::== ""
+           || "," "WS*" "value WS*" "(',' value WS*)*";;
   (**
 <<
 value
