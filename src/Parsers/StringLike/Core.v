@@ -71,6 +71,28 @@ Module Export StringLike.
   : A
     := fold' f init str (length str).
 
+  Definition fold_lookahead' {Char} {HSLM} {HSL : @StringLike Char HSLM} {A}
+             (f : Char -> option Char -> A -> A)
+             (init : A)
+             (str : String) (len : nat)
+  : A
+    := nat_rect
+         (fun _ => A)
+         init
+         (fun len' acc
+          => match get (length str - S len') str with
+               | Some ch => f ch (get (length str - len') str) acc
+               | None => init
+             end)
+         len.
+
+  Definition fold_lookahead {Char} {HSLM} {HSL : @StringLike Char HSLM} {A}
+             (f : Char -> option Char -> A -> A)
+             (init : A)
+             (str : String)
+  : A
+    := fold_lookahead' f init str (length str).
+
   Notation to_string str := (fold (@List.cons _) (@List.nil _) str).
 
   Definition str_le `{@StringLike Char HSLM} (s1 s2 : String)

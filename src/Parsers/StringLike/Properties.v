@@ -405,6 +405,104 @@ Section String.
     setoid_subst_rel beq; reflexivity.
   Qed.
 
+  Lemma fold_lookahead'_nil
+        {A} (f : Char -> option Char -> A -> A) (init : A) (str : String)
+  : fold_lookahead' f init str 0 = init.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma fold_lookahead'_cons
+        {A} (f : Char -> option Char -> A -> A) (init : A) (str : String) len
+  : fold_lookahead' f init str (S len)
+    = match get (length str - S len) str with
+        | Some ch => f ch (get (length str - len) str) (fold_lookahead' f init str len)
+        | None => init
+      end.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Global Instance fold_lookahead'_Proper
+         {A} (f : Char -> option Char -> A -> A) (init : A)
+  : Proper (beq ==> eq ==> eq) (fold_lookahead' f init).
+  Proof.
+    intros ?? H' ? x ?; subst.
+    induction x.
+    { rewrite !fold_lookahead'_nil; reflexivity. }
+    { rewrite !fold_lookahead'_cons.
+      repeat match goal with
+               | _ => reflexivity
+               | _ => rewrite IHx
+               | _ => rewrite H' at 1
+               | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+             end. }
+  Qed.
+
+  Lemma fold_lookahead'_drop
+        {A} (f : Char -> option Char -> A -> A) (init : A) (str : String) len m
+        (H' : m + len <= length str)
+  : fold_lookahead' f init str len = fold_lookahead' f init (drop m str) len.
+  Proof.
+    revert str m H'.
+    induction len; simpl.
+    { intros; reflexivity. }
+    { intros.
+      rewrite !(@get_drop (length _ - _)).
+      rewrite drop_length, drop_drop.
+      rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega.
+      match goal with
+        | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+      end.
+      { rewrite drop_drop;
+        rewrite <- Nat.sub_add_distr, (plus_comm m), Nat.sub_add_distr, Nat.sub_add by omega;
+        rewrite <- IHlen by omega; reflexivity. }
+      { reflexivity. } }
+  Qed.
+
+  Definition fold_lookahead_nil
+             {A} (f : Char -> option Char -> A -> A) (init : A) (str : String)
+             (H' : length str = 0)
+  : fold_lookahead f init str = init.
+  Proof.
+    unfold fold_lookahead; rewrite H'; apply fold_lookahead'_nil.
+  Qed.
+
+  Lemma fold_lookahead_recr
+        {A} (f : Char -> option Char -> A -> A) (init : A) (str : String)
+  : fold_lookahead f init str
+    = match get 0 str with
+        | Some ch => f ch (get 1 str) (fold_lookahead f init (drop 1 str))
+        | None => init
+      end.
+  Proof.
+    case_eq (get 0 str).
+    { intros ch H'.
+      unfold fold_lookahead.
+      case_eq (length str).
+      { intro H''.
+        apply has_first_char_nonempty in H''.
+        congruence. }
+      { intros n H''.
+        rewrite fold_lookahead'_cons.
+        rewrite !H'', minus_diag, H'.
+        replace (S n - n) with 1 by omega.
+        rewrite drop_length, H''; simpl.
+        rewrite <- minus_n_O.
+        apply f_equal.
+        rewrite <- fold_lookahead'_drop by omega; reflexivity. } }
+    { intro H'.
+      apply fold_lookahead_nil, no_first_char_empty; assumption. }
+  Qed.
+
+  Global Instance fold_lookahead_Proper
+         {A} (f : Char -> option Char -> A -> A) (init : A)
+  : Proper (beq ==> eq) (fold_lookahead f init).
+  Proof.
+    repeat intro; apply fold_lookahead'_Proper; trivial.
+    setoid_subst_rel beq; reflexivity.
+  Qed.
+
   Lemma add_take_1_singleton (str : String) ch (H : str ~= [ ch ])
   : take 1 str ~= [ ch ].
   Proof.
