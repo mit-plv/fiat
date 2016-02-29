@@ -18,14 +18,14 @@ Definition dec_ctx := unit.
 Definition envequiv (e : enc_ctx) (d : dec_ctx) := True.
 
 Definition encode_test (t : test_t) (ctx : bctx enc_ctx) :=
-  compose bapp (FixInt_encode (f1 t)) (
-  compose bapp (FixInt_encode (f2 t)) (
-  compose bapp (FixInt_encode (f3 t)) (
-  compose bapp (FixInt_encode (f4 t)) (
-               (fun e => (nil, e)))))) ctx.
+  compose btransformer (FixInt_encode (f1 t)) (
+  compose btransformer (FixInt_encode (f2 t)) (
+  compose btransformer (FixInt_encode (f3 t)) (
+  compose btransformer (FixInt_encode (f4 t)) (
+                       (fun e => (nil, e)))))) ctx.
 
 Global Instance test_decoder
-  : decoder (bctx_equiv envequiv) bapp (fun _ => True) encode_test.
+  : decoder (bctx_equiv envequiv) btransformer (fun _ => True) encode_test.
 Proof.
   unfold encode_test.
 

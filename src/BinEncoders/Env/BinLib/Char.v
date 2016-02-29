@@ -29,7 +29,7 @@ Section CharBinEncoder.
         (ascii_of_N (proj1_sig n), b, e).
 
   Theorem Char_encode_correct :
-    forall predicate, encode_decode_correct (bctx_equiv Eequiv) bapp predicate Char_encode Char_decode.
+    forall predicate, encode_decode_correct (bctx_equiv Eequiv) btransformer predicate Char_encode Char_decode.
   Proof.
     intros pred env env' xenv xenv' c c' bin ext ext' Peq Ppred Penc Pdec.
     pose proof (@FixInt_encode_correct 8 E E' Eequiv (fun x => pred (ascii_of_N (proj1_sig x)))
@@ -39,7 +39,7 @@ Section CharBinEncoder.
     specialize (H Ppred Penc). clear Ppred Penc.
     inversion Peq; clear Peq; subst.
     unfold Char_decode in Pdec.
-    destruct (FixInt_decode 8 (bapp bin ext) env') as [[? ?] ?] eqn: eq.
+    destruct (FixInt_decode 8 (app bin ext) env') as [[? ?] ?] eqn: eq.
     inversion Pdec; clear Pdec; subst.
     assert (s = FixInt_of_ascii (ascii_of_N (proj1_sig s))).
     destruct s; eapply sig_equivalence; rewrite N_ascii_embedding; eauto.
@@ -50,6 +50,6 @@ Section CharBinEncoder.
 End CharBinEncoder.
 
 Global Instance Char_decoder E E' ctxequiv predicate
-  : decoder (bctx_equiv ctxequiv) bapp predicate (@Char_encode E) :=
+  : decoder (bctx_equiv ctxequiv) btransformer predicate (@Char_encode E) :=
   { decode := @Char_decode E';
     decode_correct := @Char_encode_correct _ _ _ _ }.

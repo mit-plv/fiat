@@ -17,7 +17,7 @@ Section BoolBinEncoder.
     end.
 
   Theorem Bool_encode_correct :
-    forall predicate, encode_decode_correct (bctx_equiv Eequiv) bapp predicate Bool_encode Bool_decode.
+    forall predicate, encode_decode_correct (bctx_equiv Eequiv) btransformer predicate Bool_encode Bool_decode.
   Proof.
     unfold encode_decode_correct, Bool_encode, Bool_decode.
     intros pred env env' xenv xenv' data data' bin ext ext' Peq Ppred Penc Pdec. simpl in *.
@@ -28,6 +28,6 @@ Section BoolBinEncoder.
 End BoolBinEncoder.
 
 Global Instance Bool_decoder E E' ctxequiv predicate
-  : decoder (bctx_equiv ctxequiv) bapp predicate (Bool_encode (E:=E)) :=
+  : decoder (bctx_equiv ctxequiv) btransformer predicate (Bool_encode (E:=E)) :=
   { decode := @Bool_decode E';
     decode_correct := @Bool_encode_correct _ _ _ _ }.

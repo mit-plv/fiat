@@ -3,10 +3,10 @@ Require Import
 
 Set Implicit Arguments.
 
-Definition compose E P Q R
-           (transform : P -> Q -> R)
-           (encode1 : E -> P * E)
-           (encode2 : E -> Q * E) :=
+Definition compose E B
+           (transformer : Transformer B)
+           (encode1 : E -> B * E)
+           (encode2 : E -> B * E) :=
   fun e0 =>
     let (p, e1) := encode1 e0 in
     let (q, e2) := encode2 e1 in
@@ -14,23 +14,21 @@ Definition compose E P Q R
 
 Global Instance compose_decoder A A' B E E'
        (envequiv : E -> E' -> Prop)
-       (transform : B -> B -> B)
+       (transformer : Transformer B)
        (project : A -> A')
        (predicate : A -> Prop)
        (predicate' : A' -> Prop)
        (encode1 : A' -> E -> B * E)
        (encode2 : A -> E -> B * E)
-       (transform_assoc : forall b b' b'',
-           transform b (transform b' b'') = transform (transform b b') b'')
-       (decoder1 : decoder envequiv transform predicate' encode1)
+       (decoder1 : decoder envequiv transformer predicate' encode1)
        (pred_pf : forall data, predicate data -> predicate' (project data))
        (decoder2 : forall proj,
-           decoder envequiv transform (fun data => predicate data /\ project data = proj) encode2)
-  : decoder envequiv transform predicate
-            (fun data ctx => compose transform (encode1 (project data)) (encode2 data) ctx) :=
-  { decode := fun bin env => let (bundle, env') := @decode _ _ _ _ _ _ _ _ _ _ decoder1 bin env in
+           decoder envequiv transformer (fun data => predicate data /\ project data = proj) encode2)
+  : decoder envequiv transformer predicate
+            (fun data ctx => compose transformer (encode1 (project data)) (encode2 data) ctx) :=
+  { decode := fun bin env => let (bundle, env') := @decode _ _ _ _ _ _ _ _ decoder1 bin env in
                              let (proj, rest) := bundle in
-                             @decode _ _ _ _ _ _ _ _ _ _ (decoder2 proj) rest env' }.
+                             @decode _ _ _ _ _ _ _ _ (decoder2 proj) rest env' }.
 Proof.
   destruct decoder1 as [decode1 decode1_pf]. simpl.
   intros env env' xenv xenv' data data' bin ext ext' env_pm pred_pm com_pf.

@@ -235,7 +235,7 @@ Section FixIntBinEncoder.
   Qed.
 
   Theorem FixInt_encode_correct :
-    forall predicate, encode_decode_correct (bctx_equiv Eequiv) bapp predicate FixInt_encode FixInt_decode.
+    forall predicate, encode_decode_correct (bctx_equiv Eequiv) btransformer predicate FixInt_encode FixInt_decode.
   Proof.
     unfold encode_decode_correct, FixInt_encode, FixInt_decode.
     intros predicate env env' xenv xenv' [n P] [n' P'] bin ext ext' Eeq _ Penc Pdec. simpl in *.
@@ -249,6 +249,6 @@ Section FixIntBinEncoder.
 End FixIntBinEncoder.
 
 Global Instance FixInt_decoder E E' size ctxequiv predicate
-  : decoder (bctx_equiv ctxequiv) bapp predicate (FixInt_encode (size:=size) (E:=E)) :=
+  : decoder (bctx_equiv ctxequiv) btransformer predicate (FixInt_encode (size:=size) (E:=E)) :=
   { decode := @FixInt_decode size E';
     decode_correct := @FixInt_encode_correct _ _ _ _ _ }.

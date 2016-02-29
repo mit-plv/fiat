@@ -5,7 +5,11 @@ Set Implicit Arguments.
 
 Definition bin := list bool.
 
-Definition bapp {A : Type} := @app A.
+Definition btransformer : Transformer bin :=
+  {| transform := @app _;
+     transform_id := nil;
+     transform_id_pf := @app_nil_l _;
+     transform_assoc := @app_assoc _ |}.
 
 Definition bctx (A : Type) := prod A nat.
 
