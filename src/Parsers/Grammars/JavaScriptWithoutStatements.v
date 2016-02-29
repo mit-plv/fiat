@@ -1,4 +1,4 @@
-4
+(*4
 Function Definition
 
 FunctionDefinition ⇒ NamedFunction
@@ -403,3 +403,4 @@ TopStatement ⇒
 Waldemar Horwat
 Last modified Monday, May 3, 1999
 up
+*)

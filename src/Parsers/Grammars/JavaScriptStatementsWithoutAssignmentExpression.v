@@ -1,4 +1,4 @@
-3
+(*3
 ω ∈ {noShortIf, full}
 Statementω ⇒
    EmptyStatement
@@ -400,3 +400,4 @@ TopStatement ⇒
 Waldemar Horwat
 Last modified Monday, May 3, 1999
 up
+*)
