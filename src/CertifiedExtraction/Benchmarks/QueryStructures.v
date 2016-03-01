@@ -580,13 +580,519 @@ Require Bedrock.Platform.Facade.examples.TuplesF.
 Ltac fiat_t :=
   repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
 
-Lemma CompileTuples2_findFirst : (* TODO change this theorem; it doesn't apply anymore *)
+Fixpoint TruncateList {A} (a: A) n l :=
+  match n, l with
+  | 0, _ => nil
+  | S n, nil => a :: TruncateList a n nil
+  | S n, h :: t => h :: TruncateList a n t
+  end.
+
+Lemma TruncateList_length {A} n :
+  forall (a: A) (l: list A),
+    List.length (TruncateList a n l) = n.
+Proof.
+  induction n, l; simpl; intuition.
+Defined.
+
+Lemma TruncateList_id {A} :
+  forall (a: A) (l: list A),
+    TruncateList a (List.length l) l = l.
+Proof.
+  induction l; simpl; auto using f_equal.
+Qed.
+
+Definition ListWToTuple_Truncated n l : FiatTuple n :=
+  @eq_rect nat _ (fun n => FiatTuple n)
+           (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
+           n (TruncateList_length n _ _).
+
+
+Definition ListWToTuple_Truncated' n (l: list W) : FiatTuple n :=
+  match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatTuple n0 with
+  | eq_refl => (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
+  end.
+
+Lemma ListWToTuple_Truncated_id n l :
+  List.length l = n ->
+  l = TupleToListW (ListWToTuple_Truncated' n l).
+Proof.
+  intros; subst.
+  unfold ListWToTuple_Truncated'.
+  induction l.
+  trivial.
+  simpl.
+
+  destruct (TruncateList_length (Datatypes.length l) (Word.natToWord 32 0) l).
+  rewrite IHl at 1.
+  reflexivity.
+Qed.
+
+Lemma map_id' :
+  forall `{f: A -> A} lst,
+    (forall x, List.In x lst -> f x = x) ->
+    map f lst = lst.
+Proof.
+  induction lst; simpl; intros.
+  - eauto.
+  - f_equal; eauto.
+Qed.
+
+Definition AllOfLength_set {A} N ens :=
+  forall x, Ensembles.In _ ens x -> @List.length A (TuplesF.indexedElement x) = N.
+
+Definition AllOfLength_list {A} N seq :=
+  forall x, List.In x seq -> @List.length A x = N.
+
+Lemma keepEq_length:
+  forall (N : nat) ens (key k : W),
+    AllOfLength_set N ens ->
+    AllOfLength_set N (TuplesF.keepEq ens key k).
+Proof.
+  unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
+Qed.
+
+Lemma TupleToListW_length':
+  forall (N : nat) (tuple : FiatTuple N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    Datatypes.length (TupleToListW tuple) = N.
+Proof.
+  cleanup;
+    erewrite <- Word.wordToNat_natToWord_idempotent;
+    eauto using TupleToListW_length.
+Qed.
+
+Lemma IndexedEnsemble_TupleToListW_length:
+  forall (N : nat) (table: FiatBag N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    AllOfLength_set N (IndexedEnsemble_TupleToListW table).
+Proof.
+  repeat match goal with
+         | _ => cleanup
+         | _ => progress destruct_conjs
+         | _ => progress unfold AllOfLength_set, IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW, Ensembles.In
+         | [ H: _ = _ |- _ ] => rewrite H
+         end; auto using TupleToListW_length'.
+Qed.
+
+Lemma UnIndexedEnsembleListEquivalence_AllOfLength:
+  forall (N : nat) A ens seq,
+    @TuplesF.UnIndexedEnsembleListEquivalence (list A) ens seq ->
+    AllOfLength_set N ens ->
+    AllOfLength_list N seq.
+Proof.
+  repeat match goal with
+         | _ => cleanup
+         | [ H: _ /\ _ |- _ ] => destruct H
+         | [ H: exists _, _ |- _ ] => destruct H
+         | [ H: In _ (map _ _) |- _ ] => rewrite in_map_iff in H
+         | _ => progress unfold TuplesF.UnIndexedEnsembleListEquivalence,
+               AllOfLength_set, AllOfLength_list in *
+         end; firstorder.
+Qed.
+
+Lemma EnsembleIndexedListEquivalence_AllOfLength:
+  forall (N : nat) A ens seq,
+    @TuplesF.EnsembleIndexedListEquivalence (list A) ens seq ->
+    AllOfLength_set N ens ->
+    AllOfLength_list N seq.
+Proof.
+  unfold TuplesF.EnsembleIndexedListEquivalence; cleanup.
+  intuition eauto using UnIndexedEnsembleListEquivalence_AllOfLength.
+Qed.
+
+Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
+  forall {N : nat} {table k key seq},
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    TuplesF.EnsembleIndexedListEquivalence
+      (TuplesF.keepEq (@IndexedEnsemble_TupleToListW N table) k key) seq ->
+    AllOfLength_list N seq.
+Proof.
+  cleanup; eapply EnsembleIndexedListEquivalence_AllOfLength;
+    eauto using keepEq_length, IndexedEnsemble_TupleToListW_length.
+Qed.
+
+Lemma EmptySet_False :
+  forall {A} (x: A), Ensembles.Empty_set _ x <-> False.
+Proof.
+  firstorder.
+Qed.
+
+Ltac EnsembleIndexedListEquivalence_nil_t :=
+  repeat match goal with
+         | _ => cleanup
+         | _ => solve [constructor]
+         | _ => progress destruct_conjs
+         | _ => progress unfold IndexedEnsembles.EnsembleIndexedListEquivalence,
+               IndexedEnsembles.UnIndexedEnsembleListEquivalence,
+               TuplesF.EnsembleIndexedListEquivalence,
+               TuplesF.UnIndexedEnsembleListEquivalence,
+               IndexedEnsemble_TupleToListW,
+               Ensembles.Same_set, Ensembles.Included, Ensembles.In in *
+         | [  |- exists (_: list ?t), _ ] => exists (@nil t)
+         | [ H: map _ _ = nil |- _ ] => apply map_eq_nil in H
+         | [ H: context[In _ nil] |- _ ] =>
+           setoid_rewrite (fun A a => (fun A => proj1 (neg_false A)) _ (@in_nil A a)) in H
+         | [  |- context[Ensembles.Empty_set _ _] ] => setoid_rewrite EmptySet_False
+         | [ H: context[Ensembles.Empty_set _ _] |- _ ] => setoid_rewrite EmptySet_False in H
+         | _ => firstorder
+         end.
+
+Lemma IndexedEnsembles_UnIndexedEnsembleListEquivalence_nil :
+  forall A ens, IndexedEnsembles.UnIndexedEnsembleListEquivalence ens (@nil A) <->
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+Proof.
+  EnsembleIndexedListEquivalence_nil_t.
+Qed.
+
+Lemma IndexedEnsembles_EnsembleIndexedListEquivalence_nil :
+  forall A ens, IndexedEnsembles.EnsembleIndexedListEquivalence ens (@nil A) <->
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+Proof.
+  EnsembleIndexedListEquivalence_nil_t.
+Qed.
+
+Lemma TuplesF_UnIndexedEnsembleListEquivalence_nil :
+  forall A ens, TuplesF.UnIndexedEnsembleListEquivalence ens (@nil A) <->
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+Proof.
+  EnsembleIndexedListEquivalence_nil_t.
+Qed.
+
+Lemma TuplesF_EnsembleIndexedListEquivalence_nil :
+  forall A ens,
+    TuplesF.EnsembleIndexedListEquivalence ens (@nil A) <->
+    Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+Proof.
+  EnsembleIndexedListEquivalence_nil_t.
+Qed.
+
+(* Lemma IndexedEnsemble_TupleToListW_empty : *)
+(*   forall N ens, *)
+(*     Ensembles.Same_set _ (@IndexedEnsemble_TupleToListW N ens) (Ensembles.Empty_set _) -> *)
+(*     Ensembles.Same_set _ ens (Ensembles.Empty_set _). *)
+(* Proof. *)
+(*   repeat match goal with *)
+(*          | [ H: context[RelatedIndexedTupleAndListW _ _], x: FiatElement _ |- _ ] => *)
+(*            specialize (H (TupleToListW_indexed x)) *)
+(*          | _ => progress EnsembleIndexedListEquivalence_nil_t *)
+(*          end. *)
+(* Qed. *)
+
+Definition TupleToListW_indexed {N} (tup: FiatElement N) :=
+  {| TuplesF.elementIndex := IndexedEnsembles.elementIndex tup;
+     TuplesF.indexedElement := (TupleToListW (IndexedEnsembles.indexedElement tup)) |}.
+
+Lemma RelatedIndexedTupleAndListW_refl :
+  forall {N} tup,
+    @RelatedIndexedTupleAndListW N (TupleToListW_indexed tup) tup.
+Proof.
+  cleanup; red; intuition.
+Qed.
+
+Lemma IndexedEnsemble_TupleToListW_refl :
+  forall {N} (tup: FiatElement N) (ens: FiatBag N),
+    ens tup -> IndexedEnsemble_TupleToListW ens (TupleToListW_indexed tup).
+Proof.
+  cleanup; red; eauto using RelatedIndexedTupleAndListW_refl.
+Qed.
+
+Fixpoint zip2 {A1 A2} (aa1: list A1) (aa2: list A2) :=
+  match aa1, aa2 with
+  | nil, _ => nil
+  | _, nil => nil
+  | ha1 :: ta1, ha2 :: ta2 => (ha1, ha2) :: (zip2 ta1 ta2)
+  end.
+
+Definition map2 {A1 A2 B} (f: A1 -> A2 -> B) aa1 aa2 :=
+  map (fun pair => f (fst pair) (snd pair)) (zip2 aa1 aa2).
+
+Ltac map_length_t :=
+  repeat match goal with
+         | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; subst; clear H
+         | [ H: S _ = S _ |- _ ] => inversion H; subst; clear H
+         | _ => progress simpl in *; intros
+         | _ => discriminate
+         | _ => try f_equal; firstorder
+         end.
+
+Lemma map_map_sameLength {A1 A2 B}:
+  forall {f g aa1 aa2},
+    @map A1 B f aa1 = @map A2 B g aa2 ->
+    Datatypes.length aa1 = Datatypes.length aa2.
+Proof.
+  induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma map_snd_zip2 {A1 A2}:
+  forall {aa1 aa2},
+    Datatypes.length aa1 = Datatypes.length aa2 ->
+    map snd (@zip2 A1 A2 aa1 aa2) = aa2.
+Proof.
+  induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma map_fst_zip2' {A1 A2 B}:
+  forall {f: _ -> B} {aa1 aa2},
+    Datatypes.length aa1 = Datatypes.length aa2 ->
+    map (fun x => f (fst x)) (@zip2 A1 A2 aa1 aa2) = map f aa1.
+Proof.
+  induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma in_zip2 :
+  forall {A B} a b aa bb,
+    In (a, b) (@zip2 A B aa bb) ->
+    (In a aa /\ In b bb).
+Proof. (* This lemma is weak *)
+  induction aa; destruct bb;
+    repeat match goal with
+           | _ => progress simpl
+           | _ => progress intuition
+           | [ H: _ = _ |- _ ] => inversion_clear H
+           | [ aa: list ?a, H: forall _: list ?a, _ |- _ ] => specialize (H aa)
+           end.
+Qed.
+
+Lemma in_zip2_map :
+  forall {A B A' B'} fa fb a b aa bb,
+    In (a, b) (@zip2 A B aa bb) ->
+    In (fa a, fb b) (@zip2 A' B'  (map fa aa) (map fb bb)).
+Proof.
+  induction aa; destruct bb;
+    repeat match goal with
+           | _ => progress simpl
+           | _ => progress intuition
+           | [ H: _ = _ |- _ ] => inversion_clear H
+           end.
+Qed.
+
+
+Lemma zip2_maps_same :
+  forall {A A' B'} fa fb aa,
+    (@zip2 A' B' (@map A A' fa aa) (map fb aa)) =
+    map (fun x => (fa x, fb x)) aa.
+Proof.
+  induction aa;
+    repeat match goal with
+           | _ => progress simpl
+           | _ => progress intuition
+           | [ H: _ = _ |- _ ] => inversion_clear H
+           end.
+Qed.
+
+Lemma TupleToListW_indexed_inj {N}:
+  forall (t1 t2: FiatElement N),
+    TupleToListW_indexed t1 = TupleToListW_indexed t2 ->
+    t1 = t2.
+Proof.
+  destruct t1, t2; unfold TupleToListW_indexed; simpl.
+  intro eq; inversion eq; subst; clear eq.
+  f_equal; intuition.
+Qed.
+
+Lemma map2_two_maps:
+  forall {A B A' B' C} fa fb g aa bb,
+    @map2 A B C (fun a b => g (fa a) (fb b)) aa bb =
+    @map2 A' B' C (fun a b => g a b) (map fa aa) (map fb bb).
+Proof.
+  unfold map2;
+    induction aa; destruct bb;
+      repeat match goal with
+             | _ => progress simpl
+             | _ => progress intuition
+             | [ H: _ = _ |- _ ] => inversion_clear H
+             | [ aa: list ?a, H: forall _: list ?a, _ |- _ ] => specialize (H aa)
+             end.
+Qed.
+
+
+Hint Unfold IndexedEnsembles.EnsembleIndexedListEquivalence
+     IndexedEnsembles.UnIndexedEnsembleListEquivalence
+     TuplesF.EnsembleIndexedListEquivalence
+     TuplesF.UnIndexedEnsembleListEquivalence
+     IndexedEnsembles.UnConstrFreshIdx TuplesF.UnConstrFreshIdx : FiatBedrockEquivalences.
+
+Hint Unfold Ensembles.Same_set Ensembles.Included Ensembles.In : Ensembles.
+
+
+Lemma EnsembleIndexedListEquivalence_TupleToListW_FreshIdx:
+  forall (n : nat) (lst : list (FiatTuple n)) (ens : FiatBag n),
+    TuplesF.EnsembleIndexedListEquivalence
+      (IndexedEnsemble_TupleToListW ens) (map TupleToListW lst) ->
+    exists bound : nat, IndexedEnsembles.UnConstrFreshIdx ens bound.
+Proof.
+  repeat match goal with
+         | _ => cleanup
+         | _ => progress destruct_conjs
+         | [ H: context[IndexedEnsemble_TupleToListW ?ens _], H': ?ens ?element |- _ ] =>
+           learn (H (TupleToListW_indexed element))
+         | _ => progress autounfold with FiatBedrockEquivalences Ensembles in *
+         | [  |- exists x, _ ] => eexists
+         end; eauto using IndexedEnsemble_TupleToListW_refl.
+Qed.
+
+
+Lemma map2_snd {A1 A2}:
+  forall {aa1 aa2},
+    Datatypes.length aa1 = Datatypes.length aa2 ->
+    @map2 A1 A2 _ (fun x y => y) aa1 aa2 = aa2.
+Proof.
+  unfold map2; induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma map2_fst {A1 A2}:
+  forall {aa1 aa2},
+    Datatypes.length aa1 = Datatypes.length aa2 ->
+    @map2 A1 A2 _ (fun x y => x) aa1 aa2 = aa1.
+Proof.
+  unfold map2; induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma map2_fst' {A1 A2 B}:
+  forall {aa1 aa2} f,
+    Datatypes.length aa1 = Datatypes.length aa2 ->
+    @map2 A1 A2 B (fun x y => f x) aa1 aa2 = map f aa1.
+Proof.
+  unfold map2; induction aa1; destruct aa2; map_length_t.
+Qed.
+
+Lemma two_maps_map2 :
+  forall {A A1 A2 B} f1 f2 f aa,
+    (@map2 A1 A2 B f (@map A _ f1 aa) (@map A _ f2 aa)) =
+    map (fun x => f (f1 x) (f2 x)) aa.
+Proof.
+  cleanup; unfold map2. rewrite zip2_maps_same, map_map; reflexivity.
+Qed.
+
+Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv_Characterisation:
+  forall (n : nat) (lst : list (FiatTuple n)) (x : list BedrockElement),
+    map TuplesF.indexedElement x = map TupleToListW lst ->
+    map2
+      (fun (x0 : BedrockElement) (y : FiatTuple n) =>
+         TupleToListW_indexed
+           {| IndexedEnsembles.elementIndex := TuplesF.elementIndex x0; IndexedEnsembles.indexedElement := y |})
+      x lst = x.
+Proof.
+  unfold TupleToListW_indexed; cleanup; simpl;
+    rewrite map2_two_maps, <- H, two_maps_map2;
+    apply map_id'; destruct 0; reflexivity.
+Qed.
+
+Lemma in_zip2_map_map_eq :
+  forall {A B A' fa fb a b aa bb},
+    @map A A' fa aa = @map B A' fb bb ->
+    In (a, b) (@zip2 A B aa bb) ->
+    fa a = fb b.
+Proof.
+  cleanup;
+    match goal with
+    | [ H: map ?f ?l = map ?g ?l', H': In _ (zip2 ?l ?l') |- _ ] =>
+      apply (in_zip2_map f g) in H';
+        rewrite <- H, zip2_maps_same, in_map_iff in H';
+        destruct_conjs; congruence
+    end.
+Qed.
+
+Lemma BedrockElement_roundtrip:
+  forall (b: BedrockElement),
+    {| TuplesF.elementIndex := TuplesF.elementIndex b; TuplesF.indexedElement := TuplesF.indexedElement b |}
+    = b.
+Proof.
+  destruct 0; reflexivity.
+Qed.
+
+
+Lemma IndexedEnsemble_TupleToListW_Characterization :
+  forall {N} ens (x: BedrockElement) (t: FiatTuple N),
+    TuplesF.indexedElement x = TupleToListW t ->
+    IndexedEnsemble_TupleToListW (N := N) ens x ->
+    ens {| IndexedEnsembles.elementIndex := TuplesF.elementIndex x; IndexedEnsembles.indexedElement := t |}.
+Proof.
+  cleanup.
+  repeat match goal with
+         | _ => progress destruct_conjs
+         | [ H: TupleToListW _ = TupleToListW _ |- _ ] => apply TupleToListW_inj in H
+         | [ H: FiatElement _ |- _ ] => destruct H
+         | [ H: BedrockElement |- _ ] => destruct H
+         | _ => progress unfold IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW in H0
+         | _ => progress (simpl in *; subst)
+         | _ => trivial
+         end.
+Qed.
+
+Ltac map2_t :=
+  match goal with
+  | [  |- context[map _ (map2 _ _ _)] ] => unfold map2; rewrite map_map; simpl
+  | [  |- context[map ?f (zip2 ?x ?y)] ] => change (map f (zip2 x y)) with (map2 (fun x y => f (x, y)) x y); simpl
+  | [ H: In _ (map2 _ _ _) |- _ ] => (unfold map2 in H; rewrite in_map_iff in H)
+  | [ H: In (_, _) (zip2 _ _) |- _ ] => learn (in_zip2 _ _ _ _ H)
+  | [ H: map _ ?aa = map _ ?bb, H': In (_, _) (zip2 ?aa ?bb) |- _ ] => learn (in_zip2_map_map_eq H H')
+  end.
+
+Hint Rewrite
+     @map2_fst'
+     @map2_snd
+     @EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv_Characterisation
+  : EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv.
+
+Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv:
+  forall (n : nat) (lst : list (FiatTuple n)) (ens : FiatBag n),
+    TuplesF.EnsembleIndexedListEquivalence (IndexedEnsemble_TupleToListW ens) (map TupleToListW lst) ->
+    IndexedEnsembles.UnIndexedEnsembleListEquivalence ens lst.
+Proof.
+  repeat match goal with
+         | _ => cleanup
+         | _ => solve [constructor]
+         | _ => progress destruct_conjs
+         | _ => progress map2_t
+
+         | [ H: context[IndexedEnsemble_TupleToListW ?ens _] |- context [?ens ?element] ] =>
+           specialize (H (TupleToListW_indexed element))
+         | [ H: context[IndexedEnsemble_TupleToListW ?ens _], H': ?ens ?element |- _ ] =>
+           specialize (H (TupleToListW_indexed element))
+         | [ H: ?ens ?element |- _ ] => learn (IndexedEnsemble_TupleToListW_refl element ens H)
+         | [ H: map TuplesF.indexedElement ?x = map TupleToListW ?y
+             |- map IndexedEnsembles.indexedElement ?var = ?y ] =>
+           is_evar var;
+             unify var (map2 (fun bedrockElement fiatTuple =>
+                                {| IndexedEnsembles.elementIndex := TuplesF.elementIndex bedrockElement;
+                                   IndexedEnsembles.indexedElement := fiatTuple |}) x y)
+             ; pose "Removing this string will break the match that introduced it (this is Coq bug #3412)"
+         | [ H: context[In (TupleToListW_indexed ?x) _] |- In ?x _ ] =>
+           rewrite <- (Equality.in_map_iff_injective TupleToListW_indexed)
+             by (eauto using TupleToListW_indexed_inj)
+         | [ H: TuplesF.indexedElement _ = TupleToListW _ |- _ ] => rewrite <- H in *
+
+         | [ H: map _ _ = map _ _ |- _ ] => learn (map_map_sameLength H)
+         | _ => progress rewrite BedrockElement_roundtrip in *
+         | _ => progress autounfold with FiatBedrockEquivalences Ensembles in *
+         | _ => progress autorewrite with EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv
+         | [  |- exists x, _ ] => eexists
+         | _ => unfold TupleToListW_indexed in *; simpl in *
+         end; apply IndexedEnsemble_TupleToListW_Characterization; try tauto.
+Qed.
+
+Lemma ListWToTuple_Truncated_map_keepEq:
+  forall (N : nat) (table : FiatBag (S N)),
+    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+    forall (x8 : W) (x9 : list TuplesF.tupl),
+      TuplesF.EnsembleIndexedListEquivalence
+        (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) (Word.natToWord 32 0) x8) x9 ->
+      x9 = map TupleToListW (map (ListWToTuple_Truncated (S N)) x9).
+Proof.
+  cleanup.
+  rewrite map_map.
+  rewrite map_id'; [ eauto | intros; symmetry; apply ListWToTuple_Truncated_id ].
+  apply (EnsembleIndexedListEquivalence_keepEq_AllOfLength H H0); assumption.
+Qed.
+
+Lemma CompileTuples2_findFirst :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
     (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))) k2
     (table: FiatBag (S N)) (key: W)
     (table':= ( results <- {l : list RawTuple |
                    IndexedEnsembles.EnsembleIndexedListEquivalence
-                     (IndexedEnsembles.IndexedEnsemble_Intersection 
+                     (IndexedEnsembles.IndexedEnsemble_Intersection
                         (table)
                         (fun x0 : RawTuple =>
                          ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true)) l};
@@ -633,158 +1139,12 @@ Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
 
   fiat_t.
+  5:solve[repeat apply DropName_remove; eauto 1].
+  4:solve[simpl; eauto using f_equal, ListWToTuple_Truncated_map_keepEq].
   3:solve[fiat_t].
   2:solve[fiat_t].
-  2:simpl; f_equal; f_equal.
-  3:solve[repeat apply DropName_remove; eauto 1].
 
   wipe.
-
-  Focus 2.
-
-  Fixpoint TruncateList {A} (a: A) n l :=
-    match n, l with
-    | 0, _ => nil
-    | S n, nil => a :: TruncateList a n nil
-    | S n, h :: t => h :: TruncateList a n t
-    end.
-
-  Lemma TruncateList_length {A} n :
-    forall (a: A) (l: list A),
-      List.length (TruncateList a n l) = n.
-  Proof.
-    induction n, l; simpl; intuition.
-  Defined.
-
-  Lemma TruncateList_id {A} :
-    forall (a: A) (l: list A),
-      TruncateList a (List.length l) l = l.
-  Proof.
-    induction l; simpl; auto using f_equal.
-  Qed.
-
-  Definition ListWToTuple_Truncated n l : FiatTuple n :=
-    @eq_rect nat _ (fun n => FiatTuple n)
-             (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
-             n (TruncateList_length n _ _).
-
-
-  Definition ListWToTuple_Truncated' n (l: list W) : FiatTuple n :=
-    match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatTuple n0 with
-    | eq_refl => (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
-    end.
-
-  Lemma ListWToTuple_Truncated_id n l :
-    List.length l = n ->
-    l = TupleToListW (ListWToTuple_Truncated n l).
-  Proof.
-    intros; subst.
-    unfold ListWToTuple_Truncated'.
-    induction l.
-    trivial.
-    simpl.
-  Admitted.
-
-  lazymatch goal with
-  | [  |- ?x0 = map TupleToListW ?x ] => is_evar x; unify x (map (ListWToTuple_Truncated (S N)) x0)
-  end.
-
-  rewrite map_map.
-
-  Lemma map_id' :
-    forall `{f: A -> A} lst,
-    (forall x, List.In x lst -> f x = x) ->
-    map f lst = lst.
-  Proof.
-    induction lst; simpl; intros.
-    - eauto.
-    - f_equal; eauto.
-  Qed.
-
-  rewrite map_id'; [ eauto | intros; symmetry; apply ListWToTuple_Truncated_id ].
-
-  Definition AllOfLength_set {A} N ens :=
-    forall x, Ensembles.In _ ens x -> @List.length A (TuplesF.indexedElement x) = N.
-
-  Definition AllOfLength_list {A} N seq :=
-    forall x, List.In x seq -> @List.length A x = N.
-
-  Lemma keepEq_length:
-    forall (N : nat) ens (key k : W),
-      AllOfLength_set N ens ->
-      AllOfLength_set N (TuplesF.keepEq ens key k).
-  Proof.
-    unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
-  Qed.
-
-  Lemma TupleToListW_length':
-    forall (N : nat) (tuple : FiatTuple N),
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      Datatypes.length (TupleToListW tuple) = N.
-  Proof.
-    cleanup;
-      erewrite <- Word.wordToNat_natToWord_idempotent;
-      eauto using TupleToListW_length.
-  Qed.
-
-  Lemma IndexedEnsemble_TupleToListW_length:
-    forall (N : nat) (table: FiatBag N),
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      AllOfLength_set N (IndexedEnsemble_TupleToListW table).
-  Proof.
-    repeat match goal with
-           | _ => cleanup
-           | _ => progress destruct_conjs
-           | _ => progress unfold AllOfLength_set, IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW, Ensembles.In
-           | [ H: _ = _ |- _ ] => rewrite H
-           end; auto using TupleToListW_length'.
-  Qed.
-
-  Lemma UnIndexedEnsembleListEquivalence_AllOfLength:
-    forall (N : nat) A ens seq,
-      @TuplesF.UnIndexedEnsembleListEquivalence (list A) ens seq ->
-      AllOfLength_set N ens ->
-      AllOfLength_list N seq.
-  Proof.
-    repeat match goal with
-           | _ => cleanup
-           | [ H: _ /\ _ |- _ ] => destruct H
-           | [ H: exists _, _ |- _ ] => destruct H
-           | [ H: In _ (map _ _) |- _ ] => rewrite in_map_iff in H
-           | _ => progress unfold TuplesF.UnIndexedEnsembleListEquivalence,
-                 AllOfLength_set, AllOfLength_list in *
-           end; firstorder.
-  Qed.
-
-  Lemma EnsembleIndexedListEquivalence_AllOfLength:
-    forall (N : nat) A ens seq,
-      @TuplesF.EnsembleIndexedListEquivalence (list A) ens seq ->
-      AllOfLength_set N ens ->
-      AllOfLength_list N seq.
-  Proof.
-    unfold TuplesF.EnsembleIndexedListEquivalence; cleanup.
-    intuition eauto using UnIndexedEnsembleListEquivalence_AllOfLength.
-  Qed.
-
-  Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
-    forall {N : nat} {table k key seq},
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      TuplesF.EnsembleIndexedListEquivalence
-        (TuplesF.keepEq (@IndexedEnsemble_TupleToListW N table) k key) seq ->
-      AllOfLength_list N seq.
-  Proof.
-    cleanup; eapply EnsembleIndexedListEquivalence_AllOfLength;
-    eauto using keepEq_length, IndexedEnsemble_TupleToListW_length.
-  Qed.
-
-  pose proof (EnsembleIndexedListEquivalence_keepEq_AllOfLength H6 H16) as sameLength.
-  unfold AllOfLength_list in sameLength.
-  deduplicate.
-
-  (* Lemma TuplesF_IndexedEnsembles_Equiv : *)
-  (*   forall A ens lst, *)
-  (*     TuplesF.EnsembleIndexedListEquivalence ens lst -> *)
-  (*     IndexedEnsembles.EnsembleIndexedListEquivalence ens lst. *)
 
   Lemma EnsembleIndexedListEquivalence_TupleToListW :
     forall n lst ens,
@@ -792,68 +1152,33 @@ Proof.
         (IndexedEnsemble_TupleToListW ens) (map (TupleToListW (N := n)) lst) ->
       IndexedEnsembles.EnsembleIndexedListEquivalence ens lst.
   Proof.
-    induction lst; simpl; intros.
+    cleanup.
+    split; eauto using EnsembleIndexedListEquivalence_TupleToListW_FreshIdx, EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv.
+  Qed.
 
-    Ltac EnsembleIndexedListEquivalence_nil_t :=
-      repeat match goal with
-             | _ => cleanup
-             | _ => solve [constructor]
-             | _ => progress destruct_conjs
-             | _ => progress unfold IndexedEnsembles.EnsembleIndexedListEquivalence,
-                   IndexedEnsembles.UnIndexedEnsembleListEquivalence,
-                   TuplesF.EnsembleIndexedListEquivalence,
-                   TuplesF.UnIndexedEnsembleListEquivalence,
-                   Ensembles.Same_set, Ensembles.Included, Ensembles.In in *
-             | [  |- exists (_: list ?t), _ ] => exists (@nil t)
-             | [ H: map _ _ = nil |- _ ] => apply map_eq_nil in H
-             | [ H: context[In _ nil] |- _ ] =>
-               setoid_rewrite (fun A a => (fun A => proj1 (neg_false A)) _ (@in_nil A a)) in H
-             | _ => firstorder
-             end.
 
-    Lemma IndexedEnsembles_UnIndexedEnsembleListEquivalence_nil :
-      forall A ens, IndexedEnsembles.UnIndexedEnsembleListEquivalence ens (@nil A) <->
-               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
-    Proof.
-      EnsembleIndexedListEquivalence_nil_t.
-    Qed.
+  Lemma TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles :
+    forall A ens1 ens2,
+      Ensembles.Same_set _ ens1 ens2 ->
+      forall seq, @TuplesF.EnsembleIndexedListEquivalence A ens1 seq <->
+             @TuplesF.EnsembleIndexedListEquivalence A ens2 seq.
+  Proof.
+    intros.
+    apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
+  Qed. (* FIXME can we use Ensemble extensionality? *)
 
-    Lemma IndexedEnsembles_EnsembleIndexedListEquivalence_nil :
-      forall A ens, IndexedEnsembles.EnsembleIndexedListEquivalence ens (@nil A) <->
-               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
-    Proof.
-      EnsembleIndexedListEquivalence_nil_t.
-    Qed.
+  Lemma Same_set_pointwise :
+    forall A s1 s2,
+      Ensembles.Same_set A s1 s2 <-> (forall x, s1 x <-> s2 x).
+  Proof.
+    firstorder.
+  Qed.
 
-    Lemma TuplesF_UnIndexedEnsembleListEquivalence_nil :
-      forall A ens, TuplesF.UnIndexedEnsembleListEquivalence ens (@nil A) <->
-               Ensembles.Same_set _ ens (Ensembles.Empty_set _).
-    Proof.
-      EnsembleIndexedListEquivalence_nil_t.
-    Qed.
-
-    Lemma TuplesF_EnsembleIndexedListEquivalence_nil :
-      forall A ens,
-        TuplesF.EnsembleIndexedListEquivalence ens (@nil A) <->
-        Ensembles.Same_set _ ens (Ensembles.Empty_set _).
-    Proof.
-      EnsembleIndexedListEquivalence_nil_t.
-    Qed.
-
-    rewrite TuplesF_EnsembleIndexedListEquivalence_nil in H.
-    rewrite IndexedEnsembles_EnsembleIndexedListEquivalence_nil.
-
-    Lemma IndexedEnsemble_TupleToListW_empty :
-      forall N ens,
-      Ensembles.Same_set _ (@IndexedEnsemble_TupleToListW N ens) (Ensembles.Empty_set _) ->
-      Ensembles.Same_set _ ens (Ensembles.Empty_set _).
-    Proof.
-      unfold IndexedEnsemble_TupleToListW, Ensembles.Same_set; cleanup.
-  (* unfold wrap, WrapInstance, wrap, QS_WrapBag2 in H21; simpl. *)
   Lemma Fiat_Bedrock_Filters_Equivalence:
     forall (N : nat) (table : FiatBag (S N)) (key : W) (x9 : list TuplesF.tupl)
       (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
       (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
+      BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
       TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
       IndexedEnsembles.EnsembleIndexedListEquivalence
         (IndexedEnsembles.IndexedEnsemble_Intersection
@@ -864,49 +1189,95 @@ Proof.
   Proof.
     intros.
     apply EnsembleIndexedListEquivalence_TupleToListW.
-    rewrite map_map.
-    rewrite map_id' by admit.
-
-    Lemma TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles :
-      forall A ens1 ens2,
-          Ensembles.Same_set _ ens1 ens2 ->
-          forall seq, @TuplesF.EnsembleIndexedListEquivalence A ens1 seq <->
-                 @TuplesF.EnsembleIndexedListEquivalence A ens2 seq.
-    Proof.
-      intros.
-      apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
-    Qed. (* FIXME can we use Ensemble extensionality? *)
+    erewrite <- ListWToTuple_Truncated_map_keepEq by eassumption.
 
     rewrite TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles; try eassumption.
-    clear H.
 
-    unfold IndexedEnsemble_TupleToListW, TuplesF.keepEq, Ensembles.Included, Ensembles.In, IndexedEnsembles.IndexedEnsemble_Intersection, Array.sel in *.
-    Lemma Same_set_pointwise :
-      forall A s1 s2,
-        Ensembles.Same_set A s1 s2 <-> (forall x, s1 x <-> s2 x).
-    Proof.
-      firstorder.
-    Qed.
+    unfold IndexedEnsemble_TupleToListW, TuplesF.keepEq, Ensembles.Included,
+    Ensembles.In, IndexedEnsembles.IndexedEnsemble_Intersection, Array.sel in *.
 
-    rewrite Same_set_pointwise.
-    intros.
-    split; repeat match goal with
-                  | _ => cleanup
-                  | _ => eassumption
-                  | _ => progress unfold RelatedIndexedTupleAndListW, TuplesF.tupl in *
-                  | [  |- exists _, _ ] => eexists
-                  | [ H: exists _, _ |- _ ] => destruct H
-                  | [  |- context[andb _ true] ] => rewrite Bool.andb_true_r
-                  | [ H: context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
-                  | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
-                  end.
+    rewrite Same_set_pointwise;
+      repeat match goal with
+             | _ => cleanup
+             | _ => eassumption
+             | _ => progress unfold RelatedIndexedTupleAndListW, TuplesF.tupl in *
+             | [  |- exists _, _ ] => eexists
+             | [ H: exists _, _ |- _ ] => destruct H
+             | [  |- context[andb _ true] ] => rewrite Bool.andb_true_r
+             | [ H: context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
+             | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
+             end.
 
-    - rewrite H2. admit.
-    - rewrite H1. admit.
+    - rewrite H4.
+      set (IndexedEnsembles.indexedElement x0).
+
+      clear H0.
+
+      Lemma MakeWordHeading_allWords :
+        forall {N} (idx: Fin.t N),
+          Domain (MakeWordHeading N) idx = W.
+      Proof.
+        unfold MakeWordHeading; induction idx.
+        - reflexivity.
+        - unfold Domain in *; simpl in *; assumption.
+      Defined.
+
+      Lemma lt_BinNat_lt:
+        forall (p p' : nat),
+          lt p p' ->
+          BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p').
+      Proof.
+        intros; Nomega.nomega.
+      Qed.
+
+      Lemma BinNat_lt_S:
+        forall (p p' : nat),
+          BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p') ->
+          BinNat.N.lt (BinNat.N.of_nat (S p)) (BinNat.N.of_nat (S p')).
+      Proof.
+        intros; Nomega.nomega.
+      Qed.
+
+      Lemma BinNat_lt_of_nat_S:
+        forall (p : nat) (q : BinNums.N),
+          BinNat.N.lt (BinNat.N.of_nat (S p)) q ->
+          BinNat.N.lt (BinNat.N.of_nat p) q.
+      Proof.
+        intros; Nomega.nomega.
+      Qed.
+
+      Opaque BinNat.N.of_nat.
+      Lemma selN_GetAttributeRaw:
+        forall {N} (tup: @RawTuple (MakeWordHeading N)) (idx: Fin.t N),
+          let n := (projT1 (Fin.to_nat idx)) in
+          BinNat.N.lt (BinNat.N.of_nat n) (Word.Npow2 32) ->
+          let k1 := Word.natToWord 32 n in
+          Array.selN (TupleToListW tup) (Word.wordToNat k1) =
+          match MakeWordHeading_allWords idx with
+          | eq_refl => (GetAttributeRaw tup idx)
+          end.
+      Proof.
+        induction idx; simpl in *.
+        - reflexivity.
+        - destruct (Fin.to_nat idx).
+          unfold TupleToListW in *; simpl in *; apply lt_BinNat_lt in l.
+          intros.
+          rewrite Word.wordToNat_natToWord_idempotent in *
+            by auto using BinNat_lt_of_nat_S.
+          rewrite IHidx by auto using BinNat_lt_of_nat_S; reflexivity.
+      Qed.
+      Transparent BinNat.N.of_nat.
+
+      unfold k1; rewrite selN_GetAttributeRaw; reflexivity.
+    - rewrite H3.
+      unfold k1; rewrite selN_GetAttributeRaw by reflexivity; simpl.
+      destruct (Word.weq _ _); congruence.
   Qed.
 
   apply Fiat_Bedrock_Filters_Equivalence; assumption.
 Qed.
+
+Print Assumptions CompileTuples2_findFirst.
 
 Lemma Lifted_MapsTo_Ext:
   forall `{FacadeWrapper (Value av) A} ext k v tenv,
