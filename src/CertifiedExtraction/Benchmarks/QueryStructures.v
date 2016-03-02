@@ -1554,20 +1554,15 @@ Proof.
   repeat StringMap_t.
 
   Ltac cleanup_StringMap_head :=
-    (* rewrite <- (add_remove_cancel (k := var)) by reflexivity; *)
     repeat ((rewrite <- add_remove_comm; [ | PreconditionSet_t; congruence ]) ||
             (rewrite remove_trickle; [ | reflexivity])).
 
-  (* cleanup_StringMap_head vtmp. *)
-  (* cleanup_StringMap_head vtup. *)
   apply TelEq_swap.
 
   wipe.                         (* FIXME remove this *)
   repeat match goal with
          | [ H: _ <> _ |- _ ] => clear dependent H
          end.
-
-  (* FIXME no need for add_remove_cancel *)
 
   (* Notation "[[ 'NTSOME' [ A ]  [ B ]  [ C ]  [ D ]   <--   v 'as' kk ]] :: t" := (Cons (@NTSome A B C D) (Return v) (fun kk => t)) (at level 0). *)
 
@@ -1601,7 +1596,7 @@ Ltac side_conditions_fast :=
          end.
 
 Lemma CompileTuple_new_spec :
-  forall (v1 v2 v3 o1 o2 o3 vlen vtup vtmp : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+  forall (v1 v2 v3 o1 o2 o3 vlen vtup vtmp : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext
     (val1 val2 val3: W) setup
     (fnew fset : GLabelMap.key),
     NoDuplicates [[[v1;v2;v3;o1;o2;o3;vtup;vlen;vtmp]]] ->
@@ -1615,8 +1610,8 @@ Lemma CompileTuple_new_spec :
     NotInTelescope vtup tenv -> NotInTelescope vtmp tenv ->
     vtup ∉ ext ->
     vtmp ∉ ext ->
-    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) fnew (Axiomatic Tuple_new) env ->
-    GLabelMap.MapsTo (elt:=FuncSpec ADTValue) fset (Axiomatic Tuple_set) env ->
+    GLabelMap.MapsTo (elt:=FuncSpec QsADTs.ADTValue) fnew (Axiomatic QsADTs.Tuple_new) env ->
+    GLabelMap.MapsTo (elt:=FuncSpec QsADTs.ADTValue) fset (Axiomatic QsADTs.Tuple_set) env ->
     {{ tenv }}
       setup
       {{ [[`v1 <-- val1 as _]]
@@ -1660,7 +1655,7 @@ Ltac explode n :=
   end.
 
 Lemma CompileTuple_Delete:
-  forall (vtmp vtup vsize : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vtmp vtup vsize : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (tup : FiatTuple N),
     vtup <> vtmp ->
     vtmp ∉ ext ->
@@ -1670,7 +1665,7 @@ Lemma CompileTuple_Delete:
     Lifted_MapsTo ext tenv vsize (wrap (Word.natToWord 32 N)) ->
     Lifted_not_mapsto_adt ext tenv vtmp ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic Tuple_delete) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuple_delete) env ->
     {{ tenv }}
       Call vtmp fpointer (vtup :: vsize :: nil)
     {{ [[`vtmp <-- (Word.natToWord 32 0) as _]] :: (DropName vtmp (DropName vtup tenv)) }} ∪ {{ ext }} // env.
@@ -1684,7 +1679,7 @@ Qed.
 
 
 Lemma CompileTuple_Delete_spec:
-  forall (vtmp vtup vsize : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vtmp vtup vsize : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (tup : FiatTuple N),
     vtup <> vtmp ->
     vtup <> vsize ->
@@ -1696,7 +1691,7 @@ Lemma CompileTuple_Delete_spec:
     NotInTelescope vtup tenv ->
     NotInTelescope vsize tenv ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic Tuple_delete) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuple_delete) env ->
     {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTuple (N := N)))) vtup) <-- tup as _]] :: tenv }}
       (Seq (Assign vsize (Const (Word.natToWord 32 N))) (Call vtmp fpointer (vtup :: vsize :: nil)))
     {{ tenv }} ∪ {{ ext }} // env.
@@ -1716,98 +1711,158 @@ Proof.
   apply CompileSkip.
 Qed.
 
+Lemma minFresh_UnConstrFresh :
+  forall n table idx,
+    TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (N := n) table) idx ->
+    IndexedEnsembles.UnConstrFreshIdx table idx.
+Proof.
+  unfold TuplesF.minFreshIndex, IndexedEnsembles.UnConstrFreshIdx; intros.
+  intuition.
+  unfold TuplesF.UnConstrFreshIdx in *.
+  assert (IndexedEnsemble_TupleToListW table
+                                       {| TuplesF.elementIndex := IndexedEnsembles.elementIndex element;
+                                          TuplesF.indexedElement := TupleToListW (IndexedEnsembles.indexedElement element)
+                                       |}).
+  unfold IndexedEnsemble_TupleToListW; intros; eexists; split; eauto.
+  unfold RelatedIndexedTupleAndListW; simpl; intuition.
+  apply H1 in H; eauto.
+Qed.
 
-    Lemma minFresh_UnConstrFresh :
-      forall n table idx,
-        minFreshIndex (IndexedEnsemble_TupleToListW (N := n) table) idx ->
-        IndexedEnsembles.UnConstrFreshIdx table idx.
-    Proof.
-      unfold minFreshIndex, IndexedEnsembles.UnConstrFreshIdx; intros.
-      intuition.
-      unfold UnConstrFreshIdx in *.
-      assert (IndexedEnsemble_TupleToListW table
-                                           {| elementIndex := IndexedEnsembles.elementIndex element;
-                                              indexedElement := TupleToListW (IndexedEnsembles.indexedElement element)
-                                           |}).
-      unfold IndexedEnsemble_TupleToListW; intros; eexists; split; eauto.
-      unfold RelatedIndexedTupleAndListW; simpl; intuition.
-      apply H1 in H; eauto.
-    Qed.
+Lemma Ensembles_Union_Or:
+  forall {A} s1 s2 x,
+    @Ensembles.Union A s1 s2 x <-> s1 x \/ s2 x.
+Proof.
+  split; intros ** H.
+  inversion H; firstorder.
+  destruct H; [ apply Ensembles.Union_introl | apply Ensembles.Union_intror ]; firstorder.
+Qed.
 
+Lemma Ensembles_Singleton_Eq:
+  forall {A} x x',
+    @Ensembles.Singleton A x x' <-> x = x'.
+Proof.
+  split; intros ** H; inversion H; firstorder.
+Qed.
 
-  Lemma CompileTuples2_insert :
-    forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
-      (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
-      Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
-      Lifted_MapsTo ext tenv vtuple (wrap tuple) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable; vtuple]]] ->
-      vret ∉ ext ->
-      vtable ∉ ext ->
-      vtuple ∉ ext ->
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: vtuple :: nil)
+Lemma minFreshIndex_unique:
+  forall {table : BedrockBag} {x y : nat},
+    TuplesF.minFreshIndex table x ->
+    TuplesF.minFreshIndex table y ->
+    x = y.
+Proof.
+  intros ** [x_ok x_minimal] [y_ok y_minimal].
+  specialize (x_minimal y).
+  specialize (y_minimal x).
+  destruct (Compare_dec.lt_eq_lt_dec x y) as [ [ ? | ? ] | ? ]; intuition.
+Qed.
+
+Lemma Fiat_Bedrock_Insert:
+  forall (N : nat) (table : FiatBag N) (tuple : FiatTuple N) (x : nat),
+    Ensembles.Same_set TuplesF.IndexedElement
+                       (TuplesF.insertAt (IndexedEnsemble_TupleToListW table) x (TupleToListW tuple))
+                       (IndexedEnsemble_TupleToListW
+                          (Ensembles.Add (FiatElement N) table
+                                         {| IndexedEnsembles.elementIndex := x; IndexedEnsembles.indexedElement := tuple |})).
+Proof.
+  intros; rewrite Same_set_pointwise.
+
+  unfold IndexedEnsemble_TupleToListW, TuplesF.insertAt, TuplesF.EnsembleInsert, Ensembles.Add.
+  setoid_rewrite Ensembles_Union_Or.
+  setoid_rewrite Ensembles_Singleton_Eq.
+
+  unfold RelatedIndexedTupleAndListW.
+  repeat match goal with
+         | _ => cleanup
+         | _ => eassumption
+         | [ H: _ \/ _ |- _ ] => destruct H
+         | [ H: exists _, _ |- _ ] => destruct H
+         | _ => solve [eauto]
+                     (* | [  |- exists _, _ ] => solve [eexists; firstorder] *)
+         end.
+
+  simpl in *; subst.
+  destruct x0; simpl in *; subst; eauto.
+Qed.
+
+Lemma CompileTuples2_insert :
+  forall vret vtable vtuple fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2 idx
+    (table: FiatBag N) (tuple: FiatTuple N),
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_insert) env ->
+    Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
+    Lifted_MapsTo ext tenv vtuple (wrap tuple) ->
+    Lifted_not_mapsto_adt ext tenv vret ->
+    NoDuplicates [[[vret; vtable; vtuple]]] ->
+    vret ∉ ext ->
+    vtable ∉ ext ->
+    vtuple ∉ ext ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
+    {{ tenv }}
+      Call vret fpointer (vtable :: vtuple :: nil)
       {{ [[ ( freshIdx <- {freshIdx : nat | IndexedEnsembles.UnConstrFreshIdx table freshIdx};
-              ret (Ensembles.Add IndexedEnsembles.IndexedElement table
-                                 {| IndexedEnsembles.elementIndex := freshIdx;
-                                    IndexedEnsembles.indexedElement := tuple |})) as rep ]]
+                ret (Ensembles.Add IndexedEnsembles.IndexedElement table
+                                   {| IndexedEnsembles.elementIndex := freshIdx;
+                                      IndexedEnsembles.indexedElement := tuple |})) as rep ]]
            :: [[`vret <-- (Word.natToWord 32 0) as _ ]]
            :: [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- rep as _ ]]
            :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
-    facade_eauto.
-    fiat_t.
-    apply minFresh_UnConstrFresh; eauto.
-    facade_eauto.
-    facade_eauto.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
+  facade_eauto.
+  fiat_t.
+  apply minFresh_UnConstrFresh; eauto.
+  facade_eauto.
+  facade_eauto.
 
-    repeat f_equal.
-    apply Ensembles.Extensionality_Ensembles. admit.
-    repeat apply DropName_remove; eauto 1.
-  Qed.
+  repeat f_equal.
+  apply Ensembles.Extensionality_Ensembles.
 
-  Lemma CompileTuples2_insert_spec :
-    forall vtmp vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
-      (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
-      NoDuplicates [[[vtmp; vtable; vtuple]]] ->
-      vtmp ∉ ext ->
-      vtable ∉ ext ->
-      vtuple ∉ ext ->
-      NotInTelescope vtmp tenv ->
-      NotInTelescope vtuple tenv ->
-      NotInTelescope vtable tenv ->
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
-      {{ [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
-           :: [[ (NTSome (H := @WrapInstance _ _ QS_WrapTuple) vtuple) <-- tuple as _ ]]
-           :: tenv }}
-        Call vtmp fpointer (vtable :: vtuple :: nil)
+  lazymatch goal with
+  | [ H: TuplesF.minFreshIndex _ ?x, H': TuplesF.minFreshIndex _ ?y |- _ ] =>
+    learn (minFreshIndex_unique H H'); subst
+  end.
+
+  apply Fiat_Bedrock_Insert.
+  repeat apply DropName_remove; eauto 1.
+Qed.
+
+Lemma CompileTuples2_insert_spec :
+  forall vtmp vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
+    (table: FiatBag N) (tuple: FiatTuple N),
+    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
+    NoDuplicates [[[vtmp; vtable; vtuple]]] ->
+    vtmp ∉ ext ->
+    vtable ∉ ext ->
+    vtuple ∉ ext ->
+    NotInTelescope vtmp tenv ->
+    NotInTelescope vtuple tenv ->
+    NotInTelescope vtable tenv ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
+    {{ [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
+         :: [[ (NTSome (H := @WrapInstance _ _ QS_WrapTuple) vtuple) <-- tuple as _ ]]
+         :: tenv }}
+      Call vtmp fpointer (vtable :: vtuple :: nil)
       {{ [[ ( freshIdx <- {freshIdx : nat | IndexedEnsembles.UnConstrFreshIdx table freshIdx};
-              ret (Ensembles.Add IndexedEnsembles.IndexedElement table
-                                 {| IndexedEnsembles.elementIndex := freshIdx;
-                                    IndexedEnsembles.indexedElement := tuple |})) as rep ]]
+                ret (Ensembles.Add IndexedEnsembles.IndexedElement table
+                                   {| IndexedEnsembles.elementIndex := freshIdx;
+                                      IndexedEnsembles.indexedElement := tuple |})) as rep ]]
            :: [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- rep as _ ]]
            :: tenv }} ∪ {{ ext }} // env.
-  Proof.
-    intros. PreconditionSet_t.
-    apply ProgOk_Remove_Skip_R; hoare.
-    apply generalized CompileTuples2_insert; repeat (compile_do_side_conditions || Lifted_t).
-    eauto.
-    apply ProgOk_Chomp_None; intros.
-    repeat match goal with
-           | [ H: NotInTelescope ?k ?tenv |- context[DropName ?k ?tenv] ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
-           | _ => setoid_rewrite Propagate_anonymous_ret
-           | _ => fold @DropName
-           end.
-    apply CompileDeallocSCA_discretely; repeat (compile_do_side_conditions || decide_NotInTelescope).
-    apply CompileSkip.
-  Qed.
-
+Proof.
+  intros. PreconditionSet_t.
+  apply ProgOk_Remove_Skip_R; hoare.
+  apply generalized CompileTuples2_insert; repeat (compile_do_side_conditions || Lifted_t).
+  eauto.
+  apply ProgOk_Chomp_None; intros.
+  repeat match goal with
+         | [ H: NotInTelescope ?k ?tenv |- context[DropName ?k ?tenv] ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
+         | _ => setoid_rewrite Propagate_anonymous_ret
+         | _ => fold @DropName
+         end.
+  apply CompileDeallocSCA_discretely; repeat (compile_do_side_conditions || decide_NotInTelescope).
+  apply CompileSkip.
+Qed.
 
 Lemma CompileWordList_pop:
   forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
@@ -2217,7 +2272,6 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
 Defined.
-
 
 Lemma CompileTuples2_findSecond :
   forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
