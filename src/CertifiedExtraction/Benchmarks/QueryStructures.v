@@ -1318,30 +1318,38 @@ Ltac _PreconditionSet_t_in H ::=
      cbv beta iota zeta delta [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H; destruct_ands H.
 
 Lemma CompileTuples2_findFirst_spec :
-  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N
+    (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
+    (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1))))
+    k2
     (table: FiatBag (S N)) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S N) => ((if Word.weq (ilist2.ilist2_hd tup) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S N))))),
-    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findFirst) env ->
+    (table':= ( results <- {l : list RawTuple |
+                   IndexedEnsembles.EnsembleIndexedListEquivalence
+                     (IndexedEnsembles.IndexedEnsemble_Intersection
+                        (table)
+                        (fun x0 : RawTuple =>
+                         ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true)) l};
+                 ret (table, results))
+               : Comp (_ * list (FiatTuple (S N)))),
+    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findFirst) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
     vret <> vkey ->
     vtable <> vkey ->
-    functional (IndexedEnsemble_TupleToListW table) ->
-    {{ [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
+    TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
+    {{ [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
-           :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+           :: [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
+           :: [[ (@NTSome QsADTs.ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   apply generalized CompileTuples2_findFirst; repeat (compile_do_side_conditions || Lifted_t || PreconditionSet_t).
-  setoid_rewrite (DropName_NotInTelescope _ _ H11).
+  setoid_rewrite (DropName_NotInTelescope _ _ H12).
   rewrite DropName_Cons_None.
-  setoid_rewrite (DropName_NotInTelescope _ _ H9).
+  setoid_rewrite (DropName_NotInTelescope _ _ H10).
   decide_TelEq_instantiate.
 Qed.
 
@@ -1356,13 +1364,13 @@ Qed.
 Hint Resolve CompileWordList_empty_helper : call_helpers_db.
 
 Lemma CompileTupleList_Empty:
-  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (lst : list _),
     vlst <> vtest ->
     vtest ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTupleList (N := N)))) lst) ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.MapsTo fpointer (Axiomatic TupleList_empty) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.TupleList_empty) env ->
     {{ tenv }}
       Call vtest fpointer (vlst :: nil)
       {{ [[`vtest <-- (bool2w (EqNat.beq_nat (Datatypes.length lst) 0)) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -1376,13 +1384,13 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_Empty_spec:
-  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (lst : list _),
     vlst <> vtest ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
     StringMap.MapsTo vlst (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTupleList (N := N)))) lst) ext ->
-    GLabelMap.MapsTo fpointer (Axiomatic TupleList_empty) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.TupleList_empty) env ->
     {{ tenv }}
       Call vtest fpointer (vlst :: nil)
       {{ [[`vtest <-- (bool2w (EqNat.beq_nat (Datatypes.length (rev lst)) 0)) as _]] :: tenv }} ∪ {{ ext }} // env.
@@ -1400,81 +1408,190 @@ Ltac QS_t := match goal with
             | _ => PreconditionSet_t
             end.
 
-Lemma CompileTuple_new_characterization:
-  forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue))
-    (fnew : GLabelMap.key) (initial_state st' : State ADTValue) (w: W),
+Lemma CompileTuple_new_RunsTo_characterization:
+  forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
+    (fnew : GLabelMap.key) (initial_state st' : State QsADTs.ADTValue) (w: W),
     StringMap.MapsTo vlen (wrap w) initial_state ->
-    GLabelMap.MapsTo fnew (Axiomatic Tuple_new) env ->
+    GLabelMap.MapsTo fnew (Axiomatic QsADTs.Tuple_new) env ->
     RunsTo env (Call vtup fnew [[[vlen]]]) initial_state st' ->
-    exists x1, M.Equal st' ([vtup <-- ADT (Tuple x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
+    exists x1, M.Equal st' ([vtup <-- ADT (QsADTs.Tuple x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
 Proof.
   repeat QS_t.
   reflexivity.
 Qed.
 
-Lemma CompileTuple_set_characterization:
-  forall (vlen vtmp vpos vtup v : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) N
-    (fset : GLabelMap.key) (initial_state st' : State ADTValue) (tup: FiatTuple N) (val pos: W),
+Instance QS_WrapBedrockTuple : FacadeWrapper QsADTs.ADTValue (TuplesF.tupl).
+Proof.
+  refine {| wrap tp := QsADTs.Tuple tp;
+            wrap_inj := _ |}; Wrapper_t.
+Defined.
+
+Lemma CompileTuple_set_RunsTo_characterization:
+  forall (vlen vtmp vpos vtup v : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
+    (fset : GLabelMap.key) (initial_state st' : State QsADTs.ADTValue) (tup: TuplesF.tupl) (val pos: W),
     StringMap.MapsTo v (wrap val) initial_state ->
     StringMap.MapsTo vpos (wrap pos) initial_state ->
-    StringMap.MapsTo vtup (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTuple (N := N)))) tup) initial_state ->
-    GLabelMap.MapsTo fset (Axiomatic Tuple_set) env ->
+    StringMap.MapsTo vtup (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapBedrockTuple))) tup) initial_state ->
+    GLabelMap.MapsTo fset (Axiomatic QsADTs.Tuple_set) env ->
     RunsTo env (Call vtmp fset [[[vtup;vpos;v]]]) initial_state st' ->
-    M.Equal st' ([vtmp <-- SCAZero]::[vtup <-- ADT (Tuple (Array.upd (TupleToListW tup) pos val))]::initial_state).
+    M.Equal st' ([vtmp <-- QsADTs.SCAZero]::[vtup <-- ADT (QsADTs.Tuple (Array.upd tup pos val))]::initial_state).
 Proof.
   repeat QS_t.
   reflexivity.
 Qed.
 
+(* Lemma CompileTuple_set_characterization': *)
+(*   forall (vlen vtmp vpos vtup v : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) N *)
+(*     (fset : GLabelMap.key) (initial_state st' : State QsADTs.ADTValue) (tup: FiatTuple N) (val pos: W), *)
+(*     StringMap.MapsTo v (wrap val) initial_state -> *)
+(*     StringMap.MapsTo vpos (wrap pos) initial_state -> *)
+(*     StringMap.MapsTo vtup (wrap tup) initial_state -> *)
+(*     GLabelMap.MapsTo fset (Axiomatic QsADTs.Tuple_set) env -> *)
+(*     RunsTo env (Call vtmp fset [[[vtup;vpos;v]]]) initial_state st' -> *)
+(*     M.Equal st' ([vtmp <-- QsADTs.SCAZero]::[vtup <-- ADT (QsADTs.Tuple (Array.upd (TupleToListW tup) pos val))]::initial_state). *)
+(* Proof. *)
+(*   repeat QS_t. *)
+(*   reflexivity. *)
+(* Qed. *)
+
+
+Lemma CompileTuple_set_Safe:
+  forall (vtmp vpos vtup v : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
+    (fset : GLabelMap.key) (initial_state : State QsADTs.ADTValue) (tup: TuplesF.tupl) (val pos: W),
+    StringMap.MapsTo v (wrap val) initial_state ->
+    StringMap.MapsTo vpos (wrap pos) initial_state ->
+    StringMap.MapsTo vtup (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapBedrockTuple))) tup) initial_state ->
+    GLabelMap.MapsTo fset (Axiomatic QsADTs.Tuple_set) env ->
+    not_mapsto_adt vtmp initial_state = true ->
+    Word.wlt pos (IL.natToW (Datatypes.length tup)) ->
+    Safe env (Call vtmp fset [[[vtup;vpos;v]]]) initial_state.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+Qed.
+
+Lemma CompileTuple_new_Safe:
+  forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
+    (fnew : GLabelMap.key) (initial_state : State QsADTs.ADTValue) (w: W),
+    StringMap.MapsTo vlen (wrap w) initial_state ->
+    GLabelMap.MapsTo fnew (Axiomatic QsADTs.Tuple_new) env ->
+    not_mapsto_adt vtup initial_state = true ->
+    ~ Word.wlt w (Word.natToWord 32 2) ->
+    Safe env (Call vtup fnew [[[vlen]]]) initial_state.
+Proof.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call).
+Qed.
+
+Lemma not_mapsto_adt_eq_SCA:
+  forall (av : Type) (k : StringMap.key) (w : W) (fmap : StringMap.t (Value av)),
+    not_mapsto_adt k (StringMap.add k (SCA av w) fmap) = true.
+Proof.
+  eauto using MapsTo_SCA_not_mapsto_adt, StringMap.add_1.
+Qed.
+
+Ltac not_mapsto_adt_external_t :=
+  PreconditionSet_t;
+  repeat match goal with
+         | [ H: ?k <> ?s |- not_mapsto_adt ?k (StringMap.add ?s _ _) = true ] =>
+           apply not_mapsto_adt_neq_remove'; [ congruence | ]
+         | [ H: ?s <> ?k |- not_mapsto_adt ?k (StringMap.add ?s _ _) = true ] =>
+           apply not_mapsto_adt_neq_remove'; [ congruence | ]
+         | [  |- not_mapsto_adt ?k (StringMap.add ?k _ _) = true ] =>
+           apply not_mapsto_adt_eq_SCA
+         end.
+
+(* Remove Hints Bool.trans_eq_bool. *)
+
 Lemma CompileTuple_new :
-  forall (v1 v2 v3 o1 o2 o3 vlen vtup vtmp : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+  forall (v1 v2 v3 o1 o2 o3 vlen vtup vtmp : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext
     (val1 val2 val3: W)
     (fnew fset : GLabelMap.key),
     NoDuplicates [[[v1;v2;v3;o1;o2;o3;vtup;vlen;vtmp]]] ->
-    (* Lifted_MapsTo ext tenv v1 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val1) -> *)
-    (* Lifted_MapsTo ext tenv v2 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val2) -> *)
-    (* Lifted_MapsTo ext tenv v3 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val3) -> *)
-    (* Lifted_MapsTo ext tenv o1 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 0)) -> *)
-    (* Lifted_MapsTo ext tenv o2 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 1)) -> *)
-    (* Lifted_MapsTo ext tenv o3 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 2)) -> *)
-    (* Lifted_MapsTo ext tenv vlen (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 3)) -> *)
-    (* Lifted_not_mapsto_adt ext tenv vtup -> *)
-    (* Lifted_not_mapsto_adt ext tenv vtmp -> *)
-    StringMap.MapsTo v1 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val1) ext ->
-    StringMap.MapsTo v2 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val2) ext ->
-    StringMap.MapsTo v3 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) val3) ext ->
-    StringMap.MapsTo o1 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 0)) ext ->
-    StringMap.MapsTo o2 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 1)) ext ->
-    StringMap.MapsTo o3 (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 2)) ext ->
-    StringMap.MapsTo vlen (wrap (FacadeWrapper := @FacadeWrapper_SCA ADTValue) (Word.natToWord 32 3)) ext ->
+    StringMap.MapsTo v1 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) val1) ext ->
+    StringMap.MapsTo v2 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) val2) ext ->
+    StringMap.MapsTo v3 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) val3) ext ->
+    StringMap.MapsTo o1 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) (Word.natToWord 32 0)) ext ->
+    StringMap.MapsTo o2 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) (Word.natToWord 32 1)) ext ->
+    StringMap.MapsTo o3 (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) (Word.natToWord 32 2)) ext ->
+    StringMap.MapsTo vlen (wrap (FacadeWrapper := @FacadeWrapper_SCA QsADTs.ADTValue) (Word.natToWord 32 3)) ext ->
     NotInTelescope vtup tenv ->
     NotInTelescope vtmp tenv ->
     vtup ∉ ext ->
     vtmp ∉ ext ->
-    GLabelMap.MapsTo fnew (Axiomatic Tuple_new) env ->
-    GLabelMap.MapsTo fset (Axiomatic Tuple_set) env ->
+    GLabelMap.MapsTo fnew (Axiomatic QsADTs.Tuple_new) env ->
+    GLabelMap.MapsTo fset (Axiomatic QsADTs.Tuple_set) env ->
     {{ tenv }}
       (Seq (Call vtup fnew (vlen :: nil))
            (Seq (Call vtmp fset (vtup :: o1 :: v1 :: nil))
                 (Seq (Call vtmp fset (vtup :: o2 :: v2 :: nil))
                      (Call vtmp fset (vtup :: o3 :: v3 :: nil)))))
-      {{ [[(NTSome (H := WrapInstance (H := QS_WrapTuple)) vtup) <-- ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
-           :: [[(NTSome (H := @FacadeWrapper_SCA ADTValue) vtmp) <-- (Word.natToWord 32 0) as _]]
-           :: (DropName vtup (DropName vtmp tenv)) }} ∪ {{ ext }} // env.
+    {{ [[(NTSome (H := WrapInstance (H := QS_WrapTuple)) vtup) <-- ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
+         :: [[(NTSome (H := @FacadeWrapper_SCA QsADTs.ADTValue) vtmp) <-- (Word.natToWord 32 0) as _]]
+         :: (DropName vtup (DropName vtmp tenv)) }} ∪ {{ ext }} // env.
 Proof.
-  Remove Hints Bool.trans_eq_bool.
   unfold ProgOk.
+  Time repeat repeat match goal with
+                  | _ => cleanup
+                  | _ => reflexivity
+                  | |- Safe _ (Seq _ _) _ => econstructor
+                  | [ H: RunsTo _ (Seq _ _) _ _ |- _ ] => inversion' H
+                  | _ => eapply SameValues_MapsTo_Ext_State; eassumption
+                  | _ => eapply StringMap.add_1; [ congruence ]
+                  | _ => eapply StringMap.add_2; [ PreconditionSet_t; congruence | ]
+                  | [  |- context[Datatypes.length (Array.upd _ _ _)] ] => rewrite Arrays.upd_length
+                  | [ H: RunsTo _ _ _ _ |- _ ] =>
+                    eapply CompileTuple_new_RunsTo_characterization in H; [ | clear H; try eassumption.. ]
+                  | [ H: RunsTo _ _ _ _ |- _ ] =>
+                    eapply CompileTuple_set_RunsTo_characterization in H; [ | clear H; try eassumption.. ]
+                  | [  |- Safe _ _ _ ] => eapply CompileTuple_new_Safe
+                  | [  |- Safe _ _ _ ] => eapply CompileTuple_set_Safe
+                  | [ H: StringMap.Equal ?m1 ?m2 |- StringMap.MapsTo _ _ ?m1 ] => rewrite H
+                  | [ H: StringMap.Equal ?m1 ?m2 |- not_mapsto_adt _ _ = _ ] => rewrite H
+                  | [ H: StringMap.Equal ?m1 ?m2 |- Safe _ _ ?m1 ] => rewrite H
+                  | [ H: ?a = _ |- context[?a] ] => rewrite H
+                  | [ |- not_mapsto_adt _ _ = true ] => solve [not_mapsto_adt_external_t; facade_eauto]
+                  end.
+
+  repeat StringMap_t.
+
+  Ltac cleanup_StringMap_head :=
+    (* rewrite <- (add_remove_cancel (k := var)) by reflexivity; *)
+    repeat ((rewrite <- add_remove_comm; [ | PreconditionSet_t; congruence ]) ||
+            (rewrite remove_trickle; [ | reflexivity])).
+
+  (* cleanup_StringMap_head vtmp. *)
+  (* cleanup_StringMap_head vtup. *)
+  apply TelEq_swap.
+
+  wipe.                         (* FIXME remove this *)
   repeat match goal with
-         | _ => cleanup
-         | |- Safe _ (Seq _ _) _ => econstructor
-         | _ => eapply SameValues_MapsTo_Ext_State; eassumption
-         | _ => eapply StringMap.add_1; [ congruence | ]
-         | _ => eapply StringMap.add_2; [ PreconditionSet_t; congruence | ]
-         | [ H: RunsTo _ _ _ _ |- Safe _ _ _ ] => eapply CompileTuple_new_characterization in H; try eassumption
-         | [ H: RunsTo _ _ _ _ |- Safe _ _ _ ] => eapply CompileTuple_set_characterization in H; try eassumption
-         | [ H: StringMap.Equal ?m1 ?m2 |- StringMap.MapsTo _ _ ?m1 ] => rewrite H
+         | [ H: _ <> _ |- _ ] => clear dependent H
          end.
-Admitted.
+
+  (* FIXME no need for add_remove_cancel *)
+
+  (* Notation "[[ 'NTSOME' [ A ]  [ B ]  [ C ]  [ D ]   <--   v 'as' kk ]] :: t" := (Cons (@NTSome A B C D) (Return v) (fun kk => t)) (at level 0). *)
+
+  change QsADTs.SCAZero with (wrap (WrappingType := (Value QsADTs.ADTValue)) (Word.natToWord 32 0)).
+  apply SameValues_Pop_Both; [ apply (eq_ret_compute eq_refl) | ].
+  cleanup_StringMap_head.
+
+  replace (Array.upd (Array.upd (Array.upd x (Word.natToWord 32 0) val1) (Word.natToWord 32 1) val2)
+                     (Word.natToWord 32 2) val3) with [[[val1; val2; val3]]].
+  change (ADT (QsADTs.Tuple [[[val1; val2; val3]]])) with
+  (wrap (WrappingType := (Value QsADTs.ADTValue)) (ListWToTuple [[[val1; val2; val3]]])).
+  apply SameValues_Pop_Both; [ apply (eq_ret_compute eq_refl) | ].
+  cleanup_StringMap_head.
+  
+  repeat apply DropName_remove; try eassumption.
+
+  do 4 try destruct x as [ | ? x ];
+    match goal with
+    | [ H: context[Datatypes.length] |- _ ] => simpl in H; try discriminate H
+    end.
+  reflexivity.
+Qed.
+
+Print Assumptions CompileTuple_new.
 
 Ltac side_conditions_fast :=
   repeat match goal with
@@ -2689,8 +2806,8 @@ pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as
       end
     end.
 
-    
-    
+
+
     let pre := (eval unfold pre in pre) in
     let post := (eval unfold post in post) in
     lazymatch constr:(pre, post) with
@@ -2710,7 +2827,7 @@ pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as
                  prim_fst
                  (Refinements.UpdateIndexedRelation
                     (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                    (icons3 SearchUpdateTerm inil3) db Fin.F1 
+                    (icons3 SearchUpdateTerm inil3) db Fin.F1
                     (fst retv)) as _]]::
            [[ ` vsnd <-- snd retv as s]]::tenv);
           [ match kwd with
@@ -2760,9 +2877,9 @@ Ltac _compile_CallBagFind :=
               end
             end).
 
-            
 
-    
+
+
     + unfold CallBagMethod in H1; simpl in *.
       computes_to_inv; subst.
       eapply H0.
