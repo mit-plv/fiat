@@ -1827,9 +1827,9 @@ Proof.
 Qed.
 
 Lemma CompileTuples2_insert_spec :
-  forall vtmp vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
+  forall vtmp vtable vtuple fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2 idx
     (table: FiatBag N) (tuple: FiatTuple N),
-    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_insert) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_insert) env ->
     NoDuplicates [[[vtmp; vtable; vtuple]]] ->
     vtmp ∉ ext ->
     vtable ∉ ext ->
@@ -1838,7 +1838,7 @@ Lemma CompileTuples2_insert_spec :
     NotInTelescope vtuple tenv ->
     NotInTelescope vtable tenv ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
+    TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
     {{ [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
          :: [[ (NTSome (H := @WrapInstance _ _ QS_WrapTuple) vtuple) <-- tuple as _ ]]
          :: tenv }}
@@ -1865,35 +1865,35 @@ Proof.
 Qed.
 
 Lemma CompileWordList_pop:
-  forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
+  forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) tenv ext
     (fpop : GLabelMap.key) head (tail : list W),
     vlst <> vhead ->
     vhead ∉ ext ->
     vlst ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := QS_WrapWordList)) (head :: tail)) ->
     Lifted_not_mapsto_adt ext tenv vhead ->
-    GLabelMap.MapsTo fpop (Axiomatic WordList_pop) env ->
+    GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordList_pop) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
-    {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+    {{ [[`vhead <-- head as _]]::[[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.
 Qed.
 
 Lemma CompileWordList_new:
-  forall (vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext
+  forall (vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) tenv ext
     (fnew : GLabelMap.key),
     vlst ∉ ext ->
     NotInTelescope vlst tenv ->
-    GLabelMap.MapsTo fnew (Axiomatic WordList_new) env ->
+    GLabelMap.MapsTo fnew (Axiomatic QsADTs.WordList_new) env ->
     {{ tenv }}
       Call vlst fnew (nil)
-    {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList)))  <-- @nil W as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- @nil W as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.
-  change (ADT (WordList [])) with (wrap (FacadeWrapper := WrapInstance (H := @QS_WrapWordList)) []).
+  change (ADT (QsADTs.WordList [])) with (wrap (FacadeWrapper := WrapInstance (H := @QS_WrapWordList)) []).
   facade_eauto.
 Qed.
 
@@ -1941,12 +1941,12 @@ Qed.
 Hint Resolve TupleListEmpty_alt_helper : call_helpers_db.
 
 Lemma CompileTupleList_Empty_alt:
-  forall {N} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+  forall {N} (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext
     (fempty : GLabelMap.key) (lst : Comp (list (FiatTuple N))),
     vlst <> vtest ->
     vtest ∉ ext ->
     Lifted_not_mapsto_adt ext tenv vtest ->
-    GLabelMap.MapsTo fempty (Axiomatic TupleList_empty) env ->
+    GLabelMap.MapsTo fempty (Axiomatic QsADTs.TupleList_empty) env ->
     {{ [[(NTSome (H := WrapInstance (H := QS_WrapTupleList)) vlst) <~~ lst as _]] :: tenv }}
       Call vtest fempty (vlst :: nil)
     {{ [[(NTSome (H := WrapInstance (H := QS_WrapTupleList)) vlst) <~~ lst as ls]] :: [[`vtest <-- (bool2w match ls with
@@ -1959,7 +1959,7 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_Delete:
-  forall (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key),
     vlst <> vtmp ->
     vtmp ∉ ext ->
@@ -1967,7 +1967,7 @@ Lemma CompileTupleList_Delete:
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := (QS_WrapTupleList (N := N)))) nil) ->
     Lifted_not_mapsto_adt ext tenv vtmp ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic TupleList_delete) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.TupleList_delete) env ->
     {{ tenv }}
       Call vtmp fpointer (vlst :: nil)
     {{ [[`vtmp <-- (Word.natToWord 32 0) as _]] :: (DropName vtmp (DropName vlst tenv)) }} ∪ {{ ext }} // env.
@@ -1979,7 +1979,7 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_Delete_spec:
-  forall {N} (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+  forall {N} (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext
     (fpointer : GLabelMap.key),
     vlst <> vtmp ->
     vtmp ∉ ext ->
@@ -1987,7 +1987,7 @@ Lemma CompileTupleList_Delete_spec:
     NotInTelescope vtmp tenv ->
     NotInTelescope vlst tenv ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic TupleList_delete) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.TupleList_delete) env ->
     {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTupleList (N := N)))) vlst) <-- nil as _]] :: tenv }}
       (Call vtmp fpointer (vlst :: nil))
     {{ tenv }} ∪ {{ ext }} // env.
@@ -2004,10 +2004,10 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_LoopBase :
-  forall {N A} `{FacadeWrapper (Value ADTValue) A} (lst: list (FiatTuple N)) init vhead vtest vlst vret fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value ADTValue)) tenv (f: Comp A -> FiatTuple N -> Comp A),
-    GLabelMap.MapsTo fpop (Axiomatic TupleList_pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic TupleList_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic TupleList_delete) env ->
+  forall {N A} `{FacadeWrapper (Value QsADTs.ADTValue) A} (lst: list (FiatTuple N)) init vhead vtest vlst vret fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv (f: Comp A -> FiatTuple N -> Comp A),
+    GLabelMap.MapsTo fpop (Axiomatic QsADTs.TupleList_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic QsADTs.TupleList_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.TupleList_delete) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     (forall head (acc: Comp A) (s: list (FiatTuple N)),
@@ -2055,11 +2055,11 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_Loop :
-  forall {N A} `{FacadeWrapper (Value ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeBody facadeConclude
-    env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: Comp A -> FiatTuple N -> Comp A),
-    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
+  forall {N A} `{FacadeWrapper (Value QsADTs.ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeBody facadeConclude
+    env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' (f: Comp A -> FiatTuple N -> Comp A),
+    GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
@@ -2079,11 +2079,11 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_LoopAlloc :
-  forall {N A} `{FacadeWrapper (Value ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
-    env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: Comp A -> (FiatTuple N) -> Comp A),
-    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
+  forall {N A} `{FacadeWrapper (Value QsADTs.ADTValue) A} lst init vhead vtest vlst vret fpop fempty fdealloc facadeInit facadeBody facadeConclude
+    env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' (f: Comp A -> (FiatTuple N) -> Comp A),
+    GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     {{ [[`vlst <-- lst as _]] :: tenv }}
@@ -2106,11 +2106,11 @@ Proof.
 Qed.
 
 Lemma CompileWordList_push :
-  forall vret vhd vlst fpointer (env: Env ADTValue) ext tenv
+  forall vret vhd vlst fpointer (env: Env QsADTs.ADTValue) ext tenv
     h (t: list W),
-    GLabelMap.MapsTo fpointer (Axiomatic WordList_push) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordList_push) env ->
     Lifted_MapsTo ext tenv vhd (wrap h) ->
-    Lifted_MapsTo ext tenv vlst (wrap t) ->
+    Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := QS_WrapWordList)) t) ->
     Lifted_not_mapsto_adt ext tenv vret ->
     vret <> vlst ->
     vret <> vhd ->
@@ -2120,7 +2120,7 @@ Lemma CompileWordList_push :
     vret ∉ ext ->
     {{ tenv }}
       Call vret fpointer (vlst :: vhd :: nil)
-      {{ [[ `vret <-- (Word.natToWord 32 0) as _ ]] :: [[ `vlst <-- h :: t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
+      {{ [[ `vret <-- (Word.natToWord 32 0) as _ ]] :: [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- h :: t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
   facade_eauto.
