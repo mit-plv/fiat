@@ -1,30 +1,31 @@
 Require Export
         Coq.Lists.List
-        Fiat.BinEncoders.Env.Common.Transformer.
+        Fiat.BinEncoders.Env.Common.Transformer
+        Fiat.BinEncoders.Env.Common.Cache.
 
 Set Implicit Arguments.
 
 Section Specifications.
-  Variable A B E E' : Type.
+  Variable A : Type.
 
   Definition encode_decode_correct
-             (envequiv  : E -> E' -> Prop)
-             (transformer : Transformer B)
+             (cache : Cache)
+             (transformer : Transformer)
              (predicate : A -> Prop)
-             (encode : A -> E -> B * E)
-             (decode :  B -> E' -> A * B * E') :=
+             (encode : A -> CacheEncode -> bin * CacheEncode)
+             (decode :  bin -> CacheDecode -> A * bin * CacheDecode) :=
     forall env env' xenv xenv' data data' bin ext ext',
-      envequiv env env' ->
+      Equiv env env' ->
       predicate data ->
       encode data env = (bin, xenv) ->
       decode (transform bin ext) env' = (data', ext', xenv') ->
-      envequiv xenv xenv' /\ data = data' /\ ext = ext'.
+      Equiv xenv xenv' /\ data = data' /\ ext = ext'.
 
   Class decoder
-        (envequiv  : E -> E' -> Prop)
-        (transformer : Transformer B)
+        (cache : Cache)
+        (transformer : Transformer)
         (predicate : A -> Prop)
-        (encode : A -> E -> B * E) :=
-    { decode : B -> E' -> A * B * E';
-      decode_correct : encode_decode_correct envequiv transformer predicate encode decode }.
+        (encode : A -> CacheEncode -> bin * CacheEncode) :=
+    { decode : bin -> CacheDecode -> A * bin * CacheDecode;
+      decode_correct : encode_decode_correct cache transformer predicate encode decode }.
 End Specifications.

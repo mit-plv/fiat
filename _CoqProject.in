@@ -36,6 +36,7 @@ src/BinEncoders/Env/BinLib/Bool.v
 src/BinEncoders/Env/BinLib/Char.v
 src/BinEncoders/Env/BinLib/Core.v
 src/BinEncoders/Env/BinLib/FixInt.v
+src/BinEncoders/Env/Common/Cache.v
 src/BinEncoders/Env/Common/Compose.v
 src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v

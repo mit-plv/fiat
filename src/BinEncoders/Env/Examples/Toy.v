@@ -12,20 +12,25 @@ Record test_t :=
     f3 : { n : N | (n < exp2 4)%N };
     f4 : { n : N | (n < exp2 16)%N } }.
 
-Definition enc_ctx := unit.
-Definition dec_ctx := unit.
+Instance test_cache : Cache :=
+  {| CacheEncode := unit;
+     CacheDecode := unit;
+     Equiv := fun _ _ => True |}.
 
-Definition envequiv (e : enc_ctx) (d : dec_ctx) := True.
+Instance test_cache_add_nat : CacheAdd test_cache nat :=
+  {| addE := fun ce _ => ce;
+     addD := fun cd _ => cd;
+     add_correct := fun _ _ _ => id |}.
 
-Definition encode_test (t : test_t) (ctx : bctx enc_ctx) :=
-  compose btransformer (FixInt_encode (f1 t)) (
-  compose btransformer (FixInt_encode (f2 t)) (
-  compose btransformer (FixInt_encode (f3 t)) (
-  compose btransformer (FixInt_encode (f4 t)) (
-                       (fun e => (nil, e)))))) ctx.
+Definition encode_test (t : test_t) (ce : CacheEncode) :=
+  compose btransformer (FixInt_encode test_cache_add_nat (f1 t)) (
+  compose btransformer (FixInt_encode test_cache_add_nat (f2 t)) (
+  compose btransformer (FixInt_encode test_cache_add_nat (f3 t)) (
+  compose btransformer (FixInt_encode test_cache_add_nat (f4 t)) (
+                       (fun e => (nil, e)))))) ce.
 
 Global Instance test_decoder
-  : decoder (bctx_equiv envequiv) btransformer (fun _ => True) encode_test.
+  : decoder test_cache btransformer (fun _ => True) encode_test.
 Proof.
   unfold encode_test.
 

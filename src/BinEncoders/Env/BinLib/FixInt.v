@@ -12,8 +12,8 @@ Set Implicit Arguments.
 Section FixIntBinEncoder.
   Variable size : nat.
 
-  Variable E E' : Type.
-  Variable Eequiv : E -> E' -> Prop.
+  Variable cache : Cache.
+  Variable cacheAdd : CacheAdd cache nat.
 
   Fixpoint exp2' (l : nat) :=
     match l with
@@ -25,7 +25,7 @@ Section FixIntBinEncoder.
 
   Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
 
-  Fixpoint encode''(pos : positive) (acc : bin) :=
+  Fixpoint encode''(pos : positive) (acc : list bool) :=
     match pos with
       | xI pos' => encode'' pos' (true :: acc)
       | xO pos' => encode'' pos' (false :: acc)
@@ -38,17 +38,17 @@ Section FixIntBinEncoder.
       | Npos pos => encode'' pos nil
     end.
 
-  Fixpoint pad (b : bin) (l : nat) :=
+  Fixpoint pad (b : list bool) (l : nat) :=
     match l with
       | O    => b
       | S l' => false :: pad b l'
     end.
 
-  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) (e : bctx E) : bin * bctx E :=
+  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) (ce : CacheEncode) :=
     let b := encode' (proj1_sig n)
-    in  (pad b (size - (length b)), (fst e, size + snd e)).
+    in  (pad b (size - (length b)), addE ce size).
 
-  Fixpoint decode'' (b : bin) (l : nat) (acc : positive) :=
+  Fixpoint decode'' (b : list bool) (l : nat) (acc : positive) :=
     match l with
       | O    => (acc, b)
       | S l' =>
@@ -59,7 +59,7 @@ Section FixIntBinEncoder.
         end
     end.
 
-  Fixpoint decode' (b : bin) (l : nat) {struct l} :=
+  Fixpoint decode' (b : list bool) (l : nat) {struct l} :=
     match l with
       | O    => (N0, b)
       | S l' =>
@@ -125,8 +125,9 @@ Section FixIntBinEncoder.
         apply bitlength_lt. simpl. omega.
   Qed.
 
-  Definition FixInt_decode (b : bin) (e : bctx E') : {n : N | (n < exp2 size)%N} * bin * bctx E'.
-    refine (exist _ (fst (decode' b size)) _, snd (decode' b size), (fst e, size + snd e)).
+  Definition FixInt_decode (b : list bool) (cd : CacheDecode)
+    : {n : N | (n < exp2 size)%N} * list bool * CacheDecode.
+    refine (exist _ (fst (decode' b size)) _, snd (decode' b size), addD cd size).
     eapply decode'_size.
   Defined.
 
@@ -235,12 +236,12 @@ Section FixIntBinEncoder.
   Qed.
 
   Theorem FixInt_encode_correct :
-    forall predicate, encode_decode_correct (bctx_equiv Eequiv) btransformer predicate FixInt_encode FixInt_decode.
+    forall predicate, encode_decode_correct cache btransformer predicate FixInt_encode FixInt_decode.
   Proof.
     unfold encode_decode_correct, FixInt_encode, FixInt_decode.
     intros predicate env env' xenv xenv' [n P] [n' P'] bin ext ext' Eeq _ Penc Pdec. simpl in *.
-    inversion Penc; clear Penc; inversion Pdec; clear Pdec; inversion Eeq; clear Eeq; subst; intuition;
-    [ split; simpl; auto | apply sig_equivalence | change ext with (snd (n, ext)); f_equal ];
+    inversion Penc; clear Penc; inversion Pdec; clear Pdec; subst; intuition;
+    [ apply add_correct; auto | apply sig_equivalence | change ext with (snd (n, ext)); f_equal ];
     apply encode'_size in P;
     rewrite decode'_pad; auto; clear P;
     destruct n; simpl; auto; rewrite decode'_length;
@@ -248,7 +249,7 @@ Section FixIntBinEncoder.
   Qed.
 End FixIntBinEncoder.
 
-Global Instance FixInt_decoder E E' size ctxequiv predicate
-  : decoder (bctx_equiv ctxequiv) btransformer predicate (FixInt_encode (size:=size) (E:=E)) :=
-  { decode := @FixInt_decode size E';
-    decode_correct := @FixInt_encode_correct _ _ _ _ _ }.
+Global Instance FixInt_decoder size cache cacheAdd predicate
+  : decoder cache btransformer predicate (@FixInt_encode size cache cacheAdd) :=
+  { decode := @FixInt_decode size cache cacheAdd;
+    decode_correct := @FixInt_encode_correct _ _ _ _ }.

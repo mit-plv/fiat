@@ -3,32 +3,32 @@ Require Import
 
 Set Implicit Arguments.
 
-Definition compose E B
-           (transformer : Transformer B)
-           (encode1 : E -> B * E)
-           (encode2 : E -> B * E) :=
+Definition compose E
+           (transformer : Transformer)
+           (encode1 : E -> bin * E)
+           (encode2 : E -> bin * E) :=
   fun e0 =>
     let (p, e1) := encode1 e0 in
     let (q, e2) := encode2 e1 in
     (transform p q, e2).
 
-Global Instance compose_decoder A A' B E E'
-       (envequiv : E -> E' -> Prop)
-       (transformer : Transformer B)
+Global Instance compose_decoder A A'
+       (cache : Cache)
+       (transformer : Transformer)
        (project : A -> A')
        (predicate : A -> Prop)
        (predicate' : A' -> Prop)
-       (encode1 : A' -> E -> B * E)
-       (encode2 : A -> E -> B * E)
-       (decoder1 : decoder envequiv transformer predicate' encode1)
+       (encode1 : A' -> CacheEncode -> bin * CacheEncode)
+       (encode2 : A -> CacheEncode -> bin * CacheEncode)
+       (decoder1 : decoder cache transformer predicate' encode1)
        (pred_pf : forall data, predicate data -> predicate' (project data))
        (decoder2 : forall proj,
-           decoder envequiv transformer (fun data => predicate data /\ project data = proj) encode2)
-  : decoder envequiv transformer predicate
+           decoder cache transformer (fun data => predicate data /\ project data = proj) encode2)
+  : decoder cache transformer predicate
             (fun data ctx => compose transformer (encode1 (project data)) (encode2 data) ctx) :=
-  { decode := fun bin env => let (bundle, env') := @decode _ _ _ _ _ _ _ _ decoder1 bin env in
+  { decode := fun bin env => let (bundle, env') := @decode _ _ _ _ _ decoder1 bin env in
                              let (proj, rest) := bundle in
-                             @decode _ _ _ _ _ _ _ _ (decoder2 proj) rest env' }.
+                             @decode _ _ _ _ _ (decoder2 proj) rest env' }.
 Proof.
   destruct decoder1 as [decode1 decode1_pf]. simpl.
   intros env env' xenv xenv' data data' bin ext ext' env_pm pred_pm com_pf.
