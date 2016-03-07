@@ -42,7 +42,7 @@ Section CharBinEncoder.
     destruct (FixInt_decode 8 (app bin ext) env') as [[? ?] ?] eqn: eq.
     inversion Pdec; clear Pdec; subst.
     assert (s = FixInt_of_ascii (ascii_of_N (proj1_sig s))).
-    destruct s; eapply sig_equivalence; rewrite N_ascii_embedding; eauto.
+    destruct s. unfold FixInt_of_ascii. rewrite <- sig_equivalence. rewrite N_ascii_embedding; eauto.
     rewrite <- H2 in H. specialize (H eq_refl). intuition. subst.
     destruct (FixInt_of_ascii c) eqn: eq2. simpl. inversion eq2.
     rewrite ascii_N_embedding. eauto.
