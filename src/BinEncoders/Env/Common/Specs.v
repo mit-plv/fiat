@@ -1,20 +1,15 @@
 Require Export
-        Coq.Lists.List.
+        Coq.Lists.List
+        Fiat.BinEncoders.Env.Common.Transformer.
 
 Set Implicit Arguments.
 
 Section Specifications.
   Variable A B E E' : Type.
 
-  Class Transformer :=
-    { transform : B -> B -> B;
-      transform_id : B;
-      transform_id_pf : forall l, transform transform_id l = l;
-      transform_assoc : forall l m n, transform l (transform m n) = transform (transform l m) n }.
-
   Definition encode_decode_correct
              (envequiv  : E -> E' -> Prop)
-             (transformer : Transformer)
+             (transformer : Transformer B)
              (predicate : A -> Prop)
              (encode : A -> E -> B * E)
              (decode :  B -> E' -> A * B * E') :=
@@ -27,7 +22,7 @@ Section Specifications.
 
   Class decoder
         (envequiv  : E -> E' -> Prop)
-        (transformer : Transformer)
+        (transformer : Transformer B)
         (predicate : A -> Prop)
         (encode : A -> E -> B * E) :=
     { decode : B -> E' -> A * B * E';

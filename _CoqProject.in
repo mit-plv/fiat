@@ -39,7 +39,9 @@ src/BinEncoders/Env/BinLib/FixInt.v
 src/BinEncoders/Env/Common/Compose.v
 src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v
+src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Examples/Toy.v
+src/BinEncoders/Env/Lib/FixList.v
 src/BinEncoders/Env/Lib/IList.v
 src/BinEncoders/NoEnv/Specs.v
 src/BinEncoders/NoEnv/Automation/Solver.v
