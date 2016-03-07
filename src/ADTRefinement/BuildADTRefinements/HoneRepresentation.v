@@ -328,15 +328,15 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
              ));
     [ intros; simpl in *;
       match goal with
-      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ (?E _) => is_evar E; let H := fresh in set (H := E)
-      |  |- refine _ ?E => is_evar E; let H := fresh in set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+      |  |- refine _ ?E => is_evar E; let H := fresh in fast_set (H := E)
       | _ => idtac
       end;
       match goal with
