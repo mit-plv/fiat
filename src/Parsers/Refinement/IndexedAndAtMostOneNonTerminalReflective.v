@@ -814,7 +814,7 @@ Section IndexedImpl.
       | [ H : ascii_beq ?x ?y = true |- _ ] => apply ascii_bl in H
       | [ H : context[ascii_beq ?x ?x] |- _ ] => rewrite (ascii_lb eq_refl) in H
       | [ H : ?x = ?y, H' : option_beq _ ?x ?y' = _ |- _]
-        => match constr:(y, y') with
+        => match constr:((y, y')) with
              | (Some _, Some _) => idtac
              | (None, Some _) => idtac
              | (Some _, None) => idtac
