@@ -48,21 +48,21 @@ Section cfg.
       { specialize (fun str p H => paren_balanced_pb_parse_of_production _ _ _ str p H Hp1).
         specialize (fun str p H => paren_balanced_pb_parse_of_productions _ _ str p H Hp0).
         dependent destruction p.
-        let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:p1 end in
+        let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:(p1) end in
         specialize (paren_balanced_pb_parse_of_production _ p1 (snd Hforall)).
-        let p0 := match goal with p0 : parse_of_item _ _ _ |- _ => constr:p0 end in
+        let p0 := match goal with p0 : parse_of_item _ _ _ |- _ => constr:(p0) end in
         let p := fresh in
         rename p0 into p;
           dependent destruction p.
-        let p0 := match goal with p0 : parse_of _ _ _ |- _ => constr:p0 end in
+        let p0 := match goal with p0 : parse_of _ _ _ |- _ => constr:(p0) end in
         specialize (paren_balanced_pb_parse_of_productions _ p0 (snd (fst Hforall))).
         eapply paren_balanced'_split_0; eassumption. }
       { specialize (fun str p H => paren_balanced_pb_parse_of_production _ _ _ str p H Hp).
         clear paren_balanced_pb_parse_of_productions.
         dependent destruction p.
-        let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:p1 end in
+        let p1 := match goal with p1 : parse_of_production _ _ _ |- _ => constr:(p1) end in
         specialize (paren_balanced_pb_parse_of_production _ p1 (snd Hforall)).
-        let p0 := match goal with p0 : parse_of_item _ _ _ |- _ => constr:p0 end in
+        let p0 := match goal with p0 : parse_of_item _ _ _ |- _ => constr:(p0) end in
         let p := fresh in
         rename p0 into p;
           dependent destruction p.

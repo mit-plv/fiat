@@ -32,7 +32,7 @@ Local Ltac tuplify' a b :=
 Local Ltac tc_goal :=
   idtac;
   let H := fresh in
-  let G := match goal with |- ?G => constr:G end in
+  let G := match goal with |- ?G => constr:(G) end in
   test assert (H : G -> G) by abstract exact (fun x => x).
 
 Local Ltac tuple_generalize a b :=
@@ -181,8 +181,8 @@ Local Ltac Fix2_eq_t F_ext Rwf :=
            | [ |- appcontext[Fix2_F _ _ (?f ?x)] ] => generalize (f x)
          end;
   clear -F_ext Rwf;
-  let y := match goal with |- forall x : Acc _ (?y, ?y'), _ => constr:y end in
-  let y' := match goal with |- forall x : Acc _ (?y, ?y'), _ => constr:y' end in
+  let y := match goal with |- forall x : Acc _ (?y, ?y'), _ => constr:(y) end in
+  let y' := match goal with |- forall x : Acc _ (?y, ?y'), _ => constr:(y') end in
   tuplify' y y';
     let r := fresh "r" in
     let s := fresh "s" in
@@ -444,8 +444,8 @@ Section Fix2VTransfer.
             => let H := fresh in
                pose proof (@eq_rect_symmetry_flattenT_apply_unapply _ f1 x0 k) as H;
                  cbv beta in H |- *;
-                 let RHS := match type of H with _ = ?RHS => constr:RHS end in
-                 let LHS := match type of H with ?LHS = _ => constr:LHS end in
+                 let RHS := match type of H with _ = ?RHS => constr:(RHS) end in
+                 let LHS := match type of H with ?LHS = _ => constr:(LHS) end in
                  let G' := context G[LHS] in
                  change G';
                    rewrite H;

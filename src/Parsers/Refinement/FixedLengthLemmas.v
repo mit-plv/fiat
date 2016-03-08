@@ -58,7 +58,7 @@ Qed.
 Definition length_of_any_productions'_f
   := (fun x1 x2
       => match x1, x2 with
-           | same_length n1, same_length n2 => if Nat.eq_dec n1 n2 then same_length n1 else different_lengths
+           | same_length n1, same_length n2 => if EqNat.beq_nat n1 n2 then same_length n1 else different_lengths
            | cyclic_length, _ => cyclic_length
            | _, cyclic_length => cyclic_length
            | _, different_lengths => different_lengths
@@ -76,8 +76,10 @@ Proof.
   destruct x1, x2; simpl in *;
   repeat match goal with
            | _ => reflexivity
-           | [ H : context[Nat.eq_dec ?x ?y] |- _ ] => destruct (Nat.eq_dec x y)
-           | [ |- context[Nat.eq_dec ?x ?y] ] => destruct (Nat.eq_dec x y)
+           | [ H : context[if EqNat.beq_nat ?x ?y then _ else _] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
+           | [ |- context[EqNat.beq_nat ?x ?y] ] => destruct (EqNat.beq_nat x y) eqn:?
+           | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
+           | [ H : context[beq_nat ?n ?n] |- _ ] => rewrite <- beq_nat_refl in H
            | _ => progress subst
            | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
            | _ => intro
@@ -273,7 +275,7 @@ Proof.
   generalize dependent (Lookup_string G nt).
   intros.
   unfold length_of_any_productions' in *.
-  let p := match goal with H : parse_of _ _ _ |- _ => constr:H end in
+  let p := match goal with H : parse_of _ _ _ |- _ => constr:(H) end in
   let H := fresh in
   rename p into H;
     induction H; simpl in *.

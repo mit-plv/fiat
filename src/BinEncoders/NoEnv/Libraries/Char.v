@@ -1,8 +1,8 @@
 Require Export Coq.Strings.Ascii.
 Require Import Coq.omega.Omega
-               Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.BinCore
-               Fiat.BinEncoders.Libraries.FixInt.
+               Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.BinCore
+               Fiat.BinEncoders.NoEnv.Libraries.FixInt.
 
 Section CharBinEncoder.
   Definition Char_encode_inner (c : ascii) : bin_t.

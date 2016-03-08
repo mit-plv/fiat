@@ -1,4 +1,4 @@
-Require Import Fiat.BinEncoders.Specs.
+Require Import Fiat.BinEncoders.NoEnv.Specs.
 
 Set Implicit Arguments.
 

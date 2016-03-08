@@ -92,7 +92,7 @@ Proof.
   (P := fun tup' => tupleAgree tup tup' attrlist'
                             -> tupleAgree tup tup' attrlist) in H; eauto.
   intuition.
-  let H := match goal with H : tupleAgree _ _ _ |- _ => constr:H end in
+  let H := match goal with H : tupleAgree _ _ _ |- _ => constr:(H) end in
   apply (proj1 (Tuple_Agree_eq_dec _ _ _ _ _ )) in H;
     rewrite H in * ; simpl in *; eapply Tuple_Agree_eq_dec; eauto.
   destruct (Tuple_Agree_dec _ _ attr_eq_dec tup a); auto;

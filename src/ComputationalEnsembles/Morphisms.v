@@ -87,6 +87,6 @@ Add Parametric Morphism A B f b : (@fold_right A B f b)
       as fold_right_refineEquiv_mor.
 Proof.
   intros; split;
-  let H := match goal with H : Same_set _ _ _ |- _ => constr:H end in
+  let H := match goal with H : Same_set _ _ _ |- _ => constr:(H) end in
   setoid_rewrite H; reflexivity.
 Qed.

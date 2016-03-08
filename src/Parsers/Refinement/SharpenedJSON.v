@@ -92,13 +92,15 @@ total time:    324.664s
 
     finish_Sharpening_SplitterADT.
 
-  Defined.
+  Time Defined.
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec json_grammar HSL).
+  : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
-    make_simplified_splitter ComputationalSplitter'.
-  Defined.
+    Start Profiling.
+    Time make_simplified_splitter ComputationalSplitter'.
+    Show Profile.
+  Time Defined.
 
 End IndexedImpl.
 
@@ -109,18 +111,20 @@ Require Export Fiat.Parsers.StringLike.OcamlString.
 
 Definition json_parser (str : Coq.Strings.String.string) : bool.
 Proof.
-  Time make_parser (@ComputationalSplitter _ String.string_stringlike _ _). (* 0.82 s *)
-Defined.
+  Start Profiling.
+  Time make_parser (@ComputationalSplitter(* _ String.string_stringlike _ _*)).
+  Show Profile.
+Time Defined.
 
-Definition json_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
+(*Definition json_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
 Proof.
   Time make_parser (@ComputationalSplitter _ Ocaml.string_stringlike _ _). (* 0.82 s *)
-Defined.
+Defined.*)
 
-Print json_parser_ocaml.
+Print json_parser(*_ocaml*).
 
-Recursive Extraction json_parser_ocaml.
-
+Recursive Extraction json_parser(*_ocaml*).
+(*
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
 
@@ -186,4 +190,5 @@ Definition str400 := "ababababababababababababababababababababababababababababab
 Definition test2 := json_parser (str400 ++ str400 ++ str400 ++ str400).
 
 Recursive Extraction test0 test1 test2.
+*)
 *)

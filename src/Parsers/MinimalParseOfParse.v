@@ -871,7 +871,7 @@ Section cfg.
           Proof.
             destruct h as [|h]; [ clear; repeat intro; exfalso; omega | ].
             intros Hvalid' pf Hstr Hinit'.
-            let H := match goal with H : length str <= len0 |- _ => constr:H end in
+            let H := match goal with H : length str <= len0 |- _ => constr:(H) end in
 
             destruct (le_lt_eq_dec _ _ H) as [pf_lt|pf_eq].
             { (** [str] got smaller, so we reset the valid nonterminals list *)

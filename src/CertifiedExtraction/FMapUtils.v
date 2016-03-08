@@ -316,7 +316,7 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
   Ltac unfold_head_until term target :=
     let hd := head_constant term in
     match hd with
-    | target => constr:term
+    | target => constr:(term)
     | _ => let reduced := (eval cbv beta iota delta [hd] in term) in
           unfold_head_until reduced target
     end.

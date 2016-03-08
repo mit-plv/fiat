@@ -1,9 +1,9 @@
 Require Export Coq.Numbers.BinNums
                Coq.NArith.BinNat.
 Require Import Coq.omega.Omega
-               Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.Sig
-               Fiat.BinEncoders.Libraries.BinCore.
+               Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.Sig
+               Fiat.BinEncoders.NoEnv.Libraries.BinCore.
 
 Set Implicit Arguments.
 
