@@ -369,7 +369,7 @@ Section recursive_descent_parser.
                        end
                 end
               | idtac;
-                let RHS := match goal with |- _ = ?RHS => constr:RHS end in
+                let RHS := match goal with |- _ = ?RHS => constr:(RHS) end in
                 match RHS with
                   | appcontext[match ?it with Terminal _ => _ | _ => _ end]
                     => destruct it eqn:?

@@ -272,23 +272,23 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         + eauto.
         + eapply IHl in H0; intuition.
           * apply H.
-            let H1 := match goal with H1 : InA _ _ _ |- _ => constr:H1 end in
+            let H1 := match goal with H1 : InA _ _ _ |- _ => constr:(H1) end in
             apply inA_map' with (eqA := @MKeys.eq_key_elt _) in H1;
               eauto with typeclass_instances.
             destruct_ex; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3.
             destruct x.
-            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:H2 end in
+            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:(H2) end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H2.
             eapply inA_map with (eqA := @MKeys.eq_key_elt _);
               eauto with typeclass_instances.
-            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:H2 end in
+            let H2 := match goal with H2 : InA _ _ _ |- _ => constr:(H2) end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
-            let H2 := match goal with H2 : MKeys.MapsTo _ _ _ |- _ => constr:H2 end in
+            let H2 := match goal with H2 : MKeys.MapsTo _ _ _ |- _ => constr:(H2) end in
             rewrite MoreMKeysFacts.BasicFacts.add_mapsto_iff in H2;
               intuition; subst.
-            let H2 := match goal with H2 : MKeys.E.eq _ _ |- _ => constr:H2 end in
+            let H2 := match goal with H2 : MKeys.E.eq _ _ |- _ => constr:(H2) end in
             simpl in H3; rewrite H2 in n; intuition.
       - destruct (E.eq_dec k a).
         rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H0.
@@ -449,9 +449,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           case_InA; eauto.
           unfold Proper, respectful; intros.
           repeat case_InA; subst; eauto.
-          let H := match goal with H : E.eq _ _ |- _ => constr:H end in
+          let H := match goal with H : E.eq _ _ |- _ => constr:(H) end in
           rewrite H in i0; intuition.
-          let H := match goal with H : E.eq _ _ |- _ => constr:H end in
+          let H := match goal with H : E.eq _ _ |- _ => constr:(H) end in
           rewrite <- H in i0; intuition.
         + assert (MKeys.In key (KeyMap container)).
           induction (projection item0); simpl in *.
@@ -572,9 +572,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             rewrite <- H5 in i0; intuition.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i1; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i1; intuition.
             intro; eapply n.
             destruct (E.eq_dec key a).
@@ -621,9 +621,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             reflexivity.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i0; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i0; intuition.
           * unfold InvertedIndex_RepInv in containerCorrect; intuition.
             destruct H.
@@ -667,9 +667,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             case_InA; eauto.
             unfold Proper, respectful; intros.
             repeat case_InA; eauto.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i0; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i0; intuition.
             unfold not; intros.
             destruct H3; rewrite FMap_fold_add_MapsTo_In in H3.
@@ -687,9 +687,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             case_InA; eauto.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i0; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i0; intuition.
             intro H'; apply MKeys_elements_in_iff in H'; destruct H';
             eapply MKeys.empty_1; eauto.
@@ -700,9 +700,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             apply MKeysProperties.filter_iff.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i; intuition.
             split; eauto.
             case_InA; intuition.
@@ -713,20 +713,20 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             case_InA; intuition.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i; intuition.
             intro; apply n.
             destruct H3; apply FMap_fold_add_MapsTo_In in H3; intuition.
             apply filter_InA in H8; intuition.
             unfold Proper, respectful; intros.
             repeat case_InA; try reflexivity.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3 in i; intuition.
-            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:H3 end in
+            let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite <- H3 in i; intuition.
-            let H8 := match goal with H8 : InA _ _ _ |- _ => constr:H8 end in
+            let H8 := match goal with H8 : InA _ _ _ |- _ => constr:(H8) end in
             apply MKeys_elements_in_iff in H8; destruct H8;
             eapply MKeys.empty_1; eauto.
       - inversion H; subst.

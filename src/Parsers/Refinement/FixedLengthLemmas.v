@@ -275,7 +275,7 @@ Proof.
   generalize dependent (Lookup_string G nt).
   intros.
   unfold length_of_any_productions' in *.
-  let p := match goal with H : parse_of _ _ _ |- _ => constr:H end in
+  let p := match goal with H : parse_of _ _ _ |- _ => constr:(H) end in
   let H := fresh in
   rename p into H;
     induction H; simpl in *.
