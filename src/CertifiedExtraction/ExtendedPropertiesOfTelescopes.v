@@ -236,7 +236,7 @@ Ltac decide_TelEq_instantiate_do_swaps k target :=
 Ltac decide_TelEq_instantiate_step :=
   match goal with
   | [  |- TelEq _ ?from ?to ] =>
-    match constr:(from, to) with
+    match constr:((from, to)) with
     | _ => rewrite DropName_Cons_Some_eq by congruence
     | _ => rewrite DropName_Cons_Some_neq by congruence
     | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
