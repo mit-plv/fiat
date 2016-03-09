@@ -543,7 +543,8 @@ Section IndexedImpl.
       ret (drop n s),
 
     Def Method3 "splits"(s : rep) (idx : default_production_carrierT) (offset : nat) (len : nat) : rep * (list nat) :=
-      dummy <- { ls : list nat | True };
+      (*dummy <- { ls : list nat | True };*)
+      let dummy := 0::nil in
       expanded_fallback_list' P s offset len idx dummy
   }.
 
@@ -686,9 +687,9 @@ Section IndexedImpl.
     assert (H' : forall A B (x : A * B), (fst x, snd x) = x) by (intros; destruct x; reflexivity).
     setoid_rewrite H'.
     simplify with monad laws.
-    eapply refine_under_bind_helper_2; [ | reflexivity ]; instantiate; simpl.
+    (*eapply refine_under_bind_helper_2; [ | reflexivity ]; instantiate; simpl.
     intros.
-    etransitivity; [ | eassumption ]; instantiate; clear -H.
+    etransitivity; [ | eassumption ]; instantiate; clear -H.*)
     apply H.
   Defined.
 
@@ -814,7 +815,7 @@ Section IndexedImpl.
       | [ H : ascii_beq ?x ?y = true |- _ ] => apply ascii_bl in H
       | [ H : context[ascii_beq ?x ?x] |- _ ] => rewrite (ascii_lb eq_refl) in H
       | [ H : ?x = ?y, H' : option_beq _ ?x ?y' = _ |- _]
-        => match constr:(y, y') with
+        => match constr:((y, y')) with
              | (Some _, Some _) => idtac
              | (None, Some _) => idtac
              | (Some _, None) => idtac
@@ -963,7 +964,7 @@ Section IndexedImpl.
                      => clear H s
                    end ].
 
-  Lemma FirstStep
+  Lemma FirstStep_preopt
   : refineADT (string_spec G HSL) rindexed_spec.
   Proof.
     refine (transitivityT _ _ _ _ FirstStep_helper_1).

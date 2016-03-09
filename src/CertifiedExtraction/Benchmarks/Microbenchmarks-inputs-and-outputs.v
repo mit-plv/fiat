@@ -412,7 +412,7 @@ Time Eval lazy in (extract_facade micro_fold_flatten_rev).
 Ltac _compile_random :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, Cons ?k Random ?tenv') =>
               match k with
               | NTNone => let vrandom := gensym "random" in

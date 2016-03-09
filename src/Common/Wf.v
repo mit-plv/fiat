@@ -358,8 +358,8 @@ Section FixVTransfer.
             => let H := fresh in
                pose proof (@eq_rect_symmetry_flattenT_apply_unapply _ f1 x0 k) as H;
                  cbv beta in H |- *;
-                 let RHS := match type of H with _ = ?RHS => constr:RHS end in
-                 let LHS := match type of H with ?LHS = _ => constr:LHS end in
+                 let RHS := match type of H with _ = ?RHS => constr:(RHS) end in
+                 let LHS := match type of H with ?LHS = _ => constr:(LHS) end in
                  let G' := context G[LHS] in
                  change G';
                    rewrite H;

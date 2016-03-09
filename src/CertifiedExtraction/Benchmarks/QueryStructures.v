@@ -2693,7 +2693,7 @@ Qed. *)
 Ltac _compile_CallBagFind :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
               match bf with
               | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
@@ -2723,7 +2723,7 @@ Ltac _compile_CallBagFind :=
 Ltac _compile_length :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?pre, Cons ?k (ret (bool2w (EqNat.beq_nat (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
               let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapTupleList)) seq) ext in
               match vlst with
@@ -2735,7 +2735,7 @@ Ltac _compile_length :=
 Ltac _compile_CallBagInsert := (* FIXME should do the insert in the second branch *)
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome (H := ?h) ?vrep) (ret ?db) (fun _ => ?tenv),
                Cons NTNone ?bm (fun a => Cons ?vret _ (fun _ => Cons (NTSome ?vrep') (ret a) (fun _ => ?tenv')))) =>
               unify vrep vrep';
@@ -2754,7 +2754,7 @@ Ltac _compile_CallBagInsert := (* FIXME should do the insert in the second branc
 Ltac _compile_allocTuple :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?pre, Cons ?k (ret ?tup) (fun _ => ?pre)) =>
               match type of tup with
               | FiatTuple _ =>
@@ -2811,7 +2811,7 @@ Ltac _compile_allocTuple :=
                let vhead' := gensym "head'" in
                let vtest := gensym "test" in
                let vtmp := gensym "tmp" in
-               match constr:(pre, post) with
+               match constr:((pre, post)) with
                | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
                  unify seq seq';
                    apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
@@ -2941,7 +2941,7 @@ Ltac _compile_get :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             let vtmp := gensym "tmp" in
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome (H:=?h) ?k) (ret ?tup) ?tenv, Cons (NTSome (H:=?h') ?k') (ret (GetAttributeRaw ?tup' ?idx')) _) =>
               unify tup tup';
                 let vpos := gensym "pos" in
@@ -3080,7 +3080,7 @@ Proof.
 
     let pre := (eval unfold pre in pre) in
     let post := (eval unfold post in post) in
-    lazymatch constr:(pre, post) with
+    lazymatch constr:((pre, post)) with
     | (Cons (NTSome (H := ?_h) ?_vdb) (ret (prim_fst ?_db)) (fun _ => ?_tenv), Cons NTNone ?_bf _) =>
 pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as h
     end.
@@ -3134,7 +3134,7 @@ pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as
 
     let pre := (eval unfold pre in pre) in
     let post := (eval unfold post in post) in
-    lazymatch constr:(pre, post) with
+    lazymatch constr:((pre, post)) with
     | ([[NTSome ?vdb <-- prim_fst ?db as _]]::?tenv, [[?bf as kk]]::_) =>
       pose bf
     end.
@@ -3174,7 +3174,7 @@ pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as
 Ltac _compile_CallBagFind :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
               match bf with
               | CallBagMethod Fin.F1 BagFind ?db ?kwd =>

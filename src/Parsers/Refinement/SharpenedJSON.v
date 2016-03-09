@@ -19,10 +19,14 @@ Section IndexedImpl.
   : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
 
-    start sharpening ADT.
-    start honing parser using indexed representation.
+    Time start sharpening ADT.
+    Start Profiling.
+    Time start honing parser using indexed representation.
+    Show Profile.
 
-    hone method "splits".
+    Start Profiling.
+    Time hone method "splits".
+    Show Profile.
     {
       Start Profiling.
       Time simplify parser splitter.

@@ -35,7 +35,7 @@ Qed.
 Ltac compile_random :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, Cons (av := ?av) ?s Random ?tenv') =>
                call_tactic_after_moving_head_binding_to_separate_goal
                  ltac:(apply CompileCallRandom);

@@ -471,7 +471,7 @@ Section parser.
       | [ H : AbsR ?Ok ?str ?st
           |- appcontext[msplits ?arg1 ?arg2 ?arg3 ?st] ]
         => let T := type of Ok in
-           let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:impl end) in
+           let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:(impl) end) in
            let H' := fresh in
            pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 arg2 arg3 ((cMethods impl splits st arg1 arg2 arg3)) (ReturnComputes _)) as H';
              change (msplits arg1 arg2 arg3 st) with (snd (premsplits st arg1 arg2 arg3));

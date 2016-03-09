@@ -8,6 +8,7 @@ Require Import Fiat.Common.Wf Fiat.Common.Wf2.
 Require Import Fiat.Common.List.Operations.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.Refinement.FinishingLemma.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 Global Arguments min !_ !_.
@@ -15,14 +16,13 @@ Global Arguments max !_ !_.
 Global Arguments Compare_dec.leb !_ !_.
 Global Arguments List.nth {A} !_ !_ _.
 
-Declare Reduction splitter_red0 := cbv beta iota zeta delta [ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
+Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
 
 Ltac splitter_red term :=
-  let term0 := (eval simpl in term) in
-  let term1 := (eval splitter_red0 in term0) in
-  let term2 := (eval simpl in term1) in
-  let term3 := (eval splitter_red0 in term2) in
-  constr:term3.
+  let term := (eval splitter_red0 in term) in
+  let term := (eval simpl @fst in term) in
+  let term := (eval simpl @snd in term) in
+  constr:(term).
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
@@ -57,7 +57,7 @@ Ltac parser_red_gen term :=
                 | context[ParserFromParserADT.parser _ ?splitter]
                   => let splitter' := head splitter in
                      (eval unfold splitter' in term)
-                | _ => constr:term
+                | _ => constr:(term)
               end in
   let term := (eval parser_red0 in term) in
   let term := (eval parser_red1 in term) in
@@ -78,7 +78,7 @@ Ltac parser_red_gen term :=
                  | _ => term
                end) in
   let term := (eval parser_red17 in term) in*)
-  constr:term.
+  constr:(term).
 
 Class eq_refl_vm_cast T := by_vm_cast : T.
 Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
@@ -91,7 +91,7 @@ Ltac type_of_no_anomaly x :=
 
 Ltac make_Parser splitter :=
   let b0 := constr:(fun pf => ParserFromParserADT.parser pf splitter) in
-  let T := match type_of_no_anomaly b0 with ?T -> _ => constr:T end in
+  let T := match type_of_no_anomaly b0 with ?T -> _ => constr:(T) end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in
   b.
@@ -99,8 +99,8 @@ Ltac make_Parser splitter :=
 Ltac make_parser splitter :=
   idtac;
   let str := match goal with
-               | [ str : String.string |- _ ] => constr:str
-               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+               | [ str : String.string |- _ ] => constr:(str)
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:(str)
              end in
   let b := make_Parser splitter in
   let b := constr:(ParserInterface.has_parse b str) in
@@ -110,8 +110,8 @@ Ltac make_parser splitter :=
 Ltac make_parser_informative_opaque splitter :=
   idtac;
   let str := match goal with
-               | [ str : String.string |- _ ] => constr:str
-               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+               | [ str : String.string |- _ ] => constr:(str)
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:(str)
              end in
   let b := make_Parser splitter in
   let b := (eval cbv beta in b) in
@@ -128,8 +128,8 @@ Ltac make_parser_informative_opaque splitter :=
 Ltac make_parser_informative splitter :=
   idtac;
   let str := match goal with
-               | [ str : String.string |- _ ] => constr:str
-               | [ str : Ocaml.Ocaml.string |- _ ] => constr:str
+               | [ str : String.string |- _ ] => constr:(str)
+               | [ str : Ocaml.Ocaml.string |- _ ] => constr:(str)
              end in
   let b := make_Parser splitter in
   let b := constr:(ParserInterface.parse b str) in
@@ -138,7 +138,13 @@ Ltac make_parser_informative splitter :=
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
-  let impl := (splitter_red (projT1 splitter)) in
+  let term := constr:(projT1 splitter) in
+  let h := head splitter in
+  let term := match constr:Set with
+              | _ => (eval cbv [h] in term)
+              | _ => term
+              end in
+  let impl := (splitter_red term) in
   refine (existT _ impl _).
 
 Ltac make_simplified_splitter splitter :=

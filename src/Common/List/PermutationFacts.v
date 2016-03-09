@@ -239,10 +239,10 @@ Proof.
   split; intros;
   [ eapply InA_app_swap; eauto
   | ];
-  let H := match goal with H : InA _ _ _ |- _ => constr:H end in
+  let H := match goal with H : InA _ _ _ |- _ => constr:(H) end in
   intros; eapply InA_app_iff;
   eapply InA_app_iff in H; eauto; intuition;
-  let H := match goal with H : InA _ _ _ |- _ => constr:H end in
+  let H := match goal with H : InA _ _ _ |- _ => constr:(H) end in
   inversion H; subst; eauto.
 Qed.
 

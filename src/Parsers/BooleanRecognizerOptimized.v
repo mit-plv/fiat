@@ -347,7 +347,7 @@ Section recursive_descent_parser.
          | (fun a' : ?A0 => forall (b' :@?B a') (c' : @?C a' b') (d' : @?D a' b' c') (e' : @?E a' b' c' d') (h' : @?H a' b' c' d' e'), @?P a' b' c' d' e' h')
            => let H' := fresh in
               (*refine (_ : @Fix A R Rwf T (fun a0 b0 c0 d0 e0 h0 i0 => _) a b c d e h = _);
-                 let f' := match goal with |- @Fix _ _ _ _ ?f' _ _ _ _ _ _ = _ => constr:f' end in*)
+                 let f' := match goal with |- @Fix _ _ _ _ ?f' _ _ _ _ _ _ = _ => constr:(f') end in*)
               pose proof ((fun f' H0 => @Fix2_5_Proper_eq A A' B C D E H R Rwf P f' f H0 a a' b c d e h)) as H';
           cbv beta in H';
           (lazymatch type of H' with
@@ -495,7 +495,7 @@ Section recursive_descent_parser.
     match RHS with
       | appcontext G[y] => let RHS' := context G[x] in
                            fix_trans_helper RHS' x y
-      | _ => constr:RHS
+      | _ => constr:(RHS)
     end.
 
   Local Ltac fix2_trans :=
