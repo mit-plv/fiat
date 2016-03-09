@@ -161,7 +161,55 @@ Fixpoint NumUpTo n acc :=
 Definition BuildArgNames n m :=
   List.app (map nthArgName (NumUpTo n nil))
            (map nthRepName (NumUpTo m nil)).
-Compute (BuildArgNames 3 5).
+
+Lemma BuildArgNamesNoDup n m
+  : ListFacts3.is_no_dup (BuildArgNames n m) = true.
+Proof.
+  induction n; simpl.
+  - unfold BuildArgNames; simpl.
+    remember [] as l;
+      assert (NoDup l) as NoDupL by (subst; econstructor); 
+      clear Heql; revert l NoDupL.
+    induction m; simpl.
+    + induction l.
+      * simpl; reflexivity.
+      * simpl; intros.
+        unfold ListFacts3.is_no_dup in *; simpl.
+        inversion NoDupL; subst.
+        apply Bool.andb_true_iff; split.
+        revert H1; clear; induction l; simpl; intros; eauto.
+        admit.
+        (*{ apply Bool.andb_true_iff; split.
+          unfold nthRepName; simpl.
+          eapply Bool.negb_true_iff.
+          unfold ListFacts3.string_bool.
+          unfold ListFacts3.sumbool_to_bool.
+          find_if_inside; eauto.
+          injections.
+          admit.
+        } *)
+        eauto. 
+    + intros; simpl.
+      apply IHm.
+      constructor; eauto.
+      admit.
+  -  unfold BuildArgNames; simpl.
+Admitted.
+
+Lemma BuildArgNames_args_name_ok
+  : forall n m, forallb NameDecoration.is_good_varname (BuildArgNames n m) = true.
+Proof.
+Admitted.
+
+Lemma Ret_ret_name_ok : NameDecoration.is_good_varname "ret" = true.
+Proof.
+  reflexivity.
+Qed.  
+
+Lemma ret_NIn_BuildArgNames
+  : forall n m, negb (is_in "ret" (BuildArgNames n m)) = true.
+Proof.
+Admitted.
 
 Definition Shelve {A} (a : A) := True.
 
@@ -495,6 +543,194 @@ Definition BuildCompileUnit2T
            H
            (exports := GenExports env adt cWrap dWrap f' f'' H) :=
   {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt P f g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+
+Definition BuildDFFun
+           av
+           (env : Env av)
+           {WrappedRepT RepT}
+           cod
+           dom
+           WrappedCod
+           WrappedDom
+           meth
+           P
+           (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
+           (DecomposeRepCount : nat)
+           wrappedRep
+           (progOK : {prog : Stmt &
+                             LiftMethod (Cod := cod) (Dom := dom) env P (DecomposeRep wrappedRep)
+                                        WrappedCod WrappedDom prog meth
+                       (* Syntactic Checks *)
+                     /\ NoUninitDec.is_no_uninited
+                          {|
+                            FuncCore.ArgVars := BuildArgNames (Datatypes.length dom)
+                                                              DecomposeRepCount;
+                            FuncCore.RetVar := "ret";
+                            FuncCore.Body := Compile.compile
+                                               (CompileDFacade.compile prog) |} = true
+                     /\ (GoodModuleDec.is_arg_len_ok
+                           (Compile.compile (CompileDFacade.compile prog)) = true)
+                     /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length dom) DecomposeRepCount) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                         true)
+                     /\  is_disjoint (assigned prog)
+                                     (StringSetFacts.of_list
+                                        (BuildArgNames (Datatypes.length dom)
+                                                       DecomposeRepCount)) = true
+                     /\ is_syntax_ok prog = true} )           
+  : DFFun.
+Proof.
+  refine {| Core := {| ArgVars := BuildArgNames (List.length dom) DecomposeRepCount;
+                        RetVar := "ret";
+                        Body := projT1 progOK;
+                        args_no_dup := BuildArgNamesNoDup _ _;
+                        ret_not_in_args := ret_NIn_BuildArgNames _ _;
+                        no_assign_to_args := proj1 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
+                        args_name_ok := BuildArgNames_args_name_ok _ _;
+                        ret_name_ok := Ret_ret_name_ok;
+                        syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))))
+                                         
+                     |} |}.
+  unfold FModule.is_syntax_ok; simpl.
+  unfold GoodModuleDec.is_good_func; simpl.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply BuildArgNamesNoDup.
+  destruct progOK; simpl in *; intuition.
+  destruct progOK; simpl in *; intuition.
+  destruct progOK; simpl in *; intuition.
+Defined.
+
+Definition BuildFun
+           av
+           (env : Env av)
+           {WrappedRepT}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
+           (DecomposeRepCount : nat)
+           codWrap
+           domWrap
+           wrappedRep
+                      (progsOK : forall midx, 
+               {prog : Stmt &
+                       LiftMethod env P (DecomposeRep wrappedRep)
+                                  (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                       (* Syntactic Checks *)
+                       /\ NoUninitDec.is_no_uninited
+                            {|
+                              FuncCore.ArgVars := BuildArgNames (Datatypes.length _)
+                                                                DecomposeRepCount;
+                              FuncCore.RetVar := "ret";
+                              FuncCore.Body := Compile.compile
+                                                 (CompileDFacade.compile prog) |} = true
+                       /\ (GoodModuleDec.is_arg_len_ok
+                             (Compile.compile (CompileDFacade.compile prog)) = true)
+                       /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length _) DecomposeRepCount) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                           true)
+                       /\  is_disjoint (assigned prog)
+                                       (StringSetFacts.of_list
+                                          (BuildArgNames (Datatypes.length _)
+                                                         DecomposeRepCount)) = true
+                       /\ is_syntax_ok prog = true} )
+  : StringMap.t DFFun :=
+  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
+                                              (BuildDFFun DecomposeRep
+                                                          _ wrappedRep (progsOK el) ) acc) (BuildFinUpTo n') (StringMap.empty _).
+
+Definition BuildCompileUnit2T'
+           av
+           (env : Env av)
+           {WrappedRepT}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
+           DecomposeRepPre
+           DecomposeRepPost
+           numRepArgs
+           ax_mod_name'
+           op_mod_name'
+           codWrap
+           domWrap
+           wrappedRep
+           DecomposeRepPrePoseAgree
+           (exports := GenExports env adt codWrap domWrap
+                                  DecomposeRepPre DecomposeRepPost
+                                  DecomposeRepPrePoseAgree)
+           (progsOK : forall midx, 
+               {prog : Stmt &
+                       LiftMethod env P (DecomposeRep wrappedRep)
+                                  (codWrap midx) (domWrap midx) prog (Methods adt midx) 
+                       (* Syntactic Checks *)
+                       /\ NoUninitDec.is_no_uninited
+                            {|
+                              FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx)))
+                                                                numRepArgs;
+                              FuncCore.RetVar := "ret";
+                              FuncCore.Body := Compile.compile
+                                                 (CompileDFacade.compile prog) |} = true
+                       /\ (GoodModuleDec.is_arg_len_ok
+                             (Compile.compile (CompileDFacade.compile prog)) = true)
+                       /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                           true)
+                       /\  is_disjoint (assigned prog)
+                                       (StringSetFacts.of_list
+                                          (BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx)))
+                                                         numRepArgs)) = true
+                       /\ is_syntax_ok prog = true} )
+  : BuildCompileUnit2T env
+                       adt
+                       P
+                       DecomposeRep
+                       DecomposeRepPre
+                       DecomposeRepPost
+                       numRepArgs
+                       ax_mod_name'
+                       op_mod_name'
+                       codWrap
+                       domWrap
+                       wrappedRep
+                       DecomposeRepPrePoseAgree.
+Proof.
+  eexists {| module := {| Funs :=
+                            BuildFun
+                              adt DecomposeRep _ codWrap domWrap
+                              wrappedRep progsOK;
+                          Imports := GLabelMap.empty _ |} |}.
+  unfold CompileUnit2Equiv; repeat split; simpl; eauto.
+  unfold DFModuleEquiv; intros.
+  eexists (BuildDFFun DecomposeRep _ wrappedRep (progsOK midx)).
+  simpl. repeat split.
+  apply (projT2 (progsOK midx)).
+  admit.
+Admitted.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
@@ -1576,7 +1812,7 @@ Proof.
   (wrap (WrappingType := (Value QsADTs.ADTValue)) (ListWToTuple [[[val1; val2; val3]]])).
   apply SameValues_Pop_Both; [ apply (eq_ret_compute eq_refl) | ].
   cleanup_StringMap_head.
-  
+
   repeat apply DropName_remove; try eassumption.
 
   do 4 try destruct x as [ | ? x ];
@@ -2128,10 +2364,10 @@ Proof.
   repeat apply DropName_remove; congruence.
 Qed.
 
-Lemma CompileWordList_push_spec :
-  forall vtmp vhd vlst fpointer (env: Env ADTValue) ext tenv
+(*Lemma CompileWordList_push_spec :
+  forall vtmp vhd vlst fpointer (env: Env QsADTs.ADTValue) ext tenv
     h (t: list W),
-    GLabelMap.MapsTo fpointer (Axiomatic WordList_push) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordList_push) env ->
     PreconditionSet tenv ext [[[vtmp;vhd;vlst]]] ->
     {{ [[ `vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
       Call vtmp fpointer (vlst :: vhd :: nil)
@@ -2143,15 +2379,15 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   move_to_front vhd; apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   apply CompileSkip.
-Qed.
+Qed. *)
 
-Lemma CompileMap_TuplesToWords :
-  forall {N} (lst: list (FiatTuple N)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value ADTValue)) tenv tenv' (f: FiatTuple N -> W),
-    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
-    GLabelMap.MapsTo falloc (Axiomatic (WordList_new)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
-    GLabelMap.MapsTo fcons (Axiomatic (WordList_push)) env ->
+(*Lemma CompileMap_TuplesToWords :
+  forall {N} (lst: list (FiatTuple N)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' (f: FiatTuple N -> W),
+    GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
+    GLabelMap.MapsTo falloc (Axiomatic (QsADTs.WordList_new)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env ->
+    GLabelMap.MapsTo fcons (Axiomatic (QsADTs.WordList_push)) env ->
     PreconditionSet tenv ext [[[vhead; vhead'; vtest; vlst; vret; vtmp]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     {{ [[`vret <-- (revmap f lst) as _]] :: tenv }}
@@ -2189,14 +2425,14 @@ Proof.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
 
   apply CompileWordList_push_spec; try compile_do_side_conditions.
-Qed.
+Qed. *)
 
-Lemma CompileTupleList_Loop_ret :
+(* Lemma CompileTupleList_Loop_ret :
   forall {N A} `{FacadeWrapper (Value ADTValue) A}
     lst init facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
-    GLabelMap.MapsTo fpop (Axiomatic TupleList_pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic TupleList_empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic TupleList_delete) env ->
+    GLabelMap.MapsTo fpop (Axiomatic QsADTs.TupleList_pop) env ->
+    GLabelMap.MapsTo fempty (Axiomatic QsADTs.TupleList_empty) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.TupleList_delete) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     (forall head acc (s: list (FiatTuple N)),
@@ -2271,28 +2507,28 @@ Proof.
   apply CompileSkip.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
-Defined.
+Defined. *)
 
 Lemma CompileTuples2_findSecond :
-  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
     (table: FiatBag (S (S N))) (key: W)
     (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
                ret (table,
                     List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
                : Comp (_ * list (FiatTuple (S (S N)))))),
-    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findSecond) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
     Lifted_not_mapsto_adt ext tenv vret ->
     NoDuplicates [[[vret; vtable; vkey]]] ->
     vret ∉ ext ->
     vtable ∉ ext ->
-    functional (IndexedEnsemble_TupleToListW table) ->
+    TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
-           :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+           :: [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
+           :: [[ (@NTSome QsADTs.ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
@@ -2306,23 +2542,23 @@ Proof.
 Qed.
 
 Lemma CompileTuples2_findSecond_spec :
-  forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
     (table: FiatBag (S (S N))) (key: W)
     (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
                ret (table,
                     List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
                : Comp (_ * list (FiatTuple (S (S N)))))),
-    GLabelMap.MapsTo fpointer (Axiomatic Tuples2_findSecond) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
     vret <> vkey ->
     vtable <> vkey ->
-    functional (IndexedEnsemble_TupleToListW table) ->
-    {{ [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
+    TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
+    {{ [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
     {{ [[ table' as retv ]]
-         :: [[ (@NTSome ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
-         :: [[ (@NTSome ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
+         :: [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- fst retv as _ ]]
+         :: [[ (@NTSome QsADTs.ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
          :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
@@ -2360,8 +2596,6 @@ Proof.
     eapply IHn; eassumption.
 Qed.
 
-
-
 Lemma Lift_Ensemble :
   forall n r idx el,
     Ensembles.In (FiatElement n) r
@@ -2371,8 +2605,8 @@ Lemma Lift_Ensemble :
     <->
     Ensembles.In (BedrockElement) (IndexedEnsemble_TupleToListW r)
                  {|
-                   elementIndex := idx;
-                   indexedElement := TupleToListW el |}.
+                   TuplesF.elementIndex := idx;
+                   TuplesF.indexedElement := TupleToListW el |}.
 Proof.
   split; intros.
   - econstructor; intuition eauto.
@@ -2384,8 +2618,7 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-
-Lemma postConditionAdd :
+(*Lemma postConditionAdd :
   forall n
          (r : FiatBag n)
          (H : functional (IndexedEnsemble_TupleToListW r))
@@ -2455,7 +2688,7 @@ Proof.
       reflexivity.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
-Qed.
+Qed. *)
 
 Ltac _compile_CallBagFind :=
   match_ProgOk
@@ -2537,7 +2770,7 @@ Ltac _compile_allocTuple :=
               end
             end).
 
-  Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
+(*  Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
        let vtmp2 := gensym "tmp'" in
        let vsize := gensym "size" in
        let vtest := gensym "test" in
@@ -2548,7 +2781,7 @@ Ltac _compile_allocTuple :=
              | eapply CompileSeq;
                [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
                                                         (vtest := vtest) (vhead := vhead)) | ] ].
-
+ *)
 
 
   Lemma CompileConstantBool:
@@ -2571,7 +2804,7 @@ Ltac _compile_allocTuple :=
     intros; reflexivity.
   Qed.
 
-  Ltac _compile_map ::=
+  (*Ltac _compile_map ::=
        match_ProgOk
        ltac:(fun prog pre post ext env =>
                let vhead := gensym "head" in
@@ -2583,7 +2816,7 @@ Ltac _compile_allocTuple :=
                  unify seq seq';
                    apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
                end).
-
+*)
 
   Lemma CompileTuple_Get_helper :
     forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
@@ -2643,7 +2876,7 @@ Lemma CompileTuple_get_helper':
   Qed.
 
 Lemma CompileTuple_Get:
-  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (tup : FiatTuple N) (idx: Fin.t N),
     vtup <> vret ->
     vret ∉ ext ->
@@ -2651,7 +2884,7 @@ Lemma CompileTuple_Get:
     Lifted_MapsTo ext tenv vpos (wrap (Word.natToWord 32 (proj1_sig (Fin.to_nat idx)))) ->
     Lifted_not_mapsto_adt ext tenv vret ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic Tuple_get) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuple_get) env ->
     {{ tenv }}
       Call vret fpointer (vtup :: vpos :: nil)
       {{ [[(NTSome (H := FacadeWrapper_SCA) vret) <--
@@ -2670,14 +2903,14 @@ Proof.
 Qed.
 
 Lemma CompileTuple_Get_spec:
-  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext N
+  forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
     (fpointer : GLabelMap.key) (tup : FiatTuple N) (idx: Fin.t N),
     PreconditionSet tenv ext [[[vtup; vret; vpos]]] ->
     vret ∉ ext ->
     vtup ∉ ext ->
     NotInTelescope vret tenv ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpointer (Axiomatic Tuple_get) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuple_get) env ->
     {{ [[ `vtup <-- tup as _ ]] :: tenv }}
       (Seq (Assign vpos (Const (Word.natToWord 32 (proj1_sig (Fin.to_nat idx))))) (Call vret fpointer (vtup :: vpos :: nil)))
     {{ [[ `vtup <-- tup  as _]]
@@ -2696,7 +2929,7 @@ Proof.
   remember (match CompileTuple_Get_helper idx in (_ = W) return (Vector.nth (AttrList (MakeWordHeading N)) idx -> W) with
       | eq_refl => fun t : Vector.nth (AttrList (MakeWordHeading N)) idx => t
             end (ilist2.ith2 tup idx)). (* Otherwise Coq crashes *)
-  setoid_replace tenv with (DropName vret tenv) using relation (@TelStrongEq ADTValue) at 2.
+  setoid_replace tenv with (DropName vret tenv) using relation (@TelStrongEq QsADTs.ADTValue) at 2.
   computes_to_inv;
     subst; apply CompileTuple_Get; repeat (PreconditionSet_t || compile_do_side_conditions || decide_not_in || Lifted_t).
   apply Lifted_MapsTo_Ext; decide_mapsto_maybe_instantiate.
@@ -2721,48 +2954,47 @@ Ltac _compile_get :=
                     apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
-Print Env.
-Definition QSEnv : Env ADTValue :=
+Definition QSEnv : Env QsADTs.ADTValue :=
   (GLabelMap.empty _)
-  ### ("ADT", "Tuple_new") ->> (Axiomatic Tuple_new)
-  ### ("ADT", "Tuple_delete") ->> (Axiomatic Tuple_delete)
-  ### ("ADT", "Tuple_copy") ->> (Axiomatic Tuple_copy)
-  ### ("ADT", "Tuple_get") ->> (Axiomatic Tuple_get)
-  ### ("ADT", "Tuple_set") ->> (Axiomatic Tuple_set)
+  ### ("ADT", "Tuple_new") ->> (Axiomatic QsADTs.Tuple_new)
+  ### ("ADT", "Tuple_delete") ->> (Axiomatic QsADTs.Tuple_delete)
+  ### ("ADT", "Tuple_copy") ->> (Axiomatic QsADTs.Tuple_copy)
+  ### ("ADT", "Tuple_get") ->> (Axiomatic QsADTs.Tuple_get)
+  ### ("ADT", "Tuple_set") ->> (Axiomatic QsADTs.Tuple_set)
 
-  ### ("ADT", "WordList_new") ->> (Axiomatic WordList_new)
-  ### ("ADT", "WordList_delete") ->> (Axiomatic WordList_delete)
-  ### ("ADT", "WordList_pop") ->> (Axiomatic WordList_pop)
-  ### ("ADT", "WordList_empty") ->> (Axiomatic WordList_empty)
-  ### ("ADT", "WordList_push") ->> (Axiomatic WordList_push)
-  ### ("ADT", "WordList_copy") ->> (Axiomatic WordList_copy)
-  ### ("ADT", "WordList_rev") ->> (Axiomatic WordList_rev)
-  ### ("ADT", "WordList_length") ->> (Axiomatic WordList_length)
+  ### ("ADT", "WordList_new") ->> (Axiomatic QsADTs.WordList_new)
+  ### ("ADT", "WordList_delete") ->> (Axiomatic QsADTs.WordList_delete)
+  ### ("ADT", "WordList_pop") ->> (Axiomatic QsADTs.WordList_pop)
+  ### ("ADT", "WordList_empty") ->> (Axiomatic QsADTs.WordList_empty)
+  ### ("ADT", "WordList_push") ->> (Axiomatic QsADTs.WordList_push)
+  ### ("ADT", "WordList_copy") ->> (Axiomatic QsADTs.WordList_copy)
+  ### ("ADT", "WordList_rev") ->> (Axiomatic QsADTs.WordList_rev)
+  ### ("ADT", "WordList_length") ->> (Axiomatic QsADTs.WordList_length)
 
-  ### ("ADT", "TupleList_new") ->> (Axiomatic TupleList_new)
-  ### ("ADT", "TupleList_delete") ->> (Axiomatic TupleList_delete)
-  ### ("ADT", "TupleList_copy") ->> (Axiomatic TupleList_copy)
-  ### ("ADT", "TupleList_pop") ->> (Axiomatic TupleList_pop)
-  ### ("ADT", "TupleList_empty") ->> (Axiomatic TupleList_empty)
-  ### ("ADT", "TupleList_push") ->> (Axiomatic TupleList_push)
-  ### ("ADT", "TupleList_rev") ->> (Axiomatic TupleList_rev)
-  ### ("ADT", "TupleList_length") ->> (Axiomatic TupleList_length)
+  ### ("ADT", "TupleList_new") ->> (Axiomatic QsADTs.TupleList_new)
+  ### ("ADT", "TupleList_delete") ->> (Axiomatic QsADTs.TupleList_delete)
+  ### ("ADT", "TupleList_copy") ->> (Axiomatic QsADTs.TupleList_copy)
+  ### ("ADT", "TupleList_pop") ->> (Axiomatic QsADTs.TupleList_pop)
+  ### ("ADT", "TupleList_empty") ->> (Axiomatic QsADTs.TupleList_empty)
+  ### ("ADT", "TupleList_push") ->> (Axiomatic QsADTs.TupleList_push)
+  ### ("ADT", "TupleList_rev") ->> (Axiomatic QsADTs.TupleList_rev)
+  ### ("ADT", "TupleList_length") ->> (Axiomatic QsADTs.TupleList_length)
 
-  ### ("ADT", "Tuples0_new") ->> (Axiomatic Tuples0_new)
-  ### ("ADT", "Tuples0_insert") ->> (Axiomatic Tuples0_insert)
-  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic Tuples0_enumerate)
+  ### ("ADT", "Tuples0_new") ->> (Axiomatic QsADTs.Tuples0_new)
+  ### ("ADT", "Tuples0_insert") ->> (Axiomatic QsADTs.Tuples0_insert)
+  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic QsADTs.Tuples0_enumerate)
 
-  ### ("ADT", "Tuples1_new") ->> (Axiomatic Tuples1_new)
-  ### ("ADT", "Tuples1_insert") ->> (Axiomatic Tuples1_insert)
-  ### ("ADT", "Tuples1_find") ->> (Axiomatic Tuples1_find)
-  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic Tuples1_enumerate)
+  ### ("ADT", "Tuples1_new") ->> (Axiomatic QsADTs.Tuples1_new)
+  ### ("ADT", "Tuples1_insert") ->> (Axiomatic QsADTs.Tuples1_insert)
+  ### ("ADT", "Tuples1_find") ->> (Axiomatic QsADTs.Tuples1_find)
+  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic QsADTs.Tuples1_enumerate)
 
-  ### ("ADT", "Tuples2_new") ->> (Axiomatic Tuples2_new)
-  ### ("ADT", "Tuples2_insert") ->> (Axiomatic Tuples2_insert)
-  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic Tuples2_findBoth)
-  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic Tuples2_findFirst)
-  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic Tuples2_findSecond)
-  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic Tuples2_enumerate).
+  ### ("ADT", "Tuples2_new") ->> (Axiomatic QsADTs.Tuples2_new)
+  ### ("ADT", "Tuples2_insert") ->> (Axiomatic QsADTs.Tuples2_insert)
+  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic QsADTs.Tuples2_findBoth)
+  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
+  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
+  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
 
 Ltac _qs_step :=
   match goal with
@@ -2781,12 +3013,46 @@ Ltac _qs_step :=
 Ltac _compile :=
   repeat _qs_step.
 
+Require Import
+        CertifiedExtraction.Extraction.Internal
+        CertifiedExtraction.Extraction.External.Core
+        CertifiedExtraction.Extraction.External.Loops
+        CertifiedExtraction.Extraction.External.GenericADTMethods
+        CertifiedExtraction.Extraction.External.FacadeADTs.
+
+(* NOTE: Could prove lemma for un-reved map using temp variable *)
+
+Definition CUnit (env := GLabelMap.empty _)
+           (rWrap := projT1 SchedulerWrappers)
+           (Scheduler_SideStuff := projT2 SchedulerWrappers)
+           (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
+                          /\ exists idx,
+                     TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
+  : BuildCompileUnit2T
+      env PartialSchedulerImpl P (DecomposeIndexedQueryStructure QsADTs.ADTValue)
+      (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap)
+      (DecomposeIndexedQueryStructurePost QsADTs.ADTValue _ _ rWrap)
+      (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
+      "foo"
+      "bar"
+      (Scheduler_SideStuff).(coDomainWrappers) (Scheduler_SideStuff).(domainWrappers)
+      rWrap
+      (Scheduler_SideStuff).(f'_well_behaved).
+Proof.
+  eapply BuildCompileUnit2T'.
+  eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
+  repeat apply Build_prim_prod; eexists; repeat apply conj; intros.
+  (* Should be compile, then a bunch of reflexivity proofs. *)
+  _compile.
+
+
+  
 Lemma progOKs
   : forall (env := QSEnv)
            (rWrap := projT1 SchedulerWrappers)
-           (P := fun r => functional (IndexedEnsemble_TupleToListW (prim_fst r))
+           (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
                           /\ exists idx,
-                     minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
+                     TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
 
       (Scheduler_SideStuff := projT2 SchedulerWrappers)
       midx, {prog : _ & LiftMethod env P (DecomposeIndexedQueryStructure _ rWrap)
@@ -2795,10 +3061,14 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
+  Admitted.
 
-  - eexists; split.
+(*  - eexists; split.
     destruct H as [? [? ?] ].
     _compile.
+
+    instantiate (1 := ("ADT","foo")).
+    admit.
 
     match_ProgOk
       ltac:(fun _prog _pre _post _ext _env =>
@@ -2954,62 +3224,15 @@ Ltac _compile_CallBagFind :=
     + unfold CallBagMethod; intros; simpl in *.
       computes_to_inv; subst.
       injections; simpl; split; eauto.
-Defined.
+Defined. *)
 
 (* The three methods: *)
 
-Eval compute in (projT1 (progOKs (Fin.F1))).
+(*Eval compute in (projT1 (progOKs (Fin.F1))).
 Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))). *)
 
-Require Import
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.External.Core
-        CertifiedExtraction.Extraction.External.Loops
-        CertifiedExtraction.Extraction.External.GenericADTMethods
-        CertifiedExtraction.Extraction.External.FacadeADTs.
-
-
-(* NOTE: Could prove lemma for un-reved map using temp variable *)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Definition CUnit (env := GLabelMap.empty _)
-           (rWrap := projT1 SchedulerWrappers)
-           (Scheduler_SideStuff := projT2 SchedulerWrappers)
-  : BuildCompileUnit2T
-      env PartialSchedulerImpl (DecomposeIndexedQueryStructure QsADTs.ADTValue)
-      (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap)
-      (DecomposeIndexedQueryStructurePost QsADTs.ADTValue _ _ rWrap)
-      (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
-      "foo"
-      "bar"
-      (Scheduler_SideStuff).(coDomainWrappers) (Scheduler_SideStuff).(domainWrappers)
-      rWrap
-      (Scheduler_SideStuff).(f'_well_behaved).
-Proof.
+  
   unfold rWrap, Scheduler_SideStuff; clear rWrap Scheduler_SideStuff.
 
   let sig := match type of PartialSchedulerImpl with Core.ADT ?sig => sig end in
@@ -3056,6 +3279,7 @@ Proof.
             try unify g (eq_refl true);
             constructor
         end.
+  admit.
   intros; eapply (projT2 (progOKs Fin.F1)).
   intros; eapply (projT2 (progOKs (Fin.FS Fin.F1))).
   intros; eapply (projT2 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
