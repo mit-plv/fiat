@@ -1,7 +1,7 @@
-Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
-Require Import Fiat.Common.i3list.
 Require Import Fiat.ADT.Core.
+Require Import Bedrock.Platform.Facade.DFModule.
+Require Import Fiat.ADTNotation.
+Require Import Bedrock.Platform.Facade.CompileUnit2.
 
 Require Import
         CertifiedExtraction.Core
@@ -10,14 +10,29 @@ Require Import
         CertifiedExtraction.Extraction.Internal
         CertifiedExtraction.Extraction.Extraction.
 
+Record GoodWrapper av A :=
+  { gWrap : FacadeWrapper (Value av) A;
+    gWrapTag : bool;
+    gWrapTagConsistent :
+      if gWrapTag then
+        forall a : A, exists adt, wrap a = ADT adt
+      else
+        forall a : A, exists w, wrap a = SCA _ w }.
+
+Lemma GoodWrapperConsistent {av A} (gWrapper : GoodWrapper av A) :
+  forall a1 a2: A, is_same_type (@wrap _ _ (gWrap gWrapper) a1) (@wrap _ _ (gWrap gWrapper) a2).
+Proof.
+  intros.
+  unfold is_same_type.
+  pose proof (gWrapTagConsistent gWrapper).
+  find_if_inside; destruct (H a1); destruct (H a2); rewrite H0, H1; eauto.
+Qed.
+  
 Definition CodWrapperT av (Cod : option Type) :=
   match Cod with
   | None => unit
-  | Some CodT => FacadeWrapper (Value av) CodT
+  | Some CodT => GoodWrapper av CodT
   end.
-
-Definition GoodWrapper av A :=
-  { H: FacadeWrapper (Value av) A & forall a1 a2: A, is_same_type (wrap a1) (wrap a2) }.
 
 Fixpoint DomWrapperT av (Dom : list Type) : Type :=
   match Dom with
@@ -31,7 +46,7 @@ Definition nthRepName n := "rep" ++ (NumberToString n).
 
 Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
          (P : Rep -> Prop)
-         (f : Rep -> Telescope av)
+         (DecomposeRep : Rep -> Telescope av)
          {struct Dom}
   :=
   match Dom return
@@ -52,22 +67,22 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                        {{ pre }}
                          prog
                          {{ [[`"ret" <-- Word.natToWord 32 0 as _]]
-                              :: [[meth as database]] :: (f database) }} ∪ {{ StringMap.empty _ }} // env
+                              :: [[meth as database]] :: (DecomposeRep database) }} ∪ {{ StringMap.empty _ }} // env
                        /\ forall r', computes_to meth r' -> P r'
 
 
            | Some CodT => fun cWrap dWrap prog pre meth =>
-                            let v : FacadeWrapper (Value av) CodT := cWrap in
+                            let v : FacadeWrapper (Value av) CodT := (gWrap cWrap) in
                             {{ pre }}
                               prog
                               {{[[meth as mPair]]
                                   :: [[`"ret" <-- snd mPair as _]]
-                                  :: (f (fst mPair))}}  ∪ {{ StringMap.empty _ }} // env
+                                  :: (DecomposeRep (fst mPair))}}  ∪ {{ StringMap.empty _ }} // env
                             /\ forall r' v', computes_to meth (r', v') -> P r'
            end
   | cons DomT Dom' =>
     fun cWrap dWrap prog tele meth =>
-      forall d, let _ := projT1 (fst dWrap) in LiftMethod' env Dom' P f cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
+      forall d, let _ := gWrap (fst dWrap) in LiftMethod' env Dom' P DecomposeRep cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
   end.
 
 Definition LiftMethod
@@ -77,7 +92,7 @@ Definition LiftMethod
            {Cod}
            {Dom}
            (P : Rep -> Prop)
-           (f : Rep -> Telescope av)
+           (DecomposeRep : Rep -> Telescope av)
            (cWrap : CodWrapperT av Cod)
            (dWrap : DomWrapperT av Dom)
            (prog : Stmt)
@@ -85,8 +100,636 @@ Definition LiftMethod
   : Prop :=
   forall r,
     P r ->
-    LiftMethod' env Dom P f cWrap dWrap prog (f r) (meth r).
+    LiftMethod' env Dom P DecomposeRep cWrap dWrap prog (DecomposeRep r) (meth r).
+
 Arguments LiftMethod [_] _ {_ _ _} _ _ _ _ _ _ / .
+
+Arguments NumberToString _ / .
+
+Fixpoint NumUpTo n acc :=
+  match n with
+  | 0 => acc
+  | S n' => NumUpTo n' (n' :: acc)
+  end.
+
+Definition BuildArgNames n m :=
+  List.app (map nthArgName (NumUpTo n nil))
+           (map nthRepName (NumUpTo m nil)).
+
+Lemma BuildArgNamesNoDup n m
+  : ListFacts3.is_no_dup (BuildArgNames n m) = true.
+Proof.
+  induction n; simpl.
+  - unfold BuildArgNames; simpl.
+    remember [] as l;
+      assert (NoDup l) as NoDupL by (subst; econstructor);
+      clear Heql; revert l NoDupL.
+    induction m; simpl.
+    + induction l.
+      * simpl; reflexivity.
+      * simpl; intros.
+        unfold ListFacts3.is_no_dup in *; simpl.
+        inversion NoDupL; subst.
+        apply Bool.andb_true_iff; split.
+        revert H1; clear; induction l; simpl; intros; eauto.
+        admit.
+        (*{ apply Bool.andb_true_iff; split.
+          unfold nthRepName; simpl.
+          eapply Bool.negb_true_iff.
+          unfold ListFacts3.string_bool.
+          unfold ListFacts3.sumbool_to_bool.
+          find_if_inside; eauto.
+          injections.
+          admit.
+        } *)
+        eauto.
+    + intros; simpl.
+      apply IHm.
+      constructor; eauto.
+      admit.
+  -  unfold BuildArgNames; simpl.
+Admitted.
+
+Lemma BuildArgNames_args_name_ok
+  : forall n m, forallb NameDecoration.is_good_varname (BuildArgNames n m) = true.
+Proof.
+Admitted.
+
+Lemma Ret_ret_name_ok : NameDecoration.is_good_varname "ret" = true.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma ret_NIn_BuildArgNames
+  : forall n m, negb (is_in "ret" (BuildArgNames n m)) = true.
+Proof.
+Admitted.
+
+Definition Shelve {A} (a : A) := True.
+
+Definition DFModuleEquiv
+           av
+           env
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (P : Core.Rep adt -> Prop)
+           (module : DFModule av)
+           (consWrapper' : forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx)))
+           (domWrapper : forall midx, DomWrapperT av (methDom (Vector.nth methSigs midx)))
+           (DecomposeRep : Core.Rep adt -> Telescope av)
+           (DecomposeRepCount : nat)
+  : Prop :=
+  (* Environments match *)
+  (* FIXME : (module.(Imports) = env) *)
+  (* Method Correspondence *)
+  (forall midx : Fin.t n',
+      let meth := Vector.nth methSigs midx in
+      exists Fun,
+        Fun.(Core).(RetVar) = "ret"
+        /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
+        /\ LiftMethod env P DecomposeRep (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
+                      (Methods adt midx)
+        /\ (StringMap.MapsTo (methID meth) Fun module.(Funs))
+        /\ Shelve Fun).
+
+Arguments nthRepName _ / .
+Arguments nthArgName _ / .
+Arguments BuildArgNames !n !m / .
+
+Fixpoint AxiomatizeMethodPre'
+         (av : Type)
+         (env : Env av)
+         {Dom}
+         {struct Dom}
+  : DomWrapperT av Dom
+    -> list (Value av)
+    -> list (Value av) -> Prop
+  :=
+  match Dom return
+        DomWrapperT av Dom
+        -> list (Value av)
+        -> list (Value av)
+        -> Prop with
+  | nil => fun dWrap args' args =>
+             args = args'
+  | cons DomT Dom' =>
+    fun dWrap args' args =>
+      let wrap' := gWrap (fst dWrap) in
+      exists x : DomT, AxiomatizeMethodPre' env Dom' (snd dWrap) (wrap x :: args') args
+  end.
+
+Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
+           {numRepArgs : nat}
+           (f : Rep -> Vector.t (Value av) numRepArgs)
+  : DomWrapperT av Dom
+    -> list (Value av) -> Prop
+  :=
+    fun dWrap args => exists r, (AxiomatizeMethodPre' env Dom dWrap (Vector.to_list (f r)) args).
+
+Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
+         (av : Type)
+         (env : Env av)
+         {numRepArgs : nat}
+         {struct Dom}
+  : CodWrapperT av Cod
+    -> DomWrapperT av Dom
+    -> list ((Value av) * option av)
+    -> (Rep -> Vector.t ((Value av) * option av) numRepArgs)
+    -> methodType' Rep Dom Cod
+    -> list ((Value av) * option av) -> Value av -> Prop
+  :=
+  match Dom return
+        CodWrapperT av Cod
+        -> DomWrapperT av Dom
+        -> list ((Value av) * option av)
+        -> (Rep -> Vector.t ((Value av) * option av) numRepArgs)
+        -> methodType' Rep Dom Cod
+        -> list ((Value av) * option av)
+        -> Value av -> Prop with
+  | nil => match Cod return
+                   CodWrapperT av Cod
+                   -> DomWrapperT av nil
+                   -> list ((Value av) * option av)
+                   -> (Rep -> Vector.t ((Value av) * option av) numRepArgs)
+                   -> methodType' Rep nil Cod
+                   -> list ((Value av) * option av)
+                   -> Value av -> Prop with
+           | None => fun cWrap dWrap domArgs repArgs meth args ret =>
+                       exists r', computes_to meth r'
+                                  /\ args = List.app (domArgs) (Vector.to_list (repArgs r'))
+                                  /\ ret = wrap (Word.natToWord 32 0)
+           | Some CodT => fun cWrap dWrap domArgs repArgs meth args ret =>
+                            exists r' v', computes_to meth (r', v')
+                                  /\ args = List.app (domArgs) (Vector.to_list (repArgs r'))
+                                  /\ ret = wrap (FacadeWrapper := gWrap cWrap) v'
+           end
+  | cons DomT Dom' =>
+    fun cWrap dWrap domArgs repArgs meth args ret =>
+      let wrap' := gWrap (fst dWrap) in
+      exists x : DomT, AxiomatizeMethodPost' env cWrap (snd dWrap) ((wrap x, None) :: domArgs) repArgs (meth x) args ret
+  end.
+
+Definition AxiomatizeMethodPost
+           (av : Type)
+           (env : Env av)
+           {Dom} {Cod} {Rep}
+           {numRepArgs : nat}
+           (f : Rep -> Rep -> Vector.t ((Value av) * option av) numRepArgs)
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType Rep Dom Cod)
+           (args : list ((Value av) * option av))
+           (ret : Value av)
+  : Prop :=
+  exists r, AxiomatizeMethodPost' env cWrap dWrap [] (f r) (meth r) args ret.
+
+Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ _ / .
+Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ / .
+
+Definition GenAxiomaticSpecs
+           av
+           (env : Env av)
+           {Cod}
+           {Dom}
+           {Rep}
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType Rep Dom Cod)
+           {numRepArgs : nat}
+           (DecomposeRepPre : Rep -> Vector.t (Value av) numRepArgs)
+           (DecomposeRepPost : Rep -> Rep -> Vector.t ((Value av) * option av) numRepArgs)
+           (_ : forall x x0, is_same_types (Vector.to_list (DecomposeRepPre x0))
+                                           (Vector.to_list (DecomposeRepPre x)) = true)
+  : AxiomaticSpec av.
+Proof.
+  refine {| PreCond := AxiomatizeMethodPre env DecomposeRepPre dWrap;
+            PostCond := AxiomatizeMethodPost env DecomposeRepPost cWrap dWrap meth |}.
+  clear dependent meth.
+  clear dependent DecomposeRepPost.
+
+  unfold type_conforming.
+  unfold AxiomatizeMethodPre in *.
+
+  generalize dependent DecomposeRepPre.
+  generalize dependent Rep.
+  generalize numRepArgs.
+  induction Dom; simpl; repeat cleanup.
+  - eauto.
+  - simpl in H0.
+    eapply IHDom.
+    Focus 2.
+    Ltac helper :=
+      match goal with
+      | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
+          exists r: ?Tr, AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] =>
+        let tx := type of x in
+        let ty := type of y in
+        (exists (x, y); unify wrp wrp'; unify f' (fun x => Vector.cons _ (wrap (FacadeWrapper := fw) (fst x)) _ (f (snd x))); exact H)
+      end.
+
+    helper.
+    repeat cleanup.
+    unfold is_same_types in *.
+    simpl; rewrite (GoodWrapperConsistent (fst (dWrap))); apply H.
+
+    helper.
+
+    eauto.
+Defined.
+
+Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
+  match n return list (Fin.t n) with
+  | 0  => nil
+  | S n' => cons (@Fin.F1 _) (map (@Fin.FS _) (BuildFinUpTo n'))
+  end.
+
+Definition GenExports
+           av
+           (env : Env av)
+           (n n' : nat)
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (consWrapper : (forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx))))
+           (domWrapper : (forall midx,  DomWrapperT av (methDom (Vector.nth methSigs midx))))
+           {numRepArgs : nat}
+           (f : Core.Rep adt -> Vector.t (Value av) numRepArgs)
+           (f' : Core.Rep adt -> Core.Rep adt -> Vector.t ((Value av) * option av) numRepArgs)
+           (H : forall x x0, is_same_types (Vector.to_list (f x0)) (Vector.to_list (f x)) = true)
+  : StringMap.t (AxiomaticSpec av) :=
+  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
+                                              (GenAxiomaticSpecs env (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
+
+Definition CompileUnit2Equiv
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           (f : A -> _)
+           g
+           ax_mod_name'
+           op_mod_name'
+           cWrap
+           dWrap
+           rWrap
+           {exports}
+           (compileUnit : CompileUnit exports)
+  :=
+    DFModuleEquiv env adt P compileUnit.(module) cWrap dWrap (f rWrap) g
+    /\ compileUnit.(ax_mod_name) = ax_mod_name'
+    /\ compileUnit.(op_mod_name) = op_mod_name'.
+
+Definition BuildCompileUnit2T
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           numRepArgs
+           (DecomposeRep : A -> _)
+           DecomposeRepPre
+           DecomposeRepPost
+           g
+           ax_mod_name'
+           op_mod_name'
+           cWrap
+           dWrap
+           rWrap
+           H
+           (exports := GenExports (numRepArgs := numRepArgs) env adt cWrap dWrap DecomposeRepPre DecomposeRepPost H) :=
+  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt P DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+
+Definition BuildDFFun
+           av
+           (env : Env av)
+           {WrappedRepT RepT}
+           cod
+           dom
+           WrappedCod
+           WrappedDom
+           meth
+           P
+           (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
+           (numRepArgs : nat)
+           wrappedRep
+           (progOK : {prog : Stmt &
+                             LiftMethod (Cod := cod) (Dom := dom) env P (DecomposeRep wrappedRep)
+                                        WrappedCod WrappedDom prog meth
+                       (* Syntactic Checks *)
+                     /\ NoUninitDec.is_no_uninited
+                          {|
+                            FuncCore.ArgVars := BuildArgNames (Datatypes.length dom) numRepArgs;
+                            FuncCore.RetVar := "ret";
+                            FuncCore.Body := Compile.compile
+                                               (CompileDFacade.compile prog) |} = true
+                     /\ (GoodModuleDec.is_arg_len_ok
+                           (Compile.compile (CompileDFacade.compile prog)) = true)
+                     /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length dom) numRepArgs) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                         true)
+                     /\  is_disjoint (assigned prog)
+                                     (StringSetFacts.of_list
+                                        (BuildArgNames (Datatypes.length dom)
+                                                       numRepArgs)) = true
+                     /\ is_syntax_ok prog = true} )
+  : DFFun.
+Proof.
+  refine {| Core := {| ArgVars := BuildArgNames (List.length dom) numRepArgs;
+                        RetVar := "ret";
+                        Body := projT1 progOK;
+                        args_no_dup := BuildArgNamesNoDup _ _;
+                        ret_not_in_args := ret_NIn_BuildArgNames _ _;
+                        no_assign_to_args := proj1 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
+                        args_name_ok := BuildArgNames_args_name_ok _ _;
+                        ret_name_ok := Ret_ret_name_ok;
+                        syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))))
+
+                     |} |}.
+  unfold FModule.is_syntax_ok; simpl.
+  unfold GoodModuleDec.is_good_func; simpl.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply Bool.andb_true_iff; split; try eassumption.
+  apply BuildArgNamesNoDup.
+  destruct progOK; simpl in *; intuition.
+  destruct progOK; simpl in *; intuition.
+  destruct progOK; simpl in *; intuition.
+Defined.
+
+Definition BuildFun
+           av
+           (env : Env av)
+           {WrappedRepT}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
+           (DecomposeRepCount : nat)
+           codWrap
+           domWrap
+           wrappedRep
+                      (progsOK : forall midx,
+               {prog : Stmt &
+                       LiftMethod env P (DecomposeRep wrappedRep)
+                                  (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                       (* Syntactic Checks *)
+                       /\ NoUninitDec.is_no_uninited
+                            {|
+                              FuncCore.ArgVars := BuildArgNames (Datatypes.length _)
+                                                                DecomposeRepCount;
+                              FuncCore.RetVar := "ret";
+                              FuncCore.Body := Compile.compile
+                                                 (CompileDFacade.compile prog) |} = true
+                       /\ (GoodModuleDec.is_arg_len_ok
+                             (Compile.compile (CompileDFacade.compile prog)) = true)
+                       /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length _) DecomposeRepCount) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                           true)
+                       /\  is_disjoint (assigned prog)
+                                       (StringSetFacts.of_list
+                                          (BuildArgNames (Datatypes.length _)
+                                                         DecomposeRepCount)) = true
+                       /\ is_syntax_ok prog = true} )
+  : StringMap.t DFFun :=
+  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
+                                              (BuildDFFun DecomposeRep
+                                                          _ wrappedRep (progsOK el) ) acc) (BuildFinUpTo n') (StringMap.empty _).
+
+Lemma AxiomatizeMethodPost_OK
+      av
+      (env : Env av)
+      {RepT}
+      {numRepArgs}
+      cod dom
+      codWrap domWrap 
+  : forall args DecomposeRepPost meth,
+    exists is_ret_adt : bool,
+      forall (in_out : list (Value av * option av)) (ret : Value av),
+        (exists r : RepT,
+            AxiomatizeMethodPost' (numRepArgs := numRepArgs) (Dom := dom) (Cod := cod) (Rep := RepT)
+                                  env codWrap domWrap args (DecomposeRepPost r)
+                                  (meth r) in_out ret) ->
+        if is_ret_adt
+        then exists a : av, ret = ADT a
+        else exists w : W, ret = SCA av w.
+  Proof.
+    destruct cod.
+    - exists (gWrapTag codWrap); simpl; revert args DecomposeRepPost meth.
+      induction dom; simpl in *; intros.
+      + destruct H as [r [r' [v' [? [? ? ] ] ] ] ]; subst.
+        pose proof (gWrapTagConsistent codWrap); find_if_inside; eauto.
+      + destruct H as [r [x ? ] ]; subst.
+        eapply (IHdom (snd domWrap)
+                      ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                      (fun r r' => (DecomposeRepPost r r'))
+                      (fun r => meth r x)
+                      in_out); eauto.
+    - exists false; simpl; revert args DecomposeRepPost meth.
+      induction dom; simpl in *; intros.
+      + destruct H as [r [r' [? [? ? ] ] ] ]; subst; eauto.
+      + destruct H as [r [x ? ] ]; subst; eauto.
+        eapply (IHdom (snd domWrap)
+                      ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                      (fun r r' =>  DecomposeRepPost r r')
+                      (fun r => meth r x)
+                      in_out); eauto.
+  Qed.
+
+  Lemma NumUpTo_length :
+    forall n l, 
+      Datatypes.length (NumUpTo n l) =
+      n + Datatypes.length l.
+  Proof.
+    induction n; simpl; intros; eauto.
+    rewrite IHn; simpl; omega.
+  Qed.
+
+  Lemma length_Vector_to_list {A} {n} : 
+    forall (v : Vector.t A n),
+      Datatypes.length (Vector.to_list v) = n.
+  Proof.
+    induction v; simpl; eauto.
+  Qed.
+
+  Lemma length_AxiomatizeMethodPre' av env dom domWrap
+    : forall l l', AxiomatizeMethodPre' (av := av) env dom domWrap l l'
+      -> Datatypes.length l + Datatypes.length dom = Datatypes.length l'.
+  Proof.
+    induction dom; simpl in *; intros; subst.
+    - omega.
+    - destruct H.
+      eapply IHdom in H; simpl in H.
+      rewrite <- H; omega.
+  Qed.
+    
+    Lemma compiled_prog_satisfies_GenAxiomaticSpecs
+        av
+        (env : Env av)
+        {WrappedRepT}
+        {RepT}
+        (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
+        numRepArgs
+        DecomposeRepPre
+        DecomposeRepPost
+        cod
+        dom
+        codWrap
+        domWrap
+        WrappedDom
+        WrappedCod
+        WrappedRep
+        meth
+        DecomposeRepPrePostAgree
+        P
+        progOK
+    : op_refines_ax
+        env
+        (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
+                          (WrappedCod := WrappedCod) (WrappedDom := WrappedDom)
+                          (meth := meth) (P := P)
+                          DecomposeRep numRepArgs WrappedRep progOK))
+        (GenAxiomaticSpecs (numRepArgs := numRepArgs)
+                           env codWrap domWrap meth
+                           DecomposeRepPre
+                           DecomposeRepPost
+                           DecomposeRepPrePostAgree).
+  Proof.
+    unfold op_refines_ax; repeat split.
+    - unfold GenAxiomaticSpecs; simpl.
+      eapply AxiomatizeMethodPost_OK.
+    - simpl. unfold BuildArgNames.
+      rewrite app_length, !map_length, !NumUpTo_length; simpl.
+      intros; destruct H.
+      apply length_AxiomatizeMethodPre' in H; subst.
+      rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
+    -
+
+
+      Definition BuildCompileUnit2T'
+           av
+           (env : Env av)
+           {WrappedRepT}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           P
+           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
+           DecomposeRepPre
+           DecomposeRepPost
+           numRepArgs
+           ax_mod_name'
+           op_mod_name'
+           codWrap
+           domWrap
+           wrappedRep
+           DecomposeRepPrePoseAgree
+           (exports := GenExports env adt codWrap domWrap
+                                  DecomposeRepPre DecomposeRepPost
+                                  DecomposeRepPrePoseAgree)
+           (progsOK : forall midx,
+               {prog : Stmt &
+                       LiftMethod env P (DecomposeRep wrappedRep)
+                                  (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                       (* Syntactic Checks *)
+                       /\ NoUninitDec.is_no_uninited
+                            {|
+                              FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx)))
+                                                                numRepArgs;
+                              FuncCore.RetVar := "ret";
+                              FuncCore.Body := Compile.compile
+                                                 (CompileDFacade.compile prog) |} = true
+                       /\ (GoodModuleDec.is_arg_len_ok
+                             (Compile.compile (CompileDFacade.compile prog)) = true)
+                       /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                           true)
+                       /\  is_disjoint (assigned prog)
+                                       (StringSetFacts.of_list
+                                          (BuildArgNames (Datatypes.length (fst
+                                      (MethodDomCod
+                                         (BuildADTSig consSigs methSigs) midx)))
+                                                         numRepArgs)) = true
+                       /\ is_syntax_ok prog = true} )
+  : BuildCompileUnit2T env
+                       adt
+                       P
+                       DecomposeRep
+                       DecomposeRepPre
+                       DecomposeRepPost
+                       numRepArgs
+                       ax_mod_name'
+                       op_mod_name'
+                       codWrap
+                       domWrap
+                       wrappedRep
+                       DecomposeRepPrePoseAgree.
+Proof.
+  eexists {| module := {| Funs :=
+                            BuildFun
+                              adt DecomposeRep _ codWrap domWrap
+                              wrappedRep progsOK;
+                          Imports := GLabelMap.empty _ |} |}.
+  unfold CompileUnit2Equiv; repeat split; simpl; eauto.
+  unfold DFModuleEquiv; intros.
+  eexists (BuildDFFun DecomposeRep _ wrappedRep (progsOK midx)).
+  simpl. repeat split.
+  apply (projT2 (progsOK midx)).
+  unfold BuildFun.
+  admit.
+  Grab Existential Variables.
+  unfold ops_refines_axs.
+
+
+
+
+    op_spec ax_spec
+
+    op_refines_ax
+
+  intros.
+  simpl.
+  (* This is the key bit. Need to show that the compiled statements *)
+  (* satisfy the specifications generated by GenAxiomaticSpecs. *)
+  unfold op_refines_ax; intros.
+  Print LiftMethod'.
+
+  Print get_env.
+  unfold StringMap
+Admitted.
+
+(* Begin QueryStructure-specific bits. *)
+
+Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
+Require Import Fiat.Common.i3list.
+
 
 Fixpoint RepWrapperT
            av
@@ -143,184 +786,7 @@ Definition DecomposeIndexedQueryStructure av qs_schema Index
            (r : IndexedQueryStructure qs_schema Index) : Telescope av :=
   Decomposei3list _ _ rWrap r.
 Arguments DecomposeIndexedQueryStructure _ {_ _} _ _ /.
-Arguments NumberToString _ / .
 
-Eval simpl in
-  (forall av env P rWrap cWrap dWrap prog,
-      (LiftMethod (av := av) env P (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
-
-Require Import Bedrock.Platform.Facade.DFModule.
-Require Import Fiat.ADTNotation.
-
-Fixpoint NumUpTo n acc :=
-  match n with
-  | 0 => acc
-  | S n' => NumUpTo n' (n' :: acc)
-  end.
-
-Definition BuildArgNames n m :=
-  List.app (map nthArgName (NumUpTo n nil))
-           (map nthRepName (NumUpTo m nil)).
-
-Lemma BuildArgNamesNoDup n m
-  : ListFacts3.is_no_dup (BuildArgNames n m) = true.
-Proof.
-  induction n; simpl.
-  - unfold BuildArgNames; simpl.
-    remember [] as l;
-      assert (NoDup l) as NoDupL by (subst; econstructor); 
-      clear Heql; revert l NoDupL.
-    induction m; simpl.
-    + induction l.
-      * simpl; reflexivity.
-      * simpl; intros.
-        unfold ListFacts3.is_no_dup in *; simpl.
-        inversion NoDupL; subst.
-        apply Bool.andb_true_iff; split.
-        revert H1; clear; induction l; simpl; intros; eauto.
-        admit.
-        (*{ apply Bool.andb_true_iff; split.
-          unfold nthRepName; simpl.
-          eapply Bool.negb_true_iff.
-          unfold ListFacts3.string_bool.
-          unfold ListFacts3.sumbool_to_bool.
-          find_if_inside; eauto.
-          injections.
-          admit.
-        } *)
-        eauto. 
-    + intros; simpl.
-      apply IHm.
-      constructor; eauto.
-      admit.
-  -  unfold BuildArgNames; simpl.
-Admitted.
-
-Lemma BuildArgNames_args_name_ok
-  : forall n m, forallb NameDecoration.is_good_varname (BuildArgNames n m) = true.
-Proof.
-Admitted.
-
-Lemma Ret_ret_name_ok : NameDecoration.is_good_varname "ret" = true.
-Proof.
-  reflexivity.
-Qed.  
-
-Lemma ret_NIn_BuildArgNames
-  : forall n m, negb (is_in "ret" (BuildArgNames n m)) = true.
-Proof.
-Admitted.
-
-Definition Shelve {A} (a : A) := True.
-
-Definition DFModuleEquiv
-           av
-           env
-           {n n'}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           (P : Core.Rep adt -> Prop)
-           (module : DFModule av)
-           (consWrapper' : forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx)))
-           (domWrapper : forall midx, DomWrapperT av (methDom (Vector.nth methSigs midx)))
-           (f : Core.Rep adt -> Telescope av)
-           (DecomposeRepCount : nat)
-  : Prop :=
-  (* Environments match *)
-  (* FIXME : (module.(Imports) = env) *)
-  (* Method Correspondence *)
-  (forall midx : Fin.t n',
-      let meth := Vector.nth methSigs midx in
-      exists Fun,
-        Fun.(Core).(RetVar) = "ret"
-        /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
-        /\ LiftMethod env P f (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
-                      (Methods adt midx)
-        /\ (StringMap.MapsTo (methID meth) Fun module.(Funs))
-        /\ Shelve Fun).
-
-Arguments nthRepName _ / .
-Arguments nthArgName _ / .
-Arguments BuildArgNames !n !m / .
-
-Fixpoint AxiomatizeMethodPre' (av : Type) (env : Env av) {Dom}
-         {struct Dom}
-  : DomWrapperT av Dom
-    -> list (Value av)
-    -> list (Value av) -> Prop
-  :=
-  match Dom return
-        DomWrapperT av Dom
-        -> list (Value av)
-        -> list (Value av)
-        -> Prop with
-  | nil => fun dWrap args' args =>
-             args = args'
-  | cons DomT Dom' =>
-    fun dWrap args' args =>
-      let wrap' := projT1 (fst dWrap) in
-      exists x : DomT, AxiomatizeMethodPre' env Dom' (snd dWrap) (wrap x :: args') args
-  end.
-
-Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
-         (f : Rep -> list (Value av))
-  : DomWrapperT av Dom
-    -> list (Value av) -> Prop
-  :=
-    fun dWrap args => exists r, (AxiomatizeMethodPre' env Dom dWrap (f r) args).
-
-Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
-         (av : Type)
-         (env : Env av)
-         {struct Dom}
-  : CodWrapperT av Cod
-    -> DomWrapperT av Dom
-    -> (Rep -> list ((Value av) * option av))
-    -> methodType' Rep Dom Cod
-    -> list ((Value av) * option av) -> Value av -> Prop
-  :=
-  match Dom return
-        CodWrapperT av Cod
-        -> DomWrapperT av Dom
-        -> (Rep -> list ((Value av) * option av))
-        -> methodType' Rep Dom Cod
-        -> list ((Value av) * option av)
-        -> Value av -> Prop with
-  | nil => match Cod return
-                   CodWrapperT av Cod
-                   -> DomWrapperT av nil
-                   -> (Rep -> list ((Value av) * option av))
-                   -> methodType' Rep nil Cod
-                   -> list ((Value av) * option av)
-                   -> Value av -> Prop with
-           | None => fun cWrap dWrap args' meth args ret =>
-                       exists r', computes_to meth r'
-                                  /\ args = args' r'
-                                  /\ ret = wrap (Word.natToWord 32 0)
-           | Some CodT => fun cWrap dWrap args' meth args ret =>
-                            exists r' v', computes_to meth (r', v')
-                                  /\ args = args' r'
-                                  /\ ret = wrap (FacadeWrapper := cWrap) v'
-           end
-  | cons DomT Dom' =>
-    fun cWrap dWrap args' meth args ret =>
-      let wrap' := projT1 (fst dWrap) in
-      exists x : DomT, AxiomatizeMethodPost' env cWrap (snd dWrap) (fun r' => (wrap x, None) :: args' r') (meth x) args ret
-  end.
-
-Definition AxiomatizeMethodPost
-           (av : Type)
-           (env : Env av)
-           {Dom} {Cod} {Rep}
-           (f : Rep -> Rep -> list ((Value av) * option av))
-           (cWrap : CodWrapperT av Cod)
-           (dWrap : DomWrapperT av Dom)
-           (meth : methodType Rep Dom Cod)
-           (args : list ((Value av) * option av))
-           (ret : Value av)
-  : Prop :=
-  exists r, AxiomatizeMethodPost' env cWrap dWrap (f r) (meth r) args ret.
 
 Fixpoint DecomposePosti3list
            av
@@ -406,331 +872,6 @@ Definition DecomposeIndexedQueryStructurePre av qs_schema Index
   : list (Value av) :=
   DecomposePrei3list _ _ rWrap r.
 
-Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ / .
-Arguments DecomposePosti3list _ _ _ _ _ _ _ _ _ _ / .
-Arguments DecomposeIndexedQueryStructurePost _ _ _ _ _ _ / .
-Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ / .
-Arguments DecomposePrei3list _ _ _ _ _ _ _ _ _ / .
-Arguments DecomposeIndexedQueryStructurePre _ _ _ _ _ / .
-
-Eval simpl in
-  (forall av env rWrap cWrap dWrap l ret,
-      (AxiomatizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l ret).
-
-Eval simpl in
-    (forall av env rWrap cWrap dWrap l l' ret,
-        let Dom' := _ in
-        (AxiomatizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Dom := Dom') (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l' ret
-    /\ (AxiomatizeMethodPre (av := av) env (DecomposeIndexedQueryStructurePre _ _ _ rWrap) dWrap l)).
-
-Require Import Bedrock.Platform.Facade.CompileUnit2.
-
-Definition GenAxiomaticSpecs
-           av
-           (env : Env av)
-           {Cod}
-           {Dom}
-           {Rep}
-           (cWrap : CodWrapperT av Cod)
-           (dWrap : DomWrapperT av Dom)
-           (meth : methodType Rep Dom Cod)
-           (f : Rep -> list (Value av))
-           (f' : Rep -> Rep -> list ((Value av) * option av))
-           (_ : forall x x0, is_same_types (f x0) (f x) = true)
-  : AxiomaticSpec av.
-Proof.
-  refine {| PreCond := AxiomatizeMethodPre env f dWrap;
-            PostCond := AxiomatizeMethodPost env f' cWrap dWrap meth |}.
-  clear dependent meth.
-  clear dependent f'.
-
-  unfold type_conforming.
-  unfold AxiomatizeMethodPre in *.
-
-  generalize dependent f.
-  generalize dependent Rep.
-  induction Dom; simpl; repeat cleanup.
-
-  - eauto.
-  - simpl in H0.
-    eapply IHDom.
-    Focus 2.
-    Ltac helper :=
-      match goal with
-      | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: ?f ?y) ?ls |-
-          exists r: ?Tr, AxiomatizeMethodPre' ?env ?dom ?wrp' (?f' r) ?ls ] =>
-        let tx := type of x in
-        let ty := type of y in
-        (exists (x, y); unify wrp wrp'; unify f' (fun x => wrap (FacadeWrapper := fw) (fst x) :: f (snd x)); exact H)
-      end.
-
-    helper.
-    repeat cleanup.
-    unfold is_same_types in *.
-    simpl.
-    rewrite H.
-    rewrite (projT2 (fst (dWrap))).
-    reflexivity.
-
-    helper.
-
-    eauto.
-Defined.
-
-Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
-  match n return list (Fin.t n) with
-  | 0  => nil
-  | S n' => cons (@Fin.F1 _) (map (@Fin.FS _) (BuildFinUpTo n'))
-  end.
-
-Definition GenExports
-           av
-           (env : Env av)
-           (n n' : nat)
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           (consWrapper : (forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx))))
-           (domWrapper : (forall midx,  DomWrapperT av (methDom (Vector.nth methSigs midx))))
-           (f : Core.Rep adt -> list (Value av))
-           (f' : Core.Rep adt -> Core.Rep adt -> list ((Value av) * option av))
-           (H : forall x x0, is_same_types (f x0) (f x) = true)
-  : StringMap.t (AxiomaticSpec av) :=
-  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
-                                              (GenAxiomaticSpecs env (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
-
-Definition CompileUnit2Equiv
-           av
-           (env : Env av)
-           {A}
-           {n n'}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
-           (f : A -> _)
-           g
-           ax_mod_name'
-           op_mod_name'
-           cWrap
-           dWrap
-           rWrap
-           {exports}
-           (compileUnit : CompileUnit exports)
-  :=
-    DFModuleEquiv env adt P compileUnit.(module) cWrap dWrap (f rWrap) g
-    /\ compileUnit.(ax_mod_name) = ax_mod_name'
-    /\ compileUnit.(op_mod_name) = op_mod_name'.
-
-Definition BuildCompileUnit2T
-           av
-           (env : Env av)
-           {A}
-           {n n'}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
-           (f : A -> _)
-           f'
-           f''
-           g
-           ax_mod_name'
-           op_mod_name'
-           cWrap
-           dWrap
-           rWrap
-           H
-           (exports := GenExports env adt cWrap dWrap f' f'' H) :=
-  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt P f g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
-
-Definition BuildDFFun
-           av
-           (env : Env av)
-           {WrappedRepT RepT}
-           cod
-           dom
-           WrappedCod
-           WrappedDom
-           meth
-           P
-           (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
-           (DecomposeRepCount : nat)
-           wrappedRep
-           (progOK : {prog : Stmt &
-                             LiftMethod (Cod := cod) (Dom := dom) env P (DecomposeRep wrappedRep)
-                                        WrappedCod WrappedDom prog meth
-                       (* Syntactic Checks *)
-                     /\ NoUninitDec.is_no_uninited
-                          {|
-                            FuncCore.ArgVars := BuildArgNames (Datatypes.length dom)
-                                                              DecomposeRepCount;
-                            FuncCore.RetVar := "ret";
-                            FuncCore.Body := Compile.compile
-                                               (CompileDFacade.compile prog) |} = true
-                     /\ (GoodModuleDec.is_arg_len_ok
-                           (Compile.compile (CompileDFacade.compile prog)) = true)
-                     /\ (GoodModuleDec.is_good_size
-                             (Datatypes.length
-                                (GetLocalVars.get_local_vars
-                                   (Compile.compile (CompileDFacade.compile prog))
-                                   (BuildArgNames (Datatypes.length dom) DecomposeRepCount) "ret") +
-                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
-                         true)
-                     /\  is_disjoint (assigned prog)
-                                     (StringSetFacts.of_list
-                                        (BuildArgNames (Datatypes.length dom)
-                                                       DecomposeRepCount)) = true
-                     /\ is_syntax_ok prog = true} )           
-  : DFFun.
-Proof.
-  refine {| Core := {| ArgVars := BuildArgNames (List.length dom) DecomposeRepCount;
-                        RetVar := "ret";
-                        Body := projT1 progOK;
-                        args_no_dup := BuildArgNamesNoDup _ _;
-                        ret_not_in_args := ret_NIn_BuildArgNames _ _;
-                        no_assign_to_args := proj1 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
-                        args_name_ok := BuildArgNames_args_name_ok _ _;
-                        ret_name_ok := Ret_ret_name_ok;
-                        syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))))
-                                         
-                     |} |}.
-  unfold FModule.is_syntax_ok; simpl.
-  unfold GoodModuleDec.is_good_func; simpl.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply BuildArgNamesNoDup.
-  destruct progOK; simpl in *; intuition.
-  destruct progOK; simpl in *; intuition.
-  destruct progOK; simpl in *; intuition.
-Defined.
-
-Definition BuildFun
-           av
-           (env : Env av)
-           {WrappedRepT}
-           {n n'}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
-           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
-           (DecomposeRepCount : nat)
-           codWrap
-           domWrap
-           wrappedRep
-                      (progsOK : forall midx, 
-               {prog : Stmt &
-                       LiftMethod env P (DecomposeRep wrappedRep)
-                                  (codWrap midx) (domWrap midx) prog (Methods adt midx)
-                       (* Syntactic Checks *)
-                       /\ NoUninitDec.is_no_uninited
-                            {|
-                              FuncCore.ArgVars := BuildArgNames (Datatypes.length _)
-                                                                DecomposeRepCount;
-                              FuncCore.RetVar := "ret";
-                              FuncCore.Body := Compile.compile
-                                                 (CompileDFacade.compile prog) |} = true
-                       /\ (GoodModuleDec.is_arg_len_ok
-                             (Compile.compile (CompileDFacade.compile prog)) = true)
-                       /\ (GoodModuleDec.is_good_size
-                             (Datatypes.length
-                                (GetLocalVars.get_local_vars
-                                   (Compile.compile (CompileDFacade.compile prog))
-                                   (BuildArgNames (Datatypes.length _) DecomposeRepCount) "ret") +
-                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
-                           true)
-                       /\  is_disjoint (assigned prog)
-                                       (StringSetFacts.of_list
-                                          (BuildArgNames (Datatypes.length _)
-                                                         DecomposeRepCount)) = true
-                       /\ is_syntax_ok prog = true} )
-  : StringMap.t DFFun :=
-  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
-                                              (BuildDFFun DecomposeRep
-                                                          _ wrappedRep (progsOK el) ) acc) (BuildFinUpTo n') (StringMap.empty _).
-
-Definition BuildCompileUnit2T'
-           av
-           (env : Env av)
-           {WrappedRepT}
-           {n n'}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
-           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
-           DecomposeRepPre
-           DecomposeRepPost
-           numRepArgs
-           ax_mod_name'
-           op_mod_name'
-           codWrap
-           domWrap
-           wrappedRep
-           DecomposeRepPrePoseAgree
-           (exports := GenExports env adt codWrap domWrap
-                                  DecomposeRepPre DecomposeRepPost
-                                  DecomposeRepPrePoseAgree)
-           (progsOK : forall midx, 
-               {prog : Stmt &
-                       LiftMethod env P (DecomposeRep wrappedRep)
-                                  (codWrap midx) (domWrap midx) prog (Methods adt midx) 
-                       (* Syntactic Checks *)
-                       /\ NoUninitDec.is_no_uninited
-                            {|
-                              FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
-                                      (MethodDomCod
-                                         (BuildADTSig consSigs methSigs) midx)))
-                                                                numRepArgs;
-                              FuncCore.RetVar := "ret";
-                              FuncCore.Body := Compile.compile
-                                                 (CompileDFacade.compile prog) |} = true
-                       /\ (GoodModuleDec.is_arg_len_ok
-                             (Compile.compile (CompileDFacade.compile prog)) = true)
-                       /\ (GoodModuleDec.is_good_size
-                             (Datatypes.length
-                                (GetLocalVars.get_local_vars
-                                   (Compile.compile (CompileDFacade.compile prog))
-                                   (BuildArgNames (Datatypes.length (fst
-                                      (MethodDomCod
-                                         (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
-                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
-                           true)
-                       /\  is_disjoint (assigned prog)
-                                       (StringSetFacts.of_list
-                                          (BuildArgNames (Datatypes.length (fst
-                                      (MethodDomCod
-                                         (BuildADTSig consSigs methSigs) midx)))
-                                                         numRepArgs)) = true
-                       /\ is_syntax_ok prog = true} )
-  : BuildCompileUnit2T env
-                       adt
-                       P
-                       DecomposeRep
-                       DecomposeRepPre
-                       DecomposeRepPost
-                       numRepArgs
-                       ax_mod_name'
-                       op_mod_name'
-                       codWrap
-                       domWrap
-                       wrappedRep
-                       DecomposeRepPrePoseAgree.
-Proof.
-  eexists {| module := {| Funs :=
-                            BuildFun
-                              adt DecomposeRep _ codWrap domWrap
-                              wrappedRep progsOK;
-                          Imports := GLabelMap.empty _ |} |}.
-  unfold CompileUnit2Equiv; repeat split; simpl; eauto.
-  unfold DFModuleEquiv; intros.
-  eexists (BuildDFFun DecomposeRep _ wrappedRep (progsOK midx)).
-  simpl. repeat split.
-  apply (projT2 (progsOK midx)).
-  admit.
-Admitted.
 
 Ltac makeEvar T k :=
   let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
@@ -757,6 +898,23 @@ Class SideStuff av {n n' : nat}
   { coDomainWrappers : forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx));
     domainWrappers : forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx));
     f'_well_behaved : forall x x0 : Rep adt, is_same_types (f' x0) (f' x) = true }.
+
+Arguments DecomposePosti3list _ _ _ _ _ _ _ _ _ _ / .
+Arguments DecomposeIndexedQueryStructurePost _ _ _ _ _ _ / .
+
+Arguments DecomposePrei3list _ _ _ _ _ _ _ _ _ / .
+Arguments DecomposeIndexedQueryStructurePre _ _ _ _ _ / .
+
+Eval simpl in
+  (forall av env rWrap cWrap dWrap l ret,
+      (AxiomatizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l ret).
+
+Eval simpl in
+    (forall av env rWrap cWrap dWrap l l' ret,
+        let Dom' := _ in
+        (AxiomatizeMethodPost (av := av) env (DecomposeIndexedQueryStructurePost _ _ _ rWrap) cWrap dWrap (Dom := Dom') (Methods PartialSchedulerImpl (Fin.FS (Fin.F1)))) l' ret
+    /\ (AxiomatizeMethodPre (av := av) env (DecomposeIndexedQueryStructurePre _ _ _ rWrap) dWrap l)).
+
 
 Require Import Benchmarks.QueryStructureWrappers.
 
@@ -3010,8 +3168,16 @@ Ltac _qs_step :=
   | _ => setoid_rewrite map_rev_def
   end.
 
+Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
+
 Ltac _compile :=
   repeat _qs_step.
+
+Eval simpl in
+  (forall av env P rWrap cWrap dWrap prog,
+      (LiftMethod (av := av) env P (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
+
+
 
 Require Import
         CertifiedExtraction.Extraction.Internal
@@ -3045,8 +3211,11 @@ Proof.
   (* Should be compile, then a bunch of reflexivity proofs. *)
   _compile.
 
+(* Stuff below is outdated. *)
 
-  
+
+
+
 Lemma progOKs
   : forall (env := QSEnv)
            (rWrap := projT1 SchedulerWrappers)
@@ -3232,7 +3401,7 @@ Defined. *)
 Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
 Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))). *)
 
-  
+
   unfold rWrap, Scheduler_SideStuff; clear rWrap Scheduler_SideStuff.
 
   let sig := match type of PartialSchedulerImpl with Core.ADT ?sig => sig end in
