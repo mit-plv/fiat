@@ -112,48 +112,489 @@ Fixpoint NumUpTo n acc :=
   | S n' => NumUpTo n' (n' :: acc)
   end.
 
+Lemma NoDupNumUpTo
+  : forall n l,
+    NoDup l
+    -> (forall n', In n' l -> S n' > n)
+    -> NoDup (NumUpTo n l).
+Proof.
+  induction n.
+  - simpl; eauto.
+  - simpl; intros.
+    eapply IHn.
+    + constructor; eauto.
+      intro H'; apply H0 in H'; omega.
+    + intros; destruct H1; subst.
+      omega.
+      apply H0 in H1; omega.
+Qed.     
+      
 Definition BuildArgNames n m :=
   List.app (map nthArgName (NumUpTo n nil))
            (map nthRepName (NumUpTo m nil)).
 
+Lemma NoDup_is_no_dup
+  : forall l, NoDup l -> ListFacts3.is_no_dup l = true.
+Proof.
+  induction l; simpl; intros.
+  - reflexivity.
+  - inversion H; subst.
+    apply Bool.andb_true_iff; split; eauto.
+    apply forallb_forall; intros.
+    unfold ListFacts3.string_bool; destruct (string_dec x a);
+    subst; simpl; eauto.
+Qed.
+
+Lemma NumberToString_rec_lt_10 :
+  forall n m,
+    n > 0
+    -> m < 10
+    -> NumberToString_rec n m = NumberToString_rec 1 m.
+Proof.
+  simpl; intros.
+  destruct n.
+  - omega.
+  - simpl; destruct (Compare_dec.lt_dec m 10).
+    + reflexivity.
+    + omega.
+Qed.
+
+Lemma divmod_gt_10
+  : forall m,
+    9 < m 
+    -> 0 < fst (NPeano.divmod m 9 0 8).
+Proof.
+  intros; pose proof (NPeano.divmod_spec m 9 0 8 (Le.le_n_Sn _)).
+  destruct (NPeano.divmod m 9 0 8); intuition.
+  simpl in *.
+  destruct n; eauto; simpl in *.
+  rewrite Plus.plus_comm in H1; simpl in *.
+  rewrite Plus.plus_comm in H1; simpl in *.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+  destruct n0; try omega.
+Qed.
+
+Lemma divmod_lt_self :
+  forall m,
+    fst (NPeano.divmod m 9 0 8) <= m.
+Proof.
+  intros; pose proof (NPeano.divmod_spec m 9 0 8 (Le.le_n_Sn _)).
+  destruct (NPeano.divmod m 9 0 8); intuition.
+  simpl in *.
+  destruct n; eauto; simpl in *.
+Qed.
+
+Lemma divmod_lt_9 :
+  forall m,
+    snd (NPeano.divmod m 9 0 8) <= 9.
+Proof.
+  intros; pose proof (NPeano.divmod_spec m 9 0 8 (Le.le_n_Sn _)).
+  destruct (NPeano.divmod m 9 0 8); intuition.
+Qed.
+
+Lemma divmod_eq :
+  forall n m,
+    NPeano.divmod n 9 0 8 = NPeano.divmod m 9 0 8 ->
+    n = m.
+Proof.
+  intros; pose proof (NPeano.divmod_spec m 9 0 8 (Le.le_n_Sn _)).
+  pose proof (NPeano.divmod_spec n 9 0 8 (Le.le_n_Sn _)).
+  destruct (NPeano.divmod m 9 0 8);
+    destruct (NPeano.divmod n 9 0 8);
+    intuition.
+  simpl in *.
+  rewrite Plus.plus_comm in *; simpl in *.
+  rewrite Plus.plus_comm in *; simpl in *.
+  injections.
+  omega.
+Qed.
+  
+Lemma string_append_nil
+  : forall s1 s2, s1 ++ s2 = "" -> s1 = "" /\ s2 = "".
+Proof.
+  induction s1; simpl; eauto.
+  intros; discriminate.
+Qed.
+
+Lemma append_single_char :
+  forall s1 s2 a1 a2,
+    s1 ++ String a1 EmptyString = s2 ++ String a2 EmptyString
+    -> s1 = s2 /\ a1 = a2.
+Proof.
+  induction s1; simpl.
+  - destruct s2; simpl; intros; try discriminate.
+    injections; intuition.
+    injections.
+    destruct s2; discriminate.
+  - destruct s2; simpl; intros; try discriminate.
+    injections.
+    destruct s1; discriminate.
+    injections.
+    apply IHs1 in H0; intuition subst; eauto.
+Qed.
+    
+Lemma NumberToString_rec_10
+  : forall fuel_m m,
+    0 < fuel_m
+    -> m < fuel_m 
+    -> NumberToString_rec fuel_m m <> "".
+Proof.
+  induction fuel_m; simpl; intros.
+  - omega.
+  - destruct (Compare_dec.lt_dec m 10).
+    + destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+      destruct m; try (discriminate || omega).
+    + intro H'; apply string_append_nil in H'; intuition.
+      destruct fuel_m.
+      omega.
+      simpl in H2.
+      destruct (snd (NPeano.divmod m 9 0 9)); simpl in *; try discriminate.
+      * destruct (snd (NPeano.divmod m 9 0 9)); simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+        destruct n0; simpl in *; try discriminate.
+Qed.
+
+Lemma string_append_single
+  : forall a s1 s2,
+    String a EmptyString = s1 ++ s2
+    -> (s1 = String a EmptyString /\ s2 = EmptyString)
+       \/ (s2 = String a EmptyString /\ s1 = EmptyString).
+Proof.
+  induction s1; simpl; intuition.
+  injections.
+  symmetry in H0; apply string_append_nil in H0; subst; intuition.
+  subst; intuition.
+Qed.
+
+Lemma NumberToString_rec_snd_divmod
+  : forall fuel_n n,
+    n < fuel_n 
+    -> exists a,
+      NumberToString_rec
+        fuel_n
+        match snd (NPeano.divmod n 9 0 8) with
+        | 0 => 9
+        | 1 => 8
+        | 2 => 7
+        | 3 => 6
+        | 4 => 5
+        | 5 => 4
+        | 6 => 3
+        | 7 => 2
+        | 8 => 1
+        | S (S (S (S (S (S (S (S (S _)))))))) => 0
+        end = String a EmptyString.
+Proof.
+  destruct fuel_n; intros.
+  omega.
+  destruct (snd (NPeano.divmod n 9 0 8)); [simpl; eauto | ].
+  do 9 (destruct n0; [simpl; eauto | ]).
+  simpl; eauto.
+Qed.  
+
+Lemma NumberToString_rec_inj' :
+  forall fuel_n n m fuel_m,
+    n < fuel_n
+    -> m < fuel_m
+    -> NumberToString_rec fuel_n n = NumberToString_rec fuel_m m
+    -> n = m.
+Proof.
+  induction fuel_n.
+  intros; try omega.
+  induction m; auto.
+  destruct n; try omega; intros.
+  destruct fuel_m; try omega.
+  destruct fuel_m; try omega.
+  simpl in H1.
+  destruct (Compare_dec.lt_dec (S n) 10).
+  do 10 (destruct n; try discriminate).
+  omega.
+  omega.
+  symmetry in H1; apply string_append_single in H1; intuition.
+  elimtype False.
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3).
+  omega.
+  pose proof (divmod_lt_self n); omega.
+  intros.
+  destruct n; simpl in *; try omega.
+  destruct fuel_m; simpl in *; try omega.
+  destruct (Compare_dec.lt_dec (S m) 10); simpl in *.
+  do 10 (destruct m; try discriminate).
+  omega.
+  omega.
+  apply string_append_single in H1; intuition.
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3).
+  omega.
+  pose proof (divmod_lt_self m); omega.
+  destruct fuel_m; simpl in *; try omega.
+  destruct (Compare_dec.lt_dec (S n) 10).
+  destruct (Compare_dec.lt_dec (S m) 10).
+  do 9 (destruct n; [ do 9 (try destruct m; try discriminate; try omega; auto) | ]).
+  do 9 (try destruct m; try discriminate; try omega; auto).
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  destruct n.
+  apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self m); omega ].
+  omega.
+  destruct (Compare_dec.lt_dec (S m) 10).
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  destruct m.
+  symmetry in H1; apply string_append_single in H1; intuition;
+  [ elimtype False;
+    apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  [ omega | pose proof (divmod_lt_self n); omega ].
+  omega.
+  destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | ].
+  destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | ].
+  rewrite H3, H2 in H1.
+  eapply append_single_char in H1; intuition.
+  eapply IHfuel_n in H4.
+  subst.
+  rewrite <- H2 in H3.
+  eapply IHfuel_n in H3.
+  assert (snd (NPeano.divmod n 9 0 8) = snd (NPeano.divmod m 9 0 8)).
+  revert H3; clear.
+  pose proof (divmod_lt_9 n);
+    pose proof (divmod_lt_9 m); 
+  destruct (snd (NPeano.divmod n 9 0 8));
+    destruct (snd (NPeano.divmod m 9 0 8)); eauto.
+  do 10 (destruct n0; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).  
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  destruct n0; destruct n1; eauto.
+  do 10 (destruct n1; try discriminate; eauto).
+  do 10 (destruct n0; try discriminate; eauto).
+  intros; omega.
+  clear H3.
+  rewrite (divmod_eq m n); auto.
+  destruct (NPeano.divmod m 9 0 8);
+    destruct (NPeano.divmod n 9 0 8); simpl in *; congruence.
+  destruct (snd (NPeano.divmod n 9 0 8)); try omega.
+  do 10 (destruct n2; try omega).
+  destruct (snd (NPeano.divmod m 9 0 8)); try omega.
+  do 10 (destruct n2; try omega).
+  pose proof (divmod_lt_self n); omega.
+  pose proof (divmod_lt_self m); omega.
+Qed.
+
 Lemma BuildArgNamesNoDup n m
   : ListFacts3.is_no_dup (BuildArgNames n m) = true.
 Proof.
-  induction n; simpl.
-  - unfold BuildArgNames; simpl.
-    remember [] as l;
-      assert (NoDup l) as NoDupL by (subst; econstructor);
-      clear Heql; revert l NoDupL.
-    induction m; simpl.
-    + induction l.
-      * simpl; reflexivity.
-      * simpl; intros.
-        unfold ListFacts3.is_no_dup in *; simpl.
-        inversion NoDupL; subst.
-        apply Bool.andb_true_iff; split.
-        revert H1; clear; induction l; simpl; intros; eauto.
-        admit.
-        (*{ apply Bool.andb_true_iff; split.
-          unfold nthRepName; simpl.
-          eapply Bool.negb_true_iff.
-          unfold ListFacts3.string_bool.
-          unfold ListFacts3.sumbool_to_bool.
-          find_if_inside; eauto.
-          injections.
-          admit.
-        } *)
-        eauto.
-    + intros; simpl.
-      apply IHm.
-      constructor; eauto.
-      admit.
-  -  unfold BuildArgNames; simpl.
-Admitted.
+  apply NoDup_is_no_dup; unfold BuildArgNames.
+  apply ListFacts1.NoDup_app.
+  - apply ListFacts1.Injection_NoDup.
+    unfold ListFacts1.IsInjection.
+    unfold nthArgName, not; intros.
+    apply H.
+    injections.
+    destruct x; destruct y; simpl.
+    + congruence.
+    + elimtype False.
+      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+    + elimtype False.
+      apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+    + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
+      auto with arith.
+    + apply NoDupNumUpTo; simpl; try constructor; intuition.
+  - apply ListFacts1.Injection_NoDup.
+    unfold ListFacts1.IsInjection.
+    unfold nthArgName, not; intros.
+    apply H.
+    injections.
+    destruct x; destruct y; simpl.
+    + congruence.
+    + elimtype False.
+      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+    + elimtype False.
+      apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+    + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
+      auto with arith.
+    + apply NoDupNumUpTo; simpl; try constructor; intuition.
+  - unfold ListFacts1.Disjoint, not; intros; intuition.
+    eapply in_map_iff in H0; eapply in_map_iff in H1;
+    destruct_ex; intuition; subst.
+    unfold nthRepName, nthArgName in H0; discriminate.
+Qed.
 
 Lemma BuildArgNames_args_name_ok
   : forall n m, forallb NameDecoration.is_good_varname (BuildArgNames n m) = true.
 Proof.
-Admitted.
+  intros; eapply forallb_forall; intros.
+  unfold BuildArgNames in H; apply in_app_or in H; intuition;
+  apply in_map_iff in H0; destruct_ex; intuition; subst;
+  reflexivity.
+Qed.
 
 Lemma Ret_ret_name_ok : NameDecoration.is_good_varname "ret" = true.
 Proof.
@@ -163,7 +604,14 @@ Qed.
 Lemma ret_NIn_BuildArgNames
   : forall n m, negb (is_in "ret" (BuildArgNames n m)) = true.
 Proof.
-Admitted.
+  intros.
+  apply Bool.negb_true_iff.
+  apply FacadeFacts.not_is_in_iff.
+  intro.
+  apply in_app_or in H; intuition; apply in_map_iff in H0.
+  destruct_ex; intuition; unfold nthArgName in H0; discriminate.
+  destruct_ex; intuition; unfold nthArgName in H0; discriminate.
+Qed.
 
 Definition Shelve {A} (a : A) := True.
 
@@ -222,11 +670,12 @@ Fixpoint AxiomatizeMethodPre'
 
 Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
            {numRepArgs : nat}
+           (P : Rep -> Prop)
            (f : Rep -> Vector.t (Value av) numRepArgs)
   : DomWrapperT av Dom
     -> list (Value av) -> Prop
   :=
-    fun dWrap args => exists r, (AxiomatizeMethodPre' env Dom dWrap (Vector.to_list (f r)) args).
+    fun dWrap args => exists r, P r /\ AxiomatizeMethodPre' env Dom dWrap (Vector.to_list (f r)) args.
 
 Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
          (av : Type)
@@ -286,7 +735,16 @@ Definition AxiomatizeMethodPost
   exists r, AxiomatizeMethodPost' env cWrap dWrap [] (f r) (meth r) args ret.
 
 Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ _ / .
-Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ / .
+Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ _ / .
+
+Ltac helper :=
+  match goal with
+  | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
+      exists r: ?Tr, ?P r /\ AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] => 
+    let tx := type of x in
+    let ty := type of y in
+    (exists (x, y); unify wrp wrp'; unify f' (fun x => Vector.cons _ (wrap (FacadeWrapper := fw) (fst x)) _ (f (snd x))); split; eauto)
+  end.
 
 Definition GenAxiomaticSpecs
            av
@@ -294,6 +752,7 @@ Definition GenAxiomaticSpecs
            {Cod}
            {Dom}
            {Rep}
+           (RepInv : Rep -> Prop)
            (cWrap : CodWrapperT av Cod)
            (dWrap : DomWrapperT av Dom)
            (meth : methodType Rep Dom Cod)
@@ -304,7 +763,7 @@ Definition GenAxiomaticSpecs
                                            (Vector.to_list (DecomposeRepPre x)) = true)
   : AxiomaticSpec av.
 Proof.
-  refine {| PreCond := AxiomatizeMethodPre env DecomposeRepPre dWrap;
+  refine {| PreCond := AxiomatizeMethodPre env RepInv DecomposeRepPre dWrap;
             PostCond := AxiomatizeMethodPost env DecomposeRepPost cWrap dWrap meth |}.
   clear dependent meth.
   clear dependent DecomposeRepPost.
@@ -319,23 +778,14 @@ Proof.
   - eauto.
   - simpl in H0.
     eapply IHDom.
-    Focus 2.
-    Ltac helper :=
-      match goal with
-      | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
-          exists r: ?Tr, AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] =>
-        let tx := type of x in
-        let ty := type of y in
-        (exists (x, y); unify wrp wrp'; unify f' (fun x => Vector.cons _ (wrap (FacadeWrapper := fw) (fst x)) _ (f (snd x))); exact H)
-      end.
+    
+    2:helper.
 
-    helper.
     repeat cleanup.
     unfold is_same_types in *.
     simpl; rewrite (GoodWrapperConsistent (fst (dWrap))); apply H.
-
+    instantiate (1 := fun r => RepInv (snd r)); eauto.
     helper.
-
     eauto.
 Defined.
 
@@ -354,13 +804,14 @@ Definition GenExports
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
            (consWrapper : (forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx))))
            (domWrapper : (forall midx,  DomWrapperT av (methDom (Vector.nth methSigs midx))))
+           RepInv
            {numRepArgs : nat}
            (f : Core.Rep adt -> Vector.t (Value av) numRepArgs)
            (f' : Core.Rep adt -> Core.Rep adt -> Vector.t ((Value av) * option av) numRepArgs)
            (H : forall x x0, is_same_types (Vector.to_list (f x0)) (Vector.to_list (f x)) = true)
   : StringMap.t (AxiomaticSpec av) :=
   List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
-                                              (GenAxiomaticSpecs env (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
+                                              (GenAxiomaticSpecs env RepInv (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
 
 Definition CompileUnit2Equiv
            av
@@ -370,7 +821,7 @@ Definition CompileUnit2Equiv
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
+           RepInv
            (f : A -> _)
            g
            ax_mod_name'
@@ -381,7 +832,7 @@ Definition CompileUnit2Equiv
            {exports}
            (compileUnit : CompileUnit exports)
   :=
-    DFModuleEquiv env adt P compileUnit.(module) cWrap dWrap (f rWrap) g
+    DFModuleEquiv env adt RepInv compileUnit.(module) cWrap dWrap (f rWrap) g
     /\ compileUnit.(ax_mod_name) = ax_mod_name'
     /\ compileUnit.(op_mod_name) = op_mod_name'.
 
@@ -393,7 +844,7 @@ Definition BuildCompileUnit2T
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
+           RepInv
            numRepArgs
            (DecomposeRep : A -> _)
            DecomposeRepPre
@@ -405,8 +856,8 @@ Definition BuildCompileUnit2T
            dWrap
            rWrap
            H
-           (exports := GenExports (numRepArgs := numRepArgs) env adt cWrap dWrap DecomposeRepPre DecomposeRepPost H) :=
-  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt P DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+           (exports := GenExports (numRepArgs := numRepArgs) env adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
+  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt RepInv DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
 
 Definition BuildDFFun
            av
@@ -417,12 +868,12 @@ Definition BuildDFFun
            WrappedCod
            WrappedDom
            meth
-           P
+           RepInv
            (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
            (numRepArgs : nat)
            wrappedRep
            (progOK : {prog : Stmt &
-                             LiftMethod (Cod := cod) (Dom := dom) env P (DecomposeRep wrappedRep)
+                             LiftMethod (Cod := cod) (Dom := dom) env RepInv (DecomposeRep wrappedRep)
                                         WrappedCod WrappedDom prog meth
                        (* Syntactic Checks *)
                      /\ NoUninitDec.is_no_uninited
@@ -599,16 +1050,16 @@ Lemma AxiomatizeMethodPost_OK
         WrappedRep
         meth
         DecomposeRepPrePostAgree
-        P
+        RepInv
         progOK
     : op_refines_ax
         env
         (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
                           (WrappedCod := WrappedCod) (WrappedDom := WrappedDom)
-                          (meth := meth) (P := P)
+                          (meth := meth) (RepInv := RepInv)
                           DecomposeRep numRepArgs WrappedRep progOK))
         (GenAxiomaticSpecs (numRepArgs := numRepArgs)
-                           env codWrap domWrap meth
+                           env RepInv codWrap domWrap meth
                            DecomposeRepPre
                            DecomposeRepPost
                            DecomposeRepPrePostAgree).
@@ -618,11 +1069,43 @@ Lemma AxiomatizeMethodPost_OK
       eapply AxiomatizeMethodPost_OK.
     - simpl. unfold BuildArgNames.
       rewrite app_length, !map_length, !NumUpTo_length; simpl.
-      intros; destruct H.
+      intros; destruct H as [r [H' H ] ].
       apply length_AxiomatizeMethodPre' in H; subst.
       rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
-    -
-
+    - destruct progOK as [prog [op_spec ?] ]; simpl.
+      generalize op_spec; clear.
+      induction dom; simpl.
+      Focus 2.
+      intros.
+      unfold AxSafe, GenAxiomaticSpecs in H; simpl in H;
+        destruct_ex; intuition; subst.
+      destruct_ex; intuition.
+      destruct_ex; intuition.
+      Set Printing All.
+      idtac.
+      eapply IHdom.
+      simpl.
+      intros.
+      eapply op_spec.      
+      + destruct cod; simpl.
+        unfold AxSafe; intros.
+        destruct_ex; intuition; subst.
+        unfold GenAxiomaticSpecs in H2; simpl in H2;
+        destruct_ex; intuition; subst.
+        eapply op_spec; eauto.
+        eapply SameValues_Equal.
+        symmetry.
+        apply H.
+        unfold SameValues.
+        Set Printing All.
+        idtac.
+        Locate " _ ≲ _".
+        
+        
+        unfold PreCond in H2.
+        
+      
+      
 
       Definition BuildCompileUnit2T'
            av
