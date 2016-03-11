@@ -2,6 +2,8 @@ Require Import Fiat.ADT.Core.
 Require Import Bedrock.Platform.Facade.DFModule.
 Require Import Fiat.ADTNotation.
 Require Import Bedrock.Platform.Facade.CompileUnit2.
+Require Import Fiat.Common.i3list.
+Require Import Fiat.Common.ilist3.
 
 Require Import
         CertifiedExtraction.Core
@@ -27,7 +29,7 @@ Proof.
   pose proof (gWrapTagConsistent gWrapper).
   find_if_inside; destruct (H a1); destruct (H a2); rewrite H0, H1; eauto.
 Qed.
-  
+
 Definition CodWrapperT av (Cod : option Type) :=
   match Cod with
   | None => unit
@@ -44,27 +46,36 @@ Fixpoint DomWrapperT av (Dom : list Type) : Type :=
 Definition nthArgName n := "arg" ++ (NumberToString n).
 Definition nthRepName n := "rep" ++ (NumberToString n).
 
+Fixpoint list2Telescope av
+         (l : list {T : _ & prod (NameTag av T) (Comp T)})
+  : Telescope av:=
+  match l with
+  | nil => Nil
+  | cons a l' => Cons (fst (projT2 a)) (snd (projT2 a)) (fun _ => list2Telescope l')
+  end.
+
 Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
          (P : Rep -> Prop)
          (DecomposeRep : Rep -> Telescope av)
+         (DecomposeRepPre : list {T : _ & prod (NameTag av T) (Comp T)})
          {struct Dom}
   :=
   match Dom return
         CodWrapperT av Cod
         -> DomWrapperT av Dom
         -> Stmt
-        -> Telescope av
+        -> list {T : _ & prod (NameTag av T) (Comp T)}
         -> methodType' Rep Dom Cod
         -> Prop with
   | nil => match Cod return
                  CodWrapperT av Cod
                  -> DomWrapperT av nil
                  -> Stmt
-                 -> Telescope av
+                 -> list {T : _ & prod (NameTag av T) (Comp T)}
                  -> methodType' Rep nil Cod
                  -> Prop with
            | None => fun cWrap dWrap prog pre meth =>
-                       {{ pre }}
+                       {{ list2Telescope (pre ++ DecomposeRepPre) }}
                          prog
                          {{ [[`"ret" <-- Word.natToWord 32 0 as _]]
                               :: [[meth as database]] :: (DecomposeRep database) }} ∪ {{ StringMap.empty _ }} // env
@@ -73,7 +84,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
 
            | Some CodT => fun cWrap dWrap prog pre meth =>
                             let v : FacadeWrapper (Value av) CodT := (gWrap cWrap) in
-                            {{ pre }}
+                            {{ list2Telescope (pre ++ DecomposeRepPre) }}
                               prog
                               {{[[meth as mPair]]
                                   :: [[`"ret" <-- snd mPair as _]]
@@ -82,7 +93,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
            end
   | cons DomT Dom' =>
     fun cWrap dWrap prog tele meth =>
-      forall d, let _ := gWrap (fst dWrap) in LiftMethod' env Dom' P DecomposeRep cWrap (snd dWrap) prog ([[ (NTSome (nthArgName (List.length Dom'))) <-- d as _]] :: tele) (meth d)
+      forall d, let _ := gWrap (fst dWrap) in LiftMethod' env Dom' P DecomposeRep DecomposeRepPre cWrap (snd dWrap) prog ((existT _ _ (NTSome (nthArgName (List.length tele)), ret d)) :: tele) (meth d)
   end.
 
 Definition LiftMethod
@@ -92,7 +103,7 @@ Definition LiftMethod
            {Cod}
            {Dom}
            (P : Rep -> Prop)
-           (DecomposeRep : Rep -> Telescope av)
+           (DecomposeRep : Rep -> list {T : _ & prod (NameTag av T) (Comp T)})
            (cWrap : CodWrapperT av Cod)
            (dWrap : DomWrapperT av Dom)
            (prog : Stmt)
@@ -100,7 +111,7 @@ Definition LiftMethod
   : Prop :=
   forall r,
     P r ->
-    LiftMethod' env Dom P DecomposeRep cWrap dWrap prog (DecomposeRep r) (meth r).
+    LiftMethod' env Dom P (fun r => list2Telescope (DecomposeRep r)) (DecomposeRep r) cWrap dWrap prog [] (meth r).
 
 Arguments LiftMethod [_] _ {_ _ _} _ _ _ _ _ _ / .
 
@@ -127,11 +138,11 @@ Proof.
     + intros; destruct H1; subst.
       omega.
       apply H0 in H1; omega.
-Qed.     
-      
+Qed.
+
 Definition BuildArgNames n m :=
-  List.app (map nthArgName (NumUpTo n nil))
-           (map nthRepName (NumUpTo m nil)).
+  List.app (rev (map nthArgName (NumUpTo n nil)))
+           (rev (map nthRepName (NumUpTo m nil))).
 
 Lemma NoDup_is_no_dup
   : forall l, NoDup l -> ListFacts3.is_no_dup l = true.
@@ -161,7 +172,7 @@ Qed.
 
 Lemma divmod_gt_10
   : forall m,
-    9 < m 
+    9 < m
     -> 0 < fst (NPeano.divmod m 9 0 8).
 Proof.
   intros; pose proof (NPeano.divmod_spec m 9 0 8 (Le.le_n_Sn _)).
@@ -215,7 +226,7 @@ Proof.
   injections.
   omega.
 Qed.
-  
+
 Lemma string_append_nil
   : forall s1 s2, s1 ++ s2 = "" -> s1 = "" /\ s2 = "".
 Proof.
@@ -239,11 +250,11 @@ Proof.
     injections.
     apply IHs1 in H0; intuition subst; eauto.
 Qed.
-    
+
 Lemma NumberToString_rec_10
   : forall fuel_m m,
     0 < fuel_m
-    -> m < fuel_m 
+    -> m < fuel_m
     -> NumberToString_rec fuel_m m <> "".
 Proof.
   induction fuel_m; simpl; intros.
@@ -297,7 +308,7 @@ Qed.
 
 Lemma NumberToString_rec_snd_divmod
   : forall fuel_n n,
-    n < fuel_n 
+    n < fuel_n
     -> exists a,
       NumberToString_rec
         fuel_n
@@ -319,7 +330,7 @@ Proof.
   destruct (snd (NPeano.divmod n 9 0 8)); [simpl; eauto | ].
   do 9 (destruct n0; [simpl; eauto | ]).
   simpl; eauto.
-Qed.  
+Qed.
 
 Lemma NumberToString_rec_inj' :
   forall fuel_n n m fuel_m,
@@ -367,63 +378,63 @@ Proof.
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   destruct n.
   apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self m); omega ].
   omega.
   destruct (Compare_dec.lt_dec (S m) 10).
@@ -432,63 +443,63 @@ Proof.
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   destruct m.
   symmetry in H1; apply string_append_single in H1; intuition;
   [ elimtype False;
     apply (fun H H' => NumberToString_rec_10 H H' H3); try omega | ].
   destruct (@NumberToString_rec_snd_divmod fuel_n n); [omega | congruence].
-  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3); 
+  elimtype False; eapply (fun H H' => NumberToString_rec_10 H H' H3);
   [ omega | pose proof (divmod_lt_self n); omega ].
   omega.
   destruct (@NumberToString_rec_snd_divmod fuel_m m); [omega | ].
@@ -502,7 +513,7 @@ Proof.
   assert (snd (NPeano.divmod n 9 0 8) = snd (NPeano.divmod m 9 0 8)).
   revert H3; clear.
   pose proof (divmod_lt_9 n);
-    pose proof (divmod_lt_9 m); 
+    pose proof (divmod_lt_9 m);
   destruct (snd (NPeano.divmod n 9 0 8));
     destruct (snd (NPeano.divmod m 9 0 8)); eauto.
   do 10 (destruct n0; try discriminate; eauto).
@@ -515,7 +526,7 @@ Proof.
   do 10 (destruct n0; try discriminate; eauto).
   destruct n0; destruct n1; eauto.
   do 10 (destruct n1; try discriminate; eauto).
-  do 10 (destruct n0; try discriminate; eauto).  
+  do 10 (destruct n0; try discriminate; eauto).
   destruct n0; destruct n1; eauto.
   do 10 (destruct n1; try discriminate; eauto).
   do 10 (destruct n0; try discriminate; eauto).
@@ -544,44 +555,78 @@ Proof.
   pose proof (divmod_lt_self m); omega.
 Qed.
 
+Lemma NoDup_rev {A} :
+  forall (l : list A),
+    NoDup l <-> NoDup (rev l).
+Proof.
+  induction l; simpl; split; eauto.
+  - intros; apply ListFacts1.NoDup_app.
+    + inversion H; subst; eapply IHl; eauto.
+    + repeat econstructor; eauto.
+    + unfold ListFacts1.Disjoint; unfold not; intros.
+      inversion H; subst; apply H3.
+      intuition; inversion H2; subst; eauto.
+      * apply in_rev; auto.
+      * inversion H5.
+  - intros; pose proof (NoDup_remove_1 _ nil a H);
+    pose proof (NoDup_remove_2 _ nil a H).
+    rewrite app_nil_r in *.
+    econstructor.
+    + setoid_rewrite in_rev; eauto.
+    + apply IHl; auto.
+Qed.
+
+Lemma IsInjection_nthArgName
+  : ListFacts1.IsInjection nthArgName.
+Proof.
+  unfold ListFacts1.IsInjection.
+  unfold nthArgName, not; intros.
+  apply H.
+  injections.
+  destruct x; destruct y; simpl.
+  + congruence.
+  + elimtype False.
+    symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+    auto with arith.
+  + elimtype False.
+    apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+  + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
+    auto with arith.
+Qed.
+
+Lemma IsInjection_nthRepName
+  : ListFacts1.IsInjection nthRepName.
+Proof.
+  unfold ListFacts1.IsInjection.
+  unfold nthRepName, not; intros.
+  apply H.
+  injections.
+  destruct x; destruct y; simpl.
+  + congruence.
+  + elimtype False.
+    symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+    auto with arith.
+  + elimtype False.
+    apply (fun H H' => NumberToString_rec_10 H H' H1);
+      auto with arith.
+  + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
+    auto with arith.
+Qed.
+
 Lemma BuildArgNamesNoDup n m
   : ListFacts3.is_no_dup (BuildArgNames n m) = true.
 Proof.
   apply NoDup_is_no_dup; unfold BuildArgNames.
-  apply ListFacts1.NoDup_app.
+  apply ListFacts1.NoDup_app; try rewrite <- NoDup_rev.
   - apply ListFacts1.Injection_NoDup.
-    unfold ListFacts1.IsInjection.
-    unfold nthArgName, not; intros.
-    apply H.
-    injections.
-    destruct x; destruct y; simpl.
-    + congruence.
-    + elimtype False.
-      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
-      auto with arith.
-    + elimtype False.
-      apply (fun H H' => NumberToString_rec_10 H H' H1);
-      auto with arith.
-    + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
-      auto with arith.
-    + apply NoDupNumUpTo; simpl; try constructor; intuition.
+    eapply IsInjection_nthArgName.
+    apply NoDupNumUpTo; simpl; try constructor; intuition.
   - apply ListFacts1.Injection_NoDup.
-    unfold ListFacts1.IsInjection.
-    unfold nthArgName, not; intros.
-    apply H.
-    injections.
-    destruct x; destruct y; simpl.
-    + congruence.
-    + elimtype False.
-      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
-      auto with arith.
-    + elimtype False.
-      apply (fun H H' => NumberToString_rec_10 H H' H1);
-      auto with arith.
-    + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
-      auto with arith.
-    + apply NoDupNumUpTo; simpl; try constructor; intuition.
+    eapply IsInjection_nthRepName.
+    apply NoDupNumUpTo; simpl; try constructor; intuition.
   - unfold ListFacts1.Disjoint, not; intros; intuition.
+    rewrite <- in_rev in *.
     eapply in_map_iff in H0; eapply in_map_iff in H1;
     destruct_ex; intuition; subst.
     unfold nthRepName, nthArgName in H0; discriminate.
@@ -592,6 +637,7 @@ Lemma BuildArgNames_args_name_ok
 Proof.
   intros; eapply forallb_forall; intros.
   unfold BuildArgNames in H; apply in_app_or in H; intuition;
+  try rewrite <- in_rev in *;
   apply in_map_iff in H0; destruct_ex; intuition; subst;
   reflexivity.
 Qed.
@@ -608,7 +654,7 @@ Proof.
   apply Bool.negb_true_iff.
   apply FacadeFacts.not_is_in_iff.
   intro.
-  apply in_app_or in H; intuition; apply in_map_iff in H0.
+  apply in_app_or in H; rewrite <- !in_rev in H; intuition; apply in_map_iff in H0.
   destruct_ex; intuition; unfold nthArgName in H0; discriminate.
   destruct_ex; intuition; unfold nthArgName in H0; discriminate.
 Qed.
@@ -626,7 +672,7 @@ Definition DFModuleEquiv
            (module : DFModule av)
            (consWrapper' : forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx)))
            (domWrapper : forall midx, DomWrapperT av (methDom (Vector.nth methSigs midx)))
-           (DecomposeRep : Core.Rep adt -> Telescope av)
+           (DecomposeRep : Core.Rep adt -> _)
            (DecomposeRepCount : nat)
   : Prop :=
   (* Environments match *)
@@ -649,6 +695,7 @@ Arguments BuildArgNames !n !m / .
 Fixpoint AxiomatizeMethodPre'
          (av : Type)
          (env : Env av)
+         (RepArgs : list (Value av))
          {Dom}
          {struct Dom}
   : DomWrapperT av Dom
@@ -661,11 +708,11 @@ Fixpoint AxiomatizeMethodPre'
         -> list (Value av)
         -> Prop with
   | nil => fun dWrap args' args =>
-             args = args'
+             app args' RepArgs = args
   | cons DomT Dom' =>
     fun dWrap args' args =>
       let wrap' := gWrap (fst dWrap) in
-      exists x : DomT, AxiomatizeMethodPre' env Dom' (snd dWrap) (wrap x :: args') args
+      exists x : DomT, AxiomatizeMethodPre' env RepArgs Dom' (snd dWrap) (wrap x :: args') args
   end.
 
 Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
@@ -675,7 +722,9 @@ Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
   : DomWrapperT av Dom
     -> list (Value av) -> Prop
   :=
-    fun dWrap args => exists r, P r /\ AxiomatizeMethodPre' env Dom dWrap (Vector.to_list (f r)) args.
+    fun dWrap args =>
+      exists r, P r
+                /\ AxiomatizeMethodPre' env (Vector.to_list (f r)) Dom dWrap [] args.
 
 Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
          (av : Type)
@@ -740,13 +789,28 @@ Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ _ / .
 Ltac helper :=
   match goal with
   | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
-      exists r: ?Tr, ?P r /\ AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] => 
+      exists r: ?Tr, ?P r /\ AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] =>
     let tx := type of x in
     let ty := type of y in
     (exists (x, y); unify wrp wrp'; unify f' (fun x => Vector.cons _ (wrap (FacadeWrapper := fw) (fst x)) _ (f (snd x))); split; eauto)
   end.
 
-Definition GenAxiomaticSpecs
+
+Lemma app_inj
+  : forall (A : Type) (l1 l1' l2 l2' : list A),
+    List.length l1' = List.length l2'
+    -> (l1' ++ l1)%list = (l2' ++ l2)%list
+    -> l1' = l2' /\ l1 = l2.
+Proof.
+  induction l1'; destruct l2'; simpl; intros; try discriminate;
+  intuition.
+  injections; eauto.
+  destruct (IHl1' l2 l2'); eauto; subst; eauto.
+  injections; eauto.
+  destruct (IHl1' l2 l2'); eauto; subst; eauto.
+Qed.
+
+  Definition GenAxiomaticSpecs
            av
            (env : Env av)
            {Cod}
@@ -770,15 +834,54 @@ Proof.
 
   unfold type_conforming.
   unfold AxiomatizeMethodPre in *.
-
+  remember nil; remember l.
+  assert (is_same_types l0 l = true)
+         by (rewrite <- Heql0, Heql; reflexivity).
+  intros; rewrite Heql0 in H2.
   generalize dependent DecomposeRepPre.
   generalize dependent Rep.
   generalize numRepArgs.
+  generalize l l0 H3 H0; clear.
   induction Dom; simpl; repeat cleanup.
-  - eauto.
+  - unfold is_same_types in H0.
+    revert H0 H H3; clear.
+    revert l0.
+    induction l; destruct l0; simpl in *;
+    intros; try discriminate.
+    + eauto.
+    + apply Bool.andb_true_iff in H0; intuition.
+      unfold is_same_types in *; simpl; rewrite H1; simpl.
+      eapply IHl; eauto.
+  - destruct dWrap.
+    eapply IHDom with (l := wrap (FacadeWrapper := gWrap g) x0 :: l)
+                        (l0 := wrap (FacadeWrapper := gWrap g) x2 :: l0);
+    eauto.
+    unfold is_same_types in *.
+    simpl; rewrite H0.
+    rewrite GoodWrapperConsistent; simpl; eauto.
+Defined.
+(*    Focus 2.
+    intros.
+    eapply H.
+    eauto.
+    Focus 2.
+    eauto.
+    eexists _; split; eauto.
+
+
+    rewrite H in H0.
+    destruct (app_inj _ _ _ _ H3 H0); subst.
+    clear; induction inputs2; simpl; eauto.
+    unfold is_same_types in *; simpl; rewrite IHinputs2.
+    destruct a; simpl; eauto.
   - simpl in H0.
     eapply IHDom.
-    
+    intros; eapply H3.
+    apply H0.
+    intros.
+    apply H.
+    eexists _; split; eauto.
+    eexists _; split; eauto.
     2:helper.
 
     repeat cleanup.
@@ -787,7 +890,7 @@ Proof.
     instantiate (1 := fun r => RepInv (snd r)); eauto.
     helper.
     eauto.
-Defined.
+Defined. *)
 
 Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
   match n return list (Fin.t n) with
@@ -869,7 +972,7 @@ Definition BuildDFFun
            WrappedDom
            meth
            RepInv
-           (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
+           (DecomposeRep : WrappedRepT -> RepT -> _)
            (numRepArgs : nat)
            wrappedRep
            (progOK : {prog : Stmt &
@@ -920,6 +1023,7 @@ Proof.
   destruct progOK; simpl in *; intuition.
 Defined.
 
+
 Definition BuildFun
            av
            (env : Env av)
@@ -929,7 +1033,7 @@ Definition BuildFun
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
            P
-           (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
+           (DecomposeRep : WrappedRepT -> Rep adt -> _)
            (DecomposeRepCount : nat)
            codWrap
            domWrap
@@ -971,7 +1075,7 @@ Lemma AxiomatizeMethodPost_OK
       {RepT}
       {numRepArgs}
       cod dom
-      codWrap domWrap 
+      codWrap domWrap
   : forall args DecomposeRepPost meth,
     exists is_ret_adt : bool,
       forall (in_out : list (Value av * option av)) (ret : Value av),
@@ -982,111 +1086,1146 @@ Lemma AxiomatizeMethodPost_OK
         if is_ret_adt
         then exists a : av, ret = ADT a
         else exists w : W, ret = SCA av w.
-  Proof.
-    destruct cod.
-    - exists (gWrapTag codWrap); simpl; revert args DecomposeRepPost meth.
-      induction dom; simpl in *; intros.
-      + destruct H as [r [r' [v' [? [? ? ] ] ] ] ]; subst.
-        pose proof (gWrapTagConsistent codWrap); find_if_inside; eauto.
-      + destruct H as [r [x ? ] ]; subst.
-        eapply (IHdom (snd domWrap)
-                      ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
-                      (fun r r' => (DecomposeRepPost r r'))
-                      (fun r => meth r x)
-                      in_out); eauto.
-    - exists false; simpl; revert args DecomposeRepPost meth.
-      induction dom; simpl in *; intros.
-      + destruct H as [r [r' [? [? ? ] ] ] ]; subst; eauto.
-      + destruct H as [r [x ? ] ]; subst; eauto.
-        eapply (IHdom (snd domWrap)
-                      ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
-                      (fun r r' =>  DecomposeRepPost r r')
-                      (fun r => meth r x)
-                      in_out); eauto.
-  Qed.
+Proof.
+  destruct cod.
+  - exists (gWrapTag codWrap); simpl; revert args DecomposeRepPost meth.
+    induction dom; simpl in *; intros.
+    + destruct H as [r [r' [v' [? [? ? ] ] ] ] ]; subst.
+      pose proof (gWrapTagConsistent codWrap); find_if_inside; eauto.
+    + destruct H as [r [x ? ] ]; subst.
+      eapply (IHdom (snd domWrap)
+                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                    (fun r r' => (DecomposeRepPost r r'))
+                    (fun r => meth r x)
+                    in_out); eauto.
+  - exists false; simpl; revert args DecomposeRepPost meth.
+    induction dom; simpl in *; intros.
+    + destruct H as [r [r' [? [? ? ] ] ] ]; subst; eauto.
+    + destruct H as [r [x ? ] ]; subst; eauto.
+      eapply (IHdom (snd domWrap)
+                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                    (fun r r' =>  DecomposeRepPost r r')
+                    (fun r => meth r x)
+                    in_out); eauto.
+Qed.
 
-  Lemma NumUpTo_length :
-    forall n l, 
-      Datatypes.length (NumUpTo n l) =
-      n + Datatypes.length l.
-  Proof.
-    induction n; simpl; intros; eauto.
-    rewrite IHn; simpl; omega.
-  Qed.
+Lemma NumUpTo_length :
+  forall n l,
+    Datatypes.length (NumUpTo n l) =
+    n + Datatypes.length l.
+Proof.
+  induction n; simpl; intros; eauto.
+  rewrite IHn; simpl; omega.
+Qed.
 
-  Lemma length_Vector_to_list {A} {n} : 
-    forall (v : Vector.t A n),
-      Datatypes.length (Vector.to_list v) = n.
-  Proof.
-    induction v; simpl; eauto.
-  Qed.
+Lemma length_Vector_to_list {A} {n} :
+  forall (v : Vector.t A n),
+    Datatypes.length (Vector.to_list v) = n.
+Proof.
+  induction v; simpl; eauto.
+Qed.
 
-  Lemma length_AxiomatizeMethodPre' av env dom domWrap
-    : forall l l', AxiomatizeMethodPre' (av := av) env dom domWrap l l'
-      -> Datatypes.length l + Datatypes.length dom = Datatypes.length l'.
-  Proof.
-    induction dom; simpl in *; intros; subst.
-    - omega.
-    - destruct H.
-      eapply IHdom in H; simpl in H.
-      rewrite <- H; omega.
-  Qed.
-    
-    Lemma compiled_prog_satisfies_GenAxiomaticSpecs
-        av
-        (env : Env av)
-        {WrappedRepT}
-        {RepT}
-        (DecomposeRep : WrappedRepT -> RepT -> Telescope av)
-        numRepArgs
-        DecomposeRepPre
-        DecomposeRepPost
-        cod
-        dom
-        codWrap
-        domWrap
-        WrappedDom
-        WrappedCod
-        WrappedRep
-        meth
-        DecomposeRepPrePostAgree
-        RepInv
-        progOK
+Lemma length_AxiomatizeMethodPre' av env dom domWrap
+  : forall l l' l'', AxiomatizeMethodPre' (av := av) env l'' dom domWrap l' l
+                 -> Datatypes.length l' + Datatypes.length l'' + Datatypes.length dom = Datatypes.length l.
+Proof.
+  induction dom; simpl in *; intros; subst.
+  - rewrite app_length; eauto.
+  - destruct H.
+    eapply IHdom in H; simpl in H.
+    rewrite <- H; omega.
+Qed.
+
+(* Generic decomposition functions that ensure consistency among *)
+(* the three decomposition functions. These functions depend on there *)
+(* being a decomposition function that maps a representation type to  *)
+(* an ilist3. *)
+
+(* A List of wrappers for each of the decomposed representation types. *)
+Fixpoint RepWrapperT
+         av
+         {n}
+         {A : Type}
+         {B : A -> Type}
+         (C : forall a, B a -> Type)
+         (As : Vector.t A n)
+  : ilist3 (B := B) As -> Type :=
+  match As return ilist3 (B := B) As -> Type with
+  | Vector.nil =>
+    fun il => unit
+  | Vector.cons a _ As' =>
+    fun il =>
+      prod (FacadeWrapper av (C a (prim_fst il)))
+           (RepWrapperT av C _ (prim_snd il))
+  end.
+
+(* Conversion from decomposed representation to a telescope for *)
+(* operational specifications. *)
+Fixpoint Decomposei3list
+         av
+         {n}
+         {A}
+         {B}
+         {C}
+         {As : Vector.t A n}
+         {struct As}
+  :
+    forall (il : ilist3 (B := B) As),
+      RepWrapperT av C As il
+      -> i3list C il
+      -> list {T : _ & prod (NameTag av T) (Comp T)} :=
+  match As return
+        forall (il : ilist3 (B := B) As),
+          RepWrapperT av C As il
+          -> i3list C il
+          -> list {T : _ & prod (NameTag av T) (Comp T)} with
+  | Vector.nil => fun as' rWrap r => nil
+  | Vector.cons a n' As' => fun as' rWrap r =>
+                              let fWrap' := fst rWrap in
+                              cons (existT _ _ (NTSome (nthRepName n'), ret (prim_fst r))) (Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
+  end.
+
+(* Conversion from a decomposed representation to a list of values *)
+(* for axiomatic preconditions. *)
+Fixpoint DecomposePrei3list
+         av
+         {n}
+         {A}
+         {B}
+         {C}
+         {As : Vector.t A n}
+         {struct As}
+  :
+    forall (il : ilist3 (B := B) As),
+      RepWrapperT av C As il
+      -> i3list C il
+      -> Vector.t (Value av) n :=
+  match As in Vector.t _ n return
+        forall (il : ilist3 (B := B) As),
+          RepWrapperT av C As il
+          -> i3list C il
+          -> Vector.t (Value av) n with
+  | Vector.nil => fun as' rWrap r => Vector.nil _
+  | Vector.cons a n' As' => fun as' rWrap r =>
+                              let fWrap' := fst rWrap in
+                              Vector.cons _ (ADT (wrap (prim_fst r)))
+                                          _ (DecomposePrei3list As' (prim_snd as') (snd rWrap)
+                                                                (prim_snd r))
+  end.
+
+(* Conversion from a decomposed representation to a list of pairs of values *)
+(* and option values for axiomatic preconditions. *)
+Fixpoint DecomposePosti3list
+           av
+           {n}
+           {A}
+           {B}
+           {C}
+           {As : Vector.t A n}
+           {struct As}
+  :
+    forall (il : ilist3 (B := B) As),
+      RepWrapperT av C As il
+      -> i3list C il
+      -> i3list C il
+      -> Vector.t (((Value av) * option av)) n :=
+  match As in Vector.t _ n return
+        forall (il : ilist3 (B := B) As),
+          RepWrapperT av C As il
+          -> i3list C il
+          -> i3list C il
+          -> Vector.t (((Value av) * option av)) n with
+  | Vector.nil => fun as' rWrap r r' => Vector.nil _
+  | Vector.cons a n' As' => fun as' rWrap r r' =>
+                              let fWrap' := fst rWrap in
+                              Vector.cons
+                                _
+                                (ADT (wrap (prim_fst r)), Some (wrap (prim_fst r')))
+                                _
+                                (DecomposePosti3list As' (prim_snd as') (snd rWrap)
+                                                     (prim_snd r) (prim_snd r'))
+  end.
+
+Lemma DecomposePrei3list_Agree
+      av
+      {numRepArgs}
+      {A}
+      {B}
+      {C}
+      {RepT' : Vector.t A numRepArgs}
+      (RepT : ilist3 (B := B) RepT')
+      (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+  : forall r' r, is_same_types (Vector.to_list (DecomposePrei3list (C := C) RepT' RepT RepWrapper r))
+                              (Vector.to_list (DecomposePrei3list (C := C) RepT' RepT RepWrapper r')) = true.
+Proof.
+
+  induction RepT'; simpl.
+  - reflexivity.
+  - intros.
+    unfold Vector.to_list, is_same_types in *; simpl in *.
+    apply IHRepT'.
+Qed.
+
+Lemma NumUpTo_app :
+  forall n l l',
+    NumUpTo n (l' ++ l) = List.app (NumUpTo n l') l.
+Proof.
+  induction n; simpl; intros; eauto.
+  rewrite app_comm_cons.
+  apply IHn.
+Qed.
+
+Corollary NumUpTo_nil :
+  forall n l,
+    NumUpTo n l = List.app (NumUpTo n []) l.
+Proof.
+  intros; apply (NumUpTo_app n l nil).
+Qed.
+
+Lemma nth_error_NumUpTo :
+  forall m n l,
+    m < n
+    -> nth_error (NumUpTo n l) m = Some m.
+Proof.
+  induction n; simpl; intros.
+  - omega.
+  - inversion H; subst; eauto.
+    rewrite NumUpTo_nil.
+    rewrite Expr.nth_error_app_R; rewrite NumUpTo_length; simpl; eauto.
+    rewrite Plus.plus_comm; simpl; rewrite NPeano.Nat.sub_diag; reflexivity.
+Qed.
+
+Lemma nth_error_NumUpTo_lt :
+  forall m n l v,
+    m < n
+    -> nth_error (NumUpTo n l) m = Some v
+    -> v < n.
+Proof.
+  induction n; simpl; intros.
+  - omega.
+  - inversion H; subst; eauto.
+    rewrite NumUpTo_nil, Expr.nth_error_app_R in H0; try rewrite NumUpTo_length in *; simpl; eauto.
+    simpl in *.
+    rewrite Plus.plus_comm in H0; simpl.
+    rewrite NPeano.Nat.sub_diag in H0.
+    simpl in H0; injections; omega.
+    apply IHn in H0; auto.
+Qed.
+
+Lemma nth_error_NumUpTo_eq :
+  forall m n l v,
+    nth_error (NumUpTo n l) m = Some v
+    -> v < n \/ In v l.
+Proof.
+  intros; destruct (Compare_dec.lt_eq_lt_dec m n) as [ [ | ] | ].
+  - left; eapply nth_error_NumUpTo_lt; eauto.
+  - subst.
+    rewrite NumUpTo_nil in H; simpl in *.
+    rewrite Expr.nth_error_app_R in H; try rewrite NumUpTo_length in *; simpl; eauto.
+    rewrite Plus.plus_comm in H; simpl in *; rewrite NPeano.Nat.sub_diag in H.
+    apply ListFacts4.nth_error_In in H; eauto.
+  - rewrite NumUpTo_nil in H; simpl in *.
+    rewrite Expr.nth_error_app_R in H; try rewrite NumUpTo_length in *; simpl; eauto.
+    rewrite Plus.plus_comm in H; simpl in *.
+    apply ListFacts4.nth_error_In in H; eauto.
+Qed.
+
+Lemma StringMap_remove_add av:
+  forall k v rest tenv ext,
+    rest ≲ tenv ∪ ext
+    -> k ∉ rest
+    -> StringMap.remove (elt:=Value av) k
+                        ([k <-- v ]:: rest)
+                        ≲ tenv ∪ ext.
+Proof.
+  intros; eapply SameValues_Equal with (m1 := rest).
+  unfold StringMap.Equal.
+  intros; destruct (string_dec y k); subst.
+  intros; symmetry; rewrite remove_eq_o; eauto.
+  symmetry; rewrite <- not_find_in_iff; eauto.
+  rewrite StringMapFacts.remove_neq_o; eauto.
+  rewrite StringMapFacts.add_neq_o; eauto.
+  eauto.
+Qed.
+
+Lemma combine_app_distrib {A B}
+  : forall (l1 l1' : list A) (l2 l2' : list B),
+    List.length l1 = List.length l2 ->
+    combine (app l1 l1') (app l2 l2') =
+    app (combine l1 l2) (combine l1' l2').
+Proof.
+  induction l1; destruct l2; simpl; intros; try discriminate.
+  - reflexivity.
+  - rewrite IHl1; eauto.
+Qed.
+
+Lemma lenth_combine {A B}
+  : forall (l1 : list A) (l2 : list B),
+    List.length l1 = List.length l2 ->
+    List.length (combine l1 l2) = List.length l1
+    /\ List.length (combine l1 l2) = List.length l2.
+Proof.
+  induction l1; destruct l2; simpl; intros;
+  try discriminate; intuition.
+  - erewrite (fun H => proj1 (IHl1 l2 H)); congruence.
+  - erewrite (fun H => proj2 (IHl1 l2 H)); congruence.
+Qed.
+
+Lemma Vector_ToList_cons {A} n
+  : forall a (v : Vector.t A n),
+    Vector.to_list (Vector.cons _ a _ v) =
+    a :: Vector.to_list v.
+Proof.
+  intros; reflexivity.
+Qed.
+
+Definition in_map {A B}
+  : forall (f f' : A -> B) l,
+    (forall a, In a l -> f a = f' a)
+    -> map f l = map f' l.
+Proof.
+  induction l; simpl; intros.
+  - reflexivity.
+  - rewrite H; eauto.
+    rewrite IHl; eauto.
+Qed.
+
+Lemma compiled_prog_satisfies_GenAxiomaticSpecs
+      av
+      (env : Env av)
+      {numRepArgs}
+      {A}
+      {B}
+      {C}
+      {RepT' : Vector.t A numRepArgs}
+      (RepT : ilist3 (B := B) RepT')
+      (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+      (DecomposeRep := Decomposei3list (C := C) RepT' RepT)
+      (DecomposeRepPre := DecomposePrei3list (C := C) RepT' RepT RepWrapper)
+      (DecomposeRepPost := DecomposePosti3list (C := C) RepT' RepT RepWrapper)
+      cod
+      dom
+      codWrap
+      domWrap
+      meth
+      RepInv
+      progOK
     : op_refines_ax
         env
         (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
-                          (WrappedCod := WrappedCod) (WrappedDom := WrappedDom)
+                          (WrappedCod := codWrap) (WrappedDom := domWrap)
                           (meth := meth) (RepInv := RepInv)
-                          DecomposeRep numRepArgs WrappedRep progOK))
+                          DecomposeRep numRepArgs RepWrapper progOK))
         (GenAxiomaticSpecs (numRepArgs := numRepArgs)
                            env RepInv codWrap domWrap meth
                            DecomposeRepPre
                            DecomposeRepPost
-                           DecomposeRepPrePostAgree).
+                           (DecomposePrei3list_Agree av RepT RepWrapper)).
   Proof.
     unfold op_refines_ax; repeat split.
     - unfold GenAxiomaticSpecs; simpl.
       eapply AxiomatizeMethodPost_OK.
     - simpl. unfold BuildArgNames.
-      rewrite app_length, !map_length, !NumUpTo_length; simpl.
+      rewrite app_length, !rev_length, !map_length, !NumUpTo_length; simpl.
       intros; destruct H as [r [H' H ] ].
       apply length_AxiomatizeMethodPre' in H; subst.
       rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
     - destruct progOK as [prog [op_spec ?] ]; simpl.
       generalize op_spec; clear.
-      induction dom; simpl.
-      Focus 2.
+      unfold AxSafe; simpl; intros.
+      destruct_ex; intuition; subst.
+      unfold GenAxiomaticSpecs in H2; simpl in H2;
+      destruct_ex; intuition; subst.
+      revert st x H0 H x0 H2 H3 X0.
+      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+      assert (
+          Datatypes.length (@nil (Value av))
+          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+      by reflexivity.
+      assert (forall x0,
+                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                          ∅) as H''.
+      { unfold BuildArgNames.
+        subst DecomposeRep; subst DecomposeRepPre.
+        simpl.
+        clear meth op_spec RepInv.
+        generalize RepT RepWrapper;
+          clear; induction RepT'; simpl; intros.
+        - reflexivity.
+        - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          rewrite StringMapFacts.add_eq_o; eauto.
+          eexists _; intuition eauto.
+          eapply StringMap_remove_add; eauto.
+          eapply make_map_not_in.
+          rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+          injections.
+          destruct x; destruct n.
+          + intuition.
+          + symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+          + apply NumberToString_rec_10 in H; intuition.
+          + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+            simpl in H1.
+            apply ListFacts4.in_nth_error in H1; destruct_ex.
+            apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+      }
+      remember (@nil (Value av)) as l; clear Heql.
+      remember [] as l'; clear Heql'.
+      remember DecomposeRep.
+      assert (forall r : i3list C RepT,
+                 RepInv r ->
+                 LiftMethod' env dom RepInv
+                             (fun r0 : i3list C RepT => list2Telescope (DecomposeRep RepWrapper r0))
+                             (l0 RepWrapper r)
+                             codWrap domWrap
+                             prog l' (meth r)) as op_spec'
+          by (subst; exact op_spec); clear op_spec.
+      clear Heql0.
+      generalize l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+      clear l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+      induction dom; simpl; intros.
+      + destruct cod; simpl.
+        { simpl in H3; subst.
+          eapply op_spec'; eauto.
+          eapply SameValues_Equal.
+          symmetry; apply H.
+          rewrite <- plus_n_O.
+          apply H''.
+        }
+        { eapply op_spec'; eauto.
+          simpl in H3; subst.
+          eapply SameValues_Equal.
+          symmetry; apply H.
+          rewrite <- plus_n_O.
+          apply H''. }
+      + simpl in *; destruct_ex; subst.
+        rewrite H.
+        destruct domWrap.
+        eapply IHdom with
+        (meth := fun r => meth r x1)
+          (l' :=
+                   (existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                  (NTSome
+                     (String "a"
+                        (String "r"
+                           (String "g"
+                              (NumberToString_rec (Datatypes.length l')
+                                 (pred (Datatypes.length l')))))),
+                   ret x1) :: l'))
+        (DecomposeRepPre := DecomposeRepPre); auto.
+        intros.
+        6:eapply H1.
+        5:eauto.
+        simpl; eauto.
+        unfold BuildArgNames; simpl.
+        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+        intros; rewrite len_l_l'.
+        rewrite StringMapFacts.add_eq_o; eauto.
+        eexists; intuition eauto.
+        eapply StringMap_remove_add; eauto.
+        unfold BuildArgNames in H''.
+        rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l' in H''; simpl in H''.
+        eapply H''.
+        eapply make_map_not_in.
+        intro H'; apply in_app_or in H';
+        rewrite <- in_rev, in_map_iff in H';
+        intuition; destruct_ex; intuition.
+        injections.
+        destruct x3; destruct l'.
+        * intuition.
+        * symmetry in H3.
+          apply NumberToString_rec_10 in H3; intuition.
+          simpl; omega.
+        * apply NumberToString_rec_10 in H3; intuition.
+        * apply NumberToString_rec_inj' in H3; simpl in H3; subst; eauto.
+          simpl in H5.
+          apply ListFacts4.in_nth_error in H5; destruct_ex.
+          apply nth_error_NumUpTo_eq in H3; simpl in H3; intuition; subst.
+        * rewrite <- in_rev, in_map_iff in H3; destruct_ex.
+          unfold nthRepName in H3; simpl in H3; intuition.
+          discriminate.
+        * simpl; rewrite H0; repeat f_equal; omega.
+        * simpl; f_equiv; f_equal; omega.
+      + reflexivity.
+    - destruct progOK as [prog [op_spec ?] ]; simpl.
+      generalize op_spec; clear.
+      unfold AxSafe, AxRunsTo; simpl; intros.
+      destruct_ex; intuition; subst.
+      destruct_ex; intuition; subst.
+      revert st x H1 H0 H x0 H4 H3 x.
+      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+      assert (
+          Datatypes.length (@nil (Value av))
+          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+      by reflexivity.
+      assert (forall x0,
+                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                          ∅) as H''.
+      { unfold BuildArgNames.
+        subst DecomposeRep; subst DecomposeRepPre.
+        simpl.
+        clear meth op_spec RepInv.
+        generalize RepT RepWrapper;
+          clear; induction RepT'; simpl; intros.
+        - reflexivity.
+        - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          rewrite StringMapFacts.add_eq_o; eauto.
+          eexists _; intuition eauto.
+          eapply StringMap_remove_add; eauto.
+          eapply make_map_not_in.
+          rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+          injections.
+          destruct x; destruct n.
+          + intuition.
+          + symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+          + apply NumberToString_rec_10 in H; intuition.
+          + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+            simpl in H1.
+            apply ListFacts4.in_nth_error in H1; destruct_ex.
+            apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+      }
+      remember (@nil (Value av)) as l; clear Heql.
+      remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'; clear Heql'.
+      remember DecomposeRep.
+      assert (forall r : i3list C RepT,
+                 RepInv r ->
+                 LiftMethod' env dom RepInv
+                             (fun r0 : i3list C RepT => list2Telescope (DecomposeRep RepWrapper r0))
+                             (l0 RepWrapper r)
+                             codWrap domWrap
+                             prog l' (meth r)) as op_spec'
+          by (subst; exact op_spec); clear op_spec.
+      clear Heql0.
+      replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l).
+      generalize l l' l0 op_spec' len_l_l' H''.
+      clear l l' l0 op_spec' len_l_l' H''.
+      induction dom; simpl; intros.
+      + destruct cod.
+        { apply op_spec' in H3; destruct H3.
+          destruct (H2 _ (H'' _)).
+          rewrite H in H0; subst.
+          rewrite <- plus_n_O in H0; apply H6 in H0.
+          simpl in meth.
+          destruct H0; intuition; destruct x.
+          repeat eexists _; intuition eauto.
+          eexists x0.
+          repeat (eexists _); intuition eauto.
+          unfold BuildArgNames.
+          rewrite <- plus_n_O in *.
+          unfold DecomposeRepPost.
+          apply Cons_PushExt' in H7.
+          simpl in H7.
+          rewrite !combine_app_distrib, map_app, combine_app_distrib.
+          f_equal.
+          unfold DecomposeRep in H7.
+          - revert H7; clear.
+            induction l; simpl; eauto.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            intros; rewrite IHl; f_equal; eauto.
+            destruct a; eauto.
+            case_eq (StringMap.find (elt:=Value av)
+                                    (String "a"
+                                            (String "r"
+                                                    (String "g"
+                                                            (NumberToString_rec (Datatypes.length l)
+                                                                                (pred (Datatypes.length l)))))) st'); intros; eauto.
+            destruct v; eauto.
+            elimtype False; generalize st' H H7; clear.
+            induction RepT'.
+            + simpl; intros; unfold WeakEq in *; intuition.
+              unfold SameADTs in H0.
+              apply StringMap.find_2 in H; apply H0 in H.
+              apply StringMap.add_3 in H; try congruence.
+              apply StringMap.is_empty_2 in H; eauto.
+            + intros.
+              simpl in H7.
+              destruct (StringMap.find (elt:=Value av)
+                                       (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n))))) st'); eauto.
+              destruct_ex; intuition.
+              eapply IHRepT'.
+              2: eassumption.
+              apply StringMap.find_1; apply StringMap.remove_2;
+              eauto using StringMap.find_2.
+          - revert st' H7; clear.
+            induction RepT'.
+            + reflexivity.
+            + Local Opaque Vector.to_list.
+              destruct RepWrapper; simpl in *.
+              rewrite Vector_ToList_cons.
+              intro; caseEq (StringMap.find (elt:=Value av)
+                                            (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                            st'); intros; eauto.
+            unfold DecomposeRepPre; simpl.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons.
+            destruct_ex; split_and; subst.
+            computes_to_inv; subst.
+            simpl; rewrite H.
+            f_equal.
+            erewrite <- IHRepT'.
+            2:apply H3.
+            f_equal.
+            intros; eapply in_map; clear; intros.
+            unfold get_output; destruct a; simpl.
+            destruct v; eauto.
+            rewrite remove_neq_o; eauto.
+            intro; subst.
+            induction RepT'.
+            simpl in *; eauto.
+            simpl in H.
+
+
+            rewrite n
+
+
+            induction RepT'; simpl; intros; eauto.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons; simpl.
+            f_equal.
+            rewrite remove_neq_o.
+            reflexivity.
+            intro; injections.
+            destruct n.
+            Local Transparent NumberToString_rec.
+            simpl in H0.
+            discriminate.
+            apply NumberToString_rec_inj' in H0; try omega.
+            destruct prim_snd.
+            destruct prim_snd0.
+            Local Opaque NumberToString_rec.
+            simpl in *.
+            destruct r; simpl.
+            rewrite IHRepT'.
+            f_equal.
+            simpl.
+            (* Annoying unification problem here. *)
+            admit.
+            intuition.
+          - rewrite map_length.
+            rewrite (fun H => proj1 (lenth_combine _ _ H)).
+            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          - simpl in H7.
+            revert H7;
+              caseEq (StringMap.find (elt:=Value av) "ret" st');
+              intros; destruct_ex; intuition; subst.
+            computes_to_inv; subst; auto.
+          - unfold no_adt_leak; intros.
+            unfold sel in H0.
+            simpl in H7.
+            destruct (string_dec "ret" var).
+            intuition.
+            rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+            right.
+            revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+            destruct_ex; intuition; subst.
+            revert H11 H0; clear.
+            rewrite <- plus_n_O.
+            remember (StringMap.remove (elt:=Value av) "ret" st').
+            clear Heqt; revert t; induction RepT';
+            simpl.
+
+              in
+
+            case_eq
+
+            clear; induction l.
+            induction RepT'.
+            * reflexivity.
+            * simpl.
+              rewrite Vector_ToList_cons; simpl.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+              caseEq (StringMap.find (elt:=Value av)
+                                     (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                     st'); intros; eauto.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+              rewrite <- IHRepT'.
+              eapply StringMap.remove_1 in H.
+              destruct_ex; split_and; subst.
+              computes_to_inv; subst.
+              simpl; rewrite H.
+              f_equal.
+            idtac.
+
+              Set Printing Implicit.
+            idtac.
+            unfold RepWrapperT in H.
+            rewrite H.
+              caseEq (StringMap.find (elt:=Value av)
+                     (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                     st').
+              rewrite remove_neq_o.
+
+
+              simpl.
+              reflexivity.
+              revert H3 H; clear.
+              match goal with
+                |- contect
+              unfold SameValues.
+              induction (list2Telescope
+                           (Decomposei3list RepT' (prim_snd RepT) (snd RepWrapper) (prim_snd i))); simpl.
+
+
+              unfold SameValues.
+              eapply SameValues_remove_SCA; eauto.
+
+              unfold SameValues in H3.
+
+              simpl in H3.
+              rewrite <- map_rev.
+              unfold Vector.to_list.
+
+              2: intuition.
+              unfold
+              simpl.
+            +
+              Focus 2.
+              detruct
+              eapply StringMap_remove_add.
+
+
+
+
+            intros; eaut
+
+            rewrite rev_map.
+            unfold SameValues in H7.
+
+
+          unfold get_output.
+
+
+          rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l'; simpl.
+
+          unfold Build
+          Print combine.
+          simpl.
+
+
+      unfold LiftMethod' in H3.
+      unfold GenAxiomaticSpecs in H2; simpl in H2;
+      destruct_ex; intuition; subst.
+      revert st x H0 H x0 H2 H3 X0.
+      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+      assert (
+          Datatypes.length (@nil (Value av))
+          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+      by reflexivity.
+      assert (forall x0,
+                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                          ∅) as H''.
+      {
+
+        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+        injections.
+        destruct x; destruct n.
+      + intuition.
+      + symmetry in H.
+        apply NumberToString_rec_10 in H; intuition.
+      + apply NumberToString_rec_10 in H; intuition.
+      + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+        simpl in H1.
+        apply ListFacts4.in_nth_error in H1; destruct_ex.
+              apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst
+
+        destruct WrappedDom.
+        Set Printing All.
+        reflexivity.
+
+        simpl.
+
+
+        intros; eapply op_spec'.
+        eauto.
+        Focus 5.
+        eapply H1.
+        Focus 4.
+
+      Focus 3
+      intros.
+      eapply op_spec.
+
+
+
+
+Lemma compiled_prog_satisfies_GenAxiomaticSpecs
+      av
+      (env : Env av)
+      {numRepArgs}
+      {A}
+      {B}
+      {C}
+      {RepT' : Vector.t A numRepArgs}
+      (RepT : ilist3 (B := B) RepT')
+      (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+      (DecomposeRep := Decomposei3list (C := C) RepT' RepT)
+      (DecomposeRepPre := DecomposePrei3list (C := C) RepT' RepT RepWrapper)
+      (DecomposeRepPost := DecomposePosti3list (C := C) RepT' RepT RepWrapper)
+      cod
+      dom
+      codWrap
+      domWrap
+      WrappedDom
+      WrappedCod
+      meth
+      RepInv
+      progOK
+    : op_refines_ax
+        env
+        (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
+                          (WrappedCod := WrappedCod) (WrappedDom := WrappedDom)
+                          (meth := meth) (RepInv := RepInv)
+                          DecomposeRep numRepArgs RepWrapper progOK))
+        (GenAxiomaticSpecs (numRepArgs := numRepArgs)
+                           env RepInv codWrap domWrap meth
+                           DecomposeRepPre
+                           DecomposeRepPost
+                           (DecomposePrei3list_Agree av RepT RepWrapper)).
+  Proof.
+    unfold op_refines_ax; repeat split.
+    - unfold GenAxiomaticSpecs; simpl.
+      eapply AxiomatizeMethodPost_OK.
+    - simpl. unfold BuildArgNames.
+      rewrite app_length, !rev_length, !map_length, !NumUpTo_length; simpl.
+      intros; destruct H as [r [H' H ] ].
+      apply length_AxiomatizeMethodPre' in H; subst.
+      rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
+    - destruct progOK as [prog [op_spec ?] ]; simpl.
+      generalize op_spec; clear.
+      unfold AxSafe; simpl; intros.
+      destruct_ex; intuition; subst.
+      unfold GenAxiomaticSpecs in H2; simpl in H2;
+      destruct_ex; intuition; subst.
+      revert st x H0 H x0 H2 H3 X0.
+      assert (forall x0,
+                 make_map (rev (map nthRepName (NumUpTo numRepArgs [])))
+                          (Vector.to_list (DecomposeRepPre x0)) ≲ DecomposeRep RepWrapper x0 ∪
+                          ∅) as H'' by admit.
+      remember DecomposeRep.
+      assert (forall r : i3list C RepT,
+                 RepInv r ->
+                 LiftMethod' env dom RepInv (DecomposeRep RepWrapper) WrappedCod WrappedDom
+                             prog (t RepWrapper r) (meth r)) as op_spec'
+          by (subst; exact op_spec); clear op_spec.
+      clear Heqt.
+      generalize DecomposeRep DecomposeRepPre t op_spec' H''.
+      clear DecomposeRep DecomposeRepPre t op_spec' H''.
+      induction dom; simpl; intros.
+      + destruct cod; simpl.
+        { simpl in H3; subst.
+          eapply op_spec'; eauto.
+          eapply SameValues_Equal.
+          symmetry; apply H.
+          apply H''.
+        }
+          (*unfold BuildArgNames.
+          simpl.
+          clear meth op_spec RepInv.
+          generalize RepT RepWrapper RepInv DecomposeRep DecomposeRepPre op_spec x0;
+            clear; induction RepT'; simpl; intros.
+          - reflexivity.
+          - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite StringMapFacts.add_eq_o; eauto.
+            eexists _; intuition eauto.
+            eapply StringMap_remove_add; eauto.
+            eapply make_map_not_in.
+            rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+            injections.
+            destruct x; destruct n.
+            + intuition.
+            + symmetry in H.
+              apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+              simpl in H1.
+              apply ListFacts4.in_nth_error in H1; destruct_ex.
+              apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+          } *)
+        { eapply op_spec'; eauto.
+          simpl in H3; subst.
+          eapply SameValues_Equal.
+          symmetry; apply H.
+          apply H''. }
+        (* subst DecomposeRep DecomposeRepPre.
+          generalize RepT RepWrapper x0;
+            clear; induction RepT'; simpl; intros.
+          - reflexivity.
+          - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite StringMapFacts.add_eq_o; eauto.
+            eexists _; intuition eauto.
+            eapply StringMap_remove_add; eauto.
+            eapply make_map_not_in.
+            rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+            injections.
+            destruct x; destruct n.
+            + intuition.
+            + symmetry in H.
+              apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+              simpl in H1.
+              apply ListFacts4.in_nth_error in H1; destruct_ex.
+              apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+          } *)
+      + simpl in *; destruct_ex; subst.
+        rewrite H.
+        eapply IHdom with
+        (meth := fun r => meth r x1)
+          (t := fun repWrapper r =>
+                  ([[
+                       ` String "a"
+                         (String "r"
+                                 (String "g"
+                                         (NumberToString_rec (Datatypes.length l)
+                                                             (pred (Datatypes.length l))))) <-- x1 as _]]
+                     ::t RepWrapper r)).
+          (DecomposeRepPre := fun x0 => Vector.cons _ (wrap x1) _ (DecomposeRepPre x0)) .
+        intros; eapply op_spec'.
+        eauto.
+        Focus 5.
+        eapply
+        Focus 4.
+
+      Focus 3
+      intros.
+      eapply op_spec.
+
+
+
+Focus 2.
+
+              destruct x.
+              * symmetry in H; apply NumberToString_rec_10 in H; eauto.
+              * apply NumberToString_rec_inj' in H; omega.
+              * destruct x.
+                symmetry in H; apply NumberToString_rec_10 in H; eauto.
+                apply NumberToString_rec_inj' in H; omega.
+
+
+              simpl in *.
+              apply ListFacts4.in_nth_error in H2; destruct_ex.
+              apply nth_error_NumUpTo_eq in H1; simpl in H1; intuition; subst.
+              destruct x.
+
+
+            match goal with
+              |- match ?x with
+                 | _ => _
+                 end => case_eq x; intros
+            end.
+            apply FacadeFacts.find_Some_make_map_iff in H; destruct_ex;
+            intuition.
+            rewrite <- map_rev in H0;
+            eapply ListFacts4.nth_error_map_elim in H0; destruct_ex;
+            intuition.
+            unfold nthRepName in H2.
+            injections.
+            destruct x1; destruct n.
+            simpl in *.
+            + unfold DecomposePrei3list; destruct x; simpl in *; try discriminate.
+              * injection H1; intros; subst.
+                eexists; intuition eauto.
+                eapply StringMap_remove_add; eauto.
+                intro; eapply empty_in_iff; apply H2.
+              * destruct x; simpl in *; discriminate.
+            + symmetry in H.
+              apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_10 in H; intuition.
+            + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+
+              assert (x = 0).
+              { rewrite NumUpTo_nil, rev_app_distr in H0; simpl in H0.
+                destruct x; eauto; simpl in H0.
+                apply ListFacts4.nth_error_In in H0.
+                rewrite <- in_rev in H0.
+                apply ListFacts4.in_nth_error in H0.
+                destruct_ex.
+                apply nth_error_NumUpTo_eq in H; destruct H; simpl in *; try omega.
+              }
+              subst.
+              simpl in H1.
+              injections.
+              eexists _; intuition eauto.
+              rewrite NumUpTo_nil, map_app, rev_app_distr.
+              Opaque NumberToString_rec.
+              simpl.
+              eapply StringMap_remove_add; eauto.
+              eapply make_map_not_in.
+              rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+              injections.
+              simpl in H.
+              apply ListFacts4.in_nth_error in H2; destruct_ex.
+              apply nth_error_NumUpTo_eq in H1; simpl in H1; intuition; subst.
+              destruct x.
+              * symmetry in H; apply NumberToString_rec_10 in H; eauto.
+              * apply NumberToString_rec_inj' in H; omega.
+              * destruct x.
+                symmetry in H; apply NumberToString_rec_10 in H; eauto.
+                apply NumberToString_rec_inj' in H; omega.
+
+            + rewrite <- NoDup_rev.
+              apply ListFacts1.Injection_NoDup.
+              apply IsInjection_nthRepName.
+              apply NoDupNumUpTo.
+              * repeat econstructor; intuition.
+              * simpl; intros; intuition.
+            + rewrite !rev_length, !map_length, !NumUpTo_length, length_Vector_to_list;
+              simpl; omega.
+            + rewrite NumUpTo_nil, map_app, rev_app_distr in H.
+              simpl in H.
+              rewrite StringMapFacts.add_eq_o in H; eauto.
+              discriminate.
+              rewrite
+              simpl.
+              clear.
+
+              rewrite
+
+              rewrite
+                Focus 2.
+              apply nth_
+              eapply in_map in H.
+              simpl.
+              intro.
+            +
+              apply
+              rewrite
+              simpl.
+                simpl.
+
+                rewrite NumUpTo_app in H0.
+                destruct x; simpl in H0; eauto.
+                caseEq (rev (NumUpTo n [[[n; S n]]])); intros; rewrite H in H0.
+                discriminate.
+
+
+                simpl in H0.
+                rewrite NumUpTo_length in H; simpl in H.
+                destruct (Compare_dec.lt_eq_lt_dec x (S n)) as [ [? | ? ] | ]; try omega.
+                simpl in H0.
+                pose proof (NumUpTo_app (S n) (S n :: nil) nil) as e; simpl in e; rewrite e in H0.
+                rewrite Expr.nth_error_app_L in H0; try rewrite NumUpTo_length; simpl; eauto.
+                pose proof (@nth_error_NumUpT_olt x (S n) nil (S n) l H0).
+                omega.
+              }
+              simpl in H1; subst.
+              unfold Vector.to_list at 1 in H1.
+              clear H0.
+              eexists.
+              Focus 2.
+              omega.
+              rewrite
+              re
+              destruct (lt_dec x (S n)).
+            + admit.
+            + admit.
+            + admit.
+        }
+
+
+  eapply SameValues_Equal with (m1 := StringMap.empty _).
+                unfold StringMap.Equal.
+                intros; destruct (string_dec y "rep").
+                intros; symmetry; rewrite remove_eq_o; eauto.
+                symmetry; rewrite <- not_find_in_iff.
+                intro H'.
+                eapply remove_in_iff in H'.
+                destruct H'.
+                apply add_neq_in_iff in H3; try eassumption.
+                destruct H3; apply (StringMap.empty_1) in H3; eauto.
+                destruct RepT'.
+                destruct RepT; simpl in *.
+                destruct x0; simpl in *.
+
+
+
+
+                unfold StringMap.Empty in H4.
+                simpl in H4.
+                destruct H3.
+
+                apply H4 in H3.
+
+                setoid_rewrite add_mapsto_iff.
+                intros H'; destruct H'.
+
+
+                Set Printing All.
+                idtac.
+                intro.
+                pose (StringMap.empty_1 y).
+                unfold StringMap.empty in e0; simpl in e0.
+                Focus 2.
+                Set Printing All.
+                idtac.
+                unfold SameValues
+                eapply SameValues_PopExt.
+                Show Existentials.
+                eauto.
+                unfold SameValues.
+
+                idtac.
+              Focus 2.
+              split.
+              f_equal.
+              f_equal.
+
+              Focus 2.
+              reflxi
+
+              simpl.
+              f_equal.
+              Set Printing Implicit.
+              clear a.
+              reflexivity.
+              idtac.
+              idtac.
+
+              destruct
+            apply NumberToString_rec_inj' in H; subst; eauto.
+            fold NumberToString_rec.
+            destruct x1; simpl in *.
+            Focus 2.
+            apply NumberToString_rec_inj' in H; subst; eauto.
+            rewrite nth_error_NumUpTo in H0.
+            rewrite
+
+            apply nth_error_map.
+
+
+            unfold BuildArgNames; simpl.
+          unfold DecomposeRep.
+          unfold SameValues.
+        Set Printing All.
+        idtac.
+        Locate " _ ≲ _".
+
+        destruct cod; intros.
+
+        Focus 2.
       intros.
       unfold AxSafe, GenAxiomaticSpecs in H; simpl in H;
         destruct_ex; intuition; subst.
       destruct_ex; intuition.
       destruct_ex; intuition.
-      Set Printing All.
+
+  Admitted.
+
+
+  (*Set Printing All.
       idtac.
       eapply IHdom.
       simpl.
       intros.
-      eapply op_spec.      
+      eapply op_spec.
       + destruct cod; simpl.
         unfold AxSafe; intros.
         destruct_ex; intuition; subst.
@@ -1100,12 +2239,33 @@ Lemma AxiomatizeMethodPost_OK
         Set Printing All.
         idtac.
         Locate " _ ≲ _".
-        
-        
-        unfold PreCond in H2.
-        
-      
-      
+
+
+        unfold PreCond in H2. *)
+
+
+  (*Fixpoint BuildDecomposeRepTelescope
+             av
+             numRepArgs
+             (v : Vector.t (Value av) numRepArgs)
+    : Telescope av :=
+    match v with
+    | Vector.nil => Nil
+    | Vector.cons a numRepArgs' v' =>
+      Cons (NTSome (nthRepName numRepArgs')) (ret (match a return
+                                                         match a with
+                                                         | SCA w => W
+                                                         | ADT a => av
+                                                         end
+                                                   with
+                                                   | SCA w => w
+                                                   | ADT a => a
+                                                   end
+                                                  ))
+           (fun _ => BuildDecomposeRepTelescope v')
+    end. *)
+
+
 
       Definition BuildCompileUnit2T'
            av
@@ -1115,11 +2275,11 @@ Lemma AxiomatizeMethodPost_OK
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
            (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           P
+           RepInv
+           numRepArgs
            (DecomposeRep : WrappedRepT -> Rep adt -> Telescope av)
            DecomposeRepPre
            DecomposeRepPost
-           numRepArgs
            ax_mod_name'
            op_mod_name'
            codWrap
@@ -1127,11 +2287,13 @@ Lemma AxiomatizeMethodPost_OK
            wrappedRep
            DecomposeRepPrePoseAgree
            (exports := GenExports env adt codWrap domWrap
+                                  (numRepArgs := numRepArgs)
+                                  RepInv
                                   DecomposeRepPre DecomposeRepPost
                                   DecomposeRepPrePoseAgree)
            (progsOK : forall midx,
                {prog : Stmt &
-                       LiftMethod env P (DecomposeRep wrappedRep)
+                       LiftMethod env RepInv (DecomposeRep wrappedRep)
                                   (codWrap midx) (domWrap midx) prog (Methods adt midx)
                        (* Syntactic Checks *)
                        /\ NoUninitDec.is_no_uninited
@@ -1163,7 +2325,7 @@ Lemma AxiomatizeMethodPost_OK
                        /\ is_syntax_ok prog = true} )
   : BuildCompileUnit2T env
                        adt
-                       P
+                       RepInv
                        DecomposeRep
                        DecomposeRepPre
                        DecomposeRepPost
@@ -1188,6 +2350,7 @@ Proof.
   unfold BuildFun.
   admit.
   Grab Existential Variables.
+  Print Telescope.
   unfold ops_refines_axs.
 
 
@@ -1231,30 +2394,6 @@ Fixpoint RepWrapperT
            (RepWrapperT av C _ (prim_snd il))
   end.
 
-Fixpoint Decomposei3list
-           av
-           {n}
-           {A}
-           {B}
-           {C}
-           {As : Vector.t n A}
-           {struct As}
-  :
-    forall (il : ilist3 (B := B) As),
-      RepWrapperT av C As il
-      -> i3list C il
-      -> Telescope av :=
-  match As return
-        forall (il : ilist3 (B := B) As),
-          RepWrapperT av C As il
-          -> i3list C il
-          -> Telescope av with
-  | Vector.nil => fun as' rWrap r => Nil
-  | Vector.cons a n' As' => fun as' rWrap r =>
-                              let fWrap' := fst rWrap in
-                              Cons (NTSome (nthRepName n')) (ret (prim_fst r)) (fun _ => Decomposei3list As' (prim_snd as') (snd rWrap) (prim_snd r))
-  end.
-
 Definition DecomposeIndexedQueryStructure av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
                                  Schema.RawSchema
@@ -1270,35 +2409,6 @@ Definition DecomposeIndexedQueryStructure av qs_schema Index
   Decomposei3list _ _ rWrap r.
 Arguments DecomposeIndexedQueryStructure _ {_ _} _ _ /.
 
-
-Fixpoint DecomposePosti3list
-           av
-           {n}
-           {A}
-           {B}
-           {C}
-           {As : Vector.t n A}
-           {struct As}
-  :
-    forall (il : ilist3 (B := B) As),
-      RepWrapperT av C As il
-      -> i3list C il
-      -> i3list C il
-      -> list (((Value av) * option av)) :=
-  match As return
-        forall (il : ilist3 (B := B) As),
-          RepWrapperT av C As il
-          -> i3list C il
-          -> i3list C il
-          -> list (((Value av) * option av)) with
-  | Vector.nil => fun as' rWrap r r' => nil
-  | Vector.cons a n' As' => fun as' rWrap r r' =>
-                              let fWrap' := fst rWrap in
-                              cons (ADT (wrap (prim_fst r)), Some (wrap (prim_fst r')))
-                                   (DecomposePosti3list As' (prim_snd as') (snd rWrap)
-                                                        (prim_snd r) (prim_snd r'))
-  end.
-
 Definition DecomposeIndexedQueryStructurePost av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
                                  Schema.RawSchema
@@ -1313,32 +2423,6 @@ Definition DecomposeIndexedQueryStructurePost av qs_schema Index
            (r r' : IndexedQueryStructure qs_schema Index)
   : list (((Value av) * option av)) :=
   DecomposePosti3list _ _ rWrap r r'.
-
-Fixpoint DecomposePrei3list
-           av
-           {n}
-           {A}
-           {B}
-           {C}
-           {As : Vector.t n A}
-           {struct As}
-  :
-    forall (il : ilist3 (B := B) As),
-      RepWrapperT av C As il
-      -> i3list C il
-      -> list (Value av) :=
-  match As return
-        forall (il : ilist3 (B := B) As),
-          RepWrapperT av C As il
-          -> i3list C il
-          -> list (Value av) with
-  | Vector.nil => fun as' rWrap r => nil
-  | Vector.cons a n' As' => fun as' rWrap r =>
-                              let fWrap' := fst rWrap in
-                              cons (wrap (prim_fst r))
-                                   (DecomposePrei3list As' (prim_snd as') (snd rWrap)
-                                                        (prim_snd r))
-  end.
 
 Definition DecomposeIndexedQueryStructurePre av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
