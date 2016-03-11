@@ -2810,7 +2810,7 @@ Proof.
   Proof.
     intros.
     apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
-  Qed. (* FIXME can we use Ensemble extensionality? *)
+  Qed.
 
   Lemma Same_set_pointwise :
     forall A s1 s2,
@@ -3773,14 +3773,14 @@ Proof.
   repeat apply DropName_remove; congruence.
 Qed.
 
-(*Lemma CompileWordList_push_spec :
+Lemma CompileWordList_push_spec :
   forall vtmp vhd vlst fpointer (env: Env QsADTs.ADTValue) ext tenv
     h (t: list W),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordList_push) env ->
     PreconditionSet tenv ext [[[vtmp;vhd;vlst]]] ->
-    {{ [[ `vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
+    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
       Call vtmp fpointer (vlst :: vhd :: nil)
-    {{ [[ `vlst <-- h :: t as _ ]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- h :: t as _ ]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   apply ProgOk_Remove_Skip_R. hoare. PreconditionSet_t.
@@ -3788,9 +3788,9 @@ Proof.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   move_to_front vhd; apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   apply CompileSkip.
-Qed. *)
+Qed.
 
-(*Lemma CompileMap_TuplesToWords :
+Lemma CompileMap_TuplesToWords :
   forall {N} (lst: list (FiatTuple N)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' (f: FiatTuple N -> W),
     GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
     GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
@@ -3799,9 +3799,9 @@ Qed. *)
     GLabelMap.MapsTo fcons (Axiomatic (QsADTs.WordList_push)) env ->
     PreconditionSet tenv ext [[[vhead; vhead'; vtest; vlst; vret; vtmp]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv }}
+    {{ [[NTSome (H := WrapInstance (H := QS_WrapWordList)) vret <-- (revmap f lst) as _]] :: tenv }}
       facadeCoda
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[NTSome (H := WrapInstance (H := QS_WrapWordList)) vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (s: list (FiatTuple N)) (s': list W),
         {{ [[`vhead <-- head as _]] :: tenv }}
           facadeBody
@@ -3817,7 +3817,7 @@ Qed. *)
                           (Call vtmp fcons (vret :: vhead' :: nil))))
                (Call vtest fdealloc (vlst :: nil)))
             facadeCoda))
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[NTSome (H := WrapInstance (H := QS_WrapWordList)) vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   setoid_rewrite <- revmap_fold_comp.
@@ -3834,11 +3834,11 @@ Proof.
   apply ProgOk_Chomp_Some; loop_t; defunctionalize_evar; eauto.
 
   apply CompileWordList_push_spec; try compile_do_side_conditions.
-Qed. *)
+Qed.
 
-(* Lemma CompileTupleList_Loop_ret :
-  forall {N A} `{FacadeWrapper (Value ADTValue) A}
-    lst init facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
+Lemma CompileTupleList_Loop_ret :
+  forall {N A} `{FacadeWrapper (Value QsADTs.ADTValue) A}
+    lst init facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
     GLabelMap.MapsTo fpop (Axiomatic QsADTs.TupleList_pop) env ->
     GLabelMap.MapsTo fempty (Axiomatic QsADTs.TupleList_empty) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.TupleList_delete) env ->
@@ -3865,11 +3865,11 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_LoopAlloc_ret :
-  forall {N A} `{FacadeWrapper (Value ADTValue) A}
-    lst init facadeInit facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
-    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
+  forall {N A} `{FacadeWrapper (Value QsADTs.ADTValue) A}
+    lst init facadeInit facadeBody facadeConclude vhead vtest vlst vret env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' fpop fempty fdealloc (f: A -> (FiatTuple N) -> A),
+    GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     {{ [[`vlst <-- lst as _]] :: tenv }}
@@ -3890,14 +3890,14 @@ Proof.
 Qed.
 
 Lemma CompileTupleList_DeleteAny_spec:
-  forall {N} (vtmp vtmp2 vsize vtest vlst vhead : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) (tenv: Telescope ADTValue) ext
+  forall {N} (vtmp vtmp2 vsize vtest vlst vhead : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext
     (fpop fempty fdealloc ftdealloc : GLabelMap.key) (seq: (list (FiatTuple N))),
     PreconditionSet tenv ext [[[vtmp; vtmp2; vsize; vhead; vtest; vlst]]] ->
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    GLabelMap.MapsTo fpop (Axiomatic (TupleList_pop)) env ->
-    GLabelMap.MapsTo fempty (Axiomatic (TupleList_empty)) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic (TupleList_delete)) env ->
-    GLabelMap.MapsTo ftdealloc (Axiomatic (Tuple_delete)) env ->
+    GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env ->
+    GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env ->
+    GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env ->
+    GLabelMap.MapsTo ftdealloc (Axiomatic (QsADTs.Tuple_delete)) env ->
     {{ [[ (NTSome (H := WrapInstance (H := (QS_WrapTupleList (N := N)))) vlst) <-- seq as _]] :: tenv }}
       (Seq (Assign vtmp (Const (Word.natToWord 32 0)))
            (Seq (Seq (Fold vhead vtest vlst fpop fempty (Seq (Assign vsize (Const (Word.natToWord 32 N)))
@@ -3916,7 +3916,7 @@ Proof.
   apply CompileSkip.
   apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
   apply CompileSkip.
-Defined. *)
+Defined.
 
 Lemma CompileTuples2_findSecond :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
@@ -4095,7 +4095,7 @@ Ltac start_compiling_adt :=
   unfold_and_subst;
   match goal with | [ H: Fin.t _ |- _ ] => revert H end;
   repeat_destruct;
-  unfold If_Then_Else, heading in *;
+  unfold If_Then_Else in *; (*, heading in *;*)
   change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
   change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
@@ -4111,8 +4111,8 @@ Ltac _compile_CallBagFind :=
                 let vtmp := gensym "tmp" in
                 eapply CompileSeq with ([[bf as retv]]
                                           :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                                                 (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
+                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw ProcessScheduler.SchedulerSchema)
+                                                                                 (icons3 ProcessScheduler.SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
                                           :: [[`vsnd <-- snd retv as s]]
                                           :: tenv);
                   [ match kwd with
@@ -4180,110 +4180,110 @@ Ltac _compile_allocTuple :=
               end
             end).
 
-(*  Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
-       let vtmp2 := gensym "tmp'" in
-       let vsize := gensym "size" in
-       let vtest := gensym "test" in
-       let vhead := gensym "head" in
-       first [ unify tenv tenv';
-               apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
-                                                      (vtest := vtest) (vhead := vhead))
-             | eapply CompileSeq;
-               [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
-                                                        (vtest := vtest) (vhead := vhead)) | ] ].
- *)
+Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
+     let vtmp2 := gensym "tmp'" in
+     let vsize := gensym "size" in
+     let vtest := gensym "test" in
+     let vhead := gensym "head" in
+     first [ unify tenv tenv';
+             apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                                                    (vtest := vtest) (vhead := vhead))
+           | eapply CompileSeq;
+             [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                                                      (vtest := vtest) (vhead := vhead)) | ] ].
 
 
-  Lemma CompileConstantBool:
-    forall {av} name env (b: bool) ext (tenv: Telescope av),
-      name ∉ ext ->
-      NotInTelescope name tenv ->
-      {{ tenv }}
-        (Assign name (Const (bool2w b)))
-        {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
-  Proof.
-    SameValues_Facade_t.
-    change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
-    facade_eauto.
-  Qed.
 
-  Lemma map_rev_def :
-    forall {A B} f seq,
-      @map A B f (rev seq) = revmap f seq.
-  Proof.
-    intros; reflexivity.
-  Qed.
+Lemma CompileConstantBool:
+  forall {av} name env (b: bool) ext (tenv: Telescope av),
+    name ∉ ext ->
+    NotInTelescope name tenv ->
+    {{ tenv }}
+      (Assign name (Const (bool2w b)))
+      {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+  change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
+  facade_eauto.
+Qed.
 
-  (*Ltac _compile_map ::=
-       match_ProgOk
-       ltac:(fun prog pre post ext env =>
-               let vhead := gensym "head" in
-               let vhead' := gensym "head'" in
-               let vtest := gensym "test" in
-               let vtmp := gensym "tmp" in
-               match constr:((pre, post)) with
-               | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
-                 unify seq seq';
-                   apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
-               end).
-*)
+Lemma map_rev_def :
+  forall {A B} f seq,
+    @map A B f (rev seq) = revmap f seq.
+Proof.
+  intros; reflexivity.
+Qed.
 
-  Lemma CompileTuple_Get_helper :
-    forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
-  Proof.
-    induction idx; eauto.
-  Defined.
+Ltac _compile_map ::=
+     match_ProgOk
+     ltac:(fun prog pre post ext env =>
+             let vhead := gensym "head" in
+             let vhead' := gensym "head'" in
+             let vtest := gensym "test" in
+             let vtmp := gensym "tmp" in
+             match constr:((pre, post)) with
+             | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
+               unify seq seq';
+               apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
+             end).
 
-    Lemma CompileTuple_get_helper:
-      forall (N : nat) (idx : Fin.t N),
-        BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-        IL.goodSize (` (Fin.to_nat idx)).
-    Proof.
-      intros *.
-      pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
-      apply NPeano.Nat.le_exists_sub in h; repeat cleanup.
-      assert (IL.goodSize N) as h.
-      eassumption.
-      rewrite H0 in h.
-      eapply Arrays.goodSize_plus_r.
-      rewrite NPeano.Nat.add_succ_r in h.
-      rewrite <- NPeano.Nat.add_succ_l in h.
-      eassumption.
-    Defined.
+
+Lemma CompileTuple_Get_helper :
+  forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
+Proof.
+  induction idx; eauto.
+Defined.
+
+Lemma CompileTuple_get_helper:
+  forall (N : nat) (idx : Fin.t N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    IL.goodSize (` (Fin.to_nat idx)).
+Proof.
+  intros *.
+  pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
+  apply NPeano.Nat.le_exists_sub in h; repeat cleanup.
+  assert (IL.goodSize N) as h.
+  eassumption.
+  rewrite H0 in h.
+  eapply Arrays.goodSize_plus_r.
+  rewrite NPeano.Nat.add_succ_r in h.
+  rewrite <- NPeano.Nat.add_succ_l in h.
+  eassumption.
+Defined.
 
 Lemma CompileTuple_get_helper':
-    forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      Word.wlt (Word.natToWord 32 (` (Fin.to_nat idx))) (IL.natToW (Datatypes.length (TupleToListW tup))).
-  Proof.
-    intros. rewrite TupleToListW_length by assumption.
-    rewrite Word.wordToNat_natToWord_idempotent by assumption.
-    pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
-    apply Arrays.lt_goodSize; try eassumption.
-    apply CompileTuple_get_helper; assumption.
-  Qed.
+  forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    Word.wlt (Word.natToWord 32 (` (Fin.to_nat idx))) (IL.natToW (Datatypes.length (TupleToListW tup))).
+Proof.
+  intros. rewrite TupleToListW_length by assumption.
+  rewrite Word.wordToNat_natToWord_idempotent by assumption.
+  pose proof (proj2_sig (Fin.to_nat idx)) as h; simpl in h.
+  apply Arrays.lt_goodSize; try eassumption.
+  apply CompileTuple_get_helper; assumption.
+Qed.
 
-  Hint Resolve CompileTuple_get_helper' : call_helpers_db.
+Hint Resolve CompileTuple_get_helper' : call_helpers_db.
 
-  Lemma CompileTuple_get_helper'':
-    forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      (match CompileTuple_Get_helper idx in (_ = W) return (Vector.nth (MakeVectorOfW N) idx -> W) with
-       | eq_refl => fun t : Vector.nth (MakeVectorOfW N) idx => t
-       end (ilist2.ith2 tup idx)) = Array.sel (TupleToListW tup) (Word.natToWord 32 (` (Fin.to_nat idx))).
-  Proof.
-    unfold Array.sel.
-    intros.
-    rewrite Word.wordToNat_natToWord_idempotent by (apply (CompileTuple_get_helper idx); assumption).
-    induction idx; simpl; try rewrite IHidx.
-    - reflexivity.
-    - destruct tup; simpl.
-      unfold TupleToListW, ilist2.ilist2_hd, ilist2.ilist2_tl; simpl.
-      destruct (Fin.to_nat idx); simpl; reflexivity.
-    - apply BinNat.N.lt_succ_l.
-      rewrite Nnat.Nat2N.inj_succ in H.
-      assumption.
-  Qed.
+Lemma CompileTuple_get_helper'':
+  forall (N : nat) (tup : FiatTuple N) (idx : Fin.t N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    (match CompileTuple_Get_helper idx in (_ = W) return (Vector.nth (MakeVectorOfW N) idx -> W) with
+     | eq_refl => fun t : Vector.nth (MakeVectorOfW N) idx => t
+     end (ilist2.ith2 tup idx)) = Array.sel (TupleToListW tup) (Word.natToWord 32 (` (Fin.to_nat idx))).
+Proof.
+  unfold Array.sel.
+  intros.
+  rewrite Word.wordToNat_natToWord_idempotent by (apply (CompileTuple_get_helper idx); assumption).
+  induction idx; simpl; try rewrite IHidx.
+  - reflexivity.
+  - destruct tup; simpl.
+    unfold TupleToListW, ilist2.ilist2_hd, ilist2.ilist2_tl; simpl.
+    destruct (Fin.to_nat idx); simpl; reflexivity.
+  - apply BinNat.N.lt_succ_l.
+    rewrite Nnat.Nat2N.inj_succ in H.
+    assumption.
+Qed.
 
 Lemma CompileTuple_Get:
   forall (vret vtup vpos : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) (tenv: Telescope QsADTs.ADTValue) ext N
@@ -4428,8 +4428,6 @@ Ltac _compile :=
 Eval simpl in
   (forall av env P rWrap cWrap dWrap prog,
       (LiftMethod (av := av) env P (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
-
-
 
 Require Import
         CertifiedExtraction.Extraction.Internal
