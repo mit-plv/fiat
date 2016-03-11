@@ -20,8 +20,8 @@ Definition SchedulerSpec : ADT _ :=
   QueryADTRep SchedulerSchema {
     Def Constructor0 "Init" : rep := empty,
 
-    Def Method2 "Spawn" (r : rep) (new_pid cpu : W) : rep * bool :=
-      Insert (<"pid" :: new_pid, "state" :: SLEEPING, "cpu" :: cpu> : RawTuple) into r!"Processes",
+    Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
+      Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
 
     Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
       procs <- For (p in r!"Processes")
@@ -55,8 +55,8 @@ Proof.
   (* Now we implement the various set operations using BagADTs. *)
   - make_simple_indexes
       {|
-      prim_fst := [ ("EqualityIndex", Fin.F1);
-                    ( "EqualityIndex", Fin.FS (@Fin.F1 1) ) ];
+      prim_fst := [ ("EqualityIndex", Fin.FS (@Fin.F1 1) );
+                    ( "EqualityIndex", Fin.F1) ];
       prim_snd := () |}
                ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
                       ltac:(LastCombineCase5 BuildLastEqualityIndex).
@@ -123,7 +123,7 @@ Time Definition SchedulerImplSpecs :=
   Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
 Print SchedulerImplSpecs.
 
-Print MostlySharpened.
+(*Print MostlySharpened.
 
 Lemma GetRelation_Empty_eq  :
   forall MySchema R,
@@ -548,3 +548,4 @@ Time Defined.
 Time Definition MessagesImpl : ComputationalADT.cADT MessagesSig :=
   Eval simpl in (projT1 SharpenedMessages).
 Print MessagesImpl. *)
+ *)
