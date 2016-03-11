@@ -3983,15 +3983,6 @@ Arguments CallBagMethod : simpl never.
 Arguments wrap : simpl never.
 Arguments ListWToTuple: simpl never.
 
-Ltac start_compiling_adt :=
-  intros;
-  unfold_and_subst;
-  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
-  repeat_destruct;
-  unfold If_Then_Else, heading in *;
-  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
-  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
-
 Lemma ilist2ToListW_inj :
   forall n el el',
     ilist2ToListW (N := n) el = ilist2ToListW el'
@@ -4098,6 +4089,16 @@ Proof.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
 Qed. *)
+
+Ltac start_compiling_adt :=
+  intros;
+  unfold_and_subst;
+  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
+  repeat_destruct;
+  unfold If_Then_Else, heading in *;
+  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
+  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
+
 
 Ltac _compile_CallBagFind :=
   match_ProgOk
@@ -4470,10 +4471,7 @@ Proof.
   (* Should be compile, then a bunch of reflexivity proofs. *)
   _compile.
 
-(* Stuff below is outdated. *)
-
-
-
+(* Here's the lemma for compiling everything! *)
 
 Lemma progOKs
   : forall (env := QSEnv)
