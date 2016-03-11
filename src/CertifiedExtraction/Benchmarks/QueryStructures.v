@@ -2718,12 +2718,12 @@ Proof.
 Qed.
 
 Lemma ListWToTuple_Truncated_map_keepEq:
-  forall (N : nat) (table : FiatBag (S N)),
-    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+  forall (N : nat) (table : FiatBag N),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     forall (x8 : W) (x9 : list TuplesF.tupl),
       TuplesF.EnsembleIndexedListEquivalence
         (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) (Word.natToWord 32 0) x8) x9 ->
-      x9 = map TupleToListW (map (ListWToTuple_Truncated (S N)) x9).
+      x9 = map TupleToListW (map (ListWToTuple_Truncated N) x9).
 Proof.
   cleanup.
   rewrite map_map.

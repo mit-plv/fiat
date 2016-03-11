@@ -1,6 +1,8 @@
 Require Import CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
 
 Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
+Notation W7 := (Word.natToWord 32 7).
+Notation "x ≺ y" := (Word.wlt_dec x y) (at level 10).
 
 Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
   (GLabelMap.empty (FuncSpec _))
@@ -15,6 +17,28 @@ Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
     ### ("list[list[W]]", "pop") ->> (Axiomatic (List_pop (list W)))
     ### ("list[list[W]]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list (list W))))
     ### ("list[list[W]]", "empty?") ->> (Axiomatic (List_empty (list W))).
+
+(** This file collects examples of small compilation tasks. In all cases the
+    starting point is of the following form:
+
+      ParametricExtraction
+        (* Some variables that the program is parametric on *)
+        #vars      …
+
+        (* A Fiat program *)
+        #program   …
+
+        (* A set of bindings, which are assumed to be available in the current
+           scope.  These binding give access at the Facade level to #vars *)
+        #arguments …
+
+        (* A collection mapping names to external functions *)
+        #env       …
+
+    The rest of this file shows increasingly complex examples of source
+    programs, and as comments the output (a Facade program) the derivation
+    produces (the ‘_compile’ tactic also produces a proof, which is checked at
+    ‘Qed’ and not printed). *)
 
 Example micro_plus :
   ParametricExtraction
@@ -52,7 +76,7 @@ Time Eval lazy in (extract_facade micro_plus_minus).
 Example micro_min :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then x else y)
+    #program   ret (if x ≺ y then x else y)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -70,10 +94,11 @@ Time Eval lazy in (extract_facade micro_min).
         EndIf)%facade
      : Stmt *)
 
+
 Example micro_max :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then y else x)
+    #program   ret (if x ≺ y then y else x)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -94,7 +119,7 @@ Time Eval lazy in (extract_facade micro_max).
 Example micro_squared_max :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then Word.wmult y y else Word.wmult x x)
+    #program   ret (if x ≺ y then Word.wmult y y else Word.wmult x x)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -155,7 +180,7 @@ Time Eval lazy in (extract_facade micro_duplicate_word).
 Example micro_sort_pair1 :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then x :: y :: nil else y :: x :: nil)
+    #program   ret (if x ≺ y then x :: y :: nil else y :: x :: nil)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -184,7 +209,7 @@ Time Eval lazy in (extract_facade micro_sort_pair1).
 Example micro_sort_pair2 :
   ParametricExtraction
     #vars      x y
-    #program   ret ((if Word.wlt_dec x y then x else y) :: (if Word.wlt_dec x y then y else x) :: nil)
+    #program   ret ((if x ≺ y then x else y) :: (if x ≺ y then y else x) :: nil)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -476,6 +501,27 @@ Time Eval lazy in (extract_facade micro_push_random).
         call "list[W]"."push"("out", "arg"))%facade
      : Stm *)
 
+Example micro_overview :
+  ParametricExtraction
+    #program   (x <- Random; ret (if x ≺ W7 then x else 0))%comp
+    #env       Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_overview).
+
+(* Output:
+     = ("random" <- "std"."rand"();
+        "r" <- Const W7;
+        "test" <- Var "random" < Var "r";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Var "random"
+        Else
+          "out" <- Const 0
+        EndIf)%facade
+     : Stmt *)
+
 Example micro_randomize :
   ParametricExtraction
     #vars      seq: list W
@@ -508,7 +554,7 @@ Example micro_double_larger_than_random :
   ParametricExtraction
     #vars      seq
     #program   ( threshold <- Random;
-                 ret (revmap (fun w => if Word.wlt_dec threshold w then
+                 ret (revmap (fun w => if t ≺hreshold w then
                                       Word.wmult w 2
                                     else
                                       w)
@@ -632,7 +678,7 @@ Example micro_drop_larger_than_random :
   ParametricExtraction
     #vars      seq
     #program   ( threshold <- Random;
-                 ret (fold_left (fun acc w => if Word.wlt_dec threshold w then
+                 ret (fold_left (fun acc w => if t ≺hreshold w then
                                              acc
                                            else
                                              w :: acc)

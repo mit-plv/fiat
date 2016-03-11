@@ -44,10 +44,10 @@ Notation "'ParametricExtraction' '#program' post '#env' env" :=
     (at level 200,
      format "'ParametricExtraction' '//'    '#program'  post '//'    '#env'      env").
 
-Notation "'FacadeMethod' '#prog' prog '#requires' pre '#ensures' post '#ext' ext '#env' env" :=
-  ({{ pre }} prog {{ post }} ∪ {{ ext }} // env)
-    (at level 200,
-     format "'FacadeMethod' '//'    '#prog'      prog '//'    '#requires'  pre '//'    '#ensures'   post '//'    '#ext'       ext '//'    '#env'       env").
+(* Notation "'FacadeMethod' '#prog' prog '#requires' pre '#ensures' post '#ext' ext '#env' env" := *)
+(*   ({{ pre }} prog {{ post }} ∪ {{ ext }} // env) *)
+(*     (at level 200, *)
+(*      format "'FacadeMethod' '//'    '#prog'      prog '//'    '#requires'  pre '//'    '#ensures'   post '//'    '#ext'       ext '//'    '#env'       env"). *)
 
 Lemma List_rev_as_fold_generalized :
   forall A l init,
