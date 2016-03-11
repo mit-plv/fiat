@@ -77,8 +77,9 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
            | None => fun cWrap dWrap prog pre meth =>
                        {{ list2Telescope (pre ++ DecomposeRepPre) }}
                          prog
-                         {{ [[`"ret" <-- Word.natToWord 32 0 as _]]
-                              :: [[meth as database]] :: (DecomposeRep database) }} ∪ {{ StringMap.empty _ }} // env
+                         {{ [[meth as database]]
+                              :: [[`"ret" <-- Word.natToWord 32 0 as _]]
+                              :: (DecomposeRep database) }} ∪ {{ StringMap.empty _ }} // env
                        /\ forall r', computes_to meth r' -> P r'
 
 
@@ -1390,6 +1391,19 @@ Proof.
     rewrite IHl; eauto.
 Qed.
 
+Lemma SameValues_remove2 av :
+  forall k k' st',
+    StringMap.Equal
+      (StringMap.remove (elt:=Value av) k
+                        (StringMap.remove (elt:=Value av) k' st'))
+      (StringMap.remove (elt:=Value av) k'
+                        (StringMap.remove (elt:=Value av) k st')).
+Proof.
+  unfold StringMap.Equal.
+  intros; repeat rewrite remove_o.
+  repeat find_if_inside; eauto.
+Qed.
+
 Lemma compiled_prog_satisfies_GenAxiomaticSpecs
       av
       (env : Env av)
@@ -1450,10 +1464,12 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
         subst DecomposeRep; subst DecomposeRepPre.
         simpl.
         clear meth op_spec RepInv.
+
         generalize RepT RepWrapper;
-          clear; induction RepT'; simpl; intros.
-        - reflexivity.
-        - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          clear; induction RepT'.
+        - intros; simpl; reflexivity.
+        - simpl; intros.
+          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
           rewrite StringMapFacts.add_eq_o; eauto.
           eexists _; intuition eauto.
           eapply StringMap_remove_add; eauto.
@@ -1553,7 +1569,7 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
       unfold AxSafe, AxRunsTo; simpl; intros.
       destruct_ex; intuition; subst.
       destruct_ex; intuition; subst.
-      revert st x H1 H0 H x0 H4 H3 x.
+      revert st x x0 H1 H0 H H4 H3 x.
       replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
       assert (
           Datatypes.length (@nil (Value av))
@@ -1588,7 +1604,7 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
             apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
       }
       remember (@nil (Value av)) as l; clear Heql.
-      remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'; clear Heql'.
+      remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'.
       remember DecomposeRep.
       assert (forall r : i3list C RepT,
                  RepInv r ->
@@ -1598,10 +1614,12 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
                              codWrap domWrap
                              prog l' (meth r)) as op_spec'
           by (subst; exact op_spec); clear op_spec.
-      clear Heql0.
-      replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l).
-      generalize l l' l0 op_spec' len_l_l' H''.
-      clear l l' l0 op_spec' len_l_l' H''.
+      replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l) by
+          (subst; destruct l; simpl in *; congruence).
+      clear Heql'; clear Heql0.
+      intros st x x0.
+      generalize l l' l0 st x x0 op_spec' len_l_l' H''.
+      clear l l' l0 st x x0 op_spec' len_l_l' H''.
       induction dom; simpl; intros.
       + destruct cod.
         { apply op_spec' in H3; destruct H3.
@@ -1654,56 +1672,40 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
             induction RepT'.
             + reflexivity.
             + Local Opaque Vector.to_list.
+              unfold DecomposeRep.
+              simpl.
               destruct RepWrapper; simpl in *.
               rewrite Vector_ToList_cons.
               intro; caseEq (StringMap.find (elt:=Value av)
                                             (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
                                             st'); intros; eauto.
-            unfold DecomposeRepPre; simpl.
-            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-            rewrite Vector_ToList_cons.
-            destruct_ex; split_and; subst.
-            computes_to_inv; subst.
-            simpl; rewrite H.
-            f_equal.
-            erewrite <- IHRepT'.
-            2:apply H3.
-            f_equal.
-            intros; eapply in_map; clear; intros.
-            unfold get_output; destruct a; simpl.
-            destruct v; eauto.
-            rewrite remove_neq_o; eauto.
-            intro; subst.
-            induction RepT'.
-            simpl in *; eauto.
-            simpl in H.
-
-
-            rewrite n
-
-
-            induction RepT'; simpl; intros; eauto.
-            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-            rewrite Vector_ToList_cons; simpl.
-            f_equal.
-            rewrite remove_neq_o.
-            reflexivity.
-            intro; injections.
-            destruct n.
-            Local Transparent NumberToString_rec.
-            simpl in H0.
-            discriminate.
-            apply NumberToString_rec_inj' in H0; try omega.
-            destruct prim_snd.
-            destruct prim_snd0.
-            Local Opaque NumberToString_rec.
-            simpl in *.
-            destruct r; simpl.
-            rewrite IHRepT'.
-            f_equal.
-            simpl.
-            (* Annoying unification problem here. *)
-            admit.
+              unfold DecomposeRepPre; simpl.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+              rewrite Vector_ToList_cons.
+              destruct_ex; split_and; subst.
+              computes_to_inv; subst.
+              simpl; rewrite H.
+              f_equal.
+              idtac.
+              erewrite <- IHRepT'.
+              2:apply H3.
+              f_equal.
+              destruct x0; destruct RepT; simpl in *.
+              intros; eapply in_map; clear; intros.
+              unfold get_output; destruct a; simpl.
+              destruct v; eauto.
+              rewrite remove_neq_o; eauto.
+              revert H; clear.
+              intros.
+              apply in_combine_l in H.
+              apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+              intuition; subst; simpl in H1; injections.
+              apply ListFacts4.in_nth_error in H2; destruct_ex;
+              apply nth_error_NumUpTo_eq in H0; intuition.
+              destruct x; destruct n; try omega.
+              symmetry in H.
+              apply NumberToString_rec_10 in H; intuition.
+              apply NumberToString_rec_inj' in H; simpl in H; omega.
             intuition.
           - rewrite map_length.
             rewrite (fun H => proj1 (lenth_combine _ _ H)).
@@ -1725,136 +1727,254 @@ Lemma compiled_prog_satisfies_GenAxiomaticSpecs
             revert H7;
             caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
             destruct_ex; intuition; subst.
-            revert H11 H0; clear.
-            rewrite <- plus_n_O.
-            remember (StringMap.remove (elt:=Value av) "ret" st').
-            clear Heqt; revert t; induction RepT';
-            simpl.
-
-              in
-
-            case_eq
-
-            clear; induction l.
+            generalize st' H0 H11 n.
+            clear; induction l; simpl.
+            + induction RepT'; simpl.
+              * intros; destruct H11.
+                unfold SameADTs in H.
+                rewrite <- find_mapsto_iff in H0.
+                rewrite <- H in H0.
+                apply StringMap.empty_1 in H0; intuition.
+              * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+                { simpl in *.
+                  rewrite H0 in H11; destruct_ex; intuition; subst.
+                  computes_to_inv; subst.
+                  exists 0; eexists _; split; eauto; simpl.
+                  rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                  unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+                }
+                destruct (StringMap.find (String "r"
+               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                         (StringMap.remove (elt:=Value av) "ret" st'));
+                  try tauto.
+                destruct_ex; intuition; computes_to_inv; subst.
+                rewrite SameValues_remove2 in H3.
+                eapply IHRepT' in H3; eauto.
+                repeat destruct_ex; intuition.
+                unfold BuildArgNames in H1; simpl in H1.
+                eexists (S x); exists x1; split.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+                repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+                simpl in *; rewrite e in n1; congruence.
+                eauto.
+            + intros.
+              destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+              eexists ai'.
+              unfold BuildArgNames; simpl;
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+        }
+        { apply op_spec' in H3; destruct H3.
+          destruct (H2 _ (H'' _)).
+          rewrite H in H0; subst.
+          rewrite <- plus_n_O in H0; apply H6 in H0.
+          simpl in meth.
+          simpl in H0.
+          destruct H0; intuition.
+          repeat eexists _; intuition eauto.
+          eexists x0.
+          repeat (eexists _); intuition eauto.
+          unfold BuildArgNames.
+          rewrite <- plus_n_O in *.
+          unfold DecomposeRepPost.
+          revert H7;
+          case_eq (StringMap.find (elt:=Value av) "ret" st'); intros; try tauto.
+          destruct_ex; intuition; computes_to_inv; subst.
+          rewrite !combine_app_distrib, map_app, combine_app_distrib.
+          f_equal.
+          unfold DecomposeRep in H10.
+          - revert H10; clear.
+            induction l; simpl; eauto.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            intros; rewrite IHl; f_equal; eauto.
+            destruct a; eauto.
+            case_eq (StringMap.find (elt:=Value av)
+                                    (String "a"
+                                            (String "r"
+                                                    (String "g"
+                                                            (NumberToString_rec (Datatypes.length l)
+                                                                                (pred (Datatypes.length l)))))) st'); intros; eauto.
+            destruct v; eauto.
+            apply StringMap.find_2 in H.
+            apply (StringMap.remove_2 (x := "ret")) in H; try congruence.
+            apply StringMap.find_1 in H.
+            elimtype False; generalize st' H H10; clear.
             induction RepT'.
-            * reflexivity.
-            * simpl.
-              rewrite Vector_ToList_cons; simpl.
+            + simpl; intros; unfold WeakEq in *; intuition.
+              unfold SameADTs in H0.
+              apply StringMap.find_2 in H.
+              apply H0 in H.
+              apply StringMap.is_empty_2 in H; eauto.
+            + intros.
+              simpl in H10.
+              destruct (StringMap.find (elt:=Value av)
+                                       (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                       (StringMap.remove (elt:=Value av) "ret" st')
+                       ); eauto.
+              destruct_ex; intuition.
+              rewrite SameValues_remove2 in H3.
+              eapply IHRepT'.
+              2: eassumption.
+              rewrite SameValues_remove2.
+              apply StringMap.find_1; apply StringMap.remove_2;
+              eauto using StringMap.find_2.
+          - generalize st' H10; clear.
+            induction RepT'.
+            + reflexivity.
+            + Local Opaque Vector.to_list.
+              unfold DecomposeRep.
+              simpl.
+              destruct RepWrapper; simpl in *.
+              rewrite Vector_ToList_cons.
+              intro; caseEq (StringMap.find (elt:=Value av)
+                                            (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                            (StringMap.remove (elt:=Value av) "ret" st')); intros; eauto.
+              unfold DecomposeRepPre; simpl.
               rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-              caseEq (StringMap.find (elt:=Value av)
-                                     (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                     st'); intros; eauto.
-              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-              rewrite <- IHRepT'.
-              eapply StringMap.remove_1 in H.
+              rewrite Vector_ToList_cons.
               destruct_ex; split_and; subst.
               computes_to_inv; subst.
+              rewrite remove_neq_o in H; try congruence.
               simpl; rewrite H.
               f_equal.
-            idtac.
-
-              Set Printing Implicit.
-            idtac.
-            unfold RepWrapperT in H.
-            rewrite H.
-              caseEq (StringMap.find (elt:=Value av)
-                     (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                     st').
-              rewrite remove_neq_o.
-
-
-              simpl.
-              reflexivity.
-              revert H3 H; clear.
-              match goal with
-                |- contect
-              unfold SameValues.
-              induction (list2Telescope
-                           (Decomposei3list RepT' (prim_snd RepT) (snd RepWrapper) (prim_snd i))); simpl.
-
-
-              unfold SameValues.
-              eapply SameValues_remove_SCA; eauto.
-
-              unfold SameValues in H3.
-
-              simpl in H3.
-              rewrite <- map_rev.
-              unfold Vector.to_list.
-
-              2: intuition.
-              unfold
-              simpl.
-            +
-              Focus 2.
-              detruct
-              eapply StringMap_remove_add.
-
-
-
-
-            intros; eaut
-
-            rewrite rev_map.
-            unfold SameValues in H7.
-
-
-          unfold get_output.
-
-
-          rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l'; simpl.
-
-          unfold Build
-          Print combine.
-          simpl.
-
-
-      unfold LiftMethod' in H3.
-      unfold GenAxiomaticSpecs in H2; simpl in H2;
-      destruct_ex; intuition; subst.
-      revert st x H0 H x0 H2 H3 X0.
-      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
-      assert (
-          Datatypes.length (@nil (Value av))
-          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
-      by reflexivity.
-      assert (forall x0,
-                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
-                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
-                          ∅) as H''.
-      {
-
-        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
-        injections.
-        destruct x; destruct n.
-      + intuition.
-      + symmetry in H.
-        apply NumberToString_rec_10 in H; intuition.
-      + apply NumberToString_rec_10 in H; intuition.
-      + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
-        simpl in H1.
-        apply ListFacts4.in_nth_error in H1; destruct_ex.
-              apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst
-
-        destruct WrappedDom.
-        Set Printing All.
-        reflexivity.
-
+              rewrite SameValues_remove2 in H3.
+              erewrite <- IHRepT'.
+              2:apply H3.
+              f_equal.
+              destruct x0; destruct RepT; simpl in *.
+              intros; eapply in_map; clear; intros.
+              unfold get_output; destruct a; simpl.
+              destruct v; eauto.
+              rewrite remove_neq_o; eauto.
+              revert H; clear.
+              intros.
+              apply in_combine_l in H.
+              apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+              intuition; subst; simpl in H1; injections.
+              apply ListFacts4.in_nth_error in H2; destruct_ex;
+              apply nth_error_NumUpTo_eq in H0; intuition.
+              destruct x; destruct n; try omega.
+              symmetry in H.
+              apply NumberToString_rec_10 in H; intuition.
+              apply NumberToString_rec_inj' in H; simpl in H; omega.
+              intuition.
+          - rewrite map_length.
+            rewrite (fun H => proj1 (lenth_combine _ _ H)).
+            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          - simpl in H7.
+            revert H7;
+              caseEq (StringMap.find (elt:=Value av) "ret" st');
+              intros; destruct_ex; intuition; subst.
+            computes_to_inv; subst; auto.
+          - unfold no_adt_leak; intros.
+            unfold sel in H0.
+            simpl in H7.
+            destruct (string_dec "ret" var).
+            intuition.
+            rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+            right.
+            revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+            destruct_ex; intuition; subst.
+            generalize st' H0 H11 n.
+            clear; induction l; simpl.
+            + induction RepT'; simpl.
+              * intros; destruct H11.
+                unfold SameADTs in H.
+                rewrite <- find_mapsto_iff in H0.
+                rewrite <- H in H0.
+                apply StringMap.empty_1 in H0; intuition.
+              * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+                { simpl in *.
+                  rewrite H0 in H11; destruct_ex; intuition; subst.
+                  computes_to_inv; subst.
+                  exists 0; eexists _; split; eauto; simpl.
+                  rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                  unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+                }
+                destruct (StringMap.find (String "r"
+               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                         (StringMap.remove (elt:=Value av) "ret" st'));
+                  try tauto.
+                destruct_ex; intuition; computes_to_inv; subst.
+                rewrite SameValues_remove2 in H3.
+                eapply IHRepT' in H3; eauto.
+                repeat destruct_ex; intuition.
+                unfold BuildArgNames in H1; simpl in H1.
+                eexists (S x1); exists x2; split.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+                repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+                simpl in *; rewrite e in n1; congruence.
+                eauto.
+            + intros.
+              destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+              eexists ai'.
+              unfold BuildArgNames; simpl;
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+        }
+      + repeat destruct_ex; intuition.
+        setoid_rewrite H.
+        destruct domWrap.
+        rewrite Plus.plus_comm.
         simpl.
-
-
-        intros; eapply op_spec'.
-        eauto.
-        Focus 5.
-        eapply H1.
-        Focus 4.
-
-      Focus 3
-      intros.
-      eapply op_spec.
-
-
-
+        destruct (IHdom
+                    d
+                    (fun r => meth r x2)
+                    ((wrap (FacadeWrapper := gWrap g) x2) :: l)
+                    ((existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                           (@NTSome _ _
+                              (String "a"
+                                      (String "r"
+                                              (String "g"
+                                                      (NumberToString_rec (Datatypes.length l')
+                                                                          (pred (Datatypes.length l'))))))
+                              (gWrap g),
+                            ret x2)) :: l')
+                    l0
+                 st x x0); simpl; auto.
+        intros; unfold BuildArgNames.
+        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+        rewrite len_l_l'.
+        rewrite add_eq_o by eauto.
+        pose proof (op_spec' _ H3 x2).
+        eexists; intuition eauto.
+        eapply StringMap_remove_add; eauto.
+        unfold BuildArgNames in H''.
+        rewrite <- len_l_l'; eauto.
+        eapply make_map_not_in.
+        intro; apply in_app_or in H5; intuition.
+        rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
+        simpl in H6.
+        injections.
+        destruct x4; destruct (Datatypes.length l').
+        * intuition.
+        * symmetry in H5.
+          apply NumberToString_rec_10 in H5; intuition.
+        * apply NumberToString_rec_10 in H5; intuition.
+        * apply NumberToString_rec_inj' in H5; simpl in H5; subst; eauto.
+          apply ListFacts4.in_nth_error in H7; destruct_ex.
+          apply nth_error_NumUpTo_eq in H5; simpl in H5; intuition; subst.
+        * rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
+          simpl in H6; discriminate.
+        * rewrite H1; f_equal; f_equal; omega.
+        * rewrite Plus.plus_comm in H; simpl in H; rewrite Plus.plus_comm in H; eauto.
+        * destruct_ex; intuition; eexists x3; exists x4; intuition eauto.
+          simpl in H5; rewrite Plus.plus_comm; eauto.
+          simpl in H4; rewrite Plus.plus_comm; eauto.
+          rewrite Plus.plus_comm in H.
+          rewrite <- H4, H. rewrite Plus.plus_comm; simpl; reflexivity.
+          destruct_ex; simpl in H6.
+          eexists x5; eexists x2.
+          rewrite Plus.plus_comm.
+          apply H6.
+          simpl in H9; rewrite Plus.plus_comm; eauto.
+      + reflexivity.
+  Qed.
 
 Lemma compiled_prog_satisfies_GenAxiomaticSpecs
       av
