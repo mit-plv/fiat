@@ -2658,7 +2658,6 @@ Definition UnitSigT (P: unit -> Type) :
 Ltac _repeat_destruct :=
   match goal with
   | _ => apply UnitSigT
-  | _ => apply UnpairSigT; try refine (existT _ (QS_WrapBag2 0 1) _)
   | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
   (*| [  |- context[@SideStuff] ] => econstructor *)
   | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
@@ -3177,11 +3176,11 @@ Proof.
 Qed.
 
 Lemma ListWToTuple_Truncated_map_keepEq:
-  forall (N : nat) (table : FiatBag N),
+  forall (N : nat) (table : FiatBag N) w,
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     forall (x8 : W) (x9 : list TuplesF.tupl),
       TuplesF.EnsembleIndexedListEquivalence
-        (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) (Word.natToWord 32 0) x8) x9 ->
+        (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) w x8) x9 ->
       x9 = map TupleToListW (map (ListWToTuple_Truncated N) x9).
 Proof.
   cleanup.
@@ -3190,18 +3189,158 @@ Proof.
   apply (EnsembleIndexedListEquivalence_keepEq_AllOfLength H H0); assumption.
 Qed.
 
+Lemma EnsembleIndexedListEquivalence_TupleToListW :
+  forall n lst ens,
+    TuplesF.EnsembleIndexedListEquivalence
+      (IndexedEnsemble_TupleToListW ens) (map (TupleToListW (N := n)) lst) ->
+    IndexedEnsembles.EnsembleIndexedListEquivalence ens lst.
+Proof.
+  cleanup.
+  split; eauto using EnsembleIndexedListEquivalence_TupleToListW_FreshIdx, EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv.
+Qed.
+
+Lemma TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles :
+  forall A ens1 ens2,
+    Ensembles.Same_set _ ens1 ens2 ->
+    forall seq, @TuplesF.EnsembleIndexedListEquivalence A ens1 seq <->
+           @TuplesF.EnsembleIndexedListEquivalence A ens2 seq.
+Proof.
+  intros.
+  apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
+Qed.
+
+Lemma Same_set_pointwise :
+  forall A s1 s2,
+    Ensembles.Same_set A s1 s2 <-> (forall x, s1 x <-> s2 x).
+Proof.
+  firstorder.
+Qed.
+
+Lemma MakeWordHeading_allWords :
+  forall {N} (idx: Fin.t N),
+    Domain (MakeWordHeading N) idx = W.
+Proof.
+  unfold MakeWordHeading; induction idx.
+  - reflexivity.
+  - unfold Domain in *; simpl in *; assumption.
+Defined.
+
+Lemma lt_BinNat_lt:
+  forall (p p' : nat),
+    lt p p' ->
+    BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p').
+Proof.
+  intros; Nomega.nomega.
+Qed.
+
+Lemma BinNat_lt_S:
+  forall (p p' : nat),
+    BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p') ->
+    BinNat.N.lt (BinNat.N.of_nat (S p)) (BinNat.N.of_nat (S p')).
+Proof.
+  intros; Nomega.nomega.
+Qed.
+
+Lemma BinNat_lt_of_nat_S:
+  forall (p : nat) (q : BinNums.N),
+    BinNat.N.lt (BinNat.N.of_nat (S p)) q ->
+    BinNat.N.lt (BinNat.N.of_nat p) q.
+Proof.
+  intros; Nomega.nomega.
+Qed.
+
+Opaque BinNat.N.of_nat.
+Lemma selN_GetAttributeRaw:
+  forall {N} (tup: @RawTuple (MakeWordHeading N)) (idx: Fin.t N),
+    let n := (projT1 (Fin.to_nat idx)) in
+    BinNat.N.lt (BinNat.N.of_nat n) (Word.Npow2 32) ->
+    let k1 := Word.natToWord 32 n in
+    Array.selN (TupleToListW tup) (Word.wordToNat k1) =
+    match MakeWordHeading_allWords idx with
+    | eq_refl => (GetAttributeRaw tup idx)
+    end.
+Proof.
+  induction idx; simpl in *.
+  - reflexivity.
+  - destruct (Fin.to_nat idx).
+    unfold TupleToListW in *; simpl in *; apply lt_BinNat_lt in l.
+    intros.
+    rewrite Word.wordToNat_natToWord_idempotent in *
+      by auto using BinNat_lt_of_nat_S.
+    rewrite IHidx by auto using BinNat_lt_of_nat_S; reflexivity.
+Qed.
+Transparent BinNat.N.of_nat.
+
+Lemma BinNat_lt_Fin_to_nat:
+  forall (N : nat) (idx : Fin.t N),
+    BinNat.N.lt (BinNat.N.of_nat (projT1 (Fin.to_nat idx))) (BinNat.N.of_nat N).
+Proof.
+  intros.
+  pose proof (projT2 (Fin.to_nat idx)).
+  Nomega.nomega.
+Qed.
+
+Lemma Fiat_Bedrock_Filters_Equivalence:
+  forall (N : nat) (table : FiatBag N) (key : W) (x9 : list TuplesF.tupl)
+    (idx1: Fin.t N)
+    (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
+    TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
+    IndexedEnsembles.EnsembleIndexedListEquivalence
+      (IndexedEnsembles.IndexedEnsemble_Intersection
+         table
+         (fun x0 : FiatTuple N =>
+            ((if Word.weq match MakeWordHeading_allWords idx1 in _ = W return W with
+                          | eq_refl => GetAttributeRaw x0 idx1
+                          end key then true else false) && true)%bool = true))
+      (map (ListWToTuple_Truncated N) x9).
+Proof.
+  intros.
+  apply EnsembleIndexedListEquivalence_TupleToListW.
+  erewrite <- ListWToTuple_Truncated_map_keepEq by eassumption.
+
+  rewrite TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles; try eassumption.
+
+  unfold IndexedEnsemble_TupleToListW, TuplesF.keepEq, Ensembles.Included,
+  Ensembles.In, IndexedEnsembles.IndexedEnsemble_Intersection, Array.sel in *.
+
+  rewrite Same_set_pointwise;
+    repeat match goal with
+           | _ => cleanup
+           | _ => eassumption
+           | _ => progress unfold RelatedIndexedTupleAndListW, TuplesF.tupl in *
+           | [  |- exists _, _ ] => eexists
+           | [ H: exists _, _ |- _ ] => destruct H
+           | [  |- context[andb _ true] ] => rewrite Bool.andb_true_r
+           | [ H: context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
+           | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
+           end.
+
+  - rewrite H4.
+    set (IndexedEnsembles.indexedElement x0).
+
+    clear H0.
+
+    unfold k1; rewrite selN_GetAttributeRaw; eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat.
+  - rewrite H3.
+    unfold k1; rewrite selN_GetAttributeRaw by eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat; simpl.
+    destruct (Word.weq _ _); (reflexivity || exfalso; eauto).
+Qed.
+
 Lemma CompileTuples2_findFirst :
-  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N (idx1 : Fin.t N) (* FIXME should be generalized *)
     (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))) k2
-    (table: FiatBag (S N)) (key: W)
+    (table: FiatBag N) (key: W)
     (table':= ( results <- {l : list RawTuple |
                    IndexedEnsembles.EnsembleIndexedListEquivalence
                      (IndexedEnsembles.IndexedEnsemble_Intersection
                         (table)
                         (fun x0 : RawTuple =>
-                         ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true)) l};
+                           ((if Word.weq match MakeWordHeading_allWords idx1 in _ = W return W with
+                                         | eq_refl => GetAttributeRaw x0 idx1
+                                         end key then true else false) && true)%bool = true)) l};
                  ret (table, results))
-               : Comp (_ * list (FiatTuple (S N)))),
+               : Comp (_ * list (FiatTuple N))),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findFirst) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
@@ -3210,7 +3349,7 @@ Lemma CompileTuples2_findFirst :
     vret ∉ ext ->
     vtable ∉ ext ->
     (* IndexedEnsembles.UnConstrFreshIdx table idx -> *)
-    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
@@ -3249,134 +3388,6 @@ Proof.
   2:solve[fiat_t].
 
   wipe.
-
-  Lemma EnsembleIndexedListEquivalence_TupleToListW :
-    forall n lst ens,
-      TuplesF.EnsembleIndexedListEquivalence
-        (IndexedEnsemble_TupleToListW ens) (map (TupleToListW (N := n)) lst) ->
-      IndexedEnsembles.EnsembleIndexedListEquivalence ens lst.
-  Proof.
-    cleanup.
-    split; eauto using EnsembleIndexedListEquivalence_TupleToListW_FreshIdx, EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv.
-  Qed.
-
-
-  Lemma TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles :
-    forall A ens1 ens2,
-      Ensembles.Same_set _ ens1 ens2 ->
-      forall seq, @TuplesF.EnsembleIndexedListEquivalence A ens1 seq <->
-             @TuplesF.EnsembleIndexedListEquivalence A ens2 seq.
-  Proof.
-    intros.
-    apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
-  Qed.
-
-  Lemma Same_set_pointwise :
-    forall A s1 s2,
-      Ensembles.Same_set A s1 s2 <-> (forall x, s1 x <-> s2 x).
-  Proof.
-    firstorder.
-  Qed.
-
-  Lemma Fiat_Bedrock_Filters_Equivalence:
-    forall (N : nat) (table : FiatBag (S N)) (key : W) (x9 : list TuplesF.tupl)
-      (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
-      (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
-      BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
-      TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
-      IndexedEnsembles.EnsembleIndexedListEquivalence
-        (IndexedEnsembles.IndexedEnsemble_Intersection
-           table
-           (fun x0 : FiatTuple (S N) =>
-              ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true))
-        (map (ListWToTuple_Truncated (S N)) x9).
-  Proof.
-    intros.
-    apply EnsembleIndexedListEquivalence_TupleToListW.
-    erewrite <- ListWToTuple_Truncated_map_keepEq by eassumption.
-
-    rewrite TuplesF_EnsembleIndexedListEquivalence_EquivEnsembles; try eassumption.
-
-    unfold IndexedEnsemble_TupleToListW, TuplesF.keepEq, Ensembles.Included,
-    Ensembles.In, IndexedEnsembles.IndexedEnsemble_Intersection, Array.sel in *.
-
-    rewrite Same_set_pointwise;
-      repeat match goal with
-             | _ => cleanup
-             | _ => eassumption
-             | _ => progress unfold RelatedIndexedTupleAndListW, TuplesF.tupl in *
-             | [  |- exists _, _ ] => eexists
-             | [ H: exists _, _ |- _ ] => destruct H
-             | [  |- context[andb _ true] ] => rewrite Bool.andb_true_r
-             | [ H: context[andb _ true] |- _ ] => rewrite Bool.andb_true_r in H
-             | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
-             end.
-
-    - rewrite H4.
-      set (IndexedEnsembles.indexedElement x0).
-
-      clear H0.
-
-      Lemma MakeWordHeading_allWords :
-        forall {N} (idx: Fin.t N),
-          Domain (MakeWordHeading N) idx = W.
-      Proof.
-        unfold MakeWordHeading; induction idx.
-        - reflexivity.
-        - unfold Domain in *; simpl in *; assumption.
-      Defined.
-
-      Lemma lt_BinNat_lt:
-        forall (p p' : nat),
-          lt p p' ->
-          BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p').
-      Proof.
-        intros; Nomega.nomega.
-      Qed.
-
-      Lemma BinNat_lt_S:
-        forall (p p' : nat),
-          BinNat.N.lt (BinNat.N.of_nat p) (BinNat.N.of_nat p') ->
-          BinNat.N.lt (BinNat.N.of_nat (S p)) (BinNat.N.of_nat (S p')).
-      Proof.
-        intros; Nomega.nomega.
-      Qed.
-
-      Lemma BinNat_lt_of_nat_S:
-        forall (p : nat) (q : BinNums.N),
-          BinNat.N.lt (BinNat.N.of_nat (S p)) q ->
-          BinNat.N.lt (BinNat.N.of_nat p) q.
-      Proof.
-        intros; Nomega.nomega.
-      Qed.
-
-      Opaque BinNat.N.of_nat.
-      Lemma selN_GetAttributeRaw:
-        forall {N} (tup: @RawTuple (MakeWordHeading N)) (idx: Fin.t N),
-          let n := (projT1 (Fin.to_nat idx)) in
-          BinNat.N.lt (BinNat.N.of_nat n) (Word.Npow2 32) ->
-          let k1 := Word.natToWord 32 n in
-          Array.selN (TupleToListW tup) (Word.wordToNat k1) =
-          match MakeWordHeading_allWords idx with
-          | eq_refl => (GetAttributeRaw tup idx)
-          end.
-      Proof.
-        induction idx; simpl in *.
-        - reflexivity.
-        - destruct (Fin.to_nat idx).
-          unfold TupleToListW in *; simpl in *; apply lt_BinNat_lt in l.
-          intros.
-          rewrite Word.wordToNat_natToWord_idempotent in *
-            by auto using BinNat_lt_of_nat_S.
-          rewrite IHidx by auto using BinNat_lt_of_nat_S; reflexivity.
-      Qed.
-      Transparent BinNat.N.of_nat.
-
-      unfold k1; rewrite selN_GetAttributeRaw; reflexivity.
-    - rewrite H3.
-      unfold k1; rewrite selN_GetAttributeRaw by reflexivity; simpl.
-      destruct (Word.weq _ _); congruence.
-  Qed.
 
   apply Fiat_Bedrock_Filters_Equivalence; assumption.
 Qed.
@@ -3423,19 +3434,21 @@ Ltac _PreconditionSet_t_in H ::=
 
 Lemma CompileTuples2_findFirst_spec :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N
-    (idx1 := Fin.F1 : Fin.t (S N)) (* FIXME should be generalized *)
+    (idx1 : Fin.t N)
     (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1))))
     k2
-    (table: FiatBag (S N)) (key: W)
+    (table: FiatBag N) (key: W)
     (table':= ( results <- {l : list RawTuple |
                    IndexedEnsembles.EnsembleIndexedListEquivalence
                      (IndexedEnsembles.IndexedEnsemble_Intersection
                         (table)
                         (fun x0 : RawTuple =>
-                         ((if Word.weq (GetAttributeRaw x0 idx1) key then true else false) && true)%bool = true)) l};
+                         ((if Word.weq match MakeWordHeading_allWords idx1 in _ = W return W with
+                                       | eq_refl => GetAttributeRaw x0 idx1
+                                       end key then true else false) && true)%bool = true)) l};
                  ret (table, results))
-               : Comp (_ * list (FiatTuple (S N)))),
-    BinNat.N.lt (BinNat.N.of_nat (S N)) (Word.Npow2 32) ->
+               : Comp (_ * list (FiatTuple N))),
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findFirst) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
@@ -4378,12 +4391,20 @@ Proof.
 Defined.
 
 Lemma CompileTuples2_findSecond :
-  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
-    (table: FiatBag (S (S N))) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S (S N)))))),
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1
+    (table: FiatBag N) (key: W) (idx2: Fin.t N)
+    (k2 := (Word.natToWord 32 (projT1 (Fin.to_nat idx2))))
+    (table':= ( results <- {l : list RawTuple |
+                          IndexedEnsembles.EnsembleIndexedListEquivalence
+                            (IndexedEnsembles.IndexedEnsemble_Intersection
+                               table
+                               (fun x0 : RawTuple =>
+                                  ((if Word.weq match MakeWordHeading_allWords idx2 in _ = W return W with
+                                                | eq_refl => GetAttributeRaw x0 idx2
+                                                end key then true else false) && true)%bool =
+                                  true)) l};
+                 ret (table, results))%comp
+             : Comp (_ * list (FiatTuple N))),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
@@ -4410,12 +4431,20 @@ Proof.
 Qed.
 
 Lemma CompileTuples2_findSecond_spec :
-  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
-    (table: FiatBag (S (S N))) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S (S N)))))),
+  forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1
+    (table: FiatBag N) (key: W) (idx2: Fin.t N)
+    (k2 := (Word.natToWord 32 (projT1 (Fin.to_nat idx2))))
+    (table':= ( results <- {l : list RawTuple |
+                          IndexedEnsembles.EnsembleIndexedListEquivalence
+                            (IndexedEnsembles.IndexedEnsemble_Intersection
+                               table
+                               (fun x0 : RawTuple =>
+                                  ((if Word.weq match MakeWordHeading_allWords idx2 in _ = W return W with
+                                                | eq_refl => GetAttributeRaw x0 idx2
+                                                end key then true else false) && true)%bool =
+                                  true)) l};
+                 ret (table, results))%comp
+             : Comp (_ * list (FiatTuple N))),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
@@ -4558,7 +4587,6 @@ Ltac start_compiling_adt :=
   change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
   change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
-
 Ltac _compile_CallBagFind :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
@@ -4574,18 +4602,20 @@ Ltac _compile_CallBagFind :=
                                                                                  (icons3 ProcessScheduler.SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
                                           :: [[`vsnd <-- snd retv as s]]
                                           :: tenv);
-                  [ match kwd with
-                    | (Some ?v, (None, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
-                      end
-                    | (None, (Some ?v, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
-                      end
-                    end | ]
+                [ match kwd with
+                  | (Some ?v, (None, fun _ => true)) =>
+                    let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                    match vkwd with
+                    | Some ?vkwd => apply (CompileTuples2_findFirst_spec (* FIXME get (Fin.FS Fin.F1) generically *)
+                                            (Fin.FS Fin.F1) (vkey := vkwd) _ (table := prim_fst db))
+                    end
+                  | (None, (Some ?v, fun _ => true)) =>
+                    let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                    match vkwd with
+                    | Some ?vkwd => apply (CompileTuples2_findSecond_spec (* FIXME get (Fin.F1) generically *)
+                                            _ (Fin.F1) (vkey := vkwd) (table := prim_fst db))
+                    end
+                  end | ]
               end
             end).
 
@@ -4673,7 +4703,7 @@ Proof.
   intros; reflexivity.
 Qed.
 
-Ltac _compile_map ::=
+Ltac _compile_map ::= (* ‘_compile_map’ from the stdlib uses generic push-pop methods. *)
      match_ProgOk
      ltac:(fun prog pre post ext env =>
              let vhead := gensym "head" in
@@ -4685,7 +4715,6 @@ Ltac _compile_map ::=
                unify seq seq';
                apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
              end).
-
 
 Lemma CompileTuple_Get_helper :
   forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
@@ -4956,7 +4985,15 @@ Defined.
 Definition Good_listW
   : GoodWrapper QsADTs.ADTValue (list W).
 Proof.
-  refine {| gWrap := _;
+  refine {| gWrap := WrapInstance (H := QS_WrapWordList);
+            gWrapTag := true
+         |}; intros; unfold wrap; simpl; eauto.
+Defined.
+
+Definition Good_BedrockTuple
+  : GoodWrapper QsADTs.ADTValue (list W).
+Proof.
+  refine {| gWrap := WrapInstance (H := QS_WrapBedrockTuple);
             gWrapTag := true
          |}; intros; unfold wrap; simpl; eauto.
 Defined.
@@ -5002,7 +5039,7 @@ Definition Scheduler_RepWrapperT Index
   : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
 Proof.
   unfold QueryStructureRepWrapperT; simpl; split.
-  apply (@QS_WrapBag2 3 0 1).
+  apply (@QS_WrapBag2 3 1 0).   (* FIXME generalize *)
   constructor.
 Defined.
 
@@ -5058,11 +5095,32 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
+
   - eexists; split.
     destruct H as [? [ ? ?] ].
     _compile.
+    instantiate (1 := 0); admit.
+    intros; admit.
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
+    intros; admit.
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
+    intros; admit.
 
-Admitted.
+    (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
+Defined.
+
+(* Set Printing All. *)
+Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
+Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+
+
+
+Locate "_ <- _".
 
 (*  - eexists; split.
     destruct H as [? [? ?] ].
