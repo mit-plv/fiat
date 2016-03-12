@@ -5096,21 +5096,19 @@ Lemma progOKs
 Proof.
   start_compiling_adt.
 
-<<<<<<< HEAD
   - eexists; split.
     destruct H as [? [ ? ?] ].
-    _compile.
+    Time _compile.
     instantiate (1 := 0); admit.
     intros; admit.
   - eexists; split.
     destruct H as [? [ ? ?] ].
-    _compile.
+    Time _compile.
     intros; admit.
   - eexists; split.
     destruct H as [? [ ? ?] ].
-    _compile.
+    Time _compile.
     intros; admit.
-
     (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
 Defined.
 
@@ -5119,34 +5117,6 @@ Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
 Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
 Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
 
-
-
-=======
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    instantiate (1 := 0); admit.
-    intros; admit.
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    intros; admit.
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    intros; admit.
-
-    (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
-Defined.
-
-(* Set Printing All. *)
-Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
-Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
-
-
-
->>>>>>> 240280c5d52033a03f85a65502b9626b8beddc36
 Locate "_ <- _".
 
 (*  - eexists; split.
