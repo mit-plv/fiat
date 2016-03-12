@@ -4509,25 +4509,25 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-(*Lemma postConditionAdd :
+Lemma postConditionAdd :
   forall n
          (r : FiatBag n)
-         (H : functional (IndexedEnsemble_TupleToListW r))
+         (H : TuplesF.functional (IndexedEnsemble_TupleToListW r))
          el
          (H0 : IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el)),
-    functional
+    TuplesF.functional
       (IndexedEnsemble_TupleToListW
          (Ensembles.Add IndexedEnsembles.IndexedElement r el))
     /\ (exists idx : nat,
-           minFreshIndex
+           TuplesF.minFreshIndex
              (IndexedEnsemble_TupleToListW
                 (Ensembles.Add IndexedEnsembles.IndexedElement r el)) idx) .
 Proof.
-  unfold functional, minFreshIndex; intros; intuition.
+  unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
   - destruct t1; destruct t2; simpl in *; subst; f_equal.
     destruct H2; destruct H1; intuition.
     destruct H2; destruct H3; subst.
-    + unfold tupl in *.
+    + unfold TuplesF.tupl in *.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition.
       subst.
       destruct x; destruct x0; simpl in *; subst.
@@ -4536,7 +4536,7 @@ Proof.
     + destruct H2.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       destruct x0; destruct el; simpl in *; subst.
-      unfold UnConstrFreshIdx in H1.
+      unfold TuplesF.UnConstrFreshIdx in H1.
       unfold IndexedEnsembles.UnConstrFreshIdx in H0.
       apply H0 in H1; simpl in *.
       omega.
@@ -4550,7 +4550,7 @@ Proof.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       reflexivity.
   - exists (S (IndexedEnsembles.elementIndex el)); split.
-    + unfold UnConstrFreshIdx in *; intros.
+    + unfold TuplesF.UnConstrFreshIdx in *; intros.
       destruct H1 as [? [? ? ] ].
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       destruct element; simpl in *; subst.
@@ -4560,8 +4560,8 @@ Proof.
         destruct H1; omega.
     + intros.
       inversion H1; subst.
-      unfold UnConstrFreshIdx in *.
-      assert (lt (elementIndex (IndexedElement_TupleToListW el)) (IndexedEnsembles.elementIndex el) ).
+      unfold TuplesF.UnConstrFreshIdx in *.
+      assert (lt (TuplesF.elementIndex (IndexedElement_TupleToListW el)) (IndexedEnsembles.elementIndex el) ).
       eapply H2.
       econstructor; split.
       unfold Ensembles.Add.
@@ -4569,17 +4569,17 @@ Proof.
       reflexivity.
       unfold RelatedIndexedTupleAndListW; eauto.
       destruct el; simpl in *; omega.
-      unfold UnConstrFreshIdx in *; intros.
+      unfold TuplesF.UnConstrFreshIdx in *; intros.
       assert (lt (IndexedEnsembles.elementIndex el) idx').
-      eapply (H2 {| elementIndex := _;
-                    indexedElement := _ |}); simpl.
+      eapply (H2 {| TuplesF.elementIndex := _;
+                    TuplesF.indexedElement := _ |}); simpl.
       unfold IndexedEnsemble_TupleToListW.
       simpl; eexists; split.
       econstructor 2.
       reflexivity.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
-Qed. *)
+Qed.
 
 Ltac start_compiling_adt :=
   intros;
@@ -5100,8 +5100,29 @@ Proof.
   start_compiling_adt.
 
   - eexists; split.
-    destruct H as [? [ ? ?] ].
-    Time _compile.
+    + Time _compile.
+    + destruct H as [? [ ? ?] ].
+      unfold CallBagMethod in H1; simpl in *.
+      computes_to_inv; subst.
+      eapply H0.
+    + destruct H as [? [? ?] ].
+      unfold CallBagMethod; intros; simpl in *; computes_to_inv; subst.
+      find_if_inside; computes_to_inv; subst; simpl in *.
+      * injections; subst.
+        simpl; eapply postConditionAdd; eauto.
+      * injections; subst; eauto.
+  - eexists; split.
+    + _compile.
+    + destruct H as [? [? ?] ]; intros.
+      unfold CallBagMethod in H1; simpl in *.
+      computes_to_inv; subst.
+      injections; simpl; split; eauto.
+  - eexists; intros; destruct H as [? [? ?] ]; split.
+    + _compile.
+    + unfold CallBagMethod; intros; simpl in *.
+      computes_to_inv; subst.
+      injections; simpl; split; eauto.
+      
     instantiate (1 := 0); admit.
     intros; admit.
   - eexists; split.
