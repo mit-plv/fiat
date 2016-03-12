@@ -4869,11 +4869,27 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
+
   - eexists; split.
     destruct H as [? [ ? ?] ].
     _compile.
+    instantiate (1 := 0); admit.
+    intros; admit.
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
+    intros; admit.
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
+    intros; admit.
+Defined.
 
-Admitted.
+Eval compute in (projT1 (progOKs (Fin.F1))).
+Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+
+Locate "_ <- _".
 
 (*  - eexists; split.
     destruct H as [? [? ?] ].
