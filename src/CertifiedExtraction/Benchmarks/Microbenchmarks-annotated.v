@@ -1,20 +1,26 @@
 Require Import CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
 
-Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
+(** This file collects examples of small compilation tasks. In all cases the
+    starting point is of the following form:
 
-Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
-  (GLabelMap.empty (FuncSpec _))
-    ### ("std", "rand") ->> (Axiomatic FRandom)
-    ### ("list[W]", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
-    ### ("list[W]", "push") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
-    ### ("list[W]", "pop") ->> (Axiomatic (List_pop W))
-    ### ("list[W]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
-    ### ("list[W]", "empty?") ->> (Axiomatic (List_empty W))
-    ### ("list[list[W]]", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list (list W)) nil))
-    ### ("list[list[W]]", "push") ->> (Axiomatic (FacadeImplementationOfMutation_ADT (list W) (list (list W)) cons))
-    ### ("list[list[W]]", "pop") ->> (Axiomatic (List_pop (list W)))
-    ### ("list[list[W]]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list (list W))))
-    ### ("list[list[W]]", "empty?") ->> (Axiomatic (List_empty (list W))).
+      ParametricExtraction
+        (* Some variables that the program is parametric on *)
+        #vars      …
+
+        (* A Fiat program *)
+        #program   …
+
+        (* A set of bindings, which are assumed to be available in the current
+           scope.  These binding give access at the Facade level to #vars *)
+        #arguments …
+
+        (* A collection mapping names to external functions *)
+        #env       …
+
+    The rest of this file shows increasingly complex examples of source
+    programs, and as comments the output (a Facade program) the derivation
+    produces (the ‘_compile’ tactic also produces a proof, which is checked at
+    ‘Defined’ and not printed). *)
 
 Example micro_plus :
   ParametricExtraction
@@ -52,7 +58,7 @@ Time Eval lazy in (extract_facade micro_plus_minus).
 Example micro_min :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then x else y)
+    #program   ret (if x ≺ y then x else y)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -70,10 +76,11 @@ Time Eval lazy in (extract_facade micro_min).
         EndIf)%facade
      : Stmt *)
 
+
 Example micro_max :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then y else x)
+    #program   ret (if x ≺ y then y else x)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -94,7 +101,7 @@ Time Eval lazy in (extract_facade micro_max).
 Example micro_squared_max :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then Word.wmult y y else Word.wmult x x)
+    #program   ret (if x ≺ y then Word.wmult y y else Word.wmult x x)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -152,17 +159,17 @@ Defined.
 
 Time Eval lazy in (extract_facade micro_duplicate_word).
 
-Example micro_sort_pair_1 :
+Example micro_sort_pair1 :
   ParametricExtraction
     #vars      x y
-    #program   ret (if Word.wlt_dec x y then x :: y :: nil else y :: x :: nil)
+    #program   ret (if x ≺ y then x :: y :: nil else y :: x :: nil)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
 Defined.
 
-Time Eval lazy in (extract_facade micro_sort_pair_1).
+Time Eval lazy in (extract_facade micro_sort_pair1).
 
 (* Output:
      = ("test" <- Var "x" < Var "y";
@@ -181,17 +188,17 @@ Time Eval lazy in (extract_facade micro_sort_pair_1).
         EndIf)%facade
      : Stm *)
 
-Example micro_sort_pair_2 :
+Example micro_sort_pair2 :
   ParametricExtraction
     #vars      x y
-    #program   ret ((if Word.wlt_dec x y then x else y) :: (if Word.wlt_dec x y then y else x) :: nil)
+    #program   ret ((if x ≺ y then x else y) :: (if x ≺ y then y else x) :: nil)
     #arguments [[`"x" <-- x as _ ]] :: [[`"y" <-- y as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
 Defined.
 
-Time Eval lazy in (extract_facade micro_sort_pair_2).
+Time Eval lazy in (extract_facade micro_sort_pair2).
 
 (* Output:
      = ("test" <- Var "x" < Var "y";
@@ -236,22 +243,22 @@ Time Eval lazy in (extract_facade micro_double).
         __)%facade
      : Stm *)
 
-Definition nibble_power_of_2_p (w: W) :=
+Definition nibble_power_of_two_p (w: W) :=
   Eval simpl in bool2w (Inb w (map Word.NToWord [[[1; 2; 4; 8]]]%N)).
 
-Ltac _compile_early_hook ::= progress unfold nibble_power_of_2_p.
+Ltac _compile_early_hook ::= progress unfold nibble_power_of_two_p.
 
-Example micro_nibble_power_of_2 :
+Example micro_nibble_power_of_two :
   ParametricExtraction
     #vars      x
-    #program   ret (nibble_power_of_2_p (Word.wplus x 1))
+    #program   ret (nibble_power_of_two_p (Word.wplus x 1))
     #arguments [[`"x" <-- x as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
 Defined.
 
-Time Eval lazy in (extract_facade micro_nibble_power_of_2).
+Time Eval lazy in (extract_facade micro_nibble_power_of_two).
 
 (* Output:
      = ("r" <- Const 1;
@@ -291,17 +298,17 @@ Time Eval lazy in (extract_facade micro_nibble_power_of_2).
 
 Ltac _compile_early_hook ::= fail.
 
-Example micro_nibble_power_of_2__intrinsic :
+Example micro_nibble_power_of_two__intrinsic :
   ParametricExtraction
     #vars      x
-    #program   ret (nibble_power_of_2_p (Word.wplus x 1))
+    #program   ret (nibble_power_of_two_p (Word.wplus x 1))
     #arguments [[`"x" <-- x as _ ]] :: Nil
-    #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_2_p)).
+    #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_two_p)).
 Proof.
   _compile.
 Defined.
 
-Time Eval lazy in (extract_facade micro_nibble_power_of_2__intrinsic).
+Time Eval lazy in (extract_facade micro_nibble_power_of_two__intrinsic).
 
 (* Output:
      = ("r" <- Const 1;
@@ -409,25 +416,27 @@ Time Eval lazy in (extract_facade micro_fold_flatten_rev).
         __)%facade
      : Stm *)
 
-Ltac _compile_random :=
+(* To use ‘any’, we must teach the compiler about it: *)
+Ltac _compile_any :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
-            | (?tenv, Cons ?k Random ?tenv') =>
-              match k with
+            | (_, Cons ?k Any _) =>
+              match k with      (* Assign a name to the head binding *)
               | NTNone => let vrandom := gensym "random" in
                          apply ProgOk_Transitivity_Name_SCA with vrandom
               | _ => idtac
-              end;
-                first [ call_tactic_after_moving_head_binding_to_separate_goal ltac:(apply CompileCallRandom)
-                      | apply miniChomp'; apply CompileDeallocSCA_discretely ]
+              end;              (* Compile the call *)
+              first [ call_tactic_after_moving_head_binding_to_separate_goal ltac:(apply CompileCallAny)
+                    | apply miniChomp', CompileDeallocSCA_discretely ]
             end).
 
-Ltac _compile_early_hook ::= _compile_random.
+(* This hook allows us to extend the compiler transparently: *)
+Ltac _compile_early_hook ::= _compile_any.
 
 Example micro_pick_random :
   ParametricExtraction
-    #program Random
+    #program Any
     #env     Microbenchmarks_Env.
 Proof.
   _compile.
@@ -441,8 +450,8 @@ Time Eval lazy in (extract_facade micro_pick_random).
 
 Example micro_sum_random :
   ParametricExtraction
-    #program ( r1 <- Random;
-               r2 <- Random;
+    #program ( r1 <- Any;
+               r2 <- Any;
                ret (Word.wplus r1 r2) )
     #env     Microbenchmarks_Env.
 Proof.
@@ -460,7 +469,7 @@ Time Eval lazy in (extract_facade micro_sum_random).
 Example micro_push_random :
   ParametricExtraction
     #vars      seq: list W
-    #program ( r <- Random;
+    #program ( r <- Any;
                ret (r :: seq) )
     #arguments [[`"out" <-- seq as _ ]] :: Nil
     #env     Microbenchmarks_Env.
@@ -476,11 +485,32 @@ Time Eval lazy in (extract_facade micro_push_random).
         call "list[W]"."push"("out", "arg"))%facade
      : Stm *)
 
+Example micro_overview :
+  ParametricExtraction
+    #program   (x <- Any; ret (if x ≺ W7 then x else 0))%comp
+    #env       Microbenchmarks_Env.
+Proof.
+  _compile.
+Defined.
+
+Time Eval lazy in (extract_facade micro_overview).
+
+(* Output:
+     = ("random" <- "std"."rand"();
+        "r" <- Const W7;
+        "test" <- Var "random" < Var "r";
+        If Const (Word.natToWord 32 1) = Var "test" Then
+          "out" <- Var "random"
+        Else
+          "out" <- Const 0
+        EndIf)%facade
+     : Stmt *)
+
 Example micro_randomize :
   ParametricExtraction
     #vars      seq: list W
     #program   fold_left (fun acc elem => ( a <- acc;
-                                         r <- Random;
+                                         r <- Any;
                                          ret (r :: a) )%comp) seq (ret nil)
     #arguments [[`"seq" <-- seq as _ ]] :: Nil
     #env       Microbenchmarks_Env.
@@ -507,8 +537,8 @@ Time Eval lazy in (extract_facade micro_randomize).
 Example micro_double_larger_than_random :
   ParametricExtraction
     #vars      seq
-    #program   ( threshold <- Random;
-                 ret (revmap (fun w => if Word.wlt_dec threshold w then
+    #program   ( threshold <- Any;
+                 ret (revmap (fun w => if threshold ≺ w then
                                       Word.wmult w 2
                                     else
                                       w)
@@ -631,8 +661,8 @@ Time Eval lazy in (extract_facade micro_read_baseN).
 Example micro_drop_larger_than_random :
   ParametricExtraction
     #vars      seq
-    #program   ( threshold <- Random;
-                 ret (fold_left (fun acc w => if Word.wlt_dec threshold w then
+    #program   ( threshold <- Any;
+                 ret (fold_left (fun acc w => if threshold ≺ w then
                                              acc
                                            else
                                              w :: acc)
