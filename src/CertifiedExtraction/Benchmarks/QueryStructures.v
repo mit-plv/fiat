@@ -4175,10 +4175,15 @@ Defined.
 Lemma CompileTuples2_findSecond :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
     (table: FiatBag (S (S N))) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S (S N)))))),
+    (table':= ( results <- {l : list RawTuple |
+                          IndexedEnsembles.EnsembleIndexedListEquivalence
+                            (IndexedEnsembles.IndexedEnsemble_Intersection
+                               table
+                               (fun x0 : RawTuple =>
+                                  ((if Word.weq (GetAttributeRaw x0 (Fin.FS Fin.F1)) key then true else false) && true)%bool =
+                                  true)) l};
+                 ret (table, results))%comp
+             : Comp (_ * list (FiatTuple (S (S N))))),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
     Lifted_MapsTo ext tenv vkey (wrap key) ->
@@ -4207,10 +4212,15 @@ Qed.
 Lemma CompileTuples2_findSecond_spec :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N k1 k2
     (table: FiatBag (S (S N))) (key: W)
-    (table':= ( results <- {l : list RawTuple | IndexedEnsembles.EnsembleIndexedListEquivalence (table) l};
-               ret (table,
-                    List.filter (fun tup : FiatTuple (S (S N)) => ((if Word.weq (ilist2.ith2 tup (Fin.FS Fin.F1)) key then true else false) && true)%bool) results)
-               : Comp (_ * list (FiatTuple (S (S N)))))),
+    (table':= ( results <- {l : list RawTuple |
+                          IndexedEnsembles.EnsembleIndexedListEquivalence
+                            (IndexedEnsembles.IndexedEnsemble_Intersection
+                               table
+                               (fun x0 : RawTuple =>
+                                  ((if Word.weq (GetAttributeRaw x0 (Fin.FS Fin.F1)) key then true else false) && true)%bool =
+                                  true)) l};
+                 ret (table, results))%comp
+             : Comp (_ * list (FiatTuple (S (S N))))),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.Tuples2_findSecond) env ->
     StringMap.MapsTo vkey (wrap key) ext ->
     PreconditionSet tenv ext [[[vret; vtable]]] ->
@@ -4353,7 +4363,6 @@ Ltac start_compiling_adt :=
   change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
   change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
-
 Ltac _compile_CallBagFind :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
@@ -4468,7 +4477,7 @@ Proof.
   intros; reflexivity.
 Qed.
 
-Ltac _compile_map ::=
+Ltac _compile_map ::= (* ‘_compile_map’ from the stdlib uses generic push-pop methods. *)
      match_ProgOk
      ltac:(fun prog pre post ext env =>
              let vhead := gensym "head" in
@@ -4480,7 +4489,6 @@ Ltac _compile_map ::=
                unify seq seq';
                apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
              end).
-
 
 Lemma CompileTuple_Get_helper :
   forall N (idx: (Fin.t N)), (@Vector.nth Type (NumAttr (MakeWordHeading N)) (AttrList (MakeWordHeading N)) idx) = W.
