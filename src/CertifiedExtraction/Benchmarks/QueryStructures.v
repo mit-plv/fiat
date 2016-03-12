@@ -2453,7 +2453,6 @@ Definition UnitSigT (P: unit -> Type) :
 Ltac _repeat_destruct :=
   match goal with
   | _ => apply UnitSigT
-  | _ => apply UnpairSigT; try refine (existT _ (QS_WrapBag2 0 1) _)
   | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
   (*| [  |- context[@SideStuff] ] => econstructor *)
   | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
@@ -4398,18 +4397,20 @@ Ltac _compile_CallBagFind :=
                                                                                  (icons3 ProcessScheduler.SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
                                           :: [[`vsnd <-- snd retv as s]]
                                           :: tenv);
-                  [ match kwd with
-                    | (Some ?v, (None, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
-                      end
-                    | (None, (Some ?v, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
-                      end
-                    end | ]
+                [ match kwd with
+                  | (Some ?v, (None, fun _ => true)) =>
+                    let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                    match vkwd with
+                    | Some ?vkwd => apply (CompileTuples2_findFirst_spec (* FIXME get (Fin.FS Fin.F1) generically *)
+                                            (Fin.FS Fin.F1) (vkey := vkwd) _ (table := prim_fst db))
+                    end
+                  | (None, (Some ?v, fun _ => true)) =>
+                    let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
+                    match vkwd with
+                    | Some ?vkwd => apply (CompileTuples2_findSecond_spec (* FIXME get (Fin.F1) generically *)
+                                            _ (Fin.F1) (vkey := vkwd) (table := prim_fst db))
+                    end
+                  end | ]
               end
             end).
 
@@ -4889,40 +4890,6 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
-  (* FIXME remove this rule from _repeat_destruct:
-     | _ => apply UnpairSigT; try refine (existT _ (QS_WrapBag2 1 0) _) (* FIXME generalize *) *)
-
-  Ltac _compile_CallBagFind ::=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:((pre, post)) with
-            | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
-              match bf with
-              | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
-                let vsnd := gensym "snd" in
-                let vtmp := gensym "tmp" in
-                eapply CompileSeq with ([[bf as retv]]
-                                          :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw ProcessScheduler.SchedulerSchema)
-                                                                                 (icons3 ProcessScheduler.SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
-                                          :: [[`vsnd <-- snd retv as s]]
-                                          :: tenv);
-                  [ match kwd with
-                    | (Some ?v, (None, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (* FIXME get (Fin.FS Fin.F1) generically *)
-                                              (Fin.FS Fin.F1) (vkey := vkwd) _ (table := prim_fst db))
-                      end
-                    | (None, (Some ?v, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (* FIXME get (Fin.F1) generically *)
-                                              _ (Fin.F1) (vkey := vkwd) (table := prim_fst db))
-                      end
-                    end | ]
-              end
-            end).
 
   - eexists; split.
     destruct H as [? [ ? ?] ].
