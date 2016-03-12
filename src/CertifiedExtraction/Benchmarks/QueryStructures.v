@@ -1976,12 +1976,246 @@ Lemma compiled_prog_op_refines_ax
       + reflexivity.
   Qed.
 
-  Definition BuildCompileUnit2T'
+  Lemma StringMap_fold_left_Eq {B C}
+    : forall f f' l st st',
+      let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
+      StringMap.Equal st st'
+      -> StringMap.Equal
+           (fold_left f' l st)
+           (fold_left f' l st').
+  Proof.
+    induction l.
+    - simpl; eauto.
+    - simpl; intros.
+      eapply IHl; rewrite H; reflexivity.
+  Qed.
+
+  Lemma StringMap_In_Permutation {B C}
+    : forall f f' l st st' k,
+      let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
+      (forall k, StringMap.In k st
+                 -> StringMap.In k st')
+      -> StringMap.In k (fold_left f' l st)
+      -> StringMap.In k (fold_left f' l st').
+  Proof.
+    induction l; simpl; intros.
+    - eauto.
+    - eapply IHl.
+      2: apply H0.
+      intros; destruct H1.
+      apply add_mapsto_iff in H1; intuition; subst.
+      eexists; apply StringMap.add_1; eauto.
+      destruct (H k0).
+      eexists; eauto.
+      eexists x0.
+      apply StringMap.add_2; eauto.
+  Qed.
+
+  Lemma StringMap_In_Permutation' {B C}
+    : forall f f' l st st' k,
+      let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
+      (StringMap.In k st -> StringMap.In k st')
+      -> StringMap.In k (fold_left f' l st)
+      -> StringMap.In k (fold_left f' l st').
+  Proof.
+    induction l; simpl; intros.
+    - eauto.
+    - eapply IHl.
+      2: apply H0.
+      intros; destruct H1.
+      apply add_mapsto_iff in H1; intuition; subst.
+      eexists; apply StringMap.add_1; eauto.
+      destruct H.
+      eexists; eauto.
+      eexists x0.
+      apply StringMap.add_2; eauto.
+  Qed.
+
+  Lemma fold_left_add2_Eq {B C}
+    : forall f f' k (v : C) l st,
+      let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
+      ~ StringMap.In k (fold_left f' l (StringMap.empty _))
+      -> StringMap.Equal
+           (fold_left f' l ([k <-- v]::st))
+           ([k <-- v]:: (fold_left f' l st)).
+  Proof.
+    induction l; simpl; intros.
+    - reflexivity.
+    - rewrite <- IHl.
+      + rewrite StringMap_fold_left_Eq.
+        reflexivity.
+        unfold StringMap.Equal; simpl.
+        intros; rewrite !add_o; repeat find_if_inside;
+        eauto; subst.
+        destruct H.
+        remember (StringMap.empty C); clear.
+        remember (f' a).
+        clear; revert t c; induction l; simpl; intros.
+        eexists; apply StringMap.add_1; eauto.
+        destruct (string_dec (f a0) (f a)); subst; simpl.
+        rewrite e; eapply IHl.
+        destruct (IHl ([f a0 <-- f' a0]::t) c).
+        eexists x.
+        setoid_rewrite find_mapsto_iff.
+        setoid_rewrite StringMap_fold_left_Eq.
+        setoid_rewrite <- find_mapsto_iff.
+        eapply H.
+        unfold StringMap.Equal; intros; rewrite !add_o;
+        repeat find_if_inside; try congruence.
+      + intro; apply H.
+        remember (StringMap.empty C).
+        revert H0; generalize a t; clear; induction l; simpl; intros.
+        * destruct (string_dec k (f a)); subst.
+          eexists (f' a); apply StringMap.add_1; eauto.
+          destruct H0.
+          eexists x; apply StringMap.add_2; eauto.
+        * eapply (IHl a0) in H0.
+          eapply StringMap_In_Permutation.
+          2: apply H0.
+          clear; intros; destruct H.
+          apply add_mapsto_iff in H; intuition; subst.
+          destruct (string_dec (f a) (f a0)); subst.
+          eexists (f' a).
+          apply StringMap.add_1; eauto.
+          eexists (f' a0).
+          apply StringMap.add_2; eauto.
+          apply StringMap.add_1; eauto.
+          apply add_mapsto_iff in H1; intuition; subst.
+          eexists (f' a).
+          apply StringMap.add_1; eauto.
+          eexists x.
+          apply StringMap.add_2; eauto.
+          apply StringMap.add_2; eauto.
+  Qed.
+
+  Lemma StringMapsTo_fold_left A C
+    : forall (f : A -> string)
+             (f' : A -> C) l st idx,
+      NoDup (map f l)
+      -> In idx l
+      -> StringMap.MapsTo
+        (f idx)
+        (f' idx)
+        (fold_left
+           (fun acc (el : A) =>
+              [f el <-- f' el] :: acc )
+           l st).
+  Proof.
+    induction l; simpl; intros.
+    - intuition.
+    - intuition; subst.
+      + rewrite fold_left_add2_Eq.
+        apply StringMap.add_1; eauto.
+        inversion H; subst.
+        assert (~ StringMap.In (f idx) (StringMap.empty C))
+          by (rewrite empty_in_iff; tauto).
+        remember (StringMap.empty C).
+        generalize t H2 H0; clear; induction l; simpl; intros.
+        * eauto.
+        * intuition.
+          eapply IHl; eauto.
+          eapply StringMap_In_Permutation'.
+          2:eauto.
+          intros.
+          destruct H2.
+          eapply add_mapsto_iff in H2; intuition.
+          eexists; eauto.
+      + inversion H; subst; eapply IHl; eauto.
+  Qed.
+
+  Lemma NoDup_BuildFinUpTo 
+    : forall n, NoDup (BuildFinUpTo n).
+  Proof.
+    induction n; simpl; econstructor.
+    - clear; induction (BuildFinUpTo n); simpl.
+      + tauto.
+      + intuition; discriminate.
+    - eapply ListFacts1.Injection_NoDup; eauto.
+      unfold ListFacts1.IsInjection; intros.     
+      unfold not; intros; apply H.
+      apply Fin.FS_inj in H0; eauto.
+  Qed.
+
+  Lemma In_BuildFinUpTo 
+    : forall n idx, In idx (BuildFinUpTo n).
+  Proof.
+    induction idx.
+    - simpl; intuition.
+    - simpl.
+      right; apply in_map_iff; eauto.
+  Qed.
+      
+  Corollary StringMapsTo_fold_left' {n} C
+    : forall (f : Fin.t n -> string)
+             (f' : Fin.t n -> C) st idx,
+      ListFacts1.IsInjection f
+      -> StringMap.MapsTo
+        (f idx)
+        (f' idx)
+        (fold_left
+           (fun acc (el : Fin.t n) =>
+              [f el <-- f' el] :: acc )
+           (BuildFinUpTo n) st).
+  Proof.
+    intros; eapply StringMapsTo_fold_left.
+    - eapply ListFacts1.Injection_NoDup; eauto using NoDup_BuildFinUpTo.
+    - eapply In_BuildFinUpTo.
+  Qed.
+
+  Lemma methID_injective {n'}
+    : forall (methSigs : Vector.t methSig n'),
+             NoDup (Vector.to_list (Vector.map methID methSigs))
+             -> ListFacts1.IsInjection (fun midx => methID (Vector.nth methSigs midx)).
+  Proof.
+    unfold ListFacts1.IsInjection.
+    intros.
+    revert methSigs H H0.
+    pattern n', x, y.
+    eapply Fin.rect2; intros.
+    - congruence.
+    - revert f H H0.
+      pattern n, methSigs.
+      eapply Vector.caseS; simpl; intros.
+      rewrite Vector_ToList_cons in H; inversion H; subst.
+      generalize t H3; clear.
+      induction f; simpl.
+      + intro; pattern n, t; eapply Vector.caseS; intros.
+        simpl in *.
+        rewrite Vector_ToList_cons in H3.
+        simpl in H3; intuition.
+      + intro; revert f IHf; pattern n, t; eapply Vector.caseS; intros.
+        simpl in *.
+        rewrite Vector_ToList_cons in H3; simpl in H3.
+        eapply IHf; intuition.
+    - revert f H H0.
+      pattern n, methSigs.
+      eapply Vector.caseS; simpl; intros.
+      rewrite Vector_ToList_cons in H; inversion H; subst.
+      generalize t H3; clear.
+      induction f; simpl.
+      + intro; pattern n, t; eapply Vector.caseS; intros.
+        simpl in *.
+        rewrite Vector_ToList_cons in H3.
+        simpl in H3; intuition.
+      + intro; revert f IHf; pattern n, t; eapply Vector.caseS; intros.
+        simpl in *.
+        rewrite Vector_ToList_cons in H3; simpl in H3.
+        eapply IHf; intuition.
+    - revert f g H H0 H1; clear. pattern n, methSigs.
+      eapply Vector.caseS; intros.
+      simpl in *.
+      eapply H.
+      rewrite Vector_ToList_cons in H0; inversion H0; subst; eauto.
+      congruence.
+  Qed.
+
+    Definition BuildCompileUnit2T'
              av
              (env : Env av)
              {n n'}
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
+             (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
              (adt : DecoratedADT (BuildADTSig consSigs methSigs))
              {numRepArgs}
              {A}
@@ -2000,7 +2234,9 @@ Lemma compiled_prog_op_refines_ax
              codWrap
              domWrap
              wrappedRep
-             DecomposeRepPrePoseAgree
+             (DecomposeRepPrePoseAgree := fun r r' =>
+                                            DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+             
              (exports := GenExports env adt codWrap domWrap
                                     (numRepArgs := numRepArgs)
                                     RepInv
@@ -2063,11 +2299,41 @@ Lemma compiled_prog_op_refines_ax
     simpl. repeat split.
     apply (projT2 (progsOK midx)).
     unfold BuildFun.
-    admit.
+    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
+         (fun el => BuildDFFun DecomposeRep numRepArgs wrappedRep (progsOK el))).
+    apply methID_injective; eauto.
     Grab Existential Variables.
     unfold ops_refines_axs.
-    intro.
     intros.
+    unfold GenExports in H.
+    assert (exists midx, x = methID (Vector.nth methSigs midx)) by admit.
+    destruct H0; subst.
+    pose proof (@StringMapsTo_fold_left'
+            _ _
+            (fun el => methID (Vector.nth methSigs el))
+            (fun el => GenAxiomaticSpecs env RepInv (codWrap el) 
+              (domWrap el) (Methods adt el) DecomposeRepPre DecomposeRepPost
+              DecomposeRepPrePoseAgree) ∅ x0 (methID_injective _ UniqueMeth)).
+    setoid_rewrite find_mapsto_iff in H0.
+    rewrite H0 in H.
+    injections.
+    eexists; intuition.
+    unfold Funs.
+    unfold BuildFun.
+    setoid_rewrite <- find_mapsto_iff.
+    eapply StringMap.map_1.
+    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
+         (fun el => BuildDFFun DecomposeRep numRepArgs wrappedRep (progsOK el))).
+    apply methID_injective; eauto.
+    unfold DecomposeRep.
+    pose compiled_prog_op_refines_ax.
+    unfold DecomposeRepPrePoseAgree.
+    eapply o.
+    
+    simpl.
+    
+    
+    
     Print OperationalSpec.
     simpl.
     unfold BuildFun.
