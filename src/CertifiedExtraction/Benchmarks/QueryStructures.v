@@ -2142,14 +2142,6 @@ Fixpoint BuildStringMap {A} (k : list string) (v : list A) : StringMap.t A :=
   | _, _ => StringMap.empty A
   end.
 
-Class SideStuff av {n n' : nat}
-       {consSigs : Vector.t consSig n} {methSigs : Vector.t methSig n'}
-       (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-       (f' : Rep adt -> list (Value av)) :=
-  { coDomainWrappers : forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx));
-    domainWrappers : forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx));
-    f'_well_behaved : forall x x0 : Rep adt, is_same_types (f' x0) (f' x) = true }.
-
 Arguments DecomposePosti3list _ _ _ _ _ _ _ _ _ _ / .
 Arguments DecomposeIndexedQueryStructurePost _ _ _ _ _ _ / .
 
@@ -2197,7 +2189,7 @@ Ltac _repeat_destruct :=
   | _ => apply UnitSigT
   | _ => apply UnpairSigT; try refine (existT _ (QS_WrapBag2 0 1) _)
   | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
-  | [  |- context[@SideStuff] ] => econstructor
+  (*| [  |- context[@SideStuff] ] => econstructor *)
   | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
   | [  |- prim_prod _ _ ] => split
   | [  |- prod _ _ ] => split
@@ -2214,10 +2206,6 @@ Proof.
   repeat_destruct;
   typeclasses eauto.
 Defined. *)
-
-Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
 
 Require Bedrock.Platform.Facade.examples.QsADTs.
 Require Bedrock.Platform.Facade.examples.TuplesF.
@@ -4438,54 +4426,172 @@ Require Import
 
 (* NOTE: Could prove lemma for un-reved map using temp variable *)
 
-Definition SchedulerWrappers : { rWrap : _ & @SideStuff QsADTs.ADTValue _ _ _ _ PartialSchedulerImpl
-                                                        (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap) }.
+(*Class SideStuff av {n n' : nat}
+      {consSigs : Vector.t consSig n}
+      {methSigs : Vector.t methSig n'}
+      {numRepArgs}
+      (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+      (f' : Rep adt -> Vector.t (Value av) numRepArgs) :=
+  { coDomainWrappers : forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx));
+    domainWrappers : forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx));
+    f'_well_behaved : forall x x0 : Rep adt, is_same_types (f' x0) (f' x) = true }.
+
+Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
+Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
+Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
+
+Definition SchedulerWrappers :
+  { rWrap : _ & @SideStuff
+                  QsADTs.ADTValue _ _ _ _ PartialSchedulerImpl
+                  (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap) }.
 Proof.
   simpl;
   repeat_destruct;
   typeclasses eauto.
+Defined. *)
+
+Definition coDomainWrappers
+           av {n n' : nat}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+  := forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx)).
+
+Definition domainWrappers
+           av {n n' : nat}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+  := forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx)).
+
+Definition DecomposeRep_well_behaved
+           av {n n' : nat}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+           (DecomposeRep : Rep adt -> list (Value av)) :=
+  forall x x0 : Rep adt,
+    is_same_types (DecomposeRep x0)
+                  (DecomposeRep x) = true.
+
+Definition Good_bool {av}
+  : GoodWrapper av bool.
+Proof.
+  refine {| gWrap := _;
+            gWrapTag := false
+         |}; intros; unfold wrap; simpl; eauto.
 Defined.
 
-Definition CUnit (env := GLabelMap.empty _)
-           (rWrap := projT1 SchedulerWrappers)
-           (Scheduler_SideStuff := projT2 SchedulerWrappers)
+Definition Good_listW
+  : GoodWrapper QsADTs.ADTValue (list W).
+Proof.
+  refine {| gWrap := _;
+            gWrapTag := true
+         |}; intros; unfold wrap; simpl; eauto.
+Defined.
+
+Definition Good_W {av}
+  : GoodWrapper av W.
+Proof.
+  refine {| gWrap := _;
+            gWrapTag := false
+         |}; intros; unfold wrap; simpl; eauto.
+Defined.
+
+Definition Scheduler_coDomainWrappers
+  : coDomainWrappers QsADTs.ADTValue PartialSchedulerImpl.
+Proof.
+  unfold coDomainWrappers; simpl; repeat_destruct;
+  eauto using Good_bool, Good_listW, Good_W.
+Defined.
+
+Definition Scheduler_DomainWrappers
+  : domainWrappers QsADTs.ADTValue PartialSchedulerImpl.
+Proof.
+    unfold domainWrappers; simpl; repeat_destruct;
+    eauto using Good_bool, Good_listW, Good_W.
+Defined.
+
+Definition QueryStructureRepWrapperT
+           av (qs_schema : QueryStructureSchema.QueryStructureSchema)
+           (qs_schema' := QueryStructureSchema.QueryStructureSchemaRaw
+                            qs_schema)
+           Index
+  := @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema')
+                 Schema.RawSchema
+                 (fun ns =>
+                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                 (fun ns
+                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                    @IndexedEnsembles.IndexedEnsemble
+                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                 (QueryStructureSchema.qschemaSchemas qs_schema') Index.
+
+Definition Scheduler_RepWrapperT Index
+  : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
+Proof.
+  unfold QueryStructureRepWrapperT; simpl; split.
+  apply (@QS_WrapBag2 3 0 1).
+  constructor.
+Defined.
+
+Definition Scheduler_DecomposeRep_well_behaved
+  : DecomposeRep_well_behaved PartialSchedulerImpl
+                              (fun rep => Vector.to_list (@DecomposeIndexedQueryStructurePre QsADTs.ADTValue
+                                                               (QueryStructureSchema.QueryStructureSchemaRaw
+                                                                  SchedulerSchema) _
+                                                               (Scheduler_RepWrapperT _) rep)).
+Proof.
+    unfold DecomposeRep_well_behaved; simpl; repeat_destruct;
+    eauto using Good_bool, Good_listW, Good_W.
+Defined.
+
+(*Definition CUnit (env := GLabelMap.empty _)
            (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
                           /\ exists idx,
                      TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
   : BuildCompileUnit2T
-      env PartialSchedulerImpl P (DecomposeIndexedQueryStructure QsADTs.ADTValue)
-      (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap)
-      (DecomposeIndexedQueryStructurePost QsADTs.ADTValue _ _ rWrap)
+      env PartialSchedulerImpl P
+      (DecomposeIndexedQueryStructure QsADTs.ADTValue)
+      (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ _)
+      (DecomposeIndexedQueryStructurePost QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
       (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
       "foo"
       "bar"
-      (Scheduler_SideStuff).(coDomainWrappers) (Scheduler_SideStuff).(domainWrappers)
-      rWrap
-      (Scheduler_SideStuff).(f'_well_behaved).
+      Scheduler_coDomainWrappers
+      Scheduler_DomainWrappers
+      (Scheduler_RepWrapperT _)
+      Scheduler_DecomposeRep_well_behaved.
+
+
 Proof.
   eapply BuildCompileUnit2T'.
   eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
   repeat apply Build_prim_prod; eexists; repeat apply conj; intros.
   (* Should be compile, then a bunch of reflexivity proofs. *)
   _compile.
+  _compile.
+  _compile. *)
 
-(* Here's the lemma for compiling everything! *)
+  (* Here's the lemma for compiling everything! *)
 
 Lemma progOKs
   : forall (env := QSEnv)
-           (rWrap := projT1 SchedulerWrappers)
            (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
                           /\ exists idx,
                      TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
 
-      (Scheduler_SideStuff := projT2 SchedulerWrappers)
-      midx, {prog : _ & LiftMethod env P (DecomposeIndexedQueryStructure _ rWrap)
-                                   (coDomainWrappers Scheduler_SideStuff midx)
-                                   (domainWrappers Scheduler_SideStuff midx)
+      midx, {prog : _ & LiftMethod env P (DecomposeIndexedQueryStructure _ (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
+                                   (Scheduler_coDomainWrappers midx)
+                                   (Scheduler_DomainWrappers midx)
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
-  Admitted.
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
+
+Admitted.
 
 (*  - eexists; split.
     destruct H as [? [? ?] ].
