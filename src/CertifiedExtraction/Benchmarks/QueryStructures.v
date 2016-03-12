@@ -4412,6 +4412,7 @@ Lemma CompileTuples2_findSecond :
     NoDuplicates [[[vret; vtable; vkey]]] ->
     vret ∉ ext ->
     vtable ∉ ext ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
@@ -4422,12 +4423,13 @@ Lemma CompileTuples2_findSecond :
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
   fiat_t.
-  instantiate (1 := nil); admit.
-  fiat_t.
-  fiat_t.
-  simpl. admit.
 
-  repeat apply DropName_remove; eauto 1.
+  5:solve[repeat apply DropName_remove; eauto 1].
+  4:solve[simpl; eauto using f_equal, ListWToTuple_Truncated_map_keepEq].
+  3:solve[fiat_t].
+  2:solve[fiat_t].
+
+  apply Fiat_Bedrock_Filters_Equivalence; eassumption.
 Qed.
 
 Lemma CompileTuples2_findSecond_spec :
@@ -4450,6 +4452,7 @@ Lemma CompileTuples2_findSecond_spec :
     PreconditionSet tenv ext [[[vret; vtable]]] ->
     vret <> vkey ->
     vtable <> vkey ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
@@ -4460,9 +4463,9 @@ Lemma CompileTuples2_findSecond_spec :
 Proof.
   intros.
   apply generalized CompileTuples2_findSecond; repeat (compile_do_side_conditions || Lifted_t || PreconditionSet_t).
-  setoid_rewrite (DropName_NotInTelescope _ _ H11).
+  setoid_rewrite (DropName_NotInTelescope _ _ H12).
   rewrite DropName_Cons_None.
-  setoid_rewrite (DropName_NotInTelescope _ _ H9).
+  setoid_rewrite (DropName_NotInTelescope _ _ H10).
   decide_TelEq_instantiate.
 Qed.
 
