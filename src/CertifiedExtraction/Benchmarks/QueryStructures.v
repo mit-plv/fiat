@@ -4833,7 +4833,7 @@ Definition Scheduler_RepWrapperT Index
   : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
 Proof.
   unfold QueryStructureRepWrapperT; simpl; split.
-  apply (@QS_WrapBag2 3 0 1).
+  apply (@QS_WrapBag2 3 1 0).   (* FIXME generalize *)
   constructor.
 Defined.
 
@@ -4889,17 +4889,15 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
+  (* FIXME remove this rule from _repeat_destruct:
+     | _ => apply UnpairSigT; try refine (existT _ (QS_WrapBag2 1 0) _) (* FIXME generalize *) *)
 
-  Focus 2.
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-
+  Ltac _compile_CallBagFind ::=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
             | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
-match bf with
+              match bf with
               | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
                 let vsnd := gensym "snd" in
                 let vtmp := gensym "tmp" in
@@ -4912,24 +4910,23 @@ match bf with
                   [ match kwd with
                     | (Some ?v, (None, fun _ => true)) =>
                       let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                     pose vkwd
+                      match vkwd with
+                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (* FIXME get (Fin.FS Fin.F1) generically *)
+                                              (Fin.FS Fin.F1) (vkey := vkwd) _ (table := prim_fst db))
+                      end
                     | (None, (Some ?v, fun _ => true)) =>
                       let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
                       match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
+                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (* FIXME get (Fin.F1) generically *)
+                                              _ (Fin.F1) (vkey := vkwd) (table := prim_fst db))
                       end
                     end | ]
-end
+              end
             end).
 
-  unfold CallBagMethod; simpl.
-  unfold IndexSearchTerms.MatchIndexSearchTerm.
-  apply (CompileTuples2_findFirst_spec (vkey := "arg")).
-                      end
-    
-    _compile_CallBagFind.
-
-
+  - eexists; split.
+    destruct H as [? [ ? ?] ].
+    _compile.
     instantiate (1 := 0); admit.
     intros; admit.
   - eexists; split.
@@ -4940,11 +4937,16 @@ end
     destruct H as [? [ ? ?] ].
     _compile.
     intros; admit.
+
+    (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
 Defined.
 
-Eval compute in (projT1 (progOKs (Fin.F1))).
-Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+(* Set Printing All. *)
+Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
+Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+
+
 
 Locate "_ <- _".
 
