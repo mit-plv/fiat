@@ -4751,7 +4751,15 @@ Defined.
 Definition Good_listW
   : GoodWrapper QsADTs.ADTValue (list W).
 Proof.
-  refine {| gWrap := _;
+  refine {| gWrap := WrapInstance (H := QS_WrapWordList);
+            gWrapTag := true
+         |}; intros; unfold wrap; simpl; eauto.
+Defined.
+
+Definition Good_BedrockTuple
+  : GoodWrapper QsADTs.ADTValue (list W).
+Proof.
+  refine {| gWrap := WrapInstance (H := QS_WrapBedrockTuple);
             gWrapTag := true
          |}; intros; unfold wrap; simpl; eauto.
 Defined.
