@@ -664,7 +664,7 @@ Definition Shelve {A} (a : A) := True.
 
 Definition DFModuleEquiv
            av
-           env
+           (env : Env av)
            {n n'}
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
@@ -919,7 +919,7 @@ Definition GenExports
 
 Definition CompileUnit2Equiv
            av
-           (env : Env av)
+           env
            {A}
            {n n'}
            {consSigs : Vector.t consSig n}
@@ -936,13 +936,13 @@ Definition CompileUnit2Equiv
            {exports}
            (compileUnit : CompileUnit exports)
   :=
-    DFModuleEquiv env adt RepInv compileUnit.(module) cWrap dWrap (f rWrap) g
+    DFModuleEquiv (av := av) env adt RepInv compileUnit.(module) cWrap dWrap (f rWrap) g
     /\ compileUnit.(ax_mod_name) = ax_mod_name'
     /\ compileUnit.(op_mod_name) = op_mod_name'.
 
 Definition BuildCompileUnit2T
            av
-           (env : Env av)
+           (env env' : Env av)
            {A}
            {n n'}
            {consSigs : Vector.t consSig n}
@@ -960,7 +960,7 @@ Definition BuildCompileUnit2T
            dWrap
            rWrap
            H
-           (exports := GenExports (numRepArgs := numRepArgs) env adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
+           (exports := GenExports (numRepArgs := numRepArgs) env' adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
   {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt RepInv DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
 
 Definition BuildDFFun
@@ -1023,7 +1023,6 @@ Proof.
   destruct progOK; simpl in *; intuition.
   destruct progOK; simpl in *; intuition.
 Defined.
-
 
 Definition BuildFun
            av
@@ -1285,8 +1284,8 @@ Qed.
 
 Lemma nth_error_NumUpTo :
   forall m n l,
-    m < n
-    -> nth_error (NumUpTo n l) m = Some m.
+    lt m n
+    -> nth_error (NumUpTo n l) m = Some m .
 Proof.
   induction n; simpl; intros.
   - omega.
@@ -1298,9 +1297,9 @@ Qed.
 
 Lemma nth_error_NumUpTo_lt :
   forall m n l v,
-    m < n
+    lt m n
     -> nth_error (NumUpTo n l) m = Some v
-    -> v < n.
+    -> lt v n.
 Proof.
   induction n; simpl; intros.
   - omega.
@@ -1316,7 +1315,7 @@ Qed.
 Lemma nth_error_NumUpTo_eq :
   forall m n l v,
     nth_error (NumUpTo n l) m = Some v
-    -> v < n \/ In v l.
+    -> lt v n \/ In v l.
 Proof.
   intros; destruct (Compare_dec.lt_eq_lt_dec m n) as [ [ | ] | ].
   - left; eapply nth_error_NumUpTo_lt; eauto.
@@ -1404,19 +1403,50 @@ Proof.
   repeat find_if_inside; eauto.
 Qed.
 
+
+Lemma Weaken_RunsTo av
+  : forall (env : Env av) prog st st',
+    RunsTo env prog st st'
+    -> forall (env' : Env av),
+      GLabelMapFacts.Submap env env'
+      -> RunsTo env' prog st st'.
+Proof.
+  induction 1; simpl; intros.
+  - econstructor; eauto.
+  - econstructor; eauto.
+  - econstructor; eauto.
+  - econstructor 4; eauto.
+  - subst loop; econstructor 5; eauto.
+  - subst loop; econstructor 6; eauto.
+  - econstructor; eauto.
+  - econstructor; eauto.
+  - econstructor 9; eauto.
+Qed.
+
 Lemma compiled_prog_op_refines_ax
       av
-      (env : Env av)
+      (env env' : Env av)
       {numRepArgs}
       {A}
       {B}
       {C}
+      {Rep'}
       {RepT' : Vector.t A numRepArgs}
       (RepT : ilist3 (B := B) RepT')
+      (RepMap : Rep' -> i3list C RepT)
       (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
-      (DecomposeRep := Decomposei3list (C := C) RepT' RepT)
-      (DecomposeRepPre := DecomposePrei3list (C := C) RepT' RepT RepWrapper)
-      (DecomposeRepPost := DecomposePosti3list (C := C) RepT' RepT RepWrapper)
+      (DecomposeRep :=
+         fun repWrapper rep =>
+           Decomposei3list RepT' RepT repWrapper (RepMap rep))
+      (DecomposeRepPre :=
+         fun rep =>
+           DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+      (DecomposeRepPost :=
+         fun rep rep' =>
+           DecomposePosti3list _ RepT RepWrapper (RepMap rep) (RepMap rep'))
+      (DecomposeRepPrePostAgree :=
+         fun r r' =>
+           DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
       cod
       dom
       codWrap
@@ -1424,557 +1454,561 @@ Lemma compiled_prog_op_refines_ax
       meth
       RepInv
       progOK
-    : op_refines_ax
-        env
-        (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
-                          (WrappedCod := codWrap) (WrappedDom := domWrap)
-                          (meth := meth) (RepInv := RepInv)
-                          DecomposeRep numRepArgs RepWrapper progOK))
-        (GenAxiomaticSpecs (numRepArgs := numRepArgs)
-                           env RepInv codWrap domWrap meth
-                           DecomposeRepPre
-                           DecomposeRepPost
-                           (DecomposePrei3list_Agree av RepT RepWrapper)).
-  Proof.
-    unfold op_refines_ax; repeat split.
-    - unfold GenAxiomaticSpecs; simpl.
-      eapply AxiomatizeMethodPost_OK.
-    - simpl. unfold BuildArgNames.
-      rewrite app_length, !rev_length, !map_length, !NumUpTo_length; simpl.
-      intros; destruct H as [r [H' H ] ].
-      apply length_AxiomatizeMethodPre' in H; subst.
-      rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
-    - destruct progOK as [prog [op_spec ?] ]; simpl.
-      generalize op_spec; clear.
-      unfold AxSafe; simpl; intros.
-      destruct_ex; intuition; subst.
-      unfold GenAxiomaticSpecs in H2; simpl in H2;
-      destruct_ex; intuition; subst.
-      revert st x H0 H x0 H2 H3 X0.
-      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
-      assert (
-          Datatypes.length (@nil (Value av))
-          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
-      by reflexivity.
-      assert (forall x0,
-                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
-                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
-                          ∅) as H''.
-      { unfold BuildArgNames.
-        subst DecomposeRep; subst DecomposeRepPre.
-        simpl.
-        clear meth op_spec RepInv.
-
-        generalize RepT RepWrapper;
-          clear; induction RepT'.
-        - intros; simpl; reflexivity.
-        - simpl; intros.
-          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-          rewrite StringMapFacts.add_eq_o; eauto.
-          eexists _; intuition eauto.
-          eapply StringMap_remove_add; eauto.
-          eapply make_map_not_in.
-          rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
-          injections.
-          destruct x; destruct n.
-          + intuition.
-          + symmetry in H.
-            apply NumberToString_rec_10 in H; intuition.
-          + apply NumberToString_rec_10 in H; intuition.
-          + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
-            simpl in H1.
-            apply ListFacts4.in_nth_error in H1; destruct_ex.
-            apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
-      }
-      remember (@nil (Value av)) as l; clear Heql.
-      remember [] as l'; clear Heql'.
-      remember DecomposeRep.
-      assert (forall r : i3list C RepT,
-                 RepInv r ->
-                 LiftMethod' env dom RepInv
-                             (fun r0 : i3list C RepT => list2Telescope (DecomposeRep RepWrapper r0))
-                             (l0 RepWrapper r)
-                             codWrap domWrap
-                             prog l' (meth r)) as op_spec'
-          by (subst; exact op_spec); clear op_spec.
-      clear Heql0.
-      generalize l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
-      clear l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
-      induction dom; simpl; intros.
-      + destruct cod; simpl.
-        { simpl in H3; subst.
-          eapply op_spec'; eauto.
-          eapply SameValues_Equal.
-          symmetry; apply H.
-          rewrite <- plus_n_O.
-          apply H''.
-        }
-        { eapply op_spec'; eauto.
-          simpl in H3; subst.
-          eapply SameValues_Equal.
-          symmetry; apply H.
-          rewrite <- plus_n_O.
-          apply H''. }
-      + simpl in *; destruct_ex; subst.
-        rewrite H.
-        destruct domWrap.
-        eapply IHdom with
-        (meth := fun r => meth r x1)
-          (l' :=
-                   (existT (fun T : Type => (NameTag av T * Comp T)%type) a
-                  (NTSome
-                     (String "a"
-                        (String "r"
-                           (String "g"
-                              (NumberToString_rec (Datatypes.length l')
-                                 (pred (Datatypes.length l')))))),
-                   ret x1) :: l'))
-        (DecomposeRepPre := DecomposeRepPre); auto.
-        intros.
-        6:eapply H1.
-        5:eauto.
-        simpl; eauto.
-        unfold BuildArgNames; simpl.
+      (SubEnv : GLabelMapFacts.Submap env env')
+  :
+    op_refines_ax
+      env'
+      (Core (BuildDFFun (env := env') (cod := cod) (dom := dom)
+                        (WrappedCod := codWrap) (WrappedDom := domWrap)
+                        (meth := meth) (RepInv := RepInv)
+                        DecomposeRep numRepArgs RepWrapper progOK))
+      (GenAxiomaticSpecs (numRepArgs := numRepArgs)
+                         env RepInv codWrap domWrap meth
+                         DecomposeRepPre
+                         DecomposeRepPost
+                         DecomposeRepPrePostAgree).
+Proof.
+  unfold op_refines_ax; repeat split.
+  - unfold GenAxiomaticSpecs; simpl.
+    eapply AxiomatizeMethodPost_OK.
+  - simpl. unfold BuildArgNames.
+    rewrite app_length, !rev_length, !map_length, !NumUpTo_length; simpl.
+    intros; destruct H as [r [H' H ] ].
+    apply length_AxiomatizeMethodPre' in H; subst.
+    rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
+  - destruct progOK as [prog [op_spec ?] ]; simpl.
+    generalize op_spec; clear.
+    unfold AxSafe; simpl; intros.
+    destruct_ex; intuition; subst.
+    unfold GenAxiomaticSpecs in H2; simpl in H2;
+    destruct_ex; intuition; subst.
+    revert st x H0 H x0 H2 H3 X0.
+    replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+    assert (
+        Datatypes.length (@nil (Value av))
+        = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+        by reflexivity.
+    assert (forall x0,
+               make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                        (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                        ∅) as H''.
+    { unfold BuildArgNames.
+      subst DecomposeRep; subst DecomposeRepPre; subst DecomposeRepPrePostAgree.
+      simpl.
+      clear meth op_spec RepInv.
+      generalize RepT RepMap RepWrapper;
+        clear; induction RepT'.
+      - intros; simpl; reflexivity.
+      - simpl; intros.
         rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-        intros; rewrite len_l_l'.
         rewrite StringMapFacts.add_eq_o; eauto.
-        eexists; intuition eauto.
+        eexists _; intuition eauto.
         eapply StringMap_remove_add; eauto.
-        unfold BuildArgNames in H''.
-        rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l' in H''; simpl in H''.
-        eapply H''.
+        eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
         eapply make_map_not_in.
-        intro H'; apply in_app_or in H';
-        rewrite <- in_rev, in_map_iff in H';
-        intuition; destruct_ex; intuition.
+        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
         injections.
-        destruct x3; destruct l'.
-        * intuition.
-        * symmetry in H3.
-          apply NumberToString_rec_10 in H3; intuition.
-          simpl; omega.
-        * apply NumberToString_rec_10 in H3; intuition.
-        * apply NumberToString_rec_inj' in H3; simpl in H3; subst; eauto.
-          simpl in H5.
-          apply ListFacts4.in_nth_error in H5; destruct_ex.
-          apply nth_error_NumUpTo_eq in H3; simpl in H3; intuition; subst.
-        * rewrite <- in_rev, in_map_iff in H3; destruct_ex.
-          unfold nthRepName in H3; simpl in H3; intuition.
-          discriminate.
-        * simpl; rewrite H0; repeat f_equal; omega.
-        * simpl; f_equiv; f_equal; omega.
-      + reflexivity.
-    - destruct progOK as [prog [op_spec ?] ]; simpl.
-      generalize op_spec; clear.
-      unfold AxSafe, AxRunsTo; simpl; intros.
-      destruct_ex; intuition; subst.
-      destruct_ex; intuition; subst.
-      revert st x x0 H1 H0 H H4 H3 x.
-      replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
-      assert (
-          Datatypes.length (@nil (Value av))
-          = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
-      by reflexivity.
-      assert (forall x0,
-                 make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
-                          (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
-                          ∅) as H''.
-      { unfold BuildArgNames.
-        subst DecomposeRep; subst DecomposeRepPre.
-        simpl.
-        clear meth op_spec RepInv.
-        generalize RepT RepWrapper;
-          clear; induction RepT'; simpl; intros.
-        - reflexivity.
-        - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-          rewrite StringMapFacts.add_eq_o; eauto.
-          eexists _; intuition eauto.
-          eapply StringMap_remove_add; eauto.
-          eapply make_map_not_in.
-          rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
-          injections.
-          destruct x; destruct n.
-          + intuition.
-          + symmetry in H.
-            apply NumberToString_rec_10 in H; intuition.
-          + apply NumberToString_rec_10 in H; intuition.
-          + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
-            simpl in H1.
-            apply ListFacts4.in_nth_error in H1; destruct_ex.
-            apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+        destruct x; destruct n.
+        + intuition.
+        + symmetry in H.
+          apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+          simpl in H1.
+          apply ListFacts4.in_nth_error in H1; destruct_ex.
+          apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+    }
+    remember (@nil (Value av)) as l; clear Heql.
+    remember [] as l'; clear Heql'.
+    remember DecomposeRep.
+    assert (forall r,
+               RepInv r ->
+               LiftMethod' env' dom RepInv
+                           (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
+                           (l0 RepWrapper r)
+                           codWrap domWrap
+                           prog l' (meth r)) as op_spec'
+        by (subst; exact op_spec); clear op_spec.
+    clear Heql0.
+    generalize l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+    clear l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+    induction dom; simpl; intros.
+    + destruct cod; simpl.
+      { simpl in H3; subst.
+        eapply op_spec'; eauto.
+        eapply SameValues_Equal.
+        symmetry; apply H.
+        rewrite <- plus_n_O.
+        apply H''.
       }
-      remember (@nil (Value av)) as l; clear Heql.
-      remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'.
-      remember DecomposeRep.
-      assert (forall r : i3list C RepT,
-                 RepInv r ->
-                 LiftMethod' env dom RepInv
-                             (fun r0 : i3list C RepT => list2Telescope (DecomposeRep RepWrapper r0))
-                             (l0 RepWrapper r)
-                             codWrap domWrap
-                             prog l' (meth r)) as op_spec'
-          by (subst; exact op_spec); clear op_spec.
-      replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l) by
-          (subst; destruct l; simpl in *; congruence).
-      clear Heql'; clear Heql0.
-      intros st x x0.
-      generalize l l' l0 st x x0 op_spec' len_l_l' H''.
-      clear l l' l0 st x x0 op_spec' len_l_l' H''.
-      induction dom; simpl; intros.
-      + destruct cod.
-        { apply op_spec' in H3; destruct H3.
-          destruct (H2 _ (H'' _)).
-          rewrite H in H0; subst.
-          rewrite <- plus_n_O in H0; apply H6 in H0.
-          simpl in meth.
-          destruct H0; intuition; destruct x.
-          repeat eexists _; intuition eauto.
-          eexists x0.
-          repeat (eexists _); intuition eauto.
-          unfold BuildArgNames.
-          rewrite <- plus_n_O in *.
-          unfold DecomposeRepPost.
-          apply Cons_PushExt' in H7.
-          simpl in H7.
-          rewrite !combine_app_distrib, map_app, combine_app_distrib.
-          f_equal.
-          unfold DecomposeRep in H7.
-          - revert H7; clear.
-            induction l; simpl; eauto.
-            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-            intros; rewrite IHl; f_equal; eauto.
-            destruct a; eauto.
-            case_eq (StringMap.find (elt:=Value av)
-                                    (String "a"
-                                            (String "r"
-                                                    (String "g"
-                                                            (NumberToString_rec (Datatypes.length l)
-                                                                                (pred (Datatypes.length l)))))) st'); intros; eauto.
-            destruct v; eauto.
-            elimtype False; generalize st' H H7; clear.
-            induction RepT'.
-            + simpl; intros; unfold WeakEq in *; intuition.
-              unfold SameADTs in H0.
-              apply StringMap.find_2 in H; apply H0 in H.
-              apply StringMap.add_3 in H; try congruence.
-              apply StringMap.is_empty_2 in H; eauto.
-            + intros.
-              simpl in H7.
-              destruct (StringMap.find (elt:=Value av)
-                                       (String "r"
-                                               (String "e" (String "p" (NumberToString_rec n (pred n))))) st'); eauto.
-              destruct_ex; intuition.
-              eapply IHRepT'.
-              2: eassumption.
-              apply StringMap.find_1; apply StringMap.remove_2;
-              eauto using StringMap.find_2.
-          - revert st' H7; clear.
-            induction RepT'.
-            + reflexivity.
-            + Local Opaque Vector.to_list.
-              unfold DecomposeRep.
-              simpl.
-              destruct RepWrapper; simpl in *.
-              rewrite Vector_ToList_cons.
-              intro; caseEq (StringMap.find (elt:=Value av)
-                                            (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                            st'); intros; eauto.
-              unfold DecomposeRepPre; simpl.
-              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-              rewrite Vector_ToList_cons.
-              destruct_ex; split_and; subst.
-              computes_to_inv; subst.
-              simpl; rewrite H.
-              f_equal.
-              idtac.
-              erewrite <- IHRepT'.
-              2:apply H3.
-              f_equal.
-              destruct x0; destruct RepT; simpl in *.
-              intros; eapply in_map; clear; intros.
-              unfold get_output; destruct a; simpl.
-              destruct v; eauto.
-              rewrite remove_neq_o; eauto.
-              revert H; clear.
-              intros.
-              apply in_combine_l in H.
-              apply In_rev in H; eapply in_map_iff in H; destruct_ex;
-              intuition; subst; simpl in H1; injections.
-              apply ListFacts4.in_nth_error in H2; destruct_ex;
-              apply nth_error_NumUpTo_eq in H0; intuition.
-              destruct x; destruct n; try omega.
-              symmetry in H.
-              apply NumberToString_rec_10 in H; intuition.
-              apply NumberToString_rec_inj' in H; simpl in H; omega.
-            intuition.
-          - rewrite map_length.
-            rewrite (fun H => proj1 (lenth_combine _ _ H)).
-            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-          - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-          - simpl in H7.
-            revert H7;
-              caseEq (StringMap.find (elt:=Value av) "ret" st');
-              intros; destruct_ex; intuition; subst.
-            computes_to_inv; subst; auto.
-          - unfold no_adt_leak; intros.
-            unfold sel in H0.
-            simpl in H7.
-            destruct (string_dec "ret" var).
-            intuition.
-            rewrite <- remove_neq_o with (x := "ret") in H0; auto.
-            right.
-            revert H7;
-            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
-            destruct_ex; intuition; subst.
-            generalize st' H0 H11 n.
-            clear; induction l; simpl.
-            + induction RepT'; simpl.
-              * intros; destruct H11.
-                unfold SameADTs in H.
-                rewrite <- find_mapsto_iff in H0.
-                rewrite <- H in H0.
-                apply StringMap.empty_1 in H0; intuition.
-              * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
-                { simpl in *.
-                  rewrite H0 in H11; destruct_ex; intuition; subst.
-                  computes_to_inv; subst.
-                  exists 0; eexists _; split; eauto; simpl.
-                  rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-                  unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
-                }
-                destruct (StringMap.find (String "r"
-               (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                         (StringMap.remove (elt:=Value av) "ret" st'));
-                  try tauto.
-                destruct_ex; intuition; computes_to_inv; subst.
-                rewrite SameValues_remove2 in H3.
-                eapply IHRepT' in H3; eauto.
-                repeat destruct_ex; intuition.
-                unfold BuildArgNames in H1; simpl in H1.
-                eexists (S x); exists x1; split.
-                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
-                repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
-                simpl in *; rewrite e in n1; congruence.
-                eauto.
-            + intros.
-              destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
-              eexists ai'.
-              unfold BuildArgNames; simpl;
-              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-        }
-        { apply op_spec' in H3; destruct H3.
-          destruct (H2 _ (H'' _)).
-          rewrite H in H0; subst.
-          rewrite <- plus_n_O in H0; apply H6 in H0.
-          simpl in meth.
-          simpl in H0.
-          destruct H0; intuition.
-          repeat eexists _; intuition eauto.
-          eexists x0.
-          repeat (eexists _); intuition eauto.
-          unfold BuildArgNames.
-          rewrite <- plus_n_O in *.
-          unfold DecomposeRepPost.
-          revert H7;
-          case_eq (StringMap.find (elt:=Value av) "ret" st'); intros; try tauto.
-          destruct_ex; intuition; computes_to_inv; subst.
-          rewrite !combine_app_distrib, map_app, combine_app_distrib.
-          f_equal.
-          unfold DecomposeRep in H10.
-          - revert H10; clear.
-            induction l; simpl; eauto.
-            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-            intros; rewrite IHl; f_equal; eauto.
-            destruct a; eauto.
-            case_eq (StringMap.find (elt:=Value av)
-                                    (String "a"
-                                            (String "r"
-                                                    (String "g"
-                                                            (NumberToString_rec (Datatypes.length l)
-                                                                                (pred (Datatypes.length l)))))) st'); intros; eauto.
-            destruct v; eauto.
-            apply StringMap.find_2 in H.
-            apply (StringMap.remove_2 (x := "ret")) in H; try congruence.
-            apply StringMap.find_1 in H.
-            elimtype False; generalize st' H H10; clear.
-            induction RepT'.
-            + simpl; intros; unfold WeakEq in *; intuition.
-              unfold SameADTs in H0.
-              apply StringMap.find_2 in H.
-              apply H0 in H.
-              apply StringMap.is_empty_2 in H; eauto.
-            + intros.
-              simpl in H10.
-              destruct (StringMap.find (elt:=Value av)
-                                       (String "r"
-                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                       (StringMap.remove (elt:=Value av) "ret" st')
-                       ); eauto.
-              destruct_ex; intuition.
-              rewrite SameValues_remove2 in H3.
-              eapply IHRepT'.
-              2: eassumption.
-              rewrite SameValues_remove2.
-              apply StringMap.find_1; apply StringMap.remove_2;
-              eauto using StringMap.find_2.
-          - generalize st' H10; clear.
-            induction RepT'.
-            + reflexivity.
-            + Local Opaque Vector.to_list.
-              unfold DecomposeRep.
-              simpl.
-              destruct RepWrapper; simpl in *.
-              rewrite Vector_ToList_cons.
-              intro; caseEq (StringMap.find (elt:=Value av)
-                                            (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                            (StringMap.remove (elt:=Value av) "ret" st')); intros; eauto.
-              unfold DecomposeRepPre; simpl.
-              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
-              rewrite Vector_ToList_cons.
-              destruct_ex; split_and; subst.
-              computes_to_inv; subst.
-              rewrite remove_neq_o in H; try congruence.
-              simpl; rewrite H.
-              f_equal.
-              rewrite SameValues_remove2 in H3.
-              erewrite <- IHRepT'.
-              2:apply H3.
-              f_equal.
-              destruct x0; destruct RepT; simpl in *.
-              intros; eapply in_map; clear; intros.
-              unfold get_output; destruct a; simpl.
-              destruct v; eauto.
-              rewrite remove_neq_o; eauto.
-              revert H; clear.
-              intros.
-              apply in_combine_l in H.
-              apply In_rev in H; eapply in_map_iff in H; destruct_ex;
-              intuition; subst; simpl in H1; injections.
-              apply ListFacts4.in_nth_error in H2; destruct_ex;
-              apply nth_error_NumUpTo_eq in H0; intuition.
-              destruct x; destruct n; try omega.
-              symmetry in H.
-              apply NumberToString_rec_10 in H; intuition.
-              apply NumberToString_rec_inj' in H; simpl in H; omega.
-              intuition.
-          - rewrite map_length.
-            rewrite (fun H => proj1 (lenth_combine _ _ H)).
-            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-            rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-          - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
-          - simpl in H7.
-            revert H7;
-              caseEq (StringMap.find (elt:=Value av) "ret" st');
-              intros; destruct_ex; intuition; subst.
-            computes_to_inv; subst; auto.
-          - unfold no_adt_leak; intros.
-            unfold sel in H0.
-            simpl in H7.
-            destruct (string_dec "ret" var).
-            intuition.
-            rewrite <- remove_neq_o with (x := "ret") in H0; auto.
-            right.
-            revert H7;
-            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
-            destruct_ex; intuition; subst.
-            generalize st' H0 H11 n.
-            clear; induction l; simpl.
-            + induction RepT'; simpl.
-              * intros; destruct H11.
-                unfold SameADTs in H.
-                rewrite <- find_mapsto_iff in H0.
-                rewrite <- H in H0.
-                apply StringMap.empty_1 in H0; intuition.
-              * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
-                { simpl in *.
-                  rewrite H0 in H11; destruct_ex; intuition; subst.
-                  computes_to_inv; subst.
-                  exists 0; eexists _; split; eauto; simpl.
-                  rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-                  unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
-                }
-                destruct (StringMap.find (String "r"
-               (String "e" (String "p" (NumberToString_rec n (pred n)))))
-                                         (StringMap.remove (elt:=Value av) "ret" st'));
-                  try tauto.
-                destruct_ex; intuition; computes_to_inv; subst.
-                rewrite SameValues_remove2 in H3.
-                eapply IHRepT' in H3; eauto.
-                repeat destruct_ex; intuition.
-                unfold BuildArgNames in H1; simpl in H1.
-                eexists (S x1); exists x2; split.
-                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
-                repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
-                simpl in *; rewrite e in n1; congruence.
-                eauto.
-            + intros.
-              destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
-              eexists ai'.
-              unfold BuildArgNames; simpl;
-              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-        }
-      + repeat destruct_ex; intuition.
-        setoid_rewrite H.
-        destruct domWrap.
-        rewrite Plus.plus_comm.
-        simpl.
-        destruct (IHdom
-                    d
-                    (fun r => meth r x2)
-                    ((wrap (FacadeWrapper := gWrap g) x2) :: l)
-                    ((existT (fun T : Type => (NameTag av T * Comp T)%type) a
-                           (@NTSome _ _
-                              (String "a"
-                                      (String "r"
-                                              (String "g"
-                                                      (NumberToString_rec (Datatypes.length l')
-                                                                          (pred (Datatypes.length l'))))))
-                              (gWrap g),
-                            ret x2)) :: l')
-                    l0
-                 st x x0); simpl; auto.
-        intros; unfold BuildArgNames.
-        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
-        rewrite len_l_l'.
-        rewrite add_eq_o by eauto.
-        pose proof (op_spec' _ H3 x2).
-        eexists; intuition eauto.
+      { eapply op_spec'; eauto.
+        simpl in H3; subst.
+        eapply SameValues_Equal.
+        symmetry; apply H.
+        rewrite <- plus_n_O.
+        apply H''. }
+    + simpl in *; destruct_ex; subst.
+      rewrite H.
+      destruct domWrap.
+      eapply IHdom with
+      (meth := fun r => meth r x1)
+        (l' :=
+           (existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                   (NTSome
+                      (String "a"
+                              (String "r"
+                                      (String "g"
+                                              (NumberToString_rec (Datatypes.length l')
+                                                                  (pred (Datatypes.length l')))))),
+                    ret x1) :: l'))
+        (DecomposeRepPre := DecomposeRepPre); auto.
+      intros.
+      6:eapply H1.
+      5:eauto.
+      simpl; eauto.
+      unfold BuildArgNames; simpl.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+      intros; rewrite len_l_l'.
+      rewrite StringMapFacts.add_eq_o; eauto.
+      eexists; intuition eauto.
+      eapply StringMap_remove_add; eauto.
+      unfold BuildArgNames in H''.
+      rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l' in H''; simpl in H''.
+      eapply H''.
+      eapply make_map_not_in.
+      intro H'; apply in_app_or in H';
+      rewrite <- in_rev, in_map_iff in H';
+      intuition; destruct_ex; intuition.
+      injections.
+      destruct x3; destruct l'.
+      * intuition.
+      * symmetry in H3.
+        apply NumberToString_rec_10 in H3; intuition.
+        simpl; omega.
+      * apply NumberToString_rec_10 in H3; intuition.
+      * apply NumberToString_rec_inj' in H3; simpl in H3; subst; eauto.
+        simpl in H5.
+        apply ListFacts4.in_nth_error in H5; destruct_ex.
+        apply nth_error_NumUpTo_eq in H3; simpl in H3; intuition; subst.
+      * rewrite <- in_rev, in_map_iff in H3; destruct_ex.
+        unfold nthRepName in H3; simpl in H3; intuition.
+        discriminate.
+      * simpl; rewrite H0; repeat f_equal; omega.
+      * simpl; f_equiv; f_equal; omega.
+    + reflexivity.
+  - destruct progOK as [prog [op_spec ?] ]; simpl.
+    generalize op_spec; clear.
+    unfold AxSafe, AxRunsTo; simpl; intros.
+    destruct_ex; intuition; subst.
+    destruct_ex; intuition; subst.
+    revert st x x0 H1 H0 H H4 H3 x.
+    replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+    assert (
+        Datatypes.length (@nil (Value av))
+        = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+        by reflexivity.
+    assert (forall x0,
+               make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                        (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                        ∅) as H''.
+    { unfold BuildArgNames.
+      subst DecomposeRep; subst DecomposeRepPre.
+      simpl.
+      clear meth op_spec RepInv.
+      generalize RepT RepMap RepWrapper;
+        clear; induction RepT'; simpl; intros.
+      - reflexivity.
+      - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+        rewrite StringMapFacts.add_eq_o; eauto.
+        eexists _; intuition eauto.
         eapply StringMap_remove_add; eauto.
-        unfold BuildArgNames in H''.
-        rewrite <- len_l_l'; eauto.
+        eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
         eapply make_map_not_in.
-        intro; apply in_app_or in H5; intuition.
-        rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
-        simpl in H6.
+        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
         injections.
-        destruct x4; destruct (Datatypes.length l').
-        * intuition.
-        * symmetry in H5.
-          apply NumberToString_rec_10 in H5; intuition.
-        * apply NumberToString_rec_10 in H5; intuition.
-        * apply NumberToString_rec_inj' in H5; simpl in H5; subst; eauto.
-          apply ListFacts4.in_nth_error in H7; destruct_ex.
-          apply nth_error_NumUpTo_eq in H5; simpl in H5; intuition; subst.
-        * rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
-          simpl in H6; discriminate.
-        * rewrite H1; f_equal; f_equal; omega.
-        * rewrite Plus.plus_comm in H; simpl in H; rewrite Plus.plus_comm in H; eauto.
-        * destruct_ex; intuition; eexists x3; exists x4; intuition eauto.
-          simpl in H5; rewrite Plus.plus_comm; eauto.
-          simpl in H4; rewrite Plus.plus_comm; eauto.
-          rewrite Plus.plus_comm in H.
-          rewrite <- H4, H. rewrite Plus.plus_comm; simpl; reflexivity.
-          destruct_ex; simpl in H6.
-          eexists x5; eexists x2.
-          rewrite Plus.plus_comm.
-          apply H6.
-          simpl in H9; rewrite Plus.plus_comm; eauto.
-      + reflexivity.
-  Qed.
+        destruct x; destruct n.
+        + intuition.
+        + symmetry in H.
+          apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+          simpl in H1.
+          apply ListFacts4.in_nth_error in H1; destruct_ex.
+          apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+    }
+    remember (@nil (Value av)) as l; clear Heql.
+    remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'.
+    remember DecomposeRep.
+    assert (forall r,
+               RepInv r ->
+               LiftMethod' env' dom RepInv
+                           (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
+                           (l0 RepWrapper r)
+                           codWrap domWrap
+                           prog l' (meth r)) as op_spec'
+        by (subst; exact op_spec); clear op_spec.
+    replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l) by
+        (subst; destruct l; simpl in *; congruence).
+    clear Heql'; clear Heql0.
+    intros st x x0.
+    generalize l l' l0 st x x0 op_spec' len_l_l' H''.
+    clear l l' l0 st x x0 op_spec' len_l_l' H''.
+    induction dom; simpl; intros.
+    + destruct cod.
+      { apply op_spec' in H3; destruct H3.
+        destruct (H2 _ (H'' _)).
+        rewrite H in H0; subst.
+        rewrite <- plus_n_O in H0; apply H6 in H0.
+        simpl in meth.
+        destruct H0; intuition; destruct x.
+        repeat eexists _; intuition eauto.
+        eexists x0.
+        repeat (eexists _); intuition eauto.
+        unfold BuildArgNames.
+        rewrite <- plus_n_O in *.
+        unfold DecomposeRepPost.
+        apply Cons_PushExt' in H7.
+        simpl in H7.
+        rewrite !combine_app_distrib, map_app, combine_app_distrib.
+        f_equal.
+        unfold DecomposeRep in H7.
+        - revert H7; clear.
+          induction l; simpl; eauto.
+          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          intros; rewrite IHl; f_equal; eauto.
+          destruct a; eauto.
+          case_eq (StringMap.find (elt:=Value av)
+                                  (String "a"
+                                          (String "r"
+                                                  (String "g"
+                                                          (NumberToString_rec (Datatypes.length l)
+                                                                              (pred (Datatypes.length l)))))) st'); intros; eauto.
+          destruct v; eauto.
+          elimtype False; generalize st' H H7; clear.
+          induction RepT'.
+          + simpl; intros; unfold WeakEq in *; intuition.
+            unfold SameADTs in H0.
+            apply StringMap.find_2 in H; apply H0 in H.
+            apply StringMap.add_3 in H; try congruence.
+            apply StringMap.is_empty_2 in H; eauto.
+          + intros.
+            simpl in H7.
+            destruct (StringMap.find (elt:=Value av)
+                                     (String "r"
+                                             (String "e" (String "p" (NumberToString_rec n (pred n))))) st'); eauto.
+            destruct_ex; intuition.
+            eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2: eassumption.
+            apply StringMap.find_1; apply StringMap.remove_2;
+            eauto using StringMap.find_2.
+        - revert st' H7; clear.
+          induction RepT'.
+          + reflexivity.
+          + Local Opaque Vector.to_list.
+            unfold DecomposeRep.
+            simpl.
+            destruct RepWrapper; simpl in *.
+            rewrite Vector_ToList_cons.
+            intro; caseEq (StringMap.find (elt:=Value av)
+                                          (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                          st'); intros; eauto.
+            unfold DecomposeRepPre; simpl.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons.
+            destruct_ex; split_and; subst.
+            computes_to_inv; subst.
+            simpl; rewrite H.
+            f_equal.
+            idtac.
+            erewrite <- (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2:apply H3.
+            f_equal.
+            destruct (RepMap x0); destruct RepT; simpl in *.
+            intros; eapply in_map; clear; intros.
+            unfold get_output; destruct a; simpl.
+            destruct v; eauto.
+            rewrite remove_neq_o; eauto.
+            revert H; clear.
+            intros.
+            apply in_combine_l in H.
+            apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+            intuition; subst; simpl in H1; injections.
+            apply ListFacts4.in_nth_error in H2; destruct_ex;
+            apply nth_error_NumUpTo_eq in H0; intuition.
+            destruct x; destruct n; try omega.
+            symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+            apply NumberToString_rec_inj' in H; simpl in H; omega.
+            intuition.
+        - rewrite map_length.
+          rewrite (fun H => proj1 (lenth_combine _ _ H)).
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - simpl in H7.
+          revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st');
+            intros; destruct_ex; intuition; subst.
+          computes_to_inv; subst; auto.
+        - unfold no_adt_leak; intros.
+          unfold sel in H0.
+          simpl in H7.
+          destruct (string_dec "ret" var).
+          intuition.
+          rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+          right.
+          revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+          destruct_ex; intuition; subst.
+          generalize st' H0 H11 n.
+          clear; induction l; simpl.
+          + induction RepT'; simpl.
+            * intros; destruct H11.
+              unfold SameADTs in H.
+              rewrite <- find_mapsto_iff in H0.
+              rewrite <- H in H0.
+              apply StringMap.empty_1 in H0; intuition.
+            * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+              { simpl in *.
+                rewrite H0 in H11; destruct_ex; intuition; subst.
+                computes_to_inv; subst.
+                exists 0; eexists _; split; eauto; simpl.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              }
+              destruct (StringMap.find (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                       (StringMap.remove (elt:=Value av) "ret" st'));
+                try tauto.
+              destruct_ex; intuition; computes_to_inv; subst.
+              rewrite SameValues_remove2 in H3.
+              eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))) in H3; eauto.
+              repeat destruct_ex; intuition.
+              unfold BuildArgNames in H1; simpl in H1.
+              eexists (S x); exists x1; split.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+              unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+              simpl in *; rewrite e in n1; congruence.
+              eauto.
+          + intros.
+            destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+            eexists ai'.
+            unfold BuildArgNames; simpl;
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      }
+      { apply op_spec' in H3; destruct H3.
+        destruct (H2 _ (H'' _)).
+        rewrite H in H0; subst.
+        rewrite <- plus_n_O in H0; apply H6 in H0.
+        simpl in meth.
+        simpl in H0.
+        destruct H0; intuition.
+        repeat eexists _; intuition eauto.
+        eexists x0.
+        repeat (eexists _); intuition eauto.
+        unfold BuildArgNames.
+        rewrite <- plus_n_O in *.
+        unfold DecomposeRepPost.
+        revert H7;
+          case_eq (StringMap.find (elt:=Value av) "ret" st'); intros; try tauto.
+        destruct_ex; intuition; computes_to_inv; subst.
+        rewrite !combine_app_distrib, map_app, combine_app_distrib.
+        f_equal.
+        unfold DecomposeRep in H10.
+        - revert H10; clear.
+          induction l; simpl; eauto.
+          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          intros; rewrite IHl; f_equal; eauto.
+          destruct a; eauto.
+          case_eq (StringMap.find (elt:=Value av)
+                                  (String "a"
+                                          (String "r"
+                                                  (String "g"
+                                                          (NumberToString_rec (Datatypes.length l)
+                                                                              (pred (Datatypes.length l)))))) st'); intros; eauto.
+          destruct v; eauto.
+          apply StringMap.find_2 in H.
+          apply (StringMap.remove_2 (x := "ret")) in H; try congruence.
+          apply StringMap.find_1 in H.
+          elimtype False; generalize st' H H10; clear.
+          induction RepT'.
+          + simpl; intros; unfold WeakEq in *; intuition.
+            unfold SameADTs in H0.
+            apply StringMap.find_2 in H.
+            apply H0 in H.
+            apply StringMap.is_empty_2 in H; eauto.
+          + intros.
+            simpl in H10.
+            destruct (StringMap.find (elt:=Value av)
+                                     (String "r"
+                                             (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                     (StringMap.remove (elt:=Value av) "ret" st')
+                     ); eauto.
+            destruct_ex; intuition.
+            rewrite SameValues_remove2 in H3.
+            eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2: eassumption.
+            rewrite SameValues_remove2.
+            apply StringMap.find_1; apply StringMap.remove_2;
+            eauto using StringMap.find_2.
+        - generalize st' H10; clear.
+          induction RepT'.
+          + reflexivity.
+          + Local Opaque Vector.to_list.
+            unfold DecomposeRep.
+            simpl.
+            destruct RepWrapper; simpl in *.
+            rewrite Vector_ToList_cons.
+            intro; caseEq (StringMap.find (elt:=Value av)
+                                          (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                          (StringMap.remove (elt:=Value av) "ret" st')); intros; eauto.
+            unfold DecomposeRepPre; simpl.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons.
+            destruct_ex; split_and; subst.
+            computes_to_inv; subst.
+            rewrite remove_neq_o in H; try congruence.
+            simpl; rewrite H.
+            f_equal.
+            rewrite SameValues_remove2 in H3.
+            erewrite <- (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2:apply H3.
+            f_equal.
+            destruct (RepMap x0); destruct RepT; simpl in *.
+            intros; eapply in_map; clear; intros.
+            unfold get_output; destruct a; simpl.
+            destruct v; eauto.
+            rewrite remove_neq_o; eauto.
+            revert H; clear.
+            intros.
+            apply in_combine_l in H.
+            apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+            intuition; subst; simpl in H1; injections.
+            apply ListFacts4.in_nth_error in H2; destruct_ex;
+            apply nth_error_NumUpTo_eq in H0; intuition.
+            destruct x; destruct n; try omega.
+            symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+            apply NumberToString_rec_inj' in H; simpl in H; omega.
+            intuition.
+        - rewrite map_length.
+          rewrite (fun H => proj1 (lenth_combine _ _ H)).
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - simpl in H7.
+          revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st');
+            intros; destruct_ex; intuition; subst.
+          computes_to_inv; subst; auto.
+        - unfold no_adt_leak; intros.
+          unfold sel in H0.
+          simpl in H7.
+          destruct (string_dec "ret" var).
+          intuition.
+          rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+          right.
+          revert H7;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+          destruct_ex; intuition; subst.
+          generalize st' H0 H11 n.
+          clear; induction l; simpl.
+          + induction RepT'; simpl.
+            * intros; destruct H11.
+              unfold SameADTs in H.
+              rewrite <- find_mapsto_iff in H0.
+              rewrite <- H in H0.
+              apply StringMap.empty_1 in H0; intuition.
+            * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+              { simpl in *.
+                rewrite H0 in H11; destruct_ex; intuition; subst.
+                computes_to_inv; subst.
+                exists 0; eexists _; split; eauto; simpl.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              }
+              destruct (StringMap.find (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                       (StringMap.remove (elt:=Value av) "ret" st'));
+                try tauto.
+              destruct_ex; intuition; computes_to_inv; subst.
+              rewrite SameValues_remove2 in H3.
+              eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep)))
+                in H3; eauto.
+              repeat destruct_ex; intuition.
+              unfold BuildArgNames in H1; simpl in H1.
+              eexists (S x1); exists x2; split.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+              unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+              simpl in *; rewrite e in n1; congruence.
+              eauto.
+          + intros.
+            destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+            eexists ai'.
+            unfold BuildArgNames; simpl;
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      }
+    + repeat destruct_ex; intuition.
+      setoid_rewrite H.
+      destruct domWrap.
+      rewrite Plus.plus_comm.
+      simpl.
+      destruct (IHdom
+                  d
+                  (fun r => meth r x2)
+                  ((wrap (FacadeWrapper := gWrap g) x2) :: l)
+                  ((existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                           (@NTSome _ _
+                                    (String "a"
+                                            (String "r"
+                                                    (String "g"
+                                                            (NumberToString_rec (Datatypes.length l')
+                                                                                (pred (Datatypes.length l'))))))
+                                    (gWrap g),
+                            ret x2)) :: l')
+                  l0
+                  st x x0); simpl; auto.
+      intros; unfold BuildArgNames.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      rewrite len_l_l'.
+      rewrite add_eq_o by eauto.
+      pose proof (op_spec' _ H3 x2).
+      eexists; intuition eauto.
+      eapply StringMap_remove_add; eauto.
+      unfold BuildArgNames in H''.
+      rewrite <- len_l_l'; eauto.
+      eapply make_map_not_in.
+      intro; apply in_app_or in H5; intuition.
+      rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
+      simpl in H6.
+      injections.
+      destruct x4; destruct (Datatypes.length l').
+      * intuition.
+      * symmetry in H5.
+        apply NumberToString_rec_10 in H5; intuition.
+      * apply NumberToString_rec_10 in H5; intuition.
+      * apply NumberToString_rec_inj' in H5; simpl in H5; subst; eauto.
+        apply ListFacts4.in_nth_error in H7; destruct_ex.
+        apply nth_error_NumUpTo_eq in H5; simpl in H5; intuition; subst.
+      * rewrite <- in_rev, in_map_iff in H6; destruct_ex; intuition.
+        simpl in H6; discriminate.
+      * rewrite H1; f_equal; f_equal; omega.
+      * rewrite Plus.plus_comm in H; simpl in H; rewrite Plus.plus_comm in H; eauto.
+      * destruct_ex; intuition; eexists x3; exists x4; intuition eauto.
+        simpl in H5; rewrite Plus.plus_comm; eauto.
+        simpl in H4; rewrite Plus.plus_comm; eauto.
+        rewrite Plus.plus_comm in H.
+        rewrite <- H4, H. rewrite Plus.plus_comm; simpl; reflexivity.
+        destruct_ex; simpl in H6.
+        eexists x5; eexists x2.
+        rewrite Plus.plus_comm.
+        apply H6.
+        simpl in H9; rewrite Plus.plus_comm; eauto.
+    + reflexivity.
+Qed.
 
   Lemma StringMap_fold_left_Eq {B C}
     : forall f f' l st st',
@@ -2123,7 +2157,28 @@ Lemma compiled_prog_op_refines_ax
       + inversion H; subst; eapply IHl; eauto.
   Qed.
 
-  Lemma NoDup_BuildFinUpTo 
+  Lemma NIn_StringMap_fold_left A C
+    : forall (f : A -> string)
+             (f' : A -> C) l st idx,
+      ~ In idx l
+      -> ListFacts1.IsInjection f
+      -> ~ StringMap.In (f idx) st
+      -> ~ StringMap.In
+           (f idx)
+           (fold_left
+              (fun acc (el : A) =>
+                 [f el <-- f' el] :: acc )
+              l st).
+  Proof.
+    induction l; simpl; intros.
+    - intuition.
+    - intuition; subst.
+      apply IHl in H2; eauto.
+      rewrite add_in_iff; intuition.
+      apply H0 in H5; eauto.
+  Qed.
+
+  Lemma NoDup_BuildFinUpTo
     : forall n, NoDup (BuildFinUpTo n).
   Proof.
     induction n; simpl; econstructor.
@@ -2131,12 +2186,12 @@ Lemma compiled_prog_op_refines_ax
       + tauto.
       + intuition; discriminate.
     - eapply ListFacts1.Injection_NoDup; eauto.
-      unfold ListFacts1.IsInjection; intros.     
+      unfold ListFacts1.IsInjection; intros.
       unfold not; intros; apply H.
       apply Fin.FS_inj in H0; eauto.
   Qed.
 
-  Lemma In_BuildFinUpTo 
+  Lemma In_BuildFinUpTo
     : forall n idx, In idx (BuildFinUpTo n).
   Proof.
     induction idx.
@@ -2144,7 +2199,7 @@ Lemma compiled_prog_op_refines_ax
     - simpl.
       right; apply in_map_iff; eauto.
   Qed.
-      
+
   Corollary StringMapsTo_fold_left' {n} C
     : forall (f : Fin.t n -> string)
              (f' : Fin.t n -> C) st idx,
@@ -2161,6 +2216,33 @@ Lemma compiled_prog_op_refines_ax
     - eapply ListFacts1.Injection_NoDup; eauto using NoDup_BuildFinUpTo.
     - eapply In_BuildFinUpTo.
   Qed.
+
+  Lemma StringMapsTo_fold_left_ex A C
+    : forall (f : A -> string)
+             (f' : A -> C) l k v,
+      ListFacts1.IsInjection f
+      -> NoDup (map f l)
+      -> StringMap.MapsTo
+           k
+           v
+           (fold_left
+              (fun acc (el : A) =>
+                 [f el <-- f' el] :: acc )
+              l (StringMap.empty _))
+      -> exists idx, k = f idx /\ v = f' idx.
+  Proof.
+    induction l; simpl; intros.
+    - apply StringMap.empty_1 in H1; intuition.
+    - inversion H0; subst.
+      rewrite fold_left_add2_Eq in H1.
+      rewrite add_mapsto_iff in H1; intuition.
+      subst; eauto.
+      eapply NIn_StringMap_fold_left; eauto.
+      intro; apply H4; apply in_map_iff; eauto.
+      rewrite empty_in_iff; tauto.
+  Qed.
+
+  Local Opaque Vector.to_list.
 
   Lemma methID_injective {n'}
     : forall (methSigs : Vector.t methSig n'),
@@ -2209,9 +2291,78 @@ Lemma compiled_prog_op_refines_ax
       congruence.
   Qed.
 
-    Definition BuildCompileUnit2T'
+  Lemma forallb_forall_false
+     : forall (A : Type) (f : A -> bool) (l : list A),
+       forallb f l = false <-> ~ (forall x : A, In x l -> f x = true).
+  Proof.
+    setoid_rewrite <- forallb_forall.
+    intros; destruct (forallb f l); split; congruence.
+  Qed.
+
+  Lemma is_sub_domain_equal_maps
+        {elt elt2}
+    : forall m1 m2 m1' m2',
+      M.Equal (elt := elt) m1 m1'
+      -> M.Equal (elt := elt2) m2 m2'
+      -> is_sub_domain m1 m2 = is_sub_domain m1' m2'.
+  Proof.
+    unfold is_sub_domain.
+    unfold UWFacts.WFacts.keys.
+    intros.
+    case_eq (forallb (fun k : M.key => M.mem (elt:=elt2) k m2)
+                     (map fst (M.elements (elt:=elt) m1))).
+    intros.
+    rewrite forallb_forall in H1.
+    repeat rewrite (proj2 (forallb_forall _ _) ); eauto; intros.
+    rewrite <- H0; apply H1.
+    apply In_fst_elements_In; apply In_fst_elements_In in H2.
+    rewrite H; eauto.
+    intros.
+    rewrite forallb_forall_false in H1.
+    rewrite (proj2 (forallb_forall_false _ _) ); eauto.
+    intro; apply H1; intros.
+    rewrite H0; apply H2.
+    apply In_fst_elements_In; apply In_fst_elements_In in H3.
+    rewrite <- H; eauto.
+  Qed.
+
+  Lemma is_sub_domain_add
+        {elt elt2}
+    : forall k (v : elt) (v' : elt2) m1 m2,
+      ~ StringMap.In k m1
+      -> ~ StringMap.In k m2
+      -> is_sub_domain ([k <-- v] :: m1) ([k <-- v'] :: m2) = is_sub_domain m1 m2.
+  Proof.
+    intros; unfold is_sub_domain.
+    case_eq (forallb (fun k0 : M.key => M.mem (elt:=elt2) k0 ([k <-- v']::m2))
+                     (UWFacts.WFacts.keys ([k <-- v]::m1))); intros.
+    - rewrite forallb_forall in H1.
+      symmetry; apply forallb_forall; intros.
+      erewrite <- add_neq_b.
+      apply H1.
+      apply In_fst_elements_In.
+      apply add_in_iff; right.
+      apply In_fst_elements_In; apply H2.
+      intro; subst.
+      apply H.
+      apply In_fst_elements_In; apply H2.
+    - rewrite forallb_forall_false in H1.
+      symmetry; apply forallb_forall_false.
+      intro; apply H1; intros.
+      unfold UWFacts.WFacts.keys in H3.
+      rewrite In_fst_elements_In in H3.
+      apply mem_in_iff; apply add_in_iff.
+      apply add_in_iff in H3; intuition subst.
+      rewrite <- In_fst_elements_In in H4.
+      apply H2 in H4; right.
+      apply mem_in_iff; eauto.
+  Qed.
+
+  (* This is the main compilation tool. *)
+  Definition BuildCompileUnit2T'
              av
-             (env : Env av)
+             (env : GLabelMap.t (AxiomaticSpec av))
+             (env' := GLabelMap.map (@Axiomatic av) env)
              {n n'}
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
@@ -2233,18 +2384,24 @@ Lemma compiled_prog_op_refines_ax
              op_mod_name'
              codWrap
              domWrap
-             wrappedRep
              (DecomposeRepPrePoseAgree := fun r r' =>
                                             DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
-             
-             (exports := GenExports env adt codWrap domWrap
+             (env'' :=
+                (GLabelMapFacts.UWFacts.WFacts.P.update
+                   (GLabelMap.map (Axiomatic (ADTValue:=av))
+                                  (map_aug_mod_name op_mod_name'
+                                                    (GenExports env' adt codWrap domWrap RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                   env'))
+
+             (exports := GenExports env' adt codWrap domWrap
                                     (numRepArgs := numRepArgs)
                                     RepInv
                                     DecomposeRepPre DecomposeRepPost
                                     DecomposeRepPrePoseAgree)
              (progsOK : forall midx,
                  {prog : Stmt &
-                         LiftMethod env RepInv (DecomposeRep wrappedRep)
+                         LiftMethod env'' RepInv (DecomposeRep RepWrapper)
                                     (codWrap midx) (domWrap midx) prog (Methods adt midx)
                          (* Syntactic Checks *)
                          /\ NoUninitDec.is_no_uninited
@@ -2274,7 +2431,18 @@ Lemma compiled_prog_op_refines_ax
                                                                                    (BuildADTSig consSigs methSigs) midx)))
                                                            numRepArgs)) = true
                          /\ is_syntax_ok prog = true} )
-    : BuildCompileUnit2T env
+             (distinct_mod_name : negb (ListFacts3.string_bool ax_mod_name' op_mod_name') = true)
+             (unique_op_mod_name'
+              : forallb (fun x : string => negb (ListFacts3.string_bool op_mod_name' x))
+                        (map (fun x : string * string * AxiomaticSpec av => fst (fst x))
+                             (GLabelMap.elements (elt:=AxiomaticSpec av) env)) = true)
+             (no_cito_clash_op_mod
+              : negb (prefix "__cmod_impl_" op_mod_name') = true)
+             (no_cito_clash_env
+              : forallb NameDecoration.is_good_module_name
+                        (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
+      : BuildCompileUnit2T env''
+                           env'
                          adt
                          RepInv
                          DecomposeRep
@@ -2285,33 +2453,47 @@ Lemma compiled_prog_op_refines_ax
                          op_mod_name'
                          codWrap
                          domWrap
-                         wrappedRep
+                         RepWrapper
                          DecomposeRepPrePoseAgree.
   Proof.
     eexists {| module := {| Funs :=
                               BuildFun
                                 adt DecomposeRep _ codWrap domWrap
-                                wrappedRep progsOK;
-                            Imports := GLabelMap.empty _ |} |}.
+                                RepWrapper progsOK;
+                            Imports := _;
+                            import_module_names_good := no_cito_clash_env
+                         |};
+               ax_mod_name := ax_mod_name';
+               op_mod_name := op_mod_name';
+               op_mod_name_ok := no_cito_clash_op_mod;
+               name_neq := distinct_mod_name;
+               op_mod_name_not_in_imports := unique_op_mod_name'
+            |}.
     unfold CompileUnit2Equiv; repeat split; simpl; eauto.
     unfold DFModuleEquiv; intros.
-    eexists (BuildDFFun DecomposeRep _ wrappedRep (progsOK midx)).
+    eexists (BuildDFFun DecomposeRep _ RepWrapper (progsOK midx)).
     simpl. repeat split.
-    apply (projT2 (progsOK midx)).
+    intros.
+    eapply (proj1 (projT2 (progsOK midx)) r H).
     unfold BuildFun.
     eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
-         (fun el => BuildDFFun DecomposeRep numRepArgs wrappedRep (progsOK el))).
+         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
     apply methID_injective; eauto.
     Grab Existential Variables.
     unfold ops_refines_axs.
     intros.
     unfold GenExports in H.
-    assert (exists midx, x = methID (Vector.nth methSigs midx)) by admit.
+    assert (exists midx, x = methID (Vector.nth methSigs midx)).
+    setoid_rewrite <- find_mapsto_iff in H.
+    apply StringMapsTo_fold_left_ex in H; destruct_ex; intuition eauto.
+    eauto using methID_injective; eauto.
+    eapply ListFacts1.Injection_NoDup; eauto using NoDup_BuildFinUpTo.
+    eauto using methID_injective; eauto.
     destruct H0; subst.
     pose proof (@StringMapsTo_fold_left'
             _ _
             (fun el => methID (Vector.nth methSigs el))
-            (fun el => GenAxiomaticSpecs env RepInv (codWrap el) 
+            (fun el => GenAxiomaticSpecs env' RepInv (codWrap el)
               (domWrap el) (Methods adt el) DecomposeRepPre DecomposeRepPost
               DecomposeRepPrePoseAgree) ∅ x0 (methID_injective _ UniqueMeth)).
     setoid_rewrite find_mapsto_iff in H0.
@@ -2323,23 +2505,46 @@ Lemma compiled_prog_op_refines_ax
     setoid_rewrite <- find_mapsto_iff.
     eapply StringMap.map_1.
     eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
-         (fun el => BuildDFFun DecomposeRep numRepArgs wrappedRep (progsOK el))).
+         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
     apply methID_injective; eauto.
-    unfold DecomposeRep.
-    pose compiled_prog_op_refines_ax.
-    unfold DecomposeRepPrePoseAgree.
-    eapply o.
-    
+    apply compiled_prog_op_refines_ax.
+    unfold env'', env'.
+    unfold GLabelMapFacts.Submap; intros.
+    rewrite GLabelMapFacts.update_o_2; eauto.
+    setoid_rewrite <- GLabelMapFacts.find_mapsto_iff in H.
+    eexists; eauto.
     simpl.
-    
-    
-    
-    Print OperationalSpec.
-    simpl.
-    unfold BuildFun.
-    simpl.
-    unfold GenExports in H.
-Admitted.
+    unfold GenExports, BuildFun.
+    generalize (NoDup_BuildFinUpTo n') UniqueMeth.
+    clear; induction (BuildFinUpTo n'); simpl; intros.
+    - reflexivity.
+    - erewrite is_sub_domain_equal_maps.
+      rewrite is_sub_domain_add.
+      apply IHl; eauto.
+      inversion H; eauto.
+      3: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
+      4: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+  Defined.
 
 (* Begin QueryStructure-specific bits. *)
 
