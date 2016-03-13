@@ -4412,6 +4412,7 @@ Lemma CompileTuples2_findSecond :
     NoDuplicates [[[vret; vtable; vkey]]] ->
     vret ∉ ext ->
     vtable ∉ ext ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
@@ -4422,12 +4423,13 @@ Lemma CompileTuples2_findSecond :
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
   fiat_t.
-  instantiate (1 := nil); admit.
-  fiat_t.
-  fiat_t.
-  simpl. admit.
 
-  repeat apply DropName_remove; eauto 1.
+  5:solve[repeat apply DropName_remove; eauto 1].
+  4:solve[simpl; eauto using f_equal, ListWToTuple_Truncated_map_keepEq].
+  3:solve[fiat_t].
+  2:solve[fiat_t].
+
+  apply Fiat_Bedrock_Filters_Equivalence; eassumption.
 Qed.
 
 Lemma CompileTuples2_findSecond_spec :
@@ -4450,6 +4452,7 @@ Lemma CompileTuples2_findSecond_spec :
     PreconditionSet tenv ext [[[vret; vtable]]] ->
     vret <> vkey ->
     vtable <> vkey ->
+    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
     {{ [[ (@NTSome QsADTs.ADTValue _ vtable (@WrapInstance _ _ (QS_WrapBag2 k1 k2))) <-- table as _]] :: tenv }}
       Call vret fpointer (vtable :: vkey :: nil)
@@ -4460,9 +4463,9 @@ Lemma CompileTuples2_findSecond_spec :
 Proof.
   intros.
   apply generalized CompileTuples2_findSecond; repeat (compile_do_side_conditions || Lifted_t || PreconditionSet_t).
-  setoid_rewrite (DropName_NotInTelescope _ _ H11).
+  setoid_rewrite (DropName_NotInTelescope _ _ H12).
   rewrite DropName_Cons_None.
-  setoid_rewrite (DropName_NotInTelescope _ _ H9).
+  setoid_rewrite (DropName_NotInTelescope _ _ H10).
   decide_TelEq_instantiate.
 Qed.
 
@@ -4506,25 +4509,25 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-(*Lemma postConditionAdd :
+Lemma postConditionAdd :
   forall n
          (r : FiatBag n)
-         (H : functional (IndexedEnsemble_TupleToListW r))
+         (H : TuplesF.functional (IndexedEnsemble_TupleToListW r))
          el
          (H0 : IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el)),
-    functional
+    TuplesF.functional
       (IndexedEnsemble_TupleToListW
          (Ensembles.Add IndexedEnsembles.IndexedElement r el))
     /\ (exists idx : nat,
-           minFreshIndex
+           TuplesF.minFreshIndex
              (IndexedEnsemble_TupleToListW
                 (Ensembles.Add IndexedEnsembles.IndexedElement r el)) idx) .
 Proof.
-  unfold functional, minFreshIndex; intros; intuition.
+  unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
   - destruct t1; destruct t2; simpl in *; subst; f_equal.
     destruct H2; destruct H1; intuition.
     destruct H2; destruct H3; subst.
-    + unfold tupl in *.
+    + unfold TuplesF.tupl in *.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition.
       subst.
       destruct x; destruct x0; simpl in *; subst.
@@ -4533,7 +4536,7 @@ Proof.
     + destruct H2.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       destruct x0; destruct el; simpl in *; subst.
-      unfold UnConstrFreshIdx in H1.
+      unfold TuplesF.UnConstrFreshIdx in H1.
       unfold IndexedEnsembles.UnConstrFreshIdx in H0.
       apply H0 in H1; simpl in *.
       omega.
@@ -4547,7 +4550,7 @@ Proof.
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       reflexivity.
   - exists (S (IndexedEnsembles.elementIndex el)); split.
-    + unfold UnConstrFreshIdx in *; intros.
+    + unfold TuplesF.UnConstrFreshIdx in *; intros.
       destruct H1 as [? [? ? ] ].
       unfold RelatedIndexedTupleAndListW in *; simpl in *; intuition; subst.
       destruct element; simpl in *; subst.
@@ -4557,8 +4560,8 @@ Proof.
         destruct H1; omega.
     + intros.
       inversion H1; subst.
-      unfold UnConstrFreshIdx in *.
-      assert (lt (elementIndex (IndexedElement_TupleToListW el)) (IndexedEnsembles.elementIndex el) ).
+      unfold TuplesF.UnConstrFreshIdx in *.
+      assert (lt (TuplesF.elementIndex (IndexedElement_TupleToListW el)) (IndexedEnsembles.elementIndex el) ).
       eapply H2.
       econstructor; split.
       unfold Ensembles.Add.
@@ -4566,17 +4569,17 @@ Proof.
       reflexivity.
       unfold RelatedIndexedTupleAndListW; eauto.
       destruct el; simpl in *; omega.
-      unfold UnConstrFreshIdx in *; intros.
+      unfold TuplesF.UnConstrFreshIdx in *; intros.
       assert (lt (IndexedEnsembles.elementIndex el) idx').
-      eapply (H2 {| elementIndex := _;
-                    indexedElement := _ |}); simpl.
+      eapply (H2 {| TuplesF.elementIndex := _;
+                    TuplesF.indexedElement := _ |}); simpl.
       unfold IndexedEnsemble_TupleToListW.
       simpl; eexists; split.
       econstructor 2.
       reflexivity.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
-Qed. *)
+Qed.
 
 Ltac start_compiling_adt :=
   intros;
@@ -5095,6 +5098,7 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
+<<<<<<< HEAD
   - eexists; split.
     destruct H as [? [ ? ?] ].
     _compile.
@@ -5263,6 +5267,13 @@ Ltac _compile_CallBagFind :=
 
 
     + unfold CallBagMethod in H1; simpl in *.
+=======
+
+  - eexists; split.
+    + destruct H as [? [ ? ?] ].
+      Time _compile.
+      unfold CallBagMethod in *; simpl in *.
+>>>>>>> 35d094fb7970d72a3769572cf071506710bcddb4
       computes_to_inv; subst.
       eapply H0.
     + destruct H as [? [? ?] ].
@@ -5272,172 +5283,25 @@ Ltac _compile_CallBagFind :=
         simpl; eapply postConditionAdd; eauto.
       * injections; subst; eauto.
   - eexists; split.
-    + _compile.
-    + destruct H as [? [? ?] ]; intros.
-      unfold CallBagMethod in H1; simpl in *.
+    + destruct H as [? [? ?] ].
+      Time _compile.
+    + destruct H as [? [? ?] ].
+      unfold CallBagMethod; intros; simpl in *.
       computes_to_inv; subst.
       injections; simpl; split; eauto.
-  - eexists; intros; destruct H as [? [? ?] ]; split.
-    + _compile.
-    + unfold CallBagMethod; intros; simpl in *.
+  - eexists; split.
+    + destruct H as [? [? ?] ].
+      Time _compile.
+    + destruct H as [? [? ?] ].
+      unfold CallBagMethod; intros; simpl in *.
       computes_to_inv; subst.
       injections; simpl; split; eauto.
-Defined. *)
+      (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
+Time Defined.
 
-(* The three methods: *)
+Print Assumptions progOKs.
 
-(*Eval compute in (projT1 (progOKs (Fin.F1))).
-Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))). *)
-
-
-  unfold rWrap, Scheduler_SideStuff; clear rWrap Scheduler_SideStuff.
-
-  let sig := match type of PartialSchedulerImpl with Core.ADT ?sig => sig end in
-  let methSigs := match sig with
-                   DecADTSig ?DecSig => constr:(MethodNames DecSig) end in
-  let methIdx := eval compute in (MethodIndex sig) in
-      match methIdx with
-      | Fin.t ?n =>
-        list_of_evar DFFun n ltac:(fun z =>
-                                     let map := constr:(BuildStringMap (Vector.fold_right cons methSigs nil) z) in
-                                     let map' := (eval simpl in map) in
-                                     eexists {| module := {| Funs := map'; Imports := GLabelMap.empty _ |} |})
-      end.
-
-  unfold CompileUnit2Equiv; repeat split.
-  simpl; unfold DFModuleEquiv; simpl.
-  eapply Fiat.Common.IterateBoundedIndex.Iterate_Ensemble_BoundedIndex_equiv.
-  simpl; repeat split;
-  eexists {| Core := {| Body := _ |};
-             compiled_syntax_ok := _ |};
-
-  simpl; repeat (apply conj); try exact (eq_refl); try decide_mapsto_maybe_instantiate; try eauto;
-
-    try match goal with
-          |- Shelve
-              {|
-                Core := {|
-                         ArgVars := _;
-                         RetVar := _;
-                         Body := _;
-                         args_no_dup := ?a;
-                         ret_not_in_args := ?b;
-                         no_assign_to_args := ?c;
-                         args_name_ok := ?d;
-                         ret_name_ok := ?e;
-                         syntax_ok := ?f |};
-                compiled_syntax_ok := ?g |} =>
-          try unify a (eq_refl true);
-            try unify b (eq_refl true);
-            try unify c (eq_refl true);
-            try unify d (eq_refl true);
-            try unify e (eq_refl true);
-            try unify f (eq_refl true);
-            try unify g (eq_refl true);
-            constructor
-        end.
-  admit.
-  intros; eapply (projT2 (progOKs Fin.F1)).
-  intros; eapply (projT2 (progOKs (Fin.FS Fin.F1))).
-  intros; eapply (projT2 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
-  Grab Existential Variables.
-
-  Focus 10.
-
-  Arguments ops_refines_axs {_} [_] _ _.
-
-  simpl Funs.
-
-  unfold GenExports. cbv [BuildFinUpTo].
-  simpl.
-
-  unfold ops_refines_axs.
-
-  intros.
-
-  StringMap_t.
-
-  Ltac StringMap_iterate_over_specs :=
-    match goal with
-    | [ H: StringMap.MapsTo ?x _ (StringMap.add ?x' _ _) |- _ ] =>
-      destruct (StringMap.E.eq_dec x x');
-        [ subst; apply MapsTo_add_eq_inv in H; subst | apply StringMap.add_3 in H; try discriminate ]
-    end.
-
-
-  StringMap_iterate_over_specs.
-  2:StringMap_iterate_over_specs.
-  3:StringMap_iterate_over_specs.
-
-
-
-
-  apply StringMap.add_ in H.
-
-  match goal with
-  | [  |- context[StringMap.map Core _ ] ] => cbv [StringMap.map StringMap.Raw.map]; simpl
-  end.
-
-
-  Notation op_refine
-
-  lazymatch goal with
-  | [ |- appcontext[ops_refines_axs ?env] ] => set (en := env)
-  end.
-    unfold ops_refines_axs.
-    intros * h.
-
-    destruct (string_dec x "Spawn"); subst.
-    simpl in h.
-    cbv [StringMap.find StringMap.Raw.find] in h.
-    simpl in h.
-    match goal with
-    | H: Some ?a = Some ?b |- _ => assert (a = b)
-    end.
-    Focus 2.
-    clear h.
-    unfold GenAxiomaticSpecs, AxiomatizeMethodPre, AxiomatizeMethodPost in H.
-    simpl in H.
-    simpl.
-    cbv [StringMap.find StringMap.Raw.find].
-    simpl.
-    eexists ; split; try reflexivity.
-    unfold op_refines_ax.
-    simpl.
-    repeat split.
-
-    Focus 3.
-    pose proof (projT2 (progOKs Fin.F1)).
-
-    unfold GenExports.
-    simpl.
-
-    cbv [get_env].
-    unfold GLabelMap.map, map_aug_mod_name.
-    simpl.
-    unfold GLabelMapFacts.UWFacts.WFacts.P.update, GLabelMapFacts.M.fold, GLabelMapFacts.M.add.
-    simpl.
-    unfold GLabelMapFacts.M.Raw.fold, GLabelMap.Raw.map. simpl.
-    subst.
-    unfold AxSafe.
-    simpl; intros.
-    repeat cleanup.
-    simpl in H0; specialize (H0 x0 x1 x2).
-    unfold ProgOk in H0.
-    assert (st ≲ [[ ` "arg" <-- x2 as _]]::[[ ` "arg0" <-- x1 as _]]::[[ ` "rep" <-- prim_fst x0 as _]]::Nil ∪ ∅).
-    simpl.
-    rewrite H1.
-    StringMap_t.
-    eexists; repeat split; eauto.
-    admit.
-    admit.
-    Focus 3.
-    unfold AxRunsTo.
-    rewrite <- H.
-    simpl.
-    unfold AxSafe; intros.
-    eexists; eexists; repeat split.
-    Focus 3.
-    rewrite H1.
-    StringMap_t.
+(* Set Printing All. *)
+Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
+Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
