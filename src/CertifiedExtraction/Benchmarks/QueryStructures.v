@@ -695,7 +695,6 @@ Arguments BuildArgNames !n !m / .
 
 Fixpoint AxiomatizeMethodPre'
          (av : Type)
-         (env : Env av)
          (RepArgs : list (Value av))
          {Dom}
          {struct Dom}
@@ -713,10 +712,10 @@ Fixpoint AxiomatizeMethodPre'
   | cons DomT Dom' =>
     fun dWrap args' args =>
       let wrap' := gWrap (fst dWrap) in
-      exists x : DomT, AxiomatizeMethodPre' env RepArgs Dom' (snd dWrap) (wrap x :: args') args
+      exists x : DomT, AxiomatizeMethodPre' RepArgs Dom' (snd dWrap) (wrap x :: args') args
   end.
 
-Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
+Definition AxiomatizeMethodPre (av : Type) {Rep} {Dom}
            {numRepArgs : nat}
            (P : Rep -> Prop)
            (f : Rep -> Vector.t (Value av) numRepArgs)
@@ -725,11 +724,10 @@ Definition AxiomatizeMethodPre (av : Type) (env : Env av) {Rep} {Dom}
   :=
     fun dWrap args =>
       exists r, P r
-                /\ AxiomatizeMethodPre' env (Vector.to_list (f r)) Dom dWrap [] args.
+                /\ AxiomatizeMethodPre' (Vector.to_list (f r)) Dom dWrap [] args.
 
 Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
          (av : Type)
-         (env : Env av)
          {numRepArgs : nat}
          {struct Dom}
   : CodWrapperT av Cod
@@ -767,12 +765,11 @@ Fixpoint AxiomatizeMethodPost' {Dom} {Cod} {Rep}
   | cons DomT Dom' =>
     fun cWrap dWrap domArgs repArgs meth args ret =>
       let wrap' := gWrap (fst dWrap) in
-      exists x : DomT, AxiomatizeMethodPost' env cWrap (snd dWrap) ((wrap x, None) :: domArgs) repArgs (meth x) args ret
+      exists x : DomT, AxiomatizeMethodPost' cWrap (snd dWrap) ((wrap x, None) :: domArgs) repArgs (meth x) args ret
   end.
 
 Definition AxiomatizeMethodPost
            (av : Type)
-           (env : Env av)
            {Dom} {Cod} {Rep}
            {numRepArgs : nat}
            (f : Rep -> Rep -> Vector.t ((Value av) * option av) numRepArgs)
@@ -782,15 +779,15 @@ Definition AxiomatizeMethodPost
            (args : list ((Value av) * option av))
            (ret : Value av)
   : Prop :=
-  exists r, AxiomatizeMethodPost' env cWrap dWrap [] (f r) (meth r) args ret.
+  exists r, AxiomatizeMethodPost' cWrap dWrap [] (f r) (meth r) args ret.
 
-Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ _ / .
-Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ _ / .
+Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ / .
+Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ / .
 
 Ltac helper :=
   match goal with
-  | [ H: AxiomatizeMethodPre' ?env ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
-      exists r: ?Tr, ?P r /\ AxiomatizeMethodPre' ?env ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] =>
+  | [ H: AxiomatizeMethodPre' ?dom ?wrp (wrap (FacadeWrapper := ?fw) ?x :: (Vector.to_list (?f ?y))) ?ls |-
+      exists r: ?Tr, ?P r /\ AxiomatizeMethodPre' ?dom ?wrp' (Vector.to_list (?f' r)) ?ls ] =>
     let tx := type of x in
     let ty := type of y in
     (exists (x, y); unify wrp wrp'; unify f' (fun x => Vector.cons _ (wrap (FacadeWrapper := fw) (fst x)) _ (f (snd x))); split; eauto)
@@ -811,27 +808,18 @@ Proof.
   destruct (IHl1' l2 l2'); eauto; subst; eauto.
 Qed.
 
-  Definition GenAxiomaticSpecs
+Lemma GenAxiomaticSpecs_type_conforming
            av
-           (env : Env av)
-           {Cod}
            {Dom}
            {Rep}
            (RepInv : Rep -> Prop)
-           (cWrap : CodWrapperT av Cod)
            (dWrap : DomWrapperT av Dom)
-           (meth : methodType Rep Dom Cod)
            {numRepArgs : nat}
            (DecomposeRepPre : Rep -> Vector.t (Value av) numRepArgs)
-           (DecomposeRepPost : Rep -> Rep -> Vector.t ((Value av) * option av) numRepArgs)
            (_ : forall x x0, is_same_types (Vector.to_list (DecomposeRepPre x0))
                                            (Vector.to_list (DecomposeRepPre x)) = true)
-  : AxiomaticSpec av.
+  : type_conforming (AxiomatizeMethodPre RepInv DecomposeRepPre dWrap).
 Proof.
-  refine {| PreCond := AxiomatizeMethodPre env RepInv DecomposeRepPre dWrap;
-            PostCond := AxiomatizeMethodPost env DecomposeRepPost cWrap dWrap meth |}.
-  clear dependent meth.
-  clear dependent DecomposeRepPost.
 
   unfold type_conforming.
   unfold AxiomatizeMethodPre in *.
@@ -860,38 +848,27 @@ Proof.
     unfold is_same_types in *.
     simpl; rewrite H0.
     rewrite GoodWrapperConsistent; simpl; eauto.
-Defined.
-(*    Focus 2.
-    intros.
-    eapply H.
-    eauto.
-    Focus 2.
-    eauto.
-    eexists _; split; eauto.
+Qed.
 
-
-    rewrite H in H0.
-    destruct (app_inj _ _ _ _ H3 H0); subst.
-    clear; induction inputs2; simpl; eauto.
-    unfold is_same_types in *; simpl; rewrite IHinputs2.
-    destruct a; simpl; eauto.
-  - simpl in H0.
-    eapply IHDom.
-    intros; eapply H3.
-    apply H0.
-    intros.
-    apply H.
-    eexists _; split; eauto.
-    eexists _; split; eauto.
-    2:helper.
-
-    repeat cleanup.
-    unfold is_same_types in *.
-    simpl; rewrite (GoodWrapperConsistent (fst (dWrap))); apply H.
-    instantiate (1 := fun r => RepInv (snd r)); eauto.
-    helper.
-    eauto.
-Defined. *)
+Definition GenAxiomaticSpecs
+           av
+           {Cod}
+           {Dom}
+           {Rep}
+           (RepInv : Rep -> Prop)
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType Rep Dom Cod)
+           {numRepArgs : nat}
+           (DecomposeRepPre : Rep -> Vector.t (Value av) numRepArgs)
+           (DecomposeRepPost : Rep -> Rep -> Vector.t ((Value av) * option av) numRepArgs)
+           (H : forall x x0, is_same_types (Vector.to_list (DecomposeRepPre x0))
+                                           (Vector.to_list (DecomposeRepPre x)) = true)
+  : AxiomaticSpec av :=
+    {| PreCond := AxiomatizeMethodPre RepInv DecomposeRepPre dWrap;
+       PostCond := AxiomatizeMethodPost DecomposeRepPost cWrap dWrap meth;
+       PreCondTypeConform := GenAxiomaticSpecs_type_conforming H
+    |}.
 
 Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
   match n return list (Fin.t n) with
@@ -901,7 +878,6 @@ Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
 
 Definition GenExports
            av
-           (env : Env av)
            (n n' : nat)
            {consSigs : Vector.t consSig n}
            {methSigs : Vector.t methSig n'}
@@ -915,7 +891,7 @@ Definition GenExports
            (H : forall x x0, is_same_types (Vector.to_list (f x0)) (Vector.to_list (f x)) = true)
   : StringMap.t (AxiomaticSpec av) :=
   List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
-                                              (GenAxiomaticSpecs env RepInv (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
+                                              (GenAxiomaticSpecs RepInv (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
 
 Definition CompileUnit2Equiv
            av
@@ -942,7 +918,7 @@ Definition CompileUnit2Equiv
 
 Definition BuildCompileUnit2T
            av
-           (env env' : Env av)
+           (env : Env av)
            {A}
            {n n'}
            {consSigs : Vector.t consSig n}
@@ -960,8 +936,73 @@ Definition BuildCompileUnit2T
            dWrap
            rWrap
            H
-           (exports := GenExports (numRepArgs := numRepArgs) env' adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
+           (exports := GenExports (numRepArgs := numRepArgs) adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
   {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt RepInv DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+
+Lemma BuildDFFun_is_syntax_ok
+           av
+           (env : Env av)
+           {WrappedRepT RepT}
+           cod
+           dom
+           WrappedCod
+           WrappedDom
+           meth
+           RepInv
+           (DecomposeRep : WrappedRepT -> RepT -> _)
+           (numRepArgs : nat)
+           wrappedRep
+           (progOK : {prog : Stmt &
+                             LiftMethod (Cod := cod) (Dom := dom) env RepInv (DecomposeRep wrappedRep)
+                                        WrappedCod WrappedDom prog meth
+                       (* Syntactic Checks *)
+                     /\ NoUninitDec.is_no_uninited
+                          {|
+                            FuncCore.ArgVars := BuildArgNames (Datatypes.length dom) numRepArgs;
+                            FuncCore.RetVar := "ret";
+                            FuncCore.Body := Compile.compile
+                                               (CompileDFacade.compile prog) |} = true
+                     /\ (GoodModuleDec.is_arg_len_ok
+                           (Compile.compile (CompileDFacade.compile prog)) = true)
+                     /\ (GoodModuleDec.is_good_size
+                             (Datatypes.length
+                                (GetLocalVars.get_local_vars
+                                   (Compile.compile (CompileDFacade.compile prog))
+                                   (BuildArgNames (Datatypes.length dom) numRepArgs) "ret") +
+                              Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                         true)
+                     /\  is_disjoint (assigned prog)
+                                     (StringSetFacts.of_list
+                                        (BuildArgNames (Datatypes.length dom)
+                                                       numRepArgs)) = true
+                     /\ is_syntax_ok prog = true} )
+  : FModule.is_syntax_ok
+     (CompileDFacade.compile_op
+        {|
+        ArgVars := BuildArgNames (Datatypes.length dom) numRepArgs;
+        RetVar := "ret";
+        Body := projT1 progOK;
+        args_no_dup := BuildArgNamesNoDup (Datatypes.length dom) numRepArgs;
+        ret_not_in_args := ret_NIn_BuildArgNames (Datatypes.length dom)
+                             numRepArgs;
+        no_assign_to_args := proj1
+                               (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
+        args_name_ok := BuildArgNames_args_name_ok
+                          (Datatypes.length dom) numRepArgs;
+        ret_name_ok := Ret_ret_name_ok;
+        syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK))))) |}) =
+   true.
+Proof.
+    unfold FModule.is_syntax_ok; simpl.
+    unfold GoodModuleDec.is_good_func; simpl.
+    apply Bool.andb_true_iff; split; try eassumption.
+    apply Bool.andb_true_iff; split; try eassumption.
+    apply Bool.andb_true_iff; split; try eassumption.
+    apply BuildArgNamesNoDup.
+    destruct progOK; simpl in *; intuition.
+    destruct progOK; simpl in *; intuition.
+    destruct progOK; simpl in *; intuition.
+Qed.
 
 Definition BuildDFFun
            av
@@ -1000,29 +1041,20 @@ Definition BuildDFFun
                                         (BuildArgNames (Datatypes.length dom)
                                                        numRepArgs)) = true
                      /\ is_syntax_ok prog = true} )
-  : DFFun.
-Proof.
-  refine {| Core := {| ArgVars := BuildArgNames (List.length dom) numRepArgs;
-                        RetVar := "ret";
-                        Body := projT1 progOK;
-                        args_no_dup := BuildArgNamesNoDup _ _;
-                        ret_not_in_args := ret_NIn_BuildArgNames _ _;
-                        no_assign_to_args := proj1 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
-                        args_name_ok := BuildArgNames_args_name_ok _ _;
-                        ret_name_ok := Ret_ret_name_ok;
-                        syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))))
+  : DFFun :=
+  {| Core := {| ArgVars := BuildArgNames (List.length dom) numRepArgs;
+                RetVar := "ret";
+                Body := projT1 progOK;
+                args_no_dup := BuildArgNamesNoDup _ _;
+                ret_not_in_args := ret_NIn_BuildArgNames _ _;
+                no_assign_to_args := proj1 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))));
+                args_name_ok := BuildArgNames_args_name_ok _ _;
+                ret_name_ok := Ret_ret_name_ok;
+                syntax_ok := proj2 (proj2 (proj2 (proj2 (proj2 (projT2 progOK)))))
 
-                     |} |}.
-  unfold FModule.is_syntax_ok; simpl.
-  unfold GoodModuleDec.is_good_func; simpl.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply Bool.andb_true_iff; split; try eassumption.
-  apply BuildArgNamesNoDup.
-  destruct progOK; simpl in *; intuition.
-  destruct progOK; simpl in *; intuition.
-  destruct progOK; simpl in *; intuition.
-Defined.
+             |};
+     compiled_syntax_ok := BuildDFFun_is_syntax_ok _ _ _ _
+  |}.
 
 Definition BuildFun
            av
@@ -1071,7 +1103,6 @@ Definition BuildFun
 
 Lemma AxiomatizeMethodPost_OK
       av
-      (env : Env av)
       {RepT}
       {numRepArgs}
       cod dom
@@ -1081,7 +1112,7 @@ Lemma AxiomatizeMethodPost_OK
       forall (in_out : list (Value av * option av)) (ret : Value av),
         (exists r : RepT,
             AxiomatizeMethodPost' (numRepArgs := numRepArgs) (Dom := dom) (Cod := cod) (Rep := RepT)
-                                  env codWrap domWrap args (DecomposeRepPost r)
+                                  codWrap domWrap args (DecomposeRepPost r)
                                   (meth r) in_out ret) ->
         if is_ret_adt
         then exists a : av, ret = ADT a
@@ -1125,8 +1156,8 @@ Proof.
   induction v; simpl; eauto.
 Qed.
 
-Lemma length_AxiomatizeMethodPre' av env dom domWrap
-  : forall l l' l'', AxiomatizeMethodPre' (av := av) env l'' dom domWrap l' l
+Lemma length_AxiomatizeMethodPre' av dom domWrap
+  : forall l l' l'', AxiomatizeMethodPre' (av := av) l'' dom domWrap l' l
                  -> Datatypes.length l' + Datatypes.length l'' + Datatypes.length dom = Datatypes.length l.
 Proof.
   induction dom; simpl in *; intros; subst.
@@ -1425,7 +1456,7 @@ Qed.
 
 Lemma compiled_prog_op_refines_ax
       av
-      (env env' : Env av)
+      (env : Env av)
       {numRepArgs}
       {A}
       {B}
@@ -1454,16 +1485,15 @@ Lemma compiled_prog_op_refines_ax
       meth
       RepInv
       progOK
-      (SubEnv : GLabelMapFacts.Submap env env')
   :
     op_refines_ax
-      env'
-      (Core (BuildDFFun (env := env') (cod := cod) (dom := dom)
+      env
+      (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
                         (WrappedCod := codWrap) (WrappedDom := domWrap)
                         (meth := meth) (RepInv := RepInv)
                         DecomposeRep numRepArgs RepWrapper progOK))
       (GenAxiomaticSpecs (numRepArgs := numRepArgs)
-                         env RepInv codWrap domWrap meth
+                         RepInv codWrap domWrap meth
                          DecomposeRepPre
                          DecomposeRepPost
                          DecomposeRepPrePostAgree).
@@ -1523,7 +1553,7 @@ Proof.
     remember DecomposeRep.
     assert (forall r,
                RepInv r ->
-               LiftMethod' env' dom RepInv
+               LiftMethod' env dom RepInv
                            (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
                            (l0 RepWrapper r)
                            codWrap domWrap
@@ -1641,7 +1671,7 @@ Proof.
     remember DecomposeRep.
     assert (forall r,
                RepInv r ->
-               LiftMethod' env' dom RepInv
+               LiftMethod' env dom RepInv
                            (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
                            (l0 RepWrapper r)
                            codWrap domWrap
@@ -2358,6 +2388,367 @@ Qed.
       apply mem_in_iff; eauto.
   Qed.
 
+  Lemma BuildCompileUnit2T_exports_in_domain
+av
+             (env : GLabelMap.t (AxiomaticSpec av))
+             (env' := GLabelMap.map (@Axiomatic av) env)
+             {n n'}
+             {consSigs : Vector.t consSig n}
+             {methSigs : Vector.t methSig n'}
+             (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
+             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             {numRepArgs}
+             {A}
+             {B}
+             {C}
+             {RepT' : Vector.t A numRepArgs}
+             (RepT : ilist3 (B := B) RepT')
+             (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+             (RepMap : Rep adt -> i3list C RepT)
+             RepInv
+             (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
+             (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+             (DecomposeRepPost := fun rep rep' => DecomposePosti3list _ RepT RepWrapper (RepMap rep) (RepMap rep'))
+             op_mod_name'
+             codWrap
+             domWrap
+             (DecomposeRepPrePoseAgree := fun r r' =>
+                                            DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+             (env'' :=
+                (GLabelMapFacts.UWFacts.WFacts.P.update
+                   (GLabelMap.map (Axiomatic (ADTValue:=av))
+                                  (map_aug_mod_name op_mod_name'
+                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                   env'))
+             (progsOK : forall midx,
+                 {prog : Stmt &
+                         LiftMethod env'' RepInv (DecomposeRep RepWrapper)
+                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                         (* Syntactic Checks *)
+                         /\ NoUninitDec.is_no_uninited
+                              {|
+                                FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
+                                                                                       (MethodDomCod
+                                                                                          (BuildADTSig consSigs methSigs) midx)))
+                                                                  numRepArgs;
+                                FuncCore.RetVar := "ret";
+                                FuncCore.Body := Compile.compile
+                                                   (CompileDFacade.compile prog) |} = true
+                         /\ (GoodModuleDec.is_arg_len_ok
+                               (Compile.compile (CompileDFacade.compile prog)) = true)
+                         /\ (GoodModuleDec.is_good_size
+                               (Datatypes.length
+                                  (GetLocalVars.get_local_vars
+                                     (Compile.compile (CompileDFacade.compile prog))
+                                     (BuildArgNames (Datatypes.length (fst
+                                                                         (MethodDomCod
+                                                                            (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
+                                Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                             true)
+                         /\  is_disjoint (assigned prog)
+                                         (StringSetFacts.of_list
+                                            (BuildArgNames (Datatypes.length (fst
+                                                                                (MethodDomCod
+                                                                                   (BuildADTSig consSigs methSigs) midx)))
+                                                           numRepArgs)) = true
+                         /\ is_syntax_ok prog = true} )
+    : is_sub_domain
+     (GenExports adt codWrap domWrap RepInv DecomposeRepPre
+        DecomposeRepPost DecomposeRepPrePoseAgree)
+     (BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+               RepWrapper progsOK).
+  Proof.
+    simpl.
+    unfold GenExports, BuildFun.
+    generalize (NoDup_BuildFinUpTo n') UniqueMeth.
+    clear; induction (BuildFinUpTo n'); simpl; intros.
+    - reflexivity.
+    - erewrite is_sub_domain_equal_maps.
+      rewrite is_sub_domain_add.
+      apply IHl; eauto.
+      inversion H; eauto.
+      3: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
+      4: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+      + eapply NIn_StringMap_fold_left with
+        (f := fun idx => methID (Vector.nth methSigs idx)).
+        inversion H; subst; eauto.
+        eapply methID_injective; eauto.
+        rewrite empty_in_iff; tauto.
+  Qed.
+
+  Lemma BuildCompileUnit2T_projT2
+             av
+             (env : GLabelMap.t (AxiomaticSpec av))
+             (env' := GLabelMap.map (@Axiomatic av) env)
+             {n n'}
+             {consSigs : Vector.t consSig n}
+             {methSigs : Vector.t methSig n'}
+             (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
+             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             {numRepArgs}
+             {A}
+             {B}
+             {C}
+             {RepT' : Vector.t A numRepArgs}
+             (RepT : ilist3 (B := B) RepT')
+             (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+             (RepMap : Rep adt -> i3list C RepT)
+             RepInv
+             (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
+             (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+             (DecomposeRepPost := fun rep rep' => DecomposePosti3list _ RepT RepWrapper (RepMap rep) (RepMap rep'))
+             ax_mod_name'
+             op_mod_name'
+             codWrap
+             domWrap
+             (DecomposeRepPrePoseAgree := fun r r' =>
+                                            DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+             (env'' :=
+                (GLabelMapFacts.UWFacts.WFacts.P.update
+                   (GLabelMap.map (Axiomatic (ADTValue:=av))
+                                  (map_aug_mod_name op_mod_name'
+                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                   env'))
+             (progsOK : forall midx,
+                 {prog : Stmt &
+                         LiftMethod env'' RepInv (DecomposeRep RepWrapper)
+                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                         (* Syntactic Checks *)
+                         /\ NoUninitDec.is_no_uninited
+                              {|
+                                FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
+                                                                                       (MethodDomCod
+                                                                                          (BuildADTSig consSigs methSigs) midx)))
+                                                                  numRepArgs;
+                                FuncCore.RetVar := "ret";
+                                FuncCore.Body := Compile.compile
+                                                   (CompileDFacade.compile prog) |} = true
+                         /\ (GoodModuleDec.is_arg_len_ok
+                               (Compile.compile (CompileDFacade.compile prog)) = true)
+                         /\ (GoodModuleDec.is_good_size
+                               (Datatypes.length
+                                  (GetLocalVars.get_local_vars
+                                     (Compile.compile (CompileDFacade.compile prog))
+                                     (BuildArgNames (Datatypes.length (fst
+                                                                         (MethodDomCod
+                                                                            (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
+                                Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                             true)
+                         /\  is_disjoint (assigned prog)
+                                         (StringSetFacts.of_list
+                                            (BuildArgNames (Datatypes.length (fst
+                                                                                (MethodDomCod
+                                                                                   (BuildADTSig consSigs methSigs) midx)))
+                                                           numRepArgs)) = true
+                         /\ is_syntax_ok prog = true} )
+             (distinct_mod_name : negb (ListFacts3.string_bool ax_mod_name' op_mod_name') = true)
+             (unique_op_mod_name'
+              : forallb (fun x : string => negb (ListFacts3.string_bool op_mod_name' x))
+                        (map (fun x : string * string * AxiomaticSpec av => fst (fst x))
+                             (GLabelMap.elements (elt:=AxiomaticSpec av) env)) = true)
+             (no_cito_clash_op_mod
+              : negb (prefix "__cmod_impl_" op_mod_name') = true)
+             (no_cito_clash_env
+              : forallb NameDecoration.is_good_module_name
+                        (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
+             proof
+    : CompileUnit2Equiv env'' adt RepInv DecomposeRep numRepArgs ax_mod_name'
+     op_mod_name' codWrap domWrap RepWrapper
+     {|
+     module := {|
+               Imports := env;
+               Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+                         RepWrapper progsOK;
+               import_module_names_good := no_cito_clash_env |};
+     ax_mod_name := ax_mod_name';
+     op_mod_name := op_mod_name';
+     exports_in_domain := BuildCompileUnit2T_exports_in_domain (UniqueMeth := UniqueMeth)
+                                                               env adt RepMap
+                            op_mod_name' codWrap domWrap progsOK;
+     op_mod_name_ok := no_cito_clash_op_mod;
+     op_mod_name_not_in_imports := unique_op_mod_name';
+     name_neq := distinct_mod_name;
+     proof := proof |}.
+  Proof.
+        unfold CompileUnit2Equiv; repeat split; simpl; eauto.
+    unfold DFModuleEquiv; intros.
+    eexists (BuildDFFun DecomposeRep _ RepWrapper (progsOK midx)).
+    simpl. repeat split.
+    intros.
+    eapply (proj1 (projT2 (progsOK midx)) r H).
+    unfold BuildFun.
+    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
+         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
+    apply methID_injective; eauto.
+  Qed.
+
+  Lemma BuildCompileUnit2T_proof
+av
+             (env : GLabelMap.t (AxiomaticSpec av))
+             (env' := GLabelMap.map (@Axiomatic av) env)
+             {n n'}
+             {consSigs : Vector.t consSig n}
+             {methSigs : Vector.t methSig n'}
+             (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
+             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             {numRepArgs}
+             {A}
+             {B}
+             {C}
+             {RepT' : Vector.t A numRepArgs}
+             (RepT : ilist3 (B := B) RepT')
+             (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+             (RepMap : Rep adt -> i3list C RepT)
+             RepInv
+             (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
+             (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+             (DecomposeRepPost := fun rep rep' => DecomposePosti3list _ RepT RepWrapper (RepMap rep) (RepMap rep'))
+             ax_mod_name'
+             op_mod_name'
+             codWrap
+             domWrap
+             (DecomposeRepPrePoseAgree := fun r r' =>
+                                            DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+             (env'' :=
+                (GLabelMapFacts.UWFacts.WFacts.P.update
+                   (GLabelMap.map (Axiomatic (ADTValue:=av))
+                                  (map_aug_mod_name op_mod_name'
+                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                   env'))
+             (progsOK : forall midx,
+                 {prog : Stmt &
+                         LiftMethod env'' RepInv (DecomposeRep RepWrapper)
+                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                         (* Syntactic Checks *)
+                         /\ NoUninitDec.is_no_uninited
+                              {|
+                                FuncCore.ArgVars := BuildArgNames (Datatypes.length (fst
+                                                                                       (MethodDomCod
+                                                                                          (BuildADTSig consSigs methSigs) midx)))
+                                                                  numRepArgs;
+                                FuncCore.RetVar := "ret";
+                                FuncCore.Body := Compile.compile
+                                                   (CompileDFacade.compile prog) |} = true
+                         /\ (GoodModuleDec.is_arg_len_ok
+                               (Compile.compile (CompileDFacade.compile prog)) = true)
+                         /\ (GoodModuleDec.is_good_size
+                               (Datatypes.length
+                                  (GetLocalVars.get_local_vars
+                                     (Compile.compile (CompileDFacade.compile prog))
+                                     (BuildArgNames (Datatypes.length (fst
+                                                                         (MethodDomCod
+                                                                            (BuildADTSig consSigs methSigs) midx))) numRepArgs) "ret") +
+                                Depth.depth (Compile.compile (CompileDFacade.compile prog))) =
+                             true)
+                         /\  is_disjoint (assigned prog)
+                                         (StringSetFacts.of_list
+                                            (BuildArgNames (Datatypes.length (fst
+                                                                                (MethodDomCod
+                                                                                   (BuildADTSig consSigs methSigs) midx)))
+                                                           numRepArgs)) = true
+                         /\ is_syntax_ok prog = true} )
+             (distinct_mod_name : negb (ListFacts3.string_bool ax_mod_name' op_mod_name') = true)
+             (unique_op_mod_name'
+              : forallb (fun x : string => negb (ListFacts3.string_bool op_mod_name' x))
+                        (map (fun x : string * string * AxiomaticSpec av => fst (fst x))
+                             (GLabelMap.elements (elt:=AxiomaticSpec av) env)) = true)
+             (no_cito_clash_op_mod
+              : negb (prefix "__cmod_impl_" op_mod_name') = true)
+             (no_cito_clash_env
+              : forallb NameDecoration.is_good_module_name
+                        (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
+    : ops_refines_axs
+     (get_env op_mod_name'
+        (GenExports adt
+           codWrap domWrap RepInv
+           (fun rep : Rep adt =>
+            DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+           (fun rep rep' : Rep adt =>
+            DecomposePosti3list RepT' RepT RepWrapper
+              (RepMap rep) (RepMap rep'))
+           (fun r r' : Rep adt =>
+            DecomposePrei3list_Agree av RepT RepWrapper
+              (RepMap r) (RepMap r')))
+        {|
+        Imports := env;
+        Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+                  RepWrapper progsOK;
+        import_module_names_good := no_cito_clash_env |})
+     (StringMap.map Core
+        (Funs
+           {|
+           Imports := env;
+           Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+                     RepWrapper progsOK;
+           import_module_names_good := no_cito_clash_env |}))
+     (GenExports adt codWrap
+        domWrap RepInv
+        (fun rep : Rep adt =>
+         DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+        (fun rep rep' : Rep adt =>
+         DecomposePosti3list RepT' RepT RepWrapper (RepMap rep) (RepMap rep'))
+        (fun r r' : Rep adt =>
+         DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))).
+  Proof.
+    unfold ops_refines_axs; intros.
+    unfold GenExports in H.
+    assert (exists midx, x = methID (Vector.nth methSigs midx)).
+    setoid_rewrite <- find_mapsto_iff in H.
+    apply StringMapsTo_fold_left_ex in H; destruct_ex; intuition eauto.
+    eauto using methID_injective; eauto.
+    eapply ListFacts1.Injection_NoDup; eauto using NoDup_BuildFinUpTo.
+    eauto using methID_injective; eauto.
+    destruct H0; subst.
+    pose proof (@StringMapsTo_fold_left'
+            _ _
+            (fun el => methID (Vector.nth methSigs el))
+            (fun el => GenAxiomaticSpecs RepInv (codWrap el)
+              (domWrap el) (Methods adt el) DecomposeRepPre DecomposeRepPost
+              DecomposeRepPrePoseAgree) ∅ x0 (methID_injective _ UniqueMeth)).
+    setoid_rewrite find_mapsto_iff in H0.
+    subst DecomposeRepPre; subst DecomposeRepPost; subst DecomposeRepPrePoseAgree.
+    assert (Some ax_spec = Some
+         (GenAxiomaticSpecs RepInv (codWrap x0)
+            (domWrap x0) (Methods adt x0)
+            (fun rep : Rep adt =>
+             DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+            (fun rep rep' : Rep adt =>
+             DecomposePosti3list RepT' RepT RepWrapper
+               (RepMap rep) (RepMap rep'))
+            (fun r r' : Rep adt =>
+             DecomposePrei3list_Agree av RepT RepWrapper
+               (RepMap r) (RepMap r')))) by
+        (rewrite <- H, <- H0; f_equal).
+    injections.
+    eexists; intuition.
+    unfold Funs.
+    unfold BuildFun.
+    setoid_rewrite <- find_mapsto_iff.
+    eapply StringMap.map_1.
+    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
+         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
+    apply methID_injective; eauto.
+    apply compiled_prog_op_refines_ax.
+  Qed.
+
   (* This is the main compilation tool. *)
   Definition BuildCompileUnit2T'
              av
@@ -2390,15 +2781,9 @@ Qed.
                 (GLabelMapFacts.UWFacts.WFacts.P.update
                    (GLabelMap.map (Axiomatic (ADTValue:=av))
                                   (map_aug_mod_name op_mod_name'
-                                                    (GenExports env' adt codWrap domWrap RepInv DecomposeRepPre
+                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
                                                                 DecomposeRepPost DecomposeRepPrePoseAgree)))
                    env'))
-
-             (exports := GenExports env' adt codWrap domWrap
-                                    (numRepArgs := numRepArgs)
-                                    RepInv
-                                    DecomposeRepPre DecomposeRepPost
-                                    DecomposeRepPrePoseAgree)
              (progsOK : forall midx,
                  {prog : Stmt &
                          LiftMethod env'' RepInv (DecomposeRep RepWrapper)
@@ -2442,7 +2827,6 @@ Qed.
               : forallb NameDecoration.is_good_module_name
                         (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
       : BuildCompileUnit2T env''
-                           env'
                          adt
                          RepInv
                          DecomposeRep
@@ -2463,87 +2847,19 @@ Qed.
                             Imports := _;
                             import_module_names_good := no_cito_clash_env
                          |};
+               exports_in_domain :=
+                 BuildCompileUnit2T_exports_in_domain (UniqueMeth := UniqueMeth) _ _ _ _ _ _ _ ;
                ax_mod_name := ax_mod_name';
                op_mod_name := op_mod_name';
                op_mod_name_ok := no_cito_clash_op_mod;
                name_neq := distinct_mod_name;
-               op_mod_name_not_in_imports := unique_op_mod_name'
+               op_mod_name_not_in_imports := unique_op_mod_name';
+               proof := BuildCompileUnit2T_proof  (UniqueMeth := UniqueMeth)
+                                                  _ _ _ _ _ _ _ _
+                                                  distinct_mod_name unique_op_mod_name'
+                                                  no_cito_clash_op_mod no_cito_clash_env
             |}.
-    unfold CompileUnit2Equiv; repeat split; simpl; eauto.
-    unfold DFModuleEquiv; intros.
-    eexists (BuildDFFun DecomposeRep _ RepWrapper (progsOK midx)).
-    simpl. repeat split.
-    intros.
-    eapply (proj1 (projT2 (progsOK midx)) r H).
-    unfold BuildFun.
-    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
-         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
-    apply methID_injective; eauto.
-    Grab Existential Variables.
-    unfold ops_refines_axs.
-    intros.
-    unfold GenExports in H.
-    assert (exists midx, x = methID (Vector.nth methSigs midx)).
-    setoid_rewrite <- find_mapsto_iff in H.
-    apply StringMapsTo_fold_left_ex in H; destruct_ex; intuition eauto.
-    eauto using methID_injective; eauto.
-    eapply ListFacts1.Injection_NoDup; eauto using NoDup_BuildFinUpTo.
-    eauto using methID_injective; eauto.
-    destruct H0; subst.
-    pose proof (@StringMapsTo_fold_left'
-            _ _
-            (fun el => methID (Vector.nth methSigs el))
-            (fun el => GenAxiomaticSpecs env' RepInv (codWrap el)
-              (domWrap el) (Methods adt el) DecomposeRepPre DecomposeRepPost
-              DecomposeRepPrePoseAgree) ∅ x0 (methID_injective _ UniqueMeth)).
-    setoid_rewrite find_mapsto_iff in H0.
-    rewrite H0 in H.
-    injections.
-    eexists; intuition.
-    unfold Funs.
-    unfold BuildFun.
-    setoid_rewrite <- find_mapsto_iff.
-    eapply StringMap.map_1.
-    eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
-         (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
-    apply methID_injective; eauto.
-    apply compiled_prog_op_refines_ax.
-    unfold env'', env'.
-    unfold GLabelMapFacts.Submap; intros.
-    rewrite GLabelMapFacts.update_o_2; eauto.
-    setoid_rewrite <- GLabelMapFacts.find_mapsto_iff in H.
-    eexists; eauto.
-    simpl.
-    unfold GenExports, BuildFun.
-    generalize (NoDup_BuildFinUpTo n') UniqueMeth.
-    clear; induction (BuildFinUpTo n'); simpl; intros.
-    - reflexivity.
-    - erewrite is_sub_domain_equal_maps.
-      rewrite is_sub_domain_add.
-      apply IHl; eauto.
-      inversion H; eauto.
-      3: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
-      4: simpl; rewrite fold_left_add2_Eq; [ reflexivity | ].
-      + eapply NIn_StringMap_fold_left with
-        (f := fun idx => methID (Vector.nth methSigs idx)).
-        inversion H; subst; eauto.
-        eapply methID_injective; eauto.
-        rewrite empty_in_iff; tauto.
-      + eapply NIn_StringMap_fold_left with
-        (f := fun idx => methID (Vector.nth methSigs idx)).
-        inversion H; subst; eauto.
-        eapply methID_injective; eauto.
-        rewrite empty_in_iff; tauto.
-      + eapply NIn_StringMap_fold_left with
-        (f := fun idx => methID (Vector.nth methSigs idx)).
-        inversion H; subst; eauto.
-        eapply methID_injective; eauto.
-        rewrite empty_in_iff; tauto.
-      + eapply NIn_StringMap_fold_left with
-        (f := fun idx => methID (Vector.nth methSigs idx)).
-        inversion H; subst; eauto.
-        eapply methID_injective; eauto.
-        rewrite empty_in_iff; tauto.
+    eapply BuildCompileUnit2T_projT2; eauto.
   Defined.
 
 (* Begin QueryStructure-specific bits. *)
@@ -5260,7 +5576,6 @@ Definition CUnit
   : { env : _ &
     BuildCompileUnit2T
       env
-      (GLabelMap.map (@Axiomatic _) QSEnv_Ax)
       PartialSchedulerImpl P
       (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
       (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
@@ -5273,11 +5588,11 @@ Definition CUnit
       (Scheduler_RepWrapperT _)
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))} .
 Proof.
-  eexists _.
+  eexists.
   unfold DecomposeIndexedQueryStructure',
   DecomposeIndexedQueryStructurePre',
   DecomposeIndexedQueryStructurePost'.
-  eapply BuildCompileUnit2T'.
+  eapply BuildCompileUnit2T' with (env := QSEnv_Ax).
   repeat econstructor; simpl; intuition eauto; congruence.
   eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
   repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
@@ -5286,10 +5601,13 @@ Proof.
   (* The script from here to END is meant to massage the environment *)
   (* into a form that _compile enjoys. Comment to END to dive directly  *)
   (* into compilation. *)
-  (*eapply Proper_ProgOk.
+  eapply Proper_ProgOk.
   reflexivity.
   unfold map_aug_mod_name.
   unfold GenExports.
+  simpl.
+  unfold GenAxiomaticSpecs.
+  unfold aug_mod_name.
   simpl.
   unfold GLabelMapFacts.uncurry.
   simpl.
@@ -5337,8 +5655,9 @@ Proof.
   reflexivity.
   reflexivity.
   reflexivity.
-  reflexivity. *)
+  reflexivity.
   (* END *)
+  (* Without the massaging from the above script, these tactics are incredibly slow.  *)
   _qs_step.
   _qs_step.
   _qs_step.
@@ -5356,7 +5675,7 @@ Proof.
   _qs_step.
   _qs_step.
   _qs_step.
-  Time _qs_step. (* This step is taking awhile <5 min. *)
+  Time _qs_step. (* This step is taking awhile >5 min. *)
   _qs_step.
   _qs_step.
   _qs_step.
