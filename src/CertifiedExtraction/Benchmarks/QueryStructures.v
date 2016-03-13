@@ -5046,43 +5046,148 @@ Proof.
   constructor.
 Defined.
 
-Definition Scheduler_DecomposeRep_well_behaved
-  : DecomposeRep_well_behaved PartialSchedulerImpl
-                              (fun rep => Vector.to_list (@DecomposeIndexedQueryStructurePre QsADTs.ADTValue
-                                                               (QueryStructureSchema.QueryStructureSchemaRaw
-                                                                  SchedulerSchema) _
-                                                               (Scheduler_RepWrapperT _) rep)).
-Proof.
-    unfold DecomposeRep_well_behaved; simpl; repeat_destruct;
-    eauto using Good_bool, Good_listW, Good_W.
-Defined.
+Definition Scheduler_DecomposeRep_well_behaved av qs_schema Index
+(rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
 
-(*Definition CUnit (env := GLabelMap.empty _)
+  :=
+  (fun r r' : IndexedQueryStructure qs_schema Index =>
+     DecomposePrei3list_Agree _ _ rWrap
+                              (id r) (id r')).
+
+Definition DecomposeIndexedQueryStructure' av qs_schema Index
+           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+           (r : IndexedQueryStructure qs_schema Index) :=
+  Decomposei3list _ _ rWrap (id r).
+
+Definition DecomposeIndexedQueryStructurePost' av qs_schema Index
+           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+           (r r' : IndexedQueryStructure qs_schema Index) :=
+  DecomposePosti3list _ _ rWrap (id r) (id r').
+
+Definition DecomposeIndexedQueryStructurePre' av qs_schema Index
+           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+           (r : IndexedQueryStructure qs_schema Index) :=
+  DecomposePrei3list _ _ rWrap (id r).
+
+Transparent Vector.to_list.
+
+
+Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
+  (GLabelMap.empty _)
+  ### ("ADT", "Tuple_new") ->> (QsADTs.Tuple_new)
+  ### ("ADT", "Tuple_delete") ->> (QsADTs.Tuple_delete)
+  ### ("ADT", "Tuple_copy") ->> ( QsADTs.Tuple_copy)
+  ### ("ADT", "Tuple_get") ->> ( QsADTs.Tuple_get)
+  ### ("ADT", "Tuple_set") ->> ( QsADTs.Tuple_set)
+
+  ### ("ADT", "WordList_new") ->> ( QsADTs.WordList_new)
+  ### ("ADT", "WordList_delete") ->> ( QsADTs.WordList_delete)
+  ### ("ADT", "WordList_pop") ->> ( QsADTs.WordList_pop)
+  ### ("ADT", "WordList_empty") ->> ( QsADTs.WordList_empty)
+  ### ("ADT", "WordList_push") ->> ( QsADTs.WordList_push)
+  ### ("ADT", "WordList_copy") ->> ( QsADTs.WordList_copy)
+  ### ("ADT", "WordList_rev") ->> ( QsADTs.WordList_rev)
+  ### ("ADT", "WordList_length") ->> ( QsADTs.WordList_length)
+
+  ### ("ADT", "TupleList_new") ->> ( QsADTs.TupleList_new)
+  ### ("ADT", "TupleList_delete") ->> ( QsADTs.TupleList_delete)
+  ### ("ADT", "TupleList_copy") ->> ( QsADTs.TupleList_copy)
+  ### ("ADT", "TupleList_pop") ->> ( QsADTs.TupleList_pop)
+  ### ("ADT", "TupleList_empty") ->> ( QsADTs.TupleList_empty)
+  ### ("ADT", "TupleList_push") ->> ( QsADTs.TupleList_push)
+  ### ("ADT", "TupleList_rev") ->> ( QsADTs.TupleList_rev)
+  ### ("ADT", "TupleList_length") ->> ( QsADTs.TupleList_length)
+
+  ### ("ADT", "Tuples0_new") ->> ( QsADTs.Tuples0_new)
+  ### ("ADT", "Tuples0_insert") ->> ( QsADTs.Tuples0_insert)
+  ### ("ADT", "Tuples0_enumerate") ->> ( QsADTs.Tuples0_enumerate)
+
+  ### ("ADT", "Tuples1_new") ->> ( QsADTs.Tuples1_new)
+  ### ("ADT", "Tuples1_insert") ->> ( QsADTs.Tuples1_insert)
+  ### ("ADT", "Tuples1_find") ->> ( QsADTs.Tuples1_find)
+  ### ("ADT", "Tuples1_enumerate") ->> ( QsADTs.Tuples1_enumerate)
+
+  ### ("ADT", "Tuples2_new") ->> ( QsADTs.Tuples2_new)
+  ### ("ADT", "Tuples2_insert") ->> ( QsADTs.Tuples2_insert)
+  ### ("ADT", "Tuples2_findBoth") ->> ( QsADTs.Tuples2_findBoth)
+  ### ("ADT", "Tuples2_findFirst") ->> ( QsADTs.Tuples2_findFirst)
+  ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
+  ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
+
+Definition CUnit
            (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
                           /\ exists idx,
                      TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
-  : BuildCompileUnit2T
-      env PartialSchedulerImpl P
-      (DecomposeIndexedQueryStructure QsADTs.ADTValue)
-      (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ _)
-      (DecomposeIndexedQueryStructurePost QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
+  : { env : _ &
+    BuildCompileUnit2T
+      env
+      (GLabelMap.map (@Axiomatic _) QSEnv_Ax)
+      PartialSchedulerImpl P
+      (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
+      (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
+      (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
       (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
       "foo"
       "bar"
       Scheduler_coDomainWrappers
       Scheduler_DomainWrappers
       (Scheduler_RepWrapperT _)
-      Scheduler_DecomposeRep_well_behaved.
-
-
+      (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))} .
 Proof.
+  eexists _.
+  unfold DecomposeIndexedQueryStructure',
+  DecomposeIndexedQueryStructurePre',
+  DecomposeIndexedQueryStructurePost'.
   eapply BuildCompileUnit2T'.
+  repeat econstructor; simpl; intuition eauto; congruence.
   eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
-  repeat apply Build_prim_prod; eexists; repeat apply conj; intros.
-  (* Should be compile, then a bunch of reflexivity proofs. *)
-  _compile.
-  _compile.
-  _compile. *)
+  repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
+  repeat (apply conj).
+  (* And here's where we should be using _compile! *)
+
+  (* _compile. (* Toooo sloooow. *)
+  ??? . (* Rep Invariant condition *)
+  reflexivity. (* syntactic condition *)
+  reflexivity. (* syntactic condition *)
+  reflexivity. (* syntactic condition *)
+  reflexivity. (* syntactic condition *)
+  reflexivity. (* syntactic condition *) *)
+Admitted.
 
   (* Here's the lemma for compiling everything! *)
 
@@ -5098,182 +5203,10 @@ Lemma progOKs
                                    prog (Methods PartialSchedulerImpl midx)}.
 Proof.
   start_compiling_adt.
-<<<<<<< HEAD
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    instantiate (1 := 0); admit.
-    intros; admit.
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    intros; admit.
-  - eexists; split.
-    destruct H as [? [ ? ?] ].
-    _compile.
-    intros; admit.
-
-    (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
-Defined.
-
-(* Set Printing All. *)
-Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
-Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
-
-
-
-Locate "_ <- _".
-
-(*  - eexists; split.
-    destruct H as [? [? ?] ].
-    _compile.
-
-    instantiate (1 := ("ADT","foo")).
-    admit.
-
-    match_ProgOk
-      ltac:(fun _prog _pre _post _ext _env =>
-              pose _env as env;
-              pose _ext as ext;
-              pose _post as post;
-              pose _pre as pre;
-              pose _prog as prog).
-
-    let pre := (eval unfold pre in pre) in
-    let post := (eval unfold post in post) in
-    lazymatch constr:((pre, post)) with
-    | (Cons (NTSome (H := ?_h) ?_vdb) (ret (prim_fst ?_db)) (fun _ => ?_tenv), Cons NTNone ?_bf _) =>
-pose _bf as bf; pose _tenv as tenv; pose _db as db; pose _vdb as vdb; pose _h as h
-    end.
-
-    let bf := (eval unfold bf in bf) in
-    lazymatch bf with
-      | CallBagMethod Fin.F1 BagFind ?db ?_kwd =>
-        let vsnd := gensym "snd" in
-        let vtmp := gensym "tmp" in
-        pose _kwd as kwd;
-        eapply CompileSeq with ([[bf as retv]]
-                                  :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                         (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                                         (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
-                                  :: [[`vsnd <-- snd retv as s]]
-                                  :: tenv);
-          [ try match kwd with
-            | (Some ?v, (None, fun _ => true)) =>
-              let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-              match vkwd with
-              | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
-              end
-            | (None, (Some ?v, fun _ => true)) =>
-              let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-              match vkwd with
-              | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
-              end
-            end | ]
-    end.
-
-
-    simpl.
-    cbv [CallBagMethod].
-    simpl.
-    unfold IndexSearchTerms.MatchIndexSearchTerm; simpl.
-    let kwd := (eval unfold kwd in kwd) in
-    lazymatch kwd with
-    | (Some ?v, (None, fun _ => true)) =>
-      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-      lazymatch vkwd with
-      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
-      end
-    | (None, (Some ?v, fun _ => true)) =>
-      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-      match vkwd with
-      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
-      end
-    end.
-
-
-
-    let pre := (eval unfold pre in pre) in
-    let post := (eval unfold post in post) in
-    lazymatch constr:((pre, post)) with
-    | ([[NTSome ?vdb <-- prim_fst ?db as _]]::?tenv, [[?bf as kk]]::_) =>
-      pose bf
-    end.
-
-          lazymatch bf with
-      | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
-        let vsnd := gensym "snd" in
-        let vtmp := gensym "tmp" in
-        eapply
-          CompileSeq
-        with
-        ([[bf as retv]]
-           ::[[ ` vdb <--
-                 prim_fst
-                 (Refinements.UpdateIndexedRelation
-                    (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                    (icons3 SearchUpdateTerm inil3) db Fin.F1
-                    (fst retv)) as _]]::
-           [[ ` vsnd <-- snd retv as s]]::tenv);
-          [ match kwd with
-            | (Some ?v, (None, fun _ => true)) =>
-              let vkwd := find_fast (wrap v) ext in
-              match vkwd with
-              | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey:=vkwd))
-              end
-            | (None, (Some ?v, fun _ => true)) =>
-              let vkwd := find_fast (wrap v) ext in
-              match vkwd with
-              | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey:=vkwd))
-              end
-            end
-          | idtac ]
-      end
-
-
-
-Ltac _compile_CallBagFind :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match constr:((pre, post)) with
-            | (Cons (NTSome (H := ?h) ?vdb) (ret (prim_fst ?db)) (fun _ => ?tenv), Cons NTNone ?bf _) =>
-              match bf with
-              | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
-                let vsnd := gensym "snd" in
-                let vtmp := gensym "tmp" in
-                eapply CompileSeq with ([[bf as retv]]
-                                          :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                                                                                 (icons3 SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
-                                          :: [[`vsnd <-- snd retv as s]]
-                                          :: tenv);
-                  [ match kwd with
-                    | (Some ?v, (None, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findFirst_spec (vkey := vkwd))
-                      end
-                    | (None, (Some ?v, fun _ => true)) =>
-                      let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
-                      match vkwd with
-                      | Some ?vkwd => apply (CompileTuples2_findSecond_spec (vkey := vkwd))
-                      end
-                    end | ]
-              end
-            end).
-
-
-
-
-    + unfold CallBagMethod in H1; simpl in *.
-=======
-
   - eexists; split.
     + destruct H as [? [ ? ?] ].
       Time _compile.
       unfold CallBagMethod in *; simpl in *.
->>>>>>> 35d094fb7970d72a3769572cf071506710bcddb4
       computes_to_inv; subst.
       eapply H0.
     + destruct H as [? [? ?] ].
