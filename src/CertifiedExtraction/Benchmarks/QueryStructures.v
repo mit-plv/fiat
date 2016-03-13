@@ -5601,6 +5601,209 @@ Proof.
   (* The script from here to END is meant to massage the environment *)
   (* into a form that _compile enjoys. Comment to END to dive directly  *)
   (* into compilation. *)
+
+  match_ProgOk
+    ltac:(fun prog pre post ext env => set env).
+
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+
+  pose r as _db.                (* FIXME removing this 'pose' makes apply take forever *)
+  _qs_step.
+  
+  instantiate (1 := ("ADT", "Tuples2_findSecond")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  unfold If_Then_Else.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("ADT", "TupleList_empty")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("ADT", "Tuple_new")); admit.
+  instantiate (1 := ("ADT", "Tuple_set")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("ADT", "Tuples2_insert")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := 0); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("ADT", "TuplesList_pop")); admit.
+  instantiate (1 := ("ADT", "TuplesList_empty")); admit.
+  instantiate (1 := ("ADT", "TuplesList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("ADT", "TuplesList_pop")); admit.
+  instantiate (1 := ("ADT", "TuplesList_empty")); admit.
+  instantiate (1 := ("ADT", "TuplesList_delete")); admit.
+  instantiate (1 := ("ADT", "Tuple_delete")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  admit.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+
+  _compile_rewrite_bind.
+  
   eapply Proper_ProgOk.
   reflexivity.
   unfold map_aug_mod_name.
