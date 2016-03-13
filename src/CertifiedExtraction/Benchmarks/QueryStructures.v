@@ -5802,100 +5802,161 @@ Proof.
   reflexivity.
   reflexivity.
 
-  _compile_rewrite_bind.
-  
-  eapply Proper_ProgOk.
-  reflexivity.
-  unfold map_aug_mod_name.
-  unfold GenExports.
-  simpl.
-  unfold GenAxiomaticSpecs.
-  unfold aug_mod_name.
-  simpl.
-  unfold GLabelMapFacts.uncurry.
-  simpl.
-  symmetry; etransitivity.
-  eapply GLabelMapFacts.Disjoint_update_sym.
+
+  match_ProgOk
+    ltac:(fun prog pre post ext env => set env).
+
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  set r.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuples2_findFirst")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
   admit.
-  unfold QSEnv_Ax at 1.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  unfold GLabelMapFacts.UWFacts.WFacts.P.update.
-  unfold GLabelMapFacts.M.fold.
-  simpl.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "TupleList_pop")); admit.
+  instantiate (1 := ("QsADTs", "TupleList_empty")); admit.
+  instantiate (1 := ("QsADTs", "WordList_new")); admit.
+  instantiate (1 := ("QsADTs", "TupleList_delete")); admit.
+  instantiate (1 := ("QsADTs", "WordList_push")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuple_get")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuple_delete")); admit.
+  _qs_step.
+  _qs_step.
+  admit.
   reflexivity.
   reflexivity.
   reflexivity.
   reflexivity.
-  (* END *)
-  (* Without the massaging from the above script, these tactics are incredibly slow.  *)
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  Time _qs_step. (* This step is taking awhile >5 min. *)
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
+  reflexivity.
 
-(* _compile. (* Toooo sloooow. *)
-  ??? . (* Rep Invariant condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *) *)
-Admitted.
 
-  (* Here's the lemma for compiling everything! *)
+
+
+
+  match_ProgOk
+    ltac:(fun prog pre post ext env => set env).
+
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  set r as _db.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuples2_findSecond")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "TupleList_pop")); admit.
+  instantiate (1 := ("QsADTs", "TupleList_empty")); admit.
+  instantiate (1 := ("QsADTs", "WordList_new")); admit.
+  instantiate (1 := ("QsADTs", "TupleList_delete")); admit.
+  instantiate (1 := ("QsADTs", "WordList_push")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuple_get")); admit.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  instantiate (1 := ("QsADTs", "Tuple_delete")); admit.
+  _qs_step.
+  _qs_step.
+  admit.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+Defined.
+
+(* Set Printing All. *)
+Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
+Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+
+(* Here's the lemma for compiling everything! *)
 
 Lemma progOKs
   : forall (env := QSEnv)
