@@ -5171,50 +5171,191 @@ Ltac _compile_get :=
                     apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
-Definition QSEnv : Env QsADTs.ADTValue :=
-  (GLabelMap.empty _)
-  ### ("ADT", "Tuple_new") ->> (Axiomatic QsADTs.Tuple_new)
-  ### ("ADT", "Tuple_delete") ->> (Axiomatic QsADTs.Tuple_delete)
-  ### ("ADT", "Tuple_copy") ->> (Axiomatic QsADTs.Tuple_copy)
-  ### ("ADT", "Tuple_get") ->> (Axiomatic QsADTs.Tuple_get)
-  ### ("ADT", "Tuple_set") ->> (Axiomatic QsADTs.Tuple_set)
+Add Parametric Morphism elt
+  : (@GLabelMapFacts.UWFacts.WFacts.P.update elt)
+    with signature
+    (GLabelMap.Equal ==> GLabelMap.Equal ==> GLabelMap.Equal)
+      as GLabelMapFacts_UWFacts_WFacts_P_update_morphisn.
+Proof.
+  apply GLabelMapFacts.UWFacts.WFacts.P.update_m.
+Qed.
 
-  ### ("ADT", "WordList_new") ->> (Axiomatic QsADTs.WordList_new)
-  ### ("ADT", "WordList_delete") ->> (Axiomatic QsADTs.WordList_delete)
-  ### ("ADT", "WordList_pop") ->> (Axiomatic QsADTs.WordList_pop)
-  ### ("ADT", "WordList_empty") ->> (Axiomatic QsADTs.WordList_empty)
-  ### ("ADT", "WordList_push") ->> (Axiomatic QsADTs.WordList_push)
-  ### ("ADT", "WordList_copy") ->> (Axiomatic QsADTs.WordList_copy)
-  ### ("ADT", "WordList_rev") ->> (Axiomatic QsADTs.WordList_rev)
-  ### ("ADT", "WordList_length") ->> (Axiomatic QsADTs.WordList_length)
 
-  ### ("ADT", "TupleList_new") ->> (Axiomatic QsADTs.TupleList_new)
-  ### ("ADT", "TupleList_delete") ->> (Axiomatic QsADTs.TupleList_delete)
-  ### ("ADT", "TupleList_copy") ->> (Axiomatic QsADTs.TupleList_copy)
-  ### ("ADT", "TupleList_pop") ->> (Axiomatic QsADTs.TupleList_pop)
-  ### ("ADT", "TupleList_empty") ->> (Axiomatic QsADTs.TupleList_empty)
-  ### ("ADT", "TupleList_push") ->> (Axiomatic QsADTs.TupleList_push)
-  ### ("ADT", "TupleList_rev") ->> (Axiomatic QsADTs.TupleList_rev)
-  ### ("ADT", "TupleList_length") ->> (Axiomatic QsADTs.TupleList_length)
+Add Parametric Morphism av
+  : (@RunsTo av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
+      as Proper_RunsTo.
+Proof.
+  unfold impl; intros.
+  revert y y1 y2 H0 H1 H.
+  induction H2; intros.
+  - econstructor; rewrite <- H0, <- H1; eauto.
+  - econstructor 2; eauto.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 3; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 4; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 5; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 6; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H1; apply H.
+    rewrite <- H1, <- H2; eauto.
+  - econstructor 7;
+    rewrite <- H2; eauto.
+    rewrite <- H1; symmetry; eauto.
+  - econstructor 8; eauto.
+    rewrite <- H8; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H7.
+    subst st'; subst st'0; rewrite <- H6; eauto.
+  - econstructor 9; eauto.
+    rewrite <- H9; eauto.
+    rewrite <- H7; eauto.
+    rewrite <- H7; eauto.
+    eapply IHRunsTo; eauto.
+    reflexivity.
+    reflexivity.
+    subst st'; subst st'0; subst output; rewrite <- H8.
+    rewrite <- H7; eauto.
+Qed.
 
-  ### ("ADT", "Tuples0_new") ->> (Axiomatic QsADTs.Tuples0_new)
-  ### ("ADT", "Tuples0_insert") ->> (Axiomatic QsADTs.Tuples0_insert)
-  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic QsADTs.Tuples0_enumerate)
+Add Parametric Morphism av
+  : (@Safe av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
+      as Proper_Safe.
+Proof.
+  unfold impl; intros.
+  rewrite <- H0.
+  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
+  - intros; inversion H2; subst; intuition.
+    eapply H4.
+    setoid_rewrite H; eauto.
+  - intros; inversion H2; subst; intuition.
+  - intros; inversion H2; substs; intuition.
+    left; intuition eauto.
+    subst loop; subst loop1; subst loop2.
+    rewrite <- H4.
+    eapply H8.
+    rewrite H; eauto.
+  - intros; inversion H2; substs; intuition.
+    eauto.
+  - intros; inversion H2; substs; intuition.
+    + eexists; intuition eauto.
+      left; eexists; intuition eauto.
+      rewrite <- H; eauto.
+    + eexists; intuition eauto.
+      right; eexists; intuition eauto.
+      rewrite <- H; eauto.
+      eapply H12; eauto.
+      rewrite H; eauto.
+      eapply H12.
+      rewrite H; eauto.
+Qed.
 
-  ### ("ADT", "Tuples1_new") ->> (Axiomatic QsADTs.Tuples1_new)
-  ### ("ADT", "Tuples1_insert") ->> (Axiomatic QsADTs.Tuples1_insert)
-  ### ("ADT", "Tuples1_find") ->> (Axiomatic QsADTs.Tuples1_find)
-  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic QsADTs.Tuples1_enumerate)
+Add Parametric Morphism av
+  : (@ProgOk av)
+with signature
+(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
+  as Proper_ProgOk.
+Proof.
+  unfold impl; intros; intro; intros; split.
+  setoid_rewrite <- H0.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H.
+  eapply H4.
+  rewrite H0.
+  eauto.
+Qed.
 
-  ### ("ADT", "Tuples2_new") ->> (Axiomatic QsADTs.Tuples2_new)
-  ### ("ADT", "Tuples2_insert") ->> (Axiomatic QsADTs.Tuples2_insert)
-  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic QsADTs.Tuples2_findBoth)
-  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
-  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
-  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
+Lemma GLabelMapFacts_map_add_1 : (* This is a hack to transform a rewrite into an apply (setoid-rewrite is too slow). *)
+  forall (elt B : Type) (f : elt -> B) (k : GLabelMapFacts.M.key) (v : elt) (m : GLabelMapFacts.M.t elt) m0,
+    GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f m) m0 ->
+    GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f (m ### k ->> v)) (m0 ### k ->> f v).
+Proof.
+  intros * H; rewrite GLabelMapFacts.map_add, H; reflexivity.
+Qed.
+
+Ltac GLabelMap_fast_apply_map :=
+  lazymatch goal with
+  | [  |- context[GLabelMap.map ?f ?m] ] =>
+    lazymatch type of f with
+    | ?elt -> ?elt' =>
+      let m' := fresh in
+      evar (m' : GLabelMap.t elt');
+      setoid_replace (GLabelMap.map f m) with m' using relation (@GLabelMap.Equal elt');
+      [ | unfold m' in *; clear m'; try unfold m;
+          solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] ]
+    end
+  end.
+
+Ltac set_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [  |- context[GLabelMap.add ?k ?v _ ] ] =>
+           match v with
+           | context[GenAxiomaticSpecs _ _ _ _ _ _ _] =>
+             let tv := type of v in
+             let v' := fresh in
+             pose v as v';
+             (* (id …) is useful to track things that we had to set for perfomance reasons *)
+             change tv with (id tv) in v';
+             change v with v'
+           end
+         end.
+
+Ltac unset_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [ H := (GenAxiomaticSpecs _ _ _ _ _ _ _) : (id _) |- _ ] => unfold H in *; clear H
+         end.
+
+Ltac _compile_cleanup_env_helper :=
+  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
+          GLabelMapFacts.uncurry; simpl);
+  set_GenAxiomaticSpecs;
+  GLabelMap_fast_apply_map;
+  GLabelMap_fast_apply_map;
+  unset_GenAxiomaticSpecs;
+  reflexivity.
+
+Ltac __compile_cleanup_env :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match env with
+            | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+              eapply Proper_ProgOk; [ reflexivity | _compile_cleanup_env_helper | reflexivity.. | idtac ];
+              match_ProgOk ltac:(fun prog pre post ext env => set env)
+            end).
+
+Ltac __prepare_merged_env_for_compile_do_side_conditions :=
+  lazymatch goal with
+  | [ |- GLabelMap.MapsTo _ _ ?env ] =>
+    lazymatch eval unfold env in env with
+    | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+      unfold env; apply GLabelMapFacts.UWFacts.WFacts.P.update_mapsto_iff; left
+    end
+  end.
 
 Ltac _qs_step :=
   match goal with
+  | _ => __compile_cleanup_env
+  | _ => __prepare_merged_env_for_compile_do_side_conditions
   | _ => _compile_step
   | _ => _compile_CallBagFind
   | _ => _compile_CallBagInsert
@@ -5465,118 +5606,15 @@ Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
   ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
 
-Add Parametric Morphism av
-  : (@RunsTo av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
-      as Proper_RunsTo.
-Proof.
-  unfold impl; intros.
-  revert y y1 y2 H0 H1 H.
-  induction H2; intros.
-  - econstructor; rewrite <- H0, <- H1; eauto.
-  - econstructor 2; eauto.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 3; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 4; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 5; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 6; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H1; apply H.
-    rewrite <- H1, <- H2; eauto.
-  - econstructor 7;
-    rewrite <- H2; eauto.
-    rewrite <- H1; symmetry; eauto.
-  - econstructor 8; eauto.
-    rewrite <- H8; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H7.
-    subst st'; subst st'0; rewrite <- H6; eauto.
-  - econstructor 9; eauto.
-    rewrite <- H9; eauto.
-    rewrite <- H7; eauto.
-    rewrite <- H7; eauto.
-    eapply IHRunsTo; eauto.
-    reflexivity.
-    reflexivity.
-    subst st'; subst st'0; subst output; rewrite <- H8.
-    rewrite <- H7; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@Safe av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
-      as Proper_Safe.
-Proof.
-  unfold impl; intros.
-  rewrite <- H0.
-  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
-  - intros; inversion H2; subst; intuition.
-    eapply H4.
-    setoid_rewrite H; eauto.
-  - intros; inversion H2; subst; intuition.
-  - intros; inversion H2; substs; intuition.
-    left; intuition eauto.
-    subst loop; subst loop1; subst loop2.
-    rewrite <- H4.
-    eapply H8.
-    rewrite H; eauto.
-  - intros; inversion H2; substs; intuition.
-    eauto.
-  - intros; inversion H2; substs; intuition.
-    + eexists; intuition eauto.
-      left; eexists; intuition eauto.
-      rewrite <- H; eauto.
-    + eexists; intuition eauto.
-      right; eexists; intuition eauto.
-      rewrite <- H; eauto.
-      eapply H12; eauto.
-      rewrite H; eauto.
-      eapply H12.
-      rewrite H; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@ProgOk av)
-with signature
-(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
-  as Proper_ProgOk.
-Proof.
-  unfold impl; intros; intro; intros; split.
-  setoid_rewrite <- H0.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H.
-  eapply H4.
-  rewrite H0.
-  eauto.
-Qed.
+Definition BagSanityConditions {N} tbl :=
+  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
+  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
 
 Definition CUnit
-           (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
-                          /\ exists idx,
-                     TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
   : { env : _ &
     BuildCompileUnit2T
       env
-      PartialSchedulerImpl P
+      PartialSchedulerImpl (fun r => BagSanityConditions (prim_fst r))
       (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
       (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
       (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
@@ -5597,274 +5635,14 @@ Proof.
   eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
   repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
   repeat (apply conj).
-  (* And here's where we should be using _compile! *)
-  (* The script from here to END is meant to massage the environment *)
-  (* into a form that _compile enjoys. Comment to END to dive directly  *)
-  (* into compilation. *)
 
-  match_ProgOk
-    ltac:(fun prog pre post ext env => set env).
-
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-
-  pose r as _db.                (* FIXME removing this 'pose' makes apply take forever *)
-  _qs_step.
-  
-  instantiate (1 := ("ADT", "Tuples2_findSecond")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
+  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
   unfold If_Then_Else.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("ADT", "TupleList_empty")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("ADT", "Tuple_new")); admit.
-  instantiate (1 := ("ADT", "Tuple_set")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("ADT", "Tuples2_insert")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
+
+  Time _compile.
+
+  admit.
   instantiate (1 := 0); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("ADT", "TuplesList_pop")); admit.
-  instantiate (1 := ("ADT", "TuplesList_empty")); admit.
-  instantiate (1 := ("ADT", "TuplesList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("ADT", "TuplesList_pop")); admit.
-  instantiate (1 := ("ADT", "TuplesList_empty")); admit.
-  instantiate (1 := ("ADT", "TuplesList_delete")); admit.
-  instantiate (1 := ("ADT", "Tuple_delete")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  admit.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-
-
-  match_ProgOk
-    ltac:(fun prog pre post ext env => set env).
-
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  set r.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuples2_findFirst")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "TupleList_pop")); admit.
-  instantiate (1 := ("QsADTs", "TupleList_empty")); admit.
-  instantiate (1 := ("QsADTs", "WordList_new")); admit.
-  instantiate (1 := ("QsADTs", "TupleList_delete")); admit.
-  instantiate (1 := ("QsADTs", "WordList_push")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuple_get")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuple_delete")); admit.
-  _qs_step.
-  _qs_step.
   admit.
   reflexivity.
   reflexivity.
@@ -5874,70 +5652,11 @@ Proof.
 
 
 
+  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
+  unfold If_Then_Else.
+  Time _compile.
 
-
-  match_ProgOk
-    ltac:(fun prog pre post ext env => set env).
-
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  set r as _db.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuples2_findSecond")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
   admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "TupleList_pop")); admit.
-  instantiate (1 := ("QsADTs", "TupleList_empty")); admit.
-  instantiate (1 := ("QsADTs", "WordList_new")); admit.
-  instantiate (1 := ("QsADTs", "TupleList_delete")); admit.
-  instantiate (1 := ("QsADTs", "WordList_push")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuple_get")); admit.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  instantiate (1 := ("QsADTs", "Tuple_delete")); admit.
-  _qs_step.
-  _qs_step.
   admit.
   reflexivity.
   reflexivity.
@@ -5945,18 +5664,76 @@ Proof.
   reflexivity.
   reflexivity.
 
+
+  
+  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
+  unfold If_Then_Else.
+  Time _compile.
+
+  admit.
+  admit.
   reflexivity.
   reflexivity.
   reflexivity.
   reflexivity.
-Defined.
+
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+Time Defined.
 
 (* Set Printing All. *)
-Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
+
+Redirect "SpawnSmall" Eval compute in (projT1 CUnit).
 Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
 Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
 
 (* Here's the lemma for compiling everything! *)
+
+
+Definition QSEnv : Env QsADTs.ADTValue :=
+  (GLabelMap.empty _)
+  ### ("ADT", "Tuple_new") ->> (Axiomatic QsADTs.Tuple_new)
+  ### ("ADT", "Tuple_delete") ->> (Axiomatic QsADTs.Tuple_delete)
+  ### ("ADT", "Tuple_copy") ->> (Axiomatic QsADTs.Tuple_copy)
+  ### ("ADT", "Tuple_get") ->> (Axiomatic QsADTs.Tuple_get)
+  ### ("ADT", "Tuple_set") ->> (Axiomatic QsADTs.Tuple_set)
+
+  ### ("ADT", "WordList_new") ->> (Axiomatic QsADTs.WordList_new)
+  ### ("ADT", "WordList_delete") ->> (Axiomatic QsADTs.WordList_delete)
+  ### ("ADT", "WordList_pop") ->> (Axiomatic QsADTs.WordList_pop)
+  ### ("ADT", "WordList_empty") ->> (Axiomatic QsADTs.WordList_empty)
+  ### ("ADT", "WordList_push") ->> (Axiomatic QsADTs.WordList_push)
+  ### ("ADT", "WordList_copy") ->> (Axiomatic QsADTs.WordList_copy)
+  ### ("ADT", "WordList_rev") ->> (Axiomatic QsADTs.WordList_rev)
+  ### ("ADT", "WordList_length") ->> (Axiomatic QsADTs.WordList_length)
+
+  ### ("ADT", "TupleList_new") ->> (Axiomatic QsADTs.TupleList_new)
+  ### ("ADT", "TupleList_delete") ->> (Axiomatic QsADTs.TupleList_delete)
+  ### ("ADT", "TupleList_copy") ->> (Axiomatic QsADTs.TupleList_copy)
+  ### ("ADT", "TupleList_pop") ->> (Axiomatic QsADTs.TupleList_pop)
+  ### ("ADT", "TupleList_empty") ->> (Axiomatic QsADTs.TupleList_empty)
+  ### ("ADT", "TupleList_push") ->> (Axiomatic QsADTs.TupleList_push)
+  ### ("ADT", "TupleList_rev") ->> (Axiomatic QsADTs.TupleList_rev)
+  ### ("ADT", "TupleList_length") ->> (Axiomatic QsADTs.TupleList_length)
+
+  ### ("ADT", "Tuples0_new") ->> (Axiomatic QsADTs.Tuples0_new)
+  ### ("ADT", "Tuples0_insert") ->> (Axiomatic QsADTs.Tuples0_insert)
+  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic QsADTs.Tuples0_enumerate)
+
+  ### ("ADT", "Tuples1_new") ->> (Axiomatic QsADTs.Tuples1_new)
+  ### ("ADT", "Tuples1_insert") ->> (Axiomatic QsADTs.Tuples1_insert)
+  ### ("ADT", "Tuples1_find") ->> (Axiomatic QsADTs.Tuples1_find)
+  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic QsADTs.Tuples1_enumerate)
+
+  ### ("ADT", "Tuples2_new") ->> (Axiomatic QsADTs.Tuples2_new)
+  ### ("ADT", "Tuples2_insert") ->> (Axiomatic QsADTs.Tuples2_insert)
+  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic QsADTs.Tuples2_findBoth)
+  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
+  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
+  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
 
 Lemma progOKs
   : forall (env := QSEnv)
