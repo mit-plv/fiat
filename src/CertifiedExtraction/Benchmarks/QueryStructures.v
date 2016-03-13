@@ -5149,6 +5149,110 @@ Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
   ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
 
+Add Parametric Morphism av
+  : (@RunsTo av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
+      as Proper_RunsTo.
+Proof.
+  unfold impl; intros.
+  revert y y1 y2 H0 H1 H.
+  induction H2; intros.
+  - econstructor; rewrite <- H0, <- H1; eauto.
+  - econstructor 2; eauto.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 3; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 4; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 5; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 6; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H1; apply H.
+    rewrite <- H1, <- H2; eauto.
+  - econstructor 7;
+    rewrite <- H2; eauto.
+    rewrite <- H1; symmetry; eauto.
+  - econstructor 8; eauto.
+    rewrite <- H8; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H7.
+    subst st'; subst st'0; rewrite <- H6; eauto.
+  - econstructor 9; eauto.
+    rewrite <- H9; eauto.
+    rewrite <- H7; eauto.
+    rewrite <- H7; eauto.
+    eapply IHRunsTo; eauto.
+    reflexivity.
+    reflexivity.
+    subst st'; subst st'0; subst output; rewrite <- H8.
+    rewrite <- H7; eauto.
+Qed.
+
+Add Parametric Morphism av
+  : (@Safe av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
+      as Proper_Safe.
+Proof.
+  unfold impl; intros.
+  rewrite <- H0.
+  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
+  - intros; inversion H2; subst; intuition.
+    eapply H4.
+    setoid_rewrite H; eauto.
+  - intros; inversion H2; subst; intuition.
+  - intros; inversion H2; substs; intuition.
+    left; intuition eauto.
+    subst loop; subst loop1; subst loop2.
+    rewrite <- H4.
+    eapply H8.
+    rewrite H; eauto.
+  - intros; inversion H2; substs; intuition.
+    eauto.
+  - intros; inversion H2; substs; intuition.
+    + eexists; intuition eauto.
+      left; eexists; intuition eauto.
+      rewrite <- H; eauto.
+    + eexists; intuition eauto.
+      right; eexists; intuition eauto.
+      rewrite <- H; eauto.
+      eapply H12; eauto.
+      rewrite H; eauto.
+      eapply H12.
+      rewrite H; eauto.
+Qed.
+
+Add Parametric Morphism av
+  : (@ProgOk av)
+with signature
+(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
+  as Proper_ProgOk.
+Proof.
+  unfold impl; intros; intro; intros; split.
+  setoid_rewrite <- H0.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H.
+  eapply H4.
+  rewrite H0.
+  eauto.
+Qed.
+
 Definition CUnit
            (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
                           /\ exists idx,
@@ -5179,8 +5283,88 @@ Proof.
   repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
   repeat (apply conj).
   (* And here's where we should be using _compile! *)
+  (* The script from here to END is meant to massage the environment *)
+  (* into a form that _compile enjoys. Comment to END to dive directly  *)
+  (* into compilation. *)
+  (*eapply Proper_ProgOk.
+  reflexivity.
+  unfold map_aug_mod_name.
+  unfold GenExports.
+  simpl.
+  unfold GLabelMapFacts.uncurry.
+  simpl.
+  symmetry; etransitivity.
+  eapply GLabelMapFacts.Disjoint_update_sym.
+  admit.
+  unfold QSEnv_Ax at 1.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  rewrite GLabelMapFacts.map_add.
+  unfold GLabelMapFacts.UWFacts.WFacts.P.update.
+  unfold GLabelMapFacts.M.fold.
+  simpl.
+  reflexivity.
+  reflexivity.
+  reflexivity.
+  reflexivity. *)
+  (* END *)
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  Time _qs_step. (* This step is taking awhile <5 min. *)
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
+  _qs_step.
 
-  (* _compile. (* Toooo sloooow. *)
+(* _compile. (* Toooo sloooow. *)
   ??? . (* Rep Invariant condition *)
   reflexivity. (* syntactic condition *)
   reflexivity. (* syntactic condition *)
