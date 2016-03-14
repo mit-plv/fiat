@@ -130,7 +130,8 @@ class TestBench(object):
     def spawns(self, npids):
         self.npids = npids
         rng = random.Random(0) # explicit seed
-        for pid in range(npids):
+        pids = rng.shuffle(list(range(npids)))
+        for pid in pids:
             rec = (pid, int(pid % (1 + npids // 10) == 0), rng.randint(0, 2**15-1))
             self.execute("""INSERT INTO Processes VALUES(__, __, __)""", rec)
         self.db.commit()
