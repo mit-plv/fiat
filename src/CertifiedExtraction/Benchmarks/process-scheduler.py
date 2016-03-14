@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
 import gc
 import random
+import sys
 from time import time
 from sys import stderr
+from argparse import ArgumentParser
 from collections import defaultdict, OrderedDict
 
 import numpy
@@ -10,6 +13,7 @@ from matplotlib import pyplot
 
 import sqlite3
 import psycopg2
+import pymysql
 
 TANGO = OrderedDict((("yellow", ("#fce94f", "#edd400", "#c4a000")),
                      ("orange", ("#fcaf3e", "#f57900", "#ce5c00")),
@@ -107,6 +111,7 @@ class TestBench(object):
 
     def execute(self, query, *args):
         query = self.parametrize(query)
+        # print(query)
         self.cursor.execute(query, *args)
 
     def __enter__(self):
@@ -119,16 +124,16 @@ class TestBench(object):
         self.cursor.execute("""DROP TABLE IF EXISTS Processes""")
         self.cursor.execute("""CREATE TABLE Processes
                              (pid INTEGER NOT NULL, state INTEGER NOT NULL, cputime INTEGER NOT NULL)""")
-        self.cursor.execute("""CREATE UNIQUE INDEX pid_idx ON Processes (state, pid)""")
+        self.cursor.execute("""CREATE INDEX pid_idx ON Processes (state, pid)""")
         self.db.commit()
 
     def spawns(self, npids):
         self.npids = npids
         rng = random.Random(0) # explicit seed
-        records = [(pid, rng.randint(0,1), rng.randint(0, 2**15-1)) for pid in range(npids)]
-        for rec in records:
+        for pid in range(npids):
+            rec = (pid, int(pid % (1 + npids // 10) == 0), rng.randint(0, 2**15-1))
             self.execute("""INSERT INTO Processes VALUES(__, __, __)""", rec)
-            self.db.commit()
+        self.db.commit()
 
     def get_cpu_times(self, nqueries):
         rng = random.Random(0)
@@ -136,15 +141,22 @@ class TestBench(object):
             pid = rng.randint(0, self.npids-1)
             self.execute("""SELECT cputime FROM Processes WHERE pid = __""", (pid,))
             self.cursor.fetchall()
-            self.db.commit()
+        self.db.commit()
 
-    def enumerates(self, nqueries):
+    def get_cpu_times_with_extra_clause(self, nqueries):
         rng = random.Random(0)
         for _ in range(nqueries):
-            state = rng.randint(0, 1)
-            self.execute("""SELECT pid FROM Processes WHERE state = __""", (state,))
+            pid = rng.randint(0, self.npids-1)
+            self.execute("""SELECT cputime FROM Processes WHERE state IN (0, 1) AND pid = __""", (pid,))
             self.cursor.fetchall()
-            self.db.commit()
+        self.db.commit()
+
+    def enumerates(self, nqueries):
+        # rng = random.Random(0)
+        for _ in range(nqueries):
+            # state = rng.randint(0, 1)
+            self.execute("""SELECT pid FROM Processes WHERE state = 1""")
+        self.db.commit()
 
     def with_timer(self, name, f, *args):
         start = time()
@@ -168,7 +180,21 @@ class SQLiteTestBench(TestBench):
 
 class PostgreTestBench(TestBench):
     def connect(self):
-        return psycopg2.connect('dbname=fiat-to-facade user=clement')
+        return psycopg2.connect('dbname=fiat-to-facade')
+
+    def parametrize(self, query):
+        return query.replace("__", "%s")
+
+class MySQLTestBench(TestBench):
+    """
+    CREATE USER 'fiat'@'localhost' IDENTIFIED BY 'fiat';
+    GRANT ALL PRIVILEGES ON * . * TO 'fiat'@'localhost';
+    FLUSH PRIVILEGES;
+    CREATE DATABASE fiat_to_facade;
+    """
+
+    def connect(self):
+        return pymysql.connect(host="localhost", user="fiat", passwd="fiat", db="fiat_to_facade")
 
     def parametrize(self, query):
         return query.replace("__", "%s")
@@ -191,28 +217,42 @@ def write_results(path, results):
             for npids in curve:
                 outfile.write("\t".join(map(str, [name, npids] + curve[npids])) + "\n")
 
-def benchmark(prefix, bench, npids, ngetcputimes, nenumerates):
+def benchmark(prefix, bench, npids, nenumerates, ngetcputimes):
     results = defaultdict(dict)
     for npid in npids:
         with bench() as tb:
-            # tb.cursor.execute("""EXPLAIN QUERY PLAN SELECT cputime FROM Processes WHERE pid = 10""")
+            # tb.cursor.execute("""EXPLAIN SELECT cputime FROM Processes WHERE pid = 10""")
             # print(list(tb.cursor.fetchall()))
             record(results, *tb.with_timer(prefix + "Spawn", tb.spawns, npid))
-            record(results, *tb.with_timer(prefix + "Enumerate", tb.enumerates, ngetcputimes))
-            record(results, *tb.with_timer(prefix + "GetCpuTime", tb.get_cpu_times, nenumerates))
+            record(results, *tb.with_timer(prefix + "Enumerate", tb.enumerates, nenumerates))
+            record(results, *tb.with_timer(prefix + "GetCpuTime", tb.get_cpu_times, ngetcputimes))
+            record(results, *tb.with_timer(prefix + "GetCPUTime'", tb.get_cpu_times_with_extra_clause, nenumerates))
     return results
 
-def plot_set(axis, results, color, markers):
+def out_file_name(prefix, nenumerates, ngetcputimes):
+    return "{}-{}-{}.out".format(prefix, nenumerates, ngetcputimes)
+
+def benchmark_helper(prefix, bench, npids, nenumerates, ngetcputimes):
+    results = benchmark(prefix + "/", bench, npids, nenumerates, ngetcputimes)
+    write_results(out_file_name(prefix, nenumerates, ngetcputimes), results)
+
+def plot_set(axis, results, linestyle, markers, colors):
     """Plot a collection of RESULTS on AXIS.
     RESULTS is a dictionary of {label: list of (x, (y :: junk))}."""
     legend = []
-    for (opname, opresults), marker in zip(sorted(results.items()), markers):
-        if "Spawn" not in opname:
-            xs, data = zip(*sorted(opresults.items()))
-            ys = numpy.array([rec[0] for rec in data])
-            line, = axis.plot(xs, savitzky_golay(ys, 19, 3), color=color, linestyle="-", marker="")
-            dots, = axis.plot(xs, ys, color=color, linestyle="", marker=marker)
-            legend.append(((line, dots), opname))
+    results = {k: v for (k, v) in results.items() if ("Spawn" not in k and "Explicit" not in k)}
+    for (opname, opresults), marker, color in zip(sorted(results.items()), markers, colors):
+        # print("Plotting {}".format(opname))
+        xs, data = zip(*sorted(opresults.items()))
+        ys = numpy.array([rec[0] for rec in data])
+        smoothing = (len(ys) // 8) * 2 + 3
+        print(color, linestyle)
+        line, = axis.plot(xs, savitzky_golay(ys, smoothing, 3),
+                          color=color, linestyle=linestyle, marker="", linewidth=2.7)
+        dots, = axis.plot(xs, ys, linestyle="",
+                          marker=marker, markevery=2, markerfacecolor="none",
+                          markeredgewidth=1, markeredgecolor=color,  markersize=6)
+        legend.append(((line, dots), opname))
     return legend
 
 def to_inches(points):
@@ -220,42 +260,84 @@ def to_inches(points):
 
 def rcparams():
     matplotlib.rcParams.update({
-        "font.size": 9,
+        "font.size": 18,
         "font.family": "serif",
         "font.serif": "times",
         "axes.titlesize": "medium",
         "xtick.labelsize": "small",
         "ytick.labelsize": "small",
-        "legend.fontsize": "medium",
+        "legend.fontsize": "small",
         "text.usetex": True,
         "text.latex.unicode": True,
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.05
     })
 
-def plot(*result_sets):
+def plot_sets(*result_sets):
     rcparams()
-    fig = pyplot.figure(figsize=(to_inches(504.0),)*2)
-    axis = fig.add_subplot(1,1,1)
-    legend = []
-    for results, color in zip(result_sets, ("orange", "green", "purple")):
-        legend.extend(plot_set(axis, results, color, (".", "x")))
-    axis.set_yscale('log')
-    axis.legend(*zip(*legend))
+    fig, axes = pyplot.subplots(1, 2, sharex = True, squeeze = True, frameon = False, figsize = [d * to_inches(240.0) for d in (1, 3)])
+    legends = []
+    colorsets = [TANGO[color] for color in ("orange", "green", "purple")]
+    # for results, (linestyle, color) in zip(result_sets, (((0, (6, 6)), "orange"), ((0, (1, 2, 4, 2)), "green"), ("-", "purple"))):
+    for results, linestyle, colors in zip(result_sets, ((0, (8, 8)), (0, (2, 2)), "-"), colorsets):
+        legends.append(plot_set(axes, results, linestyle, ("+", "x", "o"), colors))
+    # axis.set_yscale('log')
+    legend = [desc for legend in reversed(legends) for desc in legend]
+    axis.legend(*zip(*legend), loc='best', numpoints=3)
     fig.show()
+    pyplot.show()
+    # fig.savefig("../../../../papers/fiat-to-facade/benchmarks.pdf")
+
+def compute_npids(maxpid):
+    return [n*10 for n in range(1,maxpid//10+1)]
+
+def benchmark_bedrock(args):
+    import subprocess
+    with open(out_file_name("Bedrock", args.nenumerates, args.ngetcputimes), mode="wb") as outfile:
+        for pid in args.npids:
+            bedrock_args = [args.exec] + [str(arg) for arg in (pid, args.nenumerates, args.ngetcputimes)]
+            output = subprocess.check_output(bedrock_args)
+            print(output.decode('ascii'))
+            outfile.write(subprocess.check_output(bedrock_args))
+
+def benchmark_rdbms(args):
+    benchmark_helper("Postgre", PostgreTestBench, args.npids, args.nenumerates, args.ngetcputimes)
+    benchmark_helper("SQLite", SQLiteTestBench, args.npids, args.nenumerates, args.ngetcputimes)
+    # benchmark_helper("MySQL", MySQLTestBench, npids, nenumerates, ngetcputimes)
+
+def plot(args):
+    #read_results(out_file_name("MySQL", nenumerates, ngetcputimes)),
+    plot_sets(read_results(out_file_name("SQLite", args.nenumerates, args.ngetcputimes)),
+              read_results(out_file_name("Postgre", args.nenumerates, args.ngetcputimes)),
+              read_results(out_file_name("Bedrock", args.nenumerates, args.ngetcputimes)))
+
+def parse_args():
+    parser = ArgumentParser(description='Benchmark databases.')
+    parser.add_argument("--max_npids", default=5000)
+    parser.add_argument("--nenumerates", default=20000)
+    parser.add_argument("--ngetcputimes", default=10000)
+
+    subparsers = parser.add_subparsers(help='Action', dest="action")
+    subparsers.required = True
+
+    rdbms_parser = subparsers.add_parser("rdbms", help="Benchmark PostgreSQL, SQLite, and MySQL.")
+    rdbms_parser.set_defaults(callback=benchmark_rdbms)
+
+    bedrock_parser = subparsers.add_parser("bedrock", help="Benchmark PostgreSQL, SQLite, and MySQL.")
+    bedrock_parser.add_argument("exec", help="Path to the Bedrock executable")
+    bedrock_parser.set_defaults(callback=benchmark_bedrock)
+
+    plot_parser = subparsers.add_parser("plot", help="Benchmark PostgreSQL, SQLite, and MySQL.")
+    plot_parser.set_defaults(callback=plot)
+
+    args = parser.parse_args(sys.argv[1:] if len(sys.argv) >= 1 else ["plot"])
+    args.npids = compute_npids(args.max_npids)
+
+    return args
 
 def main():
-    npids = [n*10 for n in range(1,100+1)]
-    nenumerates = 10000
-    ngetcputimes = 10000
-
-    # results = benchmark("Postgre/", PostgreTestBench, npids, nenumerates, ngetcputimes)
-    # write_results("postgre.out", results)
-
-    # results = benchmark("SQLite/", SQLiteTestBench, npids, nenumerates, ngetcputimes)
-    # write_results("sqlite.out", results)
-
-    plot(read_results("postgre.out"), read_results("sqlite.out"))
+    args = parse_args()
+    args.callback(args)
 
 if __name__ == '__main__':
     main()
