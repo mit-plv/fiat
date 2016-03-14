@@ -2,6 +2,7 @@
 import gc
 import random
 import sys
+import re
 from time import time
 from sys import stderr
 from argparse import ArgumentParser
@@ -238,12 +239,24 @@ def benchmark_helper(prefix, bench, npids, nenumerates, ngetcputimes):
     results = benchmark(prefix + "/", bench, npids, nenumerates, ngetcputimes)
     write_results(out_file_name(prefix, nenumerates, ngetcputimes), results)
 
+def relabel_curve(name):
+    for rep_pair in [("Postgre", "PG"), ("Cpu", "CPU"), ("GetCPUTime", "CPU"), ("Enumerate", "Enum")]:
+        name = name.replace(*rep_pair)
+    return name
+
+def order_curves(curve):
+    return ["Enum", "CPU'", "CPU"].index(re.sub(".*/", "", curve[0]))
+
+def cleanup_curves(curves):
+    return [(relabel_curve(name), curve) for (name, curve) in curves.items()
+       if ("Spawn" not in name and "Explicit" not in name)]
+
 def plot_set(axes, results, linestyle, markers, colors):
     """Plot a collection of RESULTS on AXIS.
     RESULTS is a dictionary of {label: list of (x, (y :: junk))}."""
     legend = []
-    results = {k: v for (k, v) in results.items() if ("Spawn" not in k and "Explicit" not in k)}
-    for (opname, opresults), axis, marker, color in zip(sorted(results.items()), axes, markers, colors):
+    results = sorted(cleanup_curves(results), key=order_curves)
+    for (opname, opresults), axis, marker, color in zip(results, axes, markers, colors):
         print("Plotting {} in {}".format(opname, color))
         xs, data = zip(*sorted((k, v) for (k, v) in opresults.items() if 20 <= k <= 5000))
         ys = numpy.array([rec[0] for rec in data])
@@ -253,10 +266,8 @@ def plot_set(axes, results, linestyle, markers, colors):
         dots, = axis.plot(xs, ys, linestyle="",
                           marker="", markevery=15, markerfacecolor="none",
                           markeredgewidth=0.5, markeredgecolor=color,  markersize=5)
-        for rep_pair in [("Postgre", "PG"), ("Cpu", "CPU"), ("GetCPUTime", "CPU"), ("Enumerate", "Enum")]:
-            opname = opname.replace(*rep_pair)
-        legend.append(((mpatches.Patch(facecolor='none', edgecolor="black", linewidth=0.3),
-                        line, dots), opname))
+        legend.append(((mpatches.Patch(facecolor='none', edgecolor=TANGO["grey"][2], linewidth=0.3), line, dots),
+                       "{{\\fontsize{{9}}{{1}}\\selectfont{{}}{}\\fontsize{{8}}{{1}}\\selectfont{{}}\\textsf{{/{}}}}}".format(*opname.split("/"))))
     return legend
 
 def to_inches(points):
@@ -296,9 +307,9 @@ def plot_sets(*result_sets):
             set_legend.append((mpatches.Patch(color='none'), ""))
         legends.extend(reversed(set_legend))
 
-    axis.legend(*zip(*legends), loc='lower center',
-                columnspacing=0.6, handletextpad=0.4, handlelength=2.5,
-                bbox_to_anchor=(0.5,-0.28), ncol=3, numpoints=2)
+    axis.legend(*zip(*legends), loc='lower center', frameon=False,
+                columnspacing=1.2, handletextpad=0.4, handlelength=2.5,
+                bbox_to_anchor=(0.5,-0.28), ncol=3, numpoints=2).get_frame().set_linewidth(0.5)
 
     # pyplot.show()
     fig.savefig("../../../../papers/fiat-to-facade/benchmarks.pdf")
