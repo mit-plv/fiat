@@ -10,6 +10,7 @@ from collections import defaultdict, OrderedDict
 import numpy
 import matplotlib
 from matplotlib import pyplot
+import matplotlib.patches as mpatches
 
 import sqlite3
 import psycopg2
@@ -226,7 +227,7 @@ def benchmark(prefix, bench, npids, nenumerates, ngetcputimes):
             # print(list(tb.cursor.fetchall()))
             record(results, *tb.with_timer(prefix + "Spawn", tb.spawns, npid))
             record(results, *tb.with_timer(prefix + "Enumerate", tb.enumerates, nenumerates))
-            record(results, *tb.with_timer(prefix + "GetCpuTime", tb.get_cpu_times, ngetcputimes))
+            record(results, *tb.with_timer(prefix + "GetCPUTime", tb.get_cpu_times, ngetcputimes))
             record(results, *tb.with_timer(prefix + "GetCPUTime'", tb.get_cpu_times_with_extra_clause, nenumerates))
     return results
 
@@ -237,23 +238,25 @@ def benchmark_helper(prefix, bench, npids, nenumerates, ngetcputimes):
     results = benchmark(prefix + "/", bench, npids, nenumerates, ngetcputimes)
     write_results(out_file_name(prefix, nenumerates, ngetcputimes), results)
 
-def plot_set(axis, results, linestyle, markers, colors):
+def plot_set(axes, results, linestyle, markers, colors):
     """Plot a collection of RESULTS on AXIS.
     RESULTS is a dictionary of {label: list of (x, (y :: junk))}."""
     legend = []
     results = {k: v for (k, v) in results.items() if ("Spawn" not in k and "Explicit" not in k)}
-    for (opname, opresults), marker, color in zip(sorted(results.items()), markers, colors):
-        # print("Plotting {}".format(opname))
-        xs, data = zip(*sorted(opresults.items()))
+    for (opname, opresults), axis, marker, color in zip(sorted(results.items()), axes, markers, colors):
+        print("Plotting {} in {}".format(opname, color))
+        xs, data = zip(*sorted((k, v) for (k, v) in opresults.items() if 20 <= k <= 5000))
         ys = numpy.array([rec[0] for rec in data])
-        smoothing = (len(ys) // 8) * 2 + 3
-        print(color, linestyle)
+        smoothing = (len(ys) // 30) * 2 + 3
         line, = axis.plot(xs, savitzky_golay(ys, smoothing, 3),
-                          color=color, linestyle=linestyle, marker="", linewidth=2.7)
+                          color=color, linestyle=linestyle, marker="", linewidth=2, zorder=10)
         dots, = axis.plot(xs, ys, linestyle="",
-                          marker=marker, markevery=2, markerfacecolor="none",
-                          markeredgewidth=1, markeredgecolor=color,  markersize=6)
-        legend.append(((line, dots), opname))
+                          marker="", markevery=15, markerfacecolor="none",
+                          markeredgewidth=0.5, markeredgecolor=color,  markersize=5)
+        for rep_pair in [("Postgre", "PG"), ("Cpu", "CPU"), ("GetCPUTime", "CPU"), ("Enumerate", "Enum")]:
+            opname = opname.replace(*rep_pair)
+        legend.append(((mpatches.Patch(facecolor='none', edgecolor="black", linewidth=0.3),
+                        line, dots), opname))
     return legend
 
 def to_inches(points):
@@ -261,13 +264,13 @@ def to_inches(points):
 
 def rcparams():
     matplotlib.rcParams.update({
-        "font.size": 18,
+        "font.size": 9,
         "font.family": "serif",
         "font.serif": "times",
         "axes.titlesize": "medium",
         "xtick.labelsize": "small",
         "ytick.labelsize": "small",
-        "legend.fontsize": "small",
+        "legend.fontsize": 8,
         "text.usetex": True,
         "text.latex.unicode": True,
         "savefig.bbox": "tight",
@@ -276,18 +279,29 @@ def rcparams():
 
 def plot_sets(*result_sets):
     rcparams()
-    fig, axes = pyplot.subplots(1, 2, sharex = True, squeeze = True, frameon = False, figsize = [d * to_inches(240.0) for d in (1, 3)])
+
+    figsize = [d * to_inches(240.0) for d in (1, 1)]
+    fig, axis = pyplot.subplots(1, 1, sharex=True, frameon=False, figsize=figsize)
+    axis.grid(which='minor', color=TANGO["grey"][1], zorder=0)
+    axis.grid(which='major', color=TANGO["black"][2], zorder=5)
+    axis.set_yscale('log', basey=10)
+    axis.set_ylim((0.4e-2, 5))
+
     legends = []
-    colorsets = [TANGO[color] for color in ("orange", "green", "purple")]
-    # for results, (linestyle, color) in zip(result_sets, (((0, (6, 6)), "orange"), ((0, (1, 2, 4, 2)), "green"), ("-", "purple"))):
-    for results, linestyle, colors in zip(result_sets, ((0, (8, 8)), (0, (2, 2)), "-"), colorsets):
-        legends.append(plot_set(axes, results, linestyle, ("+", "x", "o"), colors))
-    # axis.set_yscale('log')
-    legend = [desc for legend in reversed(legends) for desc in legend]
-    axis.legend(*zip(*legend), loc='best', numpoints=3)
-    fig.show()
-    pyplot.show()
-    # fig.savefig("../../../../papers/fiat-to-facade/benchmarks.pdf")
+    colors = [TANGO[color][0] for color in ("purple", "orange", "red")]
+    linestyles = ((0, (1, 1)), (0, (8, 8)), "-")
+    for results, linestyle in zip(result_sets, linestyles):
+        set_legend = plot_set((axis,)*len(results), results, linestyle, ("+", "x", "o"), colors)
+        if len(set_legend) < 3:
+            set_legend.append((mpatches.Patch(color='none'), ""))
+        legends.extend(reversed(set_legend))
+
+    axis.legend(*zip(*legends), loc='lower center',
+                columnspacing=0.6, handletextpad=0.4, handlelength=2.5,
+                bbox_to_anchor=(0.5,-0.28), ncol=3, numpoints=2)
+
+    # pyplot.show()
+    fig.savefig("../../../../papers/fiat-to-facade/benchmarks.pdf")
 
 def compute_npids(maxpid):
     return [n*10 for n in range(1,maxpid//10+1)]
@@ -308,8 +322,8 @@ def benchmark_rdbms(args):
 
 def plot(args):
     #read_results(out_file_name("MySQL", nenumerates, ngetcputimes)),
-    plot_sets(read_results(out_file_name("SQLite", args.nenumerates, args.ngetcputimes)),
-              read_results(out_file_name("Postgre", args.nenumerates, args.ngetcputimes)),
+    plot_sets(read_results(out_file_name("Postgre", args.nenumerates, args.ngetcputimes)),
+              read_results(out_file_name("SQLite", args.nenumerates, args.ngetcputimes)),
               read_results(out_file_name("Bedrock", args.nenumerates, args.ngetcputimes)))
 
 def parse_args():
