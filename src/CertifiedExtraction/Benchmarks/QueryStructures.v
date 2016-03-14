@@ -4825,21 +4825,17 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-Lemma postConditionAdd :
-  forall n
-         (r : FiatBag n)
-         (H : TuplesF.functional (IndexedEnsemble_TupleToListW r))
-         el
-         (H0 : IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el)),
-    TuplesF.functional
-      (IndexedEnsemble_TupleToListW
-         (Ensembles.Add IndexedEnsembles.IndexedElement r el))
-    /\ (exists idx : nat,
-           TuplesF.minFreshIndex
-             (IndexedEnsemble_TupleToListW
-                (Ensembles.Add IndexedEnsembles.IndexedElement r el)) idx) .
+Definition BagSanityConditions {N} tbl :=
+  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
+  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
+
+Lemma postConditionAdd:
+  forall n (r : FiatBag n) el,
+    TuplesF.functional (IndexedEnsemble_TupleToListW r) ->
+    IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el) ->
+    BagSanityConditions (Ensembles.Add IndexedEnsembles.IndexedElement r el).
 Proof.
-  unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
+  split; unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
   - destruct t1; destruct t2; simpl in *; subst; f_equal.
     destruct H2; destruct H1; intuition.
     destruct H2; destruct H3; subst.
@@ -4896,15 +4892,6 @@ Proof.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
 Qed.
-
-Ltac start_compiling_adt :=
-  intros;
-  unfold_and_subst;
-  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
-  repeat_destruct;
-  unfold If_Then_Else in *; (*, heading in *;*)
-  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
-  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
 Ltac _compile_CallBagFind :=
   match_ProgOk
@@ -5293,85 +5280,7 @@ Proof.
   intros * H; rewrite GLabelMapFacts.map_add, H; reflexivity.
 Qed.
 
-Ltac GLabelMap_fast_apply_map :=
-  lazymatch goal with
-  | [  |- context[GLabelMap.map ?f ?m] ] =>
-    lazymatch type of f with
-    | ?elt -> ?elt' =>
-      let m' := fresh in
-      evar (m' : GLabelMap.t elt');
-      setoid_replace (GLabelMap.map f m) with m' using relation (@GLabelMap.Equal elt');
-      [ | unfold m' in *; clear m'; try unfold m;
-          solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] ]
-    end
-  end.
-
-Ltac set_GenAxiomaticSpecs :=
-  repeat match goal with
-         | [  |- context[GLabelMap.add ?k ?v _ ] ] =>
-           match v with
-           | context[GenAxiomaticSpecs _ _ _ _ _ _ _] =>
-             let tv := type of v in
-             let v' := fresh in
-             pose v as v';
-             (* (id …) is useful to track things that we had to set for perfomance reasons *)
-             change tv with (id tv) in v';
-             change v with v'
-           end
-         end.
-
-Ltac unset_GenAxiomaticSpecs :=
-  repeat match goal with
-         | [ H := (GenAxiomaticSpecs _ _ _ _ _ _ _) : (id _) |- _ ] => unfold H in *; clear H
-         end.
-
-Ltac _compile_cleanup_env_helper :=
-  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
-          GLabelMapFacts.uncurry; simpl);
-  set_GenAxiomaticSpecs;
-  GLabelMap_fast_apply_map;
-  GLabelMap_fast_apply_map;
-  unset_GenAxiomaticSpecs;
-  reflexivity.
-
-Ltac __compile_cleanup_env :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match env with
-            | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
-              eapply Proper_ProgOk; [ reflexivity | _compile_cleanup_env_helper | reflexivity.. | idtac ];
-              match_ProgOk ltac:(fun prog pre post ext env => set env)
-            end).
-
-Ltac __prepare_merged_env_for_compile_do_side_conditions :=
-  lazymatch goal with
-  | [ |- GLabelMap.MapsTo _ _ ?env ] =>
-    lazymatch eval unfold env in env with
-    | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
-      unfold env; apply GLabelMapFacts.UWFacts.WFacts.P.update_mapsto_iff; left
-    end
-  end.
-
-Ltac _qs_step :=
-  match goal with
-  | _ => __compile_cleanup_env
-  | _ => __prepare_merged_env_for_compile_do_side_conditions
-  | _ => _compile_step
-  | _ => _compile_CallBagFind
-  | _ => _compile_CallBagInsert
-  | _ => _compile_length
-  | _ => _compile_allocTuple
-  | _ => _compile_get
-  | _ => apply CompileConstantBool
-  | _ => reflexivity
-  | _ => progress simpl
-  | _ => setoid_rewrite map_rev_def
-  end.
-
 Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-
-Ltac _compile :=
-  repeat _qs_step.
 
 Eval simpl in
   (forall av env P rWrap cWrap dWrap prog,
@@ -5383,32 +5292,6 @@ Require Import
         CertifiedExtraction.Extraction.External.Loops
         CertifiedExtraction.Extraction.External.GenericADTMethods
         CertifiedExtraction.Extraction.External.FacadeADTs.
-
-(* NOTE: Could prove lemma for un-reved map using temp variable *)
-
-(*Class SideStuff av {n n' : nat}
-      {consSigs : Vector.t consSig n}
-      {methSigs : Vector.t methSig n'}
-      {numRepArgs}
-      (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-      (f' : Rep adt -> Vector.t (Value av) numRepArgs) :=
-  { coDomainWrappers : forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx));
-    domainWrappers : forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx));
-    f'_well_behaved : forall x x0 : Rep adt, is_same_types (f' x0) (f' x) = true }.
-
-Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
-
-Definition SchedulerWrappers :
-  { rWrap : _ & @SideStuff
-                  QsADTs.ADTValue _ _ _ _ PartialSchedulerImpl
-                  (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap) }.
-Proof.
-  simpl;
-  repeat_destruct;
-  typeclasses eauto.
-Defined. *)
 
 Definition coDomainWrappers
            av {n n' : nat}
@@ -5561,8 +5444,164 @@ Definition DecomposeIndexedQueryStructurePre' av qs_schema Index
            (r : IndexedQueryStructure qs_schema Index) :=
   DecomposePrei3list _ _ rWrap (id r).
 
-Transparent Vector.to_list.
 
+Ltac GLabelMap_fast_apply_map :=
+  lazymatch goal with
+  | [  |- context[GLabelMap.map ?f ?m] ] =>
+    lazymatch type of f with
+    | ?elt -> ?elt' =>
+      let m' := fresh in
+      evar (m' : GLabelMap.t elt');
+      setoid_replace (GLabelMap.map f m) with m' using relation (@GLabelMap.Equal elt');
+      [ | unfold m' in *; clear m'; try unfold m;
+          solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] ]
+    end
+  end.
+
+Ltac set_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [  |- context[GLabelMap.add ?k ?v _ ] ] =>
+           match v with
+           | context[GenAxiomaticSpecs _ _ _ _ _ _ _] =>
+             let tv := type of v in
+             let v' := fresh in
+             pose v as v';
+             (* (id …) is useful to track things that we had to set for perfomance reasons *)
+             change tv with (id tv) in v';
+             change v with v'
+           end
+         end.
+
+Ltac unset_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [ H := (GenAxiomaticSpecs _ _ _ _ _ _ _) : (id _) |- _ ] => unfold H in *; clear H
+         end.
+
+Ltac _compile_cleanup_env_helper :=
+  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
+          GLabelMapFacts.uncurry; simpl);
+  set_GenAxiomaticSpecs;
+  GLabelMap_fast_apply_map;
+  GLabelMap_fast_apply_map;
+  unset_GenAxiomaticSpecs;
+  reflexivity.
+
+Ltac __compile_cleanup_env :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match env with
+            | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+              eapply Proper_ProgOk; [ reflexivity | _compile_cleanup_env_helper | reflexivity.. | idtac ];
+              match_ProgOk ltac:(fun prog pre post ext env => set env)
+            end).
+
+Ltac __compile_prepare_merged_env_for_compile_do_side_conditions :=
+  lazymatch goal with
+  | [ |- GLabelMap.MapsTo _ _ ?env ] =>
+    lazymatch eval unfold env in env with
+    | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+      unfold env; apply GLabelMapFacts.UWFacts.WFacts.P.update_mapsto_iff; left
+    end
+  end.
+
+Ltac __compile_pose_query_structure :=
+  (* Removing this pose makes the [apply CompileTuples2_findFirst_spec] loop.
+     No idea why. *)
+  match goal with
+  | [ r: IndexedQueryStructure _ _ |- _ ] =>
+    match goal with
+    | [ r' := _ : IndexedQueryStructure _ _ |- _ ] => fail 1
+    | _ => pose r
+    end
+  end.
+
+Ltac __compile_discharge_bag_side_conditions_step :=
+  match goal with
+  | _ => cleanup
+  | _ => progress injections
+  | _ => progress simpl in *
+  | _ => progress computes_to_inv
+  | _ => progress unfold CallBagMethod in *
+  | _ => progress (find_if_inside; simpl in * )
+  | [  |- BagSanityConditions (Ensembles.Add _ _ _) ] => apply postConditionAdd
+  | [  |- BagSanityConditions _ ] => split; solve [intuition eauto]
+  | _ => eassumption
+  end.
+
+Ltac __compile_discharge_bag_side_conditions_internal :=
+  solve [repeat __compile_discharge_bag_side_conditions_step].
+
+Ltac __compile_discharge_bag_side_conditions :=
+  match goal with
+  | [  |- TuplesF.functional _ ] => __compile_discharge_bag_side_conditions_internal
+  | [  |- TuplesF.minFreshIndex _ _ ] => __compile_discharge_bag_side_conditions_internal
+  | [  |- BagSanityConditions _ ] => __compile_discharge_bag_side_conditions_internal
+  end.
+
+Ltac __compile_unfold :=
+     match goal with
+     | _ => progress unfold If_Then_Else in *
+     end.
+
+Ltac __compile_start_compiling_module imports :=
+  lazymatch goal with
+  | [  |- sigT (fun _ => BuildCompileUnit2T _ _ _ _ _ _ _ _ _ _ _ _ _) ] =>
+    eexists;
+    unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
+    eapply BuildCompileUnit2T' with (env := imports); try apply eq_refl (* reflexivity throws an Anomaly *)
+  | [  |- forall _: (Fin.t _), (sigT _)  ] =>
+    eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; repeat (apply Build_prim_prod || exact tt)
+  end.
+
+Ltac __compile_start_compiling_method :=
+  lazymatch goal with
+  | [  |- sigT (fun (_: Stmt) => _) ] =>
+    eexists; repeat match goal with
+                    | _ => progress simpl
+                    | _ => progress intros
+                    | [  |- _ /\ _ ] => split
+                    end
+  end.
+
+Ltac __compile_decide_NoDup :=
+  repeat lazymatch goal with
+    | [  |- NoDup _ ] => econstructor
+    | [  |- not (List.In _ _) ] => simpl; intuition congruence
+    end.
+
+Ltac __compile_start_compiling_step imports :=
+  match goal with
+  | [ H: BagSanityConditions _ |- _ ] => destruct H as [ ? [ ? ? ] ]
+  | _ => __compile_start_compiling_module imports
+  | _ => __compile_start_compiling_method
+  | _ => __compile_discharge_bag_side_conditions
+  | _ => __compile_decide_NoDup
+  end.
+
+Ltac __compile_method_step :=
+  match goal with
+  | _ => __compile_unfold
+  | _ => __compile_cleanup_env
+  | _ => __compile_pose_query_structure
+  | _ => __compile_prepare_merged_env_for_compile_do_side_conditions
+  | _ => __compile_discharge_bag_side_conditions
+  | _ => _compile_step
+  | _ => _compile_CallBagFind
+  | _ => _compile_CallBagInsert
+  | _ => _compile_length
+  | _ => _compile_allocTuple
+  | _ => _compile_get
+  | _ => apply CompileConstantBool
+  | _ => reflexivity
+  | _ => progress simpl
+  | _ => setoid_rewrite map_rev_def
+  end.
+
+Ltac _compile env :=
+  repeat __compile_start_compiling_step env;
+  repeat __compile_method_step.
+
+Transparent Vector.to_list.
 
 Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   (GLabelMap.empty _)
@@ -5606,10 +5645,6 @@ Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
   ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
 
-Definition BagSanityConditions {N} tbl :=
-  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
-  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
-
 Definition CUnit
   : { env : _ &
     BuildCompileUnit2T
@@ -5626,62 +5661,7 @@ Definition CUnit
       (Scheduler_RepWrapperT _)
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))} .
 Proof.
-  eexists.
-  unfold DecomposeIndexedQueryStructure',
-  DecomposeIndexedQueryStructurePre',
-  DecomposeIndexedQueryStructurePost'.
-  eapply BuildCompileUnit2T' with (env := QSEnv_Ax).
-  repeat econstructor; simpl; intuition eauto; congruence.
-  eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
-  repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
-  repeat (apply conj).
-
-  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
-  unfold If_Then_Else.
-
-  Time _compile.
-
-  admit.
-  instantiate (1 := 0); admit.
-  admit.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-
-
-
-  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
-  unfold If_Then_Else.
-  Time _compile.
-
-  admit.
-  admit.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-
-
-  
-  pose r as _db. (* FIXME removing this 'pose' makes an apply take forever *)
-  unfold If_Then_Else.
-  Time _compile.
-
-  admit.
-  admit.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
+  Time _compile QSEnv_Ax.
 Time Defined.
 
 (* Set Printing All. *)
@@ -5734,6 +5714,15 @@ Definition QSEnv : Env QsADTs.ADTValue :=
   ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
   ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
   ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
+
+Ltac start_compiling_adt :=
+  intros;
+  unfold_and_subst;
+  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
+  repeat_destruct;
+  unfold If_Then_Else in *; (*, heading in *;*)
+  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
+  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
 Lemma progOKs
   : forall (env := QSEnv)
