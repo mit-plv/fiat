@@ -5691,21 +5691,17 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-Lemma postConditionAdd :
-  forall n
-         (r : FiatBag n)
-         (H : TuplesF.functional (IndexedEnsemble_TupleToListW r))
-         el
-         (H0 : IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el)),
-    TuplesF.functional
-      (IndexedEnsemble_TupleToListW
-         (Ensembles.Add IndexedEnsembles.IndexedElement r el))
-    /\ (exists idx : nat,
-           TuplesF.minFreshIndex
-             (IndexedEnsemble_TupleToListW
-                (Ensembles.Add IndexedEnsembles.IndexedElement r el)) idx) .
+Definition BagSanityConditions {N} tbl :=
+  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
+  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
+
+Lemma postConditionAdd:
+  forall n (r : FiatBag n) el,
+    TuplesF.functional (IndexedEnsemble_TupleToListW r) ->
+    IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el) ->
+    BagSanityConditions (Ensembles.Add IndexedEnsembles.IndexedElement r el).
 Proof.
-  unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
+  split; unfold TuplesF.functional, TuplesF.minFreshIndex; intros; intuition.
   - destruct t1; destruct t2; simpl in *; subst; f_equal.
     destruct H2; destruct H1; intuition.
     destruct H2; destruct H3; subst.
@@ -5762,15 +5758,6 @@ Proof.
       unfold RelatedIndexedTupleAndListW; simpl; split; eauto.
       omega.
 Qed.
-
-Ltac start_compiling_adt :=
-  intros;
-  unfold_and_subst;
-  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
-  repeat_destruct;
-  unfold If_Then_Else in *; (*, heading in *;*)
-  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
-  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
 Ltac _compile_CallBagFind :=
   match_ProgOk
@@ -6037,66 +6024,129 @@ Ltac _compile_get :=
                     apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
-Definition QSEnv : Env QsADTs.ADTValue :=
-  (GLabelMap.empty _)
-  ### ("ADT", "Tuple_new") ->> (Axiomatic QsADTs.Tuple_new)
-  ### ("ADT", "Tuple_delete") ->> (Axiomatic QsADTs.Tuple_delete)
-  ### ("ADT", "Tuple_copy") ->> (Axiomatic QsADTs.Tuple_copy)
-  ### ("ADT", "Tuple_get") ->> (Axiomatic QsADTs.Tuple_get)
-  ### ("ADT", "Tuple_set") ->> (Axiomatic QsADTs.Tuple_set)
+Add Parametric Morphism elt
+  : (@GLabelMapFacts.UWFacts.WFacts.P.update elt)
+    with signature
+    (GLabelMap.Equal ==> GLabelMap.Equal ==> GLabelMap.Equal)
+      as GLabelMapFacts_UWFacts_WFacts_P_update_morphisn.
+Proof.
+  apply GLabelMapFacts.UWFacts.WFacts.P.update_m.
+Qed.
 
-  ### ("ADT", "WordList_new") ->> (Axiomatic QsADTs.WordList_new)
-  ### ("ADT", "WordList_delete") ->> (Axiomatic QsADTs.WordList_delete)
-  ### ("ADT", "WordList_pop") ->> (Axiomatic QsADTs.WordList_pop)
-  ### ("ADT", "WordList_empty") ->> (Axiomatic QsADTs.WordList_empty)
-  ### ("ADT", "WordList_push") ->> (Axiomatic QsADTs.WordList_push)
-  ### ("ADT", "WordList_copy") ->> (Axiomatic QsADTs.WordList_copy)
-  ### ("ADT", "WordList_rev") ->> (Axiomatic QsADTs.WordList_rev)
-  ### ("ADT", "WordList_length") ->> (Axiomatic QsADTs.WordList_length)
 
-  ### ("ADT", "TupleList_new") ->> (Axiomatic QsADTs.TupleList_new)
-  ### ("ADT", "TupleList_delete") ->> (Axiomatic QsADTs.TupleList_delete)
-  ### ("ADT", "TupleList_copy") ->> (Axiomatic QsADTs.TupleList_copy)
-  ### ("ADT", "TupleList_pop") ->> (Axiomatic QsADTs.TupleList_pop)
-  ### ("ADT", "TupleList_empty") ->> (Axiomatic QsADTs.TupleList_empty)
-  ### ("ADT", "TupleList_push") ->> (Axiomatic QsADTs.TupleList_push)
-  ### ("ADT", "TupleList_rev") ->> (Axiomatic QsADTs.TupleList_rev)
-  ### ("ADT", "TupleList_length") ->> (Axiomatic QsADTs.TupleList_length)
+Add Parametric Morphism av
+  : (@RunsTo av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
+      as Proper_RunsTo.
+Proof.
+  unfold impl; intros.
+  revert y y1 y2 H0 H1 H.
+  induction H2; intros.
+  - econstructor; rewrite <- H0, <- H1; eauto.
+  - econstructor 2; eauto.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 3; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 4; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 5; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 6; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H1; apply H.
+    rewrite <- H1, <- H2; eauto.
+  - econstructor 7;
+    rewrite <- H2; eauto.
+    rewrite <- H1; symmetry; eauto.
+  - econstructor 8; eauto.
+    rewrite <- H8; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H7.
+    subst st'; subst st'0; rewrite <- H6; eauto.
+  - econstructor 9; eauto.
+    rewrite <- H9; eauto.
+    rewrite <- H7; eauto.
+    rewrite <- H7; eauto.
+    eapply IHRunsTo; eauto.
+    reflexivity.
+    reflexivity.
+    subst st'; subst st'0; subst output; rewrite <- H8.
+    rewrite <- H7; eauto.
+Qed.
 
-  ### ("ADT", "Tuples0_new") ->> (Axiomatic QsADTs.Tuples0_new)
-  ### ("ADT", "Tuples0_insert") ->> (Axiomatic QsADTs.Tuples0_insert)
-  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic QsADTs.Tuples0_enumerate)
+Add Parametric Morphism av
+  : (@Safe av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
+      as Proper_Safe.
+Proof.
+  unfold impl; intros.
+  rewrite <- H0.
+  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
+  - intros; inversion H2; subst; intuition.
+    eapply H4.
+    setoid_rewrite H; eauto.
+  - intros; inversion H2; subst; intuition.
+  - intros; inversion H2; substs; intuition.
+    left; intuition eauto.
+    subst loop; subst loop1; subst loop2.
+    rewrite <- H4.
+    eapply H8.
+    rewrite H; eauto.
+  - intros; inversion H2; substs; intuition.
+    eauto.
+  - intros; inversion H2; substs; intuition.
+    + eexists; intuition eauto.
+      left; eexists; intuition eauto.
+      rewrite <- H; eauto.
+    + eexists; intuition eauto.
+      right; eexists; intuition eauto.
+      rewrite <- H; eauto.
+      eapply H12; eauto.
+      rewrite H; eauto.
+      eapply H12.
+      rewrite H; eauto.
+Qed.
 
-  ### ("ADT", "Tuples1_new") ->> (Axiomatic QsADTs.Tuples1_new)
-  ### ("ADT", "Tuples1_insert") ->> (Axiomatic QsADTs.Tuples1_insert)
-  ### ("ADT", "Tuples1_find") ->> (Axiomatic QsADTs.Tuples1_find)
-  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic QsADTs.Tuples1_enumerate)
+Add Parametric Morphism av
+  : (@ProgOk av)
+with signature
+(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
+  as Proper_ProgOk.
+Proof.
+  unfold impl; intros; intro; intros; split.
+  setoid_rewrite <- H0.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H in H2.
+  eapply H1 in H2; intuition.
+  rewrite <- H.
+  eapply H4.
+  rewrite H0.
+  eauto.
+Qed.
 
-  ### ("ADT", "Tuples2_new") ->> (Axiomatic QsADTs.Tuples2_new)
-  ### ("ADT", "Tuples2_insert") ->> (Axiomatic QsADTs.Tuples2_insert)
-  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic QsADTs.Tuples2_findBoth)
-  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
-  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
-  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
-
-Ltac _qs_step :=
-  match goal with
-  | _ => _compile_step
-  | _ => _compile_CallBagFind
-  | _ => _compile_CallBagInsert
-  | _ => _compile_length
-  | _ => _compile_allocTuple
-  | _ => _compile_get
-  | _ => apply CompileConstantBool
-  | _ => reflexivity
-  | _ => progress simpl
-  | _ => setoid_rewrite map_rev_def
-  end.
+Lemma GLabelMapFacts_map_add_1 : (* This is a hack to transform a rewrite into an apply (setoid-rewrite is too slow). *)
+  forall (elt B : Type) (f : elt -> B) (k : GLabelMapFacts.M.key) (v : elt) (m : GLabelMapFacts.M.t elt) m0,
+    GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f m) m0 ->
+    GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f (m ### k ->> v)) (m0 ### k ->> f v).
+Proof.
+  intros * H; rewrite GLabelMapFacts.map_add, H; reflexivity.
+Qed.
 
 Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-
-Ltac _compile :=
-  repeat _qs_step.
 
 Eval simpl in
   (forall av env P rWrap cWrap dWrap prog,
@@ -6108,32 +6158,6 @@ Require Import
         CertifiedExtraction.Extraction.External.Loops
         CertifiedExtraction.Extraction.External.GenericADTMethods
         CertifiedExtraction.Extraction.External.FacadeADTs.
-
-(* NOTE: Could prove lemma for un-reved map using temp variable *)
-
-(*Class SideStuff av {n n' : nat}
-      {consSigs : Vector.t consSig n}
-      {methSigs : Vector.t methSig n'}
-      {numRepArgs}
-      (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-      (f' : Rep adt -> Vector.t (Value av) numRepArgs) :=
-  { coDomainWrappers : forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx));
-    domainWrappers : forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx));
-    f'_well_behaved : forall x x0 : Rep adt, is_same_types (f' x0) (f' x) = true }.
-
-Arguments domainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments coDomainWrappers {_ _ _ _ _ _ _} _ _.
-Arguments f'_well_behaved {_ _ _ _ _ _ _} _ _ _.
-
-Definition SchedulerWrappers :
-  { rWrap : _ & @SideStuff
-                  QsADTs.ADTValue _ _ _ _ PartialSchedulerImpl
-                  (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap) }.
-Proof.
-  simpl;
-  repeat_destruct;
-  typeclasses eauto.
-Defined. *)
 
 Definition coDomainWrappers
            av {n n' : nat}
@@ -6286,8 +6310,164 @@ Definition DecomposeIndexedQueryStructurePre' av qs_schema Index
            (r : IndexedQueryStructure qs_schema Index) :=
   DecomposePrei3list _ _ rWrap (id r).
 
-Transparent Vector.to_list.
 
+Ltac GLabelMap_fast_apply_map :=
+  lazymatch goal with
+  | [  |- context[GLabelMap.map ?f ?m] ] =>
+    lazymatch type of f with
+    | ?elt -> ?elt' =>
+      let m' := fresh in
+      evar (m' : GLabelMap.t elt');
+      setoid_replace (GLabelMap.map f m) with m' using relation (@GLabelMap.Equal elt');
+      [ | unfold m' in *; clear m'; try unfold m;
+          solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] ]
+    end
+  end.
+
+Ltac set_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [  |- context[GLabelMap.add ?k ?v _ ] ] =>
+           match v with
+           | context[GenAxiomaticSpecs _ _ _ _ _ _ _] =>
+             let tv := type of v in
+             let v' := fresh in
+             pose v as v';
+             (* (id …) is useful to track things that we had to set for perfomance reasons *)
+             change tv with (id tv) in v';
+             change v with v'
+           end
+         end.
+
+Ltac unset_GenAxiomaticSpecs :=
+  repeat match goal with
+         | [ H := (GenAxiomaticSpecs _ _ _ _ _ _ _) : (id _) |- _ ] => unfold H in *; clear H
+         end.
+
+Ltac _compile_cleanup_env_helper :=
+  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
+          GLabelMapFacts.uncurry; simpl);
+  set_GenAxiomaticSpecs;
+  GLabelMap_fast_apply_map;
+  GLabelMap_fast_apply_map;
+  unset_GenAxiomaticSpecs;
+  reflexivity.
+
+Ltac __compile_cleanup_env :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match env with
+            | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+              eapply Proper_ProgOk; [ reflexivity | _compile_cleanup_env_helper | reflexivity.. | idtac ];
+              match_ProgOk ltac:(fun prog pre post ext env => set env)
+            end).
+
+Ltac __compile_prepare_merged_env_for_compile_do_side_conditions :=
+  lazymatch goal with
+  | [ |- GLabelMap.MapsTo _ _ ?env ] =>
+    lazymatch eval unfold env in env with
+    | GLabelMapFacts.UWFacts.WFacts.P.update _ _ =>
+      unfold env; apply GLabelMapFacts.UWFacts.WFacts.P.update_mapsto_iff; left
+    end
+  end.
+
+Ltac __compile_pose_query_structure :=
+  (* Removing this pose makes the [apply CompileTuples2_findFirst_spec] loop.
+     No idea why. *)
+  match goal with
+  | [ r: IndexedQueryStructure _ _ |- _ ] =>
+    match goal with
+    | [ r' := _ : IndexedQueryStructure _ _ |- _ ] => fail 1
+    | _ => pose r
+    end
+  end.
+
+Ltac __compile_discharge_bag_side_conditions_step :=
+  match goal with
+  | _ => cleanup
+  | _ => progress injections
+  | _ => progress simpl in *
+  | _ => progress computes_to_inv
+  | _ => progress unfold CallBagMethod in *
+  | _ => progress (find_if_inside; simpl in * )
+  | [  |- BagSanityConditions (Ensembles.Add _ _ _) ] => apply postConditionAdd
+  | [  |- BagSanityConditions _ ] => split; solve [intuition eauto]
+  | _ => eassumption
+  end.
+
+Ltac __compile_discharge_bag_side_conditions_internal :=
+  solve [repeat __compile_discharge_bag_side_conditions_step].
+
+Ltac __compile_discharge_bag_side_conditions :=
+  match goal with
+  | [  |- TuplesF.functional _ ] => __compile_discharge_bag_side_conditions_internal
+  | [  |- TuplesF.minFreshIndex _ _ ] => __compile_discharge_bag_side_conditions_internal
+  | [  |- BagSanityConditions _ ] => __compile_discharge_bag_side_conditions_internal
+  end.
+
+Ltac __compile_unfold :=
+     match goal with
+     | _ => progress unfold If_Then_Else in *
+     end.
+
+Ltac __compile_start_compiling_module imports :=
+  lazymatch goal with
+  | [  |- sigT (fun _ => BuildCompileUnit2T _ _ _ _ _ _ _ _ _ _ _ _ _) ] =>
+    eexists;
+    unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
+    eapply BuildCompileUnit2T' with (env := imports); try apply eq_refl (* reflexivity throws an Anomaly *)
+  | [  |- forall _: (Fin.t _), (sigT _)  ] =>
+    eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; repeat (apply Build_prim_prod || exact tt)
+  end.
+
+Ltac __compile_start_compiling_method :=
+  lazymatch goal with
+  | [  |- sigT (fun (_: Stmt) => _) ] =>
+    eexists; repeat match goal with
+                    | _ => progress simpl
+                    | _ => progress intros
+                    | [  |- _ /\ _ ] => split
+                    end
+  end.
+
+Ltac __compile_decide_NoDup :=
+  repeat lazymatch goal with
+    | [  |- NoDup _ ] => econstructor
+    | [  |- not (List.In _ _) ] => simpl; intuition congruence
+    end.
+
+Ltac __compile_start_compiling_step imports :=
+  match goal with
+  | [ H: BagSanityConditions _ |- _ ] => destruct H as [ ? [ ? ? ] ]
+  | _ => __compile_start_compiling_module imports
+  | _ => __compile_start_compiling_method
+  | _ => __compile_discharge_bag_side_conditions
+  | _ => __compile_decide_NoDup
+  end.
+
+Ltac __compile_method_step :=
+  match goal with
+  | _ => __compile_unfold
+  | _ => __compile_cleanup_env
+  | _ => __compile_pose_query_structure
+  | _ => __compile_prepare_merged_env_for_compile_do_side_conditions
+  | _ => __compile_discharge_bag_side_conditions
+  | _ => _compile_step
+  | _ => _compile_CallBagFind
+  | _ => _compile_CallBagInsert
+  | _ => _compile_length
+  | _ => _compile_allocTuple
+  | _ => _compile_get
+  | _ => apply CompileConstantBool
+  | _ => reflexivity
+  | _ => progress simpl
+  | _ => setoid_rewrite map_rev_def
+  end.
+
+Ltac _compile env :=
+  repeat __compile_start_compiling_step env;
+  repeat __compile_method_step.
+
+Transparent Vector.to_list.
 
 Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   (GLabelMap.empty _)
@@ -6331,118 +6511,11 @@ Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
   ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
 
-Add Parametric Morphism av
-  : (@RunsTo av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
-      as Proper_RunsTo.
-Proof.
-  unfold impl; intros.
-  revert y y1 y2 H0 H1 H.
-  induction H2; intros.
-  - econstructor; rewrite <- H0, <- H1; eauto.
-  - econstructor 2; eauto.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 3; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 4; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 5; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 6; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H1; apply H.
-    rewrite <- H1, <- H2; eauto.
-  - econstructor 7;
-    rewrite <- H2; eauto.
-    rewrite <- H1; symmetry; eauto.
-  - econstructor 8; eauto.
-    rewrite <- H8; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H7.
-    subst st'; subst st'0; rewrite <- H6; eauto.
-  - econstructor 9; eauto.
-    rewrite <- H9; eauto.
-    rewrite <- H7; eauto.
-    rewrite <- H7; eauto.
-    eapply IHRunsTo; eauto.
-    reflexivity.
-    reflexivity.
-    subst st'; subst st'0; subst output; rewrite <- H8.
-    rewrite <- H7; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@Safe av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
-      as Proper_Safe.
-Proof.
-  unfold impl; intros.
-  rewrite <- H0.
-  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
-  - intros; inversion H2; subst; intuition.
-    eapply H4.
-    setoid_rewrite H; eauto.
-  - intros; inversion H2; subst; intuition.
-  - intros; inversion H2; substs; intuition.
-    left; intuition eauto.
-    subst loop; subst loop1; subst loop2.
-    rewrite <- H4.
-    eapply H8.
-    rewrite H; eauto.
-  - intros; inversion H2; substs; intuition.
-    eauto.
-  - intros; inversion H2; substs; intuition.
-    + eexists; intuition eauto.
-      left; eexists; intuition eauto.
-      rewrite <- H; eauto.
-    + eexists; intuition eauto.
-      right; eexists; intuition eauto.
-      rewrite <- H; eauto.
-      eapply H12; eauto.
-      rewrite H; eauto.
-      eapply H12.
-      rewrite H; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@ProgOk av)
-with signature
-(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
-  as Proper_ProgOk.
-Proof.
-  unfold impl; intros; intro; intros; split.
-  setoid_rewrite <- H0.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H.
-  eapply H4.
-  rewrite H0.
-  eauto.
-Qed.
-
 Definition CUnit
-           (P := fun r => TuplesF.functional (IndexedEnsemble_TupleToListW (prim_fst r))
-                          /\ exists idx,
-                     TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW (prim_fst r)) idx)
   : { env : _ &
     BuildCompileUnit2T
       env
-      PartialSchedulerImpl P
+      PartialSchedulerImpl (fun r => BagSanityConditions (prim_fst r))
       (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
       (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
       (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
@@ -6454,111 +6527,68 @@ Definition CUnit
       (Scheduler_RepWrapperT _)
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))} .
 Proof.
-  eexists.
-  unfold DecomposeIndexedQueryStructure',
-  DecomposeIndexedQueryStructurePre',
-  DecomposeIndexedQueryStructurePost'.
-  eapply BuildCompileUnit2T' with (env := QSEnv_Ax).
-  repeat econstructor; simpl; intuition eauto; congruence.
-  eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl;
-  repeat apply Build_prim_prod; eexists; repeat apply conj; intros;
-  repeat (apply conj).
-  (* And here's where we should be using _compile! *)
-  (* The script from here to END is meant to massage the environment *)
-  (* into a form that _compile enjoys. Comment to END to dive directly  *)
-  (* into compilation. *)
-  eapply Proper_ProgOk.
-  reflexivity.
-  unfold map_aug_mod_name.
-  unfold GenExports.
-  simpl.
-  unfold GenAxiomaticSpecs.
-  unfold aug_mod_name.
-  simpl.
-  unfold GLabelMapFacts.uncurry.
-  simpl.
-  symmetry; etransitivity.
-  eapply GLabelMapFacts.Disjoint_update_sym.
-  admit.
-  unfold QSEnv_Ax at 1.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  rewrite GLabelMapFacts.map_add.
-  unfold GLabelMapFacts.UWFacts.WFacts.P.update.
-  unfold GLabelMapFacts.M.fold.
-  simpl.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  (* END *)
-  (* Without the massaging from the above script, these tactics are incredibly slow.  *)
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  Time _qs_step. (* This step is taking awhile >5 min. *)
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
-  _qs_step.
+  Time _compile QSEnv_Ax.
+Time Defined.
 
-(* _compile. (* Toooo sloooow. *)
-  ??? . (* Rep Invariant condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *)
-  reflexivity. (* syntactic condition *) *)
-Admitted.
+(* Set Printing All. *)
 
-  (* Here's the lemma for compiling everything! *)
+Redirect "SpawnSmall" Eval compute in (projT1 CUnit).
+Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
+Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+
+(* Here's the lemma for compiling everything! *)
+
+
+Definition QSEnv : Env QsADTs.ADTValue :=
+  (GLabelMap.empty _)
+  ### ("ADT", "Tuple_new") ->> (Axiomatic QsADTs.Tuple_new)
+  ### ("ADT", "Tuple_delete") ->> (Axiomatic QsADTs.Tuple_delete)
+  ### ("ADT", "Tuple_copy") ->> (Axiomatic QsADTs.Tuple_copy)
+  ### ("ADT", "Tuple_get") ->> (Axiomatic QsADTs.Tuple_get)
+  ### ("ADT", "Tuple_set") ->> (Axiomatic QsADTs.Tuple_set)
+
+  ### ("ADT", "WordList_new") ->> (Axiomatic QsADTs.WordList_new)
+  ### ("ADT", "WordList_delete") ->> (Axiomatic QsADTs.WordList_delete)
+  ### ("ADT", "WordList_pop") ->> (Axiomatic QsADTs.WordList_pop)
+  ### ("ADT", "WordList_empty") ->> (Axiomatic QsADTs.WordList_empty)
+  ### ("ADT", "WordList_push") ->> (Axiomatic QsADTs.WordList_push)
+  ### ("ADT", "WordList_copy") ->> (Axiomatic QsADTs.WordList_copy)
+  ### ("ADT", "WordList_rev") ->> (Axiomatic QsADTs.WordList_rev)
+  ### ("ADT", "WordList_length") ->> (Axiomatic QsADTs.WordList_length)
+
+  ### ("ADT", "TupleList_new") ->> (Axiomatic QsADTs.TupleList_new)
+  ### ("ADT", "TupleList_delete") ->> (Axiomatic QsADTs.TupleList_delete)
+  ### ("ADT", "TupleList_copy") ->> (Axiomatic QsADTs.TupleList_copy)
+  ### ("ADT", "TupleList_pop") ->> (Axiomatic QsADTs.TupleList_pop)
+  ### ("ADT", "TupleList_empty") ->> (Axiomatic QsADTs.TupleList_empty)
+  ### ("ADT", "TupleList_push") ->> (Axiomatic QsADTs.TupleList_push)
+  ### ("ADT", "TupleList_rev") ->> (Axiomatic QsADTs.TupleList_rev)
+  ### ("ADT", "TupleList_length") ->> (Axiomatic QsADTs.TupleList_length)
+
+  ### ("ADT", "Tuples0_new") ->> (Axiomatic QsADTs.Tuples0_new)
+  ### ("ADT", "Tuples0_insert") ->> (Axiomatic QsADTs.Tuples0_insert)
+  ### ("ADT", "Tuples0_enumerate") ->> (Axiomatic QsADTs.Tuples0_enumerate)
+
+  ### ("ADT", "Tuples1_new") ->> (Axiomatic QsADTs.Tuples1_new)
+  ### ("ADT", "Tuples1_insert") ->> (Axiomatic QsADTs.Tuples1_insert)
+  ### ("ADT", "Tuples1_find") ->> (Axiomatic QsADTs.Tuples1_find)
+  ### ("ADT", "Tuples1_enumerate") ->> (Axiomatic QsADTs.Tuples1_enumerate)
+
+  ### ("ADT", "Tuples2_new") ->> (Axiomatic QsADTs.Tuples2_new)
+  ### ("ADT", "Tuples2_insert") ->> (Axiomatic QsADTs.Tuples2_insert)
+  ### ("ADT", "Tuples2_findBoth") ->> (Axiomatic QsADTs.Tuples2_findBoth)
+  ### ("ADT", "Tuples2_findFirst") ->> (Axiomatic QsADTs.Tuples2_findFirst)
+  ### ("ADT", "Tuples2_findSecond") ->> (Axiomatic QsADTs.Tuples2_findSecond)
+  ### ("ADT", "Tuples2_enumerate") ->> (Axiomatic QsADTs.Tuples2_enumerate).
+
+Ltac start_compiling_adt :=
+  intros;
+  unfold_and_subst;
+  match goal with | [ H: Fin.t _ |- _ ] => revert H end;
+  repeat_destruct;
+  unfold If_Then_Else in *; (*, heading in *;*)
+  change (Vector.cons Type W 2 (Vector.cons Type ProcessScheduler.State 1 (Vector.cons Type W 0 (Vector.nil Type)))) with (MakeVectorOfW 3);
+  change ({| NumAttr := 3; AttrList := MakeVectorOfW 3 |}) with (MakeWordHeading 3).
 
 Lemma progOKs
   : forall (env := QSEnv)
