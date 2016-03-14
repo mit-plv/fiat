@@ -781,6 +781,94 @@ Definition AxiomatizeMethodPost
   : Prop :=
   exists r, AxiomatizeMethodPost' cWrap dWrap [] (f r) (meth r) args ret.
 
+Definition AxiomatizeMethodPreSpec (av : Type)
+           {RepImpl RepSpec}
+           {Dom}
+           {numRepArgs : nat}
+           (AbsR : RepSpec -> RepImpl -> Prop)
+           (P : RepImpl -> Prop)
+           (f : RepImpl -> Vector.t (Value av) numRepArgs)
+  : DomWrapperT av Dom
+    -> list (Value av) -> Prop
+  :=
+    fun dWrap args =>
+      exists r r', AbsR r r'
+                   /\ P r'
+                   /\ AxiomatizeMethodPre' (Vector.to_list (f r')) Dom dWrap [] args.
+
+Fixpoint AxiomatizeMethodPostSpec'
+         {Dom}
+         {Cod}
+         {RepSpec RepImpl}
+         (av : Type)
+         {numRepArgs : nat}
+         (AbsR : RepSpec -> RepImpl -> Prop)
+         {struct Dom}
+  : CodWrapperT av Cod
+    -> DomWrapperT av Dom
+    -> list ((Value av) * option av)
+    -> (RepImpl -> Vector.t ((Value av) * option av) numRepArgs)
+    -> methodType' RepSpec Dom Cod
+    -> list ((Value av) * option av) -> Value av -> Prop
+  :=
+  match Dom return
+        CodWrapperT av Cod
+        -> DomWrapperT av Dom
+        -> list ((Value av) * option av)
+        -> (RepImpl -> Vector.t ((Value av) * option av) numRepArgs)
+        -> methodType' RepSpec Dom Cod
+        -> list ((Value av) * option av)
+        -> Value av -> Prop with
+  | nil => match Cod return
+                   CodWrapperT av Cod
+                   -> DomWrapperT av nil
+                   -> list ((Value av) * option av)
+                   -> (RepImpl -> Vector.t ((Value av) * option av) numRepArgs)
+                   -> methodType' RepSpec nil Cod
+                   -> list ((Value av) * option av)
+                   -> Value av -> Prop with
+           | None => fun cWrap dWrap domArgs repArgs meth args ret =>
+                       exists (r' : RepSpec)
+                              (r'' : RepImpl),
+                         computes_to meth r'
+                         /\ AbsR r' r''
+                         /\ args = List.app (domArgs) (Vector.to_list (repArgs r''))
+                         /\ ret = wrap (Word.natToWord 32 0)
+           | Some CodT => fun cWrap dWrap domArgs repArgs meth args ret =>
+                            exists r' r'' v',
+                              computes_to meth (r', v')
+                              /\ AbsR r' r''
+                              /\ args = List.app (domArgs) (Vector.to_list (repArgs r''))
+                              /\ ret = wrap (FacadeWrapper := gWrap cWrap) v'
+           end
+  | cons DomT Dom' =>
+    fun cWrap dWrap domArgs repArgs meth args ret =>
+      let wrap' := gWrap (fst dWrap) in
+      exists x : DomT,
+        AxiomatizeMethodPostSpec'
+          AbsR cWrap (snd dWrap)
+          ((wrap x, None) :: domArgs)
+          repArgs (meth x) args ret
+  end.
+
+Definition AxiomatizeMethodPostSpec
+           (av : Type)
+           {Dom}
+           {Cod}
+           {RepSpec RepImpl}
+           {numRepArgs : nat}
+           (AbsR : RepSpec -> RepImpl -> Prop)
+           (f : RepImpl -> RepImpl -> Vector.t ((Value av) * option av) numRepArgs)
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType RepSpec Dom Cod)
+           (args : list ((Value av) * option av))
+           (ret : Value av)
+  : Prop :=
+  exists r' r,
+    AbsR r r'
+    /\ AxiomatizeMethodPostSpec' AbsR cWrap dWrap [] (f r') (meth r) args ret.
+
 Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ / .
 Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ / .
 
@@ -820,7 +908,6 @@ Lemma GenAxiomaticSpecs_type_conforming
                                            (Vector.to_list (DecomposeRepPre x)) = true)
   : type_conforming (AxiomatizeMethodPre RepInv DecomposeRepPre dWrap).
 Proof.
-
   unfold type_conforming.
   unfold AxiomatizeMethodPre in *.
   remember nil; remember l.
@@ -870,6 +957,69 @@ Definition GenAxiomaticSpecs
        PreCondTypeConform := GenAxiomaticSpecs_type_conforming H
     |}.
 
+Lemma GenAxiomaticSpecs'_type_conforming
+           av
+           {Dom}
+           {RepSpec RepImpl}
+           (AbsR : RepSpec -> RepImpl -> Prop)
+           (RepInv : RepImpl -> Prop)
+           (dWrap : DomWrapperT av Dom)
+           {numRepArgs : nat}
+           (DecomposeRepPre : RepImpl -> Vector.t (Value av) numRepArgs)
+           (_ : forall x x0, is_same_types (Vector.to_list (DecomposeRepPre x0))
+                                           (Vector.to_list (DecomposeRepPre x)) = true)
+  : type_conforming (AxiomatizeMethodPreSpec AbsR RepInv DecomposeRepPre dWrap).
+Proof.
+  unfold type_conforming.
+  unfold AxiomatizeMethodPreSpec in *.
+  remember nil; remember l.
+  assert (is_same_types l0 l = true)
+         by (rewrite <- Heql0, Heql; reflexivity).
+  intros; rewrite Heql0 in H2.
+  generalize dependent DecomposeRepPre.
+  generalize dependent Rep.
+  generalize numRepArgs.
+  generalize l l0 H3 H0; clear.
+  induction Dom; simpl; repeat cleanup.
+  - unfold is_same_types in H0.
+    revert H0 H H3; clear.
+    revert l0.
+    induction l; destruct l0; simpl in *;
+    intros; try discriminate.
+    + eauto.
+    + apply Bool.andb_true_iff in H0; intuition.
+      unfold is_same_types in *; simpl; rewrite H1; simpl.
+      eapply IHl; eauto.
+  - destruct dWrap.
+    eapply IHDom with (l := wrap (FacadeWrapper := gWrap g) x1 :: l)
+                        (l0 := wrap (FacadeWrapper := gWrap g) x4 :: l0);
+    eauto.
+    unfold is_same_types in *.
+    simpl; rewrite H0.
+    rewrite GoodWrapperConsistent; simpl; eauto.
+Qed.
+
+Definition GenAxiomaticSpecs'
+           av
+           {Cod}
+           {Dom}
+           {RepSpec RepImpl}
+           (AbsR : RepSpec -> RepImpl -> Prop)
+           (RepInv : RepImpl -> Prop)
+           (cWrap : CodWrapperT av Cod)
+           (dWrap : DomWrapperT av Dom)
+           (meth : methodType RepSpec Dom Cod)
+           {numRepArgs : nat}
+           (DecomposeRepPre : RepImpl -> Vector.t (Value av) numRepArgs)
+           (DecomposeRepPost : RepImpl -> RepImpl -> Vector.t ((Value av) * option av) numRepArgs)
+           (H : forall x x0, is_same_types (Vector.to_list (DecomposeRepPre x0))
+                                           (Vector.to_list (DecomposeRepPre x)) = true)
+  : AxiomaticSpec av :=
+    {| PreCond := AxiomatizeMethodPreSpec AbsR RepInv DecomposeRepPre dWrap;
+       PostCond := AxiomatizeMethodPostSpec AbsR DecomposeRepPost cWrap dWrap meth;
+       PreCondTypeConform := GenAxiomaticSpecs'_type_conforming H
+    |}.
+
 Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
   match n return list (Fin.t n) with
   | 0  => nil
@@ -892,6 +1042,26 @@ Definition GenExports
   : StringMap.t (AxiomaticSpec av) :=
   List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
                                               (GenAxiomaticSpecs RepInv (consWrapper el) (domWrapper el) (Methods adt el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
+
+Definition GenExports'
+           av
+           (n n' : nat)
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adtSpec : DecoratedADT (BuildADTSig consSigs methSigs))
+           (adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
+           (consWrapper : (forall midx, CodWrapperT av (methCod (Vector.nth methSigs midx))))
+           (domWrapper : (forall midx,  DomWrapperT av (methDom (Vector.nth methSigs midx))))
+           (AbsR : Core.Rep adtSpec -> Core.Rep adtImpl -> Prop)
+           (RepInv : Core.Rep adtImpl -> Prop)
+           {numRepArgs : nat}
+           (f : Core.Rep adtImpl -> Vector.t (Value av) numRepArgs)
+           (f' : Core.Rep adtImpl -> Core.Rep adtImpl -> Vector.t ((Value av) * option av) numRepArgs)
+           (H : forall x x0, is_same_types (Vector.to_list (f x0)) (Vector.to_list (f x)) = true)
+           (ValidImpl : refineADT adtSpec adtImpl)
+  : StringMap.t (AxiomaticSpec av) :=
+  List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
+                                              (GenAxiomaticSpecs' AbsR RepInv (consWrapper el) (domWrapper el) (Methods adtSpec el) f f' H) acc) (BuildFinUpTo n') (StringMap.empty _).
 
 Definition CompileUnit2Equiv
            av
@@ -938,6 +1108,32 @@ Definition BuildCompileUnit2T
            H
            (exports := GenExports (numRepArgs := numRepArgs) adt cWrap dWrap RepInv DecomposeRepPre DecomposeRepPost H) :=
   {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adt RepInv DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
+
+Definition BuildCompileUnit2TSpec
+           av
+           (env : Env av)
+           {A}
+           {n n'}
+           {consSigs : Vector.t consSig n}
+           {methSigs : Vector.t methSig n'}
+           (adtSpec : DecoratedADT (BuildADTSig consSigs methSigs))
+           (adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
+           (AbsR : Core.Rep adtSpec -> Core.Rep adtImpl -> Prop)
+           RepInv
+           numRepArgs
+           (DecomposeRep : A -> _)
+           DecomposeRepPre
+           DecomposeRepPost
+           g
+           ax_mod_name'
+           op_mod_name'
+           cWrap
+           dWrap
+           rWrap
+           H
+           ValidImpl
+           (exports := GenExports' (numRepArgs := numRepArgs) cWrap dWrap AbsR RepInv DecomposeRepPre DecomposeRepPost H ValidImpl) :=
+  {compileUnit : CompileUnit exports & (CompileUnit2Equiv env adtImpl RepInv DecomposeRep g ax_mod_name' op_mod_name' cWrap dWrap rWrap compileUnit) }.
 
 Lemma BuildDFFun_is_syntax_ok
            av
@@ -1133,6 +1329,49 @@ Proof.
     induction dom; simpl in *; intros.
     + destruct H as [r [r' [? [? ? ] ] ] ]; subst; eauto.
     + destruct H as [r [x ? ] ]; subst; eauto.
+      eapply (IHdom (snd domWrap)
+                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                    (fun r r' =>  DecomposeRepPost r r')
+                    (fun r => meth r x)
+                    in_out); eauto.
+Qed.
+
+Lemma AxiomatizeMethodPostSpec_OK
+      av
+      {RepSpec RepImpl}
+      AbsR
+      {numRepArgs}
+      cod dom
+      codWrap domWrap
+  : forall args DecomposeRepPost meth,
+    exists is_ret_adt : bool,
+      forall (in_out : list (Value av * option av)) (ret : Value av),
+        (exists (r : RepImpl) (r' : RepSpec),
+            AbsR r' r /\
+            @AxiomatizeMethodPostSpec' dom cod RepSpec RepImpl av numRepArgs
+                                       AbsR
+                                       codWrap domWrap args
+                                       (DecomposeRepPost r)
+                                       (meth r') in_out ret) ->
+        if is_ret_adt
+        then exists a : av, ret = ADT a
+        else exists w : W, ret = SCA av w.
+Proof.
+  destruct cod.
+  - exists (gWrapTag codWrap); simpl; revert args DecomposeRepPost meth.
+    induction dom; simpl in *; intros.
+    + destruct H as [r [r' [r'' [v' [? [? [? [? [? ? ] ] ] ] ] ] ] ] ]; subst.
+      pose proof (gWrapTagConsistent codWrap); find_if_inside; eauto.
+    + destruct H as [r [r' [? [x ? ] ] ] ]; subst.
+      eapply (IHdom (snd domWrap)
+                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
+                    (fun r r' => (DecomposeRepPost r r'))
+                    (fun r => meth r x)
+                    in_out); eauto.
+  - exists false; simpl; revert args DecomposeRepPost meth.
+    induction dom; simpl in *; intros.
+    + destruct H as [r [r' [r'' [? [? [? [? [? ? ] ] ] ] ] ] ] ]; subst; eauto.
+    + destruct H as [r [r' [? [x ? ] ] ] ]; subst; eauto.
       eapply (IHdom (snd domWrap)
                     ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
                     (fun r r' =>  DecomposeRepPost r r')
@@ -2040,6 +2279,618 @@ Proof.
     + reflexivity.
 Qed.
 
+Lemma compiled_prog_op_refines_ax'
+      av
+      (env : Env av)
+      {numRepArgs}
+      {A}
+      {B}
+      {C}
+      {RepSpec RepImpl}
+      (AbsR : RepSpec -> RepImpl -> Prop)
+      {RepT' : Vector.t A numRepArgs}
+      (RepT : ilist3 (B := B) RepT')
+      (RepMap : RepImpl -> i3list C RepT)
+      (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
+      (DecomposeRep :=
+         fun repWrapper rep =>
+           Decomposei3list RepT' RepT repWrapper (RepMap rep))
+      (DecomposeRepPre :=
+         fun rep =>
+           DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
+      (DecomposeRepPost :=
+         fun rep rep' =>
+           DecomposePosti3list _ RepT RepWrapper (RepMap rep) (RepMap rep'))
+      (DecomposeRepPrePostAgree :=
+         fun r r' =>
+           DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+      cod
+      dom
+      codWrap
+      domWrap
+      methSpec
+      methImpl
+      (ValidMeth : refineMethod AbsR methSpec methImpl)
+      RepInv
+      progOK
+  :
+    op_refines_ax
+      env
+      (Core (BuildDFFun (env := env) (cod := cod) (dom := dom)
+                        (WrappedCod := codWrap) (WrappedDom := domWrap)
+                        (meth := methImpl) (RepInv := RepInv)
+                        DecomposeRep numRepArgs RepWrapper progOK))
+      (GenAxiomaticSpecs' (numRepArgs := numRepArgs)
+                         AbsR RepInv codWrap domWrap methSpec
+                         DecomposeRepPre
+                         DecomposeRepPost
+                         DecomposeRepPrePostAgree).
+Proof.
+  unfold op_refines_ax; repeat split.
+  - unfold GenAxiomaticSpecs; simpl.
+    unfold AxiomatizeMethodPostSpec.
+    eapply AxiomatizeMethodPostSpec_OK.
+  - simpl. unfold BuildArgNames.
+    rewrite app_length, !rev_length, !map_length, !NumUpTo_length; simpl.
+    intros; destruct H as [r [r' [AbsR_r_r' [H' H ] ] ] ].
+    apply length_AxiomatizeMethodPre' in H; subst.
+    rewrite <- H, length_Vector_to_list, <- !plus_n_O; auto with arith.
+  - destruct progOK as [prog [op_spec ?] ]; simpl.
+    generalize ValidMeth op_spec; clear.
+    unfold AxSafe; simpl; intros.
+    destruct_ex; intuition; subst.
+    unfold AxiomatizeMethodPreSpec in H2; simpl in H2;
+    destruct_ex; intuition; subst.
+    revert st x x1 H0 H x0 H1 H2 H4 X0.
+    replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+    assert (
+        Datatypes.length (@nil (Value av))
+        = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+        by reflexivity.
+    assert (forall x0,
+               make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                        (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                        ∅) as H''.
+    { unfold BuildArgNames.
+      subst DecomposeRep; subst DecomposeRepPre; subst DecomposeRepPrePostAgree.
+      simpl.
+      clear methSpec methImpl ValidMeth op_spec RepInv.
+      generalize RepT RepMap RepWrapper;
+        clear; induction RepT'.
+      - intros; simpl; reflexivity.
+      - simpl; intros.
+        rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+        rewrite Vector_ToList_cons.
+        rewrite StringMapFacts.add_eq_o; eauto.
+        eexists _; intuition eauto.
+        eapply StringMap_remove_add; eauto.
+        eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+        eapply make_map_not_in.
+        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+        injections.
+        destruct x; destruct n.
+        + intuition.
+        + symmetry in H.
+          apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+          simpl in H1.
+          apply ListFacts4.in_nth_error in H1; destruct_ex.
+          apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+    }
+    remember (@nil (Value av)) as l; clear Heql.
+    remember [] as l'; clear Heql'.
+    remember DecomposeRep.
+    assert (forall r,
+               RepInv r ->
+               LiftMethod' env dom RepInv
+                           (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
+                           (l0 RepWrapper r)
+                           codWrap domWrap
+                           prog l' (methImpl r)) as op_spec'
+        by (subst; exact op_spec); clear op_spec.
+    clear Heql0.
+    generalize l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+    clear methSpec ValidMeth l l' DecomposeRep DecomposeRepPre l0 op_spec' len_l_l' H''.
+    induction dom; simpl; intros.
+    + destruct cod; simpl.
+      { simpl in *; subst.
+        eapply op_spec'; eauto.
+        eapply SameValues_Equal.
+        symmetry; apply H.
+        rewrite <- plus_n_O.
+        apply H''.
+      }
+      { eapply op_spec'; eauto.
+        simpl in *; subst.
+        eapply SameValues_Equal.
+        symmetry; apply H.
+        rewrite <- plus_n_O.
+        apply H''. }
+    + simpl in *; destruct_ex; subst.
+      rewrite H.
+      destruct domWrap.
+      eapply IHdom with
+      (methImpl := fun r => methImpl r x2)
+        (l' :=
+           (existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                   (NTSome
+                      (String "a"
+                              (String "r"
+                                      (String "g"
+                                              (NumberToString_rec (Datatypes.length l')
+                                                                  (pred (Datatypes.length l')))))),
+                    ret x2) :: l'))
+        (DecomposeRepPre := DecomposeRepPre); auto.
+      7:apply H3.
+      6:eauto.
+      5:eauto.
+      simpl; eauto.
+      unfold BuildArgNames; simpl.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+      intros; rewrite len_l_l'.
+      rewrite StringMapFacts.add_eq_o; eauto.
+      eexists; intuition eauto.
+      eapply StringMap_remove_add; eauto.
+      unfold BuildArgNames in H''.
+      rewrite NumUpTo_nil, map_app, rev_app_distr, len_l_l' in H''; simpl in H''.
+      eapply H''.
+      eapply make_map_not_in.
+      intro H'; apply in_app_or in H';
+      rewrite <- in_rev, in_map_iff in H';
+      intuition; destruct_ex; intuition.
+      injections.
+      destruct x4; destruct l'.
+      * intuition.
+      * symmetry in H4.
+        apply NumberToString_rec_10 in H4; intuition.
+        simpl; omega.
+      * apply NumberToString_rec_10 in H4; intuition.
+      * apply NumberToString_rec_inj' in H4; simpl in H4; subst; eauto.
+        simpl in H6.
+        apply ListFacts4.in_nth_error in H6; destruct_ex.
+        apply nth_error_NumUpTo_eq in H4; simpl in H4; intuition; subst.
+      * rewrite <- in_rev, in_map_iff in H4; destruct_ex.
+        unfold nthRepName in H4; simpl in H4; intuition.
+        discriminate.
+      * simpl; rewrite H0; repeat f_equal; omega.
+      * simpl; f_equiv; f_equal; omega.
+    + reflexivity.
+  - destruct progOK as [prog [op_spec ?] ]; simpl.
+    generalize ValidMeth op_spec; clear.
+    unfold AxSafe, AxRunsTo; simpl; intros.
+    unfold AxiomatizeMethodPreSpec in *.
+    destruct_ex; intuition; subst.
+    destruct_ex; intuition; subst.
+    revert st x x0 H1 H0 H H1 H2 H5 H3 x.
+    replace (Datatypes.length dom) with (Datatypes.length (@nil (Value av)) + Datatypes.length (dom)).
+    assert (
+        Datatypes.length (@nil (Value av))
+        = Datatypes.length (@nil {T : Type & (NameTag av T * Comp T)%type})) as len_l_l'
+        by reflexivity.
+    assert (forall x0,
+               make_map (BuildArgNames (List.length (@nil (Value av))) numRepArgs)
+                        (nil ++ (Vector.to_list (DecomposeRepPre x0))) ≲ list2Telescope (nil ++ DecomposeRep RepWrapper x0) ∪
+                        ∅) as H''.
+    { unfold BuildArgNames.
+      subst DecomposeRep; subst DecomposeRepPre.
+      simpl.
+      clear methSpec methImpl ValidMeth op_spec RepInv.
+      generalize RepT RepMap RepWrapper;
+        clear; induction RepT'; simpl; intros.
+      - reflexivity.
+      - rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+        rewrite Vector_ToList_cons.
+        rewrite StringMapFacts.add_eq_o; eauto.
+        eexists _; intuition eauto.
+        eapply StringMap_remove_add; eauto.
+        eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+        eapply make_map_not_in.
+        rewrite <- in_rev, in_map_iff; intro; destruct_ex; intuition.
+        injections.
+        destruct x; destruct n.
+        + intuition.
+        + symmetry in H.
+          apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_10 in H; intuition.
+        + apply NumberToString_rec_inj' in H; simpl in H; subst; eauto.
+          simpl in H1.
+          apply ListFacts4.in_nth_error in H1; destruct_ex.
+          apply nth_error_NumUpTo_eq in H; simpl in H; intuition; subst.
+    }
+    unfold AxiomatizeMethodPostSpec.
+    remember (@nil (Value av)) as l; clear Heql.
+    remember (@nil {T : Type & (NameTag av T * Comp T)%type}) as l'.
+    remember DecomposeRep.
+    assert (forall r,
+               RepInv r ->
+               LiftMethod' env dom RepInv
+                           (fun r0 => list2Telescope (DecomposeRep RepWrapper r0))
+                           (l0 RepWrapper r)
+                           codWrap domWrap
+                           prog l' (methImpl r)) as op_spec'
+        by (subst; exact op_spec); clear op_spec.
+    replace (@nil (prod (Value av) (option av))) with (map (fun v : Value av => (v, @None av)) l) by
+        (subst; destruct l; simpl in *; congruence).
+    clear Heql'; clear Heql0.
+    intros st x x0.
+    generalize ValidMeth l l' l0 st x x0 op_spec' len_l_l' H''.
+    clear l l' l0 st x x0 op_spec' len_l_l' H''.
+    induction dom; simpl; intros.
+    + destruct cod.
+      { apply op_spec' in H3; destruct H3.
+        destruct (H3 _ (H'' _)).
+        rewrite H in H0; subst.
+        rewrite <- plus_n_O in H0; apply H8 in H0.
+        simpl in methSpec, methImpl.
+        destruct H0; intuition; destruct x.
+        repeat eexists _; intuition eauto.
+        repeat (eexists _); intuition eauto.
+        pose proof (ValidMeth _ _ H4 _ H5); computes_to_inv.
+        destruct v; simpl in *.
+        injections.
+        repeat (eexists _); intuition eauto.
+        unfold BuildArgNames.
+        rewrite <- plus_n_O in *.
+        unfold DecomposeRepPost.
+        revert H9; case_eq (StringMap.find "ret" st'); try tauto; intros.
+        destruct_ex; intuition; computes_to_inv; subst.
+        rewrite !combine_app_distrib, map_app, combine_app_distrib.
+        f_equal.
+        unfold DecomposeRep in H13.
+        apply StringMap.find_2 in H9.
+        simpl in H13.
+        generalize (SameValues_PushExt (fun _ => list2Telescope (Decomposei3list RepT' RepT RepWrapper (RepMap r))) _ _ H9 H13); clear.
+        - induction l; simpl; eauto.
+          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          intros; rewrite IHl; f_equal; eauto.
+          destruct a; eauto.
+          case_eq (StringMap.find (elt:=Value av)
+                                  (String "a"
+                                          (String "r"
+                                                  (String "g"
+                                                          (NumberToString_rec (Datatypes.length l)
+                                                                              (pred (Datatypes.length l)))))) st'); intros; eauto.
+          destruct v; eauto.
+          elimtype False; generalize st' H0 H; clear.
+          induction RepT'.
+          + simpl; intros; unfold WeakEq in *; intuition.
+            unfold SameADTs in H0.
+            apply StringMap.find_2 in H0.
+            apply H1 in H0.
+            apply StringMap.add_3 in H0; try congruence.
+            apply StringMap.is_empty_2 in H0; eauto.
+          + intros.
+            simpl in H.
+            destruct (StringMap.find (elt:=Value av)
+                                     (String "r"
+                                             (String "e" (String "p" (NumberToString_rec n (pred n))))) st'); eauto.
+            destruct_ex; intuition.
+            eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2: eauto.
+            apply StringMap.find_1; apply StringMap.remove_2;
+            eauto using StringMap.find_2.
+        - apply StringMap.find_2 in H9.
+          generalize st' (SameValues_PushExt (fun _ => list2Telescope (Decomposei3list RepT' RepT RepWrapper (RepMap r))) _ _ H9 H13); clear.
+          induction RepT'.
+          + reflexivity.
+          + Local Opaque Vector.to_list.
+
+            simpl.
+            destruct RepWrapper; simpl in *.
+            rewrite Vector_ToList_cons.
+            intro; caseEq (StringMap.find (elt:=Value av)
+                                          (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                          st'); intros; eauto.
+            unfold DecomposeRepPre; simpl.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons.
+            destruct_ex; split_and; subst.
+            computes_to_inv; subst.
+            simpl; rewrite H.
+            f_equal.
+            idtac.
+            erewrite <- (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2:apply H3.
+            f_equal.
+            destruct (RepMap x1); destruct RepT; simpl in *.
+            intros; eapply in_map; clear; intros.
+            unfold get_output; destruct a; simpl.
+            destruct v; eauto.
+            rewrite remove_neq_o; eauto.
+            revert H; clear.
+            intros.
+            apply in_combine_l in H.
+            apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+            intuition; subst; simpl in H1; injections.
+            apply ListFacts4.in_nth_error in H2; destruct_ex;
+            apply nth_error_NumUpTo_eq in H0; intuition.
+            destruct x; destruct n; try omega.
+            symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+            apply NumberToString_rec_inj' in H; simpl in H; omega.
+            intuition.
+        - rewrite map_length.
+          rewrite (fun H => proj1 (lenth_combine _ _ H)).
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - simpl in H7.
+          pose proof (ValidMeth _ _ H4 _ H5); computes_to_inv; subst.
+          simpl in H9.
+          revert H9;
+            caseEq (StringMap.find (elt:=Value av) "ret" st');
+            intros; destruct_ex; intuition; subst.
+          computes_to_inv; subst; auto.
+        - unfold no_adt_leak; intros.
+          unfold sel in H0.
+          simpl in H7.
+          destruct (string_dec "ret" var).
+          intuition.
+          rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+          right.
+          simpl in H9.
+          revert H9;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+          destruct_ex; intuition; subst.
+          generalize st' H0 H13 n.
+          clear; induction l; simpl.
+          + induction RepT'; simpl.
+            * intros; destruct H13.
+              unfold SameADTs in H.
+              rewrite <- find_mapsto_iff in H0.
+              rewrite <- H in H0.
+              apply StringMap.empty_1 in H0; intuition.
+            * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+              { simpl in *.
+                rewrite H0 in H13; destruct_ex; intuition; subst.
+                computes_to_inv; subst.
+                exists 0; eexists _; split; eauto; simpl.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              }
+              destruct (StringMap.find (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                       (StringMap.remove (elt:=Value av) "ret" st'));
+                try tauto.
+              destruct_ex; intuition; computes_to_inv; subst.
+              rewrite SameValues_remove2 in H3.
+              eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))) in H3; eauto.
+              repeat destruct_ex; intuition.
+              unfold BuildArgNames in H1; simpl in H1.
+              eexists (S x); exists x0; split.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+              unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+              simpl in *; rewrite e in n1; congruence.
+              eauto.
+          + intros.
+            destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+            eexists ai'.
+            unfold BuildArgNames; simpl;
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      }
+      { apply op_spec' in H3; destruct H3.
+        destruct (H3 _ (H'' _)).
+        rewrite H in H0; subst.
+        rewrite <- plus_n_O in H0; apply H8 in H0.
+        simpl in *.
+        simpl in H0.
+        destruct H0; intuition.
+        repeat eexists _; intuition eauto.
+        repeat eexists _; intuition eauto.
+        pose proof (ValidMeth _ _ H4 _ H5); computes_to_inv; subst.
+        repeat (eexists _); intuition eauto.
+        unfold BuildArgNames.
+        rewrite <- plus_n_O in *.
+        unfold DecomposeRepPost.
+        revert H9;
+          case_eq (StringMap.find (elt:=Value av) "ret" st'); intros; try tauto.
+        destruct_ex; intuition; computes_to_inv; subst.
+        rewrite !combine_app_distrib, map_app, combine_app_distrib.
+        f_equal.
+        unfold DecomposeRep in H13.
+        apply StringMap.find_2 in H9.
+        generalize st' (SameValues_PushExt (fun _ => list2Telescope (Decomposei3list RepT' RepT RepWrapper (RepMap x))) _ _ H9 H13); clear.
+        - induction l; simpl; eauto.
+          rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+          intros; rewrite IHl; f_equal; eauto.
+          destruct a; eauto.
+          case_eq (StringMap.find (elt:=Value av)
+                                  (String "a"
+                                          (String "r"
+                                                  (String "g"
+                                                          (NumberToString_rec (Datatypes.length l)
+                                                                              (pred (Datatypes.length l)))))) st'); intros; eauto.
+          destruct v; eauto.
+          apply StringMap.find_2 in H0.
+          apply (StringMap.remove_2 (x := "ret")) in H0; try congruence.
+          apply StringMap.find_1 in H0.
+          elimtype False; generalize st' H0 H; clear.
+          induction RepT'.
+          + simpl; intros; unfold WeakEq in *; intuition.
+            unfold SameADTs in H1.
+            apply StringMap.find_2 in H0.
+            rewrite StringMapFacts.remove_mapsto_iff in H0; intuition.
+            apply H1 in H3.
+            rewrite StringMapFacts.add_mapsto_iff in H3; intuition try congruence.
+            apply StringMap.is_empty_2 in H4; eauto.
+          + intros.
+            simpl in H.
+            destruct (StringMap.find (elt:=Value av)
+                                     (String "r"
+                                             (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                     st'
+                     ); eauto.
+            destruct_ex; intuition.
+            eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2: eassumption.
+            rewrite SameValues_remove2.
+            apply StringMap.find_1; apply StringMap.remove_2;
+            eauto using StringMap.find_2.
+        - generalize st' H13; clear.
+          induction RepT'.
+          + reflexivity.
+          + unfold DecomposeRep.
+            simpl.
+            destruct RepWrapper; simpl in *.
+            rewrite Vector_ToList_cons.
+            intro; caseEq (StringMap.find (elt:=Value av)
+                                          (String "r" (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                          (StringMap.remove (elt:=Value av) "ret" st')); intros; eauto.
+            unfold DecomposeRepPre; simpl.
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl.
+            rewrite Vector_ToList_cons.
+            destruct_ex; split_and; subst.
+            computes_to_inv; subst.
+            rewrite remove_neq_o in H; try congruence.
+            simpl; rewrite H.
+            f_equal.
+            rewrite SameValues_remove2 in H3.
+            erewrite <- (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep))).
+            2:apply H3.
+            f_equal.
+            destruct (RepMap x); destruct RepT; simpl in *.
+            intros; eapply in_map; clear; intros.
+            unfold get_output; destruct a; simpl.
+            destruct v; eauto.
+            rewrite remove_neq_o; eauto.
+            revert H; clear.
+            intros.
+            apply in_combine_l in H.
+            apply In_rev in H; eapply in_map_iff in H; destruct_ex;
+            intuition; subst; simpl in H1; injections.
+            apply ListFacts4.in_nth_error in H2; destruct_ex;
+            apply nth_error_NumUpTo_eq in H0; intuition.
+            destruct x; destruct n; try omega.
+            symmetry in H.
+            apply NumberToString_rec_10 in H; intuition.
+            apply NumberToString_rec_inj' in H; simpl in H; omega.
+            intuition.
+        - rewrite map_length.
+          rewrite (fun H => proj1 (lenth_combine _ _ H)).
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+          rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - rewrite rev_length, map_length, NumUpTo_length; simpl; omega.
+        - simpl in H9.
+          revert H9;
+            caseEq (StringMap.find (elt:=Value av) "ret" st');
+            intros; destruct_ex; intuition; subst.
+          computes_to_inv; subst; auto.
+        - unfold no_adt_leak; intros.
+          unfold sel in H0.
+          simpl in H9.
+          destruct (string_dec "ret" var).
+          intuition.
+          rewrite <- remove_neq_o with (x := "ret") in H0; auto.
+          right.
+          revert H9;
+            caseEq (StringMap.find (elt:=Value av) "ret" st'); try tauto.
+          destruct_ex; intuition; subst.
+          generalize st' H0 H13 n.
+          clear; induction l; simpl.
+          + induction RepT'; simpl.
+            * intros; destruct H13.
+              unfold SameADTs in H.
+              rewrite <- find_mapsto_iff in H0.
+              rewrite <- H in H0.
+              apply StringMap.empty_1 in H0; intuition.
+            * intros; destruct (string_dec var ("rep" ++ (NumberToString_rec n (pred n)))); subst.
+              { simpl in *.
+                rewrite H0 in H13; destruct_ex; intuition; subst.
+                computes_to_inv; subst.
+                exists 0; eexists _; split; eauto; simpl.
+                rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+                unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              }
+              destruct (StringMap.find (String "r"
+                                               (String "e" (String "p" (NumberToString_rec n (pred n)))))
+                                       (StringMap.remove (elt:=Value av) "ret" st'));
+                try tauto.
+              destruct_ex; intuition; computes_to_inv; subst.
+              rewrite SameValues_remove2 in H3.
+              eapply (IHRepT' (prim_snd RepT) (fun rep => prim_snd (RepMap rep)))
+                in H3; eauto.
+              repeat destruct_ex; intuition.
+              unfold BuildArgNames in H1; simpl in H1.
+              eexists (S x0); exists x2; split.
+              rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+              unfold DecomposeRepPre; simpl; rewrite Vector_ToList_cons; eauto.
+              repeat rewrite remove_o in *; repeat find_if_inside; try discriminate.
+              simpl in *; rewrite e in n1; congruence.
+              eauto.
+          + intros.
+            destruct (IHl st') as [i' [ai' [? ? ] ] ]; eauto; eexists (S i'); simpl.
+            eexists ai'.
+            unfold BuildArgNames; simpl;
+            rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      }
+    + repeat destruct_ex; intuition.
+      setoid_rewrite H.
+      destruct domWrap.
+      rewrite Plus.plus_comm.
+      simpl.
+      simpl in ValidMeth.
+      destruct (IHdom
+                  d
+                  (fun r => methSpec r x3)
+                  (fun r => methImpl r x3)
+                  (fun r_o r_n AbsR' => ValidMeth r_o r_n AbsR' x3)
+                  (fun r_o r_n AbsR' => ValidMeth r_o r_n AbsR' x3)
+                  ((wrap (FacadeWrapper := gWrap g) x3) :: l)
+                  ((existT (fun T : Type => (NameTag av T * Comp T)%type) a
+                           (@NTSome _ _
+                                    (String "a"
+                                            (String "r"
+                                                    (String "g"
+                                                            (NumberToString_rec (Datatypes.length l')
+                                                                                (pred (Datatypes.length l'))))))
+                                    (gWrap g),
+                            ret x3)) :: l')
+                  l0
+                  st x x0); simpl; auto.
+      intros; unfold BuildArgNames.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      rewrite NumUpTo_nil, map_app, rev_app_distr; simpl; eauto.
+      rewrite len_l_l'.
+      rewrite add_eq_o by eauto.
+      pose proof (op_spec' _ H3 x3).
+      eexists; intuition eauto.
+      eapply StringMap_remove_add; eauto.
+      unfold BuildArgNames in H''.
+      rewrite <- len_l_l'; eauto.
+      eapply make_map_not_in.
+      intro; apply in_app_or in H7; intuition.
+      rewrite <- in_rev, in_map_iff in H8; destruct_ex; intuition.
+      simpl in H8.
+      injections.
+      destruct x5; destruct (Datatypes.length l').
+      * intuition.
+      * symmetry in H7.
+        apply NumberToString_rec_10 in H7; intuition.
+      * apply NumberToString_rec_10 in H7; intuition.
+      * apply NumberToString_rec_inj' in H7; simpl in H7; subst; eauto.
+        apply ListFacts4.in_nth_error in H9; destruct_ex.
+        apply nth_error_NumUpTo_eq in H7; simpl in H7; intuition; subst.
+      * rewrite <- in_rev, in_map_iff in H8; destruct_ex; intuition.
+        simpl in H8; discriminate.
+      * rewrite H1; f_equal; f_equal; omega.
+      * rewrite Plus.plus_comm in H; simpl in H; rewrite Plus.plus_comm in H; eauto.
+      * rewrite Plus.plus_comm in H1; simpl in H1; rewrite Plus.plus_comm in H1; eauto.
+      * destruct_ex; intuition; eexists x4; exists x5; intuition eauto.
+        simpl in H5; rewrite Plus.plus_comm; eauto.
+        simpl in H4; rewrite Plus.plus_comm; eauto.
+        rewrite Plus.plus_comm in H.
+        rewrite <- H6, H. rewrite Plus.plus_comm; simpl; reflexivity.
+        destruct_ex; simpl in H6.
+        eexists x6; eexists x7; intuition.
+        exists x3.
+        rewrite Plus.plus_comm.
+        apply H12.
+        simpl in H9; rewrite Plus.plus_comm; eauto.
+    + reflexivity.
+Qed.
+
   Lemma StringMap_fold_left_Eq {B C}
     : forall f f' l st st',
       let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
@@ -2396,7 +3247,8 @@ av
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
              (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
-             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             (adtSpec adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
+             (AbsR : Rep adtSpec -> Rep adtImpl -> Prop)
              {numRepArgs}
              {A}
              {B}
@@ -2404,7 +3256,8 @@ av
              {RepT' : Vector.t A numRepArgs}
              (RepT : ilist3 (B := B) RepT')
              (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
-             (RepMap : Rep adt -> i3list C RepT)
+             (RepMap : Rep adtImpl -> i3list C RepT)
+             ValidImpl
              RepInv
              (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
              (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
@@ -2418,13 +3271,13 @@ av
                 (GLabelMapFacts.UWFacts.WFacts.P.update
                    (GLabelMap.map (Axiomatic (ADTValue:=av))
                                   (map_aug_mod_name op_mod_name'
-                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
-                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                                                    (GenExports' codWrap domWrap AbsR RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree ValidImpl)))
                    env'))
              (progsOK : forall midx,
                  {prog : Stmt &
                          LiftMethod env'' RepInv (DecomposeRep RepWrapper)
-                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                                    (codWrap midx) (domWrap midx) prog (Methods adtImpl midx)
                          (* Syntactic Checks *)
                          /\ NoUninitDec.is_no_uninited
                               {|
@@ -2454,13 +3307,13 @@ av
                                                            numRepArgs)) = true
                          /\ is_syntax_ok prog = true} )
     : is_sub_domain
-     (GenExports adt codWrap domWrap RepInv DecomposeRepPre
-        DecomposeRepPost DecomposeRepPrePoseAgree)
-     (BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+     (GenExports' codWrap domWrap AbsR RepInv DecomposeRepPre
+        DecomposeRepPost DecomposeRepPrePoseAgree ValidImpl)
+     (BuildFun adtImpl DecomposeRep numRepArgs codWrap domWrap
                RepWrapper progsOK).
   Proof.
     simpl.
-    unfold GenExports, BuildFun.
+    unfold GenExports', BuildFun.
     generalize (NoDup_BuildFinUpTo n') UniqueMeth.
     clear; induction (BuildFinUpTo n'); simpl; intros.
     - reflexivity.
@@ -2500,7 +3353,7 @@ av
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
              (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
-             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             (adtSpec adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
              {numRepArgs}
              {A}
              {B}
@@ -2508,7 +3361,9 @@ av
              {RepT' : Vector.t A numRepArgs}
              (RepT : ilist3 (B := B) RepT')
              (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
-             (RepMap : Rep adt -> i3list C RepT)
+             (RepMap : Rep adtImpl -> i3list C RepT)
+             (AbsR : Rep adtSpec -> Rep adtImpl -> Prop)
+             ValidImpl
              RepInv
              (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
              (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
@@ -2523,13 +3378,13 @@ av
                 (GLabelMapFacts.UWFacts.WFacts.P.update
                    (GLabelMap.map (Axiomatic (ADTValue:=av))
                                   (map_aug_mod_name op_mod_name'
-                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
-                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                                                    (GenExports' codWrap domWrap AbsR RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree ValidImpl)))
                    env'))
              (progsOK : forall midx,
                  {prog : Stmt &
                          LiftMethod env'' RepInv (DecomposeRep RepWrapper)
-                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                                    (codWrap midx) (domWrap midx) prog (Methods adtImpl midx)
                          (* Syntactic Checks *)
                          /\ NoUninitDec.is_no_uninited
                               {|
@@ -2569,18 +3424,20 @@ av
               : forallb NameDecoration.is_good_module_name
                         (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
              proof
-    : CompileUnit2Equiv env'' adt RepInv DecomposeRep numRepArgs ax_mod_name'
+    : CompileUnit2Equiv env'' adtImpl RepInv DecomposeRep numRepArgs ax_mod_name'
      op_mod_name' codWrap domWrap RepWrapper
      {|
      module := {|
                Imports := env;
-               Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+               Funs := BuildFun adtImpl DecomposeRep numRepArgs codWrap domWrap
                          RepWrapper progsOK;
                import_module_names_good := no_cito_clash_env |};
      ax_mod_name := ax_mod_name';
      op_mod_name := op_mod_name';
-     exports_in_domain := BuildCompileUnit2T_exports_in_domain (UniqueMeth := UniqueMeth)
-                                                               env adt RepMap
+     exports_in_domain := BuildCompileUnit2T_exports_in_domain
+                            (UniqueMeth := UniqueMeth)
+                            env AbsR RepMap
+                            ValidImpl
                             op_mod_name' codWrap domWrap progsOK;
      op_mod_name_ok := no_cito_clash_op_mod;
      op_mod_name_not_in_imports := unique_op_mod_name';
@@ -2600,14 +3457,14 @@ av
   Qed.
 
   Lemma BuildCompileUnit2T_proof
-av
+                     av
              (env : GLabelMap.t (AxiomaticSpec av))
              (env' := GLabelMap.map (@Axiomatic av) env)
              {n n'}
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
              (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
-             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             (adtSpec adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
              {numRepArgs}
              {A}
              {B}
@@ -2615,7 +3472,9 @@ av
              {RepT' : Vector.t A numRepArgs}
              (RepT : ilist3 (B := B) RepT')
              (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
-             (RepMap : Rep adt -> i3list C RepT)
+             (RepMap : Rep adtImpl -> i3list C RepT)
+             (ValidImpl : refineADT adtSpec adtImpl)
+             (AbsR' := AbsR ValidImpl)
              RepInv
              (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
              (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
@@ -2630,13 +3489,13 @@ av
                 (GLabelMapFacts.UWFacts.WFacts.P.update
                    (GLabelMap.map (Axiomatic (ADTValue:=av))
                                   (map_aug_mod_name op_mod_name'
-                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
-                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                                                    (GenExports' codWrap domWrap AbsR' RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree ValidImpl)))
                    env'))
              (progsOK : forall midx,
                  {prog : Stmt &
                          LiftMethod env'' RepInv (DecomposeRep RepWrapper)
-                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                                    (codWrap midx) (domWrap midx) prog (Methods adtImpl midx)
                          (* Syntactic Checks *)
                          /\ NoUninitDec.is_no_uninited
                               {|
@@ -2677,39 +3536,41 @@ av
                         (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
     : ops_refines_axs
      (get_env op_mod_name'
-        (GenExports adt
-           codWrap domWrap RepInv
-           (fun rep : Rep adt =>
+        (GenExports'
+           codWrap domWrap AbsR' RepInv
+           (fun rep : Rep adtImpl =>
             DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
-           (fun rep rep' : Rep adt =>
+           (fun rep rep' : Rep adtImpl =>
             DecomposePosti3list RepT' RepT RepWrapper
               (RepMap rep) (RepMap rep'))
-           (fun r r' : Rep adt =>
+           (fun r r' : Rep adtImpl =>
             DecomposePrei3list_Agree av RepT RepWrapper
-              (RepMap r) (RepMap r')))
+                                     (RepMap r) (RepMap r'))
+           ValidImpl)
         {|
         Imports := env;
-        Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+        Funs := BuildFun adtImpl DecomposeRep numRepArgs codWrap domWrap
                   RepWrapper progsOK;
         import_module_names_good := no_cito_clash_env |})
      (StringMap.map Core
         (Funs
            {|
            Imports := env;
-           Funs := BuildFun adt DecomposeRep numRepArgs codWrap domWrap
+           Funs := BuildFun adtImpl DecomposeRep numRepArgs codWrap domWrap
                      RepWrapper progsOK;
            import_module_names_good := no_cito_clash_env |}))
-     (GenExports adt codWrap
-        domWrap RepInv
-        (fun rep : Rep adt =>
+     (GenExports' codWrap
+        domWrap AbsR' RepInv
+        (fun rep : Rep adtImpl =>
          DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
-        (fun rep rep' : Rep adt =>
+        (fun rep rep' : Rep adtImpl =>
          DecomposePosti3list RepT' RepT RepWrapper (RepMap rep) (RepMap rep'))
-        (fun r r' : Rep adt =>
-         DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))).
+        (fun r r' : Rep adtImpl =>
+           DecomposePrei3list_Agree av RepT RepWrapper (RepMap r) (RepMap r'))
+        ValidImpl).
   Proof.
     unfold ops_refines_axs; intros.
-    unfold GenExports in H.
+    unfold GenExports' in H.
     assert (exists midx, x = methID (Vector.nth methSigs midx)).
     setoid_rewrite <- find_mapsto_iff in H.
     apply StringMapsTo_fold_left_ex in H; destruct_ex; intuition eauto.
@@ -2720,20 +3581,20 @@ av
     pose proof (@StringMapsTo_fold_left'
             _ _
             (fun el => methID (Vector.nth methSigs el))
-            (fun el => GenAxiomaticSpecs RepInv (codWrap el)
-              (domWrap el) (Methods adt el) DecomposeRepPre DecomposeRepPost
+            (fun el => GenAxiomaticSpecs' AbsR' RepInv (codWrap el)
+              (domWrap el) (Methods adtSpec el) DecomposeRepPre DecomposeRepPost
               DecomposeRepPrePoseAgree) ∅ x0 (methID_injective _ UniqueMeth)).
     setoid_rewrite find_mapsto_iff in H0.
     subst DecomposeRepPre; subst DecomposeRepPost; subst DecomposeRepPrePoseAgree.
     assert (Some ax_spec = Some
-         (GenAxiomaticSpecs RepInv (codWrap x0)
-            (domWrap x0) (Methods adt x0)
-            (fun rep : Rep adt =>
+         (GenAxiomaticSpecs' AbsR' RepInv (codWrap x0)
+            (domWrap x0) (Methods adtSpec x0)
+            (fun rep =>
              DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
-            (fun rep rep' : Rep adt =>
+            (fun rep rep' =>
              DecomposePosti3list RepT' RepT RepWrapper
                (RepMap rep) (RepMap rep'))
-            (fun r r' : Rep adt =>
+            (fun r r' =>
              DecomposePrei3list_Agree av RepT RepWrapper
                (RepMap r) (RepMap r')))) by
         (rewrite <- H, <- H0; f_equal).
@@ -2746,7 +3607,8 @@ av
     eapply (@StringMapsTo_fold_left' _ _ (fun el => methID (Vector.nth methSigs el))
          (fun el => BuildDFFun DecomposeRep numRepArgs RepWrapper (progsOK el))).
     apply methID_injective; eauto.
-    apply compiled_prog_op_refines_ax.
+    apply compiled_prog_op_refines_ax'.
+    apply (ADTRefinementPreservesMethods ValidImpl x0).
   Qed.
 
   (* This is the main compilation tool. *)
@@ -2758,7 +3620,7 @@ av
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
              (UniqueMeth : NoDup (Vector.to_list (Vector.map methID methSigs)))
-             (adt : DecoratedADT (BuildADTSig consSigs methSigs))
+             (adtSpec adtImpl : DecoratedADT (BuildADTSig consSigs methSigs))
              {numRepArgs}
              {A}
              {B}
@@ -2766,7 +3628,10 @@ av
              {RepT' : Vector.t A numRepArgs}
              (RepT : ilist3 (B := B) RepT')
              (RepWrapper : @RepWrapperT av numRepArgs A B C RepT' RepT)
-             (RepMap : Rep adt -> i3list C RepT)
+             (RepMap : Rep adtImpl -> i3list C RepT)
+             (ValidImpl : refineADT adtSpec adtImpl)
+             (AbsR' := AbsR ValidImpl)
+
              RepInv
              (DecomposeRep := fun repWrapper rep => Decomposei3list RepT' RepT repWrapper (RepMap rep))
              (DecomposeRepPre := fun rep => DecomposePrei3list RepT' RepT RepWrapper (RepMap rep))
@@ -2781,13 +3646,13 @@ av
                 (GLabelMapFacts.UWFacts.WFacts.P.update
                    (GLabelMap.map (Axiomatic (ADTValue:=av))
                                   (map_aug_mod_name op_mod_name'
-                                                    (GenExports adt codWrap domWrap RepInv DecomposeRepPre
-                                                                DecomposeRepPost DecomposeRepPrePoseAgree)))
+                                                    (GenExports' codWrap domWrap AbsR' RepInv DecomposeRepPre
+                                                                DecomposeRepPost DecomposeRepPrePoseAgree ValidImpl)))
                    env'))
              (progsOK : forall midx,
                  {prog : Stmt &
                          LiftMethod env'' RepInv (DecomposeRep RepWrapper)
-                                    (codWrap midx) (domWrap midx) prog (Methods adt midx)
+                                    (codWrap midx) (domWrap midx) prog (Methods adtImpl midx)
                          (* Syntactic Checks *)
                          /\ NoUninitDec.is_no_uninited
                               {|
@@ -2826,8 +3691,8 @@ av
              (no_cito_clash_env
               : forallb NameDecoration.is_good_module_name
                         (map (fun x => fst (fst x)) (GLabelMap.elements  env)) = true)
-      : BuildCompileUnit2T env''
-                         adt
+    : BuildCompileUnit2TSpec env''
+                         AbsR'
                          RepInv
                          DecomposeRep
                          DecomposeRepPre
@@ -2838,17 +3703,18 @@ av
                          codWrap
                          domWrap
                          RepWrapper
-                         DecomposeRepPrePoseAgree.
+                         DecomposeRepPrePoseAgree
+                         ValidImpl.
   Proof.
     eexists {| module := {| Funs :=
                               BuildFun
-                                adt DecomposeRep _ codWrap domWrap
+                                adtImpl DecomposeRep _ codWrap domWrap
                                 RepWrapper progsOK;
                             Imports := _;
                             import_module_names_good := no_cito_clash_env
                          |};
                exports_in_domain :=
-                 BuildCompileUnit2T_exports_in_domain (UniqueMeth := UniqueMeth) _ _ _ _ _ _ _ ;
+                 BuildCompileUnit2T_exports_in_domain (UniqueMeth := UniqueMeth) _ _ _ _ _ _ _ _;
                ax_mod_name := ax_mod_name';
                op_mod_name := op_mod_name';
                op_mod_name_ok := no_cito_clash_op_mod;
