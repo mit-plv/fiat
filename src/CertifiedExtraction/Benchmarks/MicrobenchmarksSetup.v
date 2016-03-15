@@ -69,8 +69,14 @@ Fixpoint Inb {sz} (w: @Word.word sz) seq :=
   end.
 
 Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
+Notation W0 := (Word.natToWord 32 0).
+Notation W1 := (Word.natToWord 32 1).
 Notation W7 := (Word.natToWord 32 7).
 Notation "x ≺ y" := (Word.wlt_dec x y) (at level 10).
+Notation "x ⊕ y" := (Word.wplus x y) (at level 10).
+Notation "x ⊖ y" := (Word.wminus x y) (at level 10).
+Notation "x ⊗ y" := (Word.wmult x y) (at level 10).
+Notation "x == y" := (Word.weqb x y) (at level 10).
 
 Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
   (GLabelMap.empty (FuncSpec _))
