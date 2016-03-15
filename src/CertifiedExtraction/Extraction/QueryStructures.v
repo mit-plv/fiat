@@ -15,6 +15,7 @@ Require Import
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 Require Import Fiat.Common.i3list.
 Require Import CertifiedExtraction.ADT2CompileUnit.
+Check BuildCompileUnit2TSpec.
 
 Definition DecomposeIndexedQueryStructure av qs_schema Index
            (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
@@ -2661,7 +2662,7 @@ Ltac __compile_unfold :=
 
 Ltac __compile_start_compiling_module imports :=
   lazymatch goal with
-  | [  |- sigT (fun _ => BuildCompileUnit2T _ _ _ _ _ _ _ _ _ _ _ _ _) ] =>
+  | [  |- sigT (fun _ => @BuildCompileUnit2TSpec _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) ] =>
     eexists;
     unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
     eapply BuildCompileUnit2T' with (env := imports); try apply eq_refl (* reflexivity throws an Anomaly *)

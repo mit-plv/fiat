@@ -1,18 +1,5 @@
-Require Import Fiat.ADT.Core.
-Require Import Bedrock.Platform.Facade.DFModule.
-Require Import Fiat.ADTNotation.
-Require Import Bedrock.Platform.Facade.CompileUnit2.
-Require Import Fiat.Common.i3list.
-Require Import Fiat.Common.ilist3.
-
-Require Import
-        CertifiedExtraction.Core
-        CertifiedExtraction.FacadeUtils
-        CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.Extraction
-        CertifiedExtraction.Extraction.QueryStructures
-        CertifiedExtraction.ADT2CompileUnit.
+Require Import Fiat.QueryStructure.Automation.MasterPlan.
+Require Import Bedrock.Memory.
 
 Definition State := W.
 Definition SLEEPING : State := Word.natToWord 32 0.
@@ -130,11 +117,18 @@ Defined.
 
 Time Definition PartialSchedulerImpl : ADT _ :=
   Eval simpl in (fst (projT1 SharpenedScheduler)).
-Print PartialSchedulerImpl.
 
 Time Definition SchedulerImplSpecs :=
   Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
-Print SchedulerImplSpecs.
+
+Require Import
+        CertifiedExtraction.Core
+        CertifiedExtraction.FacadeUtils
+        CertifiedExtraction.StringMapUtils
+        CertifiedExtraction.Extraction.Internal
+        CertifiedExtraction.Extraction.Extraction
+        CertifiedExtraction.Extraction.QueryStructures
+        CertifiedExtraction.ADT2CompileUnit.
 
 Definition CUnit
   : { env : _ &

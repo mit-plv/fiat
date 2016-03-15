@@ -182,15 +182,14 @@ Definition DFModuleEquiv
   (* Environments match *)
   (* FIXME : (module.(Imports) = env) *)
   (* Method Correspondence *)
-  (forall midx : Fin.t n',
+  forall midx : Fin.t n',
       let meth := Vector.nth methSigs midx in
       exists Fun,
         Fun.(Core).(RetVar) = "ret"
         /\ Fun.(Core).(ArgVars) = BuildArgNames (List.length (methDom meth)) DecomposeRepCount
         /\ LiftMethod env P DecomposeRep (consWrapper' midx) (domWrapper midx) (Body (Core Fun))
                       (Methods adt midx)
-        /\ (StringMap.MapsTo (methID meth) Fun module.(Funs))
-        /\ Shelve Fun).
+        /\ (StringMap.MapsTo (methID meth) Fun module.(Funs)).
 
 Fixpoint AxiomatizeMethodPre'
          (av : Type)
@@ -301,9 +300,6 @@ Definition AxiomatizeMethodPostSpec
   exists r' r,
     AbsR r r'
     /\ AxiomatizeMethodPostSpec' AbsR cWrap dWrap [] (f r') (meth r) args ret.
-
-Arguments AxiomatizeMethodPost _ _ _ _ _ _ _ _ _ _ _ / .
-Arguments AxiomatizeMethodPre _ _ _ _ _ _ _ _ / .
 
 Lemma GenAxiomaticSpecs_type_conforming
       av
@@ -453,10 +449,10 @@ Definition BuildCompileUnit2TSpec
     destruct x; destruct y; simpl.
     + congruence.
     + elimtype False.
-      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+      symmetry in H1; apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
       auto with arith.
     + elimtype False.
-      apply (fun H H' => NumberToString_rec_10 H H' H1);
+      apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
         auto with arith.
     + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
       auto with arith.
@@ -472,10 +468,10 @@ Definition BuildCompileUnit2TSpec
     destruct x; destruct y; simpl.
     + congruence.
     + elimtype False.
-      symmetry in H1; apply (fun H H' => NumberToString_rec_10 H H' H1);
+      symmetry in H1; apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
       auto with arith.
     + elimtype False.
-      apply (fun H H' => NumberToString_rec_10 H H' H1);
+      apply (fun H H' => NumberToString_rec_10 _ _ H H' H1);
         auto with arith.
     + rewrite (@NumberToString_rec_inj' (S x) x y (S y));
       auto with arith.
@@ -687,45 +683,6 @@ Definition BuildFun
   List.fold_left (fun acc el => StringMap.add (methID (Vector.nth methSigs el))
                                               (BuildDFFun DecomposeRep
                                                           _ wrappedRep (progsOK el) ) acc) (BuildFinUpTo n') (StringMap.empty _).
-
-Lemma AxiomatizeMethodPost_OK
-      av
-      {RepT}
-      {numRepArgs}
-      cod dom
-      codWrap domWrap
-  : forall args DecomposeRepPost meth,
-    exists is_ret_adt : bool,
-      forall (in_out : list (Value av * option av)) (ret : Value av),
-        (exists r : RepT,
-            AxiomatizeMethodPost' (numRepArgs := numRepArgs) (Dom := dom) (Cod := cod) (Rep := RepT)
-                                  codWrap domWrap args (DecomposeRepPost r)
-                                  (meth r) in_out ret) ->
-        if is_ret_adt
-        then exists a : av, ret = ADT a
-        else exists w : W, ret = SCA av w.
-Proof.
-  destruct cod.
-  - exists (gWrapTag codWrap); simpl; revert args DecomposeRepPost meth.
-    induction dom; simpl in *; intros.
-    + destruct H as [r [r' [v' [? [? ? ] ] ] ] ]; subst.
-      pose proof (gWrapTagConsistent codWrap); find_if_inside; eauto.
-    + destruct H as [r [x ? ] ]; subst.
-      eapply (IHdom (snd domWrap)
-                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
-                    (fun r r' => (DecomposeRepPost r r'))
-                    (fun r => meth r x)
-                    in_out); eauto.
-  - exists false; simpl; revert args DecomposeRepPost meth.
-    induction dom; simpl in *; intros.
-    + destruct H as [r [r' [? [? ? ] ] ] ]; subst; eauto.
-    + destruct H as [r [x ? ] ]; subst; eauto.
-      eapply (IHdom (snd domWrap)
-                    ((@wrap _ _ (gWrap (fst domWrap)) x, None) :: args)
-                    (fun r r' =>  DecomposeRepPost r r')
-                    (fun r => meth r x)
-                    in_out); eauto.
-Qed.
 
 Lemma AxiomatizeMethodPostSpec_OK
       av
@@ -1051,6 +1008,8 @@ Proof.
     rewrite IHl; eauto.
 Qed.
 
+Local Opaque Vector.to_list.
+
 Lemma SameValues_remove2 av :
   forall k k' st',
     StringMap.Equal
@@ -1063,6 +1022,10 @@ Proof.
   intros; repeat rewrite remove_o.
   repeat find_if_inside; eauto.
 Qed.
+
+Arguments nthRepName _ / .
+Arguments nthArgName _ / .
+Arguments BuildArgNames !n !m / .
 
 Lemma compiled_prog_op_refines_ax
       av
@@ -1346,6 +1309,7 @@ Proof.
             apply StringMap.add_3 in H0; try congruence.
             apply StringMap.is_empty_2 in H0; eauto.
           + intros.
+            simpl in H; unfold nthRepName in H.
             simpl in H.
             destruct (StringMap.find (elt:=Value av)
                                      (String "r"
@@ -1355,13 +1319,12 @@ Proof.
             2: eauto.
             apply StringMap.find_1; apply StringMap.remove_2;
             eauto using StringMap.find_2.
+
         - apply StringMap.find_2 in H9.
           generalize st' (SameValues_PushExt (fun _ => list2Telescope (Decomposei3list RepT' RepT RepWrapper (RepMap r))) _ _ H9 H13); clear.
           induction RepT'.
           + reflexivity.
-          + Local Opaque Vector.to_list.
-
-            simpl.
+          + simpl.
             destruct RepWrapper; simpl in *.
             rewrite Vector_ToList_cons.
             intro; caseEq (StringMap.find (elt:=Value av)

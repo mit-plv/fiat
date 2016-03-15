@@ -58,6 +58,7 @@ src/BinEncoders/NoEnv/Libraries/FixList2.v
 src/BinEncoders/NoEnv/Libraries/Helpers.v
 src/BinEncoders/NoEnv/Libraries/Sig.v
 src/BinEncoders/NoEnv/Libraries/SteppingList.v
+src/CertifiedExtraction/ADT2CompileUnit.v
 src/CertifiedExtraction/Core.v
 src/CertifiedExtraction/CoreLemmas.v
 src/CertifiedExtraction/ExtendedLemmas.v
@@ -75,6 +76,7 @@ src/CertifiedExtraction/Utils.v
 src/CertifiedExtraction/Benchmarks/Any.v
 src/CertifiedExtraction/Benchmarks/Microbenchmarks-annotated.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
+src/CertifiedExtraction/Benchmarks/ProcessScheduler.v
 src/CertifiedExtraction/Benchmarks/ProcessSchedulerExtractedMethods.v
 src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
 src/CertifiedExtraction/Benchmarks/QueryStructures.v
@@ -88,6 +90,7 @@ src/CertifiedExtraction/Extraction/Extraction.v
 src/CertifiedExtraction/Extraction/Gensym.v
 src/CertifiedExtraction/Extraction/Internal.v
 src/CertifiedExtraction/Extraction/PreconditionSets.v
+src/CertifiedExtraction/Extraction/QueryStructures.v
 src/CertifiedExtraction/Extraction/External/Core.v
 src/CertifiedExtraction/Extraction/External/External.v
 src/CertifiedExtraction/Extraction/External/FacadeADTs.v

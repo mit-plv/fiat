@@ -1,4 +1,4 @@
-Require Import Fiat.ADT.Core.
+(*Require Import Fiat.ADT.Core.
 Require Import Bedrock.Platform.Facade.DFModule.
 Require Import Fiat.ADTNotation.
 Require Import Bedrock.Platform.Facade.CompileUnit2.
@@ -6642,3 +6642,4 @@ Eval compute in (projT1 (progOKs Fin.F1)).
 Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
 Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
 Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+*)
