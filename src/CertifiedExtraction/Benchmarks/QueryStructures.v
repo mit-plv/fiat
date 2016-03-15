@@ -6513,9 +6513,10 @@ Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
 
 Definition CUnit
   : { env : _ &
-    BuildCompileUnit2T
+    BuildCompileUnit2TSpec
       env
-      PartialSchedulerImpl (fun r => BagSanityConditions (prim_fst r))
+      (AbsR (fst (projT2 SharpenedScheduler)))
+      (fun r => BagSanityConditions (prim_fst r))
       (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
       (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
       (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
@@ -6525,7 +6526,8 @@ Definition CUnit
       Scheduler_coDomainWrappers
       Scheduler_DomainWrappers
       (Scheduler_RepWrapperT _)
-      (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))} .
+      (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
+      (fst (projT2 SharpenedScheduler))} .
 Proof.
   Time _compile QSEnv_Ax.
 Time Defined.
