@@ -261,8 +261,8 @@ def plot_set(axes, results, linestyle, markers, colors):
         xs, data = zip(*sorted((k, v) for (k, v) in opresults.items() if 20 <= k <= 5000))
         ys = numpy.array([rec[0] for rec in data])
         smoothing = (len(ys) // 30) * 2 + 3
-        line, = axis.plot(xs, savitzky_golay(ys, smoothing, 3),
-                          color=color, linestyle=linestyle, marker="", linewidth=2, zorder=10)
+        line, = axis.plot(xs, savitzky_golay(ys, smoothing, 3), #dash_capstyle="round",
+                          color=color, linestyle=linestyle, marker="", linewidth=2, zorder=3)
         dots, = axis.plot(xs, ys, linestyle="",
                           marker="", markevery=15, markerfacecolor="none",
                           markeredgewidth=0.5, markeredgecolor=color,  markersize=5)
@@ -294,7 +294,7 @@ def plot_sets(*result_sets):
     figsize = [d * to_inches(240.0) for d in (1, 1)]
     fig, axis = pyplot.subplots(1, 1, sharex=True, frameon=False, figsize=figsize)
     axis.grid(which='minor', color=TANGO["grey"][1], zorder=0)
-    axis.grid(which='major', color=TANGO["black"][2], zorder=5)
+    axis.grid(which='major', color=TANGO["black"][2], zorder=0)
     axis.set_yscale('log', basey=10)
     axis.set_ylim((0.4e-2, 5))
 
@@ -309,7 +309,9 @@ def plot_sets(*result_sets):
 
     axis.legend(*zip(*legends), loc='lower center', frameon=False,
                 columnspacing=1.2, handletextpad=0.4, handlelength=2.5,
-                bbox_to_anchor=(0.5,-0.28), ncol=3, numpoints=2).get_frame().set_linewidth(0.5)
+                bbox_to_anchor=(0.5,-0.36), ncol=3, numpoints=2).get_frame().set_linewidth(0.5)
+    axis.set_xlabel("Number of processes ($10$ active, $n-10$ sleeping)")
+    axis.set_ylabel("Running time (seconds)")
 
     # pyplot.show()
     fig.savefig("../../../../papers/fiat-to-facade/benchmarks.pdf")
