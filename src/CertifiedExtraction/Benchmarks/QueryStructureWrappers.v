@@ -73,41 +73,6 @@ Definition RelatedIndexedTupleAndListW {N} (l: BedrockElement) (tup: FiatElement
 Definition IndexedEnsemble_TupleToListW {N} (ensemble: FiatBag N) : BedrockBag :=
   fun listW => exists tup, ensemble tup /\ RelatedIndexedTupleAndListW listW tup.
 
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W) := *)
-(*   fun listW => *)
-(*     exists pr: List.length listW.(indexedElement) = N, *)
-(*       ensemble match pr in _ = N with *)
-(*                | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                end. *)
-
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W). *)
-(*       refine (fun listW => _). *)
-(*       refine (match EqNat.beq_nat (List.length listW.(indexedElement)) N as b *)
-(*                     return EqNat.beq_nat (List.length listW.(indexedElement)) N = b -> Prop with *)
-(*                 | true => fun pr => ensemble match (EqNat.beq_nat_true _ _ pr) in _ = N with *)
-(*                                         | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                                         end *)
-(*                 | false => fun _ => False *)
-(*               end eq_refl). *)
-(* Defined. *)
-
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W). *)
-(*       refine (fun listW => _). *)
-(*       refine (match Peano_dec.eq_nat_dec (List.length listW.(indexedElement)) N with *)
-(*               | left pr => ensemble match pr in _ = N with *)
-(*                                    | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                                    end *)
-(*               | in_right => False *)
-(*               end). *)
-(* Defined. *)
-
-(* Definition IndexedEnsemble_ListWToTuple {N} (ensemble : @IndexedEnsemble (list W)) *)
-(*   : FiatBag := *)
-(*   fun tup => exists listW, ensemble listW /\ RelatedIndexedTupleAndListW listW tup. *)
-
 Lemma TupleToListW_inj {N}:
   forall (t1 t2: @RawTuple (MakeWordHeading N)),
     TupleToListW t1 = TupleToListW t2 ->
@@ -217,13 +182,6 @@ Proof.
   refine {| wrap tl := Tuples2 (Word.natToWord 32 N) M M' (IndexedEnsemble_TupleToListW tl);
             wrap_inj := _ |}; Wrapper_t.
 Defined.
-
-Require Import Bedrock.Platform.Facade.examples.QsADTs.
-
-Print Tuple.
-Print TuplesF.tupl.
-
-Print TuplesF.tupl.
 
 Require Import CertifiedExtraction.Extraction.External.Core.
 Require Import Bedrock.Platform.Facade.examples.QsADTs.
@@ -393,44 +351,44 @@ Section Tuples0.
   (* Proof. *)
   (*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t). *)
 
-  (*   (* Definition FiatBagFunctional {N} (fiatBag: FiatBag N) := *) *)
-  (*   (*   forall t1 t2, *) *)
-  (*   (*     fiatBag t1 -> fiatBag t2 -> *) *)
-  (*   (*     IndexedEnsembles.elementIndex t1 = IndexedEnsembles.elementIndex t2 -> *) *)
-  (*   (*     t1 = t2. *) *)
+  (* Definition FiatBagFunctional {N} (fiatBag: FiatBag N) := *)
+  (*   forall t1 t2, *)
+  (*     fiatBag t1 -> fiatBag t2 -> *)
+  (*     IndexedEnsembles.elementIndex t1 = IndexedEnsembles.elementIndex t2 -> *)
+  (*     t1 = t2. *)
 
-  (*   (* Definition FiatBagMinFreshIndex {N} (fiatBag: FiatBag N) idx := *) *)
-  (*   (*   IndexedEnsembles.UnConstrFreshIdx fiatBag idx /\ *) *)
-  (*   (*   (forall idx' : nat, (lt idx' idx) -> ~ IndexedEnsembles.UnConstrFreshIdx fiatBag idx'). *) *)
+  (* Definition FiatBagMinFreshIndex {N} (fiatBag: FiatBag N) idx := *)
+  (*   IndexedEnsembles.UnConstrFreshIdx fiatBag idx /\ *)
+  (*   (forall idx' : nat, (lt idx' idx) -> ~ IndexedEnsembles.UnConstrFreshIdx fiatBag idx'). *)
 
-  (*   (* Record FiatBag' {N} := *) *)
-  (*   (*   { fiatBag : FiatBag N; *) *)
-  (*   (*     bagFunctional : FiatBagFunctional fiatBag; *) *)
-  (*   (*     idx: nat; *) *)
-  (*   (*     idxIsFresh: FiatBagMinFreshIndex fiatBag idx }. *) *)
+  (* Record FiatBag' {N} := *)
+  (*   { fiatBag : FiatBag N; *)
+  (*     bagFunctional : FiatBagFunctional fiatBag; *)
+  (*     idx: nat; *)
+  (*     idxIsFresh: FiatBagMinFreshIndex fiatBag idx }. *)
 
-  (*   (* Lemma minFreshIndex_Lift: *) *)
-  (*   (*   forall (N : nat) (table : FiatBag N) (idx : nat), *) *)
-  (*   (*     FiatBagMinFreshIndex table idx -> *) *)
-  (*   (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx. *) *)
-  (*   (* Proof. *) *)
-  (*   (*   unfold FiatBagMinFreshIndex, minFreshIndex. *) *)
-  (*   (*   repeat cleanup. *) *)
+  (* Lemma minFreshIndex_Lift: *)
+  (*   forall (N : nat) (table : FiatBag N) (idx : nat), *)
+  (*     FiatBagMinFreshIndex table idx -> *)
+  (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx. *)
+  (* Proof. *)
+  (*   unfold FiatBagMinFreshIndex, minFreshIndex. *)
+  (*   repeat cleanup. *)
 
-  (*   (*   Lemma UnconstrFreshIdx_Lift: *) *)
-  (*   (*     forall (N : nat) (table : FiatBag N) (idx : nat), *) *)
-  (*   (*       IndexedEnsembles.UnConstrFreshIdx table idx <-> UnConstrFreshIdx (IndexedEnsemble_TupleToListW table) idx. *) *)
-  (*   (*   Proof. *) *)
-  (*   (*     unfold IndexedEnsembles.UnConstrFreshIdx, UnConstrFreshIdx; *) *)
-  (*   (*     repeat cleanup. *) *)
-  (*   (*     rewrite <- IndexedElement_RoundTrip in H0. *) *)
-  (*   (*     pose (IndexedEnsemble_TupleToListW_inj_helpe _ table (IndexedElement_ListWToTuple element)). H0). *) *)
-  (*   (*   Admitted. *) *)
+  (*   Lemma UnconstrFreshIdx_Lift: *)
+  (*     forall (N : nat) (table : FiatBag N) (idx : nat), *)
+  (*       IndexedEnsembles.UnConstrFreshIdx table idx <-> UnConstrFreshIdx (IndexedEnsemble_TupleToListW table) idx. *)
+  (*   Proof. *)
+  (*     unfold IndexedEnsembles.UnConstrFreshIdx, UnConstrFreshIdx; *)
+  (*     repeat cleanup. *)
+  (*     rewrite <- IndexedElement_RoundTrip in H0. *)
+  (*     pose (IndexedEnsemble_TupleToListW_inj_helpe _ table (IndexedElement_ListWToTuple element)). H0). *)
+  (*   Admitted. *)
 
-  (*   (*   apply UnconstrFreshIdx_Lift; assumption. *) *)
-  (*   (*   rewrite <- UnconstrFreshIdx_Lift. *) *)
-  (*   (*   eauto. *) *)
-  (*   (* Qed. *) *)
+  (*   apply UnconstrFreshIdx_Lift; assumption. *)
+  (*   rewrite <- UnconstrFreshIdx_Lift. *)
+  (*   eauto. *)
+  (* Qed. *)
 
   (*   facade_eauto. *)
   (*   facade_eauto. *)

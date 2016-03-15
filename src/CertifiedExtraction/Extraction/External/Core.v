@@ -11,7 +11,6 @@ Ltac learn_all_WeakEq_remove hyp lhs :=
   | _ => idtac
   end.
 
-Print RunsTo.
 Lemma combine_inv :
   forall A B input output combined,
     List.length input = List.length output ->
