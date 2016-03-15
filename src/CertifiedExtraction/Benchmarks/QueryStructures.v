@@ -6532,14 +6532,13 @@ Proof.
   Time _compile QSEnv_Ax.
 Time Defined.
 
-(* Set Printing All. *)
+Print Assumptions CUnit.
 
-Redirect "SpawnSmall" Eval compute in (projT1 CUnit).
-Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+(* Time Redirect "Funs" Eval lazy in (StringMap.map (fun dffun => Body (Core dffun)) (Funs (module (projT1 (projT2 CUnit))))). *)
 
-(* Here's the lemma for compiling everything! *)
-
+(* Redirect "SpawnSmall" Eval compute in (projT1 CUnit). *)
+(* Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))). *)
+(* Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))). *)
 
 Definition QSEnv : Env QsADTs.ADTValue :=
   (GLabelMap.empty _)
@@ -6606,10 +6605,7 @@ Proof.
   start_compiling_adt.
   - eexists; split.
     + destruct H as [? [ ? ?] ].
-      Time _compile.
-      unfold CallBagMethod in *; simpl in *.
-      computes_to_inv; subst.
-      eapply H0.
+      Time repeat __compile_method_step.
     + destruct H as [? [? ?] ].
       unfold CallBagMethod; intros; simpl in *; computes_to_inv; subst.
       find_if_inside; computes_to_inv; subst; simpl in *.
@@ -6618,23 +6614,30 @@ Proof.
       * injections; subst; eauto.
   - eexists; split.
     + destruct H as [? [? ?] ].
-      Time _compile.
+      Time repeat __compile_method_step.
     + destruct H as [? [? ?] ].
       unfold CallBagMethod; intros; simpl in *.
       computes_to_inv; subst.
       injections; simpl; split; eauto.
   - eexists; split.
     + destruct H as [? [? ?] ].
-      Time _compile.
+      Print Assumptions CUnit.
+      Time repeat __compile_method_step.
     + destruct H as [? [? ?] ].
       unfold CallBagMethod; intros; simpl in *.
       computes_to_inv; subst.
       injections; simpl; split; eauto.
-      (* pose proof (fun k2 => @CompileTuples2_findSecond_spec "snd" "rep" "arg" ("ADT", "Tuples2_findSecond") QSEnv (["arg" <-- wrap v]::∅) Nil 3 k2 (prim_fst r) v (Fin.F1)) as lemma. *)
 Time Defined.
 
 Print Assumptions progOKs.
 
+Check (match StringMap.find "Spawn" (Funs (module (projT1 (projT2 CUnit)))) with
+       | Some dffun => ArgVars (Core dffun)
+       | None => nil
+       end).
+      ).
+
+Eval compute in (projT1 (progOKs Fin.F1)).
 (* Set Printing All. *)
 Redirect "SpawnSmall" Eval compute in (projT1 (progOKs Fin.F1)).
 Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
