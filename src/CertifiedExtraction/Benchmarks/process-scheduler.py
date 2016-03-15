@@ -291,7 +291,7 @@ def rcparams():
 def plot_sets(*result_sets):
     rcparams()
 
-    figsize = [d * to_inches(240.0) for d in (1, 1)]
+    figsize = [d * to_inches(240.0) for d in (1, 0.8)]
     fig, axis = pyplot.subplots(1, 1, sharex=True, frameon=False, figsize=figsize)
     axis.grid(which='minor', color=TANGO["grey"][1], zorder=0)
     axis.grid(which='major', color=TANGO["black"][2], zorder=0)
@@ -309,7 +309,7 @@ def plot_sets(*result_sets):
 
     axis.legend(*zip(*legends), loc='lower center', frameon=False,
                 columnspacing=1.2, handletextpad=0.4, handlelength=2.5,
-                bbox_to_anchor=(0.5,-0.36), ncol=3, numpoints=2).get_frame().set_linewidth(0.5)
+                bbox_to_anchor=(0.5,-0.42), ncol=3, numpoints=2).get_frame().set_linewidth(0.5)
     axis.set_xlabel("Number of processes ($10$ active, $n-10$ sleeping)")
     axis.set_ylabel("Running time (seconds)")
 
