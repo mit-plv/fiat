@@ -1787,4 +1787,9 @@ Ltac replace_with_vm_compute c :=
   let set_tac := (fun x' x
                   => pose x as x';
                      change x with x') in
-  replace_with_at_by c c' set_tac ltac:(clear; abstract (vm_compute; reflexivity)).
+  replace_with_at_by c c' set_tac ltac:(clear; vm_cast_no_check (eq_refl c')).
+
+Ltac replace_with_vm_compute_in c H :=
+  let c' := (eval vm_compute in c) in
+  (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
+  replace c with c' in H by (clear; vm_cast_no_check (eq_refl c')).
