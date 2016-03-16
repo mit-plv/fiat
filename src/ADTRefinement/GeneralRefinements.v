@@ -15,7 +15,7 @@ Require Import Coq.Lists.List
    2. Discharge any side conditions.
    3. Repeat steps 1-2 until adt is completely specialized.
 
-   My (Ben's) current thought is that to make this as pleasant as
+   My current thought is that to make this as pleasant as
    possible, the refinements used in the first step should be
    implemented using tactics which present the user with 'nice' side
    conditions. (In particular, this lets us be careful about not
