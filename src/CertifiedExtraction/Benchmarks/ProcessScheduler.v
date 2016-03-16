@@ -10,61 +10,43 @@ Require Import
         CertifiedExtraction.Extraction.Extraction
         CertifiedExtraction.Extraction.QueryStructures
         CertifiedExtraction.ADT2CompileUnit.
-Require Import CompileUnit2.
 
+Require Import CompileUnit2.
 Require Import Benchmarks.ProcessSchedulerSetup.
 
-(* For convenience, here is a copy of the Process Scheduler specs:
+(** This file demonstrates the extraction from a Fiat ADT to a Facade
+    “CompileUnit”. For convenience, here is a copy of the Process Scheduler
+    specs:
 
-   Definition SchedulerSchema :=
-     Query Structure Schema [
-             relation "Processes" has schema
-             <"pid" :: W, "state" :: State, "cpu" :: W>
-             where (UniqueAttribute ``"pid")
-     ] enforcing [].
+        Definition SchedulerSchema :=
+          Query Structure Schema [
+                  relation "Processes" has schema
+                  <"pid" :: W, "state" :: State, "cpu" :: W>
+                  where (UniqueAttribute ``"pid")
+          ] enforcing [].
 
-    Definition SchedulerSpec : ADT _ :=
-      QueryADTRep SchedulerSchema {
-        Def Constructor0 "Init" : rep := empty,
+         Definition SchedulerSpec : ADT _ :=
+           QueryADTRep SchedulerSchema {
+             Def Constructor0 "Init" : rep := empty,
 
-        Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
-          Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
+             Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
+               Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
 
-        Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
-          procs <- For (p in r!"Processes")
-                   Where (p!"state" = state)
-                   Return (p!"pid");
-          ret (r, procs),
+             Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
+               procs <- For (p in r!"Processes")
+                        Where (p!"state" = state)
+                        Return (p!"pid");
+               ret (r, procs),
 
-        Def Method1 "GetCPUTime" (r : rep) (id : W) : rep * list W :=
-            proc <- For (p in r!"Processes")
-                    Where (p!"pid" = id)
-                    Return (p!"cpu");
-          ret (r, proc)
-    }%methDefParsing. *)
+             Def Method1 "GetCPUTime" (r : rep) (id : W) : rep * list W :=
+                 proc <- For (p in r!"Processes")
+                         Where (p!"pid" = id)
+                         Return (p!"cpu");
+               ret (r, proc)
+         }%methDefParsing.
 
-(* Improve performance of general derivation *)
-Ltac __compile_clear_bodies_of_ax_spec :=
-  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
-          GLabelMapFacts.uncurry; simpl);
-  repeat lazymatch goal with
-    | |- context[GenAxiomaticSpecs ?a0 ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 ?a7] =>
-      let a := fresh in
-      pose (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) as a;
-      change (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) with a;
-      clearbody a
-    end.
-
-Ltac __compile_start_compiling_module imports ::=
-  lazymatch goal with
-  | [  |- sigT (fun _ => BuildCompileUnit2TSpec  _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) ] =>
-    eexists;
-    unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
-    eapply (BuildCompileUnit2T' QSEnv_Ax); try apply eq_refl (* reflexivity throws an Anomaly *)
-  | [  |- forall _: (Fin.t _), (sigT _)  ] =>
-    __compile_clear_bodies_of_ax_spec;
-    eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; repeat (apply Build_prim_prod || exact tt)
-  end.
+     We have added the output of each of the three “Compute” calls below;
+     running the example up to that point takes about 6 minutes on a modern machine. *)
 
 Definition CUnit
   : { env : _ &
@@ -86,34 +68,6 @@ Definition CUnit
 Proof.
   Time _compile QSEnv_Ax.
 Defined.
-
-Require Import DFModule.
-
-Definition methodBody
-           methodName
-           (CUnit: {env : Env QsADTs.ADTValue &
-              BuildCompileUnit2TSpec env AbsR'
-              (fun r : Rep (fst (projT1 SharpenedScheduler)) => BagSanityConditions (prim_fst r))
-              (DecomposeIndexedQueryStructure' QsADTs.ADTValue
-                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                 (icons3 SearchUpdateTerm inil3))
-              (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue
-                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
-              (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue
-                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
-              (QueryStructureSchema.numQSschemaSchemas SchedulerSchema) "ProcessSchedulerAX" "ProcessSchedulerOP"
-              Scheduler_coDomainWrappers Scheduler_DomainWrappers
-              (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3))
-              (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue
-                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
-                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
-              SharpenedRepImpl}) :=
-  match (StringMap.find methodName (Funs (module (projT1 (projT2 CUnit))))) with
-  | Some dffun => Some (Body (Core (dffun)))
-  | None => None
-  end.
 
 Eval lazy in (methodBody "Spawn" CUnit).
 
@@ -195,6 +149,3 @@ Eval lazy in (methodBody "GetCPUTime" CUnit).
           "test" <- "ADT"."TupleList_delete"("snd");
           __)%facade
      : option Stmt *)
-
-295 derivation.
-3.71 minutes Defined.
