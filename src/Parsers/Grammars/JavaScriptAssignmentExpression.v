@@ -1,68 +1,35 @@
-(*1
+(** * 1. Gramamr for JavaScript AssignmentExpression *)
+Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
-AssignmentExpressionα,β ⇒
-   ConditionalExpressionα,β
-|  LeftSideExpressionα = AssignmentExpressionnormal,β
-|  LeftSideExpressionα CompoundAssignment AssignmentExpressionnormal,β
-
-
-
-
-JavaScript 1.4 Grammar
-up
-Monday, May 3, 1999
-
-This is an LR(1) grammar written by waldemar that describes the state of ECMAScript as of February 1999. The grammar is complete except for semicolon insertion (the OptionalSemicolon grammar state can sometimes reduce to «empty») and distinguishing RegularExpression from / and /=. Also, there is some controversy about elision in array literals, so this feature has been omitted for now.
-
-Grammar syntax
-
-Grammar productions may expand nonterminals into empty right sides. Such right sides are indicated as «empty».
-
-A number of rules in the grammar occur in groups of analogous rules. Rather than list them individually, these groups have been summarized using the shorthand illustrated by the example below:
-
-Statements such as
-
+(** Quoting http://www-archive.mozilla.org/js/language/grammar14.html *)
+(**
+<<
 α ∈ {normal, initial}
 β ∈ {allowIn, noIn}
-introduce grammar arguments α and β. If these arguments later parametrize the nonterminal on the left side of a rule, that rule is implicitly replicated into a set of rules in each of which a grammar argument is consistently substituted by one of its variants. For example,
+>> *)
 
-AssignmentExpressionα,β  ⇒
-   ConditionalExpressionα,β
-|  LeftSideExpressionα = AssignmentExpressionnormal,β
-|  LeftSideExpressionα CompoundAssignment AssignmentExpressionnormal,β
-expands into the following four rules:
+Section JavaScriptAssignmentExpression.
+  Local Open Scope prod_assignment.
 
-AssignmentExpressionnormal,allowIn  ⇒
-   ConditionalExpressionnormal,allowIn
-|  LeftSideExpressionnormal = AssignmentExpressionnormal,allowIn
-|  LeftSideExpressionnormal CompoundAssignment AssignmentExpressionnormal,allowIn
-AssignmentExpressionnormal,noIn  ⇒
-   ConditionalExpressionnormal,noIn
-|  LeftSideExpressionnormal = AssignmentExpressionnormal,noIn
-|  LeftSideExpressionnormal CompoundAssignment AssignmentExpressionnormal,noIn
-AssignmentExpressioninitial,allowIn  ⇒
-   ConditionalExpressioninitial,allowIn
-|  LeftSideExpressioninitial = AssignmentExpressionnormal,allowIn
-|  LeftSideExpressioninitial CompoundAssignment AssignmentExpressionnormal,allowIn
-AssignmentExpressioninitial,noIn  ⇒
-   ConditionalExpressioninitial,noIn
-|  LeftSideExpressioninitial = AssignmentExpressionnormal,noIn
-|  LeftSideExpressioninitial CompoundAssignment AssignmentExpressionnormal,noIn
-AssignmentExpressionnormal,allowIn is now an unparametrized nonterminal and processed normally by the grammar.
-
-Some of the expanded rules (such as the fourth one in the example above) may be unreachable from the starting nonterminal Program; these are ignored.
-
-Expressions
-
-α ∈ {normal, initial}
-β ∈ {allowIn, noIn}
-Primary Expressions
-
+  (** ** Primary Expressions
+<<
 PrimaryExpressionnormal ⇒
    SimpleExpression
 |  FunctionExpression
 |  ObjectLiteral
 PrimaryExpressioninitial ⇒ SimpleExpression
+>> *)
+  Let PrimaryExpression_normal :=
+    "PrimaryExpression normal"
+      ::== "SimpleExpression"
+        || "FunctionExpression"
+        || "ObjectLiteral".
+  Let PrimaryExpression_initial :=
+    "PrimaryExpression initial"
+      ::== "SimpleExpression".
+
+  (**
+<<
 SimpleExpression ⇒
    this
 |  null
@@ -74,14 +41,40 @@ SimpleExpression ⇒
 |  RegularExpression
 |  ParenthesizedExpression
 |  ArrayLiteral
+*)
+  Let SimpleExpression :=
+    "SimpleExpression"
+      ::== "t" "h" "i" "s"
+        || "n" "u" "l" "l"
+        || "t" "r" "u" "e"
+        || "f" "a" "l" "s" "e"
+        (*|| "Number"
+        || "String"
+        || "Identifier"
+        || "RegularExpression"*)
+        || "ParenthesizedExpression"
+        || "ArrayLiteral".
+  (**
+<<
 ParenthesizedExpression ⇒ ( Expressionnormal,allowIn )
-Function Expressions
+>> *)
+  Let ParenthesizedExpression :=
+    "ParenthesizedExpression"
+      ::== "(" "WS*" "Expression normal,allowIn" "WS*" ")".
 
+  (** ** Function Expressions
+<<
 FunctionExpression ⇒
    AnonymousFunction
 |  NamedFunction
-Object Literals
+>> *)
+  Let FunctionExpression :=
+    "FunctionExpression"
+      ::== "AnonymousFunction"
+        || "NamedFunction".
 
+  (** ** Object Literals
+<<
 ObjectLiteral ⇒
    { }
 |  { FieldList }
@@ -89,8 +82,21 @@ FieldList ⇒
    LiteralField
 |  FieldList , LiteralField
 LiteralField ⇒ Identifier : AssignmentExpressionnormal,allowIn
-Array Literals
+>> *)
+  Let ObjectLiteral :=
+    "ObjectLiteral"
+      ::== "{" "WS*" "}"
+        || "{" "WS*" "FieldList" "WS*" "}".
+  Let FieldList :=
+    "FieldList"
+      ::== "LiteralField"
+        || "FieldList" "WS*" "," "WS*" "LiteralField".
+  Let LiteralField :=
+    "LiteralField"
+      ::== "Identifier" "WS*" ":" "WS*" "AssignmentExpression normal,allowIn".
 
+  (** ** Array Literals
+<<
 ArrayLiteral ⇒
    [ ]
 |  [ ElementList ]
@@ -98,11 +104,28 @@ ElementList ⇒
    LiteralElement
 |  ElementList , LiteralElement
 LiteralElement ⇒ AssignmentExpressionnormal,allowIn
-Left-Side Expressions
+>> *)
+  Let ArrayLiteral :=
+    "ArrayLiteral"
+      ::== "[" "WS*" "]"
+        || "[" "WS*" "ElementList" "WS*" "]".
+  Let ElementList :=
+    "ElementList"
+      ::== "LiteralElement"
+        || "ElementList" "WS*" "," "WS*" "LiteralElement".
 
+  (** ** Left-Side Expressions
+<<
 LeftSideExpressionα ⇒
    CallExpressionα
 |  ShortNewExpression
+>> *)
+  Let LeftSideExpression α :=
+    ("LeftSideExpression " ++ α)
+      ::== ("CallExpression " ++ α)
+        || "ShortNewExpression".
+  (**
+<<
 CallExpressionα ⇒
    PrimaryExpressionα
 |  FullNewExpression
@@ -110,30 +133,87 @@ CallExpressionα ⇒
 |  CallExpressionα Arguments
 FullNewExpression ⇒ new FullNewSubexpression Arguments
 ShortNewExpression ⇒ new ShortNewSubexpression
+>> *)
+  Let CallExpression α :=
+    ("CallExpression " ++ α)
+      ::== ("PrimaryExpression " ++ α)
+        || "FullNewExpression"
+        || ("CallExpression " ++ α) "WS*" "MemberOperator"
+        || ("CallExpression " ++ α) "WS*" "Arguments".
+  Let FullNewExpression :=
+    "FullNewExpression"
+      ::== "n" "e" "w" [\s] "WS*" "FullNewSubexpression" "WS*" "Arguments".
+  Let ShortNewExpression :=
+    "ShortNewExpression"
+      ::== "n" "e" "w" [\s] "WS*" "ShortNewSubexpression" "WS*" "Arguments".
+
+  (**
+<<
 FullNewSubexpression ⇒
    PrimaryExpressionnormal
 |  FullNewExpression
 |  FullNewSubexpression MemberOperator
+>> *)
+  Let FullNewSubexpression :=
+    "FullNewSubexpression"
+      ::== "PrimaryExpression normal"
+        || "FullNewExpression"
+        ||  "FullNewSubexpression" "WS*" "MemberOperator".
+
+  (**
+<<
 ShortNewSubexpression ⇒
    FullNewSubexpression
 |  ShortNewExpression
+>> *)
+  Let ShortNewSubexpression :=
+    "ShortNewSubexpression"
+      ::== "FullNewSubexpression"
+        || "ShortNewExpression".
+
+  (**
+<<
 MemberOperator ⇒
    [ Expressionnormal,allowIn ]
 |  . Identifier
+>> *)
+  Let MemberOperator :=
+    "MemberOperator"
+      ::== "[" "WS*" "Expression normal,allowIn" "WS*" "]"
+        || "." "WS*" "Identifier".
+  (**
+<<
 Arguments ⇒
    ( )
 |  ( ArgumentList )
 ArgumentList ⇒
    AssignmentExpressionnormal,allowIn
 |  ArgumentList , AssignmentExpressionnormal,allowIn
-Postfix Operators
+>> *)
+  Let Arguments :=
+    "Arguments"
+      ::== "(" "WS*" ")"
+        || "(" "WS*" "ArgumentList" "WS*" ")".
+  Let ArgumentList :=
+    "ArgumentList"
+      ::== "AssignmentExpression normal,allowIn"
+        || "ArgumentList" "WS*" "," "WS*" "AssignmentExpression normal,allowIn".
 
+  (** ** Postfix Operators
+<<
 PostfixExpressionα ⇒
    LeftSideExpressionα
 |  LeftSideExpressionα ++
 |  LeftSideExpressionα --
-Unary Operators
+>> *)
+  Let PostfixExpression α :=
+    ("PostfixExpression " ++ α)
+      ::== ("LeftSideExpression " ++ α)
+        || "PostfixExpression normal" "WS*" "+" "+"
+        || "PostfixExpression normal" "WS*" "-" "-".
 
+  (** ** Unary Operators
+<<
 UnaryExpressionα ⇒
    PostfixExpressionα
 |  delete LeftSideExpressionnormal
@@ -145,28 +225,63 @@ UnaryExpressionα ⇒
 |  - UnaryExpressionnormal
 |  ~ UnaryExpressionnormal
 |  ! UnaryExpressionnormal
-Multiplicative Operators
+>> *)
+  Let UnaryExpression α :=
+    ("UnaryExpression " ++ α)
+      ::== ("PostfixExpression " ++ α)
+        || "d" "e" "l" "e" "t" "e" [\s] "WS*" "LeftSideExpression normal"
+        || "v" "o" "i" "d" [\s] "WS*" "UnaryExpression normal"
+        || "t" "y" "p" "e" "o" "f" [\s] "WS*" "UnaryExpression normal"
+        || "+" "+" "WS*" "LeftSideExpression normal"
+        || "+" "WS*" "UnaryExpression normal"
+        || "-" "WS*" "UnaryExpression normal"
+        || "~" "WS*" "UnaryExpression normal"
+        || "!" "WS*" "UnaryExpression normal".
 
+  (** ** Multiplicative Operators
+<<
 MultiplicativeExpressionα ⇒
    UnaryExpressionα
 |  MultiplicativeExpressionα * UnaryExpressionnormal
 |  MultiplicativeExpressionα / UnaryExpressionnormal
 |  MultiplicativeExpressionα % UnaryExpressionnormal
-Additive Operators
+>> *)
+  Let MultiplicativeExpression α :=
+    ("MultiplicativeExpression " ++ α)
+      ::== ("UnaryExpression " ++ α)
+        || ("MultiplicativeExpression " ++ α) "WS*" "+" "WS*" "UnaryExpression normal"
+        || ("MultiplicativeExpression " ++ α) "WS*" "-" "WS*" "UnaryExpression normal".
 
+  (** ** Additive Operators
+<<
 AdditiveExpressionα ⇒
    MultiplicativeExpressionα
 |  AdditiveExpressionα + MultiplicativeExpressionnormal
 |  AdditiveExpressionα - MultiplicativeExpressionnormal
-Bitwise Shift Operators
+>> *)
+  Let AdditiveExpression α :=
+    ("AdditiveExpression " ++ α)
+      ::== ("MultiplicativeExpression " ++ α)
+        || ("AdditiveExpression " ++ α) "WS*" "+" "WS*" "MultiplicativeExpression normal"
+        || ("AdditiveExpression " ++ α) "WS*" "-" "WS*" "MultiplicativeExpression normal".
 
+  (** ** Bitwise Shift Operators
+<<
 ShiftExpressionα ⇒
    AdditiveExpressionα
 |  ShiftExpressionα << AdditiveExpressionnormal
 |  ShiftExpressionα >> AdditiveExpressionnormal
 |  ShiftExpressionα >>> AdditiveExpressionnormal
-Relational Operators
+>> *)
+  Let ShiftExpression α :=
+    ("ShiftExpression " ++ α)
+      ::== ("AdditiveExpression " ++ α)
+        || ("ShiftExpression " ++ α) "WS*" "<" "<" "WS*" "AdditiveExpression normal"
+        || ("ShiftExpression " ++ α) "WS*" ">" ">" "WS*" "AdditiveExpression normal"
+        || ("ShiftExpression " ++ α) "WS*" ">" ">" ">" "WS*" "AdditiveExpression normal".
 
+  (** ** Relational Operators
+<<
 RelationalExpressionα,allowIn ⇒
    ShiftExpressionα
 |  RelationalExpressionα,allowIn < ShiftExpressionnormal
@@ -182,16 +297,49 @@ RelationalExpressionα,noIn ⇒
 |  RelationalExpressionα,noIn <= ShiftExpressionnormal
 |  RelationalExpressionα,noIn >= ShiftExpressionnormal
 |  RelationalExpressionα,noIn instanceof ShiftExpressionnormal
-Equality Operators
+>> *)
+  Let RelationalExpression α β :=
+    match β with
+    | "allowIn" =>
+      ("RelationalExpression " ++ α ++ "," ++ β)
+        ::== ("ShiftExpression " ++ α)
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "=" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "=" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "i" "n" "s" "t" "a" "n" "c" "e" "o" "f" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "i" "n" "WS*" "ShiftExpression normal"
+    | "noIn" =>
+      ("RelationalExpression " ++ α ++ "," ++ β)
+        ::== ("ShiftExpression " ++ α)
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "=" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "=" "WS*" "ShiftExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "i" "n" "s" "t" "a" "n" "c" "e" "o" "f" "WS*" "ShiftExpression normal"
+    | _ => "ERROR" ::== "ERROR"
+    end.
 
+  (** ** Equality Operators
+<<
 EqualityExpressionα,β ⇒
    RelationalExpressionα,β
 |  EqualityExpressionα,β == RelationalExpressionnormal,β
 |  EqualityExpressionα,β != RelationalExpressionnormal,β
 |  EqualityExpressionα,β === RelationalExpressionnormal,β
 |  EqualityExpressionα,β !== RelationalExpressionnormal,β
-Binary Bitwise Operators
+>> *)
+  Let EqualityExpression α β :=
+    Eval cbv [append] in
+      ("EqualityExpression " ++ α ++ "," ++ β)
+        ::== ("RelationalExpression " ++ α ++ "," ++ β)
+          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "=" "=" "WS*" ("RelationalExpression normal," ++ β)
+          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "!" "=" "WS*" ("RelationalExpression normal," ++ β)
+          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "=" "=" "=" "WS*" ("RelationalExpression normal," ++ β)
+          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "!" "=" "=" "WS*" ("RelationalExpression normal," ++ β).
 
+  (** ** Binary Bitwise Operators
+<<
 BitwiseAndExpressionα,β ⇒
    EqualityExpressionα,β
 |  BitwiseAndExpressionα,β & EqualityExpressionnormal,β
@@ -201,25 +349,71 @@ BitwiseXorExpressionα,β ⇒
 BitwiseOrExpressionα,β ⇒
    BitwiseXorExpressionα,β
 |  BitwiseOrExpressionα,β | BitwiseXorExpressionnormal,β
-Binary Logical Operators
+>> *)
+  Let BitwiseAndExpression α β :=
+    Eval cbv [append] in
+      ("BitwiseAndExpression " ++ α ++ "," ++ β)
+        ::== ("EqualityExpression " ++ α ++ "," ++ β)
+          || ("BitwiseAndExpression " ++ α ++ "," ++ β) "WS*" "&" "WS*" ("EqualityExpression normal," ++ β).
+  Let BitwiseXorExpression α β :=
+    Eval cbv [append] in
+      ("BitwiseXorExpression " ++ α ++ "," ++ β)
+        ::== ("BitwiseAndExpression " ++ α ++ "," ++ β)
+          || ("BitwiseXorExpression " ++ α ++ "," ++ β) "WS*" "^" "WS*" ("BitwiseAndExpression normal," ++ β).
+  Let BitwiseOrExpression α β :=
+    Eval cbv [append] in
+      ("BitwiseOrExpression " ++ α ++ "," ++ β)
+        ::== ("BitwiseXorExpression " ++ α ++ "," ++ β)
+          || ("BitwiseOrExpression " ++ α ++ "," ++ β) "WS*" "|" "WS*" ("BitwiseXorExpression normal," ++ β).
 
+  (** ** Binary Logical Operators
+<<
 LogicalAndExpressionα,β ⇒
    BitwiseOrExpressionα,β
 |  LogicalAndExpressionα,β && BitwiseOrExpressionnormal,β
 LogicalOrExpressionα,β ⇒
    LogicalAndExpressionα,β
 |  LogicalOrExpressionα,β || LogicalAndExpressionnormal,β
-Conditional Operator
+>> *)
+  Let LogicalAndExpression α β :=
+    Eval cbv [append] in
+      ("LogicalAndExpression " ++ α ++ "," ++ β)
+        ::== ("BitwiseOrExpression " ++ α ++ "," ++ β)
+          || ("LogicalAndExpression " ++ α ++ "," ++ β) "WS*" "&" "&" "WS*" ("BitwiseOrExpression normal," ++ β).
+  Let LogicalOrExpression α β :=
+    Eval cbv [append] in
+      ("LogicalOrExpression " ++ α ++ "," ++ β)
+        ::== ("LogicalAndExpression " ++ α ++ "," ++ β)
+          || ("LogicalOrExpression " ++ α ++ "," ++ β) "WS*" "|" "|" "WS*" ("LogicalAndExpression normal," ++ β).
 
+  (** ** Conditional Operator
+<<
 ConditionalExpressionα,β ⇒
    LogicalOrExpressionα,β
 |  LogicalOrExpressionα,β ? AssignmentExpressionnormal,β : AssignmentExpressionnormal,β
-Assignment Operators
+>> *)
+  Let ConditionalExpression α β :=
+    Eval cbv [append] in
+      ("ConditionalExpression " ++ α ++ "," ++ β)
+        ::== ("LogicalOrExpression " ++ α ++ "," ++ β)
+          || ("LogicalOrExpression " ++ α ++ "," ++ β) "WS*" "?" "WS*" ("AssignmentExpression normal," ++ β) "WS*" ":" "WS*" ("AssignmentExpression normal," ++ β).
 
+  (** ** Assignment Operators
+<<
 AssignmentExpressionα,β ⇒
    ConditionalExpressionα,β
 |  LeftSideExpressionα = AssignmentExpressionnormal,β
 |  LeftSideExpressionα CompoundAssignment AssignmentExpressionnormal,β
+>> *)
+  Let AssignmentExpression α β :=
+    Eval cbv [append] in
+      ("AssignmentExpression " ++ α ++ "," ++ β)
+        ::== ("ConditionalExpression " ++ α ++ "," ++ β)
+          || ("LeftSideExpression " ++ α) "WS*" "=" "WS*" ("AssignmentExpression normal," ++ β)
+          || ("LeftSideExpression " ++ α) "WS*" "CompoundAssignment" "WS*" ("AssignmentExpression normal," ++ β).
+
+(**
+<<
 CompoundAssignment ⇒
    *=
 |  /=
@@ -232,156 +426,172 @@ CompoundAssignment ⇒
 |  &=
 |  ^=
 |  |=
-Expressions
+>> *)
+  Let CompoundAssignment :=
+    "CompoundAssignment"
+      ::== "*" "="
+        || "/" "="
+        || "%" "="
+        || "+" "="
+        || "-" "="
+        || "<" "<" "="
+        || ">" ">" "="
+        || ">" ">" ">" "="
+        || "&" "="
+        || "^" "="
+        || "|" "=".
 
+(** ** Expressions
+<<
 Expressionα,β ⇒
    AssignmentExpressionα,β
 |  Expressionα,β , AssignmentExpressionnormal,β
+>> *)
+  Let Expression α β :=
+    Eval cbv [append] in
+      ("Expression " ++ α ++ "," ++ β)
+        ::== ("AssignmentExpression " ++ α ++ "," ++ β)
+          || ("Expression " ++ α ++ "," ++ β) "WS*" "," "WS*" ("AssignmentExpression normal," ++ β).
+  (**
+<<
 OptionalExpression ⇒
    Expressionnormal,allowIn
 |  «empty»
-Statements
+>> *)
+  Let OptionalExpression :=
+      "OptionalExpression"
+        ::== "Expression normal,allowIn"
+          || "".
 
-ω ∈ {noShortIf, full}
-Statementω ⇒
-   EmptyStatement
-|  ExpressionStatement OptionalSemicolon
-|  VariableDefinition OptionalSemicolon
-|  Block
-|  LabeledStatementω
-|  IfStatementω
-|  SwitchStatement
-|  DoStatement OptionalSemicolon
-|  WhileStatementω
-|  ForStatementω
-|  WithStatementω
-|  ContinueStatement OptionalSemicolon
-|  BreakStatement OptionalSemicolon
-|  ReturnStatement OptionalSemicolon
-|  ThrowStatement OptionalSemicolon
-|  TryStatement
-OptionalSemicolon ⇒ ;
-Empty Statement
+  Definition javascript_assignment_expression'_pregrammar' : pregrammar ascii :=
+    Eval grammar_red in
+      [[[
+           OptionalExpression;;
+           PrimaryExpression_normal;;
+           PrimaryExpression_initial;;
+           SimpleExpression;;
+           ParenthesizedExpression;;
+           FunctionExpression;;
+           ObjectLiteral;;
+           FieldList;;
+           LiteralField;;
+           ArrayLiteral;;
+           ElementList;;
+           LeftSideExpression "normal";;
+           LeftSideExpression "initial";;
+           CallExpression "normal";;
+           CallExpression "initial";;
+           FullNewExpression;;
+           ShortNewExpression;;
+           FullNewSubexpression;;
+           ShortNewSubexpression;;
+           MemberOperator;;
+           Arguments;;
+           ArgumentList;;
+           PostfixExpression "normal";;
+           PostfixExpression "initial";;
+           UnaryExpression "normal";;
+           UnaryExpression "initial";;
+           MultiplicativeExpression "normal";;
+           MultiplicativeExpression "initial";;
+           AdditiveExpression "normal";;
+           AdditiveExpression "initial";;
+           ShiftExpression "normal";;
+           ShiftExpression "initial";;
+           RelationalExpression "normal" "allowIn";;
+           RelationalExpression "initial" "allowIn";;
+           RelationalExpression "normal" "noIn";;
+           RelationalExpression "initial" "noIn";;
+           EqualityExpression "normal" "allowIn";;
+           EqualityExpression "initial" "allowIn";;
+           EqualityExpression "normal" "noIn";;
+           EqualityExpression "initial" "noIn";;
+           BitwiseAndExpression "normal" "allowIn";;
+           BitwiseAndExpression "initial" "allowIn";;
+           BitwiseAndExpression "normal" "noIn";;
+           BitwiseAndExpression "initial" "noIn";;
+           BitwiseXorExpression "normal" "allowIn";;
+           BitwiseXorExpression "initial" "allowIn";;
+           BitwiseXorExpression "normal" "noIn";;
+           BitwiseXorExpression "initial" "noIn";;
+           BitwiseOrExpression "normal" "allowIn";;
+           BitwiseOrExpression "initial" "allowIn";;
+           BitwiseOrExpression "normal" "noIn";;
+           BitwiseOrExpression "initial" "noIn";;
+           LogicalAndExpression "normal" "allowIn";;
+           LogicalAndExpression "initial" "allowIn";;
+           LogicalAndExpression "normal" "noIn";;
+           LogicalAndExpression "initial" "noIn";;
+           LogicalOrExpression "normal" "allowIn";;
+           LogicalOrExpression "initial" "allowIn";;
+           LogicalOrExpression "normal" "noIn";;
+           LogicalOrExpression "initial" "noIn";;
+           ConditionalExpression "normal" "allowIn";;
+           ConditionalExpression "initial" "allowIn";;
+           ConditionalExpression "normal" "noIn";;
+           ConditionalExpression "initial" "noIn";;
+           AssignmentExpression "normal" "allowIn";;
+           AssignmentExpression "initial" "allowIn";;
+           AssignmentExpression "normal" "noIn";;
+           AssignmentExpression "initial" "noIn";;
+           CompoundAssignment;;
+           Expression "normal" "allowIn";;
+           Expression "initial" "allowIn";;
+           Expression "normal" "noIn";;
+           Expression "initial" "noIn";;
+           (**
+<<
+WS
+   : [ \t\n\r] + -> skip
+   ;
+>> *)
+           "WS*"
+           ::== "" || [\s] "WS*"
 
-EmptyStatement ⇒ ;
-Expression Statement
+      ]]]%grammar.
+End JavaScriptAssignmentExpression.
 
-ExpressionStatement ⇒ Expressioninitial,allowIn
-Variable Definition
+Definition javascript_assignment_expression'_pregrammar
+  := Eval cbv [javascript_assignment_expression'_pregrammar' append]
+    in javascript_assignment_expression'_pregrammar'.
 
-VariableDefinition ⇒ var VariableDeclarationListallowIn
-VariableDeclarationListβ ⇒
-   VariableDeclarationβ
-|  VariableDeclarationListβ , VariableDeclarationβ
-VariableDeclarationβ ⇒ Identifier VariableInitializerβ
-VariableInitializerβ ⇒
-   «empty»
-|  = AssignmentExpressionnormal,β
-Block
+(*Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+Goal is_true (grammar_rvalid javascript_assignment_expression'_pregrammar).
+  cbv [grammar_rvalid is_true Valid_nonterminals grammar_of_pregrammar Lookup pregrammar_nonterminals].
+  set (x := List.map fst javascript_assignment_expression'_pregrammar).
+  set (y := Lookup_string javascript_assignment_expression'_pregrammar).
+  set (z := productions_rvalid javascript_assignment_expression'_pregrammar).
+  vm_compute in x; subst x.
+  cbv [List.map List.fold_right].
+  repeat match goal with
+  | [ |- appcontext[z (y ?k)] ]
+    => change (z (y k)) with true
+  end.
+  change (andb true) with (fun x : bool => x).
+  cbv beta.
+  repeat match goal with
+  | [ |- appcontext[z (y ?k)] ]
+    => let y' := fresh in
+       set (y' := (y k));
+         hnf in y';
+         subst y'
+  end;
+    subst y.
+  cbv [productions_rvalid z List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string].
+  repeat match goal with
+         | [ |- appcontext[production_rvalid ?x ?y] ]
+           => change (production_rvalid x y) with true
+         end.
+  change (andb true) with (fun x : bool => x).
+  cbv beta.
+  cbv [production_rvalid List.map List.fold_right item_rvalid].
+  repeat match goal with
+         | [ |- appcontext G[BaseTypes.is_valid_nonterminal ?x ?y] ]
+           => let G' := context G[true] in
+              change G'
+         end.
+  repeat (change (andb true) with (fun x : bool => x); cbv beta).
+Set Printing All.
 
-Block ⇒ { BlockStatements }
-BlockStatements ⇒
-   «empty»
-|  BlockStatementsPrefix
-BlockStatementsPrefix ⇒
-   Statementfull
-|  BlockStatementsPrefix Statementfull
-Labeled Statements
 
-LabeledStatementω ⇒ Identifier : Statementω
-If Statement
-
-IfStatementfull ⇒
-   if ParenthesizedExpression Statementfull
-|  if ParenthesizedExpression StatementnoShortIf else Statementfull
-IfStatementnoShortIf ⇒ if ParenthesizedExpression StatementnoShortIf else StatementnoShortIf
-Switch Statement
-
-SwitchStatement ⇒
-   switch ParenthesizedExpression { }
-|  switch ParenthesizedExpression { CaseGroups LastCaseGroup }
-CaseGroups ⇒
-   «empty»
-|  CaseGroups CaseGroup
-CaseGroup ⇒ CaseGuards BlockStatementsPrefix
-LastCaseGroup ⇒ CaseGuards BlockStatements
-CaseGuards ⇒
-   CaseGuard
-|  CaseGuards CaseGuard
-CaseGuard ⇒
-   case Expressionnormal,allowIn :
-|  default :
-Do-While Statement
-
-DoStatement ⇒ do Statementfull while ParenthesizedExpression
-While Statement
-
-WhileStatementω ⇒ while ParenthesizedExpression Statementω
-For Statements
-
-ForStatementω ⇒
-   for ( ForInitializer ; OptionalExpression ; OptionalExpression ) Statementω
-|  for ( ForInBinding in Expressionnormal,allowIn ) Statementω
-ForInitializer ⇒
-   «empty»
-|  Expressionnormal,noIn
-|  var VariableDeclarationListnoIn
-ForInBinding ⇒
-   LeftSideExpressionnormal
-|  var VariableDeclarationnoIn
-With Statement
-
-WithStatementω ⇒ with ParenthesizedExpression Statementω
-Continue and Break Statements
-
-ContinueStatement ⇒ continue OptionalLabel
-BreakStatement ⇒ break OptionalLabel
-OptionalLabel ⇒
-   «empty»
-|  Identifier
-Return Statement
-
-ReturnStatement ⇒ return OptionalExpression
-Throw Statement
-
-ThrowStatement ⇒ throw Expressionnormal,allowIn
-Try Statement
-
-TryStatement ⇒
-   try Block CatchClauses
-|  try Block FinallyClause
-|  try Block CatchClauses FinallyClause
-CatchClauses ⇒
-   CatchClause
-|  CatchClauses CatchClause
-CatchClause ⇒ catch ( Identifier ) Block
-FinallyClause ⇒ finally Block
-Function Definition
-
-FunctionDefinition ⇒ NamedFunction
-AnonymousFunction ⇒ function FormalParametersAndBody
-NamedFunction ⇒ function Identifier FormalParametersAndBody
-FormalParametersAndBody ⇒ ( FormalParameters ) { TopStatements }
-FormalParameters ⇒
-   «empty»
-|  FormalParametersPrefix
-FormalParametersPrefix ⇒
-   FormalParameter
-|  FormalParametersPrefix , FormalParameter
-FormalParameter ⇒ Identifier
-Programs
-
-Program ⇒ TopStatements
-TopStatements ⇒
-   «empty»
-|  TopStatementsPrefix
-TopStatementsPrefix ⇒
-   TopStatement
-|  TopStatementsPrefix TopStatement
-TopStatement ⇒
-   Statementfull
-|  FunctionDefinition
-Waldemar Horwat
-Last modified Monday, May 3, 1999
-up
-*)
+  vm_compute.*)
