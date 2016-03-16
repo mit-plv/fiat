@@ -302,6 +302,7 @@ src/Parsers/Grammars/JSON.v
 src/Parsers/Grammars/JSONImpoverished.v
 src/Parsers/Grammars/JSONImpoverishedOriginal.v
 src/Parsers/Grammars/JSONTests.v
+src/Parsers/Grammars/JavaScript.v
 src/Parsers/Grammars/JavaScriptAssignmentExpression.v
 src/Parsers/Grammars/JavaScriptExpression.v
 src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.v

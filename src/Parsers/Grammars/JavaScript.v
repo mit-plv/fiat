@@ -1,4 +1,4 @@
-(** * 1. Gramamr for JavaScript AssignmentExpression *)
+(** * 1. Gramamr for JavaScript 1.4 *)
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 (** Quoting http://www-archive.mozilla.org/js/language/grammar14.html *)
@@ -469,11 +469,357 @@ OptionalExpression ⇒
       "OptionalExpression"
         ::== "Expression normal,allowIn"
           || "".
+  Let SOptionalExpression :=
+      "\s OptionalExpression"
+        ::== [\s] "WS*" "Expression normal,allowIn"
+          || "".
 
-  Definition javascript_assignment_expression'_pregrammar' : pregrammar ascii :=
+  (** ** Statements *)
+  (**
+<<
+ω ∈ {noShortIf, full}
+>> *)
+
+  (**
+<<
+Statementω ⇒
+   EmptyStatement
+|  ExpressionStatement OptionalSemicolon
+|  VariableDefinition OptionalSemicolon
+|  Block
+|  LabeledStatementω
+|  IfStatementω
+|  SwitchStatement
+|  DoStatement OptionalSemicolon
+|  WhileStatementω
+|  ForStatementω
+|  WithStatementω
+|  ContinueStatement OptionalSemicolon
+|  BreakStatement OptionalSemicolon
+|  ReturnStatement OptionalSemicolon
+|  ThrowStatement OptionalSemicolon
+|  TryStatement
+OptionalSemicolon ⇒ ;
+>> *)
+  Let Statement ω :=
+    ("Statement " ++ ω)
+      ::== "EmptyStatement"
+        || "ExpressionStatement" "WS*" "OptionalSemicolon"
+        || "VariableDefinition" "WS*" "OptionalSemicolon"
+        || "Block"
+        || ("LabeledStatement " ++ ω)
+        || ("IfStatement " ++ ω)
+        || "SwitchStatement"
+        || "DoStatement" "WS*" "OptionalSemicolon"
+        || ("WhileStatement " ++ ω)
+        || ("ForStatement " ++ ω)
+        || ("WithStatement " ++ ω)
+        || "ContinueStatement" "WS*" "OptionalSemicolon"
+        || "BreakStatement" "WS*" "OptionalSemicolon"
+        || "ReturnStatement" "WS*" "OptionalSemicolon"
+        || "ThrowStatement" "WS*" "OptionalSemicolon"
+        || "TryStatement".
+  Let OptionalSemicolon :=
+    "OptionalSemicolon" ::== ";".
+
+  (** *** Empty Statement
+<<
+EmptyStatement ⇒ ;
+>> *)
+  Let EmptyStatement :=
+    "EmptyStatement" ::== ";".
+
+  (** *** Expression Statement
+<<
+ExpressionStatement ⇒ Expressioninitial,allowIn
+>> *)
+  Let ExpressionStatement :=
+    "ExpressionStatement" ::== "Expression initial,allowIn".
+
+  (** *** Variable Definition
+<<
+VariableDefinition ⇒ var VariableDeclarationListallowIn
+VariableDeclarationListβ ⇒
+   VariableDeclarationβ
+|  VariableDeclarationListβ , VariableDeclarationβ
+VariableDeclarationβ ⇒ Identifier VariableInitializerβ
+VariableInitializerβ ⇒
+   «empty»
+|  = AssignmentExpressionnormal,β
+>> *)
+  Let VariableDefinition :=
+    "VariableDefinition" ::== "'var'" [\s] "WS*" "VariableDeclarationList allowIn".
+  Let VariableDeclarationList β :=
+    ("VariableDeclarationList " ++ β)
+      ::== ("VariableDeclaration " ++ β)
+        || ("VariableDeclarationList " ++ β) "WS*" "," "WS*" ("VariableDeclaration " ++ β).
+  Let VariableDeclaration β :=
+    ("VariableDeclaration " ++ β)
+      ::== "Identifier" ("VariableInitializer " ++ β).
+  Let VariableInitializer β :=
+    ("VariableInitializer " ++ β)
+      ::== "WS*"
+        || "WS*" "=" "WS*" ("AssignmentExpression normal," ++ β).
+
+  (** *** Block
+<<
+Block ⇒ { BlockStatements }
+BlockStatements ⇒
+   «empty»
+|  BlockStatementsPrefix
+BlockStatementsPrefix ⇒
+   Statementfull
+|  BlockStatementsPrefix Statementfull
+>> *)
+  Let Block :=
+    "Block"
+      ::== "{" "WS*" "BlockStatements" "WS*" "}".
+  Let BlockStatements :=
+    "BlockStatements"
+      ::== ""
+        || "BlockStatementsPrefix".
+  Let BlockStatementsPrefix :=
+    "BlockStatementsPrefix"
+      ::== "Statement full"
+        || "BlockStatementsPrefix" "Statement full".
+
+  (** *** Labeled Statements
+<<
+LabeledStatementω ⇒ Identifier : Statementω
+>> *)
+  Let LabeledStatement ω :=
+    ("LabeledStatement " ++ ω)
+      ::== "Identifier" "WS*" ":" "WS*" ("Statement " ++ ω).
+
+  (** *** If Statement
+<<
+IfStatementfull ⇒
+   if ParenthesizedExpression Statementfull
+|  if ParenthesizedExpression StatementnoShortIf else Statementfull
+IfStatementnoShortIf ⇒ if ParenthesizedExpression StatementnoShortIf else StatementnoShortIf
+>> *)
+  Let IfStatement_full :=
+    "IfStatement full"
+      ::== "'if'" "WS*" "ParenthesizedExpression" "WS*" "Statement full"
+        || "'if'" "WS*" "ParenthesizedExpression" "WS*" "Statement noShortIf" "WS*" "'else'" "WS*" "Statement full".
+  Let IfStatement_noShortIf :=
+    "IfStatement noShortIf"
+      ::== "'if'" "WS*" "ParenthesizedExpression" "WS*" "Statement noShortIf" "WS*" "'else'" "WS*" "Statement noShortIf".
+
+  (** *** Switch Statement
+<<
+SwitchStatement ⇒
+   switch ParenthesizedExpression { }
+|  switch ParenthesizedExpression { CaseGroups LastCaseGroup }
+CaseGroups ⇒
+   «empty»
+|  CaseGroups CaseGroup
+CaseGroup ⇒ CaseGuards BlockStatementsPrefix
+LastCaseGroup ⇒ CaseGuards BlockStatements
+CaseGuards ⇒
+   CaseGuard
+|  CaseGuards CaseGuard
+CaseGuard ⇒
+   case Expressionnormal,allowIn :
+|  default :
+>> *)
+  Let SwitchStatement :=
+    "SwitchStatement"
+      ::== "'switch'" "WS*" "ParenthesizedExpression" "WS*" "{" "WS*" "}"
+        || "'switch'" "WS*" "ParenthesizedExpression" "WS*" "{" "WS* CaseGroups WS*" "LastCaseGroup" "WS*" "}".
+  Let CaseGroups :=
+    "WS* CaseGroups WS*"
+      ::== "WS*"
+        || "WS* CaseGroups WS*" "CaseGroup" "WS*".
+  Let CaseGroup :=
+    "CaseGroup" ::== "CaseGuards" "WS*" "BlockStatementsPrefix".
+  Let LastCaseGroup :=
+    "LastCaseGroup" ::== "CaseGuards" "WS*" "BlockStatements".
+  Let CaseGuards :=
+    "CaseGuards"
+      ::== "CaseGuard"
+        || "CaseGuards" "WS*" "CaseGuard".
+  Let CaseGuard :=
+    "CaseGuard"
+      ::== "'case'" [\s] "WS*" "Expression normal,allowIn" "WS*" ":"
+        || "'default'" "WS*" ":".
+
+  (** *** Do-While Statement
+<<
+DoStatement ⇒ do Statementfull while ParenthesizedExpression
+>> *)
+  Let DoStatement :=
+    "DoStatement"
+      ::== "'do'" [\s] "WS*" "Statement full" "WS*" "'while'" "WS*" "ParenthesizedExpression".
+
+  (** *** While Statement
+<<
+WhileStatementω ⇒ while ParenthesizedExpression Statementω
+>> *)
+  Let WhileStatement ω :=
+    ("WhileStatement " ++ ω)
+      ::== "'while'" "WS*" "ParenthesizedExpression" "WS*" ("Statement " ++ ω).
+
+  (** *** For Statements
+<<
+ForStatementω ⇒
+   for ( ForInitializer ; OptionalExpression ; OptionalExpression ) Statementω
+|  for ( ForInBinding in Expressionnormal,allowIn ) Statementω
+ForInitializer ⇒
+   «empty»
+|  Expressionnormal,noIn
+|  var VariableDeclarationListnoIn
+ForInBinding ⇒
+   LeftSideExpressionnormal
+|  var VariableDeclarationnoIn
+>> *)
+  Let ForStatement ω :=
+    ("ForStatement " ++ ω)
+      ::== "'for'" "WS*" "(" "WS*" "ForInitializer" "WS*" ";" "WS*" "OptionalExpression" "WS*" ";" "WS*" "OptionalExpression" "WS*" ")" "WS*" ("Statement " ++ ω)
+        || "'for'" "WS*" "(" "WS*" "ForInBinding" [\s] "WS*" "'in'" [\s] "WS*" "Expression normal,allowIn" "WS*" ")" "WS*" ("Statement " ++ ω).
+  Let ForInitializer :=
+    "ForInitializer"
+      ::== ""
+        || "Expression normal,noIn"
+        || "'var'" [\s] "WS*" "VariableDeclarationList noIn".
+  Let ForInBinding :=
+    "ForInBinding"
+      ::== "LeftSideExpression normal"
+        || "'var'" [\s] "WS*" "VariableDeclaration noIn".
+
+  (** *** With Statement
+<<
+WithStatementω ⇒ with ParenthesizedExpression Statementω
+>> *)
+  Let WithStatement ω :=
+    ("WithStatement " ++ ω)
+      ::== "'with'" "WS*" "ParenthesizedExpression" "WS*" ("Statement " ++ ω).
+
+  (** *** Continue and Break Statements
+<<
+ContinueStatement ⇒ continue OptionalLabel
+BreakStatement ⇒ break OptionalLabel
+OptionalLabel ⇒
+   «empty»
+|  Identifier
+>> *)
+  Let ContinueStatement :=
+    "ContinueStatement" ::== "'continue'" "OptionalLabel".
+  Let BreakStatement :=
+    "BreakStatement" ::== "'break'" "OptionalLabel".
+  Let OptionalLabel :=
+    "OptionalLabel"
+      ::== ""
+        || [\s] "WS*" "Identifier".
+
+  (** *** Return Statement
+<<
+ReturnStatement ⇒ return OptionalExpression
+>> *)
+  Let ReturnStatement :=
+    "ReturnStatement" ::== "'return'" "\s OptionalExpression".
+
+  (** *** Throw Statement
+<<
+ThrowStatement ⇒ throw Expressionnormal,allowIn
+>> *)
+  Let ThrowStatement :=
+    "ThrowStatement" ::== "'throw'" [\s] "WS*" "Expression normal,allowIn".
+
+  (** *** Try Statement
+<<
+TryStatement ⇒
+   try Block CatchClauses
+|  try Block FinallyClause
+|  try Block CatchClauses FinallyClause
+CatchClauses ⇒
+   CatchClause
+|  CatchClauses CatchClause
+CatchClause ⇒ catch ( Identifier ) Block
+FinallyClause ⇒ finally Block
+>> *)
+  Let TryStatement :=
+    "TryStatement"
+      ::== "'try'" "WS*" "Block" "WS*" "CatchClauses"
+        || "'try'" "WS*" "Block" "WS*" "FinallyClause"
+        || "'try'" "WS*" "Block" "WS*" "CatchClauses" "WS*" "FinallyClause".
+  Let CatchClauses :=
+    "CatchClauses"
+      ::== "CatchClause"
+        || "CatchClauses" "WS*" "CatchClause".
+  Let CatchClause :=
+    "CatchClause" ::== "'catch'" "WS*" "(" "WS*" "Identifier" "WS*" ")" "WS*" "Block".
+  Let FinallyClause :=
+    "FinallyClause" ::== "'finally'" "WS*" "Block".
+
+  (** *** Function Definition
+<<
+FunctionDefinition ⇒ NamedFunction
+AnonymousFunction ⇒ function FormalParametersAndBody
+NamedFunction ⇒ function Identifier FormalParametersAndBody
+FormalParametersAndBody ⇒ ( FormalParameters ) { TopStatements }
+FormalParameters ⇒
+   «empty»
+|  FormalParametersPrefix
+FormalParametersPrefix ⇒
+   FormalParameter
+|  FormalParametersPrefix , FormalParameter
+FormalParameter ⇒ Identifier
+>> *)
+  Let FunctionDefinition :=
+    "FunctionDefinition" ::== "NamedFunction".
+  Let AnonymousFunction :=
+    "AnonymousFunction" ::== "'function'" "WS*" "FormalParametersAndBody".
+  Let NamedFunction :=
+    "NamedFunction" ::== "'function'" [\s] "WS*" "Identifier" "WS*" "FormalParametersAndBody".
+  Let FormalParametersAndBody :=
+    "FormalParametersAndBody" ::== "(" "WS*" "FormalParameters" "WS*" ")" "WS*" "{" "WS*" "TopStatements" "WS*" "}".
+  Let FormalParameters :=
+    "FormalParameters"
+      ::== ""
+        || "FormalParametersPrefix".
+  Let FormalParametersPrefix :=
+    "FormalParametersPrefix"
+      ::== "FormalParameter"
+        || "FormalParametersPrefix" "WS*" "," "WS*" "FormalParameter".
+  Let FormalParameter :=
+    "FormalParameter"
+      ::== "Identifier".
+
+  (** ** Programs *)
+  (**
+<<
+Program ⇒ TopStatements
+TopStatements ⇒
+   «empty»
+|  TopStatementsPrefix
+TopStatementsPrefix ⇒
+   TopStatement
+|  TopStatementsPrefix TopStatement
+TopStatement ⇒
+   Statementfull
+|  FunctionDefinition
+>> *)
+  Let Program :=
+    "Program"
+      ::== "TopStatements".
+  Let TopStatements :=
+    "TopStatements"
+      ::== ""
+        || "TopStatementsPrefix".
+  Let TopStatementsPrefix :=
+    "TopStatementsPrefix"
+      ::== "TopStatement"
+        || "TopStatementsPrefix" "WS*" "TopStatement".
+  Let TopStatement :=
+    "TopStatement"
+      ::== "Statement full"
+        || "FunctionDefinition".
+
+  Definition javascript'_pregrammar' : pregrammar ascii :=
     Eval grammar_red in
       [[[
-           OptionalExpression;;
+           Program;;
            PrimaryExpression_normal;;
            PrimaryExpression_initial;;
            SimpleExpression;;
@@ -547,6 +893,61 @@ OptionalExpression ⇒
            Expression "initial" "allowIn";;
            Expression "normal" "noIn";;
            Expression "initial" "noIn";;
+           OptionalExpression;;
+           SOptionalExpression;;
+           Statement "noShortIf";;
+           Statement "full";;
+           OptionalSemicolon;;
+           EmptyStatement;;
+           ExpressionStatement;;
+           VariableDefinition;;
+           VariableDeclarationList "allowIn";;
+           VariableDeclarationList "noIn";;
+           VariableDeclaration "allowIn";;
+           VariableDeclaration "noIn";;
+           VariableInitializer "allowIn";;
+           VariableInitializer "noIn";;
+           Block;;
+           BlockStatements;;
+           BlockStatementsPrefix;;
+           LabeledStatement "noShortIf";;
+           LabeledStatement "full";;
+           IfStatement_full;;
+           IfStatement_noShortIf;;
+           SwitchStatement;;
+           CaseGroups;;
+           CaseGroup;;
+           LastCaseGroup;;
+           CaseGuards;;
+           CaseGuard;;
+           DoStatement;;
+           WhileStatement "noShortIf";;
+           WhileStatement "full";;
+           ForStatement "noShortIf";;
+           ForStatement "full";;
+           ForInitializer;;
+           ForInBinding;;
+           WithStatement "noShortIf";;
+           WithStatement "full";;
+           ContinueStatement;;
+           BreakStatement;;
+           OptionalLabel;;
+           ReturnStatement;;
+           ThrowStatement;;
+           TryStatement;;
+           CatchClauses;;
+           CatchClause;;
+           FinallyClause;;
+           FunctionDefinition;;
+           AnonymousFunction;;
+           NamedFunction;;
+           FormalParametersAndBody;;
+           FormalParameters;;
+           FormalParametersPrefix;;
+           FormalParameter;;
+           TopStatements;;
+           TopStatementsPrefix;;
+           TopStatement;;
            (**
 <<
 WS
@@ -559,85 +960,53 @@ WS
       ]]]%grammar.
 End JavaScriptAssignmentExpression.
 
-Definition javascript_assignment_expression'_pregrammar
-  := Eval cbv [javascript_assignment_expression'_pregrammar' append]
-    in javascript_assignment_expression'_pregrammar'.
+Definition javascript'_pregrammar
+  := Eval cbv [javascript'_pregrammar' append]
+    in javascript'_pregrammar'.
 
-(** TODO "AnonymousFunction"
- "NamedFunction"
- "Identifier"
- "LiteralElement"
- "Identifier"
-
-        || "Number"
-        || "String"
-        || "Identifier"
-        || "RegularExpression"
+(** TODO
+  "Number"
+    "String"
+    "Identifier"
+    "RegularExpression"
  *)
+
 (*
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Goal is_true (grammar_rvalid javascript_assignment_expression'_pregrammar).
+Goal is_true (grammar_rvalid javascript'_pregrammar).
   cbv [grammar_rvalid is_true Valid_nonterminals grammar_of_pregrammar Lookup pregrammar_nonterminals].
-  set (x := List.map fst javascript_assignment_expression'_pregrammar).
-  set (y := Lookup_string javascript_assignment_expression'_pregrammar).
-  set (z := productions_rvalid javascript_assignment_expression'_pregrammar).
+  set (x := List.map fst javascript'_pregrammar).
+  set (y := Lookup_string javascript'_pregrammar).
   vm_compute in x; subst x.
   cbv [List.map List.fold_right].
+  set (z := productions_rvalid javascript'_pregrammar).
   repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
+  | [ |- appcontext[y ?k] ]
     => let y' := fresh in
-       set (y' := (y k));
-         hnf in y';
-         subst y'
-  end;
-    subst y.
-  cbv [z productions_rvalid  List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string production_rvalid item_rvalid production_of_chartest].
+       fast_set' y' (y k)
+  end.
+  pose z as z'.
+  cbv [z] in z'.
+  subst y.
+  hnf in * |- .
+  repeat match goal with
+  | [ |- context[z ?H] ]
+    => is_var H; subst H
+  end.
+  cbv [z z' productions_rvalid  List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string production_rvalid item_rvalid production_of_chartest opt'.substring opt'.pred opt'.length opt'.list_of_string opt'.map].
   repeat (change (andb true) with (fun x : bool => x); cbv beta).
-  pose (Valid_nonterminals javascript_assignment_expression'_pregrammar) as x.
+  pose (Valid_nonterminals javascript'_pregrammar) as x.
   vm_compute in x.
+  clear z z'.
+  set (k := BaseTypes.is_valid_nonterminal BaseTypes.initial_nonterminals_data).
+  set (k' := BaseTypes.of_nonterminal).
   let v := (eval cbv [x] in x) in
   repeat match goal with
-         | [ |- context G[BaseTypes.is_valid_nonterminal ?a (BaseTypes.of_nonterminal ?nt)] ]
+         | [ |- context[k (k' ?nt)] ]
            => match v with
               | context[nt]
-                => let G' := context G[true] in
-                   change G'
+                => change (k (k' nt)) with true
               end
          end.
   repeat (change (andb true) with (fun x : bool => x); cbv beta).
-  set (x := BaseTypes.initial_nonterminals_data).
-
-  vm_compute in x.
-Set Printing Depth 100000.
-  repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
-    => change (z (y k)) with true
-  end.
-  change (andb true) with (fun x : bool => x).
-  cbv beta.
-  repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
-    => let y' := fresh in
-       set (y' := (y k));
-         hnf in y';
-         subst y'
-  end;
-    subst y.
-  cbv [productions_rvalid z List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string].
-  repeat match goal with
-         | [ |- appcontext[production_rvalid ?x ?y] ]
-           => change (production_rvalid x y) with true
-         end.
-  change (andb true) with (fun x : bool => x).
-  cbv beta.
-  cbv [production_rvalid List.map List.fold_right item_rvalid].
-  repeat match goal with
-         | [ |- appcontext G[BaseTypes.is_valid_nonterminal ?x ?y] ]
-           => let G' := context G[true] in
-              change G'
-         end.
-  repeat (change (andb true) with (fun x : bool => x); cbv beta).
-Set Printing All.
-
-
-  vm_compute.*)
+*)
