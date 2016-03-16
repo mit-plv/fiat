@@ -48,10 +48,10 @@ SimpleExpression ⇒
         || "n" "u" "l" "l"
         || "t" "r" "u" "e"
         || "f" "a" "l" "s" "e"
-        (*|| "Number"
+        || "Number"
         || "String"
         || "Identifier"
-        || "RegularExpression"*)
+        || "RegularExpression"
         || "ParenthesizedExpression"
         || "ArrayLiteral".
   (**
@@ -555,7 +555,19 @@ Definition javascript_assignment_expression'_pregrammar
   := Eval cbv [javascript_assignment_expression'_pregrammar' append]
     in javascript_assignment_expression'_pregrammar'.
 
-(*Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+(** TODO "AnonymousFunction"
+ "NamedFunction"
+ "Identifier"
+ "LiteralElement"
+ "Identifier"
+
+        || "Number"
+        || "String"
+        || "Identifier"
+        || "RegularExpression"
+ *)
+(*
+Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Goal is_true (grammar_rvalid javascript_assignment_expression'_pregrammar).
   cbv [grammar_rvalid is_true Valid_nonterminals grammar_of_pregrammar Lookup pregrammar_nonterminals].
   set (x := List.map fst javascript_assignment_expression'_pregrammar).
@@ -563,6 +575,32 @@ Goal is_true (grammar_rvalid javascript_assignment_expression'_pregrammar).
   set (z := productions_rvalid javascript_assignment_expression'_pregrammar).
   vm_compute in x; subst x.
   cbv [List.map List.fold_right].
+  repeat match goal with
+  | [ |- appcontext[z (y ?k)] ]
+    => let y' := fresh in
+       set (y' := (y k));
+         hnf in y';
+         subst y'
+  end;
+    subst y.
+  cbv [z productions_rvalid  List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string production_rvalid item_rvalid production_of_chartest].
+  repeat (change (andb true) with (fun x : bool => x); cbv beta).
+  pose (Valid_nonterminals javascript_assignment_expression'_pregrammar) as x.
+  vm_compute in x.
+  let v := (eval cbv [x] in x) in
+  repeat match goal with
+         | [ |- context G[BaseTypes.is_valid_nonterminal ?a (BaseTypes.of_nonterminal ?nt)] ]
+           => match v with
+              | context[nt]
+                => let G' := context G[true] in
+                   change G'
+              end
+         end.
+  repeat (change (andb true) with (fun x : bool => x); cbv beta).
+  set (x := BaseTypes.initial_nonterminals_data).
+
+  vm_compute in x.
+Set Printing Depth 100000.
   repeat match goal with
   | [ |- appcontext[z (y ?k)] ]
     => change (z (y k)) with true
