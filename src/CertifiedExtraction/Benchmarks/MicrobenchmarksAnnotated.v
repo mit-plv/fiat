@@ -318,7 +318,7 @@ Time Eval lazy in (extract_facade micro_nibble_power_of_two__intrinsic).
 Example micro_fold_plus :
   ParametricExtraction
     #vars      seq
-    #program   ret (fold_left (@32 ⊕) seq 0)
+    #program   ret (fold_left (@Word.wplus 32) seq 0)
     #arguments [[`"seq" <-- seq as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
@@ -341,7 +341,7 @@ Time Eval lazy in (extract_facade micro_fold_plus).
 Example micro_fold_plus_x :
   ParametricExtraction
     #vars      seq x
-    #program   ret (fold_left (@32 ⊕) seq x)
+    #program   ret (fold_left (@Word.wplus 32) seq x)
     #arguments [[`"seq" <-- seq as _ ]] :: [[`"x" <-- x as _ ]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
