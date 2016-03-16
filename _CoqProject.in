@@ -74,10 +74,10 @@ src/CertifiedExtraction/PureUtils.v
 src/CertifiedExtraction/StringMapUtils.v
 src/CertifiedExtraction/Utils.v
 src/CertifiedExtraction/Benchmarks/Any.v
-src/CertifiedExtraction/Benchmarks/Microbenchmarks-annotated.v
+src/CertifiedExtraction/Benchmarks/MicrobenchmarksAnnotated.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
 src/CertifiedExtraction/Benchmarks/ProcessScheduler.v
-src/CertifiedExtraction/Benchmarks/ProcessSchedulerExtractedMethods.v
+src/CertifiedExtraction/Benchmarks/ProcessSchedulerSetup.v
 src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
 src/CertifiedExtraction/Benchmarks/QueryStructures.v
 src/CertifiedExtraction/Extraction/Basics.v

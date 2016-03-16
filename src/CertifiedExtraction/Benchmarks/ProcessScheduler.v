@@ -1,125 +1,6 @@
+Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 Require Import Bedrock.Memory.
-
-Definition State := W.
-Definition SLEEPING : State := Word.natToWord 32 0.
-Definition RUNNING : State  := Word.natToWord 32 1.
-
-Instance : Query_eq (Word.word n) :=
-  { A_eq_dec := @Word.weq n }.
-Opaque Word.weq.
-
-Definition SchedulerSchema :=
-  Query Structure Schema [
-          relation "Processes" has schema
-          <"pid" :: W, "state" :: State, "cpu" :: W>
-          where (UniqueAttribute ``"pid")
-  ] enforcing [].
-
-Definition SchedulerSpec : ADT _ :=
-  QueryADTRep SchedulerSchema {
-    Def Constructor0 "Init" : rep := empty,
-
-    Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
-      Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
-
-    Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
-      procs <- For (p in r!"Processes")
-               Where (p!"state" = state)
-               Return (p!"pid");
-      ret (r, procs),
-
-    Def Method1 "GetCPUTime" (r : rep) (id : W) : rep * list W :=
-        proc <- For (p in r!"Processes")
-                Where (p!"pid" = id)
-                Return (p!"cpu");
-      ret (r, proc)
-              }%methDefParsing.
-
-Definition SharpenedScheduler :
-  MostlySharpened SchedulerSpec.
-Proof.
-  start sharpening ADT.
-  simpl; pose_string_hyps; pose_heading_hyps.
-  start_honing_QueryStructure'.
-  hone method "Spawn".
-  { setoid_rewrite UniqueAttribute_symmetry.
-    setoid_rewrite (@refine_uniqueness_check_into_query' SchedulerSchema Fin.F1 _ _ _ _).
-    setoid_rewrite refine_For_rev.
-    setoid_rewrite refine_Count.
-    simplify with monad laws; simpl in *; subst.
-    setoid_rewrite refine_pick_eq'.
-    setoid_rewrite refine_bind_unit.
-    setoid_rewrite refine_If_Then_Else_Duplicate.
-    finish honing. }
-  (* Now we implement the various set operations using BagADTs. *)
-  - make_simple_indexes
-      {|
-      prim_fst := [ ("EqualityIndex", Fin.FS (@Fin.F1 1) );
-                    ( "EqualityIndex", Fin.F1) ];
-      prim_snd := () |}
-               ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-                      ltac:(LastCombineCase5 BuildLastEqualityIndex).
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + setoid_rewrite refine_For_rev; simplify with monad laws.
-      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + setoid_rewrite refine_For_rev; simplify with monad laws.
-      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + hone method "Spawn".
-      { subst; simplify with monad laws.
-        unfold GetAttributeRaw at 1.
-        simpl; unfold ilist2_hd at 1; simpl.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars.
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        rewrite app_nil_r, map_map; simpl.
-        unfold ilist2_hd; simpl; rewrite map_id.
-        repeat setoid_rewrite refine_If_Then_Else_Bind.
-        repeat setoid_rewrite refineEquiv_bind_unit; simpl.
-        setoid_rewrite refineEquiv_bind_bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        rewrite (CallBagFind_fst H0); simpl.
-        finish honing.
-      }
-      hone method "Enumerate".
-      { subst; simplify with monad laws.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars; simpl in *.
-        rewrite (CallBagFind_fst H0).
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map, <- map_rev.
-        unfold ilist2_hd; simpl.
-        finish honing.
-      }
-      hone method "GetCPUTime".
-      { subst; simplify with monad laws.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars; rewrite (CallBagFind_fst H0); simpl in *.
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map, <- map_rev.
-        unfold ilist2_hd; simpl.
-        finish honing.
-      }
-      simpl.
-      eapply reflexivityT.
-  - unfold CallBagFind, CallBagInsert.
-    pose_headings_all;
-      match goal with
-      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-        FullySharpenQueryStructure Schema Indexes
-      end.
-Defined.
-
-Time Definition PartialSchedulerImpl : ADT _ :=
-  Eval simpl in (fst (projT1 SharpenedScheduler)).
-
-Time Definition SchedulerImplSpecs :=
-  Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
 
 Require Import
         CertifiedExtraction.Core
@@ -129,30 +10,191 @@ Require Import
         CertifiedExtraction.Extraction.Extraction
         CertifiedExtraction.Extraction.QueryStructures
         CertifiedExtraction.ADT2CompileUnit.
+Require Import CompileUnit2.
+
+Require Import Benchmarks.ProcessSchedulerSetup.
+
+(* For convenience, here is a copy of the Process Scheduler specs:
+
+   Definition SchedulerSchema :=
+     Query Structure Schema [
+             relation "Processes" has schema
+             <"pid" :: W, "state" :: State, "cpu" :: W>
+             where (UniqueAttribute ``"pid")
+     ] enforcing [].
+
+    Definition SchedulerSpec : ADT _ :=
+      QueryADTRep SchedulerSchema {
+        Def Constructor0 "Init" : rep := empty,
+
+        Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
+          Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
+
+        Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
+          procs <- For (p in r!"Processes")
+                   Where (p!"state" = state)
+                   Return (p!"pid");
+          ret (r, procs),
+
+        Def Method1 "GetCPUTime" (r : rep) (id : W) : rep * list W :=
+            proc <- For (p in r!"Processes")
+                    Where (p!"pid" = id)
+                    Return (p!"cpu");
+          ret (r, proc)
+    }%methDefParsing. *)
+
+(* Improve performance of general derivation *)
+Ltac __compile_clear_bodies_of_ax_spec :=
+  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
+          GLabelMapFacts.uncurry; simpl);
+  repeat lazymatch goal with
+    | |- context[GenAxiomaticSpecs ?a0 ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 ?a7] =>
+      let a := fresh in
+      pose (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) as a;
+      change (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) with a;
+      clearbody a
+    end.
+
+Ltac __compile_start_compiling_module imports ::=
+  lazymatch goal with
+  | [  |- sigT (fun _ => BuildCompileUnit2TSpec  _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) ] =>
+    eexists;
+    unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
+    eapply (BuildCompileUnit2T' QSEnv_Ax); try apply eq_refl (* reflexivity throws an Anomaly *)
+  | [  |- forall _: (Fin.t _), (sigT _)  ] =>
+    __compile_clear_bodies_of_ax_spec;
+    eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; repeat (apply Build_prim_prod || exact tt)
+  end.
 
 Definition CUnit
   : { env : _ &
     BuildCompileUnit2TSpec
       env
-      (AbsR (fst (projT2 SharpenedScheduler)))
+      AbsR'
       (fun r => BagSanityConditions (prim_fst r))
       (DecomposeIndexedQueryStructure' QsADTs.ADTValue _ _)
       (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue _ _ _)
       (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
       (QueryStructureSchema.numQSschemaSchemas SchedulerSchema)
-      "foo"
-      "bar"
+      "ProcessSchedulerAX"
+      "ProcessSchedulerOP"
       Scheduler_coDomainWrappers
       Scheduler_DomainWrappers
       (Scheduler_RepWrapperT _)
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
-      (fst (projT2 SharpenedScheduler))} .
+      SharpenedRepImpl} .
 Proof.
   Time _compile QSEnv_Ax.
-Time Defined.
+Defined.
 
-(* Set Printing All. *)
+Require Import DFModule.
 
-Redirect "SpawnSmall" Eval compute in (projT1 CUnit).
-Redirect "EnumerateSmall" Eval compute in (projT1 (progOKs (Fin.FS Fin.F1))).
-Redirect "GetCPUTimeSmall" Eval compute in (projT1 (progOKs (Fin.FS (Fin.FS Fin.F1)))).
+Definition methodBody
+           methodName
+           (CUnit: {env : Env QsADTs.ADTValue &
+              BuildCompileUnit2TSpec env AbsR'
+              (fun r : Rep (fst (projT1 SharpenedScheduler)) => BagSanityConditions (prim_fst r))
+              (DecomposeIndexedQueryStructure' QsADTs.ADTValue
+                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (icons3 SearchUpdateTerm inil3))
+              (DecomposeIndexedQueryStructurePre' QsADTs.ADTValue
+                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
+              (DecomposeIndexedQueryStructurePost' QsADTs.ADTValue
+                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
+              (QueryStructureSchema.numQSschemaSchemas SchedulerSchema) "ProcessSchedulerAX" "ProcessSchedulerOP"
+              Scheduler_coDomainWrappers Scheduler_DomainWrappers
+              (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3))
+              (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue
+                 (QueryStructureSchema.QueryStructureSchemaRaw SchedulerSchema)
+                 (icons3 SearchUpdateTerm inil3) (Scheduler_RepWrapperT (icons3 SearchUpdateTerm inil3)))
+              SharpenedRepImpl}) :=
+  match (StringMap.find methodName (Funs (module (projT1 (projT2 CUnit))))) with
+  | Some dffun => Some (Body (Core (dffun)))
+  | None => None
+  end.
+
+Eval lazy in (methodBody "Spawn" CUnit).
+
+(*
+     = Some
+         ("snd" <- "ADT"."Tuples2_findSecond"("rep", "arg");
+          "test" <- "ADT"."TupleList_empty"("snd");
+          If Const (Word.natToWord 32 1) = Var "test" Then
+            "v1" <- Var "arg";
+            "v2" <- Var "arg1";
+            "v3" <- Var "arg0";
+            "o1" <- Const (Word.natToWord 32 0);
+            "o2" <- Const (Word.natToWord 32 1);
+            "o3" <- Const (Word.natToWord 32 2);
+            "vlen" <- Const (Word.natToWord 32 3);
+            "tup" <- "ADT"."Tuple_new"("vlen");
+            "vtmp" <- "ADT"."Tuple_set"("tup", "o1", "v1");
+            "vtmp" <- "ADT"."Tuple_set"("tup", "o2", "v2");
+            "vtmp" <- "ADT"."Tuple_set"("tup", "o3", "v3");
+            "vtmp" <- "ADT"."Tuples2_insert"("rep", "tup");
+            "tmp" <- Const (Word.natToWord 32 0);
+            "test0" <- "ADT"."TupleList_empty"("snd");
+            While (Var "test0" = Const (Word.natToWord 32 0))
+                "head" <- "ADT"."TupleList_pop"("snd");
+                "size" <- Const (Word.natToWord 32 3);
+                "tmp'" <- "ADT"."Tuple_delete"("head", "size");
+                "test0" <- "ADT"."TupleList_empty"("snd");
+            "test0" <- "ADT"."TupleList_delete"("snd");
+            __;
+            "ret" <- Const (Word.natToWord 32 1)
+          Else
+            "tmp" <- Const (Word.natToWord 32 0);
+            "test0" <- "ADT"."TupleList_empty"("snd");
+            While (Var "test0" = Const (Word.natToWord 32 0))
+                "head" <- "ADT"."TupleList_pop"("snd");
+                "size" <- Const (Word.natToWord 32 3);
+                "tmp'" <- "ADT"."Tuple_delete"("head", "size");
+                "test0" <- "ADT"."TupleList_empty"("snd");
+            "test0" <- "ADT"."TupleList_delete"("snd");
+            __;
+            "ret" <- Const (Word.natToWord 32 0)
+          EndIf)%facade
+     : option Stmt *)
+
+Eval lazy in (methodBody "Enumerate" CUnit).
+
+(*
+   = Some
+         ("snd" <- "ADT"."Tuples2_findFirst"("rep", "arg");
+          "ret" <- "ADT"."WordList_new"();
+          "test" <- "ADT"."TupleList_empty"("snd");
+          While (Var "test" = Const (Word.natToWord 32 0))
+              "head" <- "ADT"."TupleList_pop"("snd");
+              "pos" <- Const (Word.natToWord 32 0);
+              "head'" <- "ADT"."Tuple_get"("head", "pos");
+              "size" <- Const (Word.natToWord 32 3);
+              "tmp" <- "ADT"."Tuple_delete"("head", "size");
+              "tmp" <- "ADT"."WordList_push"("ret", "head'");
+              "test" <- "ADT"."TupleList_empty"("snd");
+          "test" <- "ADT"."TupleList_delete"("snd");
+          __)%facade
+     : option Stmt *)
+
+Eval lazy in (methodBody "GetCPUTime" CUnit).
+
+(*
+     = Some
+         ("snd" <- "ADT"."Tuples2_findSecond"("rep", "arg");
+          "ret" <- "ADT"."WordList_new"();
+          "test" <- "ADT"."TupleList_empty"("snd");
+          While (Var "test" = Const (Word.natToWord 32 0))
+              "head" <- "ADT"."TupleList_pop"("snd");
+              "pos" <- Const (Word.natToWord 32 2);
+              "head'" <- "ADT"."Tuple_get"("head", "pos");
+              "size" <- Const (Word.natToWord 32 3);
+              "tmp" <- "ADT"."Tuple_delete"("head", "size");
+              "tmp" <- "ADT"."WordList_push"("ret", "head'");
+              "test" <- "ADT"."TupleList_empty"("snd");
+          "test" <- "ADT"."TupleList_delete"("snd");
+          __)%facade
+     : option Stmt *)
+
+295 derivation.
+3.71 minutes Defined.
