@@ -1,6 +1,3 @@
-Require Export Coq.extraction.ExtrOcamlBasic.
-Require Export Coq.extraction.ExtrOcamlNatInt.
-Require Export Coq.extraction.ExtrOcamlString.
 Require Export Coq.extraction.ExtrOcamlIntConv.
 
 Require Import Coq.ZArith.BinInt.

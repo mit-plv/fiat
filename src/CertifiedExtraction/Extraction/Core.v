@@ -14,7 +14,7 @@ Global Open Scope string_scope.
 
 Ltac av_from_ext ext :=
   match type of ext with
-  | StringMap.t (Value ?av) => constr:av
+  | StringMap.t (Value ?av) => constr:(av)
   end.
 
 (* Ltac find_function_in_env function env := *)
@@ -67,13 +67,13 @@ Ltac tenv_mentions_fast env v :=
 Ltac unifiable t1 t2 :=
   match constr:(true) with
   | _ => let pr := constr:(eq_refl t1 : t1 = t2) in
-        constr:true
-  | _ => constr:false
+        constr:(true)
+  | _ => constr:(false)
   end.
 
 Ltac is_sca_comp v :=
   match type of v with
-  | Comp ?w => let r := unifiable w W in constr:r
+  | Comp ?w => let r := unifiable w W in constr:(r)
   end.
 
 Ltac useless_binder term :=

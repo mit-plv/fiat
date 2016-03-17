@@ -106,7 +106,7 @@ Section FiniteSetHelpers.
              = (projT1 (fst (List.fold_right _ (existT ?P _ ?pf, _) _)), _) ]
         => let f' := constr:(fun b x a => f0 x (a, b)) in
            let f'' := (eval simpl in f') in
-           let f''' := match f'' with fun _ => ?f''' => constr:f''' end in
+           let f''' := match f'' with fun _ => ?f''' => constr:(f''') end in
            pose proof (@fold_right_projT1 A B X P init ls f''' (fun x a b => g x (a, b)) pf) as H
     end;
       simpl in *;
@@ -465,7 +465,7 @@ Section FiniteSetHelpers.
     inversion_by computes_to_inv;
     subst;
     repeat constructor;
-    let x := match goal with H : EnsembleListEquivalence _ ?x |- _ => constr:x end in
+    let x := match goal with H : EnsembleListEquivalence _ ?x |- _ => constr:(x) end in
     apply BindComputes with (comp_a_value := x);
       destruct_head_hnf and;
       split_iff;
@@ -589,7 +589,7 @@ Section FiniteSetHelpers.
              | _ => progress inversion_by computes_to_inv
              | _ => progress split_iff
            end.
-    let S := match goal with H : Ensemble _ |- _ => constr:H end in
+    let S := match goal with H : Ensemble _ |- _ => constr:(H) end in
     apply BindComputes with (comp_a_value := (Ensembles.Add _ S a));
       constructor;
       repeat match goal with
@@ -930,7 +930,7 @@ Section FiniteSetHelpers.
                | _ => solve [ eauto ]
              end. }
     { unfold Ensembles.In in *.
-      let H := match goal with H : computes_to _ _ |- _ => constr:H end in
+      let H := match goal with H : computes_to _ _ |- _ => constr:(H) end in
       rewrite (@list_filter_pred_In_iff _ _ _ _ H).
       intuition. }
   Qed.
@@ -1108,9 +1108,9 @@ Section FiniteSetHelpers.
   Qed.
 
   Local Ltac FunctionOfList_pick_t S0 :=
-    let fS0 := match goal with |- refine ?fS0 _ => constr:fS0 end in
+    let fS0 := match goal with |- refine ?fS0 _ => constr:(fS0) end in
     let f := (match eval pattern (Ensembles.In _ S0) in fS0 with
-                | ?f _ => constr:f
+                | ?f _ => constr:(f)
               end) in
     rewrite (@In_check_impl S0 _ f); [ | exact _ ];
     repeat match goal with

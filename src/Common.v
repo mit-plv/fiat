@@ -877,7 +877,7 @@ Definition pull_if {A B} (P : A -> B) (a a' : A) (b : bool)
 (** From jonikelee@gmail.com on coq-club *)
 Ltac simplify_hyp' H :=
   let T := type of H in
-  let X := (match eval hnf in T with ?X -> _ => constr:X end) in
+  let X := (match eval hnf in T with ?X -> _ => constr:(X) end) in
   let H' := fresh in
   assert (H' : X) by (tauto || congruence);
     specialize (H H');
@@ -1315,13 +1315,13 @@ Ltac hyp_with_head h
   := match goal with
      | [ H : ?T |- _ ] => let h' := head T in
                           let test := constr:(_ : constr_eq_helper h' h) in
-                          constr:H
+                          constr:(H)
      end.
 Ltac hyp_with_head_hnf h
   := match goal with
      | [ H : ?T |- _ ] => let h' := head_hnf T in
                           let test := constr:(_ : constr_eq_helper h' h) in
-                          constr:H
+                          constr:(H)
      end.
 
 Lemma or_False {A} (H : A \/ False) : A.
@@ -1654,7 +1654,7 @@ Ltac flatten_ex_helper H rec_tac rec_tac_progress :=
 
 Ltac flatten_ex H :=
   match H with
-    | _ => flatten_ex_helper H ltac:(fun x => constr:x) flatten_ex
+    | _ => flatten_ex_helper H ltac:(fun x => constr:(x)) flatten_ex
     | _ => H
   end.
 

@@ -29,7 +29,7 @@ Ltac strip_useless_binder tenv :=
 Ltac call_tactic_after_moving_head_binding_to_separate_goal continuation :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, Cons _ _ ?tenv') =>
               let tenv' := strip_useless_binder tenv' in
               let pr := constr:(eq_refl tenv : tenv = tenv') in
@@ -66,7 +66,7 @@ Ltac compile_binop facade_op lhs rhs ext :=
   let av := av_from_ext ext in
   let vlhs := find_fast (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) lhs) ext in
   let vrhs := find_fast (wrap (FacadeWrapper := FacadeWrapper_SCA (av := av)) rhs) ext in
-  lazymatch constr:(vlhs, vrhs) with
+  lazymatch constr:((vlhs, vrhs)) with
   | (Some ?vlhs, Some ?vrhs) =>
     apply (BinExpr.CompileBinopOrTest (var1 := vlhs) (var2 := vrhs) facade_op)
   | (Some ?vlhs, None) =>
@@ -112,7 +112,7 @@ Ltac is_pushable_head_constant f :=
 Ltac _compile_chomp :=         (* This is a weak version of the real compile_chomp, which is too slow *)
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome ?k) ?v ?tenv, Cons NTNone ?v' ?tenv') =>
               unify v v'; apply miniChomp'
             | (Cons ?k ?v ?tenv, Cons ?k' ?v' ?tenv') =>
@@ -156,7 +156,7 @@ Ltac _compile_rewrite_bind :=
   (* setoid_rewrite at the speed of light *)
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | context[Cons ?k (ret _) ?tail] =>
               first [ useless_binder tail; fail 1 |
                       match k with
@@ -192,14 +192,14 @@ Ltac compile_read value ext :=
 Ltac _compile_skip :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, ?tenv') => not_evar tenv; not_evar tenv'; unify tenv tenv'; apply CompileSkip
             end).
 
 Ltac _compile_if :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (_, Cons _ (if _ then _ else _) _) =>
               let vtest := gensym "test" in
               apply (CompileIf (tmp := vtest))
@@ -218,7 +218,7 @@ Ltac compile_simple_internal av env cmp ext :=
 Ltac compile_simple_same_tenv :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, Cons (av := ?av) ?s ?cmp (fun _ => ?tenv)) => compile_simple_internal av env cmp ext
             end).
 
@@ -237,7 +237,7 @@ Ltac compile_simple_inplace :=
               match pre with
               | context[Cons (NTSome ?s) (ret ?initial) _] =>
                 move_to_front s;
-                  match constr:(initial, final) with
+                  match constr:((initial, final)) with
                   | (?a, ?op ?a' ?b) =>
                     unify a a';
                       is_word (op a b);
@@ -255,7 +255,7 @@ Ltac _compile_map :=
             let vhead' := gensym "head'" in
             let vtest := gensym "test" in
             let vtmp := gensym "tmp" in
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
               unify seq seq';
                 first [
@@ -268,7 +268,7 @@ Ltac _compile_fold :=
     ltac:(fun prog pre post ext env =>
             let vtest := gensym "test" in
             let vhead := gensym "head" in
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | ([[`?vinit <~~ ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <~~ fold_left _ ?seq ?init as _]] :: ?tenv') =>
               apply (CompileLoop seq init (vtest := vtest) (vhead := vhead))
             | ([[`?vinit <-- ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <-- fold_left _ ?seq ?init as _]] :: ?tenv') =>
@@ -350,7 +350,7 @@ Ltac _compile_mutation :=
 Ltac _compile_constructor :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:(pre, post) with
+            match constr:((pre, post)) with
             | (?tenv, [[?s <-- ?adt as _]]::?tenv') =>
               match type of adt with
               | W => fail 1

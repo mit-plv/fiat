@@ -1,5 +1,5 @@
-Require Import Fiat.BinEncoders.Specs
-               Fiat.BinEncoders.Libraries.BinCore.
+Require Import Fiat.BinEncoders.NoEnv.Specs
+               Fiat.BinEncoders.NoEnv.Libraries.BinCore.
 
 Section BoolBinEncoder.
   Definition Bool_encode_inner (b : bool) : bin_t := b :: nil.

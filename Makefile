@@ -27,6 +27,8 @@ endif
 
 ifeq (,$(wildcard submodule-update))
 submodule-update::
+	git submodule sync && \
+	git submodule update --init && \
 	touch "$@"
 else
 submodule-update::
@@ -80,6 +82,10 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
+	src/Parsers/Grammars/JavaScriptAssignmentExpression.vo \
+	src/Parsers/Grammars/JavaScriptExpression.vo \
+	src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.vo \
+	src/Parsers/Grammars/JavaScriptWithoutStatements.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo
 
 FIAT4MONITORS_UNMADE_VO := \

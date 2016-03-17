@@ -1255,7 +1255,7 @@ Proof.
   (* we have to manually massage the goals to get things in the right form. *)
   (* A little more tactic support in the caching refinement should make this *)
   (* much nicer. *)
-  - let attrlist := constr:{|
+  - let attrlist := constr:({)|
       prim_fst := [ ("EqualityIndex", Fin.F1);
                     ( "EqualityIndex", Fin.FS (@Fin.F1 1) ) ];
       prim_snd := () |} in
