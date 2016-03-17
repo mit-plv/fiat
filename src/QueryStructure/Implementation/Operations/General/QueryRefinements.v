@@ -988,6 +988,47 @@ Proof.
     clear; induction x; simpl; repeat computes_to_econstructor; eauto.
 Qed.
 
+Lemma refine_Where' {A B} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P)
+         (bod : Comp (list B)),
+  forall a,
+    refine
+      (if (dec a) then
+         bod
+       else
+         (ret nil))
+      (Where (P a) bod)%QuerySpec.
+Proof.
+  unfold refine, Query_Where; intros.
+  computes_to_inv; intuition.
+  caseEq (dec a).
+  apply dec_decides_P in H; eauto.
+  rewrite H1; eauto.
+  unfold not; intros H'; apply dec_decides_P in H'; congruence.
+Qed.
+
+
+Lemma refine_Intersection_Where heading {ResultT}
+  : forall R P (P_dec : DecideableEnsemble P)
+           (bod : _ -> Comp (list ResultT)),
+    refine
+      (QueryResultComp (IndexedEnsemble_Intersection R P) bod)
+      (QueryResultComp (heading := heading) R (fun r => Query_Where (P r) (bod r))).
+Proof.
+  unfold refine, In, QueryResultComp; intros * ? ? v Comp_v.
+  repeat computes_to_inv.
+  refine pick val _;
+    eauto using UnIndexedEnsembleListEquivalence_filter.
+  repeat computes_to_econstructor.
+  revert v Comp_v'; clear; induction v0; intros; simpl in *; eauto.
+  computes_to_inv; subst.
+  apply (refine_Where' P_dec) in Comp_v'.
+  find_if_inside; simpl.
+  computes_to_econstructor; eauto.
+  computes_to_inv; subst; simpl; eauto.
+Qed.
+
 Lemma refine_IndexedEnsemble_Intersection_Intersection heading
   : forall P Q R,
     refine {queriedList : list (@RawTuple heading) |
