@@ -90,11 +90,11 @@ Section Packet.
     "qclass" :: RRecordClass >%Heading.
   (* ["google", "com"] *)
 
-Definition default_refresh_time := 3600. (* seconds *)
-Definition default_retry_time := 600.
-Definition default_expire_time := 86400.
+Definition default_refresh_time := (*3600 *) 10. (* seconds *)
+Definition default_retry_time := (*600 *) 10.
+Definition default_expire_time := (* 86400 *) 10.
 (* may cause stack overflow / segfault; use hours instead? *)
-Definition default_minimum_TTL := 3600.
+Definition default_minimum_TTL := 10 (* 3600 *).
 
   (* TODO: authoritative DNS server does not yet store or return this SOA *)
   (* https://support.microsoft.com/en-us/kb/163971 *)
@@ -117,7 +117,7 @@ Definition default_minimum_TTL := 3600.
     "type" :: RRecordType,
     "rlength" :: nat,
     "rdata" :: name + SOA>.
-  (* [rdata] stores a hostname, IP, or an SOA, depeneding on the 
+  (* [rdata] stores a hostname, IP, or an SOA, depeneding on the
    record type. *)
 
   Definition packet :=
@@ -162,7 +162,7 @@ Definition test_packet : packet :=
   Definition add_answer (p : packet) (t : resourceRecord) :=
     p ○ [o !! "answers" / t :: o].
 
-  (* add a resource record authority to a packet's authorities 
+  (* add a resource record authority to a packet's authorities
    (ns = name server). *)
   Definition add_ns (p : packet) (t : resourceRecord) :=
     p ○ [o !! "authority" / t :: o].
