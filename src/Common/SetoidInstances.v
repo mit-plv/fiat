@@ -125,3 +125,7 @@ Global Instance subrelation_eq_pointwise {A B} : subrelation (@eq (A -> B)) (poi
 Proof.
   compute; intros; subst; reflexivity.
 Qed.
+
+Global Instance and_flip_impl_Proper
+  : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and.
+Proof. lazy; tauto. Qed.
