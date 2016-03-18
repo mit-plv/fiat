@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ParserImplementation.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.SimpleTransfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -32,7 +33,8 @@ Proof.
       rewrite ?H_has_parse, ?H_parse in *;
         first [ apply (has_parse_sound old); assumption
               | eapply (has_parse_complete old); eassumption
-              | eapply (parse_correct old); eassumption ]
+              | eapply (parse_correct old); eassumption
+              | eapply (parse_sound old); eassumption ]
     ).
 Defined.
 
@@ -68,7 +70,15 @@ Proof.
       ). }
   { abstract (
         intros str;
-        rewrite H_has_parse, H_parse, parse_correct; reflexivity
+        rewrite H_has_parse, H_parse, parse_correct; try reflexivity
+      ). }
+  { abstract (
+        intros str t H;
+        rewrite H_parse in H;
+        eapply (@transfer_simple_parse_of_item_correct _ _ _ _ _ G _ R_respectful);
+        [ apply (R_make str) | ];
+        eapply parse_sound;
+        eassumption
       ). }
 Defined.
 
