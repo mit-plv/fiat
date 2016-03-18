@@ -114,15 +114,15 @@ Section implementation.
   Local Instance parser_completeness_data : @boolean_parser_completeness_dataT' Char _ _ G parser_data
     := optsplitdata_correct.
 
-  Program Definition parser (Hvalid : grammar_valid G) : Parser G splitter
+  Program Definition parser : Parser G splitter
     := {| has_parse str := parse_nonterminal (data := parser_data) str (Start_symbol G);
           parse str := option_map (SimpleParseNonTerminal (Start_symbol G)) (SimpleRecognizer.parse_nonterminal (data := parser_data) str (Start_symbol G));
-          has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) Hvalid _ _ Hparse;
+          has_parse_sound str Hparse := parse_nonterminal_sound (data := parser_data) _ _ Hparse;
           has_parse_complete str p := _ |}.
   Next Obligation.
   Proof.
     dependent destruction p.
-    pose proof (fun pf => @parse_of_nonterminal_complete Char splitter _ _ G _ _ rdp_list_rdata' Hvalid str (Start_symbol G) pf p) as H'.
+    pose proof (fun pf => @parse_of_nonterminal_complete Char splitter _ _ G _ _ rdp_list_rdata' str (Start_symbol G) pf p) as H'.
     apply H'; assumption.
   Qed.
   Next Obligation.

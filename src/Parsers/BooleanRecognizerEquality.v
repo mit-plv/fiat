@@ -47,7 +47,7 @@ Section transfer.
     = @parse_item' _ HSLM_heavy _ str str_matches_nonterminal' offset len it.
   Proof.
     unfold parse_item'.
-    destruct it; f_equal.
+    destruct it; rewrite ?H; f_equal; try reflexivity.
     apply char_at_matches_proj.
   Qed.
 

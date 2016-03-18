@@ -13,8 +13,6 @@ Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid Fiat.Parsers.ContextFreeGrammar.ValidProperties.
-(*Require Import Coq.Logic.Eqdep_dec.*)
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BooleanRecognizerExt.
 Require Import Fiat.Common.List.ListFacts.
@@ -52,17 +50,6 @@ Local Ltac subst_bool_eq_proof :=
       => assert (H = H') by apply UIP_bool; subst
   end.
 
-Local Ltac subst_valid_proof :=
-  idtac;
-  match goal with
-    | [ H : item_valid ?it, H' : item_valid ?it |- _ ]
-      => assert (H = H') by apply item_valid_proof_irrelevance; subst
-    | [ H : production_valid ?it, H' : production_valid ?it |- _ ]
-      => assert (H = H') by apply production_valid_proof_irrelevance; subst
-    | [ H : productions_valid ?it, H' : productions_valid ?it |- _ ]
-      => assert (H = H') by apply productions_valid_proof_irrelevance; subst
-  end.
-
 Local Ltac prove_nonterminals_t' :=
   idtac;
   match goal with
@@ -86,8 +73,7 @@ Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} (G : grammar Char).
   Context {data : @boolean_parser_dataT Char _}
           {cdata : @boolean_parser_completeness_dataT' Char _ _ G data}
-          {rdata : @parser_removal_dataT' _ G _}
-          {gvalid : grammar_valid G}.
+          {rdata : @parser_removal_dataT' _ G _}.
   Context (str : String).
 
   Local Notation dec T := (T + (T -> False))%type (only parsing).
@@ -147,107 +133,6 @@ Section recursive_descent_parser.
 
   Global Arguments parse_complete_stabalize : simpl never.
 
- (* Lemma Lookup_production_S it its nt_index prods_index prod_index
-        (H : it::its = Lookup_production (G := G) nt_index prods_index (S prod_index))
-  : its = Lookup_production (G := G) nt_index prods_index (min prod_index (pred (Datatypes.length (Lookup_production' (G := G) nt_index prods_index)))).
-  Proof.
-    unfold Lookup_production, Lookup_production_gen in *.
-    change (Lookup_production'_gen (G := G) (map G (Valid_nonterminals G)) nt_index prods_index)
-    with (Lookup_production' (G := G) nt_index prods_index) in *.
-    apply Min.min_case_strong; intro.
-    { rewrite NPeano.Nat.sub_succ_r in *.
-      match goal with
-        | [ H : context[pred ?x] |- _ ] => destruct x eqn:?
-      end.
-      { simpl in *; exfalso.
-        repeat match goal with
-                 | [ H : List.length ?x = 0 |- _ ] => destruct x eqn:?; simpl in *
-                 | [ H : _::_ = [] |- _ ] => inversion H
-                 | [ H : S _ = 0 |- _ ] => inversion H
-               end. }
-      { rewrite NPeano.Nat.sub_succ_l in * by omega.
-        simpl pred in H.
-        rewrite <- drop_dropS, <- H; simpl; reflexivity. } }
-    { match goal with
-        | [ |- context[pred (List.length ?ls)] ]
-          => destruct ls eqn:?; simpl in * |- ; [ congruence | ]
-      end.
-      match goal with
-        | [ H : context[?x - ?y], H' : ?x <= ?y |- _ ] => replace (x - y) with 0 in H by omega; simpl in H
-      end.
-      simpl Datatypes.length; simpl pred.
-      repeat match goal with
-               | _ => reflexivity
-               | [ |- context[S ?x - ?x] ] => replace (S x - x) with 1 by omega
-               | [ H : _ :: _ = _ :: _ |- _ ] => inversion H; clear H
-             end. }
-  Qed.
-
-  Lemma lookup_first_index_helper nt
-  : (Lookup_productions
-       (G := G)
-       (List.length (map G (Valid_nonterminals G)) - (first_index (Equality.string_beq nt) (Valid_nonterminals G))))
-    = if is_valid_nonterminal initial_nonterminals_data nt
-      then Lookup G nt
-      else nil.
-  Proof.
-    unfold Lookup_productions, Lookup_productions_gen.
-    destruct (Bool.bool_dec (is_valid_nonterminal initial_nonterminals_data nt) true) as [b|b].
-    { rewrite b.
-      apply all_valid_nt in b.
-      clear -b.
-      induction (Valid_nonterminals G) as [|x xs IHxs].
-      { destruct b. }
-      { destruct b; subst; simpl.
-        { rewrite Equality.string_lb, minus_diag by reflexivity.
-          reflexivity. }
-        { case_eq (Equality.string_beq nt x).
-          { rewrite minus_diag.
-            intro H'.
-            apply Equality.string_bl in H'; subst; clear -H'.
-            subst; reflexivity. }
-          { specialize (IHxs H).
-            intro H'.
-            rewrite <- IHxs; clear IHxs.
-            generalize (map G xs).
-            generalize (first_index (Equality.string_beq nt) xs).
-            clear; intros n ls.
-            rewrite sub_twice.
-            apply Min.min_case_strong.
-            { rewrite <- NPeano.Nat.sub_0_le;
-              intro H; rewrite H; reflexivity. }
-            { intro H; apply le_lt_eq_dec in H.
-              destruct H as [H|H]; subst.
-              { apply NPeano.Nat.sub_gt in H.
-                revert H.
-                case_eq (Datatypes.length ls - n).
-                { intros ? H; destruct (H eq_refl). }
-                { intros n0 H _.
-                  replace (Datatypes.length ls - n0) with (S n) by omega.
-                  reflexivity. } }
-              { rewrite minus_diag; reflexivity. } } } } } }
-    { rewrite (Bool.not_true_is_false _ b).
-      pose proof (fun H => b (proj2 (all_valid_nt nt) H)) as b'.
-      clear -b'.
-      induction (Valid_nonterminals G) as [|x xs IHxs].
-      { reflexivity. }
-      { simpl in b'.
-        simplify_hyps.
-        simpl map.
-        simpl Datatypes.length.
-        simpl @first_index.
-        case_eq (Equality.string_beq nt x).
-        { intro H'; exfalso; clear -H' b'.
-          apply Equality.string_bl in H'; subst.
-          simpl in *; subst.
-          tauto. }
-        { intros _.
-          rewrite NPeano.Nat.sub_succ.
-          rewrite <- minus_Sn_m by omega.
-          simpl nth.
-          apply IHxs. } } }
-  Qed.*)
-
   Section min.
     Section parts.
       Local Ltac expand_onceL :=
@@ -278,7 +163,6 @@ Section recursive_descent_parser.
         first [ progress subst_le_proof
               | progress subst_nat_eq_proof
               | progress subst_bool_eq_proof
-              | progress subst_valid_proof
               | idtac;
                 match goal with
                   | [ |- ?x = ?x ] => reflexivity
@@ -802,6 +686,9 @@ Section recursive_descent_parser.
                  => apply initial_nonterminals_correct in H
                | [ H : List.In (to_nonterminal _) _ |- _ ]
                  => apply initial_nonterminals_correct' in H
+               | [ H : is_valid_nonterminal initial_nonterminals_data (of_nonterminal ?nt) = false,
+                       H' : List.In ?nt (Valid_nonterminals ?G) |- _ ]
+                 => apply initial_nonterminals_correct in H'; congruence
                end.
 
       Section item.
@@ -819,13 +706,11 @@ Section recursive_descent_parser.
                    : forall nt,
                        is_valid_nonterminal initial_nonterminals_data nt
                        -> str_matches_nonterminal nt = str_matches_nonterminal' nt :> bool)
-                  (it : item Char)
-                  (Hvalid : item_valid it).
+                  (it : item Char).
 
           Definition parse_item'
           : dec (minimal_parse_of_item (G := G) len0 valid (substring offset len str) it).
           Proof.
-            clear Hvalid.
             refine (match it return dec (minimal_parse_of_item len0 valid (substring offset len str) it) with
                       | Terminal P => if Sumbool.sumbool_of_bool (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool
                                       then inl (match get offset str as g return get offset str = g -> _ with
@@ -833,8 +718,10 @@ Section recursive_descent_parser.
                                                 | None => fun _ => !
                                                 end eq_refl)
                                       else inr (fun _ => !)
-                      | NonTerminal nt => if str_matches_nonterminal (of_nonterminal nt)
-                                          then inl (MinParseNonTerminal _)
+                      | NonTerminal nt => if Sumbool.sumbool_of_bool (is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
+                                          then if str_matches_nonterminal (of_nonterminal nt)
+                                               then inl (MinParseNonTerminal _)
+                                               else inr (fun _ => !)
                                           else inr (fun _ => !)
                     end);
               clear str_matches_nonterminal Hmatches;
@@ -1035,11 +922,6 @@ Section recursive_descent_parser.
             | _ => solve [ eauto with nocore ]
             | _ => solve [ apply Min.min_case_strong; omega ]
             | _ => omega
-            | [ H : production_valid (_::_) |- _ ]
-              => let H' := fresh in
-                 pose proof H as H';
-                   apply production_valid_cons in H;
-                   apply hd_production_valid in H'
             | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
             | [ H : length (substring _ _ _) = 0 |- _ ] => rewrite substring_length in H
             | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
@@ -1193,15 +1075,7 @@ Section recursive_descent_parser.
                           end in
           erewrite <- (parse_item'_eq _ _ parse_nt);
             [
-            | intros; apply parse_nonterminal_eq; assumption
-            | idtac;
-              match goal with
-                | [ H : to_production ?idx = ?a :: ?ls,
-                        Hreachable : full_production_carrierT_reachableT ?idx |- item_valid ?a ]
-                  => let H' := fresh in
-                     assert (H' : production_is_reachable G (a::ls)) by (eapply production_reachable_convert; eassumption);
-                       apply (@reachable_production_valid _ G _ gvalid), hd_production_valid in H'; assumption
-              end ];
+            | intros; apply parse_nonterminal_eq; assumption ];
             [].
           repeat eq_t'; simpl; repeat eq_t'; [].
           match goal with H : _ |- _ => erewrite <- H; repeat eq_t' end.
@@ -1332,9 +1206,6 @@ Section recursive_descent_parser.
                     | [ Hreachable : productions_is_reachable (?p :: ?ps)
                         |- full_production_carrierT_reachableT _ ]
                       => exists (projT1 Hreachable); destruct Hreachable as [nt Hreachable]; simpl
-                    (*| [ Hreachable : productions_is_reachable (?p :: ?ps)
-                        |- production_is_reachableT ?G ?p ]
-                      => exists (projT1 Hreachable); destruct Hreachable as [nt Hreachable]; simpl*)
                     | [ Hreachable : { prefix : _ | ?V /\ prefix ++ ?p::?ps = ?k }
                         |- { prefix : _ | ?V /\ prefix ++ ?ps = ?k } ]
                       => exists (proj1_sig Hreachable ++ [p]); destruct Hreachable as [prefix [? Hreachable]]; split; [ assumption | simpl ]
@@ -1355,11 +1226,6 @@ Section recursive_descent_parser.
                                   H2 : minimal_parse_of _ _ _ (?p :: ?ps)
                         |- False ]
                       => clear -H0 H1 H2; abstract (inversion p'; subst; eauto with nocore)
-                    | [ H : productions_valid (_::_) |- _ ]
-                      => let H' := fresh in
-                         pose proof H as H';
-                           apply productions_valid_cons in H;
-                           apply hd_productions_valid in H'
                     | _ => assumption
                     | _ => progress simpl in *
                   end ].
@@ -1438,7 +1304,6 @@ Section recursive_descent_parser.
                    : forall (p : nat * nat),
                        prod_relation lt lt p (len0, valid_len)
                        -> forall (valid : nonterminals_listT)
-                                 (*Hvalid : sub_nonterminals_listT valid initial_nonterminals_data*)
                                  (offset len : nat)
                                  (pf : len <= fst p)
                                  (nt : nonterminal_carrierT),
@@ -1448,7 +1313,6 @@ Section recursive_descent_parser.
                             (pR : prod_relation lt lt p (len0, valid_len))
                             (valid : nonterminals_listT)
                             (Hvalid_len : nonterminals_length valid <= snd p)
-                            (*Hvalid : sub_nonterminals_listT valid initial_nonterminals_data*)
                             (offset len : nat)
                             (Hlen : len = 0 \/ offset + len <= length str)
                             (pf : len <= fst p)
@@ -1459,7 +1323,6 @@ Section recursive_descent_parser.
                             (pR : prod_relation lt lt p (len0, valid_len))
                             (valid : nonterminals_listT)
                             (Hvalid_len : nonterminals_length valid <= snd p)
-                            (*Hvalid : sub_nonterminals_listT valid initial_nonterminals_data*)
                             (offset len : nat)
                             (Hlen : len = 0 \/ offset + len <= length str)
                             (pf : len <= fst p)
@@ -1530,7 +1393,6 @@ Section recursive_descent_parser.
           Definition parse_nonterminal_step
                      (valid : nonterminals_listT)
                      (Hvalid_len : nonterminals_length valid <= valid_len)
-                     (*Hvalid : sub_nonterminals_listT valid initial_nonterminals_data*)
                      (offset len : nat)
                      (Hlen : len = 0 \/ offset + len <= length str)
                      (pf : len <= len0)
@@ -1582,11 +1444,7 @@ Section recursive_descent_parser.
                                     (len0, pred valid_len)
                                     (or_intror (conj eq_refl pf''))
                                     (remove_nonterminal valid nt)
-                                    pf'''
-                                    (*transitivity
-                                       ((_ : Proper (sub_nonterminals_listT ==> eq ==> sub_nonterminals_listT) remove_nonterminal)
-                                          _ _ Hvalid _ _ eq_refl)
-                                       (sub_nonterminals_listT_remove _ _)*))
+                                    pf''')
                                  offset len
                                  Hlen
                                  pf
@@ -1620,7 +1478,6 @@ Section recursive_descent_parser.
           Definition parse_nonterminal_step_eq
                      (valid : nonterminals_listT)
                      (Hvalid_len : nonterminals_length valid <= valid_len)
-                     (*Hvalid : sub_nonterminals_listT valid initial_nonterminals_data*)
                      (offset len : nat)
                      (Hlen : len = 0 \/ offset + len <= length str)
                      (pf pf' : len <= len0)
