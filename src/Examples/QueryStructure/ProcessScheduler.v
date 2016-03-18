@@ -326,7 +326,25 @@ Lemma UpdateUnConstrRelation_Abstract_AbsR {qsSchema}
       UnConstryQueryStructure_Abstract_AbsR
         (UpdateUnConstrRelation r_o idx R)
         (Update_Iterate_Dep_Type idx _ r_n R).
-Admitted.
+Proof.
+  intros.
+  destruct qsSchema; simpl in *.
+  unfold UnConstryQueryStructure_Abstract_AbsR in *. 
+  unfold UnConstrQueryStructure in r_o; simpl in *.
+  unfold UpdateUnConstrRelation; simpl.
+  simpl; clear qschemaConstraints.
+  generalize dependent qschemaSchemas; intro.
+  revert idx; induction qschemaSchemas; simpl; intros.
+  - inversion idx.
+  - generalize dependent idx.
+    intro; intro.
+    generalize dependent qschemaSchemas.
+    pattern n, idx.
+    lazymatch goal with
+    | [ |- ?P _ idx ] =>
+      simpl; eapply (@Fin.caseS P); simpl; intros; intuition
+    end.
+Qed.
 
 Ltac UpdateUnConstrRelation_Abstract :=
   match goal with
@@ -352,7 +370,24 @@ Lemma GetUnConstrRelation_Abstract_AbsR {qsSchema}
     -> forall idx,
       GetUnConstrRelation r_o idx = Lookup_Iterate_Dep_Type _ r_n idx.
 Proof.
-Admitted.
+  intros.
+  destruct qsSchema; simpl in *.
+  unfold UnConstryQueryStructure_Abstract_AbsR in *. 
+  unfold UnConstrQueryStructure in r_o; simpl in *.
+  unfold GetUnConstrRelation; simpl.
+  simpl; clear qschemaConstraints.
+  generalize dependent qschemaSchemas; intro.
+  revert idx; induction qschemaSchemas; simpl; intros.
+  - inversion idx.
+  - generalize dependent idx.
+    intro.
+    generalize dependent qschemaSchemas.
+    pattern n, idx.
+    lazymatch goal with
+    | [ |- ?P _ idx ] =>
+      simpl; eapply (@Fin.caseS P); simpl; intros; intuition
+    end.
+Qed.
 
 Ltac GetUnConstrRelation_Abstract :=
   match goal with
@@ -361,9 +396,40 @@ Ltac GetUnConstrRelation_Abstract :=
     rewrite (GetUnConstrRelation_Abstract_AbsR r_o r_n H idx)
   end.
 
+
+Lemma refine_UpdateUnConstrRelationInsertC
+      {qsSchema}
+  : forall (qs : UnConstrQueryStructure qsSchema)
+           (Ridx : Fin.t (numRawQSschemaSchemas qsSchema))
+           (tup : IndexedElement),
+    refine (UpdateUnConstrRelationInsertC qs Ridx tup)
+           (ret
+              (UpdateUnConstrRelation qs Ridx
+                                      (EnsembleInsert tup (GetUnConstrRelation qs Ridx)))).
+Proof.
+  reflexivity.
+Qed.  
+
+Lemma refine_UpdateUnConstrRelationDeleteC
+      {qsSchema}
+  : forall (qs : UnConstrQueryStructure qsSchema)
+           (Ridx : Fin.t (numRawQSschemaSchemas qsSchema))
+           (deletedTuples : Ensemble RawTuple),
+    refine (UpdateUnConstrRelationDeleteC qs Ridx deletedTuples)
+           (ret
+              (UpdateUnConstrRelation
+                 qs Ridx
+                 (EnsembleDelete (GetUnConstrRelation qs Ridx) deletedTuples))).
+Proof.
+  reflexivity.
+Qed.  
+
+
 Ltac parameterize_query_structure :=
         repeat first
                [ simplify with monad laws; cbv beta; simpl
+               | rewrite refine_UpdateUnConstrRelationDeleteC
+               | rewrite refine_UpdateUnConstrRelationInsertC
                | rewrite refine_If_Then_Else_Bind
                | GetUnConstrRelation_Abstract
                | UpdateUnConstrRelation_Abstract
@@ -531,7 +597,6 @@ Ltac find_Abstract_Rep AbstractReps k :=
     identify_Abstract_Rep_Use
       ltac:(type of r_o)
              AbstractReps ltac:(k r_o)
-
   end.
 
 Definition
@@ -599,75 +664,6 @@ Definition observerType (rep : Type)
            (cod : option Type) :=
   rep -> observerType' rep dom cod.
 
-Fixpoint refineObserver' {oldRep newRep}
-         (AbsR : oldRep -> newRep -> Prop)
-         (dom : list Type)
-         (cod : option Type) {struct dom} :=
-  match
-    dom as dom'
-    return
-    (observerType' oldRep dom' cod
-     -> methodType' newRep dom' cod
-     -> Prop)
-  with
-  | [] =>
-    match cod as cod' return
-          (observerType' oldRep [] cod' -> methodType' newRep [] cod' -> Prop)
-    with
-    | Some cod' =>
-      fun oldObserver newMethod =>
-        refine oldObserver
-               (r <- newMethod; ret (snd r))
-    | None =>
-      fun oldObserver newMethod =>
-        refine oldObserver (r <- newMethod; ret tt)
-    end
-  | D :: dom' =>
-    fun oldObserver newMethod =>
-      forall d : D, refineObserver' AbsR dom' cod (oldObserver d) (newMethod d)
-  end.
-
-Definition refineObserver {oldRep newRep}
-           (AbsR : oldRep -> newRep -> Prop)
-           (dom : list Type) (cod : option Type)
-           (oldObserver : observerType oldRep dom cod)
-           (newMethod : methodType newRep dom cod) :=
-  forall (r_o : oldRep) (r_n : newRep),
-    AbsR r_o r_n
-    -> refineObserver' AbsR dom cod (oldObserver r_o) (newMethod r_n).
-
-Lemma refineObserverTrans {oldRep newRep}
-  : forall (AbsR : oldRep -> newRep -> Prop)
-           (dom : list Type) (cod : option Type)
-           (oldObserver : observerType oldRep dom cod)
-           (oldMethod : methodType oldRep dom cod)
-           (newMethod : methodType newRep dom cod),
-    refineObserver eq oldObserver oldMethod
-    -> refineMethod AbsR oldMethod newMethod
-    -> refineObserver AbsR oldObserver newMethod.
-Proof.
-  unfold refineObserver; induction dom; simpl.
-  - destruct cod; intros.
-    + rewrite H by eauto.
-      setoid_rewrite <- H0; eauto.
-      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
-      intro.
-      setoid_rewrite refineEquiv_bind_unit; simpl.
-      intros v Comp_v; computes_to_inv; subst; computes_to_econstructor.
-    + rewrite H by eauto.
-      setoid_rewrite <- H0; eauto.
-      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
-      intro.
-      intros v Comp_v; computes_to_inv; subst; computes_to_econstructor.
-  - intros.
-    eapply IHdom with
-    (oldObserver := fun r_o => oldObserver r_o d)
-      (oldMethod := fun r_o => oldMethod r_o d)
-      (newMethod := fun r_n => newMethod r_n d);
-      intros; subst; eauto.
-    unfold refineMethod; intros; eapply H0; eauto.
-Qed.
-
 Fixpoint liftObserverToMethod'
          (rep : Type)
          (dom : list Type)
@@ -699,6 +695,48 @@ Definition liftObserverToMethod
            (observer : observerType rep dom cod) :=
   fun r => liftObserverToMethod' dom cod (observer r) r.
 
+Definition refineObserver {oldRep newRep}
+           (AbsR : oldRep -> newRep -> Prop)
+           (dom : list Type) (cod : option Type)
+           (oldObserver : observerType oldRep dom cod)
+           (newMethod : methodType newRep dom cod) :=
+  refineMethod AbsR (liftObserverToMethod oldObserver) newMethod.
+
+Lemma refineObserverTrans {oldRep newRep}
+  : forall (AbsR : oldRep -> newRep -> Prop)
+           (dom : list Type) (cod : option Type)
+           (oldObserver : observerType oldRep dom cod)
+           (oldMethod : methodType oldRep dom cod)
+           (newMethod : methodType newRep dom cod),
+    refineObserver eq oldObserver oldMethod
+    -> refineMethod AbsR oldMethod newMethod
+    -> refineObserver AbsR oldObserver newMethod.
+Proof.
+  unfold refineObserver; induction dom; simpl.
+  - destruct cod; intros.
+    + setoid_rewrite <- H0; eauto.
+      setoid_rewrite <- H; eauto.
+      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
+      intro.
+      repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+      intros v Comp_v; computes_to_inv; subst; repeat computes_to_econstructor.
+      eauto.
+    + setoid_rewrite <- H0; eauto.
+      rewrite <- H by eauto.
+      repeat setoid_rewrite refineEquiv_bind_bind; f_equiv.
+      intro.
+      intros v Comp_v; computes_to_inv; subst; repeat computes_to_econstructor;
+      eauto.
+  - intros.
+    eapply IHdom with
+    (oldObserver := fun r_o => oldObserver r_o d)
+      (oldMethod := fun r_o => oldMethod r_o d)
+      (newMethod := fun r_n => newMethod r_n d);
+      intros; subst; eauto.
+    unfold refineMethod; intros; eapply H; eauto.
+    unfold refineMethod; intros; eauto.
+Qed.
+
 Lemma refineObserverLift {oldRep}
   : forall (dom : list Type) (cod : option Type)
            (oldObserver : observerType oldRep dom cod),
@@ -710,7 +748,6 @@ Proof.
       intros v Comp_v; computes_to_inv; subst; simpl; eauto.
     + rewrite H by eauto.
       intros v Comp_v; computes_to_inv; subst; simpl; eauto.
-      destruct v1; eauto.
   - intros.
     eapply IHdom with
     (oldObserver := fun r_o => oldObserver r_o d);
@@ -771,45 +808,159 @@ Opaque UpdateUnConstrRelationDeleteC.
 Ltac doOne srewrite_fn drills_fn finish_fn :=
   first [srewrite_fn | drills_fn | finish_fn].
 
+Ltac find_AbsR qschema DelegateImpls ValidImpls :=
+  find_Abstract_Rep
+    (fun idx : Fin.t (numRawQSschemaSchemas qschema) =>
+       @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas qschema) idx))))
+    ltac:(fun r_o n =>
+            (* Synthesize a similar concrete representation type [r_n'] *)
+            (* using an evar. If this fails, we don't have a candidate for*)
+            (* operation conversion. *)
+            makeEvar (Rep (DelegateImpls n))
+                     ltac:(fun r_n' =>
+                             let AbsR_r_o := fresh in
+                             assert (AbsR (ValidImpls n) r_o r_n')
+                               as AbsR_r_o by intuition eauto);
+          (* Generalize the refineADT proof for the concrete representation*)
+          (* type [r_n'] so that we can add a new method to its spec. *)
+          let ValidImplT' := (type of (ValidImpls n)) in
+          let ValidImplT := (eval simpl in ValidImplT') in
+          pose (ValidImpls n : ValidImplT)
+         ).
+
+Ltac identify_Observer qschema := 
+  find_Abstract_Rep
+    (fun idx : Fin.t (numRawQSschemaSchemas qschema) =>
+       @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas qschema) idx))))
+    ltac:(fun r_o n => 
+            match goal with
+              |- refine _ (?f ?x) /\ _ =>
+              match type of f with
+              | Rep (_ (_ ?idx)) -> _ => unify idx n
+                end; unify x r_o
+            end; split; [ finish honing | solve [intuition eauto]  ] ).
+
+Lemma refine_under_bind_observer
+      {DelegateIDs}
+      (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+      (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+      (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+      (ValidImpls
+       : forall idx : Fin.t DelegateIDs,
+          refineADT (DelegateSpecs idx)
+                    (DelegateImpls idx))
+      {A B : Type}
+  : forall idx
+           (c : Comp A)
+           (c' : Rep (DelegateSpecs idx) -> Comp A)
+           (d : Rep (DelegateImpls idx) -> Comp (Rep (DelegateImpls idx) * A))
+           (x : A -> Comp B)
+           (x' : Rep (DelegateSpecs idx) -> A -> Comp B)
+           (y : Rep (DelegateImpls idx) -> A -> Comp B)
+           (r_o : Rep (DelegateSpecs idx))
+           (r_n : Rep (DelegateImpls idx)),
+    (refine c (c' r_o)
+     /\ AbsR (ValidImpls idx) r_o r_n)
+    -> (forall a, refine (x a) (x' r_o a))
+         
+    -> refineObserver (AbsR (ValidImpls idx)) (dom := []) (cod := Some A) (c') (d)
+    -> (forall a r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
+                          refine (x' r_o a) (y r_n a))
+    -> refine (a <- c; x a) (a <- d r_n; y (fst a) (snd a)).
+Proof.
+  intros; intuition.
+  setoid_rewrite H3.
+  unfold refineObserver, liftObserverToMethod in H1; simpl in H1.
+  setoid_rewrite <- H1; intuition eauto.
+  autorewrite with monad laws.
+  eapply refine_under_bind_both; try reflexivity.
+  intros.
+  eapply H1 in H4.
+  repeat setoid_rewrite refineEquiv_bind_bind in H4.
+  repeat setoid_rewrite refineEquiv_bind_unit in H4.
+  simpl in *.
+  rewrite H0.
+  intros v Comp_v; computes_to_inv; subst.
+  eapply H2; eauto.
+Qed.    
+
+Lemma refineObserver_cons
+      {Rep_o Rep_n : Type}
+      (AbsR' : Rep_o -> Rep_n -> Prop)
+  : forall dom cod
+           (sig := {| methID := "tmp";
+                      methDom := dom;
+                      methCod := cod |})
+           (c : observerType Rep_o (methDom sig) (methCod sig))
+           n'
+           (methSigs' : Vector.t methSig n')
+           (methDefs_o : ilist (B := methDef) methSigs')
+           methDefs_n,
+    (forall idx, refineMethod AbsR'
+                              (ith (icons {| methBody := liftObserverToMethod c |}
+                                          (l := methSigs') methDefs_o) idx)
+                              (methDefs_n idx))
+    -> refineObserver AbsR' c                          
+                      (methDefs_n Fin.F1).
+Proof.
+  intros; eauto.
+  eapply (H (Fin.F1)).
+Qed.
+
+    Ltac delegate_to_method p' := 
+    let p := (eval simpl in p') in
+    match type of p with
+    | forall idx : ?methIndex', refineMethod _ (@?MethodSpecs' idx) (@?MethodImpls' idx) =>
+      (* Get the evar for the number of methods *)
+      let methIndex := (eval simpl in methIndex') in
+      let numMeths := (match methIndex with Fin.t ?n => n end) in
+      (* Get the list of methods definitions and signatures *)
+      let MethodSpecs := (eval simpl in MethodSpecs') in
+      let MethodSigs := (match MethodSpecs with
+                         | fun idx =>
+                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                           methSigs'
+                         end) in 
+      let MethodDefs := (match MethodSpecs with
+                         | fun idx =>
+                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                           methDefs'
+                         end) in 
+      (* Now insert the goal into the list of methods *)
+      match goal with
+        |- @refineObserver ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
+        makeEvar nat
+           ltac:(fun n'' =>
+        makeEvar (Vector.t methSig n'')
+           ltac:(fun methSigs' =>
+        makeEvar (ilist (B := @methDef RepSpec) methSigs')
+           ltac:(fun methDefs' =>
+                   unify MethodSigs
+                         (Vector.cons
+                            _
+                            {| methID := "tmp";
+                               methDom := dom;
+                               methCod := cod |}
+                            _
+                            methSigs');
+                 try unify MethodDefs
+                       (icons {| methBody := liftObserverToMethod r |}
+                              (l := methSigs') methDefs');
+                 let ValidImpls' := (eval simpl in (fun idx : @Fin.t (S n'') => p idx)) in 
+                 let cons' := (eval simpl in  (@refineObserver_cons RepSpec RepImpl AbsR dom cod r
+                                            n'' methSigs' methDefs' MethodImpls')) in eapply (cons'); eapply (ValidImpls')
+                )))
+      end
+    end.
+    
 Definition SharpenedScheduler :
   {adt' : _ & refinedUnderDelegates SchedulerSpec adt'}.
 Proof.
   eexists; unfold SchedulerSpec.
   simpl; pose_string_hyps; pose_heading_hyps.
   eapply refinedUnderDelegatesStep.
-  eapply SharpenStep;
-    [ match goal with
-        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
-        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
-          [ repeat (first [eapply refine_Constructors_nil
-                          | eapply refine_Constructors_cons;
-                            [ simpl; intros;
-                              match goal with
-                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E) => let H := fresh in set (H := E)
-                              | _ => idtac
-                              end;
-                              (* Drop constraints from empty *)
-                              try apply Constructor_DropQSConstraints;
-                              cbv delta [GetAttribute] beta; simpl
-                            | ] ])
-          | repeat (first [eapply refine_Methods_nil
-                          | eapply refine_Methods_cons;
-                            [ simpl; intros;
-                              match goal with
-                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E) => let H := fresh in set (H := E)
-                              | _ => idtac
-                              end;
-                              cbv delta [GetAttribute] beta; simpl | ]
-          ])]
-      end | ].
+  hone representation using (@DropQSConstraints_AbsR SchedulerSchema).
+  - eapply Constructor_DropQSConstraints.
   - doAny drop_constraints
           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - doAny drop_constraints
@@ -844,9 +995,7 @@ Proof.
         refine pick val (imap2 rawRel (Build_EmptyRelations (qschemaSchemas SchedulerSchema))).
         finish honing.
         unfold UnConstryQueryStructure_Abstract_AbsR; simpl; intuition.
-      * Transparent UpdateUnConstrRelationInsertC.
-        Transparent UpdateUnConstrRelationDeleteC.
-        doAny parameterize_query_structure
+      * doAny parameterize_query_structure
               rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
       * doAny parameterize_query_structure
               rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
@@ -861,32 +1010,119 @@ Proof.
       (@Iterate_Dep_Type_BoundedIndex 1)
       (@Iterate_Dep_Type_AbsR 1).
     Focus 2.
+    Arguments refineMethod : simpl never.
+    simplify with monad laws; simpl.
+    etransitivity.
+    intros; eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    
+    simpl; intros.
+    rewrite !refine_For.
+    Transparent QueryResultComp.
+    simplify with monad laws.    
+    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
 
-simplify with monad laws; simpl.
-etransitivity.
-apply refine_under_bind_both.
+    let p := (eval simpl in (ADTRefinementPreservesMethods (ValidImpls Fin.F1))) in
+    match type of p with
+    | forall idx : ?methIndex', refineMethod _ (@?MethodSpecs' idx) (@?MethodImpls' idx) =>
+      (* Get the evar for the number of methods *)
+      let methIndex := (eval simpl in methIndex') in
+      let numMeths := (match methIndex with Fin.t ?n => n end) in
+      (* Get the list of methods definitions and signatures *)
+      let MethodSpecs := (eval simpl in MethodSpecs') in
+      let MethodSigs := (match MethodSpecs with
+                         | fun idx =>
+                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                           methSigs'
+                         end) in 
+      let MethodDefs := (match MethodSpecs with
+                         | fun idx =>
+                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                           methDefs'
+                         end) in
+      pose MethodDefs
+    end.
+      (* Now insert the goal into the list of methods *)
+      match goal with
+        |- @refineObserver ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
+        makeEvar nat
+           ltac:(fun n'' =>
+        makeEvar (Vector.t methSig n'')
+           ltac:(fun methSigs' =>
+        makeEvar (ilist (B := @methDef RepSpec) methSigs')
+           ltac:(fun methDefs' =>
+                   unify MethodSigs
+                         (Vector.cons
+                            _
+                            {| methID := "tmp";
+                               methDom := dom;
+                               methCod := cod |}
+                            _
+                            methSigs');
+                 try unify MethodDefs
+                       (icons {| methBody := liftObserverToMethod r |}
+                              (l := methSigs') methDefs');
+                 let ValidImpls' := (eval simpl in (fun idx : @Fin.t (S n'') => p idx)) in 
+                 let cons' := (eval simpl in  (@refineObserver_cons RepSpec RepImpl AbsR dom cod r
+                                            n'' methSigs' methDefs' MethodImpls')) in eapply (cons'); eapply (ValidImpls')
+                )))
+      end
+    end.
 
-Ltac find_AbsR DelegateImpls ValidImpls :=
-find_Abstract_Rep
-  (fun idx : Fin.t (numRawQSschemaSchemas SchedulerSchema) =>
-     @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas SchedulerSchema) idx))))
-  ltac:(fun r_o n =>
-          (* Synthesize a similar concrete representation type [r_n'] *)
-          (* using an evar. If this fails, we don't have a candidate for*)
-          (* operation conversion. *)
-          makeEvar (Rep (DelegateImpls n))
-                              ltac:(fun r_n' =>
-                                      let AbsR_r_o := fresh in
-                                      assert (AbsR (ValidImpls n) r_o r_n')
-                                        as AbsR_r_o by intuition eauto);
-        (* Generalize the refineADT proof for the concrete representation*)
-        (* type [r_n'] so that we can add a new method to its spec. *)
-        let ValidImplT' := (type of (ValidImpls n)) in
-        let ValidImplT := (eval simpl in ValidImplT') in
-        pose (ValidImpls n : ValidImplT)
-       ).
 
-find_AbsR DelegateImpls ValidImpls.
+    
+    simpl in *.
+    eapply r.
+    eapply r0.
+    simpl in r.
+    intros; eapply r.
+    intro.
+    match type of idx with
+    | Fin.t ?n' => 
+      match type of r with
+      | forall idx : Fin.t ?n, _ => unify n n'
+      end
+    end.
+    unfold refineMethod; intros.
+    eapply r.
+    pose (@Methods _ (DelegateImpls Fin.F1)) as r'; simpl in r'.
+    match type of (@Methods _ (DelegateImpls Fin.F1)) with
+    | [forall idx0 : Fin.t ?methIDs', _ ] => idtac end.
+        methodType (Rep (DelegateImpls Fin.F1))
+                   (methDom (Vector.nth ?methSigs' idx0))
+                   (methCod (Vector.nth ?methSigs' idx0))] => idtac
+    end.
+    simpl in jk.
+    eapply r.
+    simpl in r0.
+    
+    unfold refineMethod. simpl; intros.
+    eapply (r idx) in H0.
+    simpl in H0.
+    unfold Methods in H0.
+    simpl.
+    unfold refineObserver, refineObserver'; simpl; intros.
+    
+    intuition.
+      find_AbsR SchedulerSchema DelegateImpls ValidImpls.
+    
+    
+    
+          (forall a : ?34649, c ↝ a -> refine (x a) (y a)) ->
+       refine (a <- c;
+               x a) (a <- c';
+                     y a)
+    
+    (* Step One: decompose bind into two pieces. *)
+    apply refine_under_bind_both.
+    (* Step Two: Identify a use of an abstract type in the goal *)
+    (* and generalize the corresponding hypothesis from [ValidImpls]*)
+    (* so that we can add this goal as a method. *)
+    find_AbsR SchedulerSchema DelegateImpls ValidImpls.
 
 
     match goal with
@@ -927,7 +1163,7 @@ find_AbsR DelegateImpls ValidImpls.
                                                  (Fin.F1)
                                                  _
                                                  (refineObserverLift _)
-                                                 
+
                   )
          ); eauto))
 end.
