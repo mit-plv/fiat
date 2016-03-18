@@ -62,6 +62,9 @@ Section correctness.
       => right; clear -H; apply Min.min_case_strong; omega
     | [ H : ?T |- _ \/ ?T ] => right; assumption
     | [ H : forall x, Some _ = Some x -> _ |- _ ] => specialize (H _ eq_refl)
+    | [ H : is_valid_nonterminal initial_nonterminals_data (of_nonterminal ?nt) = true
+        |- List.In ?nt (Valid_nonterminals ?G) /\ _ ]
+      => split; [ apply initial_nonterminals_correct in H; exact H | ]
     end.
 
   Local Ltac t'_unsafe :=
@@ -87,13 +90,17 @@ Section correctness.
           (Hlen : len = 0 \/ offset + len <= length str)
           (parse_nonterminal : nonterminal_carrierT -> option simple_parse_of)
           (parse_nonterminal_correct
-           : forall nt p,
+           : forall nt (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)) p,
               parse_nonterminal (of_nonterminal nt) = Some p
               -> simple_parse_of_item_correct G (substring offset len str) (NonTerminal nt) (SimpleParseNonTerminal nt p))
           (it : item Char) p
     : parse_item' str parse_nonterminal offset len it = Some p
       -> simple_parse_of_item_correct G (substring offset len str) it p.
-    Proof. destruct it, p; t. Qed.
+    Proof.
+      destruct it, p; try solve [ t ]; [].
+      repeat t'_safe.
+      eapply parse_nonterminal_correct; t.
+    Qed.
 
     Section production.
       Context {len0}
@@ -103,7 +110,7 @@ Section correctness.
                   -> nonterminal_carrierT
                   -> option simple_parse_of)
               (parse_nonterminal_correct
-               : forall offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt p,
+               : forall offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)) p,
                   parse_nonterminal offset len pf (of_nonterminal nt) = Some p
                   -> simple_parse_of_item_correct G (substring offset len str) (NonTerminal nt) (SimpleParseNonTerminal nt p)).
 
@@ -154,7 +161,7 @@ Section correctness.
                    => apply parse_item'_correct in H;
                       [
                       | solve [ t ]..
-                      | intros; eapply parse_nonterminal_correct; [ | eassumption ]; solve [ t ] ]
+                      | intros; eapply parse_nonterminal_correct; [ .. | eassumption ]; solve [ t ] ]
                  | [ IH : forall prod_idx pf p offset len Hlen pf',
                        list_rect ?P ?N ?C ?ls prod_idx offset len pf' = Some p -> _,
                        H : list_rect ?P ?N ?C ?ls _ _ _ _ = Some _ |- _ ]
@@ -194,7 +201,7 @@ Section correctness.
                         (pf : len <= len0),
                   nonterminal_carrierT -> option simple_parse_of)
               (parse_nonterminal_correct
-               : forall offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt p,
+               : forall offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)) p,
                   parse_nonterminal offset len pf (of_nonterminal nt) = Some p
                   -> simple_parse_of_item_correct G (substring offset len str) (NonTerminal nt) (SimpleParseNonTerminal nt p)).
 
@@ -225,7 +232,7 @@ Section correctness.
                               (offset : nat) (len : nat),
                       len <= fst p -> nonterminal_carrierT -> option simple_parse_of)
                 (parse_nonterminal_correct
-                 : forall p0 wf valid offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt p,
+                 : forall p0 wf valid offset len (Hlen : len = 0 \/ offset + len <= length str) pf nt (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)) p,
                     parse_nonterminal p0 wf valid offset len pf (of_nonterminal nt) = Some p
                     -> simple_parse_of_item_correct G (substring offset len str) (NonTerminal nt) (SimpleParseNonTerminal nt p)).
 
@@ -235,6 +242,7 @@ Section correctness.
                    (Hlen : len = 0 \/ offset + len <= length str)
                    (pf : len <= len0)
                    nt
+                   (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
                    p
           : parse_nonterminal_step str parse_nonterminal valid offset pf (of_nonterminal nt) = Some p
             -> simple_parse_of_correct G (substring offset len str) (List.map to_production (nonterminal_to_production (of_nonterminal nt))) p.
@@ -258,6 +266,7 @@ Section correctness.
                  (Hlen : len = 0 \/ offset + len <= length str)
                  (pf : len <= fst p)
                  nt
+                 (Hvalid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
                  pt,
           parse_nonterminal_or_abort str p valid offset pf (of_nonterminal nt) = Some pt
           -> simple_parse_of_correct G (substring offset len str) (List.map to_production (nonterminal_to_production (of_nonterminal nt))) pt.
@@ -266,36 +275,103 @@ Section correctness.
           intro p.
           let Rwf := match goal with |- appcontext[Fix ?Rwf] => Rwf end in
           induction (Rwf p) as [?? IH].
-          intros ??????? HF.
+          intros ???????? HF.
           rewrite Fix5_eq in HF
                           by (intros; apply parse_nonterminal_step_ext; assumption).
-          eapply parse_nonterminal_step_correct; [ | assumption | eassumption ].
+          eapply parse_nonterminal_step_correct; [ | assumption.. | eassumption ].
           simpl; intros; simpl_simple_parse_of_correct.
-        Admitted.
-        (*
-        Lemma parse_nonterminal'_correct
-              (nt : nonterminal_carrierT)
-          : option simple_parse_of
-            := @parse_nonterminal_or_abort
-                 (length str, nonterminals_length initial_nonterminals_data)
-                 initial_nonterminals_data
-                 0 (length str)
-                 (le_n _) nt.
+          move IH at bottom.
+          split; [ reflexivity | ].
+          split; [ apply initial_nonterminals_correct; assumption | ].
+          match goal with
+          | [ Hvalid0 : _, HFix : _ |- simple_parse_of_correct ?G (substring ?offset0 ?len0 ?str) (Lookup ?G ?nt0) ?p ]
+            => specialize (fun y pf valid1 pf' pf1 pf2 => IH y pf valid1 offset0 len0 pf' pf1 nt0 Hvalid0 p pf2)
+          end.
+          match goal with
+          | [ HFix : _ |- _ ]
+            => specialize (fun pf pf' => IH _ pf _ pf' _ HFix)
+          end.
+          specialize_by assumption.
+          rewrite nonterminal_to_production_correct
+            in IH
+            by (apply initial_nonterminals_correct; assumption).
+          assumption.
+        Qed.
 
-          Definition parse_nonterminal
-                     (nt : String.string)
-          : option simple_parse_of
-            := parse_nonterminal' (of_nonterminal nt).*)
+        Lemma parse_nonterminal'_correct
+              nt pt
+          : parse_nonterminal' str nt = Some pt
+            -> simple_parse_of_item_correct G str (NonTerminal (to_nonterminal nt)) (SimpleParseNonTerminal (to_nonterminal nt) pt).
+        Proof.
+          intro H.
+          assert (Hvalid : is_valid_nonterminal initial_nonterminals_data nt).
+          { unfold parse_nonterminal', parse_nonterminal_or_abort in *.
+            rewrite Fix5_eq
+              in H
+              by (intros; apply parse_nonterminal_step_ext; assumption).
+            unfold parse_nonterminal_step at 1 in H.
+            simpl in H.
+            edestruct Compare_dec.lt_dec; simpl in *; try omega; [].
+            edestruct dec; simpl in *; try congruence; [].
+            edestruct is_valid_nonterminal; simpl in *; try reflexivity; [].
+            edestruct negb; simpl in *; congruence. }
+          rewrite <- (of_to_nonterminal nt) in H by assumption.
+          apply parse_nonterminal_or_abort_correct in H.
+          { simpl_simple_parse_of_correct.
+            rewrite <- nonterminal_to_production_correct
+              by (apply initial_nonterminals_correct'; assumption).
+            rewrite drop_0 in H.
+            rewrite take_long in H by reflexivity.
+            repeat split; try assumption.
+            apply initial_nonterminals_correct'; assumption. }
+          { omega. }
+          { rewrite of_to_nonterminal by assumption.
+            assumption. }
+        Qed.
+
+        Definition parse_nonterminal_correct
+                   nt pt
+          : parse_nonterminal' str nt = Some pt
+            -> simple_parse_of_item_correct G str (NonTerminal (to_nonterminal nt)) (SimpleParseNonTerminal (to_nonterminal nt) pt).
+        Proof.
+          apply parse_nonterminal'_correct.
+        Qed.
       End wf.
     End nonterminals.
-(*
-    Definition parse_item
-               (it : item Char)
-      : option simple_parse_of_item
-      := parse_item' parse_nonterminal' 0 (length str) it.
 
-    Definition parse_production
-               (pat : production_carrierT)
+    Definition parse_item_correct
+               (it : item Char) p
+      : parse_item str it = Some p
+        -> simple_parse_of_item_correct G str it p.
+    Proof.
+      intro H.
+      apply parse_item'_correct in H; [ | omega | .. ].
+      { rewrite drop_0, take_long in H by reflexivity; assumption. }
+      { intros ???.
+        setoid_rewrite drop_0; rewrite take_long by reflexivity.
+        intro H'.
+        rewrite <- (to_of_nonterminal nt)
+          by (apply initial_nonterminals_correct; assumption).
+        eapply parse_nonterminal_correct; assumption. }
+    Qed.
+
+    (*Definition parse_production_correct
+               (pat : production_carrierT) p
+      : parse_production str pat = Some p
+        -> simple_parse_of_production_correct G str (to_production pat) p.
+    Proof.
+      intro H.
+      rewrite <- (to_of_nonterminal nt)
+        by (apply initial_nonterminals_correct; assumption).
+      apply parse_production'_correct in H; [ | omega | .. ].
+      { rewrite drop_0, take_long in H by reflexivity; assumption. }
+      { intros ???.
+        setoid_rewrite drop_0; rewrite take_long by reflexivity.
+        intro H'.
+        rewrite <- (to_of_nonterminal nt)
+          by (apply initial_nonterminals_correct; assumption).
+        eapply parse_nonterminal_correct; assumption. }
+    Qed.
       : option simple_parse_of_production
       := parse_production' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 (reflexivity _) pat.
 
