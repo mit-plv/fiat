@@ -129,3 +129,16 @@ Qed.
 Global Instance and_flip_impl_Proper
   : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and.
 Proof. lazy; tauto. Qed.
+
+Global Instance map_Proper_eq_In {A B ls}
+  : Proper (forall_relation (fun a x y => List.In a ls -> x = y) ==> eq) (fun f => @List.map A B f ls).
+Proof.
+  induction ls as [|l ls IHls];
+    unfold forall_relation.
+  { repeat intro; reflexivity. }
+  { intros ?? H.
+    simpl; rewrite H by (left; reflexivity).
+    f_equal.
+    rewrite IHls; [ reflexivity | ].
+    intros ??; apply H; right; assumption. }
+Qed.
