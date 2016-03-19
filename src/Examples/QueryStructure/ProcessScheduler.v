@@ -881,7 +881,42 @@ Proof.
   rewrite H0.
   intros v Comp_v; computes_to_inv; subst.
   eapply H2; eauto.
-Qed.    
+Qed.
+
+Lemma refine_under_bind_Pick_AbsR
+      {DelegateIDs}
+      (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+      (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+      (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+      (ValidImpls
+       : forall idx : Fin.t DelegateIDs,
+          refineADT (DelegateSpecs idx)
+                    (DelegateImpls idx))
+      {B : Type}
+  : forall idx
+           (c : Rep (DelegateSpecs idx))
+           (c' : Rep (DelegateSpecs idx) -> Rep (DelegateSpecs idx))
+           (d : Rep (DelegateImpls idx) -> Comp (Rep (DelegateImpls idx)))
+           (x : Rep (DelegateImpls idx) -> Comp B)
+           (y : Rep (DelegateImpls idx) -> Comp B)
+           (r_o : Rep (DelegateSpecs idx))
+           (r_n : Rep (DelegateImpls idx)),
+    (refine (ret c) (ret (c' r_o))
+     /\ AbsR (ValidImpls idx) r_o r_n)
+    -> refineMethod (AbsR (ValidImpls idx)) (dom := []) (cod := None) (fun r_o => ret (c' r_o)) d
+    -> (forall r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
+                          refine (x r_n) (y r_n))
+    -> refine (a <- { r_n' | AbsR (ValidImpls idx) c r_n' }; x a) (a <- d r_n; y a).
+Proof.
+  intros; intuition.
+  simpl in H0.
+  setoid_rewrite <- H0; eauto.
+  autorewrite with monad laws.
+  specialize (H2 _ (ReturnComputes _)); computes_to_inv; subst.
+  eapply refine_under_bind_both; try reflexivity; intros.
+  computes_to_inv; subst.
+  eauto.
+Qed.
 
 Lemma refineObserver_cons
       {Rep_o Rep_n : Type}
@@ -1011,7 +1046,18 @@ Ltac delegate_to_method ValidImpls' :=
               insert_method_into_delegates 
                 MethodSigs'' MethodDefs'' ValidImpls idx)
   end.
-    
+
+Lemma flatten_CompList_Return_f {A B: Type}
+  : forall (f : A -> B) (l : list A),
+    refine (FlattenCompList.flatten_CompList (map (fun a => Query_Return (f a)) l)) (ret (map f l)).
+Proof.
+  induction l; simpl; eauto.
+  - reflexivity.
+  - setoid_rewrite IHl.
+    unfold Query_Return; simplify with monad laws.
+    reflexivity.
+Qed.    
+
 Definition SharpenedScheduler :
   {adt' : _ & refinedUnderDelegates SchedulerSpec adt'}.
 Proof.
@@ -1067,7 +1113,89 @@ Proof.
          @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas SchedulerSchema) idx))))
       (@Iterate_Dep_Type_BoundedIndex 1)
       (@Iterate_Dep_Type_AbsR 1).
+
+    Focus 4.
+    {
+    Arguments refineMethod : simpl never.
+    simplify with monad laws; simpl.
+    etransitivity.
+    rewrite !refine_For.
+    Transparent QueryResultComp.
+    simplify with monad laws.    
+    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
+    end.
+    clear; simpl in *.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    (* rewrite causing stack overflows out the wazzoo. *)
+    (* mysteriously, this is no longer happening. *)
+    simpl; intros.
+
+    rewrite flatten_CompList_Return_f; simplify with monad laws.
+    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
+    set_evars.
+    match goal with
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    simpl; refine pick val _; intuition eauto.
+    simplify with monad laws.
+    simpl; refine pick val tt; intuition eauto.
+    simplify with monad laws.
+    finish honing.
+    finish honing.
+    }
+
+    Focus 3.
+    {
+    Arguments refineMethod : simpl never.
+    simplify with monad laws; simpl.
+    etransitivity.
+    rewrite !refine_For.
+    Transparent QueryResultComp.
+    simplify with monad laws.    
+    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
+    end.
+    clear; simpl in *.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    (* rewrite causing stack overflows out the wazzoo. *)
+    (* mysteriously, this is no longer happening. *)
+    simpl; intros.
+
+    rewrite flatten_CompList_Return_f; simplify with monad laws.
+    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
+    set_evars.
+    match goal with
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    simpl; refine pick val _; intuition eauto.
+    simplify with monad laws.
+    simpl; refine pick val tt; intuition eauto.
+    simplify with monad laws.
+    finish honing.
+    finish honing.
+    }
+    
     Focus 2.
+    {
     Arguments refineMethod : simpl never.
     simplify with monad laws; simpl.
     etransitivity.
@@ -1113,10 +1241,9 @@ Proof.
     end.
     simplify with monad laws.
     (* Need a refine_under_bind_mutator variant here. *)
-    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    eapply (refine_under_bind_Pick_AbsR _ _ _ ValidImpls Fin.F1).
     identify_Observer SchedulerSchema.
-    intros; finish honing.
-    
+    simpl.
     match goal with
       |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
       let meth_o' := (eval pattern d in meth_o) in
@@ -1138,11 +1265,28 @@ Proof.
     end.
     simpl in *.
     delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    simpl.
+    intros; refine pick val tt; eauto; simplify with monad laws.
+    finish honing.
     
-    
+    simplify with monad laws.
+    set_evars.
+    match goal with
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    simpl; refine pick val _; intuition eauto.
+    simplify with monad laws.
+    intros; refine pick val tt; eauto; simplify with monad laws.
+    finish honing.
+
     finish honing.
     finish honing.
-    
+    finish honing.
+    }
+
+    Focus 2.
     
     simplify with monad laws.    
     eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
