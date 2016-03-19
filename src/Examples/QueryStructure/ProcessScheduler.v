@@ -861,9 +861,8 @@ Lemma refine_under_bind_observer
            (r_n : Rep (DelegateImpls idx)),
     (refine c (c' r_o)
      /\ AbsR (ValidImpls idx) r_o r_n)
-    -> (forall a, refine (x a) (x' r_o a))
-         
-    -> refineObserver (AbsR (ValidImpls idx)) (dom := []) (cod := Some A) (c') (d)
+    -> (forall a, refine (x a) (x' r_o a))         
+    -> refineMethod (AbsR (ValidImpls idx)) (dom := []) (cod := Some A) (liftObserverToMethod (dom := []) (cod := Some A) c') (d)
     -> (forall a r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
                           refine (x' r_o a) (y r_n a))
     -> refine (a <- c; x a) (a <- d r_n; y (fst a) (snd a)).
@@ -900,58 +899,105 @@ Lemma refineObserver_cons
                               (ith (icons {| methBody := liftObserverToMethod c |}
                                           (l := methSigs') methDefs_o) idx)
                               (methDefs_n idx))
-    -> refineObserver AbsR' c                          
+    -> refineMethod AbsR' (liftObserverToMethod c)
                       (methDefs_n Fin.F1).
 Proof.
   intros; eauto.
   eapply (H (Fin.F1)).
 Qed.
 
-    Ltac delegate_to_method p' := 
-    let p := (eval simpl in p') in
-    match type of p with
-    | forall idx : ?methIndex', refineMethod _ (@?MethodSpecs' idx) (@?MethodImpls' idx) =>
-      (* Get the evar for the number of methods *)
-      let methIndex := (eval simpl in methIndex') in
-      let numMeths := (match methIndex with Fin.t ?n => n end) in
-      (* Get the list of methods definitions and signatures *)
-      let MethodSpecs := (eval simpl in MethodSpecs') in
-      let MethodSigs := (match MethodSpecs with
-                         | fun idx =>
-                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
-                           methSigs'
-                         end) in 
-      let MethodDefs := (match MethodSpecs with
-                         | fun idx =>
-                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
-                           methDefs'
-                         end) in 
-      (* Now insert the goal into the list of methods *)
-      match goal with
-        |- @refineObserver ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
-        makeEvar nat
+Lemma refineMethod_cons_dom
+      {Rep_o Rep_n D : Type}
+      (d : D)
+      (AbsR' : Rep_o -> Rep_n -> Prop)
+  : forall dom cod
+           (c : D -> methodType Rep_o dom cod)
+           (c' : methodType Rep_n (D :: dom) cod),
+    refineMethod (dom := D :: dom) AbsR'
+                 (fun i d => c d i)
+                 c'
+    -> refineMethod AbsR' (c d) (fun i => c' i d). 
+Proof.
+  unfold refineMethod; simpl; intros.
+  eapply H; eauto.
+Qed.
+
+Ltac find_evar_in_ilist MethDefs MethSigs k :=      
+  first [ is_evar MethDefs;
+          k (fun n => @Fin.F1 n) MethDefs (MethSigs)
+        |
+        let MethDefs' := (eval simpl in (prim_snd MethDefs)) in
+        let MethSigs' := (eval simpl in (Vector.tl MethSigs)) in
+        find_evar_in_ilist
+          MethDefs'
+          MethSigs'
+          ltac:(fun idx MethDefs'' MethSigs'' =>
+                  k (fun n => @Fin.FS _ (idx n))
+                    MethDefs'' MethSigs'') ].
+
+Ltac insert_method_into_delegates
+     MethodSigs
+     MethodDefs
+     ValidMethods
+     newIndex :=
+     (* Now insert the goal into the list of methods *)
+     match goal with
+       |- @refineMethod ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
+       makeEvar nat
            ltac:(fun n'' =>
-        makeEvar (Vector.t methSig n'')
+       makeEvar (Vector.t methSig n'')
            ltac:(fun methSigs' =>
         makeEvar (ilist (B := @methDef RepSpec) methSigs')
            ltac:(fun methDefs' =>
-                   unify MethodSigs
+                    unify MethodSigs
                          (Vector.cons
                             _
                             {| methID := "tmp";
                                methDom := dom;
                                methCod := cod |}
                             _
-                            methSigs');
-                 try unify MethodDefs
-                       (icons {| methBody := liftObserverToMethod r |}
-                              (l := methSigs') methDefs');
-                 let ValidImpls' := (eval simpl in (fun idx : @Fin.t (S n'') => p idx)) in 
-                 let cons' := (eval simpl in  (@refineObserver_cons RepSpec RepImpl AbsR dom cod r
-                                            n'' methSigs' methDefs' MethodImpls')) in eapply (cons'); eapply (ValidImpls')
-                )))
-      end
-    end.
+                            methSigs'); 
+                 let mDef := constr:(@Build_methDef RepSpec {| methID := "tmp";
+                               methDom := dom;
+                               methCod := cod |} r) in
+                 let methDefs'' :=
+                     (eval simpl in (icons mDef (l := methSigs') methDefs')) in 
+                 try unify MethodDefs methDefs'';
+                 eapply (ValidMethods (newIndex n''))
+                  )))
+  end.
+
+
+Ltac delegate_to_method ValidImpls' := 
+  let ValidImpls := (eval simpl in ValidImpls') in
+  match type of ValidImpls with
+  | forall idx : ?methIndex', refineMethod _ (@?MethodSpecs' idx) (@?MethodImpls' idx) =>
+    (* Get the evar for the number of methods *)
+    let MethodSpecs := (eval simpl in MethodSpecs') in
+    let numMeths := (match MethodSpecs with
+                     | fun idx =>
+                         methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                       m
+                     end) in 
+    (* Get the list of methods definitions and signatures *)
+    let MethodSpecs := (eval simpl in MethodSpecs') in
+    let MethodSigs := (match MethodSpecs with
+                       | fun idx =>
+                           methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                         methSigs'
+                       end) in 
+    let MethodDefs := (match MethodSpecs with
+                       | fun idx =>
+                           methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
+                         methDefs'
+                       end) in
+    find_evar_in_ilist
+      MethodDefs
+      MethodSigs
+      ltac:(fun idx MethodDefs'' MethodSigs'' =>
+              insert_method_into_delegates 
+                MethodSigs'' MethodDefs'' ValidImpls idx)
+  end.
     
 Definition SharpenedScheduler :
   {adt' : _ & refinedUnderDelegates SchedulerSpec adt'}.
@@ -1017,7 +1063,7 @@ Proof.
     identify_Observer SchedulerSchema.
     intros; finish honing.
     delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-    
+
     simpl; intros.
     rewrite !refine_For.
     Transparent QueryResultComp.
@@ -1025,6 +1071,118 @@ Proof.
     eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
     identify_Observer SchedulerSchema.
     intros; finish honing.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
+    end.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d0 in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
+    end.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+
+    (* rewrite causing stack overflows out the wazzoo. *)
+    simpl; intros.
+    clear.
+    set_evars.
+    simpl in *.
+    etransitivity.
+    apply refine_under_bind_both.
+    rewrite flatten_CompList_Return.
+    intros; finish honing.
+    simplify with monad laws.
+    etransitivity.
+    apply refine_under_bind_both.
+    apply refine_Permutation_Reflexivity.
+    intros; finish honing.
+    simplify with monad laws.
+    etransitivity; try eapply refine_If_Then_Else_Bind.
+    apply refine_If_Then_Else.
+    simplify with monad laws; simpl.
+    set_evars.
+    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
+    end.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d0 in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
+    end.
+
+    
+    
+    finish honing.
+    finish honing.
+    
+    
+    simplify with monad laws.    
+    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
+    end.
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern d0 in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
+    end.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    
+
+    intros.
+    simpl in *.
+    apply r.
+    let i' := (eval unfold i in i) in
+    let i0' := (eval unfold i0 in i0) in
+    unify i' i0'.
+    eapply r.
+    simpl.
+    unfold refineMethod; simpl; intros.
+    finish honing.
+    Focus 2.
+
+    
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    
+    pose (r0 m).
+    
+    unfold liftObserverToMethod in 
+    pose (r0 m).
+    pose (r (Fin.FS (@Fin.F1 _))).
+    simpl in r0.
+    
+    simpl in r.
+    apply r.
+    simpl in *.
+
+methIndex
+         numMeths
+         MethodSpecs
+         MethodSigs
+         MethodDefs
+         ValidMethods
+         newIndex
+    
+    
 
     let p := (eval simpl in (ADTRefinementPreservesMethods (ValidImpls Fin.F1))) in
     match type of p with
@@ -1048,7 +1206,7 @@ Proof.
     end.
       (* Now insert the goal into the list of methods *)
       match goal with
-        |- @refineObserver ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
+        |- @refineMethod ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
         makeEvar nat
            ltac:(fun n'' =>
         makeEvar (Vector.t methSig n'')
