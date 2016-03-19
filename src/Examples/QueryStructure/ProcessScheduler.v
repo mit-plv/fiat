@@ -922,6 +922,19 @@ Proof.
   eapply H; eauto.
 Qed.
 
+Lemma refineEquiv_pick_prim_prod:
+  forall (A B : Type) (PA : A -> Prop) (PB : B -> Prop),
+    refineEquiv {x : prim_prod A B | PA (prim_fst x) /\ PB (prim_snd x)}
+                (a <- {a : A | PA a};
+                 b <- {b : B | PB b};
+                 ret {| prim_fst := a; prim_snd :=  b |}).
+Proof.
+  split; intros;
+  intros v Comp_v; computes_to_inv; subst; repeat computes_to_econstructor; simpl;
+  intuition eauto.
+  destruct v; simpl; computes_to_econstructor.
+Qed.
+
 Ltac find_evar_in_ilist MethDefs MethSigs k :=      
   first [ is_evar MethDefs;
           k (fun n => @Fin.F1 n) MethDefs (MethSigs)
@@ -1048,8 +1061,7 @@ Proof.
       * doAny parameterize_query_structure
               rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
       * eapply reflexivityT.
-  - simpl.
-    FullySharpenEachMethod_w_Delegates
+  - FullySharpenEachMethod_w_Delegates
       1
       (fun idx : Fin.t (numRawQSschemaSchemas SchedulerSchema) =>
          @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas SchedulerSchema) idx))))
@@ -1084,30 +1096,27 @@ Proof.
       let meth_o'' := match meth_o' with ?f _ => f end in 
       eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
     end.
+    clear; simpl in *.
     delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-
     (* rewrite causing stack overflows out the wazzoo. *)
+    (* mysteriously, this is no longer happening. *)
     simpl; intros.
-    clear.
-    set_evars.
-    simpl in *.
-    etransitivity.
-    apply refine_under_bind_both.
-    rewrite flatten_CompList_Return.
-    intros; finish honing.
-    simplify with monad laws.
-    etransitivity.
-    apply refine_under_bind_both.
-    apply refine_Permutation_Reflexivity.
-    intros; finish honing.
-    simplify with monad laws.
-    etransitivity; try eapply refine_If_Then_Else_Bind.
-    apply refine_If_Then_Else.
+    rewrite flatten_CompList_Return; simplify with monad laws.
+    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
+    rewrite refine_If_Then_Else_Bind.
+    etransitivity; apply refine_If_Then_Else.
     simplify with monad laws; simpl.
     set_evars.
+    match goal with
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    (* Need a refine_under_bind_mutator variant here. *)
     eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
     identify_Observer SchedulerSchema.
     intros; finish honing.
+    
     match goal with
       |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
       let meth_o' := (eval pattern d in meth_o) in
@@ -1121,7 +1130,14 @@ Proof.
       let meth_o'' := match meth_o' with ?f _ => f end in 
       eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
     end.
-
+    match goal with
+      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
+      let meth_o' := (eval pattern a in meth_o) in
+      let meth_o'' := match meth_o' with ?f _ => f end in 
+      eapply (@refineMethod_cons_dom _ _ _ a AbsR' Dom Cod meth_o'')
+    end.
+    simpl in *.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
     
     
     finish honing.
