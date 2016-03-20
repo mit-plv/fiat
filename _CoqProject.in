@@ -288,6 +288,7 @@ src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectness.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessMorphisms.v
+src/Parsers/ContextFreeGrammar/SimpleTransfer.v
 src/Parsers/ContextFreeGrammar/Transfer.v
 src/Parsers/ContextFreeGrammar/TransferProperties.v
 src/Parsers/ContextFreeGrammar/Valid.v
