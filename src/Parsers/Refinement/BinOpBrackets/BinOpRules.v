@@ -577,10 +577,8 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
                            | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
                              => constr:(@possible_valid_open_closes G nt ch)
                          end in
-                let c0 := fresh in
-                set (c0 := c) in H;
-                  vm_compute in c0;
-                  first [ subst c0; specialize (H eq_refl)
+                replace_with_vm_compute_in c H;
+                  first [ specialize (H eq_refl)
                         | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
                   let c := match type of H with
                              | context[@default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]

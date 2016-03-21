@@ -105,13 +105,13 @@ total time:      6.094s
     }
 
     finish_Sharpening_SplitterADT.
-  Defined.
+  Time Defined.
 
   Lemma ComputationalSplitter
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
-    make_simplified_splitter ComputationalSplitter'.
-  Defined.
+    Time make_simplified_splitter ComputationalSplitter'.
+  Time Defined.
 
 End IndexedImpl.
 
