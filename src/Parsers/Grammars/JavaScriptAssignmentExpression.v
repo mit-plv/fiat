@@ -407,7 +407,7 @@ End JavaScriptAssignmentExpression.
 Definition javascript_assignment_expression_pregrammar
   := Eval cbv [javascript_assignment_expression_pregrammar' append]
     in javascript_assignment_expression_pregrammar'.
-
+(*
 (** TODO
   "Number"
     "String"
@@ -452,3 +452,4 @@ Goal is_true (grammar_rvalid javascript_assignment_expression_pregrammar).
               end
          end.
   repeat (change (andb true) with (fun x : bool => x); cbv beta).
+*)
