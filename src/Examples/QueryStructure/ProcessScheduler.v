@@ -840,7 +840,36 @@ Ltac identify_Observer qschema :=
                 end; unify x r_o
             end; split; [ finish honing | solve [intuition eauto]  ] ).
 
-Lemma refine_under_bind_observer
+Lemma refine_under_bind_constructor
+      {DelegateIDs}
+      (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+      (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+      (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+      (ValidImpls
+       : forall idx : Fin.t DelegateIDs,
+          refineADT (DelegateSpecs idx)
+                    (DelegateImpls idx))
+      {B : Type}
+  : forall idx
+           (c : Comp (Rep (DelegateSpecs idx)))
+           (d : Comp (Rep (DelegateImpls idx)))
+           (x : Rep (DelegateSpecs idx) -> Comp B)
+           (y : Rep (DelegateImpls idx) -> Comp B),
+    refineConstructor (AbsR (ValidImpls idx)) (dom := []) c d
+    -> (forall r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
+                        refine (x r_o) (y r_n))
+    -> refine (a <- c; x a) (a <- d; y a).
+Proof.
+  intros; intuition.
+  simpl in H; rewrite <- H.
+  autorewrite with monad laws.
+  eapply refine_under_bind_both; try reflexivity.
+  intros.
+  intros v Comp_v; computes_to_inv; subst.
+  eapply H0; eauto.
+Qed.
+
+Lemma refine_under_bind_method
       {DelegateIDs}
       (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
       (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
@@ -918,6 +947,36 @@ Proof.
   eauto.
 Qed.
 
+Lemma refine_under_bind_Pick_AbsR'
+      {DelegateIDs}
+      (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+      (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+      (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+      (ValidImpls
+       : forall idx : Fin.t DelegateIDs,
+          refineADT (DelegateSpecs idx)
+                    (DelegateImpls idx))
+      {B : Type}
+  : forall idx
+           (c : Rep (DelegateSpecs idx))
+           (d : Comp (Rep (DelegateImpls idx)))
+           (x : Rep (DelegateImpls idx) -> Comp B)
+           (y : Rep (DelegateImpls idx) -> Comp B),
+    refineConstructor (AbsR (ValidImpls idx)) (dom := []) (ret c) d
+    -> (forall r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
+                          refine (x r_n) (y r_n))
+    -> refine (a <- { r_n' | AbsR (ValidImpls idx) c r_n' }; x a) (a <- d; y a).
+Proof.
+  intros; intuition.
+  simpl in *.
+  setoid_rewrite <- H; eauto.
+  autorewrite with monad laws.
+  eapply refine_under_bind_both; try reflexivity; intros.
+  eapply H0.
+  computes_to_inv; subst.
+  eauto.
+Qed.
+
 Lemma refineObserver_cons
       {Rep_o Rep_n : Type}
       (AbsR' : Rep_o -> Rep_n -> Prop)
@@ -983,6 +1042,60 @@ Ltac find_evar_in_ilist MethDefs MethSigs k :=
                   k (fun n => @Fin.FS _ (idx n))
                     MethDefs'' MethSigs'') ].
 
+Ltac insert_constructor_into_delegates
+     ConstructorSigs
+     ConstructorDefs
+     ValidConstructors
+     newIndex :=
+     (* Now insert the goal into the list of constructors *)
+     match goal with
+       |- @refineConstructor ?RepSpec ?RepImpl ?AbsR ?dom ?r _ =>
+       let RepSpec' := (eval simpl in RepSpec) in
+       makeEvar nat
+           ltac:(fun n'' =>
+       makeEvar (Vector.t consSig n'')
+           ltac:(fun consSigs' =>
+        makeEvar (ilist (B := @consDef RepSpec') consSigs')
+           ltac:(fun consDefs' =>
+                    unify ConstructorSigs
+                         (Vector.cons
+                            _
+                            {| consID := "tmp";
+                               consDom := dom |}
+                            _
+                            consSigs');
+                 (* This can cause stack overflows later on if RepSpec isn't simpled *)
+                 unify ConstructorDefs
+                       (icons (@Build_consDef RepSpec' {| consID := "tmp";
+                                                          consDom := dom |} r) (l := consSigs') consDefs');
+                 apply (ValidConstructors (newIndex n''))
+                  )))
+  end.
+
+Ltac delegate_to_constructor ValidImpls' := 
+  let ValidImpls := (eval simpl in ValidImpls') in
+  match type of ValidImpls with
+  | forall idx : ?consIndex', refineConstructor _ (@?ConstructorSpecs' idx) (@?ConstructorImpls' idx) =>
+    (* Get the list of constructors definitions and signatures *)
+    let ConstructorSpecs := (eval simpl in ConstructorSpecs') in
+    let ConstructorSigs := (match ConstructorSpecs with
+                       | fun idx =>
+                           consBody (@ith ?A ?B ?m ?consSigs' ?consDefs' idx) =>
+                         consSigs'
+                       end) in 
+    let ConstructorDefs := (match ConstructorSpecs with
+                       | fun idx =>
+                           consBody (@ith ?A ?B ?m ?consSigs' ?consDefs' idx) =>
+                         eval simpl in consDefs'
+                       end) in
+    find_evar_in_ilist
+      ConstructorDefs
+      ConstructorSigs
+      ltac:(fun idx ConstructorDefs'' ConstructorSigs'' =>
+              insert_constructor_into_delegates 
+                ConstructorSigs'' ConstructorDefs'' ValidImpls idx)
+  end.
+
 Ltac insert_method_into_delegates
      MethodSigs
      MethodDefs
@@ -1037,7 +1150,7 @@ Ltac delegate_to_method ValidImpls' :=
     let MethodDefs := (match MethodSpecs with
                        | fun idx =>
                            methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
-                         methDefs'
+                         eval simpl in methDefs'
                        end) in
     find_evar_in_ilist
       MethodDefs
@@ -1114,93 +1227,85 @@ Proof.
       (@Iterate_Dep_Type_BoundedIndex 1)
       (@Iterate_Dep_Type_AbsR 1).
 
-    Focus 4.
+    {
+      etransitivity.
+      simplify with monad laws; simpl.
+      match goal with
+        |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+        setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+      end.
+      eapply (refine_under_bind_Pick_AbsR' _ _ _ ValidImpls Fin.F1).
+
+Ltac insert_constructor_into_delegates
+     ConstructorSigs
+     ConstructorDefs
+     ValidConstructors
+     newIndex ::=
+     simpl;
+     (* Now insert the goal into the list of constructors *)
+     match goal with
+       |- @refineConstructor ?RepSpec ?RepImpl ?AbsR ?dom ?r _ =>
+       let RepSpec' := (eval simpl in RepSpec) in
+       makeEvar nat
+           ltac:(fun n'' =>
+       makeEvar (Vector.t consSig n'')
+           ltac:(fun consSigs' =>
+        makeEvar (ilist (B := @consDef RepSpec') consSigs')
+           ltac:(fun consDefs' =>
+                    unify ConstructorSigs
+                         (Vector.cons
+                            _
+                            {| consID := "tmp";
+                               consDom := dom |}
+                            _
+                            consSigs');
+                 (* This can cause stack overflows later on if RepSpec isn't simpled *)
+                 unify ConstructorDefs
+                       (icons (@Build_consDef RepSpec' {| consID := "tmp";
+                                                          consDom := dom |} r) (l := consSigs') consDefs');
+                 apply (ValidConstructors (newIndex n''))
+                  )))
+  end.
+
+Ltac delegate_to_constructor ValidImpls' ::= 
+  let ValidImpls := (eval simpl in ValidImpls') in
+  match type of ValidImpls with
+  | forall idx : ?consIndex', refineConstructor _ (@?ConstructorSpecs' idx) (@?ConstructorImpls' idx) =>
+    (* Get the list of constructors definitions and signatures *)
+    let ConstructorSpecs := (eval simpl in ConstructorSpecs') in
+    let ConstructorSigs := (match ConstructorSpecs with
+                       | fun idx =>
+                           consBody (@ith ?A ?B ?m ?consSigs' ?consDefs' idx) =>
+                         consSigs'
+                       end) in 
+    let ConstructorDefs := (match ConstructorSpecs with
+                       | fun idx =>
+                           consBody (@ith ?A ?B ?m ?consSigs' ?consDefs' idx) =>
+                         eval simpl in consDefs'
+                       end) in
+    find_evar_in_ilist
+      ConstructorDefs
+      ConstructorSigs
+      ltac:(fun idx ConstructorDefs'' ConstructorSigs'' =>
+              insert_constructor_into_delegates 
+                ConstructorSigs'' ConstructorDefs'' ValidImpls idx)
+  end.
+Arguments refineConstructor : simpl never.
+      delegate_to_constructor (ADTRefinementPreservesConstructors (ValidImpls Fin.F1)).
+      simpl; intros; setoid_rewrite (refine_pick_val (a := tt)); eauto;
+      simplify with monad laws.
+      finish honing.
+      finish honing.
+    }
+
     {
     Arguments refineMethod : simpl never.
     simplify with monad laws; simpl.
     etransitivity.
-    rewrite !refine_For.
-    Transparent QueryResultComp.
-    simplify with monad laws.    
-    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    intros; eapply (refine_under_bind_method _ _ _ ValidImpls); simpl; try eauto.
     identify_Observer SchedulerSchema.
-    intros; finish honing.
-    match goal with
-      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
-      let meth_o' := (eval pattern d in meth_o) in
-      let meth_o'' := match meth_o' with ?f _ => f end in 
-      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
-        simpl
-    end.
-    clear; simpl in *.
-    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-    (* rewrite causing stack overflows out the wazzoo. *)
-    (* mysteriously, this is no longer happening. *)
-    simpl; intros.
-
-    rewrite flatten_CompList_Return_f; simplify with monad laws.
-    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
-    set_evars.
-    match goal with
-      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
-      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
-    end.
-    simplify with monad laws.
-    simpl; refine pick val _; intuition eauto.
-    simplify with monad laws.
-    simpl; refine pick val tt; intuition eauto.
-    simplify with monad laws.
-    finish honing.
-    finish honing.
-    }
-
-    Focus 3.
-    {
-    Arguments refineMethod : simpl never.
-    simplify with monad laws; simpl.
-    etransitivity.
-    rewrite !refine_For.
-    Transparent QueryResultComp.
-    simplify with monad laws.    
-    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
-    identify_Observer SchedulerSchema.
-    intros; finish honing.
-    match goal with
-      |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
-      let meth_o' := (eval pattern d in meth_o) in
-      let meth_o'' := match meth_o' with ?f _ => f end in 
-      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
-        simpl
-    end.
-    clear; simpl in *.
-    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-    (* rewrite causing stack overflows out the wazzoo. *)
-    (* mysteriously, this is no longer happening. *)
-    simpl; intros.
-
-    rewrite flatten_CompList_Return_f; simplify with monad laws.
-    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
-    set_evars.
-    match goal with
-      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
-      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
-    end.
-    simplify with monad laws.
-    simpl; refine pick val _; intuition eauto.
-    simplify with monad laws.
-    simpl; refine pick val tt; intuition eauto.
-    simplify with monad laws.
-    finish honing.
-    finish honing.
-    }
     
-    Focus 2.
-    {
-    Arguments refineMethod : simpl never.
-    simplify with monad laws; simpl.
-    etransitivity.
-    intros; eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
-    identify_Observer SchedulerSchema.
+
     intros; finish honing.
     delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
 
@@ -1208,7 +1313,7 @@ Proof.
     rewrite !refine_For.
     Transparent QueryResultComp.
     simplify with monad laws.    
-    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    eapply (refine_under_bind_method _ _ _ ValidImpls); simpl; try eauto.
     identify_Observer SchedulerSchema.
     intros; finish honing.
     match goal with
@@ -1286,10 +1391,14 @@ Proof.
     finish honing.
     }
 
-    Focus 2.
-    
+    {
+    Arguments refineMethod : simpl never.
+    simplify with monad laws; simpl.
+    etransitivity.
+    rewrite !refine_For.
+    Transparent QueryResultComp.
     simplify with monad laws.    
-    eapply (refine_under_bind_observer _ _ _ ValidImpls); simpl; try eauto.
+    eapply (refine_under_bind_method _ _ _ ValidImpls); simpl; try eauto.
     identify_Observer SchedulerSchema.
     intros; finish honing.
     match goal with
@@ -1299,268 +1408,75 @@ Proof.
       apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
         simpl
     end.
+    clear; simpl in *.
+    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
+    (* rewrite causing stack overflows out the wazzoo. *)
+    (* mysteriously, this is no longer happening. *)
+    simpl; intros.
+
+    rewrite flatten_CompList_Return_f; simplify with monad laws.
+    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
+    set_evars.
+    match goal with
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    simpl; refine pick val _; intuition eauto.
+    simplify with monad laws.
+    simpl; refine pick val tt; intuition eauto.
+    simplify with monad laws.
+    finish honing.
+    finish honing.
+    }
+
+    {
+    Arguments refineMethod : simpl never.
+    simplify with monad laws; simpl.
+    etransitivity.
+    rewrite !refine_For.
+    Transparent QueryResultComp.
+    simplify with monad laws.    
+    eapply (refine_under_bind_method _ _ _ ValidImpls); simpl; try eauto.
+    identify_Observer SchedulerSchema.
+    intros; finish honing.
     match goal with
       |- refineMethod ?AbsR' (dom := ?Dom) (cod := ?Cod) ?meth_o ?meth_n =>
-      let meth_o' := (eval pattern d0 in meth_o) in
+      let meth_o' := (eval pattern d in meth_o) in
       let meth_o'' := match meth_o' with ?f _ => f end in 
-      eapply (@refineMethod_cons_dom _ _ _ d0 AbsR' Dom Cod meth_o'')
+      apply (@refineMethod_cons_dom _ _ _ d AbsR' Dom Cod meth_o'');
+        simpl
     end.
+    clear; simpl in *.
     delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-    
+    (* rewrite causing stack overflows out the wazzoo. *)
+    (* mysteriously, this is no longer happening. *)
+    simpl; intros.
 
-    intros.
-    simpl in *.
-    apply r.
-    let i' := (eval unfold i in i) in
-    let i0' := (eval unfold i0 in i0) in
-    unify i' i0'.
-    eapply r.
-    simpl.
-    unfold refineMethod; simpl; intros.
-    finish honing.
-    Focus 2.
-
-    
-    delegate_to_method (ADTRefinementPreservesMethods (ValidImpls Fin.F1)).
-    
-    pose (r0 m).
-    
-    unfold liftObserverToMethod in 
-    pose (r0 m).
-    pose (r (Fin.FS (@Fin.F1 _))).
-    simpl in r0.
-    
-    simpl in r.
-    apply r.
-    simpl in *.
-
-methIndex
-         numMeths
-         MethodSpecs
-         MethodSigs
-         MethodDefs
-         ValidMethods
-         newIndex
-    
-    
-
-    let p := (eval simpl in (ADTRefinementPreservesMethods (ValidImpls Fin.F1))) in
-    match type of p with
-    | forall idx : ?methIndex', refineMethod _ (@?MethodSpecs' idx) (@?MethodImpls' idx) =>
-      (* Get the evar for the number of methods *)
-      let methIndex := (eval simpl in methIndex') in
-      let numMeths := (match methIndex with Fin.t ?n => n end) in
-      (* Get the list of methods definitions and signatures *)
-      let MethodSpecs := (eval simpl in MethodSpecs') in
-      let MethodSigs := (match MethodSpecs with
-                         | fun idx =>
-                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
-                           methSigs'
-                         end) in 
-      let MethodDefs := (match MethodSpecs with
-                         | fun idx =>
-                             methBody (@ith ?A ?B ?m ?methSigs' ?methDefs' idx) =>
-                           methDefs'
-                         end) in
-      pose MethodDefs
-    end.
-      (* Now insert the goal into the list of methods *)
-      match goal with
-        |- @refineMethod ?RepSpec ?RepImpl ?AbsR ?dom ?cod ?r _ =>
-        makeEvar nat
-           ltac:(fun n'' =>
-        makeEvar (Vector.t methSig n'')
-           ltac:(fun methSigs' =>
-        makeEvar (ilist (B := @methDef RepSpec) methSigs')
-           ltac:(fun methDefs' =>
-                   unify MethodSigs
-                         (Vector.cons
-                            _
-                            {| methID := "tmp";
-                               methDom := dom;
-                               methCod := cod |}
-                            _
-                            methSigs');
-                 try unify MethodDefs
-                       (icons {| methBody := liftObserverToMethod r |}
-                              (l := methSigs') methDefs');
-                 let ValidImpls' := (eval simpl in (fun idx : @Fin.t (S n'') => p idx)) in 
-                 let cons' := (eval simpl in  (@refineObserver_cons RepSpec RepImpl AbsR dom cod r
-                                            n'' methSigs' methDefs' MethodImpls')) in eapply (cons'); eapply (ValidImpls')
-                )))
-      end
-    end.
-
-
-    
-    simpl in *.
-    eapply r.
-    eapply r0.
-    simpl in r.
-    intros; eapply r.
-    intro.
-    match type of idx with
-    | Fin.t ?n' => 
-      match type of r with
-      | forall idx : Fin.t ?n, _ => unify n n'
-      end
-    end.
-    unfold refineMethod; intros.
-    eapply r.
-    pose (@Methods _ (DelegateImpls Fin.F1)) as r'; simpl in r'.
-    match type of (@Methods _ (DelegateImpls Fin.F1)) with
-    | [forall idx0 : Fin.t ?methIDs', _ ] => idtac end.
-        methodType (Rep (DelegateImpls Fin.F1))
-                   (methDom (Vector.nth ?methSigs' idx0))
-                   (methCod (Vector.nth ?methSigs' idx0))] => idtac
-    end.
-    simpl in jk.
-    eapply r.
-    simpl in r0.
-    
-    unfold refineMethod. simpl; intros.
-    eapply (r idx) in H0.
-    simpl in H0.
-    unfold Methods in H0.
-    simpl.
-    unfold refineObserver, refineObserver'; simpl; intros.
-    
-    intuition.
-      find_AbsR SchedulerSchema DelegateImpls ValidImpls.
-    
-    
-    
-          (forall a : ?34649, c ↝ a -> refine (x a) (y a)) ->
-       refine (a <- c;
-               x a) (a <- c';
-                     y a)
-    
-    (* Step One: decompose bind into two pieces. *)
-    apply refine_under_bind_both.
-    (* Step Two: Identify a use of an abstract type in the goal *)
-    (* and generalize the corresponding hypothesis from [ValidImpls]*)
-    (* so that we can add this goal as a method. *)
-    find_AbsR SchedulerSchema DelegateImpls ValidImpls.
-
-
+    rewrite flatten_CompList_Return_f; simplify with monad laws.
+    rewrite refine_Permutation_Reflexivity; simplify with monad laws.
+    set_evars.
     match goal with
-      H : refineADT (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs)
-                _
-  |- refine ?c ?H0 =>
-  makeEvar nat
-    ltac:(fun n'' =>
-  makeEvar (Vector.t methSig n'')
-     ltac:(fun methSigs' =>
-  makeEvar (ilist (B := @methDef Rep) methSigs')
-           ltac:(fun methDefs' =>
-                   unify methSigs
-                         (@Vector.cons methSig {| methID := "foo";
-                              methDom := @nil Type;
-                              methCod := Some (nat : Type) |} n'' methSigs');
-             unify methDefs
-                   (@icons methSig
-                           (@methDef Rep)
-                           {| methID := "foo";
-                              methDom := @nil Type;
-                              methCod := Some (nat : Type) |}
-                           n'' methSigs'
-                           (@Build_methDef Rep {| methID := "foo";
-                              methDom := @nil Type;
-                              methCod := Some (nat : Type) |}
-                                           (fun (r_o : Rep) =>
-                                              idx <- { idx | UnConstrFreshIdx r_o idx};
-                                            ret (r_o, idx)))
-                           methDefs');
-             apply (@Implement_Abstract_Observer Rep
-                                                  n consSigs (S n'')
-                                                 methSigs
-                                                 consDefs
-                                                 methDefs
-                                                 _
-                                                 (ValidImpls (Fin.F1))
-                                                 (Fin.F1)
-                                                 _
-                                                 (refineObserverLift _)
-
-                  )
-         ); eauto))
-end.
-intros.
-rewrite !refine_For.
-Transparent QueryResultComp.
-
-simplify with monad laws.
-apply refine_under_bind_both.
-find_AbsR DelegateImpls ValidImpls.
-
-apply r0.
-simpl in r0.
-Check (r0 _ (refineObserverLift _)).
-unfold refineObserver in r0; simpl in r0.
-
-
-
-  (* Now we implement the various set operations using BagADTs. *)
-  - make_simple_indexes
-      {|
-        prim_fst := [ ("EqualityIndex", Fin.F1);
-                      ( "EqualityIndex", Fin.FS (@Fin.F1 1) ) ];
-        prim_snd := () |}
-      ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-             ltac:(LastCombineCase5 BuildLastEqualityIndex).
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + setoid_rewrite refine_For_rev; simplify with monad laws.
-      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + setoid_rewrite refine_For_rev; simplify with monad laws.
-      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
-           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
-    + hone method "Spawn".
-      { subst; simplify with monad laws.
-        unfold GetAttributeRaw at 1.
-        simpl; unfold ilist2_hd at 1; simpl.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars.
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        rewrite app_nil_r, map_map; simpl.
-        unfold ilist2_hd; simpl; rewrite map_id.
-        repeat setoid_rewrite refine_If_Then_Else_Bind.
-        repeat setoid_rewrite refineEquiv_bind_unit; simpl.
-        setoid_rewrite refineEquiv_bind_bind.
-        setoid_rewrite refineEquiv_bind_unit.
-        rewrite (CallBagFind_fst H0); simpl.
-        finish honing.
-      }
-      hone method "Enumerate".
-      { subst; simplify with monad laws.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars; simpl in *.
-        rewrite (CallBagFind_fst H0).
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map, <- map_rev.
-        unfold ilist2_hd; simpl.
-        finish honing.
-      }
-      hone method "GetCPUTime".
-      { subst; simplify with monad laws.
-        unfold H1; apply refine_under_bind.
-        intros; set_evars; rewrite (CallBagFind_fst H0); simpl in *.
-        setoid_rewrite refine_pick_eq'; simplify with monad laws.
-        simpl; rewrite app_nil_r, map_map, <- map_rev.
-        unfold ilist2_hd; simpl.
-        finish honing.
-      }
-      simpl.
-      eapply reflexivityT.
-  - unfold CallBagFind, CallBagInsert.
-    pose_headings_all;
-      match goal with
-      | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-        FullySharpenQueryStructure Schema Indexes
-      end.
+      |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
+      setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
+    end.
+    simplify with monad laws.
+    simpl; refine pick val _; intuition eauto.
+    simplify with monad laws.
+    simpl; refine pick val tt; intuition eauto.
+    simplify with monad laws.
+    finish honing.
+    finish honing.
+    }
+    idtac.
+    exact nat.
+    eapply reflexivityT.
+    Grab Existential Variables.
+    exact inil.
+    exact inil.
+    (* Universe Inconsistency :( *)
+    (* /Probably/ need to define a variant delegate ADT definition that doesn't *)
+    (* package ADT reps inside the record, as we do with computation ADTs at the moment. *)
 Defined.
 
 Time Definition PartialSchedulerImpl : ADT _ :=
