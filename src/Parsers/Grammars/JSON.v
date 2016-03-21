@@ -75,9 +75,9 @@ value
            || "NUMBER"
            || "object"
            || "array"
-           || "t" "r" "u" "e"
-           || "f" "a" "l" "s" "e"
-           || "n" "u" "l" "l";;
+           || "'true'"
+           || "'false'"
+           || "'null'";;
   (**
 <<
 STRING

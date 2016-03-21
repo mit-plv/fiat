@@ -147,6 +147,10 @@ Ltac simplify_parser_splitter' :=
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
+        | progress change (orb false) with (fun x : bool => x); cbv beta
+        | progress change (orb true) with (fun x : bool => true); cbv beta
+        | progress change (andb false) with (fun x : bool => false); cbv beta
+        | progress change (andb true) with (fun x : bool => x); cbv beta
         | rewrite !Bool.orb_false_r
         | rewrite <- !Bool.andb_orb_distrib_r
         | progress simplify with monad laws

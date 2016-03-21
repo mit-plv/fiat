@@ -1782,3 +1782,18 @@ Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "by" tactic3(ta
   replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H ) tac.
 Tactic Notation "replace" constr(x) "with" constr(y) "in" hyp(H) "at" ne_integer_list(n) "by" tactic3(tac) :=
   replace_with_at_by x y ltac:(fun x' x => set (x' := x) in H at n ) tac.
+
+Ltac replace_with_vm_compute c :=
+  let c' := (eval vm_compute in c) in
+  (* we'd like to just do: *)
+  (* replace c with c' by (clear; abstract (vm_compute; reflexivity)) *)
+  (* but [set] is too slow in 8.4, so we write our own version (see https://coq.inria.fr/bugs/show_bug.cgi?id=3280#c13 *)
+  let set_tac := (fun x' x
+                  => pose x as x';
+                     change x with x') in
+  replace_with_at_by c c' set_tac ltac:(clear; vm_cast_no_check (eq_refl c')).
+
+Ltac replace_with_vm_compute_in c H :=
+  let c' := (eval vm_compute in c) in
+  (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
+  replace c with c' in H by (clear; vm_cast_no_check (eq_refl c')).

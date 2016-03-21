@@ -100,6 +100,26 @@ Module Export Telescope.
       Prop
     := Eval unfold flatten_forall_eq_relation, forall_relation in @flatten_forall_eq_relation t.
 
+  Fixpoint flatten_forall_eq_relation_with_assumption {t : Telescope}
+  : forall {P : flattenT t Type}
+           (Q : flattenT t Type),
+      relation (flatten_forall P)
+    := match t
+             return forall {P : flattenT t _}
+                           (Q : flattenT t Type),
+                      relation (flatten_forall P)
+       with
+         | bottom => fun P Q => fun x y => Q -> x = y
+         | tele A B => fun P Q => forall_relation (fun a : A => @flatten_forall_eq_relation_with_assumption (B a) (P a) (Q a))
+       end.
+
+  Definition flatten_forall_eq_with_assumption {t : Telescope}
+  : forall {P : flattenT t Type}
+           (Q : flattenT t Type)
+           (f g : flatten_forall P),
+      Prop
+    := Eval unfold flatten_forall_eq_relation, forall_relation in @flatten_forall_eq_relation_with_assumption t.
+
   Fixpoint flatten_forall_apply {t : Telescope}
   : forall {P : flattenT t Type},
       flatten_forall P

@@ -20,7 +20,9 @@ Section IndexedImpl.
   Proof.
 
     Time start sharpening ADT.
+    Start Profiling.
     Time start honing parser using indexed representation.
+    Show Profile.
 
     Start Profiling.
     Time hone method "splits".
@@ -28,7 +30,104 @@ Section IndexedImpl.
     {
       Start Profiling.
       Time simplify parser splitter.
+Time (idtac;
+  let lem := fresh "lem" in
+  pose_disjoint_search_for lem;
+    (*do 1 ( *)let lem' := fresh "lem'" in
+          (idtac;
+  let G := (lazymatch goal with
+             | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+               => G
+             end) in
+  match goal with
+  | [ |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
+    => pose proof (lem idx) as lem';
+       do 2 (lazymatch type of lem' with
+              | forall a : ?T, _ => idtac; let x := fresh in evar (x : T); specialize (lem' x); subst x
+              end);
+       let T := match type of lem' with forall a : ?T, _ => T end in
+       let H' := fresh in
+       assert (H' : T) by solve_disjoint_side_conditions;
+       specialize (lem' H'); clear H';
+       let x := match type of lem' with
+                | context[DisjointLemmas.actual_possible_first_terminals ?ls]
+                  => constr:(DisjointLemmas.actual_possible_first_terminals ls)
+                end in
+       pose x
+end)).
+Time vm_compute in l; subst l.
+let x := (eval cbv delta [x] in l) in
+replace
+
+       replace_with_vm_compute_in x lem';
+       unfold Equality.list_bin in lem';
+       change (orb false) with (fun bv : bool => bv) in lem';
+       cbv beta in lem';
+       let T := match type of lem' with forall a : ?T, _ => T end in
+       let H' := fresh in
+       assert (H' : T) by solve_disjoint_side_conditions;
+       specialize (lem' H'); clear H'
+  end);
+  setoid_rewrite lem'; clear lem');
+  clear lem).
+      exfalso; clear; admit. } exfalso; clear; admit. Grab Existential Variables. exfalso; clear; admit. exfalso; clear; admit.
+    Time Defined. (* 8.6 with no disjoint rewrite, 12 with do 5, 26 with 10 *)
+Set Printing Depth 100000.
+
       Time rewrite_disjoint_search_for.
+      exfalso; clear; admit. } exfalso; clear; admit. Grab Existential Variables. exfalso; clear; admit. exfalso; clear; admit.
+    Time Defined.    (* 1 - 2.28, 2 - 2.6, 3 - 2.6, 4 - 2.74, 5 - 2.8, 6 - 5.97 *)
+Set Printing Depth 10000.
+About andb_orb_distrib_r_assoc.
+        first [
+        rewrite <- !andb_orb_distrib_r_assoc ].
+        | rewrite !if_aggregate
+        | rewrite !beq_0_1_leb
+        | rewrite !beq_S_leb ].
+        | idtac;
+          match goal with
+            | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
+              => idtac
+          end;
+          progress repeat setoid_rewrite if_aggregate
+        | rewrite !if_aggregate2 by solve_prod_beq
+        | rewrite !if_aggregate3 by solve_prod_beq
+        | progress parser_pull_tac
+        | progress (simpl @fst; simpl @snd) ].
+
+      exfalso; clear; admit. } exfalso; clear; admit. Grab Existential Variables. exfalso; clear; admit. exfalso; clear; admit.
+    Time Defined.    (* 1 - 2.28, 2 - 2.6, 3 - 2.6, 4 - 2.74, 5 - 2.8, 6 - 5.97 *)
+
+      first [ progress unguard
+        | progress autounfold with parser_sharpen_db;
+          cbv beta iota zeta;
+          simpl @Operations.List.uniquize;
+          simpl @List.fold_right
+        | rewrite !Bool.orb_false_r
+        | rewrite <- !Bool.andb_orb_distrib_r
+        | progress simplify with monad laws
+        | rewrite <- !Bool.andb_orb_distrib_r
+        | rewrite <- !Bool.andb_orb_distrib_l
+        | rewrite <- !Bool.orb_andb_distrib_r
+        | rewrite <- !Bool.orb_andb_distrib_l
+        | rewrite <- !Bool.andb_assoc
+        | rewrite <- !Bool.orb_assoc
+        | rewrite <- !andb_orb_distrib_r_assoc
+        | rewrite !if_aggregate
+        | rewrite !beq_0_1_leb
+        | rewrite !beq_S_leb
+        | idtac;
+          match goal with
+            | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
+              => idtac
+          end;
+          progress repeat setoid_rewrite if_aggregate
+        | rewrite !if_aggregate2 by solve_prod_beq
+        | rewrite !if_aggregate3 by solve_prod_beq
+        | progress parser_pull_tac
+        | progress (simpl @fst; simpl @snd) ].
+
+  Time simplify parser splitter.
       Time rewrite_disjoint_rev_search_for.
       Time progress repeat refine_binop_table.
       Time simplify parser splitter.

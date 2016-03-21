@@ -47,7 +47,7 @@ Set Implicit Arguments.
     basis, which could leave to some duplicate proofs (One way to
     mitigate this would be to include invariant hypotheses around in
     the context, which we could bake into the honing
-    tactics). Otherwise, I [Ben] would argue it includes the best of
+    tactics). Otherwise, I would argue it includes the best of
     both worlds- there's no need to pollute the definition of [ADT]
     with [repInv] /and/ methods don't have to bother with maintaining
     proofs.

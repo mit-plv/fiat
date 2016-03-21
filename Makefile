@@ -82,7 +82,6 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Grammars/JavaScriptAssignmentExpression.vo \
 	src/Parsers/Grammars/JavaScriptExpression.vo \
 	src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.vo \
 	src/Parsers/Grammars/JavaScriptWithoutStatements.vo \
@@ -126,7 +125,6 @@ PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFI
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
 DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
-COMPILER_VO := $(filter src/FiatToFacade/%.vo,$(VOFILES))
 EXTRACTION_VO := $(filter src/CertifiedExtraction/%.vo,$(VOFILES)) src/Examples/QueryStructure/ProcessScheduler.vo
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
@@ -144,7 +142,6 @@ parsers: $(PARSERS_VO)
 parsers-all: $(PARSERS_ALL_VO)
 finitesets: $(FINITESETS_VO)
 dns: $(DNS_VO)
-compiler: $(COMPILER_VO)
 extraction: $(EXTRACTION_VO)
 facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
@@ -160,7 +157,6 @@ parsers-quick: $(addsuffix .vio,$(basename $(PARSERS_VO)))
 parsers-all-quick: $(addsuffix .vio,$(basename $(PARSERS_ALL_VO)))
 finitesets-quick: $(addsuffix .vio,$(basename $(FINITESETS_VO)))
 dns-quick: $(addsuffix .vio,$(basename $(DNS_VO)))
-compiler-quick: $(addsuffix .vio,$(basename $(COMPILER_VO)))
 facade-test-quick: $(addsuffix .vio,$(basename $(FACADE_TEST_VO)))
 ics-quick: $(addsuffix .vio,$(basename $(ICS_VO)))
 fiat4monitors-quick: $(addsuffix .vio,$(basename $(FIAT4MONITORS_VO)))
@@ -173,7 +169,6 @@ install-querystructures: T = $(QUERYSTRUCTURES_VO)
 install-parsers: T = $(PARSERS_VO)
 install-finitesets: T = $(FINITESETS_VO)
 install-dns: T = $(DNS_VO)
-install-compiler: T = $(COMPILER_VO)
 install-ics: T = $(ICS_VO)
 install-fiat4monitors: T = $(FIAT4MONITORS_VO)
 install-examples: T = $(EXAMPLES_VO)

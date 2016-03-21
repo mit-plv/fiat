@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ParserImplementation.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
+Require Import Fiat.Parsers.ContextFreeGrammar.SimpleTransfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -32,7 +33,8 @@ Proof.
       rewrite ?H_has_parse, ?H_parse in *;
         first [ apply (has_parse_sound old); assumption
               | eapply (has_parse_complete old); eassumption
-              | eapply (parse_correct old); eassumption ]
+              | eapply (parse_correct old); eassumption
+              | eapply (parse_sound old); eassumption ]
     ).
 Defined.
 
@@ -68,7 +70,15 @@ Proof.
       ). }
   { abstract (
         intros str;
-        rewrite H_has_parse, H_parse, parse_correct; reflexivity
+        rewrite H_has_parse, H_parse, parse_correct; try reflexivity
+      ). }
+  { abstract (
+        intros str t H;
+        rewrite H_parse in H;
+        eapply (@transfer_simple_parse_of_item_correct _ _ _ _ _ G _ R_respectful);
+        [ apply (R_make str) | ];
+        eapply parse_sound;
+        eassumption
       ). }
 Defined.
 
@@ -108,7 +118,7 @@ Section implementation.
   Proof.
     pose proof Hvalid as Hrvalid.
     apply grammar_rvalid_correct in Hvalid.
-    let impl0 := constr:(fun str => parse_nonterminal_opt (G := G) (splitdata := pdata) (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
+    let impl0 := constr:(fun str => parse_nonterminal_opt (G := G) (splitdata := pdata) Hrvalid (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
     let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
     let implH := constr:(fun str => proj2_sig (impl0 str)) in
     let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in
@@ -119,7 +129,7 @@ Section implementation.
     let s_impl := (eval cbv [SimpleRecognizer.parse_nonterminal SimpleRecognizer.parse_nonterminal' nonterminals_length initial_nonterminals_data predata pdata RDPList.rdp_list_predata RDPList.rdp_list_initial_nonterminals_data of_nonterminal RDPList.rdp_list_of_nonterminal SimpleRecognizer.parse_nonterminal_or_abort nonterminals_listT RDPList.rdp_list_nonterminals_listT default_nonterminal_carrierT nonterminal_carrierT SimpleRecognizer.parse_nonterminal_step SimpleRecognizer.parse_productions' nonterminal_to_production is_valid_nonterminal RDPList.rdp_list_is_valid_nonterminal remove_nonterminal RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_nonterminal_to_production RDPList.rdp_list_to_nonterminal default_to_nonterminal SimpleRecognizer.option_simple_parse_of_orb SimpleRecognizer.parse_production' SimpleRecognizer.parse_production'_for SimpleRecognizer.option_orb SimpleRecognizer.option_SimpleParseProductionCons SimpleRecognizer.parse_item'] in s_impl) in
     refine (transfer_parser
               (HSL1 := splitter) (HSL2 := stringlike_stringlike)
-              (parser splitter Hvalid) make_string
+              (parser splitter) make_string
               impl
               s_impl
               (fun str => eq_trans

@@ -20,8 +20,8 @@ Definition SchedulerSpec : ADT _ :=
   QueryADTRep SchedulerSchema {
     Def Constructor0 "Init" : rep := empty,
 
-    Def Method2 "Spawn" (r : rep) (new_pid cpu : W) : rep * bool :=
-      Insert (<"pid" :: new_pid, "state" :: SLEEPING, "cpu" :: cpu> : RawTuple) into r!"Processes",
+    Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=
+      Insert (<"pid" :: new_pid, "state" :: state, "cpu" :: cpu> : RawTuple) into r!"Processes",
 
     Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
       procs <- For (p in r!"Processes")
@@ -1176,18 +1176,70 @@ Definition SharpenedScheduler :
 Proof.
   eexists; unfold SchedulerSpec.
   simpl; pose_string_hyps; pose_heading_hyps.
-  eapply refinedUnderDelegatesStep.
-  hone representation using (@DropQSConstraints_AbsR SchedulerSchema).
-  - eapply Constructor_DropQSConstraints.
-  - doAny drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - hone method StringId0.
-    { setoid_rewrite UniqueAttribute_symmetry.
-      setoid_rewrite (@refine_uniqueness_check_into_query' SchedulerSchema Fin.F1 _ _ _ _).
+  start_honing_QueryStructure'.
+  hone method "Spawn".
+  { setoid_rewrite UniqueAttribute_symmetry.
+    setoid_rewrite (@refine_uniqueness_check_into_query' SchedulerSchema Fin.F1 _ _ _ _).
+    setoid_rewrite refine_For_rev.
+    setoid_rewrite refine_Count.
+    simplify with monad laws; simpl in *; subst.
+    setoid_rewrite refine_pick_eq'.
+    setoid_rewrite refine_bind_unit.
+    setoid_rewrite refine_If_Then_Else_Duplicate.
+    finish honing. }
+  (* Now we implement the various set operations using BagADTs. *)
+  - make_simple_indexes
+      {|
+      prim_fst := [ ("EqualityIndex", Fin.FS (@Fin.F1 1) );
+                    ( "EqualityIndex", Fin.F1) ];
+      prim_snd := () |}
+               ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
+                      ltac:(LastCombineCase5 BuildLastEqualityIndex).
+    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    + plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    + setoid_rewrite refine_For_rev; simplify with monad laws.
+      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    + setoid_rewrite refine_For_rev; simplify with monad laws.
+      plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+           EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+    + hone method "Spawn".
+      { subst; simplify with monad laws.
+        unfold GetAttributeRaw at 1.
+        simpl; unfold ilist2_hd at 1; simpl.
+        unfold H1; apply refine_under_bind.
+        intros; set_evars.
+        setoid_rewrite refine_pick_eq'; simplify with monad laws.
+        rewrite app_nil_r, map_map; simpl.
+        unfold ilist2_hd; simpl; rewrite map_id.
+        repeat setoid_rewrite refine_If_Then_Else_Bind.
+        repeat setoid_rewrite refineEquiv_bind_unit; simpl.
+        setoid_rewrite refineEquiv_bind_bind.
+        setoid_rewrite refineEquiv_bind_unit.
+        rewrite (CallBagFind_fst H0); simpl.
+        finish honing.
+      }
+      hone method "Enumerate".
+      { subst; simplify with monad laws.
+        unfold H1; apply refine_under_bind.
+        intros; set_evars; simpl in *.
+        rewrite (CallBagFind_fst H0).
+        setoid_rewrite refine_pick_eq'; simplify with monad laws.
+        simpl; rewrite app_nil_r, map_map, <- map_rev.
+        unfold ilist2_hd; simpl.
+        finish honing.
+      }
+      hone method "GetCPUTime".
+      { subst; simplify with monad laws.
+        unfold H1; apply refine_under_bind.
+        intros; set_evars; rewrite (CallBagFind_fst H0); simpl in *.
+        setoid_rewrite refine_pick_eq'; simplify with monad laws.
+        simpl; rewrite app_nil_r, map_map, <- map_rev.
+        unfold ilist2_hd; simpl.
+        finish honing.
+      }
       simpl.
       setoid_rewrite refine_For_rev.
       setoid_rewrite refine_Count.
@@ -1487,7 +1539,7 @@ Time Definition SchedulerImplSpecs :=
   Eval simpl in (Sharpened_DelegateSpecs (snd (projT1 SharpenedScheduler))).
 Print SchedulerImplSpecs.
 
-Print MostlySharpened.
+(*Print MostlySharpened.
 
 Lemma GetRelation_Empty_eq  :
   forall MySchema R,
@@ -1912,3 +1964,4 @@ Time Defined.
 Time Definition MessagesImpl : ComputationalADT.cADT MessagesSig :=
   Eval simpl in (projT1 SharpenedMessages).
 Print MessagesImpl. *)
+ *)

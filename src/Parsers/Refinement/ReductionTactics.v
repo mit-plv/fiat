@@ -8,6 +8,7 @@ Require Import Fiat.Common.Wf Fiat.Common.Wf2.
 Require Import Fiat.Common.List.Operations.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
+Require Import Fiat.Parsers.Refinement.FinishingLemma.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 Global Arguments min !_ !_.
@@ -15,22 +16,21 @@ Global Arguments max !_ !_.
 Global Arguments Compare_dec.leb !_ !_.
 Global Arguments List.nth {A} !_ !_ _.
 
-Declare Reduction splitter_red0 := cbv beta iota zeta delta [ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
+Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
 
 Ltac splitter_red term :=
-  let term0 := (eval simpl in term) in
-  let term1 := (eval splitter_red0 in term0) in
-  let term2 := (eval simpl in term1) in
-  let term3 := (eval splitter_red0 in term2) in
-  constr:(term3).
+  let term := (eval splitter_red0 in term) in
+  let term := (eval simpl @fst in term) in
+  let term := (eval simpl @snd in term) in
+  constr:(term).
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
-Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar_productions production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest (*magic_juxta_append_from_char_test*)].
+Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar_productions production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring (*magic_juxta_append_from_char_test*)].
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.parse ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar_productions].
+Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.parse ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar_productions ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring].
 Declare Reduction parser_red5 := opt_red.
 Declare Reduction parser_red6 := simpl @fst.
 Declare Reduction parser_red7 := simpl @snd.
@@ -138,7 +138,13 @@ Ltac make_parser_informative splitter :=
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
-  let impl := (splitter_red (projT1 splitter)) in
+  let term := constr:(projT1 splitter) in
+  let h := head splitter in
+  let term := match constr:Set with
+              | _ => (eval cbv [h] in term)
+              | _ => term
+              end in
+  let impl := (splitter_red term) in
   refine (existT _ impl _).
 
 Ltac make_simplified_splitter splitter :=
