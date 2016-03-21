@@ -31,7 +31,7 @@ Extract Constant pred => "fun (n : int) -> if n < 1 then 0 else n - 1".
 Extract Constant max => "fun (n : int) (m : int) -> if n >= m then n else m".
 Extract Constant min => "fun (n : int) (m : int) -> if n <= m then n else m".
 Extract Inlined Constant Ascii.nat_of_ascii => "Char.code".
-Extract Inlined Constant ContextFreeGrammar.Notations.opt.nat_of_ascii => "Char.code".
+Extract Inlined Constant ContextFreeGrammar.PreNotations.opt.nat_of_ascii => "Char.code".
 
 Global Arguments string_dec : simpl never.
 Global Arguments Equality.string_beq : simpl never.

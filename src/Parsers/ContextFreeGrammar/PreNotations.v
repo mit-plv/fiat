@@ -71,3 +71,33 @@ Global Arguments list_to_grammar {_} _ _.
 Global Arguments nat_of_ascii !_ / .
 Global Arguments Compare_dec.leb !_ !_ / .
 Global Arguments BinPos.Pos.to_nat !_ / .
+
+(** Variant of [nat_of_ascii] that will extract more cleanly, because
+    it doesn't depend on various other constants (only inductives) *)
+(** Keep this outside the module so it doesn't get extracted. *)
+Definition nat_of_ascii_sig ch : { n : nat | n = nat_of_ascii ch }.
+Proof.
+  unfold nat_of_ascii.
+  unfold N_of_ascii, N_of_digits.
+  eexists.
+  refine (_ : (let (a0, a1, a2, a3, a4, a5, a6, a7) := ch in _) = _).
+  destruct ch as [a0 a1 a2 a3 a4 a5 a6 a7].
+  repeat rewrite ?Nnat.N2Nat.inj_add, ?Nnat.N2Nat.inj_mul.
+  repeat match goal with
+           | [ |- context[BinNat.N.to_nat (if ?b then ?x else ?y)] ]
+             => replace (BinNat.N.to_nat (if b then x else y))
+                with (if b then BinNat.N.to_nat x else BinNat.N.to_nat y)
+               by (destruct b; reflexivity)
+         end.
+  simpl @BinNat.N.to_nat.
+  rewrite Mult.mult_0_r, Plus.plus_0_r.
+  reflexivity.
+Defined.
+
+Module opt.
+  Definition nat_of_ascii ch
+    := Eval cbv beta iota zeta delta [proj1_sig nat_of_ascii_sig] in
+        proj1_sig (nat_of_ascii_sig ch).
+End opt.
+
+Global Arguments opt.nat_of_ascii !_ / .
