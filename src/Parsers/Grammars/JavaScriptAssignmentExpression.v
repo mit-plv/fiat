@@ -2,7 +2,6 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 (** Quoting http://www-archive.mozilla.org/js/language/grammar14.html *)
-
 Section JavaScriptAssignmentExpression.
   Local Open Scope prod_assignment.
 
@@ -17,14 +16,12 @@ Section JavaScriptAssignmentExpression.
 <<
 PrimaryExpressionnormal ⇒
    SimpleExpression
-|  FunctionExpression
 |  ObjectLiteral
 PrimaryExpressioninitial ⇒ SimpleExpression
 >> *)
   Let PrimaryExpression_normal :=
     "PrimaryExpression normal"
       ::== "SimpleExpression"
-        || "FunctionExpression"
         || "ObjectLiteral".
   Let PrimaryExpression_initial :=
     "PrimaryExpression initial"
@@ -34,26 +31,18 @@ PrimaryExpressioninitial ⇒ SimpleExpression
 <<
 SimpleExpression ⇒
    this
-|  null
-|  true
-|  false
 |  Number
 |  String
 |  Identifier
-|  RegularExpression
 |  ParenthesizedExpression
 |  ArrayLiteral
 *)
   Let SimpleExpression :=
     "SimpleExpression"
       ::== "'this'"
-        || "'null'"
-        || "'true'"
-        || "'false'"
         || "Number"
         || "String"
         || "Identifier"
-        || "RegularExpression"
         || "ParenthesizedExpression"
         || "ArrayLiteral".
   (**
@@ -63,17 +52,6 @@ ParenthesizedExpression ⇒ ( Expressionnormal,allowIn )
   Let ParenthesizedExpression :=
     "ParenthesizedExpression"
       ::== "(" "WS*" "Expression normal,allowIn" "WS*" ")".
-
-  (** *** Function Expressions
-<<
-FunctionExpression ⇒
-   AnonymousFunction
-|  NamedFunction
->> *)
-  Let FunctionExpression :=
-    "FunctionExpression"
-      ::== "AnonymousFunction"
-        || "NamedFunction".
 
   (** *** Object Literals
 <<
@@ -209,121 +187,74 @@ ArgumentList ⇒
 PostfixExpressionα ⇒
    LeftSideExpressionα
 |  LeftSideExpressionα ++
-|  LeftSideExpressionα --
 >> *)
   Let PostfixExpression α :=
     ("PostfixExpression " ++ α)
       ::== ("LeftSideExpression " ++ α)
-        || "PostfixExpression normal" "WS*" "'++'"
-        || "PostfixExpression normal" "WS*" "'--'".
+        || "PostfixExpression normal" "WS*" "'++'".
 
   (** *** Unary Operators
 <<
 UnaryExpressionα ⇒
    PostfixExpressionα
 |  delete LeftSideExpressionnormal
-|  void UnaryExpressionnormal
-|  typeof UnaryExpressionnormal
 |  ++ LeftSideExpressionnormal
-|  -- LeftSideExpressionnormal
-|  + UnaryExpressionnormal
 |  - UnaryExpressionnormal
-|  ~ UnaryExpressionnormal
-|  ! UnaryExpressionnormal
 >> *)
   Let UnaryExpression α :=
     ("UnaryExpression " ++ α)
       ::== ("PostfixExpression " ++ α)
         || "'delete'" [\s] "WS*" "LeftSideExpression normal"
-        || "'void'" [\s] "WS*" "UnaryExpression normal"
-        || "'typeof'" [\s] "WS*" "UnaryExpression normal"
         || "'++'" "WS*" "LeftSideExpression normal"
-        || "'--'" "WS*" "LeftSideExpression normal"
-        || "+" "WS*" "UnaryExpression normal"
-        || "-" "WS*" "UnaryExpression normal"
-        || "~" "WS*" "UnaryExpression normal"
-        || "!" "WS*" "UnaryExpression normal".
+        || "-" "WS*" "UnaryExpression normal".
 
   (** *** Multiplicative Operators
 <<
 MultiplicativeExpressionα ⇒
    UnaryExpressionα
 |  MultiplicativeExpressionα * UnaryExpressionnormal
-|  MultiplicativeExpressionα / UnaryExpressionnormal
-|  MultiplicativeExpressionα % UnaryExpressionnormal
 >> *)
   Let MultiplicativeExpression α :=
     ("MultiplicativeExpression " ++ α)
       ::== ("UnaryExpression " ++ α)
-        || ("MultiplicativeExpression " ++ α) "WS*" "*" "WS*" "UnaryExpression normal"
-        || ("MultiplicativeExpression " ++ α) "WS*" "/" "WS*" "UnaryExpression normal"
-        || ("MultiplicativeExpression " ++ α) "WS*" "%" "WS*" "UnaryExpression normal".
+        || ("MultiplicativeExpression " ++ α) "WS*" "*" "WS*" "UnaryExpression normal".
 
   (** *** Additive Operators
 <<
 AdditiveExpressionα ⇒
    MultiplicativeExpressionα
 |  AdditiveExpressionα + MultiplicativeExpressionnormal
-|  AdditiveExpressionα - MultiplicativeExpressionnormal
 >> *)
   Let AdditiveExpression α :=
     ("AdditiveExpression " ++ α)
       ::== ("MultiplicativeExpression " ++ α)
-        || ("AdditiveExpression " ++ α) "WS*" "+" "WS*" "MultiplicativeExpression normal"
-        || ("AdditiveExpression " ++ α) "WS*" "-" "WS*" "MultiplicativeExpression normal".
-
-  (** *** Bitwise Shift Operators
-<<
-ShiftExpressionα ⇒
-   AdditiveExpressionα
-|  ShiftExpressionα << AdditiveExpressionnormal
-|  ShiftExpressionα >> AdditiveExpressionnormal
-|  ShiftExpressionα >>> AdditiveExpressionnormal
->> *)
-  Let ShiftExpression α :=
-    ("ShiftExpression " ++ α)
-      ::== ("AdditiveExpression " ++ α)
-        || ("ShiftExpression " ++ α) "WS*" "'<<'" "WS*" "AdditiveExpression normal"
-        || ("ShiftExpression " ++ α) "WS*" "'>>'" "WS*" "AdditiveExpression normal"
-        || ("ShiftExpression " ++ α) "WS*" "'>>>'" "WS*" "AdditiveExpression normal".
+        || ("AdditiveExpression " ++ α) "WS*" "+" "WS*" "MultiplicativeExpression normal".
 
   (** *** Relational Operators
 <<
 RelationalExpressionα,allowIn ⇒
-   ShiftExpressionα
-|  RelationalExpressionα,allowIn < ShiftExpressionnormal
-|  RelationalExpressionα,allowIn > ShiftExpressionnormal
-|  RelationalExpressionα,allowIn <= ShiftExpressionnormal
-|  RelationalExpressionα,allowIn >= ShiftExpressionnormal
-|  RelationalExpressionα,allowIn instanceof ShiftExpressionnormal
-|  RelationalExpressionα,allowIn in ShiftExpressionnormal
+   AdditiveExpressionα
+|  RelationalExpressionα,allowIn < AdditiveExpressionnormal
+|  RelationalExpressionα,allowIn instanceof AdditiveExpressionnormal
+|  RelationalExpressionα,allowIn in AdditiveExpressionnormal
 RelationalExpressionα,noIn ⇒
-   ShiftExpressionα
-|  RelationalExpressionα,noIn < ShiftExpressionnormal
-|  RelationalExpressionα,noIn > ShiftExpressionnormal
-|  RelationalExpressionα,noIn <= ShiftExpressionnormal
-|  RelationalExpressionα,noIn >= ShiftExpressionnormal
-|  RelationalExpressionα,noIn instanceof ShiftExpressionnormal
+   AdditiveExpressionα
+|  RelationalExpressionα,noIn < AdditiveExpressionnormal
+|  RelationalExpressionα,noIn instanceof AdditiveExpressionnormal
 >> *)
   Let RelationalExpression α β :=
     match β with
     | "allowIn" =>
       ("RelationalExpression " ++ α ++ "," ++ β)
-        ::== ("ShiftExpression " ++ α)
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'<='" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'>='" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'instanceof'" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'in'" "WS*" "ShiftExpression normal"
+        ::== ("AdditiveExpression " ++ α)
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "AdditiveExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'instanceof'" "WS*" "AdditiveExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'in'" "WS*" "AdditiveExpression normal"
     | "noIn" =>
       ("RelationalExpression " ++ α ++ "," ++ β)
-        ::== ("ShiftExpression " ++ α)
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" ">" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'<='" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'>='" "WS*" "ShiftExpression normal"
-          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'instanceof'" "WS*" "ShiftExpression normal"
+        ::== ("AdditiveExpression " ++ α)
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "<" "WS*" "AdditiveExpression normal"
+          || ("RelationalExpression " ++ α ++ "," ++ β) "WS*" "'instanceof'" "WS*" "AdditiveExpression normal"
     | _ => "ERROR" ::== "ERROR"
     end.
 
@@ -332,90 +263,36 @@ RelationalExpressionα,noIn ⇒
 EqualityExpressionα,β ⇒
    RelationalExpressionα,β
 |  EqualityExpressionα,β == RelationalExpressionnormal,β
-|  EqualityExpressionα,β != RelationalExpressionnormal,β
-|  EqualityExpressionα,β === RelationalExpressionnormal,β
-|  EqualityExpressionα,β !== RelationalExpressionnormal,β
 >> *)
   Let EqualityExpression α β :=
     Eval cbv [append] in
       ("EqualityExpression " ++ α ++ "," ++ β)
         ::== ("RelationalExpression " ++ α ++ "," ++ β)
-          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "'=='" "WS*" ("RelationalExpression normal," ++ β)
-          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "'!='" "WS*" ("RelationalExpression normal," ++ β)
-          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "'==='" "WS*" ("RelationalExpression normal," ++ β)
-          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "'!=='" "WS*" ("RelationalExpression normal," ++ β).
-
-  (** *** Binary Bitwise Operators
-<<
-BitwiseAndExpressionα,β ⇒
-   EqualityExpressionα,β
-|  BitwiseAndExpressionα,β & EqualityExpressionnormal,β
-BitwiseXorExpressionα,β ⇒
-   BitwiseAndExpressionα,β
-|  BitwiseXorExpressionα,β ^ BitwiseAndExpressionnormal,β
-BitwiseOrExpressionα,β ⇒
-   BitwiseXorExpressionα,β
-|  BitwiseOrExpressionα,β | BitwiseXorExpressionnormal,β
->> *)
-  Let BitwiseAndExpression α β :=
-    Eval cbv [append] in
-      ("BitwiseAndExpression " ++ α ++ "," ++ β)
-        ::== ("EqualityExpression " ++ α ++ "," ++ β)
-          || ("BitwiseAndExpression " ++ α ++ "," ++ β) "WS*" "&" "WS*" ("EqualityExpression normal," ++ β).
-  Let BitwiseXorExpression α β :=
-    Eval cbv [append] in
-      ("BitwiseXorExpression " ++ α ++ "," ++ β)
-        ::== ("BitwiseAndExpression " ++ α ++ "," ++ β)
-          || ("BitwiseXorExpression " ++ α ++ "," ++ β) "WS*" "^" "WS*" ("BitwiseAndExpression normal," ++ β).
-  Let BitwiseOrExpression α β :=
-    Eval cbv [append] in
-      ("BitwiseOrExpression " ++ α ++ "," ++ β)
-        ::== ("BitwiseXorExpression " ++ α ++ "," ++ β)
-          || ("BitwiseOrExpression " ++ α ++ "," ++ β) "WS*" "|" "WS*" ("BitwiseXorExpression normal," ++ β).
+          || ("EqualityExpression " ++ α ++ "," ++ β) "WS*" "'=='" "WS*" ("RelationalExpression normal," ++ β).
 
   (** *** Binary Logical Operators
 <<
 LogicalAndExpressionα,β ⇒
-   BitwiseOrExpressionα,β
-|  LogicalAndExpressionα,β && BitwiseOrExpressionnormal,β
-LogicalOrExpressionα,β ⇒
-   LogicalAndExpressionα,β
-|  LogicalOrExpressionα,β || LogicalAndExpressionnormal,β
+   EqualityExpressionα,β
+|  LogicalAndExpressionα,β && EqualityExpressionnormal,β
 >> *)
   Let LogicalAndExpression α β :=
     Eval cbv [append] in
       ("LogicalAndExpression " ++ α ++ "," ++ β)
-        ::== ("BitwiseOrExpression " ++ α ++ "," ++ β)
-          || ("LogicalAndExpression " ++ α ++ "," ++ β) "WS*" "'&&'" "WS*" ("BitwiseOrExpression normal," ++ β).
-  Let LogicalOrExpression α β :=
-    Eval cbv [append] in
-      ("LogicalOrExpression " ++ α ++ "," ++ β)
-        ::== ("LogicalAndExpression " ++ α ++ "," ++ β)
-          || ("LogicalOrExpression " ++ α ++ "," ++ β) "WS*" "'||'" "WS*" ("LogicalAndExpression normal," ++ β).
-
-  (** *** Conditional Operator
-<<
-ConditionalExpressionα,β ⇒
-   LogicalOrExpressionα,β
-|  LogicalOrExpressionα,β ? AssignmentExpressionnormal,β : AssignmentExpressionnormal,β
->> *)
-  Let ConditionalExpression α β :=
-    Eval cbv [append] in
-      ("ConditionalExpression " ++ α ++ "," ++ β)
-        ::== ("LogicalOrExpression " ++ α ++ "," ++ β)
-          || ("LogicalOrExpression " ++ α ++ "," ++ β) "WS*" "?" "WS*" ("AssignmentExpression normal," ++ β) "WS*" ":" "WS*" ("AssignmentExpression normal," ++ β).
+        ::== ("EqualityExpression " ++ α ++ "," ++ β)
+          || ("LogicalAndExpression " ++ α ++ "," ++ β) "WS*" "'&&'" "WS*" ("EqualityExpression normal," ++ β).
 
   (** *** Assignment Operators
 <<
 AssignmentExpressionα,β ⇒
-   ConditionalExpressionα,β
+   LogicalAndExpressionα,β
 |  LeftSideExpressionα = AssignmentExpressionnormal,β
 |  LeftSideExpressionα CompoundAssignment AssignmentExpressionnormal,β
 >> *)
   Let AssignmentExpression α β :=
     Eval cbv [append] in
       ("AssignmentExpression " ++ α ++ "," ++ β)
-        ::== ("ConditionalExpression " ++ α ++ "," ++ β)
+        ::== ("LogicalAndExpression " ++ α ++ "," ++ β)
           || ("LeftSideExpression " ++ α) "WS*" "=" "WS*" ("AssignmentExpression normal," ++ β)
           || ("LeftSideExpression " ++ α) "WS*" "CompoundAssignment" "WS*" ("AssignmentExpression normal," ++ β).
 
@@ -423,30 +300,10 @@ AssignmentExpressionα,β ⇒
 <<
 CompoundAssignment ⇒
    *=
-|  /=
-|  %=
-|  +=
-|  -=
-|  <<=
-|  >>=
-|  >>>=
-|  &=
-|  ^=
-|  |=
 >> *)
   Let CompoundAssignment :=
     "CompoundAssignment"
-      ::== "'*='"
-        || "'/='"
-        || "'%='"
-        || "'+='"
-        || "'-='"
-        || "'<<='"
-        || "'>>='"
-        || "'>>>='"
-        || "'&='"
-        || "'^='"
-        || "'|='".
+      ::== "'*='".
 
   (** *** Expressions
 <<
@@ -469,8 +326,12 @@ OptionalExpression ⇒
       "OptionalExpression"
         ::== "Expression normal,allowIn"
           || "".
+  Let SOptionalExpression :=
+      "\s OptionalExpression"
+        ::== [\s] "WS*" "Expression normal,allowIn"
+          || "".
 
-  Definition javascript_assignment_expression'_pregrammar' : pregrammar ascii :=
+  Definition javascript_assignment_expression_pregrammar' : pregrammar ascii :=
     Eval grammar_red in
       [[[
            OptionalExpression;;
@@ -478,7 +339,6 @@ OptionalExpression ⇒
            PrimaryExpression_initial;;
            SimpleExpression;;
            ParenthesizedExpression;;
-           FunctionExpression;;
            ObjectLiteral;;
            FieldList;;
            LiteralField;;
@@ -504,8 +364,6 @@ OptionalExpression ⇒
            MultiplicativeExpression "initial";;
            AdditiveExpression "normal";;
            AdditiveExpression "initial";;
-           ShiftExpression "normal";;
-           ShiftExpression "initial";;
            RelationalExpression "normal" "allowIn";;
            RelationalExpression "initial" "allowIn";;
            RelationalExpression "normal" "noIn";;
@@ -514,30 +372,10 @@ OptionalExpression ⇒
            EqualityExpression "initial" "allowIn";;
            EqualityExpression "normal" "noIn";;
            EqualityExpression "initial" "noIn";;
-           BitwiseAndExpression "normal" "allowIn";;
-           BitwiseAndExpression "initial" "allowIn";;
-           BitwiseAndExpression "normal" "noIn";;
-           BitwiseAndExpression "initial" "noIn";;
-           BitwiseXorExpression "normal" "allowIn";;
-           BitwiseXorExpression "initial" "allowIn";;
-           BitwiseXorExpression "normal" "noIn";;
-           BitwiseXorExpression "initial" "noIn";;
-           BitwiseOrExpression "normal" "allowIn";;
-           BitwiseOrExpression "initial" "allowIn";;
-           BitwiseOrExpression "normal" "noIn";;
-           BitwiseOrExpression "initial" "noIn";;
            LogicalAndExpression "normal" "allowIn";;
            LogicalAndExpression "initial" "allowIn";;
            LogicalAndExpression "normal" "noIn";;
            LogicalAndExpression "initial" "noIn";;
-           LogicalOrExpression "normal" "allowIn";;
-           LogicalOrExpression "initial" "allowIn";;
-           LogicalOrExpression "normal" "noIn";;
-           LogicalOrExpression "initial" "noIn";;
-           ConditionalExpression "normal" "allowIn";;
-           ConditionalExpression "initial" "allowIn";;
-           ConditionalExpression "normal" "noIn";;
-           ConditionalExpression "initial" "noIn";;
            AssignmentExpression "normal" "allowIn";;
            AssignmentExpression "initial" "allowIn";;
            AssignmentExpression "normal" "noIn";;
@@ -547,6 +385,13 @@ OptionalExpression ⇒
            Expression "initial" "allowIn";;
            Expression "normal" "noIn";;
            Expression "initial" "noIn";;
+           SOptionalExpression;;
+           ("Number"
+              ::== "0");;
+           ("String"
+              ::== "'""ThisIsNotImplementedYet""'");;
+           ("Identifier"
+              ::== "x");;
            (**
 <<
 WS
@@ -559,85 +404,51 @@ WS
       ]]]%grammar.
 End JavaScriptAssignmentExpression.
 
-Definition javascript_assignment_expression'_pregrammar
-  := Eval cbv [javascript_assignment_expression'_pregrammar' append]
-    in javascript_assignment_expression'_pregrammar'.
+Definition javascript_assignment_expression_pregrammar
+  := Eval cbv [javascript_assignment_expression_pregrammar' append]
+    in javascript_assignment_expression_pregrammar'.
 
-(** TODO "AnonymousFunction"
- "NamedFunction"
- "Identifier"
- "LiteralElement"
- "Identifier"
-
-        || "Number"
-        || "String"
-        || "Identifier"
-        || "RegularExpression"
+(** TODO
+  "Number"
+    "String"
+    "Identifier"
+    "RegularExpression"
  *)
-(*
+
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Goal is_true (grammar_rvalid javascript_assignment_expression'_pregrammar).
+Goal is_true (grammar_rvalid javascript_assignment_expression_pregrammar).
   cbv [grammar_rvalid is_true Valid_nonterminals grammar_of_pregrammar Lookup pregrammar_nonterminals].
-  set (x := List.map fst javascript_assignment_expression'_pregrammar).
-  set (y := Lookup_string javascript_assignment_expression'_pregrammar).
-  set (z := productions_rvalid javascript_assignment_expression'_pregrammar).
+  set (x := List.map fst javascript_assignment_expression_pregrammar).
+  set (y := Lookup_string javascript_assignment_expression_pregrammar).
   vm_compute in x; subst x.
   cbv [List.map List.fold_right].
+  set (z := productions_rvalid javascript_assignment_expression_pregrammar).
   repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
+  | [ |- appcontext[y ?k] ]
     => let y' := fresh in
-       set (y' := (y k));
-         hnf in y';
-         subst y'
-  end;
-    subst y.
-  cbv [z productions_rvalid  List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string production_rvalid item_rvalid production_of_chartest].
+       fast_set' y' (y k)
+  end.
+  pose z as z'.
+  cbv [z] in z'.
+  subst y.
+  hnf in * |- .
+  repeat match goal with
+  | [ |- context[z ?H] ]
+    => is_var H; subst H
+  end.
+  cbv [z z' productions_rvalid  List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string production_rvalid item_rvalid production_of_chartest opt'.substring opt'.pred opt'.length opt'.list_of_string opt'.map].
   repeat (change (andb true) with (fun x : bool => x); cbv beta).
-  pose (Valid_nonterminals javascript_assignment_expression'_pregrammar) as x.
+  pose (Valid_nonterminals javascript_assignment_expression_pregrammar) as x.
   vm_compute in x.
+  clear z z'.
+  set (k := BaseTypes.is_valid_nonterminal BaseTypes.initial_nonterminals_data).
+  set (k' := BaseTypes.of_nonterminal).
   let v := (eval cbv [x] in x) in
   repeat match goal with
-         | [ |- context G[BaseTypes.is_valid_nonterminal ?a (BaseTypes.of_nonterminal ?nt)] ]
+         | [ |- context[k (k' ?nt)] ]
            => match v with
               | context[nt]
-                => let G' := context G[true] in
-                   change G'
+                => change (k (k' nt)) with true
               end
          end.
   repeat (change (andb true) with (fun x : bool => x); cbv beta).
-  set (x := BaseTypes.initial_nonterminals_data).
-
-  vm_compute in x.
-Set Printing Depth 100000.
-  repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
-    => change (z (y k)) with true
-  end.
-  change (andb true) with (fun x : bool => x).
-  cbv beta.
-  repeat match goal with
-  | [ |- appcontext[z (y ?k)] ]
-    => let y' := fresh in
-       set (y' := (y k));
-         hnf in y';
-         subst y'
-  end;
-    subst y.
-  cbv [productions_rvalid z List.fold_right List.map list_to_productions list_to_grammar magic_juxta_append_productions productions_of_production    magic_juxta_append_production production_of_string].
-  repeat match goal with
-         | [ |- appcontext[production_rvalid ?x ?y] ]
-           => change (production_rvalid x y) with true
-         end.
-  change (andb true) with (fun x : bool => x).
-  cbv beta.
-  cbv [production_rvalid List.map List.fold_right item_rvalid].
-  repeat match goal with
-         | [ |- appcontext G[BaseTypes.is_valid_nonterminal ?x ?y] ]
-           => let G' := context G[true] in
-              change G'
-         end.
-  repeat (change (andb true) with (fun x : bool => x); cbv beta).
-Set Printing All.
-
-
-  vm_compute.*)

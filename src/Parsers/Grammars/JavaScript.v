@@ -3,7 +3,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 (** Quoting http://www-archive.mozilla.org/js/language/grammar14.html *)
 
-Section JavaScriptAssignmentExpression.
+Section JavaScript.
   Local Open Scope prod_assignment.
 
   (** ** Expressions *)
@@ -958,7 +958,7 @@ WS
            ::== "" || [\s] "WS*"
 
       ]]]%grammar.
-End JavaScriptAssignmentExpression.
+End JavaScript.
 
 Definition javascript'_pregrammar
   := Eval cbv [javascript'_pregrammar' append]
