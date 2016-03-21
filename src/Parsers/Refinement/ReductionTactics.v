@@ -16,12 +16,17 @@ Global Arguments max !_ !_.
 Global Arguments Compare_dec.leb !_ !_.
 Global Arguments List.nth {A} !_ !_ _.
 
-Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody].
+(** We use these aliases to allow us to unfold Fiat-level [fst] and
+    [snd] without unfolding splitter-local [fst] and [snd]. *)
+Definition myfst := @fst.
+Definition mysnd := @snd.
+
+Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody fst snd].
+Declare Reduction splitter_red1 := cbv [myfst mysnd].
 
 Ltac splitter_red term :=
   let term := (eval splitter_red0 in term) in
-  let term := (eval simpl @fst in term) in
-  let term := (eval simpl @snd in term) in
+  let term := (eval splitter_red1 in term) in
   constr:(term).
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .

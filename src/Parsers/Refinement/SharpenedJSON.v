@@ -94,12 +94,12 @@ total time:    350.916s
 └rewrite_once_disjoint_rev_search_for --   0.0%   4.5%       2   10.700s
 └rewrite_once_disjoint_rev_search_for_sp   2.1%   3.6%       2   10.700s
  *)
-      finish honing parser method.
+      Time finish honing parser method.
     }
 
-    finish_Sharpening_SplitterADT.
+    Time finish_Sharpening_SplitterADT.
 
-  Time Defined.
+  Time Defined. (* 132 seconds *)
 
   Lemma ComputationalSplitter
   : FullySharpened (string_spec json'_grammar string_stringlike).
@@ -109,7 +109,7 @@ total time:    350.916s
     Show Profile.
   Time Defined.
 
-End IndexedImpl.
+Time End IndexedImpl.
 
 Require Export Fiat.Parsers.ParserFromParserADT.
 Require Export Fiat.Parsers.ExtrOcamlParsers.

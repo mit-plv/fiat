@@ -26,6 +26,8 @@ Ltac finish_honing_by_eq tac
                        || (simplify with monad laws)
                        || (simpl @fst; simpl @snd)
                        || tac);
+             change @fst with @myfst;
+             change @snd with @mysnd;
              match goal with
                | [ |- refine (ret _) _ ] => finish honing
              end  ].
