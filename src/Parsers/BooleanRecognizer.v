@@ -25,7 +25,9 @@ Section recursive_descent_parser.
       : bool
         := match it with
              | Terminal P => EqNat.beq_nat len 1 && char_at_matches offset str P
-             | NonTerminal nt => str_matches_nonterminal (of_nonterminal nt)
+             | NonTerminal nt => if is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
+                                 then str_matches_nonterminal (of_nonterminal nt)
+                                 else false
            end%bool.
 
       Section production.

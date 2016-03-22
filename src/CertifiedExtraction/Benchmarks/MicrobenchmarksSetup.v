@@ -5,7 +5,7 @@ Require Export
         CertifiedExtraction.Extraction.Internal
         CertifiedExtraction.Extraction.Extraction.
 Require Export
-        CertifiedExtraction.Benchmarks.Random.
+        CertifiedExtraction.Benchmarks.Any.
 Require Export
         Coq.NArith.NArith
         Coq.Program.Basics.
@@ -44,10 +44,10 @@ Notation "'ParametricExtraction' '#program' post '#env' env" :=
     (at level 200,
      format "'ParametricExtraction' '//'    '#program'  post '//'    '#env'      env").
 
-Notation "'FacadeMethod' '#prog' prog '#requires' pre '#ensures' post '#ext' ext '#env' env" :=
-  ({{ pre }} prog {{ post }} ∪ {{ ext }} // env)
-    (at level 200,
-     format "'FacadeMethod' '//'    '#prog'      prog '//'    '#requires'  pre '//'    '#ensures'   post '//'    '#ext'       ext '//'    '#env'       env").
+(* Notation "'FacadeMethod' '#prog' prog '#requires' pre '#ensures' post '#ext' ext '#env' env" := *)
+(*   ({{ pre }} prog {{ post }} ∪ {{ ext }} // env) *)
+(*     (at level 200, *)
+(*      format "'FacadeMethod' '//'    '#prog'      prog '//'    '#requires'  pre '//'    '#ensures'   post '//'    '#ext'       ext '//'    '#env'       env"). *)
 
 Lemma List_rev_as_fold_generalized :
   forall A l init,
@@ -67,3 +67,27 @@ Fixpoint Inb {sz} (w: @Word.word sz) seq :=
   | nil => false
   | cons w' tl => if Word.weqb w w' then true else Inb w tl
   end.
+
+Definition Microbenchmarks_Carrier : Type := sum (list W) (list (list W)).
+Notation W0 := (Word.natToWord 32 0).
+Notation W1 := (Word.natToWord 32 1).
+Notation W7 := (Word.natToWord 32 7).
+Notation "x ≺ y" := (Word.wlt_dec x y) (at level 10).
+Notation "x ⊕ y" := (Word.wplus x y) (at level 10).
+Notation "x ⊖ y" := (Word.wminus x y) (at level 10).
+Notation "x ⊗ y" := (Word.wmult x y) (at level 10).
+Notation "x == y" := (Word.weqb x y) (at level 10).
+
+Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
+  (GLabelMap.empty (FuncSpec _))
+    ### ("std", "rand") ->> (Axiomatic FAny)
+    ### ("list[W]", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list W) nil))
+    ### ("list[W]", "push") ->> (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons))
+    ### ("list[W]", "pop") ->> (Axiomatic (List_pop W))
+    ### ("list[W]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list W)))
+    ### ("list[W]", "empty?") ->> (Axiomatic (List_empty W))
+    ### ("list[list[W]]", "nil") ->> (Axiomatic (FacadeImplementationOfConstructor (list (list W)) nil))
+    ### ("list[list[W]]", "push") ->> (Axiomatic (FacadeImplementationOfMutation_ADT (list W) (list (list W)) cons))
+    ### ("list[list[W]]", "pop") ->> (Axiomatic (List_pop (list W)))
+    ### ("list[list[W]]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list (list W))))
+    ### ("list[list[W]]", "empty?") ->> (Axiomatic (List_empty (list W))).

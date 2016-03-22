@@ -166,7 +166,7 @@ Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHe
 
 (* Internal method definitions.  *)
 
-(* TODO: add tactic support to make these easier to refine. I (Ben D.)  *)
+(* TODO: add tactic support to make these easier to refine. I  *)
 (* envision a honing tactic that spawns off a new subgoal for an internal *)
 (* method call, builds a refined method, transparently abstracts that definition, *)
 (* and then uses setoid rewriting to replace all the occurences of the old definition. *)

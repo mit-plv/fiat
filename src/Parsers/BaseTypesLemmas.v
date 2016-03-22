@@ -123,4 +123,16 @@ Section recursive_descent_parser.
     pose proof (nonempty_nonterminals H).
     destruct (nonterminals_length ls); simpl; try reflexivity; try omega.
   Qed.
+
+  Lemma nonterminal_to_production_correct'
+    : forall nt,
+      is_valid_nonterminal initial_nonterminals_data nt
+      -> List.map to_production (nonterminal_to_production nt)
+         = Lookup G (to_nonterminal nt).
+  Proof.
+    intros nt H.
+    rewrite <- (of_to_nonterminal nt) at 1 by assumption.
+    rewrite nonterminal_to_production_correct by (apply initial_nonterminals_correct'; assumption).
+    reflexivity.
+  Qed.
 End recursive_descent_parser.

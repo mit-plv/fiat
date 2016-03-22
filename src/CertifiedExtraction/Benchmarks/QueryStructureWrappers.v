@@ -73,41 +73,6 @@ Definition RelatedIndexedTupleAndListW {N} (l: BedrockElement) (tup: FiatElement
 Definition IndexedEnsemble_TupleToListW {N} (ensemble: FiatBag N) : BedrockBag :=
   fun listW => exists tup, ensemble tup /\ RelatedIndexedTupleAndListW listW tup.
 
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W) := *)
-(*   fun listW => *)
-(*     exists pr: List.length listW.(indexedElement) = N, *)
-(*       ensemble match pr in _ = N with *)
-(*                | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                end. *)
-
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W). *)
-(*       refine (fun listW => _). *)
-(*       refine (match EqNat.beq_nat (List.length listW.(indexedElement)) N as b *)
-(*                     return EqNat.beq_nat (List.length listW.(indexedElement)) N = b -> Prop with *)
-(*                 | true => fun pr => ensemble match (EqNat.beq_nat_true _ _ pr) in _ = N with *)
-(*                                         | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                                         end *)
-(*                 | false => fun _ => False *)
-(*               end eq_refl). *)
-(* Defined. *)
-
-(* Definition IndexedEnsemble_TupleToListW' {N} (ensemble: FiatBag) *)
-(*   : @IndexedEnsemble (list W). *)
-(*       refine (fun listW => _). *)
-(*       refine (match Peano_dec.eq_nat_dec (List.length listW.(indexedElement)) N with *)
-(*               | left pr => ensemble match pr in _ = N with *)
-(*                                    | eq_refl => IndexedElement_ListWToTuple listW *)
-(*                                    end *)
-(*               | in_right => False *)
-(*               end). *)
-(* Defined. *)
-
-(* Definition IndexedEnsemble_ListWToTuple {N} (ensemble : @IndexedEnsemble (list W)) *)
-(*   : FiatBag := *)
-(*   fun tup => exists listW, ensemble listW /\ RelatedIndexedTupleAndListW listW tup. *)
-
 Lemma TupleToListW_inj {N}:
   forall (t1 t2: @RawTuple (MakeWordHeading N)),
     TupleToListW t1 = TupleToListW t2 ->
@@ -217,13 +182,6 @@ Proof.
   refine {| wrap tl := Tuples2 (Word.natToWord 32 N) M M' (IndexedEnsemble_TupleToListW tl);
             wrap_inj := _ |}; Wrapper_t.
 Defined.
-
-Require Import Bedrock.Platform.Facade.examples.QsADTs.
-
-Print Tuple.
-Print TuplesF.tupl.
-
-Print TuplesF.tupl.
 
 Require Import CertifiedExtraction.Extraction.External.Core.
 Require Import Bedrock.Platform.Facade.examples.QsADTs.
@@ -372,93 +330,93 @@ Section Tuples0.
     facade_eauto.
   Qed.
 
-  Lemma CompileTuples0_insert :
-    forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N idx
-      (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples0_insert) ->
-      Lifted_MapsTo ext tenv vtable (wrap table) ->
-      Lifted_MapsTo ext tenv vtuple (wrap tuple) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable; vtuple]]] ->
-      vret ∉ ext ->
-      vtable ∉ ext ->
-      vtuple ∉ ext ->
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: vtuple :: nil)
-      {{ [[ `vret <-- SCAZero as _ ]]
-           :: [[ `vtable <-- table as _ ]]
-           :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
+  (* Lemma CompileTuples0_insert : *)
+  (*   forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N idx *)
+  (*     (table: FiatBag N) (tuple: FiatTuple N), *)
+  (*     GLabelMap.find fpointer env = Some (Axiomatic Tuples0_insert) -> *)
+  (*     Lifted_MapsTo ext tenv vtable (wrap table) -> *)
+  (*     Lifted_MapsTo ext tenv vtuple (wrap tuple) -> *)
+  (*     Lifted_not_mapsto_adt ext tenv vret -> *)
+  (*     NoDuplicates [[[vret; vtable; vtuple]]] -> *)
+  (*     vret ∉ ext -> *)
+  (*     vtable ∉ ext -> *)
+  (*     vtuple ∉ ext -> *)
+  (*     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) -> *)
+  (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx -> *)
+  (*     {{ tenv }} *)
+  (*       Call vret fpointer (vtable :: vtuple :: nil) *)
+  (*     {{ [[ `vret <-- SCAZero as _ ]] *)
+  (*          :: [[ `vtable <-- table as _ ]] *)
+  (*          :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env. *)
+  (* Proof. *)
+  (*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t). *)
 
-    (* Definition FiatBagFunctional {N} (fiatBag: FiatBag N) := *)
-    (*   forall t1 t2, *)
-    (*     fiatBag t1 -> fiatBag t2 -> *)
-    (*     IndexedEnsembles.elementIndex t1 = IndexedEnsembles.elementIndex t2 -> *)
-    (*     t1 = t2. *)
+  (* Definition FiatBagFunctional {N} (fiatBag: FiatBag N) := *)
+  (*   forall t1 t2, *)
+  (*     fiatBag t1 -> fiatBag t2 -> *)
+  (*     IndexedEnsembles.elementIndex t1 = IndexedEnsembles.elementIndex t2 -> *)
+  (*     t1 = t2. *)
 
-    (* Definition FiatBagMinFreshIndex {N} (fiatBag: FiatBag N) idx := *)
-    (*   IndexedEnsembles.UnConstrFreshIdx fiatBag idx /\ *)
-    (*   (forall idx' : nat, (lt idx' idx) -> ~ IndexedEnsembles.UnConstrFreshIdx fiatBag idx'). *)
+  (* Definition FiatBagMinFreshIndex {N} (fiatBag: FiatBag N) idx := *)
+  (*   IndexedEnsembles.UnConstrFreshIdx fiatBag idx /\ *)
+  (*   (forall idx' : nat, (lt idx' idx) -> ~ IndexedEnsembles.UnConstrFreshIdx fiatBag idx'). *)
 
-    (* Record FiatBag' {N} := *)
-    (*   { fiatBag : FiatBag N; *)
-    (*     bagFunctional : FiatBagFunctional fiatBag; *)
-    (*     idx: nat; *)
-    (*     idxIsFresh: FiatBagMinFreshIndex fiatBag idx }. *)
+  (* Record FiatBag' {N} := *)
+  (*   { fiatBag : FiatBag N; *)
+  (*     bagFunctional : FiatBagFunctional fiatBag; *)
+  (*     idx: nat; *)
+  (*     idxIsFresh: FiatBagMinFreshIndex fiatBag idx }. *)
 
-    (* Lemma minFreshIndex_Lift: *)
-    (*   forall (N : nat) (table : FiatBag N) (idx : nat), *)
-    (*     FiatBagMinFreshIndex table idx -> *)
-    (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx. *)
-    (* Proof. *)
-    (*   unfold FiatBagMinFreshIndex, minFreshIndex. *)
-    (*   repeat cleanup. *)
+  (* Lemma minFreshIndex_Lift: *)
+  (*   forall (N : nat) (table : FiatBag N) (idx : nat), *)
+  (*     FiatBagMinFreshIndex table idx -> *)
+  (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx. *)
+  (* Proof. *)
+  (*   unfold FiatBagMinFreshIndex, minFreshIndex. *)
+  (*   repeat cleanup. *)
 
-    (*   Lemma UnconstrFreshIdx_Lift: *)
-    (*     forall (N : nat) (table : FiatBag N) (idx : nat), *)
-    (*       IndexedEnsembles.UnConstrFreshIdx table idx <-> UnConstrFreshIdx (IndexedEnsemble_TupleToListW table) idx. *)
-    (*   Proof. *)
-    (*     unfold IndexedEnsembles.UnConstrFreshIdx, UnConstrFreshIdx; *)
-    (*     repeat cleanup. *)
-    (*     rewrite <- IndexedElement_RoundTrip in H0. *)
-    (*     pose (IndexedEnsemble_TupleToListW_inj_helpe _ table (IndexedElement_ListWToTuple element)). H0). *)
-    (*   Admitted. *)
+  (*   Lemma UnconstrFreshIdx_Lift: *)
+  (*     forall (N : nat) (table : FiatBag N) (idx : nat), *)
+  (*       IndexedEnsembles.UnConstrFreshIdx table idx <-> UnConstrFreshIdx (IndexedEnsemble_TupleToListW table) idx. *)
+  (*   Proof. *)
+  (*     unfold IndexedEnsembles.UnConstrFreshIdx, UnConstrFreshIdx; *)
+  (*     repeat cleanup. *)
+  (*     rewrite <- IndexedElement_RoundTrip in H0. *)
+  (*     pose (IndexedEnsemble_TupleToListW_inj_helpe _ table (IndexedElement_ListWToTuple element)). H0). *)
+  (*   Admitted. *)
 
-    (*   apply UnconstrFreshIdx_Lift; assumption. *)
-    (*   rewrite <- UnconstrFreshIdx_Lift. *)
-    (*   eauto. *)
-    (* Qed. *)
+  (*   apply UnconstrFreshIdx_Lift; assumption. *)
+  (*   rewrite <- UnconstrFreshIdx_Lift. *)
+  (*   eauto. *)
+  (* Qed. *)
 
-    facade_eauto.
-    facade_eauto.
-    facade_eauto.
-    admit.
-    repeat apply DropName_remove; eauto 1.
-  Qed.
+  (*   facade_eauto. *)
+  (*   facade_eauto. *)
+  (*   facade_eauto. *)
+  (*   admit. *)
+  (*   repeat apply DropName_remove; eauto 1. *)
+  (* Qed. *)
 
-  Lemma CompileTuples0_enumerate :
-    forall vret vtable fpointer (env: Env ADTValue) ext tenv N
-      (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples0_enumerate) ->
-      Lifted_MapsTo ext tenv vtable (wrap table) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable]]] ->
-      vret ∉ ext ->
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: nil)
-      {{ [[ `vret <-- @nil (FiatTuple N) as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
-    facade_eauto.
-    admit.                      (* FIXME *)
-    rewrite <- remove_add_comm by congruence.
-    rewrite <- add_redundant_cancel by eassumption.
-    facade_eauto.
-  Qed.
+  (* Lemma CompileTuples0_enumerate : *)
+  (*   forall vret vtable fpointer (env: Env ADTValue) ext tenv N *)
+  (*     (table: FiatBag N) (tuple: FiatTuple N), *)
+  (*     GLabelMap.find fpointer env = Some (Axiomatic Tuples0_enumerate) -> *)
+  (*     Lifted_MapsTo ext tenv vtable (wrap table) -> *)
+  (*     Lifted_not_mapsto_adt ext tenv vret -> *)
+  (*     NoDuplicates [[[vret; vtable]]] -> *)
+  (*     vret ∉ ext -> *)
+  (*     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) -> *)
+  (*     {{ tenv }} *)
+  (*       Call vret fpointer (vtable :: nil) *)
+  (*     {{ [[ `vret <-- @nil (FiatTuple N) as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env. *)
+  (* Proof. *)
+  (*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t). *)
+  (*   facade_eauto. *)
+  (*   admit.                      (* FIXME *) *)
+  (*   rewrite <- remove_add_comm by congruence. *)
+  (*   rewrite <- add_redundant_cancel by eassumption. *)
+  (*   facade_eauto. *)
+  (* Qed. *)
 End Tuples0.
 
 Section Tuples2.
@@ -481,84 +439,5 @@ Section Tuples2.
     facade_eauto.
     repeat f_equal; facade_eauto.
     facade_eauto.
-  Qed.
-
-  Lemma CompileTuples2_insert :
-    forall vret vtable vtuple fpointer (env: Env ADTValue) ext tenv N k1 k2 idx
-      (table: FiatBag N) (tuple: FiatTuple N),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples2_insert) ->
-      Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
-      Lifted_MapsTo ext tenv vtuple (wrap tuple) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable; vtuple]]] ->
-      vret ∉ ext ->
-      vtable ∉ ext ->
-      vtuple ∉ ext ->
-      BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-      minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: vtuple :: nil)
-      {{ [[ `vret <-- SCAZero as _ ]]
-           :: [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
-           :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
-    facade_eauto.
-    facade_eauto.
-    facade_eauto.
-    admit.
-    repeat apply DropName_remove; eauto 1.
-  Qed.
-
-  Lemma CompileTuples2_findFirst :
-    forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
-      (table: FiatBag N) (key: W),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples2_findFirst) ->
-      Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
-      Lifted_MapsTo ext tenv vkey (wrap key) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable; vkey]]] ->
-      vret ∉ ext ->
-      vtable ∉ ext ->
-      functional (IndexedEnsemble_TupleToListW table) ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: vkey :: nil)
-      {{ [[ `vret <-- @nil (FiatTuple N) as _ ]]
-           :: [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
-           :: DropName vtable (DropName vret tenv) }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
-    facade_eauto.
-    facade_eauto.
-    facade_eauto.
-    admit.
-    facade_eauto.
-    repeat apply DropName_remove; eauto 1.
-  Qed.
-
-  Lemma CompileTuples2_findSecond :
-    forall vret vtable vkey fpointer (env: Env ADTValue) ext tenv N k1 k2
-      (table: FiatBag N) (key: W),
-      GLabelMap.find fpointer env = Some (Axiomatic Tuples2_findSecond) ->
-      Lifted_MapsTo ext tenv vtable (wrap (FacadeWrapper := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) table) ->
-      Lifted_MapsTo ext tenv vkey (wrap key) ->
-      Lifted_not_mapsto_adt ext tenv vret ->
-      NoDuplicates [[[vret; vtable; vkey]]] ->
-      vret ∉ ext ->
-      vtable ∉ ext ->
-      functional (IndexedEnsemble_TupleToListW table) ->
-      {{ tenv }}
-        Call vret fpointer (vtable :: vkey :: nil)
-      {{ [[ `vret <-- @nil (FiatTuple N) as _ ]]
-           :: [[ (NTSome (H := @WrapInstance _ _ (QS_WrapBag2 k1 k2)) vtable) <-- table as _ ]]
-           :: DropName vtable (DropName vret tenv) }} ∪ {{ ext }} // env.
-  Proof.
-    repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
-    facade_eauto.
-    facade_eauto.
-    facade_eauto.
-    admit.
-    facade_eauto.
-    repeat apply DropName_remove; eauto 1.
   Qed.
 End Tuples2.

@@ -23,11 +23,27 @@ Bind Scope productions_scope with productions.
 Delimit Scope grammar_scope with grammar.
 Bind Scope grammar_scope with grammar.
 
-(** single characters are terminals, everything else is a nonterminal *)
+Module opt'.
+  Definition map {A B} := Eval compute in @List.map A B.
+  Definition list_of_string := Eval compute in @StringOperations.list_of_string.
+  Definition pred := Eval compute in pred.
+  Definition length := Eval compute in String.length.
+  Definition substring := Eval compute in substring.
+End opt'.
+
+(** single characters are terminals, anything wrapped with "'" is a
+    string literal, everything else is a nonterminal *)
 Coercion production_of_string (s : string) : production Ascii.ascii
   := match s with
        | EmptyString => nil
        | String.String ch EmptyString => (Terminal (ascii_beq ch))::nil
+       | String.String "'" s'
+         => match opt'.substring (opt'.pred (opt'.length s')) 1 s' with
+            | String.String "'" EmptyString
+              => opt'.map (fun ch => Terminal (ascii_beq ch))
+                          (opt'.list_of_string (opt'.substring 0 (opt'.pred (opt'.length s')) s'))
+            | _ => (NonTerminal s)::nil
+            end
        | _ => (NonTerminal s)::nil
      end.
 
@@ -173,7 +189,7 @@ Global Arguments Equality.string_beq !_ !_.
 Global Arguments ascii_of_nat !_ / .
 Global Arguments ascii_of_pos !_ / .
 
-Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero].
+Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring].
 
 Create HintDb parser_sharpen_db discriminated.
-Hint Unfold ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt.nat_of_ascii : parser_sharpen_db.
+Hint Unfold ascii_of_pos production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt.nat_of_ascii opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring : parser_sharpen_db.

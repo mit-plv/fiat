@@ -1,5 +1,6 @@
 (** * Simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
+Require Export Fiat.Parsers.ContextFreeGrammar.SimpleCorrectness.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.ContextFreeGrammar.Carriers.
@@ -76,6 +77,10 @@ Record Parser {Char} (G : grammar Char)
     parse : @String Char HSLM -> option (@simple_parse_of_item Char);
     (** find the parse tree of the string as the start symbol of the grammar *)
 
-    parse_correct : forall str, has_parse str = if parse str then true else false
+    parse_correct : forall str, has_parse str = if parse str then true else false;
+
+    parse_sound : forall str t,
+        parse str = Some t
+        -> simple_parse_of_item_correct G str (NonTerminal (Start_symbol G)) t
 
   }.

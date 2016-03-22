@@ -129,9 +129,9 @@ Qed.
 Definition length_of_any_nt_step
            {Char} (G : pregrammar Char)
            (predata := @rdp_list_predata _ G)
-           (length_of_any_nt : forall (valid0_len : nat) (valid0 : nonterminals_listT),
-                                 String.string -> length_result)
            (valid0_len : nat)
+           (length_of_any_nt : forall (*valid0_len : nat*) (valid0 : nonterminals_listT),
+                                 String.string -> length_result)
            (valid0 : nonterminals_listT)
            (nt : String.string)
 : length_result
@@ -140,16 +140,16 @@ Definition length_of_any_nt_step
        | S valid0_len'
          => if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
             then length_of_any_productions'
-                   (@length_of_any_nt valid0_len' (remove_nonterminal valid0 (of_nonterminal nt)))
+                   (@length_of_any_nt (*valid0_len'*) (remove_nonterminal valid0 (of_nonterminal nt)))
                    (Lookup G nt)
             else different_lengths
      end.
 
 Lemma length_of_any_nt_step_ext {Char G}
       x0 x1 f g
-      (ext : forall y p b, f y p b = g y p b)
+      (ext : forall p b, f p b = g p b)
       b
-: @length_of_any_nt_step Char G f x0 x1 b = length_of_any_nt_step g x0 x1 b.
+: @length_of_any_nt_step Char G x0 f x1 b = length_of_any_nt_step x0 g x1 b.
 Proof.
   unfold length_of_any_nt_step.
   edestruct Sumbool.sumbool_of_bool; trivial.
@@ -157,13 +157,19 @@ Proof.
   apply length_of_any_productions'_ext; eauto.
 Qed.
 
-Fixpoint length_of_any_nt'
-         {Char} (G : pregrammar Char)
-         (valid0_len : nat)
-: forall (valid0 : nonterminals_listT)
-         (nt : String.string),
+Definition length_of_any_nt'
+           {Char} (G : pregrammar Char)
+           (valid0_len : nat)
+  : forall (valid0 : nonterminals_listT)
+           (nt : String.string),
     length_result
-  := @length_of_any_nt_step Char G (@length_of_any_nt' Char G) valid0_len.
+  := nat_rect
+       (fun _ => forall (valid0 : nonterminals_listT)
+                        (nt : String.string),
+            length_result)
+       (fun _ _ => different_lengths)
+       (@length_of_any_nt_step Char G)
+       valid0_len.
 
 Global Arguments length_of_any_nt' _ _ !_ _ _ / .
 
@@ -262,16 +268,18 @@ Proof.
     | ].
   intro valid.
   unfold length_of_any_nt'; fold @length_of_any_nt'.
-  unfold length_of_any_nt_step.
   intros H' nt.
   specialize (IHlen (remove_nonterminal valid (of_nonterminal nt))).
   pose proof (rdp_list_remove_nonterminal_dec valid (of_nonterminal nt)) as H''.
   unfold rdp_list_nonterminals_listT_R, ltof, lt in H''.
   pose proof (fun pf => le_S_n _ _ (transitivity (H'' pf) H')) as H; clear H' H''.
   specialize (fun pf => IHlen (H pf)); clear H.
+  unfold length_of_any_nt' in *.
+  simpl nat_rect; unfold length_of_any_nt_step at 1; cbv beta zeta.
   edestruct dec; simpl in *;
-  [ specialize_by assumption
-  | solve [ intros; discriminate ] ].
+    [ specialize_by assumption
+    | solve [ destruct len; intros; discriminate ] ].
+  destruct len; [ solve [ intros; discriminate ] | ].
   generalize dependent (Lookup_string G nt).
   intros.
   unfold length_of_any_productions' in *.

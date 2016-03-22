@@ -84,6 +84,36 @@ Module Export Telescope.
   : Transitive (@flatten_forall_eq t P)
     := flatten_forall_eq_relation_Transitive.
 
+  Global Instance flatten_forall_eq_relation_with_assumption_Reflexive {t P Q}
+  : Reflexive (@flatten_forall_eq_relation_with_assumption t P Q).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ reflexivity | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_relation_with_assumption_Symmetric {t P Q}
+  : Symmetric (@flatten_forall_eq_relation_with_assumption t P Q).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ symmetry; eauto with nocore | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_relation_with_assumption_Transitive {t P Q}
+  : Transitive (@flatten_forall_eq_relation_with_assumption t P Q).
+  Proof.
+    hnf; induction t; simpl; unfold forall_relation; [ etransitivity; eauto with nocore | eauto with nocore ].
+  Defined.
+
+  Global Instance flatten_forall_eq_with_assumption_Reflexive {t P Q}
+  : Reflexive (@flatten_forall_eq_with_assumption t P Q)
+    := flatten_forall_eq_relation_with_assumption_Reflexive.
+
+  Global Instance flatten_forall_eq_with_assumption_Symmetric {t P Q}
+  : Symmetric (@flatten_forall_eq_with_assumption t P Q)
+    := flatten_forall_eq_relation_with_assumption_Symmetric.
+
+  Global Instance flatten_forall_eq_with_assumption_Transitive {t P Q}
+  : Transitive (@flatten_forall_eq_with_assumption t P Q)
+    := flatten_forall_eq_relation_with_assumption_Transitive.
+
   Lemma flatten_append_forall_Proper {B P Q}
   : forall f g,
       @flatten_forall_eq B P f g

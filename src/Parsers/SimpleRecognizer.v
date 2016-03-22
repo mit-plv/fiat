@@ -30,9 +30,11 @@ Section recursive_descent_parser.
              | Terminal P => if EqNat.beq_nat len 1 && char_at_matches offset str P
                              then Some (SimpleParseTerminal (unsafe_get offset str))
                              else None
-             | NonTerminal nt => option_map
-                                   (SimpleParseNonTerminal nt)
-                                   (str_matches_nonterminal (of_nonterminal nt))
+             | NonTerminal nt => if is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)
+                                 then option_map
+                                        (SimpleParseNonTerminal nt)
+                                        (str_matches_nonterminal (of_nonterminal nt))
+                                 else None
            end%bool.
 
       Section production.
