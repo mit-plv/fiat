@@ -161,6 +161,8 @@ src/Common/Telescope/Equality.v
 src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
+src/Computation/Decidable.v
+src/Computation/FoldComp.v
 src/Computation/LogicLemmas.v
 src/Computation/Monad.v
 src/Computation/Notations.v
@@ -455,6 +457,7 @@ src/QueryStructure/Specification/Operations/Delete.v
 src/QueryStructure/Specification/Operations/Empty.v
 src/QueryStructure/Specification/Operations/FlattenCompList.v
 src/QueryStructure/Specification/Operations/Insert.v
+src/QueryStructure/Specification/Operations/InsertAll.v
 src/QueryStructure/Specification/Operations/Mutate.v
 src/QueryStructure/Specification/Operations/Query.v
 src/QueryStructure/Specification/Operations/Update.v

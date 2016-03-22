@@ -46,7 +46,7 @@ Definition DnsRecSig : ADTSig :=
 
       Method GetRequestStage : rep * id -> rep * (option Stage),
       Method UpdateRequestStage : rep * id * Stage -> rep * bool,
-                      
+
      (* TTL *)
       Method UpdateTTLs : rep * time -> rep * bool,
 
@@ -144,30 +144,23 @@ Definition isReferral (p : packet) :=
   is_empty (p!"answers")
   && (negb (is_empty (p!"authority")))
   && (negb (is_empty (p!"additional"))).
-Set Printing Implicit.
 
 Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHeading) :=
   let authRdataMatchesAddlName (tup2 : resourceRecord * resourceRecord) :=
-      match (fst tup2)!sRDATA with
-      | inl n => beq_name n ((snd tup2)!sNAME)
-      | _ => false
-      end in
+      beq_name ((fst tup2)!sRDATA) ((snd tup2)!sNAME) in
   let auth_addl_join := list_join authRdataMatchesAddlName (p!"authority") (p!"additional") in
   map (fun tup_pairs : resourceRecord * resourceRecord =>
          let (auth, addl) := tup_pairs in
          < sREFERRALDOMAIN :: (auth!sNAME : name),
           sRTYPE :: (auth!sTYPE : RRecordType),
           sRCLASS :: (auth!sCLASS : RRecordClass),
-          sRTTL :: (auth!sTTL : nat),
+          sRTTL :: (auth!sTTL : W),
           (* inline RDATA and additional record *)
           sSERVERDOMAIN :: (addl!sNAME : name),
           sSTYPE :: (addl!sTYPE : RRecordType),
           sSCLASS :: (addl!sCLASS : RRecordClass),
           sSTTL :: (addl!sTTL : nat),
-          sSIP :: match (addl!sRDATA) with
-                  | inl n => n
-                  | _ => [ ]
-                  end,
+          sSIP :: addl!sRDATA,
           (* IP in RDATA of additional record *)
           sTIME_LAST_CALCULATED :: timeArrived>) auth_addl_join.
 
@@ -276,7 +269,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
               Return f;
         (* TTL* *)
         ret (fst r', Ans nameRes)
-            
+
     | CFailures :: _ =>
       (* This domain [s.g.com] failed. If we have any results for the longest prefix, *)
       (* return them and label them as referrals. (e.g. an answer for [g.com])  *)
@@ -289,7 +282,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
         ret (fst r', Fail (listToOption nameRes))
             Else
             ret (fst r', Ref longestSuffixes)
-            
+
     | [ ] =>
       (* name has nothing cached for it, but we might have referrals for subdomains *)
       If (is_empty longestSuffixes) Then
@@ -297,7 +290,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
          Else
          ret (fst r', Ref longestSuffixes)
     end.
-    
+
     (* -------- REFERRAL/SLIST FUNCTIONS *)
 
 (* Filters referrals for the valid ones (not already in list + type, class), *)
@@ -335,8 +328,8 @@ Definition ReferralRowsToSLISTSpec
                   sQUERYCOUNT :: 0 (* New Row / hasn't been queried before*) >
                   ++ curRef))
             referrals.
-  
-  (* Get the "best" referral (the one with the highest matchCount), *)
+
+(* Get the "best" referral (the one with the highest matchCount), *)
 (* add 1 to its query count, update the request's match count, and re-sort *)
 (* SLIST according to this. Then returns that "best" referral *)
 Definition GetFirstReferralAndUpdateSLISTSpec
@@ -546,7 +539,7 @@ Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
                   (* of the caches. *)
                   r5 <- InsertResultForDomainSpec (fst r4) timeArrived (Answer reqName pac);
                   ret (fst r5, ClientAnswer reqId pac)
-                else match failure with                       
+                else match failure with
                      (* Failure. Done, forward it on *)
                      | Some soa =>
                        (* Update cache *)

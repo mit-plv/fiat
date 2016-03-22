@@ -7,6 +7,7 @@ Require Import Coq.Lists.List
         Fiat.ADT.Core
         Fiat.Common.StringBound
         Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Computation.FoldComp
         Fiat.ADTNotation.BuildADT
         Fiat.ADTNotation.BuildADTSig
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
