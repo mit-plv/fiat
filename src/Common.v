@@ -1586,7 +1586,7 @@ Ltac eassumption' :=
 
 Ltac progress_subgoal top tac finish_fn cont :=
   top; (* Decompose goal *)
-  idtac "Decomposing Goal"; (* For debugging *)
+  (* idtac "Decomposing Goal"; For debugging *)
   (tac; try (cont ()) (* Process goal further with tac and recurse. *)
    || (try (cont ())) (* Just recurse *)
    || finish_fn)      (* Finish up if unable to progress after recursing *).

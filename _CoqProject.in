@@ -165,7 +165,7 @@ src/Common/Telescope/Equality.v
 src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
-src/Computation/Decidable.v
+src/Computation/Decideable.v
 src/Computation/FoldComp.v
 src/Computation/LogicLemmas.v
 src/Computation/Monad.v
@@ -204,6 +204,7 @@ src/Examples/QueryStructure/ClassifierExtraction.v
 src/Examples/QueryStructure/ClassifierUnOpt.v
 src/Examples/QueryStructure/ClassifierUnOptExtraction.v
 src/Examples/QueryStructure/CodeLookup.v
+src/Examples/QueryStructure/DelegatedProcessScheduler.v
 src/Examples/QueryStructure/FriendFinder.v
 src/Examples/QueryStructure/Github.v
 src/Examples/QueryStructure/IncompleteROSMaster.v
