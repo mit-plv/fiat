@@ -6,6 +6,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import
         Fiat.Common.Tactics.CacheStringConstant
+        Fiat.Computation.Decideable
         Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Automation.MasterPlan
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
@@ -16,9 +17,14 @@ Require Import
 
 Require Import Fiat.Examples.DnsServer.packet
         Fiat.Examples.DnsServer.DnsLemmas
-        Fiat.Examples.DnsServer.DnsAutomation.
+        Fiat.Examples.DnsServer.DnsAutomation
+        Fiat.Examples.DnsServer.DnsSchema.
 
-Require Import Fiat.Examples.DnsServer.DnsSchema.
+Definition singleton_list {A} (l : list A) : option A :=
+  match l with
+  | a :: nil => Some a
+  | _ => None
+  end.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
@@ -26,6 +32,19 @@ Definition DnsSig : ADTSig :=
       Method "AddData" : rep * resourceRecord -> rep * bool,
       Method "Process" : rep * packet -> rep * packet
     }.
+
+Definition UpperBound {A : Type}
+           (op : A -> A -> Prop)
+           (rs : list A)
+           (r : A) :=
+  forall r' : A, List.In r' rs -> op r r'.
+
+Definition ArgMax {ResultT}
+           (op : ResultT -> ResultT -> Prop)
+           (bod : Comp (list ResultT))
+  : Comp (list ResultT) :=
+  results <- bod;
+  [[element in results | UpperBound op results element]].
 
 Definition DnsSpec : ADT DnsSig :=
   QueryADTRep DnsSchema {
@@ -40,30 +59,28 @@ Definition DnsSpec : ADT DnsSig :=
     Def Method1 "Process" (this : rep) (p : packet) : rep * packet :=
         Repeat 1 initializing n with p!"questions"!"qname"
                defaulting rec with (ret (buildempty p))
-         {{ rs <- For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
-                  Where (IsPrefix r!sNAME n) (* prefixed with [n] to [rs] *)
-                  (* prefix: "com.google" is a prefix of "com.google.scholar" *)
-                  Return r;
-            If (is_empty rs)        (* Are there any matching records? *)
+        {{ results <- ArgMax (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
+                             ((r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
+                               Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
+                               Return r);
+            If (is_empty results) (* Are there any matching records? *)
             Then ret (buildempty p) (* No matching records! *)
-            Else                (* TODO: this does not filter by matching QTYPE *)
-              (bfrs <- [[r in rs | upperbound name_length rs r]]; (* Find the best match (largest prefix) in [rs] *)
-              b <- { b | decides b (forall r, List.In r bfrs -> n = r!sNAME) };
-              If b                (* If the record's QNAME is an exact match  *)
+            Else                 (* TODO: this does not filter by matching QTYPE *)
+              IfDec (forall r, List.In r results -> n = r!sNAME) (* If the record's QNAME is an exact match  *)
               Then
                 unique b,                         (* only one match (unique / otherwise) *)
-                List.In b bfrs /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
+                List.In b results /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
                                /\ p!"questions"!"qtype" <> CNAME ->>      (* and the query did not request a CNAME *)
                   p' <- rec b!sNAME;                  (* Recursively find records matching the CNAME *)
                   ret (add_answer p' b)               (* ?? Shouldn't this use the sDATA ?? *)
                 otherwise ->>     (* Copy the records into the answer section of an empty response *)
                 (* multiple matches -- add them all as answers in the packet *)
-                  ret (List.fold_left add_answer bfrs (buildempty p))
+                  ret (List.fold_left add_answer results (buildempty p))
               Else              (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records --
                  ask the authoritative servers *) (* TODO does this return one, or return all? *)
-                (bfrs' <- [[x in bfrs | x!sTYPE = NS]];
-                ret (List.fold_left add_ns bfrs' (buildempty p))))
+                (results' <- [[x in results | x!sTYPE = NS]];
+                ret (List.fold_left add_ns results (buildempty p)))
           }} >>= fun p => ret (this, p)}%methDefParsing.
 
 Local Arguments packet : simpl never.
