@@ -1,6 +1,10 @@
 Require Import Coq.Vectors.Vector
-        Coq.Strings.Ascii Coq.Bool.Bool
-        Coq.Bool.Bvector Coq.Lists.List.
+        Coq.Strings.Ascii
+        Coq.Bool.Bool
+        Coq.Bool.Bvector
+        Coq.Lists.List
+        Bedrock.Word
+        Bedrock.Memory.
 
 Require Import
         Fiat.QueryStructure.Automation.AutoDB
@@ -18,13 +22,13 @@ new requests get stage None
 when working on a referral, the stage is set to the match count b/t the referral and question
 e.g. question = s.g.com, referral = for g.com, stage = match count = 2
 (excluding root) *)
-Definition Stage := option nat.
+Definition Stage := option W.
 (* for TTL *)
-Definition time := nat.
+Definition time := W.
 (* unique ids for various things *)
-Definition id : Type := nat.
+Definition id : Type := W.
 (* position in SLIST *)
-Definition position := nat.
+Definition position := W.
 (* e.g. ["192", "168", "1", "1"] *)
 Definition IP := name.
 
@@ -116,18 +120,25 @@ Local Open Scope Heading.
 
 (* ------------------ Schema headings *)
 
-(* The ideal schema would be domain and WrapperResponse, with some way to query the types nested in WrapperResponse. Flattening it here has the same effect.
+(* The ideal schema would be domain and WrapperResponse, with some way
+to query the types nested in WrapperResponse. Flattening it here has
+the same effect.
 
-One (Domain => WrapperResponse) mapping is flattened into several rows that all have the same packet information, but store one answer (DNSRRecord) each.
+One (Domain => WrapperResponse) mapping is flattened into several rows
+that all have the same packet information, but store one answer
+(DNSRRecord) each.
 
-When removing a (Domain => ToStore):
-delete rows with the Domain in all cache tables.
+When removing a (Domain => ToStore): delete rows with the Domain in
+all cache tables.
 
-When inserting/updating a new (Domain => ToStore):
-after checking that Domain doesn't exist in any of the cache tables (or just performing a delete), flatten it and insert each row.
+When inserting/updating a new (Domain => ToStore): after checking that
+Domain doesn't exist in any of the cache tables (or just performing a
+delete), flatten it and insert each row.
 
 Invariants: (TODO)
-- All rows for each domain should appear in exactly 1 of the cache relations (question, answer, or failure). We do not store multiple possibilities.
+- All rows for each domain should appear in exactly 1 of the cache
+  relations (question, answer, or failure). We do not store multiple
+  possibilities.
 - All rows for each domain should have the same packet info. *)
 
 (* Heading for cached referrals. Same as above but without the "live" information (ids, match and query count) and with cache info (TTL and time the TTL was last calculated) *)
@@ -136,22 +147,21 @@ Definition ReferralHeading :=
          < sREFERRALDOMAIN :: name,
           sRTYPE :: RRecordType,
           sRCLASS :: RRecordClass,
-          sRTTL :: nat,
+          sRTTL :: W,
           (* inline RDATA and additional record *)
           sSERVERDOMAIN :: name,
           sSTYPE :: RRecordType,
           sSCLASS :: RRecordClass,
-          sSTTL :: nat,
+          sSTTL :: W,
           sSIP :: name,
           (* IP in RDATA of additional record *)
-          sTIME_LAST_CALCULATED :: nat
+          sTIME_LAST_CALCULATED :: W
          >.
 
-(* For referrals:
- for domain "brl.mil", referral to suffix "mil":
- go to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question).
- We discard the original question "brl.mil."
- See  RFC 1034 6.2.6, 6.3.1 *)
+(* For referrals: for domain "brl.mil", referral to suffix "mil": go
+ to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question).
+ We discard the original question "brl.mil."  See RFC 1034 6.2.6,
+ 6.3.1 *)
 
 Definition AppendRawHeading
            (heading1 heading2 : RawHeading)
@@ -169,41 +179,45 @@ Notation "heading1 ++ heading2" :=
 
 Definition SLIST_ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
-  <sREQID :: nat,        (* tuple of (reqid, refid) should be unique for each row *)
-   sREFERRALID :: nat,
-   sMATCHCOUNT :: nat,
-   sQUERYCOUNT :: nat>
-   ++ ReferralHeading.
+  < sREQID :: W,        (* tuple of (reqid, refid) should be unique for each row *)
+    sREFERRALID :: W,
+    sMATCHCOUNT :: W,
+    sQUERYCOUNT :: W>
+    ++ ReferralHeading.
 
-(* Stores a cached answer (DNSRRecord). Might have appeared in the answer, authority, or additional section of a packet. *)
+(* Stores a cached answer (DNSRRecord). Might have appeared in the
+answer, authority, or additional section of a packet. *)
 (* sDOMAIN and sNAME may differ in the case of CNAME, where
 sDOMAIN is an alias for sNAME. See RFC 1034, 6.2.7 *)
-
 
 Definition AnswerHeading :=
   Eval unfold resourceRecordHeading in
   < sDOMAIN :: name,
     sPACKET_SECTION :: PacketSection,
-    sTIME_LAST_CALCULATED :: nat>
+    sTIME_LAST_CALCULATED :: W>
     ++ resourceRecordHeading.
 
-(* Stores an SOA (Start of Authority) record for cached failures, according to RFC 2308. The SOA's TTL is used as the length of time to assume a name failure *)
-(* TODO the SOA is technically supposed to go in the Authority section but the packet type doesn't include it *)
+(* Stores an SOA (Start of Authority) record for cached failures,
+according to RFC 2308. The SOA's TTL is used as the length of time to
+assume a name failure *)
+(* TODO the SOA is technically supposed to go in the Authority section
+but the packet type doesn't include it *)
+
 Definition FailureHeading :=
-  <sDOMAIN :: name,
-   sTIME_LAST_CALCULATED :: nat>
-  ++ SOAHeading.
+  < sDOMAIN :: name,
+    sTIME_LAST_CALCULATED :: W>
+    ++ SOAHeading.
 
 (* Heading for a pending request.
    Q*, pid, and flags are packet info. Need to store packet info so we can filter the results we get by record type and class. *)
 Definition RequestHeading :=
-         <sID :: id,  (* unique, ascending *)
-          sQNAME :: name,
-          sSTAGE :: Stage,
-          sQTYPE :: RRecordType,
-          sQCLASS :: RRecordClass,
-          sPID :: Bvector 16,
-          sFLAGS :: Bvector 16
+         < sID :: id,  (* unique, ascending *)
+           sQNAME :: name,
+           sSTAGE :: Stage,
+           sQTYPE :: RRecordType,
+           sQCLASS :: RRecordClass,
+           sPID :: Bvector 16,
+           sFLAGS :: Bvector 16
           (* not storing authority or additional -- needed? *)
          >.
 
@@ -232,7 +246,8 @@ Inductive CacheTable :=
 | CAnswers
 | CFailures.
 
-(* Type for SLIST order. See RFC 1034, page 32 for a more detailed description of the SLIST.
+(* Type for SLIST order. See RFC 1034, page 32 for a more detailed
+description of the SLIST.
 
 SLIST: a structure which describes the name servers and the
                 zone which the resolver is currently trying to query.
@@ -241,12 +256,16 @@ SLIST: a structure which describes the name servers and the
                 information; it is updated when arriving information
                 changes the guess.
 
-Here, an SLIST is a list of current referrals we have, sorted by descending match count (so the first one to be used should have the highest match count). (TODO: should also incorporate query count) We store the referrals in one table and their positions in another table. Each request's SLIST is a list of (refId, position).
+Here, an SLIST is a list of current referrals we have, sorted by
+descending match count (so the first one to be used should have the
+highest match count). (TODO: should also incorporate query count) We
+store the referrals in one table and their positions in another
+table. Each request's SLIST is a list of (refId, position).
 
-The SLIST is deleted after a request finishes (ends in an answer or failure). Individual referrals may be cleared when their TTL runs out. *)
-Record refPosition :=
-  { refId : id;
-    refPos : nat }.
+The SLIST is deleted after a request finishes (ends in an answer or
+failure). Individual referrals may be cleared when their TTL runs
+out. *)
+Record refPosition := { refId : id; refPos : W }.
 
 Definition DnsRecSchema :=
   Query Structure Schema
@@ -300,20 +319,20 @@ Definition Build_RequestState (pac : packet) (id' : id) (stage : Stage) :=
   Definition Build_CachePointerRow
              (reqName : name)
              (table : CacheTable) :=
-    <sDOMAIN :: name, sCACHETABLE :: table >%Tuple.
+    < sDOMAIN :: W, sCACHETABLE :: table >%Tuple.
 
 
   Definition ToSLISTRow (refRow : ReferralRow)
-             (reqId : nat)
-             (refId : nat)
-             (matchCount : nat)
-             (queryCount : nat)
+             (reqId : W)
+             (refId : W)
+             (matchCount : W)
+             (queryCount : W)
     : SLIST_ReferralRow :=
     < sREQID :: reqId, sREFERRALID :: refId,
     sMATCHCOUNT :: matchCount, sQUERYCOUNT :: queryCount >
                                ++ refRow.
 
-  Definition ToSLISTOrder (reqId : nat)
+  Definition ToSLISTOrder (reqId : W)
              (order : list refPosition) :=
   < sREQID :: reqId, sORDER :: order >.
 

@@ -1941,6 +1941,104 @@ Ltac Focused_refine_Query :=
 
   end.
 
+Ltac implement_Pick_DelegateToBag_AbsR :=
+  match goal with
+    [ H : DelegateToBag_AbsR ?r_o ?r_n
+      |- context [ {r_n' |  DelegateToBag_AbsR ?r_o r_n'} ] ] =>
+    setoid_rewrite (@refine_Pick_DelegateToBag_AbsR _ _ _ _ H)
+  end.
+
+Ltac Focused_refine_TopMost_Query :=
+  match goal with
+  | |- refine (Bind (Count (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Count ResultT body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (MaxN (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_MaxN body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (SumN (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_SumN body') at 1;
+                       clear refine_body' ] )
+  | |- refine (Bind (MaxZ (@Query_For ?ResultT ?body)) ?k) _ =>
+
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_MaxZ body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (SumZ (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_SumZ body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (Max (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Max body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (Sum (@Query_For ?ResultT ?body)) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       setoid_rewrite (@refine_Sum body') at 1;
+                       clear refine_body' ] )
+
+  | |- refine (Bind (@Query_For ?ResultT ?body) ?k) _ =>
+    makeEvar (Comp (list ResultT))
+             ltac:(fun body' =>
+                     let refine_body' := fresh in
+                     assert (refine body body') as refine_body';
+                   [ |
+                     setoid_rewrite refine_body';
+                       setoid_rewrite (@refine_For_List ResultT body') at 1;
+                       clear refine_body' ] )
+
+  end.
+
 Ltac find_equiv_tl a As f g :=
   (* Find an equivalent function on just the tail of an ilist*)
   let a := fresh in
@@ -2210,6 +2308,25 @@ Ltac implement_Query CreateTerm EarlyIndex LastIndex
     ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
            ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep).
 
+Ltac implement_TopMost_Query' k k_dep:=
+  Focused_refine_TopMost_Query;
+  [ (* Step 1: Implement [In / Where Combinations] by enumerating and joining. *)
+    implement_In_opt;
+    (* Step 2: Move filters to the outermost [Join_Comp_Lists] to which *)
+    (* they can be applied. *)
+    repeat progress distribute_filters_to_joins;
+    (* Step 3: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+    implement_filters_with_find k k_dep
+  |
+  ]; pose_string_hyps; pose_heading_hyps.
+
+Ltac implement_TopMost_Query CreateTerm EarlyIndex LastIndex
+     makeClause_dep EarlyIndex_dep LastIndex_dep :=
+  implement_TopMost_Query'
+    ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
+           ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep).
+
 Ltac cleanup_Count :=
   repeat first [ setoid_rewrite app_nil_r
                | setoid_rewrite filter_true
@@ -2264,6 +2381,25 @@ Ltac implement_delete CreateTerm EarlyIndex LastIndex
             | implement_EnsembleDelete_AbsR ltac:(find_simple_search_term
                                                     CreateTerm EarlyIndex LastIndex)
             |  setoid_rewrite refine_Pick_DelegateToBag_AbsR; [ | solve [ eauto ] .. ] ]).
+
+Ltac implement_UpdateUnConstrRelationDeleteC find_search_term :=
+  match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (UpdateUnConstrRelationDeleteC ?r_o ?idx ?DeletedTuples) ?k) _ ] =>
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                    [ find_search_term qs_schema idx filter_dec search_term
+                                    | let H' := fresh in
+                                      pose proof (fun k' => @refine_BagADT_QSDelete' _ _ _ r_o r_n idx DeletedTuples k k' _ search_term eqv H) as H';
+                                        fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                        eapply H'; clear H' eqv; set_evars])
+  end.
 
 Ltac deletion CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
@@ -2381,6 +2517,43 @@ Ltac partial_master_plan' matchIndex
           end
          ). *)
 
+Ltac master_rewrite_drill :=
+  subst_refine_evar;
+  first
+    [ try set_refine_evar; implement_QSInsertSpec
+    | try set_refine_evar; implement_QSDeleteSpec
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
+
+Ltac Finite_AbsR_rewrite_drill :=
+  subst_refine_evar;
+  first
+    [ try set_refine_evar;
+      match goal with
+        |- context [ QueryResultComp ?P ?k ] =>
+        match k with
+        | context [Query_Where _ _] =>
+          match k with
+          | context [QueryResultComp _ _] =>
+            match type of k with
+            | ?A -> ?B => makeEvar (A -> B)
+                                   ltac:(fun k' => let H := fresh in
+                                                   assert (@pointwise_relation A B refine k k') as H;
+                                         [ intros ?; try set_refine_evar | setoid_rewrite H; clear H])
+            end
+          end
+        end
+      end
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
 
 Global Opaque CallBagMethod.
 Global Opaque CallBagConstructor.
@@ -2432,3 +2605,9 @@ Arguments ilist3_hd : simpl never.
 
 Global Opaque callMethod.
 Global Opaque callConstructor.
+
+Global Opaque QSInsert.
+Global Opaque QSDelete.
+Global Opaque UpdateUnConstrRelationInsertC.
+Global Opaque UpdateUnConstrRelationDeleteC.
+Global Opaque QueryResultComp.

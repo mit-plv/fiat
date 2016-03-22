@@ -46,11 +46,15 @@ Definition DnsRecSig : ADTSig :=
 
       Method GetRequestStage : rep * id -> rep * (option Stage),
       Method UpdateRequestStage : rep * id * Stage -> rep * bool,
-                      
+
      (* TTL *)
       Method UpdateTTLs : rep * time -> rep * bool,
 
-      (* Main method. Talks to an outside "wrapper" in continuation-passing style. Given the time and something from the wrapper, figures out what to do with it and returns a response that may be an error, answer, or request for the wrapper to send a question to another server. *)
+     (* Main method. Talks to an outside "wrapper" in
+     continuation-passing style. Given the time and something from the
+     wrapper, figures out what to do with it and returns a response
+     that may be an error, answer, or request for the wrapper to send
+     a question to another server. *)
       Method Process : rep * time * FromOutside -> rep * ToOutside
     }.
 
@@ -113,7 +117,6 @@ Definition IndexedEnsemble_In
 Arguments IndexedEnsemble_In [_] _ A%QuerySpec.
 
 (* Stub Methods. *)
-Definition UpdateTTLs_stub {A} (r : A) (t : time) := ret (r, false).
 
 Fixpoint InsertAll {qsSchema}
          {A}
@@ -144,30 +147,23 @@ Definition isReferral (p : packet) :=
   is_empty (p!"answers")
   && (negb (is_empty (p!"authority")))
   && (negb (is_empty (p!"additional"))).
-Set Printing Implicit.
 
 Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHeading) :=
   let authRdataMatchesAddlName (tup2 : resourceRecord * resourceRecord) :=
-      match (fst tup2)!sRDATA with
-      | inl n => beq_name n ((snd tup2)!sNAME)
-      | _ => false
-      end in
+      beq_name ((fst tup2)!sRDATA) ((snd tup2)!sNAME) in
   let auth_addl_join := list_join authRdataMatchesAddlName (p!"authority") (p!"additional") in
   map (fun tup_pairs : resourceRecord * resourceRecord =>
          let (auth, addl) := tup_pairs in
          < sREFERRALDOMAIN :: (auth!sNAME : name),
           sRTYPE :: (auth!sTYPE : RRecordType),
           sRCLASS :: (auth!sCLASS : RRecordClass),
-          sRTTL :: (auth!sTTL : nat),
+          sRTTL :: (auth!sTTL : W),
           (* inline RDATA and additional record *)
           sSERVERDOMAIN :: (addl!sNAME : name),
           sSTYPE :: (addl!sTYPE : RRecordType),
           sSCLASS :: (addl!sCLASS : RRecordClass),
           sSTTL :: (addl!sTTL : nat),
-          sSIP :: match (addl!sRDATA) with
-                  | inl n => n
-                  | _ => [ ]
-                  end,
+          sSIP :: addl!sRDATA,
           (* IP in RDATA of additional record *)
           sTIME_LAST_CALCULATED :: timeArrived>) auth_addl_join.
 
@@ -187,67 +183,66 @@ Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHe
 Definition InsertResultForDomainSpec (r : QueryStructure DnsRecSchema)
             (timeArrived : time)
             (toStore : ToStore) : Comp (_ * bool) :=
-          q <- UpdateTTLs_stub r timeArrived;
-          let (r, _) := q in
+  match toStore with
+  | Answer reqName pac =>
+    r1 <- Insert <sDOMAIN :: reqName, sCACHETABLE :: CAnswers >%Tuple into r!sCACHE_POINTERS;
+      r2 <- InsertAll (fst r1) ``sCACHE_ANSWERS
+         (fun ans =>
+            ret (< sDOMAIN :: reqName,
+                 sPACKET_SECTION :: PAnswer,
+                 sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
+         (pac!"answers");
+      r3 <- InsertAll (fst r2) ``sCACHE_ANSWERS
+         (fun ans =>
+            ret (< sDOMAIN :: reqName,
+                 sPACKET_SECTION :: PAuthority,
+                 sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
+         (pac!"authority");
+      InsertAll (fst r3) ``sCACHE_ANSWERS
+                (fun ans =>
+                   ret (< sDOMAIN :: reqName,
+                        sPACKET_SECTION :: PAdditional,
+                        sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
+                (pac!"additional")
 
-          match toStore with
-          | Answer reqName pac =>
-            r1 <- Insert <sDOMAIN :: reqName, sCACHETABLE :: CAnswers >%Tuple into r!sCACHE_POINTERS;
-          r2 <- InsertAll (fst r1) ``sCACHE_ANSWERS
-             (fun ans =>
-                ret (< sDOMAIN :: reqName,
-                sPACKET_SECTION :: PAnswer,
-                sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
-             (pac!"answers");
-          r3 <- InsertAll (fst r2) ``sCACHE_ANSWERS
-             (fun ans =>
-                ret (< sDOMAIN :: reqName,
-                     sPACKET_SECTION :: PAuthority,
-                     sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
-             (pac!"authority");
-          InsertAll (fst r3) ``sCACHE_ANSWERS
-                    (fun ans =>
-                       ret (< sDOMAIN :: reqName,
-                            sPACKET_SECTION :: PAdditional,
-                            sTIME_LAST_CALCULATED :: timeArrived> ++ ans))
-                    (pac!"additional")
+  | Failure reqName pac soa =>
+    r1 <- Insert <sDOMAIN :: reqName, sCACHETABLE :: CFailures > into r!sCACHE_POINTERS;
+      Insert (<sDOMAIN :: reqName, sTIME_LAST_CALCULATED :: timeArrived>
+                                   ++ soa) into (fst r1)!sCACHE_FAILURES
 
-          | Failure reqName pac soa =>
-            r1 <- Insert <sDOMAIN :: reqName, sCACHETABLE :: CFailures > into r!sCACHE_POINTERS;
-            Insert (<sDOMAIN :: reqName, sTIME_LAST_CALCULATED :: timeArrived>
-                                         ++ soa) into (fst r1)!sCACHE_FAILURES
+  end.
 
-          end.
-
-(* Delete a pending request's entry in the request's table, its SLIST order, and its SLIST *)
+(* Delete a pending request's entry in the request's table, its SLIST
+order, and its SLIST *)
 Definition DeletePendingRequestInfoSpec (r : QueryStructure DnsRecSchema)
            (reqId : id) : Comp (_ * bool) :=
-           r1 <- Delete row from r!sREQUESTS where row!sID = reqId;
-           r3 <- Delete row from (fst r1)!sSLIST where row!sREQID = reqId;
-           ret (fst r3, nonempty (snd r1) || nonempty (snd r3)).
+  r1 <- Delete row from r!sREQUESTS where row!sID = reqId;
+  r3 <- Delete row from (fst r1)!sSLIST where row!sREQID = reqId;
+  ret (fst r3, nonempty (snd r1) || nonempty (snd r3)).
 
-(* Delete a cached name's entry in the cache pointer table, as well as all relevant *)
-(* cached answers or failures (note, does not delete things from referrals or SLIST). *)
+(* Delete a cached name's entry in the cache pointer table, as well as
+all relevant cached answers or failures (note, does not delete things
+from referrals or SLIST). *)
 Definition DeleteCachedNameResultSpec
            (r : QueryStructure DnsRecSchema)
            (domain : name) : Comp (_ * CacheResult) :=
-             results <- For (pointer in r!sCACHE_POINTERS)
-                     Where (pointer!sDOMAIN = domain)
-                     Return (pointer!sCACHETABLE);
-        match results with
-        (* domain to be deleted is not actually in cache *)
-        | [ ] => ret (r, Nope)
-        | tbl :: _ =>
-          r1 <- Delete row from r!sCACHE_POINTERS where row!sDOMAIN = domain;
-          match tbl with
-          | CAnswers =>
-            answer_res <- Delete row from (fst r1)!sCACHE_ANSWERS where row!sDOMAIN = domain;
-            ret (fst answer_res, Ans (snd answer_res))
-          | CFailures =>
-              failure_res <- Delete row from (fst r1)!sCACHE_FAILURES where row!sDOMAIN = domain;
-            ret (fst failure_res, Fail (listToOption (snd failure_res)))
-          end
-        end.
+  results <- For (pointer in r!sCACHE_POINTERS)
+          Where (pointer!sDOMAIN = domain)
+          Return (pointer!sCACHETABLE);
+  match results with
+  (* domain to be deleted is not actually in cache *)
+  | [ ] => ret (r, Nope)
+  | tbl :: _ =>
+    r1 <- Delete row from r!sCACHE_POINTERS where row!sDOMAIN = domain;
+    match tbl with
+    | CAnswers =>
+      answer_res <- Delete row from (fst r1)!sCACHE_ANSWERS where row!sDOMAIN = domain;
+      ret (fst answer_res, Ans (snd answer_res))
+    | CFailures =>
+      failure_res <- Delete row from (fst r1)!sCACHE_FAILURES where row!sDOMAIN = domain;
+      ret (fst failure_res, Fail (listToOption (snd failure_res)))
+    end
+  end.
 
 (* For a given name, look in the cache and return the rows that match the *)
 (* longest suffix of the name. Subcase: if there already is a concrete *)
@@ -255,13 +250,12 @@ Definition DeleteCachedNameResultSpec
 Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
            (currTime : time) (reqName : name) : Comp (_ * CacheResult) :=
   (* Update the TTLs *)
-  r' <- UpdateTTLs_stub r currTime;
   (* Check if we have cached results for reqName *)
-  results <- For (pointer in (fst r')!sCACHE_POINTERS)
-          Where (pointer!sDOMAIN = reqName)
-          Return (pointer!sCACHETABLE);
+  results <- For (pointer in r!sCACHE_POINTERS)
+             Where (pointer!sDOMAIN = reqName)
+             Return (pointer!sCACHETABLE);
   (* TODO: filter by packetsection = answer? are authority/additional useful? *)
-  suffixes <- For (ans in (fst r')!sCACHE_REFERRALS)
+  suffixes <- For (ans in r!sCACHE_REFERRALS)
            Where (IsPrefix ans!sREFERRALDOMAIN reqName)
            Return ans;
   let domainLength (tup : ReferralRow) := List.length tup!sREFERRALDOMAIN in
@@ -271,12 +265,11 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
       (* There may be multiple rows in Answers, containing various answer/authority/addl *)
       (* This returns all of them and leaves it to Process to hierarchize/query them *)
       (* (they should all be for the same domain though; the longest suffix is unique *)
-      nameRes <- For (f in (fst r')!sCACHE_ANSWERS)
-              Where (f!sDOMAIN = reqName)
-              Return f;
-        (* TTL* *)
-        ret (fst r', Ans nameRes)
-            
+      nameRes <- For (f in r'!sCACHE_ANSWERS)
+                 Where (f!sDOMAIN = reqName)
+                 Return f;
+      ret (r, Ans nameRes)
+
     | CFailures :: _ =>
       (* This domain [s.g.com] failed. If we have any results for the longest prefix, *)
       (* return them and label them as referrals. (e.g. an answer for [g.com])  *)
@@ -289,7 +282,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
         ret (fst r', Fail (listToOption nameRes))
             Else
             ret (fst r', Ref longestSuffixes)
-            
+
     | [ ] =>
       (* name has nothing cached for it, but we might have referrals for subdomains *)
       If (is_empty longestSuffixes) Then
@@ -297,7 +290,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
          Else
          ret (fst r', Ref longestSuffixes)
     end.
-    
+
     (* -------- REFERRAL/SLIST FUNCTIONS *)
 
 (* Filters referrals for the valid ones (not already in list + type, class), *)
@@ -335,15 +328,14 @@ Definition ReferralRowsToSLISTSpec
                   sQUERYCOUNT :: 0 (* New Row / hasn't been queried before*) >
                   ++ curRef))
             referrals.
-  
-  (* Get the "best" referral (the one with the highest matchCount), *)
+
+(* Get the "best" referral (the one with the highest matchCount), *)
 (* add 1 to its query count, update the request's match count, and re-sort *)
 (* SLIST according to this. Then returns that "best" referral *)
 Definition GetFirstReferralAndUpdateSLISTSpec
            (r : QueryStructure DnsRecSchema) (curTime : time) (reqId : id)
   : Comp (_ * (option SLIST_ReferralRow)) :=
-  r' <- UpdateTTLs_stub r curTime;
-  r'' <- Update slist_ref from (fst r')!sSLIST as slist_ref'
+  r'' <- Update slist_ref from r!sSLIST as slist_ref'
                        making slist_ref'!sQUERYCOUNT = slist_ref!sQUERYCOUNT + 1
                        where (slist_ref!sREQID = reqId /\
                               forall slist_ref'',
@@ -364,64 +356,64 @@ Definition GetFirstReferralAndUpdateSLISTSpec
 
 Definition UpdateCacheReferralsAndSLISTSpec (r : QueryStructure DnsRecSchema)
            (currTime : time) (reqId : id) (pac : packet) (referrals : list ReferralRow)
-                : Comp (_ * ToOutside) :=
-             (* Insert referrals into cache *)
-             r'' <- InsertAll r ``sCACHE_REFERRALS (fun x => ret x) referrals;
-             (* Get name of the original question *)
-             req <- For (req in (fst r'')!sREQUESTS)
-                         Where (req!sID = reqId)
-                         Return req!sQNAME;
-             match req with
-             | [ questionDomain ] =>
-               (* TODO: filter by type, class *)
-               (* Put the referrals into the request's sLIST *)
-               validReferrals <- [[ ref in referrals |
-                                    ~ exists slist_ref,
-                                        IndexedEnsemble_In slist_ref ((fst r'')!sSLIST)
-                                        /\ (ref!sREFERRALDOMAIN = slist_ref!sREFERRALDOMAIN)]];
-               r''' <- InsertAll (fst r'') ``sSLIST
-                        (fun curRef : ReferralRow =>
-                           (* Augment a referral row with the additional fields in the SLIST *)
-                           (* referral row (ids, counts) *)
-                           (* Calculate match count of referral domain to question domain *)
-                           (* e.g. ref domain = g.com, question domain = s.g.com -> count = 2 *)
-                           longestSharedSuffix <- { name' : name |
-                                                    IsPrefix name' curRef!sREFERRALDOMAIN
-                                                    /\ IsPrefix name' [""]
-                                                    /\ forall name'' : name,
-                                                        IsPrefix name'' curRef!sREFERRALDOMAIN
-                                                        -> IsPrefix name'' [""]
-                                                        -> List.length name' >= List.length name'' };
-                         (* Generate unique ids that are all greater than the existing ids *)
-                         newID <- { id : nat | forall ref,
-                                      IndexedEnsemble_In ref (r!sSLIST)
-                                      -> ref!sREQID = reqId
-                                      -> id > ref!sREFERRALID };
-                         ret (<sREQID :: reqId, sREFERRALID :: newID,
-                              sMATCHCOUNT :: (List.length longestSharedSuffix),
-                              sQUERYCOUNT :: 0 (* New Row / hasn't been queried before*) >
-                              ++ curRef))
-                        referrals;
-               (* Get the "best" referral (the one with the lowest position in SLIST), *)
-               (* add 1 to its query count, update the request's match count, and  *)
-               (* then return that "best" referral *)
-               r4 <- Update slist_ref from (fst r''')!sSLIST as slist_ref'
-                       making slist_ref'!sQUERYCOUNT = slist_ref!sQUERYCOUNT + 1
-                       where (slist_ref!sREQID = reqId /\
-                              forall slist_ref'',
-                                IndexedEnsemble_In slist_ref'' (r!sSLIST)
-                                -> slist_ref''!sMATCHCOUNT <= slist_ref!sMATCHCOUNT);
-                match r4 with
-                | (r5, bestRef :: _) =>
-                   r6 <- Update req from r5!sREQUESTS as req'
-                            making req'!sSTAGE = Some bestRef!sMATCHCOUNT
-                            where (req!sID = reqId);
-                (* Send the same question to the server with the IP given in the referral *)
-                   ret (fst r6, ServerQuestion reqId bestRef!sSIP pac)
-                | (r5, _) => ret (r5, NoReferralsLeft reqId pac)
-                end
-               | _ => ret (fst r'', NoReferralsLeft reqId pac)
-             end.
+  : Comp (_ * ToOutside) :=
+  (* Insert referrals into cache *)
+  r'' <- InsertAll r ``sCACHE_REFERRALS (fun x => ret x) referrals;
+  (* Get name of the original question *)
+  req <- For (req in (fst r'')!sREQUESTS)
+      Where (req!sID = reqId)
+      Return req!sQNAME;
+  match req with
+  | [ questionDomain ] =>
+    (* TODO: filter by type, class *)
+    (* Put the referrals into the request's sLIST *)
+    validReferrals <- [[ ref in referrals |
+                         ~ exists slist_ref,
+                             IndexedEnsemble_In slist_ref ((fst r'')!sSLIST)
+                             /\ (ref!sREFERRALDOMAIN = slist_ref!sREFERRALDOMAIN)]];
+      r''' <- InsertAll (fst r'') ``sSLIST
+           (fun curRef : ReferralRow =>
+              (* Augment a referral row with the additional fields in the SLIST *)
+              (* referral row (ids, counts) *)
+              (* Calculate match count of referral domain to question domain *)
+              (* e.g. ref domain = g.com, question domain = s.g.com -> count = 2 *)
+              longestSharedSuffix <- { name' : name |
+                                       IsPrefix name' curRef!sREFERRALDOMAIN
+                                       /\ IsPrefix name' [""]
+                                       /\ forall name'' : name,
+                                           IsPrefix name'' curRef!sREFERRALDOMAIN
+                                           -> IsPrefix name'' [""]
+                                           -> List.length name' >= List.length name'' };
+            (* Generate unique ids that are all greater than the existing ids *)
+            newID <- { id : nat | forall ref,
+                         IndexedEnsemble_In ref (r!sSLIST)
+                         -> ref!sREQID = reqId
+                         -> id > ref!sREFERRALID };
+            ret (<sREQID :: reqId, sREFERRALID :: newID,
+                 sMATCHCOUNT :: (List.length longestSharedSuffix),
+                 sQUERYCOUNT :: 0 (* New Row / hasn't been queried before*) >
+                 ++ curRef))
+           referrals;
+      (* Get the "best" referral (the one with the lowest position in SLIST), *)
+      (* add 1 to its query count, update the request's match count, and  *)
+      (* then return that "best" referral *)
+      r4 <- Update slist_ref from (fst r''')!sSLIST as slist_ref'
+            making slist_ref'!sQUERYCOUNT = slist_ref!sQUERYCOUNT + 1
+  where (slist_ref!sREQID = reqId /\
+         forall slist_ref'',
+           IndexedEnsemble_In slist_ref'' (r!sSLIST)
+           -> slist_ref''!sMATCHCOUNT <= slist_ref!sMATCHCOUNT);
+    match r4 with
+    | (r5, bestRef :: _) =>
+      r6 <- Update req from r5!sREQUESTS as req'
+                                              making req'!sSTAGE = Some bestRef!sMATCHCOUNT
+    where (req!sID = reqId);
+      (* Send the same question to the server with the IP given in the referral *)
+      ret (fst r6, ServerQuestion reqId bestRef!sSIP pac)
+        | (r5, _) => ret (r5, NoReferralsLeft reqId pac)
+    end
+      | _ => ret (fst r'', NoReferralsLeft reqId pac)
+  end.
 
 Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
   QueryADTRep DnsRecSchema {
@@ -454,8 +446,6 @@ Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
             making c'!sSTAGE = reqStage
             where (c!sID = reqID);
         ret (fst q, nonempty (snd q)),
-
-
 
         (* ---------- TTL *)
      (* Decrement the TTLs of everything and store currTime in time_last_calculated,
@@ -546,7 +536,7 @@ Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
                   (* of the caches. *)
                   r5 <- InsertResultForDomainSpec (fst r4) timeArrived (Answer reqName pac);
                   ret (fst r5, ClientAnswer reqId pac)
-                else match failure with                       
+                else match failure with
                      (* Failure. Done, forward it on *)
                      | Some soa =>
                        (* Update cache *)

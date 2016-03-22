@@ -3,6 +3,8 @@ Require Import Coq.Vectors.Vector
         Coq.Bool.Bool
         Coq.Bool.Bvector
         Coq.Lists.List
+        Bedrock.Word
+        Bedrock.Memory
         Fiat.QueryStructure.Automation.AutoDB.
 
 Section Packet.
@@ -90,22 +92,22 @@ Section Packet.
     "qclass" :: RRecordClass >%Heading.
   (* ["google", "com"] *)
 
-Definition default_refresh_time := 3600. (* seconds *)
-Definition default_retry_time := 600.
-Definition default_expire_time := 86400.
+Definition default_refresh_time : W := natToWord _ 3600. (* seconds *)
+Definition default_retry_time : W := natToWord _ 600.
+Definition default_expire_time : W := natToWord _ 600.
 (* may cause stack overflow / segfault; use hours instead? *)
-Definition default_minimum_TTL := 3600.
+Definition default_minimum_TTL : W := natToWord _ 3600.
 
   (* TODO: authoritative DNS server does not yet store or return this SOA *)
   (* https://support.microsoft.com/en-us/kb/163971 *)
   Definition SOAHeading :=                 (* Start of Authority *)
     < "sourcehost" :: name,
       "contact_email" :: name,
-      "serial" :: nat,             (* revision # of zone file; needs to be updates *)
-      "refresh" :: nat,
-      "retry" :: nat,              (* failed zone transfer *)
-      "expire" :: nat,           (* complete a zone transfer *)
-      "minTTL" :: nat >%Heading.           (* for negative queries *)
+      "serial" :: W,             (* revision # of zone file; needs to be updates *)
+      "refresh" :: W,
+      "retry" :: W,              (* failed zone transfer *)
+      "expire" :: W,           (* complete a zone transfer *)
+      "minTTL" :: W >%Heading.           (* for negative queries *)
 
   Definition SOA :=                 (* Start of Authority *)
     @Tuple SOAHeading.           (* for negative queries *)
@@ -121,12 +123,12 @@ Definition default_minimum_TTL := 3600.
   Definition sRLENGTH := "rlength".
 
   Definition resourceRecordHeading :=
-    <sNAME :: name,
-     sTTL :: nat,
-     sCLASS :: RRecordClass,
-     sTYPE :: RRecordType,
-     sRLENGTH :: nat,
-     sRDATA :: name + SOA>%Heading.
+    < sNAME :: name,
+      sTTL :: W,
+      sCLASS :: RRecordClass,
+      sTYPE :: RRecordType,
+      sRLENGTH :: W,
+      sRDATA :: name>%Heading.
 
   Definition resourceRecord :=
     @Tuple resourceRecordHeading.

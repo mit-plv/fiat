@@ -97,10 +97,23 @@ Definition BookStoreSpec : ADT BookStoreSig :=
         ret (r, count)
   }%methDefParsing.
 
+Record DelegationADT (Sig : ADTSig)
+  : Type
+  := Build_SharpenedUnderDelegates
+       { DelegateeIDs : nat;
+         DelegateeSigs : Fin.t DelegateeIDs -> ADTSig;
+         DelegatedImplementation :
+           forall (DelegateImpls : forall idx,
+                      ADT (DelegateeSigs idx)),
+             ADT Sig;
+         DelegateeSpecs : forall idx, ADT (DelegateeSigs idx) }.
+
 Theorem SharpenedBookStore :
   FullySharpened BookStoreSpec.
 Proof.
+
   master_plan EqIndexTactics.
+
 Time Defined.
 
 Time Definition BookstoreImpl : ComputationalADT.cADT BookStoreSig :=

@@ -1,5 +1,38 @@
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
+Definition verifyPointsS := "verifyPoints".
+
+ Definition MonitorSpec := ADTRep (list nat) {
+   Def Constructor0 "new" : rep := ret nil,
+   Def Method2 "verifyPoints" (r : rep) (p p' : bool) : rep * bool :=
+     ret (r, true),
+   Def Method1 "reportError" (r : rep) (e : nat) : rep * unit :=
+     ret (e :: r, tt),
+   Def Method0 "getErrors" (r : rep) : rep * list nat :=
+     ret (r, r)
+ }%ADTParsing.
+
+ Module Type MonitorImpl.
+   Variable MonitorImpl' : FullySharpened MonitorSpec.
+   Definition MonitorImpl := projT1 MonitorImpl'.
+   Definition MonitorRep := ComputationalADT.cRep MonitorImpl.
+End MonitorImpl.
+
+ Module MonitorClient (impl : MonitorImpl).
+   Import impl.
+
+   Definition MonitorClient' r' p p' :=
+     res <- ret (CallMethod MonitorImpl verifyPointsS r' p p');
+     ret (fst res, snd res).
+ End MonitorClient.
+
+ Variable z : MonitorImpl.
+
+ Module MonitorClient' := MonitorClient .
+
+ Definition MonitorClient
+
+
 Definition int := nat.
 Definition ERROR := 2. (* should have been defined as -1 *)
 Definition FAILURE := 0.
@@ -1329,5 +1362,7 @@ Time Defined.
 
 Time Definition ROSMasterImpl : ComputationalADT.cADT _ :=
   Eval simpl in projT1 SharpenedRosMaster.
+
+Print StringId7.
 
 Print ROSMasterImpl.

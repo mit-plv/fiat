@@ -469,26 +469,6 @@ Section ConstraintCheckRefinements.
 
   Local Transparent Count.
 
-  Lemma refine_Where' {A B} :
-    forall (P : Ensemble A)
-           (P_dec : DecideableEnsemble P)
-           (bod : Comp (list B)),
-    forall a,
-      refine
-        (if (dec a) then
-           bod
-         else
-           (ret []))
-        (Where (P a) bod)%QuerySpec.
-  Proof.
-    unfold refine, Query_Where; intros.
-    computes_to_inv; intuition.
-    caseEq (dec a).
-    apply dec_decides_P in H; eauto.
-    rewrite H1; eauto.
-    unfold not; intros H'; apply dec_decides_P in H'; congruence.
-  Qed.
-
   Lemma In_UnConstrQuery_In {qsSchema} {A}
     : forall (qs : UnConstrQueryStructure qsSchema) Ridx bod results,
       UnConstrQuery_In qs Ridx bod ↝ results

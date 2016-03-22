@@ -1345,6 +1345,31 @@ Proof.
       - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
   Qed.
 
+Lemma refine_BagADT_QSDelete' {ResultT}
+  : forall
+    (r_o : UnConstrQueryStructure qs_schema)
+    (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
+    idx
+    DeletedTuples
+    (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT)
+    (DT_Dec : DecideableEnsemble DeletedTuples)
+    search_pattern,
+    ExtensionalEq (@dec _ _ DT_Dec)
+                  (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
+    -> DelegateToBag_AbsR r_o r_n
+    -> (forall r_o r_n,
+           DelegateToBag_AbsR r_o r_n ->
+           refine (k r_o) (k' r_n))
+    ->  refine
+          (r_o' <- UpdateUnConstrRelationDeleteC r_o idx DeletedTuples;
+           k r_o')
+          (r_n' <- CallBagDelete idx r_n search_pattern;
+           k' (fst r_n')).
+Proof.
+  unfold refine; intros.
+Admitted.
+
+
 Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
           (ResultT : Type) :
   forall r_o (r_n : IndexedQueryStructure qs_schema BagIndexKeys)

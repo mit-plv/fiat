@@ -1584,24 +1584,28 @@ Ltac eassumption' :=
          | [ H : _ |- _ ] => exact H
        end.
 
-Ltac progress_subgoal top tac cont :=
-  top; (tac; try (cont ()) || (try (cont ()))).
+Ltac progress_subgoal top tac finish_fn cont :=
+  top; (* Decompose goal *)
+  (* idtac "Decomposing Goal"; For debugging *)
+  (tac; try (cont ()) (* Process goal further with tac and recurse. *)
+   || (try (cont ())) (* Just recurse *)
+   || finish_fn)      (* Finish up if unable to progress after recursing *).
 
 (* ltac is call-by-value, so wrap the cont in a function *)
 (* local definition in a_u_s *)
-Ltac cont_fn top tac'' x :=
-  apply_under_subgoal top tac'' with
+Ltac cont_fn top tac'' finish_fn x :=
+  apply_under_subgoal top tac'' finish_fn with
 
   (* mutually recursive with progress_subgoal *)
   (* calls top on each subgoal generated, which may generate more subgoals *)
   (* fails when top fails in progress_subgoals *)
-  apply_under_subgoal top tac'' :=
-    progress_subgoal top tac'' ltac:(cont_fn top tac'').
+  apply_under_subgoal top tac'' finish_fn :=
+    progress_subgoal top tac'' finish_fn ltac:(cont_fn top tac'' finish_fn).
 
 Ltac doAny srewrite_fn drills_fn finish_fn :=
   let repeat_srewrite_fn := repeat srewrite_fn in
   try repeat_srewrite_fn;
-    apply_under_subgoal drills_fn ltac:(repeat_srewrite_fn);
+    try apply_under_subgoal drills_fn ltac:(repeat_srewrite_fn) finish_fn;
     finish_fn.
 
 Ltac set_refine_evar :=

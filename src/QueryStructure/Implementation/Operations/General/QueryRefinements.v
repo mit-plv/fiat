@@ -113,6 +113,20 @@ Proof.
   t_morphism Query_For.
 Qed.
 
+Add Parametric Morphism heading ResultT P
+  : (@QueryResultComp heading ResultT P)
+    with signature (pointwise_relation _ refine ==> refine)
+      as refine_refine_QueryResultComp.
+Proof.
+  intros.
+  unfold QueryResultComp; intros.
+  f_equiv.
+  unfold pointwise_relation in *; intros.
+  induction a; simpl; f_equiv; eauto.
+  unfold pointwise_relation.
+  intros; setoid_rewrite IHa; f_equiv.
+Qed.
+
 Add Parametric Morphism ResultT
   : (@Count ResultT)
     with signature (refine ==> refine)
@@ -947,14 +961,16 @@ Proof.
 Qed.
 
 Lemma refine_Where_Intersection' heading {ResultT}
-  : forall R P (P_dec : P \/ ~ P) (bod : _ -> Comp (list ResultT)),
-    FiniteEnsemble R
-    -> refine
-         (QueryResultComp (heading := heading) R (fun r => Query_Where P (bod r)))
-         (Query_Where P (QueryResultComp R bod))
+        : forall R,
+          FiniteEnsemble R
+          -> forall P (bod : _ -> Comp (list ResultT)),
+            (P \/ ~ P)
+            -> refine
+                 (QueryResultComp (heading := heading) R (fun r => Query_Where P (bod r)))
+                 (Query_Where P (QueryResultComp R bod))
 .
 Proof.
-  unfold refine, In, Query_Where, QueryResultComp; intros * ? ? Fin_R v Comp_v.
+  unfold refine, In, Query_Where, QueryResultComp; intros ? Fin_R ? ? ? v Comp_v.
   intuition; computes_to_inv; intuition.
   - computes_to_inv; refine pick val _; eauto.
     repeat computes_to_econstructor.
@@ -970,6 +986,81 @@ Proof.
     instantiate (1 := fun _ => ret nil); simpl; intros; computes_to_inv;
     subst; eauto.
     clear; induction x; simpl; repeat computes_to_econstructor; eauto.
+Qed.
+
+Lemma refine_Where' {A B} :
+  forall (P : Ensemble A)
+         (P_dec : DecideableEnsemble P)
+         (bod : Comp (list B)),
+  forall a,
+    refine
+      (if (dec a) then
+         bod
+       else
+         (ret nil))
+      (Where (P a) bod)%QuerySpec.
+Proof.
+  unfold refine, Query_Where; intros.
+  computes_to_inv; intuition.
+  caseEq (dec a).
+  apply dec_decides_P in H; eauto.
+  rewrite H1; eauto.
+  unfold not; intros H'; apply dec_decides_P in H'; congruence.
+Qed.
+
+
+Lemma refine_Intersection_Where heading {ResultT}
+  : forall R P (P_dec : DecideableEnsemble P)
+           (bod : _ -> Comp (list ResultT)),
+    refine
+      (QueryResultComp (IndexedEnsemble_Intersection R P) bod)
+      (QueryResultComp (heading := heading) R (fun r => Query_Where (P r) (bod r))).
+Proof.
+  unfold refine, In, QueryResultComp; intros * ? ? v Comp_v.
+  repeat computes_to_inv.
+  refine pick val _;
+    eauto using UnIndexedEnsembleListEquivalence_filter.
+  repeat computes_to_econstructor.
+  revert v Comp_v'; clear; induction v0; intros; simpl in *; eauto.
+  computes_to_inv; subst.
+  apply (refine_Where' P_dec) in Comp_v'.
+  find_if_inside; simpl.
+  computes_to_econstructor; eauto.
+  computes_to_inv; subst; simpl; eauto.
+Qed.
+
+Lemma refine_IndexedEnsemble_Intersection_Intersection heading
+  : forall P Q R,
+    refine {queriedList : list (@RawTuple heading) |
+            UnIndexedEnsembleListEquivalence
+              (IndexedEnsemble_Intersection
+                 (IndexedEnsemble_Intersection
+                    P Q) R)
+           queriedList}
+              {queriedList : list (@RawTuple heading) |
+               UnIndexedEnsembleListEquivalence
+                 (IndexedEnsemble_Intersection
+                    P (fun tup => Q tup /\ R tup))
+              queriedList}.
+Proof.
+  intros.
+  eapply refineEquiv_iff_Pick; unfold pointwise_relation; intuition;
+  eapply UnIndexedEnsembleListEquivalence_Same_set; eauto using IndexedEnsemble_Intersection_And.
+  unfold Same_set, Included, In, IndexedEnsemble_Intersection; intuition eauto.
+Qed.
+
+Lemma refine_QueryResultComp_Intersection_Intersection heading {ResultT}
+  : forall P Q R k,
+    refine (@QueryResultComp heading ResultT
+           (IndexedEnsemble_Intersection
+              (IndexedEnsemble_Intersection
+                 P Q)R) k)
+           (QueryResultComp
+              (IndexedEnsemble_Intersection
+                 P (fun tup => Q tup /\ R tup))
+              k).
+Proof.
+  intros; unfold QueryResultComp; rewrite refine_IndexedEnsemble_Intersection_Intersection; reflexivity.
 Qed.
 
 Lemma DropQSConstraintsQuery_In {A} :
@@ -1006,6 +1097,44 @@ Definition FiniteTables_AbsR
            (r_o r_n : UnConstrQueryStructure qs_schema) :=
   r_o = r_n /\ forall idx, (FiniteEnsemble (GetUnConstrRelation r_o idx)).
 
+
+Lemma GetRel_FiniteTableAbsR:
+  forall (qsSchema : QueryStructureSchema) (qs qs' : UnConstrQueryStructure qsSchema)
+         (Ridx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> GetUnConstrRelation qs Ridx = GetUnConstrRelation qs' Ridx.
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTable_FiniteTableAbsR
+      {qsSchema}
+  : forall (qs qs' : UnConstrQueryStructure qsSchema)
+           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> FiniteEnsemble (GetUnConstrRelation qs idx).
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTable_FiniteTableAbsR'
+      {qsSchema}
+  : forall (qs qs' : UnConstrQueryStructure qsSchema)
+           (idx : Fin.t (numRawQSschemaSchemas qsSchema)),
+    FiniteTables_AbsR qs qs'
+    -> FiniteEnsemble (GetUnConstrRelation qs' idx).
+Proof.
+  unfold FiniteTables_AbsR; intros; intuition; subst; eauto.
+Qed.
+
+Lemma FiniteTables_AbsR_symmetry {qs_schema} :
+  forall (r_o r_n : UnConstrQueryStructure qs_schema),
+    FiniteTables_AbsR r_o r_n
+    -> FiniteTables_AbsR r_n r_o.
+Proof.
+  unfold FiniteTables_AbsR; intuition subst; eauto.
+Qed.
+
 Lemma FiniteTables_AbsR_Insert
       {qs_schema}
   : forall r_o r_n idx tup,
@@ -1031,6 +1160,9 @@ Proof.
       eauto using UnIndexedEnsembleListEquivalence_Insert.
     + rewrite ith_replace2_Index_neq; eauto.
 Qed.
+
+
+
 
 Lemma FiniteTables_AbsR_Delete
       {qs_schema}
