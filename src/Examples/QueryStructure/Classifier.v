@@ -108,55 +108,6 @@ Section ADT.
     FullySharpened ClassifierSpec.
   Proof.
 
-  start sharpening ADT.
-  pose_string_hyps.
-  eapply SharpenStep;
-  [ match goal with
-        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
-        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
-          [ repeat (first [eapply refine_Constructors_nil
-                          | eapply refine_Constructors_cons;
-                            [ simpl; intros;
-                              match goal with
-                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E) => let H := fresh in set (H := E)
-                              | _ => idtac
-                              end;
-                              (* Drop constraints from empty *)
-                              try apply Constructor_DropQSConstraints;
-                              cbv delta [GetAttribute] beta; simpl
-                            | ] ])
-          | repeat (first [eapply refine_Methods_nil
-                          | eapply refine_Methods_cons;
-                            [ simpl; intros;
-                              match goal with
-                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E _) => let H := fresh in set (H := E)
-                              | |- refine _ (?E) => let H := fresh in set (H := E)
-                              | _ => idtac
-                              end;
-                              cbv delta [GetAttribute] beta; simpl | ]
-                          ])]
-    end | ].
-  - doAny drop_constraints
-           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
-           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - hone representation using (@FiniteTables_AbsR ClassifierSchema).
-    + simplify with monad laws.
-      refine pick val _; simpl; intuition.
-      eauto using FiniteTables_AbsR_QSEmptySpec.
-    + doAny simplify_queries
-             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + doAny simplify_queries
-             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + simpl.
-
     (* Uncomment this to see the mostly sharpened implementation *)
     (* partial_master_plan ltac:(CombineIndexTactics PrefixIndexTactics EqIndexTactics).*)
 
