@@ -16,9 +16,18 @@ Require Import Fiat.Examples.DnsServer.DnsSchema
 
 Open Scope list.
 
-
 Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
   forall r', List.In r' rs -> f r >= f r'.
+
+Definition UpperBound {A : Type}
+           (op : A -> A -> Prop)
+           (rs : list A)
+           (r : A) :=
+  forall r' : A, List.In r' rs -> op r r'.
+
+Definition Unique {B} (P : Ensemble B) :=
+  {b' | forall b : B, b' = Some b <-> P b}.
+
 
 Section FueledFix.
   (* TODO: Find a home for these more definitions in the Common folder. *)
@@ -139,6 +148,13 @@ Definition get_name (r : resourceRecord) : list string := r!sNAME.
 Definition name_length (r : resourceRecord) := List.length (get_name r).
 
 Notation "[[ x 'in' xs | P ]]" := (filtered_list xs (fun x => P)) (at level 70) : comp_scope.
+
+Definition ArgMax {ResultT}
+           (op : ResultT -> ResultT -> Prop)
+           (bod : Comp (list ResultT))
+  : Comp (list ResultT) :=
+  results <- bod;
+  [[element in results | UpperBound op results element]].
 
 (* ----------------- *)
 (* Raw tuple field accessor notations *)

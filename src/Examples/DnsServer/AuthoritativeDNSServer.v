@@ -7,6 +7,7 @@ Require Import Coq.Vectors.Vector
 Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation.Decideable
+        Fiat.Computation.FoldComp
         Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Automation.MasterPlan
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
@@ -20,12 +21,6 @@ Require Import Fiat.Examples.DnsServer.packet
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.DnsSchema.
 
-Definition singleton_list {A} (l : list A) : option A :=
-  match l with
-  | a :: nil => Some a
-  | _ => None
-  end.
-
 Definition DnsSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
@@ -33,20 +28,7 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
-Definition UpperBound {A : Type}
-           (op : A -> A -> Prop)
-           (rs : list A)
-           (r : A) :=
-  forall r' : A, List.In r' rs -> op r r'.
-
-Definition ArgMax {ResultT}
-           (op : ResultT -> ResultT -> Prop)
-           (bod : Comp (list ResultT))
-  : Comp (list ResultT) :=
-  results <- bod;
-  [[element in results | UpperBound op results element]].
-
-Definition DnsSpec : ADT DnsSig :=
+Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" : rep := empty,
 
@@ -57,47 +39,59 @@ Definition DnsSpec : ADT DnsSig :=
       Insert t into this!sCOLLECTIONS,
 
     Def Method1 "Process" (this : rep) (p : packet) : rep * packet :=
-        Repeat 1 initializing n with p!"questions"!"qname"
-               defaulting rec with (ret (buildempty p))
+        Repeat recurseDepth initializing n with p!"questions"!"qname"
+               defaulting rec with (ret (buildempty true p))
         {{ results <- ArgMax (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
-                             ((r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
+                             (For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
                                Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
-            Then ret (buildempty p) (* No matching records! *)
+            Then ret (buildempty true p) (* No matching records! *)
             Else                 (* TODO: this does not filter by matching QTYPE *)
               IfDec (forall r, List.In r results -> n = r!sNAME) (* If the record's QNAME is an exact match  *)
               Then
-                unique b,                         (* only one match (unique / otherwise) *)
-                List.In b results /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
-                               /\ p!"questions"!"qtype" <> CNAME ->>      (* and the query did not request a CNAME *)
-                  p' <- rec b!sNAME;                  (* Recursively find records matching the CNAME *)
-                  ret (add_answer p' b)               (* ?? Shouldn't this use the sDATA ?? *)
-                otherwise ->>     (* Copy the records into the answer section of an empty response *)
-                (* multiple matches -- add them all as answers in the packet *)
-                  ret (List.fold_left add_answer results (buildempty p))
-              Else              (* prefix but record's QNAME not an exact match *)
-                (* return all the prefix records that are nameserver records --
-                 ask the authoritative servers *) (* TODO does this return one, or return all? *)
-                (results' <- [[x in results | x!sTYPE = NS]];
-                ret (List.fold_left add_ns results (buildempty p)))
+                b <- Unique (fun b => List.In b results
+                                    /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
+                                    /\ p!"questions"!"qtype" <> CNAME); (* and a non-CNAME was requested*)
+                Ifopt b as b'
+                Then  (* only one matching CNAME record *)
+                  p' <- rec b'!sNAME; (* Recursively find records matching the CNAME *)
+                  ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
+                Else     (* Copy the records with the correct QTYPE into the answer *)
+                         (* section of an empty response *)
+                (results <- [[element in results | element!sTYPE = p!"questions"!"qtype" ]];
+                  ret (List.fold_left add_answer results (buildempty true p)))
+              Else (* prefix but record's QNAME not an exact match *)
+                (* return all the prefix records that are nameserver records -- *)
+                (* ask the authoritative servers *)
+                (ns_results <- [[x in results | x!sTYPE = NS]];
+                 (* Append all the clue records to the additional section. *)
+                 glue_results <- For (rRec in this!sCOLLECTIONS)
+                                 Where (List.In rRec!sNAME (map (fun r : resourceRecord => r!sRDATA) ns_results))
+                                 Return rRec;
+                 ret (List.fold_left add_additional glue_results
+                                     (List.fold_left add_ns ns_results (buildempty true p))))
           }} >>= fun p => ret (this, p)}%methDefParsing.
 
 Local Arguments packet : simpl never.
 
-
 (* Making fold_list Opaque greatly speeds up setoid_rewriting. *)
 Opaque fold_left.
-Opaque packet.
 
-Theorem DnsManual :
-  FullySharpened DnsSpec.
+(* Need to update derivation to work with arbitrary recursion depth. *)
+
+(*Theorem DnsManual (recurseDepth : nat) :
+  FullySharpened (DnsSpec recurseDepth).
 Proof.
-  start sharpening ADT.
+  start sharpening ADT; unfold DnsSpec.
   simpl; pose_string_hyps; pose_heading_hyps.
   hone method "Process".
   simpl in *.
-  { doOne srewrite_each_all drills_each_all finish_each_all.
+  { simplify with monad laws.
+
+    doOne srewrite_each_all drills_each_all finish_each_all.
+    doOne srewrite_each_all drills_each_all finish_each_all.
+    doOne srewrite_each_all drills_each_all finish_each_all.
     doOne srewrite_each_all drills_each_all finish_each_all.
     doOne srewrite_each_all drills_each_all finish_each_all.
     doOne srewrite_each_all drills_each_all finish_each_all.
@@ -135,8 +129,78 @@ Proof.
   drop_constraintsfrom_DNS.
   - doAny drop_constraints
            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
-           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  - doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+        doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - hone method "AddData".
     simplify with monad laws; etransitivity; set_evars.
     doAny simplify_queries
@@ -156,8 +220,113 @@ Proof.
            EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
     + repeat doOne implement_insert''
             ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
-    + repeat doOne implement_insert''
-             ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+    + doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+
+
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      Focused_refine_TopMost_Query.
+      implement_In_opt.
+      repeat progress distribute_filters_to_joins.
+      implement_filters_with_find
+        ltac:(find_simple_search_term ltac:(CombineCase5 PrefixIndexUse EqIndexUse)
+                      ltac:(CombineCase10 createEarlyPrefixTerm createEarlyEqualityTerm)
+                             ltac:(CombineCase7 createLastPrefixTerm createLastEqualityTerm))
+               ltac:(find_simple_search_term_dep
+                       ltac:(CombineCase7 PrefixIndexUse_dep EqIndexUse_dep)
+                              ltac:(CombineCase11 createEarlyPrefixTerm_dep createEarlyEqualityTerm_dep)
+                                     ltac:(CombineCase8 createLastPrefixTerm_dep createLastEqualityTerm_dep)).
+
+
+
+      doOne implement_insert''
+            ltac:(master_implement_drill EqIndexUse createEarlyEqualityTerm createLastEqualityTerm; set_evars) ltac:(finish honing).
+      implement_In_opt.
+      repeat progress distribute_filters_to_joins.
+      setoid_rewrite
+      match goal with
+  | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+     |- refine (UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx ?f) _ ] =>
+    etransitivity;
+      [ let H' := eval simpl in (refine_Filtered_Query_In_Enumerate H (idx := idx) f) in
+            apply H'
+      | apply refine_under_bind; intros; implement_In_opt' ]
+
+  | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+     |- refine (List_Query_In ?b (fun b : ?QueryT => Where (@?P b) (@?resultComp b))) _ ] =>
+    etransitivity;
+      [ let H' := eval simpl in (@refine_List_Query_In_Where QueryT _ b P resultComp _) in
+            apply H'
+      | implement_In_opt'; implement_In_opt' ] end.
+
+
     +  unfold SearchUpdateTerm in Index; simpl in Index.
        simpl.
 Finish_Master ltac:(CombineCase6 BuildEarlyTrieBag  BuildEarlyBag )
@@ -166,6 +335,6 @@ Time Defined.
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
 
-Print DNSImpl.
+Print DNSImpl. *)
 
 (* TODO extraction, examples/messagesextraction.v *)

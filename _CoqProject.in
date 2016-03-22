@@ -186,7 +186,7 @@ src/Examples/CacheADT/FMapCacheImplementation.v
 src/Examples/CacheADT/KVEnsembles.v
 src/Examples/CacheADT/LRUCache.v
 src/Examples/CacheADT/TrivialADTCache.v
-src/Examples/DnsServer/DnsAutoUnify.v
+src/Examples/DnsServer/AuthoritativeDNSServer.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/DnsRec.v

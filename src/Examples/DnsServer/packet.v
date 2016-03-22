@@ -127,7 +127,7 @@ Definition default_minimum_TTL : W := natToWord _ 3600.
       sTTL :: W,
       sCLASS :: RRecordClass,
       sTYPE :: RRecordType,
-      sRLENGTH :: W,
+      sRLENGTH :: W, (* 16 bit integer *)
       sRDATA :: name>%Heading.
 
   Definition resourceRecord :=
@@ -157,10 +157,11 @@ Definition test_packet : packet :=
       "authority" :: nil,
       "additional" :: nil >%Tuple.
 
-  Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
+Lemma zero_lt_sixteen : lt 0 16. omega. Qed.
+Lemma five_lt_sixteen : lt 5 16. omega. Qed.
 
-  Definition buildempty (p : packet) :=
-    p ○ [o !! "flags" / replace_order o zero_lt_sixteen true;
+  Definition buildempty (is_authority : bool) (p : packet) :=
+    p ○ [o !! "flags" / replace_order (replace_order o zero_lt_sixteen true) five_lt_sixteen true;
           (* 0 = query (changed by client); 1 = response (changed by server) *)
           (* set QR bit to true, meaning this is a response *)
           (* do we want an AA (authoritative answer) flag? *)
