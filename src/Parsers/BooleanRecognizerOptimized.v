@@ -1165,7 +1165,7 @@ Section recursive_descent_parser.
           t_prereduce_list_evar.
           t_postreduce_list_with_hyp_with_assumption;
           [ reflexivity
-            | simpl rewrite production_tl_correct;
+            | simpl crewrite production_tl_correct;
               match goal with
               | [ H : _::_ = ?y |- context[tl ?y] ] => generalize dependent y; intros; subst
               end;
