@@ -165,7 +165,7 @@ src/Common/Telescope/Equality.v
 src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
-src/Computation/Decideable.v
+src/Computation/Decidable.v
 src/Computation/FoldComp.v
 src/Computation/LogicLemmas.v
 src/Computation/Monad.v
