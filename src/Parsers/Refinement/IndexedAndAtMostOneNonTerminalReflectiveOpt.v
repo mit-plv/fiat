@@ -465,9 +465,11 @@ Section IndexedImpl_opt.
              | [ |- match ?v with nil => _ | cons x xs => _ end = _ :> ?P ]
                => let T := type of v in
                   let A := match (eval hnf in T) with list ?A => A end in
-                  refine (@ListMorphisms.list_caset_Proper' A P _ _ _ _ _ _ _ _ _
-                          : _ = match _ with nil => _ | cons x xs => _ end);
-                    [ | intros ?? | ]
+                  etransitivity;
+                    [ refine (@ListMorphisms.list_caset_Proper' A P _ _ _ _ _ _ _ _ _
+                              : _ = match _ with nil => _ | cons x xs => _ end);
+                      [ | intros ?? | ]
+                    | reflexivity ]
              | [ |- @opt2.fold_right ?A ?B _ _ _ = _ ]
                => refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> _ ==> eq) (@List.fold_right A B)) : Proper _ (@opt2.fold_right A B)) _ _ _ _ _ _ _ _ _);
                     [ intros ?? | | ]
