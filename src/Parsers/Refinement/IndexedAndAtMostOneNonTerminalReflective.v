@@ -551,6 +551,11 @@ Section IndexedImpl.
   Definition rindexed_spec : ADT (string_rep Ascii.ascii String default_production_carrierT)
     := rindexed_spec' (fun str offset len idx p _ _ => split_list_is_complete_idx G str offset len idx).
 
+  Let BindComputes' A B (ca : Comp A) (f : A -> Comp B) (a : A) (b : B)
+    : f a ↝ b -> ca ↝ a -> (x <- ca;
+                              f x) ↝ b
+    := fun x y => BindComputes ca f a b y x.
+
   Local Ltac fin :=
     repeat match goal with
              | _ => progress unfold split_list_is_complete
@@ -561,7 +566,7 @@ Section IndexedImpl.
              | _ => progress rewrite ?minusr_minus in *
              | [ H : (_, _) = (_, _) |- _ ] => inversion H; clear H
              | [ |- computes_to (Bind _ _) _ ]
-               => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
+               => refine (@BindComputes' _ _ _ _ _ _ _ _ )
              | [ |- computes_to (Return ?x) ?y ]
                => cut (x = y);
                  [ let H := fresh in intro H; try rewrite H; eapply ReturnComputes | ]
@@ -742,7 +747,7 @@ Section IndexedImpl.
       | [ |- fst ?e =s ?r ]
         => is_evar e; refine (_ : fst (_, _) =s r); simpl @fst
       | [ |- computes_to (Bind _ _) _ ]
-        => refine ((fun H0 H1 => BindComputes _ _ _ _ H1 H0) _ _)
+        => refine (@BindComputes' _ _ _ _ _ _ _ _)
       | [ |- computes_to (Return ?x) ?y ]
         => cut (x = y);
           [ let H := fresh in intro H; try rewrite H; (exact (ReturnComputes x) || exact (ReturnComputes y)) | ]
