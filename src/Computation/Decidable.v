@@ -7,13 +7,6 @@ Require Import
 
 Generalizable All Variables.
 
-Definition IfDec_Then_Else {A} (P : Prop) (t e : Comp A) :=
-  b <- { b : bool | decides b P };
-  If b Then t Else e.
-
-Notation "'IfDec' P 'Then' t 'Else' e" :=
-  (IfDec_Then_Else P t e) (at level 70) : comp_scope.
-
 Class Decidable (P : Prop) := {
   decision : {P} + {~ P}
 }.
@@ -160,7 +153,70 @@ Section ListDec.
   }.
 End ListDec.
 
+Definition IfDec_Then_Else {A} (P : Prop) `{Decidable P} (t e : A) :=
+  If decision P Then t Else e.
+Arguments IfDec_Then_Else {A} P {_} t e : simpl never.
+
+Notation "'IfDec' P 'Then' t 'Else' e" :=
+  (IfDec_Then_Else P t e) (at level 70) : comp_scope.
+
 Local Ltac t p := intros; destruct p; intuition.
+
+Corollary refine_IfDec_decides :
+  forall `{Decidable P} ResultT (t e : Comp ResultT),
+    refineEquiv (IfDec P Then t Else e)
+                (b <- {b : bool | decides b P};
+                 If b Then t Else e).
+Proof.
+  intros.
+  unfold IfDec_Then_Else, decides, If_Then_Else.
+  split.
+    apply refine_pick_decides; intros.
+      destruct (decision P); simpl.
+        reflexivity.
+      contradiction.
+    destruct (decision P); simpl.
+      contradiction.
+    reflexivity.
+  refine pick val (bool_of_sumbool (decision P)).
+    simplify with monad laws.
+    reflexivity.
+  destruct (decision P); trivial.
+Qed.
+
+Lemma refine_IfDec_Then_Else :
+  forall (A : Type) `{Decidable P} (x y : Comp A),
+    refine x y
+      -> forall x0 y0 : Comp A, refine x0 y0
+      -> refine (IfDec P Then x Else x0) (IfDec P Then y Else y0).
+Proof.
+  intros.
+  unfold IfDec_Then_Else.
+  apply refine_If_Then_Else; trivial.
+Qed.
+
+Lemma refine_IfDec_Then_Else_ret :
+  forall `{Decidable P} ResultT (t e : ResultT),
+    refine (IfDec P Then ret t Else ret e) (ret (IfDec P Then t Else e)).
+Proof.
+  intros.
+  unfold IfDec_Then_Else.
+  apply refine_If_Then_Else_ret; trivial.
+Qed.
+
+Ltac decidability :=
+  repeat
+    match goal with
+    | [ |- refine (ret ?Z) ?H ] => higher_order_reflexivity
+    | [ |- refine (x <- ret ?Z; ?V) ?H ] => simplify with monad laws; simpl
+    | [ |- refine (x <- y <- ?Z; ?W; ?V) ?H ] => simplify with monad laws; simpl
+    | [ |- refine (IfDec ?P Then ?T Else ?E) ?H ] =>
+      etransitivity;
+        [ apply refine_IfDec_Then_Else;
+            [ decidability | decidability ]
+        | try rewrite refine_IfDec_Then_Else_ret;
+          decidability ]
+    end.
 
 Lemma refine_sumbool_match :
   forall `(P : {A} + {~A}) B
@@ -218,52 +274,3 @@ Lemma refine_bind_sumbool :
             | right H => x <- c; g x H
             end).
 Proof. t P. Qed.
-
-Corollary refine_IfDec_decides :
-  forall (P : Prop) ResultT (t : Comp ResultT) (e : Comp ResultT),
-    refineEquiv (IfDec P Then t Else e)
-                (b <- {b : bool | decides b P};
-                   If b Then t Else e).
-Proof. reflexivity. Qed.
-
-Lemma refine_pick_decision :
-  forall `{Decidable P} ResultT (t e : Comp ResultT),
-    refineEquiv (IfDec P Then t Else e)
-                (If decision P Then t Else e).
-Proof.
-  intros.
-  unfold IfDec_Then_Else.
-  split.
-    destruct (decision P).
-      refine pick val true.
-        simplify with monad laws.
-        reflexivity.
-      exact p.
-    refine pick val false.
-      simplify with monad laws.
-      reflexivity.
-    exact n.
-  apply refine_pick_decides; intros;
-  destruct (decision P); intuition.
-Qed.
-
-Definition consIfNot (P : Prop) {C} (E : C) (res : list C) :
-  Comp (list C) :=
-  IfDec P
-  Then ret res
-  Else ret (cons E res).
-
-Definition consIfNot_dec `{Decidable P} {C} (E : C) (res : list C) :
-  list C :=
-  If decision P Then res Else cons E res.
-
-Lemma refine_consIfNot : forall `{Decidable P} C E res,
-  refine (@consIfNot P C E res) (ret (consIfNot_dec E res)).
-Proof.
-  intros.
-  unfold consIfNot, consIfNot_dec.
-  rewrite refine_pick_decision, refine_If_Then_Else_ret.
-  reflexivity.
-Qed.
-
-Ltac decidability := repeat (rewrite refine_consIfNot, refine_bind_unit).
