@@ -39,6 +39,7 @@ Section correctness.
                (expected_result : bool)
                (actual_result : parse_productions_T),
           Prop;
+
       parse_nt_is_correct_Proper
       : Proper (beq ==> eq ==> eq ==> eq ==> Basics.impl) parse_nt_is_correct;
       parse_item_is_correct_Proper
@@ -47,6 +48,20 @@ Section correctness.
       : Proper (beq ==> eq ==> eq ==> eq ==> Basics.impl) parse_production_is_correct;
       parse_productions_is_correct_Proper
       : Proper (beq ==> eq ==> eq ==> eq ==> Basics.impl) parse_productions_is_correct;
+
+      parse_nt_is_correct_disjoint
+      : forall str nt v,
+          parse_nt_is_correct str nt true v -> parse_nt_is_correct str nt false v -> False;
+      parse_item_is_correct_disjoint
+      : forall str it v,
+          parse_item_is_correct str it true v -> parse_item_is_correct str it false v -> False;
+      parse_production_is_correct_disjoint
+      : forall str p v,
+          parse_production_is_correct str p true v -> parse_production_is_correct str p false v -> False;
+      parse_productions_is_correct_disjoint
+      : forall str ps v,
+          parse_productions_is_correct str ps true v -> parse_productions_is_correct str ps false v -> False;
+
       ret_Terminal_true_correct
       : forall str offset len ch,
           (beq_nat len 1 && char_at_matches offset str ch)%bool = true
