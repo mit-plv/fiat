@@ -1953,4 +1953,14 @@ Section ListFacts.
     { reflexivity. }
     { destruct (f l) eqn:H; simpl; rewrite ?H; simpl; assumption. }
   Qed.
+
+  Lemma fold_left_assoc {A} (f : A -> A -> A)
+        (f_assoc : forall x y z, f x (f y z) = f (f x y) z)
+        (a0 a1 : A) (ls : list A)
+    : fold_left f ls (f a0 a1) = f a0 (fold_left f ls a1).
+  Proof.
+    revert a0 a1; induction ls as [|?? IHls]; simpl in *; intros;
+      [ reflexivity | rewrite <- f_assoc, <- IHls ].
+    reflexivity.
+  Qed.
 End ListFacts.
