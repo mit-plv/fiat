@@ -120,7 +120,7 @@ Proof.
 Defined.
 
 Module Import local_opt.
-  Import RecognizerOptimized.
+  Import BooleanRecognizerOptimized.
   Ltac change_opt' ls nt str :=
     idtac;
     match goal with
