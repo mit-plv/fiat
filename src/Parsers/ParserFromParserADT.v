@@ -5,6 +5,7 @@ Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.ADTNotation.BuildADTSig.
+Require Import Fiat.Parsers.GenericRecognizerEquality.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
@@ -71,6 +72,7 @@ Section parser.
       (@RecognizerPreOptimized.optsplitdata _ _ _ split_dataProj')
     := { proj := @proj1_sig _ _ }.
   Proof.
+    reflexivity.
     reflexivity.
     reflexivity.
     reflexivity.

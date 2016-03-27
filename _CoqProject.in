@@ -274,6 +274,7 @@ src/Parsers/GenericRecognizerCorrect.v
 src/Parsers/GenericRecognizerEquality.v
 src/Parsers/GenericRecognizerExt.v
 src/Parsers/GenericRecognizerMin.v
+src/Parsers/GenericRecognizerOptimized.v
 src/Parsers/MinimalParse.v
 src/Parsers/MinimalParseOfParse.v
 src/Parsers/ParserADTSpecification.v

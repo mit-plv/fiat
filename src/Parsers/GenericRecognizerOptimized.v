@@ -1,4 +1,4 @@
-(** * Definition of a boolean-returning CFG parser-recognizer *)
+(** * Definition of an optimized CFG parser-recognizer *)
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Compare_dec Coq.Arith.Wf_nat.
 Require Import Fiat.Common.List.Operations.
@@ -8,13 +8,14 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.GenericBaseTypes.
+Require Import Fiat.Parsers.GenericCorrectnessBaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common Fiat.Common.Wf Fiat.Common.Wf2 Fiat.Common.Telescope.Core.
 Require Import Fiat.Parsers.GenericRecognizerExt.
-Require Import Fiat.Parsers.BooleanRecognizer.
-Require Import Fiat.Parsers.BooleanRecognizerExt.
-Require Import Fiat.Parsers.BooleanRecognizerCorrect.
+Require Import Fiat.Parsers.GenericRecognizerCorrect.
+Require Import Fiat.Parsers.GenericRecognizerMin.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
@@ -30,6 +31,7 @@ Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Common.Sigma.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Parsers.GenericRecognizer.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -141,6 +143,7 @@ End opt3.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
+          {gendata : generic_parser_dataT Char}
           {G : pregrammar Char}.
 
   Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) (pregrammar_productions G).
@@ -158,6 +161,7 @@ Section recursive_descent_parser.
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
+  Context {gencdata : generic_parser_correctness_dataT}.
 
   Context {splitdata : @split_dataT Char _ _}.
 
@@ -173,32 +177,59 @@ Section recursive_descent_parser.
   Local Arguments minus !_ !_.
   Local Arguments min !_ !_.
 
-  Lemma parse_nonterminal_optdata_eq
+  Definition parse_nt_equiv str nt p1 p2
+    := forall b,
+      parse_nt_is_correct
+        (predata := predata)
+        str (@of_nonterminal _ data nt)
+        b
+        p1
+      <-> parse_nt_is_correct
+            (predata := predata)
+            str (@of_nonterminal _ optdata nt)
+            b
+            p2.
+
+  Global Instance parse_nt_equiv_Reflexive {str nt} : Reflexive (parse_nt_equiv str nt).
+  Proof. repeat intro; reflexivity. Qed.
+
+  Global Instance parse_nt_equiv_Symmetric {str nt} : Symmetric (parse_nt_equiv str nt).
+  Proof. repeat intro; symmetry; auto with nocore. Qed.
+
+  Global Instance parse_nt_equiv_Transitive {str nt} : Transitive (parse_nt_equiv str nt).
+  Proof. repeat intro; etransitivity; eauto with nocore. Qed.
+
+  Local Ltac t_parse_nt_equiv :=
+    lazymatch goal with
+    | [ H : ?R (bool_of_sum ?x) ?y,
+            H' : ?R (bool_of_sum ?x') ?y' |- parse_nt_equiv _ _ ?y ?y' ]
+      => intros [];
+         destruct x, x'; simpl @bool_of_sum in *
+    end;
+    repeat first [ assumption
+                 | progress simpl @bool_of_sum in *
+                 | progress simpl @of_nonterminal in *
+                 | progress simpl @BaseTypes.predata in *
+                 | progress unfold predata in *
+                 | split
+                 | intro
+                 | exfalso;
+                   solve [ eauto using @parse_nt_is_correct_disjoint with nocore ] ].
+
+  Lemma parse_nonterminal_optdata_correct
         {HSLP : StringLikeProperties Char}
         {splitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G data}
         (str : String)
         (nt : String.string)
-    : parse_nonterminal (data := optdata) str nt = parse_nonterminal (data := data) str nt.
+    : parse_nt_equiv
+        str nt
+        (parse_nonterminal (data := optdata) str nt)
+        (parse_nonterminal (data := data) str nt).
   Proof.
     pose optsplitdata_correct.
-    match goal with
-    | [ |- ?LHS = ?RHS ]
-      => destruct LHS eqn:HL;
-        destruct RHS eqn:HR
-    end;
-    try reflexivity;
-    exfalso;
-    first [ apply (@parse_nonterminal_sound _ _ _ _ G) in HR
-          | apply (@parse_nonterminal_sound _ _ _ _ G) in HL ];
-    try eassumption; [ | ];
-    try (apply grammar_rvalid_correct; eassumption);
-    [ | ];
-    first [ erewrite @parse_nonterminal_complete in HR; [ congruence | .. ]
-          | erewrite @parse_nonterminal_complete in HL; [ congruence | .. ] ];
-    instantiate;
-    try first [ eassumption
-              | apply grammar_rvalid_correct; eassumption
-              | exact _ ].
+    pose proof (parse_nonterminal_correct (data := data) str nt).
+    pose proof (parse_nonterminal_correct (data := optdata) (cdata := optsplitdata_correct) str nt).
+    t_parse_nt_equiv.
   Defined.
 
   Local Ltac contract_drop_take_t' :=
@@ -249,6 +280,9 @@ Section recursive_descent_parser.
                => apply f_equal3
              | _ => intro
              | [ |- ?x = ?x ] => reflexivity
+             | [ |- ret_nt _ = ret_nt _ ] => apply f_equal
+             | [ |- ret_production_cons _ _ = ret_production_cons _ _ ] => apply f_equal2
+             | [ |- ret_NonTerminal_true _ _ = ret_NonTerminal_true _ _ ] => apply f_equal2
              | [ |- bool_rect ?P _ _ ?b = bool_rect ?P _ _ ?b ] => apply f_equal3
              | [ |- andb _ _ = andb _ _ ] => apply f_equal2
              | [ |- andbr _ _ = andbr _ _ ] => apply f_equal2
@@ -380,28 +414,28 @@ Section recursive_descent_parser.
 
   Local Ltac refine_Fix2_5_Proper_eq_with_assumptions' HP HPpf :=
     idtac;
-      (lazymatch goal with
-        | [ |- context[_ = @Fix2 ?A ?A' ?R ?Rwf ?T (fun a0 b0 c0 d0 e0 h0 i0 => @?f a0 b0 c0 d0 e0 h0 i0) ?a ?a' ?b ?c ?d ?e ?h] ]
-          => (lazymatch T with
-               | (fun a' : ?A0 => forall (b' :@?B a') (c' : @?C a' b') (d' : @?D a' b' c') (e' : @?E a' b' c' d') (h' : @?H a' b' c' d' e'), @?P a' b' c' d' e' h')
-                 => let H' := fresh in
-                    pose proof ((fun f' H0 => @Fix2_5_Proper_eq_with_assumption A A' B C D E H R Rwf P HP f' f H0 a a' b c d e h HPpf)) as H';
-                    cbv beta in H';
-                    (lazymatch type of H' with
-                      | forall f' : ?f'T, @?H'T f' -> _
-                        => let H'' := fresh in
-                           let f'' := fresh in
-                           assert (H'' : { f' : f'T & H'T f' });
-                           [ clear H'
-                           | destruct H'' as [f'' H''];
-                             specialize (H' f'' H'');
-                             clear H''; eexists; exact H' ]
-                      end)
-               end)
-        end);
-      unfold forall_relation, pointwise_relation, respectful;
-      cbv beta;
-      eexists (fun a0 a0' b0 c0 d0 e0 h0 i0 => _); intros.
+    (lazymatch goal with
+      | [ |- context[@Fix2 ?A ?A' ?R ?Rwf ?T (fun a0 b0 c0 d0 e0 h0 i0 => @?f a0 b0 c0 d0 e0 h0 i0) ?a ?a' ?b ?c ?d ?e ?h] ]
+        => (lazymatch T with
+             | (fun a' : ?A0 => forall (b' :@?B a') (c' : @?C a' b') (d' : @?D a' b' c') (e' : @?E a' b' c' d') (h' : @?H a' b' c' d' e'), @?P a' b' c' d' e' h')
+               => let H' := fresh in
+                  pose proof ((fun f' H0 => @Fix2_5_Proper_eq_with_assumption A A' B C D E H R Rwf P HP f' f H0 a a' b c d e h HPpf)) as H';
+                  cbv beta in H';
+                  (lazymatch type of H' with
+                    | forall f' : ?f'T, @?H'T f' -> _
+                      => let H'' := fresh in
+                         let f'' := fresh in
+                         assert (H'' : { f' : f'T & H'T f' });
+                         [ clear H'
+                         | destruct H'' as [f'' H''];
+                           specialize (H' f'' H'');
+                           clear H''; eexists; symmetry; rewrite <- H' at 1; reflexivity ]
+                    end)
+             end)
+      end);
+    unfold forall_relation, pointwise_relation, respectful;
+    cbv beta;
+    eexists (fun a0 a0' b0 c0 d0 e0 h0 i0 => _); intros.
 
   Local Ltac refine_Fix2_5_Proper_eq_with_assumptions :=
     idtac;
@@ -526,8 +560,6 @@ Section recursive_descent_parser.
                       (fun c => item_rect T e1 e2 c = RHS c)
                       _ _);
             intro c; simpl @item_rect; subst e1 e2
-      | [ |- _ = match ?x with true => true | false => false end ]
-        => transitivity x; [ | destruct x; reflexivity ]
     end;
     fin_step_opt.
 
@@ -536,12 +568,12 @@ Section recursive_descent_parser.
   Local Ltac sigL_transitivity term :=
     idtac;
     (lazymatch goal with
-    | [ |- ?sig (fun x : ?T => @?A x = ?B) ]
+    | [ |- ?sig (fun x : ?T => ?R (@?A x) ?B) ]
       => (let H := fresh in
           let H' := fresh in
-          assert (H : sig (fun x : T => A x = term));
+          assert (H : sig (fun x : T => R (A x) term));
           [
-          | assert (H' : term = B);
+          | assert (H' : R term B);
             [ clear H
             | let x' := fresh in
               destruct H as [x' H];
@@ -894,61 +926,65 @@ Section recursive_descent_parser.
     rewrite minusr_minus; omega.
   Qed.
 
-  Definition parse_nonterminal_opt'0
-             (str : String)
-             (nt : String.string)
-  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
-  Proof.
-    exists (parse_nonterminal (data := optdata) str nt).
-    reflexivity.
-  Defined.
+  Section with_str.
+    Context (str : String)
+            (nt : String.string).
 
-  Local Ltac optsplit_t' :=
-    idtac;
-    match goal with
+    Local Infix "~=" := (parse_nt_equiv str nt).
+
+    Definition parse_nonterminal_opt'0
+      : { b : parse_nt_T | b ~= parse_nonterminal (data := optdata) str nt }.
+    Proof.
+      exists (parse_nonterminal (data := optdata) str nt).
+      reflexivity.
+    Defined.
+
+    Local Ltac optsplit_t' :=
+      idtac;
+      match goal with
       | [ |- _ = ?f match ?v with nil => ?N | x::xs => @?C x xs end ]
         => let RHS := match goal with |- _ = ?RHS => RHS end in
            let P := match (eval pattern v in RHS) with ?P _ => P end in
            transitivity (match v with
-                           | nil => P nil
-                           | x::xs => P (x::xs)
+                         | nil => P nil
+                         | x::xs => P (x::xs)
                          end);
-             [ simpl | destruct v; reflexivity ]
+           [ simpl | destruct v; reflexivity ]
       | [ |- _ = ?f match ?v with Terminal t => @?T t | NonTerminal nt => @?NT nt end ]
         => let RHS := match goal with |- _ = ?RHS => RHS end in
            let P := match (eval pattern v in RHS) with ?P _ => P end in
            transitivity (match v with
-                           | Terminal t => P (Terminal t)
-                           | NonTerminal nt => P (NonTerminal nt)
+                         | Terminal t => P (Terminal t)
+                         | NonTerminal nt => P (NonTerminal nt)
                          end);
-             [ simpl | destruct v; reflexivity ]
+           [ simpl | destruct v; reflexivity ]
       | [ |- ?e = match ?v with nil => ?N | x::xs => @?C x xs end :> ?T ]
         => idtac;
-          repeat match goal with
-                 | [ H : context[v] |- _ ]
-                   => hnf in H;
-                     match type of H with
-                     | context[v] => fail 1
-                     | _ => idtac
-                     end
-                 end;
-          let P := match (eval pattern v in T) with ?P _ => P end in
-          change (e = list_caset P N C v);
-            revert dependent v;
-            let NT := type of N in
-            let CT := type of C in
-            let N' := fresh in
-            let C' := fresh in
-            evar (N' : NT);
-              evar (C' : CT);
-              intro v; intros;
-              refine (_ : list_caset P N' C' v = list_caset P N C v);
-              refine (list_caset
-                        (fun v' => list_caset P N' C' v' = list_caset P N C v')
-                        _
-                        _
-                        v);
-              subst N' C'; simpl @list_caset; repeat intro
+           repeat match goal with
+                  | [ H : context[v] |- _ ]
+                    => hnf in H;
+                       match type of H with
+                       | context[v] => fail 1
+                       | _ => idtac
+                       end
+                  end;
+           let P := match (eval pattern v in T) with ?P _ => P end in
+           change (e = list_caset P N C v);
+           revert dependent v;
+           let NT := type of N in
+           let CT := type of C in
+           let N' := fresh in
+           let C' := fresh in
+           evar (N' : NT);
+           evar (C' : CT);
+           intro v; intros;
+           refine (_ : list_caset P N' C' v = list_caset P N C v);
+           refine (list_caset
+                     (fun v' => list_caset P N' C' v' = list_caset P N C v')
+                     _
+                     _
+                     v);
+           subst N' C'; simpl @list_caset; repeat intro
       | [ H : is_true (item_rvalid ?G ?v)
           |- ?e = match ?v with Terminal t => @?T t | NonTerminal nt => @?NT nt end ]
         => idtac; let TT := type of T in
@@ -956,85 +992,82 @@ Section recursive_descent_parser.
                   let T' := fresh in
                   let NT' := fresh in
                   revert dependent v;
-                    evar (T' : TT);
-                    evar (NT' : NTT);
-                    intro v; intros;
-                    let eqP := match goal with |- _ = _ :> ?P => P end in
-                    let P := match (eval pattern v in eqP) with ?P _ => P end in
-                      change (e = item_rect P T NT v);
-                      refine (_ : item_rect P T' NT' v = item_rect P T NT v);
-                      refine (item_rect
-                                (fun v' => item_rvalid G v' -> item_rect P T' NT' v' = item_rect P T NT v')
-                                _
-                                _
-                                v H);
-                      subst T' NT';
-                      simpl @item_rect; intros ??
+                  evar (T' : TT);
+                  evar (NT' : NTT);
+                  intro v; intros;
+                  let eqP := match goal with |- _ = _ :> ?P => P end in
+                  let P := match (eval pattern v in eqP) with ?P _ => P end in
+                  change (e = item_rect P T NT v);
+                  refine (_ : item_rect P T' NT' v = item_rect P T NT v);
+                  refine (item_rect
+                            (fun v' => item_rvalid G v' -> item_rect P T' NT' v' = item_rect P T NT v')
+                            _
+                            _
+                            v H);
+                  subst T' NT';
+                  simpl @item_rect; intros ??
       | [ |- ?e = match ?v with Terminal t => @?T t | NonTerminal nt => @?NT nt end ]
         => idtac; let TT := type of T in
                   let NTT := type of NT in
                   let T' := fresh in
                   let NT' := fresh in
                   revert dependent v;
-                    evar (T' : TT);
-                    evar (NT' : NTT);
-                    intro v; intros;
-                    let eqP := match goal with |- _ = _ :> ?P => P end in
-                    let P := match (eval pattern v in eqP) with ?P _ => P end in
-                      change (e = item_rect P T NT v);
-                      refine (_ : item_rect P T' NT' v = item_rect P T NT v);
-                      refine (item_rect
-                                (fun v' => item_rect P T' NT' v' = item_rect P T NT v')
-                                _
-                                _
-                                v);
-                      subst T' NT';
-                      simpl @item_rect; intro
+                  evar (T' : TT);
+                  evar (NT' : NTT);
+                  intro v; intros;
+                  let eqP := match goal with |- _ = _ :> ?P => P end in
+                  let P := match (eval pattern v in eqP) with ?P _ => P end in
+                  change (e = item_rect P T NT v);
+                  refine (_ : item_rect P T' NT' v = item_rect P T NT v);
+                  refine (item_rect
+                            (fun v' => item_rect P T' NT' v' = item_rect P T NT v')
+                            _
+                            _
+                            v);
+                  subst T' NT';
+                  simpl @item_rect; intro
       | [ |- _ = _::_ ] => etransitivity_rev (_::_);
-                          [ apply f_equal2
-                          | reflexivity ]
+                           [ apply f_equal2
+                           | reflexivity ]
       | _ => progress fin_step_opt
-    end.
+      end.
 
-  Definition parse_nonterminal_opt'1
-             (str : String)
-             (nt : String.string)
-  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
-  Proof.
-    let c := constr:(parse_nonterminal_opt'0 str nt) in
-    let h := head c in
-    let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
-    sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
-    cbv beta iota zeta delta [parse_nonterminal GenericRecognizer.parse_nonterminal parse_nonterminal' GenericRecognizer.parse_nonterminal' parse_nonterminal_or_abort GenericRecognizer.parse_nonterminal_or_abort list_to_grammar].
-    simpl @GenericBaseTypes.parse_nt_T.
-    change (@GenericRecognizer.parse_nonterminal_step Char) with (fun b c d e f g h i j k l m => @GenericRecognizer.parse_nonterminal_step Char b c d e f g h i j k l m); cbv beta.
-    evar (b' : bool).
-    sigL_transitivity b'; subst b';
-    [
-    | rewrite Fix5_2_5_eq by (intros; apply parse_nonterminal_step_ext; assumption);
-      reflexivity ].
-    simpl @fst; simpl @snd.
-    cbv beta iota zeta delta [parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' GenericRecognizer.parse_nonterminal_step GenericRecognizer.parse_productions GenericRecognizer.parse_productions' GenericRecognizer.parse_production GenericRecognizer.parse_item GenericRecognizer.parse_item' Lookup list_to_grammar list_to_productions].
-    simpl.
-    cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
-    cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
-    (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
-    simpl; unfold pregrammar_nonterminals; simpl.
-    evar (b' : bool).
-    sigL_transitivity b'; subst b';
-    [
-    | simpl;
-      rewrite !map_length, !length_up_to;
-      reflexivity ].
+    Definition parse_nonterminal_opt'1
+      : { b : parse_nt_T | b ~= parse_nonterminal (data := optdata) str nt }.
+    Proof.
+      let c := constr:(parse_nonterminal_opt'0) in
+      let h := head c in
+      let p := (eval cbv beta iota zeta delta [proj1_sig h] in (proj1_sig c)) in
+      sigL_transitivity p; [ | abstract exact (proj2_sig c) ].
+      cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort list_to_grammar].
+      change (@parse_nonterminal_step Char) with (fun b c d e f g h i j k l => @parse_nonterminal_step Char b c d e f g h i j k l); cbv beta.
+      evar (b' : parse_nt_T).
+      sigL_transitivity b'; subst b';
+        [
+        | rewrite Fix5_2_5_eq by (intros; apply parse_nonterminal_step_ext; assumption);
+          reflexivity ].
+      simpl @fst; simpl @snd.
+      cbv beta iota zeta delta [parse_nonterminal parse_nonterminal' parse_nonterminal_or_abort parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' Lookup list_to_grammar list_to_productions].
+      simpl.
+      cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
+      cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
+      (*cbv beta iota zeta delta [rdp_list_of_nonterminal].*)
+      simpl; unfold pregrammar_nonterminals; simpl.
+      evar (b' : parse_nt_T).
+      sigL_transitivity b'; subst b';
+        [
+        | simpl;
+          rewrite !map_length, !length_up_to;
+          reflexivity ].
 
-    refine_Fix2_5_Proper_eq_with_assumptions.
-    etransitivity_rev _.
-    { fix2_trans_with_assumptions;
-      [
-      | unfold parse_production', parse_production'_for, parse_item', GenericRecognizer.parse_production', GenericRecognizer.parse_production'_for, GenericRecognizer.parse_item', productions, production;
-        solve [ t_reduce_fix;
-                t_reduce_list;
-                t_reduce_fix ] ].
+      refine_Fix2_5_Proper_eq_with_assumptions.
+      etransitivity_rev _.
+      { fix2_trans_with_assumptions;
+        [
+        | unfold parse_production', parse_production'_for, parse_item', productions, production;
+          try solve [ t_reduce_fix;
+                      t_reduce_list;
+                      t_reduce_fix ] ].
 
       (** Now we take advantage of the optimized splitter *)
       etransitivity_rev _.
@@ -1084,7 +1117,7 @@ Section recursive_descent_parser.
         cbv beta in Hvalid'''.
         apply map_Proper_eq_In; intros ? Hin.
         specialize (Hvalid''' _ Hin).
-        unfold parse_production', parse_production'_for, GenericRecognizer.parse_production', GenericRecognizer.parse_production'_for.
+        unfold parse_production', parse_production'_for.
         simpl.
         etransitivity_rev _.
         { t_reduce_list_evar_with_hyp;
@@ -1145,7 +1178,7 @@ Section recursive_descent_parser.
                 => rewrite <- H; reflexivity
             end. }
           { simpl.
-            unfold parse_item', GenericRecognizer.parse_item'.
+            unfold parse_item'.
             step_opt';
             repeat match goal with
                      | [ |- context[List.map _ match ?e with _ => _ end] ]
@@ -1161,7 +1194,7 @@ Section recursive_descent_parser.
                      | [ H := _ |- _ ] => subst H
                    end. } }
         cbv beta.
-        step_opt'; [ solve [ step_opt' ] | | reflexivity ].
+        step_opt'; [ | reflexivity ].
         etransitivity_rev _.
         { move Hvalid''' at bottom.
           simpl @to_production in Hvalid'''.
@@ -1195,7 +1228,7 @@ Section recursive_descent_parser.
                    | _ => progress split_and
                    end. }
           etransitivity_rev _.
-          { do 2 step_opt'; [].
+          { step_opt'.
             etransitivity_rev _.
             { repeat optsplit_t'.
               { rewrite <- andbr_andb.
@@ -1214,7 +1247,6 @@ Section recursive_descent_parser.
                 { f_equal; apply Le.le_proof_irrelevance. }
                 { reflexivity. } }
               { apply (f_equal2 andb); [ | reflexivity ].
-                step_opt'; [].
                 apply (f_equal2 andb); [ | reflexivity ].
                 match goal with
                 | [ |- _ = EqNat.beq_nat (min ?v ?x) ?v ]
@@ -1232,7 +1264,7 @@ Section recursive_descent_parser.
             reflexivity. }
           etransitivity_rev _.
           { rewrite !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ].
-            unfold parse_item', GenericRecognizer.parse_item'.
+            unfold parse_item'.
             repeat optsplit_t'; repeat step_opt';
               [ apply (f_equal2 andb) | ];
               repeat optsplit_t'; repeat step_opt'.
@@ -1251,8 +1283,9 @@ Section recursive_descent_parser.
             reflexivity. }
           reflexivity. }
 
-      unfold productions, production.
-      progress cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
+      unfold parse_production', parse_production'_for, parse_item', productions, production.
+      cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
+      cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
 
       step_opt'; [ | reflexivity ].
       step_opt'.

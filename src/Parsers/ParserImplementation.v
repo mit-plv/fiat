@@ -138,19 +138,19 @@ Section implementation.
   Proof.
     eapply SimpleRecognizerCorrect.parse_item_correct.
     unfold option_map in *; simpl in *.
-    unfold SimpleRecognizer.parse_nonterminal in *; simpl in *.
+    unfold SimpleRecognizer.parse_nonterminal, GenericRecognizer.parse_nonterminal in *; simpl in *.
     rewrite <- H; clear H p.
     repeat match goal with
            | _ => reflexivity
            | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
            | _ => progress simpl in *
            end.
-    unfold SimpleRecognizer.parse_nonterminal', SimpleRecognizer.parse_nonterminal_or_abort in *.
+    unfold SimpleRecognizer.parse_nonterminal', SimpleRecognizer.parse_nonterminal_or_abort, GenericRecognizer.parse_nonterminal', GenericRecognizer.parse_nonterminal_or_abort in *.
     let H := match goal with H : appcontext[Fix] |- _ => H end in
     rewrite Common.Wf.Fix5_eq
       in H
       by (intros; apply SimpleRecognizerExt.parse_nonterminal_step_ext; assumption);
-      unfold SimpleRecognizer.parse_nonterminal_step at 1 in H.
+      unfold GenericRecognizer.parse_nonterminal_step at 1 in H.
     simpl in *.
     edestruct Compare_dec.lt_dec; simpl in *; try omega; [].
     edestruct dec; simpl in *; try congruence; [].
