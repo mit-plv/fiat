@@ -17,7 +17,7 @@ Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
+Require Import Fiat.Parsers.RecognizerPreOptimized.
 Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.

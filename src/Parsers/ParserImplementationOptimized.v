@@ -1,7 +1,7 @@
 (** * Implementation of simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
-Require Import Fiat.Parsers.BooleanRecognizerPreOptimized.
+Require Import Fiat.Parsers.RecognizerPreOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
