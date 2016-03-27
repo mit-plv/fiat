@@ -64,8 +64,9 @@ Section recursive_descent_parser.
                                        then ret_production_nil_true
                                        else ret_production_nil_false)
                (fun it its parse_production' idx offset len pf
-                => fold_left
+                => fold_right
                      ret_orb_production
+                     ret_orb_production_base
                      (map (fun n =>
                              ret_production_cons
                                (parse_item'
@@ -74,8 +75,7 @@ Section recursive_descent_parser.
                                   (min n len)
                                   it)
                                (parse_production' (production_tl idx) (offset + n) (len - n) _))
-                          (splits idx str offset len))
-                     ret_orb_production_base)
+                          (splits idx str offset len)))
                (to_production prod_idx)
                prod_idx);
           clear -pf;
