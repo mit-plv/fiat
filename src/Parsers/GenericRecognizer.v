@@ -33,82 +33,75 @@ Section recursive_descent_parser.
            end%bool.
 
       Section production.
-        Context {len0}
+        Context {len0 : nat}
                 (parse_nonterminal
-                 : forall (offset : nat) (len : nat),
-                     len <= len0
-                     -> nonterminal_carrierT
-                     -> parse_nt_T).
+                 : forall (offset : nat) (len0_minus_len : nat),
+                    nonterminal_carrierT
+                    -> parse_nt_T).
 
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Definition parse_production'_for
                  (splits : production_carrierT -> String -> nat -> nat -> list nat)
                  (offset : nat)
-                 (len : nat)
-                 (pf : len <= len0)
+                 (len0_minus_len : nat)
                  (prod_idx : production_carrierT)
         : parse_production_T.
         Proof.
-          revert offset len pf.
+          revert offset len0_minus_len.
           refine
             (list_rect
                (fun _ =>
                   forall (idx : production_carrierT)
                          (offset : nat)
-                         (len : nat)
-                         (pf : len <= len0),
+                         (len0_minus_len : nat),
                     parse_production_T)
                ((** 0-length production, only accept empty *)
-                 fun _ offset len _ => if beq_nat len 0
-                                       then ret_production_nil_true
-                                       else ret_production_nil_false)
-               (fun it its parse_production' idx offset len pf
+                 fun _ offset len0_minus_len
+                 => if beq_nat (len0 - len0_minus_len) 0
+                    then ret_production_nil_true
+                    else ret_production_nil_false)
+               (fun it its parse_production' idx offset len0_minus_len
                 => fold_right
                      ret_orb_production
                      ret_orb_production_base
                      (map (fun n =>
                              ret_production_cons
                                (parse_item'
-                                  (parse_nonterminal offset (len := min n len) _)
+                                  (parse_nonterminal offset (max (len0 - n) len0_minus_len))
                                   offset
-                                  (min n len)
+                                  (min n (len0 - len0_minus_len))
                                   it)
-                               (parse_production' (production_tl idx) (offset + n) (len - n) _))
-                          (splits idx str offset len)))
+                               (parse_production' (production_tl idx) (offset + n) (len0_minus_len + n)))
+                          (splits idx str offset (len0 - len0_minus_len))))
                (to_production prod_idx)
-               prod_idx);
-          clear -pf;
-          abstract (try apply Min.min_case_strong; omega).
+               prod_idx).
         Defined.
 
         Definition parse_production'
                  (offset : nat)
-                 (len : nat)
-                 (pf : len <= len0)
+                 (len0_minus_len : nat)
                  (prod_idx : production_carrierT)
         : parse_production_T
-          := parse_production'_for split_string_for_production offset pf prod_idx.
+          := parse_production'_for split_string_for_production offset len0_minus_len prod_idx.
       End production.
 
       Section productions.
-        Context {len0}
+        Context {len0 : nat}
                 (parse_nonterminal
                  : forall (offset : nat)
-                          (len : nat)
-                          (pf : len <= len0),
+                          (len0_minus_len : nat),
                      nonterminal_carrierT -> parse_nt_T).
 
         (** To parse as a given list of [production]s, we must parse as one of the [production]s. *)
         Definition parse_productions'
                    (offset : nat)
-                   (len : nat)
-                   (pf : len <= len0)
+                   (len0_minus_len : nat)
                    (prods : list production_carrierT)
         : parse_productions_T
           := fold_right ret_orb_productions
                         ret_orb_productions_base
-                        (map (parse_production' parse_nonterminal offset pf)
+                        (map (parse_production' (len0 := len0) parse_nonterminal offset len0_minus_len)
                              prods).
       End productions.
 
@@ -135,45 +128,54 @@ Section recursive_descent_parser.
               (option_rect
                  (fun _ => parse_nt_T)
                  (fun parse_nonterminal
-                  => ret_nt (parse_productions'
+                  => let len0' := if NPeano.ltb len len0
+                                  then len
+                                  else len0 in
+                     ret_nt (parse_productions'
+                               (len0 := len0')
                                parse_nonterminal
                                offset
-                               (len := len)
-                               (sumbool_rect
-                                  (fun b => len <= (if b then len else len0))
-                                  (fun _ => le_n _)
-                                  (fun _ => _)
-                                  (lt_dec len len0))
+                               (len0' - len)
                                (nonterminal_to_production nt)))
                  ret_nt_invalid
                  (sumbool_rect
-                    (fun b => option (forall (offset' : nat) (len' : nat), len' <= (if b then len else len0) -> nonterminal_carrierT -> parse_nt_T))
+                    (fun b => option (forall (offset' : nat) (len0_minus_len' : nat), nonterminal_carrierT -> parse_nt_T))
                     (fun _ => (** [str] got smaller, so we reset the valid nonterminals list *)
-                       Some (@parse_nonterminal
-                               (len, nonterminals_length initial_nonterminals_data)
-                               (or_introl _)
-                               initial_nonterminals_data))
+                       Some (fun offset' len0_minus_len'
+                             => @parse_nonterminal
+                                  (len, nonterminals_length initial_nonterminals_data)
+                                  (or_introl _)
+                                  initial_nonterminals_data
+                                  offset'
+                                  (len - len0_minus_len')
+                                  (le_minus _ _)))
                     (fun _ => (** [str] didn't get smaller, so we cache the fact that we've hit this nonterminal already *)
                        sumbool_rect
-                         (fun _ => option (forall (offset' : nat) (len' : nat), len' <= len0 -> nonterminal_carrierT -> parse_nt_T))
+                         (fun _ => option (forall (offset' : nat) (len0_minus_len' : nat), nonterminal_carrierT -> parse_nt_T))
                          (fun is_valid => (** It was valid, so we can remove it *)
-                            Some (@parse_nonterminal
-                                    (len0, pred valid_len)
-                                    (or_intror (conj eq_refl _))
-                                    (remove_nonterminal valid nt)))
+                            Some (fun offset' len0_minus_len'
+                                  => @parse_nonterminal
+                                       (len0, pred valid_len)
+                                       (or_intror (conj eq_refl _))
+                                       (remove_nonterminal valid nt)
+                                       offset'
+                                       (len0 - len0_minus_len')
+                                       (le_minus _ _)))
 
                          (fun _ => (** oops, we already saw this nonterminal in the past.  ABORT! *)
                             None)
                          (Sumbool.sumbool_of_bool (negb (EqNat.beq_nat valid_len 0) && is_valid_nonterminal valid nt)))
                     (lt_dec len len0)));
-            first [ assumption
-                  | simpl;
-                    generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid));
-                    clear; intro;
-                    abstract (
-                        destruct valid_len; try apply Lt.lt_n_Sn; [];
-                        exfalso; simpl in *; congruence
-                  ) ].
+              first [ assumption
+                    | apply le_minus
+                    | simpl; clear; abstract omega
+                    | simpl;
+                      generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid));
+                      clear; intro;
+                      abstract (
+                          destruct valid_len; try apply Lt.lt_n_Sn; [];
+                          exfalso; simpl in *; congruence
+                    ) ].
           Defined.
         End step.
 
@@ -192,6 +194,18 @@ Section recursive_descent_parser.
                  (well_founded_prod_relation lt_wf lt_wf)
                  _
                  (fun sl => @parse_nonterminal_step (fst sl) (snd sl)).
+
+          Definition parse_nonterminal_or_abort_minus
+                     (p : nat * nat)
+                     (valid : nonterminals_listT)
+                     (offset : nat) (len0_minus_len : nat)
+            : nonterminal_carrierT
+              -> parse_nt_T.
+          Proof.
+            refine (@parse_nonterminal_or_abort
+                      p valid offset (fst p - len0_minus_len) _).
+            clear; try apply le_minus; abstract omega.
+          Defined.
 
           Definition parse_nonterminal'
                      (nt : nonterminal_carrierT)
@@ -217,12 +231,12 @@ Section recursive_descent_parser.
       Definition parse_production
                  (pat : production_carrierT)
       : parse_production_T
-        := parse_production' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 (reflexivity _) pat.
+        := parse_production' (len0 := length str) (@parse_nonterminal_or_abort_minus (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 0 pat.
 
       Definition parse_productions
                  (pats : list production_carrierT)
       : parse_productions_T
-        := parse_productions' (parse_nonterminal_or_abort (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 (reflexivity _) pats.
+        := parse_productions' (len0 := length str) (parse_nonterminal_or_abort_minus (length str, nonterminals_length initial_nonterminals_data) initial_nonterminals_data) 0 0 pats.
     End parts.
   End simple.
 End recursive_descent_parser.

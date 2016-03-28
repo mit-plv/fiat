@@ -37,6 +37,9 @@ Local Open Scope string_like_scope.
 Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
 
+(** XXX TODO MOVE ME *)
+Local Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
+
 Module Export opt.
   Module Import opt.
     Definition first_index_default {A} := Eval compute in @Operations.List.first_index_default A.
@@ -201,15 +204,6 @@ Section recursive_descent_parser.
               | exact _ ].
   Defined.
 
-  Local Ltac contract_drop_take_t' :=
-    idtac;
-    match goal with
-      | [ |- context[drop_takes_offset ?ls ?offset + ?v] ]
-        => change (drop_takes_offset ls offset + v) with (drop_takes_offset (drop_of v :: ls) offset)
-      | [ |- context[drop_takes_len ?ls ?len - ?v] ]
-        => change (drop_takes_len ls len - v) with (drop_takes_len (drop_of v :: ls) len)
-    end.
-
   Local Ltac contract_drop_take_t :=
     idtac;
     match goal with
@@ -222,10 +216,6 @@ Section recursive_descent_parser.
       | [ |- beq _ _ ] => reflexivity
       | [ |- Equivalence _ ] => split; repeat intro
     end.
-
-  Local Arguments drop_takes_offset : simpl never.
-  Local Arguments drop_takes_len : simpl never.
-  Local Arguments drop_takes_len_pf : simpl never.
 
   Local Ltac t_reduce_fix :=
     repeat match goal with
@@ -269,12 +259,6 @@ Section recursive_descent_parser.
              | [ |- context[orb false _] ] => rewrite Bool.orb_false_l
              | [ |- cons _ _ = cons _ _ ]
                => apply f_equal2
-             (*| _ => contract_drop_take_t'
-             | _ => rewrite make_drops_eta
-             | _ => rewrite make_drops_eta'
-             | _ => rewrite make_drops_eta''*)
-             (*| [ |- context[to_string (of_string _)] ] => rewrite !to_of*)
-             | _ => contract_drop_take_t'
              | _ => solve [ auto with nocore ]
              | [ |- prod_relation lt lt _ _ ] => hnf; simpl; omega
              | [ H : (_ && _)%bool = true |- _ ] => apply Bool.andb_true_iff in H
@@ -306,26 +290,26 @@ Section recursive_descent_parser.
 
   Local Ltac t_reduce_list :=
     idtac;
-    match goal with
-    | [ |- list_rect ?P ?n ?c ?ls ?idx ?offset ?len ?y = list_rect ?P' ?n' ?c' ?ls ?idx ?offset ?len ?y ]
+    lazymatch goal with
+    | [ |- list_rect ?P ?n ?c ?ls ?idx ?offset ?len = list_rect ?P' ?n' ?c' ?ls ?idx ?offset ?len ]
       => let n0 := fresh in
          let c0 := fresh in
          let n1 := fresh in
          let c1 := fresh in
          set (n0 := n);
-           set (n1 := n');
-           set (c0 := c);
-           set (c1 := c');
-           refine (list_rect
-                     (fun ls' => forall idx' l' y', list_rect P n0 c0 ls' idx' (drop_takes_offset l' offset) (drop_takes_len l' len) y' = list_rect P' n1 c1 ls' idx' (drop_takes_offset l' offset) (drop_takes_len l' len) y')
-                     _
-                     _
-                     ls
-                     idx
-                     nil y);
-           simpl list_rect;
-           [ subst n0 c0 n1 c1; cbv beta
-           | intros; unfold n0 at 1, c0 at 1, n1 at 1, c1 at 1 ]
+         set (n1 := n');
+         set (c0 := c);
+         set (c1 := c');
+         refine (list_rect
+                   (fun ls' => forall idx' offset' len', list_rect P n0 c0 ls' idx' offset' len' = list_rect P' n1 c1 ls' idx' offset' len')
+                   _
+                   _
+                   ls
+                   idx
+                   offset len);
+         simpl list_rect;
+         [ subst n0 c0 n1 c1; cbv beta
+         | intros; unfold c0 at 1, c1 at 1 ]
     end.
 
   Local Ltac t_reduce_list_generalize :=
@@ -450,6 +434,22 @@ Section recursive_descent_parser.
              | [ |- context[andb _ true] ] => rewrite Bool.andb_true_r
            end.
 
+  Local Ltac misc_opt' :=
+    idtac;
+    match goal with
+    | _ => progress rewrite ?max_min_n, ?Minus.minus_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
+    | _ => rewrite Min.min_l by assumption
+    | _ => rewrite Min.min_r by assumption
+    | [ |- context[if (?x <? ?y) then _ else _] ] => rewrite if_to_min
+    | [ |- context[min ?x ?y - ?x] ] => rewrite min_sub_same
+    | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same
+    | [ |- context[?x - (?x - ?y)%natr] ]
+      => rewrite !(minusr_minus x y), sub_twice, <- ?minusr_minus
+    | _ => progress fin_step_opt
+    end.
+
+  Local Ltac misc_opt := repeat misc_opt'.
+
   Local Ltac step_opt' :=
     idtac;
     match goal with
@@ -571,15 +571,24 @@ Section recursive_descent_parser.
 
   Local Ltac t_prereduce_list_evar :=
     idtac;
-    match goal with
-      | [ |- ?e = list_rect ?P (fun a b c d => _) (fun x xs H a b c d => _) ?ls ?A ?B ?C ?D ]
-        => refine (_ : list_rect P _ _ ls A B C D = _)
+    let RHS := match goal with |- _ = ?RHS => RHS end in
+    lazymatch RHS with
+    | appcontext RHS'[list_rect ?P ?f ?g]
+      => let ft := type of f in
+         let gt := type of g in
+         let f' := fresh in
+         let g' := fresh in
+         evar (f' : ft); evar (g' : gt);
+         let f0 := (eval unfold f' in f') in
+         let g0 := (eval unfold g' in g') in
+         let RHS'' := context RHS'[list_rect P f0 g0] in
+         refine (_ : RHS'' = _)
     end.
 
   Local Ltac t_postreduce_list :=
     idtac;
-    match goal with
-      | [ |- list_rect ?P ?N ?C ?ls ?a ?b ?c ?d = list_rect ?P ?N' ?C' ?ls ?a ?b ?c ?d ]
+    lazymatch goal with
+      | [ |- list_rect ?P ?N ?C ?ls ?a ?b ?c = list_rect ?P ?N' ?C' ?ls ?a ?b ?c ]
         => let P0 := fresh in
            let N0 := fresh in
            let C0 := fresh in
@@ -593,12 +602,12 @@ Section recursive_descent_parser.
              let IH := fresh "IH" in
              let xs := fresh "xs" in
              refine (list_rect
-                       (fun ls' => forall a' b' c' d',
-                                     list_rect P0 N0 C0 ls' a' b' c' d'
-                                     = list_rect P0 N1 C1 ls' a' b' c' d')
+                       (fun ls' => forall a' b' c',
+                                     list_rect P0 N0 C0 ls' a' b' c'
+                                     = list_rect P0 N1 C1 ls' a' b' c')
                        _
                        _
-                       ls a b c d);
+                       ls a b c);
                simpl @list_rect;
                [ subst P0 N0 C0 N1 C1; intros; cbv beta
                | intros ? xs IH; intros; unfold C0 at 1, C1 at 1; cbv beta;
@@ -613,7 +622,7 @@ Section recursive_descent_parser.
   Local Ltac t_postreduce_list_with_hyp :=
     idtac;
     match goal with
-      | [ |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ?d = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ?d ]
+      | [ |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ]
         => let P0 := fresh in
            let N0 := fresh in
            let C0 := fresh in
@@ -627,12 +636,12 @@ Section recursive_descent_parser.
              let IH := fresh "IH" in
              let xs := fresh "xs" in
              refine (list_rect
-                       (fun ls' => forall a' (pf : ls' = f a') b' c' d',
-                                     list_rect P0 N0 C0 ls' a' b' c' d'
-                                     = list_rect P0 N1 C1 ls' a' b' c' d')
+                       (fun ls' => forall a' (pf : ls' = f a') b' c',
+                                     list_rect P0 N0 C0 ls' a' b' c'
+                                     = list_rect P0 N1 C1 ls' a' b' c')
                        _
                        _
-                       (f a) a eq_refl b c d);
+                       (f a) a eq_refl b c);
                simpl @list_rect;
                [ subst P0 N0 C0 N1 C1; intros; cbv beta
                | intros ? xs IH; intros; unfold C0 at 1, C1 at 1; cbv beta;
@@ -652,7 +661,7 @@ Section recursive_descent_parser.
   Local Ltac t_postreduce_list_with_hyp_with_assumption :=
     idtac;
     lazymatch goal with
-      | [ H : ?HP (?HP' (?f ?a)) = true |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ?d = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ?d ]
+      | [ H : ?HP (?HP' (?f ?a)) = true |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ]
         => let P0 := fresh in
            let N0 := fresh in
            let C0 := fresh in
@@ -667,12 +676,12 @@ Section recursive_descent_parser.
              let xs := fresh "xs" in
              let pf := fresh "pf" in
              refine (list_rect
-                       (fun ls' => forall a' (pf : ls' = f a') (H' : HP (HP' (f a')) = true) b' c' d',
-                                     list_rect P0 N0 C0 ls' a' b' c' d'
-                                     = list_rect P0 N1 C1 ls' a' b' c' d')
+                       (fun ls' => forall a' (pf : ls' = f a') (H' : HP (HP' (f a')) = true) b' c',
+                                     list_rect P0 N0 C0 ls' a' b' c'
+                                     = list_rect P0 N1 C1 ls' a' b' c')
                        _
                        _
-                       (f a) a eq_refl H b c d);
+                       (f a) a eq_refl H b c);
                simpl @list_rect;
                [ subst P0 N0 C0 N1 C1; intros; cbv beta
                | intros ? xs IH pg; intros; unfold C0 at 1, C1 at 1; cbv beta;
@@ -1011,10 +1020,10 @@ Section recursive_descent_parser.
     evar (b' : bool).
     sigL_transitivity b'; subst b';
     [
-    | rewrite Fix5_2_5_eq by (intros; apply parse_nonterminal_step_ext; assumption);
+    | rewrite Fix5_2_5_eq by (intros; rapply (@parse_nonterminal_step_ext _ _ _ optdata _); assumption);
       reflexivity ].
     simpl @fst; simpl @snd.
-    cbv beta iota zeta delta [parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' GenericRecognizer.parse_nonterminal_step GenericRecognizer.parse_productions GenericRecognizer.parse_productions' GenericRecognizer.parse_production GenericRecognizer.parse_item GenericRecognizer.parse_item' Lookup list_to_grammar list_to_productions].
+    cbv beta iota zeta delta [parse_nonterminal_step parse_productions parse_productions' parse_production parse_item parse_item' GenericRecognizer.parse_nonterminal_step GenericRecognizer.parse_productions GenericRecognizer.parse_productions' GenericRecognizer.parse_production GenericRecognizer.parse_item GenericRecognizer.parse_item' Lookup list_to_grammar list_to_productions GenericBaseTypes.parse_nt_T boolean_gendata GenericBaseTypes.ret_nt GenericBaseTypes.ret_nt_invalid].
     simpl.
     cbv beta iota zeta delta [predata BaseTypes.predata initial_nonterminals_data nonterminals_length remove_nonterminal production_carrierT].
     cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
@@ -1038,20 +1047,7 @@ Section recursive_descent_parser.
 
       (** Now we take advantage of the optimized splitter *)
       etransitivity_rev _.
-      { match goal with
-        | [ |- _ = option_rect ?P (fun x => _) ?N ?v ]
-          => refine (_ : option_rect P (fun x => _) N v = _)
-        end;
-        match goal with
-        | [ |- option_rect ?P ?S ?N ?v = option_rect ?P ?S' ?N' ?v ]
-          => refine (option_rect
-                       (fun v' => v = v' -> option_rect P S N v' = option_rect P S' N' v')
-                       (fun v' Hv => _)
-                       (fun Hv => _)
-                       v
-                       eq_refl);
-             simpl @option_rect
-        end; [ | reflexivity ].
+      { eapply option_rect_Proper_nondep_eq; [ intros ? Hv | reflexivity ].
         apply (f_equal (fun x => match x with Some _ => true | None => false end)) in Hv.
         simpl in Hv.
         lazymatch goal with
@@ -1069,8 +1065,6 @@ Section recursive_descent_parser.
               |- is_true (?R ?init ?nt) ]
             => apply H, H'
           end. }
-        step_opt'.
-        step_opt'.
         let nt := match type of Hvalid' with is_true (is_valid_nonterminal _ ?nt) => nt end in
         assert (Hvalid'' : productions_rvalid G (map to_production (nonterminal_to_production nt))).
         { unfold grammar_rvalid in Hvalid.
@@ -1082,15 +1076,24 @@ Section recursive_descent_parser.
         rewrite map_map in Hvalid''.
         pose proof (proj1 fold_right_andb_map_in_iff Hvalid'') as Hvalid'''.
         cbv beta in Hvalid'''.
+
+        misc_opt.
+        step_opt'.
+        step_opt'.
         apply map_Proper_eq_In; intros ? Hin.
         specialize (Hvalid''' _ Hin).
         unfold parse_production', parse_production'_for, GenericRecognizer.parse_production', GenericRecognizer.parse_production'_for.
+        cbv [GenericBaseTypes.parse_production_T].
         simpl.
+        (** Switch to using the list hypothesis, rather than lookup with the index *)
         etransitivity_rev _.
         { t_reduce_list_evar_with_hyp;
-          [ reflexivity
+          [
           |
           | ].
+          { set_evars.
+            misc_opt.
+            subst_evars; reflexivity. }
           { rewrite rdp_list_production_tl_correct.
             match goal with
               | [ H : _ = ?x |- context[?x] ]
@@ -1103,8 +1106,8 @@ Section recursive_descent_parser.
             reflexivity. } }
         (** Pull out the nil case once and for all *)
         etransitivity_rev _.
-        { match goal with
-            | [ |- _ = list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ?d ]
+        { lazymatch goal with
+            | [ |- _ = list_rect ?P ?N ?C (?f ?a) ?a ?b ?c ]
               => let P0 := fresh in
                  let N0 := fresh in
                  let C0 := fresh in
@@ -1114,16 +1117,16 @@ Section recursive_descent_parser.
                    let IH := fresh "IH" in
                    let xs := fresh "xs" in
                    refine (list_rect
-                             (fun ls' => forall a' (pf : ls' = f a') b' c' d',
+                             (fun ls' => forall a' (pf : ls' = f a') b' c',
                                            (bool_rect
                                               (fun _ => _)
-                                              (N0 a' b' c' d')
-                                              (list_rect P0 (fun _ _ _ _ => true) C0 ls' a' b' c' d')
+                                              (N0 a' b' c')
+                                              (list_rect P0 (fun _ _ _ => true) C0 ls' a' b' c')
                                               (EqNat.beq_nat (List.length ls') 0))
-                                           = list_rect P0 N0 C0 ls' a' b' c' d')
+                                           = list_rect P0 N0 C0 ls' a' b' c')
                              _
                              _
-                             (f a) a eq_refl b c d);
+                             (f a) a eq_refl b c);
                      simpl @list_rect;
                      [ subst P0 N0 C0; intros; cbv beta
                      | intros ? xs IH; intros; unfold C0 at 1 3; cbv beta;
@@ -1146,7 +1149,7 @@ Section recursive_descent_parser.
             end. }
           { simpl.
             unfold parse_item', GenericRecognizer.parse_item'.
-            step_opt';
+            step_opt'.
             repeat match goal with
                      | [ |- context[List.map _ match ?e with _ => _ end] ]
                        => is_var e; destruct e
@@ -1159,16 +1162,21 @@ Section recursive_descent_parser.
                      | [ |- context[EqNat.beq_nat ?x ?y] ]
                        => is_var x; destruct (EqNat.beq_nat x y) eqn:?
                      | [ H := _ |- _ ] => subst H
+                     | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
+                     | _ => rewrite minusr_minus
+                     | [ |- context[?x - (?y + (?x - ?y)) ] ]
+                       => replace (x - (y + (x - y))) with 0 by (clear; omega)
                    end. } }
         cbv beta.
-        step_opt'; [ solve [ step_opt' ] | | reflexivity ].
+        misc_opt.
+        step_opt'; [ | reflexivity ].
         etransitivity_rev _.
         { move Hvalid''' at bottom.
           simpl @to_production in Hvalid'''.
           unfold production_rvalid in Hvalid'''.
           t_prereduce_list_evar.
           t_postreduce_list_with_hyp_with_assumption;
-          [ reflexivity
+            [ reflexivity
             | let lem := constr:(production_tl_correct) in
               simpl rewrite lem;
               match goal with
@@ -1195,24 +1203,14 @@ Section recursive_descent_parser.
                    | _ => progress split_and
                    end. }
           etransitivity_rev _.
-          { do 2 step_opt'; [].
+          { do 3 step_opt'; [].
             etransitivity_rev _.
             { repeat optsplit_t'.
-              { rewrite <- andbr_andb.
+              { misc_opt.
+                rewrite <- andbr_andb.
                 apply (f_equal2 andbr); [ | reflexivity ].
-                rewrite Min.min_idempotent at 2.
-                match goal with
-                  | [ |- _ = ?f ?b ?c ?d ?e ]
-                    => refine (f_equal (fun b' => f b' c d e) _)
-                end.
-                match goal with
-                  | [ |- _ = ?f (min ?x ?x) (?pf_f ?pf ?k) ]
-                    => etransitivity_rev (f x pf);
-                      [ generalize (pf_f pf k); rewrite Min.min_idempotent; intro
-                      | ]
-                end.
-                { f_equal; apply Le.le_proof_irrelevance. }
-                { reflexivity. } }
+                rewrite Min.min_idempotent.
+                reflexivity. }
               { apply (f_equal2 andb); [ | reflexivity ].
                 step_opt'; [].
                 apply (f_equal2 andb); [ | reflexivity ].
@@ -1222,7 +1220,7 @@ Section recursive_descent_parser.
                 end.
                 match goal with
                 | [ |- leb 1 ?x = _ ]
-                  => is_var x; destruct x as [|[|]]; try reflexivity
+                  => destruct x as [|[|]]; try reflexivity
                 end. }
               { simpl in *.
                 match goal with
@@ -1233,10 +1231,12 @@ Section recursive_descent_parser.
           etransitivity_rev _.
           { rewrite !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ].
             unfold parse_item', GenericRecognizer.parse_item'.
+            simpl; misc_opt.
             repeat optsplit_t'; repeat step_opt';
               [ apply (f_equal2 andb) | ];
-              repeat optsplit_t'; repeat step_opt'.
-            { reflexivity. }
+              repeat optsplit_t'; misc_opt; repeat step_opt'.
+            { rewrite !minusr_minus, <- max_def, <- !minusr_minus.
+              reflexivity. }
             { reflexivity. }
             { simpl in *.
               set_evars.
@@ -1248,19 +1248,20 @@ Section recursive_descent_parser.
               end.
               reflexivity. }
             { reflexivity. } }
-            reflexivity. }
           reflexivity. }
+        reflexivity. }
 
       unfold productions, production.
       progress cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
 
       step_opt'; [ | reflexivity ].
+      misc_opt.
       step_opt'.
       etransitivity_rev _.
       { cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
         simpl rewrite list_to_productions_to_nonterminal; unfold Lookup_idx.
         etransitivity_rev _.
-        { step_opt'; [ reflexivity | ].
+        { step_opt'; [ set_evars; misc_opt; subst_evars; reflexivity | ].
           etransitivity_rev _.
           { step_opt'.
             rewrite_map_nth_rhs; rewrite !map_map; simpl.
@@ -1282,11 +1283,12 @@ Section recursive_descent_parser.
       reflexivity. }
     etransitivity_rev _.
     { etransitivity_rev _.
-      { repeat first [ idtac;
+      { repeat first [ rewrite uneta_bool
+                     | idtac;
                        match goal with
-                         | [ |- appcontext[@rdp_list_of_nonterminal] ] => fail 1
-                         | [ |- appcontext[@Carriers.default_production_tl] ] => fail 1
-                         | _ => reflexivity
+                       | [ |- appcontext[@rdp_list_of_nonterminal] ] => fail 1
+                       | [ |- appcontext[@Carriers.default_production_tl] ] => fail 1
+                       | _ => reflexivity
                        end
                      | step_opt'
                      | t_reduce_list_evar
@@ -1298,8 +1300,8 @@ Section recursive_descent_parser.
                 reflexivity
               | idtac;
                 match goal with
-                  | [ |- _ = ?f ?A ?b ?c ?d ]
-                    => refine (f_equal (fun A' => f A' b c d) _)
+                  | [ |- _ = ?f ?A ?b ?c ]
+                    => refine (f_equal (fun A' => f A' b c) _)
                 end;
                 progress unfold Carriers.default_production_tl; simpl;
                 repeat step_opt'; [ reflexivity | ];
@@ -1421,52 +1423,22 @@ Section recursive_descent_parser.
                      end ];
       [ | reflexivity | reflexivity | ].
       { t_reduce_list_evar; [ reflexivity | ].
-        repeat first [ step_opt'
+        repeat first [ set_evars; progress misc_opt; subst_evars
+                     | step_opt'
                      | apply (f_equal2 andb)
                      | apply (f_equal2 andbr)
                      | apply (f_equal3 char_at_matches)
-                     | progress fin_step_opt ].
-        { match goal with
-          | [ |- _ = ?f (?x - ?x) ?pf ]
-            => generalize pf;
-              rewrite Minus.minus_diag;
-              let pf' := fresh in
-              intro pf';
-                assert (Le.le_0_n _ = pf') by apply Le.le_proof_irrelevance;
-                subst pf'
-          end.
+                     | progress fin_step_opt
+                     | idtac;
+                       match goal with
+                       | [ |- _ = (?x - ?y)%natr ] => is_var x; is_var y; reflexivity
+                       end ].
+        { reflexivity. }
+        { reflexivity. }
+        { rewrite !Nat.add_1_r.
           reflexivity. }
         { reflexivity. }
-        { rewrite Plus.plus_comm; progress simpl.
-          match goal with
-            | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
-              => let f' := fresh in
-                 set (f' := f);
-                   let ty := constr:(f' (x - y)%natr (@opt_helper_minusr_proof a b c d) = f' (x - y) (pf a b c d )) in
-                   refine (_ : ty); change ty;
-                   clearbody f'
-          end.
-          match goal with
-            | [ |- ?f ?x ?y = ?f ?x' ?y' ]
-              => generalize y; generalize y'
-          end.
-          rewrite minusr_minus; intros; f_equal.
-          apply Le.le_proof_irrelevance. }
         { reflexivity. }
-        { match goal with
-            | [ |- _ = ?f (?x - ?y) (?pf ?a ?b ?c ?d) ]
-              => let f' := fresh in
-                 set (f' := f);
-                   let ty := constr:(f' (x - y)%natr (@opt_helper_minusr_proof a b c d) = f' (x - y) (pf a b c d )) in
-                   refine (_ : ty); change ty;
-                   clearbody f'
-          end.
-          match goal with
-            | [ |- ?f ?x ?y = ?f ?x' ?y' ]
-              => generalize y; generalize y'
-          end.
-          rewrite minusr_minus; intros; f_equal.
-          apply Le.le_proof_irrelevance. }
         { reflexivity. } }
       { reflexivity. } }
     reflexivity.
@@ -1518,8 +1490,8 @@ Section recursive_descent_parser.
               rewrite <- andbr_andb at 1.
               apply (f_equal2 andbr); [ | reflexivity ].
               match goal with
-              | [ |- _ = ?f ?x ?a ?b ?c ]
-                => refine (f_equal (fun x' => f x' a b c) _)
+              | [ |- _ = ?f ?x ?a ?b ]
+                => refine (f_equal (fun x' => f x' a b) _)
               end.
               fin_step_opt; [ reflexivity | ].
               apply (f_equal2 (nth _)); [ | reflexivity ].
@@ -1530,8 +1502,8 @@ Section recursive_descent_parser.
                 apply (f_equal2 andbr); [ reflexivity | ].
                 rewrite nth'_nth.
                 match goal with
-                | [ |- _ = ?f ?x ?a ?b ?c ]
-                  => refine (f_equal (fun x' => f x' a b c) _)
+                | [ |- _ = ?f ?x ?a ?b ]
+                  => refine (f_equal (fun x' => f x' a b) _)
                 end.
                 fin_step_opt; [ reflexivity | ].
                 apply (f_equal2 (nth _)); [ | reflexivity ].
@@ -1541,8 +1513,8 @@ Section recursive_descent_parser.
                 apply (f_equal2 andb); [ reflexivity | ].
                 rewrite nth'_nth.
                 match goal with
-                | [ |- _ = ?f ?x ?a ?b ?c ]
-                  => refine (f_equal (fun x' => f x' a b c) _)
+                | [ |- _ = ?f ?x ?a ?b ]
+                  => refine (f_equal (fun x' => f x' a b) _)
                 end.
                 fin_step_opt; [ reflexivity | ].
                 apply (f_equal2 (nth _)); [ | reflexivity ].
@@ -1770,6 +1742,7 @@ Section recursive_descent_parser.
     | [ |- _ = orbr _ _ ] => apply (f_equal2 orbr)
     | [ |- _ = andb _ _ ] => apply (f_equal2 andb)
     | [ |- _ = andbr _ _ ] => apply (f_equal2 andbr)
+    | [ |- _ = minusr _ _ ] => apply (f_equal2 minusr)
     | [ |- ?e = List.map ?f (opt2.id ?x) ]
       => progress change (e = opt2.map f x)
     | [ |- context G[List.map ?f (opt.id ?ls)] ]
@@ -1793,11 +1766,11 @@ Section recursive_descent_parser.
     | [ |- context G[List.fold_left orbr (opt.id ?ls) false] ]
       => let G' := context G[opt.id (opt.fold_left orbr ls false)] in
          change G'
-    | [ |- _ = list_rect ?P ?N ?C (opt.id ?ls) (opt2.id ?idx) ?offset ?len ?pf ]
+    | [ |- _ = list_rect ?P ?N ?C (opt.id ?ls) (opt2.id ?idx) ?offset ?len ]
       => t_reduce_list_evar;
         [
                | match goal with
-                 | [ |- ?e ?x ?xs ?H ?a ?b ?c ?d = _ ]
+                 | [ |- ?e ?x ?xs ?H ?a ?b ?c = _ ]
                    => is_evar e;
                      change x with (opt.id x);
                      change xs with (opt.id xs);
@@ -1907,8 +1880,8 @@ Section recursive_descent_parser.
       step_opt';
         change_opt_reduce; [ | | | ].
       { match goal with
-        | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
-          => refine (f_equal (fun x' => f x' y z w) _)
+        | [ |- _ = ?f (opt2.id ?x) ?y ?z ]
+          => refine (f_equal (fun x' => f x' y z) _)
         end.
         change_opt_reduce; [].
         match goal with
@@ -1916,13 +1889,13 @@ Section recursive_descent_parser.
           => unfold opt2.id; reflexivity
         end. }
       { match goal with
-        | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
+        | [ |- _ = ?f _ _ (opt.id (opt.first_index_default _ _ _)) ]
           => unfold opt.id
         end.
         reflexivity. }
       { match goal with
-        | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
-          => refine (f_equal (fun x' => f x' y z w) _)
+        | [ |- _ = ?f (opt2.id ?x) ?y ?z ]
+          => refine (f_equal (fun x' => f x' y z) _)
         end.
         change_opt_reduce; [].
         match goal with
@@ -1932,13 +1905,13 @@ Section recursive_descent_parser.
       { change @List.map with @opt2.map at 1. (** FIXME: is this right? *)
         change_opt_reduce; [ | | progress unfold opt2.id; reflexivity ].
         { match goal with
-          | [ |- _ = ?f _ _ _ (opt.id (opt.first_index_default _ _ _)) ]
+          | [ |- _ = ?f _ _ (opt.id (opt.first_index_default _ _ _)) ]
             => unfold opt.id
           end.
           reflexivity. }
         { match goal with
-          | [ |- _ = ?f (opt2.id ?x) ?y ?z ?w ]
-            => refine (f_equal (fun x' => f x' y z w) _)
+          | [ |- _ = ?f (opt2.id ?x) ?y ?z ]
+            => refine (f_equal (fun x' => f x' y z) _)
           end.
           change_opt_reduce; [].
           match goal with

@@ -186,6 +186,11 @@ Section recursive_descent_parser.
               | progress subst_nat_eq_proof
               | progress subst_bool_eq_proof
               | solve [ eauto with generic_parser_correctness nocore ]
+              | rewrite sub_twice, Min.min_r by assumption
+              | rewrite !@min_max_sub
+              | rewrite NPeano.Nat.sub_max_distr_l
+              | rewrite <- NPeano.Nat.sub_add_distr
+              | rewrite (proj2 (NPeano.ltb_lt _ _)) by assumption
               | idtac;
                 match goal with
                   | [ |- ?x = ?x ] => reflexivity
@@ -332,6 +337,10 @@ Section recursive_descent_parser.
                 match goal with
                 | [ H : ?x = true |- context[?x] ] => rewrite H
                 | [ H : ?x = false |- context[?x] ] => rewrite H
+                | [ H : NPeano.ltb _ _ = true |- _ ]
+                  => apply NPeano.ltb_lt in H
+                | [ H : ?T, H' : ~?T |- _ ] => specialize (H' H)
+                | [ H : False |- _ ] => destruct H
                 end ].
 
       Local Ltac eq_t := expand_once; repeat eq_t'.
@@ -486,6 +495,58 @@ Section recursive_descent_parser.
       Local Ltac eq_list_rect
         := (idtac;
             lazymatch goal with
+            | [ |- ?R (bool_of_sum (list_rect ?P ?N ?C ?ls ?a ?b ?c ?d ?e ?f ?g)) (list_rect ?P' ?N' ?C' ?ls ?a ?e ?f) ]
+              => idtac;
+                 (let R' := match (eval pattern a, e, f in R) with ?R' _ _ _ => R' end in
+                  let P0 := fresh in
+                  let N0 := fresh in
+                  let C0 := fresh in
+                  let P1 := fresh in
+                  let N1 := fresh in
+                  let C1 := fresh in
+                  set (P0 := P);
+                  set (P1 := P');
+                  set (N0 := N);
+                  set (N1 := N');
+                  set (C0 := C);
+                  set (C1 := C');
+                  refine (list_rect
+                            (fun ls' => forall a' b' c' d' e' f' g',
+                                 R' a' e' f'
+                                    (bool_of_sum (list_rect P0 N0 C0 ls' a' b' c' d' e' f' g'))
+                                    (list_rect P1 N1 C1 ls' a' e' f'))
+                            _
+                            _
+                            ls a b c d e f g);
+                  simpl @list_rect;
+                  [ subst N0 N1; simpl; intros
+                  | intros; unfold C0 at 1, C1 at 1; simpl ])
+            | [ |- ?R (bool_of_sum (list_rect ?P ?N ?C ?ls ?a ?b ?c ?d ?e ?f ?g ?h)) (list_rect ?P' ?N' ?C' ?ls ?a ?e (?len0 - ?f)) ]
+              => (let R' := match (eval pattern a, e, f, h in R) with ?R' _ _ _ _ => R' end in
+                  let P0 := fresh in
+                  let N0 := fresh in
+                  let C0 := fresh in
+                  let P1 := fresh in
+                  let N1 := fresh in
+                  let C1 := fresh in
+                  set (P0 := P);
+                  set (P1 := P');
+                  set (N0 := N);
+                  set (N1 := N');
+                  set (C0 := C);
+                  set (C1 := C');
+                  (*replace (len0 - f) with (len0 - f + 0) by omega;*)
+                  refine (list_rect
+                            (fun ls' => forall a' b' c' d' e' f' g' h' h''(* z'*),
+                                 R' a' e' f' h'
+                                    (bool_of_sum (list_rect P0 N0 C0 ls' a' b' c' d' e' f' g' h'))
+                                    (list_rect P1 N1 C1 ls' a' e' (len0 - f'(* + z'*))))
+                            _
+                            _
+                            ls a b c d e f g h h (*0*));
+                  simpl @list_rect;
+                  [ subst N0 N1; simpl; intros
+                  | intros; unfold C0 at 1, C1 at 1; simpl ])
             | [ |- ?R (bool_of_sum (list_rect ?P ?N ?C ?ls ?a ?b ?c ?d ?e ?f ?g ?h)) (list_rect ?P' ?N' ?C' ?ls ?a ?e ?f ?h) ]
               => (let R' := match eval pattern a, e, f, h in R with ?R' _ _ _ _ => R' end in
                              let P0 := fresh in
@@ -710,6 +771,7 @@ Section recursive_descent_parser.
                                          destruct H as [H0 H1]; try clear H
                | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
                | [ H : beq_nat _ _ = true |- _ ] => apply NPeano.Nat.eqb_eq in H
+               | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => progress subst
                | _ => progress simpl in *
                | _ => congruence
@@ -756,26 +818,26 @@ Section recursive_descent_parser.
 
       Section item.
         Context {len0 valid}
-                (offset : nat) (len : nat)
-                (Hlen : len = 0 \/ offset + len <= length str)
+                (offset : nat) (len0_minus_len : nat)
+                (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                 (str_matches_nonterminal'
                  : nonterminal_carrierT -> parse_nt_T)
                 (str_matches_nonterminal
                  : forall nt : nonterminal_carrierT,
-                     dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset len str) (to_nonterminal nt))).
+                     dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_nonterminal nt))).
 
         Section valid.
           Context (Hmatches
                    : forall nt,
                       is_valid_nonterminal initial_nonterminals_data nt = true
-                      -> parse_nt_is_correct (substring offset len str) nt (str_matches_nonterminal nt) (str_matches_nonterminal' nt))
+                      -> parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (str_matches_nonterminal nt) (str_matches_nonterminal' nt))
                   (it : item Char).
 
           Definition parse_item'
-          : dec (minimal_parse_of_item (G := G) len0 valid (substring offset len str) it).
+          : dec (minimal_parse_of_item (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) it).
           Proof.
-            refine (match it return dec (minimal_parse_of_item len0 valid (substring offset len str) it) with
-                      | Terminal P => if Sumbool.sumbool_of_bool (EqNat.beq_nat len 1 && char_at_matches offset str P)%bool
+            refine (match it return dec (minimal_parse_of_item len0 valid (substring offset _ str) it) with
+                      | Terminal P => if Sumbool.sumbool_of_bool (EqNat.beq_nat (len0 - len0_minus_len) 1 && char_at_matches offset str P)%bool
                                       then inl (match get offset str as g return get offset str = g -> _ with
                                                 | Some ch => fun H => MinParseTerminal _ _ _ ch _ _ _
                                                 | None => fun _ => !
@@ -792,18 +854,18 @@ Section recursive_descent_parser.
           Defined.
 
           Definition parse_item'_correct
-          : parse_item_is_correct (substring offset len str) it parse_item' (GenericRecognizer.parse_item' str str_matches_nonterminal' offset len it).
+          : parse_item_is_correct (substring offset (len0 - len0_minus_len) str) it parse_item' (GenericRecognizer.parse_item' str str_matches_nonterminal' offset (len0 - len0_minus_len) it).
           Proof. eq_t. Qed.
         End valid.
 
         Section all.
           Context (Hmatches
                    : forall nt,
-                      parse_nt_is_correct (substring offset len str) nt (str_matches_nonterminal nt) (str_matches_nonterminal' nt))
+                      parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (str_matches_nonterminal nt) (str_matches_nonterminal' nt))
                   (it : item Char).
 
           Definition parse_item'_all_correct
-            : parse_item_is_correct (substring offset len str) it (parse_item' it) (GenericRecognizer.parse_item' str str_matches_nonterminal' offset len it).
+            : parse_item_is_correct (substring offset (len0 - len0_minus_len) str) it (parse_item' it) (GenericRecognizer.parse_item' str str_matches_nonterminal' offset (len0 - len0_minus_len) it).
           Proof. eq_t. Qed.
         End all.
       End item.
@@ -812,16 +874,16 @@ Section recursive_descent_parser.
 
       Definition parse_item'_ext
                  {len0 valid}
-                 (offset len : nat)
-                 (Hlen : len = 0 \/ offset + len <= length str)
+                 (offset len0_minus_len : nat)
+                 (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                  (str_matches_nonterminal str_matches_nonterminal'
                   : forall nt : nonterminal_carrierT,
-                      dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset len str) (to_nonterminal nt)))
+                      dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_nonterminal nt)))
                  (ext : forall nt,
                           str_matches_nonterminal nt = str_matches_nonterminal' nt)
                 (it : item Char)
-      : parse_item' offset Hlen str_matches_nonterminal it
-        = parse_item' offset Hlen str_matches_nonterminal' it.
+      : parse_item' offset len0_minus_len Hlen str_matches_nonterminal it
+        = parse_item' offset len0_minus_len Hlen str_matches_nonterminal' it.
       Proof.
         expand_both_once; destruct it; try reflexivity; [].
         rewrite ext.
@@ -832,8 +894,8 @@ Section recursive_descent_parser.
       Section production.
         Context {len0 valid}
                 (parse_nonterminal
-                 : forall (offset : nat) (len : nat) (Hlen : len = 0 \/ offset + len <= length str) (pf : len <= len0) (nt : nonterminal_carrierT),
-                    dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset len str) (to_nonterminal nt))).
+                 : forall (offset : nat) (len0_minus_len : nat) (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str) (nt : nonterminal_carrierT),
+                    dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_nonterminal nt))).
 
         Lemma Hlen_helper {offset len} (Hlen : len = 0 \/ offset + len <= length str)
           : length (substring offset len str) = len.
@@ -842,35 +904,36 @@ Section recursive_descent_parser.
           apply Min.min_case_strong; omega.
         Qed.
 
-        Lemma dec_in_helper {ls it its offset len}
-              (Hlen : len = 0 \/ offset + len <= length str)
+        Lemma dec_in_helper {ls it its offset len0_minus_len}
+              (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str)
         : iffT {n0 : nat &
-                     (In (min (length (substring offset len str)) n0) (map (min (length (substring offset len str))) ls) *
-                      minimal_parse_of_item (G := G) len0 valid (take n0 (substring offset len str)) it *
-                      minimal_parse_of_production (G := G) len0 valid (drop n0 (substring offset len str)) its)%type}
+                     (In (min (length (substring offset (len0 - len0_minus_len) str)) n0) (map (min (length (substring offset (len0 - len0_minus_len) str))) ls) *
+                      minimal_parse_of_item (G := G) len0 valid (take n0 (substring offset (len0 - len0_minus_len) str)) it *
+                      minimal_parse_of_production (G := G) len0 valid (drop n0 (substring offset (len0 - len0_minus_len) str)) its)%type}
                {n0 : nat &
                      (In n0 ls *
-                      (minimal_parse_of_item (G := G) len0 valid (substring offset (min n0 len) str) it *
-                       minimal_parse_of_production (G := G) len0 valid (substring (offset + n0) (len - n0) str) its))%type}.
+                      (minimal_parse_of_item (G := G) len0 valid (substring offset (len0 - max (len0 - n0) len0_minus_len) str) it *
+                       minimal_parse_of_production (G := G) len0 valid (substring (offset + n0) (len0 - (len0_minus_len + n0)) str) its))%type}.
         Proof.
           rewrite Hlen_helper by assumption.
           split; first [ intros [n [[H0 H1] H2]]
                        | intros [n [H0 [H1 H2]]] ].
-          { destruct (le_lt_dec len n) as [pf|pf].
+          { destruct (le_lt_dec (len0 - len0_minus_len) n) as [pf|pf].
             { rewrite Min.min_l in H0 by assumption.
               clear -H0 H1 H2 rdata cdata pf HSLP.
               induction ls as [|x xs IHxs]; destruct_head_hnf False.
-              destruct (le_lt_dec len x).
+              destruct (le_lt_dec (len0 - len0_minus_len) x).
               { exists x.
                 repeat split.
                 { left; reflexivity. }
                 { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
-                  rewrite take_take.
+                  rewrite take_take, <- NPeano.Nat.sub_min_distr_l.
                   rewrite !Min.min_r by omega.
                   reflexivity. }
                 { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                   rewrite drop_take, StringLike.drop_drop.
-                  apply bool_eq_empty; rewrite substring_length; apply Min.min_case_strong; omega. } }
+                  rewrite NPeano.Nat.sub_add_distr.
+                  apply bool_eq_empty; rewrite substring_length; apply Min.min_case_strong; generalize dependent (len0 - len0_minus_len); intros; omega. } }
               { simpl in *.
                 rewrite Min.min_r in H0 by omega.
                 destruct IHxs as [n' [IH0 [IH1 IH2]]].
@@ -892,27 +955,32 @@ Section recursive_descent_parser.
                        end. }
               { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
                 rewrite take_take.
+                rewrite <- NPeano.Nat.sub_min_distr_l, sub_twice.
+                rewrite (Min.min_r len0) by omega.
                 reflexivity. }
               { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                 rewrite drop_take, StringLike.drop_drop.
-                rewrite (plus_comm offset); reflexivity. } } }
+                rewrite (plus_comm offset), NPeano.Nat.sub_add_distr; reflexivity. } } }
           { exists n; repeat split; try assumption.
             { apply in_map; assumption. }
             { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
               rewrite take_take.
+              rewrite <- NPeano.Nat.sub_min_distr_l, sub_twice.
+              rewrite (Min.min_comm len0), <- !Min.min_assoc, (Min.min_r len0) by omega.
               reflexivity. }
             { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
               rewrite drop_take, StringLike.drop_drop.
-              rewrite (plus_comm offset); reflexivity. } }
+              rewrite (plus_comm offset), NPeano.Nat.sub_add_distr.
+              reflexivity. } }
         Defined.
 
         Local Opaque dec_in_helper.
 
-        Lemma parse_production'_helper {offset len it its} (pf : length (substring offset len str) <= len0)
+        Lemma parse_production'_helper {offset len0_minus_len it its} (pf : length (substring offset (len0 - len0_minus_len) str) <= len0)
         : dec {n0 : nat &
-                    (minimal_parse_of_item (G := G) len0 valid (take n0 (substring offset len str)) it *
-                     minimal_parse_of_production (G := G) len0 valid (drop n0 (substring offset len str)) its)%type}
-          -> dec (minimal_parse_of_production (G := G) len0 valid (substring offset len str) (it :: its)).
+                    (minimal_parse_of_item (G := G) len0 valid (take n0 (substring offset (len0 - len0_minus_len) str)) it *
+                     minimal_parse_of_production (G := G) len0 valid (drop n0 (substring offset (len0 - len0_minus_len) str)) its)%type}
+          -> dec (minimal_parse_of_production (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (it :: its)).
         Proof.
           intros [H|H]; [ left; destruct H as [n [??]] | right; intro p; apply H; clear H ].
           { econstructor; eassumption. }
@@ -944,29 +1012,31 @@ Section recursive_descent_parser.
           destruct H; subst; [ left | right ]; omega.
         Qed.
 
-        Lemma lift_parse_prod {str' offset len a it its}
+        Lemma lift_parse_prod {str' offset len0_minus_len a it its}
               (H : (minimal_parse_of_item
                       (G := G)
                       len0 valid
-                      (substring offset (min a len) str') it *
+                      (substring offset (len0 - max (len0 - a) len0_minus_len) str') it *
                    minimal_parse_of_production
                      (G := G)
                      len0 valid
-                     (substring (offset + a) (len - a) str') its)%type)
+                     (substring (offset + a) (len0 - (len0_minus_len + a)) str') its)%type)
           : minimal_parse_of_item
               (G := G)
               len0 valid
-              (take a (substring offset len str')) it *
+              (take a (substring offset (len0 - len0_minus_len) str')) it *
             minimal_parse_of_production
               (G := G)
               len0 valid
-              (drop a (substring offset len str')) its.
+              (drop a (substring offset (len0 - len0_minus_len) str')) its.
         Proof.
           destruct H as [pi pp]; split.
           { eapply expand_minimal_parse_of_item_beq; [ | eassumption ].
-            rewrite take_take; reflexivity. }
+            rewrite take_take, <- NPeano.Nat.sub_min_distr_l, sub_twice.
+            rewrite (Min.min_comm len0), <- !Min.min_assoc, min_minus_r.
+            reflexivity. }
           { eapply expand_minimal_parse_of_production_beq; [ | eassumption ].
-            rewrite drop_take, StringLike.drop_drop, (plus_comm a offset).
+            rewrite drop_take, StringLike.drop_drop, (plus_comm a offset), NPeano.Nat.sub_add_distr.
             reflexivity. }
         Defined.
 
@@ -1048,25 +1118,56 @@ Section recursive_descent_parser.
           rewrite apply_n_commute; apply f_equal; assumption.
         Qed.
 
+        Lemma substring_length_le_helper {offset len0_minus_len}
+          : length (substring offset (len0 - len0_minus_len) str) <= len0.
+        Proof.
+          rewrite substring_length; apply Min.min_case_strong; omega.
+        Qed.
+
+        Lemma Hlen_sub_more {offset n len0_minus_len}
+          : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str
+            -> len0 - max (len0 - n) len0_minus_len = 0 \/
+               offset + (len0 - max (len0 - n) len0_minus_len) <= length str.
+        Proof.
+          clear; intros [Hlen|Hlen]; [ left | right ]; apply Max.max_case_strong; omega.
+        Qed.
+
+        Lemma Hlen_sub_some {n len0_minus_len offset}
+          : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str
+            -> len0 - max (len0 - n) len0_minus_len <= len0.
+        Proof.
+          apply Max.max_case_strong; omega.
+        Qed.
+
+        Lemma Hlen_sub_helper {offset n len0_minus_len}
+          : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str
+            -> len0 - (len0_minus_len + n) = 0 \/
+               offset + n + (len0 - (len0_minus_len + n)) <= length str.
+        Proof.
+          rewrite NPeano.Nat.sub_add_distr.
+          intros [Hlen|Hlen]; try solve [ left; omega | right; omega ].
+          destruct (Compare_dec.le_dec n (len0 - len0_minus_len));
+            solve [ left; omega | right; omega ].
+        Qed.
+
         (** To match a [production], we must match all of its items.
             But we may do so on any particular split. *)
         Definition parse_production'_for
                  (splits : production_carrierT -> String -> nat -> nat -> list nat)
-                 (Hsplits : forall offset len it its idx pf',
-                     len = 0 \/ offset + len <= length str
+                 (Hsplits : forall offset len0_minus_len it its idx pf',
+                     (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str
                      -> full_production_carrierT_reachableT idx
                      -> production_carrier_valid idx
                      -> to_production idx = it::its
-                     -> split_list_completeT_for (len0 := len0) (G := G) (valid := valid) it its (substring offset len str) pf' (splits idx str offset len))
-                 (offset len : nat)
-                 (Hlen : len = 0 \/ offset + len <= length str)
-                 (pf : len <= len0)
+                     -> split_list_completeT_for (len0 := len0) (G := G) (valid := valid) it its (substring offset (len0 - len0_minus_len) str) pf' (splits idx str offset (len0 - len0_minus_len)))
+                 (offset len0_minus_len : nat)
+                 (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                  (prod_idx : production_carrierT)
                  (Hreachable : full_production_carrierT_reachableT prod_idx)
                  (Hvalid : production_carrier_valid prod_idx)
-        : dec (minimal_parse_of_production (G := G) len0 valid (substring offset len str) (to_production prod_idx)).
+        : dec (minimal_parse_of_production (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_production prod_idx)).
         Proof.
-          revert offset len Hlen pf.
+          revert offset len0_minus_len Hlen.
           refine
             (list_rect
                (fun ps =>
@@ -1074,28 +1175,27 @@ Section recursive_descent_parser.
                          (Hreachable : full_production_carrierT_reachableT idx)
                          (Hvalid : production_carrier_valid idx)
                          (Hidx : to_production idx = ps)
-                         (offset len : nat)
-                         (Hlen : len = 0 \/ offset + len <= length str)
-                         (pf : len <= len0),
-                    dec (minimal_parse_of_production (G := G) len0 valid (substring offset len str) ps))
+                         (offset len0_minus_len : nat)
+                         (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str),
+                    dec (minimal_parse_of_production (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) ps))
                ((** 0-length production, only accept empty *)
-                 fun idx Hidx Hreachable Hvalid offset len Hlen pf
-                 => match Utils.dec (beq_nat len 0) with
+                 fun idx Hidx Hreachable Hvalid offset len0_minus_len Hlen
+                 => match Utils.dec (beq_nat (len0 - len0_minus_len) 0) with
                       | left H => inl _
                       | right H => inr (fun p => _)
                     end)
-               (fun it its parse_production' idx Hreachable Hvalid Hidx offset len Hlen pf
+               (fun it its parse_production' idx Hreachable Hvalid Hidx offset len0_minus_len Hlen
                 => parse_production'_helper
-                     (eq_le_trans (Hlen_helper Hlen) pf)
-                     (let parse_item := (fun n => parse_item' offset (len := min n len) (lift_le_min Hlen) (parse_nonterminal offset (len := min n len) (lift_le_min Hlen) (min_le_r pf)) it) in
-                      let parse_production := (fun n : nat => parse_production' (production_tl idx) (full_production_carrierT_reachableT_tl Hreachable) (production_tl_valid _ Hvalid) (eq_trans (production_tl_correct _) (f_equal (@tl _) Hidx)) (offset + n) (len - n) (lift_le Hlen) (minus_le pf)) in
+                     substring_length_le_helper
+                     (let parse_item := (fun n => parse_item' offset (max (len0 - n) len0_minus_len) (Hlen_sub_more Hlen) (parse_nonterminal offset (max (len0 - n) len0_minus_len) (Hlen_sub_more Hlen)) it) in
+                      let parse_production := (fun n : nat => parse_production' (production_tl idx) (full_production_carrierT_reachableT_tl Hreachable) (production_tl_valid _ Hvalid) (eq_trans (production_tl_correct _) (f_equal (@tl _) Hidx)) (offset + n) (len0_minus_len + n) (Hlen_sub_helper Hlen)) in
                       match dec_In
                               (fun n => dec_prod (parse_item n) (parse_production n))
-                              (splits idx str offset len)
+                              (splits idx str offset (len0 - len0_minus_len))
                       with
                         | inl p => inl (existT _ (projT1 p) (lift_parse_prod (snd (projT2 p))))
                         | inr p
-                          => let H := (_ : split_list_completeT_for (G := G) (len0 := len0) (valid := valid) it its (substring offset len str) (eq_le_trans (Hlen_helper Hlen) pf) (splits idx str offset len)) in
+                          => let H := (_ : split_list_completeT_for (G := G) (len0 := len0) (valid := valid) it its (substring offset (len0 - len0_minus_len) str) substring_length_le_helper (splits idx str offset (len0 - len0_minus_len))) in
                              inr (fun p' => p (fst (dec_in_helper Hlen) (H p')))
                       end))
                (to_production prod_idx)
@@ -1111,30 +1211,31 @@ Section recursive_descent_parser.
 
         Definition parse_production'_for_correct
                    (parse_nonterminal'
-                    : forall (offset len : nat) (pf : len <= len0) (nt : nonterminal_carrierT),
+                    : forall (offset len0_minus_len : nat) (nt : nonterminal_carrierT),
                        parse_nt_T)
                    (parse_nonterminal_eq
-                    : forall offset len Hlen pf nt,
+                    : forall offset len0_minus_len Hlen nt,
                        is_valid_nonterminal initial_nonterminals_data nt = true
-                       -> parse_nt_is_correct (substring offset len str) nt (@parse_nonterminal offset len Hlen pf nt) (parse_nonterminal' offset len pf nt))
+                       -> parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (@parse_nonterminal offset len0_minus_len Hlen nt) (parse_nonterminal' offset len0_minus_len nt))
                    (splits : production_carrierT -> String -> nat -> nat -> list nat)
-                   (Hsplits : forall offset len it its idx pf',
-                       len = 0 \/ offset + len <= length str
+                   (Hsplits : forall offset len0_minus_len it its idx pf',
+                       len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str
                        -> full_production_carrierT_reachableT idx
                        -> production_carrier_valid idx
                        -> to_production idx = it::its
-                       -> split_list_completeT_for (len0 := len0) (G := G) (valid := valid) it its (substring offset len str) pf' (splits idx str offset len))
-                   (offset len : nat)
-                   (Hlen : len = 0 \/ offset + len <= length str)
-                   (pf pf' : len <= len0)
+                       -> split_list_completeT_for (len0 := len0) (G := G) (valid := valid) it its (substring offset (len0 - len0_minus_len) str) pf' (splits idx str offset (len0 - len0_minus_len)))
+                   (offset len0_minus_len z : nat)
+                   (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                    (prod_idx : production_carrierT)
                    (Hreachable : full_production_carrierT_reachableT prod_idx)
                    (Hvalid : production_carrier_valid prod_idx)
-        : parse_production_is_correct (substring offset len str) prod_idx (parse_production'_for splits Hsplits offset Hlen pf Hreachable Hvalid) (GenericRecognizer.parse_production'_for str parse_nonterminal' splits offset pf' prod_idx).
+        : parse_production_is_correct (substring offset (len0 - len0_minus_len) str) prod_idx (parse_production'_for splits Hsplits offset len0_minus_len Hlen Hreachable Hvalid) (GenericRecognizer.parse_production'_for (len0 := len0) str parse_nonterminal' splits offset len0_minus_len prod_idx).
         Proof.
           eq_t; eq_list_rect; repeat eq_t'; [].
           expand_onceL; repeat eq_t'; [].
-          expand_onceL; eq_list_rect_fold_right_orb; repeat eq_t'.
+          expand_onceL; eq_list_rect_fold_right_orb; repeat eq_t'; [].
+          apply ret_orb_production_is_correct; repeat eq_t'; [].
+          eapply ret_production_cons_is_correct; repeat eq_t'.
         Qed.
 
         Lemma split_list_completeT_production_is_reachable
@@ -1177,34 +1278,32 @@ Section recursive_descent_parser.
         Qed.
 
         Definition parse_production'
-                 (offset len : nat)
-                 (Hlen : len = 0 \/ offset + len <= length str)
-                 (pf : len <= len0)
+                 (offset len0_minus_len : nat)
+                 (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                  (prod_idx : production_carrierT)
                  (Hreachable : full_production_carrierT_reachableT prod_idx)
                  (Hvalid : production_carrier_valid prod_idx)
-        : dec (minimal_parse_of_production (G := G) len0 valid (substring offset len str) (to_production prod_idx)).
+        : dec (minimal_parse_of_production (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_production prod_idx)).
         Proof.
-          refine (parse_production'_for _ _ _ Hlen pf Hreachable Hvalid).
-          intros offset' len' it' its' pidx' pf'' Hlen'.
-          exact (@split_list_completeT_production_is_reachable it' its' offset' len' pf'' _ pidx' Hlen' split_string_for_production_complete).
+          refine (parse_production'_for _ _ _ _ Hlen Hreachable Hvalid).
+          intros; eapply split_list_completeT_production_is_reachable; try eassumption.
+          eapply split_string_for_production_complete.
         Defined.
 
         Definition parse_production'_correct
                     (parse_nonterminal'
-                    : forall (offset len : nat) (pf : len <= len0) (nt : nonterminal_carrierT),
+                    : forall (offset len0_minus_len : nat) (nt : nonterminal_carrierT),
                         parse_nt_T)
                    (parse_nonterminal_eq
-                    : forall offset len Hlen pf nt,
+                    : forall offset len0_minus_len Hlen nt,
                        is_valid_nonterminal initial_nonterminals_data nt = true
-                       -> parse_nt_is_correct (substring offset len str) nt (@parse_nonterminal offset len Hlen pf nt) (parse_nonterminal' offset len pf nt))
-                   (offset len : nat)
-                   (Hlen : len = 0 \/ offset + len <= length str)
-                   (pf pf' : len <= len0)
+                       -> parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (@parse_nonterminal offset len0_minus_len Hlen nt) (parse_nonterminal' offset len0_minus_len nt))
+                   (offset len0_minus_len : nat)
+                   (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                    (prod_idx : production_carrierT)
                    (Hreachable : full_production_carrierT_reachableT prod_idx)
                    (Hvalid : production_carrier_valid prod_idx)
-          : parse_production_is_correct (substring offset len str) prod_idx (parse_production' offset Hlen pf Hreachable Hvalid) (GenericRecognizer.parse_production' str parse_nonterminal' offset pf' prod_idx).
+          : parse_production_is_correct (substring offset (len0 - len0_minus_len) str) prod_idx (parse_production' offset len0_minus_len Hlen Hreachable Hvalid) (GenericRecognizer.parse_production' (len0 := len0) str parse_nonterminal' offset len0_minus_len prod_idx).
         Proof.
           apply parse_production'_for_correct; try assumption.
         Qed.
@@ -1215,24 +1314,21 @@ Section recursive_descent_parser.
       Section productions.
         Context {len0 valid}
                 (parse_nonterminal'
-                 : forall (offset len : nat),
-                     len <= len0
-                     -> forall nt : nonterminal_carrierT,
-                          parse_nt_T)
-                (parse_nonterminal
-                 : forall (offset len : nat)
-                          (Hlen : len = 0 \/ offset + len <= length str)
-                          (pf : len <= len0)
+                 : forall (offset len0_minus_len : nat)
                           (nt : nonterminal_carrierT),
-                     dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset len str) (to_nonterminal nt)))
+                    parse_nt_T)
+                (parse_nonterminal
+                 : forall (offset len0_minus_len : nat)
+                          (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
+                          (nt : nonterminal_carrierT),
+                     dec (minimal_parse_of_nonterminal (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (to_nonterminal nt)))
                 (Hmatches
-                 : forall (offset len : nat)
-                          (Hlen : len = 0 \/ offset + len <= length str)
-                          (pf : len <= len0)
+                 : forall (offset len0_minus_len : nat)
+                          (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                           (nt : nonterminal_carrierT)
                           (Hvalid : is_valid_nonterminal initial_nonterminals_data nt = true),
-                    parse_nt_is_correct (substring offset len str) nt (parse_nonterminal offset len Hlen pf nt) (parse_nonterminal' offset len pf nt))
-                (offset len : nat).
+                    parse_nt_is_correct (substring offset (len0 - len0_minus_len) str) nt (parse_nonterminal offset len0_minus_len Hlen nt) (parse_nonterminal' offset len0_minus_len nt))
+                (offset len0_minus_len : nat).
 
         Definition productions_is_reachable (prods : productions Char)
           := { nt : _ & { prefix : _ | In nt (Valid_nonterminals G) /\ prefix ++ prods = Lookup G nt } }.
@@ -1308,22 +1404,21 @@ Section recursive_descent_parser.
         Qed.
 
         Definition parse_productions'
-                   (Hlen : len = 0 \/ offset + len <= length str)
-                   (pf : len <= len0)
+                   (Hlen : len0 - len0_minus_len = 0 \/ offset + (len0 - len0_minus_len) <= length str)
                    (prods : list production_carrierT)
                    (Hreachable : full_productions_carrierT_reachableT prods)
                    (Hvalid : List.Forall production_carrier_valid prods)
-        : dec (minimal_parse_of (G := G) len0 valid (substring offset len str) (List.map to_production prods)).
+        : dec (minimal_parse_of (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (List.map to_production prods)).
         Proof.
           revert prods Hreachable Hvalid.
           refine (list_rect
                     (fun prods
                      => full_productions_carrierT_reachableT prods
                         -> List.Forall production_carrier_valid prods
-                        -> dec (minimal_parse_of (G := G) len0 valid (substring offset len str) (List.map to_production prods)))
+                        -> dec (minimal_parse_of (G := G) len0 valid (substring offset (len0 - len0_minus_len) str) (List.map to_production prods)))
                     (fun _ _ => inr (fun p => _))
                     (fun p ps IHps Hreachable Hvalid
-                     => match parse_production' parse_nonterminal offset Hlen pf _ _ with
+                     => match parse_production' parse_nonterminal offset len0_minus_len Hlen _ _ with
                           | inl H => inl (MinParseHead _ _)
                           | inr H
                             => match IHps _ _ with
@@ -1337,15 +1432,14 @@ Section recursive_descent_parser.
         Defined.
 
         Lemma parse_productions'_correct
-              (Hlen : len = 0 \/ offset + len <= length str)
-              (pf pf' : len <= len0)
+              (Hlen : (len0 - len0_minus_len) = 0 \/ offset + (len0 - len0_minus_len) <= length str)
               (prods : list production_carrierT)
               (Hreachable : full_productions_carrierT_reachableT prods)
               (Hvalid : List.Forall production_carrier_valid prods)
         : parse_productions_is_correct
-            (substring offset len str) prods
-            (@parse_productions' Hlen pf prods Hreachable Hvalid)
-            (GenericRecognizer.parse_productions' str parse_nonterminal' offset pf' prods).
+            (substring offset (len0 - len0_minus_len) str) prods
+            (@parse_productions' Hlen prods Hreachable Hvalid)
+            (GenericRecognizer.parse_productions' (len0 := len0) str parse_nonterminal' offset len0_minus_len prods).
         Proof.
           eq_t; eq_list_rect_fold_right_orb; repeat eq_t'.
         Qed.
@@ -1471,8 +1565,20 @@ Section recursive_descent_parser.
                 => rewrite take_length in H
               | [ H : context[length (substring _ _ _)] |- _ ]
                 => rewrite substring_length, Min.min_r, NPeano.Nat.add_sub in H by omega
+              | [ H : context[?x - (?x - _)] |- _ ] => rewrite sub_twice in H
+              | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_r x y) in H by assumption
+              | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_l x y) in H by assumption
+              | [ H : context[min ?x ?x] |- _ ] => rewrite Min.min_idempotent in H
+              | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
+              | [ H : context[?x - 0] |- _ ] => rewrite NPeano.Nat.sub_0_r in H
             end.
           Local Ltac p_step := repeat p_step_t'.
+
+          Lemma Hlen_helper_sub_sub {len' len offset} (Hlen : len = 0 \/ offset + len <= length str)
+            : len' - (len' - len) = 0 \/ offset + (len' - (len' - len)) <= length str.
+          Proof.
+            clear -Hlen; omega.
+          Qed.
 
           Definition parse_nonterminal_step
                      (valid : nonterminals_listT)
@@ -1497,14 +1603,15 @@ Section recursive_descent_parser.
               destruct (@parse_productions'
                           len
                           initial_nonterminals_data
-                          (@parse_nonterminal
-                             (len, nonterminals_length initial_nonterminals_data)
-                             (or_introl pf')
-                             initial_nonterminals_data
-                             (reflexivity _))
-                          offset len
-                          Hlen
-                          (le_n _)
+                          (fun offset len0_minus_len Hlen nt
+                           => @parse_nonterminal
+                                (len, nonterminals_length initial_nonterminals_data)
+                                (or_introl pf')
+                                initial_nonterminals_data
+                                (reflexivity _)
+                                offset (len - len0_minus_len) Hlen (le_minus _ _) nt)
+                          offset (len - len)
+                          (Hlen_helper_sub_sub Hlen)
                           (nonterminal_to_production nt))
               as [mp|nmp];
               [ eexists _, nil; simpl; split;
@@ -1524,14 +1631,15 @@ Section recursive_descent_parser.
                             => @parse_productions'
                                  len0
                                  (remove_nonterminal valid nt)
-                                 (@parse_nonterminal
-                                    (len0, pred valid_len)
-                                    (or_intror (conj eq_refl pf''))
-                                    (remove_nonterminal valid nt)
-                                    pf''')
-                                 offset len
-                                 Hlen
-                                 pf
+                                 (fun offset len0_minus_len Hlen
+                                  => @parse_nonterminal
+                                       (len0, pred valid_len)
+                                       (or_intror (conj eq_refl pf''))
+                                       (remove_nonterminal valid nt)
+                                       pf''' offset (len0 - len0_minus_len)
+                                       Hlen (le_minus _ _))
+                                 offset (len0 - len)
+                                 (Hlen_helper_sub_sub Hlen)
                                  (nonterminal_to_production nt))
                   as [mp|nmp];
                   [
@@ -1552,6 +1660,7 @@ Section recursive_descent_parser.
                       | clear -HSLP Hlen pf pf'; abstract p_step
                       | clear -rdata Hvalid; abstract p_step
                       | clear -rdata Hvalid mp; abstract p_step
+                      | clear -rdata Hvalid pf mp; abstract p_step
                       | clear -rdata Hvalid is_valid; abstract p_step
                       | clear -rdata Hvalid_len is_valid; abstract p_step
                       | clear -HSLP rdata Hvalid Hlen mp; abstract p_step
@@ -1575,6 +1684,17 @@ Section recursive_descent_parser.
             eq_t.
             destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [Hvalid'|Hvalid']; simpl;
               repeat eq_t'.
+            { apply ret_nt_is_correct; try assumption; [].
+              replace len with (len - (len - len)) at 1 by omega.
+              eapply parse_productions'_correct;
+                repeat eq_t'. }
+            { apply ret_nt_is_correct; try assumption; [].
+              replace len with (len0 - (len0 - len)) at 1 by omega.
+              match goal with
+              | [ |- context[NPeano.ltb ?x ?y] ]
+                => destruct (NPeano.ltb x y) eqn:?
+              end;
+                repeat eq_t'. }
           Qed.
         End step.
 
@@ -1666,6 +1786,15 @@ Section recursive_descent_parser.
                 ). }
           Defined.
 
+          Definition parse_nonterminal'_substring_minus
+                     (nt : nonterminal_carrierT)
+          : dec (minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (to_nonterminal nt)).
+          Proof.
+            destruct (parse_nonterminal'_substring nt) as [p|p]; [ left | right ];
+              rewrite <- minus_n_O;
+              exact p.
+          Defined.
+
           Definition parse_nonterminal'
                      (nt : nonterminal_carrierT)
           : dec (minimal_parse_of_nonterminal (G := G) (length str) initial_nonterminals_data str (to_nonterminal nt)).
@@ -1699,6 +1828,19 @@ Section recursive_descent_parser.
               rewrite H, Bool.andb_false_r; simpl.
               edestruct lt_dec; try omega; simpl.
               repeat eq_t'. }
+          Qed.
+
+          Lemma parse_nonterminal'_substring_minus_correct
+                (nt : nonterminal_carrierT)
+          : parse_nt_is_correct
+              str nt
+              (@parse_nonterminal'_substring_minus nt)
+              (GenericRecognizer.parse_nonterminal' str nt).
+          Proof.
+            R_etransitivity_eq; [ eapply parse_nonterminal'_substring_correct | ].
+            unfold parse_nonterminal'_substring_minus.
+            edestruct parse_nonterminal'_substring;
+              destruct (minus_n_O (length str)); reflexivity.
           Qed.
 
           Lemma parse_nonterminal'_correct
@@ -1823,15 +1965,19 @@ Section recursive_descent_parser.
       rewrite <- drop_0 at 1;
       erewrite <- take_long at 1 by reflexivity;
       instantiate;
-      rewrite drop_length, <- minus_n_O.
+      rewrite drop_length(*, <- minus_n_O at 1*).
     Local Ltac substring_to_str :=
-      rewrite drop_0, take_long at 1 by reflexivity.
+      repeat rewrite <- minus_n_O at 1; rewrite drop_0, take_long at 1 by reflexivity.
+
+    Lemma Hlen0 {lenstr} : lenstr - 0 = 0 \/ 0 + (lenstr - 0) <= lenstr.
+    Proof. omega. Qed.
+
 
     Section item.
       Context (it : item Char).
 
       Definition parse_item_substring : dec _
-        := parse_item' 0 (or_intror (reflexivity _)) (@parse_nonterminal'_substring) it.
+        := parse_item' (len0 := length str) 0 0 Hlen0 (@parse_nonterminal'_substring_minus) it.
 
       Definition parse_item
         : dec (minimal_parse_of_item (G := G) (length str) initial_nonterminals_data str it).
@@ -1839,7 +1985,7 @@ Section recursive_descent_parser.
         destruct parse_item_substring as [p|np];
         [ left | right; intro p; apply np; clear np ];
         (eapply expand_minimal_parse_of_item_beq; [ | eassumption ]);
-        clear -HSLP; abstract (rewrite substring_correct3'; reflexivity).
+        clear -HSLP; abstract (rewrite <- minus_n_O, substring_correct3'; reflexivity).
       Defined.
 
       Lemma parse_item_substring_correct
@@ -1848,8 +1994,11 @@ Section recursive_descent_parser.
           parse_item_substring
           (GenericRecognizer.parse_item str it).
       Proof.
-        str_to_substring; apply parse_item'_all_correct; intro; substring_to_str.
-        apply parse_nonterminal'_substring_correct.
+        str_to_substring.
+        unfold GenericRecognizer.parse_item.
+        rewrite (minus_n_O (length str)) at 6;
+          apply parse_item'_all_correct; intro; substring_to_str.
+        apply parse_nonterminal'_substring_minus_correct.
       Qed.
 
       Lemma parse_item_correct
@@ -1870,14 +2019,36 @@ Section recursive_descent_parser.
               (Hreachable : full_production_carrierT_reachableT p)
               (Hvalid : production_carrier_valid p).
 
+      Definition parse_production_substring_minus
+        : dec (minimal_parse_of_production (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (to_production p)).
+      Proof.
+        eapply parse_production'; [ | right; clear; apply le_minus | reflexivity.. | assumption | assumption ].
+        intros.
+        eapply (@parse_nonterminal_or_abort (length str, _));
+          simpl; try reflexivity; subst; try assumption; apply le_minus.
+      Defined.
+
       Definition parse_production_substring
         : dec (minimal_parse_of_production (G := G) (length str) initial_nonterminals_data (substring 0 (length str) str) (to_production p)).
       Proof.
-        eapply parse_production'; [ | right; reflexivity | reflexivity.. | assumption | assumption ].
-        intros.
-        eapply (@parse_nonterminal_or_abort (length str, _));
-          simpl; try reflexivity; subst; assumption.
+        destruct parse_production_substring_minus as [p'|p']; [ left | right ];
+          rewrite <- minus_n_O in p';
+          exact p'.
       Defined.
+
+      Lemma parse_production_substring_minus_correct
+        : parse_production_is_correct
+            str p
+            parse_production_substring_minus
+            (GenericRecognizer.parse_production str p).
+      Proof.
+        str_to_substring.
+        unfold GenericRecognizer.parse_production, parse_production_substring.
+        apply parse_production'_correct.
+        simpl; intros.
+        eapply (parse_nonterminal_or_abort_correct (_, _)).
+        assumption.
+      Qed.
 
       Definition parse_production
         : dec (minimal_parse_of_production (G := G) (length str) initial_nonterminals_data str (to_production p)).
@@ -1894,10 +2065,10 @@ Section recursive_descent_parser.
             parse_production_substring
             (GenericRecognizer.parse_production str p).
       Proof.
-        str_to_substring; apply parse_production'_correct.
-        simpl; intros.
-        eapply (parse_nonterminal_or_abort_correct (_, _)).
-        assumption.
+        R_etransitivity_eq; [ eapply parse_production_substring_minus_correct | ].
+        unfold parse_production_substring.
+        destruct parse_production_substring_minus;
+          destruct (minus_n_O (length str)); reflexivity.
       Qed.
 
       Lemma parse_production_correct
@@ -1918,13 +2089,21 @@ Section recursive_descent_parser.
               (Hreachable : full_productions_carrierT_reachableT ps)
               (Hvalid : List.Forall production_carrier_valid ps).
 
+      Definition parse_productions_substring_minus
+        : dec (minimal_parse_of (G := G) (length str) initial_nonterminals_data (substring 0 (length str - 0) str) (List.map to_production ps)).
+      Proof.
+        eapply parse_productions'; [ | right; apply le_minus | reflexivity.. | assumption | assumption ].
+        intros.
+        eapply (@parse_nonterminal_or_abort (length str, _));
+          simpl; try reflexivity; subst; try apply le_minus; assumption.
+      Defined.
+
       Definition parse_productions_substring
         : dec (minimal_parse_of (G := G) (length str) initial_nonterminals_data (substring 0 (length str) str) (List.map to_production ps)).
       Proof.
-        eapply parse_productions'; [ | right; reflexivity | reflexivity.. | assumption | assumption ].
-        intros.
-        eapply (@parse_nonterminal_or_abort (length str, _));
-          simpl; try reflexivity; subst; assumption.
+        destruct parse_productions_substring_minus as [p'|p']; [ left | right ];
+          rewrite <- minus_n_O in p';
+          exact p'.
       Defined.
 
       Definition parse_productions
@@ -1936,15 +2115,27 @@ Section recursive_descent_parser.
         clear -HSLP; abstract (rewrite substring_correct3'; reflexivity).
       Defined.
 
+      Lemma parse_productions_substring_minus_correct
+      : parse_productions_is_correct
+            str ps
+            parse_productions_substring_minus
+            (GenericRecognizer.parse_productions str ps).
+      Proof.
+        str_to_substring; apply parse_productions'_correct; simpl; intros.
+        eapply (parse_nonterminal_or_abort_correct (_, _)).
+        assumption.
+      Qed.
+
       Lemma parse_productions_substring_correct
       : parse_productions_is_correct
             str ps
             parse_productions_substring
             (GenericRecognizer.parse_productions str ps).
       Proof.
-        str_to_substring; apply parse_productions'_correct; simpl; intros.
-        eapply (parse_nonterminal_or_abort_correct (_, _)).
-        assumption.
+        R_etransitivity_eq; [ eapply parse_productions_substring_minus_correct | ].
+        unfold parse_productions_substring.
+        destruct parse_productions_substring_minus;
+          destruct (minus_n_O (length str)); reflexivity.
       Qed.
 
       Lemma parse_productions_correct

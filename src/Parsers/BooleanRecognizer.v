@@ -38,24 +38,19 @@ Section recursive_descent_parser.
          ret_nt_invalid := false }.
 
   Definition parse_item'
-    := Eval cbv [parse_item' parse_nt_T parse_item_T parse_production_T boolean_gendata] in
-        parse_item' str.
+    := parse_item' str.
 
   Definition parse_production'_for {len0}
-    := Eval cbv [parse_production'_for parse_nt_T boolean_gendata parse_production_T] in
-        parse_production'_for str (len0 := len0).
+    := parse_production'_for str (len0 := len0).
 
   Definition parse_production' {len0}
-    := Eval cbv [parse_production' parse_nt_T boolean_gendata parse_production_T] in
-        parse_production' str (len0 := len0).
+    := parse_production' str (len0 := len0).
 
   Definition parse_productions' {len0}
-    := Eval cbv [parse_productions' parse_nt_T boolean_gendata parse_production_T] in
-        parse_productions' str (len0 := len0).
+    := parse_productions' str (len0 := len0).
 
   Definition parse_nonterminal_step {len0 valid_len}
-    := Eval cbv [parse_nonterminal_step parse_nt_T boolean_gendata parse_production_T] in
-        parse_nonterminal_step str (len0 := len0) (valid_len := valid_len).
+    := parse_nonterminal_step str (len0 := len0) (valid_len := valid_len).
 
   Definition parse_nonterminal_or_abort
     : forall (p : nat * nat)
