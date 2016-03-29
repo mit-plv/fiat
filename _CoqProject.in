@@ -269,6 +269,7 @@ src/Parsers/GenericBaseTypes.v
 src/Parsers/GenericCorrectnessBaseTypes.v
 src/Parsers/GenericRecognizer.v
 src/Parsers/GenericRecognizerCorrect.v
+src/Parsers/GenericRecognizerEquality.v
 src/Parsers/GenericRecognizerExt.v
 src/Parsers/GenericRecognizerMin.v
 src/Parsers/MinimalParse.v

@@ -179,6 +179,8 @@ Section recursive_descent_parser.
                try unfold x'; try unfold y'
         end.
 
+      Local Hint Resolve beq_nat_true : generic_parser_correctness.
+
       Local Ltac eq_t' :=
         first [ progress subst_le_proof
               | progress subst_nat_eq_proof
@@ -1762,6 +1764,36 @@ Section recursive_descent_parser.
             expand_once.
             repeat eq_t'.
             eapply parse_nonterminal'_correct.
+          Qed.
+
+          Lemma parse_nonterminal_correct'
+                (nt : nonterminal_carrierT)
+          : parse_nt_is_correct
+              str nt
+              (@parse_nonterminal (to_nonterminal nt))
+              (GenericRecognizer.parse_nonterminal str (to_nonterminal nt)).
+          Proof.
+            expand_once.
+            repeat eq_t'.
+            destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [H|H].
+            { rewrite of_to_nonterminal by assumption.
+              apply parse_nonterminal'_correct. }
+            { destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data (of_nonterminal (to_nonterminal nt)))) as [H'|H'].
+              { apply initial_nonterminals_correct, initial_nonterminals_correct' in H'.
+                congruence. }
+              { unfold GenericRecognizer.parse_nonterminal'.
+                unfold GenericRecognizer.parse_nonterminal_or_abort.
+                rewrite Fix5_eq by (intros; apply parse_nonterminal_step_ext; assumption).
+                unfold GenericRecognizer.parse_nonterminal_step at 1.
+                simpl.
+                rewrite H', Bool.andb_false_r; simpl.
+                edestruct lt_dec; try omega; simpl.
+                repeat eq_t'.
+                R_etransitivity_eq; [ eapply ret_nt_invalid_is_correct | ].
+                symmetry.
+                unfold parse_nonterminal'; repeat eq_t'.
+                unfold parse_nonterminal'_substring; repeat eq_t'.
+                congruence. } }
           Qed.
         End wf.
       End nonterminals.

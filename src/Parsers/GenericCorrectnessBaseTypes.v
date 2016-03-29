@@ -64,7 +64,8 @@ Section correctness.
 
       ret_Terminal_true_correct
       : forall str offset len ch,
-          (beq_nat len 1 && char_at_matches offset str ch)%bool = true
+          len = 0 \/ offset + len <= length str
+          -> (beq_nat len 1 && char_at_matches offset str ch)%bool = true
           -> parse_item_is_correct
                (substring offset len str) (Terminal ch)
                true (ret_Terminal_true (unsafe_get offset str));
@@ -82,7 +83,7 @@ Section correctness.
       ret_production_nil_true_is_correct
       : forall str offset len prod_idx,
           to_production prod_idx = nil ->
-          len = 0 \/ offset + len <= length str ->
+          len = 0 ->
           parse_production_is_correct
             (substring offset len str) prod_idx
             true ret_production_nil_true;

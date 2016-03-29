@@ -1,14 +1,15 @@
-(** * The boolean recognizer can work on a projected string type *)
-Require Import Fiat.Parsers.GenericRecognizerEquality.
+(** * The recognizer can work on a projected string type *)
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.BooleanRecognizerCorrect.
-Require Import Fiat.Parsers.BooleanRecognizerExt.
+Require Import Fiat.Parsers.GenericRecognizerCorrect.
+Require Import Fiat.Parsers.GenericRecognizerExt.
 Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.SetoidInstances.
+Require Import Fiat.Parsers.GenericRecognizer.
 
 Set Implicit Arguments.
 
@@ -21,13 +22,13 @@ Section transfer.
   Let data : @boolean_parser_dataT Char HSLM_heavy
     := {| BaseTypes.split_data := split_data |}.
   Local Existing Instance data.
+  Context {gendata : @generic_parser_dataT Char}.
 
   Class StringLikeProj :=
     { proj : @String Char HSLM_heavy -> @String Char HSLM_lite;
       length_proj : forall str, length (proj str) = length str;
-      (*drop_proj : forall n str, drop n (proj str) = proj (drop n str);
-      take_proj : forall n str, take n (proj str) = proj (take n str);*)
       char_at_matches_proj : forall offset str ch, char_at_matches offset (proj str) ch = char_at_matches offset str ch;
+      unsafe_get_proj : forall offset str, unsafe_get offset (proj str) = unsafe_get offset str;
       split_string_for_production_proj
       : forall idx str offset len,
           @split_string_for_production _ HSLM_lite _ split_data_lite idx (proj str) offset len
@@ -44,12 +45,12 @@ Section transfer.
         str_matches_nonterminal str_matches_nonterminal'
         (H : forall nt, str_matches_nonterminal nt = str_matches_nonterminal' nt)
         (offset len : nat) (it : item _)
-  : @parse_item' _ HSLM_lite _ (proj str) str_matches_nonterminal offset len it
-    = @parse_item' _ HSLM_heavy _ str str_matches_nonterminal' offset len it.
+  : @parse_item' _ HSLM_lite _ _ (proj str) str_matches_nonterminal offset len it
+    = @parse_item' _ HSLM_heavy _ _ str str_matches_nonterminal' offset len it.
   Proof.
     unfold parse_item'.
     destruct it; rewrite ?H; f_equal; try reflexivity.
-    apply char_at_matches_proj.
+    rewrite char_at_matches_proj, unsafe_get_proj; reflexivity.
   Qed.
 
   Lemma parse_production_proj
@@ -59,8 +60,8 @@ Section transfer.
                parse_nonterminal offset len pf' nt
                = parse_nonterminal' offset len pf' nt)
         offset len pf (prod : @production_carrierT _ data)
-  : @parse_production' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len pf prod
-    = @parse_production' _ HSLM_heavy _ str len0 parse_nonterminal' offset len pf prod.
+  : @parse_production' _ HSLM_lite _ _ (proj str) len0 parse_nonterminal offset len pf prod
+    = @parse_production' _ HSLM_heavy _ _ str len0 parse_nonterminal' offset len pf prod.
   Proof.
     unfold parse_production', parse_production'_for.
     simpl.
@@ -87,8 +88,8 @@ Section transfer.
                parse_nonterminal offset len pf' nt
                = parse_nonterminal' offset len pf' nt)
         offset len pf prods
-  : @parse_productions' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len pf prods
-    = @parse_productions' _ HSLM_heavy _ str len0 parse_nonterminal' offset len pf prods.
+  : @parse_productions' _ HSLM_lite _ _ (proj str) len0 parse_nonterminal offset len pf prods
+    = @parse_productions' _ HSLM_heavy _ _ str len0 parse_nonterminal' offset len pf prods.
   Proof.
     unfold parse_productions'.
     f_equal; [].
@@ -104,24 +105,25 @@ Section transfer.
                parse_nonterminal p pf valid offset len pf' nt
                = parse_nonterminal' p pf valid offset len pf' nt)
         valid offset len pf nt
-  : @parse_nonterminal_step _ HSLM_lite _ (proj str) len0 valid_len parse_nonterminal valid offset len pf nt
-    = @parse_nonterminal_step _ HSLM_heavy _ str len0 valid_len parse_nonterminal' valid offset len pf nt.
+  : @parse_nonterminal_step _ HSLM_lite _ _ (proj str) len0 valid_len parse_nonterminal valid offset len pf nt
+    = @parse_nonterminal_step _ HSLM_heavy _ _ str len0 valid_len parse_nonterminal' valid offset len pf nt.
   Proof.
     unfold parse_nonterminal_step.
     unfold sumbool_rect; simpl.
     repeat match goal with
              | [ |- appcontext[match ?e with _ => _ end] ]
                => destruct e eqn:?
-             | _ => solve [ apply parse_productions_proj; trivial ]
+             | _ => solve [ erewrite parse_productions_proj; try reflexivity; trivial ]
              | _ => reflexivity
+             | _ => progress simpl @option_rect
            end.
   Qed.
 
   Lemma parse_nonterminal_or_abort_proj
         (p : nat * nat) (valid : nonterminals_listT)
         (offset len : nat) (pf : len <= fst p) nt
-  : @parse_nonterminal_or_abort _ HSLM_lite _ (proj str) p valid offset len pf nt
-    = @parse_nonterminal_or_abort _ HSLM_heavy _ str p valid offset len pf nt.
+  : @parse_nonterminal_or_abort _ HSLM_lite _ _ (proj str) p valid offset len pf nt
+    = @parse_nonterminal_or_abort _ HSLM_heavy _ _ str p valid offset len pf nt.
   Proof.
     unfold parse_nonterminal_or_abort.
     revert valid offset len pf nt.
