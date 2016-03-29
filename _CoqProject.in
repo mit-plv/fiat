@@ -266,6 +266,7 @@ src/Parsers/ExtrOcamlParsers.v
 src/Parsers/ExtrOcamlPrimitives.v
 src/Parsers/FoldGrammar.v
 src/Parsers/GenericBaseTypes.v
+src/Parsers/GenericBoolCorrectnessBaseTypes.v
 src/Parsers/GenericCorrectnessBaseTypes.v
 src/Parsers/GenericRecognizer.v
 src/Parsers/GenericRecognizerBoolEquality.v
