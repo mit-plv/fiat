@@ -1766,6 +1766,26 @@ Section recursive_descent_parser.
             eapply parse_nonterminal'_correct.
           Qed.
 
+          Lemma parse_nonterminal_invalid_none
+                nt (H : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) = false)
+            : @parse_nonterminal nt = false :> bool.
+          Proof.
+            unfold parse_nonterminal; repeat eq_t'.
+            unfold parse_nonterminal'; repeat eq_t'.
+            unfold parse_nonterminal'_substring; repeat eq_t'.
+            congruence.
+          Qed.
+
+          Lemma parse_nonterminal_invalid_none'
+                nt (H : ~List.In nt (Valid_nonterminals G))
+            : @parse_nonterminal nt = false :> bool.
+          Proof.
+            apply parse_nonterminal_invalid_none.
+            destruct (is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt)) eqn:H'; trivial.
+            apply initial_nonterminals_correct in H'.
+            tauto.
+          Qed.
+
           Lemma parse_nonterminal_correct'
                 (nt : nonterminal_carrierT)
           : parse_nt_is_correct
