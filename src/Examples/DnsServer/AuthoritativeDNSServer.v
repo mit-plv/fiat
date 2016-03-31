@@ -6,7 +6,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import
         Fiat.Common.Tactics.CacheStringConstant
-        Fiat.Computation.Decideable
+        Fiat.Computation.Decidable
         Fiat.Computation.FoldComp
         Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Automation.MasterPlan

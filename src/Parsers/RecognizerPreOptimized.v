@@ -5,12 +5,12 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common.
-Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Require Fiat.Parsers.MinimalParseOfParse.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

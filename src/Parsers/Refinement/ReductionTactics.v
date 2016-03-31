@@ -145,7 +145,7 @@ Ltac make_simplified_splitter' splitter :=
   idtac;
   let term := constr:(projT1 splitter) in
   let h := head splitter in
-  let term := match constr:Set with
+  let term := match constr:(Set) with
               | _ => (eval cbv [h] in term)
               | _ => term
               end in

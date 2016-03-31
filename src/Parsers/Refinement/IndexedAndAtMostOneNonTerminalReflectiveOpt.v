@@ -273,7 +273,7 @@ Local Ltac opt_of term :=
       | ?f (opt.id ?x)
         => let f' := opt_of f in
            let term' := (eval cbv beta iota zeta in (f' (opt.id x))) in
-           match constr:Set with
+           match constr:(Set) with
            | _
              => let dummy := constr:(_ : constr_eq term' (f (opt.id x))) in
                 term'
@@ -283,7 +283,7 @@ Local Ltac opt_of term :=
       | ?f (opt2.id ?x)
         => let f' := opt_of f in
            let term' := (eval cbv beta iota zeta in (f' (opt2.id x))) in
-           match constr:Set with
+           match constr:(Set) with
            | _
              => let dummy := constr:(_ : constr_eq term' (f (opt2.id x))) in
                 term'
@@ -313,8 +313,8 @@ Local Ltac opt_of term :=
         => term'
       end in
   (*let term' := (eval cbv beta iota zeta in term) in
-  let dummy := match constr:Set with
-               | _ => let dummy := constr:(_ : constr_eq retv term') in constr:Set
+  let dummy := match constr:(Set) with
+               | _ => let dummy := constr:(_ : constr_eq retv term') in constr:(Set)
                | _ => cidtac retv
                end in*)
   retv.

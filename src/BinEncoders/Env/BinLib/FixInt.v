@@ -44,7 +44,9 @@ Section FixIntBinEncoder.
       | S l' => false :: pad b l'
     end.
 
-  Definition FixInt_encode (n : {n : N | (n < exp2 size)%N}) (ce : CacheEncode) :=
+  Definition FixInt := {n : N | (n < exp2 size)%N}.
+
+  Definition FixInt_encode (n : FixInt) (ce : CacheEncode) :=
     let b := encode' (proj1_sig n)
     in  (pad b (size - (length b)), addE ce size).
 
