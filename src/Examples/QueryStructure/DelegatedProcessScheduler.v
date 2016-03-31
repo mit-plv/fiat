@@ -19,8 +19,9 @@ Definition SchedulerSchema :=
 Definition SchedulerSpec : ADT _ :=
   QueryADTRep SchedulerSchema {
     Def Constructor0 "Init" : rep := empty,
-
-    Def Method2 "Spawn" (r : rep) (new_pid cpu : W) : rep * bool :=
+    Def Method0 "foo" (r : rep) : rep := ret r
+                                     
+    (*Def Method2 "Spawn" (r : rep) (new_pid cpu : W) : rep * bool :=
       Insert (<"pid" :: new_pid, "state" :: SLEEPING, "cpu" :: cpu> : RawTuple) into r!"Processes",
 
     Def Method1 "Enumerate" (r : rep) (state : State) : rep * list W :=
@@ -33,7 +34,7 @@ Definition SchedulerSpec : ADT _ :=
         proc <- For (p in r!"Processes")
                 Where (p!"pid" = id)
                 Return (p!"cpu");
-      ret (r, proc)
+      ret (r, proc) *)
               }%methDefParsing.
 
 Record DelegationADT (Sig : ADTSig)
@@ -42,23 +43,39 @@ Record DelegationADT (Sig : ADTSig)
        { DelegateeIDs : nat;
          DelegateeSigs : Fin.t DelegateeIDs -> ADTSig;
          DelegatedImplementation :
-           forall (DelegateImpls : forall idx,
-                      ADT (DelegateeSigs idx)),
+           forall (DelegateeReps : Fin.t DelegateeIDs -> Type)
+                  (DelegateeConsImpls :
+                     forall idx (cidx : ConstructorIndex (DelegateeSigs idx)),
+                       constructorType (DelegateeReps idx) (ConstructorDom _ cidx))
+                  (DelegateMethImpls :
+                     forall idx (midx : MethodIndex (DelegateeSigs idx)),
+                       methodType (DelegateeReps idx)
+                                  (fst (MethodDomCod _ midx))
+                                  (snd (MethodDomCod _ midx))),
              ADT Sig;
          DelegateeSpecs : forall idx, ADT (DelegateeSigs idx) }.
 
 Definition refinedUnderDelegates
            (Sig : ADTSig)
            (spec : ADT Sig)
-           (adt : DelegationADT Sig)
-  := forall (DelegateImpls : forall idx,
-                ADT (DelegateeSigs adt idx))
-            (ValidImpls
-             : forall idx : Fin.t (DelegateeIDs adt),
-                refineADT (DelegateeSpecs adt idx)
-                          (DelegateImpls idx)),
+           (dadt : DelegationADT Sig)
+  := forall
+    (DelegateReps : Fin.t (DelegateeIDs dadt) -> Type)
+    (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateeSigs dadt idx)),
+        constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+    (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateeSigs dadt idx)),
+        methodType (DelegateReps idx)
+                   (fst (MethodDomCod _ midx))
+                   (snd (MethodDomCod _ midx)))
+    (DelegateImpls := fun idx => {| Rep := DelegateReps idx;
+                                    Constructors := DelegateConsImpls idx;
+                                    Methods := DelegateMethImpls idx |})
+    (ValidImpls
+     : forall idx : Fin.t (DelegateeIDs dadt),
+        refineADT (DelegateeSpecs dadt idx)
+                  (DelegateImpls idx)),
     refineADT spec
-              (DelegatedImplementation adt DelegateImpls).
+              (DelegatedImplementation dadt DelegateReps DelegateConsImpls DelegateMethImpls).
 
 Definition refinedUnderDelegatesStep
            (Sig : ADTSig)
@@ -82,24 +99,44 @@ Lemma Notation_Friendly_refinedUnderDelegates
            (rep : (Fin.t DelegateIDs -> Type) -> Type)
            (refinedConstructors :
               forall
-                (DelegateImpls : forall idx, ADT (DelegateSigs idx)),
+                (DelegateReps : Fin.t DelegateIDs -> Type)
+                (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                    constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+                (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx))),
                 ilist
-                  (B := fun Sig : consSig =>
-                          constructorType
-                            (rep (fun idx => Rep (DelegateImpls idx)))
-                            (consDom Sig)) consSigs)
+                  (B := fun Sig : consSig => constructorType (rep DelegateReps) (consDom Sig))
+                  consSigs)
            (refinedMethods :
-              forall (DelegateImpls : forall idx, ADT (DelegateSigs idx)),
+              forall
+                (DelegateReps : Fin.t DelegateIDs -> Type)
+                (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                    constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+                (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx))),
                 ilist
                   (B := fun Sig : methSig =>
                           methodType
-                            (rep (fun idx => Rep (DelegateImpls idx)))
+                            (rep DelegateReps)
                             (methDom Sig)
                             (methCod Sig)) methSigs)
            (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
            (cAbsR :
               forall
-                (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+                (DelegateReps : Fin.t DelegateIDs -> Type)
+                (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                    constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+                (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx)))
+                (DelegateImpls := fun idx => {| Rep := DelegateReps idx;
+                                                 Constructors := DelegateConsImpls idx;
+                                                 Methods := DelegateMethImpls idx |})
                 (ValidImpls
                  : forall idx : Fin.t DelegateIDs,
                     refineADT (DelegateSpecs idx)
@@ -107,7 +144,16 @@ Lemma Notation_Friendly_refinedUnderDelegates
                 RepT -> rep (fun idx => Rep (DelegateImpls idx)) -> Prop)
            (constructorsRefinesSpec :
               forall
-                (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+                (DelegateReps : Fin.t DelegateIDs -> Type)
+                (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                    constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+                (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx)))
+                (DelegateImpls := fun idx => {| Rep := DelegateReps idx;
+                                                 Constructors := DelegateConsImpls idx;
+                                                 Methods := DelegateMethImpls idx |})
                 (ValidImpls
                  : forall idx : Fin.t DelegateIDs,
                     refineADT (DelegateSpecs idx)
@@ -117,13 +163,25 @@ Lemma Notation_Friendly_refinedUnderDelegates
                      @refineConstructor
                        (RepT)
                        (rep (fun idx => Rep (DelegateImpls idx)))
-                       (cAbsR _ ValidImpls)
+                       (cAbsR _ _ _ ValidImpls)
                        (consDom (Vector.nth consSigs idx))
                        (getConsDef consDefs idx)
-                       (ith (refinedConstructors DelegateImpls) idx)))
+                       (ith (refinedConstructors
+                               DelegateReps
+                               DelegateConsImpls
+                               DelegateMethImpls) idx)))
            (methodsRefinesSpec :
               forall
-                (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+                (DelegateReps : Fin.t DelegateIDs -> Type)
+                (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                    constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+                (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx)))
+                (DelegateImpls := fun idx => {| Rep := DelegateReps idx;
+                                                 Constructors := DelegateConsImpls idx;
+                                                 Methods := DelegateMethImpls idx |})
                 (ValidImpls
                  : forall idx : Fin.t DelegateIDs,
                     refineADT (DelegateSpecs idx)
@@ -133,20 +191,23 @@ Lemma Notation_Friendly_refinedUnderDelegates
                      @refineMethod
                        (RepT)
                        (rep (fun idx => Rep (DelegateImpls idx)))
-                       (cAbsR _ ValidImpls)
+                       (cAbsR _ _ _ ValidImpls)
                        (methDom (Vector.nth methSigs idx))
                        (methCod (Vector.nth methSigs idx))
                        (getMethDef methDefs idx)
-                       (ith (refinedMethods DelegateImpls) idx)))
+                       (ith (refinedMethods
+                               DelegateReps
+                               DelegateConsImpls
+                               DelegateMethImpls) idx)))
   : refinedUnderDelegates
       (BuildADT consDefs methDefs)
       {|
         DelegateeSigs := DelegateSigs;
         DelegatedImplementation :=
-          fun DelegateImpls =>
-            BuildADT (Rep := rep (fun idx => Rep (DelegateImpls idx)))
-                     (imap (@Build_consDef _) (refinedConstructors DelegateImpls))
-                     (imap (@Build_methDef _) (refinedMethods DelegateImpls));
+          fun DelegateReps DelegateConsImpls DelegateMethImpls =>
+            BuildADT (Rep := rep DelegateReps)
+                     (imap (@Build_consDef _) (refinedConstructors DelegateReps DelegateConsImpls DelegateMethImpls))
+                     (imap (@Build_methDef _) (refinedMethods DelegateReps DelegateConsImpls DelegateMethImpls));
         DelegateeSpecs := DelegateSpecs |}.
 Proof.
 Admitted.
@@ -233,7 +294,10 @@ Definition
       (forall idx, A idx -> B idx -> Prop)
       -> pRepT A -> pRepT B -> Prop)
   (cAbsR :=
-     fun DelegateImpls'
+     fun DelegateReps' DelegateConsImpls' DelegateMethImpls'
+         (DelegateImpls' := fun idx => {| Rep := DelegateReps' idx;
+                                         Constructors := DelegateConsImpls' idx;
+                                         Methods := DelegateMethImpls' idx |})
          (ValidImpls'
           : forall idx : Fin.t DelegateIDs,
              refineADT (DelegateSpecs idx)
@@ -477,6 +541,17 @@ Ltac ilist_of_evar' n C B As k :=
                        ltac:(fun Bs' => k (fun c => icons (a := Vector.hd As) (b c) (Bs' c))))
   end.
 
+Ltac ilist_of_evar_dep2 n C D1 D2 B As k :=
+  match n with
+  | 0 => k (fun (c : C) (d1 : D1 c) (d2 : D2 c) => @inil _ (B c))
+  | S ?n' =>
+    makeEvar (forall (c : C) (d1 : D1 c) (d2 : D2 c), B c (Vector.hd As))
+             ltac:(fun b =>
+                           ilist_of_evar_dep2 n'
+                                             C D1 D2 B (Vector.tl As)
+                                             ltac:(fun Bs' => k (fun (c : C) (d1 : D1 c) (d2 : D2 c) => icons (a := Vector.hd As) (b c d1 d2) (Bs' c d1 d2))))
+  end.
+
 Ltac FullySharpenEachMethod_w_Delegates
      DelegateIDs'
      AbstractReps
@@ -541,15 +616,29 @@ Ltac FullySharpenEachMethod_w_Delegates
                       BuildADT
                         (DelegateConstructorSpecs idx)
                         (DelegateMethodSpecs idx)) in
-        ilist_of_evar'
+        ilist_of_evar_dep2
           n
-          (forall idx : Fin.t DelegateIDs,
-              ADT (DelegateSigs idx))
-          (fun (DelegateImpls : forall idx, ADT (DelegateSigs idx))
-                    (Sig : consSig) =>
-                  constructorType
-                    (dRepT (fun idx => Rep (DelegateImpls idx)))
-                    (consDom Sig))
+          (Fin.t DelegateIDs' -> Type)
+          (fun DelegateReps =>
+             forall idx cidx,
+               constructorType (DelegateReps idx)
+                               (ConstructorDom (DelegateConstructorSigs idx)) cidx))
+          (fun DelegateReps =>
+             forall idx midx,
+               methodType (DelegateReps idx)
+                          (fst (MethodDomCod (DelegateMethodSigs idx)) midx)
+                          (snd (MethodDomCod (DelegateMethodSigs idx idx)) midx))
+          (fun (DelegateReps : Fin.t DelegateIDs' -> Type)
+               (DelegateConsImpls : forall idx (cidx : ConstructorIndex (DelegateSigs idx)),
+                   constructorType (DelegateReps idx) (ConstructorDom _ cidx))
+               (DelegateMethImpls : forall idx (midx : MethodIndex (DelegateSigs idx)),
+                    methodType (DelegateReps idx)
+                               (fst (MethodDomCod _ midx))
+                               (snd (MethodDomCod _ midx)))
+               (Sig : consSig) =>
+             constructorType
+               (dRepT DelegateReps)
+               (consDom Sig))
         consSigs
         ltac:(fun cCons =>
         ilist_of_evar'
@@ -573,13 +662,12 @@ Ltac FullySharpenEachMethod_w_Delegates
                           DelegateConstructorSigs
                           numDelegateMethods
                           DelegateMethodSigs
-                          DelegateConstructorSpecs
+                          (*DelegateConstructorSpecs
                           DelegateMethodSpecs
                           dAbsR
                           cCons
-                          cMeths
-
-           )))))))))
+                          cMeths *)
+           ))))))))
   end; try (simpl; repeat split; intros; subst).
 
 (* Determines if a term [r_o] is an abstract piece of state. *)
@@ -842,7 +930,7 @@ Ltac identify_Observer qschema :=
                 end; unify x r_o
             end; split; [ finish honing | solve [intuition eauto]  ] ).
 
-Lemma refine_under_bind_constructor
+(*Lemma refine_under_bind_constructor
       {DelegateIDs}
       (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
       (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
@@ -1016,7 +1104,7 @@ Lemma refineMethod_cons_dom
 Proof.
   unfold refineMethod; simpl; intros.
   eapply H; eauto.
-Qed.
+Qed. *)
 
 Lemma refineEquiv_pick_prim_prod:
   forall (A B : Type) (PA : A -> Prop) (PB : B -> Prop),
@@ -1029,7 +1117,7 @@ Proof.
   intros v Comp_v; computes_to_inv; subst; repeat computes_to_econstructor; simpl;
   intuition eauto.
   destruct v; simpl; computes_to_econstructor.
-Qed.
+Qed. 
 
 Ltac find_evar_in_ilist MethDefs MethSigs k :=
   first [ is_evar MethDefs;
@@ -1043,7 +1131,7 @@ Ltac find_evar_in_ilist MethDefs MethSigs k :=
           ltac:(fun idx MethDefs'' MethSigs'' =>
                   k (fun n => @Fin.FS _ (idx n))
                     MethDefs'' MethSigs'') ].
-
+(*
 Ltac insert_constructor_into_delegates
      ConstructorSigs
      ConstructorDefs
@@ -1171,7 +1259,9 @@ Proof.
   - setoid_rewrite IHl.
     unfold Query_Return; simplify with monad laws.
     reflexivity.
-Qed.
+Qed. *)
+
+Axiom foo : forall T, T.
 
 Definition SharpenedScheduler :
   {adt' : _ & refinedUnderDelegates SchedulerSpec adt'}.
@@ -1183,11 +1273,11 @@ Proof.
   - eapply Constructor_DropQSConstraints.
   - doAny drop_constraints
           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - doAny drop_constraints
+  (*- doAny drop_constraints
           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
   - doAny drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-  - hone method StringId0.
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing). *)
+  - (*hone method StringId0.
     { setoid_rewrite UniqueAttribute_symmetry.
       setoid_rewrite (@refine_uniqueness_check_into_query' SchedulerSchema Fin.F1 _ _ _ _).
       simpl.
@@ -1199,17 +1289,17 @@ Proof.
                              rewrite !refine_if_If
                            | rewrite refine_If_Then_Else_Duplicate])
                           master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    }
+    } *)
     hone representation using (@FiniteTables_AbsR SchedulerSchema).
     + simplify with monad laws.
       refine pick val _; simpl; intuition.
       eauto using FiniteTables_AbsR_QSEmptySpec.
     + repeat doOne simplify_queries
              Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    + repeat doOne simplify_queries
+    (*+ repeat doOne simplify_queries
              Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
     + repeat doOne simplify_queries
-             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+             Finite_AbsR_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing). *)
     + hone representation using (@UnConstryQueryStructure_Abstract_AbsR SchedulerSchema).
       * simplify with monad laws.
         refine pick val (imap2 rawRel (Build_EmptyRelations (qschemaSchemas SchedulerSchema))).
@@ -1217,32 +1307,209 @@ Proof.
         unfold UnConstryQueryStructure_Abstract_AbsR; simpl; intuition.
       * doAny parameterize_query_structure
               rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-      * doAny parameterize_query_structure
+      (** doAny parameterize_query_structure
               rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
       * doAny parameterize_query_structure
-              rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+              rewrite_drill ltac:(repeat subst_refine_evar; try finish honing). *)
       * eapply reflexivityT.
-  - FullySharpenEachMethod_w_Delegates
+  -
+
+Ltac FullySharpenEachMethod_w_Delegates'
+     DelegateIDs'
+     AbstractReps
+     dRepT
+     dAbsR :=
+  match goal with
+    |- refinedUnderDelegates (@BuildADT ?Rep' ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+(* We build a bunch of evars in order to decompose the goal *)
+    (* into a single subgoal for each constructor. *)
+    let DelegateIDs := (eval compute in DelegateIDs') in
+    make_Vector_of_evar DelegateIDs nat
+                        ltac:(fun numDelegateConstructors' =>
+        let numDelegateConstructors := constr:(Vector.nth numDelegateConstructors') in
+    make_Vector_of_evar DelegateIDs nat
+      ltac:(fun numDelegateMethods' =>
+        let numDelegateMethods := constr:(Vector.nth numDelegateMethods') in
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
+                (fun (idx : Fin.t DelegateIDs)=>
+                   Vector.t consSig (numDelegateConstructors idx))
+      ltac:(fun DelegateConstructorSigs' =>
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
+                (fun (idx : Fin.t DelegateIDs)=>
+                   Vector.t methSig (numDelegateMethods idx))
+      ltac:(fun DelegateMethodSigs' =>
+        let DelegateConstructorSigs :=
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs)=>
+                         Vector.t consSig (numDelegateConstructors idx))
+                      DelegateConstructorSigs') in
+        let DelegateMethodSigs :=
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs)=>
+                         Vector.t methSig (numDelegateMethods idx))
+                      DelegateMethodSigs') in
+        let DelegateSigs :=
+            constr:(fun idx =>
+                      BuildADTSig (DelegateConstructorSigs idx) (DelegateMethodSigs idx)) in
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
+                          (fun (idx : Fin.t DelegateIDs) =>
+                             ilist (B := consDef (Rep := AbstractReps idx))
+                                   (DelegateConstructorSigs idx))
+      ltac:(fun DelegateConstructorSpecs' =>
+    Iterate_Dep_Type_BoundedIndex_evar DelegateIDs
+                (fun (idx : Fin.t DelegateIDs) =>
+                  ilist (B := methDef (Rep := AbstractReps idx))
+                        (DelegateMethodSigs idx))
+      ltac:(fun DelegateMethodSpecs' =>
+        let DelegateConstructorSpecs :=
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs) =>
+                         ilist (B := consDef (Rep := AbstractReps idx))
+                               (DelegateConstructorSigs idx))
+                      DelegateConstructorSpecs') in
+        let DelegateMethodSpecs :=
+            constr:(Lookup_Iterate_Dep_Type
+                      (fun (idx : Fin.t DelegateIDs) =>
+                         ilist (B := methDef (Rep := AbstractReps idx))
+                               (DelegateMethodSigs idx))
+                      DelegateMethodSpecs') in
+        let DelegateSpecs :=
+            constr:(fun idx =>
+                      BuildADT
+                        (DelegateConstructorSpecs idx)
+                        (DelegateMethodSpecs idx)) in
+        ilist_of_evar_dep2
+          n
+          (Fin.t DelegateIDs' -> Type)
+          (fun DelegateReps =>
+             forall idx cidx,
+               constructorType (DelegateReps idx)
+                               (consDom (Vector.nth (DelegateConstructorSigs idx) cidx)))
+          (fun DelegateReps =>
+             forall idx midx,
+               methodType (DelegateReps idx)
+                          (methDom (Vector.nth (DelegateMethodSigs idx) midx))
+                          (methCod (Vector.nth (DelegateMethodSigs idx) midx)))
+          (fun (DelegateReps : Fin.t DelegateIDs' -> Type)
+               (Sig : consSig) =>
+             constructorType
+               (dRepT DelegateReps)
+               (consDom Sig))
+        consSigs
+        ltac:(fun cCons =>
+        ilist_of_evar_dep2
+          n'
+          (Fin.t DelegateIDs' -> Type)
+          (fun DelegateReps =>
+             forall idx cidx,
+               constructorType (DelegateReps idx)
+                               (consDom (Vector.nth (DelegateConstructorSigs idx) cidx)))
+          (fun DelegateReps =>
+             forall idx midx,
+               methodType (DelegateReps idx)
+                          (methDom (Vector.nth (DelegateMethodSigs idx) midx))
+                          (methCod (Vector.nth (DelegateMethodSigs idx) midx)))
+          (fun (DelegateReps : Fin.t DelegateIDs' -> Type)
+               (Sig : methSig) =>
+             methodType
+               (dRepT DelegateReps)
+               (methDom Sig)
+               (methCod Sig))
+        methSigs
+        ltac:(fun cMeths =>
+        eapply (@Sharpen_w_Delegates
+                          DelegateIDs AbstractReps dRepT n n'
+                          consSigs methSigs
+                          consDefs methDefs
+                          numDelegateConstructors
+                          DelegateConstructorSigs
+                          numDelegateMethods
+                          DelegateMethodSigs
+                          DelegateConstructorSpecs
+                          DelegateMethodSpecs
+                          dAbsR
+                          cCons
+                          cMeths
+           )))))))))
+  end; try (simpl; repeat split; intros; subst).
+FullySharpenEachMethod_w_Delegates'
       1
       (fun idx : Fin.t (numRawQSschemaSchemas SchedulerSchema) =>
          @IndexedEnsemble (@RawTuple (rawSchemaHeading (Vector.nth (qschemaSchemas SchedulerSchema) idx))))
       (@Iterate_Dep_Type_BoundedIndex 1)
       (@Iterate_Dep_Type_AbsR 1).
-
+    simplify with monad laws.
+    refine pick val (foo _).
+    finish honing.
+    eapply foo.
+    { simplify with monad laws.
+      refine pick val _ ; eauto.
+      finish honing.
+    }
+    exact nat.
+    eapply reflexivityT.
+    Grab Existential Variables.
+    exact inil.
+    exact inil.
+Defined.
+    
+    
     {
       etransitivity.
-      simplify with monad laws; simpl.
+      simplify with monad laws; simpl.      
       match goal with
         |- context [@Pick _ (fun r : prim_prod ?A ?B => @?P r /\ ?Q)] =>
         setoid_rewrite (fun P => @refineEquiv_pick_prim_prod A B P (fun _ => True))
       end.
+
+      refine pick val (foo (DelegateReps Fin.F1)).
+      simplify with monad laws.
+      refine pick val tt; eauto.
+      simplify with monad laws.
+      finish honing.
+      apply foo.
+      finish honing.
+    }
+    { simplify with monad laws.
+      refine pick val _ ; eauto.
+      finish honing.
+    }
+    exact nat.
+    eapply reflexivityT.
+    Grab Existential Variables.
+    exact inil.
+    exact inil.
+Defined.
+    simplify with mona
+
+      Lemma refine_under_bind_Pick_AbsR'
+      {DelegateIDs}
+      (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
+      (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
+      (DelegateImpls : forall idx, ADT (DelegateSigs idx))
+      (ValidImpls
+       : forall idx : Fin.t DelegateIDs,
+          refineADT (DelegateSpecs idx)
+                    (DelegateImpls idx))
+      {B : Type}
+  : forall idx
+           (c : Rep (DelegateSpecs idx))
+           (d : Comp (Rep (DelegateImpls idx)))
+           (x : Rep (DelegateImpls idx) -> Comp B)
+           (y : Rep (DelegateImpls idx) -> Comp B),
+    refineConstructor (AbsR (ValidImpls idx)) (dom := []) (ret c) d
+    -> (forall r_o r_n, AbsR (ValidImpls idx) r_o r_n ->
+                          refine (x r_n) (y r_n))
+    -> refine (a <- { r_n' | AbsR (ValidImpls idx) c r_n' }; x a) (a <- d; y a).
+Proof.
+Admitted.
       eapply (refine_under_bind_Pick_AbsR' _ _ _ ValidImpls Fin.F1).
 
 Ltac insert_constructor_into_delegates
      ConstructorSigs
      ConstructorDefs
      ValidConstructors
-     newIndex ::=
+     newIndex :=
      simpl;
      (* Now insert the goal into the list of constructors *)
      match goal with
@@ -1269,7 +1536,7 @@ Ltac insert_constructor_into_delegates
                   )))
   end.
 
-Ltac delegate_to_constructor ValidImpls' ::=
+Ltac delegate_to_constructor ValidImpls' :=
   let ValidImpls := (eval simpl in ValidImpls') in
   match type of ValidImpls with
   | forall idx : ?consIndex', refineConstructor _ (@?ConstructorSpecs' idx) (@?ConstructorImpls' idx) =>
@@ -1293,13 +1560,26 @@ Ltac delegate_to_constructor ValidImpls' ::=
                 ConstructorSigs'' ConstructorDefs'' ValidImpls idx)
   end.
 Arguments refineConstructor : simpl never.
-      delegate_to_constructor (ADTRefinementPreservesConstructors (ValidImpls Fin.F1)).
+
+delegate_to_constructor (ADTRefinementPreservesConstructors (ValidImpls Fin.F1)).
       simpl; intros; setoid_rewrite (refine_pick_val (a := tt)); eauto;
       simplify with monad laws.
       finish honing.
       finish honing.
     }
-
+    { simplify with monad laws.
+      refine pick val _ ; eauto.
+      finish honing.
+    }
+    exact nat.
+    eapply reflexivityT.
+    Grab Existential Variables.
+    exact inil.
+    exact inil.
+Defined.
+      
+      
+    
     {
     Arguments refineMethod : simpl never.
     simplify with monad laws; simpl.
@@ -1349,6 +1629,7 @@ Arguments refineConstructor : simpl never.
     simplify with monad laws.
     (* Need a refine_under_bind_mutator variant here. *)
     eapply (refine_under_bind_Pick_AbsR _ _ _ ValidImpls Fin.F1).
+    Show Existentials.
     identify_Observer SchedulerSchema.
     simpl.
     match goal with
