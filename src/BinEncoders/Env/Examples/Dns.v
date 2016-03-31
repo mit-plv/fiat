@@ -270,26 +270,80 @@ Proof.
 Defined.
 
 Require Import Coq.FSets.FMapFacts.
-Module foo := WFacts_fun (list_word_as_OT) (EMap).
-Module bar := WFacts_fun (position_as_OT) (DMap).
+Module EMapFacts := WFacts_fun (list_word_as_OT) (EMap).
+Module DMapFacts := WFacts_fun (position_as_OT) (DMap).
 
 
 Instance cacheAddPair : CacheAdd cache (list word_t * position_t) :=
   {| addE := fun c (b : _ * _) => let (l, p) := b
-                                  in  {| eMap := EMap.add l p c.(eMap);
-                                         dMap := DMap.add p l c.(dMap);
-                                         tick := c.(tick);
-                                         extr := c.(extr) |};
+                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
+                                     then c
+                                     else {| eMap := EMap.add l p c.(eMap);
+                                             dMap := DMap.add p l c.(dMap);
+                                             tick := c.(tick);
+                                             extr := c.(extr) |};
      addD := fun c (b : _ * _) => let (l, p) := b
-                                  in  {| eMap := EMap.add l p c.(eMap);
-                                         dMap := DMap.add p l c.(dMap);
-                                         tick := c.(tick);
-                                         extr := c.(extr) |} |}.
+                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
+                                     then c
+                                     else {| eMap := EMap.add l p c.(eMap);
+                                             dMap := DMap.add p l c.(dMap);
+                                             tick := c.(tick);
+                                             extr := c.(extr) |} |}.
 Proof.
   simpl; intuition; simpl in *; subst; eauto.
-  - destruct (position_as_OT.eq_dec b q); destruct (list_word_as_OT.eq_dec a p);
-      unfold position_as_OT.eq, list_word_as_OT.eq in *.
-    admit. admit. admit. admit. - admit.
+  - destruct (EMap.mem a (eMap cd)) eqn: eq1; destruct (DMap.mem b (dMap cd)) eqn: eq2;
+      simpl in *; try apply H1; eauto.
+    rewrite EMapFacts.add_mapsto_iff in H.
+    rewrite DMapFacts.add_mapsto_iff.
+    inversion H. clear H. intuition.
+    left. subst. assert (a = p).
+    { clear -H; generalize dependent p; induction a; intuition.
+      inversion H; eauto.
+      destruct p; inversion H; subst; clear H.
+      erewrite IHa; eauto; f_equal.
+      clear -H3.
+      destruct a eqn: ?. destruct s eqn: ?. simpl in *. erewrite <- sig_equivalence.
+      clear -H3; generalize dependent x0; induction x; intuition.
+      inversion H3; eauto.
+      destruct x0; inversion H3; subst; clear H3.
+      erewrite IHx; eauto; f_equal.
+      apply f_equal with (f:=ascii_of_nat) in H2. rewrite !ascii_nat_embedding in H2. eauto. }
+    intuition eauto.
+    right. intuition. apply H1 in H4. clear - eq2 H4 H0.
+    destruct b eqn: ?. destruct q eqn: ?. erewrite sig_equivalence in H0.
+    simpl in H0. rewrite <- Heqk in H0. unfold N_as_OT_with_P.P in *. rewrite <- Heqp1 in H0.
+    subst. inversion H0. subst. clear H0. rewrite DMapFacts.mem_find_b in eq2.
+    rewrite DMapFacts.find_mapsto_iff in H4.
+    erewrite (proj1 (sig_equivalence _ _ x0 x0 _ _) eq_refl) in eq2.
+    unfold EMap.key, word_t, list_ascii_as_OT_with_P.P in *. erewrite H4 in eq2. congruence.
+    apply H1. eauto.
+  - destruct (EMap.mem a (eMap cd)) eqn: eq1; destruct (DMap.mem b (dMap cd)) eqn: eq2;
+      simpl in *; try apply H1; eauto.
+    rewrite DMapFacts.add_mapsto_iff in H.
+    rewrite EMapFacts.add_mapsto_iff.
+    inversion H.
+    { clear H. intuition.
+      left. subst. assert (b = q).
+      { clear -H. destruct b eqn: ?. destruct q eqn: ?.
+        simpl in H. unfold N_as_OT_with_P.P. apply sig_equivalence. eauto. }
+      intuition eauto. eapply EMap.E.eq_refl. }
+    { right. intuition. apply H1 in H4. clear - eq1 H4 H0.
+      rewrite EMapFacts.mem_find_b in eq1.
+      assert (a = p).
+      { clear -H0; generalize dependent p; induction a; intuition.
+        inversion H0; eauto.
+        destruct p; inversion H0; subst; clear H0.
+        erewrite IHa; eauto; f_equal.
+        clear -H3.
+        destruct a eqn: ?. destruct s eqn: ?. simpl in *. erewrite <- sig_equivalence.
+        clear -H3; generalize dependent x0; induction x; intuition.
+        inversion H3; eauto.
+        destruct x0; inversion H3; subst; clear H3.
+        erewrite IHx; eauto; f_equal.
+        apply f_equal with (f:=ascii_of_nat) in H2. rewrite !ascii_nat_embedding in H2. eauto. }
+      subst. rewrite EMapFacts.find_mapsto_iff in H4.
+      rewrite H4 in eq1. congruence.
+      apply H1. eauto. }
 Defined.
 
 Instance cachePeek : CachePeek cache position_t :=
@@ -413,23 +467,129 @@ Definition encode_packet (p : packet_t) (ce : CacheEncode) :=
   compose btransformer (FixList_encode _ btransformer encode_resource p.(padditional))
                        (fun e => (nil, e))))))))))) ce.
 
-Definition encode_packet' (p : packet_t) (ce : CacheEncode) :=
-  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pid)) (
-  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pmask)) (
-                       (fun e => (nil, e)))) ce.
 
+Global Instance word_decoder
+  : decoder cache btransformer (fun _ => True) encode_word.
+Proof.
+  unfold encode_word.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto. instantiate (1:=fun _ => True); intuition eauto.
+
+  eexists. unfold encode_decode_correct.
+  instantiate (1:=fun b e => (proj0, b, e)).
+  intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
+  subst. eauto. inversion H2. inversion H1. eauto.  Defined.
+
+Global Instance branch_decoder
+  : decoder cache btransformer (fun _ => True) encode_branch.
+Proof.
+  unfold encode_branch.
+Admitted.
+
+Global Instance name_decoder
+  : decoder cache btransformer
+            (@SteppingList_predicate _ (FixInt 6) _ _ (fun _ => True) (fun _ => True) (fun _ => True)) encode_name.
+Proof.
+  unfold encode_name.
+  eapply SteppingListCache_decoder; intuition.
+  eapply halt_dec.  Defined.
+
+
+Global Instance question_decoder
+  : decoder cache btransformer (fun _ => True) encode_question.
+Proof.
+  unfold encode_question.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold SteppingList_predicate. intuition.
+
+  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_type data)).
+  instantiate (1:=fun _ => True). intuition. admit. intuition. intuition.
+
+  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_class data)).
+  instantiate (1:=fun _ => True); intuition. admit. intuition. intuition.
+
+  eexists. unfold encode_decode_correct.
+  instantiate (1:=fun b e => (Build_question_t proj proj0 proj1, b, e)).
+  intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
+  subst. destruct data. eauto. inversion H1. subst. inversion H2. eauto.  Defined.
+
+Global Instance resource_decoder
+  : decoder cache btransformer (fun _ => True) encode_resource.
+Proof.
+  unfold encode_resource.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+
+  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_type data)).
+  instantiate (1:=fun _ => True). intuition. admit. intuition. intuition.
+
+  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_class data)).
+  instantiate (1:=fun _ => True); intuition. admit. intuition. intuition.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto. instantiate (1:=fun _ => True); intuition eauto.
+
+  eexists. unfold encode_decode_correct.
+  instantiate (1:=fun b e => (Build_resource_t proj proj0 proj1 proj2 proj4, b, e)).
+  intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
+  subst. destruct data. eauto. inversion H1. subst. inversion H2. eauto.  Defined.
+
+Global Instance packet_decoder
+  : decoder cache btransformer (fun _ => True) encode_packet.
+Proof.
+  unfold encode_packet.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); unfold IList_predicate; intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); unfold IList_predicate; intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  instantiate (1:=fun _ => True); intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto.
+
+  eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold FixList_predicate. intuition eauto.
+
+  eexists. unfold encode_decode_correct.
+  instantiate (1:=fun b e => (Build_packet_t proj proj0 proj5 proj6 proj7 proj8, b, e)).
+  intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
+  subst. destruct data. eauto. inversion H1. subst. inversion H2. eauto.  Defined.
 
 Definition encode_packet_i (p : packet_t) :=
   encode_packet p {| eMap := EMap.empty _;
                      dMap := DMap.empty _;
                      tick := 0;
                      extr := 0 |}.
-
-Definition encode_packet'_i (p : packet_t) :=
-  encode_packet' p {| eMap := EMap.empty _;
-                      dMap := DMap.empty _;
-                      tick := 0;
-                      extr := 0 |}.
 
 Definition p : packet_t.
   refine ({| pid := exist _ (true :: true :: true :: true ::
