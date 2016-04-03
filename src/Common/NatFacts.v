@@ -210,3 +210,9 @@ Proof.
   { intros [|[|]]; reflexivity. }
   { intros [|x]; [ reflexivity | apply IHn ]. }
 Qed.
+
+Lemma min_max_sub {a x f}
+  : min a (x - f) = x - (max (x - a) f).
+Proof.
+  apply Min.min_case_strong; apply Max.max_case_strong; omega.
+Qed.
