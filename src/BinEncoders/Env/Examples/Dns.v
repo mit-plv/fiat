@@ -190,6 +190,7 @@ Require Import
         Fiat.BinEncoders.Env.BinLib.FixInt
         Fiat.BinEncoders.Env.BinLib.Char
         Fiat.BinEncoders.Env.BinLib.Bool
+        Fiat.BinEncoders.Env.BinLib.Enum
         Fiat.BinEncoders.Env.Lib.FixList
         Fiat.BinEncoders.Env.Lib.IList
         Fiat.BinEncoders.Env.Lib.SteppingCacheList.
@@ -222,8 +223,6 @@ Record CacheT :=
     dMap : DMapT;
     tick : nat;
     extr : nat }.
-
-Print EMap.MapsTo.
 
 Instance cache : Cache :=
   {| CacheEncode := CacheT;
@@ -434,21 +433,21 @@ Definition encode_word (w : word_t) (ce : CacheEncode) :=
                        (fun e => (nil, e))) ce.
 
 Definition encode_branch (b : CacheBranch) (ce : CacheEncode) :=
-  FixInt_encode _ (FixInt_of_branch b) ce.
+  Enum_encode _ FixInt_of_branch b ce.
 
 Definition encode_name (n : name_t) (ce : CacheEncode) :=
   SteppingList_encode _ _ _ btransformer encode_word (FixInt_encode _) encode_branch n ce.
 
 Definition encode_question (q : question_t) (ce : CacheEncode) :=
   compose btransformer (encode_name q.(qname)) (
-  compose btransformer (FixInt_encode _ (FixInt_of_type q.(qtype))) (
-  compose btransformer (FixInt_encode _ (FixInt_of_class q.(qclass)))
+  compose btransformer (Enum_encode _ FixInt_of_type q.(qtype)) (
+  compose btransformer (Enum_encode _ FixInt_of_class q.(qclass))
                        (fun e => (nil, e)))) ce.
 
 Definition encode_resource (r : resource_t) (ce : CacheEncode) :=
   compose btransformer (encode_name r.(rname)) (
-  compose btransformer (FixInt_encode _ (FixInt_of_type r.(rtype))) (
-  compose btransformer (FixInt_encode _ (FixInt_of_class r.(rclass))) (
+  compose btransformer (Enum_encode _ FixInt_of_type r.(rtype)) (
+  compose btransformer (Enum_encode _ FixInt_of_class r.(rclass)) (
   compose btransformer (FixInt_encode _ r.(rttl)) (
   compose btransformer (FixInt_encode _ (FixList_getlength r.(rdata))) (
   compose btransformer (FixList_encode _ btransformer (Bool_encode _) r.(rdata))
@@ -484,11 +483,48 @@ Proof.
   intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
   subst. eauto. inversion H2. inversion H1. eauto.  Defined.
 
+Ltac enum_part eq_dec :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func in
+    let h := fresh in
+      evar (h:func_t);
+      unify (fun n => if eq_dec _ n arg then res else h n) func;
+      reflexivity
+  end.
+
+Ltac enum_finish :=
+  simpl;
+  match goal with
+  | |- ?func ?arg = ?res =>
+    let func_t := type of func
+    in  unify ((fun _  => res) : func_t) func;
+        reflexivity
+  end.
+
+Ltac idtac' :=
+  match goal with
+    | |- _ => idtac (* I actually need this idtac for some unknown reason *)
+  end.
+
+Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
+  refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
+    destruct n; destruct m; try congruence; simpl in *; rewrite <- sig_equivalence; eauto.
+Defined.
+
+Ltac solve_enum :=
+  let h := fresh in
+  intros h; destruct h;
+  [ idtac'; enum_part FixInt_eq_dec ..
+  | idtac'; enum_finish ].
+
 Global Instance branch_decoder
   : decoder cache btransformer (fun _ => True) encode_branch.
 Proof.
   unfold encode_branch.
-Admitted.
+  eapply Enum_decoder.
+  solve_enum.  Defined.
 
 Global Instance name_decoder
   : decoder cache btransformer
@@ -507,11 +543,11 @@ Proof.
   eapply compose_decoder; eauto with typeclass_instances; intuition.
   unfold SteppingList_predicate. intuition.
 
-  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_type data)).
-  instantiate (1:=fun _ => True). intuition. admit. intuition. intuition.
+  eapply compose_decoder. eapply Enum_decoder. solve_enum. intuition.
+  instantiate (1:=fun _ => True). intuition. intuition.
 
-  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_class data)).
-  instantiate (1:=fun _ => True); intuition. admit. intuition. intuition.
+  eapply compose_decoder. eapply Enum_decoder. solve_enum. intuition.
+  instantiate (1:=fun _ => True). intuition. intuition.
 
   eexists. unfold encode_decode_correct.
   instantiate (1:=fun b e => (Build_question_t proj proj0 proj1, b, e)).
@@ -524,12 +560,13 @@ Proof.
   unfold encode_resource.
 
   eapply compose_decoder; eauto with typeclass_instances; intuition.
+  unfold SteppingList_predicate. intuition.
 
-  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_type data)).
-  instantiate (1:=fun _ => True). intuition. admit. intuition. intuition.
+  eapply compose_decoder. eapply Enum_decoder. solve_enum. intuition.
+  instantiate (1:=fun _ => True). intuition. intuition.
 
-  eapply compose_decoder with (encode1:=fun data => FixInt_encode cacheAddNat (FixInt_of_class data)).
-  instantiate (1:=fun _ => True); intuition. admit. intuition. intuition.
+  eapply compose_decoder. eapply Enum_decoder. solve_enum. intuition.
+  instantiate (1:=fun _ => True). intuition. intuition.
 
   eapply compose_decoder; eauto with typeclass_instances; intuition.
   instantiate (1:=fun _ => True); intuition eauto.
@@ -591,6 +628,12 @@ Definition encode_packet_i (p : packet_t) :=
                      tick := 0;
                      extr := 0 |}.
 
+Definition decode_packet_i (b : bin) :=
+  decode (decoder:=packet_decoder) b {| eMap := EMap.empty _;
+                                        dMap := DMap.empty _;
+                                        tick := 0;
+                                        extr := 0 |}.
+
 Definition p : packet_t.
   refine ({| pid := exist _ (true :: true :: true :: true ::
                              true :: true :: true :: true ::
@@ -606,7 +649,8 @@ Definition p : packet_t.
              padditional := exist _ nil _ |}); admit.
 Defined.
 
-
+Eval vm_compute in (fst (encode_packet_i p)).
+(* Eval vm_compute in (decode_packet_i (fst (encode_packet_i p))). *)
 
 (*
 Global Instance test_decoder

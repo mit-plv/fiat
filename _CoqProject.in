@@ -35,6 +35,7 @@ src/ADTRefinement/Refinements/SimplifyRep.v
 src/BinEncoders/Env/BinLib/Bool.v
 src/BinEncoders/Env/BinLib/Char.v
 src/BinEncoders/Env/BinLib/Core.v
+src/BinEncoders/Env/BinLib/Enum.v
 src/BinEncoders/Env/BinLib/FixInt.v
 src/BinEncoders/Env/Common/Cache.v
 src/BinEncoders/Env/Common/Compose.v
