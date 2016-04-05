@@ -338,6 +338,7 @@ Ltac setoid_rewrite_rev_hyp' := do_with_hyp ltac:(fun H => setoid_rewrite <- H).
 Ltac setoid_rewrite_rev_hyp := repeat setoid_rewrite_rev_hyp'.
 
 Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
+Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
 
 Ltac set_evars :=
   repeat match goal with
