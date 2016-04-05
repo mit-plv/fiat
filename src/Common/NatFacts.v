@@ -1,3 +1,4 @@
+Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
 
 Section NatFacts.
@@ -216,3 +217,26 @@ Lemma min_max_sub {a x f}
 Proof.
   apply Min.min_case_strong; apply Max.max_case_strong; omega.
 Qed.
+
+Lemma if_to_min {x y}
+  : (if x <? y then x else y) = min x y.
+Proof.
+  destruct (x <? y) eqn:H.
+  { apply ltb_lt in H.
+    rewrite Min.min_l by omega; reflexivity. }
+  { rewrite Min.min_r; [ reflexivity | ].
+    assert (H' : ~(x < y)).
+    { intro H'.
+      apply ltb_lt in H'; congruence. }
+    omega. }
+Qed.
+
+Lemma min_sub_same {x y} : min x y - x = 0.
+Proof. clear; apply Min.min_case_strong; omega. Qed.
+
+Lemma min_subr_same {x y} : (min x y - x)%natr = 0.
+Proof. clear; rewrite minusr_minus; apply Min.min_case_strong; omega. Qed.
+
+Lemma beq_nat_min_0 {x y}
+  : EqNat.beq_nat (min x y) 0 = orb (EqNat.beq_nat x 0) (EqNat.beq_nat y 0).
+Proof. destruct x, y; simpl; reflexivity. Qed.
