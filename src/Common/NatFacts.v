@@ -230,10 +230,10 @@ Lemma if_to_min {x y}
   : (if x <? y then x else y) = min x y.
 Proof.
   apply min_case_strong_l; intro.
-  { rewrite (proj2 (ltb_lt _ _)) by assumption.
+  { rewrite (proj2 (Nat.ltb_lt _ _)) by assumption.
     reflexivity. }
   { destruct (x <? y) eqn:H'; [ | reflexivity ].
-    apply ltb_lt in H'.
+    apply Nat.ltb_lt in H'.
     omega. }
 Qed.
 
