@@ -19,3 +19,12 @@ Global Instance option_rect_Proper {A B}
 Proof.
   repeat (intros [] || intro); simpl; eauto.
 Qed.
+
+Lemma option_rect_Proper_nondep_eq {A B} {S S' : A -> B} {N N' v}
+      (HS : forall vv, v = Some vv -> S vv = S' vv)
+      (Hn : v = None -> N = N')
+: option_rect (fun _ : option A => B) S N v
+  = option_rect (fun _ : option A => B) S' N' v.
+Proof.
+  destruct v; simpl; auto using eq_refl with nocore.
+Qed.
