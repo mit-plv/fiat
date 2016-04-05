@@ -246,3 +246,6 @@ Proof. clear; rewrite minusr_minus; omega *. Qed.
 Lemma beq_nat_min_0 {x y}
   : EqNat.beq_nat (min x y) 0 = orb (EqNat.beq_nat x 0) (EqNat.beq_nat y 0).
 Proof. destruct x, y; simpl; reflexivity. Qed.
+
+Lemma max_min_n {x y} : max (min x y) y = y.
+Proof. omega *. Qed.

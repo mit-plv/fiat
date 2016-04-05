@@ -344,6 +344,11 @@ Ltac set_evars :=
          | [ |- appcontext[?E] ] => is_evar E; let H := fresh in set (H := E)
          end.
 
+Ltac subst_evars :=
+  repeat match goal with
+         | [ H := ?e |- _ ] => is_evar e; subst H
+         end.
+
 Tactic Notation "eunify" open_constr(A) open_constr(B) := unify A B.
 
 Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
