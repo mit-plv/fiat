@@ -9,7 +9,7 @@ Require Import
         Fiat.Common.ilist2.
 
 Section i2list2.
-(*
+
 (* Lists of elements whose types depend on a pairs of indexing set
      (CPDT's hlists). *)
 
@@ -26,56 +26,138 @@ Section i2list2.
 
   Fixpoint i2list2 {n}
            (l : Vector.t A n)
-           (il : ilist (B := B) l) : Type :=
-    match l return ilist (B := B) l -> Type with
-    | Vector.nil => unit
-    | Vector.cons a :: l => @prim_prod (B a) (ilist2 l)
-    end.
+           (il1 : ilist (B := B) l)
+           (il2 : ilist (B := B') l) : Type :=
+    match l return ilist (B := B) l
+                   -> ilist (B := B') l
+                   -> Type with
+    | Vector.nil =>
+      fun il1 il2 => unit
+    | Vector.cons a n' l =>
+      fun il1 il2 =>
+        @prim_prod (C (prim_fst il1) (prim_fst il2))
+                   (i2list2 l (prim_snd il1) (prim_snd il2))
+    end il1 il2.
 
+  Definition i2cons2
+             {a : A}
+             {n}
+             {l : Vector.t A n}
+             (b1 : B a)
+             (il1 : ilist (B := B) l)
+             (b2 : B' a)
+             (il2 : ilist (B := B') l)
+             (c : C b1 b2)
+             (i2l' : i2list2 l il1 il2)
+  : i2list2 (a :: l) (icons b1 il1) (icons b2 il2)
+    := {| prim_fst := c; prim_snd := i2l' |}.
 
-  Inductive i2list2 : forall (As : list A),
-                        ilist B As -> ilist B' As -> Type :=
-  | i2cons2 : forall a As (Bs : ilist B (a :: As))
-                     (Bs' : ilist B' (a :: As))
-                     (c : C (ilist_hd Bs) (ilist_hd Bs')),
-                i2list2 (ilist_tl Bs) (ilist_tl Bs') -> i2list2 Bs Bs'
-  | i2nil2 : forall (Bs : ilist B nil)
-                    (Bs' : ilist B' nil),
-               i2list2 Bs Bs'.
+  Definition inil : i2list2 [] inil inil := tt.
 
   (* Get the car of an i2list2. *)
 
-  Definition i2list2_hd (As : list A)
-             (Bs : ilist B As)
-             (Bs' : ilist B' As)
-             (i2l : i2list2 Bs Bs') :
+  Definition i2list2_hd {n} {As : Vector.t A n}
+             {il1 : ilist (B := B) As}
+             {il2 : ilist (B := B') As}
+             (i2l : i2list2 As il1 il2) :
     match As return
-          forall (Bs : ilist B As)
-                 (Bs' : ilist B' As), i2list2 Bs Bs' -> Type with
-      | a :: As' => fun Bs Bs' i2l => C (ilist_hd Bs) (ilist_hd Bs')
-      | nil => fun _ _ _ => unit
-    end Bs Bs' i2l :=
-    match i2l with
-      | i2cons2 a As Bs Bs' c i2l' => c
-      | i2nil2 Bs Bs' => tt
-    end.
+          forall
+            (il1 : ilist (B := B) As)
+            (il2 : ilist (B := B') As),
+            i2list2 As il1 il2 -> Type with
+    | Vector.cons a _ As' =>
+      fun Bs Bs' i2l => C (ilist_hd Bs) (ilist_hd Bs')
+    | Vector.nil => fun _ _ _ => unit
+    end il1 il2 i2l :=
+    match As return
+          forall il1 il2 i2l,
+            match As return
+                  forall
+                    (il1 : ilist (B := B) As)
+                    (il2 : ilist (B := B') As),
+                    i2list2 As il1 il2 -> Type with
+            | Vector.cons a _ As' =>
+              fun Bs Bs' i2l => C (ilist_hd Bs) (ilist_hd Bs')
+          | Vector.nil => fun _ _ _ => unit
+            end il1 il2 i2l
+    with
+    | Vector.cons a _ As' =>
+      fun il1 il2 i2l => prim_fst i2l
+    | Vector.nil => fun _ _ _ => tt
+    end il1 il2 i2l.
 
   (* Get the cdr of an i2list2. *)
-  Definition i2list2_tl (As : list A)
-             (Bs : ilist B As)
-             (Bs' : ilist B' As)
-             (i2l : i2list2 Bs Bs') :
-    match As as As' return
-          forall (Bs : ilist B As')
-                 (Bs' : ilist B' As'), i2list2 Bs Bs' -> Type with
-      | a :: As' => fun Bs Bs' il => i2list2 (ilist_tl Bs) (ilist_tl Bs')
-      | nil => fun _ _ _ => unit
-    end Bs Bs' i2l :=
-    match i2l with
-      | i2cons2 a As Bs Bs' c i2l' => i2l'
-      | i2nil2 Bs Bs' => tt
-    end.
+  Definition i2list2_tl {n}
+             {As : Vector.t A n}
+             {il1 : ilist (B := B) As}
+             {il2 : ilist (B := B') As}
+             (i2l : i2list2 As il1 il2) :
+    match As return
+          forall
+            (il1 : ilist (B := B) As)
+            (il2 : ilist (B := B') As),
+            i2list2 As il1 il2 -> Type with
+    | Vector.cons a _ As' =>
+      fun Bs Bs' i2l => i2list2 _ (ilist_tl Bs) (ilist_tl Bs')
+    | Vector.nil => fun _ _ _ => unit
+    end il1 il2 i2l :=
+    match As return
+          forall il1 il2 i2l,
+            match As return
+                  forall
+                    (il1 : ilist (B := B) As)
+                    (il2 : ilist (B := B') As),
+                    i2list2 As il1 il2 -> Type with
+            | Vector.cons a _ As' =>
+              fun Bs Bs' i2l => i2list2 _ (ilist_tl Bs) (ilist_tl Bs')
+          | Vector.nil => fun _ _ _ => unit
+            end il1 il2 i2l
+    with
+    | Vector.cons a _ As' =>
+      fun il1 il2 i2l => prim_snd i2l
+    | Vector.nil => fun _ _ _ => tt
+    end il1 il2 i2l.
 
+  Fixpoint i2th2
+             {m : nat}
+             {As : Vector.t A m}
+             (il1 : ilist (B := B) As)
+             (il2 : ilist (B := B') As)
+             (i2l : i2list2 As il1 il2)
+             (n : Fin.t m)
+  : C (ith il1 n) (ith il2 n) :=
+    match n in Fin.t m return
+          forall (As : Vector.t A m)
+                 (il1 : ilist (B := B) As)
+                 (il2 : ilist (B := B') As),
+            i2list2 _ il1 il2
+            -> C (ith il1 n) (ith il2 n) with
+      | Fin.F1 k =>
+        fun As =>
+          Vector.caseS (fun n As =>
+                          forall (il1 : ilist (B := B) As)
+                                 (il2 : ilist (B := B') As),
+                            i2list2 As il1 il2
+                            -> C (ith il1 (@Fin.F1 n))
+                              (ith il2 (@Fin.F1 n)))
+                       (fun h n t il1 il2 i2l => i2list2_hd i2l) As
+      | Fin.FS k n' =>
+        fun As =>
+          Vector_caseS' Fin.t
+                        (fun n As n' =>
+                           forall (il1 : ilist (B := B) As)
+                                  (il2 : ilist (B := B') As),
+                             i2list2 As il1 il2
+                             -> C (ith il1 (@Fin.FS n n'))
+                               (ith il2 (@Fin.FS n n')))
+                        (fun h n t m il1 il2 i2l =>
+                           i2th2 (ilist_tl il1)
+                                 (ilist_tl il2)
+                                 (i2list2_tl i2l) m)
+                        As n'
+    end As il1 il2 i2l.
+
+  (*
   (* Membership in a doubly-indexed list. *)
   Inductive i2list2_In
   : forall {a : A} {b : B a} {b' : B' a}
