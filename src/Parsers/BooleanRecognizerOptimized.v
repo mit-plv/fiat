@@ -30,15 +30,13 @@ Require Export Fiat.Common.NatFacts.
 Require Export Fiat.Common.Sigma.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
+Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
 
 Global Arguments string_dec : simpl never.
 Global Arguments string_beq : simpl never.
-
-(** XXX TODO MOVE ME *)
-Local Hint Extern 10 (Proper _ _) => progress cbv beta : typeclass_instances.
 
 Module Export opt.
   Module Import opt.
@@ -440,7 +438,7 @@ Section recursive_descent_parser.
     | _ => progress rewrite ?max_min_n, ?Minus.minus_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
     | _ => rewrite Min.min_l by assumption
     | _ => rewrite Min.min_r by assumption
-    | [ |- context[if (?x <? ?y) then _ else _] ] => rewrite if_to_min
+    | [ |- context[if (?x <? ?y)%nat then _ else _] ] => rewrite if_to_min
     | [ |- context[min ?x ?y - ?x] ] => rewrite min_sub_same
     | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same
     | [ |- context[?x - (?x - ?y)%natr] ]
