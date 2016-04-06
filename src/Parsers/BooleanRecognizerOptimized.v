@@ -1689,6 +1689,15 @@ Section recursive_descent_parser.
     | [ |- context G[leb 1 (opt2.length ?x)] ]
       => let G' := context G[opt2.id (opt2.leb 1 (opt2.length x))] in
          change G'
+    | [ |- context G[Compare_dec.leb (opt2.id ?x) (opt.id ?y)] ]
+      => let G' := context G[opt2.id (opt2.leb x y)] in
+         change G'
+    | [ |- context G[Compare_dec.leb 1 (opt2.id ?x)] ]
+      => let G' := context G[opt2.id (opt2.leb 1 x)] in
+         change G'
+    | [ |- context G[Compare_dec.leb 1 (opt2.length ?x)] ]
+      => let G' := context G[opt2.id (opt2.leb 1 (opt2.length x))] in
+         change G'
     end.
 
   Local Ltac change_opt_reduce' :=
