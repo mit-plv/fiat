@@ -65,7 +65,7 @@ Module Export opt.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
-    Definition leb := Eval compute in leb.
+    Definition leb := Eval compute in Compare_dec.leb.
   End opt.
 
   Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
@@ -99,7 +99,7 @@ Module Export opt2.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
-    Definition leb := Eval compute in leb.
+    Definition leb := Eval compute in Compare_dec.leb.
   End opt2.
 
   Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
@@ -133,7 +133,7 @@ Module Export opt3.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
-    Definition leb := Eval compute in leb.
+    Definition leb := Eval compute in Compare_dec.leb.
   End opt3.
 
   Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
@@ -415,7 +415,6 @@ Section recursive_descent_parser.
              | [ |- _ = 1 ] => reflexivity
              | [ |- _ = None ] => reflexivity
              | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
-             | [ |- _ = leb _ _ ] => apply f_equal2
              | [ |- _ = Compare_dec.leb _ _ ] => apply f_equal2
              | [ |- _ = S _ ] => apply f_equal
              | [ |- _ = string_beq _ _ ] => apply f_equal2
@@ -732,7 +731,6 @@ Section recursive_descent_parser.
           clear it; simpl @item_rect; intro))
     end).
 
-  Local Arguments leb !_ !_.
   Local Arguments Compare_dec.leb !_ !_.
   Local Arguments to_nonterminal / .
 
@@ -1679,15 +1677,6 @@ Section recursive_descent_parser.
          change G'
     | [ |- context G[S (opt.id ?x)] ]
       => let G' := context G[opt.id (S x)] in
-         change G'
-    | [ |- context G[leb (opt2.id ?x) (opt.id ?y)] ]
-      => let G' := context G[opt2.id (opt2.leb x y)] in
-         change G'
-    | [ |- context G[leb 1 (opt2.id ?x)] ]
-      => let G' := context G[opt2.id (opt2.leb 1 x)] in
-         change G'
-    | [ |- context G[leb 1 (opt2.length ?x)] ]
-      => let G' := context G[opt2.id (opt2.leb 1 (opt2.length x))] in
          change G'
     | [ |- context G[Compare_dec.leb (opt2.id ?x) (opt.id ?y)] ]
       => let G' := context G[opt2.id (opt2.leb x y)] in
