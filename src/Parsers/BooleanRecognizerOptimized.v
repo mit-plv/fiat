@@ -416,6 +416,7 @@ Section recursive_descent_parser.
              | [ |- _ = None ] => reflexivity
              | [ |- _ = EqNat.beq_nat _ _ ] => apply f_equal2
              | [ |- _ = leb _ _ ] => apply f_equal2
+             | [ |- _ = Compare_dec.leb _ _ ] => apply f_equal2
              | [ |- _ = S _ ] => apply f_equal
              | [ |- _ = string_beq _ _ ] => apply f_equal2
              | [ |- _ = fst ?x ] => is_var x; reflexivity
@@ -438,7 +439,7 @@ Section recursive_descent_parser.
     | _ => progress rewrite ?max_min_n, ?Minus.minus_diag, ?Nat.sub_0_r, ?uneta_bool, ?beq_nat_min_0(*, ?bool_rect_flatten*)
     | _ => rewrite Min.min_l by assumption
     | _ => rewrite Min.min_r by assumption
-    | [ |- context[if (?x <? ?y)%nat then _ else _] ] => rewrite if_to_min
+    | [ |- context[if ?ltb ?x ?y then _ else _] ] => rewrite if_to_min
     | [ |- context[min ?x ?y - ?x] ] => rewrite min_sub_same
     | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same
     | [ |- context[?x - (?x - ?y)%natr] ]
@@ -446,7 +447,7 @@ Section recursive_descent_parser.
     | _ => progress fin_step_opt
     end.
 
-  Local Ltac misc_opt := repeat misc_opt'.
+  Local Ltac misc_opt := set_evars; progress repeat misc_opt'; subst_evars.
 
   Local Ltac step_opt' :=
     idtac;
@@ -732,6 +733,7 @@ Section recursive_descent_parser.
     end).
 
   Local Arguments leb !_ !_.
+  Local Arguments Compare_dec.leb !_ !_.
   Local Arguments to_nonterminal / .
 
   Local Instance good_nth_proper {A}
@@ -1089,9 +1091,7 @@ Section recursive_descent_parser.
           [
           |
           | ].
-          { set_evars.
-            misc_opt.
-            subst_evars; reflexivity. }
+          { misc_opt; reflexivity. }
           { rewrite rdp_list_production_tl_correct.
             match goal with
               | [ H : _ = ?x |- context[?x] ]
@@ -1217,7 +1217,7 @@ Section recursive_descent_parser.
                   => refine (_ : Compare_dec.leb v x = _)
                 end.
                 match goal with
-                | [ |- leb 1 ?x = _ ]
+                | [ |- Compare_dec.leb 1 ?x = _ ]
                   => destruct x as [|[|]]; try reflexivity
                 end. }
               { simpl in *.
@@ -1229,10 +1229,10 @@ Section recursive_descent_parser.
           etransitivity_rev _.
           { rewrite !(@fold_symmetric _ orb) by first [ apply Bool.orb_assoc | apply Bool.orb_comm ].
             unfold parse_item', GenericRecognizer.parse_item'.
-            simpl; misc_opt.
+            simpl.
             repeat optsplit_t'; repeat step_opt';
               [ apply (f_equal2 andb) | ];
-              repeat optsplit_t'; misc_opt; repeat step_opt'.
+              repeat optsplit_t'; try misc_opt; repeat step_opt'.
             { rewrite !minusr_minus, <- max_def, <- !minusr_minus.
               reflexivity. }
             { reflexivity. }
@@ -1253,13 +1253,13 @@ Section recursive_descent_parser.
       progress cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
 
       step_opt'; [ | reflexivity ].
-      misc_opt.
+      step_opt'.
       step_opt'.
       etransitivity_rev _.
       { cbv beta iota delta [rdp_list_nonterminal_to_production Carriers.default_production_carrierT Carriers.default_nonterminal_carrierT].
         simpl rewrite list_to_productions_to_nonterminal; unfold Lookup_idx.
         etransitivity_rev _.
-        { step_opt'; [ set_evars; misc_opt; subst_evars; reflexivity | ].
+        { step_opt'; [ reflexivity | ].
           etransitivity_rev _.
           { step_opt'.
             rewrite_map_nth_rhs; rewrite !map_map; simpl.
@@ -1421,7 +1421,7 @@ Section recursive_descent_parser.
                      end ];
       [ | reflexivity | reflexivity | ].
       { t_reduce_list_evar; [ reflexivity | ].
-        repeat first [ set_evars; progress misc_opt; subst_evars
+        repeat first [ misc_opt
                      | step_opt'
                      | apply (f_equal2 andb)
                      | apply (f_equal2 andbr)
