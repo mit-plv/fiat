@@ -62,30 +62,27 @@ Section eq.
   Proof. t I. Qed.
 
   Section production.
-    Context {len0}
+    Context {len0 : nat}
             (parse_nonterminal
-             : forall (offset : nat) (len : nat),
-                len <= len0
-                -> nonterminal_carrierT
+             : forall (offset : nat) (len0_minus_len : nat),
+                nonterminal_carrierT
                 -> _)
             (parse_nonterminal'
-             : forall (offset : nat) (len : nat),
-                len <= len0
-                -> nonterminal_carrierT
+             : forall (offset : nat) (len0_minus_len : nat),
+                nonterminal_carrierT
                 -> _)
             (parse_nonterminal_eq
-             : forall offset len pf nt,
-                parse_nt_T_to_bool (gendata := gendata) (parse_nonterminal offset len pf nt)
-                = parse_nt_T_to_bool (gendata := gendata') (parse_nonterminal' offset len pf nt)).
+             : forall offset len0_minus_len nt,
+                parse_nt_T_to_bool (gendata := gendata) (parse_nonterminal offset len0_minus_len nt)
+                = parse_nt_T_to_bool (gendata := gendata') (parse_nonterminal' offset len0_minus_len nt)).
 
     Lemma parse_production'_for_eq
           (splits : production_carrierT -> String -> nat -> nat -> list nat)
           (offset : nat)
-          (len : nat)
-          (pf : len <= len0)
+          (len0_minus_len : nat)
           (prod_idx : production_carrierT)
-      : parse_production_T_to_bool (parse_production'_for str parse_nonterminal splits offset pf prod_idx)
-        = parse_production_T_to_bool (parse_production'_for str parse_nonterminal' splits offset pf prod_idx).
+      : parse_production_T_to_bool (parse_production'_for (len0 := len0) str parse_nonterminal splits offset len0_minus_len prod_idx)
+        = parse_production_T_to_bool (parse_production'_for (len0 := len0) str parse_nonterminal' splits offset len0_minus_len prod_idx).
     Proof.
       t I.
       repeat match goal with
@@ -99,7 +96,7 @@ Section eq.
                       set (C' := C)
              end.
       generalize (to_production prod_idx); intro ps.
-      revert prod_idx offset len pf.
+      revert prod_idx offset len0_minus_len.
       induction ps as [|p ps IHps].
       { simpl; t I. }
       { simpl; t ltac:(apply parse_item'_eq). }
@@ -107,38 +104,34 @@ Section eq.
 
     Lemma parse_production'_eq
           (offset : nat)
-          (len : nat)
-          (pf : len <= len0)
+          (len0_minus_len : nat)
           (prod_idx : production_carrierT)
-      : parse_production_T_to_bool (parse_production' str parse_nonterminal offset pf prod_idx)
-        = parse_production_T_to_bool (parse_production' str parse_nonterminal' offset pf prod_idx).
+      : parse_production_T_to_bool (parse_production' (len0 := len0) str parse_nonterminal offset len0_minus_len prod_idx)
+        = parse_production_T_to_bool (parse_production' (len0 := len0) str parse_nonterminal' offset len0_minus_len prod_idx).
     Proof. t ltac:(apply parse_production'_for_eq). Qed.
   End production.
 
   Section productions.
-    Context {len0}
+    Context {len0 : nat}
             (parse_nonterminal
              : forall (offset : nat)
-                      (len : nat)
-                      (pf : len <= len0),
+                      (len0_minus_len : nat),
                 nonterminal_carrierT -> _)
             (parse_nonterminal'
              : forall (offset : nat)
-                      (len : nat)
-                      (pf : len <= len0),
+                      (len0_minus_len : nat),
                 nonterminal_carrierT -> _)
             (parse_nonterminal_eq
-             : forall offset len pf nt,
-                parse_nt_T_to_bool (gendata := gendata) (parse_nonterminal offset len pf nt)
-                = parse_nt_T_to_bool (gendata := gendata') (parse_nonterminal' offset len pf nt)).
+             : forall offset len0_minus_len nt,
+                parse_nt_T_to_bool (gendata := gendata) (parse_nonterminal offset len0_minus_len nt)
+                = parse_nt_T_to_bool (gendata := gendata') (parse_nonterminal' offset len0_minus_len nt)).
 
     Lemma parse_productions'_eq
           (offset : nat)
-          (len : nat)
-          (pf : len <= len0)
+          (len0_minus_len : nat)
           (prods : list production_carrierT)
-      : parse_productions_T_to_bool (parse_productions' str parse_nonterminal offset pf prods)
-        = parse_productions_T_to_bool (parse_productions' str parse_nonterminal' offset pf prods).
+      : parse_productions_T_to_bool (parse_productions' (len0 := len0) str parse_nonterminal offset len0_minus_len prods)
+        = parse_productions_T_to_bool (parse_productions' (len0 := len0) str parse_nonterminal' offset len0_minus_len prods).
     Proof. t ltac:(apply parse_production'_eq). Qed.
   End productions.
 
@@ -202,6 +195,17 @@ Section eq.
         auto with nocore.
       Qed.
 
+      Lemma parse_nonterminal_or_abort_minus_eq
+      : forall (p : nat * nat)
+               (valid : nonterminals_listT)
+               (offset : nat) (len0_minus_len : nat)
+               (nt : nonterminal_carrierT),
+        parse_nt_T_to_bool (parse_nonterminal_or_abort_minus (gendata := gendata) str p valid offset len0_minus_len nt)
+        = parse_nt_T_to_bool (parse_nonterminal_or_abort_minus (gendata := gendata') str p valid offset len0_minus_len nt).
+      Proof.
+        intros; apply parse_nonterminal_or_abort_eq.
+      Qed.
+
       Definition parse_nonterminal'_eq
                  (nt : nonterminal_carrierT)
         : parse_nt_T_to_bool (parse_nonterminal' (gendata := gendata) str nt)
@@ -226,11 +230,11 @@ Section eq.
              (pat : production_carrierT)
     : parse_production_T_to_bool (parse_production (gendata := gendata) str pat)
       = parse_production_T_to_bool (parse_production (gendata := gendata') str pat)
-    := parse_production'_eq _ _ (parse_nonterminal_or_abort_eq _ _) _ _ _.
+    := parse_production'_eq _ _ (parse_nonterminal_or_abort_minus_eq _ _) _ _ _.
 
   Definition parse_productions_eq
              (pats : list production_carrierT)
     : parse_productions_T_to_bool (parse_productions (gendata := gendata) str pats)
       = parse_productions_T_to_bool (parse_productions (gendata := gendata') str pats)
-    := parse_productions'_eq _ _ (parse_nonterminal_or_abort_eq _ _) _ _ _.
+    := parse_productions'_eq _ _ (parse_nonterminal_or_abort_minus_eq _ _) _ _ _.
 End eq.

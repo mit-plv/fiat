@@ -1,207 +1,215 @@
-Require Import
-  Fiat.ADT
-  Coq.Arith.Compare_dec
-  Coq.ZArith.ZArith
-  Coq.QArith.QArith
-  Coq.QArith.Qabs.
+Require Import Coq.Arith.Compare_dec.
 
 Generalizable All Variables.
 
 Class Decidable (P : Prop) := {
-  decision : bool;
-  decision_correct : BoolSpec P (~P) decision
+  Decidable_witness : bool;
+  Decidable_spec : Decidable_witness = true <-> P
 }.
-Arguments decision P {_} /.
-Arguments decision_correct P {_} /.
+Arguments Decidable_witness {P _} /.
+Arguments Decidable_spec {P _} /.
 
-Lemma decision_dec `{Decidable P} : P \/ ~ P.
-  destruct (decision_correct P); auto.
-Qed.
-Arguments decision_dec P {_} /.
+Lemma Decidable_sound : forall P (H : Decidable P),
+  Decidable_witness = true -> P.
+Proof. intros; apply Decidable_spec; trivial. Qed.
 
-Lemma decision_decides `{Decidable P} : if decision P then P else ~ P.
-  destruct (decision_correct P); trivial.
+Lemma Decidable_complete : forall P (H : Decidable P),
+  P -> Decidable_witness = true.
+Proof. intros; apply Decidable_spec; trivial. Qed.
+
+Lemma Decidable_sound_alt : forall P (H : Decidable P),
+  ~ P -> Decidable_witness = false.
+Proof.
+  intros.
+  destruct Decidable_witness eqn:Heqe; trivial.
+  apply Decidable_spec in Heqe.
+  contradiction.
 Qed.
-Arguments decision_decides P {_} /.
+
+Lemma Decidable_complete_alt : forall P (H : Decidable P),
+  Decidable_witness = false -> ~ P.
+Proof.
+  intros.
+  unfold not; intros.
+  apply Decidable_spec in H1.
+  congruence.
+Qed.
+
+Definition decide P {H : Decidable P} := Decidable_witness (Decidable:=H).
+
+Ltac _decide_ P H :=
+  let b := fresh "b" in
+  set (b := decide P) in *;
+  assert (H : decide P = b) by reflexivity;
+  clearbody b;
+  destruct b; [apply Decidable_sound in H|apply Decidable_complete_alt in H].
+
+Tactic Notation "decide" constr(P) "as" ident(H) :=
+  _decide_ P H.
+
+Tactic Notation "decide" constr(P) :=
+  let H := fresh "H" in _decide_ P H.
+
+Hint Extern 2 =>
+  match goal with
+    [ H : @Decidable ?P |- _ ] =>
+    let Heqe := fresh "Heqe" in
+    destruct (@Decidable_witness P H) eqn:Heqe
+  end : decidability.
+
+Hint Extern 3 =>
+  match goal with
+    [ W : @Decidable_witness ?P ?H = true |- ?P ] =>
+    exact (Decidable_sound P H W)
+  end : decidability.
+
+Hint Extern 3 =>
+  match goal with
+    [ W : @Decidable_witness ?P ?H = false |- ~ ?P ] =>
+    exact (Decidable_complete_alt P H W)
+  end : decidability.
+
+Lemma Decidable_witness_dec `{Decidable P} : P \/ ~ P.
+Proof. decide P; firstorder. Qed.
+Arguments Decidable_witness_dec {P _} /.
+
+Lemma Decidable_witness_decides `{Decidable P} :
+  if Decidable_witness then P else ~ P.
+Proof. auto with decidability. Qed.
+Arguments Decidable_witness_decides {P _} /.
 
 Local Ltac t :=
+  intros;
   repeat
     match goal with
       [ H : Decidable ?P |- _ ] =>
-      destruct H;
-      repeat
-        match goal with
-          [ decision_correct0 : BoolSpec ?P ?Q ?B |- _ ] =>
-          destruct decision_correct0
-        end
+      let Heqe := fresh "Heqe" in
+      destruct (@Decidable_witness P H) eqn:Heqe;
+      [ apply (@Decidable_sound P H) in Heqe
+      | apply (@Decidable_complete_alt P H) in Heqe ];
+      clear H
     end;
-  simpl in *;
-  try constructor;
+  simpl; split; intros;
+  try discriminate;
+  try contradiction;
+  try reflexivity;
   intuition.
+
+Section DecidableLogic.
+
+Local Obligation Tactic := t.
 
 Global Program Instance not_Decidable {P : Prop} `{Decidable P} :
   Decidable (~ P) := {
-  decision := negb (decision P)
+  Decidable_witness := negb Decidable_witness
 }.
-Obligation 1. t. Qed.
 
 Global Program Instance and_Decidable {P Q : Prop}
   `{Decidable P} `{Decidable Q} : Decidable (P /\ Q) := {
-  decision := andb (decision P) (decision Q)
+  Decidable_witness := andb (Decidable_witness (P:=P))
+                            (Decidable_witness (P:=Q))
 }.
-Obligation 1. t. Qed.
 
 Global Program Instance or_Decidable {P Q : Prop}
   `{Decidable P} `{Decidable Q} : Decidable (P \/ Q) := {
-  decision := orb (decision P) (decision Q)
+  Decidable_witness := orb (Decidable_witness (P:=P))
+                           (Decidable_witness (P:=Q))
 }.
-Obligation 1. t. Qed.
 
 Global Program Instance impl_Decidable {P Q : Prop}
   `{Decidable P} `{Decidable Q} : Decidable (P -> Q) := {
-  decision := if decision P then decision Q else true
+  Decidable_witness := if Decidable_witness (P:=P)
+                       then Decidable_witness (P:=Q)
+                       else true
 }.
-Obligation 1. t. Qed.
+
+End DecidableLogic.
+
+Local Ltac t' tac := t; apply tac; assumption.
+
+Require Import Coq.Bool.Bool.
 
 Global Program Instance bool_eq_Decidable {n m : bool} : Decidable (n = m) := {
-  decision := eqb n m
+  Decidable_witness := eqb n m
 }.
-Obligation 1.
-  destruct (eqb n m) eqn:Heqe;
-  constructor.
-    apply eqb_true_iff; assumption.
-  apply eqb_false_iff; assumption.
-Qed.
+Obligation 1. t' eqb_true_iff. Qed.
+
+Require Import Coq.Strings.Ascii.
+Require Import Coq.Bool.Sumbool.
 
 Global Program Instance ascii_eq_Decidable {n m : Ascii.ascii} :
   Decidable (n = m) := {
-  decision := bool_of_sumbool (Ascii.ascii_dec n m)
+  Decidable_witness := bool_of_sumbool (Ascii.ascii_dec n m)
 }.
-Obligation 1.
-  destruct (Ascii.ascii_dec n m); constructor; assumption.
-Qed.
+Obligation 1. t; destruct (Ascii.ascii_dec n m); auto; discriminate. Qed.
+
+Require Import Coq.Arith.Arith.
 
 Global Program Instance nat_eq_Decidable {n m : nat} : Decidable (n = m) := {
-  decision := beq_nat n m
+  Decidable_witness := beq_nat n m
 }.
-Obligation 1.
-  destruct (beq_nat n m) eqn:Heqe;
-  constructor.
-    apply beq_nat_true_iff; assumption.
-  apply beq_nat_false_iff; assumption.
-Qed.
+Obligation 1. t' beq_nat_true_iff. Qed.
 
 Global Program Instance le_Decidable {n m} : Decidable (le n m) := {
-  decision := Compare_dec.leb n m
+  Decidable_witness := Compare_dec.leb n m
 }.
-Obligation 1.
-  destruct (Compare_dec.leb n m) eqn:Heqe;
-  constructor.
-    apply leb_iff; assumption.
-  apply gt_not_le.
-  apply leb_iff_conv; assumption.
-Qed.
+Obligation 1. t' leb_iff. Qed.
 
 Global Instance lt_Decidable {n m} : Decidable (lt n m) := le_Decidable.
 
+Require Import Coq.NArith.NArith.
+
 Global Program Instance N_eq_Decidable {n m : N} : Decidable (n = m) := {
-  decision := N.eqb n m
+  Decidable_witness := N.eqb n m
 }.
-Obligation 1.
-  destruct (N.eqb n m) eqn:Heqe.
-    apply N.eqb_eq in Heqe.
-    constructor; assumption.
-  apply N.eqb_neq in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' N.eqb_eq. Qed.
 
 Global Program Instance Nle_Decidable {n m} : Decidable (Nle n m) := {
-  decision := N.leb n m
+  Decidable_witness := N.leb n m
 }.
-Obligation 1.
-  destruct (N.leb n m) eqn:Heqe.
-    apply N.leb_le in Heqe.
-    constructor; assumption.
-  apply N.leb_nle in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' N.leb_le. Qed.
 
 Global Program Instance Nlt_Decidable {n m} : Decidable (Nlt n m) := {
-  decision := N.ltb n m
+  Decidable_witness := N.ltb n m
 }.
-Obligation 1.
-  destruct (N.ltb n m) eqn:Heqe.
-    apply N.ltb_lt in Heqe.
-    constructor; assumption.
-  apply N.ltb_nlt in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' N.ltb_lt. Qed.
+
+Require Import Coq.ZArith.ZArith.
 
 Global Program Instance Z_eq_Decidable {n m : Z} : Decidable (n = m) := {
-  decision := Z.eqb n m
+  Decidable_witness := Z.eqb n m
 }.
-Obligation 1.
-  destruct (Z.eqb n m) eqn:Heqe.
-    apply Z.eqb_eq in Heqe.
-    constructor; assumption.
-  apply Z.eqb_neq in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' Z.eqb_eq. Qed.
 
 Global Program Instance Zle_Decidable {n m} : Decidable (Zle n m) := {
-  decision := Z.leb n m
+  Decidable_witness := Z.leb n m
 }.
-Obligation 1.
-  destruct (Z.leb n m) eqn:Heqe.
-    apply Z.leb_le in Heqe.
-    constructor; assumption.
-  apply Z.leb_nle in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' Z.leb_le. Qed.
 
 Global Program Instance Zlt_Decidable {n m} : Decidable (Zlt n m) := {
-  decision := Z.ltb n m
+  Decidable_witness := Z.ltb n m
 }.
-Obligation 1.
-  destruct (Z.ltb n m) eqn:Heqe.
-    apply Z.ltb_lt in Heqe.
-    constructor; assumption.
-  apply Z.ltb_nlt in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' Z.ltb_lt. Qed.
+
+Require Import Coq.QArith.QArith.
 
 Global Program Instance Q_eq_Decidable {n m : Q} : Decidable (n == m) := {
-  decision := Qeq_bool n m
+  Decidable_witness := Qeq_bool n m
 }.
-Obligation 1.
-  destruct (Qeq_bool n m) eqn:Heqe.
-    apply Qeq_bool_eq in Heqe.
-    constructor; assumption.
-  apply Qeq_bool_neq in Heqe.
-  constructor; assumption.
-Qed.
+Obligation 1. t' Qeq_bool_iff. Qed.
 
 Global Program Instance Qle_Decidable {n m} : Decidable (Qle n m) := {
-  decision := Qle_bool n m
+  Decidable_witness := Qle_bool n m
 }.
-Obligation 1.
-  destruct (Qle_bool n m) eqn:Heqe.
-    apply Qle_bool_iff in Heqe.
-    constructor; assumption.
-  constructor.
-  apply Z.leb_nle in Heqe.
-  assumption.
-Qed.
+Obligation 1. t' Qle_bool_iff. Qed.
 
 Global Program Instance Qlt_Decidable {n m} : Decidable (Qlt n m) := {
-  decision := bool_of_sumbool (Qlt_le_dec n m)
+  Decidable_witness := bool_of_sumbool (Qlt_le_dec n m)
 }.
 Obligation 1.
-  destruct (Qlt_le_dec n m).
-    constructor; assumption.
-  constructor.
-  apply Qle_not_lt.
-  assumption.
+  t; destruct (Qlt_le_dec n m); simpl in H; auto.
+    discriminate.
+  apply Qle_not_lt in H; auto.
 Qed.
 
 Section ListDec.
@@ -210,65 +218,83 @@ Section ListDec.
 
   Global Program Instance list_eq_Decidable {xs ys : list A} :
     Decidable (xs = ys) := {
-    decision := bool_of_sumbool (List.list_eq_dec eq_dec xs ys)
+    Decidable_witness := bool_of_sumbool (List.list_eq_dec eq_dec xs ys)
   }.
   Obligation 1.
-    destruct (List.list_eq_dec eq_dec xs ys); auto.
+    t; destruct (List.list_eq_dec eq_dec xs ys);
+    simpl in H; auto; discriminate.
   Qed.
 
   Global Program Instance list_in_Decidable {xs : list A} {x : A} :
     Decidable (List.In x xs) := {
-    decision := List.existsb (eq_dec x) xs
+    Decidable_witness := List.existsb (fun y => bool_of_sumbool (eq_dec x y)) xs
   }.
   Obligation 1.
-    destruct (List.existsb_exists (eq_dec x) xs).
-    destruct (List.existsb (fun y : A => eq_dec x y) xs);
-    intuition;
-    constructor.
-      destruct H1.
-      destruct H0.
-      destruct (eq_dec x x0); subst; auto.
-      discriminate.
-    intros.
-    assert (exists x0 : A, (List.In x0 xs) /\
-                           (bool_of_sumbool (eq_dec x x0) = true)).
-      exists x; split.
-        assumption.
-      destruct (eq_dec x x); auto.
-    apply H0 in H2.
-    discriminate.
+    remember (fun _ => proj1_sig _) as F; t;
+    destruct (List.existsb_exists F xs);
+    destruct (List.existsb F xs);
+    auto; try discriminate.
+      destruct (H0 H).
+      destruct H2.
+      rewrite HeqF in H3.
+      destruct (eq_dec x x0);
+      subst; auto; discriminate.
+    apply H1.
+    exists x; split; auto.
+    rewrite HeqF.
+    destruct (eq_dec x x); auto.
   Qed.
 End ListDec.
 
 Definition IfDec_Then_Else {A} (P : Prop) `{Decidable P} (t e : A) :=
-  If decision P Then t Else e.
+  if Decidable_witness then t else e.
 Arguments IfDec_Then_Else {A} P {_} t e : simpl never.
 
 Notation "'IfDec' P 'Then' t 'Else' e" :=
   (IfDec_Then_Else P t e) (at level 70) : comp_scope.
 
-Local Ltac t' p := intros; destruct p; intuition.
+Require Import Fiat.Common.
+Require Import Fiat.Computation.Core.
 
-Corollary refine_IfDec_decides :
+Local Ltac t2 p := intros; destruct p; intuition.
+
+Lemma refine_IfDec_true : forall `{Decidable P} ResultT (t e : Comp ResultT),
+  P -> refine (IfDec P Then t Else e) t.
+Proof.
+  intros.
+  apply Decidable_spec in H0.
+  unfold IfDec_Then_Else.
+  rewrite H0; simpl.
+  apply refine_PreOrder.
+Qed.
+
+Lemma refine_IfDec_false : forall `{Decidable P} ResultT (t e : Comp ResultT),
+  ~ P -> refine (IfDec P Then t Else e) e.
+Proof.
+  intros.
+  eapply Decidable_sound_alt in H0.
+  unfold IfDec_Then_Else.
+  rewrite H0; simpl.
+  apply refine_PreOrder.
+Qed.
+
+Require Import Fiat.Computation.Monad.
+Require Import Fiat.Computation.Refinements.General.
+
+Lemma refine_IfDec_decides :
   forall `{Decidable P} ResultT (t e : Comp ResultT),
     refineEquiv (IfDec P Then t Else e)
                 (b <- {b : bool | decides b P};
                  If b Then t Else e).
 Proof.
-  intros.
-  unfold IfDec_Then_Else, decides, If_Then_Else.
   split.
-    apply refine_pick_decides; intros.
-      destruct (decision_correct P); simpl.
-        reflexivity.
-      contradiction.
-    destruct (decision_correct P); simpl.
-      contradiction.
-    reflexivity.
-  refine pick val (decision P).
-    simplify with monad laws.
-    reflexivity.
-  apply decision_decides.
+    apply refine_pick_decides.
+      exact (refine_IfDec_true _ _).
+    exact (refine_IfDec_false _ _).
+  refine pick val Decidable_witness.
+    rewrite refine_bind_unit.
+    apply refine_PreOrder.
+  exact Decidable_witness_decides.
 Qed.
 
 Lemma refine_IfDec_Then_Else :
@@ -280,32 +306,20 @@ Lemma refine_IfDec_Then_Else :
 Proof.
   intros.
   unfold IfDec_Then_Else.
-  apply refine_If_Then_Else; trivial.
+  rewrite refine_if_If.
+  rewrite H0, H1.
+  apply refine_PreOrder.
 Qed.
 
 Lemma refine_IfDec_Then_Else_ret :
   forall `{Decidable P} ResultT (t e : ResultT),
     refine (IfDec P Then ret t Else ret e)
-           (ret (IfDec P Then t Else e)).
+           (ret (IfDec P Then t Else e)%comp).
 Proof.
   intros.
   unfold IfDec_Then_Else.
   apply refine_If_Then_Else_ret; trivial.
 Qed.
-
-Ltac decidability :=
-  repeat
-    match goal with
-    | [ |- refine (ret ?Z) ?H ] => higher_order_reflexivity
-    | [ |- refine (x <- ret ?Z; ?V) ?H ] => simplify with monad laws; simpl
-    | [ |- refine (x <- y <- ?Z; ?W; ?V) ?H ] => simplify with monad laws; simpl
-    | [ |- refine (IfDec ?P Then ?T Else ?E) ?H ] =>
-      etransitivity;
-        [ apply refine_IfDec_Then_Else;
-            [ decidability | decidability ]
-        | try rewrite refine_IfDec_Then_Else_ret;
-          decidability ]
-    end.
 
 Lemma refine_sumbool_match :
   forall `(P : {A} + {~A}) B
@@ -320,7 +334,7 @@ Lemma refine_sumbool_match :
                | left  H => f' H
                | right H => g' H
                end).
-Proof. t' P. Qed.
+Proof. t2 P. Qed.
 
 Lemma refine_sumbool_ret :
   forall `(P : {A} + {~A}) `(f : A -> B) (g : ~A -> B),
@@ -332,7 +346,7 @@ Lemma refine_sumbool_ret :
                  | left  H => f H
                  | right H => g H
                  end)).
-Proof. t' P. Qed.
+Proof. t2 P. Qed.
 
 Lemma refine_sumbool_bind :
   forall `(P : {A} + {~A})
@@ -347,7 +361,7 @@ Lemma refine_sumbool_bind :
             | left  H => x <- f H; h x
             | right H => x <- g H; h x
             end).
-Proof. t' P. Qed.
+Proof. t2 P. Qed.
 
 Lemma refine_bind_sumbool :
   forall `(P : {A} + {~A})
@@ -362,4 +376,4 @@ Lemma refine_bind_sumbool :
             | left  H => x <- c; f x H
             | right H => x <- c; g x H
             end).
-Proof. t' P. Qed.
+Proof. t2 P. Qed.

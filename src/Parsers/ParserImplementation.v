@@ -149,11 +149,14 @@ Section implementation.
     let H := match goal with H : appcontext[Fix] |- _ => H end in
     rewrite Common.Wf.Fix5_eq
       in H
-      by (intros; apply SimpleRecognizerExt.parse_nonterminal_step_ext; assumption);
+      by (intros; eapply SimpleRecognizerExt.parse_nonterminal_step_ext; assumption);
       unfold GenericRecognizer.parse_nonterminal_step at 1 in H.
     simpl in *.
     edestruct Compare_dec.lt_dec; simpl in *; try omega; [].
     edestruct dec; simpl in *; try congruence; [].
     edestruct negb; simpl in *; congruence.
+    Grab Existential Variables.
+    assumption.
+    assumption.
   Qed.
 End implementation.

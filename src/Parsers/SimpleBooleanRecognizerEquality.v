@@ -70,65 +70,58 @@ Section eq.
     := parse_item'_eq (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str.
 
   Section production.
-    Context {len0}
+    Context {len0 : nat}
             (parse_nonterminal
-             : forall (offset : nat) (len : nat),
-                len <= len0
-                -> nonterminal_carrierT
+             : forall (offset : nat) (len0_minus_len : nat),
+                nonterminal_carrierT
                 -> bool)
             (parse_nonterminal'
-             : forall (offset : nat) (len : nat),
-                len <= len0
-                -> nonterminal_carrierT
+             : forall (offset : nat) (len0_minus_len : nat),
+                nonterminal_carrierT
                 -> option simple_parse_of)
             (parse_nonterminal_eq
-             : forall offset len pf nt, parse_nonterminal offset len pf nt = parse_nonterminal' offset len pf nt).
+             : forall offset len0_minus_len nt, parse_nonterminal offset len0_minus_len nt = parse_nonterminal' offset len0_minus_len nt).
 
     Definition parse_production'_for_eq
       : forall (splits : production_carrierT -> String -> nat -> nat -> list nat)
                (offset : nat)
-               (len : nat)
-               (pf : len <= len0)
+               (len0_minus_len : nat)
                (prod_idx : production_carrierT),
-        BooleanRecognizer.parse_production'_for str parse_nonterminal splits offset pf prod_idx
-        = SimpleRecognizer.parse_production'_for str parse_nonterminal' splits offset pf prod_idx
-      := parse_production'_for_eq (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
+        BooleanRecognizer.parse_production'_for str parse_nonterminal splits offset len0_minus_len prod_idx
+        = SimpleRecognizer.parse_production'_for str parse_nonterminal' splits offset len0_minus_len prod_idx
+      := parse_production'_for_eq (len0 := len0) (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
 
     Definition parse_production'_eq
       : forall (offset : nat)
-               (len : nat)
-               (pf : len <= len0)
+               (len0_minus_len : nat)
                (prod_idx : production_carrierT),
-        BooleanRecognizer.parse_production' str parse_nonterminal offset pf prod_idx
-        = SimpleRecognizer.parse_production' str parse_nonterminal' offset pf prod_idx
-      := parse_production'_eq (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
+        BooleanRecognizer.parse_production' str parse_nonterminal offset len0_minus_len prod_idx
+        = SimpleRecognizer.parse_production' str parse_nonterminal' offset len0_minus_len prod_idx
+      := parse_production'_eq (len0 := len0) (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
   End production.
 
   Section productions.
-    Context {len0}
+    Context {len0 : nat}
             (parse_nonterminal
              : forall (offset : nat)
-                      (len : nat)
-                      (pf : len <= len0),
+                      (len0_minus_len : nat),
                 nonterminal_carrierT -> bool)
             (parse_nonterminal'
              : forall (offset : nat)
-                      (len : nat)
-                      (pf : len <= len0),
+                      (len0_minus_len : nat),
                 nonterminal_carrierT -> option simple_parse_of)
             (parse_nonterminal_eq
-             : forall offset len pf nt,
-                parse_nonterminal offset len pf nt
-                = parse_nonterminal' offset len pf nt).
+             : forall offset len0_minus_len nt,
+                parse_nonterminal offset len0_minus_len nt
+                = parse_nonterminal' offset len0_minus_len nt).
 
     Definition parse_productions'_eq
       : forall (offset : nat)
-               (len : nat)
-               (pf : len <= len0)
+               (len0_minus_len : nat)
                (prods : list production_carrierT),
-        BooleanRecognizer.parse_productions' str parse_nonterminal offset pf prods
-        = SimpleRecognizer.parse_productions' str parse_nonterminal' offset pf prods
-      := parse_productions'_eq (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
+        BooleanRecognizer.parse_productions' str parse_nonterminal offset len0_minus_len prods
+        = SimpleRecognizer.parse_productions' str parse_nonterminal' offset len0_minus_len prods
+      := parse_productions'_eq (len0 := len0) (gendata := BooleanRecognizer.boolean_gendata) (gendata' := SimpleRecognizer.simple_gendata) str _ _ parse_nonterminal_eq.
   End productions.
 
   Section nonterminals.

@@ -42,27 +42,27 @@ Section transfer.
   Lemma parse_production_proj
         (len0 : nat)
         parse_nonterminal parse_nonterminal'
-        (H : forall offset len pf' nt,
-               parse_nonterminal offset len pf' nt
-               = parse_nonterminal' offset len pf' nt)
-        offset len pf (prod : @production_carrierT _ data)
-  : @parse_production' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len pf prod
-    = @parse_production' _ HSLM_heavy _ str len0 parse_nonterminal' offset len pf prod.
+        (H : forall offset len0_minus_len nt,
+               parse_nonterminal offset len0_minus_len nt
+               = parse_nonterminal' offset len0_minus_len nt)
+        offset len0_minus_len (prod : @production_carrierT _ data)
+  : @parse_production' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len0_minus_len prod
+    = @parse_production' _ HSLM_heavy _ str len0 parse_nonterminal' offset len0_minus_len prod.
   Proof.
-    refine (parse_production_proj _ _ _ _ _ _ _); assumption.
+    refine (parse_production_proj _ _ _ _ _ _ _ _); assumption.
   Qed.
 
   Lemma parse_productions_proj
         (len0 : nat)
         parse_nonterminal parse_nonterminal'
-        (H : forall offset len pf' nt,
-               parse_nonterminal offset len pf' nt
-               = parse_nonterminal' offset len pf' nt)
-        offset len pf prods
-  : @parse_productions' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len pf prods
-    = @parse_productions' _ HSLM_heavy _ str len0 parse_nonterminal' offset len pf prods.
+        (H : forall offset len0_minus_len nt,
+               parse_nonterminal offset len0_minus_len nt
+               = parse_nonterminal' offset len0_minus_len nt)
+        offset len0_minus_len prods
+  : @parse_productions' _ HSLM_lite _ (proj str) len0 parse_nonterminal offset len0_minus_len prods
+    = @parse_productions' _ HSLM_heavy _ str len0 parse_nonterminal' offset len0_minus_len prods.
   Proof.
-    refine (parse_productions_proj _ _ _ _ _ _ _); assumption.
+    refine (parse_productions_proj _ _ _ _ _ _ _ _); assumption.
   Qed.
 
   Lemma parse_nonterminal_step_proj
