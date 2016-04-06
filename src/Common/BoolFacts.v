@@ -132,3 +132,22 @@ Section BoolFacts.
       = ((b && t) || (negb b && f))%bool.
   Proof. destruct b, t, f; reflexivity. Qed.
 End BoolFacts.
+
+Create HintDb bool_congr discriminated.
+
+Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff : bool_congr.
+
+Ltac bool_congr' :=
+  idtac;
+  match goal with
+  | [ H : false = true |- _ ] => solve [ inversion H ]
+  | [ H : true = false |- _ ] => solve [ inversion H ]
+  | _ => progress autorewrite with bool_congr in *
+  | [ H : ?x = true |- _ ] => is_var x; subst x
+  | [ H : ?x = false |- _ ] => is_var x; subst x
+  | [ H : true = ?x |- _ ] => is_var x; subst x
+  | [ H : false = ?x |- _ ] => is_var x; subst x
+  | [ H : ?x = ?x :> bool |- _ ] => clear H
+  end.
+
+Ltac bool_congr := repeat bool_congr'.
