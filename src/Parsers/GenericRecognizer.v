@@ -6,6 +6,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Common.Wf.
+Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -128,7 +129,7 @@ Section recursive_descent_parser.
               (option_rect
                  (fun _ => parse_nt_T)
                  (fun parse_nonterminal
-                  => let len0' := if NPeano.ltb len len0
+                  => let len0' := if len <? len0
                                   then len
                                   else len0 in
                      ret_nt (parse_productions'

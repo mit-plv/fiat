@@ -21,6 +21,7 @@ Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.UIP.
 Require Import Fiat.Common.
+Import NPeano.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -188,9 +189,9 @@ Section recursive_descent_parser.
               | solve [ eauto with generic_parser_correctness nocore ]
               | rewrite sub_twice, Min.min_r by assumption
               | rewrite !@min_max_sub
-              | rewrite NPeano.Nat.sub_max_distr_l
-              | rewrite <- NPeano.Nat.sub_add_distr
-              | rewrite (proj2 (NPeano.ltb_lt _ _)) by assumption
+              | rewrite Nat.sub_max_distr_l
+              | rewrite <- Nat.sub_add_distr
+              | rewrite (proj2 (Nat.ltb_lt _ _)) by assumption
               | idtac;
                 match goal with
                   | [ |- ?x = ?x ] => reflexivity
@@ -337,8 +338,8 @@ Section recursive_descent_parser.
                 match goal with
                 | [ H : ?x = true |- context[?x] ] => rewrite H
                 | [ H : ?x = false |- context[?x] ] => rewrite H
-                | [ H : NPeano.ltb _ _ = true |- _ ]
-                  => apply NPeano.ltb_lt in H
+                | [ H : (_ <? _)%nat = true |- _ ]
+                  => apply Nat.ltb_lt in H
                 | [ H : ?T, H' : ~?T |- _ ] => specialize (H' H)
                 | [ H : False |- _ ] => destruct H
                 end ].
@@ -770,7 +771,7 @@ Section recursive_descent_parser.
                                          let H1 := fresh in
                                          destruct H as [H0 H1]; try clear H
                | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
-               | [ H : beq_nat _ _ = true |- _ ] => apply NPeano.Nat.eqb_eq in H
+               | [ H : beq_nat _ _ = true |- _ ] => apply Nat.eqb_eq in H
                | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => progress subst
                | _ => progress simpl in *
@@ -796,7 +797,7 @@ Section recursive_descent_parser.
                  => apply length_singleton in H''; rewrite substring_length in H''
                | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
                | [ H : appcontext[min] |- _ ] => rewrite Min.min_r in H by omega
-               | [ H : _ |- _ ] => rewrite NPeano.Nat.add_sub in H
+               | [ H : _ |- _ ] => rewrite Nat.add_sub in H
                | [ H : andb (beq_nat _ 1) (char_at_matches _ _ _) = false |- False ] => contradict H
                | [ |- _ <> false ] => apply Bool.not_false_iff_true
                | [ |- andb (beq_nat _ 1) (char_at_matches _ _ _) = true ] => apply char_at_matches_is_char
@@ -927,12 +928,12 @@ Section recursive_descent_parser.
                 repeat split.
                 { left; reflexivity. }
                 { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
-                  rewrite take_take, <- NPeano.Nat.sub_min_distr_l.
+                  rewrite take_take, <- Nat.sub_min_distr_l.
                   rewrite !Min.min_r by omega.
                   reflexivity. }
                 { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                   rewrite drop_take, StringLike.drop_drop.
-                  rewrite NPeano.Nat.sub_add_distr.
+                  rewrite Nat.sub_add_distr.
                   apply bool_eq_empty; rewrite substring_length; apply Min.min_case_strong; generalize dependent (len0 - len0_minus_len); intros; omega. } }
               { simpl in *.
                 rewrite Min.min_r in H0 by omega.
@@ -955,22 +956,22 @@ Section recursive_descent_parser.
                        end. }
               { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
                 rewrite take_take.
-                rewrite <- NPeano.Nat.sub_min_distr_l, sub_twice.
+                rewrite <- Nat.sub_min_distr_l, sub_twice.
                 rewrite (Min.min_r len0) by omega.
                 reflexivity. }
               { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
                 rewrite drop_take, StringLike.drop_drop.
-                rewrite (plus_comm offset), NPeano.Nat.sub_add_distr; reflexivity. } } }
+                rewrite (plus_comm offset), Nat.sub_add_distr; reflexivity. } } }
           { exists n; repeat split; try assumption.
             { apply in_map; assumption. }
             { eapply expand_minimal_parse_of_item_beq; [ .. | eassumption ].
               rewrite take_take.
-              rewrite <- NPeano.Nat.sub_min_distr_l, sub_twice.
+              rewrite <- Nat.sub_min_distr_l, sub_twice.
               rewrite (Min.min_comm len0), <- !Min.min_assoc, (Min.min_r len0) by omega.
               reflexivity. }
             { eapply expand_minimal_parse_of_production_beq; [ .. | eassumption ].
               rewrite drop_take, StringLike.drop_drop.
-              rewrite (plus_comm offset), NPeano.Nat.sub_add_distr.
+              rewrite (plus_comm offset), Nat.sub_add_distr.
               reflexivity. } }
         Defined.
 
@@ -1032,11 +1033,11 @@ Section recursive_descent_parser.
         Proof.
           destruct H as [pi pp]; split.
           { eapply expand_minimal_parse_of_item_beq; [ | eassumption ].
-            rewrite take_take, <- NPeano.Nat.sub_min_distr_l, sub_twice.
+            rewrite take_take, <- Nat.sub_min_distr_l, sub_twice.
             rewrite (Min.min_comm len0), <- !Min.min_assoc, min_minus_r.
             reflexivity. }
           { eapply expand_minimal_parse_of_production_beq; [ | eassumption ].
-            rewrite drop_take, StringLike.drop_drop, (plus_comm a offset), NPeano.Nat.sub_add_distr.
+            rewrite drop_take, StringLike.drop_drop, (plus_comm a offset), Nat.sub_add_distr.
             reflexivity. }
         Defined.
 
@@ -1061,7 +1062,7 @@ Section recursive_descent_parser.
             | [ H : length (substring _ _ _) = 0 |- _ ] => rewrite substring_length in H
             | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
             | [ H : appcontext[min] |- _ ] => rewrite Min.min_r in H by omega
-            | [ H : _ |- _ ] => rewrite NPeano.Nat.add_sub in H
+            | [ H : _ |- _ ] => rewrite Nat.add_sub in H
           end.
         Local Ltac parse_production'_for_t := repeat parse_production'_for_t'.
 
@@ -1144,7 +1145,7 @@ Section recursive_descent_parser.
             -> len0 - (len0_minus_len + n) = 0 \/
                offset + n + (len0 - (len0_minus_len + n)) <= length str.
         Proof.
-          rewrite NPeano.Nat.sub_add_distr.
+          rewrite Nat.sub_add_distr.
           intros [Hlen|Hlen]; try solve [ left; omega | right; omega ].
           destruct (Compare_dec.le_dec n (len0 - len0_minus_len));
             solve [ left; omega | right; omega ].
@@ -1557,20 +1558,20 @@ Section recursive_descent_parser.
                 => destruct (Compare_dec.zerop x);
                   [ clear H | assert T by (destruct H; try assumption; omega); clear H ]
               | [ |- context[min ?x ?y - ?y] ]
-                => rewrite <- NPeano.Nat.sub_min_distr_r, minus_diag, Min.min_0_r
-              | _ => rewrite NPeano.Nat.add_sub
+                => rewrite <- Nat.sub_min_distr_r, minus_diag, Min.min_0_r
+              | _ => rewrite Nat.add_sub
               | _ => rewrite Min.min_r by omega
               | _ => rewrite Min.min_l by omega
               | [ H : context[length (substring _ 0 _)] |- _ ]
                 => rewrite take_length in H
               | [ H : context[length (substring _ _ _)] |- _ ]
-                => rewrite substring_length, Min.min_r, NPeano.Nat.add_sub in H by omega
+                => rewrite substring_length, Min.min_r, Nat.add_sub in H by omega
               | [ H : context[?x - (?x - _)] |- _ ] => rewrite sub_twice in H
               | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_r x y) in H by assumption
               | [ H : context[min ?x ?y] |- _ ] => rewrite (Min.min_l x y) in H by assumption
               | [ H : context[min ?x ?x] |- _ ] => rewrite Min.min_idempotent in H
               | [ H : context[?x - ?x] |- _ ] => rewrite minus_diag in H
-              | [ H : context[?x - 0] |- _ ] => rewrite NPeano.Nat.sub_0_r in H
+              | [ H : context[?x - 0] |- _ ] => rewrite Nat.sub_0_r in H
             end.
           Local Ltac p_step := repeat p_step_t'.
 
@@ -1691,8 +1692,8 @@ Section recursive_descent_parser.
             { apply ret_nt_is_correct; try assumption; [].
               replace len with (len0 - (len0 - len)) at 1 by omega.
               match goal with
-              | [ |- context[NPeano.ltb ?x ?y] ]
-                => destruct (NPeano.ltb x y) eqn:?
+              | [ |- context[?x <? ?y] ]
+                => destruct (x <? y) eqn:?
               end;
                 repeat eq_t'. }
           Qed.
