@@ -117,6 +117,18 @@ Section recursive_descent_parser.
                                  (offset : nat) (len : nat),
                             len <= fst p -> nonterminal_carrierT -> parse_nt_T).
 
+          Lemma pred_lt_beq {x} : negb (beq_nat x 0) = true -> pred x < x.
+          Proof.
+            destruct x; simpl; try congruence; try omega.
+          Qed.
+          Lemma pred_lt_beq_helper {valid nt x}
+            : (negb (beq_nat x 0) && is_valid_nonterminal valid nt)%bool = true -> pred x < x.
+          Proof.
+            intro is_valid.
+            generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid)).
+            apply pred_lt_beq.
+          Defined.
+
           Definition parse_nonterminal_step
                      (valid : nonterminals_listT)
                      (offset : nat)
@@ -169,14 +181,7 @@ Section recursive_descent_parser.
                     (lt_dec len len0)));
               first [ assumption
                     | apply le_minus
-                    | simpl; clear; abstract omega
-                    | simpl;
-                      generalize (proj1 (proj1 (Bool.andb_true_iff _ _) is_valid));
-                      clear; intro;
-                      abstract (
-                          destruct valid_len; try apply Lt.lt_n_Sn; [];
-                          exfalso; simpl in *; congruence
-                    ) ].
+                    | eapply pred_lt_beq_helper; eassumption ].
           Defined.
         End step.
 
