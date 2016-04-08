@@ -127,7 +127,7 @@ Proof.
 Qed.
 
 Definition length_of_any_nt_step
-           {Char} (G : pregrammar Char)
+           {Char} (G : pregrammar' Char)
            (predata := @rdp_list_predata _ G)
            (valid0_len : nat)
            (length_of_any_nt : forall (*valid0_len : nat*) (valid0 : nonterminals_listT),
@@ -158,7 +158,7 @@ Proof.
 Qed.
 
 Definition length_of_any_nt'
-           {Char} (G : pregrammar Char)
+           {Char} (G : pregrammar' Char)
            (valid0_len : nat)
   : forall (valid0 : nonterminals_listT)
            (nt : String.string),
@@ -173,12 +173,12 @@ Definition length_of_any_nt'
 
 Global Arguments length_of_any_nt' _ _ !_ _ _ / .
 
-Definition length_of_any_nt {Char} (G : pregrammar Char)
+Definition length_of_any_nt {Char} (G : pregrammar' Char)
            initial
 : String.string -> length_result
   := @length_of_any_nt' Char G (nonterminals_length initial) initial.
 
-Definition length_of_any {Char} (G : pregrammar Char)
+Definition length_of_any {Char} (G : pregrammar' Char)
 : String.string -> length_result
   := @length_of_any_nt Char G initial_nonterminals_data.
 
@@ -246,7 +246,7 @@ Lemma has_only_terminals_parse_of_length
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
-      (G : pregrammar Ascii.ascii) {n}
+      (G : pregrammar' Ascii.ascii) {n}
       (predata := @rdp_list_predata _ G)
       nt
       (H : length_of_any G nt = same_length n)
@@ -331,7 +331,7 @@ Lemma has_only_terminals_parse_of_item_length
       {HSLM : StringLikeMin Ascii.ascii}
       {HSL : StringLike Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
-      (G : pregrammar Ascii.ascii) {n}
+      (G : pregrammar' Ascii.ascii) {n}
       nt
       (H : length_of_any G nt = same_length n)
       str

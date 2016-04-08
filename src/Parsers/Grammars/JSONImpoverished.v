@@ -11,7 +11,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 grammar JSON;
 >> *)
 
-Definition json'_pregrammar : pregrammar ascii :=
+Definition json'_pregrammar : pregrammar :=
   Eval grammar_red in
   [[[
        (**

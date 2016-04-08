@@ -331,7 +331,7 @@ OptionalExpression ⇒
         ::== [\s] "WS*" "Expression normal,allowIn"
           || "".
 
-  Definition javascript_assignment_expression_pregrammar' : pregrammar ascii :=
+  Definition javascript_assignment_expression_pregrammar' : pregrammar :=
     Eval grammar_red in
       [[[
            OptionalExpression;;

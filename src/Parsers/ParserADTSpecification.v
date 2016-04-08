@@ -47,7 +47,7 @@ Section ReferenceImpl.
       }.
   End GenericSig.
 
-  Context (G : pregrammar Ascii.ascii) (HSLM : StringLikeMin Ascii.ascii) (HSL : StringLike Ascii.ascii).
+  Context (G : pregrammar' Ascii.ascii) (HSLM : StringLikeMin Ascii.ascii) (HSL : StringLike Ascii.ascii).
   Local Open Scope ADTParsing_scope.
 
   (** Reference implementation of a [String] that can be split *)
@@ -86,7 +86,7 @@ Global Instance ceq_refl {A} (x : A) : ceq x x := eq_refl.
 
 Definition string_spec
            (G : grammar Ascii.ascii)
-           {G' : pregrammar Ascii.ascii}
+           {G' : pregrammar' Ascii.ascii}
            {HGeq : ceq G G'}
            (HSLM : StringLikeMin Ascii.ascii)
            (HSL : StringLike Ascii.ascii)

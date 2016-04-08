@@ -84,11 +84,11 @@ Section maybe_empty.
          combine_productions := orb;
          on_nonterminal nt v := v }.
 
-  Definition maybe_empty_of : pregrammar Char -> String.string -> bool
+  Definition maybe_empty_of : pregrammar' Char -> String.string -> bool
     := @fold_nt _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_productions : pregrammar Char -> productions Char -> bool
+  Definition maybe_empty_of_productions : pregrammar' Char -> productions Char -> bool
     := @fold_productions _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_production : pregrammar Char -> production Char -> bool
+  Definition maybe_empty_of_production : pregrammar' Char -> production Char -> bool
     := @fold_production _ _ maybe_empty_fold_data.
 End maybe_empty.
 
@@ -105,16 +105,16 @@ Section all_possible.
          combine_productions := @app _;
          on_nonterminal nt v := v }.
 
-  Definition possible_terminals_of : pregrammar Char -> String.string -> possible_terminals
+  Definition possible_terminals_of : pregrammar' Char -> String.string -> possible_terminals
     := @fold_nt _ _ all_possible_fold_data.
-  Definition possible_terminals_of_productions : pregrammar Char -> productions Char -> possible_terminals
+  Definition possible_terminals_of_productions : pregrammar' Char -> productions Char -> possible_terminals
     := @fold_productions _ _ all_possible_fold_data.
-  Definition possible_terminals_of_production : pregrammar Char -> production Char -> possible_terminals
+  Definition possible_terminals_of_production : pregrammar' Char -> production Char -> possible_terminals
     := @fold_production _ _ all_possible_fold_data.
 End all_possible.
 
 Section only_first.
-  Context (G : pregrammar Ascii.ascii)
+  Context (G : pregrammar' Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}.
@@ -155,7 +155,7 @@ Section only_first.
 End only_first.
 
 Section only_last.
-  Context (G : pregrammar Ascii.ascii)
+  Context (G : pregrammar' Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}.
@@ -278,7 +278,7 @@ Section maybe_empty_correctness.
     { abstract t. }
   Defined.
 
-  Lemma maybe_empty_of_correct (G : pregrammar Char)
+  Lemma maybe_empty_of_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         nt
     : maybe_empty_of G nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
@@ -287,7 +287,7 @@ Section maybe_empty_correctness.
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__iff__maybe_empty_item; reflexivity.
   Qed.
 
-  Lemma maybe_empty_of_production_correct (G : pregrammar Char)
+  Lemma maybe_empty_of_production_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         pat
     : maybe_empty_of_production G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
@@ -296,7 +296,7 @@ Section maybe_empty_correctness.
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__iff__maybe_empty_production; reflexivity.
   Qed.
 
-  Lemma maybe_empty_of_productions_correct (G : pregrammar Char)
+  Lemma maybe_empty_of_productions_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         pat
     : maybe_empty_of_productions G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
@@ -305,7 +305,7 @@ Section maybe_empty_correctness.
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_productions__iff__maybe_empty_productions; reflexivity.
   Qed.
 
-  (*Lemma maybe_empty_correct (G : pregrammar Char)
+  (*Lemma maybe_empty_correct (G : pregrammar' Char)
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         nt
@@ -329,7 +329,7 @@ Section maybe_empty_correctness.
     apply (f ch).
   Qed.
 
-  Lemma maybe_empty_production_correct (G : pregrammar Char)
+  Lemma maybe_empty_production_correct (G : pregrammar' Char)
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) pat
@@ -427,7 +427,7 @@ Section all_possible_correctness.
     { abstract t. }
   Defined.
 
-  Lemma possible_terminals_of_correct (G : pregrammar Char)
+  Lemma possible_terminals_of_correct (G : pregrammar' Char)
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) nt
@@ -447,7 +447,7 @@ Section all_possible_correctness.
     apply (f ch).
   Qed.
 
-  Lemma possible_terminals_of_production_correct (G : pregrammar Char)
+  Lemma possible_terminals_of_production_correct (G : pregrammar' Char)
         (Hvalid : grammar_rvalid G)
         (predata := @rdp_list_predata _ G)
         (str : String) pat
@@ -469,7 +469,7 @@ Section all_possible_correctness.
 End all_possible_correctness.
 
 Section only_first_correctness.
-  Context (G : pregrammar Ascii.ascii)
+  Context (G : pregrammar' Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
@@ -660,7 +660,7 @@ Section only_first_correctness.
 End only_first_correctness.
 
 Section only_last_correctness.
-  Context (G : pregrammar Ascii.ascii)
+  Context (G : pregrammar' Ascii.ascii)
           {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
@@ -860,7 +860,7 @@ Local Open Scope string_like_scope.
 Local Arguments string_beq : simpl never.
 
 Section search_forward.
-  Lemma terminals_disjoint_search_for_not' {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_search_for_not' {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -913,7 +913,7 @@ Section search_forward.
       find_production_valid. }
   Qed.
 
-  Lemma terminals_disjoint_search_for_not {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_search_for_not {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -945,7 +945,7 @@ Section search_forward.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
   Qed.
 
-  Lemma terminals_disjoint_search_for' {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_search_for' {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -996,7 +996,7 @@ Section search_forward.
         find_production_valid. } }
   Qed.
 
-  Lemma terminals_disjoint_search_for {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_search_for {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -1034,7 +1034,7 @@ Section search_forward.
 End search_forward.
 
 Section search_backward.
-  Lemma terminals_disjoint_rev_search_for_not' {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for_not' {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -1084,7 +1084,7 @@ Section search_backward.
       find_production_valid. }
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for_not {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for_not {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -1121,7 +1121,7 @@ Section search_backward.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for' {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for' {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}
@@ -1169,7 +1169,7 @@ Section search_backward.
         find_production_valid. } }
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for {G : pregrammar Ascii.ascii}
+  Lemma terminals_disjoint_rev_search_for {G : pregrammar' Ascii.ascii}
         {HSLM : StringLikeMin Ascii.ascii}
         {HSL : StringLike Ascii.ascii}
         {HSI : StringIso Ascii.ascii}

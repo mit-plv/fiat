@@ -147,7 +147,7 @@ Ltac simplify_parser_splitter' :=
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
-        | progress simpl @ContextFreeGrammar.PreNotations.opt.nat_of_ascii
+        | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
         | progress change (orb false) with (fun x : bool => x); cbv beta
         | progress change (orb true) with (fun x : bool => true); cbv beta
         | progress change (andb false) with (fun x : bool => false); cbv beta

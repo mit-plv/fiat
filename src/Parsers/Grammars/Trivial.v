@@ -8,7 +8,7 @@ Set Implicit Arguments.
 Section generic.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
 
-  Definition trivial_pregrammar : pregrammar Char :=
+  Definition trivial_pregrammar : pregrammar' Char :=
     {| pregrammar_productions := (""%string, nil::nil)::nil |}.
 
   Definition trivial_grammar : grammar Char := trivial_pregrammar.

@@ -32,7 +32,7 @@ Section parser.
           {stringlike_stringiso : StringIso Ascii.ascii}
           {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}
           {stringlike_stringiso_properties : StringIsoProperties Ascii.ascii}.
-  Context (G : pregrammar Ascii.ascii).
+  Context (G : pregrammar' Ascii.ascii).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
   Local Notation StringT := { r : cRep (projT1 splitter_impl) | exists orig, AbsR (projT2 splitter_impl) orig r }%type (only parsing).

@@ -86,7 +86,7 @@ Defined.
 Arguments transfer_parser {_ _ _ _ _ _} _ _ _ _ _ _ _ _ _ _.
 
 Section implementation.
-  Context {G : pregrammar Ascii.ascii}.
+  Context {G : pregrammar' Ascii.ascii}.
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).
   Context {string_like_min_lite : StringLikeMin Ascii.ascii}

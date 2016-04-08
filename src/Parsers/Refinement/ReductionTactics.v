@@ -31,7 +31,7 @@ Ltac splitter_red term :=
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
-Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar_productions production_of_string magic_juxta_append_production magic_juxta_append_productions productions_of_production list_to_productions projT1 projT2 proj1_sig proj2_sig char_test char_to_test_eq or_chars and_chars neg_chars production_of_chartest ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring (*magic_juxta_append_from_char_test*)].
+Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar'_of_pregrammar pregrammar_productions pregrammar_rproductions rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions projT1 projT2 proj1_sig proj2_sig char_to_test_eq rproduction_of_RCharExpr ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring (*magic_juxta_append_from_char_test*)].
 Declare Reduction parser_red1 := simpl List.hd.
 Declare Reduction parser_red2 := simpl List.fold_right.
 Declare Reduction parser_red3 := simpl List.map.

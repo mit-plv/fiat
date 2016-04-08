@@ -24,7 +24,7 @@ Local Open Scope list_scope.
 
 Section implementation.
   Context {Char}
-          {G : pregrammar Char}.
+          {G : pregrammar' Char}.
 
   Context (splitter : Splitter G).
 

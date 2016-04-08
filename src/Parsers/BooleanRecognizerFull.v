@@ -14,7 +14,7 @@ Global Instance ceq_refl {A} (x : A) : ceq x x := eq_refl.
 
 Section example_parse_string_grammar.
   Context (G : grammar Ascii.ascii)
-          {G' : pregrammar Ascii.ascii}
+          {G' : pregrammar' Ascii.ascii}
           {HGeq : ceq G G'}
           {HSLM : StringLikeMin Ascii.ascii}.
 

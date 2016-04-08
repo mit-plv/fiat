@@ -21,7 +21,7 @@ Definition search_for_condition
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
-           (G : pregrammar Ascii.ascii)
+           (G : pregrammar' Ascii.ascii)
            str its (n : nat)
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
@@ -35,7 +35,7 @@ Lemma refine_disjoint_search_for'
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      (G : pregrammar Ascii.ascii)
+      (G : pregrammar' Ascii.ascii)
       (Hvalid : grammar_rvalid G)
       {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
@@ -70,7 +70,7 @@ Definition search_for_not_condition
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSI : StringIso Ascii.ascii}
-           (G : pregrammar Ascii.ascii)
+           (G : pregrammar' Ascii.ascii)
            str nt its n
   := is_first_char_such_that
        (might_be_empty (possible_first_terminals_of_production G its))
@@ -84,7 +84,7 @@ Lemma refine_disjoint_search_for_not'
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar Ascii.ascii}
+      {G : pregrammar' Ascii.ascii}
       (Hvalid : grammar_rvalid G)
       {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
@@ -214,7 +214,7 @@ Lemma refine_disjoint_search_for
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar Ascii.ascii}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
@@ -238,7 +238,7 @@ Lemma refine_disjoint_search_for_not
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar Ascii.ascii}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
@@ -262,7 +262,7 @@ Lemma refine_disjoint_search_for_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar Ascii.ascii}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
@@ -288,7 +288,7 @@ Lemma refine_disjoint_search_for_not_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar Ascii.ascii}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
@@ -313,7 +313,7 @@ Ltac solve_disjoint_side_conditions :=
   lazymatch goal with
   | [ |- Carriers.default_to_production (G := ?G) ?k = ?e ]
     => try cbv delta [G];
-       cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions List.length List.nth minus Operations.List.drop];
+       cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions pregrammar_rproductions List.length List.nth minus Operations.List.drop];
        try reflexivity
   | [ |- is_true (Operations.List.disjoint _ _ _) ]
     => vm_compute; try reflexivity

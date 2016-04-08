@@ -816,7 +816,7 @@ TopStatement ⇒
       ::== "Statement full"
         || "FunctionDefinition".
 
-  Definition javascript'_pregrammar' : pregrammar ascii :=
+  Definition javascript'_pregrammar' : pregrammar :=
     Eval grammar_red in
       [[[
            Program;;

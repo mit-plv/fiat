@@ -28,7 +28,7 @@ Section specific.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {CharE : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
-  Context (G : pregrammar Char).
+  Context (G : pregrammar' Char).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 
@@ -318,7 +318,7 @@ Section paren_balanced_nonterminals.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
   Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}
-          (G : pregrammar Char)
+          (G : pregrammar' Char)
           (hiding : bool).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
@@ -337,7 +337,7 @@ Section with_lists.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {HEC : Enumerable Char}.
   Context {pdata : paren_balanced_hiding_dataT Char}.
-  Context (G : pregrammar Char).
+  Context (G : pregrammar' Char).
   Let predata := (@rdp_list_predata _ G).
   Local Existing Instance predata.
 

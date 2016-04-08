@@ -142,7 +142,7 @@ End opt3.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
-          {G : pregrammar Char}.
+          {G : pregrammar' Char}.
 
   Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) (pregrammar_productions G).
   Proof.

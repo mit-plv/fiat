@@ -11,7 +11,7 @@ Local Open Scope list_scope.
 Reserved Infix "~=" (at level 70).
 
 Section preinterface.
-  Context {Char} (G : pregrammar Char).
+  Context {Char} (G : pregrammar' Char).
 
   (** A list of splits is complete if, for every reachable production,
       it contains every index of the string that yields a parse tree

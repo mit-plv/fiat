@@ -40,7 +40,7 @@ Definition default_production_carrierT_lb
   := Equality.lb.
 
 Section grammar.
-  Context {Char} {G : pregrammar Char}.
+  Context {Char} {G : pregrammar' Char}.
 
   Local Notation valid_nonterminals := (List.map fst (pregrammar_productions G)).
 

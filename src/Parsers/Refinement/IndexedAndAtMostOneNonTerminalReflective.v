@@ -45,7 +45,7 @@ Local Open Scope string_scope.
 
 (** Reflective version of [split_list_is_complete] and [production_is_reachable] *)
 Section forall_reachable_productions.
-  Context {Char} (G : pregrammar Char) {T T' : Type}
+  Context {Char} (G : pregrammar' Char) {T T' : Type}
           {eq_T' : BoolDecR T'}
           {T'_bl : BoolDec_bl (@eq T')}
           {T'_lb : BoolDec_lb (@eq T')}.
@@ -320,7 +320,7 @@ Section IndexedImpl.
   Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}.
-  Context (G : pregrammar Ascii.ascii).
+  Context (G : pregrammar' Ascii.ascii).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.

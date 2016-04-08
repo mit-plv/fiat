@@ -28,7 +28,7 @@ Section parser.
   Context {stringlike_stringlikemin : StringLikeMin Ascii.ascii}
           {stringlike_stringlike : StringLike Ascii.ascii}
           {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}.
-  Context {G : pregrammar Ascii.ascii}.
+  Context {G : pregrammar' Ascii.ascii}.
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
@@ -80,6 +80,7 @@ Section parser.
 
   Definition parser' : Parser G stringlike_stringlike.
   Proof.
+Locate parser.
     refine (@parser G Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLikeMin_lite splitter_impl)
                     _
@@ -185,14 +186,14 @@ Definition parser
            {HSLM : StringLikeMin Ascii.ascii}
            {HSL : StringLike Ascii.ascii}
            {HSLP : StringLikeProperties Ascii.ascii}
-           {G : pregrammar Ascii.ascii}
+           {G : pregrammar' Ascii.ascii}
            (Hvalid : is_true (grammar_rvalid G))
            (splitter_impl : FullySharpened (string_spec G HSL))
 : Parser G HSL.
 Proof.
   let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP G Hvalid splitter_impl)) in
   refine (term _ _ _ _);
-    cbv beta iota zeta delta [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string];
+    cbv beta iota zeta delta [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar pregrammar'_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string];
     change_opt (pregrammar_productions G) nt str.
   { lazymatch goal with
     | [ |- appcontext[BooleanRecognizerOptimized.opt.opt.id
