@@ -24,7 +24,92 @@ module TRANSPARENT_ABSTRACT =
     let new_exact_no_check c =
       Proofview.Refine.refine ~unsafe:true (fun h -> (h, c))
 
-    (* Transparently abstract the goal *)
+  (* [tac] : string representing identifier *)
+  (* [args] : tactic arguments *)
+  (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+  let ltac_lcall tac args =
+    Tacexpr.TacArg(Loc.dummy_loc,Tacexpr.TacCall(Loc.dummy_loc, Misctypes.ArgVar(Loc.dummy_loc, Names.id_of_string tac),args))
+
+  (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+  let ltac_letin (x, e1) e2 =
+    Tacexpr.TacLetIn(false,[(Loc.dummy_loc,Names.id_of_string x),e1],e2)
+
+  (* [ltac_apply] : Run a tactic by let binding it... *)
+  let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
+    Tacinterp.eval_tactic
+      (ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args))
+
+  (* Lift a constructor to an ltac value. *)
+  let to_ltac_val c = Tacexpr.TacDynamic(Loc.dummy_loc, Pretyping.constr_in c)
+
+    (* Build a new definition for [term] with identifier [id] and call *)
+    (* the [tacK] tactic with the result. *)
+    let transparent_abstract_term id (term : Term.constr) tacK gk =
+      (* Apply to each goal, normalizing evars in each first. *)
+      Proofview.Goal.nf_enter begin
+	  fun gl ->
+	  let current_sign = Global.named_context()
+	  and global_sign = Proofview.Goal.hyps gl in
+	  let evdref = ref (Proofview.Goal.sigma gl) in
+	  (* Identify which hypotheses are local and which are section variables. *)
+	  let sign,secsign =
+	    List.fold_right
+	      (fun (id,_,_ as d) (s1,s2) ->
+	       if mem_named_context id current_sign &&
+		    interpretable_as_section_decl evdref (lookup_named id current_sign) d
+               then (s1,push_named_context_val d s2)
+	       else (add_named_decl d s1,s2))
+	      global_sign (empty_named_context,empty_named_context_val) in
+	  (* Build the identifier for the new term *)
+	  let id = Namegen.next_global_ident_away id (pf_ids_of_hyps gl) in
+	  (* Construct the type of the term by abstracting over the *)
+	  (* local hypotheses and definitions. *)
+	  let (_, termType) = Tacmach.New.pf_type_of gl term in
+	  let termType = it_mkNamedProd_or_LetIn termType sign in
+	  let termType =
+	    try flush_and_check_evars !evdref termType
+	    with Uninstantiated_evar _ ->
+	      error "\"abstract\" cannot handle existentials." in
+	  (* *)
+	  let term =
+	    try flush_and_check_evars !evdref term
+	    with Uninstantiated_evar _ ->
+	      error "\"abstract\" cannot handle existentials." in
+	  let evd, ctx, termType =
+	    (* FIXME: should be done only if the tactic succeeds *)
+	    let evd, nf = nf_evars_and_universes !evdref in
+	    let ctx = Evd.universe_context_set evd in
+	    evd, ctx, nf termType
+	  in
+	  let constr = { Entries.const_entry_body =
+			   Future.from_val ((term ,Univ.ContextSet.empty),
+					    Safe_typing.empty_private_constants);
+			 (* FIXME: what's the right set of section variables *)
+			 const_entry_secctx = Proof_global.get_used_variables ();
+			 (* bendy: Not sure how these feedback entries are used. None seems safe? *)
+			 const_entry_feedback = None;
+			 const_entry_type = Some termType;
+
+			 (* bendy: I assume we don't want polymorphic definitions?*)
+			 const_entry_polymorphic = false;
+			 const_entry_universes = snd (Evd.universe_context evd);
+
+			 const_entry_opaque = false;
+			 (* bendy: again, not sure how this is used, false appears *)
+			 (* to be the default in the code base.  *)
+			 const_entry_inline_code = false } in
+	    (* Create a global definition for const *)
+	    let cd = Entries.DefinitionEntry constr in
+	    let decl = (cd, IsDefinition Definition) in
+	    (** bendy: Seems okay for new constant to be local, but may have unintended **)
+	    (** consequences if abstracted terms should be accessed outside the proof. **)
+	    let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:true id decl in
+	    let df = Term.mkConst (cst) in
+	    ltac_apply tacK [to_ltac_val df]
+	end
+
+    (* Solve the goal [gk] by tactic [tak] and save the constructed term as *)
+    (* a transparent definition with identifier [id].  *)
     let transparent_abstract_by_tac id tac gk =
       (* Apply to each goal, normalizing evars in each first. *)
       Proofview.Goal.nf_enter begin
@@ -103,7 +188,7 @@ module TRANSPARENT_ABSTRACT =
     (* Default identifier *)
     let anon_id = Id.of_string "anonymous"
 
-    let tclABSTRACT2 name_op tac =
+    let tclTRABSTRACT name_op tac =
       let open Proof_global in
       (* What's the right default goal kind?*)
       let default_gk = (Global, false, Proof Theorem) in
@@ -150,5 +235,5 @@ end
 
     TACTIC EXTEND transparentabstract
   | [ "cache" tactic(tac) "as" ident(name)]
-    -> [ TRANSPARENT_ABSTRACT.tclABSTRACT2 (Some name) (Tacinterp.eval_tactic tac) ]
+    -> [ TRANSPARENT_ABSTRACT.tclTRABSTRACT (Some name) (Tacinterp.eval_tactic tac) ]
 	 END;;
