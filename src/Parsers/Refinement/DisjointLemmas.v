@@ -292,7 +292,7 @@ Section maybe_empty_correctness.
         pat
     : maybe_empty_of_production G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
   Proof.
-    simpl rewrite (fold_production_correct (G := G) pat).
+    simpl crewrite (fold_production_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__iff__maybe_empty_production; reflexivity.
   Qed.
 
@@ -301,7 +301,7 @@ Section maybe_empty_correctness.
         pat
     : maybe_empty_of_productions G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
   Proof.
-    simpl rewrite (fold_productions_correct (G := G) pat).
+    simpl crewrite (fold_productions_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_productions__iff__maybe_empty_productions; reflexivity.
   Qed.
 

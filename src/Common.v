@@ -105,6 +105,9 @@ Ltac simpl_rewrite_rev term := simpl_do_clear ltac:(fun H => rewrite <- H) term.
 Tactic Notation "simpl" "rewrite" open_constr(term) := simpl_rewrite term.
 Tactic Notation "simpl" "rewrite" "->" open_constr(term) := simpl_rewrite term.
 Tactic Notation "simpl" "rewrite" "<-" open_constr(term) := simpl_rewrite_rev term.
+Tactic Notation "simpl" "crewrite" constr(term) := simpl_rewrite term.
+Tactic Notation "simpl" "crewrite" "->" constr(term) := simpl_rewrite term.
+Tactic Notation "simpl" "crewrite" "<-" constr(term) := simpl_rewrite_rev term.
 
 Ltac do_with_hyp tac :=
   match goal with
