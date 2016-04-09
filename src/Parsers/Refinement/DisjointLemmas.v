@@ -283,7 +283,7 @@ Section maybe_empty_correctness.
         nt
     : maybe_empty_of G nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
   Proof.
-    simpl rewrite (fold_nt_correct (G := G) nt).
+    simpl crewrite (fold_nt_correct (G := G) nt).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__iff__maybe_empty_item; reflexivity.
   Qed.
 
