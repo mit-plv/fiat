@@ -80,7 +80,6 @@ Section parser.
 
   Definition parser' : Parser G stringlike_stringlike.
   Proof.
-Locate parser.
     refine (@parser G Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLikeMin_lite splitter_impl)
                     _
