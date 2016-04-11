@@ -18,6 +18,8 @@ Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
+Require Import Fiat.Parsers.ContextFreeGrammar.ReflectiveLemmas.
 Require Import Fiat.Parsers.RecognizerPreOptimized.
 Require Import Fiat.Common.Match.
 Require Import Fiat.Common.List.ListFacts.
@@ -60,15 +62,17 @@ Module Export opt.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
     Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition ritem_rect {A} := Eval compute in @ritem_rect A.
     Definition bool_rect := Eval compute in bool_rect.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
     Definition leb := Eval compute in Compare_dec.leb.
+    Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt.
 
-  Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
+  Declare Reduction opt_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect ritem_rect bool_rect pred minusr id beq_nat leb interp_RCharExpr].
   Ltac opt_red x := eval opt_red in x.
 End opt.
 
@@ -94,15 +98,17 @@ Module Export opt2.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
     Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition ritem_rect {A} := Eval compute in @ritem_rect A.
     Definition bool_rect := Eval compute in bool_rect.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
     Definition leb := Eval compute in Compare_dec.leb.
+    Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt2.
 
-  Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
+  Declare Reduction opt2_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect ritem_rect bool_rect pred minusr id beq_nat leb interp_RCharExpr].
   Ltac opt2_red x := eval opt2_red in x.
 End opt2.
 
@@ -128,21 +134,23 @@ Module Export opt3.
     Definition snd {A B} := Eval compute in @snd A B.
     Definition list_caset {A} := Eval compute in @list_caset A.
     Definition item_rect {A} := Eval compute in @item_rect A.
+    Definition ritem_rect {A} := Eval compute in @ritem_rect A.
     Definition bool_rect := Eval compute in bool_rect.
     Definition pred := Eval compute in pred.
     Definition minusr := Eval compute in minusr.
     Definition id {A} := Eval compute in @id A.
     Definition beq_nat := Eval compute in EqNat.beq_nat.
     Definition leb := Eval compute in Compare_dec.leb.
+    Definition interp_RCharExpr {Char idata} := Eval cbv -[andb orb negb Compare_dec.leb] in @interp_RCharExpr Char idata.
   End opt3.
 
-  Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect bool_rect pred minusr id beq_nat leb].
+  Declare Reduction opt3_red := cbv beta iota zeta delta [first_index_default map length uniquize string_beq option_rect up_to rev combine fold_left fold_right list_rect hd tl Common.opt.fst Common.opt.snd nth nth' fst snd list_caset item_rect ritem_rect bool_rect pred minusr id beq_nat leb interp_RCharExpr].
   Ltac opt3_red x := eval opt3_red in x.
 End opt3.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
-          {G : pregrammar' Char}.
+          {G : pregrammar Char}.
 
   Let HNoDup' : NoDupR (fun x y => string_beq (fst x) (fst y)) (pregrammar_productions G).
   Proof.
@@ -151,8 +159,9 @@ Section recursive_descent_parser.
     rewrite uniquize_map in HNoDup.
     apply uniquize_length.
     apply (f_equal (@List.length _)) in HNoDup.
-    rewrite !map_length, uniquize_length in HNoDup.
-    rewrite HNoDup; reflexivity.
+    rewrite !map_length in HNoDup.
+    rewrite !map_length, <- HNoDup; clear HNoDup.
+    reflexivity.
   Qed.
 
   Context (Hvalid : is_true (grammar_rvalid G)).
@@ -273,6 +282,8 @@ Section recursive_descent_parser.
              | [ |- match ?ls with nil => _ | _ => _ end = match ?ls with _ => _ end ]
                => destruct ls eqn:?
              | [ |- match ?ls with NonTerminal _ => _ | _ => _ end = match ?ls with _ => _ end ]
+               => destruct ls eqn:?
+             | [ |- match ?ls with RNonTerminal _ => _ | _ => _ end = match ?ls with _ => _ end ]
                => destruct ls eqn:?
              | [ |- (if ?e then _ else _) = (if ?e then _ else _) ]
                => destruct e eqn:?
@@ -399,7 +410,7 @@ Section recursive_descent_parser.
     let T := match type of HPpf with ?T -> _ => T end in
     let H0 := fresh "H" in
     assert (H0 : T)
-      by (simpl; unfold rdp_list_initial_nonterminals_data; rewrite map_length; reflexivity);
+      by (simpl; unfold rdp_list_initial_nonterminals_data, pregrammar'_of_pregrammar, pregrammar_productions; rewrite !map_length; reflexivity);
     let HPpf := constr:(HPpf H0) in
     refine_Fix2_5_Proper_eq_with_assumptions' HP HPpf.
 
@@ -421,6 +432,7 @@ Section recursive_descent_parser.
              | [ |- _ = fst ?x ] => is_var x; reflexivity
              | [ |- _ = snd ?x ] => is_var x; reflexivity
              | [ |- _ = pregrammar_productions ?x ] => is_var x; reflexivity
+             | [ |- _ = pregrammar_rproductions ?x ] => is_var x; reflexivity
              | [ |- context[(0 - _)%natr] ] => rewrite (minusr_minus 0); simpl (minus 0)
              | [ |- _ = (_, _) ] => apply f_equal2
              | _ => progress cbv beta
@@ -524,6 +536,26 @@ Section recursive_descent_parser.
                       (fun c => item_rect T e1 e2 c = RHS c)
                       _ _);
             intro c; simpl @item_rect; subst e1 e2
+      | [ |- _ = ritem_rect ?T ?A ?B ?c ] (* evar kludge following *)
+        => revert c;
+          let RHS := match goal with |- forall c', _ = ?RHS c' => RHS end in
+          let f := constr:(fun TC NC =>
+                             forall c, ritem_rect T TC NC c = RHS c) in
+          let f := (eval cbv beta in f) in
+          let e1 := fresh in
+          let e2 := fresh in
+          match type of f with
+            | ?X -> ?Y -> _
+              => evar (e1 : X); evar (e2 : Y)
+          end;
+            intro c;
+            let ty := constr:(ritem_rect T e1 e2 c = RHS c) in
+            etransitivity_rev _; [ refine (_ : ty) | reflexivity ];
+            revert c;
+            refine (ritem_rect
+                      (fun c => ritem_rect T e1 e2 c = RHS c)
+                      _ _);
+            intro c; simpl @ritem_rect; subst e1 e2
       | [ |- _ = match ?x with true => true | false => false end ]
         => transitivity x; [ | destruct x; reflexivity ]
     end;
@@ -737,6 +769,9 @@ Section recursive_descent_parser.
   Local Instance good_nth_proper {A}
   : Proper (eq ==> _ ==> _ ==> eq) (nth (A:=A))
     := _.
+  Local Instance good_nth'_proper {A}
+  : Proper (eq ==> _ ==> _ ==> eq) (nth' (A:=A))
+    := _.
 
   Local Ltac rewrite_map_nth_rhs :=
     idtac;
@@ -810,6 +845,11 @@ Section recursive_descent_parser.
   Definition inner_nth' {A} := Eval unfold nth' in @nth' A.
   Definition inner_nth'_nth' : @inner_nth' = @nth'
     := eq_refl.
+
+  Local Instance good_inner_nth'_proper {A}
+  : Proper (eq ==> _ ==> _ ==> eq) (inner_nth' (A:=A))
+    := _.
+
 
   Lemma rdp_list_to_production_opt_sig x
   : { f : _ | rdp_list_to_production (G := G) x = f }.
@@ -1247,7 +1287,7 @@ Section recursive_descent_parser.
           reflexivity. }
         reflexivity. }
 
-      unfold productions, production.
+      unfold productions, production, rproductions, rproduction.
       progress cbv beta iota zeta delta [rdp_list_predata Carriers.default_production_carrierT rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data rdp_list_remove_nonterminal Carriers.default_nonterminal_carrierT rdp_list_nonterminals_listT rdp_list_production_tl Carriers.default_nonterminal_carrierT].
 
       step_opt'; [ | reflexivity ].
@@ -1260,10 +1300,15 @@ Section recursive_descent_parser.
         { step_opt'; [ reflexivity | ].
           etransitivity_rev _.
           { step_opt'.
-            rewrite_map_nth_rhs; rewrite !map_map; simpl.
+            rewrite_map_nth_rhs; simpl; rewrite !map_map; simpl.
+            unfold interp_rproductions, interp_rproduction.
+            apply (f_equal2 (@nth _ _)); [ | reflexivity ].
+            step_opt'; [].
+            rewrite map_length.
             reflexivity. }
           rewrite_map_nth_dep_rhs; simpl.
           rewrite map_length.
+          unfold rproductions, rproduction.
           reflexivity. }
         rewrite_map_nth_rhs; rewrite !map_map; simpl.
         apply (f_equal2 (@nth _ _)); [ | reflexivity ].
@@ -1315,7 +1360,8 @@ Section recursive_descent_parser.
               | idtac ].
         reflexivity. }
       etransitivity_rev _.
-      { repeat first [ idtac;
+      { set_evars.
+        repeat first [ idtac;
                        match goal with
                          | [ |- appcontext[@rdp_list_to_production] ] => fail 1
                          | _ => reflexivity
@@ -1323,6 +1369,7 @@ Section recursive_descent_parser.
                      | rewrite rdp_list_to_production_opt_correct
                      | step_opt'
                      | t_reduce_list_evar ].
+        subst_evars.
         reflexivity. }
       etransitivity_rev _.
       { step_opt'; [ | reflexivity ].
@@ -1344,7 +1391,15 @@ Section recursive_descent_parser.
             rewrite map_id.
             change @inner_nth' with @nth' at 3.
             rewrite nth'_nth.
+            unfold interp_rproductions, interp_rproduction, rproductions, rproduction, production.
+            rewrite !map_length.
+            progress repeat match goal with
+                            | [ |- appcontext[List.nth (@List.length ?B (@List.map ?A ?B ?f ?ls) - _)] ]
+                              => rewrite (@map_length A B f ls)
+                            end.
             rewrite_map_nth_rhs; simpl.
+            rewrite !map_map; simpl.
+            unfold productions, production.
             rewrite <- nth'_nth.
             change @nth' with @inner_nth'.
             apply f_equal2; [ | reflexivity ].
@@ -1405,38 +1460,67 @@ Section recursive_descent_parser.
                        => progress unfold rdp_list_to_production_opt at 1; simpl;
                           change @inner_nth' with @nth';
                           repeat match goal with
-                                   | _ => progress simpl
-                                   | _ => progress fin_step_opt
-                                   | [ |- _ = @List.length ?A ?ls ]
-                                     => refine (f_equal (@List.length A) _)
-                                   | [ |- _ = nth' ?n ?ls ?d ]
-                                     => refine (f_equal2 (nth' n) _ _)
-                                   | [ |- _ = map (fun _ => nth' _ _ _) _ ]
-                                     => progress step_opt'
+                                 | _ => progress simpl
+                                 | _ => progress fin_step_opt
+                                 | _ => rewrite !map_length
+                                 | _ => rewrite !map_map
+                                 | _ => progress unfold interp_rproductions, interp_rproduction, rproductions, rproduction
+                                 | [ |- _ = nth' ?n ?ls ?d ]
+                                   => refine (f_equal2 (nth' n) _ _)
+                                 | [ |- _ = List.map _ (pregrammar_rproductions G) ]
+                                   => step_opt'
+                                 | [ |- _ = List.map (fun x : list (ritem _) => _) _ ]
+                                   => step_opt'
+                                 | _
+                                   => progress (rewrite nth'_nth;
+                                                progress rewrite_map_nth_rhs; rewrite !map_map; simpl;
+                                                rewrite <- nth'_nth)
+                                 | [ |- _ = List.length ?x ] => is_var x; reflexivity
                                  end;
-                          rewrite map_id;
                           fin_step_opt
                      end ];
       [ | reflexivity | reflexivity | ].
-      { t_reduce_list_evar; [ reflexivity | ].
-        repeat first [ misc_opt
-                     | step_opt'
-                     | apply (f_equal2 andb)
-                     | apply (f_equal2 andbr)
-                     | apply (f_equal3 char_at_matches)
-                     | progress fin_step_opt
-                     | idtac;
-                       match goal with
-                       | [ |- _ = (?x - ?y)%natr ] => is_var x; is_var y; reflexivity
-                       end ].
-        { reflexivity. }
-        { reflexivity. }
-        { rewrite !Nat.add_1_r.
+      { rewrite list_rect_map.
+        t_reduce_list_evar; [ reflexivity | ].
+        set_evars.
+        setoid_rewrite list_caset_map.
+        setoid_rewrite item_rect_ritem_rect; cbv beta.
+        setoid_rewrite uneta_bool.
+        subst_evars.
+
+        step_opt'; [].
+        step_opt'.
+        { set_evars.
+          setoid_rewrite combine_map_r.
+          do 2 setoid_rewrite map_map; simpl.
+          setoid_rewrite map_length.
+          progress change (fun x : ?A * ?B => fst x) with (@fst A B).
+          subst_evars.
+
           reflexivity. }
-        { reflexivity. }
-        { reflexivity. }
-        { reflexivity. } }
+        { set_evars.
+          setoid_rewrite combine_map_r.
+          subst_evars.
+
+          step_opt'.
+          { set_evars.
+            do 2 setoid_rewrite map_map; simpl.
+            setoid_rewrite map_length.
+            rewrite !Nat.add_1_r.
+            subst_evars.
+
+            reflexivity. }
+          { step_opt'; [ | reflexivity ].
+            set_evars.
+            do 2 setoid_rewrite map_map; simpl.
+            setoid_rewrite map_length.
+            progress change (fun x : ?A * ?B => fst x) with (@fst A B).
+            subst_evars.
+
+            reflexivity. } } }
       { reflexivity. } }
+
+    simpl.
     reflexivity.
   Defined.
 
@@ -1458,7 +1542,7 @@ Section recursive_descent_parser.
                 change @inner_nth' with @nth';
                 t_reduce_fix;
                 t_postreduce_list;
-                unfold item_rect;
+                unfold ritem_rect;
                 t_reduce_fix ] ].
       reflexivity. }
 
@@ -1516,11 +1600,7 @@ Section recursive_descent_parser.
                 apply (f_equal2 (nth _)); [ | reflexivity ].
                 step_opt'; [ | reflexivity ].
                 rewrite nth'_nth; reflexivity. } } }
-          { match goal with
-            | [ |- _ = @List.length ?A ?ls ]
-              => refine (f_equal (@List.length A) _)
-            end.
-            apply (f_equal2 (nth _)); [ | reflexivity ].
+          { apply (f_equal2 (nth _)); [ | reflexivity ].
             step_opt'; [ ].
             step_opt'; [ progress simpl ].
             rewrite nth'_nth.
@@ -1540,10 +1620,6 @@ Section recursive_descent_parser.
                    destruct z, y'; reflexivity
             end. }
           apply (f_equal2 orb); fin_step_opt; [].
-          match goal with
-          | [ |- _ = @List.length ?A ?ls ]
-            => refine (f_equal (@List.length A) _)
-          end.
           apply (f_equal2 (nth _)); [ | reflexivity ].
           step_opt'; [ ].
           step_opt'; [ progress simpl ].
@@ -1551,10 +1627,6 @@ Section recursive_descent_parser.
           apply (f_equal2 (nth _)); [ | reflexivity ].
           reflexivity. } }
       { apply (f_equal2 orb); fin_step_opt; [].
-        match goal with
-        | [ |- _ = @List.length ?A ?ls ]
-          => refine (f_equal (@List.length A) _)
-        end.
         apply (f_equal2 (nth _)); [ | reflexivity ].
         step_opt'; [ ].
         step_opt'; [ progress simpl ].
@@ -1687,6 +1759,9 @@ Section recursive_descent_parser.
     | [ |- context G[Compare_dec.leb 1 (opt2.length ?x)] ]
       => let G' := context G[opt2.id (opt2.leb 1 (opt2.length x))] in
          change G'
+    | [ |- context G[@interp_RCharExpr ?Char ?idata (opt.id ?expr)] ]
+      => let G' := context G[opt.id (@opt.interp_RCharExpr Char idata expr)] in
+         change G'
     end.
 
   Local Ltac change_opt_reduce' :=
@@ -1756,6 +1831,9 @@ Section recursive_descent_parser.
     | [ |- context G[item_rect ?x ?y ?z (opt.id ?w)] ]
       => let G' := context G[opt.id (opt.item_rect x y z w)] in
          change G'
+    | [ |- context G[ritem_rect ?x ?y ?z (opt.id ?w)] ]
+      => let G' := context G[opt.id (opt.ritem_rect x y z w)] in
+         change G'
     | [ |- context G[List.fold_left orb (opt.id ?ls) false] ]
       => let G' := context G[opt.id (opt.fold_left orb ls false)] in
          change G'
@@ -1793,6 +1871,27 @@ Section recursive_descent_parser.
                     _ _);
           intro c; simpl @opt.item_rect; subst e1 e2;
           change c with (opt.id c)
+    | [ |- _ = opt.ritem_rect ?T ?A ?B ?c ] (* evar kludge following *)
+      => revert c;
+        let RHS := match goal with |- forall c', _ = ?RHS c' => RHS end in
+        let f := constr:(fun TC NC =>
+                           forall c, opt.ritem_rect T TC NC c = RHS c) in
+        let f := (eval cbv beta in f) in
+        let e1 := fresh in
+        let e2 := fresh in
+        match type of f with
+        | ?X -> ?Y -> _
+          => evar (e1 : X); evar (e2 : Y)
+        end;
+          intro c;
+          let ty := constr:(opt.ritem_rect T e1 e2 c = RHS c) in
+          etransitivity_rev _; [ refine (_ : ty) | reflexivity ];
+          revert c;
+          refine (ritem_rect
+                    (fun c => opt.ritem_rect T e1 e2 c = RHS c)
+                    _ _);
+          intro c; simpl @opt.ritem_rect; subst e1 e2;
+          change c with (opt.id c)
     | [ |- _ = opt2.beq_nat _ _ ] => apply (f_equal2 opt2.beq_nat)
     | [ |- _ = opt2.leb _ _ ] => apply (f_equal2 opt2.leb)
     | [ |- _ = opt2.length _ ] => apply f_equal
@@ -1800,8 +1899,10 @@ Section recursive_descent_parser.
     | [ |- _ = opt2.snd _ ] => apply f_equal
     | [ |- _ = opt.fst _ ] => apply f_equal
     | [ |- _ = opt2.fst _ ] => apply f_equal
+    | [ |- _ = opt.interp_RCharExpr _ ] => apply f_equal
     | [ |- _ = opt.uniquize _ _ ] => reflexivity
     | [ |- _ = opt.combine _ _ ] => reflexivity
+    | [ |- _ = opt.length ?x ] => is_var x; reflexivity
     | [ |- _ = char_at_matches _ _ _ ] => apply f_equal3
     end.
 
@@ -1821,6 +1922,22 @@ Section recursive_descent_parser.
     repeat match goal with
            | [ flip_map := fun ls' f => @List.map _ _ f ls' |- _ ]
              => subst flip_map
+           end;
+    cbv beta.
+
+  Local Ltac do_flip_combine ls :=
+    idtac;
+    progress
+      (repeat let A := match goal with |- appcontext[@List.combine ?A ?B] => A end in
+              let B := match goal with |- appcontext[@List.combine A ?B] => B end in
+              let flip_combine := fresh "flip_combine" in
+              pose (flip_combine ls' f := @List.combine A B f ls');
+                progress change (@List.combine A B) with (fun f ls' => @flip_combine ls' f);
+                cbv beta;
+                try change (@flip_combine ls) with (@flip_combine (opt.id ls)));
+    repeat match goal with
+           | [ flip_combine := fun ls' f => @List.combine _ _ f ls' |- _ ]
+             => subst flip_combine
            end;
     cbv beta.
 
@@ -1865,10 +1982,12 @@ Section recursive_descent_parser.
                 change @opt2.map with @List.map;
                 t_reduce_fix;
                 t_postreduce_list;
-                unfold item_rect;
+                unfold ritem_rect;
                 t_reduce_fix ] ].
 
-      do_flip_map (pregrammar_productions G).
+      do_flip_map (pregrammar_rproductions G).
+      do_flip_combine (pregrammar_rproductions G).
+      change (List.length (pregrammar_rproductions G)) with (opt.id (opt.length (pregrammar_rproductions G))).
 
       step_opt'; [ | reflexivity ].
       apply (f_equal2 (opt3.nth' _)); [ | reflexivity ].
@@ -1926,7 +2045,7 @@ Section recursive_descent_parser.
   Proof.
     let c := constr:(parse_nonterminal_opt'3 str nt) in
     let h := head c in
-    let impl := (eval cbv beta iota zeta delta [h proj1_sig item_rect list_caset] in (proj1_sig c)) in
+    let impl := (eval cbv beta iota zeta delta [h proj1_sig item_rect ritem_rect list_caset] in (proj1_sig c)) in
     (exists impl);
       abstract (exact (proj2_sig c)).
   Defined.
