@@ -1963,4 +1963,19 @@ Section ListFacts.
       [ reflexivity | rewrite <- f_assoc, <- IHls ].
     reflexivity.
   Qed.
+
+  Lemma list_rect_map {A B C} (f : A -> B) Nc Cc ls
+    : list_rect (fun _ => C) Nc Cc (map f ls)
+      = list_rect (fun _ => C) Nc (fun x xs H => Cc (f x) (map f xs) H) ls.
+  Proof.
+    induction ls as [|l ls IHls]; simpl; [ reflexivity | ].
+    rewrite IHls; reflexivity.
+  Qed.
+
+  Lemma list_caset_map {A B C} (f : A -> B) Nc Cc ls
+    : list_caset (fun _ => C) Nc Cc (map f ls)
+      = list_caset (fun _ => C) Nc (fun x xs => Cc (f x) (map f xs)) ls.
+  Proof.
+    destruct ls as [|l ls]; reflexivity.
+  Qed.
 End ListFacts.
