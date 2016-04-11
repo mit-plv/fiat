@@ -1,7 +1,7 @@
 Notes for an eventual parsers paper
 ===================================
 
-# Things done in Coq to speed up synthesis
+## Things done in Coq to speed up synthesis
 - Preoptimize the parser, before we know the grammar
   . By refinement, with tactics (good? bad? not sure?)
   . Tag things as fully reducible on the nth iteration of reduction, tactic that propogates information
@@ -12,7 +12,7 @@ Notes for an eventual parsers paper
   . iterated `impl` rather than iterated `and`
 - split reduction into fully-reducible (compute/vm_compute) by reflection,
 
-# Things done for OCaml speed
+## Things done for OCaml speed
 - Fewer allocations
   . flatten product types for well-founded Fix data
   . n-ary Fix equality lemmas
