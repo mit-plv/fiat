@@ -38,7 +38,7 @@ End opt'.
 
 (** single characters are terminals, anything wrapped with "'" is a
     string literal, everything else is a nonterminal *)
-Coercion rproduction_of_string (s : string) : rproduction
+Coercion rproduction_of_string (s : string) : rproduction Ascii.ascii
   := match s with
        | EmptyString => nil
        | String.String ch EmptyString => (RTerminal (rbeq ch))::nil
@@ -55,20 +55,20 @@ Coercion rproduction_of_string (s : string) : rproduction
 Global Arguments rproduction_of_string / .
 
 (** juxtaposition of productions should yield concatenation *)
-Definition magic_juxta_append_rproduction (p ps : rproduction) : rproduction
+Definition magic_juxta_append_rproduction {Char} (p ps : rproduction Char) : rproduction Char
   := Eval compute in p ++ ps.
 Coercion magic_juxta_append_rproduction : rproduction >-> Funclass.
 
-Coercion rproductions_of_rproduction (p : rproduction) : rproductions
+Coercion rproductions_of_rproduction {Char} (p : rproduction Char) : rproductions Char
   := p::nil.
 
-Definition magic_juxta_append_rproductions (p ps : rproductions) : rproductions
+Definition magic_juxta_append_rproductions {Char} (p ps : rproductions Char) : rproductions Char
   := Eval compute in p ++ ps.
 
-Coercion char_to_test_eq (c : Ascii.ascii) : RCharExpr
+Coercion char_to_test_eq (c : Ascii.ascii) : RCharExpr Ascii.ascii
   := rbeq c.
 
-Coercion rproduction_of_RCharExpr (c : RCharExpr) : rproduction
+Coercion rproduction_of_RCharExpr {Char} (c : RCharExpr Char) : rproduction Char
   := (RTerminal c :: nil)%list.
 
 Global Arguments char_to_test_eq / .
@@ -85,19 +85,19 @@ Global Arguments magic_juxta_append_rproductions / .
     which is either an 'a' or a 'b'."  In [productions_scope], it means
     "either one production, or another production". *)
 Notation "p || p'" := (ror p%char p'%char) : char_scope.
-Notation "p || p'" := ((p || p')%char : rproduction) : production_scope.
+Notation "p || p'" := ((p || p')%char : rproduction Ascii.ascii) : production_scope.
 Notation "p && p'" := (rand p%char p'%char) : char_scope.
-Notation "p && p'" := ((p && p')%char : rproduction) : production_scope.
+Notation "p && p'" := ((p && p')%char : rproduction Ascii.ascii) : production_scope.
 Notation "p || p'" := (magic_juxta_append_rproductions p%productions p'%productions) : productions_scope.
 
 (** Negation of terminals.  There's not yet support for inverting the
     sense of productions. *)
 Notation "~ p" := (rneg p%char) : char_scope.
 Notation "¬ p" := ((~p)%char) (at level 75, right associativity) : char_scope.
-Notation "~ p" := ((~p)%char : rproduction) : productions_scope.
+Notation "~ p" := ((~p)%char : rproduction Ascii.ascii) : productions_scope.
 Notation "¬ p" := ((~p)%productions) (at level 75, right associativity) : productions_scope.
 
-Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions)%productions) (at level 100) : production_assignment_scope.
+Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions Ascii.ascii)%productions) (at level 100) : production_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
   (list_to_productions nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
@@ -110,13 +110,13 @@ Global Open Scope string_scope.
 Notation code_in_range ch_low ch_high := (rand (rcode_ge_than (opt.nat_of_ascii ch_low)) (rcode_le_than (opt.nat_of_ascii ch_high))).
 
 Notation "'[0-9]'" := (RTerminal (code_in_range "0" "9")) : item_scope.
-Notation "'[0-9]'" := (([0-9]%item::nil) : rproduction) : production_scope.
+Notation "'[0-9]'" := (([0-9]%item::nil) : rproduction Ascii.ascii) : production_scope.
 Notation "'[0-9]'" := ([0-9]%production) : productions_scope.
 Notation "'[A-Z]'" := (RTerminal (code_in_range "A" "Z")) : item_scope.
-Notation "'[A-Z]'" := (([A-Z]%item::nil) : rproduction) : production_scope.
+Notation "'[A-Z]'" := (([A-Z]%item::nil) : rproduction Ascii.ascii) : production_scope.
 Notation "'[A-Z]'" := ([A-Z]%production) : productions_scope.
 Notation "'[a-z]'" := (RTerminal (code_in_range "a" "z")) : item_scope.
-Notation "'[a-z]'" := (([a-z]%item::nil) : rproduction) : production_scope.
+Notation "'[a-z]'" := (([a-z]%item::nil) : rproduction Ascii.ascii) : production_scope.
 Notation "'[a-z]'" := ([a-z]%production) : productions_scope.
 
 Local Notation LF := (ascii_of_nat 10).
@@ -133,15 +133,15 @@ Notation "'\t'" := TAB : char_scope.
 Notation "'\t'" := (String.String \t%char EmptyString) : string_scope.
 Notation "'[\s]'" := (\n || \r || " " || \t)%char : char_scope.
 Notation "'[\s]'" := ([\s])%char : item_scope.
-Notation "'[\s]'" := (([\s]%item) : rproduction) : production_scope.
+Notation "'[\s]'" := (([\s]%item) : rproduction Ascii.ascii) : production_scope.
 Notation "'[\s]'" := [\s]%production : productions_scope.
 Notation "'[0-9a-fA-F]'" := (RTerminal (code_in_range "0" "9"
                                         || code_in_range "a" "f"
                                         || code_in_range "A" "F")%rchar) : item_scope.
-Notation "'[0-9a-fA-F]'" := (([0-9a-fA-F]%item::nil)%list : rproduction) : production_scope.
+Notation "'[0-9a-fA-F]'" := (([0-9a-fA-F]%item::nil)%list : rproduction Ascii.ascii) : production_scope.
 Notation "'[0-9a-fA-F]'" := [0-9a-fA-F]%production : productions_scope.
 Notation "'[1-9]'" := (RTerminal (code_in_range "1" "9")) : item_scope.
-Notation "'[1-9]'" := (([1-9]%item::nil)%list : rproduction) : production_scope.
+Notation "'[1-9]'" := (([1-9]%item::nil)%list : rproduction Ascii.ascii) : production_scope.
 Notation "'[1-9]'" := ([1-9]%production) : productions_scope.
 
 Global Arguments Equality.ascii_beq !_ !_.
@@ -149,7 +149,7 @@ Global Arguments Equality.string_beq !_ !_.
 Global Arguments ascii_of_nat !_ / .
 Global Arguments ascii_of_pos !_ / .
 
-Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions].
+Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irnat_of ascii_interp_RCharExpr_data].
 
 Create HintDb parser_sharpen_db discriminated.
-Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions : parser_sharpen_db.
+Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irnat_of ascii_interp_RCharExpr_data : parser_sharpen_db.

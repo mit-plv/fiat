@@ -40,8 +40,10 @@ Global Arguments opt.nat_of_ascii !_ / .
 Delimit Scope rchar_scope with rchar.
 
 Section syntax.
+  Context {Char : Type}.
+
   Inductive RCharExpr :=
-  | rbeq (ch : Ascii.ascii)
+  | rbeq (ch : Char)
   | ror (_ _ : RCharExpr)
   | rand (_ _ : RCharExpr)
   | rneg (_ : RCharExpr)
@@ -59,39 +61,56 @@ Section syntax.
 End syntax.
 
 Global Arguments RCharExpr : clear implicits.
-Global Arguments rbeq _ : clear implicits.
-Global Arguments ror (_ _)%rchar_scope.
-Global Arguments rand (_ _)%rchar_scope.
-Global Arguments rneg (_)%rchar_scope.
-Global Arguments rcode_le_than (_)%nat_scope.
-Global Arguments rcode_ge_than (_)%nat_scope.
+Global Arguments ritem : clear implicits.
+Global Arguments rproduction : clear implicits.
+Global Arguments rproductions : clear implicits.
+Global Arguments rbeq {Char%type_scope} _.
+Global Arguments ror {Char%type_scope} (_ _)%rchar_scope.
+Global Arguments rand {Char%type_scope} (_ _)%rchar_scope.
+Global Arguments rneg {Char%type_scope} (_)%rchar_scope.
+Global Arguments rcode_le_than {Char%type_scope} (_)%nat_scope.
+Global Arguments rcode_ge_than {Char%type_scope} (_)%nat_scope.
 
 Infix "||" := ror : rchar_scope.
 Infix "&&" := rand : rchar_scope.
 Notation "~ x" := (rneg x) : rchar_scope.
 
 Section semantics.
-  Fixpoint interp_RCharExpr (expr : RCharExpr) : Ascii.ascii -> bool
+  Context {Char : Type}.
+
+  Class interp_RCharExpr_data :=
+    { irbeq : Char -> Char -> bool;
+      irnat_of : Char -> nat }.
+
+  Context {idata : interp_RCharExpr_data}.
+
+  Fixpoint interp_RCharExpr (expr : RCharExpr Char) : Char -> bool
     := match expr with
-       | rbeq ch => Equality.ascii_beq ch
+       | rbeq ch => irbeq ch
        | ror a b => fun ch => interp_RCharExpr a ch || interp_RCharExpr b ch
        | rand a b => fun ch => interp_RCharExpr a ch && interp_RCharExpr b ch
        | rneg x => fun ch => negb (interp_RCharExpr x ch)
-       | rcode_le_than code => fun ch => Compare_dec.leb (opt.nat_of_ascii ch) code
-       | rcode_ge_than code => fun ch => Compare_dec.leb code (opt.nat_of_ascii ch)
+       | rcode_le_than code => fun ch => Compare_dec.leb (irnat_of ch) code
+       | rcode_ge_than code => fun ch => Compare_dec.leb code (irnat_of ch)
        end%bool.
 
   (*Global Coercion interp_RCharExpr : RCharExpr >-> Funclass.*)
 
-  Global Coercion interp_ritem (expr : ritem) : item Ascii.ascii
+  Definition interp_ritem (expr : ritem Char) : item Char
     := match expr with
        | RTerminal x => Terminal (interp_RCharExpr x)
        | RNonTerminal x => NonTerminal x
        end.
 
-  Global Coercion interp_rproduction (expr : rproduction) : production Ascii.ascii
+  Definition interp_rproduction (expr : rproduction Char) : production Char
     := List.map interp_ritem expr.
 
-  Global Coercion interp_rproductions (expr : rproductions) : productions Ascii.ascii
+  Definition interp_rproductions (expr : rproductions Char) : productions Char
     := List.map interp_rproduction expr.
 End semantics.
+
+Global Arguments interp_RCharExpr_data : clear implicits.
+
+Global Instance ascii_interp_RCharExpr_data : interp_RCharExpr_data Ascii.ascii
+  := { irbeq := Equality.ascii_beq;
+       irnat_of := opt.nat_of_ascii }.

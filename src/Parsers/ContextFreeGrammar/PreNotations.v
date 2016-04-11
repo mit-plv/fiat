@@ -28,14 +28,17 @@ Definition list_to_productions {T} (default : T) (ls : list (string * T)) : stri
           default
           (find (fun k => string_beq nt (fst k)) ls).
 
-Record pregrammar :=
+Record pregrammar Char :=
   {
-    pregrammar_rproductions : list (string * rproductions);
+    pregrammar_rproductions : list (string * rproductions Char);
+    pregrammar_idata : interp_RCharExpr_data Char;
     pregrammar_rnonterminals : list string
     := map fst pregrammar_rproductions;
     rnonterminals_unique
     : NoDupR string_beq pregrammar_rnonterminals
   }.
+
+Global Existing Instance pregrammar_idata.
 
 Record pregrammar' (Char : Type) :=
   {
@@ -59,9 +62,11 @@ Global Arguments Lookup_string {_} !_ !_ / .
 Existing Instance nonterminals_unique.
 Arguments nonterminals_unique {_} _.
 
-Definition pregrammar'_of_pregrammar (g : pregrammar) : pregrammar' Ascii.ascii.
+Definition pregrammar'_of_pregrammar {Char} (g : pregrammar Char) : pregrammar' Char.
 Proof.
-  refine {| pregrammar_productions := List.map (fun xy => (fst xy, interp_rproductions (snd xy))) (pregrammar_rproductions g) |}.
+  eapply {| pregrammar_productions := List.map (fun xy => (fst xy, interp_rproductions (snd xy))) (pregrammar_rproductions g) |}.
+  Grab Existential Variables.
+  2:eapply (pregrammar_idata g). (* wheee, dependent subgoals in Coq 8.4 *)
   abstract (
       rewrite map_map; simpl;
       apply (rnonterminals_unique g)

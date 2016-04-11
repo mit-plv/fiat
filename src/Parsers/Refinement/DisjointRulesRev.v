@@ -87,7 +87,7 @@ Lemma refine_disjoint_rev_search_for_not'
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar}
+      {G : pregrammar' Ascii.ascii}
       (Hvalid : grammar_rvalid G)
       {str offset len nt its}
       (H_disjoint : disjoint ascii_beq
@@ -158,7 +158,7 @@ Lemma refine_disjoint_rev_search_for
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
@@ -182,7 +182,7 @@ Lemma refine_disjoint_rev_search_for_not
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its}
       (Hvalid : grammar_rvalid G)
       (H_disjoint : disjoint ascii_beq
@@ -206,7 +206,7 @@ Lemma refine_disjoint_rev_search_for_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
@@ -232,7 +232,7 @@ Lemma refine_disjoint_rev_search_for_not_idx
       {HSI : StringIso Ascii.ascii}
       {HSLP : StringLikeProperties Ascii.ascii}
       {HSIP : StringIsoProperties Ascii.ascii}
-      {G : pregrammar}
+      {G : pregrammar' Ascii.ascii}
       {str offset len nt its idx}
       (Hvalid : grammar_rvalid G)
       (Heq : default_to_production (G := G) idx = NonTerminal nt :: its)
