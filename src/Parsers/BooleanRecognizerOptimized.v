@@ -687,7 +687,7 @@ Section recursive_descent_parser.
                    | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
                      => specialize (IH a'')
                  end;
-                 let T := match type of IH with ?T1 -> ?T2 -> _ => constr:(T1 * T2)%type end in
+                 let T := match type of IH with ?T1 -> ?T2 -> _ => constr:((T1 * T2)%type) end in
                  let H_helper := fresh in
                  let H_helper' := fresh in
                  assert (H_helper : T);
