@@ -89,18 +89,18 @@ Proof.
   intros [] []; compute; trivial.
 Qed.
 
-Global Instance implb_Reflexive : Reflexive implb.
+Global Instance implb_Reflexive : Reflexive implb | 1.
 Proof. intros []; reflexivity. Qed.
-Global Instance implb_Transitive : Transitive implb.
+Global Instance implb_Transitive : Transitive implb | 1.
 Proof. intros [] [] []; simpl; trivial. Qed.
-Global Instance implb_Antisymmetric : @Antisymmetric _ eq _ implb.
+Global Instance implb_Antisymmetric : @Antisymmetric _ eq _ implb | 1.
 Proof. intros [] [] []; simpl; trivial. Qed.
 
-Global Instance flip_implb_Reflexive : Reflexive (Basics.flip implb).
+Global Instance flip_implb_Reflexive : Reflexive (Basics.flip implb) | 1.
 Proof. intros []; reflexivity. Qed.
-Global Instance flip_implb_Transitive : Transitive (Basics.flip implb).
+Global Instance flip_implb_Transitive : Transitive (Basics.flip implb) | 1.
 Proof. intros [] [] []; simpl; trivial. Qed.
-Global Instance flip_implb_Antisymmetric : @Antisymmetric _ eq _ (Basics.flip implb).
+Global Instance flip_implb_Antisymmetric : @Antisymmetric _ eq _ (Basics.flip implb) | 1.
 Proof. intros [] []; compute; intros [] []; trivial. Qed.
 
 
@@ -127,8 +127,12 @@ Proof.
 Qed.
 
 Global Instance and_flip_impl_Proper
-  : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and.
+  : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and | 10.
 Proof. lazy; tauto. Qed.
+
+Global Instance eq_eq_impl_impl_Proper
+  : Proper (eq ==> eq ==> Basics.impl) Basics.impl | 1
+  := _.
 
 Global Instance map_Proper_eq_In {A B ls}
   : Proper (forall_relation (fun a x y => List.In a ls -> x = y) ==> eq) (fun f => @List.map A B f ls).
@@ -142,3 +146,18 @@ Proof.
     rewrite IHls; [ reflexivity | ].
     intros ??; apply H; right; assumption. }
 Qed.
+
+(** If we don't know the relation, default to assuming that it's equality, if the type is not a function *)
+Hint Extern 0 (@Reflexive ?T ?e)
+ => is_evar e;
+      lazymatch T with
+      | forall x : _, _ => fail
+      | _ => refine eq_Reflexive
+      end : typeclass_instances.
+
+Lemma pointwise_Reflexive {A B R} {_ : @Reflexive B R}
+  : Reflexive (pointwise_relation A R).
+Proof.
+  repeat intro; reflexivity.
+Qed.
+Hint Extern 1 (Reflexive (pointwise_relation _ _)) => apply @pointwise_Reflexive : typeclass_instances.

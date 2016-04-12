@@ -437,3 +437,21 @@ Proof.
 Qed.
 Hint Extern 0 (Proper (_ ==> SetoidList.eqlistA _ ==> _ ==> _) (@fold_left _ _))
 => refine fold_left_eqlistA_Proper : typeclass_instances.
+
+Global Instance first_index_helper_Proper_pointwise {A B}
+  : Proper (pointwise_relation _ eq ==> pointwise_relation _ eq ==> eq ==> pointwise_relation _ eq ==> eq) (@first_index_helper A B).
+Proof.
+  unfold pointwise_relation, respectful.
+  intros f g H f' g' H' ? ls ?; subst.
+  induction ls as [|l ls IHls]; simpl; intros ?? H''; trivial.
+  rewrite H, H', H''.
+  erewrite IHls; [ reflexivity | ].
+  congruence.
+Qed.
+
+Global Instance first_index_default_Proper_pointwise {A}
+  : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq) (@first_index_default A).
+Proof.
+  unfold first_index_default.
+  repeat intro; subst; apply first_index_helper_Proper_pointwise; try assumption; repeat intro; trivial.
+Qed.

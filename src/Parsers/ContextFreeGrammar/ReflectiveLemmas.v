@@ -1,5 +1,5 @@
 (** * Leamms for reflective notations for context free grammars *)
-Require Import Coq.Strings.Ascii Coq.Classes.Morphisms.
+Require Import Coq.Strings.Ascii Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
@@ -34,3 +34,16 @@ Proof.
   lazy.
   intros ?????? [?|?]; intros; subst; congruence.
 Qed.
+
+Global Instance ritem_rect_Proper_forall_R {C A} {R : relation A}
+  : Proper
+      ((pointwise_relation _ R)
+         ==> (pointwise_relation _ R)
+         ==> forall_relation (fun _ => R))
+      (ritem_rect (fun _ : ritem C => A)).
+Proof.
+  lazy; intros ?????? [?|?]; trivial.
+Qed.
+
+Hint Extern 0 (Proper (_ ==> pointwise_relation _ _ ==> forall_relation _) (ritem_rect _))
+=> refine ritem_rect_Proper_forall_R : typeclass_instances.
