@@ -25,8 +25,20 @@ Proof.
   intros ?? H ?? H' [?|?]; subst; eauto with nocore.
 Qed.
 
+Global Instance item_rect_Proper_forall_R {C A} {R : relation A}
+  : Proper
+      ((pointwise_relation _ R)
+         ==> (pointwise_relation _ R)
+         ==> forall_relation (fun _ : item C => R))
+      (item_rect (fun _ : item C => A)).
+Proof.
+  lazy; intros ?????? [?|?]; trivial.
+Qed.
+
 Hint Extern 1 (Proper _ (@item_rect _ _)) => exact item_rect_Proper : typeclass_instances.
 Hint Extern 0 (Proper _ (@item_rect _ _)) => exact item_rect_Proper_forall : typeclass_instances.
+Hint Extern 0 (Proper (pointwise_relation _ _ ==> pointwise_relation _ _ ==> forall_relation _) (item_rect _))
+=> refine item_rect_Proper_forall_R : typeclass_instances.
 
 Section cfg.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char} (G : grammar Char).

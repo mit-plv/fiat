@@ -396,3 +396,41 @@ Proof.
   lazy.
   intros ??? ?? H [|? ?]; subst; eauto.
 Qed.
+
+Global Instance eqlistA_Reflexive {A R} {_ : @Reflexive A R}
+  : Reflexive (SetoidList.eqlistA R).
+Proof.
+  intro x; induction x as [|x xs IHxs]; constructor;
+    first [ assumption
+          | reflexivity ].
+Qed.
+Global Instance map_eqlistA_Proper {A B R}
+  : Proper (pointwise_relation _ R ==> eq ==> SetoidList.eqlistA R) (@List.map A B) | 5.
+Proof.
+  unfold pointwise_relation.
+  intros f g H ? ls ?; subst.
+  induction ls as [|l ls IHls]; constructor;
+    trivial.
+Qed.
+
+Global Instance list_caset_Proper_forall_R {A B} {R : relation B}
+  : Proper
+      (R
+         ==> (pointwise_relation _ (pointwise_relation _ R))
+         ==> forall_relation (fun _ => R))
+      (@list_caset A (fun _ => B)).
+Proof.
+  lazy; intros ?????? [|??]; trivial.
+Qed.
+Hint Extern 0 (Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> forall_relation _) (list_caset _))
+=> refine list_caset_Proper_forall_R : typeclass_instances.
+
+Global Instance fold_left_eqlistA_Proper {A B} {RA : relation A} {RB : relation B}
+  : Proper ((RA ==> RB ==> RA) ==> SetoidList.eqlistA RB ==> RA ==> RA) (@fold_left A B).
+Proof.
+  unfold respectful.
+  intros ?? H ls1 ls2 H'.
+  induction H'; simpl; eauto with nocore.
+Qed.
+Hint Extern 0 (Proper (_ ==> SetoidList.eqlistA _ ==> _ ==> _) (@fold_left _ _))
+=> refine fold_left_eqlistA_Proper : typeclass_instances.

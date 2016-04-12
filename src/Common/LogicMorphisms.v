@@ -1,5 +1,7 @@
 Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
 
+Local Coercion is_true : bool >-> Sortclass.
+
 Add Parametric Morphism {A: Type} :
   (fun (P: A -> Prop) => exists x, P x)
     with signature (pointwise_relation A iff ==> iff)
@@ -41,3 +43,14 @@ Proof. lazy; tauto. Qed.
 Global Instance and_flip_impl_Proper
 : Proper (flip impl ==> flip impl ==> flip impl) and.
 Proof. lazy; tauto. Qed.
+Global Instance pair_Proper {A B}
+  : Proper (eq ==> eq ==> eq) (@pair A B).
+Proof.
+  lazy; intros; congruence.
+Qed.
+Global Instance andb_implb_Proper
+  : Proper (flip implb ==> flip implb ==> flip implb) andb.
+Proof.
+  unfold flip, implb, andb.
+  intros [] [] ? [] [] ?; trivial.
+Qed.
