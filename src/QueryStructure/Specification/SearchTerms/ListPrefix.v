@@ -38,7 +38,6 @@ Section PrefixClauses.
     let _H0 := match goal with H : ?R _ _ -> False |- _ => constr:(H) end in
     apply _H0; inject H; inversion H0; eexists |
     inject H; simpl in H0; inversion H0 ]; eauto.
-  instantiate (1 := s); simpl; induction s; constructor; eauto.
   inversion H0.
   Defined.
 
