@@ -404,14 +404,17 @@ Proof.
     first [ assumption
           | reflexivity ].
 Qed.
-Global Instance map_eqlistA_Proper {A B R}
-  : Proper (pointwise_relation _ R ==> eq ==> SetoidList.eqlistA R) (@List.map A B) | 5.
+Lemma map_eqlistA_Proper {A B R}
+  : Proper (pointwise_relation _ R ==> eq ==> SetoidList.eqlistA R) (@List.map A B).
 Proof.
   unfold pointwise_relation.
   intros f g H ? ls ?; subst.
   induction ls as [|l ls IHls]; constructor;
     trivial.
 Qed.
+
+Hint Extern 0 (Proper (_ ==> _ ==> SetoidList.eqlistA _) (@List.map _ _))
+=> refine map_eqlistA_Proper : typeclass_instances.
 
 Global Instance list_caset_Proper_forall_R {A B} {R : relation B}
   : Proper
@@ -425,7 +428,7 @@ Qed.
 Hint Extern 0 (Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> forall_relation _) (list_caset _))
 => refine list_caset_Proper_forall_R : typeclass_instances.
 
-Global Instance fold_left_eqlistA_Proper {A B} {RA : relation A} {RB : relation B}
+Lemma fold_left_eqlistA_Proper {A B} {RA : relation A} {RB : relation B}
   : Proper ((RA ==> RB ==> RA) ==> SetoidList.eqlistA RB ==> RA ==> RA) (@fold_left A B).
 Proof.
   unfold respectful.
