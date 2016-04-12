@@ -5,6 +5,10 @@ Require Import Fiat.Common.Equality.
 Set Implicit Arguments.
 
 Module Export List.
+  Scheme Minimality for list Sort Type.
+  Scheme Minimality for list Sort Set.
+  Scheme Minimality for list Sort Prop.
+
   Definition list_caset A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs))
              ls
   : P ls
