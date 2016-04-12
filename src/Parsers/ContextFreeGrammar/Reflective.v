@@ -60,6 +60,10 @@ Section syntax.
   Definition rproductions := list rproduction.
 End syntax.
 
+Scheme Minimality for ritem Sort Type.
+Scheme Minimality for ritem Sort Set.
+Scheme Minimality for ritem Sort Prop.
+
 Global Arguments RCharExpr : clear implicits.
 Global Arguments ritem : clear implicits.
 Global Arguments rproduction : clear implicits.
