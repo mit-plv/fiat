@@ -17,7 +17,15 @@ Module Export List.
          | x::xs => C x xs
        end.
 
-  Section InT.
+  Definition list_caset_nodep {A} (P : Type) (N : P) (C : A -> list A -> P)
+             ls
+    : P
+    := match ls with
+       | nil => N
+       | x::xs => C x xs
+       end.
+
+ Section InT.
     Context {A : Type} (a : A).
 
     Fixpoint InT (ls : list A) : Set
