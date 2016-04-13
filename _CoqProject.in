@@ -85,7 +85,6 @@ src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
 src/CertifiedExtraction/Benchmarks/ProcessScheduler.v
 src/CertifiedExtraction/Benchmarks/ProcessSchedulerSetup.v
 src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
-src/CertifiedExtraction/Benchmarks/QueryStructures.v
 src/CertifiedExtraction/Benchmarks/results/ProcessSchedulerExtractedMethods.v
 src/CertifiedExtraction/Extraction/Basics.v
 src/CertifiedExtraction/Extraction/BinExpr.v
