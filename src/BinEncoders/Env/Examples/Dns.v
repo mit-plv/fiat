@@ -192,7 +192,7 @@ Section Examples.
 
 End Examples.
 
-Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed.
+(* Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed. *)
 
 (*
 #use "dns.ml";;
