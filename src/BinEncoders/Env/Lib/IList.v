@@ -64,7 +64,7 @@ Section IListEncoder.
       induction l; simpl in *.
 
     intros; destruct l'; simpl in *; try congruence; subst; simpl; inversion H0; subst;
-      rewrite transform_id_pf; intuition.
+      rewrite transform_id_left; intuition.
 
     intros; destruct l'; simpl in *; subst; try congruence. simpl in *.
     inversion l'_pf; clear l'_pf.

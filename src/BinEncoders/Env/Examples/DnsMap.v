@@ -197,7 +197,7 @@ End ascii_as_OT.
 
 Record word_t :=
   { word : { l : list ascii | length l < exp2_nat 6 } }.
-Definition position_t := FixInt 6.
+Definition position_t := FixInt 14.
 
 Module list_ascii_as_OT := list_as_OT ascii_as_OT.
 Module list_ascii_as_OT_with_P <: OrderedTypeWithP list_ascii_as_OT.
@@ -207,7 +207,7 @@ End list_ascii_as_OT_with_P.
 Module word_as_OT := sig_as_OT list_ascii_as_OT list_ascii_as_OT_with_P.
 
 Module N_as_OT_with_P <: OrderedTypeWithP N_as_OT.
-  Definition P (n : N) := (n < exp2 6)%N.
+  Definition P (n : N) := (n < exp2 14)%N.
 End N_as_OT_with_P.
 
 Module position_as_OT := sig_as_OT N_as_OT N_as_OT_with_P.
@@ -397,11 +397,11 @@ Defined.
 
 Instance cachePeek : CachePeek cache position_t :=
   {| peekE := fun c => let n := N.of_nat c.(tick) in
-                       if position_as_OT.OP.lt_dec n (exp2 6)
+                       if position_as_OT.OP.lt_dec n (exp2 14)
                        then exist _ n _
                        else exist _ 0%N _;
      peekD := fun c => let n := N.of_nat c.(tick) in
-                       if position_as_OT.OP.lt_dec n (exp2 6)
+                       if position_as_OT.OP.lt_dec n (exp2 14)
                        then exist _ n _
                        else exist _ 0%N _ |}.
 Proof.

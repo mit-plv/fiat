@@ -45,7 +45,7 @@ Record resource_t :=
     rtype  : type_t;
     rclass : class_t;
     rttl   : FixInt 32;
-    rdata  : { s : list bool |  length s < exp2_nat 16 } }.
+    rdata  : { s : list ascii |  length s < exp2_nat 16 } }.
 
 Record packet_t :=
   { pid         : { s : list bool | length s = 16 };
@@ -59,8 +59,7 @@ Definition FixInt_of_branch (b : CacheBranch) : {n | (n < exp2 2)%N}.
   refine (match b with
           | Yes => exist _ (3%N) _
           | No  => exist _ (0%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.
-Defined.
+          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
 
 Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
   refine (match t with
@@ -68,72 +67,140 @@ Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
           | CNAME => exist _ (5%N) _
           | NS    => exist _ (2%N) _
           | MX    => exist _ (15%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.
-Defined.
+          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
 
 Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
   refine (match c with
           | IN => exist _ (1%N) _
           | CH => exist _ (3%N) _
           | HS => exist _ (4%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.
-Defined.
+          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
 
-Definition encode_word (w : word_t) (ce : CacheEncode) :=
-  compose btransformer (FixInt_encode _ (FixList_getlength w.(word))) (
-  compose btransformer (FixList_encode _ btransformer (Char_encode _) w.(word))
-                       (fun e => (nil, e))) ce.
+Notation "x 'Then' y" := (compose btransformer x y) (at level 100, right associativity).
 
-Definition encode_name (n : name_t) (ce : CacheEncode) :=
-  compose btransformer
-          (SteppingList_encode _ _ _ btransformer encode_word (FixInt_encode _)
-                              (Enum_encode _ FixInt_of_branch) n.(name))
-          (fun e => (nil, e)) ce.
+Definition encode_word (w : word_t) :=
+       FixInt_encode _ (FixList_getlength w.(word))
+  Then FixList_encode _ btransformer (Char_encode _) w.(word)
+  Then fun e => (nil, e).
 
-Definition encode_question (q : question_t) (ce : CacheEncode) :=
-  compose btransformer (encode_name q.(qname)) (
-  compose btransformer (Enum_encode _ FixInt_of_type q.(qtype)) (
-  compose btransformer (Enum_encode _ FixInt_of_class q.(qclass))
-                       (fun e => (nil, e)))) ce.
+Definition encode_name (n : name_t) :=
+       SteppingList_encode _ _ _ btransformer encode_word (FixInt_encode _)
+                           (Enum_encode _ FixInt_of_branch) n.(name)
+  Then fun e => (nil, e).
 
-Definition encode_resource (r : resource_t) (ce : CacheEncode) :=
-  compose btransformer (encode_name r.(rname)) (
-  compose btransformer (Enum_encode _ FixInt_of_type r.(rtype)) (
-  compose btransformer (Enum_encode _ FixInt_of_class r.(rclass)) (
-  compose btransformer (FixInt_encode _ r.(rttl)) (
-  compose btransformer (FixInt_encode _ (FixList_getlength r.(rdata))) (
-  compose btransformer (FixList_encode _ btransformer (Bool_encode _) r.(rdata))
-                       (fun e => (nil, e))))))) ce.
+Definition encode_question (q : question_t) :=
+       encode_name q.(qname)
+  Then Enum_encode _ FixInt_of_type q.(qtype)
+  Then Enum_encode _ FixInt_of_class q.(qclass)
+  Then fun e => (nil, e).
 
-Definition encode_packet (p : packet_t) (ce : CacheEncode) :=
-  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pid)) (
-  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pmask)) (
-  compose btransformer (FixInt_encode _ (FixList_getlength p.(pquestion))) (
-  compose btransformer (FixInt_encode _ (FixList_getlength p.(panswer))) (
-  compose btransformer (FixInt_encode _ (FixList_getlength p.(pauthority))) (
-  compose btransformer (FixInt_encode _ (FixList_getlength p.(padditional))) (
-  compose btransformer (FixList_encode _ btransformer encode_question p.(pquestion)) (
-  compose btransformer (FixList_encode _ btransformer encode_resource p.(panswer)) (
-  compose btransformer (FixList_encode _ btransformer encode_resource p.(pauthority)) (
-  compose btransformer (FixList_encode _ btransformer encode_resource p.(padditional))
-                       (fun e => (nil, e))))))))))) ce.
+Definition encode_resource (r : resource_t) :=
+       encode_name r.(rname)
+  Then Enum_encode _ FixInt_of_type r.(rtype)
+  Then Enum_encode _ FixInt_of_class r.(rclass)
+  Then FixInt_encode _ r.(rttl)
+  Then FixInt_encode _ (FixList_getlength r.(rdata))
+  Then FixList_encode _ btransformer (Char_encode _) r.(rdata)
+  Then fun e => (nil, e).
 
+Definition encode_packet (p : packet_t) :=
+       IList_encode _ btransformer (Bool_encode _) p.(pid)
+  Then IList_encode _ btransformer (Bool_encode _) p.(pmask)
+  Then FixInt_encode _ (FixList_getlength p.(pquestion))
+  Then FixInt_encode _ (FixList_getlength p.(panswer))
+  Then FixInt_encode _ (FixList_getlength p.(pauthority))
+  Then FixInt_encode _ (FixList_getlength p.(padditional))
+  Then FixList_encode _ btransformer encode_question p.(pquestion)
+  Then FixList_encode _ btransformer encode_resource p.(panswer)
+  Then FixList_encode _ btransformer encode_resource p.(pauthority)
+  Then FixList_encode _ btransformer encode_resource p.(padditional)
+  Then fun e => (nil, e).
 
 Global Instance packet_decoder
   : decoder cache btransformer (fun _ => True) encode_packet.
 Proof. solve_decoder.  Defined.
 
-Definition encode_packet_i (p : packet_t) :=
-  encode_packet p {| eMap := EMap.empty _;
-                     dMap := DMap.empty _;
-                     tick := 0;
-                     extr := 0 |}.
 
-Definition decode_packet_i (b : bin) :=
-  decode (decoder:=packet_decoder) b {| eMap := EMap.empty _;
-                                        dMap := DMap.empty _;
-                                        tick := 0;
-                                        extr := 0 |}.
+Definition x (n : nat) : nat.
+Proof.
+
+  eapply (n + 20).
+Qed.
+
+
+Definition x' (n : nat) := n + 2.
+
+Definition empty :=
+  {| eMap := EMap.empty _;
+     dMap := DMap.empty _;
+     tick := 0;
+     extr := 0 |}.
+
+Lemma empty_Equiv : Equiv empty empty.
+Proof.
+  unfold Equiv.
+  simpl. intuition eauto.
+  inversion H. inversion H.  Qed.
+
+Definition packet_encode (p : packet_t) : list bool :=
+  fst (encode_packet p empty).
+
+Definition packet_decode (b : list bool) : packet_t :=
+  fst (fst (decode (decoder:=packet_decoder) b empty)).
+
+Theorem this_is_correct_and_we_know_it :
+  forall p, packet_decode (packet_encode p) = p.
+Proof.
+  intro p.
+  unfold packet_encode, packet_decode.
+  pose proof (@decode_correct _ cache btransformer _ _ packet_decoder empty empty
+                (snd (encode_packet p empty))
+                (snd (decode (transform (fst (encode_packet p empty)) transform_id) empty))
+                p
+                (fst (fst (decode (transform (fst (encode_packet p empty)) transform_id) empty)))
+                (fst (encode_packet p empty))
+                transform_id
+                (snd (fst (decode (transform (fst (encode_packet p empty)) transform_id) empty)))
+                empty_Equiv
+                I).
+  destruct (encode_packet p empty).
+  rewrite transform_id_right in H.
+  destruct (decode (decoder:=packet_decoder) (fst (b, c)) empty) as [[? ?] ?].
+  specialize (H eq_refl eq_refl).
+  intuition.  Qed.
+
+
+Extract Inductive bool => "bool" [ "true" "false" ].
+Extract Inductive nat => "int"
+                           [ "0" "(fun x -> x + 1)" ]
+                           "(fun zero succ n -> if n=0 then zero () else succ (n-1))".
+Extract Inductive sumbool => "bool" [ "true" "false" ].
+Extract Inductive list => "list" [ "[]" "(::)" ].
+Extract Inductive prod => "(*)"  [ "(,)" ].
+Extract Inductive ascii => char [
+"(fun (b0,b1,b2,b3,b4,b5,b6,b7) -> let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
+]
+"(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
+
+Section Examples.
+
+  Definition packet_uncompressed :=
+    true :: true :: false :: true :: true :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: true :: true :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: false :: false :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: true :: true :: true :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: nil.
+
+  Definition packet_compressed :=
+    true :: true :: false :: true :: true :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: true :: true :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: false :: false :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: true :: true :: true :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: true :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: false :: true :: false :: false :: false :: true :: false :: false :: false :: true :: false :: true :: false :: false :: false :: true :: false :: false :: nil.
+
+End Examples.
+
+Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed.
+
+(*
+#use "dns.ml";;
+packet_decode packet_uncompressed;;
+packet_decode packet_compressed;;
+let p = packet_decode packet_uncompressed;;
+let q = {pid = pid p; pmask = pmask p; pquestion = pquestion p; panswer = [{rname = qname (List.hd (pquestion p)); rtype = A; rclass = IN; rttl = Npos XH; rdata = []}]; pauthority = []; padditional = []};;
+*)
 
 (*
 Definition p : packet_t.
@@ -247,3 +314,44 @@ Extract Inductive ascii => char [
 Check DMap.Raw.Proofs.L.find_rect.
 Eval vm_compute in (fst (encode_packet_i p)).
 (* Extraction "p.ml" encode_packet_i encode_packet'_i p. *)*)
+
+
+(*
+Definition encode_word (w : word_t) :=
+  compose btransformer (FixInt_encode _ (FixList_getlength w.(word))) (
+  compose btransformer (FixList_encode _ btransformer (Char_encode _) w.(word))
+                       (fun e => (nil, e))).
+
+Definition encode_name (n : name_t) :=
+  compose btransformer
+          (SteppingList_encode _ _ _ btransformer encode_word (FixInt_encode _)
+                              (Enum_encode _ FixInt_of_branch) n.(name))
+          (fun e => (nil, e)).
+
+Definition encode_question (q : question_t) :=
+  compose btransformer (encode_name q.(qname)) (
+  compose btransformer (Enum_encode _ FixInt_of_type q.(qtype)) (
+  compose btransformer (Enum_encode _ FixInt_of_class q.(qclass))
+                       (fun e => (nil, e)))).
+
+Definition encode_resource (r : resource_t) :=
+  compose btransformer (encode_name r.(rname)) (
+  compose btransformer (Enum_encode _ FixInt_of_type r.(rtype)) (
+  compose btransformer (Enum_encode _ FixInt_of_class r.(rclass)) (
+  compose btransformer (FixInt_encode _ r.(rttl)) (
+  compose btransformer (FixInt_encode _ (FixList_getlength r.(rdata))) (
+  compose btransformer (FixList_encode _ btransformer (Bool_encode _) r.(rdata))
+                       (fun e => (nil, e))))))).
+
+Definition encode_packet (p : packet_t) :=
+  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pid)) (
+  compose btransformer (IList_encode _ btransformer (Bool_encode _) p.(pmask)) (
+  compose btransformer (FixInt_encode _ (FixList_getlength p.(pquestion))) (
+  compose btransformer (FixInt_encode _ (FixList_getlength p.(panswer))) (
+  compose btransformer (FixInt_encode _ (FixList_getlength p.(pauthority))) (
+  compose btransformer (FixInt_encode _ (FixList_getlength p.(padditional))) (
+  compose btransformer (FixList_encode _ btransformer encode_question p.(pquestion)) (
+  compose btransformer (FixList_encode _ btransformer encode_resource p.(panswer)) (
+  compose btransformer (FixList_encode _ btransformer encode_resource p.(pauthority)) (
+  compose btransformer (FixList_encode _ btransformer encode_resource p.(padditional))
+                       (fun e => (nil, e))))))))))). *)
