@@ -2561,46 +2561,30 @@ Definition DecomposeIndexedQueryStructurePre' av qs_schema Index
            (r : IndexedQueryStructure qs_schema Index) :=
   DecomposePrei3list _ _ rWrap (id r).
 
-
 Ltac GLabelMap_fast_apply_map :=
-  lazymatch goal with
+  (* This tactic simplifies an expression like [map f (add k1 v1 (add ...))]
+     into [add k1 (f v1) (add ...)]. Using setoid_rewrite repeatedly was too
+     slow, so it relies on a separate lemma and an evar to do its job. *)
+  match goal with (* Not a lazy match: not all [map]s can be removed *)
   | [  |- context[GLabelMap.map ?f ?m] ] =>
     lazymatch type of f with
     | ?elt -> ?elt' =>
       let m' := fresh in
       evar (m' : GLabelMap.t elt');
-      setoid_replace (GLabelMap.map f m) with m' using relation (@GLabelMap.Equal elt');
-      [ | unfold m' in *; clear m'; try unfold m;
-          solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] ]
+      (* This block is essentially [setoid_replace (GLabelMap.map f m) m'] with
+      relation [@GLabelMap.Equal elt'], but it fails before calling the setoid
+      machinery if the relation doesn't actually hold. *)
+      let __eq := fresh in
+      assert (@GLabelMap.Equal elt' (GLabelMap.map f m) m') as __eq;
+      [ unfold m' in *; clear m'; try unfold m;
+        solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] | ];
+      setoid_rewrite __eq; clear __eq
     end
   end.
 
-Ltac set_GenAxiomaticSpecs :=
-  repeat match goal with
-         | [  |- context[GLabelMap.add ?k ?v _ ] ] =>
-           match v with
-           | context[GenAxiomaticSpecs _ _ _ _ _ _ _] =>
-             let tv := type of v in
-             let v' := fresh in
-             pose v as v';
-             (* (id …) is useful to track things that we had to set for perfomance reasons *)
-             change tv with (id tv) in v';
-             change v with v'
-           end
-         end.
-
-Ltac unset_GenAxiomaticSpecs :=
-  repeat match goal with
-         | [ H := (GenAxiomaticSpecs _ _ _ _ _ _ _) : (id _) |- _ ] => unfold H in *; clear H
-         end.
-
 Ltac _compile_cleanup_env_helper :=
-  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
-          GLabelMapFacts.uncurry; simpl);
-  set_GenAxiomaticSpecs;
   GLabelMap_fast_apply_map;
   GLabelMap_fast_apply_map;
-  unset_GenAxiomaticSpecs;
   reflexivity.
 
 Ltac __compile_cleanup_env :=

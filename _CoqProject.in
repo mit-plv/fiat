@@ -33,6 +33,7 @@ src/ADTRefinement/Refinements/DelegateMethods.v
 src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
+src/BinEncoders/Env/Automation/Solver.v
 src/BinEncoders/Env/BinLib/Bool.v
 src/BinEncoders/Env/BinLib/Char.v
 src/BinEncoders/Env/BinLib/Core.v
@@ -44,6 +45,7 @@ src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Examples/Dns.v
+src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Lib/FixList.v
 src/BinEncoders/Env/Lib/IList.v
@@ -83,7 +85,6 @@ src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
 src/CertifiedExtraction/Benchmarks/ProcessScheduler.v
 src/CertifiedExtraction/Benchmarks/ProcessSchedulerSetup.v
 src/CertifiedExtraction/Benchmarks/QueryStructureWrappers.v
-src/CertifiedExtraction/Benchmarks/QueryStructures.v
 src/CertifiedExtraction/Benchmarks/results/ProcessSchedulerExtractedMethods.v
 src/CertifiedExtraction/Extraction/Basics.v
 src/CertifiedExtraction/Extraction/BinExpr.v
@@ -302,6 +303,8 @@ src/Parsers/ContextFreeGrammar/Equality.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
+src/Parsers/ContextFreeGrammar/Reflective.v
+src/Parsers/ContextFreeGrammar/ReflectiveLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectness.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessMorphisms.v

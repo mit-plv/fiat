@@ -324,7 +324,7 @@ Section IndexedImpl_opt.
   Context {HSLM : StringLikeMin Ascii.ascii} {HSL : StringLike Ascii.ascii} {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}.
-  Context (G : pregrammar Ascii.ascii).
+  Context (G : pregrammar' Ascii.ascii).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.

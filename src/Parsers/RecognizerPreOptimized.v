@@ -17,7 +17,7 @@ Local Open Scope string_like_scope.
 
 Section recursive_descent_parser.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
-          {G : pregrammar Char}.
+          {G : pregrammar' Char}.
 
   Context (Hvalid : is_true (grammar_rvalid G)).
 

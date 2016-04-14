@@ -18,7 +18,7 @@ Section brute_force_splitter.
   Definition make_all_single_splits (str : String) (offset len : nat) : list nat
     := len::up_to len.
 
-  Context (G : pregrammar Char).
+  Context (G : pregrammar' Char).
 
 
   Global Instance brute_force_split_data : @split_dataT Char _ (rdp_list_predata (G := G))

@@ -13,7 +13,7 @@ Local Open Scope string_like_scope.
 Local Open Scope type_scope.
 
 Section cfg.
-  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} (G : pregrammar Char).
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} (G : pregrammar' Char).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.

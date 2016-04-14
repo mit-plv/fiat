@@ -97,7 +97,7 @@ Section FixListEncoder.
       generalize dependent xenv; generalize dependent bin.
     induction l; simpl in *.
 
-    intros; inversion H0; subst; intuition eauto; rewrite transform_id_pf; eauto.
+    intros; inversion H0; subst; intuition eauto; rewrite transform_id_left; eauto.
 
     intros.
     specialize (IHl (fun x pf => H4 x (or_intror pf))).

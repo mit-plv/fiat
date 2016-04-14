@@ -49,6 +49,11 @@ Local Ltac safe_step :=
           simpl;
           erewrite ?Equality.ascii_lb by reflexivity;
           reflexivity)
+   | [ |- parse_of_item _ _ (Terminal _) ]
+     => (refine (ParseTerminal _ _ _ _ _ _);
+          simpl;
+          [ .. | erewrite ?Equality.ascii_lb by reflexivity ];
+          reflexivity)
    | [ |- parse_of_item _ _ (NonTerminal _) ]
      => apply ParseNonTerminal
    | [ |- parse_of _ _ (_::nil) ] => apply ParseHead

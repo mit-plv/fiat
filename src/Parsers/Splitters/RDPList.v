@@ -21,7 +21,7 @@ Local Open Scope string_like_scope.
 Local Arguments leb !_ !_.
 
 Section recursive_descent_parser_list.
-  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : pregrammar Char}
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HLSP : StringLikeProperties Char} {G : pregrammar' Char}
           (Char_beq : Char -> Char -> bool).
   Definition rdp_list_nonterminals_listT : Type := list nat.
   Notation rdp_list_nonterminal_carrierT := default_nonterminal_carrierT.

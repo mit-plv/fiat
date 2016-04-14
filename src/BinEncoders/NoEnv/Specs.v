@@ -17,7 +17,8 @@ Section Specifications.
         (predicate : data_t -> Prop)
         (encode : data_t -> bin_t) :=
   { decode : bin_t -> data_t;
-    decode_correct : encode_decode_correct predicate encode decode }.
+    decode_correct :
+      forall data, predicate data -> decode (encode data) = data }.
 
 End Specifications.
 

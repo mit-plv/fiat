@@ -79,7 +79,7 @@ Section refine_rules.
   Context {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}
           {HSI : StringIso Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}.
-  Context {G : pregrammar Ascii.ascii}
+  Context {G : pregrammar' Ascii.ascii}
           (Hvalid : grammar_rvalid G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
 	  {pf : match (possible_first_terminals_of_production G its).(actual_possible_first_terminals) return Prop with

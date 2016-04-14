@@ -66,8 +66,8 @@ Definition CUnit
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
       SharpenedRepImpl} .
 Proof.
-  Time _compile QSEnv_Ax.
-Defined.
+  Time _compile QSEnv_Ax.          (* 238s *)
+Time Defined.                            (* 185s *)
 
 Eval lazy in (methodBody "Spawn" CUnit).
 

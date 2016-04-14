@@ -396,3 +396,62 @@ Proof.
   lazy.
   intros ??? ?? H [|? ?]; subst; eauto.
 Qed.
+
+Global Instance eqlistA_Reflexive {A R} {_ : @Reflexive A R}
+  : Reflexive (SetoidList.eqlistA R).
+Proof.
+  intro x; induction x as [|x xs IHxs]; constructor;
+    first [ assumption
+          | reflexivity ].
+Qed.
+Lemma map_eqlistA_Proper {A B R}
+  : Proper (pointwise_relation _ R ==> eq ==> SetoidList.eqlistA R) (@List.map A B).
+Proof.
+  unfold pointwise_relation.
+  intros f g H ? ls ?; subst.
+  induction ls as [|l ls IHls]; constructor;
+    trivial.
+Qed.
+
+Hint Extern 0 (Proper (_ ==> _ ==> SetoidList.eqlistA _) (@List.map _ _))
+=> refine map_eqlistA_Proper : typeclass_instances.
+
+Global Instance list_caset_Proper_forall_R {A B} {R : relation B}
+  : Proper
+      (R
+         ==> (pointwise_relation _ (pointwise_relation _ R))
+         ==> forall_relation (fun _ => R))
+      (@list_caset A (fun _ => B)).
+Proof.
+  lazy; intros ?????? [|??]; trivial.
+Qed.
+Hint Extern 0 (Proper (_ ==> pointwise_relation _ (pointwise_relation _ _) ==> forall_relation _) (list_caset _))
+=> refine list_caset_Proper_forall_R : typeclass_instances.
+
+Lemma fold_left_eqlistA_Proper {A B} {RA : relation A} {RB : relation B}
+  : Proper ((RA ==> RB ==> RA) ==> SetoidList.eqlistA RB ==> RA ==> RA) (@fold_left A B).
+Proof.
+  unfold respectful.
+  intros ?? H ls1 ls2 H'.
+  induction H'; simpl; eauto with nocore.
+Qed.
+Hint Extern 0 (Proper (_ ==> SetoidList.eqlistA _ ==> _ ==> _) (@fold_left _ _))
+=> refine fold_left_eqlistA_Proper : typeclass_instances.
+
+Global Instance first_index_helper_Proper_pointwise {A B}
+  : Proper (pointwise_relation _ eq ==> pointwise_relation _ eq ==> eq ==> pointwise_relation _ eq ==> eq) (@first_index_helper A B).
+Proof.
+  unfold pointwise_relation, respectful.
+  intros f g H f' g' H' ? ls ?; subst.
+  induction ls as [|l ls IHls]; simpl; intros ?? H''; trivial.
+  rewrite H, H', H''.
+  erewrite IHls; [ reflexivity | ].
+  congruence.
+Qed.
+
+Global Instance first_index_default_Proper_pointwise {A}
+  : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq) (@first_index_default A).
+Proof.
+  unfold first_index_default.
+  repeat intro; subst; apply first_index_helper_Proper_pointwise; try assumption; repeat intro; trivial.
+Qed.
