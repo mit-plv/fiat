@@ -77,58 +77,57 @@ Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
           end); rewrite <- N.compare_lt_iff; eauto.  Defined.
 
 Notation "x 'Then' y" := (compose btransformer x y) (at level 100, right associativity).
+Notation "x 'Done'"   := (x Then fun e => (nil, e)) (at level 99, right associativity).
+
+Arguments Bool_encode {_ _} _ _.
+Arguments Char_encode {_ _} _ _.
+Arguments FixInt_encode {_ _ _} _ _.
+Arguments Enum_encode {_ _ _ _} _ _ _.
+Arguments FixList_encode {_ _ _} _ _ _ _.
+Arguments IList_encode {_ _ _} _ _ _ _.
+Arguments SteppingList_encode {_ _ _ _ _ _ _} _ {_} _ _ _ _ _.
 
 Definition encode_word (w : word_t) :=
-       FixInt_encode _ (FixList_getlength w.(word))
-  Then FixList_encode _ btransformer (Char_encode _) w.(word)
-  Then fun e => (nil, e).
+       FixInt_encode (FixList_getlength w.(word))
+  Then FixList_encode btransformer Char_encode w.(word)
+  Done.
 
 Definition encode_name (n : name_t) :=
-       SteppingList_encode _ _ _ btransformer encode_word (FixInt_encode _)
-                           (Enum_encode _ FixInt_of_branch) n.(name)
-  Then fun e => (nil, e).
+       SteppingList_encode btransformer encode_word FixInt_encode
+                           (Enum_encode FixInt_of_branch) n.(name)
+  Done.
 
 Definition encode_question (q : question_t) :=
        encode_name q.(qname)
-  Then Enum_encode _ FixInt_of_type q.(qtype)
-  Then Enum_encode _ FixInt_of_class q.(qclass)
-  Then fun e => (nil, e).
+  Then Enum_encode FixInt_of_type q.(qtype)
+  Then Enum_encode FixInt_of_class q.(qclass)
+  Done.
 
 Definition encode_resource (r : resource_t) :=
        encode_name r.(rname)
-  Then Enum_encode _ FixInt_of_type r.(rtype)
-  Then Enum_encode _ FixInt_of_class r.(rclass)
-  Then FixInt_encode _ r.(rttl)
-  Then FixInt_encode _ (FixList_getlength r.(rdata))
-  Then FixList_encode _ btransformer (Char_encode _) r.(rdata)
-  Then fun e => (nil, e).
+  Then Enum_encode FixInt_of_type r.(rtype)
+  Then Enum_encode FixInt_of_class r.(rclass)
+  Then FixInt_encode r.(rttl)
+  Then FixInt_encode (FixList_getlength r.(rdata))
+  Then FixList_encode btransformer Char_encode r.(rdata)
+  Done.
 
 Definition encode_packet (p : packet_t) :=
-       IList_encode _ btransformer (Bool_encode _) p.(pid)
-  Then IList_encode _ btransformer (Bool_encode _) p.(pmask)
-  Then FixInt_encode _ (FixList_getlength p.(pquestion))
-  Then FixInt_encode _ (FixList_getlength p.(panswer))
-  Then FixInt_encode _ (FixList_getlength p.(pauthority))
-  Then FixInt_encode _ (FixList_getlength p.(padditional))
-  Then FixList_encode _ btransformer encode_question p.(pquestion)
-  Then FixList_encode _ btransformer encode_resource p.(panswer)
-  Then FixList_encode _ btransformer encode_resource p.(pauthority)
-  Then FixList_encode _ btransformer encode_resource p.(padditional)
-  Then fun e => (nil, e).
+       IList_encode btransformer Bool_encode p.(pid)
+  Then IList_encode btransformer Bool_encode p.(pmask)
+  Then FixInt_encode (FixList_getlength p.(pquestion))
+  Then FixInt_encode (FixList_getlength p.(panswer))
+  Then FixInt_encode (FixList_getlength p.(pauthority))
+  Then FixInt_encode (FixList_getlength p.(padditional))
+  Then FixList_encode btransformer encode_question p.(pquestion)
+  Then FixList_encode btransformer encode_resource p.(panswer)
+  Then FixList_encode btransformer encode_resource p.(pauthority)
+  Then FixList_encode btransformer encode_resource p.(padditional)
+  Done.
 
 Global Instance packet_decoder
   : decoder cache btransformer (fun _ => True) encode_packet.
 Proof. solve_decoder.  Defined.
-
-
-Definition x (n : nat) : nat.
-Proof.
-
-  eapply (n + 20).
-Qed.
-
-
-Definition x' (n : nat) := n + 2.
 
 Definition empty :=
   {| eMap := EMap.empty _;
