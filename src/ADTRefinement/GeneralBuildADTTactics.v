@@ -7,11 +7,14 @@ Require Import Coq.Lists.List Coq.Arith.Arith
         Fiat.Common.ilist
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.TransparentAbstract
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildADTSig
+        Fiat.ADTNotation.BuildADT
         Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core Fiat.ADTRefinement.GeneralRefinements
-        Fiat.ADTRefinement.SetoidMorphisms Fiat.ADTRefinement.BuildADTSetoidMorphisms.
+        Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.GeneralRefinements
+        Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* Declare definitions for all the elements in an indexed list, *)
 (* used to declare an ADT definition. *)
