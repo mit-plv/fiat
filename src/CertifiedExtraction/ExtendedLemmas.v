@@ -28,7 +28,7 @@ Ltac SameValues_Fiat_t_step :=
   end.
 
 Ltac SameValues_Fiat_t :=
-  repeat (idtac "step"; SameValues_Fiat_t_step).
+  repeat SameValues_Fiat_t_step.
 
 Add Parametric Morphism {av T} ext : (@Cons av T)
     with signature (eq ==> Monad.equiv ==> pointwise_relation _ (TelEq ext) ==> (TelEq ext))

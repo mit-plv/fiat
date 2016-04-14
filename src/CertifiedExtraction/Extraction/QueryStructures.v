@@ -2644,13 +2644,25 @@ Ltac __compile_unfold :=
      | _ => progress unfold If_Then_Else in *
      end.
 
+Ltac __compile_clear_bodies_of_ax_spec :=
+  repeat (unfold GenExports, map_aug_mod_name, aug_mod_name,
+          GLabelMapFacts.uncurry; simpl);
+  repeat lazymatch goal with
+    | |- context[GenAxiomaticSpecs ?a0 ?a1 ?a2 ?a3 ?a4 ?a5 ?a6 ?a7] =>
+      let a := fresh in
+      pose (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) as a;
+      change (GenAxiomaticSpecs a0 a1 a2 a3 a4 a5 a6 a7) with a;
+      clearbody a
+    end.
+
 Ltac __compile_start_compiling_module imports :=
   lazymatch goal with
-  | [  |- sigT (fun _ => @BuildCompileUnit2TSpec _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) ] =>
+  | [  |- sigT (fun _ => BuildCompileUnit2TSpec  _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) ] =>
     eexists;
     unfold DecomposeIndexedQueryStructure', DecomposeIndexedQueryStructurePre', DecomposeIndexedQueryStructurePost';
-    eapply BuildCompileUnit2T' with (env := imports); try apply eq_refl (* reflexivity throws an Anomaly *)
+    eapply (BuildCompileUnit2T' imports); try apply eq_refl (* reflexivity throws an Anomaly *)
   | [  |- forall _: (Fin.t _), (sigT _)  ] =>
+    __compile_clear_bodies_of_ax_spec;
     eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; repeat (apply Build_prim_prod || exact tt)
   end.
 

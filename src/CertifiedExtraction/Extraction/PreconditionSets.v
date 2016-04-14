@@ -36,14 +36,25 @@ Ltac destruct_ands H :=
   | _ => idtac
   end.
 
-Ltac PreconditionSet_t :=
+Ltac _PreconditionSet_t_in H :=
+  cbv beta iota zeta delta [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H;
+  destruct_ands H.
+
+Ltac _PreconditionSet_t :=
+  cbv beta iota zeta delta [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper];
   repeat match goal with
-         | [ H: PreconditionSet _ _ _ |- _ ] =>
-           cbv [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H;
-             destruct_ands H
-         | [ |- PreconditionSet _ _ _ ] =>
-           cbv [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper];
-             repeat match goal with
-                    | [  |- _ /\ _ ] => split
-                    end
+         | |- _ /\ _ => split
          end.
+
+Ltac PreconditionSet_t :=
+     repeat
+     match goal with
+     | [ H: PreconditionSet _ _ _ |- _ ] => _PreconditionSet_t_in H
+     | [ H: PreconditionSet_helper _ _ _ |- _ ] => _PreconditionSet_t_in H
+     | [ H: NoDuplicates _ |- _ ] => _PreconditionSet_t_in H
+     | [ H: NoDuplicates_helper _ _ |- _ ] => _PreconditionSet_t_in H
+     | [  |- PreconditionSet _ _ _ ] => _PreconditionSet_t
+     | [  |- PreconditionSet_helper _ _ _ ] => _PreconditionSet_t
+     | [  |- NoDuplicates _ ] => _PreconditionSet_t
+     | [  |- NoDuplicates_helper _ _ ] => _PreconditionSet_t
+     end.
