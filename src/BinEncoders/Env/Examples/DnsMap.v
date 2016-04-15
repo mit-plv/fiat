@@ -325,11 +325,11 @@ Proof.
       apply f_equal with (f:=ascii_of_N) in H2. rewrite !ascii_N_embedding in H2. eauto. }
     intuition eauto.
     right. intuition. apply H1 in H4. clear - eq2 H4 H0.
-    destruct b eqn: ?. destruct q eqn: ?. erewrite sig_equivalence in H0.
-    simpl in H0. rewrite <- Heqk in H0. unfold N_as_OT_with_P.P in *. rewrite <- Heqp1 in H0.
+    destruct b eqn: ?. destruct q eqn: ?. erewrite sig_equivalence with (P:=N_as_OT_with_P.P) (n_pf:=p0) (m_pf:=l) in H0.
+    simpl in H0. erewrite <- Heqk in H0. unfold N_as_OT_with_P.P in *. rewrite <- Heqp1 in H0.
     subst. inversion H0. subst. clear H0. rewrite DMapFacts.mem_find_b in eq2.
     rewrite DMapFacts.find_mapsto_iff in H4.
-    erewrite (proj1 (sig_equivalence _ _ x0 x0 _ _) eq_refl) in eq2.
+    erewrite (proj1 (sig_equivalence _ ((fun n : N => (n < exp2 14)%N)) x0 x0 p0 l) eq_refl) in eq2.
     unfold EMap.key, list_ascii_as_OT_with_P.P in *. erewrite H4 in eq2. congruence.
     apply H1. eauto.
   - destruct (EMap.mem a (eMap cd)) eqn: eq1; destruct (DMap.mem b (dMap cd)) eqn: eq2;
@@ -341,7 +341,7 @@ Proof.
       left. subst. assert (b = q).
       { clear -H. destruct b eqn: ?. destruct q eqn: ?.
         simpl in H. unfold N_as_OT_with_P.P. apply sig_equivalence. eauto. }
-      intuition eauto. eapply EMap.E.eq_refl. }
+      intuition eauto. }
     { right. intuition. apply H1 in H4. clear - eq1 H4 H0.
       rewrite EMapFacts.mem_find_b in eq1.
       assert (a = p).
@@ -360,7 +360,7 @@ Proof.
       subst. rewrite EMapFacts.find_mapsto_iff in H4.
       rewrite H4 in eq1. congruence.
       apply H1. eauto. }
-  Unshelve.
+  Grab Existential Variables.
   simpl in *. omega.
   simpl in *. omega.
   simpl in *. omega.
@@ -381,23 +381,22 @@ Instance cacheAddPair : CacheAdd cache (list word_t * position_t) :=
                                              offs := c.(offs) |} |}.
 Proof. eapply cacheAddPair'.  Qed.
 
+Definition get_position (n : N) : position_t.
+  refine (if position_as_OT.OP.lt_dec n (exp2 14)
+          then exist _ n _
+          else exist _ 0%N _).
+  abstract eauto.
+  abstract (rewrite <- N.compare_lt_iff; eauto).
+Defined.
+
 Instance cachePeek : CachePeek cache position_t :=
-  {| peekE := fun c => let n := N.div c.(offs) 8 in
-                       if position_as_OT.OP.lt_dec n (exp2 14)
-                       then exist _ n _
-                       else exist _ 0%N _;
-     peekD := fun c => let n := N.div c.(offs) 8 in
-                       if position_as_OT.OP.lt_dec n (exp2 14)
-                       then exist _ n _
-                       else exist _ 0%N _ |}.
+  {| peekE := fun c => get_position (N.div c.(offs) 8);
+     peekD := fun c => get_position (N.div c.(offs) 8) |}.
 Proof.
-  abstract eauto.
-  abstract (rewrite <- N.compare_lt_iff; eauto).
-  abstract eauto.
-  abstract (rewrite <- N.compare_lt_iff; eauto).
-  abstract (
-      simpl; intuition; subst; eauto;
-      destruct (position_as_OT.OP.lt_dec (offs cd / 8) (exp2 14)); rewrite <- sig_equivalence; eauto).
+  abstract (unfold Equiv;
+  intuition;
+  destruct ce; destruct cd; simpl in *;
+  inversion H; inversion H0; eauto).
 Defined.
 
 Instance cacheGet : CacheGet cache (list word_t) position_t :=
