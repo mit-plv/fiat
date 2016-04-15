@@ -129,7 +129,8 @@ Section FixIntBinEncoder.
 
   Definition FixInt_decode (b : list bool) (cd : CacheDecode)
     : {n : N | (n < exp2 size)%N} * list bool * CacheDecode.
-    refine (exist _ (fst (decode' b size)) _, snd (decode' b size), addD cd size).
+    refine (let x := decode' b size in
+            (exist _ (fst x) _, snd x, addD cd size)).
     eapply decode'_size.
   Defined.
 

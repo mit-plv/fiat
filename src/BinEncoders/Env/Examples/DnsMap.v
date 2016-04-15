@@ -284,6 +284,28 @@ Lemma cycle_irrelevance :
                                         (forall n i, p i = p (cycle n f i)).
 Proof. induction n; intuition eauto. simpl. rewrite <- H. eauto. Qed.
 
+Lemma cacheAddNat' :
+  forall (ce : CacheEncode) (cd : CacheDecode) (t : nat),
+   Equiv ce cd ->
+   Equiv
+     (cycle t
+        (fun c : CacheT =>
+         if NPeano.Nat.eq_dec (extr c) 7
+         then {| eMap := eMap c; dMap := dMap c; tick := 1 + tick c; extr := 0 |}
+         else {| eMap := eMap c; dMap := dMap c; tick := tick c; extr := 1 + extr c |}) ce)
+     (cycle t
+        (fun c : CacheT =>
+         if NPeano.Nat.eq_dec (extr c) 7
+         then {| eMap := eMap c; dMap := dMap c; tick := 1 + tick c; extr := 0 |}
+         else {| eMap := eMap c; dMap := dMap c; tick := tick c; extr := 1 + extr c |}) cd).
+Proof.
+  simpl; intuition; subst; eauto.
+  rewrite <- cycle_irrelevance in *; try (apply H1; eauto);
+  intro; destruct (NPeano.Nat.eq_dec (extr i) 7); eauto.
+  rewrite <- cycle_irrelevance in *; try (apply H1; eauto);
+  intro; destruct (NPeano.Nat.eq_dec (extr i) 7); eauto.
+Qed.
+
 Instance cacheAddNat : CacheAdd cache nat :=
   {| addE := fun c n => cycle n (fun c => if NPeano.Nat.eq_dec c.(extr) 7
                                           then {| eMap := c.(eMap);
@@ -303,34 +325,34 @@ Instance cacheAddNat : CacheAdd cache nat :=
                                                   dMap := c.(dMap);
                                                   tick := c.(tick);
                                                   extr := 1 + c.(extr) |}) c; |}.
-Proof.
-  simpl; intuition; subst; eauto.
-  rewrite <- cycle_irrelevance in *; try (apply H1; eauto);
-  intro; destruct (NPeano.Nat.eq_dec (extr i) 7); eauto.
-  rewrite <- cycle_irrelevance in *; try (apply H1; eauto);
-  intro; destruct (NPeano.Nat.eq_dec (extr i) 7); eauto.
-Defined.
+Proof. eapply cacheAddNat'.  Defined.
 
 Require Import Coq.FSets.FMapFacts.
 Module EMapFacts := WFacts_fun (list_word_t_as_OT) (EMap).
 Module DMapFacts := WFacts_fun (position_as_OT) (DMap).
 
-
-Instance cacheAddPair : CacheAdd cache (list word_t * position_t) :=
-  {| addE := fun c (b : _ * _) => let (l, p) := b
-                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
-                                     then c
-                                     else {| eMap := EMap.add l p c.(eMap);
-                                             dMap := DMap.add p l c.(dMap);
-                                             tick := c.(tick);
-                                             extr := c.(extr) |};
-     addD := fun c (b : _ * _) => let (l, p) := b
-                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
-                                     then c
-                                     else {| eMap := EMap.add l p c.(eMap);
-                                             dMap := DMap.add p l c.(dMap);
-                                             tick := c.(tick);
-                                             extr := c.(extr) |} |}.
+Lemma cacheAddPair' :
+  forall (ce : CacheEncode) (cd : CacheDecode) (t : EMap.key * DMap.key),
+   Equiv ce cd ->
+   Equiv
+     (let (l, p) := t in
+      if EMap.mem (elt:=position_t) l (eMap ce) || DMap.mem (elt:=list word_t) p (dMap ce)
+      then ce
+      else
+       {|
+       eMap := EMap.add l p (eMap ce);
+       dMap := DMap.add p l (dMap ce);
+       tick := tick ce;
+       extr := extr ce |})
+     (let (l, p) := t in
+      if EMap.mem (elt:=position_t) l (eMap cd) || DMap.mem (elt:=list word_t) p (dMap cd)
+      then cd
+      else
+       {|
+       eMap := EMap.add l p (eMap cd);
+       dMap := DMap.add p l (dMap cd);
+       tick := tick cd;
+       extr := extr cd |}).
 Proof.
   simpl; intuition; simpl in *; subst; eauto.
   - destruct (EMap.mem a (eMap cd)) eqn: eq1; destruct (DMap.mem b (dMap cd)) eqn: eq2;
@@ -392,8 +414,24 @@ Proof.
   simpl in *. omega.
   simpl in *. omega.
   simpl in *. omega.
-  simpl in *. omega.
-Defined.
+  simpl in *. omega.  Qed.
+
+Instance cacheAddPair : CacheAdd cache (list word_t * position_t) :=
+  {| addE := fun c (b : _ * _) => let (l, p) := b
+                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
+                                     then c
+                                     else {| eMap := EMap.add l p c.(eMap);
+                                             dMap := DMap.add p l c.(dMap);
+                                             tick := c.(tick);
+                                             extr := c.(extr) |};
+     addD := fun c (b : _ * _) => let (l, p) := b
+                                  in if EMap.mem l c.(eMap) || DMap.mem p c.(dMap)
+                                     then c
+                                     else {| eMap := EMap.add l p c.(eMap);
+                                             dMap := DMap.add p l c.(dMap);
+                                             tick := c.(tick);
+                                             extr := c.(extr) |} |}.
+Proof. eapply cacheAddPair'.  Qed.
 
 Instance cachePeek : CachePeek cache position_t :=
   {| peekE := fun c => let n := N.of_nat c.(tick) in
@@ -405,16 +443,20 @@ Instance cachePeek : CachePeek cache position_t :=
                        then exist _ n _
                        else exist _ 0%N _ |}.
 Proof.
-  eauto. rewrite <- N.compare_lt_iff. eauto.
-  eauto. rewrite <- N.compare_lt_iff. eauto.
-  simpl; intuition; subst; eauto.
+  abstract eauto.
+  abstract (rewrite <- N.compare_lt_iff; eauto).
+  abstract eauto.
+  abstract (rewrite <- N.compare_lt_iff; eauto).
+  abstract (simpl; intuition; subst; eauto;
+    destruct (position_as_OT.OP.lt_dec (N.of_nat (tick cd))); rewrite <- sig_equivalence; eauto).
 Defined.
 
 Instance cacheGet : CacheGet cache (list word_t) position_t :=
   {| getE := fun c l => EMap.find l c.(eMap);
      getD := fun c p => DMap.find p c.(dMap) |}.
 Proof.
-  simpl; intuition; subst.
-  apply DMap.find_1. apply EMap.find_2 in H. apply H1. eauto.
-  apply EMap.find_1. apply DMap.find_2 in H. apply H1. eauto.
+  abstract (
+  simpl; intuition; subst; [
+  apply DMap.find_1; apply EMap.find_2 in H; apply H1; eauto |
+  apply EMap.find_1; apply DMap.find_2 in H; apply H1; eauto ]).
 Defined.

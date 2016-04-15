@@ -41,13 +41,15 @@ Section IListEncoder.
     end.
 
   Definition IList_decode (b : bin) (env' : CacheDecode) : IList * bin * CacheDecode.
-    refine (exist _ (fst (fst (IList_decode' size b env'))) _,
-            snd (fst (IList_decode' size b env')),
-            snd (IList_decode' size b env')).
-    generalize dependent b. generalize dependent env'.
-    induction size. intuition eauto. intuition simpl.
-    destruct (decode b env') as [[? ?] ?]. specialize (IHn c b0).
-    destruct (IList_decode' n b0 c). destruct p. simpl. eauto.
+    refine (let x:= IList_decode' size b env' in
+                       (exist _ (fst (fst x)) _,
+                       snd (fst x),
+                       snd x)).
+    abstract (
+    generalize dependent b; generalize dependent env';
+    induction size; intuition eauto; intuition simpl;
+    destruct (decode b env') as [[? ?] ?]; specialize (IHn c b0);
+    destruct (IList_decode' n b0 c); destruct p; simpl; eauto).
   Defined.
 
   Theorem IList_encode_correct :

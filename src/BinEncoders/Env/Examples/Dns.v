@@ -24,12 +24,13 @@ Inductive type_t := A | CNAME | NS | MX.
 Inductive class_t := IN | CH | HS.
 
 Definition halt : word_t.
-  refine (Build_word_t (exist _ nil _)); rewrite Compare_dec.nat_compare_lt; eauto. Defined.
+  refine (Build_word_t (exist _ nil _));
+    abstract (rewrite Compare_dec.nat_compare_lt; eauto). Defined.
 Definition halt_dec (a : word_t) : {a = halt} + {a <> halt}.
   unfold halt; destruct a as [[word word_pf]];
   destruct word eqn: eq; subst.
-  - left; f_equal; apply sig_equivalence; eauto.
-  - right; inversion 1.
+  - left; abstract (f_equal; apply sig_equivalence; eauto).
+  - right; abstract (inversion 1).
 Defined. Hint Resolve halt_dec.
 
 Record name_t :=
@@ -59,7 +60,7 @@ Definition FixInt_of_branch (b : CacheBranch) : {n | (n < exp2 2)%N}.
   refine (match b with
           | Yes => exist _ (3%N) _
           | No  => exist _ (0%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
+          end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
 Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
   refine (match t with
@@ -67,14 +68,14 @@ Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
           | CNAME => exist _ (5%N) _
           | NS    => exist _ (2%N) _
           | MX    => exist _ (15%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
+          end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
 Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
   refine (match c with
           | IN => exist _ (1%N) _
           | CH => exist _ (3%N) _
           | HS => exist _ (4%N) _
-          end); rewrite <- N.compare_lt_iff; eauto.  Defined.
+          end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
 Notation "x 'Then' y" := (compose btransformer x y) (at level 100, right associativity).
 Notation "x 'Done'"   := (x Then fun e => (nil, e)) (at level 99, right associativity).
@@ -186,12 +187,11 @@ Section Examples.
   Definition packet_uncompressed :=
     true :: true :: false :: true :: true :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: true :: true :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: false :: false :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: true :: true :: true :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: nil.
 
+
   Definition packet_compressed :=
     true :: true :: false :: true :: true :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: true :: true :: false :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: true :: false :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: false :: false :: true :: false :: true :: true :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: true :: false :: false :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: true :: true :: true :: false :: true :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: true :: false :: true :: true :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: false :: true :: false :: false :: true :: false :: false :: true :: true :: false :: true :: true :: false :: false :: true :: false :: false :: false :: false :: true :: false :: false :: false :: true :: false :: false :: false :: true :: false :: true :: false :: false :: false :: true :: false :: false :: nil.
 
 End Examples.
-
-(* Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed. *)
 
 (*
 #use "dns.ml";;
@@ -200,6 +200,142 @@ packet_decode packet_compressed;;
 let p = packet_decode packet_uncompressed;;
 let q = {pid = pid p; pmask = pmask p; pquestion = pquestion p; panswer = [{rname = qname (List.hd (pquestion p)); rtype = A; rclass = IN; rttl = Npos XH; rdata = []}]; pauthority = []; padditional = []};;
 *)
+
+(* Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed. *)
+
+(*
+  Notation "[ n ]" := (exist _ n _).
+  Definition ans := fst (fst (decode (decoder:=FixInt_decoder (size:=5) _ (fun _ => True))
+                                     packet_uncompressed empty)).
+
+(*  Instance cahceFakeAdd : CacheAdd cache nat :=
+    {| addE := fun e _ => e;
+       addD := fun e _ => e; |}.
+  Proof. abstract (unfold Equiv; eauto).  Qed. *)
+
+
+Instance cacheAddNat2 : CacheAdd cache nat :=
+  {| addE := fun c n => cycle n (fun c => if PeanoNat.Nat.eqb 0 c.(extr)
+                                          then {| eMap := c.(eMap);
+                                                  dMap := c.(dMap);
+                                                  tick := 1 + c.(tick);
+                                                  extr := 0 |}
+                                          else {| eMap := c.(eMap);
+                                                  dMap := c.(dMap);
+                                                  tick := c.(tick);
+                                                  extr := 1 + c.(extr) |}) c;
+     addD := fun c n => cycle n (fun c => if PeanoNat.Nat.eqb 0 c.(extr)
+                                          then {| eMap := c.(eMap);
+                                                  dMap := c.(dMap);
+                                                  tick := 1 + c.(tick);
+                                                  extr := 0 |}
+                                          else {| eMap := c.(eMap);
+                                                  dMap := c.(dMap);
+                                                  tick := c.(tick);
+                                                  extr := 1 + c.(extr) |}) c; |}.
+Proof.
+  admit.  Defined.
+
+(*
+  Instance cacheAddNatNoob : CacheAdd cache nat :=
+    {| addE := fun c n => cycle n (fun c => {| eMap := c.(eMap);
+                                               dMap := c.(dMap);
+                                               tick := 1 + c.(tick);
+                                               extr := 0 |}) c;
+       addD := fun c n => cycle n (fun c => {| eMap := c.(eMap);
+                                                    dMap := c.(dMap);
+                                                    tick := 1 + c.(tick);
+                                                    extr := 0 |}) c; |}.
+  Proof.
+    abstract (simpl; intuition; subst; eauto; [
+    rewrite <- cycle_irrelevance in *; eauto; rewrite <- H1; eauto |
+    rewrite <- cycle_irrelevance in *; eauto; rewrite H1; eauto ]).  Defined. *)
+
+  Record test :=
+    { a : FixInt 16;
+      b : FixInt 16;
+      c : { s : list (FixInt 16) | length s = 16 };
+      d : { s : list ascii | length s < exp2_nat 3 } }.
+
+  Definition et (e : test) :=
+         FixInt_encode (FixList_getlength e.(d))
+    Then FixInt_encode (e.(b))
+    Then FixInt_encode (e.(a))
+    Then IList_encode btransformer FixInt_encode e.(c)
+    Then FixList_encode btransformer Char_encode e.(d)
+    Done.
+  Set Printing Implicit. Print et. Unset Printing Implicit.
+  Instance edr
+    : decoder _ btransformer (fun _ => True) et.
+  Proof.
+         eapply compose_decoder.
+         solve_decoder.
+         instantiate (1:=fun _ => True). abstract intuition.
+         intro.
+         eapply compose_decoder.
+         solve_decoder.
+         instantiate (1:=fun _ => True). abstract intuition.
+         intro.
+         eapply compose_decoder.
+         solve_decoder.
+         instantiate (1:=fun _ => True). unfold IList_predicate. abstract intuition.
+         intro.
+         eapply compose_decoder.
+         solve_decoder.
+         solve_predicate.
+         intro.
+         eapply compose_decoder.
+         solve_decoder.
+         solve_predicate.
+         intro.
+         eexists (fun b e => (Build_test proj1 proj0 proj2 proj3, b, e)). abstract (
+
+                        intros ? ? ? ? hdata ? ? ? ? ? ? ?; destruct hdata; simpl in *;
+
+                        cbv beta; intros; repeat match goal with
+                        | [ H : (_, _) = (_, _) |- _ ] => inversion H; subst; clear H
+                        end; intuition; subst; eauto). Defined.
+
+  Definition ed b := fst (fst (decode (decoder:=edr) b empty)).
+  Definition ans2 := ed packet_uncompressed.
+
+  Goal True.
+    Set Printing Implicit.
+    pose ans2 as d.
+    unfold ans2, ed, edr in d.
+    simpl in d.
+  Abort.
+
+  Definition sample := fst (FixInt_decode 18 _ packet_uncompressed empty).
+  Goal True.
+    pose sample as d.
+    unfold sample, FixInt_decode in d.
+    simpl in d.
+  Abort.
+
+  Global Instance word_decoder
+    : decoder cache btransformer (fun _ => True) encode_word.
+  Proof. eapply compose_decoder.
+         eapply FixInt_decoder.
+         instantiate (1:=fun _ => True). abstract intuition.
+         intro.
+         eapply compose_decoder.
+         eapply FixList_decoder. eapply Char_decoder.
+         unfold FixList_predicate.
+         instantiate (2:=proj). instantiate (1:=fun _ => True). abstract intuition.
+         intro.
+         eexists (fun b e => (Build_word_t proj0, b, e)). abstract (
+
+                        intros ? ? ? ? hdata ? ? ? ? ? ? ?; destruct hdata; simpl in *;
+
+                        cbv beta; intros; repeat match goal with
+                        | [ H : (_, _) = (_, _) |- _ ] => inversion H; subst; clear H
+                        end; intuition; subst; eauto).
+  Defined.
+  Print word_decoder.
+  Definition word_decode b := fst (fst (decode (decoder:=word_decoder) b empty)).
+  Definition ans2 := word_decode packet_uncompressed.
+  Eval vm_compute in ans2.
 
 (*
 Definition p : packet_t.
@@ -354,3 +490,4 @@ Definition encode_packet (p : packet_t) :=
   compose btransformer (FixList_encode _ btransformer encode_resource p.(pauthority)) (
   compose btransformer (FixList_encode _ btransformer encode_resource p.(padditional))
                        (fun e => (nil, e))))))))))). *)
+*)

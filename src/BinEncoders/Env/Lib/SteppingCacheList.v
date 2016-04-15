@@ -132,9 +132,10 @@ Section SteppingListCacheEncoder.
   Qed.
 
   Definition SteppingList_decode (b : bin) (cd : CacheDecode) : SteppingList * bin * CacheDecode.
-    refine (exist _ (fst (fst (SteppingList_decode' fuel b cd))) _,
-            snd (fst (SteppingList_decode' fuel b cd)),
-            snd (SteppingList_decode' fuel b cd)).
+    refine (let x := SteppingList_decode' fuel b cd in
+            (exist _ (fst (fst x)) _,
+             snd (fst x),
+             snd x)).
     apply SteppingList_ok_pf.
   Defined.
 
