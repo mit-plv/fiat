@@ -17,7 +17,7 @@ Instance test_cache : Cache :=
      CacheDecode := unit;
      Equiv := fun _ _ => True |}.
 
-Instance test_cache_add_nat : CacheAdd test_cache nat :=
+Instance test_cache_add_nat : CacheAdd test_cache N :=
   {| addE := fun ce _ => ce;
      addD := fun cd _ => cd;
      add_correct := fun _ _ _ => id |}.

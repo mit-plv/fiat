@@ -13,7 +13,7 @@ Section FixIntBinEncoder.
   Variable size : nat.
 
   Variable cache : Cache.
-  Variable cacheAdd : CacheAdd cache nat.
+  Variable cacheAdd : CacheAdd cache N.
 
   Fixpoint exp2' (l : nat) :=
     match l with
@@ -48,7 +48,7 @@ Section FixIntBinEncoder.
 
   Definition FixInt_encode (n : FixInt) (ce : CacheEncode) :=
     let b := encode' (proj1_sig n)
-    in  (pad b (size - (length b)), addE ce size).
+    in  (pad b (size - (length b)), addE ce (N.of_nat size)).
 
   Fixpoint decode'' (b : list bool) (l : nat) (acc : positive) :=
     match l with
@@ -130,7 +130,7 @@ Section FixIntBinEncoder.
   Definition FixInt_decode (b : list bool) (cd : CacheDecode)
     : {n : N | (n < exp2 size)%N} * list bool * CacheDecode.
     refine (let x := decode' b size in
-            (exist _ (fst x) _, snd x, addD cd size)).
+            (exist _ (fst x) _, snd x, addD cd (N.of_nat size))).
     eapply decode'_size.
   Defined.
 

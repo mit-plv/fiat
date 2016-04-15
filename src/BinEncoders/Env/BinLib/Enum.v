@@ -11,7 +11,7 @@ Section EnumEncoder.
   Variable size : nat.
   Variable A : Type.
   Variable cache : Cache.
-  Variable cacheAdd : CacheAdd cache nat.
+  Variable cacheAdd : CacheAdd cache N.
 
   Variable A_encode : A -> FixInt size.
   Variable A_decode : FixInt size -> A.
