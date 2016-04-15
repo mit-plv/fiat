@@ -20,6 +20,18 @@ Definition bool2w b :=
   | false => (Word.natToWord 32 0)
   end.
 
+Lemma bool2w_inj:
+  forall v v' : bool, bool2w v = bool2w v' -> v = v'.
+Proof.
+  destruct v, v'; (discriminate || reflexivity).
+Qed.
+
+Instance FacadeWrapper_bool {T : Type} : FacadeWrapper (Value T) bool.
+Proof.
+  refine {| wrap v := SCA _ (bool2w v) |};
+  abstract (intros * H; inversion H; eauto using bool2w_inj).
+Defined.
+
 Ltac FacadeWrapper_t_step :=
   match goal with
   | _ => cleanup_pure

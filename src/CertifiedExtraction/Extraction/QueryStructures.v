@@ -15,153 +15,16 @@ Require Import
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 Require Import Fiat.Common.i3list.
 Require Import CertifiedExtraction.ADT2CompileUnit.
-Check BuildCompileUnit2TSpec.
 
-Definition DecomposeIndexedQueryStructure av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r : IndexedQueryStructure qs_schema Index) :=
-  Decomposei3list _ _ rWrap r.
-Arguments DecomposeIndexedQueryStructure _ {_ _} _ _ /.
-
-Definition DecomposeIndexedQueryStructurePost av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r r' : IndexedQueryStructure qs_schema Index) :=
-  DecomposePosti3list _ _ rWrap r r'.
-
-Definition DecomposeIndexedQueryStructurePre av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r : IndexedQueryStructure qs_schema Index) :=
-  DecomposePrei3list _ _ rWrap r.
-
-Arguments DecomposeIndexedQueryStructurePost _ _ _ _ _ _ / .
-Arguments DecomposeIndexedQueryStructurePre _ _ _ _ _ / .
-
+Require Import Refactor.Decompose.
+Require Import Refactor.TupleToListW.
 Require Import Benchmarks.QueryStructureWrappers.
-
-(* FIXME move *)
-Lemma bool2w_inj:
-  forall v v' : bool, bool2w v = bool2w v' -> v = v'.
-Proof.
-  destruct v, v'; (discriminate || reflexivity).
-Qed.
-
-Instance FacadeWrapper_bool {T : Type} : FacadeWrapper (Value T) bool.
-Proof.
-  refine {| wrap v := SCA _ (bool2w v) |};
-  abstract (intros * H; inversion H; eauto using bool2w_inj).
-Defined.
-
-Definition UnpairSigT {A B} (P: A * B -> Type) :
-  sigT (fun a => sigT (fun b => P (a, b))) -> sigT P :=
-  fun s => let (a, s) := s in
-           let (b, s) := s in
-           existT P (a, b) s.
-
-Definition UnitSigT (P: unit -> Type) :
-  P tt -> sigT P :=
-  fun s => existT P tt s.
-
-Ltac _repeat_destruct :=
-  match goal with
-  | _ => apply UnitSigT
-  | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
-  (*| [  |- context[@SideStuff] ] => econstructor *)
-  | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
-  | [  |- prim_prod _ _ ] => split
-  | [  |- prod _ _ ] => split
-  | [  |- unit ] => constructor
-  end.
-
-Ltac repeat_destruct :=
-  repeat _repeat_destruct.
-
-(* Definition SchedulerWrappers : { rWrap : _ & @SideStuff QsADTs.ADTValue _ _ _ _ PartialSchedulerImpl
-                                                        (DecomposeIndexedQueryStructurePre QsADTs.ADTValue _ _ rWrap) }.
-Proof.
-  simpl;
-  repeat_destruct;
-  typeclasses eauto.
-Defined. *)
 
 Require Bedrock.Platform.Facade.examples.QsADTs.
 Require Bedrock.Platform.Facade.examples.TuplesF.
 
 Ltac fiat_t :=
   repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
-
-Fixpoint TruncateList {A} (a: A) n l :=
-  match n, l with
-  | 0, _ => nil
-  | S n, nil => a :: TruncateList a n nil
-  | S n, h :: t => h :: TruncateList a n t
-  end.
-
-Lemma TruncateList_length {A} n :
-  forall (a: A) (l: list A),
-    List.length (TruncateList a n l) = n.
-Proof.
-  induction n, l; simpl; intuition.
-Defined.
-
-Lemma TruncateList_id {A} :
-  forall (a: A) (l: list A),
-    TruncateList a (List.length l) l = l.
-Proof.
-  induction l; simpl; auto using f_equal.
-Qed.
-
-Definition ListWToTuple_Truncated n l : FiatTuple n :=
-  @eq_rect nat _ (fun n => FiatTuple n)
-           (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
-           n (TruncateList_length n _ _).
-
-
-Definition ListWToTuple_Truncated' n (l: list W) : FiatTuple n :=
-  match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatTuple n0 with
-  | eq_refl => (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
-  end.
-
-Lemma ListWToTuple_Truncated_id n l :
-  List.length l = n ->
-  l = TupleToListW (ListWToTuple_Truncated' n l).
-Proof.
-  intros; subst.
-  unfold ListWToTuple_Truncated'.
-  induction l.
-  trivial.
-  simpl.
-
-  destruct (TruncateList_length (Datatypes.length l) (Word.natToWord 32 0) l).
-  rewrite IHl at 1.
-  reflexivity.
-Qed.
 
 Lemma map_id' :
   forall `{f: A -> A} lst,
@@ -178,24 +41,6 @@ Definition AllOfLength_set {A} N ens :=
 
 Definition AllOfLength_list {A} N seq :=
   forall x, List.In x seq -> @List.length A x = N.
-
-Lemma keepEq_length:
-  forall (N : nat) ens (key k : W),
-    AllOfLength_set N ens ->
-    AllOfLength_set N (TuplesF.keepEq ens key k).
-Proof.
-  unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
-Qed.
-
-Lemma TupleToListW_length':
-  forall (N : nat) (tuple : FiatTuple N),
-    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    Datatypes.length (TupleToListW tuple) = N.
-Proof.
-  cleanup;
-  erewrite <- Word.wordToNat_natToWord_idempotent;
-  eauto using TupleToListW_length.
-Qed.
 
 Lemma IndexedEnsemble_TupleToListW_length:
   forall (N : nat) (table: FiatBag N),
@@ -234,6 +79,14 @@ Lemma EnsembleIndexedListEquivalence_AllOfLength:
 Proof.
   unfold TuplesF.EnsembleIndexedListEquivalence; cleanup.
   intuition eauto using UnIndexedEnsembleListEquivalence_AllOfLength.
+Qed.
+
+Lemma keepEq_length:
+  forall (N : nat) ens (key k : W),
+    AllOfLength_set N ens ->
+    AllOfLength_set N (TuplesF.keepEq ens key k).
+Proof.
+  unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
@@ -275,21 +128,21 @@ Ltac EnsembleIndexedListEquivalence_nil_t :=
 
 Lemma IndexedEnsembles_UnIndexedEnsembleListEquivalence_nil :
   forall A ens, IndexedEnsembles.UnIndexedEnsembleListEquivalence ens (@nil A) <->
-                Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
 Proof.
   EnsembleIndexedListEquivalence_nil_t.
 Qed.
 
 Lemma IndexedEnsembles_EnsembleIndexedListEquivalence_nil :
   forall A ens, IndexedEnsembles.EnsembleIndexedListEquivalence ens (@nil A) <->
-                Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
 Proof.
   EnsembleIndexedListEquivalence_nil_t.
 Qed.
 
 Lemma TuplesF_UnIndexedEnsembleListEquivalence_nil :
   forall A ens, TuplesF.UnIndexedEnsembleListEquivalence ens (@nil A) <->
-                Ensembles.Same_set _ ens (Ensembles.Empty_set _).
+           Ensembles.Same_set _ ens (Ensembles.Empty_set _).
 Proof.
   EnsembleIndexedListEquivalence_nil_t.
 Qed.
@@ -301,18 +154,6 @@ Lemma TuplesF_EnsembleIndexedListEquivalence_nil :
 Proof.
   EnsembleIndexedListEquivalence_nil_t.
 Qed.
-
-(* Lemma IndexedEnsemble_TupleToListW_empty : *)
-(*   forall N ens, *)
-(*     Ensembles.Same_set _ (@IndexedEnsemble_TupleToListW N ens) (Ensembles.Empty_set _) -> *)
-(*     Ensembles.Same_set _ ens (Ensembles.Empty_set _). *)
-(* Proof. *)
-(*   repeat match goal with *)
-(*          | [ H: context[RelatedIndexedTupleAndListW _ _], x: FiatElement _ |- _ ] => *)
-(*            specialize (H (TupleToListW_indexed x)) *)
-(*          | _ => progress EnsembleIndexedListEquivalence_nil_t *)
-(*          end. *)
-(* Qed. *)
 
 Definition TupleToListW_indexed {N} (tup: FiatElement N) :=
   {| TuplesF.elementIndex := IndexedEnsembles.elementIndex tup;
@@ -332,89 +173,7 @@ Proof.
   cleanup; red; eauto using RelatedIndexedTupleAndListW_refl.
 Qed.
 
-Fixpoint zip2 {A1 A2} (aa1: list A1) (aa2: list A2) :=
-  match aa1, aa2 with
-  | nil, _ => nil
-  | _, nil => nil
-  | ha1 :: ta1, ha2 :: ta2 => (ha1, ha2) :: (zip2 ta1 ta2)
-  end.
-
-Definition map2 {A1 A2 B} (f: A1 -> A2 -> B) aa1 aa2 :=
-  map (fun pair => f (fst pair) (snd pair)) (zip2 aa1 aa2).
-
-Ltac map_length_t :=
-  repeat match goal with
-         | [ H: cons _ _ = cons _ _ |- _ ] => inversion H; subst; clear H
-         | [ H: S _ = S _ |- _ ] => inversion H; subst; clear H
-         | _ => progress simpl in *; intros
-         | _ => discriminate
-         | _ => try f_equal; firstorder
-         end.
-
-Lemma map_map_sameLength {A1 A2 B}:
-  forall {f g aa1 aa2},
-    @map A1 B f aa1 = @map A2 B g aa2 ->
-    Datatypes.length aa1 = Datatypes.length aa2.
-Proof.
-  induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma map_snd_zip2 {A1 A2}:
-  forall {aa1 aa2},
-    Datatypes.length aa1 = Datatypes.length aa2 ->
-    map snd (@zip2 A1 A2 aa1 aa2) = aa2.
-Proof.
-  induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma map_fst_zip2' {A1 A2 B}:
-  forall {f: _ -> B} {aa1 aa2},
-    Datatypes.length aa1 = Datatypes.length aa2 ->
-    map (fun x => f (fst x)) (@zip2 A1 A2 aa1 aa2) = map f aa1.
-Proof.
-  induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma in_zip2 :
-  forall {A B} a b aa bb,
-    In (a, b) (@zip2 A B aa bb) ->
-    (In a aa /\ In b bb).
-Proof. (* This lemma is weak *)
-  induction aa; destruct bb;
-  repeat match goal with
-         | _ => progress simpl
-         | _ => progress intuition
-         | [ H: _ = _ |- _ ] => inversion_clear H
-         | [ aa: list ?a, H: forall _: list ?a, _ |- _ ] => specialize (H aa)
-         end.
-Qed.
-
-Lemma in_zip2_map :
-  forall {A B A' B'} fa fb a b aa bb,
-    In (a, b) (@zip2 A B aa bb) ->
-    In (fa a, fb b) (@zip2 A' B'  (map fa aa) (map fb bb)).
-Proof.
-  induction aa; destruct bb;
-  repeat match goal with
-         | _ => progress simpl
-         | _ => progress intuition
-         | [ H: _ = _ |- _ ] => inversion_clear H
-         end.
-Qed.
-
-
-Lemma zip2_maps_same :
-  forall {A A' B'} fa fb aa,
-    (@zip2 A' B' (@map A A' fa aa) (map fb aa)) =
-    map (fun x => (fa x, fb x)) aa.
-Proof.
-  induction aa;
-  repeat match goal with
-         | _ => progress simpl
-         | _ => progress intuition
-         | [ H: _ = _ |- _ ] => inversion_clear H
-         end.
-Qed.
+Require Import Refactor.Zip2.
 
 Lemma TupleToListW_indexed_inj {N}:
   forall (t1 t2: FiatElement N),
@@ -426,22 +185,6 @@ Proof.
   f_equal; intuition.
 Qed.
 
-Lemma map2_two_maps:
-  forall {A B A' B' C} fa fb g aa bb,
-    @map2 A B C (fun a b => g (fa a) (fb b)) aa bb =
-    @map2 A' B' C (fun a b => g a b) (map fa aa) (map fb bb).
-Proof.
-  unfold map2;
-  induction aa; destruct bb;
-  repeat match goal with
-         | _ => progress simpl
-         | _ => progress intuition
-         | [ H: _ = _ |- _ ] => inversion_clear H
-         | [ aa: list ?a, H: forall _: list ?a, _ |- _ ] => specialize (H aa)
-         end.
-Qed.
-
-
 Hint Unfold IndexedEnsembles.EnsembleIndexedListEquivalence
      IndexedEnsembles.UnIndexedEnsembleListEquivalence
      TuplesF.EnsembleIndexedListEquivalence
@@ -449,7 +192,6 @@ Hint Unfold IndexedEnsembles.EnsembleIndexedListEquivalence
      IndexedEnsembles.UnConstrFreshIdx TuplesF.UnConstrFreshIdx : FiatBedrockEquivalences.
 
 Hint Unfold Ensembles.Same_set Ensembles.Included Ensembles.In : Ensembles.
-
 
 Lemma EnsembleIndexedListEquivalence_TupleToListW_FreshIdx:
   forall (n : nat) (lst : list (FiatTuple n)) (ens : FiatBag n),
@@ -468,38 +210,6 @@ Proof.
 Qed.
 
 
-Lemma map2_snd {A1 A2}:
-  forall {aa1 aa2},
-    Datatypes.length aa1 = Datatypes.length aa2 ->
-    @map2 A1 A2 _ (fun x y => y) aa1 aa2 = aa2.
-Proof.
-  unfold map2; induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma map2_fst {A1 A2}:
-  forall {aa1 aa2},
-    Datatypes.length aa1 = Datatypes.length aa2 ->
-    @map2 A1 A2 _ (fun x y => x) aa1 aa2 = aa1.
-Proof.
-  unfold map2; induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma map2_fst' {A1 A2 B}:
-  forall {aa1 aa2} f,
-    Datatypes.length aa1 = Datatypes.length aa2 ->
-    @map2 A1 A2 B (fun x y => f x) aa1 aa2 = map f aa1.
-Proof.
-  unfold map2; induction aa1; destruct aa2; map_length_t.
-Qed.
-
-Lemma two_maps_map2 :
-  forall {A A1 A2 B} f1 f2 f aa,
-    (@map2 A1 A2 B f (@map A _ f1 aa) (@map A _ f2 aa)) =
-    map (fun x => f (f1 x) (f2 x)) aa.
-Proof.
-  cleanup; unfold map2. rewrite zip2_maps_same, map_map; reflexivity.
-Qed.
-
 Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv_Characterisation:
   forall (n : nat) (lst : list (FiatTuple n)) (x : list BedrockElement),
     map TuplesF.indexedElement x = map TupleToListW lst ->
@@ -512,21 +222,6 @@ Proof.
   unfold TupleToListW_indexed; cleanup; simpl;
   rewrite map2_two_maps, <- H, two_maps_map2;
   apply map_id'; destruct 0; reflexivity.
-Qed.
-
-Lemma in_zip2_map_map_eq :
-  forall {A B A' fa fb a b aa bb},
-    @map A A' fa aa = @map B A' fb bb ->
-    In (a, b) (@zip2 A B aa bb) ->
-    fa a = fb b.
-Proof.
-  cleanup;
-  match goal with
-  | [ H: map ?f ?l = map ?g ?l', H': In _ (zip2 ?l ?l') |- _ ] =>
-    apply (in_zip2_map f g) in H';
-      rewrite <- H, zip2_maps_same, in_map_iff in H';
-      destruct_conjs; congruence
-  end.
 Qed.
 
 Lemma BedrockElement_roundtrip:
@@ -1388,23 +1083,6 @@ Proof.
   facade_eauto.
 Qed.
 
-(* Lemma CompileTupleList_op: *)
-(*   forall {N} (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec ADTValue)) tenv ext *)
-(*     (fpop : GLabelMap.key) head (tail : list (FiatTuple N)), *)
-(*     vlst <> vhead -> *)
-(*     vhead ∉ ext -> *)
-(*     vlst ∉ ext -> *)
-(*     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := QS_WrapTupleList)) (head :: tail)) -> *)
-(*     Lifted_not_mapsto_adt ext tenv vhead -> *)
-(*     GLabelMap.MapsTo fpop (Axiomatic TupleList_pop) env -> *)
-(*     {{ tenv }} *)
-(*       Call vhead fpop (vlst :: nil) *)
-(*     {{ [[`vhead <-- head as _]]::[[(NTSome (H := WrapInstance (H := QS_WrapTupleList)) vlst) <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t); *)
-(*   facade_eauto. *)
-(* Qed. *)
-
 Lemma ListEmpty_helper :
   forall {A} (seq: list A),
     (EqNat.beq_nat (Datatypes.length seq) 0) = match seq with
@@ -2046,7 +1724,6 @@ Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
                                                       (vtest := vtest) (vhead := vhead)) | ] ].
 
 
-
 Lemma CompileConstantBool:
   forall {av} name env (b: bool) ext (tenv: Telescope av),
     name ∉ ext ->
@@ -2406,6 +2083,24 @@ Proof.
             gWrapTag := false
          |}; intros; unfold wrap; simpl; eauto.
 Defined.
+
+
+Definition UnitSigT (P: unit -> Type) :
+  P tt -> sigT P :=
+  fun s => existT P tt s.
+
+Ltac _repeat_destruct :=
+  match goal with
+  | _ => apply UnitSigT
+  | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
+  | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
+  | [  |- prim_prod _ _ ] => split
+  | [  |- prod _ _ ] => split
+  | [  |- unit ] => constructor
+  end.
+
+Ltac repeat_destruct :=
+  repeat _repeat_destruct.
 
 Definition Scheduler_coDomainWrappers
   : coDomainWrappers QsADTs.ADTValue PartialSchedulerImpl.

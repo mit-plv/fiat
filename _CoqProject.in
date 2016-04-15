@@ -106,6 +106,9 @@ src/CertifiedExtraction/Extraction/External/GenericADTMethods.v
 src/CertifiedExtraction/Extraction/External/GenericMethods.v
 src/CertifiedExtraction/Extraction/External/Loops.v
 src/CertifiedExtraction/Extraction/External/ScalarMethods.v
+src/CertifiedExtraction/Extraction/Refactor/Decompose.v
+src/CertifiedExtraction/Extraction/Refactor/TupleToListW.v
+src/CertifiedExtraction/Extraction/Refactor/Zip2.v
 src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
