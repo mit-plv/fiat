@@ -791,27 +791,6 @@ Lemma CompileTuples2_findFirst :
            :: [[ (@NTSome QsADTs.ADTValue _ vret (@WrapInstance _ _ QS_WrapTupleList)) <-- snd retv as _ ]]
            :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
 Proof.
-  Ltac facade_cleanup_call ::=  (* FIXME: Added a clear dependent instead of clear *)
-       match goal with
-       | _ => progress cbv beta iota delta [add_remove_many] in *
-       | _ => progress cbv beta iota delta [sel] in *
-       | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear dependent H
-       | [ H: PreCond ?f _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PreCond] in H
-       | [ H: PostCond ?f _ _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PostCond] in H
-       | [  |- PreCond ?f _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]
-       | [  |- PostCond ?f _ _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PostCond]
-       | [ H: WeakEq ?lhs _ |- _ ] => progress learn_all_WeakEq_remove H lhs
-       | [ |- context[ListFacts4.mapM] ] => progress simpl ListFacts4.mapM
-       | [ H: context[ListFacts4.mapM] |- _ ] => progress simpl ListFacts4.mapM in H
-       | [ H: List.combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
-       | [ |-  context[List.split (cons _ _)] ] => simpl
-       | [ H: context[List.split (cons _ _)] |- _ ] => may_touch H; simpl in H
-       | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear dependent H
-       | _ => GLabelMapUtils.normalize
-       | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
-       | [  |- exists _, _ ] => eexists
-       end.
-
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
 
   fiat_t.
@@ -826,44 +805,6 @@ Proof.
 Qed.
 
 Print Assumptions CompileTuples2_findFirst.
-
-Lemma Lifted_MapsTo_Ext:
-  forall `{FacadeWrapper (Value av) A} ext k v tenv,
-    StringMap.MapsTo k v ext ->
-    @Lifted_MapsTo av ext tenv k (wrap v).
-Proof.
-  unfold Lifted_MapsTo, LiftPropertyToTelescope.
-  SameValues_Facade_t.
-Qed.
-
-Lemma Lifted_MapsTo_SCA_not_mapsto_adt:
-  forall {av} ext k (v: W) tenv,
-    StringMap.MapsTo k (SCA _ v) ext ->
-    @Lifted_not_mapsto_adt av ext tenv k.
-Proof.
-  unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
-  SameValues_Facade_t.
-Qed.
-
-Ltac Lifted_t ::=
-     repeat match goal with
-            | _ => congruence
-            | [  |- _ ∉ _ ] => decide_not_in
-            | [  |- StringMap.MapsTo _ _ _ ] => decide_mapsto
-            | [  |- NotInTelescope _ _ ] => decide_NotInTelescope
-            | [  |- TelEq _ _ _ ] => reflexivity
-            | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
-            | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | ]
-            | [ H: StringMap.MapsTo ?k _ ?ext |- Lifted_MapsTo ?ext _ ?k _ ] => apply Lifted_MapsTo_Ext; decide_mapsto_maybe_instantiate
-            | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
-            | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
-            | [  |- Lifted_not_mapsto_adt _ _ _ ] => apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; [ decide_not_in | decide_NotInTelescope ]
-            | [ H: StringMap.MapsTo ?k _ ?ext |- Lifted_not_mapsto_adt ?ext _ ?k ] => eapply Lifted_MapsTo_SCA_not_mapsto_adt; decide_mapsto_maybe_instantiate
-            | [  |- Lifted_is_true _ _ _ ] => apply Lifted_is_true_eq_MapsTo (* Coercions make precise matching hard *)
-            end.
-
-Ltac _PreconditionSet_t_in H ::=
-     cbv beta iota zeta delta [PreconditionSet PreconditionSet_helper NoDuplicates NoDuplicates_helper] in H; destruct_ands H.
 
 Lemma CompileTuples2_findFirst_spec :
   forall vret vtable vkey fpointer (env: Env QsADTs.ADTValue) ext tenv N

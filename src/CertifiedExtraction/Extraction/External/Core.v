@@ -35,7 +35,7 @@ Ltac facade_cleanup_call :=
   match goal with
   | _ => progress cbv beta iota delta [add_remove_many] in *
   | _ => progress cbv beta iota delta [sel] in *
-  | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear H
+  | [ H: Axiomatic ?s = Axiomatic ?s' |- _ ] => inversion H; subst; clear dependent H
   | [ H: PreCond ?f _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PreCond] in H
   | [ H: PostCond ?f _ _ |- _ ] => let hd := head_constant f in unfold hd in H; cbv beta iota delta [PostCond] in H
   | [  |- PreCond ?f _ ] => let hd := head_constant f in unfold hd; cbv beta iota delta [PreCond]
@@ -46,7 +46,7 @@ Ltac facade_cleanup_call :=
   | [ H: List.combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
   | [ |-  context[List.split (cons _ _)] ] => simpl
   | [ H: context[List.split (cons _ _)] |- _ ] => may_touch H; simpl in H
-  | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear H
+  | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear dependent H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   | [  |- exists _, _ ] => eexists

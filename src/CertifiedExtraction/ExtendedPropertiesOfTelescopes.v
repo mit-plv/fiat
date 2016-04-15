@@ -221,6 +221,24 @@ Proof.
          end.
 Qed.
 
+Lemma Lifted_MapsTo_Ext:
+  forall `{FacadeWrapper (Value av) A} ext k v tenv,
+    StringMap.MapsTo k v ext ->
+    @Lifted_MapsTo av ext tenv k (wrap v).
+Proof.
+  unfold Lifted_MapsTo, LiftPropertyToTelescope.
+  SameValues_Facade_t.
+Qed.
+
+Lemma Lifted_MapsTo_SCA_not_mapsto_adt:
+  forall {av} ext k (v: W) tenv,
+    StringMap.MapsTo k (SCA _ v) ext ->
+    @Lifted_not_mapsto_adt av ext tenv k.
+Proof.
+  unfold Lifted_not_mapsto_adt, LiftPropertyToTelescope; intros.
+  SameValues_Facade_t.
+Qed.
+
 Ltac is_dirty_telescope term :=
   match term with
   | appcontext[DropName] => idtac
@@ -271,8 +289,10 @@ Ltac Lifted_t :=
          | [  |- TelEq _ _ _ ] => reflexivity
          | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_eq
          | [  |- Lifted_MapsTo _ (Cons (NTSome ?k) _ _) ?k' _ ] => apply Lifted_MapsTo_neq; [ congruence | ]
+         | [ H: StringMap.MapsTo ?k _ ?ext |- Lifted_MapsTo ?ext _ ?k _ ] => apply Lifted_MapsTo_Ext; decide_mapsto_maybe_instantiate
          | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_eq
          | [  |- Lifted_not_mapsto_adt _ (Cons (NTSome ?k) _ _) ?k' ] => apply Lifted_not_mapsto_adt_neq; [ congruence | ]
          | [  |- Lifted_not_mapsto_adt _ _ _ ] => apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; [ decide_not_in | decide_NotInTelescope ]
+         | [ H: StringMap.MapsTo ?k _ ?ext |- Lifted_not_mapsto_adt ?ext _ ?k ] => eapply Lifted_MapsTo_SCA_not_mapsto_adt; decide_mapsto_maybe_instantiate
          | [  |- Lifted_is_true _ _ _ ] => apply Lifted_is_true_eq_MapsTo (* Coercions make precise matching hard *)
          end.
