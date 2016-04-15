@@ -624,6 +624,15 @@ Qed.
 
 Hint Resolve @not_mapsto_adt_neq_remove : SameValues_db.
 
+Lemma not_mapsto_adt_eq_SCA:
+  forall (av : Type) (k : StringMap.key) (w : W) (fmap : StringMap.t (Value av)),
+    not_mapsto_adt k (StringMap.add k (SCA av w) fmap) = true.
+Proof.
+  eauto using MapsTo_SCA_not_mapsto_adt, StringMap.add_1.
+Qed.
+
+Hint Resolve @not_mapsto_adt_eq_SCA : SameValues_db.
+
 Lemma not_In_Telescope_not_in_Ext_not_mapsto_adt :
   forall {av} tenv k st ext,
     k ∉ ext ->

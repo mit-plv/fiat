@@ -77,3 +77,27 @@ Proof.
 Qed.
 
 Hint Extern 1 => rewrite WrapInstance_wrap : call_helpers_db.
+
+Ltac apply_generalized_t compilation_lemma :=
+  erewrite ProgOk_TelEq_morphism;
+  try eapply compilation_lemma;
+  repeat match goal with
+         | [  |- _ = _ ] => reflexivity
+         | [  |- TelEq _ _ _ ] => decide_TelEq_instantiate
+         end.
+
+Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
+  apply_generalized_t compilation_lemma.
+
+Ltac defunctionalize_evar :=
+  match goal with
+  | [  |- context[?e] ] =>
+    is_evar e;
+      match type of e with
+      | ?a -> ?b => let ee := fresh in
+                  evar (ee: b);
+                    unify e (fun _:a => ee);
+                    unfold ee in *;
+                    clear ee
+      end
+  end.

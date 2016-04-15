@@ -13,6 +13,19 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
+Lemma CompileConstantBool:
+  forall {av} name env (b: bool) ext (tenv: Telescope av),
+    name ∉ ext ->
+    NotInTelescope name tenv ->
+    {{ tenv }}
+      (Assign name (Const (bool2w b)))
+    {{ [[`name <-- b as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+  change (wrap (bool2w b)) with (wrap (FacadeWrapper := (@FacadeWrapper_bool av)) b).
+  SameValues_Facade_t.
+Qed.
+
 Lemma CompileRead:
   forall {av} name var (val: W) ext (tenv: Telescope av),
     name ∉ ext ->
