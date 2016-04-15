@@ -160,7 +160,7 @@ module TRANSPARENT_ABSTRACT =
 	  in
 	  (* Create a global definition for const *)
 	  let cd = Entries.DefinitionEntry const in
-	  let decl = (cd, IsDefinition Definition) in
+ 	  let decl = (cd, IsDefinition Definition) in
 	  (** bendy: Seems okay for new constant to be local, but may have unintended **)
 	  (** consequences if abstracted terms should be accessed outside the proof. **)
 	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:true id decl in
@@ -249,10 +249,10 @@ module TRANSPARENT_ABSTRACT =
 
     TACTIC EXTEND abstracttermas
   | [ "cache_term" constr(term) "as" ident(name) "run" tactic(tacK)]  ->
-     [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM (Some name) term (Tacinterp.eval_tactic tacK)  ]
+     [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM (Some name) term tacK  ]
        END
 
   TACTIC EXTEND abstractterm
   | [ "cache_term" constr(term) "run" tactic(tacK) ]  ->
-     [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM None term (Tacinterp.eval_tactic tacK) ]
+     [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM None term tacK ]
        END;;
