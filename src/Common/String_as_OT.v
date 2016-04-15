@@ -199,7 +199,7 @@ Definition bind (pair: string * nat) (map: String2Nat) := StringIndexedMap.add (
 Notation "k >> v" := (pair k v) (at level 100).
 Notation "[[ b1 , .. , bn ]]" := (bind b1 .. (bind bn (StringIndexedMap.empty nat)) .. ).
 
-Open Scope string.
+Open Scope string_scope.
 
 Definition population_in_millions :=
  [[ "china" >> 1364, "india" >> 1243, "united states" >> 318, "indonesia" >> 247, "brazil" >> 201, "pakistan" >> 186, "nigeria" >> 174, "bangladesh" >> 153, "russia" >> 144, "japan" >> 127, "mexico" >> 120, "philippines" >> 99, "vietnam" >> 90, "ethiopia" >> 87, "egypt" >> 86, "germany" >> 81, "iran" >> 77, "turkey" >> 77, "democratic republic of the congo" >> 68, "france" >> 66 ]].

@@ -47,10 +47,10 @@ Section Flags.
 
   Section RADL_FlagsADT.
 
-    Open Scope methSig.
-    Open Scope consSig.
-    Open Scope cMethDef.
-    Open Scope cConsDef.
+    Open Scope methSig_scope.
+    Open Scope consSig_scope.
+    Open Scope cMethDef_scope.
+    Open Scope cConsDef_scope.
 
     (* Message Initialization *)
     Definition Flags_Init := "Init".

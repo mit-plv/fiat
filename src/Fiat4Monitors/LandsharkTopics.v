@@ -14,8 +14,8 @@ Require Import
 Section Topics.
   (* All the landshark topics from topics.v . *)
 
-  Open Scope Struct.
-  Open Scope Topic.
+  Open Scope Struct_scope.
+  Open Scope Topic_scope.
 
   (* BEN: I can't find the definition of this struct. *)
   Definition start_time := float64.
@@ -230,7 +230,7 @@ t__goal : topic { FIELDS
     topic { FIELDS "flag" `: float32 `:= O_32 }.
 
   (* Partial listing of the available topics. *)
-  Open Scope string.
+  Open Scope string_scope.
 
   Definition battery := "battery".
   Definition encoder := "encoder".

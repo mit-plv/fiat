@@ -21,7 +21,7 @@ Extract Constant String_as_OT.string_compare => "fun a b -> let comp = compare a
 Extract Inductive reflect            => bool [ true false ].
 Extract Inlined Constant iff_reflect => "".
 
-Open Scope string.
+Open Scope string_scope.
 Definition InitS := "Init".
 Definition AddMessageS := "AddMessage".
 Definition AddContactS := "AddContact".

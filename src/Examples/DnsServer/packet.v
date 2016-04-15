@@ -82,7 +82,7 @@ Section Packet.
   Global Instance Query_eq_RRecordClass :
     Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
 
-  Open Scope Heading.
+  Open Scope Heading_scope.
 
   (* do we currently use recordtype and recordclass? *)
   Definition question :=

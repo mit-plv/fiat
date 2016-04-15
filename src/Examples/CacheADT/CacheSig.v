@@ -2,7 +2,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         Computation ADT ADTRefinement ADTNotation BuildADTRefinements
         KVEnsembles.
 
-Open Scope string.
+Open Scope string_scope.
 
 Section CacheADT.
 

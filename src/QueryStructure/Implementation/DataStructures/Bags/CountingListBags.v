@@ -4,7 +4,7 @@ Unset Implicit Arguments.
 Require Import Coq.Arith.Arith
         Fiat.Common.List.ListFacts.
 
-Open Scope list.
+Open Scope list_scope.
 
 Section CountingListBags.
 

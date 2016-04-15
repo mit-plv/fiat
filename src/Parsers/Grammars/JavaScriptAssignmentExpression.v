@@ -3,7 +3,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
 (** Quoting http://www-archive.mozilla.org/js/language/grammar14.html *)
 Section JavaScriptAssignmentExpression.
-  Local Open Scope prod_assignment.
+  Local Open Scope prod_assignment_scope.
 
   (** ** Expressions *)
   (**

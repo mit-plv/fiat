@@ -2,7 +2,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         Fiat.Computation Fiat.ADT Fiat.ADTRefinement Fiat.ADTNotation Fiat.ADTRefinement.BuildADTRefinements
         Examples.CacheADT.KVEnsembles.
 
-Open Scope string.
+Open Scope string_scope.
 
 Section CacheSpec.
 

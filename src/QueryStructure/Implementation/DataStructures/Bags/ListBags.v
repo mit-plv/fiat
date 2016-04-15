@@ -1,7 +1,7 @@
 Require Export Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsInterface.
 Unset Implicit Arguments.
 
-Open Scope list.
+Open Scope list_scope.
 
 Section ListBags.
 

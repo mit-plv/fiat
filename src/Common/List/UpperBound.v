@@ -1,7 +1,7 @@
 (* UpperBound of a list.*)
 Require Import Coq.Lists.List Coq.Bool.Bool Fiat.Common Fiat.Computation.Core Fiat.Computation.Refinements.General.
 
-Open Scope list.
+Open Scope list_scope.
 
 Section Upperbound.
   Variable A : Type.
