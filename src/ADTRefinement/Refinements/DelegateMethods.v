@@ -36,7 +36,7 @@ Section DelegateMethods.
   (* ADT being delegated to. *)
   Variable delegateADT : ADT delegateSig.
 
-  Local Open Scope comp.
+  Local Open Scope comp_scope.
 
   (*Definition ADTwDelegatedMethods : ADT delegatorSig :=
     {| Rep := Rep delegatorADT * Rep delegateADT;

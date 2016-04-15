@@ -16,7 +16,7 @@ Require Import Coq.Lists.List
    The basic idea is to represent queries as ensembles of lists of returned values.
  *)
 
-Open Scope comp.
+Open Scope comp_scope.
 
 Definition Query_For {ResultT}
            (bod : Comp (list ResultT)) : Comp (list ResultT) :=

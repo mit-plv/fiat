@@ -4,4 +4,4 @@ Require Export Fiat.Computation.SetoidMorphisms.
 Require Export Fiat.Computation.ApplyMonad.
 Require Export Fiat.Computation.Refinements.General.
 
-Open Scope comp.
+Open Scope comp_scope.
