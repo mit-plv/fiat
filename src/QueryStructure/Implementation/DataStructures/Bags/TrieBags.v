@@ -1676,7 +1676,6 @@ Module TrieBag (X:OrderedType).
         apply Prefix_app_inv in H1.
         destruct H1; simpl in H1; inversion H1; subst.
         intuition.
-        intros; simpl; rewrite IHl; eauto.
         intros; eapply H2; eauto.
         constructor 2; eauto.
       - intros.

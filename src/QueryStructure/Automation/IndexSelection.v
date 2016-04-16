@@ -98,8 +98,9 @@ Proof.
             | Some cnt => (Vector.cons _ (RelationAttributeCounter.add new (S cnt) h) _ t)
             | None => (Vector.cons _ (RelationAttributeCounter.add new 1 h) _ t)
             end).
-  - revert p' new; pattern q, v; apply Vector.caseS; intros.
-    exact (Vector.cons _ h _ (IncrementAttrCount _ t p' new)).
+  - generalize v p' new (fun z => IncrementAttrCount q z p'); clear; intro.
+    pattern q, v; apply Vector.caseS; intros.
+    exact (Vector.cons _ h _ (X t new)).
 Defined.
 
 Fixpoint InitOccRank {n}
@@ -185,8 +186,10 @@ Proof.
           end qsSchema AttrCount NewOccurence).
   - revert il new; pattern q, v; apply Vector.caseS; intros.
     exact (icons3 (new :: ilist3_hd il) (ilist3_tl il)).
-  - revert p' il new; pattern q, v; apply Vector.caseS; intros.
-    exact (icons3 (ilist3_hd il) (InsertOccurence _ _ p' new (ilist3_tl il))).
+  - generalize q v p' (fun z => InsertOccurence q z p') il new; clear.
+      intros q v.
+      pattern q, v; apply Vector.caseS; intros.
+    exact (icons3 (ilist3_hd il) (X _ new (ilist3_tl il))).
 Defined.
 
 Definition InsertOccurenceOfAny {n}
@@ -263,7 +266,7 @@ Global Instance GetAttributeRawTermCounter {qsSchema}
        {Ridx : Fin.t _}
        {tup : @RawTuple (Vector.nth _ Ridx)}
        {BAidx : _ }
-  : (TermAttributeCounter qsSchema (@GetAttributeRaw _ tup BAidx) Ridx BAidx) | 0 := {| |}.
+  : (TermAttributeCounter qsSchema (@GetAttributeRaw _ tup BAidx) Ridx BAidx) | 0 := Build_TermAttributeCounter qsSchema _ Ridx BAidx.
 
 (*Ltac TermAttributes Term k :=
   match Term with

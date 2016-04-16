@@ -171,7 +171,9 @@ Section QueryStructureImplementation.
                     Comp (i3list (fun ns index =>
                                     Rep (BagSpec (BagMatchSearchTerm index)
                                                  (BagApplyUpdateTerm index))) indices') with
-            | Vector.nil => fun il => ret i3nil
+            | Vector.nil => fun il => ret (i3nil (C := (fun ns index =>
+                                                          Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)
+                                                                       (BagApplyUpdateTerm index)))))
             | Vector.cons sch _ ns' =>
               fun il =>
                 c <- _;
@@ -179,10 +181,6 @@ Section QueryStructureImplementation.
             ret (i3cons c cs)
             end indices').
     exact (CallBagConstructor (ilist3_hd il) BagEmpty).
-    Grab Existential Variables.
-    exact (fun ns index =>
-             Rep (BagSpec (BagMatchSearchTerm (heading := ns) index)
-                          (BagApplyUpdateTerm index))).
   Defined.
 
   Record EquivSearchTerm

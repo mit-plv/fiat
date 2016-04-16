@@ -79,6 +79,8 @@ CORE_UNMADE_VO := \
 	src/Common/ilist2_pair.vo
 
 QUERYSTRUCTURES_UNMADE_VO := \
+	src/QueryStructure/Implementation/DataStructures/Bags/IndexedBags.vo \
+	src/QueryStructure/Implementation/DataStructures/Bags/ProductBags.vo \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
 PARSERS_UNMADE_VO := \

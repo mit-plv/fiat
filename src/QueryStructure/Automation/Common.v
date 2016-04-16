@@ -2,6 +2,8 @@ Require Import
         Coq.Strings.String
         Fiat.Common.StringBound
         Fiat.Common.Tactics.CacheStringConstant
+        Fiat.Common.Tactics.HintDbExtra
+        Fiat.Common.Tactics.TransparentAbstract
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
@@ -24,7 +26,7 @@ Ltac psearch n z :=
 Create HintDb headingCache.
 
 Ltac fold_heading_hyps :=
-  (repeat foreach [ headingCache ] run (fun id => progress fold id in *)).
+  (repeat foreach [ headingCache ] run (fun id => progress fold id)).
 
 Ltac fold_heading_hyps_in H :=
   repeat foreach [ headingCache ] run (fun id => progress fold id in H).

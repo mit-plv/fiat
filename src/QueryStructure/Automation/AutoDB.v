@@ -355,7 +355,7 @@ Proof.
     pattern n, idx; apply Fin.caseS; simpl; intros.
     + destruct (H0) as [r_o' [refines_r_o' AbsR_r_o']].
       pose proof (refines_r_o' _ (ReturnComputes _)).
-      unfold CallBagConstructor in H0; simpl in H0;  computes_to_inv; subst.
+      unfold CallBagConstructor in *; simpl in *;  computes_to_inv; subst.
       apply AbsR_r_o'.
     + eapply H'.
 Qed.
