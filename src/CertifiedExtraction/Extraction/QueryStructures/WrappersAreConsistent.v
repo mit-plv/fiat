@@ -1,4 +1,4 @@
-Require Import Fiat.CertifiedExtraction.Benchmarks.QueryStructureWrappers.
+Require Import Fiat.CertifiedExtraction.Extraction.QueryStructures.Wrappers.
 Require Import Fiat.CertifiedExtraction.ADT2CompileUnit.
 Require Import CertifiedExtraction.FacadeWrappers.
 Require Import CertifiedExtraction.Core.

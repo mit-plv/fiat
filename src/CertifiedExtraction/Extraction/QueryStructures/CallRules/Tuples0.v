@@ -1,4 +1,4 @@
-Require Import Refactor.CallRules.Core.
+Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 
 Lemma CompileTuples0_new :
   forall vret vsize fpointer (env: Env ADTValue) ext tenv N,

@@ -1,8 +1,8 @@
 Require Import List.
 Require Import CertifiedExtraction.Utils.
 Require Import
-        Refactor.TupleToListW
-        Refactor.EnsemblesOfTuplesAndListW.
+        CertifiedExtraction.Extraction.QueryStructures.TupleToListW
+        CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.
 Require Import Fiat.ADT.Core.
 Require Bedrock.Platform.Facade.examples.QsADTs.
 Require Bedrock.Platform.Facade.examples.TuplesF.

@@ -5,7 +5,7 @@ Require Import Bedrock.Platform.Facade.examples.TuplesF.
 Require Import CertifiedExtraction.Utils.
 Require Import Bedrock.Memory.
 
-Require Import Refactor.Basics.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Basics.
 
 (** [TupleToListW] *)
 

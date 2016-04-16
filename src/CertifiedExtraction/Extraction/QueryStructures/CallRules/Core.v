@@ -1,11 +1,11 @@
 Require Export Program.
-Require Export Refactor.Basics.
-Require Export Refactor.TupleToListW.
-Require Export Refactor.EnsemblesOfTuplesAndListW.
+Require Export CertifiedExtraction.Extraction.QueryStructures.Basics.
+Require Export CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
+Require Export CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.
 
 Require Export
         Fiat.CertifiedExtraction.Extraction.External.Core
-        Fiat.CertifiedExtraction.Benchmarks.QueryStructureWrappers.
+        Fiat.CertifiedExtraction.Extraction.QueryStructures.Wrappers.
 
 Require Export Bedrock.Platform.Facade.examples.QsADTs.
 

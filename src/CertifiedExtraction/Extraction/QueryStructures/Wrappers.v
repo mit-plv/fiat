@@ -12,9 +12,9 @@ Require Import CertifiedExtraction.Utils.
 
 Require Import Bedrock.Memory.
 
-Require Import Refactor.Basics.
-Require Import Refactor.TupleToListW.
-Require Import Refactor.EnsemblesOfTuplesAndListW.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Basics.
+Require Import CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
+Require Import CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.
 
 Ltac Wrapper_t :=
   abstract (intros * H; inversion H; subst; clear H; f_equal;

@@ -3,9 +3,9 @@ Require Export
         Fiat.Examples.QueryStructure.ProcessScheduler.
 
 Require Export
-        CertifiedExtraction.Extraction.QueryStructures
-        CertifiedExtraction.Benchmarks.QueryStructureWrappers
-        CertifiedExtraction.Extraction.Refactor.QueryStructureWrappersAreConsistent.
+        CertifiedExtraction.Extraction.QueryStructures.Wrappers
+        CertifiedExtraction.Extraction.QueryStructures.QueryStructures
+        CertifiedExtraction.Extraction.QueryStructures.WrappersAreConsistent.
 
 Definition UnitSigT (P: unit -> Type) :
   P tt -> sigT P :=

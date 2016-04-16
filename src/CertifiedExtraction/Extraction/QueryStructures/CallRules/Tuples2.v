@@ -1,5 +1,5 @@
-Require Import Refactor.FiatBedrockLemmas.
-Require Import Refactor.CallRules.Core.
+Require Import CertifiedExtraction.Extraction.QueryStructures.FiatBedrockLemmas.
+Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 
 Lemma CompileTuples2_new :
   forall vret vsize vkey1 vkey2 fpointer (env: Env ADTValue) ext tenv N (k1 k2: W),

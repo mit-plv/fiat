@@ -1,5 +1,5 @@
 Require Export Fiat.Computation.Notations.
-Require Import Refactor.CallRules.Core.
+Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 
 Lemma CompileTuple_new_RunsTo_characterization:
   forall (vlen vtup : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))

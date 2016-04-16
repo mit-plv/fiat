@@ -2,7 +2,7 @@ Require Import CertifiedExtraction.Utils.
 Require Bedrock.Platform.Facade.examples.TuplesF.
 Require Import List.
 
-Require Import Refactor.Basics.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Basics.
 
 Definition AllOfLength_set {A} N ens :=
   forall x, Ensembles.In _ ens x -> @List.length A (TuplesF.indexedElement x) = N.

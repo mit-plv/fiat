@@ -1,7 +1,7 @@
-Require Import Refactor.Basics.
-Require Import Refactor.BinNatUtils.
-Require Import Refactor.TupleToListW.
-Require Import Refactor.EnsemblesOfTuplesAndListW.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Basics.
+Require Import CertifiedExtraction.Extraction.QueryStructures.BinNatUtils.
+Require Import CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
+Require Import CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.
 
 Require Import
         Fiat.QueryStructure.Specification.Representation.Tuple

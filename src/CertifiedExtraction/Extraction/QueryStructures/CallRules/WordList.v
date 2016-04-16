@@ -1,4 +1,4 @@
-Require Import Refactor.CallRules.Core.
+Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 
 Lemma CompileWordList_pop:
   forall (vhead vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue)) tenv ext

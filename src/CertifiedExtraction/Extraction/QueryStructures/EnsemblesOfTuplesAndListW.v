@@ -2,10 +2,10 @@ Require Import Bedrock.Platform.Facade.examples.TuplesF.
 Require Import CertifiedExtraction.Utils.
 Require Import Bedrock.Memory.
 
-Require Import Refactor.Basics.
-Require Import Refactor.AllOfLength.
-Require Import Refactor.TupleToListW.
-Require Import Refactor.Zip2.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Basics.
+Require Import CertifiedExtraction.Extraction.QueryStructures.AllOfLength.
+Require Import CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Zip2.
 
 Require Import
         Coq.Lists.List

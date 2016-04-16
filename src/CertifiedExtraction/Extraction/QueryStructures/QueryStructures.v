@@ -1,19 +1,18 @@
 Require Import
-        Refactor.Basics
-        Refactor.TupleToListW
-        Refactor.EnsemblesOfTuplesAndListW
-        Refactor.CallRules.CallRules.
+        CertifiedExtraction.Extraction.QueryStructures.Basics
+        CertifiedExtraction.Extraction.QueryStructures.TupleToListW
+        CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW
+        CertifiedExtraction.Extraction.QueryStructures.CallRules.CallRules.
 
-Require Import CertifiedExtraction.Benchmarks.QueryStructureWrappers.
+Require Import CertifiedExtraction.Extraction.QueryStructures.Wrappers.
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
 Require Import Bedrock.Platform.Facade.CompileUnit2.
 
-Require Export CertifiedExtraction.Extraction.Extraction.
-Require Export CertifiedExtraction.ADT2CompileUnit.
-
-Require Export Refactor.Decompose.
-(* Require Import Fiat.QueryStructure.Automation.MasterPlan. *)
+Require Export
+        CertifiedExtraction.ADT2CompileUnit
+        CertifiedExtraction.Extraction.Extraction
+        CertifiedExtraction.Extraction.QueryStructures.Decompose.
 
 Require Import
         Bedrock.Memory

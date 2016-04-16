@@ -1,4 +1,4 @@
-Require Import Refactor.CallRules.Core.
+Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 Require Import CertifiedExtraction.Extraction.External.Loops.
 Require Import CertifiedExtraction.Extraction.External.FacadeLoops.
 
@@ -318,7 +318,7 @@ Proof.
   apply @CompileTupleList_Loop; try eassumption.
 Qed.
 
-Require Import Fiat.CertifiedExtraction.Extraction.Refactor.CallRules.WordList.
+Require Import Fiat.CertifiedExtraction.Extraction.QueryStructures.CallRules.WordList.
 
 Lemma CompileMap_TuplesToWords :
   forall {N} (lst: list (FiatTuple N)) vhead vhead' vtest vlst vret vtmp fpop fempty falloc fdealloc fcons facadeBody facadeCoda env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv tenv' (f: FiatTuple N -> W),
