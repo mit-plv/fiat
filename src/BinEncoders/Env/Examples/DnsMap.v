@@ -39,13 +39,13 @@ Module list_as_OT (O : OrderedType) <: OrderedType.
   Lemma eq_dec : forall l l', {eq l l'} + {~eq l l'}.
   Proof.
     unfold eq; induction l; intros.
-    destruct l'. left. intuition.
-    right. intro. inversion H.
-    destruct l'. right. intro. inversion H.
+    destruct l'. left. abstract intuition.
+    right. abstract (intro; inversion H).
+    destruct l'. right. abstract (intro; inversion H).
     destruct (IHl l').
-    destruct (O.eq_dec a t0). left. constructor; auto.
-    right. intro. elim n. inversion H; auto.
-    right. intro. elim n. inversion H; auto.
+    destruct (O.eq_dec a t0). left. abstract (constructor; auto).
+    right. abstract (intro; elim n; inversion H; auto).
+    right. abstract (intro; elim n; inversion H; auto).
   Defined.
 
   Lemma eq_refl : forall x, eq x x.

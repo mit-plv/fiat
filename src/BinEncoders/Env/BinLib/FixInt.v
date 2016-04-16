@@ -256,3 +256,5 @@ Global Instance FixInt_decoder size cache cacheAdd predicate
   : decoder cache btransformer predicate (@FixInt_encode size cache cacheAdd) :=
   { decode := @FixInt_decode size cache cacheAdd;
     decode_correct := @FixInt_encode_correct _ _ _ _ }.
+
+Arguments FixInt_encode {_ _ _} _ _.

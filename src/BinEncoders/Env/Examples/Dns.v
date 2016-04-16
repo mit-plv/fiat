@@ -24,14 +24,6 @@ Notation "x 'Then' y" := (compose btransformer x y) (at level 100, right associa
 Notation "x 'Done'"   := (x Then fun e => (nil, e)) (at level 99, right associativity).
 Notation "[ n ]" := (exist _ n _).
 
-Arguments Bool_encode {_ _} _ _.
-Arguments Char_encode {_ _} _ _.
-Arguments FixInt_encode {_ _ _} _ _.
-Arguments Enum_encode {_ _ _ _} _ _ _.
-Arguments FixList_encode {_ _ _} _ _ _ _.
-Arguments IList_encode {_ _ _} _ _ _ _.
-Arguments SteppingList_encode {_ _ _ _ _ _ _} _ {_} _ _ _ _ _.
-
 Inductive type_t := A | CNAME | NS | MX.
 Inductive class_t := IN | CH | HS.
 
@@ -127,135 +119,11 @@ Definition encode_packet (p : packet_t) :=
   Then FixList_encode btransformer encode_resource p.(padditional)
   Done.
 
+
 Global Instance packet_decoder
   : decoder cache btransformer (fun _ => True) encode_packet.
 Proof.
-  (* solve_decoder -- this one line tactic solves the goal in Coq8.5 but not in 8.4pl6
-                      derive manually for now *)
-  eapply compose_decoder. eapply IList_decoder. eapply Bool_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply IList_decoder. eapply Bool_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-  eapply compose_decoder. eapply FixList_decoder.
-  { eapply compose_decoder.
-    { eapply compose_decoder. eapply SteppingListCache_decoder. eauto.
-      { eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-        eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-        eexists. intro.
-        instantiate (1:=fun b e => (Build_word_t proj6, b, e)).
-        instantiate (1:=fun _ => True).
-        abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                             | inversion H2; destruct data; subst; eauto
-                             | inversion H2; inversion H1; subst; eauto ]). }
-      eapply FixInt_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-      eexists. intro.
-      instantiate (1:=fun b e => (Build_name_t proj5, b, e)).
-      instantiate (1:=fun _ => True).
-      abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                           | inversion H2; destruct data; subst; eauto
-                           | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eexists. intro.
-    instantiate (1:=fun b e => (Build_question_t proj5 proj6 proj7, b, e)).
-    instantiate (1:=fun _ => True).
-    abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                         | inversion H2; destruct data; subst; eauto
-                         | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-  eapply compose_decoder. eapply FixList_decoder.
-  { eapply compose_decoder.
-    { eapply compose_decoder. eapply SteppingListCache_decoder. eauto.
-      { eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-        eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-        eexists. intro.
-        instantiate (1:=fun b e => (Build_word_t proj7, b, e)).
-        instantiate (1:=fun _ => True).
-        abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                             | inversion H2; destruct data; subst; eauto
-                             | inversion H2; inversion H1; subst; eauto ]). }
-      eapply FixInt_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-      eexists. intro.
-      instantiate (1:=fun b e => (Build_name_t proj6, b, e)).
-      instantiate (1:=fun _ => True).
-      abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                           | inversion H2; destruct data; subst; eauto
-                           | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-    eexists. intro.
-    instantiate (1:=fun b e => (Build_resource_t proj6 proj7 proj8 proj9 proj11, b, e)).
-    instantiate (1:=fun _ => True).
-    abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                         | inversion H2; destruct data; subst; eauto
-                         | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-  eapply compose_decoder. eapply FixList_decoder.
-  { eapply compose_decoder.
-    { eapply compose_decoder. eapply SteppingListCache_decoder. eauto.
-      { eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-        eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-        eexists. intro.
-        instantiate (1:=fun b e => (Build_word_t proj8, b, e)).
-        instantiate (1:=fun _ => True).
-        abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                             | inversion H2; destruct data; subst; eauto
-                             | inversion H2; inversion H1; subst; eauto ]). }
-      eapply FixInt_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-      eexists. intro.
-      instantiate (1:=fun b e => (Build_name_t proj7, b, e)).
-      instantiate (1:=fun _ => True).
-      abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                           | inversion H2; destruct data; subst; eauto
-                           | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-    eexists. intro.
-    instantiate (1:=fun b e => (Build_resource_t proj7 proj8 proj9 proj10 proj12, b, e)).
-    instantiate (1:=fun _ => True).
-    abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                         | inversion H2; destruct data; subst; eauto
-                         | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-  eapply compose_decoder. eapply FixList_decoder.
-  { eapply compose_decoder.
-    { eapply compose_decoder. eapply SteppingListCache_decoder. eauto.
-      { eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-        eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-        eexists. intro.
-        instantiate (1:=fun b e => (Build_word_t proj9, b, e)).
-        instantiate (1:=fun _ => True).
-        abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                             | inversion H2; destruct data; subst; eauto
-                             | inversion H2; inversion H1; subst; eauto ]). }
-      eapply FixInt_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-      eexists. intro.
-      instantiate (1:=fun b e => (Build_name_t proj8, b, e)).
-      instantiate (1:=fun _ => True).
-      abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                           | inversion H2; destruct data; subst; eauto
-                           | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply Enum_decoder. solve_enum. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixInt_decoder. solve_predicate. intro.
-    eapply compose_decoder. eapply FixList_decoder. eapply Char_decoder. solve_predicate. intro.
-    eexists. intro.
-    instantiate (1:=fun b e => (Build_resource_t proj8 proj9 proj10 proj11 proj13, b, e)).
-    instantiate (1:=fun _ => True).
-    abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                         | inversion H2; destruct data; subst; eauto
-                         | inversion H2; inversion H1; subst; eauto ]). } solve_predicate. intro.
-  eexists. intro.
-  instantiate (1:=fun b e => (Build_packet_t proj proj0 proj5 proj6 proj7 proj8, b, e)).
-  abstract (intuition; [ inversion H2; inversion H1; subst; eauto
-                       | inversion H2; destruct data; subst; eauto
-                       | inversion H2; inversion H1; subst; eauto ]).
+  Time solve_decoder. (* now works in 8.4pl6 -- takes about 10 seconds. *)
 Defined.
 
 Definition empty :=

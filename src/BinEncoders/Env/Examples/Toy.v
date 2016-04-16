@@ -23,10 +23,10 @@ Instance test_cache_add_nat : CacheAdd test_cache N :=
      add_correct := fun _ _ _ => id |}.
 
 Definition encode_test (t : test_t) (ce : CacheEncode) :=
-  compose btransformer (FixInt_encode test_cache_add_nat (f1 t)) (
-  compose btransformer (FixInt_encode test_cache_add_nat (f2 t)) (
-  compose btransformer (FixInt_encode test_cache_add_nat (f3 t)) (
-  compose btransformer (FixInt_encode test_cache_add_nat (f4 t)) (
+  compose btransformer (FixInt_encode (f1 t)) (
+  compose btransformer (FixInt_encode (f2 t)) (
+  compose btransformer (FixInt_encode (f3 t)) (
+  compose btransformer (FixInt_encode (f4 t)) (
                        (fun e => (nil, e)))))) ce.
 
 Global Instance test_decoder

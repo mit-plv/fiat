@@ -215,3 +215,5 @@ Global Instance SteppingListCache_decoder A B fuel cache cacheAdd cacheGet cache
             (SteppingList_encode cacheAdd cacheGet cachePeek transformer A_encode B_encode C_encode) :=
   { decode := SteppingList_decode fuel cacheAdd cacheGet cachePeek A_halt_dec A_decoder B_decoder C_decoder;
     decode_correct := @SteppingList_encode_correct _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ }.
+
+Arguments SteppingList_encode {_ _ _ _ _ _ _} _ {_} _ _ _ _ _.

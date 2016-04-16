@@ -16,7 +16,7 @@ Section EnumEncoder.
   Variable A_encode : A -> FixInt size.
   Variable A_decode : FixInt size -> A.
 
-  Definition Enum_encode (data : A) := FixInt_encode cacheAdd (A_encode data).
+  Definition Enum_encode (data : A) := FixInt_encode (A_encode data).
 
   Definition Enum_decode (b : list bool) (cd : CacheDecode) :=
     match FixInt_decode size cacheAdd b cd with
@@ -46,3 +46,5 @@ Section EnumEncoder.
       decode_correct := Enum_encode_correct _ }.
 
 End EnumEncoder.
+
+Arguments Enum_encode {_ _ _ _} _ _ _.

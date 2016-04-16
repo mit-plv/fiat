@@ -94,3 +94,5 @@ Global Instance IList_decoder A size cache transformer
             (IList_predicate A_predicate) (IList_encode cache transformer A_encode) :=
   { decode := @IList_decode size _  _ _ _ _ _;
     decode_correct := @IList_encode_correct _ _ _ _ _ _ _ }.
+
+Arguments IList_encode {_ _ _} _ _ _ _.

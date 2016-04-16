@@ -38,7 +38,7 @@ Ltac idtac' :=
 
 Definition FixInt_eq_dec (size : nat) (n m : {n | (n < exp2 size)%N }) : {n = m} + {n <> m}.
   refine (if N.eq_dec (proj1_sig n) (proj1_sig m) then left _ else right _);
-    destruct n; destruct m; try congruence; simpl in *; rewrite <- sig_equivalence; eauto.
+    abstract (destruct n; destruct m; try congruence; simpl in *; rewrite <- sig_equivalence; eauto).
 Defined.
 
 Ltac solve_enum :=
@@ -48,12 +48,13 @@ Ltac solve_enum :=
   | idtac'; enum_finish ].
 
 Ltac solve_done :=
-  eexists; intros ? ? ? ? data ? ? ? ?;
-    instantiate (1:=fun b e => (_, b, e));
-    intros; destruct data; simpl in *; repeat match goal with
-                   | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
-                   | H : _ /\ _ |- _ => inversion H; subst; clear H
-                   end; intuition eauto; fail 0.
+  let hdata := fresh in
+  eexists;
+  intros ? ? ? ? hdata ? ? ? ? ? ? ?; destruct hdata; simpl in *;
+  instantiate (1:=fun b e => (_, b, e));
+  cbv beta; intros; repeat match goal with
+                           | [ H : (_, _) = (_, _) |- _ ] => inversion H; subst; clear H
+                           end; intuition; subst; eauto.
 
 Ltac solve_predicate :=
   unfold SteppingList_predicate, IList_predicate, FixList_predicate;
@@ -64,15 +65,15 @@ Ltac eauto_typeclass :=
   | |- context [ Bool_encode ] => eapply Bool_decoder
   | |- context [ Char_encode ] => eapply Char_decoder
   | |- context [ FixInt_encode ] => eapply FixInt_decoder
-  | |- context [ FixList_encode _ _ ] => eapply FixList_decoder
-  | |- context [ IList_encode _ _ ] => eapply IList_decoder
-  | |- context [ SteppingList_encode _ _ _ _ ] => eapply SteppingListCache_decoder
+  | |- context [ FixList_encode _  ] => eapply FixList_decoder
+  | |- context [ IList_encode _ ] => eapply IList_decoder
+  | |- context [ SteppingList_encode _ ] => eapply SteppingListCache_decoder
   end; eauto.
 
 Ltac solve_decoder :=
   match goal with
+  | |- _ => solve [ solve_done ]
   | |- _ => solve [ eauto_typeclass; solve_decoder ]
   | |- _ => solve [ eapply Enum_decoder; solve_enum ]
-  | |- _ => solve [ solve_done ]
   | |- _ => eapply compose_decoder; [ solve_decoder | solve_predicate | intro; solve_decoder ]
   end.

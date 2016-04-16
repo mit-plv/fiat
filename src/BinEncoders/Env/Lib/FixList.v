@@ -128,3 +128,5 @@ Global Instance FixList_decoder size A len cache
             (FixList_encode cache transformer A_encode) :=
   { decode := @FixList_decode size _  _ _ _ _ _ (nat_of_N (proj1_sig len));
     decode_correct := @FixList_encode_correct _ _ _ _ _ _ _ _ }.
+
+Arguments FixList_encode {_ _ _} _ _ _ _.
