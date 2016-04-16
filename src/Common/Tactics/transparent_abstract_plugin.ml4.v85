@@ -12,7 +12,8 @@ module TRANSPARENT_ABSTRACT =
     open Tacticals.New
     open Tacmach.New
     open Proofview.Notations
-
+    open Safe_typing
+    open Proof_global
     (* Copied from tactics.ml *)
     let interpretable_as_section_decl evd d1 d2 = match d2,d1 with
       | (_,Some _,_), (_,None,_) -> false
@@ -108,7 +109,6 @@ module TRANSPARENT_ABSTRACT =
 	    let ectx = Evd.evar_universe_context evd in
 	    (* Universe Variable stuff? *)
 	    let evd = Evd.set_universe_context evd ectx in
-	    let open Safe_typing in
 	    (* Build a private constant for the new constant *)
 	    let eff = private_con_of_con (Global.safe_env ()) cst in
 	    (* Add that constant to the private constants *)
@@ -179,7 +179,6 @@ module TRANSPARENT_ABSTRACT =
 	  let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
 	  (* Universe Variable stuff? *)
 	  let evd = Evd.set_universe_context evd ectx in
-	  let open Safe_typing in
 	  (* Build a private constant for the new constant *)
 	  let eff = private_con_of_con (Global.safe_env ()) cst in
 	  (* Add that constant to the private constants *)
@@ -200,7 +199,6 @@ module TRANSPARENT_ABSTRACT =
     let anon_id = Id.of_string "anonymous"
 
     let tclTRABSTRACT name_op tac =
-      let open Proof_global in
       (* What's the right default goal kind?*)
       let default_gk = (Global, false, Proof Theorem) in
       let s, gk = match name_op with
@@ -216,7 +214,6 @@ module TRANSPARENT_ABSTRACT =
       transparent_abstract_by_tac s tac gk
 
     let tclABSTRACTTERM name_op term tacK =
-      let open Proof_global in
       (* What's the right default goal kind?*)
       let default_gk = (Global, false, Proof Theorem) in
       let s, gk = match name_op with
