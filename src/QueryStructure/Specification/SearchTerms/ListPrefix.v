@@ -2,7 +2,7 @@ Require Import
         Coq.Lists.SetoidList
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations.
 
-Open Scope list.
+Open Scope list_scope.
 
 Section PrefixClauses.
   Context {X : Type}

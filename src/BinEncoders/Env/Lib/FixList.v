@@ -70,13 +70,15 @@ Section FixListEncoder.
   Qed.
 
   Definition FixList_decode (len : nat) (b : bin) (env' : CacheDecode) : FixList * bin * CacheDecode.
-    refine (exist _ (fst (fst (FixList_decode' (min (pred (exp2_nat size)) len) b env'))) _,
-            snd (fst (FixList_decode' len b env')),
-            snd (FixList_decode' len b env')).
-    rewrite decode'_length.
-    rewrite NPeano.Nat.min_lt_iff.
-    left. unfold lt.
-    rewrite NPeano.Nat.succ_pred; [ | eapply exp2_nat_nonzero ]; eauto.
+    refine (let x := FixList_decode' len b env' in
+            (exist _ (fst (fst (FixList_decode' (min (pred (exp2_nat size)) len) b env'))) _,
+             snd (fst x),
+             snd x)).
+    abstract (
+    rewrite decode'_length;
+    rewrite NPeano.Nat.min_lt_iff;
+    left; unfold lt;
+    rewrite NPeano.Nat.succ_pred; [ | eapply exp2_nat_nonzero ]; eauto).
   Defined.
 
   Theorem FixList_encode_correct :

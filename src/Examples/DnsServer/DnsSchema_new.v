@@ -115,7 +115,7 @@ Definition sSLIST := "SLIST".
 Definition sSLIST_ORDERS := "SLIST orders".
 
 Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
-Local Open Scope Heading.
+Local Open Scope Heading_scope.
 (* initialized with the time the record arrives *)
 
 (* ------------------ Schema headings *)
@@ -306,7 +306,7 @@ Definition DnsRecSchema :=
          (* TODO other invariants are not encoded *)
 
 (* Wrappers for building various tuples. *)
-Open Scope Tuple.
+Open Scope Tuple_scope.
 Definition Build_RequestState (pac : packet) (id' : id) (stage : Stage) :=
   < "id" :: id',
     sQNAME :: pac!"questions"!"qname",

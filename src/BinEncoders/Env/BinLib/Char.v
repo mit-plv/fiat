@@ -9,7 +9,7 @@ Set Implicit Arguments.
 
 Section CharBinEncoder.
   Variable cache : Cache.
-  Variable cacheAdd : CacheAdd cache nat.
+  Variable cacheAdd : CacheAdd cache N.
 
   Definition FixInt_of_ascii (c : ascii) : {n : N | (n < exp2 8)%N}.
     refine (exist _ (N_of_ascii c) _).

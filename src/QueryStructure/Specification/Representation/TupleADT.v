@@ -15,12 +15,12 @@ Require Import Coq.Lists.List
 (* Computational ADT definitions for Tuples. *)
 Section TupleADT.
 
-  Open Scope string.
-  Open Scope methSig.
-  Open Scope consSig.
-  Open Scope cMethDef.
-  Open Scope cMethDefParsing.
-  Open Scope cConsDef.
+  Open Scope string_scope.
+  Open Scope methSig_scope.
+  Open Scope consSig_scope.
+  Open Scope cMethDef_scope.
+  Open Scope cMethDefParsing_scope.
+  Open Scope cConsDef_scope.
 
   Variable heading : Heading.   (* The heading of the tuple. *)
 

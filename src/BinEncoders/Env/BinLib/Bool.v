@@ -1,4 +1,5 @@
 Require Import
+        Coq.NArith.BinNat
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.BinLib.Core.
 
@@ -6,15 +7,15 @@ Set Implicit Arguments.
 
 Section BoolBinEncoder.
   Variable cache : Cache.
-  Variable cacheAdd : CacheAdd cache nat.
+  Variable cacheAdd : CacheAdd cache N.
 
   Definition Bool_encode (b : bool) (ce : CacheEncode) :=
-    (b :: nil, addE ce 1).
+    (b :: nil, addE ce 1%N).
 
   Definition Bool_decode (b : list bool) (cd : CacheDecode) :=
     match b with
     | nil => (false, nil, cd) (* bogus *)
-    | x :: xs => (x, xs, addD cd 1)
+    | x :: xs => (x, xs, addD cd 1%N)
     end.
 
   Theorem Bool_encode_correct :

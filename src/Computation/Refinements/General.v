@@ -251,7 +251,7 @@ and gives you the computational hypothesis for the second *)
              (ret u).
   Proof. destruct u; reflexivity. Qed.
 
-  Open Scope comp.
+  Open Scope comp_scope.
 
   Lemma refinement_step {A} (c c' : Comp A) :
     refine c c'

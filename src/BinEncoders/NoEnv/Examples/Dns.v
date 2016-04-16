@@ -152,5 +152,5 @@ Extract Inductive ascii => char [
 ]
 "(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
 
-Print packet_decoder.
-Extraction "extracted.ml" encode_packet packet_decoder packet1.
+(*Print packet_decoder.
+Extraction "extracted.ml" encode_packet packet_decoder packet1.*)

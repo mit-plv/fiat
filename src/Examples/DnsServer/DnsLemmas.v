@@ -14,7 +14,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
 Require Import Fiat.Examples.DnsServer.DnsSchema
         Fiat.Examples.DnsServer.packet.
 
-Open Scope list.
+Open Scope list_scope.
 
 Definition upperbound {A} (f : A -> nat) (rs : list A) (r : A) :=
   forall r', List.In r' rs -> f r >= f r'.

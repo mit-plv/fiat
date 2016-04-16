@@ -30,14 +30,14 @@ Notation "QSSchema # rel_key" := (TupleDef QSSchema rel_key) (at level 100, no a
 
 Notation "?[ A ]" := (if A then true else false) (at level 50) : QueryStructure_scope.
 
-Open Scope QSSchema.
-Open Scope ADTSig.
-Open Scope QueryImpl.
-Open Scope QueryStructure.
-Open Scope Schema.
-Open Scope QuerySpec.
+Open Scope QSSchema_scope.
+Open Scope ADTSig_scope.
+Open Scope QueryImpl_scope.
+Open Scope QueryStructure_scope.
+Open Scope Schema_scope.
+Open Scope QuerySpec_scope.
 Open Scope string_scope.
-Open Scope Tuple.
+Open Scope Tuple_scope.
 Open Scope comp_scope.
 
 (* Notation Test. *)

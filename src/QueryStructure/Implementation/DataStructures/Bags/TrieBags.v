@@ -1676,7 +1676,8 @@ Module TrieBag (X:OrderedType).
         apply Prefix_app_inv in H1.
         destruct H1; simpl in H1; inversion H1; subst.
         intuition.
-        intros; eapply H2; eauto.
+        try rewrite IHl; eauto.
+        intros; try eapply H2; eauto.
         constructor 2; eauto.
       - intros.
         pose proof (IHl ((List.map (fun a' => (fst a, a')) (Trie_enumerate (snd a))) ++ bags')) as H'.

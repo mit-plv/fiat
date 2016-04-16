@@ -1,6 +1,6 @@
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
 
-Open Scope list.
+Open Scope list_scope.
 
 (* This is an internet packet classifier example. We model a packet with its ip address and
    network protocol. The ADT has one relation (table) named [Rules], which contains classification rules *)

@@ -136,7 +136,7 @@ Notation "attr ::= v" :=
        f at level 0, no associativity) : Tuple_scope.*)
 
 Section TupleNotationExamples.
-  Local Open Scope Tuple.
+  Local Open Scope Tuple_scope.
 
   Definition MovieHeading : Heading := <"title" :: string, "year" :: nat>%Heading.
   Definition GwW : Tuple := <"title" :: "Gone With the Wind"%string, "year" :: 1938>.

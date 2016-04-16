@@ -138,8 +138,8 @@ Ltac make_parser_informative splitter :=
              end in
   let b := make_Parser splitter in
   let b := constr:(ParserInterface.parse b str) in
-  let b' := parser_red_gen b in
-  exact_no_check b'.
+  (*let b := parser_red_gen b in*)
+  exact_no_check b.
 
 Ltac make_simplified_splitter' splitter :=
   idtac;
