@@ -203,7 +203,7 @@ End ascii_as_OT.
 
 Record word_t :=
   { word : { l : list ascii | length l < exp2_nat 6 } }.
-Definition position_t := FixInt 14.
+Definition position_t := uint 14.
 
 Module list_ascii_as_OT := list_as_OT ascii_as_OT.
 Module list_ascii_as_OT_with_P <: OrderedTypeWithP list_ascii_as_OT.

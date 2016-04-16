@@ -49,7 +49,7 @@ Record resource_t :=
   { rname  : name_t;
     rtype  : type_t;
     rclass : class_t;
-    rttl   : FixInt 32;
+    rttl   : uint 32;
     rdata  : { s : list ascii |  length s < exp2_nat 16 } }.
 
 Record packet_t :=

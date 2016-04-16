@@ -9,21 +9,23 @@ Require Import
 
 Set Implicit Arguments.
 
+
+Fixpoint exp2' (l : nat) :=
+  match l with
+  | O    => xH
+  | S l' => xO (exp2' l')
+  end.
+
+Definition exp2 (l : nat) := Npos (exp2' l).
+Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
+
+Notation "'uint' size" := {n : N | (n < exp2 size)%N} (at level 30).
+
 Section FixIntBinEncoder.
   Variable size : nat.
 
   Variable cache : Cache.
   Variable cacheAdd : CacheAdd cache N.
-
-  Fixpoint exp2' (l : nat) :=
-    match l with
-      | O    => xH
-      | S l' => xO (exp2' l')
-    end.
-
-  Definition exp2 (l : nat) := Npos (exp2' l).
-
-  Definition exp2_nat (l : nat) := nat_of_N (exp2 l).
 
   Fixpoint encode''(pos : positive) (acc : list bool) :=
     match pos with
@@ -44,9 +46,8 @@ Section FixIntBinEncoder.
       | S l' => false :: pad b l'
     end.
 
-  Definition FixInt := {n : N | (n < exp2 size)%N}.
 
-  Definition FixInt_encode (n : FixInt) (ce : CacheEncode) :=
+  Definition FixInt_encode (n : uint size) (ce : CacheEncode) :=
     let b := encode' (proj1_sig n)
     in  (pad b (size - (length b)), addE ce (N.of_nat size)).
 

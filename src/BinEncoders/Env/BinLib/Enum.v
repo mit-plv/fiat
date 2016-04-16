@@ -13,8 +13,8 @@ Section EnumEncoder.
   Variable cache : Cache.
   Variable cacheAdd : CacheAdd cache N.
 
-  Variable A_encode : A -> FixInt size.
-  Variable A_decode : FixInt size -> A.
+  Variable A_encode : A -> uint size.
+  Variable A_decode : uint size -> A.
 
   Definition Enum_encode (data : A) := FixInt_encode (A_encode data).
 
