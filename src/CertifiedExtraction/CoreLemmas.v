@@ -479,3 +479,14 @@ Proof.
   eexists; intuition eauto.
 Qed.
 
+Require Import Program.Basics.
+
+Add Parametric Morphism av : (@ProgOk av)
+    with signature (StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
+      as Proper_ProgOk.
+Proof.
+  intros ? ? seq ? ? leq ** ok ? sv; split; intros;
+    rewrite <- seq, <- leq in *;
+    specialize (ok _ sv);
+    intuition.
+Qed.

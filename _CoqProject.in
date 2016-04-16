@@ -74,6 +74,7 @@ src/CertifiedExtraction/FMapUtils.v
 src/CertifiedExtraction/FacadeLemmas.v
 src/CertifiedExtraction/FacadeNotations.v
 src/CertifiedExtraction/FacadeUtils.v
+src/CertifiedExtraction/FacadeWrappers.v
 src/CertifiedExtraction/HintDBs.v
 src/CertifiedExtraction/PropertiesOfTelescopes.v
 src/CertifiedExtraction/PureFacadeLemmas.v
@@ -113,6 +114,7 @@ src/CertifiedExtraction/Extraction/Refactor/Decompose.v
 src/CertifiedExtraction/Extraction/Refactor/Deprecated.v
 src/CertifiedExtraction/Extraction/Refactor/EnsemblesOfTuplesAndListW.v
 src/CertifiedExtraction/Extraction/Refactor/FiatBedrockLemmas.v
+src/CertifiedExtraction/Extraction/Refactor/QueryStructureWrappersAreConsistent.v
 src/CertifiedExtraction/Extraction/Refactor/TupleToListW.v
 src/CertifiedExtraction/Extraction/Refactor/Zip2.v
 src/CertifiedExtraction/Extraction/Refactor/CallRules/CallRules.v

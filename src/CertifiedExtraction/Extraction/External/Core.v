@@ -62,20 +62,6 @@ Hint Resolve WeakEq_remove_notIn : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA : call_helpers_db.
 Hint Resolve WeakEq_pop_SCA_left : call_helpers_db.
 
-Instance WrapInstance `{H: FacadeWrapper av A} : `{FacadeWrapper (Value av) A}.
-Proof.
-  refine {| wrap := fun a => @ADT av (wrap a);
-            wrap_inj := _ |};
-  FacadeWrapper_t.
-Defined.
-
-Lemma WrapInstance_wrap :
-  forall `{H: FacadeWrapper av A} (x: A),
-    wrap x = ADT (wrap x).
-Proof.
-  destruct H; intros; reflexivity.
-Qed.
-
 Hint Extern 1 => rewrite WrapInstance_wrap : call_helpers_db.
 
 Ltac apply_generalized_t compilation_lemma :=

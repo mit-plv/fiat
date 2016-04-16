@@ -18,6 +18,76 @@ Require Import
         CertifiedExtraction.Extraction.QueryStructures
         CertifiedExtraction.ADT2CompileUnit.
 
+Definition UnitSigT (P: unit -> Type) :
+  P tt -> sigT P :=
+  fun s => existT P tt s.
+
+Ltac _repeat_destruct :=
+  match goal with
+  | _ => apply UnitSigT
+  | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
+  | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
+  | [  |- prim_prod _ _ ] => split
+  | [  |- prod _ _ ] => split
+  | [  |- unit ] => constructor
+  end.
+
+Ltac repeat_destruct :=
+  repeat _repeat_destruct.
+
+Definition Scheduler_coDomainWrappers
+  : coDomainWrappers QsADTs.ADTValue PartialSchedulerImpl.
+Proof.
+  unfold coDomainWrappers; simpl; repeat_destruct;
+  eauto using Good_bool, Good_listW, Good_W.
+Defined.
+
+Definition Scheduler_DomainWrappers
+  : domainWrappers QsADTs.ADTValue PartialSchedulerImpl.
+Proof.
+    unfold domainWrappers; simpl; repeat_destruct;
+    eauto using Good_bool, Good_listW, Good_W.
+Defined.
+
+Definition QueryStructureRepWrapperT
+           av (qs_schema : QueryStructureSchema.QueryStructureSchema)
+           (qs_schema' := QueryStructureSchema.QueryStructureSchemaRaw
+                            qs_schema)
+           Index
+  := @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema')
+                 Schema.RawSchema
+                 (fun ns =>
+                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                 (fun ns
+                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                    @IndexedEnsembles.IndexedEnsemble
+                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                 (QueryStructureSchema.qschemaSchemas qs_schema') Index.
+
+Definition Scheduler_RepWrapperT Index
+  : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
+Proof.
+  unfold QueryStructureRepWrapperT; simpl; split.
+  apply (@QS_WrapBag2 3 1 0).   (* FIXME generalize *)
+  constructor.
+Defined.
+
+Definition Scheduler_DecomposeRep_well_behaved av qs_schema Index
+(rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
+                                 Schema.RawSchema
+                                 (fun ns : Schema.RawSchema =>
+                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
+                                 (fun (ns : Schema.RawSchema)
+                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
+                                    @IndexedEnsembles.IndexedEnsemble
+                                      (@RawTuple (Schema.rawSchemaHeading ns)))
+                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
+
+  :=
+  (fun r r' : IndexedQueryStructure qs_schema Index =>
+     DecomposePrei3list_Agree _ _ rWrap
+                              (id r) (id r')).
+
 Definition RepSpec := Eval simpl in (Rep SchedulerSpec).
 Definition RepImpl := Eval simpl in (Rep PartialSchedulerImpl).
 Definition SharpenedRepImpl := fst (projT2 SharpenedScheduler).

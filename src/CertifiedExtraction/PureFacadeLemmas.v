@@ -37,6 +37,104 @@ Proof.
   eauto using DFacadeFacts2.RunsTo_Morphism.
 Qed.
 
+Require Import GLabelMap GLabelMapFacts.
+Require Import Program.Basics.
+
+Add Parametric Morphism av
+  : (@RunsTo av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
+      as Proper_RunsTo.
+Proof.
+  unfold impl; intros.
+  revert y y1 y2 H0 H1 H.
+  induction H2; intros.
+  - econstructor; rewrite <- H0, <- H1; eauto.
+  - econstructor 2; eauto.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 3; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 4; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H0; apply H.
+  - econstructor 5; eauto.
+    unfold is_true, eval_bool.
+    setoid_rewrite <- H0; apply H.
+    eapply IHRunsTo1; eauto.
+    reflexivity.
+    eapply IHRunsTo2; eauto.
+    reflexivity.
+  - econstructor 6; eauto.
+    unfold is_false, eval_bool.
+    setoid_rewrite <- H1; apply H.
+    rewrite <- H1, <- H2; eauto.
+  - econstructor 7;
+    rewrite <- H2; eauto.
+    rewrite <- H1; symmetry; eauto.
+  - econstructor 8; eauto.
+    rewrite <- H8; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H6; eauto.
+    rewrite <- H7.
+    subst st'; subst st'0; rewrite <- H6; eauto.
+  - econstructor 9; eauto.
+    rewrite <- H9; eauto.
+    rewrite <- H7; eauto.
+    rewrite <- H7; eauto.
+    eapply IHRunsTo; eauto.
+    reflexivity.
+    reflexivity.
+    subst st'; subst st'0; subst output; rewrite <- H8.
+    rewrite <- H7; eauto.
+Qed.
+
+Add Parametric Morphism av
+  : (@Safe av)
+    with signature
+    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
+      as Proper_Safe.
+Proof.
+  unfold impl; intros.
+  rewrite <- H0.
+  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
+  - intros; inversion H2; subst; intuition.
+    eapply H4.
+    setoid_rewrite H; eauto.
+  - intros; inversion H2; subst; intuition.
+  - intros; inversion H2; try subst; intuition.
+    left; intuition eauto.
+    subst loop; subst loop1; subst loop2.
+    rewrite <- H4.
+    eapply H8.
+    rewrite H; eauto.
+  - intros; inversion H2; try subst; intuition.
+    eauto.
+  - intros; inversion H2; try subst; intuition.
+    + eexists; intuition eauto.
+      left; eexists; intuition eauto.
+      rewrite <- H; eauto.
+    + eexists; intuition eauto.
+      right; eexists; intuition eauto.
+      rewrite <- H; eauto.
+      eapply H12; eauto.
+      rewrite H; eauto.
+      eapply H12.
+      rewrite H; eauto.
+Qed.
+
+Add Parametric Morphism elt
+  : (@GLabelMapFacts.UWFacts.WFacts.P.update elt)
+    with signature
+    (GLabelMap.Equal ==> GLabelMap.Equal ==> GLabelMap.Equal)
+      as GLabelMapFacts_UWFacts_WFacts_P_update_morphisn.
+Proof.
+  apply GLabelMapFacts.UWFacts.WFacts.P.update_m.
+Qed.
+
 Ltac isDeterministicStmtConstructor stmt :=
   match stmt with
   | Skip => idtac

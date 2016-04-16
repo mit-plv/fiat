@@ -1,61 +1,35 @@
-Require Import Fiat.ADT.Core.
-Require Import Bedrock.Platform.Facade.DFModule.
-Require Import Fiat.ADTNotation.
-Require Import Bedrock.Platform.Facade.CompileUnit2.
-Require Import Fiat.Common.i3list.
-Require Import Fiat.Common.ilist3.
-
 Require Import
-        CertifiedExtraction.Core
-        CertifiedExtraction.FacadeUtils
-        CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.Extraction.
+        Refactor.Basics
+        Refactor.Decompose
+        Refactor.TupleToListW
+        Refactor.EnsemblesOfTuplesAndListW
+        Refactor.CallRules.CallRules.
 
+Require Import CertifiedExtraction.Benchmarks.QueryStructureWrappers.
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
-Require Import Fiat.Common.i3list.
+
+Require Import CertifiedExtraction.Extraction.Extraction.
 Require Import CertifiedExtraction.ADT2CompileUnit.
 
-Require Bedrock.Platform.Facade.examples.QsADTs.
-Require Bedrock.Platform.Facade.examples.TuplesF.
-
-(* Require Import Refactor.AllOfLength. *)
-(* Require Import Refactor.Deprecated. *)
-(* Require Import Refactor.Zip2. *)
-(* Require Import Refactor.BinNatUtils. *)
-(* Require Import Refactor.FiatBedrockLemmas. *)
-(* Require Import Refactor.Basics. *)
-(* Require Import Refactor.Decompose. *)
-(* Require Import Refactor.TupleToListW. *)
-(* Require Import Refactor.EnsemblesOfTuplesAndListW. *)
-
-(* Require Import CertifiedExtraction.Extraction.External.Core. *)
-(* Require Import Bedrock.Platform.Facade.examples.QsADTs. *)
-
-Require Import Benchmarks.QueryStructureWrappers.
-Require Import Refactor.CallRules.CallRules.
-Require Import Refactor.TupleToListW.
+Require Import Bedrock.Platform.Facade.CompileUnit2.
 
 Transparent CallBagMethod.
 Arguments CallBagMethod : simpl never.
 Arguments wrap : simpl never.
 Arguments ListWToTuple: simpl never.
 
-Require Import Refactor.Basics.
-Require Import Refactor.TupleToListW.
-Require Import Refactor.EnsemblesOfTuplesAndListW.
+Definition BagSanityConditions {N} tbl :=
+  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
+  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
 
 Lemma Lift_Ensemble :
-  forall n r idx el,
-    Ensembles.In (FiatElement n) r
-                 {|
-                   IndexedEnsembles.elementIndex := idx;
-                   IndexedEnsembles.indexedElement := el |}
-    <->
-    Ensembles.In (BedrockElement) (IndexedEnsemble_TupleToListW r)
-                 {|
-                   TuplesF.elementIndex := idx;
-                   TuplesF.indexedElement := TupleToListW el |}.
+  forall n r idx (el: FiatTuple n),
+    Ensembles.In _ r
+                 {| IndexedEnsembles.elementIndex := idx;
+                    IndexedEnsembles.indexedElement := el |} <->
+    Ensembles.In _ (IndexedEnsemble_TupleToListW r)
+                 {| TuplesF.elementIndex := idx;
+                    TuplesF.indexedElement := TupleToListW el |}.
 Proof.
   split; intros.
   - econstructor; intuition eauto.
@@ -67,11 +41,7 @@ Proof.
     apply ilist2ToListW_inj in H2; subst; eauto.
 Qed.
 
-Definition BagSanityConditions {N} tbl :=
-  TuplesF.functional (IndexedEnsemble_TupleToListW (N := N) tbl)
-  /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
-
-Lemma postConditionAdd:
+Lemma BagSanityConditions_Add:
   forall n (r : FiatBag n) el,
     TuplesF.functional (IndexedEnsemble_TupleToListW r) ->
     IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el) ->
@@ -144,12 +114,16 @@ Ltac _compile_CallBagFind :=
               | CallBagMethod Fin.F1 BagFind ?db ?kwd =>
                 let vsnd := gensym "snd" in
                 let vtmp := gensym "tmp" in
-                eapply CompileSeq with ([[bf as retv]]
-                                          :: [[(NTSome (H := h) vdb) <-- prim_fst (Refinements.UpdateIndexedRelation
-                                                                                 (QueryStructureSchema.QueryStructureSchemaRaw ProcessScheduler.SchedulerSchema)
-                                                                                 (icons3 ProcessScheduler.SearchUpdateTerm inil3) db Fin.F1 (fst retv)) as _]]
-                                          :: [[`vsnd <-- snd retv as s]]
-                                          :: tenv);
+                eapply CompileSeq
+                with ([[bf as retv]]
+                        :: [[(NTSome (H := h) vdb)
+                              <-- prim_fst (Refinements.UpdateIndexedRelation
+                                            (QueryStructureSchema.QueryStructureSchemaRaw
+                                               ProcessScheduler.SchedulerSchema)
+                                            (icons3 ProcessScheduler.SearchUpdateTerm inil3)
+                                            db Fin.F1 (fst retv)) as _]]
+                        :: [[`vsnd <-- snd retv as s]]
+                        :: tenv);
                 [ match kwd with
                   | (Some ?v, (None, fun _ => true)) =>
                     let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
@@ -275,268 +249,14 @@ Ltac _compile_get :=
                     apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
-Add Parametric Morphism elt
-  : (@GLabelMapFacts.UWFacts.WFacts.P.update elt)
-    with signature
-    (GLabelMap.Equal ==> GLabelMap.Equal ==> GLabelMap.Equal)
-      as GLabelMapFacts_UWFacts_WFacts_P_update_morphisn.
-Proof.
-  apply GLabelMapFacts.UWFacts.WFacts.P.update_m.
-Qed.
+(* Require Import Fiat.Examples.QueryStructure.ProcessScheduler. *)
 
-
-Add Parametric Morphism av
-  : (@RunsTo av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> StringMap.Equal ==> impl)
-      as Proper_RunsTo.
-Proof.
-  unfold impl; intros.
-  revert y y1 y2 H0 H1 H.
-  induction H2; intros.
-  - econstructor; rewrite <- H0, <- H1; eauto.
-  - econstructor 2; eauto.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 3; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 4; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H0; apply H.
-  - econstructor 5; eauto.
-    unfold is_true, eval_bool.
-    setoid_rewrite <- H0; apply H.
-    eapply IHRunsTo1; eauto.
-    reflexivity.
-    eapply IHRunsTo2; eauto.
-    reflexivity.
-  - econstructor 6; eauto.
-    unfold is_false, eval_bool.
-    setoid_rewrite <- H1; apply H.
-    rewrite <- H1, <- H2; eauto.
-  - econstructor 7;
-    rewrite <- H2; eauto.
-    rewrite <- H1; symmetry; eauto.
-  - econstructor 8; eauto.
-    rewrite <- H8; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H6; eauto.
-    rewrite <- H7.
-    subst st'; subst st'0; rewrite <- H6; eauto.
-  - econstructor 9; eauto.
-    rewrite <- H9; eauto.
-    rewrite <- H7; eauto.
-    rewrite <- H7; eauto.
-    eapply IHRunsTo; eauto.
-    reflexivity.
-    reflexivity.
-    subst st'; subst st'0; subst output; rewrite <- H8.
-    rewrite <- H7; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@Safe av)
-    with signature
-    (GLabelMap.Equal ==> eq ==> StringMap.Equal ==> impl)
-      as Proper_Safe.
-Proof.
-  unfold impl; intros.
-  rewrite <- H0.
-  apply Safe_coind with (R := fun st ext => Safe x st ext); eauto.
-  - intros; inversion H2; subst; intuition.
-    eapply H4.
-    setoid_rewrite H; eauto.
-  - intros; inversion H2; subst; intuition.
-  - intros; inversion H2; substs; intuition.
-    left; intuition eauto.
-    subst loop; subst loop1; subst loop2.
-    rewrite <- H4.
-    eapply H8.
-    rewrite H; eauto.
-  - intros; inversion H2; substs; intuition.
-    eauto.
-  - intros; inversion H2; substs; intuition.
-    + eexists; intuition eauto.
-      left; eexists; intuition eauto.
-      rewrite <- H; eauto.
-    + eexists; intuition eauto.
-      right; eexists; intuition eauto.
-      rewrite <- H; eauto.
-      eapply H12; eauto.
-      rewrite H; eauto.
-      eapply H12.
-      rewrite H; eauto.
-Qed.
-
-Add Parametric Morphism av
-  : (@ProgOk av)
-with signature
-(StringMap.Equal ==> GLabelMap.Equal ==> eq ==> eq ==> eq ==> impl)
-  as Proper_ProgOk.
-Proof.
-  unfold impl; intros; intro; intros; split.
-  setoid_rewrite <- H0.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H in H2.
-  eapply H1 in H2; intuition.
-  rewrite <- H.
-  eapply H4.
-  rewrite H0.
-  eauto.
-Qed.
-
-Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-
-Require Import
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.External.Core
-        CertifiedExtraction.Extraction.External.Loops
-        CertifiedExtraction.Extraction.External.GenericADTMethods
-        CertifiedExtraction.Extraction.External.FacadeADTs.
-
-Definition coDomainWrappers
-           av {n n' : nat}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-  := forall midx : Fin.t n', CodWrapperT av (methCod (Vector.nth methSigs midx)).
-
-Definition domainWrappers
-           av {n n' : nat}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-  := forall midx : Fin.t n', DomWrapperT av (methDom (Vector.nth methSigs midx)).
-
-Definition DecomposeRep_well_behaved
-           av {n n' : nat}
-           {consSigs : Vector.t consSig n}
-           {methSigs : Vector.t methSig n'}
-           (adt : DecoratedADT (BuildADTSig consSigs methSigs))
-           (DecomposeRep : Rep adt -> list (Value av)) :=
-  forall x x0 : Rep adt,
-    is_same_types (DecomposeRep x0)
-                  (DecomposeRep x) = true.
-
-Eval simpl in
-  (forall av env P rWrap cWrap dWrap prog,
-      (LiftMethod (av := av) env P (DecomposeIndexedQueryStructure _ rWrap) cWrap dWrap prog (Methods PartialSchedulerImpl (Fin.FS (Fin.F1))))).
-
-Definition UnitSigT (P: unit -> Type) :
-  P tt -> sigT P :=
-  fun s => existT P tt s.
-
-Ltac _repeat_destruct :=
-  match goal with
-  | _ => apply UnitSigT
-  | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
-  | [  |- GoodWrapper _ _ ] => econstructor; reflexivity
-  | [  |- prim_prod _ _ ] => split
-  | [  |- prod _ _ ] => split
-  | [  |- unit ] => constructor
-  end.
-
-Ltac repeat_destruct :=
-  repeat _repeat_destruct.
-
-Definition Scheduler_coDomainWrappers
-  : coDomainWrappers QsADTs.ADTValue PartialSchedulerImpl.
-Proof.
-  unfold coDomainWrappers; simpl; repeat_destruct;
-  eauto using Good_bool, Good_listW, Good_W.
-Defined.
-
-Definition Scheduler_DomainWrappers
-  : domainWrappers QsADTs.ADTValue PartialSchedulerImpl.
-Proof.
-    unfold domainWrappers; simpl; repeat_destruct;
-    eauto using Good_bool, Good_listW, Good_W.
-Defined.
-
-Definition QueryStructureRepWrapperT
-           av (qs_schema : QueryStructureSchema.QueryStructureSchema)
-           (qs_schema' := QueryStructureSchema.QueryStructureSchemaRaw
-                            qs_schema)
-           Index
-  := @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema')
-                 Schema.RawSchema
-                 (fun ns =>
-                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                 (fun ns
-                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                    @IndexedEnsembles.IndexedEnsemble
-                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                 (QueryStructureSchema.qschemaSchemas qs_schema') Index.
-
-Definition Scheduler_RepWrapperT Index
-  : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
-Proof.
-  unfold QueryStructureRepWrapperT; simpl; split.
-  apply (@QS_WrapBag2 3 1 0).   (* FIXME generalize *)
-  constructor.
-Defined.
-
-Definition Scheduler_DecomposeRep_well_behaved av qs_schema Index
-(rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-  :=
-  (fun r r' : IndexedQueryStructure qs_schema Index =>
-     DecomposePrei3list_Agree _ _ rWrap
-                              (id r) (id r')).
-
-Definition DecomposeIndexedQueryStructure' av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r : IndexedQueryStructure qs_schema Index) :=
-  Decomposei3list _ _ rWrap (id r).
-
-Definition DecomposeIndexedQueryStructurePost' av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r r' : IndexedQueryStructure qs_schema Index) :=
-  DecomposePosti3list _ _ rWrap (id r) (id r').
-
-Definition DecomposeIndexedQueryStructurePre' av qs_schema Index
-           (rWrap : @RepWrapperT av (QueryStructureSchema.numRawQSschemaSchemas qs_schema)
-                                 Schema.RawSchema
-                                 (fun ns : Schema.RawSchema =>
-                                    SearchUpdateTerms (Schema.rawSchemaHeading ns))
-                                 (fun (ns : Schema.RawSchema)
-                                      (_ : SearchUpdateTerms (Schema.rawSchemaHeading ns)) =>
-                                    @IndexedEnsembles.IndexedEnsemble
-                                      (@RawTuple (Schema.rawSchemaHeading ns)))
-                                 (QueryStructureSchema.qschemaSchemas qs_schema) Index)
-
-           (r : IndexedQueryStructure qs_schema Index) :=
-  DecomposePrei3list _ _ rWrap (id r).
+(* Require Import *)
+(*         CertifiedExtraction.Extraction.Internal *)
+(*         CertifiedExtraction.Extraction.External.Core *)
+(*         CertifiedExtraction.Extraction.External.Loops *)
+(*         CertifiedExtraction.Extraction.External.GenericADTMethods *)
+(*         CertifiedExtraction.Extraction.External.FacadeADTs. *)
 
 Lemma GLabelMapFacts_map_add_1 :
   (* This is a hack to transform a rewrite into an apply (setoid-rewrite is too slow). *)
@@ -610,7 +330,7 @@ Ltac __compile_discharge_bag_side_conditions_step :=
   | _ => progress computes_to_inv
   | _ => progress unfold CallBagMethod in *
   | _ => progress (find_if_inside; simpl in * )
-  | [  |- BagSanityConditions (Ensembles.Add _ _ _) ] => apply postConditionAdd
+  | [  |- BagSanityConditions (Ensembles.Add _ _ _) ] => apply BagSanityConditions_Add
   | [  |- BagSanityConditions _ ] => split; solve [intuition eauto]
   | _ => eassumption
   end.

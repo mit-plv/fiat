@@ -1,9 +1,8 @@
 Require Import Fiat.CertifiedExtraction.Benchmarks.QueryStructureWrappers.
 Require Import Fiat.CertifiedExtraction.ADT2CompileUnit.
+Require Import CertifiedExtraction.FacadeWrappers.
 Require Import CertifiedExtraction.Core.
 Require Import Bedrock.Memory.
-Require Import FacadeUtils.
-
 
 (* FIXME: Just embed the definition of ‘Good’ into the ‘Wrapper’ typeclass *)
 
