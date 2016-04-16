@@ -130,7 +130,7 @@ Add Parametric Morphism elt
   : (@GLabelMapFacts.UWFacts.WFacts.P.update elt)
     with signature
     (GLabelMap.Equal ==> GLabelMap.Equal ==> GLabelMap.Equal)
-      as GLabelMapFacts_UWFacts_WFacts_P_update_morphisn.
+      as GLabelMapFacts_UWFacts_WFacts_P_update_morphism.
 Proof.
   apply GLabelMapFacts.UWFacts.WFacts.P.update_m.
 Qed.

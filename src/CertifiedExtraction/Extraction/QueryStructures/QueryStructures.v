@@ -255,17 +255,8 @@ Ltac _compile_get :=
                     apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
-(* Require Import Fiat.Examples.QueryStructure.ProcessScheduler. *)
-
-(* Require Import *)
-(*         CertifiedExtraction.Extraction.Internal *)
-(*         CertifiedExtraction.Extraction.External.Core *)
-(*         CertifiedExtraction.Extraction.External.Loops *)
-(*         CertifiedExtraction.Extraction.External.GenericADTMethods *)
-(*         CertifiedExtraction.Extraction.External.FacadeADTs. *)
-
 Lemma GLabelMapFacts_map_add_1 :
-  (* This is a hack to transform a rewrite into an apply (setoid-rewrite is too slow). *)
+  (* This is a hack to transform a rewrite into an apply (setoid_rewrite is too slow). *)
   forall (elt B : Type) (f : elt -> B) (k : GLabelMapFacts.M.key) (v : elt) (m : GLabelMapFacts.M.t elt) m0,
     GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f m) m0 ->
     GLabelMapFacts.M.Equal (GLabelMapFacts.M.map f (m ### k ->> v)) (m0 ### k ->> f v).
@@ -274,7 +265,6 @@ Proof.
 Qed.
 
 Require Import Fiat.CertifiedExtraction.PureFacadeLemmas.
-(* FIXME rename GLabelMapFacts_UWFacts_WFacts_P_update_morphisn *)
 
 Ltac GLabelMap_fast_apply_map :=
   (* This tactic simplifies an expression like [map f (add k1 v1 (add ...))]
@@ -297,7 +287,7 @@ Ltac GLabelMap_fast_apply_map :=
           assert (@GLabelMap.Equal elt' (GLabelMap.map f m) m') as __eq;
           [ unfold m' in *; clear m'; try unfold m;
             solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] | ];
-          (* Now that we have an equality between subtems, plug it in the larger term *)
+          (* Now that we have an equality between subterms, plug it in the larger term *)
           (* This because setoid_rewrite __eq took one hour *)
           let simpler_term := context Ctx[m'] in
           unify ev simpler_term;
@@ -306,7 +296,7 @@ Ltac GLabelMap_fast_apply_map :=
                  | [  |- GLabelMap.Equal ?x ?x ] => reflexivity
                  | [  |- GLabelMap.Equal (GLabelMapFacts.UWFacts.WFacts.P.update _ _)
                                         (GLabelMapFacts.UWFacts.WFacts.P.update _ _) ] =>
-                   apply GLabelMapFacts_UWFacts_WFacts_P_update_morphisn
+                   apply GLabelMapFacts_UWFacts_WFacts_P_update_morphism
                  | _ => exact __eq
                  end
         end
