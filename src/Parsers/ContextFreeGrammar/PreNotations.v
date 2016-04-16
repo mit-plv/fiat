@@ -8,7 +8,7 @@ Require Import Fiat.Common.Gensym.
 Delimit Scope item_scope with item.
 Bind Scope item_scope with item.
 Delimit Scope production_scope with production.
-Delimit Scope production_assignment_scope with prod_assignment.
+Delimit Scope prod_assignment_scope with prod_assignment.
 Bind Scope production_scope with production.
 Delimit Scope productions_scope with productions.
 Delimit Scope productions_assignment_scope with prods_assignment.

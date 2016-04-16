@@ -17,7 +17,7 @@ Delimit Scope item_scope with item.
 Bind Scope item_scope with item.
 Bind Scope item_scope with ritem.
 Delimit Scope production_scope with production.
-Delimit Scope production_assignment_scope with prod_assignment.
+Delimit Scope prod_assignment_scope with prod_assignment.
 Bind Scope production_scope with production.
 Bind Scope production_scope with rproduction.
 Delimit Scope productions_scope with productions.
@@ -97,7 +97,7 @@ Notation "¬ p" := ((~p)%char) (at level 75, right associativity) : char_scope.
 Notation "~ p" := ((~p)%char : rproduction Ascii.ascii) : productions_scope.
 Notation "¬ p" := ((~p)%productions) (at level 75, right associativity) : productions_scope.
 
-Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions Ascii.ascii)%productions) (at level 100) : production_assignment_scope.
+Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions Ascii.ascii)%productions) (at level 100) : prod_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
   (list_to_productions nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
