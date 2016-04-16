@@ -1,5 +1,4 @@
 Require Export Program.
-Require Export Fiat.Computation.Notations. (* FIXME remove *)
 Require Export Refactor.Basics.
 Require Export Refactor.TupleToListW.
 Require Export Refactor.EnsemblesOfTuplesAndListW.

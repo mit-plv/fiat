@@ -1,5 +1,3 @@
-Require Export Fiat.Computation.Notations. (* FIXME remove *)
-
 Require Import Refactor.Basics.
 Require Import Refactor.BinNatUtils.
 Require Import Refactor.TupleToListW.

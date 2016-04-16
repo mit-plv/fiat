@@ -1,6 +1,5 @@
 Require Import
         Refactor.Basics
-        Refactor.Decompose
         Refactor.TupleToListW
         Refactor.EnsemblesOfTuplesAndListW
         Refactor.CallRules.CallRules.
@@ -8,10 +7,18 @@ Require Import
 Require Import CertifiedExtraction.Benchmarks.QueryStructureWrappers.
 Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
-Require Import CertifiedExtraction.Extraction.Extraction.
-Require Import CertifiedExtraction.ADT2CompileUnit.
-
 Require Import Bedrock.Platform.Facade.CompileUnit2.
+
+Require Export CertifiedExtraction.Extraction.Extraction.
+Require Export CertifiedExtraction.ADT2CompileUnit.
+
+Require Export Refactor.Decompose.
+(* Require Import Fiat.QueryStructure.Automation.MasterPlan. *)
+
+Require Import
+        Bedrock.Memory
+        Bedrock.Platform.Facade.DFModule
+        Bedrock.Platform.Facade.CompileUnit2.
 
 Transparent CallBagMethod.
 Arguments CallBagMethod : simpl never.
@@ -267,26 +274,45 @@ Proof.
   intros * H; rewrite GLabelMapFacts.map_add, H; reflexivity.
 Qed.
 
+Require Import Fiat.CertifiedExtraction.PureFacadeLemmas.
+(* FIXME rename GLabelMapFacts_UWFacts_WFacts_P_update_morphisn *)
+
 Ltac GLabelMap_fast_apply_map :=
   (* This tactic simplifies an expression like [map f (add k1 v1 (add ...))]
      into [add k1 (f v1) (add ...)]. Using setoid_rewrite repeatedly was too
      slow, so it relies on a separate lemma and an evar to do its job. *)
-  match goal with (* Not a lazy match: not all [map]s can be removed *)
-  | [  |- context[GLabelMap.map ?f ?m] ] =>
-    lazymatch type of f with
-    | ?elt -> ?elt' =>
-      let m' := fresh in
-      evar (m' : GLabelMap.t elt');
-      (* This block is essentially [setoid_replace (GLabelMap.map f m) m'] with
-      relation [@GLabelMap.Equal elt'], but it fails before calling the setoid
-      machinery if the relation doesn't actually hold. *)
-      let __eq := fresh in
-      assert (@GLabelMap.Equal elt' (GLabelMap.map f m) m') as __eq;
-      [ unfold m' in *; clear m'; try unfold m;
-        solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] | ];
-      setoid_rewrite __eq; clear __eq
-    end
-  end.
+  etransitivity;
+  [ |
+    match goal with
+    | [  |- GLabelMap.Equal ?ev ?complex_expr ] =>
+      match complex_expr with (* Not a lazy match: not all [GLabelMap.map]s can be removed *)
+      | context Ctx [GLabelMap.map ?f ?m] =>
+        lazymatch type of f with
+        | ?elt -> ?elt' =>
+          let m' := fresh in
+          evar (m' : GLabelMap.t elt');
+          (* This block is essentially [setoid_replace (GLabelMap.map f m) m'] with
+               relation [@GLabelMap.Equal elt'], but it fails before calling the setoid
+               machinery if the relation doesn't actually hold. *)
+          let __eq := fresh in
+          assert (@GLabelMap.Equal elt' (GLabelMap.map f m) m') as __eq;
+          [ unfold m' in *; clear m'; try unfold m;
+            solve [repeat apply GLabelMapFacts_map_add_1; apply GLabelMapFacts.map_empty] | ];
+          (* Now that we have an equality between subtems, plug it in the larger term *)
+          (* This because setoid_rewrite __eq took one hour *)
+          let simpler_term := context Ctx[m'] in
+          unify ev simpler_term;
+          symmetry in __eq;
+          repeat match goal with
+                 | [  |- GLabelMap.Equal ?x ?x ] => reflexivity
+                 | [  |- GLabelMap.Equal (GLabelMapFacts.UWFacts.WFacts.P.update _ _)
+                                        (GLabelMapFacts.UWFacts.WFacts.P.update _ _) ] =>
+                   apply GLabelMapFacts_UWFacts_WFacts_P_update_morphisn
+                 | _ => exact __eq
+                 end
+        end
+      end
+    end ].
 
 Ltac _compile_cleanup_env_helper :=
   GLabelMap_fast_apply_map;

@@ -1,17 +1,3 @@
-Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
-Require Import Bedrock.Memory.
-
-Require Import
-        CertifiedExtraction.Core
-        CertifiedExtraction.FacadeUtils
-        CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.Extraction
-        CertifiedExtraction.Extraction.QueryStructures
-        CertifiedExtraction.ADT2CompileUnit.
-
-Require Import CompileUnit2.
 Require Import Benchmarks.ProcessSchedulerSetup.
 
 (** This file demonstrates the extraction from a Fiat ADT to a Facade
@@ -66,7 +52,7 @@ Definition CUnit
       (Scheduler_DecomposeRep_well_behaved QsADTs.ADTValue _ _ (Scheduler_RepWrapperT _))
       SharpenedRepImpl} .
 Proof.
-  Time _compile QSEnv_Ax.          (* 238s *)
+  Time _compile QSEnv_Ax.          (* 228s *)
 Time Defined.                            (* 185s *)
 
 Eval lazy in (methodBody "Spawn" CUnit).

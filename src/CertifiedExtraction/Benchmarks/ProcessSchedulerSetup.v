@@ -1,28 +1,17 @@
-Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
+Require Export
+        Fiat.QueryStructure.Automation.MasterPlan
+        Fiat.Examples.QueryStructure.ProcessScheduler.
 
-Require Import DFModule CertifiedExtraction.ADT2CompileUnit.
-
-Require Import Fiat.Examples.QueryStructure.ProcessScheduler.
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
-Require Import Bedrock.Memory.
-
-Require Import CompileUnit2.
-
-Require Import
-        CertifiedExtraction.Core
-        CertifiedExtraction.FacadeUtils
-        CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.Extraction.Internal
-        CertifiedExtraction.Extraction.Extraction
+Require Export
         CertifiedExtraction.Extraction.QueryStructures
-        CertifiedExtraction.ADT2CompileUnit.
+        CertifiedExtraction.Benchmarks.QueryStructureWrappers
+        CertifiedExtraction.Extraction.Refactor.QueryStructureWrappersAreConsistent.
 
 Definition UnitSigT (P: unit -> Type) :
   P tt -> sigT P :=
   fun s => existT P tt s.
 
-Ltac _repeat_destruct :=
+Ltac __destruct :=
   match goal with
   | _ => apply UnitSigT
   | [  |- forall idx: Fin.t _, _ ] => eapply IterateBoundedIndex.Lookup_Iterate_Dep_Type; simpl
@@ -32,21 +21,19 @@ Ltac _repeat_destruct :=
   | [  |- unit ] => constructor
   end.
 
-Ltac repeat_destruct :=
-  repeat _repeat_destruct.
+Ltac domWrappers_t :=
+  red; simpl; repeat __destruct; eauto using Good_bool, Good_listW, Good_W.
 
 Definition Scheduler_coDomainWrappers
   : coDomainWrappers QsADTs.ADTValue PartialSchedulerImpl.
 Proof.
-  unfold coDomainWrappers; simpl; repeat_destruct;
-  eauto using Good_bool, Good_listW, Good_W.
+  domWrappers_t.
 Defined.
 
 Definition Scheduler_DomainWrappers
   : domainWrappers QsADTs.ADTValue PartialSchedulerImpl.
 Proof.
-    unfold domainWrappers; simpl; repeat_destruct;
-    eauto using Good_bool, Good_listW, Good_W.
+  domWrappers_t.
 Defined.
 
 Definition QueryStructureRepWrapperT
@@ -94,7 +81,9 @@ Definition SharpenedRepImpl := fst (projT2 SharpenedScheduler).
 Opaque SharpenedRepImpl.
 Definition AbsR' := AbsR SharpenedRepImpl.
 
-Global Transparent CallBagMethod.
+Require Import
+        Bedrock.Platform.Facade.DFModule
+        Bedrock.Platform.Facade.CompileUnit2.
 
 Definition methodBody
            methodName
@@ -121,3 +110,5 @@ Definition methodBody
   | Some dffun => Some (Body (Core (dffun)))
   | None => None
   end.
+
+Global Transparent CallBagMethod.

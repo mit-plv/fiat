@@ -1,4 +1,3 @@
-Require Export Fiat.Computation.Notations. (* FIXME remove *)
 Require Import Refactor.FiatBedrockLemmas.
 Require Import Refactor.CallRules.Core.
 

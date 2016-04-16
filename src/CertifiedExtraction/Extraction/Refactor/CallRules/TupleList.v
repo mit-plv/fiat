@@ -1,4 +1,3 @@
-Require Export Fiat.Computation.Notations. (* FIXME remove *)
 Require Import Refactor.CallRules.Core.
 Require Import CertifiedExtraction.Extraction.External.Loops.
 Require Import CertifiedExtraction.Extraction.External.FacadeLoops.

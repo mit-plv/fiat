@@ -228,8 +228,6 @@ Proof.
   apply (EnsembleIndexedListEquivalence_keepEq_AllOfLength H H0); assumption.
 Qed.
 
-
-
 Lemma EnsembleIndexedListEquivalence_TupleToListW :
   forall n lst ens,
     TuplesF.EnsembleIndexedListEquivalence
@@ -252,7 +250,7 @@ Qed.
 
 Definition FiatEmpty N : FiatBag N := fun _ => False.
 
-Lemma Empty_lift:               (* FIXME is this useful? *)
+Lemma Empty_lift:
   forall N : nat,
     Empty = IndexedEnsemble_TupleToListW (FiatEmpty N).
 Proof.

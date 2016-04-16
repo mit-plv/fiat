@@ -1,4 +1,3 @@
-Require Export Fiat.Computation.Notations. (* FIXME remove *)
 Require Import Refactor.CallRules.Core.
 
 Lemma CompileTuples0_new :
