@@ -1484,8 +1484,9 @@ Section recursive_descent_parser.
         t_reduce_list_evar; [ reflexivity | ].
         set_evars.
         setoid_rewrite list_caset_map.
+        unfold predata in *. (* work around bug #4673, https://coq.inria.fr/bugs/show_bug.cgi?id=4673 *)
         setoid_rewrite item_rect_ritem_rect; cbv beta.
-        setoid_rewrite uneta_bool.
+        try setoid_rewrite uneta_bool.
         subst_evars.
 
         step_opt'; [].
