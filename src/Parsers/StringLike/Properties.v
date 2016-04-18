@@ -17,6 +17,24 @@ Set Implicit Arguments.
 Section String.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
+  (** For use with [induction str using String_rect] *)
+  Definition String_rect (P : String -> Type)
+    : (forall str, length str = 0 -> P str)
+      -> (forall n str (Hlen : length str = S n)
+                 (IHstr : forall str', length str' = n -> P str'),
+             P str)
+      -> forall str, P str.
+  Proof.
+    intros Zcase Scase str.
+    pose (length str) as len.
+    pose proof (eq_refl : length str = len) as Hlen.
+    clearbody len.
+    revert str Hlen.
+    induction len; intros.
+    { eapply Zcase; assumption. }
+    { eapply Scase; eassumption. }
+  Defined.
+
   Definition bool_eq_refl {x : String} : x =s x.
   Proof.
     reflexivity.
