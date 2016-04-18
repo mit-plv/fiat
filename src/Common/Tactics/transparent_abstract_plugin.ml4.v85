@@ -25,26 +25,27 @@ module TRANSPARENT_ABSTRACT =
     let new_exact_no_check c =
       Proofview.Refine.refine ~unsafe:true (fun h -> (h, c))
 
-  (* [tac] : string representing identifier *)
-  (* [args] : tactic arguments *)
-  (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
-  let ltac_lcall tac args =
-    Tacexpr.TacArg(Loc.dummy_loc,Tacexpr.TacCall(Loc.dummy_loc, Misctypes.ArgVar(Loc.dummy_loc, Names.id_of_string tac),args))
+    (* [tac] : string representing identifier *)
+    (* [args] : tactic arguments *)
+    (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+    let ltac_lcall tac args =
+      Tacexpr.TacArg(Loc.dummy_loc,Tacexpr.TacCall(Loc.dummy_loc, Misctypes.ArgVar(Loc.dummy_loc, Names.id_of_string tac),args))
 
-  (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
-  let ltac_letin (x, e1) e2 =
-    Tacexpr.TacLetIn(false,[(Loc.dummy_loc,Names.id_of_string x),e1],e2)
+    (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+    let ltac_letin (x, e1) e2 =
+      Tacexpr.TacLetIn(false,[(Loc.dummy_loc,Names.id_of_string x),e1],e2)
 
-  (* [ltac_apply] : Run a tactic by let binding it... *)
-  let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
-    ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args)
+    (* [ltac_apply] : Run a tactic by let binding it... *)
+    let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
+      ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args)
 
-  (* Lift a constr to an ltac value. *)
-  let to_ltac_val c = Tacexpr.TacDynamic(Loc.dummy_loc, Pretyping.constr_in c)
+    (* Lift a constr to an ltac value. *)
+    let to_ltac_val c = Tacexpr.TacDynamic(Loc.dummy_loc, Pretyping.constr_in c)
 
     (* Build a new definition for [term] with identifier [id] and call *)
-    (* the [tacK] tactic with the result. *)
-    let transparent_abstract_term id (term : Term.constr) tacK gk =
+    (* the [tacK] tactic with the result, using [lcl] to decide if the *)
+    (* definition is local. *)
+    let transparent_abstract_term id (term : Term.constr) tacK gk lcl =
       (* Apply to each goal, normalizing evars in each first. *)
       Proofview.Goal.nf_enter begin
 	  fun gl ->
@@ -98,30 +99,31 @@ module TRANSPARENT_ABSTRACT =
 			 (* bendy: again, not sure how this is used, false appears *)
 			 (* to be the default in the code base.  *)
 			 const_entry_inline_code = false } in
-	    (* Create a global definition for const *)
-	    let cd = Entries.DefinitionEntry constr in
-	    let decl = (cd, IsDefinition Definition) in
-	    (** bendy: Seems okay for new constant to be local, but may have unintended **)
-	    (** consequences if abstracted terms should be accessed outside the proof. **)
-	    let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:true id decl in
-	    let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
-	    (* Get the universe context associated with the evar map [evd] *)
-	    let ectx = Evd.evar_universe_context evd in
-	    (* Universe Variable stuff? *)
-	    let evd = Evd.set_universe_context evd ectx in
-	    (* Build a private constant for the new constant *)
-	    let eff = private_con_of_con (Global.safe_env ()) cst in
-	    (* Add that constant to the private constants *)
-	    let effs = add_private eff
-				   Entries.(snd (Future.force constr.const_entry_body)) in
-	    Proofview.Unsafe.tclEVARS evd <*>
-	      Proofview.tclEFFECTS effs <*>
-	      Tacinterp.eval_tactic (ltac_apply tacK [to_ltac_val df])
+	  (* Create a global definition for const *)
+	  let cd = Entries.DefinitionEntry constr in
+	  let decl = (cd, IsDefinition Definition) in
+	  (** bendy: Seems okay for new constant to be local, but may have unintended **)
+	  (** consequences if abstracted terms should be accessed outside the proof. **)
+	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
+	  let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
+	  (* Get the universe context associated with the evar map [evd] *)
+	  let ectx = Evd.evar_universe_context evd in
+	  (* Universe Variable stuff? *)
+	  let evd = Evd.set_universe_context evd ectx in
+	  (* Build a private constant for the new constant *)
+	  let eff = private_con_of_con (Global.safe_env ()) cst in
+	  (* Add that constant to the private constants *)
+	  let effs = add_private eff
+				 Entries.(snd (Future.force constr.const_entry_body)) in
+	  Proofview.Unsafe.tclEVARS evd <*>
+	    Proofview.tclEFFECTS effs <*>
+	    Tacinterp.eval_tactic (ltac_apply tacK [to_ltac_val df])
 	end
 
     (* Solve the goal [gk] by tactic [tak] and save the constructed term as *)
-    (* a transparent definition with identifier [id].  *)
-    let transparent_abstract_by_tac id tac gk =
+    (* a transparent definition with identifier [id], using [lcl] to decide *)
+    (* if the definition is local.  *)
+    let transparent_abstract_by_tac id tac gk lcl =
       (* Apply to each goal, normalizing evars in each first. *)
       Proofview.Goal.nf_enter begin
 	  fun gl ->
@@ -174,7 +176,7 @@ module TRANSPARENT_ABSTRACT =
  	  let decl = (cd, IsDefinition Definition) in
 	  (** bendy: Seems okay for new constant to be local, but may have unintended **)
 	  (** consequences if abstracted terms should be accessed outside the proof. **)
-	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:true id decl in
+	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
 	  (* Tactic Monad *)
 	  let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
 	  (* Universe Variable stuff? *)
@@ -211,7 +213,7 @@ module TRANSPARENT_ABSTRACT =
 	     with NoCurrentProof -> anon_id, default_gk in
 	   add_suffix name "_term", gk
       in
-      transparent_abstract_by_tac s tac gk
+      transparent_abstract_by_tac s tac gk false
 
     let tclABSTRACTTERM name_op term tacK =
       (* What's the right default goal kind?*)
@@ -226,7 +228,7 @@ module TRANSPARENT_ABSTRACT =
 	     with NoCurrentProof -> anon_id, default_gk in
 	   add_suffix name "_term", gk
       in
-      transparent_abstract_term s term tacK gk
+      transparent_abstract_term s term tacK gk false
   end
 
     (*let tclABSTRACT2 name_op tac gl =
@@ -255,12 +257,12 @@ module TRANSPARENT_ABSTRACT =
     -> [ TRANSPARENT_ABSTRACT.tclTRABSTRACT (Some name) (Tacinterp.eval_tactic tac) ]
 	 END
 
-    TACTIC EXTEND abstracttermas
+	 TACTIC EXTEND abstracttermas
   | [ "cache_term" constr(term) "as" ident(name) "run" tactic(tacK)]  ->
      [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM (Some name) term tacK  ]
        END
 
-  TACTIC EXTEND abstractterm
+       TACTIC EXTEND abstractterm
   | [ "cache_term" constr(term) "run" tactic(tacK) ]  ->
      [ TRANSPARENT_ABSTRACT.tclABSTRACTTERM None term tacK ]
        END;;
