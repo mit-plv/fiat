@@ -238,7 +238,7 @@ Section maybe_empty_correctness.
       | [ |- _ /\ _ ] => split
       | [ |- inhabited _ ] => constructor
       | _ => assumption
-      | _ => constructor; assumption
+      | _ => constructor 1; assumption
       | _ => left; assumption
       | _ => right; assumption
       | [ H : ?A -> ?B |- ?B ] => apply H; clear H
