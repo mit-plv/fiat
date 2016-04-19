@@ -517,8 +517,8 @@ Section only_first_correctness.
       | _ => assumption
       | _ => left; assumption
       | _ => right; assumption
-      | _ => constructor; assumption
-      | _ => solve [ constructor ]
+      | _ => constructor 1; assumption
+      | _ => solve [ constructor 1 ]
       | _ => progress unfold brute_force_parse_nonterminal in *
       | [ ch : Ascii.ascii, H : forall ch : Ascii.ascii, _ |- _ ] => specialize (H ch)
       | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
@@ -559,7 +559,7 @@ Section only_first_correctness.
       | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ (_::_) |- _ ] => ddestruction H
       | _ => right; eauto;
              apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__of__maybe_empty_item;
-             first [ constructor; assumption | reflexivity ]
+             first [ constructor 1; assumption | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_item _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_item__of__minimal_maybe_empty_item in H; [ | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_production _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_production__of__minimal_maybe_empty_production in H; [ | reflexivity ]
       | [ H : MaybeEmpty.Minimal.minimal_maybe_empty_productions _ _ |- _ ] => eapply MaybeEmpty.MinimalOfCore.maybe_empty_productions__of__minimal_maybe_empty_productions in H; [ | reflexivity ]
@@ -708,8 +708,8 @@ Section only_last_correctness.
       | _ => assumption
       | _ => left; assumption
       | _ => right; assumption
-      | _ => constructor; assumption
-      | _ => solve [ constructor ]
+      | _ => constructor 1; assumption
+      | _ => solve [ constructor 1 ]
       | _ => progress unfold brute_force_parse_nonterminal in *
       | [ ch : Ascii.ascii, H : forall ch : Ascii.ascii, _ |- _ ] => specialize (H ch)
       | [ H : ?A, H' : ?A -> ?B |- _ ] => specialize (H' H)
@@ -750,7 +750,7 @@ Section only_last_correctness.
       | [ H : MaybeEmpty.Core.maybe_empty_productions _ _ (_::_) |- _ ] => ddestruction H
       | _ => right; eauto;
              apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__of__maybe_empty_item;
-             first [ constructor; assumption | reflexivity ]
+             first [ constructor 1; assumption | reflexivity ]
       | _ => left;
              solve [ apply MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__of__maybe_empty_production;
                      first [ reflexivity | assumption ]
