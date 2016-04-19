@@ -10,7 +10,7 @@ STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 ifneq (,$(wildcard .git)) # if we're in a git repo
 
 # if the submodule changed, update it
-SUBMODULE_DIFF=$(shell git diff etc/coq-scripts 2>&1)
+SUBMODULE_DIFF=$(shell git diff etc/coq-scripts 2>&1 | grep 'Subproject commit')
 SUBMODULE_DIRTY=$(shell git diff etc/coq-scripts 2>&1 | grep dirty)
 ifneq (,$(SUBMODULE_DIRTY))
 submodule-update::
