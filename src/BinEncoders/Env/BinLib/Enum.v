@@ -39,12 +39,6 @@ Section EnumEncoder.
     inversion Pdec; subst; clear Pdec.
     intuition; subst; eauto.
   Qed.
-
-  Global Instance Enum_decoder predicate
-    : decoder cache btransformer predicate Enum_encode :=
-    { decode := Enum_decode;
-      decode_correct := Enum_encode_correct _ }.
-
 End EnumEncoder.
 
 Arguments Enum_encode {_ _ _ _} _ _ _.

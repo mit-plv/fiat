@@ -1,5 +1,7 @@
 Require Import Coq.Logic.ProofIrrelevance.
 
+Notation "[ n ]" := (exist _ n _).
+
 Lemma sig_equivalence :
   forall (A : Type) (P : A -> Prop) (n m : A) (n_pf : P n) (m_pf : P m),
     n = m <-> exist P n n_pf = exist P m m_pf.

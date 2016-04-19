@@ -48,9 +48,4 @@ Section CharBinEncoder.
   Qed.
 End CharBinEncoder.
 
-Global Instance Char_decoder cache cacheAdd predicate
-  : decoder cache btransformer predicate (@Char_encode cache cacheAdd) :=
-  { decode := @Char_decode cache cacheAdd;
-    decode_correct := @Char_encode_correct _ _ _ }.
-
 Arguments Char_encode {_ _} _ _.

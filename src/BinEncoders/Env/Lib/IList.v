@@ -9,11 +9,13 @@ Set Implicit Arguments.
 Section IListEncoder.
   Variable size : nat.
   Variable A : Type.
+  Variable bin : Type.
   Variable cache : Cache.
-  Variable transformer : Transformer.
+  Variable transformer : Transformer bin.
   Variable A_predicate : A -> Prop.
   Variable A_encode : A -> CacheEncode -> bin * CacheEncode.
-  Variable A_decoder : decoder cache transformer A_predicate A_encode.
+  Variable A_decode : bin -> CacheDecode -> A * bin * CacheDecode.
+  Variable A_decode_pf : encode_decode_correct cache transformer A_predicate A_encode A_decode.
 
   Definition IList := { xs : list A | length xs = size }.
 
@@ -33,7 +35,7 @@ Section IListEncoder.
   Fixpoint IList_decode' (s : nat) (b : bin) (env' : CacheDecode) :=
     match s with
     | O => (nil, b, env')
-    | S s' => let (x1, e1) := decode b env' in
+    | S s' => let (x1, e1) := A_decode b env' in
               let (x, b1) := x1 in
               let (x2, e2) := IList_decode' s' b1 e1 in
               let (xs, b2) := x2 in
@@ -48,7 +50,7 @@ Section IListEncoder.
     abstract (
     generalize dependent b; generalize dependent env';
     induction size; intuition eauto; intuition simpl;
-    destruct (decode b env') as [[? ?] ?]; specialize (IHn c b0);
+    destruct (A_decode b env') as [[? ?] ?]; specialize (IHn c b0);
     destruct (IList_decode' n b0 c); destruct p; simpl; eauto).
   Defined.
 
@@ -56,13 +58,13 @@ Section IListEncoder.
     encode_decode_correct cache transformer IList_predicate IList_encode IList_decode.
   Proof.
     unfold encode_decode_correct, IList_predicate, IList_encode, IList_decode.
-    intros env env' xenv xenv' [l l_pf] [l' l'_pf] bin ext ext' Eeq Ppred Penc Pdec. simpl in *.
+    intros env env' xenv xenv' [l l_pf] [l' l'_pf] bin' ext ext' Eeq Ppred Penc Pdec. simpl in *.
     inversion Penc; clear Penc; inversion Pdec; clear Pdec.
     rewrite <- (sig_equivalence _ (fun xs => length xs = size) l l' l_pf l'_pf).
     generalize dependent size; generalize dependent l';
       generalize dependent env; generalize dependent env';
       generalize dependent xenv; generalize dependent xenv';
-      generalize dependent bin;
+      generalize dependent bin';
       induction l; simpl in *.
 
     intros; destruct l'; simpl in *; try congruence; subst; simpl; inversion H0; subst;
@@ -74,10 +76,10 @@ Section IListEncoder.
     specialize (IHl (fun x pf => Ppred x (or_intror pf))).
     specialize (Ppred a (or_introl eq_refl)).
     destruct (A_encode a env) eqn: ?.
-    destruct (decode (transform bin ext) env') as [[? ?] ?] eqn: ?.
+    destruct (A_decode (transform bin' ext) env') as [[? ?] ?] eqn: ?.
     destruct (IList_encode' l c) eqn: ?. inversion H0; subst; clear H0.
     rewrite <- transform_assoc in Heqp0.
-    pose proof (decode_correct (decoder:=A_decoder) env env' _ _ Eeq Ppred Heqp Heqp0); clear Eeq Ppred Heqp Heqp0.
+    pose proof (A_decode_pf _ Eeq Ppred Heqp Heqp0); clear Eeq Ppred Heqp Heqp0.
     destruct H as [? [? ?]]. subst.
     destruct (IList_decode' (length l) (transform b1 ext) c0) as [[? ?] ?] eqn: ?.
     simpl in *; inversion H1; subst; clear H1.
@@ -86,13 +88,4 @@ Section IListEncoder.
   Qed.
 End IListEncoder.
 
-Global Instance IList_decoder A size cache transformer
-       (A_predicate : A -> Prop)
-       (A_encode : A -> CacheEncode -> bin * CacheEncode)
-       (A_decoder : decoder cache transformer A_predicate A_encode)
-  : decoder cache transformer
-            (IList_predicate A_predicate) (IList_encode cache transformer A_encode) :=
-  { decode := @IList_decode size _  _ _ _ _ _;
-    decode_correct := @IList_encode_correct _ _ _ _ _ _ _ }.
-
-Arguments IList_encode {_ _ _} _ _ _ _.
+Arguments IList_encode {_ _ _ _ _} _ _ _.

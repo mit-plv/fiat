@@ -29,9 +29,4 @@ Section BoolBinEncoder.
   Qed.
 End BoolBinEncoder.
 
-Global Instance Bool_decoder cache cacheAdd predicate
-  : decoder cache btransformer predicate (@Bool_encode cache cacheAdd) :=
-  { decode := @Bool_decode cache cacheAdd;
-    decode_correct := @Bool_encode_correct _ _ _ }.
-
 Arguments Bool_encode {_ _} _ _.

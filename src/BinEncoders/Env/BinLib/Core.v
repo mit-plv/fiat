@@ -3,9 +3,10 @@ Require Import
 
 Set Implicit Arguments.
 
-Definition btransformer : Transformer :=
-  {| bin := list bool;
-     transform := @app _;
+Notation bin := (list bool).
+
+Global Instance btransformer : Transformer bin :=
+  {| transform := @app _;
      transform_id := nil;
      transform_id_left := @app_nil_l _;
      transform_id_right := @app_nil_r _;

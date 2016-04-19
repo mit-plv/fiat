@@ -1,4 +1,4 @@
-Require Import Fiat.BinEncoders.Env.Common.Sig
+(* Require Import Fiat.BinEncoders.Env.Common.Sig
                Fiat.BinEncoders.Env.Common.Compose.
 
 
@@ -76,4 +76,4 @@ Ltac solve_decoder :=
   | |- _ => solve [ eauto_typeclass; solve_decoder ]
   | |- _ => solve [ eapply Enum_decoder; solve_enum ]
   | |- _ => eapply compose_decoder; [ solve_decoder | solve_predicate | intro; solve_decoder ]
-  end.
+  end. *)

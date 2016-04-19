@@ -10,11 +10,13 @@ Set Implicit Arguments.
 Section FixListEncoder.
   Variable size : nat.
   Variable A : Type.
+  Variable bin : Type.
   Variable cache : Cache.
-  Variable transformer : Transformer.
+  Variable transformer : Transformer bin.
   Variable A_predicate : A -> Prop.
   Variable A_encode : A -> CacheEncode -> bin * CacheEncode.
-  Variable A_decoder : decoder cache transformer A_predicate A_encode.
+  Variable A_decode : bin -> CacheDecode -> A * bin * CacheDecode.
+  Variable A_decode_pf : encode_decode_correct cache transformer A_predicate A_encode A_decode.
 
   Definition FixList := { xs : list A | length xs < exp2_nat size }.
 
@@ -45,7 +47,7 @@ Section FixListEncoder.
   Fixpoint FixList_decode' (s : nat) (b : bin) (cd : CacheDecode) : list A * bin * CacheDecode :=
     match s with
     | O => (nil, b, cd)
-    | S s' => let (x1, e1) := decode b cd in
+    | S s' => let (x1, e1) := A_decode b cd in
               let (x, b1) := x1 in
               let (x2, e2) := FixList_decode' s' b1 e1 in
               let (xs, b2) := x2 in
@@ -56,7 +58,7 @@ Section FixListEncoder.
     forall len bin env, length (fst (fst (FixList_decode' len bin env))) = len.
   Proof.
     induction len; intuition eauto.
-    simpl. destruct (decode bin env) as [[? ?] ?].
+    simpl. destruct (A_decode bin0 env) as [[? ?] ?].
     specialize (IHlen b c). destruct (FixList_decode' len b c) as [[? ?] ?]. simpl. f_equal. eauto.
   Qed.
 
@@ -86,7 +88,7 @@ Section FixListEncoder.
       encode_decode_correct cache transformer (FixList_predicate len) FixList_encode (FixList_decode (nat_of_N (proj1_sig len))).
   Proof.
     unfold encode_decode_correct, FixList_predicate, FixList_encode, FixList_decode.
-    intros [len len_pf] env env' xenv xenv' [l l_pf] [l' l'_pf] bin ext ext' Eeq Ppred Penc Pdec. simpl in *.
+    intros [len len_pf] env env' xenv xenv' [l l_pf] [l' l'_pf] bin' ext ext' Eeq Ppred Penc Pdec. simpl in *.
     inversion Penc; clear Penc; inversion Pdec; clear Pdec.
     rewrite <- (sig_equivalence _ (fun xs => length xs < exp2_nat size) l l' l_pf l'_pf).
     assert (min (pred (exp2_nat size)) (N.to_nat len) = N.to_nat len) as pmin.
@@ -96,7 +98,7 @@ Section FixListEncoder.
     destruct Ppred. subst. rewrite Nnat.Nat2N.id in *.
     rewrite pmin in *. clear pmin len_pf l_pf.
     generalize dependent size; generalize dependent env; generalize dependent env';
-      generalize dependent xenv; generalize dependent bin.
+      generalize dependent xenv; generalize dependent bin'.
     induction l; simpl in *.
 
     intros; inversion H0; subst; intuition eauto; rewrite transform_id_left; eauto.
@@ -105,10 +107,10 @@ Section FixListEncoder.
     specialize (IHl (fun x pf => H4 x (or_intror pf))).
     specialize (H4 a (or_introl eq_refl)).
     destruct (A_encode a env) eqn: ?.
-    destruct (decode (transform bin ext) env') as [[? ?] ?] eqn: ?.
+    destruct (A_decode (transform bin' ext) env') as [[? ?] ?] eqn: ?.
     destruct (FixList_encode' l c) eqn: ?. inversion H0; subst; clear H0.
     rewrite <- transform_assoc in Heqp0.
-    pose proof (decode_correct (decoder:=A_decoder) env env' _ _ Eeq H4 Heqp Heqp0); clear Eeq H4 Heqp Heqp0.
+    pose proof (A_decode_pf _ Eeq H4 Heqp Heqp0); clear Eeq H4 Heqp Heqp0.
     destruct H as [? [? ?]]. subst.
     destruct (FixList_decode' (length l) (transform b1 ext) c0) as [[? ?] ?] eqn: ?.
     specialize (IHl b1 xenv c0 c H Heqp1 size0).
@@ -118,15 +120,4 @@ Section FixListEncoder.
   Qed.
 End FixListEncoder.
 
-Global Instance FixList_decoder size A len cache
-       (transformer : Transformer)
-       (A_predicate : A -> Prop)
-       (A_encode : A -> CacheEncode -> bin * CacheEncode)
-       (A_decoder : decoder cache transformer A_predicate A_encode)
-  : decoder cache transformer
-            (FixList_predicate A_predicate len)
-            (FixList_encode cache transformer A_encode) :=
-  { decode := @FixList_decode size _  _ _ _ _ _ (nat_of_N (proj1_sig len));
-    decode_correct := @FixList_encode_correct _ _ _ _ _ _ _ _ }.
-
-Arguments FixList_encode {_ _ _} _ _ _ _.
+Arguments FixList_encode {_ _ _ _ _} _ _ _.

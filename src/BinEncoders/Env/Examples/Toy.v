@@ -1,4 +1,5 @@
 Require Import
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose
         Fiat.BinEncoders.Env.BinLib.Core
@@ -29,25 +30,25 @@ Definition encode_test (t : test_t) (ce : CacheEncode) :=
   compose btransformer (FixInt_encode (f4 t)) (
                        (fun e => (nil, e)))))) ce.
 
-Global Instance test_decoder
-  : decoder test_cache btransformer (fun _ => True) encode_test.
+Definition test_decoder
+  : { decode | encode_decode_correct test_cache btransformer (fun _ => True) encode_test decode }.
 Proof.
-  unfold encode_test.
+  eexists.
+  eapply compose_encode_correct. eapply FixInt_encode_correct. solve_predicate.
+  intro.
+  eapply compose_encode_correct. eapply FixInt_encode_correct. solve_predicate.
+  intro.
+  eapply compose_encode_correct. eapply FixInt_encode_correct. solve_predicate.
+  intro.
+  eapply compose_encode_correct. eapply FixInt_encode_correct. solve_predicate.
+  intro.
+  solve_done.
+Defined.
 
-  eapply compose_decoder; eauto with typeclass_instances; intuition.
-  instantiate (1:=fun _ => True); eauto.
-
-  eapply compose_decoder; eauto with typeclass_instances; intuition.
-  instantiate (1:=fun _ => True); eauto.
-
-  eapply compose_decoder; eauto with typeclass_instances; intuition.
-  instantiate (1:=fun _ => True); eauto.
-
-  eapply compose_decoder; eauto with typeclass_instances; intuition.
-  instantiate (1:=fun _ => True); eauto.
-
-  eexists. unfold encode_decode_correct.
-  instantiate (1:=fun b e => (Build_test_t proj proj0 proj1 proj2, b, e)).
-  intuition. inversion H1. inversion H2. subst. eauto. inversion H2.
-  subst. destruct data. eauto. inversion H1. subst. inversion H2. eauto.
+Definition test_decoder'
+  : list bool -> CacheDecode -> test_t * list bool * CacheDecode.
+Proof.
+  let p' := eval cbv delta [ proj1_sig test_decoder ] beta iota in (proj1_sig test_decoder) in
+                                                                      pose p' as p.
+  exact p.
 Defined.
