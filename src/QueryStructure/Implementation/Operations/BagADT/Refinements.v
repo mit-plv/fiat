@@ -188,8 +188,8 @@ Section BagsQueryStructureRefinements.
   Proof.
     unfold DelegateToBag_AbsR; intros.
     destruct (H idx) as
-        [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
-              [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]];
+        [l [ [ [bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l'] ] ] ]
+              [ [bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l''] ] ] ] ] ];
       eauto.
   Qed.
 
@@ -951,7 +951,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros; unfold CallBagMethod; simpl.
     etransitivity;
-      [ 
+      [
       | rewrite <- refine_Join_Comp_Lists; [reflexivity |
                                             intro;
                                               setoid_rewrite <- (@refine_BagFind_filter _ _ H idx' (BagMatchSearchTerm (ith3 BagIndexKeys idx') (search_pattern a)) (search_pattern a)); [finish honing | intro; reflexivity] ] ].
@@ -980,7 +980,7 @@ Section BagsQueryStructureRefinements.
            ret (snd l))
           (ret v).
   Proof.
-    intros; destruct (H idx) as [l [l_eqv l_eqv']].
+    intros; destruct (H idx) as [l [l_eqv l_eqv'] ].
     Local Transparent CallBagMethod.
     eexists l; unfold CallBagMethod; simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst; eauto.
@@ -1157,8 +1157,8 @@ Section BagsQueryStructureRefinements.
       + rewrite get_update_unconstr_eq, get_update_indexed_eq.
         unfold DelegateToBag_AbsR in H.
         destruct (H idx0) as
-            [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
-                  [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+            [l [ [ [bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l'] ] ] ]
+                  [ [bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l''] ] ] ] ] ].
         exists (filter (fun a => negb (dec a)) l); repeat split.
         * exists bnd; unfold EnsembleDelete, UnConstrFreshIdx; intros.
           inversion H2; subst; eauto.
@@ -1231,8 +1231,8 @@ Section BagsQueryStructureRefinements.
     intros; destruct (fin_eq_dec idx idx0); subst.
     - rewrite get_update_unconstr_eq, get_update_indexed_eq.
       destruct (H idx0) as
-          [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
-                [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+          [l [ [ [bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l'] ] ] ]
+                [ [bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l''] ] ] ] ] ].
       exists (cons t l); repeat split.
       + exists (S freshIdx); unfold EnsembleInsert, UnConstrFreshIdx; intros.
         unfold UnConstrFreshIdx in H0; intuition; subst; simpl; eauto.
@@ -1302,8 +1302,8 @@ Proof.
     intros; destruct (fin_eq_dec idx idx0); subst.
     - rewrite get_update_unconstr_eq, get_update_indexed_eq.
       destruct (H idx0) as
-          [l [[[bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l']]]]
-                [[bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l'']]]]]].
+          [l [ [ [bnd fresh_bnd] [l' [l'_eq [l_eqv NoDup_l'] ] ] ]
+                [ [bnd' fresh_bnd'] [l'' [l''_eq [l''_eqv NoDup_l''] ] ] ] ] ].
       exists (cons t l); repeat split.
       + exists (S freshIdx); unfold EnsembleInsert, UnConstrFreshIdx; intros.
         unfold UnConstrFreshIdx in H0; intuition; subst; simpl; eauto.

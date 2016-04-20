@@ -42,11 +42,11 @@ Proof.
   unfold compose in com_pf.
   destruct (encode1 (project data) env) as [b1 e1] eqn: eq1.
   destruct (encode2 data e1) as [b2 e2] eqn: eq2.
-  destruct (decode1 (transform b1 (transform b2 ext)) env') as [[d1 r1] e1'] eqn: eq1'.
-  destruct (decode1_pf _ _ _ _ _ _ _ _ _ env_pm (pred_pf _ pred_pm) eq1 eq1') as [de [dp dt]].
+  destruct (decode1 (transform b1 (transform b2 ext)) env') as [ [d1 r1] e1'] eqn: eq1'.
+  destruct (decode1_pf _ _ _ _ _ _ _ _ _ env_pm (pred_pf _ pred_pm) eq1 eq1') as [de [dp dt] ].
   inversion com_pf; subst; clear com_pf.
   rewrite <- transform_assoc. rewrite eq1'.
-  destruct (decode2 (project data) (transform b2 ext) e1') as [[d2 r2] e2'] eqn: eq2'.
+  destruct (decode2 (project data) (transform b2 ext) e1') as [ [d2 r2] e2'] eqn: eq2'.
   specialize (decode2_pf (project data)  _ _ _ _ _ _ _ _ _ de (conj pred_pm eq_refl) eq2 eq2').
   inversion 1. subst. intuition.
 Qed.

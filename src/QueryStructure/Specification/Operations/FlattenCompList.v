@@ -116,7 +116,7 @@ Proof.
   induction l; simpl; intros.
   - eexists []; exists v; simpl; intuition.
   -  computes_to_inv; subst.
-     destruct (IHl _ _ H') as [e [e' [v_eq [Comp_l Comp_l']]]].
+     destruct (IHl _ _ H') as [e [e' [v_eq [Comp_l Comp_l'] ] ] ].
      rewrite v_eq.
      eexists (app v0 e), e'; intuition.
      repeat computes_to_econstructor; eauto.

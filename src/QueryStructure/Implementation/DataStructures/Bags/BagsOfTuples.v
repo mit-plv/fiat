@@ -362,7 +362,7 @@ Lemma bupdate_transform_NestedTree :
     bupdate_transform'.
 Proof.
   induction indices; simpl; eauto.
-  destruct a as [attr [[[s | s] | s] | s ]]; simpl in *; eauto.
+  destruct a as [attr [ [ [s | s] | s] | s ] ]; simpl in *; eauto.
 Qed.
 
 Lemma KeyPreservingUpdateFAsUpdateTermOK {heading}
@@ -378,7 +378,7 @@ Lemma KeyPreservingUpdateFAsUpdateTermOK {heading}
 Proof.
   induction indices; simpl; intuition.
   - unfold CountingList_ValidUpdate; auto.
-  - destruct a as [attr [[[s | s] | s] | s ]]; simpl in *.
+  - destruct a as [attr [ [ [s | s] | s] | s ] ]; simpl in *.
     + unfold NTreeBag.IndexedBag_ValidUpdate; intuition.
       eapply (IHindices indices'); eauto.
       rewrite bupdate_transform_NestedTree, <- H1.
@@ -570,7 +570,7 @@ Lemma bdelete_correct_DB_fst {qsSchema}
               (ret (fst (bdelete bag search_term))).
 Proof.
   intros; setoid_rewrite DeletedTuplesFor; auto.
-  destruct equiv_bag as [[[bound ValidBound] [l [eq_bag [NoDup_l equiv_l]]]] RepInv_bag];
+  destruct equiv_bag as [ [ [bound ValidBound] [l [eq_bag [NoDup_l equiv_l] ] ] ] RepInv_bag];
     subst.
   rewrite refine_List_Query_In.
   rewrite refine_List_Query_In_Where, refine_List_For_Query_In_Return_Permutation,

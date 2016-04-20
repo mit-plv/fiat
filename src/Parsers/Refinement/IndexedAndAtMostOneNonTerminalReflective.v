@@ -613,7 +613,7 @@ Section IndexedImpl.
                          | _ => intro
                          | _ => progress subst
                          | [ |- List.In ?x [?y] ] => left
-                         | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+                         | [ |- context[List.map ?f [?x] ] ] => change (List.map f [x]) with [f x]
                          | [ |- context[min ?x ?x] ]
                            => rewrite (Min.min_idempotent x)
                          | _ => reflexivity
@@ -786,7 +786,7 @@ Section IndexedImpl.
       | [ |- context[min ?x ?x] ]
         => rewrite (Min.min_idempotent x)
       | [ |- List.In ?x [?y] ] => left
-      | [ |- context[List.map ?f [?x]] ] => change (List.map f [x]) with [f x]
+      | [ |- context[List.map ?f [?x] ] ] => change (List.map f [x]) with [f x]
       | [ |- _ \/ False ] => left
       | [ H : context[if Compare_dec.leb ?x ?y then _ else _] |- _ ]
         => destruct (Compare_dec.leb x y) eqn:?

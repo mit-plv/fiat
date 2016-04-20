@@ -226,7 +226,7 @@ Lemma refine_List_Query_In {ResultT}
   -> refine (@UnConstrQuery_In ResultT qsSchema qs R resultComp)
             (List_Query_In l resultComp).
 Proof.
-  intros; destruct H as [l' [eq_l_l' [eq_l_R equiv_l_R ]]].
+  intros; destruct H as [l' [eq_l_l' [eq_l_R equiv_l_R ] ] ].
   intros; unfold UnConstrQuery_In, QueryResultComp, List_Query_In;
   rewrite refine_pick_val; unfold UnIndexedEnsembleListEquivalence; eauto.
   simplify with monad laws; subst; reflexivity.

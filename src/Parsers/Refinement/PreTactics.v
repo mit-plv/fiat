@@ -105,7 +105,7 @@ Ltac parser_pull_tac :=
                               | false => ret ?y
                             end] ]
              => rewrite (@pull_match_bool _ _ x y b (fun k => ret k))
-           | [ |- context G[If ?b Then [?x] Else [?y]] ]
+           | [ |- context G[If ?b Then [?x] Else [?y] ] ]
              => rewrite (@pull_If_bool _ _ x y b (fun k => [k]))
            | [ |- context G[If ?b Then ret ?x Else ret ?y] ]
              => rewrite (@pull_If_bool _ _ x y b (fun k => ret k))

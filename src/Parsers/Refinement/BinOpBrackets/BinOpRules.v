@@ -201,7 +201,7 @@ Section refine_rules.
           pose proof (DisjointLemmas.possible_first_terminals_of_production_correct Hvalid pits Hits_valid) as H_first_char.
           apply FirstChar.first_char_in_exists in H_first_char.
           {
-            destruct H_first_char as [ch0 [take_equals in_list]].
+            destruct H_first_char as [ch0 [take_equals in_list] ].
             rewrite terminals in in_list.
             clear terminals.
             set (ls := (a :: l)) in *.
@@ -238,9 +238,9 @@ Section refine_rules.
                | _ => progress subst
              end. *)
       destruct (List.nth n table None) as [idx|].
-      { edestruct Htable as [[Htable0 Htable1] _]; clear Htable; [ reflexivity | ].
+      { edestruct Htable as [ [Htable0 Htable1] _]; clear Htable; [ reflexivity | ].
         left.
-        destruct (Compare_dec.lt_eq_lt_dec idx idx') as [[?|?]|?];
+        destruct (Compare_dec.lt_eq_lt_dec idx idx') as [ [?|?]|?];
           [
           | subst; apply Min.min_r; omega
           | ];
@@ -294,7 +294,7 @@ Section refine_rules.
                         | [ H : min _ _ = _ |- _ ] => revert H; apply Min.min_case_strong; clear; intros; omega
                         | _ => omega
                       end ] ].
-        destruct Htable' as [ch' [Ht0 Ht1]].
+        destruct Htable' as [ch' [Ht0 Ht1] ].
         rewrite substring_length, Min.min_r, NPeano.Nat.add_sub in Hsmall by omega.
         repeat match goal with
                  | _ => rewrite Min.min_idempotent

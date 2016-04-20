@@ -160,11 +160,11 @@ Proof.
   subst; computes_to_econstructor.
   case_eq (Check_Attr_Depend _ _ attr_eq_dec attr_eq_dec' tup l); simpl; intros.
   eapply Check_Attr_Depend_dec; try apply H; eauto.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   eapply in_map; eapply equiv_l_l'; eapply H1.
   unfold not; intros.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   intros.
   apply (in_map_iff indexedRawTuple) in H; destruct_ex;
   intuition; subst.
@@ -195,12 +195,12 @@ Proof.
   unfold tupleAgree in *; intros; apply sym_eq.
   eapply (Check_Attr_Depend_dec _ attr_eq_dec attr_eq_dec'); unfold tupleAgree;
   intros; try apply H; try rewrite H2; eauto.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   eapply in_map; eapply equiv_l_l'; eapply H1.
   unfold not; intros.
   eapply (Check_Attr_Depend_dec' attr_eq_dec attr_eq_dec'); eauto.
   unfold tupleAgree in *; intros.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   apply (in_map_iff indexedRawTuple) in H2; destruct_ex; intuition;
   subst.
   apply sym_eq; apply H1; try eapply H; eauto.
@@ -264,7 +264,7 @@ Proof.
   unfold refine; intros;  computes_to_inv;
   subst; computes_to_econstructor.
   case_eq (Check_List_Ex_Prop DecideableEnsembles.dec l); simpl; intros.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   destruct (Check_List_Ex_Prop_dec DecideableEnsembles.dec P _ dec_decides_P H0);
     intuition.
   apply in_map_iff in H1; destruct_ex; intuition; subst.
@@ -272,7 +272,7 @@ Proof.
   unfold not; intros; eapply Check_List_Ex_Prop_dec';
   eauto using dec_decides_P.
   destruct_ex; intuition; eexists; intuition; try apply H; eauto.
-  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _]]]]; subst.
+  destruct H as [l' [fresh_l' [l'_eq [equiv_l_l' _] ] ] ]; subst.
   eapply in_map; eapply equiv_l_l'; unfold In; eauto.
 Qed.
 
@@ -339,7 +339,7 @@ Proof.
   exists (S bound); unfold In in *; destruct_ex; subst; simpl.
   intros; intuition; subst.
   simpl. omega.
-  destruct H2 as [l' [l'_eq [equiv_l' NoDup_l']]].
+  destruct H2 as [l' [l'_eq [equiv_l' NoDup_l'] ] ].
     econstructor 1 with ({| elementIndex := bound;
                             indexedElement := tup|} :: l'); split; eauto.
   simpl; subst; reflexivity.

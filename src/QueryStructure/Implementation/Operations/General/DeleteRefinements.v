@@ -362,7 +362,7 @@ Section DeleteRefinements.
     unfold UnIndexedEnsembleListEquivalence.
     unfold Query_For in *.
     computes_to_inv.
-    destruct Comp_v as [l [Perm_l_v Comp_v]].
+    destruct Comp_v as [l [Perm_l_v Comp_v] ].
     unfold UnConstrQuery_In, QueryResultComp in *;  computes_to_inv.
     remember (GetUnConstrRelation qs Ridx); clear Heqi.
     revert P_dec i v v0 Perm_l_v Comp_v Comp_v'; clear; induction l; simpl; intros.
@@ -379,7 +379,7 @@ Section DeleteRefinements.
         * constructor.
     - apply Pick_inv in Perm_l_v.
        unfold UnConstrRelation in i.
-       destruct Perm_l_v as [[ | [a' x']] [x_eq [equiv_u_x' NoDup_x']]].
+       destruct Perm_l_v as [ [ | [a' x'] ] [x_eq [equiv_u_x' NoDup_x'] ] ].
        destruct l; simpl in *; try discriminate.
        unfold In in Comp_v; pose (Bind_inv Comp_v); destruct_ex; intuition; subst; computes_to_inv; subst.
        simpl in x_eq; injections.

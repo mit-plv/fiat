@@ -443,14 +443,14 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       rewrite <- ith_imap; eauto.
       apply (Lookup_Iterate_Dep_Type
                  _ (cConstructorsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec) idx).
-        (*as [c [AbsR_c computes_c]].
+        (*as [c [AbsR_c computes_c] ].
       unfold refine; intros; inversion_by computes_to_inv; subst.
       econstructor; eauto. *)
     - simpl; unfold ComputationalADT.cMethods; simpl; intros.
       rewrite <- ith_imap.
       apply (Lookup_Iterate_Dep_Type
                   _ (cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec)).
-        (* as [r_o' [AbsR_r_o' computes_r_o']].
+        (* as [r_o' [AbsR_r_o' computes_r_o'] ].
       unfold refine; intros; inversion_by computes_to_inv; subst;
       econstructor; eauto.
       econstructor; eauto.

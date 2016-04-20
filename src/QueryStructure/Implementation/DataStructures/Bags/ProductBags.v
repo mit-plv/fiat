@@ -118,7 +118,7 @@ Section ProductBag.
     binsert_Preserves_RepInv ProdBag_RepInv ProdBag_binsert.
   Proof.
     unfold binsert_Preserves_RepInv, ProdBag_RepInv.
-    intros container item [repA [repB repP]]; intuition.
+    intros container item [repA [repB repP] ]; intuition.
     - eapply binsert_RepInv; eauto.
     - eapply binsert_RepInv; eauto.
     - eapply perm_trans; [ eapply binsert_enumerate | ]; eauto.
@@ -129,7 +129,7 @@ Section ProductBag.
     bdelete_Preserves_RepInv ProdBag_RepInv ProdBag_bdelete.
   Proof.
     unfold bdelete_Preserves_RepInv, ProdBag_bdelete.
-    intros container st [repA [repB repP]].
+    intros container st [repA [repB repP] ].
     rewrite surjective_pairing with (p:=bdelete (fst container) Prod_st_A).
     rewrite surjective_pairing with (p:=bdelete (snd container) Prod_st_B).
     unfold ProdBag_RepInv; intuition.
@@ -147,7 +147,7 @@ Section ProductBag.
     bupdate_Preserves_RepInv ProdBag_RepInv ProdBag_ValidUpdate ProdBag_bupdate.
   Proof.
     unfold bupdate_Preserves_RepInv, ProdBag_bupdate.
-    intros container st ut [repA [repB repP]] [valA [valB valP]].
+    intros container st ut [repA [repB repP] ] [valA [valB valP] ].
     rewrite surjective_pairing with (p:=bupdate (fst container) Prod_st_A ut).
     rewrite surjective_pairing with (p:=bupdate (snd container) Prod_st_B ut).
     unfold ProdBag_RepInv; intuition.
@@ -169,7 +169,7 @@ Section ProductBag.
     BagInsertEnumerate ProdBag_RepInv ProdBag_benumerate ProdBag_binsert.
   Proof.
     unfold BagInsertEnumerate, ProdBag_benumerate, ProdBag_binsert.
-    intros inserted container [repA [repB repP]]; simpl.
+    intros inserted container [repA [repB repP] ]; simpl.
     eapply binsert_enumerate; eauto.
   Qed.
 
@@ -177,7 +177,7 @@ Section ProductBag.
     BagCountCorrect ProdBag_RepInv ProdBag_bcount ProdBag_bfind.
   Proof.
     unfold ProdBag_bcount, ProdBag_bfind, BagCountCorrect.
-    intros container st [repA [repB repP]].
+    intros container st [repA [repB repP] ].
     destruct Prod_st_choice; eapply bcount_correct; eauto.
   Qed.
 
@@ -192,7 +192,7 @@ Section ProductBag.
     BagFindCorrect ProdBag_RepInv ProdBag_bfind ProdBag_bfind_matcher ProdBag_benumerate.
   Proof.
     unfold ProdBag_bfind, ProdBag_benumerate, ProdBag_bfind_matcher, BagFindCorrect.
-    intros container st [repA [repB repP]].
+    intros container st [repA [repB repP] ].
     destruct Prod_st_choice. eapply bfind_correct; eauto.
     setoid_rewrite repP. eapply bfind_correct; eauto.
   Qed.
@@ -209,7 +209,7 @@ Section ProductBag.
                      ProdBag_benumerate ProdBag_bdelete.
   Proof.
     unfold ProdBag_benumerate, ProdBag_bfind_matcher, ProdBag_bdelete, ProdBag_bfind;
-    hnf; intros container st [repA [repB repP]];
+    hnf; intros container st [repA [repB repP] ];
     rewrite surjective_pairing with (p:=bdelete (fst container) Prod_st_A);
     rewrite surjective_pairing with (p:=bdelete (snd container) Prod_st_B); split.
     - rewrite ListFacts.partition_filter_neq; eapply perm_trans.
@@ -232,7 +232,7 @@ Section ProductBag.
                      ProdBag_benumerate ProdBag_bupdate_transform ProdBag_bupdate.
   Proof.
     unfold ProdBag_benumerate, ProdBag_bfind_matcher, ProdBag_bupdate, ProdBag_bfind, ProdBag_bupdate_transform;
-    hnf; intros container st ut [repA [repB repP]] [valA [valB valP]].
+    hnf; intros container st ut [repA [repB repP] ] [valA [valB valP] ].
     rewrite surjective_pairing with (p:=bupdate (fst container) Prod_st_A ut);
     rewrite surjective_pairing with (p:=bupdate (snd container) Prod_st_B ut); split.
     - rewrite ListFacts.partition_filter_neq; eapply perm_trans.

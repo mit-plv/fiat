@@ -208,14 +208,6 @@ Proof.
   rewrite app_length; computes_to_econstructor.
 Qed.
 
-Definition UnConstrQuery_In {ResultT}
-           {qsSchema}
-           (qs : UnConstrQueryStructure qsSchema)
-           (R : Fin.t _)
-           (bod : RawTuple -> Comp (list ResultT))
-  :=
-    QueryResultComp (GetUnConstrRelation qs R) bod.
-
 Lemma refine_flatten_CompList_func {A B}
   : forall (l : list A) (f f' : A -> Comp (list B)),
     pointwise_relation _ refine f f'

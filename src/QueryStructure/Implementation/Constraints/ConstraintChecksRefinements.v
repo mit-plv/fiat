@@ -581,7 +581,7 @@ Section ConstraintCheckRefinements.
     destruct v0; simpl in *; subst;  computes_to_inv; subst;
     computes_to_constructor; simpl; unfold not;
     unfold MutationPreservesCrossConstraints; intros.
-    - destruct (ForeignKey_P_P H _ H0) as [tup2 [In_tup2 Agree_tup2]].
+    - destruct (ForeignKey_P_P H _ H0) as [tup2 [In_tup2 Agree_tup2] ].
       eexists; intuition eauto.
       unfold EnsembleDelete; constructor; unfold In; intros; eauto.
       unfold Complement, Ensembles.In, not; intros.
@@ -657,7 +657,7 @@ Section ConstraintCheckRefinements.
   Proof.
     intros; apply refine_pick_val; simpl; intros.
     unfold ForeignKey_P in *.
-    destruct (ForeignKey_P_P _ H0) as [tup'' [In_tup'' ?]];
+    destruct (ForeignKey_P_P _ H0) as [tup'' [In_tup'' ?] ];
       exists tup''; unfold EnsembleInsert; intuition.
   Qed.
 
@@ -684,7 +684,7 @@ Proof.
   apply H in H0; unfold Query_Return in *; computes_to_inv; subst;
   simpl in H; exists a; simpl in H1; intuition; eauto.
   apply H2 in H0; subst; simpl in *; contradiction.
-  destruct (IHil _ _ H1 H0') as [a' [In_a' a'_eq]]; exists a'; split; eauto.
+  destruct (IHil _ _ H1 H0') as [a' [In_a' a'_eq] ]; exists a'; split; eauto.
 Qed.
 
 Lemma For_computes_to_In :
@@ -757,7 +757,7 @@ Proof.
     apply flatten_app.
 
   - rewrite map_map in H'0.
-    destruct (In_flatten_CompList P excl x0 (x0_before ++ head :: x0_after) x) as [x1 [In_x1 x1_eq]];
+    destruct (In_flatten_CompList P excl x0 (x0_before ++ head :: x0_after) x) as [x1 [In_x1 x1_eq] ];
       eauto.
     eapply Permutation_in with (l := head :: (x0_before ++ x0_after)).
     eapply Permutation_middle.

@@ -60,6 +60,22 @@ Notation "( x 'in' r '!' Ridx ) bod" :=
    @Query_In _ qs_schema r' Ridx'
             (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QuerySpec_scope.
 
+(* UnConstrained Query Structure query notations *)
+
+Definition UnConstrQuery_In {ResultT}
+           {qsSchema}
+           (qs : UnConstrQueryStructure qsSchema)
+           (R : Fin.t _)
+           (bod : RawTuple -> Comp (list ResultT))
+  := QueryResultComp (GetUnConstrRelation qs R) bod.
+
+Notation "( x 'in' r '!' Ridx ) bod" :=
+  (let qs_schema : QueryStructureSchema := _ in
+   let r' : UnConstrQueryStructure qs_schema := r in
+   let Ridx' := ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames qs_schema) Ridx%string _)) in
+   @UnConstrQuery_In _ qs_schema r' Ridx'
+            (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
+
 (* [Query_Return] returns the singleton list. *)
 Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].
 

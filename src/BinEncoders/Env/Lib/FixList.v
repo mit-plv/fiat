@@ -111,8 +111,8 @@ Section FixListEncoder.
     destruct (FixList_encode' l c) eqn: ?. inversion H0; subst; clear H0.
     rewrite <- transform_assoc in Heqp0.
     pose proof (A_decode_pf _ Eeq H4 Heqp Heqp0); clear Eeq H4 Heqp Heqp0.
-    destruct H as [? [? ?]]. subst.
-    destruct (FixList_decode' (length l) (transform b1 ext) c0) as [[? ?] ?] eqn: ?.
+    destruct H as [? [? ?] ]. subst.
+    destruct (FixList_decode' (length l) (transform b1 ext) c0) as [ [? ?] ?] eqn: ?.
     specialize (IHl b1 xenv c0 c H Heqp1 size0).
     rewrite Heqp in IHl. simpl in *.
     assert (length l0 < exp2_nat size0) by omega.

@@ -340,7 +340,7 @@ Lemma bfind_matcher_eq          (heading : RawHeading)
     = @bfind_matcher _ _ _ _ (NatRangeTreeBag' _ _ projection bupdate_transform).
 Proof.
   repeat (apply functional_extensionality; intros).
-  destruct x as [[[st | ] [st' | ]] st''];
+  destruct x as [ [ [st | ] [st' | ] ] st''];
     unfold NatRangeTreeBag.RangeTreeBag_bfind_matcher,
     NatRangeTreeBag.Range_InRange; simpl;
     unfold NatRangeTreeBag.X_le_dec; simpl;

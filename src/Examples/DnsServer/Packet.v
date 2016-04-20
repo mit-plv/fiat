@@ -142,6 +142,9 @@ Section RRecordTypes.
   Global Instance Query_eq_QType :
     Query_eq QType := {| A_eq_dec := QType_dec |}.
 
+  Definition get_name (r : resourceRecord) := r!sNAME.
+  Definition name_length (r : resourceRecord) := List.length (get_name r).
+
 End RRecordTypes.
 
 Section RRecordClass.

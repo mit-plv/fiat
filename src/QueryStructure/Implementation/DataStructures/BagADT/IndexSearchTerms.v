@@ -157,7 +157,7 @@ Fixpoint MatchIndexSearchTerm {heading}
 
 Tactic Notation "build" "single" "index":=
 repeat match goal with
-         | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns))) []] =>
+         | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns))) [] ] =>
            econstructor 2
          | [ |- ilist (fun ns => SearchUpdateTerms (rawSchemaHeading (relSchema ns)))
                       (?sch :: ?sch') ]=> econstructor 1; [ econstructor | ]

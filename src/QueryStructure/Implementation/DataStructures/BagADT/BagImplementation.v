@@ -120,10 +120,10 @@ Section SharpenedBagImplementation.
     - pose proof (bdelete_correct nr search_term H0); intuition.
       Require Import Fiat.Common.List.ListFacts.
       rewrite partition_filter_neq in H1; symmetry in H1.
-      destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l]].
+      destruct (permutation_filter _ _ _ H1) as [l [l_eq Perm_l] ].
       symmetry in Perm_l.
       destruct (permutation_map_base indexedElement Perm_l _ eqv_or)
-               as [l' [l'_eq Perm_l']].
+               as [l' [l'_eq Perm_l'] ].
       exists (filter (fun a => negb (bfind_matcher search_term (indexedElement a))) l'); repeat split.
       + rewrite <- l_eq, <- l'_eq, filter_map; reflexivity.
       + unfold In, EnsembleDelete; intros.
@@ -228,13 +228,13 @@ Section SharpenedBagImplementation.
       rewrite <- map_app in H2.
       destruct H2 as [H2 H2'].
       pose proof (permu_exists _ H2).
-      destruct H3 as [? [? ?]].
+      destruct H3 as [? [? ?] ].
       exists x.
       intuition.
       + eapply Permutation_in.
         symmetry; apply H4.
         unfold IndexedEnsembleUpdate in H5; unfold In in H5. inversion H5.
-        * destruct H6. destruct H6 as [[? [? ?]] ?].
+        * destruct H6. destruct H6 as [ [? [? ?] ] ?].
           apply in_app_iff; right; apply in_map_iff.
           exists x1; intuition.
           rewrite <- H9. rewrite <- H8; destruct x0; intuition.
@@ -371,7 +371,7 @@ Section SharpenedBagImplementation.
       rewrite partition_filter_neq in H2; symmetry in H2.
       rewrite partition_filter_eq in H3; symmetry in H3.
       pose proof (permutation_double_filter _ _ H3 H2).
-      destruct H1; destruct H1 as [? [? ?]].
+      destruct H1; destruct H1 as [? [? ?] ].
       symmetry in H5. pose proof (permu_exists _ H5); destruct H6; destruct H6.
       pose proof (permutation_map indexedElement ((
                     filter (fun t => negb (bfind_matcher search_term (indexedElement t))) x0) ++
@@ -410,7 +410,7 @@ Section SharpenedBagImplementation.
       repeat rewrite <- H6; rewrite -> Permutation_app_comm; intuition.
       apply bdelete_RepInv; assumption.
       destruct H8. intuition.
-      pose proof (permu_exists _ H9); destruct H10 as [? [? ?]]; clear H9.
+      pose proof (permu_exists _ H9); destruct H10 as [? [? ?] ]; clear H9.
       exists x2.
       intuition.
       + unfold In, IndexedEnsembleUpdate in *.
@@ -483,7 +483,7 @@ Section SharpenedBagImplementation.
       simplify with monad laws.
       intuition.
       pose proof (bfind_correct r_n d H2).
-      destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l]].
+      destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l] ].
       refine pick val (bfind r_n d).
       simplify with monad laws; simpl.
       refine pick val r_n; eauto.
@@ -543,8 +543,8 @@ Section SharpenedBagImplementation.
       rewrite partition_filter_eq in H3.
       rewrite partition_filter_neq in H0.
       symmetry in H0; symmetry in H3.
-      destruct (permutation_filter _ _ _ H0) as [l [l_eq Perm_l]].
-      destruct (permutation_filter _ _ _ H3) as [l' [l'_eq Perm_l']].
+      destruct (permutation_filter _ _ _ H0) as [l [l_eq Perm_l] ].
+      destruct (permutation_filter _ _ _ H3) as [l' [l'_eq Perm_l'] ].
       refine pick val l'.
       simplify with monad laws; simpl.
       refine pick val (snd (bdelete r_n d)).
@@ -565,7 +565,7 @@ Section SharpenedBagImplementation.
       intros; apply CheckUpdatePlusValid in H3; simpl.
       pose proof (H0 H3); destruct H4.
       rewrite partition_filter_eq in H5; symmetry in H5.
-      destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l]].
+      destruct (permutation_filter _ _ _ H5) as [l [l_eq Perm_l] ].
       refine pick val l.
       simplify with monad laws.
       refine pick val (snd (bupdate r_n d d0)).
@@ -577,7 +577,7 @@ Section SharpenedBagImplementation.
       eapply Permutation_EnsembleIndexedListEquivalence; eauto.
       intros G; pose proof (bdelete_correct (CorrectBag:=CorrectBagPlus) r_n d H2).
       destruct H3. rewrite partition_filter_eq in H4; symmetry in H4.
-      destruct (permutation_filter _ _ _ H4) as [l [l_eq Perm_l]].
+      destruct (permutation_filter _ _ _ H4) as [l [l_eq Perm_l] ].
       refine pick val l.
       simplify with monad laws.
       refine pick val (let r := bdelete r_n d in

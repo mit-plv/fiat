@@ -150,7 +150,7 @@ Module NatIPool.
     find idx (fst (proj1_sig pool)).
 
   Definition NatIPool_pput : TPool -> nat -> option TItem -> TPool.
-    intros [[m n] pf].
+    intros [ [m n] pf].
     refine (fun idx t =>
               match t with
               | None   => exist _ (remove idx m, n) _
@@ -175,7 +175,7 @@ Module NatIPool.
     forall pool idx item, NatIPool_pget (NatIPool_pput pool idx item) idx = item.
   Proof.
     unfold NatIPool_pget, NatIPool_pput.
-    intros [[m n] pf] idx item; destruct item eqn: eq; simpl; subst.
+    intros [ [m n] pf] idx item; destruct item eqn: eq; simpl; subst.
     - eapply add_eq_o; eauto.
     - eapply remove_eq_o; eauto.
   Qed.
@@ -186,7 +186,7 @@ Module NatIPool.
       NatIPool_pget (NatIPool_pput pool idx item) idx' = NatIPool_pget pool idx'.
   Proof.
     unfold NatIPool_pget, NatIPool_pput.
-    intros [[m n] pf] idx idx' item; destruct item eqn: eq; simpl; subst; intros.
+    intros [ [m n] pf] idx idx' item; destruct item eqn: eq; simpl; subst; intros.
     - eapply add_neq_o; eauto.
     - eapply remove_neq_o; eauto.
   Qed.
@@ -194,7 +194,7 @@ Module NatIPool.
   Lemma NatIPool_pfresh_correct :
     forall pool, NatIPool_pget pool (NatIPool_pfresh pool) = None.
   Proof.
-    unfold NatIPool_pget, NatIPool_pfresh; intros [[m n] pf]; simpl.
+    unfold NatIPool_pget, NatIPool_pfresh; intros [ [m n] pf]; simpl.
     destruct (find (elt:=TItem) n m) eqn: eq; eauto.
     apply find_2 in eq. apply pf in eq. simpl in eq. omega.
   Qed.
@@ -367,7 +367,7 @@ Section IndexedBag.
         rewrite ListFacts.partition_filter_neq in Hsnd; rewrite (Permutation_in' idx Hsnd) in *.
         rewrite ListFacts.partition_filter_eq in Hfst; symmetry in Hfst.
         apply PermutationFacts.permutation_filter in Hfst.
-        destruct Hfst as [ls [Hfst1 Hfst2]]. rewrite <- Hfst1 in *.
+        destruct Hfst as [ls [Hfst1 Hfst2] ]. rewrite <- Hfst1 in *.
         apply List.filter_In; rewrite (Permutation_in' idx Hfst2).
         specialize (fun H => proj1 (Permutation_in' idx Hfst2) (proj2 (repp idx) H)); clear repp; intro repp.
 

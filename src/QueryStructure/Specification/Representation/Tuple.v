@@ -170,3 +170,12 @@ Definition TupleIndex {heading} (I : @IndexedTuple heading) : nat :=
   elementIndex I.
 Definition indexedTuple {heading} (I : @IndexedTuple heading)
 : @Tuple heading := indexedElement I.
+
+Definition GetAttributeRawBnd {heading : Heading}
+           (tup : @RawTuple heading)
+           (idx : (BoundedIndex (HeadingNames heading)))
+  : Domain heading (ibound (indexb idx)) :=
+  GetAttributeRaw tup (ibound (indexb idx)).
+
+(* Raw tuple field accessor notation *)
+Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.

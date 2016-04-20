@@ -153,7 +153,7 @@ Ltac computes_to_inv :=
              apply Bind_inv in H;
                let a' := fresh "v" in
                let H' := fresh H "'" in
-               destruct H as [a' [H H']]
+               destruct H as [a' [H H'] ]
          end.
 
 Ltac computes_to_econstructor :=

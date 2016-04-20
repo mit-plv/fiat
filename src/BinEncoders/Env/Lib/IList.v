@@ -80,7 +80,7 @@ Section IListEncoder.
     destruct (IList_encode' l c) eqn: ?. inversion H0; subst; clear H0.
     rewrite <- transform_assoc in Heqp0.
     pose proof (A_decode_pf _ Eeq Ppred Heqp Heqp0); clear Eeq Ppred Heqp Heqp0.
-    destruct H as [? [? ?]]. subst.
+    destruct H as [? [? ?] ]. subst.
     destruct (IList_decode' (length l) (transform b1 ext) c0) as [[? ?] ?] eqn: ?.
     simpl in *; inversion H1; subst; clear H1.
     specialize (IHl _ c1 _ _ _ H Heqp1 _ _ eq_refl H2).

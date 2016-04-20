@@ -278,7 +278,7 @@ Module TreeBag (Import M: WS).
             apply in_app_or in H3; destruct H3.
           * pose proof ((proj2 (In_partition _ _ _)) (or_intror H3));
             eapply containerCorrect; eauto.
-          * apply in_map_iff in H3; destruct H3 as [item' [item'_eq In_item']].
+          * apply in_map_iff in H3; destruct H3 as [item' [item'_eq In_item'] ].
             rewrite <- item'_eq in *.
             eapply valid_update'.
             eapply containerCorrect; eauto; eapply In_partition; eauto.
@@ -287,7 +287,7 @@ Module TreeBag (Import M: WS).
       - rewrite fold_pair in H; simpl in H.
         rewrite FMap_Insert_fold_add_map_eq in H.
         rewrite map_mapsto_iff in H;
-        destruct H as [bag' [bag'_eq MapsTo_key0]]; subst.
+        destruct H as [bag' [bag'_eq MapsTo_key0] ]; subst.
         assert (RepInv bag') as WF_bag' by (eapply containerCorrect; eauto).
         destruct valid_update as [valid_update valid_update'].
         pose proof (bupdate_correct bag' s update_term WF_bag' valid_update); intuition.
@@ -296,7 +296,7 @@ Module TreeBag (Import M: WS).
           apply in_app_or in H4; destruct H4.
         + pose proof ((proj2 (In_partition _ _ _)) (or_intror H2));
           eapply containerCorrect; eauto.
-        + rewrite in_map_iff in H2; destruct H2 as [item' [item'_eq In_item']].
+        + rewrite in_map_iff in H2; destruct H2 as [item' [item'_eq In_item'] ].
           rewrite <- item'_eq in *.
           eapply valid_update'.
           eapply containerCorrect; eauto; eapply In_partition; eauto.
@@ -574,15 +574,15 @@ Module TreeBag (Import M: WS).
       repeat rewrite <- elements_mapsto_iff.
       rewrite filter_iff.
       - intuition; intros.
-        + rewrite map_mapsto_iff in H0; destruct H0 as [bag' [eq_bag' filter_k]]; subst.
+        + rewrite map_mapsto_iff in H0; destruct H0 as [bag' [eq_bag' filter_k] ]; subst.
           rewrite map_mapsto_iff; eexists; split; eauto.
           rewrite remove_mapsto_iff; split; eauto.
           unfold not; intros.
           rewrite KeyBasedPartitioningFunction_eq_true in H;
             rewrite H in H1; discriminate.
-        + rewrite map_mapsto_iff in H; destruct H as [bag' [eq_bag' filter_k]]; subst.
+        + rewrite map_mapsto_iff in H; destruct H as [bag' [eq_bag' filter_k] ]; subst.
           rewrite remove_mapsto_iff in filter_k; intuition.
-        + rewrite map_mapsto_iff in H; destruct H as [bag' [eq_bag' filter_k]]; subst.
+        + rewrite map_mapsto_iff in H; destruct H as [bag' [eq_bag' filter_k] ]; subst.
           rewrite remove_mapsto_iff in filter_k; intuition.
           eapply KeyBasedPartitioningFunction_eq_false in H; rewrite H;
           reflexivity.
@@ -669,7 +669,7 @@ Module TreeBag (Import M: WS).
       - intros; rewrite InA_app_iff by eauto using equiv_eq_key_elt.
         repeat rewrite <- elements_mapsto_iff; repeat rewrite map_mapsto_iff.
         intuition.
-        destruct H as [a [? In_k]]; subst.
+        destruct H as [a [? In_k] ]; subst.
         destruct (E.eq_dec key0 k); [ right | left ].
         + eexists a.
           rewrite <- e in *.
@@ -697,7 +697,7 @@ Module TreeBag (Import M: WS).
           rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0);
             eauto using KeyBasedPartitioningFunction_Proper.
           intuition; eapply KeyBasedPartitioningFunction_eq_false; eassumption.
-        + destruct H0 as [a [? MapsTo_k]]; subst.
+        + destruct H0 as [a [? MapsTo_k] ]; subst.
           pose proof (MapsTo_KeyBasedPartition_snd _ _ _ _ MapsTo_k).
           rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0) in MapsTo_k;
             eauto using KeyBasedPartitioningFunction_Proper.
@@ -707,7 +707,7 @@ Module TreeBag (Import M: WS).
           case_eq (KeyFilter key0 a0); simpl; try rewrite <- IHl; eauto.
           intros Filter_key0; apply KeyFilter_true in Filter_key0.
           exfalso; apply H; rewrite <- Filter_key0; eapply H2; eauto.
-        + destruct H0 as [a [? MapsTo_k]]; subst.
+        + destruct H0 as [a [? MapsTo_k] ]; subst.
           pose proof (MapsTo_KeyBasedPartition_fst _ _ _ _ MapsTo_k).
           rewrite partition_iff_1 with (f := KeyBasedPartitioningFunction _ key0) in MapsTo_k;
             eauto using KeyBasedPartitioningFunction_Proper.
@@ -741,13 +741,13 @@ Module TreeBag (Import M: WS).
         rewrite map_mapsto_iff.
         rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0) in H;
           eauto using KeyBasedPartitioningFunction_Proper; intuition.
-        rewrite map_mapsto_iff in H1; destruct H1 as [bag [? In_k]]; subst;
+        rewrite map_mapsto_iff in H1; destruct H1 as [bag [? In_k] ]; subst;
         eexists; split; eauto.
         rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0);
           eauto using KeyBasedPartitioningFunction_Proper; intuition.
       - intros.
         rewrite map_mapsto_iff in H.
-        destruct H as [bag [? In_k]]; subst.
+        destruct H as [bag [? In_k] ]; subst.
         rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0) in In_k;
           eauto using KeyBasedPartitioningFunction_Proper; intuition.
         rewrite partition_iff_2 with (f := KeyBasedPartitioningFunction _ key0);
@@ -773,11 +773,11 @@ Module TreeBag (Import M: WS).
       intros; repeat rewrite <- elements_mapsto_iff;
       rewrite filter_iff; repeat rewrite map_mapsto_iff; intuition;
       eauto using negb_KeyBasedPartitioningFunction_Proper.
-      - destruct H as [bag [? In_k]]; subst; rewrite filter_iff in In_k;
+      - destruct H as [bag [? In_k] ]; subst; rewrite filter_iff in In_k;
         intuition; eauto using negb_KeyBasedPartitioningFunction_Proper.
-      - destruct H as [bag [? In_k]]; subst; rewrite filter_iff in In_k;
+      - destruct H as [bag [? In_k] ]; subst; rewrite filter_iff in In_k;
         intuition; eauto using negb_KeyBasedPartitioningFunction_Proper.
-      - destruct H0 as [bag [? In_k]]; subst.
+      - destruct H0 as [bag [? In_k] ]; subst.
         eexists; split; eauto; rewrite filter_iff;
         intuition; eauto using negb_KeyBasedPartitioningFunction_Proper.
     Qed.
@@ -797,11 +797,11 @@ Module TreeBag (Import M: WS).
       intros; repeat rewrite <- elements_mapsto_iff;
       rewrite filter_iff; repeat rewrite map_mapsto_iff; intuition;
       eauto using KeyBasedPartitioningFunction_Proper.
-      - destruct H as [bag [? In_k]]; subst; rewrite filter_iff in In_k;
+      - destruct H as [bag [? In_k] ]; subst; rewrite filter_iff in In_k;
         intuition; eauto using KeyBasedPartitioningFunction_Proper.
-      - destruct H as [bag [? In_k]]; subst; rewrite filter_iff in In_k;
+      - destruct H as [bag [? In_k] ]; subst; rewrite filter_iff in In_k;
         intuition; eauto using KeyBasedPartitioningFunction_Proper.
-      - destruct H0 as [bag [? In_k]]; subst.
+      - destruct H0 as [bag [? In_k] ]; subst.
         eexists; split; eauto; rewrite filter_iff;
         intuition; eauto using KeyBasedPartitioningFunction_Proper.
     Qed.

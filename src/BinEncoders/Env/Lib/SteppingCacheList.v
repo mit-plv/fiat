@@ -117,19 +117,19 @@ Section SteppingListCacheEncoder.
   Proof.
     generalize dependent b. generalize dependent cd.
     induction f; intros; simpl.
-    { destruct (C_decode b cd) as [[? ?] ?]. destruct c.
-      destruct (B_decode b0 c0) as [[? ?] ?]. destruct (getD cd b1).
+    { destruct (C_decode b cd) as [ [? ?] ?]. destruct c.
+      destruct (B_decode b0 c0) as [ [? ?] ?]. destruct (getD cd b1).
       destruct (SteppingList_ok 0 l). simpl. tauto.
       intuition. intuition.
-      destruct (A_decode b0 c0) as [[? ?] ?]. destruct (A_halt_dec a).
+      destruct (A_decode b0 c0) as [ [? ?] ?]. destruct (A_halt_dec a).
       intuition. intuition. }
-    { destruct (C_decode b cd) as [[? ?] ?]. destruct c.
-      destruct (B_decode b0 c0) as [[? ?] ?]. destruct (getD cd b1).
+    { destruct (C_decode b cd) as [ [? ?] ?]. destruct c.
+      destruct (B_decode b0 c0) as [ [? ?] ?]. destruct (getD cd b1).
       destruct (SteppingList_ok (S f) l).
       intuition. intuition. intuition.
-      destruct (A_decode b0 c0) as [[? ?] ?].
+      destruct (A_decode b0 c0) as [ [? ?] ?].
       specialize (IHf c b1).
-      destruct (SteppingList_decode' f b1 c) as [[? ?] ?].
+      destruct (SteppingList_decode' f b1 c) as [ [? ?] ?].
       destruct (A_halt_dec a).
       intuition. simpl in *. intuition.
       subst. eauto. subst. eauto. }
@@ -151,7 +151,7 @@ Section SteppingListCacheEncoder.
     unfold SteppingList_predicate, SteppingList_encode, SteppingList_decode in *; simpl in *.
     inversion Pdec; subst; clear Pdec.
     rewrite <- sig_equivalence with (P:=fun xs : list A => length xs <= fuel /\ (forall x : A, In x xs -> x <> A_halt)).
-    destruct Ppred as [? [? [? ?]]].
+    destruct Ppred as [? [? [? ?] ] ].
 
     generalize dependent fuel; clear fuel.
     generalize dependent env; generalize dependent env';
@@ -160,36 +160,36 @@ Section SteppingListCacheEncoder.
     { destruct (C_encode No env) eqn: ?.
       destruct (A_encode A_halt c) eqn: ?.
       inversion Penc; subst; clear Penc. rewrite <- !transform_assoc.
-      destruct (C_decode (transform b (transform b0 ext)) env') as [[? ?] ?] eqn: ?.
-      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp1) as [? [? ?]]. subst.
+      destruct (C_decode (transform b (transform b0 ext)) env') as [ [? ?] ?] eqn: ?.
+      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp1) as [? [? ?] ]. subst.
       destruct fuel eqn: ?; simpl; rewrite !Heqp1; clear Heqp1.
-      destruct (A_decode (transform b0 ext) c1) as [[? ?] ?] eqn: ?.
-      pose proof (A_decode_pf _ H3 H Heqp0 Heqp1) as [? [? ?]].
+      destruct (A_decode (transform b0 ext) c1) as [ [? ?] ?] eqn: ?.
+      pose proof (A_decode_pf _ H3 H Heqp0 Heqp1) as [? [? ?] ].
       rewrite <- H5. destruct (A_halt_dec A_halt). intuition. congruence.
-      destruct (A_decode (transform b0 ext) c1) as [[? ?] ?] eqn: ?.
-      pose proof (A_decode_pf _ H3 H Heqp0 Heqp1) as [? [? ?]].
+      destruct (A_decode (transform b0 ext) c1) as [ [? ?] ?] eqn: ?.
+      pose proof (A_decode_pf _ H3 H Heqp0 Heqp1) as [? [? ?] ].
       rewrite <- H5. destruct (A_halt_dec A_halt). intuition. congruence. }
     { destruct fuel as [| fuel']. exfalso. intuition.
       destruct (getE env (a :: l)) eqn: ?.
       destruct (C_encode Yes env) eqn: ?.
       destruct (B_encode b c) eqn: ?.
       inversion Penc; subst; clear Penc. rewrite <- !transform_assoc.
-      destruct (C_decode (transform b0 (transform b1 ext)) env') as [[? ?] ?] eqn: ?.
-      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp1) as [? [? ?]]. subst.
+      destruct (C_decode (transform b0 (transform b1 ext)) env') as [ [? ?] ?] eqn: ?.
+      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp1) as [? [? ?] ]. subst.
       simpl. rewrite !Heqp1. clear Heqp1.
-      destruct (B_decode (transform b1 ext) c1) as [[? ?] ?] eqn: ?.
-      pose proof (B_decode_pf _ H3 (H1 _) Heqp0 Heqp1) as [? [? ?]]. subst.
+      destruct (B_decode (transform b1 ext) c1) as [ [? ?] ?] eqn: ?.
+      pose proof (B_decode_pf _ H3 (H1 _) Heqp0 Heqp1) as [? [? ?] ]. subst.
       rewrite get_correct in Heqo; eauto. rewrite !Heqo.
       destruct (SteppingList_ok (S fuel') (a :: l)); try tauto.
       destruct (C_encode No env) eqn: ?.
       destruct (A_encode a c) eqn: ?.
       destruct (SteppingList_encode' l c0) eqn: ?.
       inversion Penc; subst; clear Penc. rewrite <- !transform_assoc.
-      destruct (C_decode (transform b (transform b0 (transform b1 ext))) env') as [[? ?] ?] eqn: ?.
-      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp2) as [? [? ?]]. subst.
+      destruct (C_decode (transform b (transform b0 (transform b1 ext))) env') as [ [? ?] ?] eqn: ?.
+      pose proof (C_decode_pf _ Eeq (H2 _) Heqp Heqp2) as [? [? ?] ]. subst.
       simpl. rewrite !Heqp2. clear Heqp2.
-      destruct (A_decode (transform b0 (transform b1 ext)) c3) as [[? ?] ?] eqn: ?.
-      pose proof (A_decode_pf _ H3 (H0 a (or_introl eq_refl)) Heqp0 Heqp2) as [? [? ?]]. subst.
+      destruct (A_decode (transform b0 (transform b1 ext)) c3) as [ [? ?] ?] eqn: ?.
+      pose proof (A_decode_pf _ H3 (H0 a (or_introl eq_refl)) Heqp0 Heqp2) as [? [? ?] ]. subst.
       destruct (A_halt_dec a0). exfalso. subst. destruct l_pf. specialize (H6 A_halt (or_introl eq_refl)). congruence.
       assert (forall x : A, In x l -> A_predicate x) by intuition. specialize (IHl H5). clear H5.
       assert (length l <= fuel' /\ (forall x : A, In x l -> x <> A_halt)). split. apply le_S_n. intuition.
@@ -197,7 +197,7 @@ Section SteppingListCacheEncoder.
       assert (length (fst (fst (SteppingList_decode' fuel' (transform b1 ext) c2))) <= fuel' /\
         (forall x : A, In x (fst (fst (SteppingList_decode' fuel' (transform b1 ext) c2))) -> x <> A_halt)) by apply SteppingList_ok_pf.
       specialize (IHl _ _ _ _ H4 Heqp1 fuel'  H5 H6).
-      destruct (SteppingList_decode' fuel' (transform b1 ext) c2) as [[? ?] ?].
+      destruct (SteppingList_decode' fuel' (transform b1 ext) c2) as [ [? ?] ?].
       simpl in IHl. simpl. intuition. subst. erewrite peek_correct. eapply add_correct. eauto. eauto. subst. eauto. }
   Qed.
 End SteppingListCacheEncoder.

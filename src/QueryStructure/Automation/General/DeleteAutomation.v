@@ -48,7 +48,7 @@ Ltac RemoveDeleteFunctionalDependencyCheck :=
                                (Mutate.MutationPreservesCrossConstraints
                                   (@GetUnConstrRelation ?qs_schema ?qs ?Ridx')
                                   (EnsembleDelete (GetUnConstrRelation ?qs ?Ridx) ?DeletedTuples)
-                                  (ForeignKey_P ?attr' ?attr ?tupmap))}]]
+                                  (ForeignKey_P ?attr' ?attr ?tupmap))}] ]
         =>
         let refineFK := fresh in
         pose proof  (@DeleteForeignKeysCheck qs_schema qs Ridx Ridx' DeletedTuples

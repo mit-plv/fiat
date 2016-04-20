@@ -366,7 +366,7 @@ Definition MatchCombineSearchTerm
         List.In st' st /\ Pattern = (fst a, Some st') /\ snd a = None.
   Proof.
     intros.
-    destruct a as [a [ ? | ]]; simpl in *; intuition.
+    destruct a as [a [ ? | ] ]; simpl in *; intuition.
     rewrite in_map_iff in H; destruct_ex; intuition subst; eauto.
   Qed.
 

@@ -517,7 +517,7 @@ Module TrieBag (X:OrderedType).
       unfold bdelete_Preserves_RepInv, TrieBagRepInv;
       intros trie search_term; remember []; clear Heql; revert l.
       unfold TrieBag_bdelete.
-      destruct search_term as [[l | ] s].
+      destruct search_term as [ [l | ] s].
       { eapply Trie_delete_ind; intros; subst.
         - econstructor; inversion containerCorrect; subst; eauto.
           + pose proof (bdelete_RepInv bag search_term) as e'; simpl in *;
@@ -604,7 +604,7 @@ Module TrieBag (X:OrderedType).
       intros trie search_term update_term; remember [];
       clear Heql; revert l.
       unfold TrieBag_bupdate.
-      destruct search_term as [[l | ] s].
+      destruct search_term as [ [l | ] s].
       {
         eapply Trie_update_ind; intros; subst.
       - econstructor; inversion containerCorrect; subst; eauto.
@@ -666,7 +666,7 @@ Module TrieBag (X:OrderedType).
           apply in_app_or in H1; destruct H1.
           * intros; eapply H4.
             rewrite In_partition; eauto.
-          * rewrite in_map_iff in H1; destruct H1 as [item' [item'_eq In_item']].
+          * rewrite in_map_iff in H1; destruct H1 as [item' [item'_eq In_item'] ].
             rewrite <- item'_eq in *.
             destruct valid_update as [valid_update valid_update'].
             eapply valid_update'.
@@ -865,11 +865,11 @@ Module TrieBag (X:OrderedType).
           rewrite Permutation_app_fold_left in H0; apply in_app_or in H0; intuition.
           apply in_app_or in H; intuition.
           destruct a; eauto.
-          destruct IHl as [k [trie' [In_k In_trie]]].
+          destruct IHl as [k [trie' [In_k In_trie] ] ].
           rewrite fold_left_rev_right; eauto.
           eexists; eauto.
           }
-        destruct H1 as [k [trie' [In_k In_trie']]].
+        destruct H1 as [k [trie' [In_k In_trie'] ] ].
         eapply (H k trie' l0); eauto.
         eapply elements_mapsto_iff with (m := XMap.Bst H5).
         eapply InA_In; eauto.
@@ -1919,7 +1919,7 @@ Module TrieBag (X:OrderedType).
       BagFindCorrect TrieBagRepInv TrieBag_bfind TrieBag_bfind_matcher TrieBag_benumerate.
     Proof.
       intros container search_term.
-      destruct search_term as [[st |] search_term].
+      destruct search_term as [ [st |] search_term].
       { unfold TrieBag_bfind.
         rewrite <- (app_nil_l st) at 1.
         unfold TrieBagRepInv; remember [] as l; clear Heql; revert l.
@@ -2118,7 +2118,7 @@ Module TrieBag (X:OrderedType).
                        TrieBag_benumerate TrieBag_bdelete.
     Proof.
       intros container search_term.
-      destruct search_term as [[st | ] search_term].
+      destruct search_term as [ [st | ] search_term].
       { unfold TrieBag_bdelete.
         split.
         {
@@ -2460,7 +2460,7 @@ Module TrieBag (X:OrderedType).
                        TrieBag_benumerate bupdate_transform TrieBag_bupdate.
     Proof.
       intros container search_term.
-      destruct search_term as [[st | ] search_term].
+      destruct search_term as [ [st | ] search_term].
       {
         unfold TrieBag_bupdate.
         split.

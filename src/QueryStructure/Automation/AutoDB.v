@@ -336,7 +336,7 @@ Proof.
     computes_to_econstructor;  computes_to_inv; subst.
     eapply (Lookup_Iterate_Dep_Type); simpl.
     econstructor.
-  - destruct H' as [idx' [Index' Index_eq]]; subst.
+  - destruct H' as [idx' [Index' Index_eq] ]; subst.
     simpl; simplify with monad laws.
     pose proof (IHqschemaSchemas
                   Index'
@@ -353,7 +353,7 @@ Proof.
     revert qschemaSchemas IHqschemaSchemas DelegateReps idx' Index' DelegateImpls ValidImpls
            v0 H H' H0.
     pattern n, idx; apply Fin.caseS; simpl; intros.
-    + destruct (H0) as [r_o' [refines_r_o' AbsR_r_o']].
+    + destruct (H0) as [r_o' [refines_r_o' AbsR_r_o'] ].
       pose proof (refines_r_o' _ (ReturnComputes _)).
       unfold CallBagConstructor in *; simpl in *;  computes_to_inv; subst.
       apply AbsR_r_o'.
@@ -526,7 +526,7 @@ Ltac implement_EnsembleDelete_AbsR find_search_term :=
       |- context[{r_n' | DelegateToBag_AbsR
                            (UpdateUnConstrRelation ?r_o ?idx
                                                    (EnsembleDelete (GetUnConstrRelation ?r_o ?idx)
-                                                                   ?DeletedTuples)) r_n'}]] =>
+                                                                   ?DeletedTuples)) r_n'}] ] =>
     let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
         let idx_search_update_term := eval simpl in (ith3 indices idx) in
             let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
@@ -551,7 +551,7 @@ Ltac implement_Enumerate_filter find_search_term :=
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
       |- context[For (l <- CallBagMethod ?idx BagEmpty ?r_n0 ();
                       (List_Query_In (filter (@DecideableEnsembles.dec _ ?DeletedTuples _) (snd l))
-                                     ?resultComp))]] =>
+                                     ?resultComp))] ] =>
     let filter_dec := eval simpl in (@DecideableEnsembles.dec _ DeletedTuples _) in
         let idx_search_update_term := eval simpl in (ith_Bounded relName indices idx) in
             let search_term_type := eval simpl in (BagSearchTermType idx_search_update_term) in
@@ -633,7 +633,7 @@ Ltac split_filters k :=
       ltac:(fun f' =>
               makeEvar gT ltac:(fun g' =>
                                   apply (@ExtensionalEq_andb _ f g f' g');
-                                [ first [split_filters | k ] | first [split_filters | k]] ))
+                                [ first [split_filters | k ] | first [split_filters | k] ] ))
   | |- ExtensionalEq (fun a => (@?f a)) ?b => k
   end.
 
@@ -1085,7 +1085,7 @@ Ltac implement_bag_constructors :=
              let refines_r_o' := fresh "refines_r_o'" in
              destruct (@refine_BagImplConstructor
                          qs_schema Index DelegateReps DelegateImpls ValidImpls
-                         {|bindex := ridx |} cidx d) as [r_o' [refines_r_o' AbsR_r_o']];
+                         {|bindex := ridx |} cidx d) as [r_o' [refines_r_o' AbsR_r_o'] ];
                setoid_rewrite refines_r_o'; simpl in *; simplify with monad laws; simpl
            end
          end.
@@ -1118,7 +1118,7 @@ Ltac Implement_Bound_Join_Comp_Lists :=
                        ]
                      | etransitivity;
                        [ apply (proj1 (refineEquiv_bind_unit _ _)) | simpl]
-                   ]]; cbv beta; simpl in * )
+                   ] ]; cbv beta; simpl in * )
   end.
 
 Ltac Implement_If_Then_Else :=
@@ -1239,7 +1239,7 @@ Ltac implement_Insert_branches :=
                             (UpdateUnConstrRelation ?r_o ?TableID
                                                     (EnsembleInsert
                                                        {| elementIndex := idx; indexedElement := ?tup |}
-                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}]]
+                                                       (GetUnConstrRelation ?r_o ?TableID))) r_n'}] ]
            => setoid_rewrite (@refine_BagADT_QSInsert _ _ r_o r_n H TableID tup);
              simplify with monad laws; reflexivity
 
@@ -1262,14 +1262,14 @@ Ltac implement_Insert_branches :=
   repeat match goal with
          | [ H : DelegateToBag_AbsR ?r_o ?r_n
              |- context[{idx | UnConstrFreshIdx (GetUnConstrRelation ?r_o ?TableID) idx} >>
-                                                                                         {r_n' | DelegateToBag_AbsR ?r_o r_n'}]]
+                                                                                         {r_n' | DelegateToBag_AbsR ?r_o r_n'}] ]
            => let H' := fresh in
               pose proof H as H';
                 destruct H' as [_ H'];
                 let l := fresh in
                 let bnd := fresh in
                 let fresh_bnd := fresh in
-                destruct (H' TableID) as [l [[bnd fresh_bnd] _]];
+                destruct (H' TableID) as [l [ [bnd fresh_bnd] _] ];
                   refine pick val bnd; eauto;
                   setoid_rewrite refineEquiv_bind_unit;
                   refine pick val r_n; eauto;
@@ -1329,22 +1329,22 @@ Proof.
   simpl.
   eapply (fun P H => Lookup_Iterate_Dep_Type P H midx).
   simpl in *; intuition.
-  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
-  - destruct (H0) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
-  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
-  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
-  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0 t) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
-  - destruct (H0 t t0) as [r_o' [refines_r_o' AbsR_r_o']].
+  - destruct (H0 t t0) as [r_o' [refines_r_o' AbsR_r_o'] ].
     rewrite refines_r_o'; simplify with monad laws.
     eapply H1; eauto.
 Qed.
@@ -1517,9 +1517,9 @@ Lemma Join_Comp_Lists_Impl''
 Proof.
   induction l; unfold Join_Comp_Lists_prod, Join_Comp_Lists_prod'; simpl; intros.
   - eexists; simpl; intuition eauto.
-  - destruct (IHl f' r_n' H) as [r_n'' [? ?]].
+  - destruct (IHl f' r_n' H) as [r_n'' [? ?] ].
     destruct (@refine_BagImplMethods _ _ DelegateReps DelegateImpls ValidImpls _ _ idx H1 BagFind
-                                     (f' a)) as [v' [ref AbsR]].
+                                     (f' a)) as [v' [ref AbsR] ].
     pose proof (ref _ (ReturnComputes _)).
     eexists; intuition eauto.
     computes_to_econstructor; eauto.
@@ -1568,7 +1568,7 @@ Lemma Join_Comp_Lists_Impl'
 Proof.
   intros * AbsR v Comp_v.
   computes_to_inv; subst.
-  destruct (@Join_Comp_Lists_Impl'' qs_schema n Index DelegateReps DelegateImpls ValidImpls heading idx r_n l f' r_n' AbsR) as [r_n'' [? AbsR_r_n'']].
+  destruct (@Join_Comp_Lists_Impl'' qs_schema n Index DelegateReps DelegateImpls ValidImpls heading idx r_n l f' r_n' AbsR) as [r_n'' [? AbsR_r_n''] ].
   computes_to_econstructor; eauto.
 Qed.
 
@@ -2435,13 +2435,13 @@ Ltac insertion CreateTerm EarlyIndex LastIndex
 Ltac method CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
   match goal with
-  | [ |- context[EnsembleInsert _ _]] =>
+  | [ |- context[EnsembleInsert _ _] ] =>
     insertion CreateTerm EarlyIndex LastIndex
               makeClause_dep EarlyIndex_dep LastIndex_dep
-  | [ |- context[Query_For _]] =>
+  | [ |- context[Query_For _] ] =>
     observer CreateTerm EarlyIndex LastIndex
              makeClause_dep EarlyIndex_dep LastIndex_dep
-  | [ |- context[EnsembleDelete _ _]] =>
+  | [ |- context[EnsembleDelete _ _] ] =>
     deletion CreateTerm EarlyIndex LastIndex
              makeClause_dep EarlyIndex_dep LastIndex_dep
   end.

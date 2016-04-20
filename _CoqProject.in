@@ -191,6 +191,8 @@ src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/Decidable.v
 src/Computation/FoldComp.v
+src/Computation/FueledFix.v
+src/Computation/ListComputations.v
 src/Computation/LogicLemmas.v
 src/Computation/Monad.v
 src/Computation/Notations.v
