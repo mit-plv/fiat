@@ -10,6 +10,13 @@ Require Import
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.packet.
 
+Definition default_refresh_time : W := natToWord _ 3600. (* seconds *)
+Definition default_retry_time : W := natToWord _ 600.
+Definition default_expire_time : W := natToWord _ 600.
+(* may cause stack overflow / segfault; use hours instead? *)
+Definition default_minimum_TTL : W := natToWord _ 3600.
+
+
 (* The schema, packet structure, and spec are based on the following four RFCs:
 
 RFC 1034: high-level DNS outline

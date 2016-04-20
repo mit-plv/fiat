@@ -135,10 +135,165 @@ Section BoundedIndex.
       - right; auto using idx_ibound_neq.
     Defined.
 
-    End Bounded_Index_Dec_Eq.
+    Fixpoint fin_beq {m n} (p : Fin.t m) (q : Fin.t n) :=
+      match p, q with
+      | @Fin.F1 m', @Fin.F1 n' => EqNat.beq_nat m' n'
+      | Fin.FS _ _, Fin.F1 _ => false
+      | Fin.F1 _, Fin.FS _ _ => false
+      | Fin.FS _ p', Fin.FS _ q' => fin_beq p' q'
+      end.
+
+    Lemma fin_beq_dec {n}
+      : forall (p : Fin.t n) (q : Fin.t n),
+        fin_beq p q = true <-> p = q.
+    Proof.
+      intros; pattern n, p, q; eapply Fin.rect2; simpl;
+        intuition; try (congruence || discriminate).
+      - symmetry; eapply beq_nat_refl.
+      - eauto using Fin.FS_inj.
+    Qed.
+
+    Corollary fin_beq_neq_dec {n}
+      : forall (p : Fin.t n) (q : Fin.t n),
+        fin_beq p q = false <-> p <> q.
+    Proof.
+      intros; setoid_rewrite <- fin_beq_dec; split;
+        intros; destruct (fin_beq p q); congruence.
+    Qed.
+
+    Corollary fin_beq_refl {m}
+      : forall (p : Fin.t m),
+        fin_beq p p = true.
+    Proof.
+      intros; eapply fin_beq_dec; reflexivity.
+    Qed.
+
+    Corollary fin_beq_sym {n}
+      : forall (p : Fin.t n) (q : Fin.t n),
+        fin_beq p q = fin_beq q p.
+    Proof.
+      intros; case_eq (fin_beq p q); case_eq (fin_beq q p);
+        intros; eauto.
+      - apply fin_beq_neq_dec in H; apply fin_beq_dec in H0;
+          congruence.
+      - apply fin_beq_neq_dec in H0; apply fin_beq_dec in H;
+          congruence.
+    Qed.
+
+    Corollary fin_beq_trans {n}
+      : forall (p q r : Fin.t n),
+        fin_beq p q = true ->
+        fin_beq q r = true ->
+        fin_beq p q = true.
+    Proof.
+      repeat setoid_rewrite fin_beq_dec; congruence.
+    Qed.
+
+    Definition BoundedIndex_beq {n Bound}
+               (idx idx' : BoundedIndex (n := n) Bound)
+      : bool := fin_beq (ibound (indexb idx)) (ibound (indexb idx')).
+
+    Corollary BoundedIndex_beq_dec {n Bound}
+      : forall (idx idx' : BoundedIndex (n := n) Bound),
+        BoundedIndex_beq idx idx' = true <-> idx = idx'.
+    Proof.
+      intros; setoid_rewrite fin_beq_dec; split; intros.
+      - eauto using idx_ibound_eq.
+      - subst; reflexivity.
+    Qed.
+
+    Corollary BoundedIndex_beq_neq_dec {n Bound}
+      : forall (idx idx' : BoundedIndex (n := n) Bound),
+        BoundedIndex_beq idx idx' = false <-> idx <> idx'.
+    Proof.
+      intros; setoid_rewrite <- BoundedIndex_beq_dec; split;
+        intros; destruct (BoundedIndex_beq idx idx'); congruence.
+    Qed.
+
+    Corollary BoundedIndex_beq_refl {m Bound}
+      : forall (p : BoundedIndex (n := m) Bound),
+        BoundedIndex_beq p p = true.
+    Proof.
+      intros; eapply BoundedIndex_beq_dec; reflexivity.
+    Qed.
+
+    Corollary BoundedIndex_beq_sym {n Bound}
+      : forall (p q : BoundedIndex (n := n) Bound),
+        BoundedIndex_beq p q = BoundedIndex_beq q p.
+    Proof.
+      intros; case_eq (BoundedIndex_beq p q); case_eq (BoundedIndex_beq q p);
+        intros; eauto.
+      - apply BoundedIndex_beq_neq_dec in H; apply BoundedIndex_beq_dec in H0;
+          congruence.
+      - apply BoundedIndex_beq_neq_dec in H0; apply BoundedIndex_beq_dec in H;
+          congruence.
+    Qed.
+
+    Corollary BoundedIndex_beq_trans {n Bound}
+      : forall (p q r : BoundedIndex (n := n) Bound),
+        BoundedIndex_beq p q = true ->
+        BoundedIndex_beq q r = true ->
+        BoundedIndex_beq p q = true.
+    Proof.
+      repeat setoid_rewrite BoundedIndex_beq_dec; congruence.
+    Qed.
+
+  End Bounded_Index_Dec_Eq.
 
 End BoundedIndex.
 
+Section BoundedIndexExtensions.
+  (* Helper functions for extending the set of Bounded Indexes *)
+
+  Lemma IndexBound_AppendR {A n m}
+  : forall (Bound : Vector.t A n)
+           (Bound' : Vector.t A m)
+           (idx : Fin.t n),
+    Vector.nth (Vector.append Bound Bound') (Fin.L m idx) =
+    Vector.nth Bound idx.
+  Proof.
+    induction Bound; intros.
+    - inversion idx.
+    - revert Bound IHBound; pattern n, idx; apply Fin.caseS;
+        simpl; intros; eauto.
+  Qed.
+  
+  Definition BoundedIndex_injR {A n Bound m Bound'}
+             (idx : BoundedIndex (A := A) (n := n) Bound)
+    : BoundedIndex (n := n + m) (Vector.append Bound Bound').
+    refine {| bindex := bindex idx;
+              indexb :=  {| ibound := Fin.L _ (ibound (indexb idx))|}
+           |}.
+    (* Abstract Proof Term. *)
+    abstract (rewrite <- (boundi (IndexBound := indexb idx));
+              eapply IndexBound_AppendR).
+  Defined.
+  
+  Lemma IndexBound_AppendL {A n m}
+    : forall (Bound : Vector.t A n)
+             (Bound' : Vector.t A m)
+             (idx : Fin.t n),
+      Vector.nth (Vector.append Bound' Bound) (Fin.R m idx) =
+      Vector.nth Bound idx.
+  Proof.
+    induction Bound'; intros.
+    - reflexivity.
+    - simpl; eauto.
+  Qed.
+  
+  Definition BoundedIndex_injL {A n Bound m Bound'}
+             (idx : BoundedIndex (A := A) (n := n) Bound)
+    : BoundedIndex (n := m + n) (Vector.append Bound' Bound).
+    refine {| bindex := bindex idx;
+              indexb :=  {| ibound := Fin.R _ (ibound (indexb idx))|}
+           |}.
+    (* Abstract Proof Term. *)
+    abstract (rewrite <- (boundi (IndexBound := indexb idx));
+              eapply IndexBound_AppendL).
+  Defined.
+
+End BoundedIndexExtensions.
+  
 Ltac Build_nth_IndexBound n A a As As' m :=
   match n with
   | S ?n' =>

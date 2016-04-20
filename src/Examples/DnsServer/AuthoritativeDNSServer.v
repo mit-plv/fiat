@@ -28,6 +28,14 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
+Definition DnsSchema :=
+  Query Structure Schema
+        [ relation sRRecords has
+                   schema resourceRecordHeading
+          where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME) ]
+        (* constraint on every pair of tuples: an ip address cannot have multiple aliases *)
+        enforcing [ ].
+
 Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" : rep := empty,

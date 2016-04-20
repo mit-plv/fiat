@@ -9,10 +9,9 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
-        Fiat.QueryStructure.Automation.QSImplementation.
-
-Require Import Fiat.Examples.DnsServer.DnsSchema
-        Fiat.Examples.DnsServer.packet.
+        Fiat.QueryStructure.Automation.QSImplementation
+        Fiat.Examples.DnsServer.Packet
+        Fiat.Examples.DnsServer.FueledFix.
 
 Open Scope list_scope.
 
@@ -27,7 +26,6 @@ Definition UpperBound {A : Type}
 
 Definition Unique {B} (P : Ensemble B) :=
   {b' | forall b : B, b' = Some b <-> P b}.
-
 
 Section FueledFix.
   (* TODO: Find a home for these more definitions in the Common folder. *)
@@ -50,11 +48,7 @@ as the condition on the body is not a proper relation. :p *)
    proper (i.e. reflexive and transitive) relation.
  *)
 
-Definition pointwise_refine {A R}
-  (f g : (A -> Comp R) -> A -> Comp R) :=
-  forall (rec rec' : A -> Comp R) (a : A),
-    pointwise_relation A (@refine R) rec rec'
-    -> refine (f rec a) (g rec' a).
+
 
 (*Lemma reflexive_pR {A R : Type} :
   forall A R, Reflexive (@pointwise_refine A R).
@@ -181,7 +175,6 @@ Notation "tup '!' idx" := (GetAttributeRaw tup ``idx) : TupleImpl_scope.
 
 (* First, lemmas that help with honing the AddData method in DnsManual. They're related to implementing the data constraint (on DnsSchema) as a query. *)
 
-
 (* if the record's type isn't CNAME, there's no need to check against the other records;
 it's independent of the other records *)
 
@@ -250,7 +243,6 @@ Proof.                          (* same proof as refine_is_CNAME__forall_to_exis
     | _ => progress first [ intro | computes_to_econstructor | simpl; intuition; eauto ]
          end.
 Qed.
-
 
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
