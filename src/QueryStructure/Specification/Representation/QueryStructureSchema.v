@@ -12,6 +12,8 @@ Require Export
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.Relation.
 
+Import Coq.Vectors.VectorDef.VectorNotations.
+
 (* A Query Structure schema is a set of named relation
    schemas and a set of cross-relation constraints
    (i.e. foreign key constraints). *)
@@ -91,7 +93,6 @@ Notation "'relation' name 'has' sch " :=
 
 Notation "[ rel1 ; .. ; reln ]" :=
   (@Vector.cons _ rel1 _ (.. (@Vector.cons _ reln _ (Vector.nil _)) .. )) : NamedSchema_scope.
-
 
 Bind Scope NamedSchema_scope with NamedSchema.
 

@@ -49,7 +49,7 @@ Section ListComprehension.
 
 End ListComprehension.
 
-Notation "[[ x 'in' xs | P ]]" :=
+Notation "⟦ x 'in' xs | P ⟧" :=
   (FilteredList (fun x => P) xs) : comp_scope.
 
 Section UpperBound.

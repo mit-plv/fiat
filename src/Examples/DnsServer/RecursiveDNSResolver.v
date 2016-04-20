@@ -13,7 +13,7 @@ Require Import Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
 
 Require Import
-        Fiat.Examples.DnsServer.packet
+        Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas.
 
 Require Import Fiat.Examples.DnsServer.DnsSchema_new.

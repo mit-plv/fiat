@@ -26,7 +26,9 @@ Require Import Coq.Bool.Bool
 
 Section BagsQueryStructureRefinements.
 
-  Require Import         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
+  Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
+  Locate "[ _ ; _ ; .. ; _ ]".
+
   Definition fooT :=
     forall
       (sBOOKS := "Books")
@@ -54,7 +56,7 @@ Section BagsQueryStructureRefinements.
                   [{| KindIndexKind := StringId1; KindIndexIndex := m |};
                   {|
                   KindIndexKind := StringId1;
-                  KindIndexIndex := n |}] :
+                  KindIndexIndex := n |}]%vector :
             Type)
     (SearchTerm0 := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
                    [{|
@@ -213,7 +215,7 @@ Section BagsQueryStructureRefinements.
       -> forall (idx : Fin.t _)
                 (resultComp : RawTuple -> Comp (list ResultT)),
            refine (UnConstrQuery_In r_o idx resultComp)
-                  (l <- Join_Comp_Lists [ inil2 ]
+                  (l <- Join_Comp_Lists (inil2::nil)
                      (fun _ =>
                         l <- CallBagEnumerate idx r_n;
                       (ret (snd l)));
@@ -263,7 +265,7 @@ Section BagsQueryStructureRefinements.
       -> forall (idx : Fin.t _)
                 (resultComp : RawTuple -> Comp (list ResultT)),
            refine (UnConstrQuery_In r_o idx resultComp)
-                  (l <- Join_Filtered_Comp_Lists [ inil2 ]
+                  (l <- Join_Filtered_Comp_Lists (inil2::nil)
                      (fun _ =>
                         l <- CallBagEnumerate idx r_n;
                       (ret (snd l)))
@@ -1077,7 +1079,7 @@ Section BagsQueryStructureRefinements.
 
   Lemma refineEquiv_Join_Comp_Lists_Build_single_Tuple_list
   : forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx,
-      refineEquiv (Join_Comp_Lists [inil2 (B := @RawTuple)]
+      refineEquiv (Join_Comp_Lists ((inil2 (B := @RawTuple))::nil)
                                    (fun _ : ilist2 (B:= @RawTuple) [] =>
                                       l <- CallBagEnumerate idx r_n ;
                                     ret (snd l)))

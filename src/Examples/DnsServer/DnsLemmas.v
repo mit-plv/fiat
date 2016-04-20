@@ -16,11 +16,6 @@ Open Scope list_scope.
 
 Definition is_empty {A} (l : list A) :=
   match l with nil => true | _ => false end.
-
-
-
-(* -------------------------------------------------------------------------------------- *)
-
 (* Refinement lemmas *)
 
 (* First, lemmas that help with honing the AddData method in DnsManual. They're related to implementing the data constraint (on DnsSchema) as a query. *)
@@ -619,7 +614,6 @@ Proof.
   destruct H1; intuition.
 Qed.
 
-Transparent FueledFix.
 Opaque Query_For.
 
 (* ------------------------------ *)
@@ -978,23 +972,4 @@ assert (List.In {| elementIndex := idx; indexedElement := t |} x').
   assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
   { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15;  apply H15.
-Qed.
-
-(* -------------------------------------------------------------------------------------- *)
-
-(* Unused for now *)
-
-Lemma refine_If_Then_Else_same'
-  : forall (A B : Type) i (t : Comp A) (b : A -> A) (c : A) (r_n : B),
-    refine
-      (If i Then (a <- t;
-                  ret (r_n, b a))
-          Else (ret (r_n, c)))
-      (res <- If i Then (a <- t;
-                         ret (b a))
-           Else (ret c);
-       ret (r_n, res)).
-Proof.
-  intros; destruct i; simpl;
-  autosetoid_rewrite with refine_monad; reflexivity.
 Qed.

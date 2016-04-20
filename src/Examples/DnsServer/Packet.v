@@ -104,14 +104,14 @@ Section RRecordTypes.
 
   (* DNS packet Query Types are a superset of RR Types. *)
   Definition QTypes :=
-       ["TKEY"; (* Transaction Key 	[RFC2930] *)
+    ["TKEY"; (* Transaction Key 	[RFC2930] *)
        "TSIG"; (* Transaction Signature 	[RFC2845] *)
        "IXFR"; (* incremental transfer 	[RFC1995] *)
        "AXFR"; (* transfer of an entire zone 	[RFC1035][RFC5936] *)
        "MAILB"; (* mailbox-related RRs (MB, MG or MR) 	[RFC1035] *)
        "MAILA"; (* mail agent RRs (OBSOLETE - see MX) 	[RFC1035] *)
        "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
-       ]%vector.
+    ]%vector.
 
   Definition QType := BoundedString (Vector.append RRecordTypes QTypes)%vector.
 
@@ -141,9 +141,6 @@ Section RRecordTypes.
   (* Instances used in DecideableEnsemble. *)
   Global Instance Query_eq_QType :
     Query_eq QType := {| A_eq_dec := QType_dec |}.
-
-  Definition get_name (r : resourceRecord) := r!sNAME.
-  Definition name_length (r : resourceRecord) := List.length (get_name r).
 
 End RRecordTypes.
 
@@ -190,17 +187,17 @@ Section ResponseCode.
 
   Definition ResponseCodes :=
     ["NoError";  (* No Error [RFC1035] *)
-     "FormErr";  (* Format Error [RFC1035] *)
-     "ServFail"; (* Server Failure [RFC1035] *)
-     "NXDomain"; (* Non-Existent  Domain 	[RFC1035] *)
-     "NotImp";   (* Not Implemented [RFC1035] *)
-     "Refused";  (* Query Refused [RFC1035] *)
-     "YXDomain"; (* Name Exists when it should not [RFC2136][RFC6672] *)
-     "YXRRSet";  (* RR Set Exists when it should not 	[RFC2136] *)
-     "NXRRSet";  (* RR Set that should exist does not 	[RFC2136] *)
-     "NotAuth";  (* Server Not Authoritative for zone 	[RFC2136] *)
-     "NotAuth";  (* Not Authorized [RFC2845] *)
-     "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
+       "FormErr";  (* Format Error [RFC1035] *)
+       "ServFail"; (* Server Failure [RFC1035] *)
+       "NXDomain"; (* Non-Existent  Domain 	[RFC1035] *)
+       "NotImp";   (* Not Implemented [RFC1035] *)
+       "Refused";  (* Query Refused [RFC1035] *)
+       "YXDomain"; (* Name Exists when it should not [RFC2136][RFC6672] *)
+       "YXRRSet";  (* RR Set Exists when it should not 	[RFC2136] *)
+       "NXRRSet";  (* RR Set that should exist does not 	[RFC2136] *)
+       "NotAuth";  (* Server Not Authoritative for zone 	[RFC2136] *)
+       "NotAuth";  (* Not Authorized [RFC2845] *)
+       "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
     ]%vector.
 
   Definition ResponseCode := BoundedString ResponseCodes.
@@ -254,7 +251,7 @@ Section SOA.
     if (list_eq_dec string_dec a b) then true else false.
 
   Lemma beq_name_dec
-  : forall (a b : name), beq_name a b = true <-> a = b.
+    : forall (a b : name), beq_name a b = true <-> a = b.
   Proof.
     unfold beq_name; intros; find_if_inside; intuition; intros; congruence.
   Qed.
@@ -267,12 +264,12 @@ Section SOA.
   (* https://support.microsoft.com/en-us/kb/163971 *)
   Definition SOAHeading :=                 (* Start of Authority *)
     < "sourcehost" :: name,
-      "contact_email" :: name,
-      "serial" :: timeT,             (* revision # of zone file; needs to be updates *)
-      "refresh" :: timeT,
-      "retry" :: timeT,              (* failed zone transfer *)
-      "expire" :: timeT,           (* complete a zone transfer *)
-      "minTTL" :: timeT >%Heading.           (* for negative queries *)
+    "contact_email" :: name,
+    "serial" :: timeT,             (* revision # of zone file; needs to be updates *)
+    "refresh" :: timeT,
+    "retry" :: timeT,              (* failed zone transfer *)
+    "expire" :: timeT,           (* complete a zone transfer *)
+    "minTTL" :: timeT >%Heading.           (* for negative queries *)
 
   Definition SOA :=                 (* Start of Authority *)
     @Tuple SOAHeading.           (* for negative queries *)
@@ -300,10 +297,10 @@ Section Packet.
 
   Definition resourceRecordHeading :=
     < sNAME :: name,
-      sTTL :: timeT,
-      sCLASS :: RRecordClass,
-      sTYPE :: RRecordType,
-      sRDATA :: name>%Heading.
+    sTTL :: timeT,
+    sCLASS :: RRecordClass,
+    sTYPE :: RRecordType,
+    sRDATA :: name>%Heading.
 
   (* Binary Format of DNS Header:
                               1  1  1  1  1  1
@@ -323,7 +320,7 @@ Section Packet.
 +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
    *)
 
-(* DNS Packet Layout:
+  (* DNS Packet Layout:
 +---------------------+
 |        Header       |
 +---------------------+
@@ -335,7 +332,7 @@ Section Packet.
 +---------------------+
 |      Additional     |
 +---------------------+
-*)
+   *)
 
   Definition resourceRecord := @Tuple resourceRecordHeading.
 
@@ -355,29 +352,32 @@ Section Packet.
     "authority" :: list resourceRecord,
     "additional" :: list resourceRecord >.
 
-Definition buildempty (is_authority : bool) (p : packet) :=
-  p ○ [ "AA" ::= WS is_authority WO; (* Update Authority field *)
-        "QR" ::= WS true WO; (* Set response flag to true *)
-        "answers" ::= [ ];
-        "authority"  ::= [ ];
-        "additional" ::= [ ] ].
+  Definition buildempty (is_authority : bool) (p : packet) :=
+    p ○ [ "AA" ::= WS is_authority WO; (* Update Authority field *)
+            "QR" ::= WS true WO; (* Set response flag to true *)
+            "answers" ::= [ ];
+            "authority"  ::= [ ];
+            "additional" ::= [ ] ].
 
-(* add a resource record to a packet's answers *)
-Definition add_answer (p : packet) (t : resourceRecord) :=
-  p ○ [o !! "answers" / t :: o].
+  (* add a resource record to a packet's answers *)
+  Definition add_answer (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "answers" / t :: o].
 
-(* add a resource record authority to a packet's authorities
+  (* add a resource record authority to a packet's authorities
    (ns = name server). *)
-Definition add_ns (p : packet) (t : resourceRecord) :=
-  p ○ [o !! "authority" / t :: o].
+  Definition add_ns (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "authority" / t :: o].
 
-(* combine with above? *)
-Definition add_additional (p : packet) (t : resourceRecord) :=
-  p ○ [o !! "additional" / t :: o].
+  (* combine with above? *)
+  Definition add_additional (p : packet) (t : resourceRecord) :=
+    p ○ [o !! "additional" / t :: o].
 
-Definition updateRecords (p : packet) answers' authority' additional' :=
-  p ○ ["answers" ::= answers';
-         "authority" ::= authority';
-         "additional" ::= additional'].
+  Definition updateRecords (p : packet) answers' authority' additional' :=
+    p ○ ["answers" ::= answers';
+           "authority" ::= authority';
+           "additional" ::= additional'].
+
+  Definition get_name (r : resourceRecord) := r!sNAME.
+  Definition name_length (r : resourceRecord) := List.length (get_name r).
 
 End Packet.

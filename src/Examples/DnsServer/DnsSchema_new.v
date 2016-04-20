@@ -8,7 +8,7 @@ Require Import Coq.Vectors.Vector
 
 Require Import
         Fiat.QueryStructure.Automation.AutoDB
-        Fiat.Examples.DnsServer.packet.
+        Fiat.Examples.DnsServer.Packet.
 
 Definition default_refresh_time : W := natToWord _ 3600. (* seconds *)
 Definition default_retry_time : W := natToWord _ 600.
