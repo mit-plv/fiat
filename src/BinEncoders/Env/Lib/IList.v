@@ -30,6 +30,42 @@ Section IListEncoder.
                       (transform b1 b2, env2)
     end.
 
+  Definition IList_body := (fun (acc: bin * CacheEncode) x =>
+                             let (bacc, env) := acc in
+                             let (b1, env1) := A_encode x env in
+                             (transform bacc b1, env1)).
+
+  Lemma IList_body_characterization :
+    forall xs base env,
+      fold_left IList_body xs (base, env) =
+      (let (b2, env2) := fold_left IList_body xs (transform_id, env) in
+       (transform base b2, env2)).
+  Proof.
+    induction xs; simpl.
+    + setoid_rewrite transform_id_right; reflexivity.
+    + intros.
+      destruct (A_encode a env).
+      rewrite IHxs, transform_id_left, (IHxs b).
+      destruct (fold_left _ _ _).
+      rewrite transform_assoc.
+      reflexivity.
+  Qed.
+
+  Lemma IList_encode'_as_foldl :
+    forall xs env,
+      IList_encode' xs env =
+      fold_left IList_body xs (transform_id, env).
+  Proof.
+    induction xs; simpl.
+    + reflexivity.
+    + intros; destruct (A_encode a env).
+      rewrite IHxs.
+      rewrite transform_id_left.
+      rewrite (IList_body_characterization xs b c).
+      destruct (fold_left _ _ _).
+      reflexivity.
+  Qed.
+
   Definition IList_encode (l : IList) := IList_encode' (proj1_sig l).
 
   Fixpoint IList_decode' (s : nat) (b : bin) (env' : CacheDecode) :=
