@@ -60,7 +60,7 @@ Notation "[ attr1 ; attr2 ; .. ; attrn ] " :=
   (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr1%string _)))
         (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr2%string _)))
               .. (cons
-                    (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attrn%string _)))) nil) ..)
+                    (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attrn%string _)))) nil) ..))
    : SchemaConstraints_scope.
 
 Definition FunctionalDependency_P
