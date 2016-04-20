@@ -53,7 +53,7 @@ Definition UniqueAttribute {heading}
 
 Notation "[ attr ] " :=
   (cons
-     (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr2%string _)))) nil)
+     (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr%string _)))) nil)
   : SchemaConstraints_scope.
 
 Notation "[ attr1 ; attr2 ; .. ; attrn ] " :=
