@@ -51,11 +51,17 @@ Definition UniqueAttribute {heading}
            (attr : BoundedString (HeadingNames heading)) :=
   UniqueAttribute' (ibound (indexb attr)).
 
-Notation "[ attr1 ; .. ; attr2 ] " :=
-  (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr1%string _)))
-        .. (cons
-                 (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr2%string _)))) nil) ..)
+Notation "[ attr ] " :=
+  (cons
+     (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr2%string _)))) nil)
   : SchemaConstraints_scope.
+
+Notation "[ attr1 ; attr2 ; .. ; attrn ] " :=
+  (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr1%string _)))
+        (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr2%string _)))
+              .. (cons
+                    (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attrn%string _)))) nil) ..)
+   : SchemaConstraints_scope.
 
 Definition FunctionalDependency_P
            (hHint : RawHeading)

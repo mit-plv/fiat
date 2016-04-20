@@ -340,8 +340,11 @@ End Messages.
 (* Notation to automatically inject subtopics into TopicIDs in SubMessage*)
 Delimit Scope SubMessage_scope with SubMessage.
 
-Notation "[ msg1 ; .. ; msgn ]" :=
-  (cons (``(``(msg1%string))) .. (cons (``(``(msgn%string))) nil) ..) : SubMessage_scope.
+Notation "[ msg ]" :=
+  (cons (``(``(msgn%string))) nil) : SubMessage_scope.
+
+Notation "[ msg1 ; msg2 ; .. ; msgn ]" :=
+  (cons (``(``(msg1%string))) (cons (``(``(msg2%string))) .. (cons (``(``(msgn%string))) nil) ..)) : SubMessage_scope.
 
 (*Global Arguments SubMessage {Topics topics} subtopics%SubMessage msg.*)
 
