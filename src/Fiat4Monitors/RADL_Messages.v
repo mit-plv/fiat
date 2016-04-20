@@ -341,7 +341,7 @@ End Messages.
 Delimit Scope SubMessage_scope with SubMessage.
 
 Notation "[ msg ]" :=
-  (cons (``(``(msgn%string))) nil) : SubMessage_scope.
+  (cons (``(``(msg%string))) nil) : SubMessage_scope.
 
 Notation "[ msg1 ; msg2 ; .. ; msgn ]" :=
   (cons (``(``(msg1%string))) (cons (``(``(msg2%string))) .. (cons (``(``(msgn%string))) nil) ..)) : SubMessage_scope.

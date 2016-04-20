@@ -90,7 +90,7 @@ Notation "'relation' name 'has' sch " :=
   |} : NamedSchema_scope.
 
 Notation "[ rel ]" :=
-  (@Vector.cons _ reln _ (Vector.nil _)) : NamedSchema_scope.
+  (@Vector.cons _ rel _ (Vector.nil _)) : NamedSchema_scope.
 
 Notation "[ rel1 ; rel2 ; .. ; reln ]" :=
   (@Vector.cons _ rel1 _ (@Vector.cons _ rel2 _ (.. (@Vector.cons _ reln _ (Vector.nil _)) .. ))) : NamedSchema_scope.
