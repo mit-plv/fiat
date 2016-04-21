@@ -858,6 +858,66 @@ Proof.
   intros; etransitivity; eauto using refine_If_Opt_Then_Else.
 Qed.
 
+
+Local Ltac t2 p := intros; destruct p; intuition.
+
+Lemma refine_sumbool_match :
+  forall `(P : {A} + {~A}) B
+         (f f' : A -> Comp B) (g g' : ~A -> Comp B),
+       pointwise_relation A    refine f f'
+    -> pointwise_relation (~A) refine g g'
+    -> refine (match P with
+               | left  H => f H
+               | right H => g H
+               end)
+              (match P with
+               | left  H => f' H
+               | right H => g' H
+               end).
+Proof. t2 P. Qed.
+
+Lemma refine_sumbool_ret :
+  forall `(P : {A} + {~A}) `(f : A -> B) (g : ~A -> B),
+    refine (match P with
+            | left  H => ret (f H)
+            | right H => ret (g H)
+            end)
+           (ret (match P with
+                 | left  H => f H
+                 | right H => g H
+                 end)).
+Proof. t2 P. Qed.
+
+Lemma refine_sumbool_bind :
+  forall `(P : {A} + {~A})
+         `(f : A -> Comp B) (g : ~A -> Comp B)
+         `(h : B -> Comp C),
+    refine (x <- match P with
+                 | left  H => f H
+                 | right H => g H
+                 end;
+            h x)
+           (match P with
+            | left  H => x <- f H; h x
+            | right H => x <- g H; h x
+            end).
+Proof. t2 P. Qed.
+
+Lemma refine_bind_sumbool :
+  forall `(P : {A} + {~A})
+         `(f : C -> A -> Comp B) (g : C -> ~A -> Comp B)
+         `(c : Comp C),
+    refine (x <- c;
+            match P with
+            | left  H => f x H
+            | right H => g x H
+            end)
+           (match P with
+            | left  H => x <- c; f x H
+            | right H => x <- c; g x H
+            end).
+Proof. t2 P. Qed.
+
 Tactic Notation "refine" "pick" "val" open_constr(v) :=
   let T := type of v in
   rewrite refine_pick_val with

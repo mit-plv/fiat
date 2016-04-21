@@ -246,17 +246,17 @@ Section ListDec.
   Qed.
 End ListDec.
 
-Definition IfDec_Then_Else {A} (P : Prop) `{Decidable P} (t e : A) :=
-  if Decidable_witness then t else e.
-Arguments IfDec_Then_Else {A} P {_} t e : simpl never.
-
-Notation "'IfDec' P 'Then' t 'Else' e" :=
-  (IfDec_Then_Else P t e) (at level 70) : comp_scope.
-
 Require Import Fiat.Common.
 Require Import Fiat.Computation.Core.
 
 Local Ltac t2 p := intros; destruct p; intuition.
+Local Open Scope comp.
+Definition IfDec_Then_Else {A} (P : Prop) (t e : Comp A) :=
+  b <- { b | decide b P}; if b then t else e.
+Arguments IfDec_Then_Else {A} P {_} t e : simpl never.
+
+Notation "'IfDec' P 'Then' t 'Else' e" :=
+  (IfDec_Then_Else P t e) (at level 70) : comp_scope.
 
 Lemma refine_IfDec_true : forall `{Decidable P} ResultT (t e : Comp ResultT),
   P -> refine (IfDec P Then t Else e) t.

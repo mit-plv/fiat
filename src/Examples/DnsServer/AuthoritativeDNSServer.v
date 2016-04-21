@@ -8,6 +8,8 @@ Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation.Decidable
         Fiat.Computation.FoldComp
+        Fiat.Computation.FueledFix
+        Fiat.Computation.ListComputations
         Fiat.QueryStructure.Automation.Common
         Fiat.QueryStructure.Automation.MasterPlan
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
@@ -28,6 +30,8 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
+Coercion QType_inj : RRecordType >-> QType.
+
 Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" : rep := empty,
@@ -36,13 +40,13 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
     (* every insert / decision procedure *)
 
     Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
-      Insert t into this!sCOLLECTIONS,
+      Insert t into this!sRRecords,
 
     Def Method1 "Process" (this : rep) (p : packet) : rep * packet :=
         Repeat recurseDepth initializing n with p!"questions"!"qname"
                defaulting rec with (ret (buildempty true p))
-        {{ results <- ArgMax (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
-                             (For (r in this!sCOLLECTIONS)      (* Bind a list of all the DNS entries *)
+        {{ results <- MaxElements (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
+                             (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
                                Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
@@ -50,23 +54,23 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
             Else                 (* TODO: this does not filter by matching QTYPE *)
               IfDec (forall r, List.In r results -> n = r!sNAME) (* If the record's QNAME is an exact match  *)
               Then
-                b <- Unique (fun b => List.In b results
+                b <- SingletonSet (fun b => List.In b results
                                     /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
-                                    /\ p!"questions"!"qtype" <> CNAME); (* and a non-CNAME was requested*)
+                                    /\ p!"questions"!"qtype" <> QType_inj CNAME); (* and a non-CNAME was requested*)
                 Ifopt b as b'
                 Then  (* only one matching CNAME record *)
                   p' <- rec b'!sNAME; (* Recursively find records matching the CNAME *)
                   ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
                 Else     (* Copy the records with the correct QTYPE into the answer *)
                          (* section of an empty response *)
-                (results <- [[element in results | element!sTYPE = p!"questions"!"qtype" ]];
+                (results <- ⟦ element in results | QType_inj (element : resourceRecord)!sTYPE = p!"questions"!"qtype" ⟧;
                   ret (List.fold_left add_answer results (buildempty true p)))
               Else (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- *)
                 (* ask the authoritative servers *)
-                (ns_results <- [[x in results | x!sTYPE = NS]];
+                (ns_results <- ⟦ x in results | (x : resourceRecord)!sTYPE = NS ⟧;
                  (* Append all the clue records to the additional section. *)
-                 glue_results <- For (rRec in this!sCOLLECTIONS)
+                 glue_results <- For (rRec in this!sRRecords)
                                  Where (List.In rRec!sNAME (map (fun r : resourceRecord => r!sRDATA) ns_results))
                                  Return rRec;
                  ret (List.fold_left add_additional glue_results
