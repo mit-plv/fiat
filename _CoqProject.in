@@ -212,12 +212,13 @@ src/Examples/CacheADT/FMapCacheImplementation.v
 src/Examples/CacheADT/KVEnsembles.v
 src/Examples/CacheADT/LRUCache.v
 src/Examples/CacheADT/TrivialADTCache.v
+src/Examples/DnsServer/AuthoritativeDNSSchema.v
 src/Examples/DnsServer/AuthoritativeDNSServer.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
-src/Examples/DnsServer/DnsSchema_new.v
 src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
+src/Examples/DnsServer/RecursiveDNSSchema.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v

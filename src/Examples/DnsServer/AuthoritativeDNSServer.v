@@ -16,10 +16,10 @@ Require Import
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Require Import Fiat.Examples.DnsServer.packet
+Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.DnsSchema.
+        Fiat.Examples.DnsServer.AuthoritativeDnsSchema.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
@@ -27,14 +27,6 @@ Definition DnsSig : ADTSig :=
       Method "AddData" : rep * resourceRecord -> rep * bool,
       Method "Process" : rep * packet -> rep * packet
     }.
-
-Definition DnsSchema :=
-  Query Structure Schema
-        [ relation sRRecords has
-                   schema resourceRecordHeading
-          where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME) ]
-        (* constraint on every pair of tuples: an ip address cannot have multiple aliases *)
-        enforcing [ ].
 
 Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
   QueryADTRep DnsSchema {
