@@ -111,18 +111,18 @@ Section BoolFacts.
     forall a b c, a && (b && c) = b && (a && c).
   Proof.
     intros; repeat rewrite andb_assoc;
-    replace (a && b) with (b && a) by apply andb_comm; reflexivity.
+      replace (a && b) with (b && a) by apply andb_comm; reflexivity.
   Qed.
 
   Lemma bool_rect_andb x y z
-  : bool_rect (fun _ => bool) x y z
-    = orb (andb (negb z) y) (andb z x).
+    : bool_rect (fun _ => bool) x y z
+      = orb (andb (negb z) y) (andb z x).
   Proof.
     destruct x, y, z; reflexivity.
   Qed.
 
   Lemma andb_orb_distrib_r_assoc
-  : forall b1 b2 b3 b4 : bool, ((b1 && (b2 || b3)) || b4)%bool = (b1 && b2 || ((b1 && b3) || b4))%bool.
+    : forall b1 b2 b3 b4 : bool, ((b1 && (b2 || b3)) || b4)%bool = (b1 && b2 || ((b1 && b3) || b4))%bool.
   Proof.
     repeat intros []; reflexivity.
   Qed.
@@ -134,6 +134,7 @@ Section BoolFacts.
     : bool_rect (fun _ : bool => bool) t f b
       = ((b && t) || (negb b && f))%bool.
   Proof. destruct b, t, f; reflexivity. Qed.
+
 End BoolFacts.
 
 Create HintDb bool_congr discriminated.

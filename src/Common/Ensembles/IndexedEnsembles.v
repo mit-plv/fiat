@@ -304,6 +304,64 @@ Section IndexedEnsembles.
     eauto using UnIndexedEnsembleListEquivalence_filter.
   Qed.
 
+  Lemma unindexed_OK_exists_index' :
+    forall x lIndexed (t t' : _) n n',
+      n <> n'
+      -> nth_error x n = Some t
+      -> nth_error x n' = Some t'
+      -> Permutation x (map indexedElement lIndexed)
+      -> exists m m' idx idx',
+          m <> m'
+          /\ nth_error lIndexed m = Some {| elementIndex := idx; indexedElement := t |}
+          /\ nth_error lIndexed m' = Some {| elementIndex := idx'; indexedElement := t' |}.
+  Proof.
+    intros.
+    eapply PermutationFacts.permutation_map_base in H2; intuition eauto.
+    destruct_ex; intuition; subst.
+    revert t t' n n' H H0 H1; induction H4; intros.
+    - destruct n; simpl in *; discriminate.
+    - destruct n; destruct n'; simpl in *.
+      + intuition.
+      + assert (exists m', nth_error (map indexedElement l') m' = Some t') by
+            (eapply in_list_exists; rewrite <- H4; eapply exists_in_list; eauto).
+        destruct H2.
+        eapply nth_error_map' in H2; destruct_ex; intuition.
+        injections.
+        eexists 0, (S x0), (elementIndex x), (elementIndex x1); intuition; simpl; eauto.
+        destruct x; eauto.
+        rewrite H3; destruct x1; eauto.
+      + assert (exists m, nth_error (map indexedElement l') m = Some t) by
+            (eapply in_list_exists; rewrite <- H4; eapply exists_in_list; eauto).
+        destruct H2.
+        eapply nth_error_map' in H2; destruct_ex; intuition.
+        injections.
+        eexists (S x0), 0, (elementIndex x1), (elementIndex x); intuition; simpl; eauto.
+        rewrite H3; destruct x1; eauto.
+        destruct x; eauto.
+      + destruct (IHPermutation t t' n n') as [m [m' [idx [idx' ?] ] ] ]; eauto.
+        eexists (S m), (S m'), idx, idx'; simpl; intuition eauto.
+    - eapply nth_error_map' in H0; destruct_ex; intuition.
+      eapply nth_error_map' in H1; destruct_ex; intuition.
+      rewrite <- H3, <- H4; destruct x0; destruct x1; simpl in *.
+      destruct n as [ | [ | n ] ];  destruct n' as [ | [ | n' ] ];
+        injections; simpl in *.
+      + intuition.
+      + eexists 1, 0, _, _; simpl; eauto.
+      + eexists 1, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+      + eexists 0, 1, _, _; simpl; eauto.
+      + intuition.
+      + eexists 0, (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+      + eexists (S (S n)), 1, _, _; simpl; repeat split; try eassumption; omega.
+      + eexists (S (S n)), 0, _, _; simpl; repeat split; try eassumption; omega.
+      + eexists (S (S n)), (S (S n')), _, _; simpl; repeat split; try eassumption; omega.
+    -  destruct (IHPermutation1 _ _ _ _ H H0 H1) as [m [m' [idx [idx' ?] ] ] ];
+         intuition.
+       clear H.
+       eapply IHPermutation2; eauto.
+       eapply map_nth_error with (f := indexedElement) in H2; simpl in *; eauto.
+       eapply map_nth_error with (f := indexedElement) in H5; simpl in *; eauto.
+  Qed.
+
 End IndexedEnsembles.
 
 Ltac destruct_EnsembleIndexedListEquivalence :=

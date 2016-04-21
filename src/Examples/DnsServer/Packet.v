@@ -380,4 +380,18 @@ Section Packet.
   Definition get_name (r : resourceRecord) := r!sNAME.
   Definition name_length (r : resourceRecord) := List.length (get_name r).
 
+  Definition isQuestion (p : packet) :=
+    match p!"answers", p!"authority", p!"additional" with
+    | nil, nil, nil => true
+    | _, _, _ => false
+    end.
+
+  Definition isAnswer (p : packet) := negb (is_empty (p!"answers")).
+
+  Definition isReferral (p : packet) :=
+    is_empty (p!"answers")
+             && (negb (is_empty (p!"authority")))
+             && (negb (is_empty (p!"additional"))).
+
+
 End Packet.

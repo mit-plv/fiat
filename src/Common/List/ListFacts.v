@@ -8,6 +8,9 @@ Local Notation iffT A B := ((A -> B) * (B -> A))%type.
 
 Section ListFacts.
 
+  Definition is_empty {A} (l : list A) :=
+    match l with nil => true | _ => false end.
+
   Lemma map_id :
     forall {A: Type} (seq: list A),
       (map (fun x => x) seq) = seq.
@@ -104,7 +107,7 @@ Section ListFacts.
       (List.map (List.filter pred) seq) = (List.map (fun x => []) seq).
   Proof.
     intros A pred seq all_false;
-    induction seq as [ | subseq subseqs IH ] ; simpl; trivial.
+      induction seq as [ | subseq subseqs IH ] ; simpl; trivial.
 
     f_equal.
 
@@ -122,10 +125,10 @@ Section ListFacts.
       List.fold_right g init (List.map f seq).
   Proof.
     intros;
-    induction seq;
-    simpl;
-    [  | rewrite IHseq ];
-    reflexivity.
+      induction seq;
+      simpl;
+      [  | rewrite IHseq ];
+      reflexivity.
   Qed.
 
   Lemma in_map_unproject :
@@ -135,7 +138,7 @@ Section ListFacts.
       @List.In B (projection item) (List.map projection seq).
   Proof.
     intros ? ? ? seq;
-    induction seq; simpl; intros item in_seq.
+      induction seq; simpl; intros item in_seq.
 
     trivial.
     destruct in_seq;
@@ -258,7 +261,7 @@ Section ListFacts.
   Proof.
     induction seq; simpl; intros; trivial.
     destruct (f a) eqn:eqf; destruct (g a) eqn:eqg;
-    simpl; rewrite ?eqf, ?eqg, ?IHseq; trivial.
+      simpl; rewrite ?eqf, ?eqg, ?IHseq; trivial.
   Qed.
 
   Lemma fold_right_id {A} :
@@ -278,33 +281,33 @@ Section ListFacts.
   Qed.
 
   Lemma In_partition {A}
-  : forall f (l : list A) a,
+    : forall f (l : list A) a,
       List.In a l <-> (List.In a (fst (List.partition f l))
                        \/ List.In a (snd (List.partition f l))).
   Proof.
     split; induction l; simpl; intros; intuition; simpl; subst;
-    first [destruct (f a0); destruct (List.partition f l); simpl in *; intuition
-          | destruct (f a); destruct (List.partition f l); simpl; intuition].
+      first [destruct (f a0); destruct (List.partition f l); simpl in *; intuition
+            | destruct (f a); destruct (List.partition f l); simpl; intuition].
   Qed.
 
   Lemma In_partition_matched {A}
-  : forall f (l : list A) a,
+    : forall f (l : list A) a,
       List.In a (fst (List.partition f l)) ->
       f a = true.
   Proof.
     induction l; simpl; intros; intuition; simpl; subst; eauto.
     case_eq (f a); destruct (List.partition f l); simpl; intuition;
-    rewrite H0 in H; eauto; inversion H; subst; eauto.
+      rewrite H0 in H; eauto; inversion H; subst; eauto.
   Qed.
 
   Lemma In_partition_unmatched {A}
-  : forall f (l : list A) a,
+    : forall f (l : list A) a,
       List.In a (snd (List.partition f l)) ->
       f a = false.
   Proof.
     induction l; simpl; intros; intuition; simpl; subst; eauto.
     case_eq (f a); destruct (List.partition f l); simpl; intuition;
-    rewrite H0 in H; eauto; inversion H; subst; eauto.
+      rewrite H0 in H; eauto; inversion H; subst; eauto.
   Qed.
 
   Lemma nil_in_false :
@@ -345,7 +348,7 @@ Section ListFacts.
     revert default; induction seq; simpl; eauto; intros.
     rewrite fold_right_app; simpl; rewrite <- IHseq.
     clear IHseq; revert a default; induction seq;
-    simpl; intros; auto with arith.
+      simpl; intros; auto with arith.
     rewrite <- IHseq.
     rewrite Plus.plus_comm, <- Plus.plus_assoc; f_equal.
     rewrite Plus.plus_comm; reflexivity.
@@ -368,7 +371,7 @@ Section ListFacts.
     induction l1; simpl.
     - intros; destruct (List.partition f l2); reflexivity.
     - intros; rewrite IHl1; destruct (f a); destruct (List.partition f l1);
-      simpl; f_equal.
+        simpl; f_equal.
   Qed.
 
 
@@ -390,7 +393,7 @@ Section ListFacts.
 
 
   Lemma filter_app_inv {A}
-  : forall pred (l l1 l2 : list A),
+    : forall pred (l l1 l2 : list A),
       filter pred l = app l1 l2
       -> exists l1' l2', l = app l1' l2'
                          /\ l1 = filter pred l1'
@@ -398,10 +401,10 @@ Section ListFacts.
   Proof.
     induction l; simpl; intros.
     - destruct l1; simpl in *;
-      [ destruct l2;
-        [ eexists nil; eexists nil; intuition
-        | discriminate]
-      | discriminate ].
+        [ destruct l2;
+          [ eexists nil; eexists nil; intuition
+          | discriminate]
+        | discriminate ].
     - revert H; case_eq (pred a); intros.
       + destruct l1; simpl in *.
         * destruct l2; [ discriminate | ].
@@ -443,13 +446,13 @@ Section ListFacts.
   Qed.
 
   Lemma filter_and {A}
-  : forall (pred1 pred2 : A -> bool) (l : List.list A),
+    : forall (pred1 pred2 : A -> bool) (l : List.list A),
       List.filter (fun a => pred1 a && pred2 a) l =
       List.filter pred2 (List.filter pred1 l).
   Proof.
     induction l; simpl; eauto.
     case_eq (pred1 a); simpl; intros H; eauto;
-    case_eq (pred2 a); simpl; intros; rewrite IHl; eauto.
+      case_eq (pred2 a); simpl; intros; rewrite IHl; eauto.
   Qed.
 
   Definition ExtensionalEq {A B} f g :=
@@ -469,8 +472,8 @@ Section ListFacts.
       (forall (a: A) (seq : list B), filter (f a) seq = filter (g a) seq).
   Proof.
     intros * equiv *;
-    rewrite (filter_by_equiv _ _ (equiv _));
-    reflexivity.
+      rewrite (filter_by_equiv _ _ (equiv _));
+      reflexivity.
   Qed.
 
   Lemma filter_and' :
@@ -480,43 +483,43 @@ Section ListFacts.
       List.filter pred1 (List.filter pred2 seq).
   Proof.
     intros;
-    induction seq;
-    simpl;
-    [ | destruct (pred1 a) eqn:eq1;
-        destruct (pred2 a) eqn:eq2];
-    simpl;
-    try rewrite eq1;
-    try rewrite eq2;
-    trivial;
-    f_equal;
-    trivial.
+      induction seq;
+      simpl;
+      [ | destruct (pred1 a) eqn:eq1;
+          destruct (pred2 a) eqn:eq2];
+      simpl;
+      try rewrite eq1;
+      try rewrite eq2;
+      trivial;
+      f_equal;
+      trivial.
   Qed.
 
   Local Ltac drop_take_t' :=
     idtac;
     match goal with
-      | _ => reflexivity
-      | _ => intro
-      | _ => progress simpl in *
-      | [ |- context[drop ?n []] ] => atomic n; destruct n
-      | [ |- context[take ?n []] ] => atomic n; destruct n
-      | [ |- context[drop ?n (_::_)] ] => atomic n; destruct n
-      | [ |- context[take ?n (_::_)] ] => atomic n; destruct n
-      | [ H : _ |- _ ] => rewrite H
-      | _ => solve [ eauto with arith ]
-      | _ => exfalso; omega
+    | _ => reflexivity
+    | _ => intro
+    | _ => progress simpl in *
+    | [ |- context[drop ?n []] ] => atomic n; destruct n
+    | [ |- context[take ?n []] ] => atomic n; destruct n
+    | [ |- context[drop ?n (_::_)] ] => atomic n; destruct n
+    | [ |- context[take ?n (_::_)] ] => atomic n; destruct n
+    | [ H : _ |- _ ] => rewrite H
+    | _ => solve [ eauto with arith ]
+    | _ => exfalso; omega
     end.
 
   Local Ltac drop_take_t := repeat drop_take_t'.
 
   Lemma drop_map {A B n} (f : A -> B) ls
-  : drop n (map f ls) = map f (drop n ls).
+    : drop n (map f ls) = map f (drop n ls).
   Proof.
     revert n; induction ls; drop_take_t.
   Qed.
 
   Lemma take_map {A B n} (f : A -> B) ls
-  : take n (map f ls) = map f (take n ls).
+    : take n (map f ls) = map f (take n ls).
   Proof.
     revert n; induction ls; drop_take_t.
   Qed.
@@ -532,7 +535,7 @@ Section ListFacts.
   Qed.
 
   Lemma drop_all_iff {A n} {ls : list A}
-  : (List.length ls <= n) <-> drop n ls = nil.
+    : (List.length ls <= n) <-> drop n ls = nil.
   Proof.
     split; [ apply drop_all | ].
     revert n; induction ls; [ simpl; intros; omega | ].
@@ -542,47 +545,47 @@ Section ListFacts.
   Qed.
 
   Lemma take_append {A n} {ls ls' : list A}
-  : take n (ls ++ ls') = take n ls ++ take (n - List.length ls) ls'.
+    : take n (ls ++ ls') = take n ls ++ take (n - List.length ls) ls'.
   Proof.
     revert n ls'; induction ls; drop_take_t.
   Qed.
 
   Lemma drop_append {A n} {ls ls' : list A}
-  : drop n (ls ++ ls') = drop n ls ++ drop (n - List.length ls) ls'.
+    : drop n (ls ++ ls') = drop n ls ++ drop (n - List.length ls) ls'.
   Proof.
     revert n ls'; induction ls; drop_take_t.
   Qed.
 
   Lemma fold_right_and_map_impl {A} {init1 init2 : Prop} (H : init1 -> init2) (ls : list A) (f g : A -> Prop) (H' : forall x, f x -> g x)
-  : fold_right and init1 (map f ls) -> fold_right and init2 (map g ls).
+    : fold_right and init1 (map f ls) -> fold_right and init2 (map g ls).
   Proof.
     induction ls; simpl; trivial; intuition.
   Qed.
 
   Lemma f_fold_right_bool_rect {A B T} (f : T -> B) init (ls : list A) a b
-  : f (fold_right (fun x acc => bool_rect (fun _ => T) (a x) acc (b x)) init ls)
-    = fold_right (fun x acc => bool_rect (fun _ => B) (f (a x)) acc (b x)) (f init) ls.
+    : f (fold_right (fun x acc => bool_rect (fun _ => T) (a x) acc (b x)) init ls)
+      = fold_right (fun x acc => bool_rect (fun _ => B) (f (a x)) acc (b x)) (f init) ls.
   Proof.
     revert init; induction ls; simpl; trivial; intros.
     edestruct b; simpl; trivial.
   Qed.
 
   Lemma fold_right_fun {A B C} (f : A -> C -> (B -> C)) (init : B -> C) (x : B) (ls : list A)
-  : fold_right (fun (a : A) (b : B -> C) x => f a (b x) x) init ls x
-    = fold_right (B := A) (A := C) (fun a b => f a b x) (init x) ls.
+    : fold_right (fun (a : A) (b : B -> C) x => f a (b x) x) init ls x
+      = fold_right (B := A) (A := C) (fun a b => f a b x) (init x) ls.
   Proof.
     induction ls; simpl; trivial.
     rewrite IHls; reflexivity.
   Qed.
 
   Lemma nth_tl {A} n (ls : list A) a
-  : nth n (tl ls) a = nth (S n) ls a.
+    : nth n (tl ls) a = nth (S n) ls a.
   Proof.
     destruct ls, n; simpl; reflexivity.
   Qed.
 
   Lemma nth_drop {A} x y (ls : list A) a
-  : nth x (drop y ls) a = nth (x + y) ls a.
+    : nth x (drop y ls) a = nth (x + y) ls a.
   Proof.
     revert x y; induction ls; simpl; intros.
     { destruct x, y; reflexivity. }
@@ -592,7 +595,7 @@ Section ListFacts.
   Qed.
 
   Lemma nth_error_drop {A} x y (ls : list A)
-  : nth_error (drop y ls) x = nth_error ls (x + y).
+    : nth_error (drop y ls) x = nth_error ls (x + y).
   Proof.
     revert x y; induction ls; simpl; intros.
     { destruct x, y; reflexivity. }
@@ -605,7 +608,7 @@ Section ListFacts.
   Lemma in_map_iffT' {A B}
         (f : A -> B) (ls : list A) (y : B)
         (eq_dec : forall y', {y = y'} + {y <> y'})
-  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+    : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
   Proof.
     split; [ | intros [x H]; apply in_map_iff; exists x; assumption ].
     induction ls as [|l ls IHls].
@@ -626,23 +629,23 @@ Section ListFacts.
   Lemma in_map_iffT {A B}
         (eq_dec : forall y y' : B, {y = y'} + {y <> y'})
         (f : A -> B) (ls : list A) (y : B)
-  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+    : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
   Proof.
     apply in_map_iffT', eq_dec.
   Defined.
 
   Lemma in_map_iffT_nat {A}
         (f : A -> nat) (ls : list A) (y : nat)
-  : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
+    : iffT (In y (map f ls)) { x : A | f x = y /\ In x ls }.
   Proof.
     apply in_map_iffT, NPeano.Nat.eq_dec.
   Defined.
 
   Lemma nth_take_1_drop {A} (ls : list A) n a
-  : nth n ls a = match take 1 (drop n ls) with
+    : nth n ls a = match take 1 (drop n ls) with
                    | nil => a
                    | x::_ => x
-                 end.
+                   end.
   Proof.
     revert n.
     induction ls as [|x xs IHxs]; simpl; intros.
@@ -652,7 +655,7 @@ Section ListFacts.
   Qed.
 
   Lemma drop_drop {A} x y (ls : list A)
-  : drop x (drop y ls) = drop (y + x) ls.
+    : drop x (drop y ls) = drop (y + x) ls.
   Proof.
     revert x y.
     induction ls as [|l ls IHls].
@@ -663,7 +666,7 @@ Section ListFacts.
   Defined.
 
   Lemma drop_dropS {A} y (ls : list A)
-  : drop 1 (drop y ls) = drop (S y) ls.
+    : drop 1 (drop y ls) = drop (S y) ls.
   Proof.
     rewrite drop_drop.
     rewrite NPeano.Nat.add_1_r.
@@ -671,7 +674,7 @@ Section ListFacts.
   Qed.
 
   Lemma map_S_seq {A} (f : nat -> A) x y
-  : map (fun i => f (S i)) (seq x y) = map f (seq (S x) y).
+    : map (fun i => f (S i)) (seq x y) = map f (seq (S x) y).
   Proof.
     clear; revert x; induction y; intros.
     { reflexivity. }
@@ -680,7 +683,7 @@ Section ListFacts.
   Qed.
 
   Lemma length_drop {A} (n : nat) (ls : list A)
-  : List.length (List.drop n ls) = List.length ls - n.
+    : List.length (List.drop n ls) = List.length ls - n.
   Proof.
     revert ls; induction n; simpl; intros.
     { auto with arith. }
@@ -690,7 +693,7 @@ Section ListFacts.
 
   Lemma drop_non_empty {A} (n : nat) (ls : list A)
         (H : ls <> nil)
-  : List.drop (List.length ls - S n) ls <> nil.
+    : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.
@@ -704,7 +707,7 @@ Section ListFacts.
 
   Lemma drop_S_non_empty {A} (n : nat) (ls : list A)
         (H : n < List.length ls)
-  : List.drop (List.length ls - S n) ls <> nil.
+    : List.drop (List.length ls - S n) ls <> nil.
   Proof.
     intro H'.
     apply (f_equal (@List.length _)) in H'.
@@ -714,7 +717,7 @@ Section ListFacts.
   Qed.
 
   Lemma seq_S (start len : nat)
-  : seq (S start) len = map S (seq start len).
+    : seq (S start) len = map S (seq start len).
   Proof.
     revert start; induction len; [ reflexivity | ].
     simpl in *; intros.
@@ -722,7 +725,7 @@ Section ListFacts.
   Qed.
 
   Lemma seq_0 (start len : nat)
-  : seq start len = map (fun x => start + x) (seq 0 len).
+    : seq start len = map (fun x => start + x) (seq 0 len).
   Proof.
     revert start; induction len; simpl; intros.
     { reflexivity. }
@@ -735,10 +738,10 @@ Section ListFacts.
   Qed.
 
   Lemma seq_alt (start len : nat)
-  : seq start len = match len with
+    : seq start len = match len with
                       | 0 => nil
                       | S len' => start :: map S (seq start len')
-                    end.
+                      end.
   Proof.
     destruct len; simpl.
     { reflexivity. }
@@ -749,7 +752,7 @@ Section ListFacts.
   Qed.
 
   Lemma In_S_seq {start len x} (Hsmall : start <= x) (H : In (S x) (seq start len))
-  : In x (seq start len).
+    : In x (seq start len).
   Proof.
     generalize dependent start; generalize x; induction len; intros; simpl in *.
     { assumption. }
@@ -763,7 +766,7 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_idempotent {A} (beq : A -> A -> bool) (ls : list A)
-  : uniquize beq (uniquize beq ls) = uniquize beq ls.
+    : uniquize beq (uniquize beq ls) = uniquize beq ls.
   Proof.
     induction ls as [|x xs IHxs]; simpl; trivial.
     destruct (Equality.list_bin beq x (uniquize beq xs)) eqn:H;
@@ -772,7 +775,7 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_NoDupA {A} (beq : A -> A -> bool) (ls : list A)
-  : NoDupA (fun x y => beq y x) (uniquize beq ls).
+    : NoDupA (fun x y => beq y x) (uniquize beq ls).
   Proof.
     induction ls as [|x xs IHxs]; simpl; [ solve [ constructor ] | ].
     destruct (Equality.list_bin beq x (uniquize beq xs)) eqn:H; trivial.
@@ -783,14 +786,14 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_NoDup {A} (beq : A -> A -> bool) (beq_lb : forall x y, x = y -> beq x y = true) (ls : list A)
-  : NoDup (uniquize beq ls).
+    : NoDup (uniquize beq ls).
   Proof.
     eapply NoDupA_NoDup; [ | apply uniquize_NoDupA ].
     repeat intro; eauto.
   Qed.
 
   Lemma NoDupA_uniquize {A} (beq : A -> A -> bool) (ls : list A) (H : NoDupA (fun x y => beq y x) ls)
-  : uniquize beq ls = ls.
+    : uniquize beq ls = ls.
   Proof.
     induction ls as [|x xs IHxs]; simpl; [ solve [ constructor ] | ].
     inversion H; subst.
@@ -802,7 +805,7 @@ Section ListFacts.
   Qed.
 
   Lemma NoDup_NoDupA {A} (R : relation A) (ls : list A) (R_eq : forall x y, R x y -> x = y) (H : NoDup ls)
-  : NoDupA R ls.
+    : NoDupA R ls.
   Proof.
     induction ls; [ solve [ constructor ] | ].
     inversion H; subst.
@@ -810,28 +813,28 @@ Section ListFacts.
     rewrite InA_alt.
     intros [y [H' H'']].
     match goal with
-      | [ H : _ |- _ ] => apply R_eq in H; subst
+    | [ H : _ |- _ ] => apply R_eq in H; subst
     end.
     tauto.
   Qed.
 
   Lemma NoDup_uniquize {A} (beq : A -> A -> bool) (beq_bl : forall x y, beq x y = true -> x = y) (ls : list A) (H : NoDup ls)
-  : uniquize beq ls = ls.
+    : uniquize beq ls = ls.
   Proof.
     apply NoDupA_uniquize, NoDup_NoDupA; trivial; intros.
     symmetry; eauto.
   Qed.
 
   Lemma uniquize_shorter {A} (ls : list A) beq
-  : List.length (uniquize beq ls) <= List.length ls.
+    : List.length (uniquize beq ls) <= List.length ls.
   Proof.
     induction ls as [|x xs IHxs]; simpl; trivial.
     edestruct @Equality.list_bin; simpl; omega.
   Qed.
 
   Lemma uniquize_length {A} (ls : list A) beq
-  : List.length (uniquize beq ls) = List.length ls
-    <-> uniquize beq ls = ls.
+    : List.length (uniquize beq ls) = List.length ls
+      <-> uniquize beq ls = ls.
   Proof.
     induction ls as [|x xs IHxs]; simpl; try (split; reflexivity).
     edestruct @Equality.list_bin; simpl.
@@ -843,12 +846,12 @@ Section ListFacts.
         omega. } }
     { destruct IHxs.
       split; intro;
-      first [ congruence
-            | f_equal; auto ]. }
+        first [ congruence
+              | f_equal; auto ]. }
   Qed.
 
   Lemma uniquize_In {A} (ls : list A) (beq : A -> A -> bool) x
-  : In x (uniquize beq ls) -> In x ls.
+    : In x (uniquize beq ls) -> In x ls.
   Proof.
     intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
     destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H'.
@@ -859,41 +862,41 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_In_refl {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
-  : In x ls -> In x (uniquize beq ls).
+    : In x ls -> In x (uniquize beq ls).
   Proof.
     intro H; induction ls as [|y ys IHys]; simpl in *; trivial.
     destruct (Equality.list_bin beq y (uniquize beq ys)) eqn:H';
       destruct H; subst;
-      eauto with nocore.
+        eauto with nocore.
     { apply Equality.list_in_bl in H'; assumption. }
     { left; reflexivity. }
     { right; eauto with nocore. }
   Qed.
 
   Lemma uniquize_In_refl_iff {A} (ls : list A) (beq : A -> A -> bool) x (refl : beq x x = true) (bl : forall x y, beq x y = true -> x = y)
-  : In x ls <-> In x (uniquize beq ls).
+    : In x ls <-> In x (uniquize beq ls).
   Proof.
     split; first [ apply uniquize_In | apply uniquize_In_refl ]; assumption.
   Qed.
 
   Lemma fold_right_bool_rect {T} t b init ls' bv
-  : fold_right (fun (x : T) (acc : bool -> bool)
-                => bool_rect
-                     (fun _ => bool -> bool)
-                     (t x)
-                     acc
-                     (b x))
-               init ls' bv
-    = fold_right (fun (x : T) (acc : bool)
+    : fold_right (fun (x : T) (acc : bool -> bool)
                   => bool_rect
-                       (fun _ => bool)
-                       (t x bv)
+                       (fun _ => bool -> bool)
+                       (t x)
                        acc
-                       (b x)) (init bv) ls'.
+                       (b x))
+                 init ls' bv
+      = fold_right (fun (x : T) (acc : bool)
+                    => bool_rect
+                         (fun _ => bool)
+                         (t x bv)
+                         acc
+                         (b x)) (init bv) ls'.
   Proof.
     induction ls' as [|x xs IHxs]; simpl;
-    [ | destruct (b x); simpl; rewrite ?IHxs ];
-    reflexivity.
+      [ | destruct (b x); simpl; rewrite ?IHxs ];
+      reflexivity.
   Qed.
 
   Lemma in_up_to {n m} (H : n < m) : List.In n (up_to m).
@@ -920,16 +923,16 @@ Section ListFacts.
   Lemma first_index_helper_first_index_error
         {A B} (f : A -> bool)
         (rect : option (nat * A) -> B) (ls : list A) (rec : nat * A -> nat * A)
-  : first_index_helper f rect ls rec
-    = rect (let idx := first_index_error f ls in
-            let v := option_rect (fun _ => option A) (nth_error ls) None idx in
-            option_map
-              rec
-              (option_rect
-                 (fun _ => option (nat * A))
-                 (fun v' : A => option_map (fun idx' : nat => (idx', v')) idx)
-                 None
-                 v)).
+    : first_index_helper f rect ls rec
+      = rect (let idx := first_index_error f ls in
+              let v := option_rect (fun _ => option A) (nth_error ls) None idx in
+              option_map
+                rec
+                (option_rect
+                   (fun _ => option (nat * A))
+                   (fun v' : A => option_map (fun idx' : nat => (idx', v')) idx)
+                   None
+                   v)).
   Proof.
     revert B rec rect; induction ls as [|x xs IHxs]; simpl; intros.
     { reflexivity. }
@@ -945,54 +948,54 @@ Section ListFacts.
 
   Local Ltac first_index_error_t'
     := idtac;
-      match goal with
-        | _ => discriminate
-        | _ => congruence
-        | _ => omega
-        | _ => progress unfold value in *
-        | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-        | _ => progress subst
-        | [ H : ?x = true |- context[?x] ] => rewrite H
-        | [ H : and _ _ |- _ ] => destruct H
-        | [ H : ex _ |- _ ] => destruct H
-        | [ H : iff _ _ |- _ ] => destruct H
-        | [ H : ?x = ?x -> ?A |- _ ] => specialize (H eq_refl)
-        | _ => progress intros
-        | _ => split
-        | [ H : context[if ?b then _ else _] |- _ ] => destruct b eqn:?
-        | [ H : context[option_map _ ?x] |- _ ] => destruct x eqn:?; unfold option_map in H
-        | _ => solve [ repeat (esplit || eassumption) ]
-        | [ H : context[nth_error (_::_) ?x] |- _ ] => is_var x; destruct x; simpl nth_error in H
-        | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
-        | _ => solve [ eauto with nocore ]
-        | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
-        | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
-        | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
-        | _ => progress simpl in *
-        | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
-        | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
-        | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
-        | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
-        | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
-        | [ H : or _ _ |- _ ] => destruct H
-        | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
-        | [ H : ?x = None |- context[?x] ] => rewrite H
-        | [ H : S _ = S _ |- _ ] => inversion H; clear H
-        | [ H : appcontext[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
-        | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
-        | [ H : option_rect _ _ _ ?v = Some _ |- _ ] => destruct v eqn:?; simpl in H
-        | [ H : option_rect _ _ _ ?v = None |- _ ] => destruct v eqn:?; simpl in H
-      end.
+       match goal with
+       | _ => discriminate
+       | _ => congruence
+       | _ => omega
+       | _ => progress unfold value in *
+       | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+       | _ => progress subst
+       | [ H : ?x = true |- context[?x] ] => rewrite H
+       | [ H : and _ _ |- _ ] => destruct H
+       | [ H : ex _ |- _ ] => destruct H
+       | [ H : iff _ _ |- _ ] => destruct H
+       | [ H : ?x = ?x -> ?A |- _ ] => specialize (H eq_refl)
+       | _ => progress intros
+       | _ => split
+       | [ H : context[if ?b then _ else _] |- _ ] => destruct b eqn:?
+       | [ H : context[option_map _ ?x] |- _ ] => destruct x eqn:?; unfold option_map in H
+       | _ => solve [ repeat (esplit || eassumption) ]
+       | [ H : context[nth_error (_::_) ?x] |- _ ] => is_var x; destruct x; simpl nth_error in H
+       | [ H : S _ < S _ |- _ ] => apply lt_S_n in H
+       | _ => solve [ eauto with nocore ]
+       | [ |- context[if ?b then _ else _] ] => destruct b eqn:?
+       | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by (assumption || omega); specialize (H H'); clear H'
+       | [ H : forall n, n < S _ -> _ |- _ ] => pose proof (H 0); specialize (fun n => H (S n))
+       | _ => progress simpl in *
+       | [ H : forall x, ?f x = ?f ?y -> _ |- _ ] => specialize (H _ eq_refl)
+       | [ H : forall x, ?f ?y = ?f x -> _ |- _ ] => specialize (H _ eq_refl)
+       | [ H : forall n, S n < S _ -> _ |- _ ] => specialize (fun n pf => H n (lt_n_S _ _ pf))
+       | [ H : nth_error nil ?x = Some _ |- _ ] => is_var x; destruct x
+       | [ H : forall m x, nth_error (_::_) m = Some _ -> _ |- _ ] => pose proof (H 0); specialize (fun m => H (S m))
+       | [ H : or _ _ |- _ ] => destruct H
+       | [ H : forall x, _ = x \/ _ -> _ |- _ ] => pose proof (H _ (or_introl eq_refl)); specialize (fun x pf => H x (or_intror pf))
+       | [ H : ?x = None |- context[?x] ] => rewrite H
+       | [ H : S _ = S _ |- _ ] => inversion H; clear H
+       | [ H : appcontext[first_index_helper] |- _ ] => rewrite first_index_helper_first_index_error in H
+       | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
+       | [ H : option_rect _ _ _ ?v = Some _ |- _ ] => destruct v eqn:?; simpl in H
+       | [ H : option_rect _ _ _ ?v = None |- _ ] => destruct v eqn:?; simpl in H
+       end.
 
   Local Ltac first_index_error_t :=
     repeat match goal with
-             | _ => progress first_index_error_t'
-             | [ H : _ |- _ ] => rewrite H by repeat first_index_error_t'
+           | _ => progress first_index_error_t'
+           | [ H : _ |- _ ] => rewrite H by repeat first_index_error_t'
            end.
 
   Lemma first_index_error_Some_correct {A} (P : A -> bool) (n : nat) (ls : list A)
-  : first_index_error P ls = Some n <-> ((exists elem, nth_error ls n = Some elem /\ P elem = true)
-                                         /\ forall m, m < n -> forall elem, nth_error ls m = Some elem -> P elem = false).
+    : first_index_error P ls = Some n <-> ((exists elem, nth_error ls n = Some elem /\ P elem = true)
+                                           /\ forall m, m < n -> forall elem, nth_error ls m = Some elem -> P elem = false).
   Proof.
     revert n.
     induction ls; simpl; intros.
@@ -1002,13 +1005,13 @@ Section ListFacts.
   Qed.
 
   Lemma first_index_error_None_correct {A} (P : A -> bool) (ls : list A)
-  : first_index_error P ls = None <-> (forall elem, List.In elem ls -> P elem = false).
+    : first_index_error P ls = None <-> (forall elem, List.In elem ls -> P elem = false).
   Proof.
     induction ls; simpl; intros.
     { first_index_error_t. }
     { first_index_error_t.
       match goal with
-        | [ H : first_index_error _ _ = Some _ |- _ ] => apply first_index_error_Some_correct in H
+      | [ H : first_index_error _ _ = Some _ |- _ ] => apply first_index_error_Some_correct in H
       end.
       first_index_error_t. }
   Qed.
@@ -1017,8 +1020,8 @@ Section ListFacts.
         {A} (f : A -> bool)
         default
         (ls : list A)
-  : first_index_default f default ls
-    = option_rect (fun _ => nat) (fun x => x) default (first_index_error f ls).
+    : first_index_default f default ls
+      = option_rect (fun _ => nat) (fun x => x) default (first_index_error f ls).
   Proof.
     unfold first_index_default.
     rewrite first_index_helper_first_index_error; simpl.
@@ -1031,71 +1034,71 @@ Section ListFacts.
   Qed.
 
   Lemma nth_error_In {A} (n : nat) (x : A) (ls : list A)
-  : nth_error ls n = Some x -> List.In x ls.
+    : nth_error ls n = Some x -> List.In x ls.
   Proof.
     revert n; induction ls; intros [|n]; simpl in *;
-    intros; try discriminate; unfold value in *.
+      intros; try discriminate; unfold value in *.
     { left; congruence. }
     { right; eauto. }
   Qed.
 
   Lemma nth_error_None_long {A} (n : nat) (ls : list A)
-  : nth_error ls n = None <-> List.length ls <= n.
+    : nth_error ls n = None <-> List.length ls <= n.
   Proof.
     revert n; induction ls;
-    intros [|n]; try (specialize (IHls n); destruct IHls);
-    simpl in *; split; intros;
-    unfold value in *;
-    try (reflexivity || omega || congruence);
-    intuition.
+      intros [|n]; try (specialize (IHls n); destruct IHls);
+        simpl in *; split; intros;
+          unfold value in *;
+          try (reflexivity || omega || congruence);
+          intuition.
   Qed.
 
   Lemma nth_error_Some_short {A} (n : nat) (x : A) (ls : list A)
-  : nth_error ls n = Some x -> n < List.length ls.
+    : nth_error ls n = Some x -> n < List.length ls.
   Proof.
     destruct (le_lt_dec (List.length ls) n) as [H|H];
-    intro H'; trivial.
+      intro H'; trivial.
     apply nth_error_None_long in H; congruence.
   Qed.
 
   Lemma nth_error_nth {A} (ls : list A) (n : nat) (y : A)
-  : nth n ls y = match nth_error ls n with
+    : nth n ls y = match nth_error ls n with
                    | Some x => x
                    | None => y
-                 end.
+                   end.
   Proof.
     revert n; induction ls; intros [|n]; simpl in *; intros;
-    try discriminate;
-    unfold value in *;
-    eauto.
+      try discriminate;
+      unfold value in *;
+      eauto.
   Qed.
 
   Lemma nth_error_Some_nth {A} (ls : list A) (n : nat) (x : A)
-  : nth_error ls n = Some x -> forall y, nth n ls y = x.
+    : nth_error ls n = Some x -> forall y, nth n ls y = x.
   Proof.
     intros H ?; rewrite nth_error_nth, H; reflexivity.
   Qed.
 
   Lemma length_up_to n
-  : List.length (up_to n) = n.
+    : List.length (up_to n) = n.
   Proof.
     induction n; simpl; auto.
   Qed.
 
   Lemma filter_out_filter {A} f (ls : list A)
-  :  filter_out f ls = filter (fun x => negb (f x)) ls.
+    :  filter_out f ls = filter (fun x => negb (f x)) ls.
   Proof.
     induction ls; simpl; trivial; rewrite !IHls; edestruct f; reflexivity.
   Qed.
 
   Lemma filter_filter_out {A} f (ls : list A)
-  :  filter f ls = filter_out (fun x => negb (f x)) ls.
+    :  filter f ls = filter_out (fun x => negb (f x)) ls.
   Proof.
     induction ls; simpl; trivial; rewrite !IHls; edestruct f; reflexivity.
   Qed.
 
   Lemma nth'_helper_nth {A} n ls (default : A) offset (H : offset <= n)
-  : nth'_helper n ls default offset = nth (n - offset) ls default.
+    : nth'_helper n ls default offset = nth (n - offset) ls default.
   Proof.
     revert n default offset H.
     induction ls as [|x xs IHxs].
@@ -1114,7 +1117,7 @@ Section ListFacts.
   Qed.
 
   Lemma nth'_nth {A} n ls (default : A)
-  : nth' n ls default = nth n ls default.
+    : nth' n ls default = nth n ls default.
   Proof.
     change (nth'_helper n ls default 0 = nth n ls default).
     rewrite nth'_helper_nth by omega.
@@ -1133,16 +1136,16 @@ Section ListFacts.
     - case_eq (f a); simpl; intros.
       + inversion H0; constructor; eauto.
         subst; unfold not; intros H1;
-        apply filter_In in H1; intuition.
+          apply filter_In in H1; intuition.
       + inversion H0; eauto.
   Qed.
 
   Lemma eqlistA_app_iff {A} (R : relation A) (x y z : list A)
-  : SetoidList.eqlistA R (x ++ y) z <-> (exists x' y', (x' ++ y' = z)%list /\ SetoidList.eqlistA R x x' /\ SetoidList.eqlistA R y y').
+    : SetoidList.eqlistA R (x ++ y) z <-> (exists x' y', (x' ++ y' = z)%list /\ SetoidList.eqlistA R x x' /\ SetoidList.eqlistA R y y').
   Proof.
     revert z.
     induction x as [|x xs IHxs]; simpl; intros z;
-    split; intro H.
+      split; intro H.
     { eexists nil; eexists z; split; [ reflexivity | ].
       split; first [ assumption | constructor ]. }
     { destruct H as [x' [y' [H0 [H1 H2]]]]; subst.
@@ -1150,48 +1153,48 @@ Section ListFacts.
       assumption. }
     { inversion_clear H.
       match goal with
-        | [ H : SetoidList.eqlistA _ _ _ |- _ ]
-          => apply IHxs in H; clear IHxs
+      | [ H : SetoidList.eqlistA _ _ _ |- _ ]
+        => apply IHxs in H; clear IHxs
       end.
       repeat match goal with
-               | [ H : ex _ |- _ ] => destruct H
-               | [ H : and _ _ |- _ ] => destruct H
-               | _ => progress subst
+             | [ H : ex _ |- _ ] => destruct H
+             | [ H : and _ _ |- _ ] => destruct H
+             | _ => progress subst
              end.
       eexists (_::_)%list; simpl; eexists.
       repeat split; first [ assumption | constructor; assumption ]. }
     { repeat match goal with
-               | [ H : ex _ |- _ ] => destruct H
-               | [ H : and _ _ |- _ ] => destruct H
-               | _ => progress subst
-               | [ H : SetoidList.eqlistA _ (_::_) _ |- _ ] => inversion H; clear H
-               | _ => progress simpl
-               | [ |- SetoidList.eqlistA _ (_::_) (_::_) ] => constructor
-               | _ => assumption
+             | [ H : ex _ |- _ ] => destruct H
+             | [ H : and _ _ |- _ ] => destruct H
+             | _ => progress subst
+             | [ H : SetoidList.eqlistA _ (_::_) _ |- _ ] => inversion H; clear H
+             | _ => progress simpl
+             | [ |- SetoidList.eqlistA _ (_::_) (_::_) ] => constructor
+             | _ => assumption
              end.
       apply IHxs.
       repeat esplit; eassumption. }
   Qed.
 
   Lemma eqlistA_eq {A} ls ls'
-  : @SetoidList.eqlistA A eq ls ls' <-> ls = ls'.
+    : @SetoidList.eqlistA A eq ls ls' <-> ls = ls'.
   Proof.
     split; intro H; subst; try reflexivity.
     revert ls' H.
     induction ls as [|x xs IHxs]; intros []; intros;
-    f_equal;
-    inversion H; subst; trivial; eauto with nocore.
+      f_equal;
+      inversion H; subst; trivial; eauto with nocore.
   Qed.
 
   Lemma fold_left_orb_true (ls : list bool)
-  : fold_left orb ls true = true.
+    : fold_left orb ls true = true.
   Proof.
     induction ls; simpl; trivial.
   Qed.
 
   Lemma Forall_tails_id {A P} (ls : list A)
         (H : Forall_tails P ls)
-  : P ls.
+    : P ls.
   Proof.
     destruct ls; simpl in *; try assumption.
     destruct H; assumption.
@@ -1199,14 +1202,14 @@ Section ListFacts.
 
   Lemma Forall_tails_app {A P} (ls ls' : list A)
         (H : Forall_tails P (ls ++ ls'))
-  : Forall_tails P ls'.
+    : Forall_tails P ls'.
   Proof.
     induction ls; simpl in *; trivial.
     destruct H; auto.
   Defined.
 
   Lemma first_index_default_S_cons {A f k} {x} {xs : list A}
-  : first_index_default f (S k) (x::xs) = if (f x) then 0 else S (first_index_default f k xs).
+    : first_index_default f (S k) (x::xs) = if (f x) then 0 else S (first_index_default f k xs).
   Proof.
     simpl.
     rewrite first_index_default_first_index_error.
@@ -1215,7 +1218,7 @@ Section ListFacts.
     apply first_index_error_Some_correct in H.
     repeat (destruct_head and; destruct_head ex).
     match goal with
-      | [ H : ?x = Some _ |- context[?x] ] => rewrite H
+    | [ H : ?x = Some _ |- context[?x] ] => rewrite H
     end.
     reflexivity.
   Qed.
@@ -1223,23 +1226,23 @@ Section ListFacts.
   Definition Forall_ForallT_step
              (Forall_ForallT
               : forall A P ls,
-                forall ls' ls'', ls = ls' -> ls = ls''
-                                 -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')))
+                 forall ls' ls'', ls = ls' -> ls = ls''
+                                  -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')))
              A P ls
-  : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')).
+    : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls'')).
   Proof.
     intros ls' ls'' H' H''; split; [ intro H | intros [H] ];
-    (destruct ls as [|x xs];
-     [
-     | specialize (@Forall_ForallT A P xs (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H''));
-       pose proof (proj1' Forall_ForallT);
-       pose proof (proj2' Forall_ForallT) ]);
-    clear Forall_ForallT;
-    simpl in *;
-    repeat match goal with
+      (destruct ls as [|x xs];
+       [
+       | specialize (@Forall_ForallT A P xs (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H''));
+         pose proof (proj1' Forall_ForallT);
+         pose proof (proj2' Forall_ForallT) ]);
+      clear Forall_ForallT;
+      simpl in *;
+      repeat match goal with
              | [ H : nil = ?ls |- inhabited (ForallT _ ?ls) ] => clear -H; solve [ repeat first [ constructor | subst ] ]
-           end;
-    try solve [ repeat constructor ]; simpl in *.
+             end;
+      try solve [ repeat constructor ]; simpl in *.
     { destruct H;
       try (exfalso; clear -H'; abstract congruence);
       simpl in *;
@@ -1277,39 +1280,39 @@ Section ListFacts.
   Global Arguments Forall_ForallT_step {_ _ _} _ _ _ _ _ : simpl never.
 
   Fixpoint Forall_ForallT' A P ls {struct ls}
-  : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls''))
+    : forall ls' ls'', ls = ls' -> ls = ls'' -> (@Forall A P ls' <-> inhabited (@ForallT A P ls''))
     := @Forall_ForallT_step (@Forall_ForallT') A P ls.
   Global Arguments Forall_ForallT' {_ _ _} _ _ _ _.
   Definition Forall_ForallT A P ls
-  : @Forall A P ls <-> inhabited (@ForallT A P ls)
+    : @Forall A P ls <-> inhabited (@ForallT A P ls)
     := @Forall_ForallT' A P ls ls ls eq_refl eq_refl.
   Global Arguments Forall_ForallT {_ _ _}.
 
   Lemma step_Forall_ForallT' {A P ls ls' ls'' H' H''}
-  : @Forall_ForallT' A P ls ls' ls'' H' H'' = @Forall_ForallT_step (@Forall_ForallT') A P ls ls' ls'' H' H''.
+    : @Forall_ForallT' A P ls ls' ls'' H' H'' = @Forall_ForallT_step (@Forall_ForallT') A P ls ls' ls'' H' H''.
   Proof.
     destruct ls; reflexivity.
   Defined.
 
   Fixpoint Forall_ForallT_Forall_eq {A P ls} (x : @Forall A P ls) {struct x}
-  : proj2' Forall_ForallT (proj1' Forall_ForallT x) = x.
+    : proj2' Forall_ForallT (proj1' Forall_ForallT x) = x.
   Proof.
     unfold Forall_ForallT in *.
     destruct x as [|? xs p ps]; simpl in *;
-    [ | specialize (@Forall_ForallT_Forall_eq A P xs ps) ].
+      [ | specialize (@Forall_ForallT_Forall_eq A P xs ps) ].
     { reflexivity. }
     { edestruct (@Forall_ForallT');
       unfold eq_ind_r.
       simpl in *.
       match goal with
-        | [ |- context[match ?f ?x with _ => _ end] ]
-          => destruct (f x) eqn:H'
+      | [ |- context[match ?f ?x with _ => _ end] ]
+        => destruct (f x) eqn:H'
       end.
       rewrite Forall_ForallT_Forall_eq; reflexivity. }
   Qed.
 
   Fixpoint ForallT_Forall_ForallT_eq {A} {P : A -> Prop} ls (x : inhabited (@ForallT A P ls)) {struct ls}
-  : proj1' Forall_ForallT (proj2' (@Forall_ForallT A P ls) x) = x.
+    : proj1' Forall_ForallT (proj2' (@Forall_ForallT A P ls) x) = x.
   Proof.
     unfold Forall_ForallT in *.
     destruct ls as [|v vs];
@@ -1320,7 +1323,7 @@ Section ListFacts.
       destruct_head True.
     { reflexivity. }
     { match goal with
-        | [ x : _ |- _ ] => specialize (ForallT_Forall_ForallT_eq (inhabits x))
+      | [ x : _ |- _ ] => specialize (ForallT_Forall_ForallT_eq (inhabits x))
       end.
       unfold eq_ind_r in *; simpl in *.
       edestruct (@Forall_ForallT'); simpl in *.
@@ -1330,12 +1333,12 @@ Section ListFacts.
 
   Fixpoint ForallT_code A P ls {struct ls} : @ForallT A P ls -> @ForallT A P ls -> Prop
     := match ls return @ForallT A P ls -> @ForallT A P ls -> Prop with
-         | nil => fun _ _ => True
-         | x::xs => fun H H' => fst H = fst H' /\ @ForallT_code A P xs (snd H) (snd H')
+       | nil => fun _ _ => True
+       | x::xs => fun H H' => fst H = fst H' /\ @ForallT_code A P xs (snd H) (snd H')
        end.
   Global Arguments ForallT_code {A P ls} _ _.
   Fixpoint ForallT_encode A P ls {struct ls}
-  : forall (x y : @ForallT A P ls), x = y -> ForallT_code x y.
+    : forall (x y : @ForallT A P ls), x = y -> ForallT_code x y.
   Proof.
     destruct ls as [|v vs]; simpl; intros x y p.
     { constructor. }
@@ -1345,7 +1348,7 @@ Section ListFacts.
   Defined.
   Global Arguments ForallT_encode {A P ls} {_ _} _.
   Fixpoint ForallT_decode A P ls {struct ls}
-  : forall (x y : @ForallT A P ls), ForallT_code x y -> x = y.
+    : forall (x y : @ForallT A P ls), ForallT_code x y -> x = y.
   Proof.
     destruct ls as [|v vs]; simpl; intros x y p.
     { destruct x, y; reflexivity. }
@@ -1355,7 +1358,7 @@ Section ListFacts.
   Defined.
   Global Arguments ForallT_decode {A P ls} {_ _} _.
   Fixpoint ForallT_endecode A P ls {struct ls}
-  : forall (x y : @ForallT A P ls) p, @ForallT_encode A P ls x y (ForallT_decode p) = p.
+    : forall (x y : @ForallT A P ls) p, @ForallT_encode A P ls x y (ForallT_decode p) = p.
   Proof.
     destruct ls as [|v vs]; simpl; intros x y p.
     { destruct p; reflexivity. }
@@ -1367,7 +1370,7 @@ Section ListFacts.
         eauto. }
   Qed.
   Fixpoint ForallT_deencode A P ls {struct ls}
-  : forall (x y : @ForallT A P ls) p, @ForallT_decode A P ls x y (ForallT_encode p) = p.
+    : forall (x y : @ForallT A P ls) p, @ForallT_decode A P ls x y (ForallT_encode p) = p.
   Proof.
     destruct ls as [|v vs]; simpl; intros x y p.
     { destruct p, x; reflexivity. }
@@ -1377,7 +1380,7 @@ Section ListFacts.
 
   Lemma Forall_proof_irrelevance {A P ls} (x y : @Forall A P ls)
         (pi : forall a (x y : P a), x = y)
-  : x = y.
+    : x = y.
   Proof.
     rewrite <- (Forall_ForallT_Forall_eq x), <- (Forall_ForallT_Forall_eq y).
     apply f_equal.
@@ -1395,8 +1398,8 @@ Section ListFacts.
       change (v::vs) with ls'' in y.
       change
         ((forall (x0 : Forall P (tl ls')) (y0 : Forall P (tl ls'')),
-            proj1' (Forall_ForallT' (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H'')) x0
-            = proj1' (Forall_ForallT' (tl ls'') (tl ls'') (f_equal (@tl _) H'') (f_equal (@tl _) H'')) y0)
+             proj1' (Forall_ForallT' (tl ls') (tl ls'') (f_equal (@tl _) H') (f_equal (@tl _) H'')) x0
+             = proj1' (Forall_ForallT' (tl ls'') (tl ls'') (f_equal (@tl _) H'') (f_equal (@tl _) H'')) y0)
          -> proj1' (Forall_ForallT' ls' ls'' H' H'') x
             = proj1' (Forall_ForallT' ls'' ls'' H'' H'') y).
       clearbody H H' H'' ls ls' ls''.
@@ -1407,30 +1410,30 @@ Section ListFacts.
       simpl in *.
       erewrite IHvs; clear IHvs.
       match goal with
-        | [ |- match ?e with _ => _ end = match ?e' with _ => _ end ]
-          => unify e e'; destruct e
+      | [ |- match ?e with _ => _ end = match ?e' with _ => _ end ]
+        => unify e e'; destruct e
       end.
       unfold eq_ind_r; simpl.
       repeat (f_equal; []).
       repeat match goal with
-               | _ => intro
-               | _ => progress simpl in *
-               | _ => progress subst
-               | _ => solve [ eauto with nocore ]
-               | [ |- context[f_equal ?f ?H] ]
-                 => generalize (f_equal f H); clear H
+             | _ => intro
+             | _ => progress simpl in *
+             | _ => progress subst
+             | _ => solve [ eauto with nocore ]
+             | [ |- context[f_equal ?f ?H] ]
+               => generalize (f_equal f H); clear H
              end. }
   Qed.
 
   Lemma In_InT {A} (x : A) (ls : list A) (H : InT x ls)
-  : In x ls.
+    : In x ls.
   Proof.
     induction ls as [|y ys IHys]; simpl in *; trivial.
     destruct H; [ left | right ]; eauto with nocore.
   Qed.
 
   Lemma tl_drop {A} (ls : list A) (n : nat)
-  : tl (List.drop n ls) = List.drop n (tl ls).
+    : tl (List.drop n ls) = List.drop n (tl ls).
   Proof.
     revert n; induction ls as [|x xs IHxs].
     { intros [|?]; reflexivity. }
@@ -1442,7 +1445,7 @@ Section ListFacts.
 
   Lemma map_ext_in {A B} (f f' : A -> B) (ls : list A)
         (H : forall a, List.In a ls -> f a = f' a)
-  : List.map f ls = List.map f' ls.
+    : List.map f ls = List.map f' ls.
   Proof.
     induction ls; simpl; trivial.
     rewrite H, IHls.
@@ -1452,14 +1455,14 @@ Section ListFacts.
   Qed.
 
   Lemma list_bin_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A) x
-  : list_bin beq (f x) (map f ls) = list_bin (fun x y => beq (f x) (f y)) x ls.
+    : list_bin beq (f x) (map f ls) = list_bin (fun x y => beq (f x) (f y)) x ls.
   Proof.
     induction ls; trivial; simpl.
     rewrite IHls; reflexivity.
   Qed.
 
   Lemma uniquize_map {A B} (f : A -> B) (beq : B -> B -> bool) (ls : list A)
-  : uniquize beq (map f ls) = map f (uniquize (fun x y => beq (f x) (f y)) ls).
+    : uniquize beq (map f ls) = map f (uniquize (fun x y => beq (f x) (f y)) ls).
   Proof.
     induction ls; trivial; simpl.
     rewrite !IHls, list_bin_map.
@@ -1470,7 +1473,7 @@ Section ListFacts.
              (ls : list A)
              (Hnil : P nil)
              (Hcons : forall x xs, In x ls -> P xs -> P (x::xs))
-  : P ls.
+    : P ls.
   Proof.
     induction ls as [|x xs IHxs]; [ assumption | ].
     apply Hcons.
@@ -1481,7 +1484,7 @@ Section ListFacts.
   Defined.
 
   Lemma fold_right_and_True_app ls ls'
-  : fold_right and True (ls ++ ls') <-> (fold_right and True ls /\ fold_right and True ls').
+    : fold_right and True (ls ++ ls') <-> (fold_right and True ls /\ fold_right and True ls').
   Proof.
     revert ls'; induction ls as [|?? IHls]; simpl; intros; try tauto.
     rewrite IHls; clear IHls.
@@ -1489,7 +1492,7 @@ Section ListFacts.
   Qed.
 
   Lemma fold_right_and_True_flatten ls
-  : fold_right and True (flatten ls) <-> fold_right and True (map (fold_right and True) ls).
+    : fold_right and True (flatten ls) <-> fold_right and True (map (fold_right and True) ls).
   Proof.
     induction ls as [|?? IHls]; try tauto; simpl.
     rewrite <- IHls; clear IHls.
@@ -1497,10 +1500,10 @@ Section ListFacts.
   Qed.
 
   Lemma NoDup_app {A} (ls ls' : list A)
-  : NoDup (ls ++ ls') -> NoDup ls /\ NoDup ls'.
+    : NoDup (ls ++ ls') -> NoDup ls /\ NoDup ls'.
   Proof.
     induction ls; simpl; intro H; split; trivial; try constructor;
-    simpl in *.
+      simpl in *.
     { inversion H; subst.
       eauto using in_or_app. }
     { apply IHls.
@@ -1508,7 +1511,7 @@ Section ListFacts.
     { apply IHls; inversion H; subst; assumption. }
   Qed.
   Lemma NoDup_app_in {A} (ls ls' : list A) (x : A) (H : NoDup (ls ++ ls'))
-  : In x ls' -> In x ls -> False.
+    : In x ls' -> In x ls -> False.
   Proof.
     intros H0 H1.
     induction ls as [|?? IHls]; simpl in *; trivial.
@@ -1518,12 +1521,12 @@ Section ListFacts.
   Qed.
 
   Lemma NoDup_app_in_iff {A} (ls ls' : list A)
-  : NoDup (ls ++ ls') <-> (NoDup ls /\ NoDup ls' /\
-                           forall x, In x ls' -> In x ls -> False).
+    : NoDup (ls ++ ls') <-> (NoDup ls /\ NoDup ls' /\
+                             forall x, In x ls' -> In x ls -> False).
   Proof.
     induction ls as [|?? IHls]; simpl in *; trivial;
-    repeat (split || intro);
-    repeat match goal with
+      repeat (split || intro);
+      repeat match goal with
              | _ => solve [ constructor ]
              | _ => assumption
              | _ => progress simpl in *
@@ -1545,10 +1548,10 @@ Section ListFacts.
              | [ H : ?T, H' : ?T /\ _ -> ?B |- _ ] => specialize (fun X => H' (conj H X))
              | _ => progress split_in_context_by or (fun a b : Type => a) (fun a b : Type => b) ltac:(fun H => intuition eauto)
              | [ H : forall x, _ -> _ = x -> _ |- _ ] => specialize (fun k => H _ k eq_refl)
-           end.
+             end.
   Qed.
   Lemma NoDup_rev {A} (ls : list A)
-  : NoDup (rev ls) <-> NoDup ls.
+    : NoDup (rev ls) <-> NoDup ls.
   Proof.
     induction ls as [|?? IHls]; simpl.
     { split; intro; constructor. }
@@ -1567,7 +1570,7 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_nonnil {A} beq (ls : list A)
-  : ls <> nil <-> Operations.List.uniquize beq ls <> nil.
+    : ls <> nil <-> Operations.List.uniquize beq ls <> nil.
   Proof.
     induction ls as [|a ls IHls]; simpl.
     { reflexivity. }
@@ -1582,7 +1585,7 @@ Section ListFacts.
       { congruence. } }
   Qed.
   Lemma rev_nonnil {A} (ls : list A)
-  : ls <> nil <-> rev ls <> nil.
+    : ls <> nil <-> rev ls <> nil.
   Proof.
     destruct ls; simpl.
     { reflexivity. }
@@ -1594,12 +1597,12 @@ Section ListFacts.
   Qed.
 
   Lemma Forall_tl {A} P (ls : list A)
-  : List.Forall P ls -> List.Forall P (tl ls).
+    : List.Forall P ls -> List.Forall P (tl ls).
   Proof.
     intro H; destruct H; simpl; try constructor; assumption.
   Qed.
   Lemma Forall_inv_iff {A} P x (xs : list A)
-  : List.Forall P (x::xs) <-> (P x /\ List.Forall P xs).
+    : List.Forall P (x::xs) <-> (P x /\ List.Forall P xs).
   Proof.
     split; intro H.
     { inversion H; subst; split; assumption. }
@@ -1607,7 +1610,7 @@ Section ListFacts.
   Qed.
 
   Lemma app_take_drop {A} (ls : list A) n
-  : (Operations.List.take n ls ++ Operations.List.drop n ls)%list = ls.
+    : (Operations.List.take n ls ++ Operations.List.drop n ls)%list = ls.
   Proof.
     revert ls; induction n as [|n IHn]; intros.
     { reflexivity. }
@@ -1617,7 +1620,7 @@ Section ListFacts.
   Qed.
 
   Lemma map_proj1_sig_sig_In {A} (ls : list A)
-  : List.map (@proj1_sig _ _) (sig_In ls) = ls.
+    : List.map (@proj1_sig _ _) (sig_In ls) = ls.
   Proof.
     induction ls; simpl; f_equal; rewrite map_map; simpl; assumption.
   Qed.
@@ -1625,33 +1628,33 @@ Section ListFacts.
   Lemma in_sig_uip {A} {P : A -> Prop} (UIP : forall x (p q : P x), p = q)
         (ls : list { x : A | P x })
         x
-  : List.In x ls <-> List.In (proj1_sig x) (List.map (@proj1_sig _ _) ls).
+    : List.In x ls <-> List.In (proj1_sig x) (List.map (@proj1_sig _ _) ls).
   Proof.
     induction ls as [|y ys IHls]; simpl.
     { reflexivity. }
     { repeat match goal with
-               | [ |- ?x = ?x \/ _ ] => left; reflexivity
-               | [ H : ?A |- _ \/ ?A ] => right; assumption
-               | [ |- exist _ ?x _ = exist _ ?x _ \/ _ ] => left; apply f_equal
-               | _ => progress subst
-               | _ => progress simpl in *
-               | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
-               | [ H : _ <-> _ |- _ ] => destruct H
-               | [ |- _ <-> _ ] => split
-               | _ => intro
-               | [ H : _ \/ _ |- _ ] => destruct H
-               | [ H : proj1_sig ?x = _ |- _ ] => is_var x; destruct x
-               | [ |- context[exist _ _ _ = ?x] ] => is_var x; destruct x
-               | _ => solve [ eauto with nocore ]
+             | [ |- ?x = ?x \/ _ ] => left; reflexivity
+             | [ H : ?A |- _ \/ ?A ] => right; assumption
+             | [ |- exist _ ?x _ = exist _ ?x _ \/ _ ] => left; apply f_equal
+             | _ => progress subst
+             | _ => progress simpl in *
+             | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+             | [ H : _ <-> _ |- _ ] => destruct H
+             | [ |- _ <-> _ ] => split
+             | _ => intro
+             | [ H : _ \/ _ |- _ ] => destruct H
+             | [ H : proj1_sig ?x = _ |- _ ] => is_var x; destruct x
+             | [ |- context[exist _ _ _ = ?x] ] => is_var x; destruct x
+             | _ => solve [ eauto with nocore ]
              end. }
   Qed.
 
   Lemma step_rev_up_to {n}
-  : List.rev (up_to n)
-    = match n with
+    : List.rev (up_to n)
+      = match n with
         | 0 => nil
         | S n' => 0::map S (List.rev (up_to n'))
-      end.
+        end.
   Proof.
     induction n; simpl; [ reflexivity | ].
     etransitivity; [ rewrite IHn | reflexivity ].
@@ -1660,10 +1663,10 @@ Section ListFacts.
   Qed.
 
   Lemma map_nth_dep_helper {A B} (f' : nat -> nat) (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
-  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
-               (combine (List.map f' (List.rev (up_to (List.length l)))) l))
-        (f (f' n) d)
-    = f (f' n) (nth n l d).
+    : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+                 (combine (List.map f' (List.rev (up_to (List.length l)))) l))
+          (f (f' n) d)
+      = f (f' n) (nth n l d).
   Proof.
     rewrite <- (map_nth (f (f' n))).
     rewrite step_rev_up_to.
@@ -1678,32 +1681,32 @@ Section ListFacts.
   Qed.
 
   Lemma map_nth_dep {A B} (f : nat -> A -> B) (l : list A) (d : A) (n : nat)
-  : nth n (map (fun n'a => f (fst n'a) (snd n'a))
-               (combine (List.rev (up_to (List.length l))) l))
-        (f n d)
-    = f n (nth n l d).
+    : nth n (map (fun n'a => f (fst n'a) (snd n'a))
+                 (combine (List.rev (up_to (List.length l))) l))
+          (f n d)
+      = f n (nth n l d).
   Proof.
     rewrite <- (map_nth_dep_helper (fun x => x)).
     rewrite List.map_id; reflexivity.
   Qed.
 
   Lemma combine_map_l {A A' B} (g : A -> A') ls ls'
-  : List.combine (List.map g ls) ls'
-    = List.map (fun x : A * B => (g (fst x), snd x))
-               (List.combine ls ls').
+    : List.combine (List.map g ls) ls'
+      = List.map (fun x : A * B => (g (fst x), snd x))
+                 (List.combine ls ls').
   Proof.
     revert ls'; induction ls as [|l ls IHls];
-    intros [|l' ls']; simpl; f_equal.
+      intros [|l' ls']; simpl; f_equal.
     eauto with nocore.
   Qed.
 
   Lemma combine_map_r {A B B'} (g : B -> B') ls ls'
-  : List.combine ls (List.map g ls')
-    = List.map (fun x : A * B => (fst x, g (snd x)))
-               (List.combine ls ls').
+    : List.combine ls (List.map g ls')
+      = List.map (fun x : A * B => (fst x, g (snd x)))
+                 (List.combine ls ls').
   Proof.
     revert ls'; induction ls as [|l ls IHls];
-    intros [|l' ls']; simpl; f_equal.
+      intros [|l' ls']; simpl; f_equal.
     eauto with nocore.
   Qed.
 
@@ -1770,14 +1773,14 @@ Section ListFacts.
         {Abl : BoolDec_bl (@eq A)}
         {Alb : BoolDec_lb (@eq A)}
         (f : A -> B) ls x base
-  : List.fold_right
-      (fun y else_case => If beq x y Then f y Else else_case)
-      base
-      (uniquize beq ls)
-    = List.fold_right
+    : List.fold_right
         (fun y else_case => If beq x y Then f y Else else_case)
         base
-        ls.
+        (uniquize beq ls)
+      = List.fold_right
+          (fun y else_case => If beq x y Then f y Else else_case)
+          base
+          ls.
   Proof.
     rewrite !fold_right_beq_in_correct'.
     destruct (list_bin beq x ls) eqn:Heq;
@@ -1796,7 +1799,7 @@ Section ListFacts.
   Qed.
 
   Lemma uniquize_nil {A beq} (ls : list A)
-  : uniquize beq ls = nil <-> ls = nil.
+    : uniquize beq ls = nil <-> ls = nil.
   Proof.
     induction ls as [|l ls IHls]; simpl.
     { reflexivity. }
@@ -1815,7 +1818,7 @@ Section ListFacts.
         (bl : forall x y : A, beq x y = true -> x = y)
         (lb : forall x y : A, x = y -> beq x y)
         (ls : list A) (x : A)
-  : uniquize beq ls = [x] <-> (forall y, In y ls <-> x = y).
+    : uniquize beq ls = [x] <-> (forall y, In y ls <-> x = y).
   Proof.
     induction ls; simpl.
     { intuition (subst; eauto; split_iff; try congruence). }
@@ -1831,85 +1834,85 @@ Section ListFacts.
                      | progress f_equal; []
                      | solve [ eauto ] ]. }
       { repeat match goal with
-                 | [ |- context[Equality.list_bin ?beq ?x ?ls] ]
-                   => destruct (Equality.list_bin beq x ls) eqn:?
-                 | [ H : Equality.list_bin _ _ _ = true |- _ ]
-                   => apply (Equality.list_in_bl bl) in H
-                 | _ => progress split_iff
-                 | _ => progress simpl in *
-                 | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
-                 | [ H : orb _ _ = false |- _ ] => apply Bool.orb_false_iff in H
-                 | _ => progress subst
-                 | _ => progress split_and
-                 | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
-                 | _ => progress specialize_by ltac:(exact eq_refl)
-                 | _ => congruence
-                 | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
-                   => pose proof (H _ (or_introl eq_refl)); subst a
-                 | [ H : forall y, ?x = y \/ @?P y -> ?x = y |- _ ]
-                   => assert (forall y, P y -> x = y)
-                     by (intros; apply H; right; assumption);
-                     clear H
-                 | [ H : forall y, @?P y -> @?P y \/ _ |- _ ]
-                   => clear H
-                 | [ H : (forall x, @?A x <-> @?B x) -> _,
-                         H' : forall x, @?A x -> @?B x
-                                        |- _ ]
-                   => specialize (fun H'' => H (fun x => conj (H' x) (H'' x)))
-                 | [ H : (forall x, ?a = x -> @?P x) -> _ |- _ ]
-                   => specialize (fun pf' : P a
-                                  => H (fun x pf => match pf in (_ = y) return P y with
-                                                      | eq_refl => pf'
-                                                    end))
-                 | [ H : forall y, In y ?ls -> _ = y,
-                       H' : In ?y' ?ls |- _ ]
-                   => pose proof (H _ H'); subst y'
-                 | [ |- ?x = ?x \/ _ ] => left; reflexivity
-                 | [ |- ?x::_ = ?x::_ ] => apply f_equal
-                 | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
-                 | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
-                   => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
-                                                   rewrite Heq; first [ left; reflexivity
-                                                                      | right; assumption ])
-                 | _ => progress destruct_head False
-                 | [ Heq : uniquize ?beq ?ls = ?x::_, H' : forall y, In y ?ls -> _ = y |- _ ]
-                   => let H := fresh in
-                      assert (H : In x ls)
-                        by (apply (ListFacts.uniquize_In _ beq);
-                            rewrite Heq; left; reflexivity);
-                        pose proof (H' _ H); subst x
-                 | [ H : context[beq ?x ?x] |- _ ] => rewrite lb in H by reflexivity
-                 | _ => progress destruct_head or
-                 | _ => split
-                 | _ => intro
+               | [ |- context[Equality.list_bin ?beq ?x ?ls] ]
+                 => destruct (Equality.list_bin beq x ls) eqn:?
+               | [ H : Equality.list_bin _ _ _ = true |- _ ]
+                 => apply (Equality.list_in_bl bl) in H
+               | _ => progress split_iff
+               | _ => progress simpl in *
+               | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H
+               | [ H : orb _ _ = false |- _ ] => apply Bool.orb_false_iff in H
+               | _ => progress subst
+               | _ => progress split_and
+               | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
+               | _ => progress specialize_by ltac:(exact eq_refl)
+               | _ => congruence
+               | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
+                 => pose proof (H _ (or_introl eq_refl)); subst a
+               | [ H : forall y, ?x = y \/ @?P y -> ?x = y |- _ ]
+                 => assert (forall y, P y -> x = y)
+                   by (intros; apply H; right; assumption);
+                    clear H
+               | [ H : forall y, @?P y -> @?P y \/ _ |- _ ]
+                 => clear H
+               | [ H : (forall x, @?A x <-> @?B x) -> _,
+                       H' : forall x, @?A x -> @?B x
+                                      |- _ ]
+                 => specialize (fun H'' => H (fun x => conj (H' x) (H'' x)))
+               | [ H : (forall x, ?a = x -> @?P x) -> _ |- _ ]
+                 => specialize (fun pf' : P a
+                                => H (fun x pf => match pf in (_ = y) return P y with
+                                                  | eq_refl => pf'
+                                                  end))
+               | [ H : forall y, In y ?ls -> _ = y,
+                     H' : In ?y' ?ls |- _ ]
+                 => pose proof (H _ H'); subst y'
+               | [ |- ?x = ?x \/ _ ] => left; reflexivity
+               | [ |- ?x::_ = ?x::_ ] => apply f_equal
+               | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
+               | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
+                 => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
+                                                 rewrite Heq; first [ left; reflexivity
+                                                                    | right; assumption ])
+               | _ => progress destruct_head False
+               | [ Heq : uniquize ?beq ?ls = ?x::_, H' : forall y, In y ?ls -> _ = y |- _ ]
+                 => let H := fresh in
+                    assert (H : In x ls)
+                      by (apply (ListFacts.uniquize_In _ beq);
+                          rewrite Heq; left; reflexivity);
+                    pose proof (H' _ H); subst x
+               | [ H : context[beq ?x ?x] |- _ ] => rewrite lb in H by reflexivity
+               | _ => progress destruct_head or
+               | _ => split
+               | _ => intro
                end. } }
   Qed.
 
   Lemma find_first_index_error {A} {beq : A -> A -> bool} (bl : forall x y, beq x y = true -> x = y)
         {B C} (f : A * B -> C) x ls default
-  : option_rect
-      (fun _ => C)
-      (fun idx => nth idx (map f ls) default)
-      default
-      (List.first_index_error
-         (beq x)
-         (map fst ls))
-    = option_rect
+    : option_rect
         (fun _ => C)
-        f
+        (fun idx => nth idx (map f ls) default)
         default
-        (find (fun k => beq x (fst k)) ls).
+        (List.first_index_error
+           (beq x)
+           (map fst ls))
+      = option_rect
+          (fun _ => C)
+          f
+          default
+          (find (fun k => beq x (fst k)) ls).
   Proof.
     induction ls as [|l ls IHls]; simpl; [ reflexivity | ].
     repeat match goal with
-             | _ => rewrite <- IHls; clear IHls
-             | _ => reflexivity
-             | [ |- context[if ?e then _ else _] ] => destruct e eqn:?; simpl
+           | _ => rewrite <- IHls; clear IHls
+           | _ => reflexivity
+           | [ |- context[if ?e then _ else _] ] => destruct e eqn:?; simpl
            end; [].
     rewrite first_index_helper_first_index_error; simpl.
     match goal with
-      | [ |- _ = option_rect _ _ _ ?x ]
-        => destruct x eqn:Heq'
+    | [ |- _ = option_rect _ _ _ ?x ]
+      => destruct x eqn:Heq'
     end; simpl.
     { apply first_index_error_Some_correct in Heq'.
       destruct Heq' as [[? [Heq' ?]] ?].
@@ -1978,4 +1981,77 @@ Section ListFacts.
   Proof.
     destruct ls as [|l ls]; reflexivity.
   Qed.
+
+  Lemma fold_right_max_is_max {A}
+    : forall (f : A -> nat) ns n,
+      List.In n ns -> f n <= fold_right (fun n acc => max (f n) acc) 0 ns.
+  Proof.
+    induction ns; intros; inversion H; subst; simpl;
+      apply NPeano.Nat.max_le_iff; [ left | right ]; auto.
+  Qed.
+
+  Lemma fold_right_higher_is_higher {A}
+    : forall (f : A -> nat) ns x,
+      (forall r, List.In r ns -> f r <= x) ->
+      fold_right (fun n acc => max (f n) acc) 0 ns <= x.
+  Proof.
+    induction ns; simpl; intros; [ apply le_0_n | ].
+    apply NPeano.Nat.max_lub.
+    apply H; left; auto.
+    apply IHns; intros; apply H; right; auto.
+  Qed.
+
+  Lemma eqListA_eq {A}:
+    forall l l0 : list A,
+      SetoidList.eqlistA eq l l0 <-> l = l0.
+  Proof.
+    induction l; split; intros; inversion H; subst; eauto.
+    - f_equal; eapply IHl; eauto.
+    - f_equiv.
+  Qed.
+
+  (* if a list is empty, the result of filtering the list with anything will still be empty *)
+  Lemma filter_nil_is_nil {A}
+    : forall (l : list A) (pred : A -> bool),
+      beq_nat (Datatypes.length l) 0 = true
+      ->  beq_nat (Datatypes.length (filter pred l)) 0 = true.
+  Proof.
+    induction l; intros; simpl; try inversion H.
+    reflexivity.
+  Qed.
+
+  Lemma in_list_exists {A}
+    : forall (xs : list A) x, List.In x xs -> exists n, nth_error xs n = Some x.
+  Proof.
+    intros; induction xs; inversion H; subst.
+    exists 0; reflexivity.
+    apply IHxs in H0; destruct_ex; exists (1 + x0); auto.
+  Qed.
+
+  Lemma exists_in_list {A}
+    : forall (xs : list A) x, (exists n, nth_error xs n = Some x) -> List.In x xs.
+  Proof.
+    intros. revert x H.
+    induction xs; intros.
+    - destruct H. destruct x0; inversion H.
+    - simpl in *. destruct H. destruct x0.
+      * left. inversion H. auto.
+      * right. apply IHxs. eexists. apply H.
+  Qed.
+
+  Lemma in_list_preserve_filter {A}
+    : forall (f : A -> bool) xs x, List.In x (filter f xs) -> List.In x xs.
+  Proof.
+    intros; apply (filter_In f x xs) in H; tauto.
+  Qed.
+
+  Lemma nth_error_map' {A B}
+    : forall (f : A -> B) l m b,
+      nth_error (map f l) m = Some b ->
+      exists a, nth_error l m = Some a /\ f a = b.
+  Proof.
+    induction l; destruct m; simpl; intros; try discriminate;
+      injections; eauto.
+  Qed.
+
 End ListFacts.

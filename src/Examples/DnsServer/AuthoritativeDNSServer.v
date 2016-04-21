@@ -19,7 +19,7 @@ Require Import
 Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.AuthoritativeDnsSchema.
+        Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {

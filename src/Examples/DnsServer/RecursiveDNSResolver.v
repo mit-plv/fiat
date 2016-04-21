@@ -16,28 +16,9 @@ Require Import
         Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas.
 
-Require Import Fiat.Examples.DnsServer.DnsSchema_new.
+Require Import Fiat.Examples.DnsServer.RecursiveDNSSchema.
 
 (* Only Init, MakeId, and Process should be public methods. The rest are private, for internal use. *)
-
-(* So long strings of Ascii Bool Bool... won't show up in Set Printing All *)
-Definition Init := "Init".
-Definition MakeId := "MakeId".
-Definition AddRequest := "AddRequest".
-Definition GetRequestStage := "GetRequestStage".
-Definition UpdateRequestStage := "UpdateRequestStage".
-Definition GetServerForLongestSuffix := "GetServerForLongestSuffix".
-Definition InsertResultForDomain := "InsertResultForDomain".
-Definition DeletePendingRequestInfo := "DeletePendingRequestInfo".
-Definition DeleteCachedNameResult := "DeleteCachedNameResult".
-Definition PacketToReferralRows :="PacketToReferralRows".
-Definition InsertReferralRowsIntoCache := "InsertReferralRowsIntoCache".
-Definition ReferralRowsToSLIST := "ReferralRowsToSLIST".
-Definition GetFirstReferralAndUpdateSLIST := "GetFirstReferralAndUpdateSLIST".
-Definition SortSLIST := "SortSLIST".
-Definition UpdateCacheReferralsAndSLIST := "UpdateCacheReferralsAndSLIST".
-Definition UpdateTTLs := "UpdateTTLs".
-Definition Process := "Process".
 
 Definition DnsRecSig : ADTSig :=
   ADTsignature {
@@ -63,22 +44,7 @@ Definition DnsRecSig : ADTSig :=
 
 (* Helper functions *)
 
-Definition upperbound' := upperbound (fun x => x).
-
 Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
-
-(* Double the monad, double the fun! *)
-Fixpoint iterate {A B : Type} {R : RepHint} (r : rep) (f : rep -> A -> (Comp (rep * B)))
-        (l : list A) : Comp (rep * list B) :=
-    match l with
-    | nil => ret (r, nil)
-    | x :: xs =>
-      resHead <- f r x;
-        let (rHead, ansHead) := resHead in
-        resTail <- iterate rHead f xs;
-          let (rEnd, ansEnd) := resTail in
-          ret (rEnd, ansHead :: ansEnd)
-    end.
 
 Definition listToOption {A : Type} (l : list A) : option A :=
   match l with
@@ -115,36 +81,6 @@ Definition IndexedEnsemble_In
 Arguments IndexedEnsemble_In [_] _ A%QuerySpec.
 
 (* Stub Methods. *)
-
-Fixpoint InsertAll {qsSchema}
-         {A}
-         (r : QueryStructure qsSchema)
-         (idx : BoundedIndex (QSschemaNames qsSchema))
-         (rowFunc : A -> Comp _)
-         (As : list A) :=
-  (* monad iteration instead. TODO param over table *)
-  match As with
-  (* this shouldn't happen since an answer must have at >= 1 answer record *)
-  | nil => ret (r, false)
-  | a :: As' =>
-    newRow <- rowFunc a;
-    res <- QSInsert r (ibound (indexb idx)) newRow;
-      let (r'', _) := res in
-      InsertAll r'' idx rowFunc As'
-  end.
-
-Definition isQuestion (p : packet) :=
-  match p!"answers", p!"authority", p!"additional" with
-  | nil, nil, nil => true
-  | _, _, _ => false
-  end.
-
-Definition isAnswer (p : packet) := negb (is_empty (p!"answers")).
-
-Definition isReferral (p : packet) :=
-  is_empty (p!"answers")
-  && (negb (is_empty (p!"authority")))
-  && (negb (is_empty (p!"additional"))).
 
 Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHeading) :=
   let authRdataMatchesAddlName (tup2 : resourceRecord * resourceRecord) :=
