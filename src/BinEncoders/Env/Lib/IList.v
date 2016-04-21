@@ -73,6 +73,52 @@ Section IListEncoder.
               (x :: xs, b2, e2)
     end.
 
+  Fixpoint DoTimes {A} n f (state: A) :=
+    match n with
+    | 0 => state
+    | S n => DoTimes n f (f state)
+    end.
+
+  Arguments DoTimes {A} n f state : simpl nomatch.
+
+  Definition IList_decode'_body xs_b_env' :=
+    match xs_b_env' with
+    | (xs, b, env') =>
+      match A_decode b env' with
+      | (x, b1, e1) => (x :: xs, b1, e1)
+      end
+    end.
+
+  Lemma IList_decode'_body_characterization :
+    forall s b0 c base,
+      DoTimes s IList_decode'_body (base, b0, c) =
+      match DoTimes s IList_decode'_body (nil, b0, c) with
+      | (xs, b, env') => (xs ++ base, b, env')
+      end.
+  Proof.
+    induction s; simpl.
+    + reflexivity.
+    + intros; destruct (A_decode _ _) as ((? & ?) & ?).
+      rewrite IHs, (IHs _ _ (_ :: _)).
+      destruct (DoTimes _ _ _) as ((? & ?) & ?).
+      rewrite <- app_assoc, <- app_comm_cons; reflexivity.
+  Qed.
+
+  Lemma IList_decode'_as_fold :
+    forall s b env',
+      IList_decode' s b env' =
+      match DoTimes s IList_decode'_body (nil, b, env') with
+      | (xs, b, env') => (List.rev xs, b, env')
+      end.
+  Proof.
+    induction s; simpl.
+    + reflexivity.
+    + intros; destruct (A_decode _ _) as ((? & ?) & ?).
+      rewrite IHs, IList_decode'_body_characterization, (IList_decode'_body_characterization _ _ _ (_ :: _)).
+      destruct (DoTimes _ _ _) as ((? & ?) & ?).
+      rewrite !rev_app_distr; reflexivity.
+  Qed.
+
   Definition IList_decode (b : bin) (env' : CacheDecode) : IList * bin * CacheDecode.
     refine (let x:= IList_decode' size b env' in
                        (exist _ (fst (fst x)) _,
