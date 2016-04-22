@@ -357,10 +357,10 @@ Proof.
     repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
   - apply f_equal with (f := @Datatypes.length string) in H4.
     repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
-  - rewrite app_comm_cons' with (As := d1) in H4.
+  - rewrite app_comm_cons' with (As := d) in H4.
     rewrite app_comm_cons' with (As := d0) in H4.
     apply IHx in H4;
-      [ apply (app_inj_tail d0 d1) in H4; destruct H4; auto
+      [ apply (app_inj_tail d d0) in H4; destruct H4; auto
       | repeat rewrite app_length; rewrite H3; reflexivity ].
 Qed.
 

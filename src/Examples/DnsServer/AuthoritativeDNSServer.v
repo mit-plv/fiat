@@ -7,6 +7,7 @@ Require Import Coq.Vectors.Vector
 Require Import
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation.Decidable
+        Fiat.Computation.IfDec
         Fiat.Computation.FoldComp
         Fiat.Computation.FueledFix
         Fiat.Computation.ListComputations
@@ -30,8 +31,6 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
-Coercion QType_inj : RRecordType >-> QType.
-
 Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
   QueryADTRep DnsSchema {
     Def Constructor "Init" : rep := empty,
@@ -44,15 +43,15 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
 
     Def Method1 "Process" (this : rep) (p : packet) : rep * packet :=
         Repeat recurseDepth initializing n with p!"questions"!"qname"
-               defaulting rec with (ret (buildempty true p))
+               defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
         {{ results <- MaxElements (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
                              (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
                                Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
-            Then ret (buildempty true p) (* No matching records! *)
-            Else                 (* TODO: this does not filter by matching QTYPE *)
-              IfDec (forall r, List.In r results -> n = r!sNAME) (* If the record's QNAME is an exact match  *)
+            Then ret (buildempty true ``"NXDomain" p) (* No matching records, set name error *)
+            Else
+            (IfDec (Forall (fun r : resourceRecord => n = r!sNAME) results) (* If the record's QNAME is an exact match  *)
               Then
                 b <- SingletonSet (fun b => List.In b results
                                     /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
@@ -63,19 +62,18 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
                   ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
                 Else     (* Copy the records with the correct QTYPE into the answer *)
                          (* section of an empty response *)
-                (results <- ⟦ element in results | QType_inj (element : resourceRecord)!sTYPE = p!"questions"!"qtype" ⟧;
-                  ret (List.fold_left add_answer results (buildempty true p)))
+                (results <- ⟦ element in results | QType_match (element!sTYPE) (p!"questions"!"qtype") ⟧;
+                  ret (add_answers results (buildempty true ``"NoError" p)))
               Else (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- *)
                 (* ask the authoritative servers *)
-                (ns_results <- ⟦ x in results | (x : resourceRecord)!sTYPE = NS ⟧;
-                 (* Append all the clue records to the additional section. *)
+                (ns_results <- ⟦ x in results | x!sTYPE = NS ⟧;
+                 (* Append all the glue records to the additional section. *)
                  glue_results <- For (rRec in this!sRRecords)
                                  Where (List.In rRec!sNAME (map (fun r : resourceRecord => r!sRDATA) ns_results))
                                  Return rRec;
-                 ret (List.fold_left add_additional glue_results
-                                     (List.fold_left add_ns ns_results (buildempty true p))))
-          }} >>= fun p => ret (this, p)}%methDefParsing.
+                 ret (add_additionals glue_results (add_nses ns_results (buildempty true ``"NoError" p)))))
+          }} >>= fun p => ret (this, p)}.
 
 Local Arguments packet : simpl never.
 

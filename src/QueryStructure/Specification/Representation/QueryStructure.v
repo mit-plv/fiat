@@ -135,7 +135,7 @@ Notation "'QueryADTRep' r { cons1 , meth1 , .. , methn } " :=
   (let _ := {| rep := (QueryStructure r) |}
    in @BuildADT (QueryStructure r) _ _ _ _
              (icons cons1%consDef (inil (B := @consDef (QueryStructure r))))
-             (icons (B := @methDef (QueryStructure r)) (meth1%queryDef ) .. (icons (B := @methDef (QueryStructure r)) methn%queryDef (inil (B := @methDef (QueryStructure r)))) ..))
+             (icons (B := @methDef (QueryStructure r)) (meth1%queryDef%methDefParsing ) .. (icons (B := @methDef (QueryStructure r)) methn%queryDef%methDefParsing (inil (B := @methDef (QueryStructure r)))) ..))
     (no associativity, at level 96, r at level 0, only parsing,
      format "'QueryADTRep'  r  '/' '[hv  ' {  cons1 , '//' '//' meth1 , '//' .. , '//' methn  ']' }") : QueryStructure_scope.
 

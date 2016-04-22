@@ -19,13 +19,13 @@ Section ListComprehension.
     := {l | forall x, List.In x l <-> P x }.
 
   Definition FilteredList
-             (P : Ensemble A)
              (xs : list A)
+             (P : Ensemble A)             
     := ListComprehension (fun x => List.In x xs /\ P x).
 
   Definition build_FilteredList
-             (P : Ensemble A)
              (xs : list A)
+             (P : Ensemble A)
     : Comp (list A)
     := fold_right (fun (a : A) (l : Comp (list A)) =>
                      l' <- l;
@@ -38,8 +38,8 @@ Section ListComprehension.
   Definition refine_ListComprehension_filtered_list
     : forall (P : Ensemble A)
              (xs : list A),
-      refine (FilteredList P xs)
-             (build_FilteredList P xs).
+      refine (FilteredList xs P)
+             (build_FilteredList xs P).
   Proof.
     unfold FilteredList, ListComprehension; induction xs; simpl; intros.
     - refine pick val _; try reflexivity; intuition.
@@ -56,7 +56,7 @@ Section ListComprehension.
     : forall (xs : list A)
              (P : Ensemble A)
              (P_dec : DecideableEnsemble P),
-      refine (build_FilteredList P xs)
+      refine (build_FilteredList xs P)
              (ret (filter dec xs)).
   Proof.
     unfold build_FilteredList; induction xs; intros.
@@ -72,7 +72,7 @@ Section ListComprehension.
 End ListComprehension.
 
 Notation "⟦ x 'in' xs | P ⟧" :=
-  (FilteredList (fun x => P) xs) : comp_scope.
+  (FilteredList xs (fun x => P)) : comp_scope.
 
 Section UpperBound.
 

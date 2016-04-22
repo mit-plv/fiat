@@ -16,7 +16,8 @@ Require Import
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Require Import Fiat.Examples.DnsServer.Packet.
+Require Import
+        Fiat.Examples.DnsServer.Packet.
 
 Definition DnsSchema :=
   Query Structure Schema

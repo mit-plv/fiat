@@ -37,11 +37,11 @@ Definition id : Type := W.
 (* position in SLIST *)
 Definition position := W.
 (* e.g. ["192", "168", "1", "1"] *)
-Definition IP := name.
+Definition IP := DomainName.
 
 (* Type of things that the outside world (the wrapper) can send to us, the recursive caching   server. Need this because there's no way to encode failure (no questions) in a packet.
   Packet is missing RCODE field that encodes success/kinds of failure (RFC 2308) *)
-Definition FromOutside : Type := (id * packet * option SOA)%type.
+Definition FromOutside : Type := (id * packet * option SOA_RDATA)%type.
 
 (* Type of the things that we (the server) can send to the wrapper, including various error codes and responses. *)
 Inductive ToOutside : Type :=
@@ -58,12 +58,12 @@ Inductive ToOutside : Type :=
 | ServerQuestion : id -> IP -> packet -> ToOutside
 (* Request is finished *)
 | ClientAnswer : id -> packet -> ToOutside
-| ClientFailure : id -> packet -> SOA -> ToOutside.
+| ClientFailure : id -> packet -> SOA_RDATA -> ToOutside.
 
 (* Type of things we store for a finished request. (Note no referrals) *)
 Inductive ToStore : Type :=
-| Answer : name -> packet -> ToStore
-| Failure : name -> packet -> SOA -> ToStore.
+| Answer : DomainName -> packet -> ToStore
+| Failure : DomainName -> packet -> SOA_RDATA -> ToStore.
 
 (* The section of a packet that a certain answer (DNSRRecord) is in, used to tag the flattened rows from a packet. Needed because they're all of type answer so there's no other way to distinguish them *)
 Inductive PacketSection : Type :=
@@ -151,16 +151,16 @@ Invariants: (TODO)
 (* Heading for cached referrals. Same as above but without the "live" information (ids, match and query count) and with cache info (TTL and time the TTL was last calculated) *)
 Definition ReferralHeading :=
   (* R- = referral domain's, S- = server domain's *)
-  < sREFERRALDOMAIN :: name,
+  < sREFERRALDOMAIN :: DomainName,
   sRTYPE :: RRecordType,
   sRCLASS :: RRecordClass,
   sRTTL :: W,
   (* inline RDATA and additional record *)
-  sSERVERDOMAIN :: name,
+  sSERVERDOMAIN :: DomainName,
   sSTYPE :: RRecordType,
   sSCLASS :: RRecordClass,
   sSTTL :: W,
-  sSIP :: name,
+  sSIP :: DomainName,
   (* IP in RDATA of additional record *)
   sTIME_LAST_CALCULATED :: W
 >.
@@ -199,7 +199,7 @@ sDOMAIN is an alias for sNAME. See RFC 1034, 6.2.7 *)
 
 Definition AnswerHeading :=
   Eval unfold resourceRecordHeading in
-    < sDOMAIN :: name,
+    < sDOMAIN :: DomainName,
     sPACKET_SECTION :: PacketSection,
     sTIME_LAST_CALCULATED :: W>
     ++ resourceRecordHeading.
@@ -211,7 +211,7 @@ assume a name failure *)
 but the packet type doesn't include it *)
 
 Definition FailureHeading :=
-  < sDOMAIN :: name,
+  < sDOMAIN :: DomainName,
   sTIME_LAST_CALCULATED :: W>
   ++ SOAHeading.
 
@@ -219,7 +219,7 @@ Definition FailureHeading :=
    Q*, pid, and flags are packet info. Need to store packet info so we can filter the results we get by record type and class. *)
 Definition RequestHeading :=
   < sID :: id,  (* unique, ascending *)
-  sQNAME :: name,
+  sQNAME :: DomainName,
   sSTAGE :: Stage,
   sQTYPE :: RRecordType,
   sQCLASS :: RRecordClass,
@@ -293,7 +293,7 @@ Definition DnsRecSchema :=
                      SLIST_ReferralHeading;
 
             relation sCACHE_POINTERS has schema
-            < sDOMAIN :: name,
+            < sDOMAIN :: DomainName,
             sCACHETABLE :: CacheTable
             (* would like to have a variant type in the schema *)
             > ;
@@ -314,17 +314,17 @@ Definition DnsRecSchema :=
 
 (* Wrappers for building various tuples. *)
 Open Scope Tuple_scope.
-Definition Build_RequestState (pac : packet) (id' : id) (stage : Stage) :=
+(*Definition Build_RequestState (pac : packet) (id' : id) (stage : Stage) :=
   < "id" :: id',
   sQNAME :: pac!"questions"!"qname",
   sSTAGE :: stage,
   sQTYPE :: pac!"questions"!"qtype",
   sQCLASS :: pac!"questions"!"qclass",
   sPID :: pac!"id",
-  sFLAGS :: pac!"flags">%Tuple.
+  sFLAGS :: pac!"flags">%Tuple. *)
 
 Definition Build_CachePointerRow
-           (reqName : name)
+           (reqName : DomainName)
            (table : CacheTable) :=
   < sDOMAIN :: W, sCACHETABLE :: table >%Tuple.
 
@@ -343,7 +343,7 @@ Definition ToSLISTOrder (reqId : W)
            (order : list refPosition) :=
   < sREQID :: reqId, sORDER :: order >.
 
-Definition toPacket_soa (soa : FailureRow) : SOA :=
+Definition toPacket_soa (soa : FailureRow) : SOA_RDATA :=
   prim_snd (prim_snd soa).
 
 Definition toPacket_ans (ans : AnswerRow) : resourceRecord :=
