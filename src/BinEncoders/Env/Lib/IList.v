@@ -30,40 +30,35 @@ Section IListEncoder.
                       (transform b1 b2, env2)
     end.
 
-  Definition IList_body := (fun (acc: bin * CacheEncode) x =>
+  Definition IList_encode'_body := (fun (acc: bin * CacheEncode) x =>
                              let (bacc, env) := acc in
                              let (b1, env1) := A_encode x env in
                              (transform bacc b1, env1)).
 
-  Lemma IList_body_characterization :
+  Lemma IList_encode'_body_characterization :
     forall xs base env,
-      fold_left IList_body xs (base, env) =
-      (let (b2, env2) := fold_left IList_body xs (transform_id, env) in
+      fold_left IList_encode'_body xs (base, env) =
+      (let (b2, env2) := fold_left IList_encode'_body xs (transform_id, env) in
        (transform base b2, env2)).
   Proof.
     induction xs; simpl.
-    + setoid_rewrite transform_id_right; reflexivity.
-    + intros.
-      destruct (A_encode a env).
+    + intros; rewrite transform_id_right; reflexivity.
+    + intros; destruct (A_encode _ _).
       rewrite IHxs, transform_id_left, (IHxs b).
       destruct (fold_left _ _ _).
-      rewrite transform_assoc.
-      reflexivity.
+      rewrite transform_assoc; reflexivity.
   Qed.
 
   Lemma IList_encode'_as_foldl :
     forall xs env,
       IList_encode' xs env =
-      fold_left IList_body xs (transform_id, env).
+      fold_left IList_encode'_body xs (transform_id, env).
   Proof.
     induction xs; simpl.
     + reflexivity.
-    + intros; destruct (A_encode a env).
-      rewrite IHxs.
-      rewrite transform_id_left.
-      rewrite (IList_body_characterization xs b c).
-      destruct (fold_left _ _ _).
-      reflexivity.
+    + intros; destruct (A_encode _ _).
+      rewrite IHxs, transform_id_left, (IList_encode'_body_characterization xs b c).
+      destruct (fold_left _ _ _); reflexivity.
   Qed.
 
   Definition IList_encode (l : IList) := IList_encode' (proj1_sig l).
@@ -77,6 +72,52 @@ Section IListEncoder.
               let (xs, b2) := x2 in
               (x :: xs, b2, e2)
     end.
+
+  Fixpoint DoTimes {A} n f (state: A) :=
+    match n with
+    | 0 => state
+    | S n => DoTimes n f (f state)
+    end.
+
+  Arguments DoTimes {A} n f state : simpl nomatch.
+
+  Definition IList_decode'_body xs_b_env' :=
+    match xs_b_env' with
+    | (xs, b, env') =>
+      match A_decode b env' with
+      | (x, b1, e1) => (x :: xs, b1, e1)
+      end
+    end.
+
+  Lemma IList_decode'_body_characterization :
+    forall s b0 c base,
+      DoTimes s IList_decode'_body (base, b0, c) =
+      match DoTimes s IList_decode'_body (nil, b0, c) with
+      | (xs, b, env') => (xs ++ base, b, env')
+      end.
+  Proof.
+    induction s; simpl.
+    + reflexivity.
+    + intros; destruct (A_decode _ _) as ((? & ?) & ?).
+      rewrite IHs, (IHs _ _ (_ :: _)).
+      destruct (DoTimes _ _ _) as ((? & ?) & ?).
+      rewrite <- app_assoc, <- app_comm_cons; reflexivity.
+  Qed.
+
+  Lemma IList_decode'_as_fold :
+    forall s b env',
+      IList_decode' s b env' =
+      match DoTimes s IList_decode'_body (nil, b, env') with
+      | (xs, b, env') => (List.rev xs, b, env')
+      end.
+  Proof.
+    induction s; simpl.
+    + reflexivity.
+    + intros; destruct (A_decode _ _) as ((? & ?) & ?).
+      rewrite IHs, IList_decode'_body_characterization, (IList_decode'_body_characterization _ _ _ (_ :: _)).
+      destruct (DoTimes _ _ _) as ((? & ?) & ?).
+      rewrite !rev_app_distr; reflexivity.
+  Qed.
 
   Definition IList_decode (b : bin) (env' : CacheDecode) : IList * bin * CacheDecode.
     refine (let x:= IList_decode' size b env' in
