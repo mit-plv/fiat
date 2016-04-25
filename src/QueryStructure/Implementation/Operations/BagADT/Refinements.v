@@ -27,7 +27,6 @@ Require Import Coq.Bool.Bool
 Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
-  Locate "[ _ ; _ ; .. ; _ ]".
 
   Definition fooT :=
     forall
@@ -953,7 +952,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros; unfold CallBagMethod; simpl.
     etransitivity;
-      [ 
+      [
       | rewrite <- refine_Join_Comp_Lists; [reflexivity |
                                             intro;
                                               setoid_rewrite <- (@refine_BagFind_filter _ _ H idx' (BagMatchSearchTerm (ith3 BagIndexKeys idx') (search_pattern a)) (search_pattern a)); [finish honing | intro; reflexivity] ] ].
