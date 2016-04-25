@@ -77,7 +77,7 @@ Notation "( x 'in' r '!' Ridx ) bod" :=
             (fun x : @RawTuple (GetNRelSchemaHeading (qschemaSchemas qs_schema) Ridx') => bod)) : QueryImpl_scope.
 
 (* [Query_Return] returns the singleton list. *)
-Definition Query_Return {ResultT : Type} (a : ResultT) := ret (a::nil).
+Definition Query_Return {ResultT : Type} (a : ResultT) := ret [a].
 
 Notation "'Return' t" :=
   (Query_Return t%Tuple) : QuerySpec_scope.

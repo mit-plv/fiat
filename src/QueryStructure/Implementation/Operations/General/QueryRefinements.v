@@ -881,7 +881,7 @@ Proof.
     case_eq (dec (indexedElement i)); intros.
     + apply dec_decides_P in H8; pose proof (H4 H8) as H'''; inversion H'''; subst.
       econstructor 1.
-      instantiate (1 := List.app (i::nil) x0); simpl; intuition eauto.
+      instantiate (1 := List.app [i] x0); simpl; intuition eauto.
       inversion H4; subst; apply H0 in H10; intuition.
       right; eapply H6; econstructor; unfold In; eauto.
       split; eauto; intros; subst.
