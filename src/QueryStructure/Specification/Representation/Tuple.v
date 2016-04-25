@@ -16,6 +16,9 @@ Definition RawTuple {heading : RawHeading} :=
 Definition Tuple {heading : Heading}
   := @RawTuple heading.
 
+(* Always parse the heading argument in Heading scope. *)
+Arguments Tuple [_%Heading].
+
 (* Notations for tuple field. *)
 
 Record Component (Heading : Attribute) :=

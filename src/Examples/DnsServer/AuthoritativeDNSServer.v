@@ -53,12 +53,12 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
             Else
             (IfDec (Forall (fun r : resourceRecord => n = r!sNAME) results) (* If the record's QNAME is an exact match  *)
               Then
-                b <- SingletonSet (fun b => List.In b results
-                                    /\ b!sTYPE = CNAME     (* If the record is a CNAME, *)
-                                    /\ p!"questions"!"qtype" <> QType_inj CNAME); (* and a non-CNAME was requested*)
+              b <- SingletonSet (fun b : CNAME_Record =>      (* If the record is a CNAME, *)
+                                   List.In (A := resourceRecord) b results
+                                   /\ p!"questions"!"qtype" <> QType_inj CNAME); (* and a non-CNAME was requested*)
                 Ifopt b as b'
                 Then  (* only one matching CNAME record *)
-                  p' <- rec b'!sNAME; (* Recursively find records matching the CNAME *)
+                  p' <- rec b'!sRDATA; (* Recursively find records matching the CNAME *)
                   ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
                 Else     (* Copy the records with the correct QTYPE into the answer *)
                          (* section of an empty response *)
@@ -67,12 +67,12 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
               Else (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- *)
                 (* ask the authoritative servers *)
-                (ns_results <- ⟦ x in results | x!sTYPE = NS ⟧;
+              (ns_results <- { ns_results | forall x : NS_Record, List.In x ns_results <-> List.In (A := resourceRecord) x results };
                  (* Append all the glue records to the additional section. *)
                  glue_results <- For (rRec in this!sRRecords)
-                                 Where (List.In rRec!sNAME (map (fun r : resourceRecord => r!sRDATA) ns_results))
+                                 Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
                                  Return rRec;
-                 ret (add_additionals glue_results (add_nses ns_results (buildempty true ``"NoError" p)))))
+                 ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
           }} >>= fun p => ret (this, p)}.
 
 Local Arguments packet : simpl never.

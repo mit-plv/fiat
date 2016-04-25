@@ -1,35 +1,77 @@
-Require Import Coq.Vectors.Vector
+Require Import
+        Coq.Vectors.Vector
+        Coq.omega.Omega
         Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Bool.Bvector
+        Coq.Vectors.VectorDef
         Coq.Lists.List
         Bedrock.Word
         Bedrock.Memory
         Fiat.QueryStructure.Automation.AutoDB.
 
+Import Coq.Vectors.VectorDef.VectorNotations.
+Local Open Scope vector.
+
 (* Resource record type and data definitions. *)
 
 Section RRecordTypes.
 
-  (* Enumeration of the Resource Record Types. *)
-  Definition RRecordTypes :=
+  (* Enumeration of the Resource Record Types that we support. *)
+  Definition OurRRecordTypes :=
     ["A"; 	(* host address 	[RFC1035] *)
        "NS"; (*  authoritative name server 	[RFC1035] *)
-       "MD"; (* mail destination (OBSOLETE - use MX) 	[RFC1035] *)
-       "MF"; (* mail forwarder (OBSOLETE - use MX) 	[RFC1035] *)
        "CNAME"; (* e canonical name for an alias 	[RFC1035] *)
        "SOA"; (* rks the start of a zone of authority 	[RFC1035] *)
-       "MB"; (* mailbox domain name (EXPERIMENTAL) 	[RFC1035] *)
-       "MG"; (* mail group member (EXPERIMENTAL) 	[RFC1035] *)
-       "MR"; (* mail rename domain name (EXPERIMENTAL) 	[RFC1035] *)
-       "NULL"; (* null RR (EXPERIMENTAL) 	[RFC1035] *)
        "WKS"; (* well known service description 	[RFC1035] *)
        "PTR"; (* domain name pointer 	[RFC1035] *)
        "HINFO"; (* host information 	[RFC1035] *)
        "MINFO"; (* mailbox or mail list information 	[RFC1035] *)
        "MX"; (* mail exchange 	[RFC1035] *)
-       "TXT"; (* text strings 	[RFC1035] *)
-       "RP"; (* for Responsible Person 	[RFC1183] *)
+       "TXT" (* text strings 	[RFC1035] *)
+    ].
+
+  Definition OurRRecordType := BoundedString OurRRecordTypes.
+
+  (* Aliases for common resource record types. *)
+  Definition OurCNAME : OurRRecordType := ``"CNAME".
+  Definition OurA : OurRRecordType := ``"A".
+  Definition OurNS : OurRRecordType := ``"NS".
+  Definition OurMX : OurRRecordType := ``"MX".
+  Definition OurSOA : OurRRecordType := ``"SOA".
+
+  Definition beq_OurRRecordType (rr rr' : OurRRecordType) : bool :=
+    BoundedIndex_beq rr rr'.
+
+  Definition OurRRecordType_dec (rr rr' : OurRRecordType) :=
+    BoundedIndex_eq_dec rr rr'.
+
+  Lemma beq_OurRRecordType_sym :
+    forall rr rr', beq_OurRRecordType rr rr' = beq_OurRRecordType rr' rr.
+  Proof.
+    intros; eapply BoundedIndex_beq_sym.
+  Qed.
+
+  Lemma beq_OurRRecordType_dec :
+    forall rr rr', ?[OurRRecordType_dec rr rr'] = beq_OurRRecordType rr rr'.
+  Proof.
+    intros; find_if_inside; subst.
+    symmetry; apply (BoundedIndex_beq_refl rr').
+    symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+  Qed.
+
+  (* Instances used in DecideableEnsemble. *)
+  Global Instance Query_eq_OurRRecordType :
+    Query_eq OurRRecordType := {| A_eq_dec := OurRRecordType_dec |}.
+
+  (* Enumeration of the full set of Resource Record Types. *)
+  Definition ExtraRRecordTypes :=
+    [ "MD"; (* mail destination (OBSOLETE - use MX) 	[RFC1035] *)
+      "MF"; (* mail forwarder (OBSOLETE - use MX) 	[RFC1035] *)
+       "MB"; (* mailbox domain name (EXPERIMENTAL) 	[RFC1035] *)
+       "MG"; (* mail group member (EXPERIMENTAL) 	[RFC1035] *)
+       "MR"; (* mail rename domain name (EXPERIMENTAL) 	[RFC1035] *)
+       "NULL"; (* null RR (EXPERIMENTAL) 	[RFC1035] *)
+      "RP"; (* for Responsible Person 	[RFC1183] *)
        "AFSDB"; (* for AFS Data Base location 	[RFC1183][RFC5864] *)
        "X25"; (* for X.25 PSDN address 	[RFC1183] *)
        "ISDN"; (* for ISDN address 	[RFC1183] *)
@@ -72,9 +114,10 @@ Section RRecordTypes.
        "CDNSKEY"; (* DNSKEY(s) the Child wants reflected in DS 	[RFC7344] 		2014-06-16 *)
        "OPENPGPKEY"; (* OpenPGP Key 	[draft-ietf-dane-openpgpkey] 	OPENPGPKEY/openpgpkey-completed-template 	2014-08-12 *)
        "CSYNC" (* Child-To-Parent Synchronization 	[RFC7477] 		2015-01-27 *)
-    ]%vector.
+    ].
 
-  Definition RRecordType := BoundedString RRecordTypes.
+  Definition RRecordType := BoundedString (Vector.append OurRRecordTypes ExtraRRecordTypes).
+
   (* Aliases for common resource record types. *)
   Definition CNAME : RRecordType := ``"CNAME".
   Definition A : RRecordType := ``"A".
@@ -82,23 +125,26 @@ Section RRecordTypes.
   Definition MX : RRecordType := ``"MX".
   Definition SOA : RRecordType := ``"SOA".
 
-  Definition beq_RRecordType (a b : RRecordType) : bool :=
-    BoundedIndex_beq a b.
+  Definition RRecordType_inj (rr : OurRRecordType) : RRecordType :=
+    BoundedIndex_injR rr.
 
-  Definition RRecordType_dec (a b : RRecordType) :=
-    BoundedIndex_eq_dec a b.
+  Definition beq_RRecordType (rr rr' : RRecordType) : bool :=
+    BoundedIndex_beq rr rr'.
+
+  Definition RRecordType_dec (rr rr' : RRecordType) :=
+    BoundedIndex_eq_dec rr rr'.
 
   Lemma beq_RRecordType_sym :
-    forall rrT rrT', beq_RRecordType rrT rrT' = beq_RRecordType rrT' rrT.
+    forall rr rr', beq_RRecordType rr rr' = beq_RRecordType rr' rr.
   Proof.
     intros; eapply BoundedIndex_beq_sym.
   Qed.
 
   Lemma beq_RRecordType_dec :
-    forall a b, ?[RRecordType_dec a b] = beq_RRecordType a b.
+    forall rr rr', ?[RRecordType_dec rr rr'] = beq_RRecordType rr rr'.
   Proof.
     intros; find_if_inside; subst.
-    symmetry; apply (BoundedIndex_beq_refl b).
+    symmetry; apply (BoundedIndex_beq_refl rr').
     symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
   Qed.
 
@@ -164,74 +210,133 @@ Section RData.
       "Bit-Map"  :: list (word 8)>%Heading.
   Definition WKS_RDATA : Type := @Tuple WKSHeading.
 
+  (* The RDATA field is a variant type built from these building blocks. *)
+
+  Fixpoint SumType {n} (v : Vector.t Type n) {struct v} : Type :=
+    match v with
+    | Vector.nil => (False : Type)
+    | Vector.cons T _ Vector.nil => T
+    | Vector.cons T _ v' => T + (SumType v')
+    end%type.
+
+  Arguments SumType : simpl never.
+
+  Fixpoint inj_SumType {n}
+             (v : Vector.t Type n)
+             (tag : Fin.t n)
+             (el : Vector.nth v tag)
+    {struct v} : SumType v.
+    refine (match v in Vector.t _ n return
+                  forall
+                    (tag : Fin.t n)
+                    (el : Vector.nth v tag),
+                    SumType v
+            with
+            | Vector.nil => fun tag el => Fin.case0 _ tag
+            | Vector.cons T n' v' => fun tag el => _
+            end tag el).
+
+    generalize v' (inj_SumType n' v') el0; clear; pattern n', tag0; apply Fin.caseS; simpl; intros.
+    - destruct v'; simpl.
+      + exact el0.
+      + exact (inl el0).
+    - destruct v'; simpl.
+      + exact (Fin.case0 _ p).
+      + exact (inr (X p el0)).
+  Defined.
+
+  Fixpoint SumType_index {n}
+             (v : Vector.t Type n)
+             (el : SumType v)
+    {struct v} : Fin.t n.
+    refine (match v in Vector.t _ n return
+                  SumType v -> Fin.t n
+            with
+            | Vector.nil => fun el => match el with end
+            | Vector.cons T _ v' => fun el => _
+            end el).
+    generalize (SumType_index _ v'); clear SumType_index; intros.
+    destruct v'; simpl.
+    - exact Fin.F1.
+    - destruct el0.
+      + exact Fin.F1.
+      + exact (Fin.FS (X s)).
+  Defined.
+
+  Fixpoint SumType_proj {n}
+           (v : Vector.t Type n)
+           (el : SumType v)
+           {struct v} : v[@SumType_index v el].
+    refine (match v in Vector.t _ n return
+                  forall el : SumType v, v[@SumType_index v el]
+            with
+            | Vector.nil => fun el => match el with end
+            | Vector.cons T _ v' => fun el => _
+            end el).
+    generalize (SumType_proj _ v'); clear SumType_proj; intros.
+    destruct v'; simpl.
+    - exact el0.
+    - destruct el0.
+      + exact t.
+      + exact (X s).
+  Defined.
+
+  Lemma inj_SumType_proj_inverse {n}
+    : forall (v : Vector.t Type n)
+             (el : SumType v),
+      inj_SumType v _ (SumType_proj v el) = el.
+  Proof.
+    induction v; simpl; intros.
+    - destruct el.
+    - destruct v.
+      + simpl; reflexivity.
+      + destruct el; simpl; eauto.
+        f_equal; apply IHv.
+  Qed.
+
+  Lemma index_SumType_inj_inverse {n}
+    : forall  (tag : Fin.t n)
+              (v : Vector.t Type n)
+              (el : Vector.nth v tag),
+      SumType_index v (inj_SumType v tag el) = tag.
+  Proof.
+    induction tag.
+    - intro; pattern n, v; eapply Vector.caseS; simpl.
+      clear; intros; destruct t; eauto.
+    - intro; revert tag IHtag; pattern n, v; eapply Vector.caseS; simpl; intros.
+      destruct t.
+      + inversion tag.
+      + f_equal.
+        eapply IHtag.
+  Qed.
+
+  (* Could use above to prove dependent inversion lemma, but *)
+  (* this is more of a sanity check than anything. *)
+  (* Lemma proj_SumType_inj_inverse {n}
+    : forall (v : Vector.t Type n)
+             (tag : Fin.t n)
+             (el : Vector.nth v tag),
+      SumType_proj v (inj_SumType v tag el) = el. *)
+
   (* We express the dependency of a resource record's data *)
   (* field on its type as a proposition that is enforced *)
-  (* as attribute constraint. *)
-  Definition ResourceRecordTypeTypes : Vector.t Type _:=
+  (* as attribute constraint. Should define this generically. *)
+
+  Definition ResourceRecordTypeTypes :=
     [ (W : Type); (* A *)
        DomainName; (* NS *)
-       DomainName; (* MD *)
-       DomainName; (* MF *)
        DomainName; (* CNAME *)
        SOA_RDATA; (* SOA *)
-       DomainName; (* MB *)
-       DomainName; (* MG *)
-       DomainName; (* MR *)
-       DomainName; (* NULL *)
        WKS_RDATA; (* WKS *)
        DomainName; (* PTR *)
        HINFO_RDATA; (* HINFO *)
        DomainName; (* MINFO *)
        MX_RDATA; (* MX *)
-       (string : Type); (* TXT *)
-       DomainName; (* RP *)
-       DomainName; (* AFSDB *)
-       DomainName; (* X25 *)
-       DomainName; (* ISDN *)
-       DomainName; (* RT *)
-       DomainName; (* NSAP *)
-       DomainName; (* NSAPPTR *)
-       DomainName; (* SIG *)
-       DomainName; (* KEY *)
-       DomainName; (* PX *)
-       DomainName; (* GPOS *)
-       DomainName; (* AAAA *)
-       DomainName; (* LOC *)
-       DomainName; (* NXT *)
-       DomainName; (* EID *)
-       DomainName; (* NIMLOC *)
-       DomainName; (* SRV *)
-       DomainName; (* ATMA *)
-       DomainName; (* NAPTR *)
-       DomainName; (* KX *)
-       DomainName; (* CERT *)
-       DomainName; (* A6 *)
-       DomainName; (* DNAME *)
-       DomainName; (* SINK *)
-       DomainName; (* APL *)
-       DomainName; (* DS *)
-       DomainName; (* SSHFP *)
-       DomainName; (* IPSECKEY *)
-       DomainName; (* RRSIG *)
-       DomainName; (* NSEC *)
-       DomainName; (* DNSKEY *)
-       DomainName; (* DHCID *)
-       DomainName; (* NSEC3 *)
-       DomainName; (* NSEC3PARAM *)
-       DomainName; (* TLSA *)
-       DomainName; (* SMIMEA *)
-       DomainName; (* Unassigned *)
-       DomainName; (* NINFO *)
-       DomainName; (* RKEY *)
-       DomainName; (* Trust *)
-       DomainName; (* CDNSKEY *)
-       DomainName; (* OPENPGPKEY *)
-       DomainName  (* CSYNC *)
-    ]%vector.
+       (string : Type) (* TXT *)
+    ].
 
-  Definition WF_RDATA
-             (rr : RRecordType)
-             (t : Type)
-    : Prop :=
-    Vector.nth ResourceRecordTypeTypes (ibound (indexb rr)) = t.
+  Definition RDataType := SumType ResourceRecordTypeTypes.
+
 End RData.
+
+Arguments SumType : simpl never.

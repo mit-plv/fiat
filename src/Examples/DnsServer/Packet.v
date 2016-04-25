@@ -1,4 +1,5 @@
-Require Import Coq.Vectors.Vector
+Require Import
+        Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
         Coq.Bool.Bvector
@@ -22,7 +23,7 @@ Section QTypes.
        "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ]%vector.
 
-  Definition QType := BoundedString (Vector.append RRecordTypes QTypes)%vector.
+  Definition QType := BoundedString (Vector.append (Vector.append OurRRecordTypes ExtraRRecordTypes) QTypes).
 
   Definition QType_inj (rr : RRecordType) : QType :=
     BoundedIndex_injR rr.
@@ -170,10 +171,69 @@ Section Packet.
 
   Definition resourceRecordHeading :=
     < sNAME :: DomainName,
-    sTTL :: timeT,
-    sCLASS :: RRecordClass,
-    sTYPE :: RRecordType,
-    sRDATA :: DomainName>%Heading.
+      sTTL :: timeT,
+      sCLASS :: RRecordClass,
+      sTYPE :: RRecordType,
+      sRDATA :: RDataType>%Heading.
+
+  Definition resourceRecord := @Tuple resourceRecordHeading.
+
+  (* Variant headings for each RDataType *)
+  Definition VariantResourceRecordHeading RDATAT :=
+    < sNAME :: DomainName,
+      sTTL :: timeT,
+      sCLASS :: RRecordClass,
+      sTYPE :: RRecordType,
+      sRDATA :: RDATAT >%Heading.
+
+  Definition VariantResourceRecord RDATAT := @Tuple (VariantResourceRecordHeading RDATAT).
+
+  (* Aliases for the Common Record Types *)
+  Definition CNAME_Record :=
+    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurCNAME)].
+  Definition A_Record :=
+    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurA) ].
+  Definition NS_Record :=
+    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurNS)].
+  Definition MX_Record :=
+    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurMX)].
+  Definition SOA_Record :=
+    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurSOA)].
+
+  Definition RRecord2VariantResourceRecord
+             (rr : resourceRecord)
+    : VariantResourceRecord ResourceRecordTypeTypes[@(SumType_index ResourceRecordTypeTypes (rr!sRDATA))] :=
+    < sNAME :: rr!sNAME,
+      sTTL :: rr!sTTL,
+      sCLASS :: rr!sCLASS,
+      sTYPE :: rr!sTYPE,
+      sRDATA :: SumType_proj _ (rr!sRDATA)>.
+
+  Definition VariantResourceRecord2RRecord
+             {idx}
+             (vrr : VariantResourceRecord ResourceRecordTypeTypes[@idx])
+    : resourceRecord :=
+    < sNAME :: vrr!sNAME,
+      sTTL :: vrr!sTTL,
+      sCLASS :: vrr!sCLASS,
+      sTYPE :: vrr!sTYPE,
+      sRDATA :: inj_SumType _ idx (vrr!sRDATA)>.
+
+  Definition CNAME_Record2RRecord
+             (vrr : CNAME_Record)
+    : resourceRecord := VariantResourceRecord2RRecord vrr.
+  Definition A_Record2RRecord
+             (vrr : A_Record)
+    : resourceRecord := VariantResourceRecord2RRecord vrr.
+  Definition NS_Record2RRecord
+             (vrr : NS_Record)
+    : resourceRecord := VariantResourceRecord2RRecord vrr.
+  Definition MX_Record2RRecord
+             (vrr : MX_Record)
+    : resourceRecord := VariantResourceRecord2RRecord vrr.
+  Definition SOA_Record2RRecord
+             (vrr : SOA_Record)
+    : resourceRecord := VariantResourceRecord2RRecord vrr.
 
   (* Binary Format of DNS Header:
                               1  1  1  1  1  1
@@ -206,10 +266,6 @@ Section Packet.
 |      Additional     |
 +---------------------+
    *)
-
-  Definition resourceRecord := @Tuple resourceRecordHeading.
-
-  Arguments Tuple [_%Heading] .
 
   Definition packet :=
     @Tuple < "id" :: word 16, (* 16 bit Word. *)
@@ -274,3 +330,9 @@ Section Packet.
   Definition add_additionals := List.fold_left add_additional.
 
 End Packet.
+
+Coercion CNAME_Record2RRecord : CNAME_Record >-> resourceRecord.
+Coercion A_Record2RRecord : A_Record >-> resourceRecord.
+Coercion NS_Record2RRecord : NS_Record >-> resourceRecord.
+Coercion MX_Record2RRecord : MX_Record >-> resourceRecord.
+Coercion SOA_Record2RRecord : SOA_Record >-> resourceRecord.

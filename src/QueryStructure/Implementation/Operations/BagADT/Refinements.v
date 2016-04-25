@@ -27,7 +27,6 @@ Require Import Coq.Bool.Bool
 Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
-  Locate "[ _ ; _ ; .. ; _ ]".
 
   Definition fooT :=
     forall
