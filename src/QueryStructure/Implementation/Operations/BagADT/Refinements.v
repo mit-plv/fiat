@@ -214,7 +214,7 @@ Section BagsQueryStructureRefinements.
       -> forall (idx : Fin.t _)
                 (resultComp : RawTuple -> Comp (list ResultT)),
            refine (UnConstrQuery_In r_o idx resultComp)
-                  (l <- Join_Comp_Lists (inil2::nil)
+                  (l <- Join_Comp_Lists [ inil2 ]
                      (fun _ =>
                         l <- CallBagEnumerate idx r_n;
                       (ret (snd l)));
@@ -264,7 +264,7 @@ Section BagsQueryStructureRefinements.
       -> forall (idx : Fin.t _)
                 (resultComp : RawTuple -> Comp (list ResultT)),
            refine (UnConstrQuery_In r_o idx resultComp)
-                  (l <- Join_Filtered_Comp_Lists (inil2::nil)
+                  (l <- Join_Filtered_Comp_Lists [ inil2 ]
                      (fun _ =>
                         l <- CallBagEnumerate idx r_n;
                       (ret (snd l)))
@@ -1078,7 +1078,7 @@ Section BagsQueryStructureRefinements.
 
   Lemma refineEquiv_Join_Comp_Lists_Build_single_Tuple_list
   : forall (r_n : IndexedQueryStructure qs_schema BagIndexKeys) idx,
-      refineEquiv (Join_Comp_Lists ((inil2 (B := @RawTuple))::nil)
+      refineEquiv (Join_Comp_Lists [inil2 (B := @RawTuple)]
                                    (fun _ : ilist2 (B:= @RawTuple) [] =>
                                       l <- CallBagEnumerate idx r_n ;
                                     ret (snd l)))

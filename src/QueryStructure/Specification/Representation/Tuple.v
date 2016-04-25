@@ -157,8 +157,7 @@ Notation "a ++= b" := (@UpdateTuple _ {|attrName := a; attrType := string|}
                              (fun o => Build_Component (_::_) (append (value o) b))) (at level 80).
 Notation "a :+= b" := (@UpdateTuple _ {|attrName := a; attrType := list _|}
                              (fun o => Build_Component (_::_) (cons b (value o)))) (at level 80).
-Notation "[ a ]" := (compose c id) : Update_scope.
-Notation "[ a ; b ; .. ; c ]" := (compose a (compose b .. (compose c id) ..)) : Update_scope.
+Notation "[ a ; .. ; c ]" := (compose a .. (compose c id) ..) : Update_scope.
 
 Delimit Scope Update_scope with Update.
 *)
