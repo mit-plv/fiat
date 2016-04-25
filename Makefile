@@ -14,8 +14,8 @@ SUBMODULE_DIFF=$(shell git diff etc/coq-scripts 2>&1 | grep 'Subproject commit')
 SUBMODULE_DIRTY=$(shell git diff etc/coq-scripts 2>&1 | grep dirty)
 ifneq (,$(SUBMODULE_DIRTY))
 submodule-update::
-	@ echo "\[\033[0;31m\]The submodule is dirty; some scripts may fail.\[\033[0m\]"
-	@ echo "\[\033[0;31m\]Run (cd etc/coq-scripts && git clean -xfd && git reset --hard)\[\033[0m\]"
+	@ echo "\033[0;31mThe submodule is dirty; some scripts may fail.\033[0m"
+	@ echo "\033[0;31mRun (cd etc/coq-scripts && git clean -xfd && git reset --hard)\033[0m"
 else
 ifneq (,$(SUBMODULE_DIFF))
 submodule-update::
