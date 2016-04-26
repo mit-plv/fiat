@@ -23,11 +23,12 @@ Section FixListEncoder.
   Definition FixList_getlength
              (ls : FixList) : {n : N | (n < exp2 size)%N}.
     refine (exist _ (N_of_nat (length (proj1_sig ls))) _).
-    destruct ls as [ xs xs_pf ]. unfold exp2_nat in xs_pf. simpl.
-    rewrite <- Nnat.N2Nat.id. rewrite <- N.compare_lt_iff.
-    rewrite <- Nnat.Nat2N.inj_compare.
-    rewrite <- Compare_dec.nat_compare_lt.
-    eauto.
+    abstract (
+    destruct ls as [ xs xs_pf ]; unfold exp2_nat in xs_pf; simpl;
+    rewrite <- Nnat.N2Nat.id; rewrite <- N.compare_lt_iff;
+    rewrite <- Nnat.Nat2N.inj_compare;
+    rewrite <- Compare_dec.nat_compare_lt;
+    eauto).
   Defined.
 
   Definition FixList_predicate (len : {n : N | (n < exp2 size)%N}) (l : FixList) :=
@@ -41,6 +42,37 @@ Section FixListEncoder.
                   let (b2, env2) := FixList_encode' xs' env1 in
                       (transform b1 b2, env2)
     end.
+
+  Definition FixList_encode'_body := (fun (acc: bin * CacheEncode) x =>
+                                        let (bacc, env) := acc in
+                                        let (b1, env1) := A_encode x env in
+                                        (transform bacc b1, env1)).
+
+  Lemma FixList_encode'_body_characterization :
+    forall xs base env,
+      fold_left FixList_encode'_body xs (base, env) =
+      (let (b2, env2) := fold_left FixList_encode'_body xs (transform_id, env) in
+       (transform base b2, env2)).
+  Proof.
+    induction xs; simpl.
+    + intros; rewrite transform_id_right; reflexivity.
+    + intros; destruct (A_encode _ _).
+      rewrite IHxs, transform_id_left, (IHxs b).
+      destruct (fold_left _ _ _).
+      rewrite transform_assoc; reflexivity.
+  Qed.
+
+  Lemma FixList_encode'_as_foldl :
+    forall xs env,
+      FixList_encode' xs env =
+      fold_left FixList_encode'_body xs (transform_id, env).
+  Proof.
+    induction xs; simpl.
+    + reflexivity.
+    + intros; destruct (A_encode _ _).
+      rewrite IHxs, transform_id_left, (FixList_encode'_body_characterization xs b c).
+      destruct (fold_left _ _ _); reflexivity.
+  Qed.
 
   Definition FixList_encode (l : FixList) := FixList_encode' (proj1_sig l).
 
