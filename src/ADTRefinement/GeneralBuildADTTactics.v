@@ -20,7 +20,7 @@ Require Import Coq.Lists.List Coq.Arith.Arith
 (* used to declare an ADT definition. *)
 Ltac cache_ilist_elements id il k :=
   let id' := fresh id in
-  match il with
+  lazymatch il with
   | ilist.icons ?b ?il' =>
     cache_term b as id run (fun b' => cache_ilist_elements id il' ltac:(fun il'' => k (ilist.icons b' il'')))
   | inil (B := ?B) => k (inil (B := B))
@@ -33,7 +33,7 @@ Ltac cache_ilist_elements id il k :=
 Ltac abstractADTImpl adt k :=
   let impl := (eval simpl in (projT1 adt)) in
   let impl_sig :=
-      (match type of impl with
+      (lazymatch type of impl with
        | DecoratedcADT ?Sig => Sig
        | sigT (ComputationalADT.pcADT ?Sig) => Sig
        end) in
@@ -41,13 +41,13 @@ Ltac abstractADTImpl adt k :=
 
   let impl_constructors := (eval simpl in (ComputationalADT.pcConstructors (projT2 impl))) in
   let impl_constructors' :=
-      (match impl_constructors with
+      (lazymatch impl_constructors with
        | fun idx => cConsBody (ith ?constructors' idx) => constructors'
        end) in
 
   let impl_methods := (eval simpl in (ComputationalADT.pcMethods (projT2 impl))) in
   let impl_methods' :=
-      (match impl_methods with
+      (lazymatch impl_methods with
        | fun idx => cMethBody (ith ?methods' idx) => methods'
        end) in
 
