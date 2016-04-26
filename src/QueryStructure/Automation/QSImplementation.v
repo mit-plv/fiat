@@ -320,13 +320,13 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                                                    BagCorrect (fun a b => ValidUpdateCorrect _ b))
                                 ltac:(fun BagADT' =>
                                         k (i3cons2
-                                             (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
+                                             (C := (fun sch (SearchTerm' : SearchUpdateTerms sch) =>
                                                       FullySharpened
                                                         (@BagSpec (@RawTuple sch)
-                                                                  (BagSearchTermType SearchTerm)
-                                                                  (BagUpdateTermType SearchTerm)
-                                                                  (BagMatchSearchTerm SearchTerm)
-                                                                  (BagApplyUpdateTerm SearchTerm))))
+                                                                  (BagSearchTermType SearchTerm')
+                                                                  (BagUpdateTermType SearchTerm')
+                                                                  (BagMatchSearchTerm SearchTerm')
+                                                                  (BagApplyUpdateTerm SearchTerm'))))
                                              (b := SearchTerm)
                                              (existT _ BagADT'
                                                      (@SharpenedBagImpl_subproof
@@ -334,13 +334,13 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                                                         (fun _ => false) _
                                                         BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags))))
     | inil3 => k (i3nil2
-                    (C := fun heading (SearchTerm : SearchUpdateTerms heading) =>
+                    (C := fun heading' (SearchTerm' : SearchUpdateTerms heading) =>
                             FullySharpened
-                              (@BagSpec (@RawTuple heading)
-                                        (BagSearchTermType SearchTerm)
-                                        (BagUpdateTermType SearchTerm)
-                                        (BagMatchSearchTerm SearchTerm)
-                                        (BagApplyUpdateTerm SearchTerm))))
+                              (@BagSpec (@RawTuple heading')
+                                        (BagSearchTermType SearchTerm')
+                                        (BagUpdateTermType SearchTerm')
+                                        (BagMatchSearchTerm SearchTerm')
+                                        (BagApplyUpdateTerm SearchTerm'))))
     end.
 
 Ltac BuildQSIndexedBags' BuildEarlyBags BuildLastBags :=
