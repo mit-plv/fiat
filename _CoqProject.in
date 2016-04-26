@@ -218,6 +218,7 @@ src/Examples/DnsServer/AuthoritativeDNSServer.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/Packet.v
+src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
 src/Examples/DnsServer/RecursiveDNSSchema.v
 src/Examples/Ics/Ics.v
