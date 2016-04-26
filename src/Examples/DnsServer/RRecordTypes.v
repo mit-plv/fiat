@@ -310,6 +310,15 @@ Section RData.
         eapply IHtag.
   Qed.
 
+  Definition IsComputedField
+             {heading}
+             (idx idx' : BoundedString (HeadingNames heading))
+             (f : Domain heading (ibound (indexb idx))
+                  -> Domain heading (ibound (indexb idx')))
+             (tup : @Tuple heading)
+    : Prop :=
+    f (GetAttribute tup idx) = GetAttribute tup idx'.
+
   (* Could use above to prove dependent inversion lemma, but *)
   (* this is more of a sanity check than anything. *)
   (* Lemma proj_SumType_inj_inverse {n}
@@ -318,9 +327,39 @@ Section RData.
              (el : Vector.nth v tag),
       SumType_proj v (inj_SumType v tag el) = el. *)
 
-  (* We express the dependency of a resource record's data *)
-  (* field on its type as a proposition that is enforced *)
-  (* as attribute constraint. Should define this generically. *)
+  (* Goal: Convert from QueryStructure with a heading with a SumType *)
+  (* attribute to one that has multiple tables. *)
+  (* Is this a worthwhile refinement? We could just do this at data structure *)
+  (* selection time. OTOH, nice high-level refinement step that makes sense to *)
+  (* end-users and has applications in both DNS examples.  *)
+
+  Definition EnumIDs := ["A"; "NS"; "CNAME"; "SOA" ].
+  Definition EnumID := BoundedString EnumIDs.
+  Definition EnumTypes := [nat : Type; string : Type; nat : Type; list nat : Type].
+  Definition EnumType := SumType EnumTypes.
+
+  Definition EESchema :=
+      Query Structure Schema
+        [ relation "foo" has
+                   schema <"A" :: nat, "BID" :: EnumID, "B" :: EnumType>
+                   where (fun t => ibound (indexb t!"BID") = SumType_index _ t!"B" ) and (fun t t' => True);
+          relation "bar" has
+                   schema <"C" :: nat, "D" :: list string>
+        ]
+        enforcing [ ].
+
+  Definition EESpec : ADT _ :=
+  QueryADTRep EESchema {
+    Def Constructor "Init" : rep := empty,
+
+    Def Method1 "AddData" (this : rep) (t : _) : rep * bool :=
+      Insert t into this!"foo",
+
+    Def Method1 "Process" (this : rep) (p : EnumID) : rep * list _ :=
+      results <- For (r in this!"foo")
+                     Where (r!"BID" = p)
+                     Return r;
+    ret (this, results)}.
 
   Definition ResourceRecordTypeTypes :=
     [ (W : Type); (* A *)

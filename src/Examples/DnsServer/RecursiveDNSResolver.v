@@ -18,30 +18,6 @@ Require Import
 
 Require Import Fiat.Examples.DnsServer.RecursiveDNSSchema.
 
-(* Only Init, MakeId, and Process should be public methods. The rest are private, for internal use. *)
-
-Definition DnsRecSig : ADTSig :=
-  ADTsignature {
-      Constructor Init : unit -> rep,
-
-      (* request state methods *)
-      Method MakeId : rep * name -> rep * id,
-
-      Method GetRequestStage : rep * id -> rep * (option Stage),
-      Method UpdateRequestStage : rep * id * Stage -> rep * bool,
-
-     (* TTL *)
-      Method UpdateTTLs : rep * time -> rep * bool,
-
-     (* Main method. Talks to an outside "wrapper" in
-     continuation-passing style. Given the time and something from the
-     wrapper, figures out what to do with it and returns a response
-     that may be an error, answer, or request for the wrapper to send
-     a question to another server. *)
-      Method Process : rep * time * FromOutside -> rep * ToOutside
-    }.
-
-
 (* Helper functions *)
 
 Definition nonempty {A : Type} (l : list A) := negb (beq_nat (List.length l) 0).
@@ -183,7 +159,6 @@ Definition DeleteCachedNameResultSpec
 (* answer/failure/referral for the name, return that. *)
 Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
            (currTime : time) (reqName : name) : Comp (_ * CacheResult) :=
-  (* Update the TTLs *)
   (* Check if we have cached results for reqName *)
   results <- For (pointer in r!sCACHE_POINTERS)
              Where (pointer!sDOMAIN = reqName)
@@ -428,8 +403,12 @@ Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
       (* Main method. Talks to an outside "wrapper" in continuation-passing style. Given the time and something from the wrapper, figures out what to do with it and returns a response that may be an error, answer, or request for the wrapper to send a question to another server. *)
           (* TODO need to inline other functions; stubs for now *)
           (* TODO rep is not threaded through in Process *)
-          Def Method4 Process (r : rep) (timeArrived : time)
-              (reqId : id) (pac : packet) (failure : option SOA)
+          Def Method4 Process
+              (r : rep)
+              (timeArrived : time)
+              (reqId : id)
+              (pac : packet)
+              (failure : option SOA)
           : rep * ToOutside :=
             let SBELT := @nil ReferralRow in (* TODO add root ip *)
 
