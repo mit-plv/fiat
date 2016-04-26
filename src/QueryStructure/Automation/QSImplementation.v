@@ -334,7 +334,7 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                                                         (fun _ => false) _
                                                         BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags))))
     | inil3 => k (i3nil2
-                    (C := fun heading' (SearchTerm' : SearchUpdateTerms heading) =>
+                    (C := fun heading' (SearchTerm' : SearchUpdateTerms heading') =>
                             FullySharpened
                               (@BagSpec (@RawTuple heading')
                                         (BagSearchTermType SearchTerm')
