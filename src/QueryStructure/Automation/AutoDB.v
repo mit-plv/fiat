@@ -2422,8 +2422,8 @@ Ltac implement_insert CreateTerm EarlyIndex LastIndex
            end
          | implement_Query CreateTerm EarlyIndex LastIndex
                            makeClause_dep EarlyIndex_dep LastIndex_dep
-         | setoid_rewrite refine_BagADT_QSInsert; [ | solve [ eauto ] .. ]
-         |  setoid_rewrite refine_Pick_DelegateToBag_AbsR; [ | solve [ eauto ] .. ] ].
+         | progress (rewrite ?refine_BagADT_QSInsert; try setoid_rewrite refine_BagADT_QSInsert); [ | solve [ eauto ] .. ]
+         | progress (rewrite ?refine_Pick_DelegateToBag_AbsR; try setoid_rewrite refine_Pick_DelegateToBag_AbsR); [ | solve [ eauto ] .. ] ].
 
 Ltac insertion CreateTerm EarlyIndex LastIndex
      makeClause_dep EarlyIndex_dep LastIndex_dep :=
