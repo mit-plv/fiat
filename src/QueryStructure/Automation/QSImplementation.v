@@ -9,7 +9,7 @@ Require Export Fiat.Common.ilist3_pair
         Fiat.Common.i3list2.
 
 Ltac list_of_evar B As k :=
-  match As with
+  lazymatch As with
   | nil => k (@nil B)
   | cons ?a ?As' =>
     makeEvar B ltac:(fun b =>
@@ -100,7 +100,7 @@ Qed.
 Ltac BuildQSDelegateSigs QSImpl :=
   let p := eval unfold QSImpl in QSImpl in
       let p := eval simpl in (Sharpened_DelegateSigs p) in
-          match p with
+          lazymatch p with
             Build_IndexedQueryStructure_Impl_Sigs ?SearchTerms =>
             pose SearchTerms
           end;
@@ -120,7 +120,7 @@ Ltac BuildQSDelegateSigs QSImpl :=
 Ltac BuildQSDelegateReps QSImpl :=
   let p := eval unfold QSImpl in QSImpl in
       let p := eval simpl in (Sharpened_DelegateSigs p) in
-          match p with
+          lazymatch p with
             Build_IndexedQueryStructure_Impl_Sigs ?SearchTerms =>
             pose SearchTerms
           end;
@@ -130,7 +130,7 @@ Ltac BuildQSDelegateReps QSImpl :=
                  let SearchTerm := fresh "SearchTerm" in
                  econstructor 1;
                    [let SearchTerm := eval simpl in (BagSearchTermType (ilist_hd H)) in
-                        match SearchTerm
+                        lazymatch SearchTerm
                         with
                         | BuildIndexSearchTerm ?AttrList =>
                           pose AttrList;
@@ -139,7 +139,7 @@ Ltac BuildQSDelegateReps QSImpl :=
                                          ltac:(fun PAttrList =>
                                                  assert (map BagsOfTuples.Attribute PAttrList = AttrList)
                                                  by (simpl; repeat f_equal;
-                                                     match goal with
+                                                     lazymatch goal with
                                                        |- @BagsOfTuples.Attribute ?heading ?h = ?g =>
                                                        instantiate (1 := @Build_ProperAttribute heading g _);
                                                        first [instantiate (1 := inright (eq_refl _))
@@ -191,16 +191,16 @@ Ltac BuildQSDelegateReps QSImpl :=
       end. *)
 
 Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
-  match AttrList with
+  lazymatch AttrList with
   | ?Attr :: [ ] =>
     let AttrKind := eval simpl in (KindIndexKind Attr) in
         let AttrIndex := eval simpl in (KindIndexIndex Attr) in
             let is_equality := eval compute in (string_dec AttrKind "EqualityIndex") in
 
-                match is_equality with
+                lazymatch is_equality with
                 | left _ =>
                   let AttrType := eval compute in (Domain heading AttrIndex) in
-                      match AttrType with
+                      lazymatch AttrType with
                       | BinNums.N =>
                         k (@NTreeBag.IndexedBagAsCorrectBag
                              _ _ _ _ _ _ _
@@ -245,10 +245,10 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
     let AttrKind := eval simpl in (KindIndexKind Attr) in
         let AttrIndex := eval simpl in (KindIndexIndex Attr) in
             let is_equality := eval compute in (string_dec AttrKind "EqualityIndex") in
-                match is_equality with
+                lazymatch is_equality with
                 | left _ =>
                   let AttrType := eval compute in (Domain heading AttrIndex) in
-                      match AttrType with
+                      lazymatch AttrType with
                       | BinNums.N =>
                         BuildQSIndexedBag
                           heading AttrList'
@@ -299,12 +299,12 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
   end.
 
   Ltac BuildQSIndexedBags SearchTerms BuildEarlyBags BuildLastBags k :=
-    match SearchTerms with
+    lazymatch SearchTerms with
     | @icons3 _ _ ?heading _ ?headings' ?SearchTerm
               ?SeachTerms'
       =>
       let BagSearchTermType' := eval simpl in (BagSearchTermType SearchTerm) in
-          let AttrList' := match BagSearchTermType' with
+          let AttrList' := lazymatch BagSearchTermType' with
                            | BuildIndexSearchTerm ?AttrList => AttrList
                            end in
           BuildQSIndexedBags
@@ -320,13 +320,13 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                                                    BagCorrect (fun a b => ValidUpdateCorrect _ b))
                                 ltac:(fun BagADT' =>
                                         k (i3cons2
-                                             (C := (fun sch (SearchTerm : SearchUpdateTerms sch) =>
+                                             (C := (fun sch (SearchTerm' : SearchUpdateTerms sch) =>
                                                       FullySharpened
                                                         (@BagSpec (@RawTuple sch)
-                                                                  (BagSearchTermType SearchTerm)
-                                                                  (BagUpdateTermType SearchTerm)
-                                                                  (BagMatchSearchTerm SearchTerm)
-                                                                  (BagApplyUpdateTerm SearchTerm))))
+                                                                  (BagSearchTermType SearchTerm')
+                                                                  (BagUpdateTermType SearchTerm')
+                                                                  (BagMatchSearchTerm SearchTerm')
+                                                                  (BagApplyUpdateTerm SearchTerm'))))
                                              (b := SearchTerm)
                                              (existT _ BagADT'
                                                      (@SharpenedBagImpl_subproof
@@ -334,20 +334,20 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k :=
                                                         (fun _ => false) _
                                                         BagCorrect (fun a b => ValidUpdateCorrect _ b))) Bags))))
     | inil3 => k (i3nil2
-                    (C := fun heading (SearchTerm : SearchUpdateTerms heading) =>
+                    (C := fun heading' (SearchTerm' : SearchUpdateTerms heading') =>
                             FullySharpened
-                              (@BagSpec (@RawTuple heading)
-                                        (BagSearchTermType SearchTerm)
-                                        (BagUpdateTermType SearchTerm)
-                                        (BagMatchSearchTerm SearchTerm)
-                                        (BagApplyUpdateTerm SearchTerm))))
+                              (@BagSpec (@RawTuple heading')
+                                        (BagSearchTermType SearchTerm')
+                                        (BagUpdateTermType SearchTerm')
+                                        (BagMatchSearchTerm SearchTerm')
+                                        (BagApplyUpdateTerm SearchTerm'))))
     end.
 
 Ltac BuildQSIndexedBags' BuildEarlyBags BuildLastBags :=
   repeat match goal with
            H := BuildIndexSearchTerm _ |- _ => subst H
          end;
-  match goal with
+  lazymatch goal with
     |- context [@Build_IndexedQueryStructure_Impl_Sigs _ ?indices ?SearchTerms _] =>
     BuildQSIndexedBags
       SearchTerms BuildEarlyBags BuildLastBags
