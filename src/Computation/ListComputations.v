@@ -20,7 +20,7 @@ Section ListComprehension.
 
   Definition FilteredList
              (xs : list A)
-             (P : Ensemble A)             
+             (P : Ensemble A)
     := ListComprehension (fun x => List.In x xs /\ P x).
 
   Definition build_FilteredList
@@ -101,14 +101,14 @@ Section UpperBound.
   Definition find_UpperBound (f : A -> nat) (ns : list A) : list A :=
     let max := fold_right
                  (fun n acc => max (f n) acc) O ns in
-    filter (fun n => NPeano.leb max (f n)) ns.
+    filter (fun n => NPeano.Nat.leb max (f n)) ns.
 
   Lemma find_UpperBound_highest_length
     : forall (f : A -> nat) ns n,
       List.In n (find_UpperBound f ns) -> forall n', List.In n' ns -> (f n) >= (f n').
   Proof.
     unfold ge, find_UpperBound; intros.
-    apply filter_In in H; destruct H; apply NPeano.leb_le in H1.
+    apply filter_In in H; destruct H. apply NPeano.Nat.leb_le in H1.
     rewrite <- H1; clear H1 H n.
     apply fold_right_max_is_max; auto.
   Qed.
