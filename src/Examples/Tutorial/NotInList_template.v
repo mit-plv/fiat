@@ -52,7 +52,7 @@ Proof.
 Defined.
 
 (* We can extract the program that we found as a standlone, executable Gallina term. *)
-Definition impl := Eval simpl in projT1 implementation.
+Definition impl := Eval simpl in proj1_sig implementation.
 Print impl.
 
 Eval compute in impl (1 :: 7 :: 8 :: 2 :: 13 :: 6 :: nil).
