@@ -173,7 +173,7 @@ Proof.
       rewrite (CallBagEnumerate_fst H0); simpl.
       etransitivity.
       eapply refine_under_bind_both.
-      eapply (@Join_Comp_Lists_eq BookStoreSchema Index Fin.F1).
+      refine (@Join_Comp_Lists_eq BookStoreSchema Index Fin.F1 _ _ _ _ _).
       intros; finish honing.
       simplify with monad laws.
       unfold H2; apply refine_under_bind.
