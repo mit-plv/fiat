@@ -19,8 +19,15 @@ Definition Pick (A : Type)
            (P : Ensemble A)
 : Comp A := P.
 
+Definition Bind2 (A B C: Type)
+           (c : Comp (A * B))
+           (k : A -> B -> Comp C)
+  := Bind c (fun ab => k (fst ab) (snd ab)).
+
+
 Bind Scope comp_scope with Comp.
-Arguments Bind [A%type B%type] ca%comp k _.
+Arguments Bind [A%type B%type] ca%comp k%comp _.
+Arguments Bind2 [A%type B%type C%type] c%comp k%comp _.
 Arguments Return [_] _ _.
 Arguments Pick [_] _ _.
 
@@ -30,7 +37,13 @@ Notation "x >>= y" := (Bind x%comp y%comp) : comp_scope.
 Notation "x <- y ; z" := (Bind y%comp (fun x => z%comp))
                            (at level 81, right associativity,
                             format "'[v' x  <-  y ; '/' z ']'") : comp_scope.
-Notation "x >> z" := (Bind x%comp (fun _ => z%comp))
+
+Notation "`( a , b ) <- c ; k" :=
+  (Bind2 c%comp (fun a b => k%comp))
+    (at level 81, right associativity,
+     format "'[v' `( a ,  b )  <-  c ; '/' k ']'") : comp_scope.
+
+Notation "x >> z" := (Bind x%comp (fun _ => z%comp) )
                        (at level 81, right associativity,
                         format "'[v' x >> '/' z ']'") : comp_scope.
 Notation "{ x  |  P }" := (@Pick _ (fun x => P)) : comp_scope.
@@ -56,7 +69,7 @@ Lemma BindComputes
          (b : B),
     ca ↝ a ->
     f a ↝ b ->
-    (ca >>= f) ↝ b.
+    ca >>= f ↝ b.
 Proof.
   econstructor; eauto.
 Qed.
