@@ -3,14 +3,6 @@ Require Import BinEncoders.Env.Examples.Dns.
 
 Unset Implicit Arguments.
 
-Instance BinEnc_WrapListBool : FacadeWrapper ADTValue (list bool).
-Proof.
-Admitted.
-
-Instance BinEnc_WrapPacket : FacadeWrapper ADTValue (packet_t).
-Proof.
-Admitted.
-
 Lemma push_function_into_destructuring_let2 {A1 A2 B C} :
   forall (f: B -> C) (p: A1 * A2) (g : A1 -> A2 -> B),
     f (match p with (a1, a2) => g a1 a2 end) =
@@ -259,7 +251,8 @@ Proof.
 Qed.
 
 Lemma CompileAppendBool :
-  forall av vout vbools vbool (tenv: Telescope av) tenv' ext env fappend facadeConclude bools b,
+  forall {av} {W: FacadeWrapper av (list bool)} vout vbools vbool
+    (tenv: Telescope av) tenv' ext env fappend facadeConclude bools b,
     {{ [[ ` vbools <-- bools ++ b :: nil as _]] :: [[ ` vbool <-- b as _]] :: tenv }}
       facadeConclude
     {{ [[ ` vbools <-- bools ++ b :: nil as vbls]] :: tenv' vbls }} ∪ {{ ext }} // env ->
@@ -545,7 +538,7 @@ Lemma CompileCompose_spec' :
          :: tenv' }} ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
      let stream1 := Transformer.transform stream (fst encoded1) in
-     {{ [[ vstream  <--  Transformer.transform stream (fst encoded1) as stream1 ]]
+     {{ [[ vstream  <--  stream1 as _ ]]
          :: [[ vcache  <--  (snd encoded1) as cache1 ]]
           :: tenv' }}
        p2
@@ -599,17 +592,15 @@ Proof.
 Qed.
 
 Lemma ProgOk_Add_snd_ret :
-  forall {A B av} (kfst: NameTag av _) (ksnd: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+  forall {A B av} encodeSecond (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
     {{ tenv }}
       p1
     {{ [[ NTNone  <--  cpair as pair ]]
          :: [[ kfst  <--  fst pair as p1 ]]
-         :: [[ ksnd  <--  snd pair as p2 ]]
-         :: tenv' }} ∪ {{ ext }} // env ->
+         :: encodeSecond tenv' (snd pair) }} ∪ {{ ext }} // env ->
     {{ [[ NTNone  <--  cpair as pair ]]
          :: [[ kfst  <--  fst pair as p1 ]]
-         :: [[ ksnd  <--  snd pair as p2 ]]
-         :: tenv' }}
+         :: encodeSecond tenv' (snd pair) }}
       p2
     {{ [[ NTNone  <--  cpair as pair ]]
          :: [[ kfst  <--  fst pair as p1 ]]
@@ -632,8 +623,7 @@ Ltac compile_compose_internal :=
       set (Transformer.transform _ _) as stream ].
 
 Definition PacketAsCollectionOfVariables
-           {av} tail (p: packet_t)
-           vid vmask vquestion vanswer vauthority vadditional
+           {av} vid vmask vquestion vanswer vauthority vadditional tail (p: packet_t)
   : Telescope av :=
   [[ vid <-- ` p.(pid) as _ ]]
     :: [[ vmask <-- ` p.(pmask) as _ ]]
@@ -643,20 +633,13 @@ Definition PacketAsCollectionOfVariables
     :: [[ vadditional <-- ` p.(padditional) as _ ]]
     :: tail.
 
-Instance ListResources : FacadeWrapper (Value ADTValue) (list resource_t).
-Admitted.
-
-Instance ListQuestions : FacadeWrapper (Value ADTValue) (list question_t).
-Admitted.
-
-Instance Question : (FacadeWrapper (Value ADTValue) question_t).
-Admitted.
-
-Instance Resource : (FacadeWrapper (Value ADTValue) resource_t).
-Admitted.
-
-Instance Cache : (FacadeWrapper (Value ADTValue) DnsMap.CacheT).
-Admitted.
+Definition DnsCacheAsCollectionOfVariables
+           {av} veMap vdMap voffs tail (c: DnsMap.CacheT)
+  : Telescope av :=
+  [[ veMap <-- c.(DnsMap.eMap) as _ ]]
+    :: [[ vdMap <-- c.(DnsMap.dMap) as _ ]]
+    :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
+    :: tail.
 
 Lemma CompileLoop2_destructed :
   forall {A1 A2 C}
@@ -698,26 +681,6 @@ Proof.
   eapply @CompileLoopBase2; eassumption.
 Qed.
 
-Example encode :
-  ParametricExtraction
-    #vars      p
-    #program   ret (packet_encode p)
-    #arguments (PacketAsCollectionOfVariables
-                  Nil p (NTSome "id") (NTSome "mask") (NTSome "question")
-                  (NTSome "answer") (NTSome "authority") (NTSome "additional"))
-    #env       (GLabelMap.empty (FuncSpec ADTValue)).
-Proof.
-  _compile.
-
-  destruct p.
-  unfold packet_encode, encode_packet; simpl.
-
-  eapply (ProgOk_Add_snd_ret _ (NTSome "cache")).
-
-  eapply CompileSeq.
-
-  Focus 2.
-
 Lemma CompileCompose_init :
   forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
     (vstream: NameTag av B) (vcache: NameTag av E) (cache: E)
@@ -727,7 +690,7 @@ Lemma CompileCompose_init :
          :: tenv }}
       p1
     {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
-         :: [[ vstream  <--  (fst encoded1) as stream1 ]]
+         :: [[ vstream  <--  Transformer.transform Transformer.transform_id (fst encoded1) as stream1 ]]
          :: [[ vcache  <--  (snd encoded1) as cache1 ]]
          :: tenv' }} ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
@@ -750,166 +713,736 @@ Lemma CompileCompose_init :
 Proof.
   intros.
   setoid_rewrite <- (Transformer.transform_id_left (fst _)).
-  eapply CompileCompose_spec'; cbv zeta;
-    setoid_rewrite Transformer.transform_id_left; eassumption.
+  eapply CompileCompose_spec'; cbv zeta.
+  eassumption.
+  setoid_rewrite Transformer.transform_id_left; eassumption.
 Qed.
 
-  Ltac compile_compose :=
-    (eapply CompileCompose_spec' || eapply CompileCompose_init); intros.
+Lemma ProgOk_Transitivity_DropName :
+  forall {av A} {W: FacadeWrapper (Value av) A} env ext (t1: Telescope av) t2 prog1 prog2 (k: string) (v: Comp A),
+    {{ t1 }}                     prog1      {{ [[`k <~~ v as _]]::DropName k t1 }}     ∪ {{ ext }} // env ->
+    {{ [[`k <~~ v as _]]::DropName k t1 }}      prog2      {{ [[`k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ t1 }}                Seq prog1 prog2 {{ [[`k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env.
+Proof.
+  eauto using CompileSeq.
+Qed.
 
-  (* TODO remove compile_compose_internal *)
+Lemma ProgOk_Transitivity_First :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
+    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env.
+Proof.
+  eauto using CompileSeq.
+Qed.
 
-  repeat compile_compose.
-  Unfocus.
+Lemma IList_encode_bools_is_copy:
+  forall bits cache,
+    (IList.IList_encode' DnsMap.cache Core.btransformer Bool.Bool_encode bits cache) =
+    (bits, {| DnsMap.eMap := DnsMap.eMap cache;
+              DnsMap.dMap := DnsMap.dMap cache;
+              DnsMap.offs := DnsMap.offs cache + (N.of_nat (List.length bits)) |}).
+Proof.
+  Opaque N.of_nat.
+  induction bits; destruct cache; simpl in *.
+  + rewrite N.add_0_r; reflexivity.
+  + rewrite IHbits; simpl.
+    rewrite <- N.add_assoc, N.add_1_l, Nat2N.inj_succ; reflexivity.
+    Transparent N.of_nat.
+Qed.
 
-  Ltac instantiate_tail_of_post term :=
-    match_ProgOk
-      ltac:(fun prog pre post ext env =>
-              match constr:post with
-              | context[?x] =>
-                is_evar x;
-                match type of x with
-                | @Telescope _ => unify x term
-                end
-              end).
+Definition EncodeAndPad n length :=
+  let encoded := FixInt.encode' n in
+  FixInt.pad encoded (length - Datatypes.length encoded).
 
-  Ltac find_packet :=
-    lazymatch goal with
-    | [  |- {{ ?pre }} _ {{ _ }} ∪ {{ _ }} // _ ] =>
-      match pre with
-      | context[@PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7] =>
-        constr:(@PacketAsCollectionOfVariables av x0 x1 x2 x3 x4 x5 x6 x7)
-      end
-    end.
+Lemma FixInt_encode_is_copy {size}:
+  forall num cache,
+    (FixInt.FixInt_encode (size := size) num cache) =
+    (EncodeAndPad (`num) size, {| DnsMap.eMap := DnsMap.eMap cache;
+                                  DnsMap.dMap := DnsMap.dMap cache;
+                                  DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}).
+Proof.
+  destruct cache; reflexivity.
+Qed.
 
-  Ltac keep_unmodified_packet :=
-    instantiate_tail_of_post find_packet.
+Lemma CompileCallWrite16:
+  forall {av} {W: FacadeWrapper av (list bool)}
+    (vtmp varg vstream : string) (stream : list bool) (tenv tenv': Telescope av)
+    (n : N) (ext : GLabelMap.t (FuncSpec av))
+    pArg pNext fWrite16,
+    {{ [[ ` vstream <-- stream as _]]::tenv }}
+      pArg
+    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- Word.NToWord n as _]]::tenv }} ∪ {{ ∅ }} // ext ->
+    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv }}
+      pNext
+    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ∅ }} // ext ->
+    {{ [[ ` vstream <-- stream as _]]::tenv }}
+      Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
+    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ∅ }} // ext.
+Proof.
+  hoare.
+  hoare.
+  hoare.
+Admitted.
 
-  Focus.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Initialize cache") nil); admit.
-  Unfocused.
+Definition List16AsWord (ls: {s : list bool | Datatypes.length s = 16}) : W.
+Admitted.
 
-  Lemma encode_bool_is_copy:
-    forall bits cache,
-      (IList.IList_encode' DnsMap.cache Core.btransformer Bool.Bool_encode bits cache) =
-      (bits, {| DnsMap.eMap := DnsMap.eMap cache;
-                DnsMap.dMap := DnsMap.dMap cache;
-                DnsMap.offs := DnsMap.offs cache + (N.of_nat (List.length bits)) |}).
-  Proof.
-    Opaque N.of_nat.
-    induction bits; destruct cache; simpl in *.
-    + rewrite N.add_0_r; reflexivity.
-    + rewrite IHbits; simpl.
-      rewrite <- N.add_assoc, N.add_1_l, Nat2N.inj_succ; reflexivity.
-      Transparent N.of_nat.
-  Qed.
+Lemma EncodeAndPad_ListAsWord : forall ls, `ls = EncodeAndPad (Word.wordToN (List16AsWord ls)) 16.
+Admitted.
 
-  Focus.
-  unfold IList.IList_encode; rewrite encode_bool_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode PID") nil); admit.
+Ltac _compile_callWrite16 :=
+  simpl;
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:post with
+            | [[ _ <-- _ ++ ?arg as _]] :: _ =>
+              let vtmp := gensym "tmp" in
+              let varg := gensym "arg" in
+              try match arg with ` ?arg => rewrite (EncodeAndPad_ListAsWord arg) end;
+              eapply (CompileCallWrite16 vtmp varg)
+            end).
 
-  Focus.
-  unfold IList.IList_encode; rewrite encode_bool_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode PMASK") nil); admit.
-  Unfocused.
+Ltac instantiate_tail_of_post term :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:post with
+            | context[?x] =>
+              is_evar x;
+              match type of x with
+              | @Telescope _ => unify x term
+              end
+            end).
 
-  Definition EncodeAndPad n length :=
-    let encoded := FixInt.encode' n in
-    FixInt.pad encoded (length - Datatypes.length encoded).
+Ltac find_packet :=
+  lazymatch goal with
+  (* Use an explicit match, since match_ProgOk returns tactics, not terms *)
+  | [  |- {{ ?pre }} _ {{ _ }} ∪ {{ _ }} // _ ] =>
+    match pre with
+    | context[@PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7] =>
+      constr:(@PacketAsCollectionOfVariables av x0 x1 x2 x3 x4 x5 x6 x7)
+    end
+  end.
 
-  Lemma encode_N_is_copy {size}:
-    forall num cache,
-      (FixInt.FixInt_encode (size := size) num cache) =
-      (EncodeAndPad (`num) size, {| DnsMap.eMap := DnsMap.eMap cache;
-                                    DnsMap.dMap := DnsMap.dMap cache;
-                                    DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}).
-  Proof.
-    destruct cache; reflexivity.
-  Qed.
+Ltac keep_unmodified_packet :=
+  instantiate_tail_of_post find_packet.
 
-  Focus.
-  rewrite encode_N_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode length of question") nil); admit.
-  Unfocused.
+Ltac compile_compose :=
+  (eapply CompileCompose_spec' || eapply CompileCompose_init); intros.
 
-  Focus.
-  rewrite encode_N_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode length of answer") nil); admit.
-  Unfocused.
+Ltac packet_start_compiling :=
+  repeat match goal with
+         | [ p: packet_t |- _ ] => destruct p
+         | _ => progress unfold packet_encode, encode_packet; simpl
+         end.
 
-  Focus.
-  rewrite encode_N_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode length of additional") nil); admit.
-  Unfocused.
+Lemma Propagate_anonymous_ret__fast:
+  forall {av A} (v : A) (tenv : Telescope av) tenv' env ext p,
+    {{ tenv }} p {{ tenv' v }} ∪ {{ ext }} // env ->
+    {{ tenv }} p {{ Cons NTNone (ret v) tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; rewrite Propagate_anonymous_ret; assumption.
+Qed.
 
-  Focus.
-  rewrite encode_N_is_copy.
-  keep_unmodified_packet.
-  instantiate (1 := Call "" ("admitted", "Encode length of authority") nil); admit.
-  Unfocused.
+Lemma CompileCallAllocString:
+  forall {av} {W: FacadeWrapper av (list bool)}
+    (vtmp vstream : string) (tenv tenv' : Telescope av)
+    ext (env : GLabelMap.t (FuncSpec av))
+    pNext fAllocString,
+    {{ [[ ` vstream <-- @nil bool as _]]::tenv }}
+      pNext
+    {{ [[ ` vstream <-- @nil bool as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Call vtmp fAllocString [vstream]) pNext
+    {{ [[ ` vstream <-- @nil bool as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  hoare; hoare.
+Admitted.
 
-  Lemma FixList_is_IList :
-    forall (A bin : Type) (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
-      (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
-      (xs : list A) (env : Cache.CacheEncode),
+Instance WrapListResources : FacadeWrapper ADTValue (list resource_t). Admitted.
+Instance WrapListQuestions : FacadeWrapper ADTValue (list question_t). Admitted.
+Instance WrapQuestion : (FacadeWrapper ADTValue question_t). Admitted.
+Instance WrapResource : (FacadeWrapper ADTValue resource_t). Admitted.
+(* Instance WrapCache : (FacadeWrapper ADTValue DnsMap.CacheT). Admitted. *)
+Instance WrapDMapT : FacadeWrapper ADTValue DnsMap.DMapT. Admitted.
+Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted.
+Instance WrapN : FacadeWrapper (Value ADTValue) N. Admitted.
+Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted.
+Instance WrapPacket : FacadeWrapper ADTValue (packet_t). Admitted.
+
+Lemma CompileCallAllocEMap:
+  forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
+    ext env pNext fAllocCache,
+    {{ [[ ` veMap <-- DnsMap.EMap.empty DnsMap.position_t as _]]::tenv }}
+      pNext
+    {{ [[ ` veMap <-- DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Call vtmp fAllocCache [veMap]) pNext
+    {{ [[ ` veMap <-- DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  hoare; hoare.
+Admitted.
+
+Lemma CompileCallAllocDMap:
+  forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
+    ext env pNext fAllocCache,
+    {{ [[ ` veMap <-- DnsMap.DMap.empty (list DnsMap.word_t) as _]]::tenv }}
+      pNext
+    {{ [[ ` veMap <-- DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Call vtmp fAllocCache [veMap]) pNext
+    {{ [[ ` veMap <-- DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  hoare; hoare.
+Admitted.
+
+Lemma CompileCallAllocOffset:
+  forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
+    ext env pNext fAllocCache,
+    {{ [[ ` veMap <-- 0%N as _]]::tenv }}
+      pNext
+    {{ [[ ` veMap <-- 0%N as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Call vtmp fAllocCache [veMap]) pNext
+    {{ [[ ` veMap <-- 0%N as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  hoare; hoare.
+Admitted.
+
+Ltac _packet_encode_FixInt :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:post with
+            | [[ret (FixInt.FixInt_encode _ _) as _]] :: _ =>
+              rewrite FixInt_encode_is_copy;
+              setoid_rewrite Propagate_anonymous_ret; simpl;
+              apply ProgOk_Transitivity_First
+            end).
+
+Lemma CompileCallListResourceLength:
+  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (lst : list resource_t)
+    flength tenv',
+    TelEq ext tenv ([[`vlst <-- lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    {{ tenv }}
+      Call varg flength [vlst]
+    {{ [[ ` varg <-- Word.natToWord 32 (Datatypes.length lst) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
+
+Lemma CompileCallListQuestionLength:
+  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (lst : list question_t)
+    flength tenv',
+    TelEq ext tenv ([[`vlst <-- lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    {{ tenv }}
+      Call varg flength [vlst]
+    {{ [[ ` varg <-- Word.natToWord 32 (Datatypes.length lst) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
+
+Ltac _compile_CallListLength :=
+  match_ProgOk
+    ltac:(fun _ _ post _ _ =>
+            match constr:post with
+            | [[ _ <-- Word.natToWord 32 (Datatypes.length ?lst) as _]] :: _ =>
+              (* FIXME this should be an equivalent of find_in_ext *)
+              (* FIXME this shoud be more principled *)
+              unfold PacketAsCollectionOfVariables; simpl;
+              match_ProgOk
+                ltac:(fun _ pre _ _ _ =>
+                        match constr:pre with
+                        | context[Cons (NTSome ?k) (ret lst) _] =>
+                          (eapply (CompileCallListResourceLength k) ||
+                           eapply (CompileCallListQuestionLength k));
+                          [ decide_TelEq_instantiate ]
+                        end)
+            end).
+
+Ltac _compile_CallAllocString :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match constr:post with
+            | Cons _ (ret Transformer.transform_id) _ =>
+              let vtmp := gensym "tmp" in
+              eapply (CompileCallAllocString vtmp)
+            end).
+
+Lemma NToWord_of_nat:
+  forall (sz : nat) (n : nat),
+    Word.NToWord (N.of_nat n) = Word.natToWord sz n.
+Proof.
+  intros; rewrite Word.NToWord_nat, Nat2N.id; reflexivity.
+Qed.
+
+Lemma NToWord_WordToN:
+  forall (sz : nat) (w : Word.word sz),
+    Word.NToWord (Word.wordToN w) = w.
+Proof.
+  intros; rewrite Word.NToWord_nat, Word.wordToN_nat, Nat2N.id.
+  apply Word.natToWord_wordToNat.
+Qed.
+
+Lemma length_of_fixed_length_list :
+  forall {size} (ls: {s : list bool | Datatypes.length s = size}),
+    List.length (`ls) = size.
+Proof.
+  destruct ls; auto.
+Qed.
+
+Lemma FixList_is_IList :
+  forall (A bin : Type) (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
+    (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
+    (xs : list A) (env : Cache.CacheEncode),
     @FixList.FixList_encode' A bin cache transformer A_encode xs env =
     @IList.IList_encode' A bin cache transformer A_encode xs env.
-  Proof.
-    induction xs; simpl; intros.
-    + reflexivity.
-    + destruct (A_encode _ _).
-      rewrite IHxs; reflexivity.
-  Qed.
+Proof.
+  induction xs; simpl; intros.
+  + reflexivity.
+  + destruct (A_encode _ _).
+    rewrite IHxs; reflexivity.
+Qed.
 
-  (* Ltac modify_packet mutator := *)
-  (*   let p := find_packet in *)
-  (*   match constr:p with *)
-  (*   | @PacketAsCollectionOfVariables ?av ?p ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7 => *)
-  (*     constr:(@PacketAsCollectionOfVariables av (mutator p) x1 x2 x3 x4 x5 x6 x7) *)
-  (*   end. *)
+Create HintDb packet_autorewrite_db.
+Hint Rewrite -> @NToWord_of_nat : packet_autorewrite_db.
+Hint Rewrite -> @NToWord_WordToN : packet_autorewrite_db.
+Hint Rewrite -> @length_of_fixed_length_list : packet_autorewrite_db.
+Hint Rewrite -> @FixInt_encode_is_copy : packet_autorewrite_db.
+Hint Rewrite -> @IList_encode_bools_is_copy : packet_autorewrite_db.
+Hint Rewrite -> @FixList_is_IList : packet_autorewrite_db.
+Hint Unfold IList.IList_encode : packet_autorewrite_db.
+Hint Unfold FixList.FixList_encode : packet_autorewrite_db.
 
-  (* Definition PacketWithoutQuestions p := *)
-  (*   {| pid := p.(pid); *)
-  (*      pmask := p.(pmask); *)
-  (*      pquestion := exist _ nil (FixList.exp2_nat_gt_zero 16); *)
-  (*      panswer := p.(panswer); *)
-  (*      pauthority := p.(pauthority); *)
-  (*      padditional := p.(padditional) |}. *)
+Opaque Transformer.transform_id.
+
+Ltac _packet_encode_cleanup :=
+  match goal with
+  | _ => match_ProgOk
+          ltac:(fun prog pre post ext env =>
+                  match constr:post with
+                  | [[ ret (_, _) as _]] :: _ =>
+                    apply Propagate_anonymous_ret__fast
+                  end)
+  | [  |- context[fst (?a, ?b)] ] => change (fst (a, b)) with a
+  | [  |- context[snd (?a, ?b)] ] => change (snd (a, b)) with b
+  | _ => progress autounfold with packet_autorewrite_db
+  | _ => progress autorewrite with packet_autorewrite_db
+  end.
+
+(*  Disable the propagation of rets for this file, since we use them for structure *)
+Ltac _compile_rewrite_bind ::= fail.
+(*  Disable automatic decompilation for this file (it only orks for simple examples with no evars in the post) *)
+Ltac _compile_destructor ::= fail.
+
+Ltac compile_simple_inplace ::=
+  match_ProgOk                (* FIXME merge this upstream (made it faster in the failing case) *)
+  ltac:(fun prog pre post ext env =>
+          match post with
+          | Cons (NTSome ?s) (ret (?op ?a' ?b)) ?tenv' =>
+            match pre with
+            | context[Cons (NTSome ?s) (ret ?a) _] =>
+              unify a a';
+              is_word (op a b);
+              let facade_op := translate_op op in
+              move_to_front s;
+              first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
+                    | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
+            end
+          end).
+
+Ltac _packet_encode_step :=
+  match goal with
+  | _ => _packet_encode_cleanup
+  | _ => _packet_encode_FixInt
+  | _ => _compile_callWrite16
+  | _ => _compile_CallListLength
+  | _ => _compile_CallAllocString
+  | _ => _compile_step
+  end.
+
+Ltac _packet_encode_t :=
+  repeat _packet_encode_step.
+
+
+Lemma CompileCompose_spec'' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (stream: B) (cache: E) (tenv tenv' tenv'': B -> E -> Telescope av) ext env p1 p2,
+    {{ tenv stream cache }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: tenv' (Transformer.transform stream (fst encoded1)) (snd encoded1) }}
+    ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ tenv' stream1 (snd encoded1) }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: tenv'' (Transformer.transform stream1 (fst encoded2)) (snd encoded2) }}
+     ∪ {{ ext }} // env) ->
+    {{ tenv stream cache }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: tenv'' (Transformer.transform stream (fst composed)) (snd composed) }}
+    ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  setoid_rewrite Compose_compose_acc.
+  unfold compose_acc, encode_continue.
+  cbv zeta in *.
+  repeat rewrite @Propagate_anonymous_ret in *.
+  destruct (enc1 _); simpl in *; destruct (enc2 _); simpl in *;
+    rewrite Transformer.transform_assoc; assumption.
+Qed.
+
+Lemma CompileCompose_spec''' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (stream: B) (cache: E)
+    cacheF (tenv tenv' tenv'': Telescope av) ext env p1 p2,
+    {{ [[ vstream  <--  stream as _ ]]
+         :: cacheF tenv cache }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst encoded1) as stream1 ]]
+         :: cacheF tenv' (snd encoded1) }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ [[ vstream  <--  stream1 as _ ]]
+          :: cacheF tenv' (snd encoded1) }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as stream2 ]]
+          :: cacheF tenv'' (snd encoded2) }} ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: cacheF tenv cache }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst composed) as stream ]]
+         :: cacheF tenv'' (snd composed) }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  setoid_rewrite Compose_compose_acc.
+  unfold compose_acc, encode_continue.
+  cbv zeta in H0.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  destruct (enc1 _); simpl in *.
+  destruct (enc2 _); simpl in *.
+  rewrite Transformer.transform_assoc; assumption.
+Qed.
+
+(* Lemma CompileCompose_init' : *)
+(*   forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2 *)
+(*     (cache: E) (tenv tenv' tenv'': B -> E -> Telescope av) ext env p1 p2, *)
+(*     {{ tenv Transformer.transform_id cache }} *)
+(*       p1 *)
+(*     {{ [[ NTNone  <--  enc1 cache as encoded1 ]] *)
+(*          :: tenv' (Transformer.transform Transformer.transform_id (fst encoded1)) (snd encoded1) }} *)
+(*     ∪ {{ ext }} // env -> *)
+(*     (let encoded1 := enc1 cache in *)
+(*      {{ tenv' (fst encoded1) (snd encoded1) }} *)
+(*        p2 *)
+(*      {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]] *)
+(*           :: tenv'' (Transformer.transform (fst encoded1) (fst encoded2)) (snd encoded2) }} *)
+(*      ∪ {{ ext }} // env) -> *)
+(*     {{ tenv Transformer.transform_id cache }} *)
+(*       (Seq p1 p2) *)
+(*     {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]] *)
+(*          :: tenv'' (fst composed) (snd composed) }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   intros. *)
+(*   setoid_rewrite <- (Transformer.transform_id_left (fst _)). *)
+(*   eapply CompileCompose_spec''; cbv zeta. *)
+(*   eassumption. *)
+(*   setoid_rewrite Transformer.transform_id_left; eassumption. *)
+(* Qed. *)
+
+Lemma CompileCompose_init'' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (cache: E) (tenv tenv' tenv'': B -> E -> Telescope av) ext env p1 p2,
+    {{ tenv Transformer.transform_id cache }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: tenv' (Transformer.transform Transformer.transform_id (fst encoded1)) (snd encoded1) }}
+    ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     {{ tenv' (fst encoded1) (snd encoded1) }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: tenv'' (Transformer.transform (fst encoded1) (fst encoded2)) (snd encoded2) }}
+     ∪ {{ ext }} // env) ->
+    {{ tenv Transformer.transform_id cache }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: tenv'' (fst composed) (snd composed) }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
+  eapply CompileCompose_spec''; cbv zeta.
+  eassumption.
+  setoid_rewrite Transformer.transform_id_left; eassumption.
+Qed.
+
+Lemma CompileCompose_init''' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (cache: E)
+    cacheF (tenv tenv' tenv'': Telescope av) ext env p1 p2,
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]]
+         :: cacheF tenv cache }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform Transformer.transform_id (fst encoded1) as stream1 ]]
+         :: cacheF tenv' (snd encoded1) }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     {{ [[ vstream  <--  (fst encoded1) as _ ]]
+          :: cacheF tenv' (snd encoded1) }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform (fst encoded1) (fst encoded2) as stream2 ]]
+          :: cacheF tenv'' (snd encoded2) }} ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]]
+         :: cacheF tenv cache }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  (fst composed) as stream ]]
+         :: cacheF tenv'' (snd composed) }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
+  eapply CompileCompose_spec'''; cbv zeta.
+  eassumption.
+  setoid_rewrite Transformer.transform_id_left; eassumption.
+Qed.
+
+
+Lemma CompileLoopBase2' :
+  forall {A1 A2 C}
+    `{FacadeWrapper (Value QsADTs.ADTValue) A1}
+    `{FacadeWrapper (Value QsADTs.ADTValue) C}
+    `{FacadeWrapper (Value QsADTs.ADTValue) (list C)}
+    (lst: list C) init vhead vtest vlst vret1
+    fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv
+    (f: A1 * A2 -> C -> A1 * A2) tenvF,
+    (* GLabelMap.MapsTo fpop (Axiomatic QsADTs.TupleList_pop) env -> *)
+    (* GLabelMap.MapsTo fempty (Axiomatic QsADTs.TupleList_empty) env -> *)
+    (* GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.TupleList_delete) env -> *)
+    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret1]]] ->
+    (forall v, NotInTelescope vtest (tenvF tenv v)) ->
+    (forall head (acc1: A1) (acc2: A2) (s: list C),
+        {{ [[`vhead <-- head as _]] :: [[`vret1 <-- acc1 as _]] :: tenvF tenv acc2 }}
+          facadeBody
+        {{ [[`vret1 <-- fst (f (acc1, acc2) head) as _]] :: tenvF tenv (snd (f (acc1, acc2) head)) }} ∪
+        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: [[`vret1 <-- fst init as _]] :: tenvF tenv (snd init) }}
+      (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
+    {{ [[`vret1 <-- fst (fold_left f lst init) as _]] :: tenvF tenv (snd (fold_left f lst init)) }} ∪ {{ ext }} // env.
+Proof.
+  Transparent DummyArgument.
+  unfold DummyArgument; loop_t.
+
+  instantiate (1 := [[`vlst <-- lst as ls]] :: [[`vtest <-- (bool2w match ls with
+                                                              | nil => true
+                                                              | _ :: _ => false
+                                                              end) as _]] :: [[ ` vret1 <-- fst init as _]]
+                                         :: tenvF tenv (snd init)); admit.
+  (* eapply (CompileTupleList_Empty_alt (N := N)); loop_t. *)
+
+  2:instantiate (1 := [[ ` vlst <-- nil as _]]::[[ ` vret1 <-- fst (fold_left f lst init) as _]]:: tenvF tenv (snd (fold_left f lst init))); admit.
+
+  loop_t.
+  generalize dependent init;
+  induction lst; loop_t.
+
+Ltac decide_NotInTelescope ::=
+  progress repeat match goal with
+                  | _ => cleanup
+                  | _ => congruence
+                  | [  |- NotInTelescope _ Nil ] => reflexivity
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
+                  | _ => auto 1  (* Added for tricky cases like CompileLoopBase2 *)
+                  end.
+
+  move_to_front vtest;
+    apply CompileWhileFalse_Loop; loop_t.
+
+  simpl.
+
+  eapply CompileWhileTrue; [ loop_t.. | ].
+
+  instantiate (1 := [[ `vhead <-- a as _ ]] :: [[ `vlst <-- lst as _ ]] :: [[ ` vtest <-- W0 as _]]::[[ ` vret1 <-- fst init as _]]::tenvF tenv (snd init)); admit.
+
+  (* rewrite <- GLabelMapFacts.find_mapsto_iff; assumption. *)
+
+  move_to_front vlst; apply ProgOk_Chomp_Some; loop_t.
+  move_to_front vtest; apply ProgOk_Chomp_Some; loop_t.
+  computes_to_inv; subst; defunctionalize_evar; eauto.
+
+  move_to_front vtest.
+  apply ProgOk_Remove_Skip_L; hoare.
+  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  apply CompileSkip.
+
+  instantiate (1 := [[ ` vlst <-- lst as ls]]
+                     :: [[`vtest <-- (bool2w match ls with
+                                          | nil => true
+                                          | _ :: _ => false
+                                          end) as _]]
+                     ::[[ ` vret1 <-- fst (f (fst init, snd init) a) as _]]
+                     :: tenvF tenv (snd (f (fst init, snd init) a))); admit.
+  (* apply CompileTupleList_Empty_alt; loop_t. *)
+
+  rewrite <- surjective_pairing.
+  loop_t.
+Qed.
+
+Lemma CompileLoop2_destructed' :
+  forall {A1 A2 C}
+    `{FacadeWrapper (Value QsADTs.ADTValue) A1}
+    `{FacadeWrapper (Value QsADTs.ADTValue) C}
+    `{FacadeWrapper (Value QsADTs.ADTValue) (list C)}
+    vhead vtest vlst vret1
+    (lst: list C) init1 init2 (init := (init1, init2))
+    tenvF (f: A1 * A2 -> C -> A1 * A2) tenv tenv'
+    env (ext: StringMap.t (Value QsADTs.ADTValue))
+    fpop fempty fdealloc facadeBody facadeConclude,
+    (* GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env -> *)
+    (* GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env -> *)
+    (* GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env -> *)
+    PreconditionSet tenv ext [[[vhead; vtest; vlst; vret1]]] ->
+    (forall v, NotInTelescope vtest (tenvF tenv v)) ->
+    {{ [[`vret1 <-- fst (fold_left f lst init) as _]] :: tenvF tenv (snd (fold_left f lst init)) }}
+      facadeConclude
+    {{ [[`vret1 <-- fst (fold_left f lst init) as v1]] :: tenvF tenv' (snd (fold_left f lst init)) }}
+    ∪ {{ ext }} // env ->
+    (forall head (acc1: A1) (acc2: A2) (s: list C),
+        {{ [[`vhead <-- head as _]] :: [[`vret1 <-- acc1 as _]] :: tenvF tenv acc2 }}
+          facadeBody
+        {{ [[`vret1 <-- fst (f (acc1, acc2) head) as _]] :: tenvF tenv (snd (f (acc1, acc2) head)) }} ∪
+        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+    {{ [[`vlst <-- lst as _]] :: [[`vret1 <-- init1 as _]] :: tenvF tenv init2 }}
+      (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
+    {{ [[ ret (fold_left f lst init) as folded ]]
+         :: [[`vret1 <-- fst folded as v1]]
+         :: tenvF tenv' (snd folded) }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  setoid_rewrite Propagate_anonymous_ret.
+  hoare.
+  change init1 with (fst init).
+  change init2 with (snd init).
+  eapply @CompileLoopBase2'; eassumption.
+Qed.
+
+Example encode :
+  ParametricExtraction
+    #vars      p
+    #program   ret (packet_encode p)
+    #arguments (PacketAsCollectionOfVariables
+                  (NTSome "id") (NTSome "mask") (NTSome "question")
+                  (NTSome "answer") (NTSome "authority") (NTSome "additional")
+                  Nil p)
+    #env       (GLabelMap.empty (FuncSpec ADTValue)).
+Proof.
+  start_compiling.
+  packet_start_compiling.
+
+  (* FIXME use multiple variables for the cache *)
+  eapply (ProgOk_Add_snd_ret (DnsCacheAsCollectionOfVariables (NTSome "eMap") (NTSome "dMap") (NTSome "offs"))).
+
+  eapply CompileSeq; [ | repeat compile_compose]; _packet_encode_t.
+
+  Focus 2.
+  repeat ((eapply CompileCompose_spec''' || eapply CompileCompose_init'''); intros); _packet_encode_t.
+  Unfocus.
+
+  Focus.
+  _packet_encode_t.
+  unfold DnsCacheAsCollectionOfVariables.
+  let vtmp := gensym "tmp" in
+  eapply (CompileCallAllocEMap vtmp).
+  _packet_encode_t.
+  let vtmp := gensym "tmp" in
+  eapply (CompileCallAllocDMap vtmp).
+  _packet_encode_t.
+  let vtmp := gensym "tmp" in
+  eapply (CompileCallAllocOffset vtmp).
+  _packet_encode_t.
+  Unfocused.
+
+  Focus.
+  instantiate (1 := Assign "arg" (Var "pid")); admit.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
+  Unfocused.
+
+  Focus.
+  instantiate (1 := Assign "arg" (Var "mask")); admit.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
+  Unfocused.
+
+  Focus.
+Ltac _compile_CallListLength ::=
+  match_ProgOk
+    ltac:(fun _ _ post _ _ =>
+            match constr:post with
+            | [[ _ <-- Word.natToWord 32 (Datatypes.length ?lst) as _]] :: _ =>
+              (* FIXME this should be an equivalent of find_in_ext *)
+              (* FIXME this shoud be more principled *)
+              unfold PacketAsCollectionOfVariables; simpl;
+              match_ProgOk
+                ltac:(fun _ pre _ _ _ =>
+                        match constr:pre with
+                        | context[Cons (NTSome ?k) (ret lst) _] =>
+                          (eapply (CompileCallListResourceLength k) ||
+                           eapply (CompileCallListQuestionLength k));
+                          [ unfold DnsCacheAsCollectionOfVariables; (* FIXME autounfold *)
+                            decide_TelEq_instantiate ]
+                        end)
+            end).
+  _packet_encode_t.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
+  Unfocused.
+
+  Focus.
+  _packet_encode_t.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  Unfocused.
+
+  Focus.
+  _packet_encode_t.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  Unfocused.
+
+  Focus.
+  _packet_encode_t.
+  keep_unmodified_packet.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  Unfocused.
 
   Lemma IList_post_transform_TelEq :
     forall {av} {A bin : Type}
       (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
       (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
       (xs : list A) (base : bin) (env : Cache.CacheEncode)
-      k__stream k__cache (tenv: Telescope av) ext,
+      k__stream (cacheF: Telescope av -> Cache.CacheEncode -> Telescope av) (tenv: Telescope av) ext,
       let fold_on b :=
           fold_left (IList.IList_encode'_body cache transformer A_encode) xs (b, env) in
       TelEq ext
         ([[ret (fold_on Transformer.transform_id) as folded]]
-           ::[[ k__stream <-- Transformer.transform base (fst folded) as _]]::[[ k__cache <-- snd folded as _]]::tenv)
+           ::[[ k__stream <-- Transformer.transform base (fst folded) as _]] :: cacheF tenv (snd folded))
         ([[ret (fold_on base) as folded]]
-           ::[[ k__stream <-- fst folded as _]]::[[ k__cache <-- snd folded as _]]::tenv).
+           ::[[ k__stream <-- fst folded as _]] :: cacheF tenv (snd folded)).
   Proof.
     cbv zeta; intros.
     setoid_rewrite Propagate_anonymous_ret.
     rewrite (IList.IList_encode'_body_characterization _ _ _ _ base).
     destruct (fold_left _ _ _); simpl; reflexivity.
   Qed.
-
-  Ltac _compile_packet_loop_t :=
-    unfold FixList.FixList_encode;
-    try rewrite FixList_is_IList;
-    lazymatch goal with
-    | [  |- appcontext[IList.IList_encode' ?cache] ] =>
-      rewrite IList.IList_encode'_as_foldl;
-      rewrite (IList_post_transform_TelEq cache)
-    end.
 
   Inductive EvarTag {T A} (a: A) (t: T) := __EvarTag.
 
@@ -931,155 +1464,235 @@ Qed.
   Ltac specialize_function_with_evars f :=
     repeat (specialize_function_with_evar f None).
 
-  (* pose @Build_packet_t. *)
-  (* specialize_function_with_evars p. *)
-
   Ltac create_packet_evar name :=
     pose @Build_packet_t as name;
     specialize_function_with_evars name.
 
-  Focus.
-  _compile_packet_loop_t.
+  Ltac _packet_encode_IList__rewrite_as_fold :=
+    lazymatch goal with         (* FIXME make this an autorewrite *)
+    | [  |- appcontext[IList.IList_encode' ?cache] ] =>
+      rewrite IList.IList_encode'_as_foldl;
+      rewrite (IList_post_transform_TelEq cache)
+    end.
 
-  Ltac allow_packet_modifications :=
+  Ltac specialize_body hyp term :=
+    let new := fresh in
+    pose (hyp term) as fresh;
+    unfold hyp in *;
+    clear hyp;
+    rename fresh into hyp.
+
+  Ltac _packet__havoc_packet_in_postcondition :=
     let p := find_packet in
     let p' := fresh in
     lazymatch constr:p with
-    | @PacketAsCollectionOfVariables ?av ?tail ?p ?x2 ?x3 ?x4 ?x5 ?x6 ?x7 =>
+    | @PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?tail ?p =>
       let tail' := fresh in
       create_packet_evar p';
-      pose (@PacketAsCollectionOfVariables av tail p') as tail';
+      pose (@PacketAsCollectionOfVariables av) as tail';
       (* FIXME generalize this *)
+      specialize_function_with_evar tail' (Some x0);
+      specialize_function_with_evar tail' (Some x1);
       specialize_function_with_evar tail' (Some x2);
       specialize_function_with_evar tail' (Some x3);
       specialize_function_with_evar tail' (Some x4);
       specialize_function_with_evar tail' (Some x5);
-      specialize_function_with_evar tail' (Some x6);
-      specialize_function_with_evar tail' (Some x7);
+      specialize_body tail' tail;
+      specialize_body tail' p';
       instantiate_tail_of_post tail';
       unfold p', tail' in *; clear p'; clear tail'
     end.
 
-  allow_packet_modifications.
-  unfold PacketAsCollectionOfVariables; simpl.
-
-  (* Ltac instantiate_arbitrarily_in term := *)
-  (*   match term with *)
-  (*   | context[?ev] => *)
-  (*     is_evar ev; *)
-  (*     let T := type of ev in *)
-  (*     let witness := fresh in *)
-  (*     assert T as witness by *)
-  (*           (repeat match goal with *)
-  (*                   | [ H: _ |- _ ] => clear dependent H *)
-  (*                   end; admit); *)
-  (*     pose ev *)
-  (*   end. *)
-
-  (* Lemma Drop_anonymous_ret : *)
-  (*   forall {av A} (tenv' : Telescope av) *)
-  (*     (vv : A) (ext : StringMap.t (Value av)), *)
-  (*     TelEq ext ([[ret vv as vv0]]::tenv') tenv'. *)
-  (* Proof. *)
-  (*   unfold TelEq; SameValues_Fiat_t. *)
-  (* Qed. *)
-
-  Ltac move_to_front_and_delete_from_post var :=
-    move_to_front var;
+  Ltac delete_tagged_var_from_post var :=
+    (* Delete VAR from post-condition.
+       Since VAR doesn't appear litteraly in the post-condition, use an EvarTag
+       to find which evar to remove in the post instead. *)
     lazymatch goal with
     | [ H: EvarTag ?k (@NTSome ?av ?T var ?wrp) |- _ ] =>
       let kk := fresh in
       set (kk := k); (* Otherwise the match below fails *)
       lazymatch goal with
-      | [  |- context[Cons (@NTSome av T var wrp) ?old_val _] ] =>
+      | [  |- context[Cons (@NTSome av T var wrp) (ret ?old_val) _] ] =>
         lazymatch goal with
         | [  |- context[Cons kk ?new_val ?tenv] ] =>
           unify k (@NTNone av T); unfold kk; clear kk;
-          unify old_val new_val;
-          setoid_rewrite (@Propagate_anonymous_ret _ _ tenv)
+          unify (ret old_val) new_val;
+          setoid_rewrite (@Propagate_anonymous_ret _ _ tenv _ old_val)
         end
       end
     end.
 
-  move_to_front_and_delete_from_post "question".
-
-  apply (CompileLoop2_destructed "head" "lst").
-  compile_do_side_conditions.
-  apply CompileSkip.
-  instantiate (1 := Call "" ("admitted", "Encode question") nil); admit.
-  Unfocused.
-
-  Lemma antiChomp:
-    forall (av A : Type) (H : FacadeWrapper (Value av) A)
-      (env : Env av) (key : StringMap.key) (v : A)
-      (prog : Stmt) (tail1 tail2 : Telescope av)
-      (ext : StringMap.t (Value av)),
-      key ∉ ext ->
-      {{ [[ `key  <--  v as kk]]::tail1 }}
-        prog
-      {{ [[ `key  <--  v as kk]]::tail2 }} ∪ {{ ext }} // env ->
-      {{ tail1 }}
-        prog
-      {{ tail2 }} ∪ {{ [key <-- wrap v]::ext }} // env.
+  Lemma CompileLoop2_destructed'' :
+    forall {A1 A2 C}
+      `{FacadeWrapper (Value QsADTs.ADTValue) A1}
+      `{FacadeWrapper (Value QsADTs.ADTValue) C}
+      `{FacadeWrapper (Value QsADTs.ADTValue) (list C)}
+      vhead vtest vlst vret1
+      (lst: list C) init1 init2 (init := (init1, init2))
+      tenvF (f: A1 * A2 -> C -> A1 * A2) tenv0 tenv tenv'
+      env (ext: StringMap.t (Value QsADTs.ADTValue))
+      fpop fempty fdealloc facadeBody facadeConclude,
+      (* GLabelMap.MapsTo fpop (Axiomatic (QsADTs.TupleList_pop)) env -> *)
+      (* GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env -> *)
+      (* GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env -> *)
+      PreconditionSet tenv ext [[[vhead; vtest; vlst; vret1]]] ->
+      TelEq ext tenv0 ([[`vlst <-- lst as _]] :: [[`vret1 <-- init1 as _]] :: tenvF tenv init2) ->
+      (forall v, NotInTelescope vtest (tenvF tenv v)) ->
+      {{ [[`vret1 <-- fst (fold_left f lst init) as _]] :: tenvF tenv (snd (fold_left f lst init)) }}
+        facadeConclude
+        {{ [[`vret1 <-- fst (fold_left f lst init) as v1]] :: tenvF tenv' (snd (fold_left f lst init)) }}
+        ∪ {{ ext }} // env ->
+      (forall head (acc1: A1) (acc2: A2) (s: list C),
+          {{ [[`vhead <-- head as _]] :: [[`vret1 <-- acc1 as _]] :: tenvF tenv acc2 }}
+            facadeBody
+            {{ [[`vret1 <-- fst (f (acc1, acc2) head) as _]] :: tenvF tenv (snd (f (acc1, acc2) head)) }} ∪
+            {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+      {{ tenv0 }}
+        (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
+        {{ [[ ret (fold_left f lst init) as folded ]]
+             :: [[`vret1 <-- fst folded as v1]]
+             :: tenvF tenv' (snd folded) }} ∪ {{ ext }} // env.
   Proof.
-    SameValues_Facade_t;
-    change tail1 with ((fun v => tail1) v) in H2;
-    apply Cons_PopExt in H2;
-    SameValues_Facade_t.
+    intros.
+    rewrite H3.
+    setoid_rewrite Propagate_anonymous_ret.
+    hoare.
+    change init1 with (fst init).
+    change init2 with (snd init).
+    eapply @CompileLoopBase2'; eassumption.
   Qed.
 
-  Definition PacketWithoutAnswer p :=
-    {| pid := p.(pid);
-       pmask := p.(pmask);
-       pquestion := p.(pquestion);
-       panswer := exist _ nil (FixList.exp2_nat_gt_zero 16);
-       pauthority := p.(pauthority);
-       padditional := p.(padditional) |}.
+  Ltac _packet_encode_IList__compile_loop :=
+    unfold PacketAsCollectionOfVariables; simpl;
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:post with
+              | appcontext[fold_left (IList.IList_encode'_body _ _ _) ?lst] =>
+                match constr:pre with
+                | context[Cons (NTSome ?vlst) (ret lst) _] =>
+                  delete_tagged_var_from_post vlst;
+                  let vhead := gensym "head" in
+                  let vtest := gensym "test" in
+                  eapply (CompileLoop2_destructed'' vhead vtest vlst);
+                  [ | unfold DnsCacheAsCollectionOfVariables; simpl; decide_TelEq_instantiate | idtac.. ]
+                end
+              end).
 
-  Ltac modify_packet mutator :=
-    let p := find_packet in
-    lazymatch constr:p with
-    | @PacketAsCollectionOfVariables ?av ?tail ?p ?x2 ?x3 ?x4 ?x5 ?x6 ?x7 =>
-      constr:(@PacketAsCollectionOfVariables av tail (mutator p) x2 x3 x4 x5 x6 x7)
+  Ltac _packet_encode_IList_compile :=
+    _packet_encode_IList__rewrite_as_fold;
+    _packet__havoc_packet_in_postcondition;
+    _packet_encode_IList__compile_loop.
+
+  Add Parametric Morphism {av} ext : (@DnsCacheAsCollectionOfVariables av)
+    with signature (eq ==> eq ==> eq ==> (TelEq ext) ==> eq ==> (TelEq ext))
+      as DnsCacheAsCollectionOfVariables_TelEq_morphism.
+  Proof.
+    unfold DnsCacheAsCollectionOfVariables; intros * teq **.
+    repeat (apply TelEq_chomp_head; red; intros).
+    assumption.
+  Qed.
+
+  Focus.
+  _packet_encode_t.
+  _packet_encode_IList_compile.
+  compile_do_side_conditions.
+  _packet_encode_t.
+  unfold DnsCacheAsCollectionOfVariables; decide_NotInTelescope.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question") nil); admit.
+  Unfocused.
+
+  (* Lemma antiChomp: *)
+  (*   forall (av A : Type) (H : FacadeWrapper (Value av) A) *)
+  (*     (env : Env av) (key : StringMap.key) (v : A) *)
+  (*     (prog : Stmt) (tail1 tail2 : Telescope av) *)
+  (*     (ext : StringMap.t (Value av)), *)
+  (*     key ∉ ext -> *)
+  (*     {{ [[ `key  <--  v as kk]]::tail1 }} *)
+  (*       prog *)
+  (*     {{ [[ `key  <--  v as kk]]::tail2 }} ∪ {{ ext }} // env -> *)
+  (*     {{ tail1 }} *)
+  (*       prog *)
+  (*     {{ tail2 }} ∪ {{ [key <-- wrap v]::ext }} // env. *)
+  (* Proof. *)
+  (*   SameValues_Facade_t; *)
+  (*   change tail1 with ((fun v => tail1) v) in H2; *)
+  (*   apply Cons_PopExt in H2; *)
+  (*   SameValues_Facade_t. *)
+  (* Qed. *)
+
+  Focus.
+  _packet_encode_t.
+  _packet_encode_IList__rewrite_as_fold.
+  _packet__havoc_packet_in_postcondition.
+
+  Ltac _packet_encode__clear_EvarTags :=
+    repeat match goal with
+           | [ H: EvarTag ?v ?tag |- _ ] => try unify v tag; clear H
+           end.
+
+  Ltac _compile_Loop2 vlst :=
+    let vhead := gensym "head" in
+    let vtest := gensym "test" in
+    eapply (CompileLoop2_destructed'' vhead vtest vlst);
+    [ | unfold DnsCacheAsCollectionOfVariables; simpl; decide_TelEq_instantiate | idtac.. ].
+
+  Ltac _packet_encode_IList__compile_loop ::=
+    unfold PacketAsCollectionOfVariables; simpl;
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:post with
+              | appcontext[fold_left (IList.IList_encode'_body _ _ _) ?lst] =>
+                match constr:pre with
+                | context[Cons (NTSome ?vlst) (ret lst) _] =>
+                  delete_tagged_var_from_post vlst;
+                  _packet_encode__clear_EvarTags;
+                  _compile_Loop2 vlst
+                end
+              end).
+
+  Ltac decide_TelEq_instantiate_step ::=
+    match goal with
+    | [  |- TelEq _ ?from ?to ] =>
+      match constr:((from, to)) with
+      | _ => rewrite DropName_Cons_Some_eq by congruence
+      | _ => rewrite DropName_Cons_Some_neq by congruence
+      | _ => (is_evar from || is_evar to); apply TelEq_refl
+      | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
+      | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
+      | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+      | (?t, Cons ?k _ _) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
+      | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
+                                              rewrite (DropName_NotInTelescope tenv k) by eauto ]
+      | _ => apply TelEq_refl
+      end
     end.
 
-  Focus.
-  _compile_packet_loop_t.
-  instantiate_tail_of_post ltac:(modify_packet PacketWithoutAnswer).
-  instantiate (1 := Call "" ("admitted", "Encode answer") nil); admit.
+  _packet_encode_IList__compile_loop.
+  (* Note: One could also never unfold PacketAsCollectionOfVariables and DnsCacheAsCollectionOfVariables (and instead find the variable to loop on by copying the precondition into the context and unfolding locally. *)
+  compile_do_side_conditions.
+  _packet_encode_t; unfold DnsCacheAsCollectionOfVariables; decide_NotInTelescope.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode answer") nil); admit.
   Unfocused.
 
-  Definition PacketWithoutAuthority p :=
-    {| pid := p.(pid);
-       pmask := p.(pmask);
-       pquestion := p.(pquestion);
-       panswer := p.(panswer);
-       pauthority := exist _ nil (FixList.exp2_nat_gt_zero 16);
-       padditional := p.(padditional) |}.
-
   Focus.
-  _compile_packet_loop_t.
-  instantiate_tail_of_post ltac:(modify_packet PacketWithoutAuthority).
-  instantiate (1 := Call "" ("admitted", "Encode authority") nil); admit.
+  _packet_encode_t.
+  _packet_encode_IList_compile.
+  compile_do_side_conditions.
+  _packet_encode_t; unfold DnsCacheAsCollectionOfVariables; decide_NotInTelescope.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority") nil); admit.
   Unfocused.
 
-  Definition PacketWithoutAdditional p :=
-    {| pid := p.(pid);
-       pmask := p.(pmask);
-       pquestion := p.(pquestion);
-       panswer := p.(panswer);
-       pauthority := p.(pauthority);
-       padditional := exist _ nil (FixList.exp2_nat_gt_zero 16) |}.
-
   Focus.
-  _compile_packet_loop_t.
-  instantiate_tail_of_post ltac:(modify_packet PacketWithoutAdditional).
-  instantiate (1 := Call "" ("admitted", "Encode additional") nil); admit.
+  _packet_encode_t.
+  _packet_encode_IList_compile.
+  compile_do_side_conditions.
+  _packet_encode_t; unfold DnsCacheAsCollectionOfVariables; decide_NotInTelescope.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional") nil); admit.
   Unfocused.
-
-  match goal with
-  | [  |- context[ [[ ret (_, _) as _]] :: _ ] ] => setoid_rewrite Propagate_anonymous_ret
-  end.
 
   repeat lazymatch goal with
          | [  |- context[fst (?a, ?b)] ] => change (fst (a, b)) with a
@@ -1088,28 +1701,40 @@ Qed.
          | [  |- context[Transformer.transform _ nil] ] => setoid_rewrite @Transformer.transform_id_right
          end.
 
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  instantiate (1 := Call "" ("admitted", "Deallocate packet") nil); admit.
+  _packet_encode_t.
+  unfold DnsCacheAsCollectionOfVariables, PacketAsCollectionOfVariables; simpl.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate packet") nil); admit.
 
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  _compile_step.
-  instantiate (1 := Call "" ("admitted", "Deallocate cache") nil); admit.
+  _packet_encode_t.
+  unfold DnsCacheAsCollectionOfVariables, PacketAsCollectionOfVariables; simpl.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate cache") nil); admit.
 
   Grab Existential Variables.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
   repeat constructor.
   repeat constructor.
   repeat constructor.
@@ -1153,7 +1778,7 @@ Proof.
   eapply (CompileLoop2_Alloc "vhead" "vtest"); [ compile_do_side_conditions | .. ].
 
   simpl.
-  instantiate (1 := Call "" ("Initialization", "code") nil); admit.
+  instantiate (1 := Call (DummyArgument "tmp") ("Initialization", "code") nil); admit.
   Focus 2.
 
   (* Loop body *)
@@ -1188,7 +1813,6 @@ Proof.
 
   eapply CompileExtendLifetime.
   compile_do_use_transitivity_to_handle_head_separately.
-  compile_move_head_to_separate_goal.
 
 Example decode :
   ParametricExtraction
