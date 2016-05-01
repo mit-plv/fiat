@@ -13,7 +13,7 @@ Definition compose E B
     (transform p q, e2).
 
 Notation "x 'Then' y" := (compose _ x y) (at level 100, right associativity).
-Notation "x 'Done'"   := (x Then fun e => (nil, e)) (at level 99, right associativity).
+Notation "x 'Done'"   := (x Then fun e => (transform_id, e)) (at level 99, right associativity).
 
 Lemma compose_encode_correct A A' B
       (cache : Cache)
