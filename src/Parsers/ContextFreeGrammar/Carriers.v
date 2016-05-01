@@ -124,6 +124,7 @@ Section grammar.
                      | [ |- List.In (List.nth _ _ _) _ ] => apply List.nth_In; omega
                      | [ |- context[List.nth_error ?n ?ls] ] => destruct (List.nth_error n ls) eqn:?
                      | _ => congruence
+                     | _ => progress unfold BoolFacts.Bool.bool_rect_nodep in *
                    end. } } }
       { unfold default_to_nonterminal, default_to_nonterminal.
         simpl.

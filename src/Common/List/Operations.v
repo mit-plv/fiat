@@ -1,5 +1,6 @@
 (** Useful list operations *)
 Require Import Coq.Lists.List.
+Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
@@ -191,13 +192,18 @@ Module Export List.
   Section first_index_f.
     Context {A B} (f : A -> bool) (rect : option (nat * A) -> B).
 
-    Fixpoint first_index_helper (ls : list A) (rec : nat * A -> nat * A) : B
-      := match ls with
-           | nil => rect None
-           | x::xs => if f x
-                      then rect (Some (rec (0, x)))
-                      else first_index_helper xs (fun x => rec (S (fst x), snd x))
-         end.
+    Definition first_index_helper (ls : list A) (rec : nat * A -> nat * A) : B
+      := list_rect
+           (fun _ => (nat * A -> nat * A) -> B)
+           (fun _ => rect None)
+           (fun x xs first_index_helper_xs rec
+            => bool_rect_nodep
+                 _
+                 (rect (Some (rec (0, x))))
+                 (first_index_helper_xs (fun x => rec (S (fst x), snd x)))
+                 (f x))
+           ls
+           rec.
   End first_index_f.
 
   Definition first_index_default {A} (f : A -> bool) (default : nat) (ls : list A) : nat
