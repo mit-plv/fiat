@@ -6,3 +6,10 @@ Class Transformer (bin : Type) :=
     transform_id_left : forall l, transform transform_id l = l;
     transform_id_right : forall l, transform l transform_id = l;
     transform_assoc : forall l m n, transform l (transform m n) = transform (transform l m) n }.
+
+Class TransformerUnit (bin : Type) (trans : Transformer bin) (T : Type) :=
+  { transform_push : T -> bin -> bin;
+    transform_pop : bin -> T * bin;
+    transform_push_pop : forall t m, transform_pop (transform_push t m) = (t, m);
+    transform_push_step : forall t m n, transform (transform_push t m) n =
+                                        transform_push t (transform m n) }.

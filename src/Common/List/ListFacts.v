@@ -985,6 +985,7 @@ Section ListFacts.
        | [ |- appcontext[first_index_helper] ] => rewrite first_index_helper_first_index_error
        | [ H : option_rect _ _ _ ?v = Some _ |- _ ] => destruct v eqn:?; simpl in H
        | [ H : option_rect _ _ _ ?v = None |- _ ] => destruct v eqn:?; simpl in H
+       | _ => progress unfold BoolFacts.Bool.bool_rect_nodep in *
        end.
 
   Local Ltac first_index_error_t :=
