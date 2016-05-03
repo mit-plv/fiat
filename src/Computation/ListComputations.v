@@ -98,6 +98,12 @@ Section UpperBound.
     := elements' <- elements;
          ⟦ element in elements' | UpperBound elements' element ⟧.
 
+  Definition MaxElement
+             (elements : Comp (list A))
+    := elements' <- elements;
+       elements' <- ⟦ element in elements' | UpperBound elements' element ⟧;
+       ret (List.hd_error elements').
+
   Definition find_UpperBound (f : A -> nat) (ns : list A) : list A :=
     let max := fold_right
                  (fun n acc => max (f n) acc) O ns in

@@ -24,8 +24,9 @@ Definition GithubSchema :=
         enforcing [ attribute PROJECT_NAME for COMMITS references REPOSITORIES ].
 
 Definition GithubSpec : ADT _ :=
-  QueryADTRep GithubSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure GithubSchema,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddRepository" (r : rep) (repository : GithubSchema#REPOSITORIES) : rep * bool :=
       Insert repository into r!REPOSITORIES,

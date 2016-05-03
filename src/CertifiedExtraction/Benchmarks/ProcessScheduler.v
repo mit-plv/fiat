@@ -4,15 +4,18 @@ Require Import Benchmarks.ProcessSchedulerSetup.
     “CompileUnit”. For convenience, here is a copy of the Process Scheduler
     specs:
 
-        Definition SchedulerSchema :=
-          Query Structure Schema [
+        Definition SchedulerSchema          Def ADT Schema  rep := QueryStructure Structure,
+
                   relation "Processes" has schema
                   <"pid" :: W, "state" :: State, "cpu" :: W>
                   where (UniqueAttribute ``"pid")
           ] enforcing [].
 
          Definition SchedulerSpec : ADT _ :=
-           QueryADTRep SchedulerSchema {
+            Def ADT
+             {
+             rep := QueryStructure SchedulerSchema,
+
              Def Constructor0 "Init" : rep := empty,
 
              Def Method3 "Spawn" (r : rep) (new_pid cpu state : W) : rep * bool :=

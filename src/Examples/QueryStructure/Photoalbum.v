@@ -41,8 +41,9 @@ Require Import Fiat.QueryStructure.Specification.SearchTerms.ListInclusion.
 Require Import Fiat.QueryStructure.Specification.SearchTerms.InRange.
 
 Definition AlbumSpec : ADT AlbumSig :=
-  QueryADTRep AlbumSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure AlbumSchema,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddPhoto" (r : rep) (photo : AlbumSchema#PHOTOS) : rep * bool :=
       Insert photo into r!PHOTOS,

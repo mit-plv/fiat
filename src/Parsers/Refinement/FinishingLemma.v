@@ -19,9 +19,10 @@ Lemma finish_Sharpening_SplitterADT'
                  item Ascii.ascii * production Ascii.ascii -> repT * list nat}*)
 : { e : _
   & refineADT
-   (ADTRep repT
-    { Def Constructor1 "new" (s: String) : rep :=
-        ret (fnew s),
+   (Def ADT
+    { rep := repT,
+      Def Constructor1 "new" (s: String) : rep :=
+        ret (fnew s),,
       Def Method0 "to_string" (s : rep) : rep * String :=
         ret (fto_string s),
       Def Method2 "char_at_matches"(s : rep) (n : nat) (P : Ascii.ascii -> bool) : rep * bool  :=

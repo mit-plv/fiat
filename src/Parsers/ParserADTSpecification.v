@@ -51,9 +51,11 @@ Section ReferenceImpl.
   Local Open Scope ADTParsing_scope.
 
   (** Reference implementation of a [String] that can be split *)
-  Definition string_spec' : ADT (string_rep Ascii.ascii String default_production_carrierT) := ADTRep String {
+  Definition string_spec' : ADT (string_rep Ascii.ascii String default_production_carrierT) := Def ADT  {
+    rep := String,
+
     Def Constructor1 "new"(s : String) : rep :=
-      ret s,
+      ret s,,
 
     Def Method0 "to_string" (s : rep) : rep * String :=
       ret (s, s),

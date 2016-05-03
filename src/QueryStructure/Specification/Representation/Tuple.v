@@ -82,7 +82,7 @@ Definition AppendTupleRaw
            {heading1 heading2}
            (tup1 : @RawTuple heading1)
            (tup2 : @RawTuple heading2)
-  : @RawTuple {| AttrList := (Vector.append (AttrList heading1) (AttrList heading2)) |} :=
+  : @RawTuple (AppendRawHeading heading1 heading2) :=
   ilist2_app tup1 tup2.
 
 Notation "tup1 ++ tup2" := (AppendTupleRaw tup1 tup2) : Tuple_scope.

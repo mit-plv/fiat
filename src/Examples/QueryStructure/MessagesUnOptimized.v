@@ -38,8 +38,9 @@ Definition MessagesSig : ADTSig :=
     }.
 
 Definition MessagesSpec : ADT MessagesSig :=
-  QueryADTRep MessagesSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure MessagesSchema,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddMessage" (r : rep) (message : MessagesSchema#MESSAGES) : rep * bool :=
       Insert message into r ! MESSAGES,

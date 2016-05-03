@@ -25,8 +25,10 @@ Definition MySig : ADTSig :=
   }.
 
 Definition MySpec : ADT MySig :=
-  QueryADTRep MySchema {
-    const "Empty" (_ : unit) : rep := empty,
+  Def ADT {
+    rep := QueryStructure MySchema,
+
+   const "Empty" (_ : unit) : rep := empty,,
 
    update "AddDog" (dog : Dog) : bool :=
       Insert dog into "Dog",

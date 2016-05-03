@@ -520,9 +520,10 @@ Section IndexedImpl.
   Open Scope ADTParsing_scope.
 
   Definition rindexed_spec' P : ADT (string_rep Ascii.ascii String default_production_carrierT) :=
-    ADTRep T {
+    Def ADT {
+    rep := T,
     Def Constructor1 "new" (s : String) : rep :=
-      ret s,
+      ret s,,
 
     Def Method0 "to_string"(s : rep) : rep * String :=
       ret (s, s),

@@ -67,8 +67,9 @@ Definition standardReplyExists {A: Type} (l: list A) := standardReply (nonEmpty 
 Locate "_ ++ _".
 
 Definition SmtpSpec : ADT SmtpSig :=
-  QueryADTRep ConnectionSchema {
-    Def Constructor "Init" (_: unit) : rep := empty,
+  Def ADT {
+    rep := QueryStructure ConnectionSchema,
+    Def Constructor "Init" (_: unit) : rep := empty,,
 
     query "GetState" (r : rep, id: UUID) : option State :=
       q <- (For (c in r!sCONNECTIONS)

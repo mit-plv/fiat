@@ -48,8 +48,10 @@ Definition StocksSig : ADTSig :=
     }.
 
 Definition StocksSpec : ADT StocksSig :=
-  QueryADTRep StocksSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure StocksSchema,
+
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddStock" (r : rep) (stock: StocksSchema#STOCKS) : rep * bool :=
         Insert stock into r!STOCKS,

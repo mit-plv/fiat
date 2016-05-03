@@ -522,11 +522,10 @@ Definition RosMasterSig : ADTSig :=
 
 Definition RosMasterSpec : ADT RosMasterSig :=
   Eval simpl in
-    QueryADTRep RosMasterSchema {
+    Def ADT {
+      rep := QueryStructure RosMasterSchema,
 
-    Def Constructor0 "Init" : rep := empty
-
-    ,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method4 "registerService"
       (r : rep) (caller_id : string) (service : string) (service_api : string) (caller_api : string)

@@ -17,8 +17,10 @@ Definition SchedulerSchema :=
   ] enforcing [].
 
 Definition SchedulerSpec : ADT _ :=
-  QueryADTRep SchedulerSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure SchedulerSchema,
+
+    Def Constructor0 "Init" : rep := empty,,
     Def Method0 "foo" (r : rep) : rep := ret r
 
     (*Def Method2 "Spawn" (r : rep) (new_pid cpu : W) : rep * bool :=
@@ -2079,8 +2081,10 @@ Notation "'IfoptC' i 'as' a 'Then' t 'Else' e" :=
 
 (* This scheduler variant allows new processes to be inserted, requiring a cache. *)
 Definition SpawningSchedulerSpec : ADT _ :=
-  QueryADTRep SchedulerSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure SchedulerSchema,
+
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "Spawn" (r : rep) (cpu : W) : rep * bool :=
       IfoptC (forall proc, IndexedEnsemble_In (GetRelationBnd r ``"Processes") proc

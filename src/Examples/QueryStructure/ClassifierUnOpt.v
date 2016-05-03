@@ -93,8 +93,10 @@ Section ADT.
     }.
 
   Definition ClassifierSpec : ADT ClassifierSig :=
-  QueryADTRep ClassifierSchema {
-    Def Constructor0 "Init" : rep := empty,
+    Def ADT {
+      rep := QueryStructure ClassifierSchema,
+
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddRule" (r : rep) (rule : RuleRecord) : rep * bool :=
       Insert rule into r!RULES,

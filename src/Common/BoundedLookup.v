@@ -43,7 +43,7 @@ Section BoundedIndex.
 
   Global Arguments indexb {n Bound} b.
   Global Arguments bindex {n Bound} b.
-  Global Arguments BoundedIndex {n} Bound.
+  Global Arguments BoundedIndex {n} Bound%vector_scope.
 
   Lemma indexb_ibound_eq :
     forall n Bound (bidx bidx' : BoundedIndex (n := n) Bound),
@@ -257,7 +257,7 @@ Section BoundedIndexExtensions.
     - revert Bound IHBound; pattern n, idx; apply Fin.caseS;
         simpl; intros; eauto.
   Qed.
-  
+
   Definition BoundedIndex_injR {A n Bound m Bound'}
              (idx : BoundedIndex (A := A) (n := n) Bound)
     : BoundedIndex (n := n + m) (Vector.append Bound Bound').
@@ -268,7 +268,7 @@ Section BoundedIndexExtensions.
     abstract (rewrite <- (boundi (IndexBound := indexb idx));
               eapply IndexBound_AppendR).
   Defined.
-  
+
   Lemma IndexBound_AppendL {A n m}
     : forall (Bound : Vector.t A n)
              (Bound' : Vector.t A m)
@@ -280,7 +280,7 @@ Section BoundedIndexExtensions.
     - reflexivity.
     - simpl; eauto.
   Qed.
-  
+
   Definition BoundedIndex_injL {A n Bound m Bound'}
              (idx : BoundedIndex (A := A) (n := n) Bound)
     : BoundedIndex (n := m + n) (Vector.append Bound' Bound).
@@ -293,7 +293,7 @@ Section BoundedIndexExtensions.
   Defined.
 
 End BoundedIndexExtensions.
-  
+
 Ltac Build_nth_IndexBound n A a As As' m :=
   match n with
   | S ?n' =>
@@ -336,8 +336,12 @@ Definition BoundedString_eq_dec
 : {bidx = bidx'} + {bidx <> bidx'} :=
   BoundedIndex_eq_dec n Bound bidx bidx'.
 
+Notation "x ++ y" := (Vector.append x y) : vector_scope.
+
 Notation "`` A" :=
   ({| bindex := A%string |}) (at level 0, format "`` A").
+
+Arguments BoundedString {n} _%vector_scope.
 
 Section ithIndexBound.
 

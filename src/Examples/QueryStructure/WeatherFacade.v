@@ -55,8 +55,9 @@ Definition LocalMax := "LocalMax".
 
 Definition WeatherSpec : ADT _ :=
   Eval simpl in
-    QueryADTRep WeatherSchema {
-    Def Constructor0 Init : rep := empty,
+    Def ADT {
+      rep := QueryStructure WeatherSchema,
+    Def Constructor0 Init : rep := empty,,
 
     Def Method1 AddCell (r : rep) (cell : WeatherSchema#CELLS) : rep * bool :=
       Insert cell into r!CELLS,

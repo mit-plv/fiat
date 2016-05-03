@@ -49,8 +49,9 @@ Definition StocksSchema :=
     enforcing [attribute STOCK_CODE for TRANSACTIONS references STOCKS].
 
 Definition StocksSpec : ADT _ :=
-  QueryADTRep StocksSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure StocksSchema,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "AddStock" (r : rep) (stock: StocksSchema#STOCKS) : rep * bool :=
         Insert stock into r!STOCKS,

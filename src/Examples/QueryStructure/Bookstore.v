@@ -68,8 +68,9 @@ Definition BookStoreSig : ADTSig :=
 
 Definition BookStoreSpec : ADT BookStoreSig :=
   Eval simpl in
-    QueryADTRep BookStoreSchema {
-    Def Constructor0 "Init" : rep := empty,
+    Def ADT {
+    rep := QueryStructure BookStoreSchema,
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "PlaceOrder" (r : rep) (o : Order) : rep * bool :=
         Insert o into r!sORDERS,

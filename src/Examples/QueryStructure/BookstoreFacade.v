@@ -62,8 +62,10 @@ Definition Order := TupleDef BookStoreSchema sORDERS.
 (* Now we write what the methods should actually do. *)
 
 Definition BookStoreSpec : ADT _ :=
-  QueryADTRep BookStoreSchema {
-    Def Constructor0 "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure BookStoreSchema,
+
+    Def Constructor0 "Init" : rep := empty,,
 
     Def Method1 "PlaceOrder" ( r : rep) (o : Order) : rep * bool :=
         Insert o into r!sORDERS,

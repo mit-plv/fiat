@@ -86,5 +86,5 @@ Opaque QSInsert.
 
 Notation "'Insert' b 'into' r '!' Ridx " :=
   (QSInsert r
-            (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) b)
+            (ibound (indexb (@Build_BoundedIndex _ _ (QSschemaNames _) Ridx%string _))) b%Tuple)
     (r at level 0, at level 0) : QuerySpec_scope.

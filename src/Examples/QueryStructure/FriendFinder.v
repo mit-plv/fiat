@@ -36,8 +36,9 @@ Definition FriendFinderSig : ADTSig :=
     }.
 
 Definition FriendFinderSpec : ADT _ :=
-  QueryADTRep FriendFinderSchema {
-    Def Constructor0 "Init"  : rep := empty,
+  Def ADT {
+    rep := QueryStructure FriendFinderSchema,
+    Def Constructor0 "Init"  : rep := empty,,
 
     Def Method1 "AddPerson" (r : rep) (person : FriendFinderSchema#PEOPLE) : rep * bool :=
       Insert person into r!PEOPLE,
@@ -58,7 +59,7 @@ Definition FriendFinderSpec : ADT _ :=
                  city!LONGITUDE <= city_me!LONGITUDE + distance)
           Where (person!CITY = city!CITY)
           Return person!NAME;
-    ret (r, res),         
+    ret (r, res),
 
      Def Method1 "PeopleInCity" (r : rep) (city : string) : rep * nat :=
       res <- Count (For (person in r!PEOPLE)

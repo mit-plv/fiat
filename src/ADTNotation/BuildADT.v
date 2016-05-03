@@ -156,9 +156,9 @@ Record methDef {Rep : Type} (Sig : methSig) :=
 
 Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -168,9 +168,9 @@ Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [ _ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -180,9 +180,9 @@ Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -192,9 +192,9 @@ Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -204,9 +204,9 @@ Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -216,9 +216,9 @@ Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method5' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod : Type) |}
+     {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod%type : Type) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod : Type) |} in
+                     let _ := {| codHint := Some (cod%type : Type) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -278,7 +278,7 @@ Notation "'Def' 'Method5' id r .. xn : 'rep' := bod" :=
 
 (* Again, pretty printing involves fewer rules. *)
 Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' '*' cod := bod" :=
-  (Build_methDef {| methID := id; methDom := [] ; methCod := Some cod |} (fun r => bod%comp ))
+  (Build_methDef {| methID := id; methDom := [] ; methCod := Some cod%type |} (fun r => bod%comp ))
     (no associativity, id at level 0, r at level 0,
      cod at level 0,
      at level 94,
@@ -286,7 +286,7 @@ Notation "'Def' 'Method' id ( r : 'rep' ) : 'rep' '*' cod := bod" :=
   : methDef_scope.
 
 Notation "'Def' 'Method' id ( r : 'rep' ) x1 .. xn : 'rep' '*' cod := bod" :=
-  (Build_methDef {| methID := id; methDom := _ :: _ ; methCod := Some cod |} (fun r =>
+  (Build_methDef {| methID := id; methDom := _ :: _ ; methCod := Some cod%type |} (fun r =>
                                                                              (fun x1 => .. (fun xn => (bod%comp )) ..)))
     (no associativity, id at level 0, r at level 0, x1 closed binder , xn closed binder,
      at level 94,
@@ -381,24 +381,24 @@ Definition callADTMethod
 
 Delimit Scope ADTParsing_scope with ADTParsing.
 
-Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (let _ := {| rep := r |} in
-   @BuildADT r
+Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn } " :=
+  (let _ := {| rep := r%type |} in
+   @BuildADT r%type
              _ _
              _ _
-             (icons cons1%consDef (@inil _ (@consDef r)))
+             (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDefParsing .. (icons methn%methDefParsing (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
-     format "'ADTRep'  r  '/' '[hv  ' {  cons1 ,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
+     format "'Def' 'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADTParsing_scope.
 
-Notation "'ADTRep' r { cons1 , meth1 , .. , methn } " :=
-  (@BuildADT r
+Notation "'Def' 'ADT' { 'rep' ':=' r , cons1 , .. , consn ,, meth1 , .. , methn } " :=
+  (@BuildADT r%type
              _ _
              _ _
-             (icons cons1%consDef (@inil _ (@consDef r)))
+             (icons cons1%consDef .. (icons consn%consDef (@inil _ (@consDef r))) ..)
              (icons meth1%methDef .. (icons methn%methDef (@inil _ (@methDef r))) ..))
     (no associativity, at level 96, r at level 0,
-     format "'ADTRep'  r  '/' '[hv  ' {  cons1 , '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
+     format "'Def' 'ADT'  '/' '[hv  ' { 'rep'  ':='  r  , '//' cons1 , '//' .. , '//' consn ,,  '//' meth1 , '//' .. , '//' methn  ']' }") : ADT_scope.
 
 (* Notations for method calls. *)
 Notation callMeth adt idx := (callADTMethod adt (fun idx => ibound (indexb idx))
@@ -477,9 +477,10 @@ Section NotationExample.
       }%ADTSig.
 
   Definition CacheSpec : ADT CacheSig :=
-    (ADTRep (Ensemble (Key * Value)) {
+    (Def ADT {
+       rep := Ensemble (Key * Value),
        Def Constructor0 "EmptyCache" : rep :=
-         ret (Empty_set _),
+         ret (Empty_set _),,
        Def Method2 "AddKey" (r : rep) (k : Key) (v : Value) : rep * bool :=
          { r' | (SubEnsembleInsert (k, v) r (fst r')) /\
                 ((usedKey r k /\ snd r' = false) \/

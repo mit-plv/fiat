@@ -41,9 +41,10 @@ Section BagADT.
   }.
 
   Definition BagSpec : ADT BagSig :=
-    ADTRep (@IndexedEnsemble ElementType) {
+    Def ADT {
+        rep := @IndexedEnsemble ElementType,
         Def Constructor0 sEmpty : rep :=
-          ret (Empty_set _),
+          ret (Empty_set _),,
 
         Def Method1 sFind (r : rep) (f : SearchTermType)
           : rep * (list ElementType) :=

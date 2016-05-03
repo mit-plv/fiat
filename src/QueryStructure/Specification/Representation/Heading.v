@@ -1,4 +1,7 @@
-Require Import Coq.Lists.List
+Require Import
+        Coq.Vectors.Vector
+        Coq.Vectors.VectorDef
+        Coq.Lists.List
         Coq.Strings.String
         Coq.Logic.FunctionalExtensionality
         Coq.Sets.Ensembles
@@ -51,3 +54,14 @@ Definition BuildHeading
 Notation "< col1 , .. , coln >" :=
   (BuildHeading (@Vector.cons _ col1%Attribute _ .. (Vector.cons _ coln%Attribute _ (Vector.nil _)) ..))
   : Heading_scope.
+
+(* Extending Headings *)
+Definition AppendRawHeading (h1 h2 : RawHeading) : RawHeading :=
+  {| NumAttr := NumAttr h1 + NumAttr h2;
+     AttrList := Vector.append (AttrList h1) (AttrList h2) |}.
+
+Definition AppendHeading (h1 h2 : Heading) : Heading :=
+  {| HeadingRaw := AppendRawHeading (HeadingRaw h1) (HeadingRaw h2);
+     HeadingNames := Vector.append (HeadingNames h1) (HeadingNames h2) |}.
+
+Notation " h1 ++ h2 " := (AppendHeading h1%Heading h2%Heading) : Heading_scope.
