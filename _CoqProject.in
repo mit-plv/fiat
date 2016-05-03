@@ -413,6 +413,11 @@ src/Parsers/Refinement/BinOpBrackets/MakeBinOpTable.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalanced.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalancedGrammar.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalancedLemmas.v
+src/Parsers/Reflective/PartialUnfold.v
+src/Parsers/Reflective/Reify.v
+src/Parsers/Reflective/Semantics.v
+src/Parsers/Reflective/Syntactify.v
+src/Parsers/Reflective/Syntax.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v

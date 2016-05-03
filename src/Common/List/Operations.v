@@ -250,6 +250,30 @@ Module Export List.
            end
        end.
 
+  Fixpoint first_index_partial {A} (f : A -> option bool) (ls : list A) : option (option nat) :=
+    match ls with
+    | nil => Some None
+    | x :: xs =>
+      match f x with
+      | None => None
+      | Some b =>
+        if b then
+          Some (Some 0)
+        else
+          match first_index_partial f xs with
+          | Some (Some i) => Some (Some (S i))
+          | v => v
+          end
+      end
+    end.
+
+  Fixpoint first_index_default_partial {A} (f : A -> option bool) (default : nat) (ls : list A) :=
+    match first_index_partial f ls with
+    | None => None
+    | Some None => Some default
+    | Some v => v
+    end.
+
   Fixpoint sig_In {A} (ls : list A) : list { x : A | List.In x ls }
     := match ls return list { x : A | List.In x ls } with
          | nil => nil
