@@ -116,7 +116,7 @@ Section RRecordTypes.
        "CSYNC" (* Child-To-Parent Synchronization 	[RFC7477] 		2015-01-27 *)
     ].
 
-  Definition RRecordType := BoundedString (Vector.append OurRRecordTypes ExtraRRecordTypes).
+  Definition RRecordType := BoundedString (OurRRecordTypes ++ ExtraRRecordTypes).
 
   (* Aliases for common resource record types. *)
   Definition CNAME : RRecordType := ``"CNAME".
@@ -349,8 +349,10 @@ Section RData.
         enforcing [ ].
 
   Definition EESpec : ADT _ :=
-  QueryADTRep EESchema {
-    Def Constructor "Init" : rep := empty,
+    Def ADT {
+      rep := QueryStructure EESchema,
+
+    Def Constructor "Init" : rep := empty,,
 
     Def Method1 "AddData" (this : rep) (t : _) : rep * bool :=
       Insert t into this!"foo",

@@ -90,9 +90,10 @@ Definition linkAuthorityAnswer (p : packet) timeArrived: list (@Tuple ReferralHe
 (* and insert the rows in the correct cache table. *)
 (* Assumes that someone has already checked that the domain is not in any of the caches. *)
 
-Definition InsertResultForDomainSpec (r : QueryStructure DnsRecSchema)
-            (timeArrived : time)
-            (toStore : ToStore) : Comp (_ * bool) :=
+Definition InsertResultForDomainSpec
+           (r : QueryStructure DnsRecSchema)
+           (timeArrived : time)
+           (toStore : ToStore) : Comp (_ * bool) :=
   match toStore with
   | Answer reqName pac =>
     r1 <- Insert < sDOMAIN :: reqName, sCACHETABLE :: CAnswers >%Tuple into r!sCACHE_POINTERS;
@@ -205,7 +206,7 @@ Definition GetServerForLongestSuffixSpec (r : QueryStructure DnsRecSchema)
 (* Filters referrals for the valid ones (not already in list + type, class), *)
 (* puts referrals in SLIST table with unique id (per request), and *)
 (* adds everything to the SLIST order and re-sorts that by match count *)
-Set Printing Implicit.
+
 Definition ReferralRowsToSLISTSpec
            (r : QueryStructure DnsRecSchema) (reqId : id)
            (questionName : name) (referrals : list ReferralRow)
@@ -326,8 +327,10 @@ Definition UpdateCacheReferralsAndSLISTSpec (r : QueryStructure DnsRecSchema)
   end.
 
 Definition DnsSpec_Recursive : ADT (*DnsRecSig*) _ :=
-  QueryADTRep DnsRecSchema {
-    Def Constructor0 Init : rep := empty,
+  Def ADT {
+    rep := QueryStructure DnsRecSchema,
+
+    Def Constructor0 Init : rep := empty,,
 
       (* ----- REQUESTS *)
 

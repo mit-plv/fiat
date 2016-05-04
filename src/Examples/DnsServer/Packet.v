@@ -12,6 +12,8 @@ Require Export Fiat.Examples.DnsServer.RRecordTypes.
 
 Section QTypes.
 
+  Local Open Scope vector.
+
   (* DNS packet Query Types are a superset of RR Types. *)
   Definition QTypes :=
     ["TKEY"; (* Transaction Key 	[RFC2930] *)
@@ -21,9 +23,9 @@ Section QTypes.
        "MAILB"; (* mailbox-related RRs (MB, MG or MR) 	[RFC1035] *)
        "MAILA"; (* mail agent RRs (OBSOLETE - see MX) 	[RFC1035] *)
        "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
-    ]%vector.
+    ].
 
-  Definition QType := BoundedString (Vector.append (Vector.append OurRRecordTypes ExtraRRecordTypes) QTypes).
+  Definition QType := BoundedString (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
 
   Definition QType_inj (rr : RRecordType) : QType :=
     BoundedIndex_injR rr.
@@ -81,7 +83,7 @@ Section RRecordClass.
 
   (* DNS Packet Question Classes *)
   Definition QClass :=
-    BoundedString (Vector.append RRecordClasses ["Any"]%vector).
+    BoundedString (RRecordClasses ++ ["Any"]%vector).
 
   Definition QClass_inj (qclass : RRecordClass) : QClass :=
     BoundedIndex_injR qclass.
@@ -132,9 +134,9 @@ Section OpCode.
 
   Definition OpCodes :=
     ["Query";    (* RFC1035] *)
-       "IQuery"; (* Inverse Query  OBSOLETE) [RFC3425] *)
-       "Status"; (* [RFC1035] *)
-       "Notify"  (* [RFC1996] [RFC2136] *)
+     "IQuery"; (* Inverse Query  OBSOLETE) [RFC3425] *)
+     "Status"; (* [RFC1035] *)
+     "Notify"  (* [RFC1996] [RFC2136] *)
     ]%vector.
 
   Definition OpCode := BoundedString OpCodes.
@@ -267,25 +269,27 @@ Section Packet.
 +---------------------+
    *)
 
-  Definition packet :=
-    @Tuple < "id" :: word 16, (* 16 bit Word. *)
-    "QR" :: word 1, (* is packet a query (0), or a response (1) *)
-    "Opcode" :: OpCode, (* kind of query in packet *)
-    "AA" :: word 1, (* is responding server authorative *)
-    "TC" :: word 1, (* is packet truncated *)
-    "RD" :: word 1, (* are recursive queries desired *)
-    "RA" :: word 1, (* are recursive queries supported by responding server *)
-    "RCODE" :: ResponseCode, (* response code *)
-    "questions" :: question, (* `list question` in case we can have multiple questions? *)
-    "answers" :: list resourceRecord,
-    "authority" :: list resourceRecord,
-    "additional" :: list resourceRecord >.
+  Definition packetHeading :=
+    < "id" :: word 16, (* 16 bit Word. *)
+      "QR" :: bool, (* is packet a query (0), or a response (1) *)
+      "Opcode" :: OpCode, (* kind of query in packet *)
+      "AA" :: bool, (* is responding server authorative *)
+      "TC" :: bool, (* is packet truncated *)
+      "RD" :: bool, (* are recursive queries desired *)
+      "RA" :: bool, (* are recursive queries supported by responding server *)
+      "RCODE" :: ResponseCode, (* response code *)
+      "questions" :: question, (* `list question` in case we can have multiple questions? *)
+      "answers" :: list resourceRecord,
+      "authority" :: list resourceRecord,
+      "additional" :: list resourceRecord >%Heading.
+
+  Definition packet := @Tuple packetHeading.
 
   Definition buildempty (is_authority : bool)
              (rcode : ResponseCode)
              (p : packet) :=
-    p ○ [ "AA" ::= WS is_authority WO; (* Update Authority field *)
-            "QR" ::= WS true WO; (* Set response flag to true *)
+    p ○ [ "AA" ::= is_authority; (* Update Authority field *)
+            "QR" ::= true; (* Set response flag to true *)
             "RCODE" ::= rcode;
             "answers" ::= [ ];
             "authority"  ::= [ ];

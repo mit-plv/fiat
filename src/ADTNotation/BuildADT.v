@@ -476,23 +476,15 @@ Section NotationExample.
         Method "LookupKey" :  rep * Key -> rep * (option Value)
       }%ADTSig.
 
-  Definition CacheSpec : ADT CacheSig :=
+  Definition CacheSpec : ADT _ :=
     (Def ADT {
        rep := Ensemble (Key * Value),
        Def Constructor0 "EmptyCache" : rep :=
-         ret (Empty_set _),,
+         ret (Empty_set _) ,,
        Def Method2 "AddKey" (r : rep) (k : Key) (v : Value) : rep * bool :=
          { r' | (SubEnsembleInsert (k, v) r (fst r')) /\
                 ((usedKey r k /\ snd r' = false) \/
-                 (~ usedKey r k /\ snd r' = true))},
-       Def Method2 "UpdateKey" (r : rep) (k : Key) (v : Value -> Value) : rep * bool :=
-           { r' |
-             (Same_set _ (fst r') (EnsembleUpdate k r v))
-             /\ ((usedKey r k /\ snd r' = true) \/
-                 (~ usedKey r k -> snd r' = false))},
-           Def Method1 "LookupKey" (r : rep) (k : Key) : rep * option Value :=
-             v <- {v | ValidLookup r k v};
-       ret (r, v)
+                 (~ usedKey r k /\ snd r' = true))}
      }%ADTParsing) : ADT _.
-
+ 
 End NotationExample.

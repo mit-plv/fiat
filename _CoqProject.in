@@ -46,6 +46,7 @@ src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Examples/Dns.v
+src/BinEncoders/Env/Examples/Dns2.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Lib/FixList.v

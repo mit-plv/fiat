@@ -66,12 +66,12 @@ Section DnsPacket.
 
   Definition encode_packet (p : packet) :=
        encode_word p!"id"
-  Then encode_word p!"QR"
+  Then encode_word (WS p!"QR" WO)
   Then encode_enum Opcode_Ws encode_word p!"Opcode"
-  Then encode_word p!"AA"
-  Then encode_word p!"TC"
-  Then encode_word p!"RD"
-  Then encode_word p!"RA"
+  Then encode_word (WS p!"AA" WO)
+  Then encode_word (WS p!"TC" WO)
+  Then encode_word (WS p!"RD" WO)
+  Then encode_word (WS p!"RA" WO)
   Then encode_word (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
   Then encode_enum RCODE_Ws encode_word p!"RCODE"
   Then encode_nat 16 1 (* length of question field *)
@@ -88,8 +88,8 @@ Section DnsPacket.
   : { decode | encode_decode_correct cache transformer (fun _ => True) encode_packet decode }.
   Proof.
     eexists.
-
-    eapply compose_encode_correct.
+  Admitted.
+(*    eapply compose_encode_correct.
       eapply encode_decode_word.
       solve_predicate. intro.
 
@@ -195,4 +195,5 @@ Section DnsPacket.
                             | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
                             | H : _ /\ _ |- _ => inversion H; subst; clear H
                             end. admit.
-      solve_predicate. intro.
+      solve_predicate. intro. *)
+End DnsPacket.

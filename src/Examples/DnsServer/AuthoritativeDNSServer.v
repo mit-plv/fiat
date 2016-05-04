@@ -1,7 +1,6 @@
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Bool.Bvector
         Coq.Lists.List.
 
 Require Import
@@ -22,8 +21,100 @@ Require Import
 Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
+        Fiat.Examples.DnsServer.AuthoritativeDNSSchema
+        Fiat.BinEncoders.Env.Examples.Dns2.
+Require Import
+        Bedrock.Word
+        Fiat.BinEncoders.Env.Common.Specs.
 
+Section BinaryDns.
+
+  Definition bin := list bool.
+
+  Variable cache : Cache.
+  Variable cacheAddNat : CacheAdd cache nat.
+  Variable cacheEmpty : CacheEncode.
+
+  Variable transformer : Transformer bin.
+  Variable transformerUnit : TransformerUnit transformer bool.
+  
+  Definition encoder x := (x -> CacheEncode -> bin * CacheEncode).
+  Definition  decoder x := (bin -> CacheDecode -> x * bin * CacheDecode).
+  Variable encode_enum :
+    forall (sz : nat) (A B : Type) (ta : t A sz) (tb : t B sz),
+      encoder B -> encoder (BoundedIndex ta).
+
+  Variable QType_Ws : Vector.t (word 16) 66.
+  Variable QClass_Ws : t (word 16) 4.
+  Variable RRecordType_Ws : t (word 16) 59.
+  Variable RRecordClass_Ws : t (word 16) 3.
+  Variable Opcode_Ws : t (word 4) 4.
+  Variable RCODE_Ws : t (word 4) 12.
+
+  Variable recurseDepth : nat.
+
+Definition DnsSig : ADTSig :=
+  ADTsignature {
+      Constructor "Init" : rep,
+      Method "AddData" : rep * resourceRecord -> rep * bool,
+      Method "Process" : rep * bin -> rep * bin
+    }.
+
+Definition encode_packet' b :=
+  @encode_packet bin cache cacheAddNat transformer transformerUnit
+                encode_enum QType_Ws QClass_Ws RRecordType_Ws
+                RRecordClass_Ws Opcode_Ws RCODE_Ws b cacheEmpty.
+
+Definition DnsSpec : ADT DnsSig :=
+  Def ADT {
+    rep := QueryStructure DnsSchema,
+
+    Def Constructor "Init" : rep := empty,,
+
+    (* in start honing querystructure, it inserts constraints before *)
+    (* every insert / decision procedure *)
+
+    Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
+      Insert t into this!sRRecords,
+
+    Def Method1 "Process" (this : rep) (b : bin) : rep * bin :=
+        p <- {p | fst (encode_packet' p) = b};
+        Repeat recurseDepth initializing n with p!"questions"!"qname"
+               defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
+        {{ results <- MaxElements (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
+                             (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
+                               Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
+                               Return r);
+            If (is_empty results) (* Are there any matching records? *)
+            Then ret (buildempty true ``"NXDomain" p) (* No matching records, set name error *)
+            Else
+            (IfDec (List.Forall (fun r : resourceRecord => n = r!sNAME) results) (* If the record's QNAME is an exact match  *)
+              Then
+              b <- SingletonSet (fun b : CNAME_Record =>      (* If the record is a CNAME, *)
+                                   List.In (A := resourceRecord) b results
+                                   /\ p!"questions"!"qtype" <> QType_inj CNAME); (* and a non-CNAME was requested*)
+                Ifopt b as b'
+                Then  (* only one matching CNAME record *)
+                  p' <- rec b'!sRDATA; (* Recursively find records matching the CNAME *)
+                  ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
+                Else     (* Copy the records with the correct QTYPE into the answer *)
+                         (* section of an empty response *)
+                (results <- ⟦ element in results | QType_match (element!sTYPE) (p!"questions"!"qtype") ⟧;
+                  ret (add_answers results (buildempty true ``"NoError" p)))
+              Else (* prefix but record's QNAME not an exact match *)
+                (* return all the prefix records that are nameserver records -- *)
+                (* ask the authoritative servers *)
+              (ns_results <- { ns_results | forall x : NS_Record, List.In x ns_results <-> List.In (A := resourceRecord) x results };
+                 (* Append all the glue records to the additional section. *)
+                 glue_results <- For (rRec in this!sRRecords)
+                                 Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
+                                 Return rRec;
+                 ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
+          }} >>= fun p => ret (this, fst (encode_packet' p))}.
+
+End BinaryDns.
+
+(*
 Definition DnsSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
@@ -31,9 +122,12 @@ Definition DnsSig : ADTSig :=
       Method "Process" : rep * packet -> rep * packet
     }.
 
+
 Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
-  QueryADTRep DnsSchema {
-    Def Constructor "Init" : rep := empty,
+  Def ADT {
+    rep := QueryStructure DnsSchema,
+
+    Def Constructor "Init" : rep := empty,,
 
     (* in start honing querystructure, it inserts constraints before *)
     (* every insert / decision procedure *)
@@ -73,7 +167,7 @@ Definition DnsSpec (recurseDepth : nat) : ADT DnsSig :=
                                  Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
                                  Return rRec;
                  ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
-          }} >>= fun p => ret (this, p)}.
+          }} >>= fun p => ret (this, p)}. *)
 
 Local Arguments packet : simpl never.
 

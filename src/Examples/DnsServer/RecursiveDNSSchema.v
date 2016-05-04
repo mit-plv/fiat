@@ -1,14 +1,19 @@
-Require Import Coq.Vectors.Vector
+Require Import
+        Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Bool.Bvector
         Coq.Lists.List
         Bedrock.Word
-        Bedrock.Memory.
+        Bedrock.Memory
+        Fiat.Computation.ListComputations.
 
 Require Import
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.Packet.
+
+Import Coq.Vectors.VectorDef.VectorNotations.
+
+Local Open Scope vector.
 
 (* The schema, packet structure, and spec are based on the following four RFCs:
 
@@ -21,10 +26,205 @@ RFC 1536: common implementation errors and fixes -- for efficiency/security prob
 (* when working on a referral, the stage is set to the match count b/t the *)
 (* referral and question e.g. question = s.g.com, referral = for g.com, *)
 (* stage = match count = 2 (excluding root) *)
-Definition Stage := option W.
 
-(* unique ids for various things *)
-Definition id : Type := W.
+(* String definitions *)
+Definition sREQUESTS := "Requests".
+Definition sSTAGE := "Stage".
+Definition sID := "ID".
+Definition sIP := "IP".
+Definition sRESULT := "Result".
+Definition sDOMAIN := "Domain".
+
+Definition sCACHE := "Cache".
+Definition sSERVER := "Server".
+Definition sPID := "Packet id".
+Definition sFLAGS := "Packet flags".
+
+Definition sHOST := "Source host".
+Definition sEMAIL := "Contact email".
+Definition sSERIAL := "Serial number".
+Definition sREFRESH := "Refresh time".
+Definition sRETRY := "Retry time".
+Definition sEXPIRE := "Expire time".
+Definition sMinTTL := "minTTL".
+Definition sPACKET := "Packet".
+
+Definition sREFERRALDOMAIN := "Referral domain".
+Definition sRTYPE := "Referral domain type".
+Definition sRCLASS := "Referral domain class".
+Definition sRTTL := "Referral domain TTL".
+Definition sSERVERDOMAIN := "Server domain".
+Definition sSTYPE := "Server type".
+Definition sSCLASS := "Server class".
+Definition sSTTL := "Server TTL".
+Definition sSIP := "Server IP".
+
+Definition sQNAME := "Question name".
+Definition sQTYPE := "Question type".
+Definition sQCLASS := "Question class".
+Definition sCACHETYPE := "Cache type".
+Definition sCACHEDVALUE := "Cached value".
+
+Definition sREQID := "Request ID".
+Definition sREFERRALID := "Referral ID".
+Definition sMATCHCOUNT := "# labels matched".
+Definition sQUERYCOUNT := "# times queried".
+
+Definition sORDER := "SLIST order". (* using referral IDs *)
+Definition sSLIST := "SLIST".
+Definition sSLIST_ORDERS := "SLIST orders".
+
+Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
+Local Open Scope Heading_scope.
+
+(* Unique Request IDs *)
+Definition ID : Type := word 16.
+
+(* Heading for a pending request. This is a packet plus a *)
+(* unique ID associated with the request and a timeout for *)
+(* discarding stale requests. *)
+Definition RequestHeading : Heading :=
+  < sID :: ID,    (* unique, ascending *)
+    sIP :: W,     (* IP address of the request source*)
+    sTTL :: timeT > (* Timeout for request *)
+    ++ packetHeading.
+
+(* The heading of current resource records for known servers *)
+(* (called the SLIST in RFC 1035); these records are augmented *)
+(* with a query count field that is used to ensure fair distribution *)
+(* of queries among a domain's nameservers. The desing decision here *)
+(* is that when new servers are discovered, the resolver will do *)
+(* the necessary address/name linking before recording them in this *)
+(* list. *)
+Definition SLISTHeading :=
+  < sQUERYCOUNT :: W, (* number of times we've queried this server *)
+    sTTL :: timeT, (* Domain of known server *)
+    sDOMAIN :: DomainName, (* Domain of known server *)
+    sIP :: W > (* Address of server. *).
+
+(* The cache holds either answers (resource records returned by a *)
+(* query) or failures (negative responses). *)
+Definition CacheType :=
+  BoundedString ["Answer"; "Failure"].
+
+(* Stores an SOA (Start of Authority) record for cached failures, *)
+(* according to RFC 2308. The SOA's TTL is used as the length of *)
+(* time to assume a name failure. *)
+
+Definition CachedValueTypes :=
+  [ resourceRecord; SOA_Record ].
+
+Definition CachedValue := SumType CachedValueTypes.
+
+Definition rRecord2CachedValue (vrr : resourceRecord)
+  : CachedValue := inj_SumType CachedValueTypes (ibound (indexb (Bound := ["Answer"; "Failure"]) ``"Answer")) vrr.
+
+Definition Failure2CachedValue (vrr : SOA_Record)
+  : CachedValue := inj_SumType CachedValueTypes (ibound (indexb (Bound := ["Answer"; "Failure"]) ``"Failure")) vrr.
+
+(* Only cache specific resource records in response to a query. *)
+Definition CachedQueryTypes :=
+  BoundedString (OurRRecordTypes ++ ExtraRRecordTypes).
+
+Definition CachedQueryTypes_inj (rr : CachedQueryTypes) : QType :=
+  BoundedIndex_injR rr.
+
+Coercion CachedQueryTypes_inj : CachedQueryTypes >-> QType.
+Coercion rRecord2CachedValue : resourceRecord >-> CachedValue.
+Coercion Failure2CachedValue : SOA_Record >-> CachedValue.
+
+Definition CacheHeading :=
+  < sTTL :: timeT, (* Lifetime of cached value *)
+    sCACHETYPE :: CacheType, (* Type of cached value *)
+    sDOMAIN:: DomainName, (* Domain of cached Query*)
+    sQTYPE :: CachedQueryTypes,  (* Type of cached query *)
+    sCACHEDVALUE :: CachedValue >. (* Cached data *)
+
+Definition RecResolverSchema :=
+  Query Structure Schema
+        [ relation sREQUESTS has schema RequestHeading;
+
+          relation sSLIST has schema SLISTHeading;
+
+          relation sCACHE has schema CacheHeading ]
+        enforcing [ ].
+
+Definition requestTTL : timeT := natToWord _ 0.
+
+(* Should probably restrict cache to have either an answer *)
+(* or a failure for a domain and question type. *)
+
+Open Scope Tuple_scope.
+
+Definition DnsSpec : ADT _ :=
+  Def ADT {
+    rep := QueryStructure RecResolverSchema,
+
+    Def Constructor "Init" : rep := empty,,
+
+    Def Method3 "Process"
+        (this : rep)
+        (sourceIP : W)
+        (curTime : timeT)
+        (p : packet) : rep * packet * W :=
+      If p!"QR" Then
+         (* It's a new request! *)
+         vs <- For (v in this!sCACHE) (* Search cache for an answer *)
+              Where (p!"questions"!"qtype" = CachedQueryTypes_inj v!sQTYPE)
+              Where (curTime <= v!sTTL) (* only alive cached values *)
+              Return (v ! sCACHEDVALUE) ;
+         If is_empty vs Then (* Need to launch a recursive query *)
+                  (* Step 1: Generate a unique ID for the new request. *)
+            (reqIDs <- For (req in this!sREQUESTS)
+                       Where (curTime <= req!sTTL)
+                       Return (req!sID);
+             newID <- { newID | ~ List.In newID reqIDs};
+             (* Find the best known servers to query *)
+             bestServer <- MaxElement
+                             (fun r r' : @Tuple SLISTHeading =>
+                                IsPrefix r!sDOMAIN r'!sDOMAIN
+                                /\ r!sQUERYCOUNT <= r'!sQUERYCOUNT)
+                             (For (server in this!sSLIST)
+                              Where (IsPrefix server!sDOMAIN p!"questions"!"qname")
+                              Where (curTime <= server!sTTL)
+                              Return server);
+             Ifopt bestServer as bestServer Then (* Pick the first server*)
+             `(this, b) <- Insert < sID :: newID,
+                                    sIP :: sourceIP,
+                                    sTTL :: requestTTL > ++ p into this!sREQUESTS;
+             ret (this, (<"id" :: newID,
+                             "QR" :: false,
+                             "Opcode" :: ``"Query",
+                             "AA" :: false,
+                             "TC" :: false,
+                             "RD" :: true,
+                             "RA" :: false,
+                             "RCode" :: ``"NoError",
+                             "question" :: p!"questions",
+                             "answers" :: [ ],
+                             "authority" :: [ ],
+                             "additional" :: [ ] >, bestServer!sIP))
+             Else (* There are no known servers that can answer this request. *)
+             ret (this, (buildempty false ``"ServFail" p, sourceIP)) (* This won't happen if the server has been properly initialized with the root servers. *)
+            )
+       Else                   (* Return cached answer *)
+         (answers <- { answers | forall ans : resourceRecord, List.In ans answers <-> List.In (A := CachedValue) ans vs };
+          If is_empty answers Then (* It must be a cached failure *)
+             failures <- { failures | forall fail : SOA_Record, List.In (A := resourceRecord) fail failures <-> List.In (A := CachedValue) fail vs };
+             ret (this, (add_additionals failures (buildempty false ``"NXDomain" p), sourceIP)) (* Add the SoA record to additional and return negative result*)
+          Else
+          ret (this, (add_answers answers (buildempty false ``"NoError" p), sourceIP)))
+         (* Add the answers to the packet.  *)
+      Else (* It's a response, so we need to associate the packet with *)
+           (* an in-flight request. *)
+      ret (this, (p, natToWord _ 0))
+        }.
+
+
+(* TODO the SOA is technically supposed to go in the Authority section
+but the packet type doesn't include it *)
+
+
 
 (* position in SLIST *)
 Definition position := W.
@@ -63,58 +263,6 @@ Inductive PacketSection : Type :=
 | PAuthority : PacketSection
 | PAdditional : PacketSection.
 
-(* String definitions *)
-Definition sREQUESTS := "Requests".
-Definition sSTAGE := "Stage".
-Definition sID := "ID".
-Definition sIP := "IP".
-Definition sRESULT := "Result".
-Definition sDOMAIN := "Domain".
-
-Definition sCACHE_POINTERS := "Cache pointers to tables".
-Definition sCACHE_REFERRALS := "Cached referrals".
-Definition sCACHE_ANSWERS := "Cached answers".
-Definition sCACHE_FAILURES := "Cached failures".
-Definition sPACKET_SECTION := "Packet section".
-Definition sSERVER := "Server".
-Definition sPID := "Packet id".
-Definition sFLAGS := "Packet flags".
-
-Definition sHOST := "Source host".
-Definition sEMAIL := "Contact email".
-Definition sSERIAL := "Serial number".
-Definition sREFRESH := "Refresh time".
-Definition sRETRY := "Retry time".
-Definition sEXPIRE := "Expire time".
-Definition sMinTTL := "minTTL".
-Definition sPACKET := "Packet".
-
-Definition sREFERRALDOMAIN := "Referral domain".
-Definition sRTYPE := "Referral domain type".
-Definition sRCLASS := "Referral domain class".
-Definition sRTTL := "Referral domain TTL".
-Definition sSERVERDOMAIN := "Server domain".
-Definition sSTYPE := "Server type".
-Definition sSCLASS := "Server class".
-Definition sSTTL := "Server TTL".
-Definition sSIP := "Server IP".
-
-Definition sQNAME := "Question name".
-Definition sQTYPE := "Question type".
-Definition sQCLASS := "Question class".
-Definition sCACHETABLE := "Cache table".
-
-Definition sREQID := "Request ID".
-Definition sREFERRALID := "Referral ID".
-Definition sMATCHCOUNT := "# labels matched".
-Definition sQUERYCOUNT := "# times queried".
-
-Definition sORDER := "SLIST order". (* using referral IDs *)
-Definition sSLIST := "SLIST".
-Definition sSLIST_ORDERS := "SLIST orders".
-
-Definition sTIME_LAST_CALCULATED := "Time the TTL was last calculated".
-Local Open Scope Heading_scope.
 
 (* ------------------ Schema headings *)
 
@@ -159,19 +307,6 @@ Definition ReferralHeading :=
     sTIME_LAST_CALCULATED :: timeT
 >.
 
- (* For referrals: for domain "brl.mil", referral to suffix "mil": go *)
- (* to server "a.isi.edu" with IP 1.0.0.1 (and ask it the same question). *)
- (* We discard the original question "brl.mil."  See RFC 1034 6.2.6, *)
- (* 6.3.1  *)
-
-Definition SLIST_ReferralHeading :=
-  (* R- = referral domain's, S- = server domain's *)
-  < sREQID :: W,        (* tuple of (reqid, refid) should be unique for each row *)
-    sREFERRALID :: W,
-    sMATCHCOUNT :: W,
-    sQUERYCOUNT :: W>
-    ++ ReferralHeading.
-
 (*  Stores a cached answer (DNSRRecord). Might have appeared in the *)
 (*  answer, authority, or additional section of a packet. *)
 (*  sDOMAIN and sNAME may differ in the case of CNAME, where *)
@@ -194,19 +329,6 @@ Definition FailureHeading :=
   < sDOMAIN :: DomainName,
     sTIME_LAST_CALCULATED :: timeT>
     ++ SOAHeading.
-
-(* Heading for a pending request.
-   Q*, pid, and flags are packet info. Need to store packet info so we can filter the results we get by record type and class. *)
-Definition RequestHeading :=
-  < sID :: id,  (* unique, ascending *)
-    sQNAME :: DomainName,
-    sSTAGE :: Stage,
-    sQTYPE :: RRecordType,
-    sQCLASS :: RRecordClass,
-    sPID :: Bvector 16,
-    sFLAGS :: Bvector 16
-(* not storing authority or additional -- needed? *)
->.
 
 Definition ReferralRow := @Tuple ReferralHeading.
 Definition SLIST_ReferralRow := @Tuple SLIST_ReferralHeading.
