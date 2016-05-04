@@ -252,8 +252,23 @@ Proof.
   assumption.
 Qed.
 
+Fixpoint TelAppend {av} (t1 t2: Telescope av) :=
+  match t1 with
+  | Nil => t2
+  | Cons T key val tail => Cons (T := T) key val (fun v => TelAppend (tail v) t2)
+  end.
+
+Lemma TelAppend_Nil {av} :
+  forall t: Telescope av,
+    TelStrongEq (TelAppend t Nil) t.
+Proof.
+  induction t; simpl.
+  + reflexivity.
+  + econstructor; eauto with typeclass_instances.
+Qed.
+
 Definition PacketAsCollectionOfVariables
-           {av} vid vmask vquestion vanswer vauthority vadditional tail (p: packet_t)
+           {av} vid vmask vquestion vanswer vauthority vadditional (p: packet_t)
   : Telescope av :=
   [[ vid <-- ` p.(pid) as _ ]]
     :: [[ vmask <-- ` p.(pmask) as _ ]]
@@ -261,33 +276,57 @@ Definition PacketAsCollectionOfVariables
     :: [[ vanswer <-- ` p.(panswer) as _ ]]
     :: [[ vauthority <-- ` p.(pauthority) as _ ]]
     :: [[ vadditional <-- ` p.(padditional) as _ ]]
-    :: tail.
+    :: Nil.
 
 Definition DnsCacheAsCollectionOfVariables
-           {av} veMap vdMap voffs tail (c: DnsMap.CacheT)
+           {av} veMap vdMap voffs (c: DnsMap.CacheT)
   : Telescope av :=
   [[ veMap <-- c.(DnsMap.eMap) as _ ]]
     :: [[ vdMap <-- c.(DnsMap.dMap) as _ ]]
     :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
-    :: tail.
+    :: Nil.
 
-Add Parametric Morphism {av} ext : (@PacketAsCollectionOfVariables av)
-    with signature (eq ==> eq ==> eq ==> eq ==> eq ==> eq ==> (TelEq ext) ==> eq ==> (TelEq ext))
-      as PacketAsCollectionOfVariables_TelEq_morphism.
+Add Parametric Morphism {av} : (@TelAppend av)
+    with signature ((TelStrongEq) ==> (TelStrongEq) ==> (TelStrongEq))
+      as TelAppend_TelStrongEq_morphism.
 Proof.
-  unfold PacketAsCollectionOfVariables; intros * teq **.
-  repeat (apply TelEq_chomp_head; red; intros).
-  assumption.
+  induction 1; simpl.
+  + eauto with typeclass_instances.
+  + intros.
+    econstructor; eauto.
 Qed.
 
-Add Parametric Morphism {av} ext : (@DnsCacheAsCollectionOfVariables av)
-    with signature (eq ==> eq ==> eq ==> (TelEq ext) ==> eq ==> (TelEq ext))
-      as DnsCacheAsCollectionOfVariables_TelEq_morphism.
+Add Parametric Morphism {av} ext : (@TelAppend av)
+    with signature (TelStrongEq ==> (TelEq ext) ==> (TelEq ext))
+      as TelAppend_TelEq_morphism.
 Proof.
-  unfold DnsCacheAsCollectionOfVariables; intros * teq **.
-  repeat (apply TelEq_chomp_head; red; intros).
-  assumption.
+  intros.
+  rewrite H; clear H.
+  induction y; simpl; intros.
+  + assumption.
+  + apply Cons_TelEq_pointwise_morphism; red; eauto.
 Qed.
+
+(* FIXME I suspect that a stronger version of this morphism holds, where the
+   telescopes being appended to are only TelEq, but the proof looks painful. *)
+
+(* Add Parametric Morphism {av} ext : (@PacketAsCollectionOfVariables av) *)
+(*     with signature (eq ==> eq ==> eq ==> eq ==> eq ==> eq ==> (TelEq ext) ==> eq ==> (TelEq ext)) *)
+(*       as PacketAsCollectionOfVariables_TelEq_morphism. *)
+(* Proof. *)
+(*   unfold PacketAsCollectionOfVariables; intros * teq **. *)
+(*   repeat (apply TelEq_chomp_head; red; intros). *)
+(*   assumption. *)
+(* Qed. *)
+
+(* Add Parametric Morphism {av} ext : (@DnsCacheAsCollectionOfVariables av) *)
+(*     with signature (eq ==> eq ==> eq ==> (TelEq ext) ==> eq ==> (TelEq ext)) *)
+(*       as DnsCacheAsCollectionOfVariables_TelEq_morphism. *)
+(* Proof. *)
+(*   unfold DnsCacheAsCollectionOfVariables; intros * teq **. *)
+(*   repeat (apply TelEq_chomp_head; red; intros). *)
+(*   assumption. *)
+(* Qed. *)
 
 Lemma ProgOk_Transitivity_First :
   forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
@@ -520,7 +559,7 @@ Lemma CompileLoopBase__many :
     (forall head (acc: A) (s: list B),
         {{ [[`vhead <-- head as _]] :: tenvF tenv acc }}
           facadeBody
-        {{ tenvF tenv (f acc head) }} ∪
+        {{ [[ ret (f acc head) as facc ]] :: tenvF tenv facc }} ∪
         {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
     {{ [[`vlst <-- lst as _]] :: tenvF tenv init }}
       (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
@@ -594,7 +633,7 @@ Lemma CompileLoop__many :
     (forall head (acc: A) (s: list B),
         {{ [[`vhead <-- head as _]] :: tenvF tenv acc }}
           facadeBody
-        {{ tenvF tenv (f acc head) }} ∪
+        {{ [[ ret (f acc head) as facc ]] :: tenvF tenv facc }} ∪
         {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
     {{ tenv0 }}
       (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
@@ -816,6 +855,211 @@ Ltac _packet_encode_step :=
 Ltac _packet_encode_t :=
   repeat _packet_encode_step.
 
+Lemma CompileCompose' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (stream: B) (cache: E)
+    (tenv: Telescope av) tenv' tenv'' ext env p1 p2,
+    (forall a1 a2 b, tenv'' (a1, b) = tenv'' (a2, b)) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst encoded1) as stream1 ]]
+         :: tenv' encoded1 }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ [[ vstream  <--  stream1 as _ ]]
+          :: tenv' encoded1 }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as stream2 ]]
+          :: tenv'' encoded2 }} ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst composed) as stream ]]
+         :: tenv'' composed }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  repeat hoare.
+  setoid_rewrite Compose_compose_acc.
+  unfold compose_acc, encode_continue.
+  cbv zeta in *.
+  setoid_rewrite Propagate_anonymous_ret.
+  setoid_rewrite Propagate_anonymous_ret in H0.
+  setoid_rewrite Propagate_anonymous_ret in H1.
+  destruct (enc1 _); simpl in *.
+  destruct (enc2 _); simpl in *.
+  erewrite (H (Transformer.transform _ _)); rewrite Transformer.transform_assoc; eassumption.
+Qed.
+
+Lemma CompileCompose'' :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (stream: B) (cache: E)
+    (tenv: Telescope av) tenv' ext env p1 p2,
+    (forall a1 a2 b, tenv' (a1, b) = tenv' (a2, b)) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst encoded1) as stream1 ]]
+         :: tenv' encoded1 }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ [[ vstream  <--  stream1 as _ ]]
+          :: tenv' encoded1 }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as stream2 ]]
+          :: tenv' encoded2 }} ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst composed) as stream ]]
+         :: tenv' composed }} ∪ {{ ext }} // env.
+Proof.
+  intros; eapply CompileCompose'; try eassumption.
+Qed.
+
+Lemma CompileCompose'_init :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (cache: E)
+    tenv tenv' tenv'' ext env p1 p2,
+    (forall (a1 a2 : B) (b : E), tenv'' (a1, b) = tenv'' (a2, b)) ->
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]]
+         :: tenv }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform Transformer.transform_id (fst encoded1) as stream1 ]]
+         :: tenv' encoded1 }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     {{ [[ vstream  <--  (fst encoded1) as _ ]]
+          :: tenv' encoded1 }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform (fst encoded1) (fst encoded2) as stream2 ]]
+          :: tenv'' encoded2 }} ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]]
+         :: tenv }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  (fst composed) as _ ]]
+         :: tenv'' composed }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
+  eapply CompileCompose'; eauto.
+  cbv zeta in *. setoid_rewrite Transformer.transform_id_left. eassumption.
+Qed.
+
+
+Lemma ProgOk_Add_snd_ret' :
+  forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+    {{ tenv }}
+      p1
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: TelAppend ([[ kfst  <--  fst pair as p1 ]] :: f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: TelAppend ([[ kfst  <--  fst pair as p1 ]] :: f (snd pair)) tenv' }}
+      p2
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: TelAppend ([[ kfst  <--  fst pair as p1 ]] :: Nil) tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq p1 p2)
+    {{ [[ kfst  <--  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  assumption.
+Qed.
+
+
+Lemma CompileCompose2 :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (stream: B) (cache: E)
+    (tenv t1 t2: Telescope av) f ext env p1 p2,
+    (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: TelAppend ([[ vstream  <--  Transformer.transform stream (fst encoded1) as _ ]]
+                        :: f encoded1) t1 }}
+    ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ TelAppend ([[ vstream  <--  stream1 as _ ]] :: f encoded1) t1 }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: TelAppend ([[ vstream  <--  Transformer.transform stream1 (fst encoded2) as _ ]]
+                         :: f encoded2) t2 }}
+     ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: TelAppend ([[ vstream  <--  Transformer.transform stream (fst composed) as _ ]]
+                        :: f composed) t2 }}
+    ∪ {{ ext }} // env.
+Proof.
+  intros.
+  repeat hoare.
+  setoid_rewrite Compose_compose_acc.
+  unfold compose_acc, encode_continue.
+  cbv zeta in *.
+  setoid_rewrite Propagate_anonymous_ret.
+  setoid_rewrite Propagate_anonymous_ret in H0.
+  setoid_rewrite Propagate_anonymous_ret in H1.
+  destruct (enc1 _); simpl in *.
+  destruct (enc2 _); simpl in *.
+  erewrite (H (Transformer.transform _ _)); rewrite Transformer.transform_assoc; eassumption.
+Qed.
+
+Lemma CompileCompose3 :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (stream: B) (cache: E)
+    (tenv t1 t2: Telescope av) f ext env p1 p2,
+    (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      p1
+    {{ [[ NTNone  <--  enc1 cache as encoded1 ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst encoded1) as _ ]]
+         :: TelAppend (f encoded1) t1 }}
+    ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform stream (fst encoded1) in
+     {{ [[ vstream  <--  stream1 as _ ]] :: TelAppend (f encoded1) t1 }}
+       p2
+     {{ [[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+          :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as _ ]]
+          :: TelAppend (f encoded2) t2 }}
+     ∪ {{ ext }} // env) ->
+    {{ [[ vstream  <--  stream as _ ]]
+         :: tenv }}
+      (Seq p1 p2)
+    {{ [[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+         :: [[ vstream  <--  Transformer.transform stream (fst composed) as _ ]]
+         :: TelAppend (f composed) t2 }}
+    ∪ {{ ext }} // env.
+Proof.
+  intros.
+  repeat hoare.
+  setoid_rewrite Compose_compose_acc.
+  unfold compose_acc, encode_continue.
+  cbv zeta in *.
+  setoid_rewrite Propagate_anonymous_ret.
+  setoid_rewrite Propagate_anonymous_ret in H0.
+  setoid_rewrite Propagate_anonymous_ret in H1.
+  destruct (enc1 _); simpl in *.
+  destruct (enc2 _); simpl in *.
+  erewrite (H (Transformer.transform _ _)); rewrite Transformer.transform_assoc; eassumption.
+Qed.
+
 Example encode :
   ParametricExtraction
     #vars      p
@@ -823,55 +1067,286 @@ Example encode :
     #arguments (PacketAsCollectionOfVariables
                   (NTSome "id") (NTSome "mask") (NTSome "question")
                   (NTSome "answer") (NTSome "authority") (NTSome "additional")
-                  Nil p)
+                  p)
     #env       (GLabelMap.empty (FuncSpec ADTValue)).
 Proof.
+  Opaque TelAppend.
+
   start_compiling.
   packet_start_compiling.
 
-  eapply (ProgOk_Add_snd_ret (DnsCacheAsCollectionOfVariables (NTSome "eMap") (NTSome "dMap") (NTSome "offs"))).
+Lemma ProgOk_Add_snd_ret'' :
+  forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+    {{ tenv }}
+      p1
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }}
+      p2
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq p1 p2)
+    {{ [[ kfst  <--  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  assumption.
+Qed.
 
-  eapply CompileSeq; [ | repeat compile_compose]; unfold DnsCacheAsCollectionOfVariables; _packet_encode_t.
+  apply (ProgOk_Add_snd_ret'' (DnsCacheAsCollectionOfVariables (NTSome "eMap") (NTSome "dMap") (NTSome "offs"))).
+
+  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
+  eapply CompileSeq; [ | eapply CompileCompose3 ].
 
   Focus.
+  _packet_encode_t.
+  Unfocused.
+
+  Focus.
+  _packet_encode_t.
+  Unfocused.
+
+  Focus.
+  _packet_encode_t.
   instantiate (1 := Assign "arg" (Var "pid")); admit.
-  keep_unmodified_packet.
+  Transparent TelAppend. simpl.
+  _packet_encode_t.
+  Ltac keep_pre :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match post with
+              | context[?x] => is_evar x; (unify x pre)
+              end).
+  keep_pre.
   instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   Unfocused.
 
+  intros.
+
+  repeat (eapply CompileCompose3; intros; try reflexivity).
+
+  Ltac tsimpl :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              let pre' := eval simpl in pre in
+                  change pre with pre').
+
   Focus.
+  tsimpl.
+  _packet_encode_t.
   instantiate (1 := Assign "arg" (Var "mask")); admit.
-  keep_unmodified_packet.
+  Ltac mod_first :=
+    match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              match constr:(pre, post) with
+              | (Cons _ _ (fun _ => ?tail), Cons _ _ (fun _ => ?f)) => is_evar f; (unify f tail)
+              end).
+  mod_first.
   instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   Unfocused.
 
   Focus.
+  tsimpl.
   _packet_encode_t.
-  keep_unmodified_packet.
+  mod_first.
   instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   Unfocused.
 
   Focus.
+  tsimpl.
   _packet_encode_t.
-  keep_unmodified_packet.
+  mod_first.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  Unfocused.
+
+  Focus.
+  tsimpl.
+  _packet_encode_t.
+  mod_first.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  Unfocused.
+
+  Focus.
+  tsimpl.
+  _packet_encode_t.
+  mod_first.
   instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
   Unfocused.
 
   Focus.
   _packet_encode_t.
-  keep_unmodified_packet.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  Unfocused.
+  _packet_encode_IList__rewrite_as_fold.
+  unfold DnsCacheAsCollectionOfVariables; simpl (TelAppend _ _).
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let tenvF_tl := split_tail_of_telescope post in
+            match tenvF_tl with
+            | (?tenvF, ?tl) =>
+              let vhead := gensym "head" in
+              let vtest := gensym "test" in
+              eapply (CompileLoop__many vhead vtest "question" tenvF tl)
+            end).
 
-  Focus.
-  _packet_encode_t.
-  keep_unmodified_packet.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  Unfocused.
+  2:unfold PacketAsCollectionOfVariables; simpl; decide_TelEq_instantiate.
 
-  Focus.
   _packet_encode_t.
-  (* intros ? (? & ?) *; simpl; unfold encode_question. *)
+  _packet_encode_t.
+  _packet_encode_t.
+
+  Lemma IList_encode'_body_as_compose :
+    forall {A HD bin : Type}
+      (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
+      (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
+      (xs : list A) (base : bin) (env : Cache.CacheEncode) acc (head: HD) f,
+      (IList.IList_encode'_body cache transformer f acc head) = (* Cache parameter isn't used *)
+      Compose.compose transformer (fun c => (fst acc, c)) (f head) (snd acc).
+  Proof.
+    intros; unfold IList.IList_encode'_body, Compose.compose; simpl.
+    destruct acc; simpl; destruct (f _ _); reflexivity.
+  Qed.
+
+  _packet_encode_t.
+  unfold IList.IList_encode'_body; destruct acc.
+
+  simpl (fst (_, _)).
+  simpl (snd (_, _)).
+
+  Lemma let_ret2 {A1 A2 B av}:
+    forall (xy: A1 * A2) (f: A1 -> A2 -> B) tenv (ext: StringMap.t (Value av)),
+    TelEq ext
+      ([[ ret (let (x, y) := xy in f x y) as fxy ]] :: tenv fxy)
+      ([[ ret xy as xy ]] :: tenv (f (fst xy) (snd xy))).
+  Proof.
+    intros (? & ?) *.
+    rewrite !Propagate_anonymous_ret; simpl.
+    reflexivity.
+  Qed.
+
+  rewrite let_ret2.
+
+  move_to_front "out".
+  Opaque Transformer.transform.
+  simpl.
+  Transparent Transformer.transform.
+
+Lemma CompileExtendLifetime':
+  forall {av A} {env ext} (k: NameTag av A) comp tenv tenv' prog dealloc,
+    {{ [[k <~~ comp as kk]] :: tenv kk }}
+      prog
+    {{ [[k <~~ comp as _]] :: tenv' }} ∪ {{ext}} // env ->
+    {{ [[k <~~ comp as _]] :: tenv' }}
+      dealloc
+    {{ [[comp as _]] :: tenv' }} ∪ {{ext}} // env ->
+    {{ [[k <~~ comp as kk]] :: tenv kk }}
+      (Seq prog dealloc)
+    {{ tenv' }} ∪ {{ext}} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+  (* move_to_front "head". *)
+  (* apply CompileExtendLifetime'. *)
+(* _packet_encode_t. *)
+
+change ( [[ret (encode_question head c) as xy]]
+      ::[[ ` "out" <-- Transformer.transform l (fst xy) as _]]
+        ::[[ ` "eMap" <-- DnsMap.eMap (snd xy) as _]]
+          ::[[ ` "dMap" <-- DnsMap.dMap (snd xy) as _]]
+            ::[[ ` "offs" <-- DnsMap.offs (snd xy) as _]]
+            ::[[ ` "id" <-- ` pid as _]]
+                ::[[ ` "mask" <-- ` pmask as _]]
+                  ::[[ ` "answer" <-- ` panswer as _]]
+                  ::[[ ` "authority" <-- ` pauthority as _]]::[[ ` "additional" <-- ` padditional as _]]::Nil)
+               with ([[ret (encode_question head c) as xy]]
+                       ::[[ ` "out" <-- Transformer.transform l (fst xy) as _]]
+                       :: (TelAppend ([[ ` "eMap" <-- DnsMap.eMap (snd xy) as _]]
+                                       ::[[ ` "dMap" <-- DnsMap.dMap (snd xy) as _]]
+                                       ::[[ ` "offs" <-- DnsMap.offs (snd xy) as _]]::Nil)
+                                    ([[ ` "id" <-- ` pid as _]]
+                                       ::[[ ` "mask" <-- ` pmask as _]]
+                                       ::[[ ` "answer" <-- ` panswer as _]]
+                                       ::[[ ` "authority" <-- ` pauthority as _]]
+                                       ::[[ ` "additional" <-- ` padditional as _]]::Nil))).
+
+repeat (eapply CompileCompose3; intros; try reflexivity); simpl (TelAppend _ _).
+
+  unfold SteppingCacheList.SteppingList_encode.
+  instantiate (1 := [[ ` "head" <-- head as _]]
+                     ::[[ ` "id" <-- ` pid as _]]
+                     ::[[ ` "mask" <-- ` pmask as _]]
+                     ::[[ ` "answer" <-- ` panswer as _]]
+                     ::[[ ` "authority" <-- ` pauthority as _]]
+                     ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit.
+
+  _packet_encode_t.
+  repeat lazymatch goal with
+         | [  |- context[Transformer.transform _ nil] ] => setoid_rewrite @Transformer.transform_id_right
+         end.
+  apply CompileSkip.
+
+  Stmt
+  
+  _packet_encode_t.
+  change ([[ ` "eMap" <-- DnsMap.eMap (snd encoded8) as _]]
+      ::[[ ` "dMap" <-- DnsMap.dMap (snd encoded8) as _]]
+        ::[[ ` "offs" <-- DnsMap.offs (snd encoded8) as _]]
+          ::[[ ` "id" <-- ` pid as _]]
+            ::[[ ` "mask" <-- ` pmask as _]]
+              ::[[ ` "answer" <-- ` panswer as _]]
+              ::[[ ` "authority" <-- ` pauthority as _]]::[[ ` "additional" <-- ` padditional as _]]::Nil)
+         with ((fun encoded8 => [[ ` "eMap" <-- DnsMap.eMap (snd encoded8) as _]]
+      ::[[ ` "dMap" <-- DnsMap.dMap (snd encoded8) as _]]
+        ::[[ ` "offs" <-- DnsMap.offs (snd encoded8) as _]]
+          ::[[ ` "id" <-- ` pid as _]]
+            ::[[ ` "mask" <-- ` pmask as _]]
+              ::[[ ` "answer" <-- ` panswer as _]]
+              ::[[ ` "authority" <-- ` pauthority as _]]::[[ ` "additional" <-- ` padditional as _]]::Nil) encoded8).
+  apply CompileSkip.
+
+  Focus 5.
+  cbv beta.
+  
+  reflexivity.
+
+  reflexivity.
+  reflexivity.
+  
+    
+  erewrite IList_encode'_body_as_compose.
+  destruct acc; _packet_encode_t.
+
+  
+  (* rewrite Compose_compose_acc. *)
+  (* unfold compose_acc, encode_continue. *)
+  unfold Compose.compose.
+  Lemma IList_encode'_body_with_compose :
+    forall {A HD bin : Type}
+      (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
+      subtransformer encode1 encode2
+      (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
+      (xs : list A) (base : bin) (env : Cache.CacheEncode) acc (head: HD),
+      Some (IList.IList_encode'_body
+         cache transformer
+         (fun x => @Compose.compose _ _ subtransformer (encode1 x) encode2)
+         acc head) = encode_continue transformer (fun x => @Compose.compose _ _ subtransformer (encode1 x) encode2) acc.
+  Proof.
+    intros; unfold IList.IList_encode'_body, Compose.compose.
+    destruct acc as (prev_stream & prev_cache) eqn:?.
+    destruct (encode1 _ _) as (new_stream1 & new_cache1) eqn:?.
+    destruct (encode2 _) as (new_stream2 & new_cache2) eqn:?.
+    
+    
+    unfold .
+ as (? & [? ? ?]). _packet_encode_t.
+  simpl. destruct head; simpl.
   instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question") nil); admit.
   Unfocused.
 
