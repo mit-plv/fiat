@@ -417,6 +417,7 @@ src/Parsers/Refinement/BinOpBrackets/ParenBalancedLemmas.v
 src/Parsers/Reflective/PartialUnfold.v
 src/Parsers/Reflective/Reify.v
 src/Parsers/Reflective/Semantics.v
+src/Parsers/Reflective/SemanticsOptimized.v
 src/Parsers/Reflective/Syntactify.v
 src/Parsers/Reflective/Syntax.v
 src/Parsers/Splitters/BruteForce.v
