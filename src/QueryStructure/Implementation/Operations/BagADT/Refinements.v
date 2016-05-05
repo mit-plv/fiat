@@ -55,7 +55,7 @@ Section BagsQueryStructureRefinements.
                   [{| KindIndexKind := StringId1; KindIndexIndex := m |};
                   {|
                   KindIndexKind := StringId1;
-                  KindIndexIndex := n |}]%vector :
+                  KindIndexIndex := n |}] :
             Type)
     (SearchTerm0 := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
                    [{|
