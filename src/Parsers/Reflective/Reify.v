@@ -5,6 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.List.Operations.
+Export Syntax.Coercions.
 Set Implicit Arguments.
 
 Local Open Scope list_scope.
@@ -15,7 +16,7 @@ Hint Extern 0 (cidtac_error ?msg0 ?msg1) => idtac "<infomsg>Error:" msg0 msg1 "<
 Ltac cidtac_error msg0 msg1 := constr:(_ : cidtac_error msg0 msg1).
 
 Ltac reify_TypeCode ty :=
-  match eval cbv beta in ty with
+  lazymatch eval cbv beta in ty with
   | interp_TypeCode ?T => T
   | ?ty
     => let ty' := (eval hnf in ty) in

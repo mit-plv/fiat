@@ -19,7 +19,9 @@ Inductive SimpleTypeCode : Set :=
 Inductive TypeCode : Set :=
 | csimple (T : SimpleTypeCode)
 | carrow (A B : TypeCode).
-Global Coercion csimple : SimpleTypeCode >-> TypeCode.
+Module Export TypeCodeCoercions.
+  Global Coercion csimple : SimpleTypeCode >-> TypeCode.
+End TypeCodeCoercions.
 Local Unset Boolean Equality Schemes.
 
 Bind Scope typecode_scope with TypeCode.
@@ -88,9 +90,6 @@ Section term.
   | RLC (_ : RLiteralConstructor T)
   | RLNC (_ : RLiteralNonConstructor T).
 
-  Coercion RLC : RLiteralConstructor >-> RLiteralTerm.
-  Coercion RLNC : RLiteralNonConstructor >-> RLiteralTerm.
-
   Inductive Term : TypeCode -> Type :=
   | RVar {T} (v : var T) : Term T
   | RLambda {A B} (f : var A -> Term B)
@@ -136,3 +135,27 @@ Arguments noargs {var T}.
 Infix "::" := an_arg : termargs_scope.
 
 Definition polyTerm T := forall var, Term var T.
+
+Local Notation rcStepT cbool :=
+  ((*Rchar_at_matches*)
+    (cnat --> (cascii --> cbool) --> cbool)
+      --> (*Rsplit_string_for_production*)
+      (cnat * (cnat * cnat) --> cnat --> cnat --> (clist cnat))
+      --> cnat --> cnat --> (cnat --> cnat --> cnat --> cbool) --> clist cnat --> cnat --> cnat --> cnat --> cbool)%typecode
+                                                                                                                   (only parsing).
+
+Inductive has_parse_term var : Type :=
+| RFix2
+    (G_length : nat) (up_to_G_length : list nat)
+    (f : Term var (rcStepT cbool))
+    (valid_len : nat)
+    (valids : list nat)
+    (nt_idx : nat).
+
+Definition polyhas_parse_term := forall var, has_parse_term var.
+
+Module Export Coercions.
+  Export TypeCodeCoercions.
+  Coercion RLC : RLiteralConstructor >-> RLiteralTerm.
+  Coercion RLNC : RLiteralNonConstructor >-> RLiteralTerm.
+End Coercions.
