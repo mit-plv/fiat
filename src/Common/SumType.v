@@ -30,14 +30,14 @@ Fixpoint inj_SumType {n}
                   SumType v
           with
           | Vector.nil => fun tag el => Fin.case0 _ tag
-          | Vector.cons T n' v' => fun tag el => _
+          | Vector.cons T n' v' => fun tag0 el1 => _
           end tag el).
-
-  generalize v' (inj_SumType n' v') el0; clear; pattern n', tag0; apply Fin.caseS; simpl; intros.
-  - destruct v'; simpl.
-    + exact el0.
+  generalize v' (inj_SumType n' v') el1; pattern n', tag0.
+  eapply Fin.caseS; simpl. 
+  - intros ? v'0 ? ?; destruct v'0; simpl.
+    + eapply el0.
     + exact (inl el0).
-  - destruct v'; simpl.
+  - intros ? p v'0 ? ?; destruct v'0; simpl.
     + exact (Fin.case0 _ p).
     + exact (inr (X p el0)).
 Defined.
@@ -49,13 +49,13 @@ Fixpoint SumType_index {n}
   refine (match v in Vector.t _ n return
                 SumType v -> Fin.t n
           with
-          | Vector.nil => fun el => match el with end
-          | Vector.cons T _ v' => fun el => _
+          | Vector.nil => fun el' => match el' with end
+          | Vector.cons T _ v' => fun el' => _
           end el).
   generalize (SumType_index _ v'); clear SumType_index; intros.
   destruct v'; simpl.
   - exact Fin.F1.
-  - destruct el0.
+  - destruct el'.
     + exact Fin.F1.
     + exact (Fin.FS (X s)).
 Defined.
@@ -67,13 +67,13 @@ Fixpoint SumType_proj {n}
   refine (match v in Vector.t _ n return
                 forall el : SumType v, v[@SumType_index v el]
           with
-          | Vector.nil => fun el => match el with end
-          | Vector.cons T _ v' => fun el => _
+          | Vector.nil => fun el' => match el' with end
+          | Vector.cons T _ v' => fun el' => _
           end el).
   generalize (SumType_proj _ v'); clear SumType_proj; intros.
   destruct v'; simpl.
-  - exact el0.
-  - destruct el0.
+  - exact el'.
+  - destruct el'.
     + exact t.
     + exact (X s).
 Defined.
