@@ -827,8 +827,8 @@ Ltac _packet_encode_cleanup :=
                   | [[ ret (_, _) as _]] :: _ =>
                     apply Propagate_anonymous_ret__fast
                   end)
-  | [  |- context[fst (?a, ?b)] ] => change (fst (a, b)) with a
-  | [  |- context[snd (?a, ?b)] ] => change (snd (a, b)) with b
+  | _ => progress (simpl (fst (_, _)); simpl (snd (_, _));
+                  simpl (DnsMap.eMap _); simpl (DnsMap.dMap _); simpl (DnsMap.offs _))
   | _ => progress autounfold with packet_autorewrite_db
   | _ => progress autorewrite with packet_autorewrite_db
   end.
