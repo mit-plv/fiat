@@ -340,17 +340,17 @@ Qed.
 Lemma CompileCallWrite16:
   forall {av} {W: FacadeWrapper av (list bool)}
     (vtmp varg vstream : string) (stream : list bool) (tenv tenv': Telescope av)
-    (n : N) (ext : GLabelMap.t (FuncSpec av))
+    (n : N) ext env
     pArg pNext fWrite16,
     {{ [[ ` vstream <-- stream as _]]::tenv }}
       pArg
-    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- Word.NToWord n as _]]::tenv }} ∪ {{ ∅ }} // ext ->
+    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- Word.NToWord n as _]]::tenv }} ∪ {{ ext }} // env ->
     {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv }}
       pNext
-    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ∅ }} // ext ->
+    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ [[ ` vstream <-- stream as _]]::tenv }}
       Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ∅ }} // ext.
+    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare.
   hoare.
@@ -358,14 +358,14 @@ Proof.
 Admitted.
 
 Ltac _compile_callWrite16 :=
-  simpl;
   match_ProgOk
     ltac:(fun prog pre post ext env =>
-            match constr:post with
+            let post' := eval simpl in post in
+            match post' with
             | [[ _ <-- _ ++ ?arg as _]] :: _ =>
               let vtmp := gensym "tmp" in
               let varg := gensym "arg" in
-              try match arg with ` ?arg => rewrite (EncodeAndPad_ListAsWord arg) end;
+              (* try match arg with ` ?arg => rewrite (EncodeAndPad_ListAsWord arg) end; *)
               eapply (CompileCallWrite16 vtmp varg)
             end).
 
