@@ -954,7 +954,6 @@ Proof.
   cbv zeta in *. setoid_rewrite Transformer.transform_id_left. eassumption.
 Qed.
 
-
 Lemma ProgOk_Add_snd_ret' :
   forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
     {{ tenv }}
@@ -977,6 +976,31 @@ Proof.
   assumption.
 Qed.
 
+
+Lemma ProgOk_Add_snd_ret'' :
+  forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+    {{ tenv }}
+      p1
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }}
+      p2
+    {{ [[ NTNone  <--  cpair as pair ]]
+         :: [[ kfst  <--  fst pair as p1 ]]
+         :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq p1 p2)
+    {{ [[ kfst  <--  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  assumption.
+Qed.
 
 Lemma CompileCompose2 :
   forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
@@ -1075,30 +1099,7 @@ Proof.
   start_compiling.
   packet_start_compiling.
 
-Lemma ProgOk_Add_snd_ret'' :
-  forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
-    {{ tenv }}
-      p1
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
-         :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
-         :: TelAppend (f (snd pair)) tenv' }}
-      p2
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
-         :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
-    {{ tenv }}
-      (Seq p1 p2)
-    {{ [[ kfst  <--  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
-Proof.
-  repeat hoare.
-  repeat setoid_rewrite Propagate_anonymous_ret.
-  repeat setoid_rewrite Propagate_anonymous_ret in H.
-  repeat setoid_rewrite Propagate_anonymous_ret in H0.
-  assumption.
-Qed.
+simpl (fst (_, _)); simpl (snd (_, _)); simpl (DnsMap.eMap _); simpl (DnsMap.dMap _); simpl (DnsMap.offs _).
 
   apply (ProgOk_Add_snd_ret'' (DnsCacheAsCollectionOfVariables (NTSome "eMap") (NTSome "dMap") (NTSome "offs"))).
 
@@ -1292,67 +1293,31 @@ repeat (eapply CompileCompose3; intros; try reflexivity); simpl (TelAppend _ _).
          end.
   apply CompileSkip.
 
-  Stmt
-  
+  unfold Enum.Enum_encode.
+  (* FIXME remove the rewrite from the FixInt tactic *)
+  autorewrite with packet_autorewrite_db. (* FIXME add a bunch of simpl calls *)
+  _packet_encode_t; simpl (DnsMap.eMap _); simpl (DnsMap.dMap _); simpl (DnsMap.offs _).
+  simpl.
+
+  _packet_encode_step.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit.
   _packet_encode_t.
-  change ([[ ` "eMap" <-- DnsMap.eMap (snd encoded8) as _]]
-      ::[[ ` "dMap" <-- DnsMap.dMap (snd encoded8) as _]]
-        ::[[ ` "offs" <-- DnsMap.offs (snd encoded8) as _]]
-          ::[[ ` "id" <-- ` pid as _]]
-            ::[[ ` "mask" <-- ` pmask as _]]
-              ::[[ ` "answer" <-- ` panswer as _]]
-              ::[[ ` "authority" <-- ` pauthority as _]]::[[ ` "additional" <-- ` padditional as _]]::Nil)
-         with ((fun encoded8 => [[ ` "eMap" <-- DnsMap.eMap (snd encoded8) as _]]
-      ::[[ ` "dMap" <-- DnsMap.dMap (snd encoded8) as _]]
-        ::[[ ` "offs" <-- DnsMap.offs (snd encoded8) as _]]
-          ::[[ ` "id" <-- ` pid as _]]
-            ::[[ ` "mask" <-- ` pmask as _]]
-              ::[[ ` "answer" <-- ` panswer as _]]
-              ::[[ ` "authority" <-- ` pauthority as _]]::[[ ` "additional" <-- ` padditional as _]]::Nil) encoded8).
-  apply CompileSkip.
+  mod_first.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
+  unfold Enum.Enum_encode.
+  _packet_encode_step.
+  _packet_encode_t; simpl (DnsMap.eMap _); simpl (DnsMap.dMap _); simpl (DnsMap.offs _).
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit.
+  mod_first.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
+  _packet_encode_step.
 
-  Focus 5.
-  cbv beta.
-  
-  reflexivity.
-
-  reflexivity.
-  reflexivity.
-  
-    
-  erewrite IList_encode'_body_as_compose.
-  destruct acc; _packet_encode_t.
-
-  
-  (* rewrite Compose_compose_acc. *)
-  (* unfold compose_acc, encode_continue. *)
-  unfold Compose.compose.
-  Lemma IList_encode'_body_with_compose :
-    forall {A HD bin : Type}
-      (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
-      subtransformer encode1 encode2
-      (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
-      (xs : list A) (base : bin) (env : Cache.CacheEncode) acc (head: HD),
-      Some (IList.IList_encode'_body
-         cache transformer
-         (fun x => @Compose.compose _ _ subtransformer (encode1 x) encode2)
-         acc head) = encode_continue transformer (fun x => @Compose.compose _ _ subtransformer (encode1 x) encode2) acc.
-  Proof.
-    intros; unfold IList.IList_encode'_body, Compose.compose.
-    destruct acc as (prev_stream & prev_cache) eqn:?.
-    destruct (encode1 _ _) as (new_stream1 & new_cache1) eqn:?.
-    destruct (encode2 _) as (new_stream2 & new_cache2) eqn:?.
-    
-    
-    unfold .
- as (? & [? ? ?]). _packet_encode_t.
-  simpl. destruct head; simpl.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question") nil); admit.
-  Unfocused.
-
-  (* Note: One could also never unfold PacketAsCollectionOfVariables and
-     DnsCacheAsCollectionOfVariables (and instead find the variable to loop on
-     by copying the precondition into the context and unfolding locally. *)
+  repeat lazymatch goal with
+         | [  |- context[Transformer.transform nil _] ] => setoid_rewrite @Transformer.transform_id_left
+         | [  |- context[Transformer.transform _ nil] ] => setoid_rewrite @Transformer.transform_id_right
+         end.
+  _packet_encode_t.
+  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate question") nil); admit.
 
   Focus.
   _packet_encode_t.
