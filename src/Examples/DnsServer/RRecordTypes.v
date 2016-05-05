@@ -183,6 +183,9 @@ Section RData.
 
   Definition timeT := W.
 
+  Definition natTotimeT (n : nat) : timeT := natToWord _ n.
+  Coercion natTotimeT : nat >-> timeT.
+
   Definition SOAHeading :=                 (* Start of Authority *)
     < "sourcehost" :: DomainName, (* Primary Master for the domain. *)
     "contact_email" :: DomainName, (* Administrator's email address. *)

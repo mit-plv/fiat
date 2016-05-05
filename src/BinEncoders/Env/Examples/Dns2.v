@@ -78,7 +78,7 @@ Section DnsPacket.
   Then encode_nat 16 (|p!"answers"|)
   Then encode_nat 16 (|p!"authority"|)
   Then encode_nat 16 (|p!"additional"|)
-  Then encode_question p!"questions"
+  Then encode_question p!"question"
   Then encode_list encode_resource p!"answers"
   Then encode_list encode_resource p!"additional"
   Then encode_list encode_resource p!"authority"

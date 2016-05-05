@@ -17,12 +17,12 @@ Section QTypes.
   (* DNS packet Query Types are a superset of RR Types. *)
   Definition QTypes :=
     ["TKEY"; (* Transaction Key 	[RFC2930] *)
-       "TSIG"; (* Transaction Signature 	[RFC2845] *)
-       "IXFR"; (* incremental transfer 	[RFC1995] *)
-       "AXFR"; (* transfer of an entire zone 	[RFC1035][RFC5936] *)
-       "MAILB"; (* mailbox-related RRs (MB, MG or MR) 	[RFC1035] *)
-       "MAILA"; (* mail agent RRs (OBSOLETE - see MX) 	[RFC1035] *)
-       "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
+     "TSIG"; (* Transaction Signature 	[RFC2845] *)
+     "IXFR"; (* incremental transfer 	[RFC1995] *)
+     "AXFR"; (* transfer of an entire zone 	[RFC1035][RFC5936] *)
+     "MAILB"; (* mailbox-related RRs (MB, MG or MR) 	[RFC1035] *)
+     "MAILA"; (* mail agent RRs (OBSOLETE - see MX) 	[RFC1035] *)
+     "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ].
 
   Definition QType := BoundedString (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
@@ -269,8 +269,11 @@ Section Packet.
 +---------------------+
    *)
 
+(* Unique Request IDs *)
+Definition ID : Type := word 16.
+
   Definition packetHeading :=
-    < "id" :: word 16, (* 16 bit Word. *)
+    < "id" :: ID, (* 16 bit Word. *)
       "QR" :: bool, (* is packet a query (0), or a response (1) *)
       "Opcode" :: OpCode, (* kind of query in packet *)
       "AA" :: bool, (* is responding server authorative *)
@@ -278,7 +281,7 @@ Section Packet.
       "RD" :: bool, (* are recursive queries desired *)
       "RA" :: bool, (* are recursive queries supported by responding server *)
       "RCODE" :: ResponseCode, (* response code *)
-      "questions" :: question, (* `list question` in case we can have multiple questions? *)
+      "question" :: question, (* `list question` in case we can have multiple questions? *)
       "answers" :: list resourceRecord,
       "authority" :: list resourceRecord,
       "additional" :: list resourceRecord >%Heading.

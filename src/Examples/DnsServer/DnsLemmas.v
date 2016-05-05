@@ -552,7 +552,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
          (r_n : QueryStructure DnsSchema),
     (* TODO *)
     For (r in r_n!sRRecords)
-        (Where (IsPrefix r!sNAME ((n!"questions"!"qname" ))) (* Where Predicate ... *)
+        (Where (IsPrefix r!sNAME ((n!"question"!"qname" ))) (* Where Predicate ... *)
                Return r ) ↝ a ->
     forall (t t' : resourceRecord) (n0 n' : nat),
       n0 <> n' ->
