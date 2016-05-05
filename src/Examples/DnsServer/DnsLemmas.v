@@ -17,6 +17,57 @@ Require Import
 
 Open Scope list_scope.
 
+Lemma beq_OurRRecordType_dec :
+  forall rr rr', ?[OurRRecordType_dec rr rr'] = beq_OurRRecordType rr rr'.
+Proof.
+  intros; find_if_inside; subst.
+  symmetry; apply (BoundedIndex_beq_refl rr').
+  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+Qed.
+
+(* Instances used in DecideableEnsemble. *)
+Global Instance Query_eq_OurRRecordType :
+  Query_eq OurRRecordType := {| A_eq_dec := OurRRecordType_dec |}.
+
+
+Lemma beq_RRecordType_dec :
+  forall rr rr', ?[RRecordType_dec rr rr'] = beq_RRecordType rr rr'.
+Proof.
+  intros; find_if_inside; subst.
+  symmetry; apply (BoundedIndex_beq_refl rr').
+  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+Qed.
+
+(* Instances used in DecideableEnsemble. *)
+Global Instance Query_eq_RRecordType :
+  Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
+
+Global Instance Query_eq_name :
+  Query_eq DomainName := {| A_eq_dec := list_eq_dec string_dec |}.
+
+Lemma beq_QType_dec :
+  forall a b, ?[QType_dec a b] = beq_QType a b.
+Proof.
+  intros; find_if_inside; subst.
+  eauto using BoundedIndex_beq_refl.
+  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+Qed.
+
+(* Instances used in DecideableEnsemble. *)
+Global Instance Query_eq_QType :
+  Query_eq QType := {| A_eq_dec := QType_dec |}.
+
+Global Instance Query_eq_RRecordClass :
+  Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
+
+Global Instance Query_eq_QClass :
+  Query_eq QClass := {| A_eq_dec := QClass_dec |}.
+
+Global Instance Query_eq_ResponseCode :
+  Query_eq ResponseCode := {| A_eq_dec := ResponseCode_dec |}.
+
+Global Instance Query_eq_OpCode :
+  Query_eq OpCode := {| A_eq_dec := OpCode_dec |}.
 
 (* Refinement lemmas *)
 
@@ -304,10 +355,10 @@ Proof.
                              assert (DecideableEnsemble P') as H2;
                              [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
                              | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-  (* apply @DecideableEnsemble_And.  apply DecideableEnsemble_EqDec.
+(* apply @DecideableEnsemble_And.  apply DecideableEnsemble_EqDec.
   apply Query_eq_list. apply DecideableEnsemble_EqDec. apply Query_eq_RRecordType.
   Print Instances DecideableEnsemble. *)
-  simplify with monad laws.
+ simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
 Qed.
 

@@ -57,6 +57,7 @@ src/BinEncoders/Env/Lib2/FixList.v
 src/BinEncoders/Env/Lib2/Nat.v
 src/BinEncoders/Env/Lib2/SteppingList.v
 src/BinEncoders/Env/Lib2/String.v
+src/BinEncoders/Env/Lib2/SumType.v
 src/BinEncoders/Env/Lib2/Word.v
 src/BinEncoders/NoEnv/Specs.v
 src/BinEncoders/NoEnv/Automation/Solver.v
@@ -158,6 +159,7 @@ src/Common/StringBound.v
 src/Common/StringFacts.v
 src/Common/StringOperations.v
 src/Common/String_as_OT.v
+src/Common/SumType.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v

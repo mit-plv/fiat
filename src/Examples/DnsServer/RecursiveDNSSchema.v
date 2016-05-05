@@ -2,18 +2,22 @@ Require Import
         Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Lists.List
-        Bedrock.Word
-        Bedrock.Memory
-        Fiat.Computation.ListComputations.
+        Coq.Lists.List.
 
 Require Import
+        Fiat.Common.SumType
+        Fiat.Computation.ListComputations
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.Examples.DnsServer.Packet.
 
+Require Import
+        Bedrock.Word
+        Bedrock.Memory.
+
+
 Import Coq.Vectors.VectorDef.VectorNotations.
 
-Local Open Scope vector.
+Local Open Scope vector_scope.
 
 (* The schema, packet structure, and spec are based on the following four RFCs:
 
@@ -82,9 +86,9 @@ Local Open Scope Heading_scope.
 (* discarding stale requests. *)
 Definition RequestHeading : Heading :=
   < sID :: ID,    (* unique, ascending *)
-    sIP :: W,     (* IP address of the request source*)
-    sTTL :: timeT > (* Timeout for request *)
-    ++ packetHeading.
+  sIP :: W,     (* IP address of the request source*)
+  sTTL :: timeT > (* Timeout for request *)
+  ++ packetHeading.
 
 (* The heading of current resource records for known servers *)
 (* (called the SLIST in RFC 1035); these records are augmented *)
@@ -95,9 +99,9 @@ Definition RequestHeading : Heading :=
 (* list. *)
 Definition SLISTHeading :=
   < sQUERYCOUNT :: W, (* number of times we've queried this server *)
-    sTTL :: timeT, (* remaining time to live of known server *)
-    sDOMAIN :: DomainName, (* Domain of known server *)
-    sIP :: W > (* Address of server. *).
+  sTTL :: timeT, (* remaining time to live of known server *)
+  sDOMAIN :: DomainName, (* Domain of known server *)
+  sIP :: W > (* Address of server. *).
 
 (* The cache holds either answers (resource records returned by a *)
 (* query) or failures (negative responses). *)
@@ -135,18 +139,18 @@ Coercion Failure2CachedValue : FailureRecord >-> CachedValue.
 
 Definition CacheHeading :=
   < sTTL :: timeT, (* Lifetime of cached value *)
-    sCACHETYPE :: CacheType, (* Type of cached value *)
-    sDOMAIN:: DomainName, (* Domain of cached Query*)
-    sQTYPE :: CachedQueryTypes,  (* Type of cached query *)
-    sCACHEDVALUE :: CachedValue >. (* Cached data *)
+  sCACHETYPE :: CacheType, (* Type of cached value *)
+  sDOMAIN:: DomainName, (* Domain of cached Query*)
+  sQTYPE :: CachedQueryTypes,  (* Type of cached query *)
+  sCACHEDVALUE :: CachedValue >. (* Cached data *)
 
 Definition RecResolverSchema :=
   Query Structure Schema
         [ relation sREQUESTS has schema RequestHeading;
 
-          relation sSLIST has schema SLISTHeading;
+            relation sSLIST has schema SLISTHeading;
 
-          relation sCACHE has schema CacheHeading ]
+            relation sCACHE has schema CacheHeading ]
         enforcing [ ].
 
 (* Should probably restrict cache to have either an answer *)
@@ -155,3 +159,56 @@ Definition RecResolverSchema :=
 Definition requestTTL : timeT := 500.
 Definition serverTTL : timeT := 500.
 Definition cachedTTL : timeT := 500.
+
+Definition IsComputedField
+             {heading}
+             (idx idx' : BoundedString (HeadingNames heading))
+             (f : Domain heading (ibound (indexb idx))
+                  -> Domain heading (ibound (indexb idx')))
+             (tup : @Tuple heading)
+    : Prop :=
+    f (GetAttribute tup idx) = GetAttribute tup idx'.
+
+  (* Could use above to prove dependent inversion lemma, but *)
+  (* this is more of a sanity check than anything. *)
+  (* Lemma proj_SumType_inj_inverse {n}
+    : forall (v : Vector.t Type n)
+             (tag : Fin.t n)
+             (el : Vector.nth v tag),
+      SumType_proj v (inj_SumType v tag el) = el. *)
+
+  (* Goal: Convert from QueryStructure with a heading with a SumType *)
+  (* attribute to one that has multiple tables. *)
+  (* Is this a worthwhile refinement? We could just do this at data structure *)
+  (* selection time. OTOH, nice high-level refinement step that makes sense to *)
+  (* end-users and has applications in both DNS examples.  *)
+
+  Definition EnumIDs := ["A"; "NS"; "CNAME"; "SOA" ].
+  Definition EnumID := BoundedString EnumIDs.
+  Definition EnumTypes := [nat : Type; string : Type; nat : Type; list nat : Type].
+  Definition EnumType := SumType EnumTypes.
+
+  Definition EESchema :=
+      Query Structure Schema
+        [ relation "foo" has
+                   schema <"A" :: nat, "BID" :: EnumID, "B" :: EnumType>
+                   where (fun t => ibound (indexb t!"BID") = SumType_index _ t!"B" ) and (fun t t' => True);
+          relation "bar" has
+                   schema <"C" :: nat, "D" :: list string>
+        ]
+        enforcing [ ].
+
+  Definition EESpec : ADT _ :=
+    Def ADT {
+      rep := QueryStructure EESchema,
+
+    Def Constructor "Init" : rep := empty,,
+
+    Def Method1 "AddData" (this : rep) (t : _) : rep * bool :=
+      Insert t into this!"foo",
+
+    Def Method1 "Process" (this : rep) (p : EnumID) : rep * list _ :=
+      results <- For (r in this!"foo")
+                     Where (r!"BID" = p)
+                     Return r;
+    ret (this, results)}.

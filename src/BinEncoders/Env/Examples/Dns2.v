@@ -1,18 +1,26 @@
 Require Import
-        Fiat.Examples.DnsServer.Packet
-        Fiat.QueryStructure.Automation.AutoDB.
+        Coq.Strings.String
+        Coq.Vectors.Vector.
+
 Require Import
+        Fiat.Examples.DnsServer.Packet
+        Fiat.Common.SumType
+        Fiat.Common.BoundedLookup
+        Fiat.Common.ilist
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Lib2.Word
         Fiat.BinEncoders.Env.Lib2.Nat
         Fiat.BinEncoders.Env.Lib2.String
         Fiat.BinEncoders.Env.Lib2.FixList
-        Fiat.BinEncoders.Env.Lib2.SteppingList
-        Fiat.QueryStructure.Specification.Representation.Tuple.
+        Fiat.BinEncoders.Env.Lib2.SumType
+        Fiat.BinEncoders.Env.Lib2.SteppingList.
+
 Require Import
-        Coq.Strings.String
-        Coq.Vectors.Vector
         Bedrock.Word.
 
 Import Coq.Vectors.VectorDef.VectorNotations.
@@ -29,7 +37,7 @@ Section DnsPacket.
   Variable transformer : Transformer bin.
   Variable transformerUnit : TransformerUnit transformer bool.
 
-  Notation encoder x := (x -> CacheEncode -> bin * CacheEncode).
+  Notation encoder x := (x ->  CacheEncode -> bin * CacheEncode).
   Notation decoder x := (bin -> CacheDecode -> x * bin * CacheDecode).
   Variable encode_enum :
     forall (sz : nat) (A B : Type) (ta : t A sz) (tb : t B sz),
@@ -50,18 +58,58 @@ Section DnsPacket.
   Variable Opcode_Ws : t (word 4) 4.
   Variable RCODE_Ws : t (word 4) 12.
 
+
+
   Definition encode_question (q : question) :=
        encode_list encode_string q!"qname"
   Then encode_enum QType_Ws encode_word q!"qtype"
   Then encode_enum QClass_Ws encode_word q!"qclass"
   Done.
 
+  Definition encode_SOA_RDATA (soa : SOA_RDATA) :=
+       encode_list encode_string soa!"sourcehost"
+  Then encode_list encode_string soa!"contact_email"
+  Then encode_word soa!"serial"
+  Then encode_word soa!"refresh"
+  Then encode_word soa!"retry"
+  Then encode_word soa!"expire"
+  Then encode_word soa!"minTTL"
+  Done.
+
+  Definition encode_WKS_RDATA (wks : WKS_RDATA) :=
+       encode_word wks!"Address"
+  Then encode_word wks!"Protocol"
+  Then encode_list encode_word wks!"Bit-Map"
+  Done.
+
+  Definition encode_HINFO_RDATA (hinfo : HINFO_RDATA) :=
+       encode_string hinfo!"CPU"
+  Then encode_string hinfo!"OS"
+  Done.
+
+  Definition encode_MX_RDATA (mx : MX_RDATA) :=
+       encode_word mx!"Preference"
+  Then encode_list encode_string mx!"Exchange"
+  Done.
+
+  Definition encode_rdata : encoder RDataType :=
+  encode_SumType ResourceRecordTypeTypes
+  (icons encode_word
+  (icons (encode_list encode_string)
+  (icons (encode_list encode_string)
+  (icons encode_SOA_RDATA
+  (icons encode_WKS_RDATA
+  (icons (encode_list encode_string)
+  (icons encode_HINFO_RDATA
+  (icons (encode_list encode_string)
+  (icons encode_MX_RDATA (icons encode_string inil)))))))))).
+
   Definition encode_resource (r : resourceRecord) :=
        encode_list encode_string r!sNAME
   Then encode_enum RRecordType_Ws encode_word r!sTYPE
   Then encode_enum RRecordClass_Ws encode_word r!sCLASS
   Then encode_word r!sTTL
-  (* Then encode_string r!sRDATA *)
+  Then encode_rdata r!sRDATA
   Done.
 
   Definition encode_packet (p : packet) :=
@@ -88,54 +136,74 @@ Section DnsPacket.
   : { decode | encode_decode_correct cache transformer (fun _ => True) encode_packet decode }.
   Proof.
     eexists.
-  Admitted.
-(*    eapply compose_encode_correct.
-      eapply encode_decode_word.
+
+    eapply compose_encode_correct.
+      eapply Word_decode_correct.
+      solve_predicate. intro.
+
+      eapply compose_encode_correct.
+      eapply Word_decode_correct.
+      solve_predicate. intro.
+
+      eapply compose_encode_correct.
+      eapply encode_decode_enum.
+      eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
+    eapply Word_decode_correct.
+      solve_predicate. intro.
+
+      eapply compose_encode_correct.
+      eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_enum. eapply encode_decode_word.
+    eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
+    eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
+    eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
+    eapply encode_decode_enum.
+    eapply Word_decode_correct.
       solve_predicate. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
-      solve_predicate. intro.
+      eapply Nat_decode_correct.
+      admit. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_word.
-      solve_predicate. intro.
+      eapply Nat_decode_correct.
+      admit. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_enum. eapply encode_decode_word.
-      solve_predicate. intro.
+      eapply Nat_decode_correct.
+      admit. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_nat.
-      solve_predicate. intro.
+    eapply Nat_decode_correct.
+    admit. intro.
 
     eapply compose_encode_correct.
-      eapply encode_decode_nat.
-      solve_predicate. intro.
+  Abort.
+  (*{ unfold encode_question.
+      eapply compose_encode_correct.
 
-    eapply compose_encode_correct.
-      eapply encode_decode_nat.
-      solve_predicate. intro.
+      eapply FixList_decode_correct.
+      eapply String_decode_correct.
+      simpl.
+      solve_predicate.
+    eapply Nat_decode_correct.
+    admit. intro.
+
+    solve_predicate. intro.
 
     eapply compose_encode_correct.
       eapply encode_decode_nat.

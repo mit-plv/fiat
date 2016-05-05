@@ -1,18 +1,33 @@
 Require Import
         Coq.Vectors.Vector
+        Coq.omega.Omega
         Coq.Strings.Ascii
+        Coq.Strings.String
         Coq.Bool.Bool
-        Coq.Bool.Bvector
-        Coq.Lists.List
+        Coq.Vectors.VectorDef
+        Coq.Lists.List.
+
+Require Import
+        Fiat.Common.BoundedLookup
+        Fiat.Common.SumType
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple.
+
+Require Import
         Bedrock.Word
-        Bedrock.Memory
-        Fiat.QueryStructure.Automation.AutoDB.
+        Bedrock.Memory.
+
+Import Coq.Lists.List.ListNotations.
+Import Coq.Vectors.VectorDef.VectorNotations.
+
+Local Open Scope string_scope.
+Local Open Scope Tuple_scope.
+Local Open Scope vector_scope.
 
 Require Export Fiat.Examples.DnsServer.RRecordTypes.
 
 Section QTypes.
-
-  Local Open Scope vector.
 
   (* DNS packet Query Types are a superset of RR Types. *)
   Definition QTypes :=
@@ -42,19 +57,7 @@ Section QTypes.
     intros; eapply BoundedIndex_beq_sym.
   Qed.
 
-  Lemma beq_QType_dec :
-    forall a b, ?[QType_dec a b] = beq_QType a b.
-  Proof.
-    intros; find_if_inside; subst.
-    eauto using BoundedIndex_beq_refl.
-    symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
-  Qed.
-
   Coercion QType_inj : RRecordType >-> QType.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_QType :
-    Query_eq QType := {| A_eq_dec := QType_dec |}.
 
   Definition QType_match (rtype : RRecordType) (qtype : QType) :=
     qtype = ``"STAR" \/ qtype = rtype.
@@ -67,7 +70,7 @@ Section RRecordClass.
     [ "Internet"; (* (IN) 	[RFC1035] *)
         "Chaos"; (* (CH) 	[D. Moon, "Chaosnet", A.I. Memo 628, Massachusetts Institute of Technology Artificial Intelligence Laboratory, June 1981.] *)
         "Hesiod" (* (HS) 	[Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.] *)
-    ]%vector.
+    ].
 
   Definition RRecordClass := BoundedString RRecordClasses.
 
@@ -77,13 +80,9 @@ Section RRecordClass.
   Definition RRecordClass_dec (a b : RRecordClass) :=
     BoundedIndex_eq_dec a b.
 
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_RRecordClass :
-    Query_eq RRecordClass := {| A_eq_dec := RRecordClass_dec |}.
-
   (* DNS Packet Question Classes *)
   Definition QClass :=
-    BoundedString (RRecordClasses ++ ["Any"]%vector).
+    BoundedString (RRecordClasses ++ ["Any"]).
 
   Definition QClass_inj (qclass : RRecordClass) : QClass :=
     BoundedIndex_injR qclass.
@@ -93,10 +92,6 @@ Section RRecordClass.
 
   Definition QClass_dec (a b : QClass) :=
     BoundedIndex_eq_dec a b.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_QClass :
-    Query_eq QClass := {| A_eq_dec := QClass_dec |}.
 
 End RRecordClass.
 
@@ -115,7 +110,7 @@ Section ResponseCode.
        "NotAuth";  (* Server Not Authoritative for zone 	[RFC2136] *)
        "NotAuth";  (* Not Authorized [RFC2845] *)
        "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
-    ]%vector.
+    ].
 
   Definition ResponseCode := BoundedString ResponseCodes.
 
@@ -124,10 +119,6 @@ Section ResponseCode.
 
   Definition ResponseCode_dec (a b : ResponseCode) :=
     BoundedIndex_eq_dec a b.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_ResponseCode :
-    Query_eq ResponseCode := {| A_eq_dec := ResponseCode_dec |}.
 End ResponseCode.
 
 Section OpCode.
@@ -137,7 +128,7 @@ Section OpCode.
      "IQuery"; (* Inverse Query  OBSOLETE) [RFC3425] *)
      "Status"; (* [RFC1035] *)
      "Notify"  (* [RFC1996] [RFC2136] *)
-    ]%vector.
+    ].
 
   Definition OpCode := BoundedString OpCodes.
 
@@ -147,9 +138,6 @@ Section OpCode.
   Definition OpCode_dec (a b : OpCode) :=
     BoundedIndex_eq_dec a b.
 
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_OpCode :
-    Query_eq OpCode := {| A_eq_dec := OpCode_dec |}.
 End OpCode.
 
 Section Packet.
@@ -294,9 +282,9 @@ Definition ID : Type := word 16.
     p ○ [ "AA" ::= is_authority; (* Update Authority field *)
             "QR" ::= true; (* Set response flag to true *)
             "RCODE" ::= rcode;
-            "answers" ::= [ ];
-            "authority"  ::= [ ];
-            "additional" ::= [ ] ].
+            "answers" ::= nil;
+            "authority"  ::= nil;
+            "additional" ::= nil ].
 
   (* add a resource record to a packet's answers *)
   Definition add_answer (p : packet) (t : resourceRecord) :=
@@ -323,6 +311,12 @@ Definition ID : Type := word 16.
     match p!"answers", p!"authority", p!"additional" with
     | nil, nil, nil => true
     | _, _, _ => false
+    end.
+
+  Definition is_empty {A} (l : list A) : bool :=
+    match l with
+    | [ ] => true
+    | _ => false
     end.
 
   Definition isAnswer (p : packet) := negb (is_empty (p!"answers")).

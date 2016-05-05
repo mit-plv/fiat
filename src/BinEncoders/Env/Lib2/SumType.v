@@ -1,7 +1,9 @@
 Require Import
         Fiat.Common.ilist
+        Fiat.Common.SumType
         Fiat.Examples.DnsServer.Packet
         Fiat.BinEncoders.Env.Common.Specs.
+
 Require Import
         Coq.Sets.Ensembles
         Bedrock.Word.
@@ -105,3 +107,5 @@ Section SumType.
         congruence.
   Qed.
 End SumType.
+
+Arguments SumType : simpl never.

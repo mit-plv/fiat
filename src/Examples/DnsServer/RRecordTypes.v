@@ -2,15 +2,25 @@ Require Import
         Coq.Vectors.Vector
         Coq.omega.Omega
         Coq.Strings.Ascii
+        Coq.Strings.String
         Coq.Bool.Bool
         Coq.Vectors.VectorDef
-        Coq.Lists.List
+        Coq.Lists.List.
+
+Require Import
+        Fiat.Common.BoundedLookup
+        Fiat.Common.SumType
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple.
+
+Require Import
         Bedrock.Word
-        Bedrock.Memory
-        Fiat.QueryStructure.Automation.AutoDB.
+        Bedrock.Memory.
 
 Import Coq.Vectors.VectorDef.VectorNotations.
-Local Open Scope vector.
+Local Open Scope vector_scope.
+Local Open Scope string_scope.
 
 (* Resource record type and data definitions. *)
 
@@ -50,18 +60,6 @@ Section RRecordTypes.
   Proof.
     intros; eapply BoundedIndex_beq_sym.
   Qed.
-
-  Lemma beq_OurRRecordType_dec :
-    forall rr rr', ?[OurRRecordType_dec rr rr'] = beq_OurRRecordType rr rr'.
-  Proof.
-    intros; find_if_inside; subst.
-    symmetry; apply (BoundedIndex_beq_refl rr').
-    symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
-  Qed.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_OurRRecordType :
-    Query_eq OurRRecordType := {| A_eq_dec := OurRRecordType_dec |}.
 
   (* Enumeration of the full set of Resource Record Types. *)
   Definition ExtraRRecordTypes :=
@@ -140,18 +138,6 @@ Section RRecordTypes.
     intros; eapply BoundedIndex_beq_sym.
   Qed.
 
-  Lemma beq_RRecordType_dec :
-    forall rr rr', ?[RRecordType_dec rr rr'] = beq_RRecordType rr rr'.
-  Proof.
-    intros; find_if_inside; subst.
-    symmetry; apply (BoundedIndex_beq_refl rr').
-    symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
-  Qed.
-
-  (* Instances used in DecideableEnsemble. *)
-  Global Instance Query_eq_RRecordType :
-    Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
-
 End RRecordTypes.
 
 Section RData.
@@ -161,6 +147,7 @@ Section RData.
   (* types here for non-obsolete record types from RFC 1035. *)
 
   (* A label is a list of ascii characters (string) *)
+  Print string.
   Definition Label := string.
   (* A domain name is a list of labels. *)
   Definition DomainName : Type := list Label.
@@ -171,11 +158,10 @@ Section RData.
   Lemma beq_name_dec
     : forall (a b : DomainName), beq_name a b = true <-> a = b.
   Proof.
-    unfold beq_name; intros; find_if_inside; intuition; intros; congruence.
+    unfold beq_name; intros;
+      destruct (list_eq_dec string_dec a b);
+      intuition; intros; congruence.
   Qed.
-
-  Global Instance Query_eq_name :
-    Query_eq DomainName := {| A_eq_dec := list_eq_dec string_dec |}.
 
   (* Start of Authority (SOA) Records *)
   (* The start of authority record stores information about *)
@@ -188,12 +174,12 @@ Section RData.
 
   Definition SOAHeading :=                 (* Start of Authority *)
     < "sourcehost" :: DomainName, (* Primary Master for the domain. *)
-    "contact_email" :: DomainName, (* Administrator's email address. *)
-    "serial" :: W,             (* revision # of zone file; needs to be updated *)
-    "refresh" :: timeT,
-    "retry" :: timeT,              (* failed zone transfer *)
-    "expire" :: timeT,           (* complete a zone transfer *)
-    "minTTL" :: timeT >%Heading.           (* for negative queries *)
+      "contact_email" :: DomainName, (* Administrator's email address. *)
+      "serial" :: W,             (* revision # of zone file; needs to be updated *)
+      "refresh" :: timeT,
+      "retry" :: timeT,              (* failed zone transfer *)
+      "expire" :: timeT,           (* complete a zone transfer *)
+      "minTTL" :: timeT >%Heading.           (* for negative queries *)
   Definition SOA_RDATA := @Tuple SOAHeading.
 
   (* Host information (HINFO) Records *)
@@ -213,159 +199,6 @@ Section RData.
       "Bit-Map"  :: list (word 8)>%Heading.
   Definition WKS_RDATA : Type := @Tuple WKSHeading.
 
-  (* The RDATA field is a variant type built from these building blocks. *)
-
-  Fixpoint SumType {n} (v : Vector.t Type n) {struct v} : Type :=
-    match v with
-    | Vector.nil => (False : Type)
-    | Vector.cons T _ Vector.nil => T
-    | Vector.cons T _ v' => T + (SumType v')
-    end%type.
-
-  Arguments SumType : simpl never.
-
-  Fixpoint inj_SumType {n}
-             (v : Vector.t Type n)
-             (tag : Fin.t n)
-             (el : Vector.nth v tag)
-    {struct v} : SumType v.
-    refine (match v in Vector.t _ n return
-                  forall
-                    (tag : Fin.t n)
-                    (el : Vector.nth v tag),
-                    SumType v
-            with
-            | Vector.nil => fun tag el => Fin.case0 _ tag
-            | Vector.cons T n' v' => fun tag el => _
-            end tag el).
-
-    generalize v' (inj_SumType n' v') el0; clear; pattern n', tag0; apply Fin.caseS; simpl; intros.
-    - destruct v'; simpl.
-      + exact el0.
-      + exact (inl el0).
-    - destruct v'; simpl.
-      + exact (Fin.case0 _ p).
-      + exact (inr (X p el0)).
-  Defined.
-
-  Fixpoint SumType_index {n}
-             (v : Vector.t Type n)
-             (el : SumType v)
-    {struct v} : Fin.t n.
-    refine (match v in Vector.t _ n return
-                  SumType v -> Fin.t n
-            with
-            | Vector.nil => fun el => match el with end
-            | Vector.cons T _ v' => fun el => _
-            end el).
-    generalize (SumType_index _ v'); clear SumType_index; intros.
-    destruct v'; simpl.
-    - exact Fin.F1.
-    - destruct el0.
-      + exact Fin.F1.
-      + exact (Fin.FS (X s)).
-  Defined.
-
-  Fixpoint SumType_proj {n}
-           (v : Vector.t Type n)
-           (el : SumType v)
-           {struct v} : v[@SumType_index v el].
-    refine (match v in Vector.t _ n return
-                  forall el : SumType v, v[@SumType_index v el]
-            with
-            | Vector.nil => fun el => match el with end
-            | Vector.cons T _ v' => fun el => _
-            end el).
-    generalize (SumType_proj _ v'); clear SumType_proj; intros.
-    destruct v'; simpl.
-    - exact el0.
-    - destruct el0.
-      + exact t.
-      + exact (X s).
-  Defined.
-
-  Lemma inj_SumType_proj_inverse {n}
-    : forall (v : Vector.t Type n)
-             (el : SumType v),
-      inj_SumType v _ (SumType_proj v el) = el.
-  Proof.
-    induction v; simpl; intros.
-    - destruct el.
-    - destruct v.
-      + simpl; reflexivity.
-      + destruct el; simpl; eauto.
-        f_equal; apply IHv.
-  Qed.
-
-  Lemma index_SumType_inj_inverse {n}
-    : forall  (tag : Fin.t n)
-              (v : Vector.t Type n)
-              (el : Vector.nth v tag),
-      SumType_index v (inj_SumType v tag el) = tag.
-  Proof.
-    induction tag.
-    - intro; pattern n, v; eapply Vector.caseS; simpl.
-      clear; intros; destruct t; eauto.
-    - intro; revert tag IHtag; pattern n, v; eapply Vector.caseS; simpl; intros.
-      destruct t.
-      + inversion tag.
-      + f_equal.
-        eapply IHtag.
-  Qed.
-
-  Definition IsComputedField
-             {heading}
-             (idx idx' : BoundedString (HeadingNames heading))
-             (f : Domain heading (ibound (indexb idx))
-                  -> Domain heading (ibound (indexb idx')))
-             (tup : @Tuple heading)
-    : Prop :=
-    f (GetAttribute tup idx) = GetAttribute tup idx'.
-
-  (* Could use above to prove dependent inversion lemma, but *)
-  (* this is more of a sanity check than anything. *)
-  (* Lemma proj_SumType_inj_inverse {n}
-    : forall (v : Vector.t Type n)
-             (tag : Fin.t n)
-             (el : Vector.nth v tag),
-      SumType_proj v (inj_SumType v tag el) = el. *)
-
-  (* Goal: Convert from QueryStructure with a heading with a SumType *)
-  (* attribute to one that has multiple tables. *)
-  (* Is this a worthwhile refinement? We could just do this at data structure *)
-  (* selection time. OTOH, nice high-level refinement step that makes sense to *)
-  (* end-users and has applications in both DNS examples.  *)
-
-  Definition EnumIDs := ["A"; "NS"; "CNAME"; "SOA" ].
-  Definition EnumID := BoundedString EnumIDs.
-  Definition EnumTypes := [nat : Type; string : Type; nat : Type; list nat : Type].
-  Definition EnumType := SumType EnumTypes.
-
-  Definition EESchema :=
-      Query Structure Schema
-        [ relation "foo" has
-                   schema <"A" :: nat, "BID" :: EnumID, "B" :: EnumType>
-                   where (fun t => ibound (indexb t!"BID") = SumType_index _ t!"B" ) and (fun t t' => True);
-          relation "bar" has
-                   schema <"C" :: nat, "D" :: list string>
-        ]
-        enforcing [ ].
-
-  Definition EESpec : ADT _ :=
-    Def ADT {
-      rep := QueryStructure EESchema,
-
-    Def Constructor "Init" : rep := empty,,
-
-    Def Method1 "AddData" (this : rep) (t : _) : rep * bool :=
-      Insert t into this!"foo",
-
-    Def Method1 "Process" (this : rep) (p : EnumID) : rep * list _ :=
-      results <- For (r in this!"foo")
-                     Where (r!"BID" = p)
-                     Return r;
-    ret (this, results)}.
-
   Definition ResourceRecordTypeTypes :=
     [ (W : Type); (* A *)
        DomainName; (* NS *)
@@ -378,9 +211,8 @@ Section RData.
        MX_RDATA; (* MX *)
        (string : Type) (* TXT *)
     ].
-
+  
+  (* The RDATA field is a variant type built from these building blocks. *)
   Definition RDataType := SumType ResourceRecordTypeTypes.
 
 End RData.
-
-Arguments SumType : simpl never.

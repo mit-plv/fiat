@@ -117,7 +117,7 @@ Class HeadingHint := { headingHint : Heading }.
 Notation "tup ○ f" :=
   (let H := _ in
    let _ := {| headingHint := H |} in
-   @UpdateAttributes H tup f%Update) : Tuple_scope.
+   @UpdateAttributes H tup f%Update%list) : Tuple_scope.
 
 Notation "x !! attr / f" :=
   (@existT (@BoundedString _ (HeadingNames headingHint))
