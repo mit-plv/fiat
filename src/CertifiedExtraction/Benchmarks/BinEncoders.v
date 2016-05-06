@@ -8,7 +8,6 @@ Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 Require Import CertifiedExtraction.Extraction.External.Loops.
 Require Import CertifiedExtraction.Extraction.External.FacadeLoops.
 
-Check miniChomp.
 (* FIXME Rename SameValues_remove_SCA to SameValues_remove_W *)
 
 Ltac decide_NotInTelescope ::=  (* FIXME merge *)
@@ -258,7 +257,7 @@ Ltac rewrite_posed term equation :=
   rewrite equation in eqn;
   rewrite eqn; clear dependent head.
 
-Ltac _compile_callWrite16 :=
+Ltac _compile_CallWrite16 :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             let post' := (eval simpl in post) in
@@ -267,7 +266,7 @@ Ltac _compile_callWrite16 :=
               let vtmp := gensym "tmp" in
               let varg := gensym "arg" in
               lazymatch arg with
-              | ` _ => rewrite_posed (Cons k (ret (v ++ arg)) tail) @EncodeAndPad_ListAsWord
+              | ` _ => rewrite_posed (Cons k (ret (v ++ arg)) tail) @EncodeAndPad_ListBool16ToWord
               | _ => idtac
               end;
               eapply (CompileCallWrite16 vtmp varg)
@@ -521,7 +520,7 @@ Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted.
 
 Instance WrapListBool16 : FacadeWrapper (Value ADTValue) {xs: list bool | List.length xs = 16}.
 Proof.
-  refine {| wrap x := SCA ADTValue (ListBool16ToWord x);
+  refine {| wrap x := wrap (ListBool16ToWord x);
             wrap_inj := _ |}; abstract (intros * H; inversion H; eauto using ListBool16ToWord_inj).
 Defined.
 
@@ -608,10 +607,11 @@ Ltac _compile_CallListLength :=
                 ltac:(fun _ pre _ _ _ =>
                         match pre with
                         | context[Cons (NTSome ?k) (ret lst) _] =>
-                          (eapply (CompileCallListResourceLength k) ||
-                           eapply (CompileCallListQuestionLength k));
-                          [ unfold DnsCacheAsCollectionOfVariables; (* FIXME autounfold *)
-                            decide_TelEq_instantiate ]
+                          (* FIXME use this instead of explicit continuations in every lemma *)
+                          compile_do_use_transitivity_to_handle_head_separately;
+                          [ (eapply (CompileCallListResourceLength k) ||
+                             eapply (CompileCallListQuestionLength k))
+                          | ]
                         end)
             end).
 
@@ -804,6 +804,55 @@ Proof.
   rewrite let_ret2; reflexivity.
 Qed.
 
+Lemma CompileRead16:
+  forall {av} {W: FacadeWrapper (Value av) {s : list bool | Datatypes.length s = 16} }
+    (vfrom vto : string) (bs: {s : list bool | Datatypes.length s = 16})
+    (tenv tenv0 tenv': Telescope av) pNext  ext env,
+    TelEq ext tenv ([[` vfrom <-- bs as _]] :: tenv0) ->
+    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv }}
+      pNext
+    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Assign vto (Var vfrom)) pNext
+    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros * H; rewrite H.
+  hoare.
+  hoare.
+Admitted.
+
+Ltac _compile_Read16 :=
+  may_alloc_head;
+  match_ProgOk
+    ltac:(fun _ pre post _ _ =>
+            match post with
+            | [[ _ <-- ListBool16ToWord ?bs as _]] :: _ =>
+              (* FIXME this should be an equivalent of find_in_ext *)
+              match pre with
+              | context[Cons (NTSome ?k) (ret bs) _] =>
+                eapply (CompileRead16 k)
+              end
+            end).
+
+Lemma CompileConstantN :
+  forall {av} {W: FacadeWrapper (Value av) N}
+    N (vto : string)
+    (tenv tenv': Telescope av) pNext ext env,
+    {{ [[ ` vto <-- N as _]]::tenv }}
+      pNext
+    {{ [[ ` vto <-- N as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Assign vto (Const (Word.NToWord N))) pNext
+    {{ [[ ` vto <-- N as _]]::tenv' }} ∪ {{ ext }} // env.
+Proof.
+  hoare.
+  hoare.
+Admitted.
+
+Ltac _compile_ReadConstantN :=
+  may_alloc_head;
+  eapply CompileConstantN.
+
 Opaque Transformer.transform_id.
 
 Definition PacketAsCollectionOfVariables
@@ -915,7 +964,9 @@ Ltac _packet_encode_step :=
   | _ => _packet_encode_cleanup
   | _ => _packet_encode_FixInt
   | _ => _packet_encode_IList_compile
-  | _ => _compile_callWrite16
+  | _ => _compile_CallWrite16
+  | _ => _compile_Read16
+  | _ => _compile_ReadConstantN
   | _ => _compile_CallListLength
   | _ => _compile_CallAllocString
   | _ => _compile_CallAllocEMap
@@ -951,60 +1002,109 @@ Proof.
 
   {
     _packet_encode_t.
-    keep_first.
+    decide_TelEq_instantiate.
+  }
+
+  {
+    _packet_encode_t.
+    decide_TelEq_instantiate.
+    mod_first.
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   }
 
   {
     _packet_encode_t.
-    Set Printing All.
-    instantiate (1 := Assign "arg" (Var "pid")); admit.
-  }
-
-  {
-    _packet_encode_t.
-    instantiate (1 := Assign "arg" (Var "mask")); admit.
-  }
-
-  {
+    decide_TelEq_instantiate.
     mod_first.
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   }
 
-  { _packet_encode_t. }
-
   {
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  { _packet_encode_t. }
-
-  {
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  { _packet_encode_t. }
-
-  {
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  { _packet_encode_t. }
-
-  {
+    _packet_encode_t.
+    decide_TelEq_instantiate.
     mod_first.
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
   }
 
   {
     _packet_encode_t.
+    decide_TelEq_instantiate.
+    mod_first.
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  }
+
+  {
+    _packet_encode_t.
+    decide_TelEq_instantiate.
+    mod_first.
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
+  }
+
+  {
+    Arguments NotInTelescope: simpl never.
+    _packet_encode_step; try _packet_encode_cleanup.
+Ltac decide_NotInTelescope ::=
+  progress repeat match goal with
+            | _ => cleanup
+            | _ => congruence
+            | [  |- NotInTelescope _ Nil ] => reflexivity
+            | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
+            end.
+
     2: decide_TelEq_instantiate.
     { _packet_encode_t. }
     { _packet_encode_t. }
+    { _packet_encode_t. }
+
     {
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      Focus 3.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+            
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
+      _packet_encode_step.
       instantiate (1 := [[ ` "head" <-- head as _]]
                          ::[[ ` "id" <-- ` pid as _]]
                          ::[[ ` "mask" <-- ` pmask as _]]
@@ -1015,6 +1115,7 @@ Proof.
     }
 
     {
+      
       instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit.
     }
 

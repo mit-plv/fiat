@@ -50,6 +50,11 @@ Fixpoint ListBoolToWord (bs: list bool) : word (List.length bs) :=
   | b :: bs0 => WS b (ListBoolToWord bs0)
   end.
 
+Fixpoint FixListBoolToWord {size} (bs: { bs: list bool | List.length bs = size }) : word (size) :=
+  match proj2_sig bs in _ = n with
+  | eq_refl => ListBoolToWord (proj1_sig bs)
+  end.
+
 Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,
     (forall x (pf1' pf2' : P x), pf1' = pf2')
     -> x1 = x2
@@ -127,18 +132,51 @@ Qed.
 Definition PadToLength encoded length :=
   FixInt.pad encoded (length - Datatypes.length encoded).
 
-Definition EncodeAndPad n length :=
-  let encoded := FixInt.encode' n in
-  PadToLength encoded length.
+Lemma FixInt_pad_length :
+  forall encoded delta,
+    List.length (FixInt.pad encoded delta) = delta + List.length encoded.
+Proof.
+  induction delta; simpl; try rewrite IHdelta; reflexivity.
+Qed.
+
+Definition PadToLength_length encoded length :
+  (List.length encoded <= length)%nat ->
+  List.length (PadToLength encoded length) = length.
+Proof.
+  unfold PadToLength; rewrite FixInt_pad_length; omega.
+Qed.
+
+Lemma FixInt_encode'_length:
+  forall (size : nat) (n : {n : N | (n < FixInt.exp2 size)%N}),
+    (length (FixInt.encode' (proj1_sig n)) <= size)%nat.
+Proof.
+  destruct n; eauto using FixInt.encode'_size.
+Qed.
+
+Definition EncodeAndPad1 {size} (n: {n : N | (n < FixInt.exp2 size)%N}) : list bool :=
+  let encoded := FixInt.encode' (proj1_sig n) in
+  PadToLength encoded size.
+
+Lemma EncodeAndPad1_length {size} (n: {n : N | (n < FixInt.exp2 size)%N}) :
+  length (EncodeAndPad1 n) = size.
+Proof.
+  intros; eauto using PadToLength_length, FixInt_encode'_length.
+Qed.
+
+Definition EncodeAndPad {size} (n: {n : N | (n < FixInt.exp2 size)%N}) :
+  {xs : list bool | length xs = size} :=
+  exist _ (EncodeAndPad1 n) (EncodeAndPad1_length n).
 
 Lemma FixInt_encode_is_copy {size}:
   forall num cache,
     (FixInt.FixInt_encode (size := size) num cache) =
-    (EncodeAndPad (proj1_sig num) size, {| DnsMap.eMap := DnsMap.eMap cache;
-                                           DnsMap.dMap := DnsMap.dMap cache;
-                                           DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}).
+    (proj1_sig (EncodeAndPad num), {| DnsMap.eMap := DnsMap.eMap cache;
+                                      DnsMap.dMap := DnsMap.dMap cache;
+                                      DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}).
 Proof.
-  destruct cache; reflexivity.
+  destruct cache.
+  unfold FixInt.FixInt_encode.
+  reflexivity.
 Qed.
 
 Inductive ListBoolEq : (list bool) -> (list bool) -> Prop :=
@@ -150,7 +188,124 @@ Hint Constructors ListBoolEq : listBoolEq.
 
 Require Import Program.
 
-Lemma EncodeAndPad_ListBool16ToWord : forall ls, proj1_sig ls = EncodeAndPad (wordToN (ListBool16ToWord ls)) 16.
+Lemma N_le_succ_plus_1 : forall n m : N, (n + 1 <= m)%N <-> (n < m)%N.
+Proof.
+  intros; rewrite N.add_1_r.
+  apply N.le_succ_l.
+Qed.
+
+Lemma N_lt_double_lt:
+  forall p p' : N,
+    (p < p')%N ->
+    (2 * p < 2 * p')%N.
+Proof.
+  intros; apply N.mul_lt_mono_pos_l; eauto; reflexivity.
+Qed.
+
+Lemma N_le_double:
+  forall p : N,
+    (p <= 2 * p)%N.
+Proof.
+  intros; replace (2 * p)%N with (p + p)%N by ring.
+  replace p with (0 + p)%N at 1 by ring.
+  rewrite <- N.add_le_mono_r.
+  apply N.le_0_l.
+Qed.
+
+Lemma N_lt_double:
+  forall p : N,
+    (0 < p)%N ->
+    (p < 2 * p)%N.
+Proof.
+  intros; replace (2 * p)%N with (p + p)%N by ring.
+  replace p with (0 + p)%N at 1 by ring.
+  rewrite <- N.add_lt_mono_r.
+  assumption.
+Qed.
+
+Lemma Pos_times_2_0:
+  forall p : positive, (2 * N.pos p)%N = N.pos p~0.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma Pos_times_2_1:
+  forall p : positive, (2 * N.pos p + 1)%N = N.pos p~1.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma FixInt_exp2_S_lt:
+  forall (n : nat) (p : positive),
+    (N.pos p < FixInt.exp2 n)%N ->
+    (N.pos p~0 < FixInt.exp2 (S n))%N.
+Proof.
+  unfold FixInt.exp2; simpl; intros.
+  rewrite <- (Pos_times_2_0 p).
+  rewrite <- (Pos_times_2_0 (FixInt.exp2' _)).
+  auto using N_lt_double_lt.
+Qed.
+
+Lemma FixInt_exp2_S_lt_strong:
+  forall (n : nat) (p : positive),
+    (N.pos p < FixInt.exp2 n)%N ->
+    (N.pos p~1 < FixInt.exp2 (S n))%N.
+Proof.
+  unfold FixInt.exp2; simpl; intros.
+  rewrite <- (Pos_times_2_1 p).
+  rewrite <- (Pos_times_2_0 (FixInt.exp2' _)).
+  auto using N.double_above.
+Qed.
+
+Lemma wordToN_bound {size} (w: Word.word size):
+  (wordToN w < FixInt.exp2 size)%N.
+Proof.
+  dependent induction w; simpl.
+  + reflexivity.
+  + destruct b, (wordToN w); simpl;
+    auto using FixInt_exp2_S_lt, FixInt_exp2_S_lt_strong.
+Qed.
+
+Definition wordToN_bounded {size} (w: Word.word size) :
+  { n | (n < FixInt.exp2 size)%N } :=
+  exist _ (wordToN w) (wordToN_bound w).
+
+Definition FixInt_exp2_increasing_step :
+  forall n,
+    (FixInt.exp2 n < FixInt.exp2 (S n))%N.
+Proof.
+  unfold FixInt.exp2.
+  intros; simpl; rewrite <- Pos_times_2_0.
+  apply N_lt_double; reflexivity.
+Qed.
+
+Definition FixInt_exp2_increasing :
+  forall n n',
+    (n < n')%nat ->
+    (FixInt.exp2 n < FixInt.exp2 n')%N.
+Proof.
+  induction 1.
+  + apply FixInt_exp2_increasing_step.
+  + etransitivity; eauto using FixInt_exp2_increasing_step.
+Qed.
+
+Lemma nat_16_lt_32 :
+  (16 < 32)%nat.
+Proof.
+  auto 17.
+Qed.
+
+Definition N_bounded_16_32 (n: { n | (n < FixInt.exp2 16)%N }) :
+  { n | (n < FixInt.exp2 32)%N }.
+  refine (exist _ (proj1_sig n) _).
+  abstract (destruct n; simpl;
+            etransitivity;
+            eauto using FixInt_exp2_increasing, nat_16_lt_32).
+Defined.
+
+Lemma EncodeAndPad_ListBool16ToWord :
+  forall ls : { ls | List.length ls = 16 },
+    ls = EncodeAndPad (N_bounded_16_32 (wordToN_bounded (FixListBoolToWord ls))).
 Admitted.
 
 Lemma NToWord_of_nat:
