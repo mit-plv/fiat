@@ -2039,6 +2039,29 @@ Section recursive_descent_parser.
     reflexivity.
   Defined.
 
+  Definition parse_nonterminal_preopt
+             (str : String)
+             (nt : String.string)
+  : { b : bool | b = parse_nonterminal (data := optdata) str nt }.
+  Proof.
+    let c := constr:(parse_nonterminal_opt'2 str nt) in
+    let h := head c in
+    let impl := (eval cbv beta iota zeta delta [h proj1_sig item_rect ritem_rect list_caset] in (proj1_sig c)) in
+    (exists impl);
+      abstract (exact (proj2_sig c)).
+  Defined.
+
+  Lemma parse_nonterminal_preopt_eq
+        {HSLP : StringLikeProperties Char}
+        {splitdata_correct : @boolean_parser_completeness_dataT' _ _ _ G data}
+        (str : String)
+        (nt : String.string)
+    : proj1_sig (parse_nonterminal_preopt str nt) = parse_nonterminal (data := data) str nt.
+  Proof.
+    rewrite <- parse_nonterminal_optdata_eq.
+    apply proj2_sig.
+  Qed.
+
   Definition parse_nonterminal_opt
              (str : String)
              (nt : String.string)
