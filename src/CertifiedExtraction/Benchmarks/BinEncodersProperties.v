@@ -41,9 +41,95 @@ Proof.
     Transparent N.of_nat.
 Qed.
 
+Require Import Coq.Lists.List.
+Require Import Bedrock.Word.
+
+Fixpoint ListBoolToWord (bs: list bool) : word (List.length bs) :=
+  match bs as l return (word (Datatypes.length l)) with
+  | nil => WO
+  | b :: bs0 => WS b (ListBoolToWord bs0)
+  end.
+
+Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,
+    (forall x (pf1' pf2' : P x), pf1' = pf2')
+    -> x1 = x2
+    -> exist P x1 pf1 = exist P x2 pf2.
+Proof.
+  intros; subst; f_equal; auto.
+Qed.
+
+Module DecidableNat.
+  Definition U := nat.
+  Definition eq_dec := Peano_dec.eq_nat_dec.
+End DecidableNat.
+
+Module UipNat := Eqdep_dec.DecidableEqDepSet(DecidableNat).
+
+Lemma WS_commute : forall n1 n2 (pf : S n1 = S n2) b w,
+    match pf in _ = n return word n with
+    | eq_refl => WS b w
+    end
+    = WS b (match NPeano.Nat.succ_inj _ _ pf in _ = n return word n with
+            | eq_refl => w
+            end).
+Proof.
+  intros.
+  pose proof (NPeano.Nat.succ_inj _ _ pf); subst.
+  rewrite (UipNat.UIP _ _ pf eq_refl).
+  rewrite (UipNat.UIP _ _ (NPeano.Nat.succ_inj _ _ eq_refl) eq_refl).
+  reflexivity.
+Qed.
+
+Lemma WS_commute' {n1 n2} :
+  forall (pf : n1 = n2) f (g: forall {n}, word n -> word (f n)) w,
+    match pf in _ = n return word (f n) with
+    | eq_refl => g w
+    end
+    = g (match pf in _ = n return word n with
+            | eq_refl => w
+            end).
+Proof.
+  destruct pf; reflexivity.
+Qed.
+
+Lemma ListBoolToWord_eq : forall n ls1 ls2 (pf1 : List.length ls1 = n) (pf2 : List.length ls2 = n),
+    match pf1 in _ = n return word n with
+    | eq_refl => ListBoolToWord ls1
+    end
+    = match pf2 in _ = n return word n with
+      | eq_refl => ListBoolToWord ls2
+      end
+    -> ls1 = ls2.
+Proof.
+  induction n; destruct ls1, ls2; simpl; intuition; try congruence.
+  repeat rewrite (WS_commute) in H.
+  inversion H; clear H; subst.
+  apply UipNat.inj_pair2 in H2.
+  f_equal; eauto.
+Qed.
+
+Definition ListBool16ToWord (bs: {xs: list bool | List.length xs = 16}) : word 32 :=
+  let (bs, p) := bs in
+  match p in _ = n return word (16 + n) with
+  | eq_refl => (ListBoolToWord bs)~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0
+  end.
+
+Definition ListBool16ToWord_inj :
+  forall bs bs', ListBool16ToWord bs = ListBool16ToWord bs' -> bs = bs'.
+Proof.
+  intros * Heq.
+  unfold ListBool16ToWord in *.
+  destruct bs as [? p], bs' as [? p'].
+  repeat rewrite (WS_commute' _ _ (fun n w => w~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0)) in Heq.
+  injection Heq; eauto using UipNat.inj_pair2, exist_irrel, UipNat.UIP, ListBoolToWord_eq.
+Qed.
+
+Definition PadToLength encoded length :=
+  FixInt.pad encoded (length - Datatypes.length encoded).
+
 Definition EncodeAndPad n length :=
   let encoded := FixInt.encode' n in
-  FixInt.pad encoded (length - Datatypes.length encoded).
+  PadToLength encoded length.
 
 Lemma FixInt_encode_is_copy {size}:
   forall num cache,
@@ -55,26 +141,31 @@ Proof.
   destruct cache; reflexivity.
 Qed.
 
+Inductive ListBoolEq : (list bool) -> (list bool) -> Prop :=
+| ListBoolEqLeft : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq (false :: l1) l2
+| ListBoolEqRight : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq l1 (false :: l2)
+| ListBoolEqEq : forall l1 l2, l1 = l2 -> ListBoolEq l1 l2.
 
-Definition List16AsWord (ls: {s : list bool | Datatypes.length s = 16}) : W.
-Admitted.
+Hint Constructors ListBoolEq : listBoolEq.
 
-Lemma EncodeAndPad_ListAsWord : forall ls, proj1_sig ls = EncodeAndPad (Word.wordToN (List16AsWord ls)) 16.
+Require Import Program.
+
+Lemma EncodeAndPad_ListBool16ToWord : forall ls, proj1_sig ls = EncodeAndPad (wordToN (ListBool16ToWord ls)) 16.
 Admitted.
 
 Lemma NToWord_of_nat:
   forall (sz : nat) (n : nat),
-    Word.NToWord _ (N.of_nat n) = Word.natToWord sz n.
+    NToWord _ (N.of_nat n) = natToWord sz n.
 Proof.
-  intros; rewrite Word.NToWord_nat, Nat2N.id; reflexivity.
+  intros; rewrite NToWord_nat, Nat2N.id; reflexivity.
 Qed.
 
 Lemma NToWord_WordToN:
-  forall (sz : nat) (w : Word.word sz),
-    Word.NToWord _ (Word.wordToN w) = w.
+  forall (sz : nat) (w : word sz),
+    NToWord _ (wordToN w) = w.
 Proof.
-  intros; rewrite Word.NToWord_nat, Word.wordToN_nat, Nat2N.id.
-  apply Word.natToWord_wordToNat.
+  intros; rewrite NToWord_nat, wordToN_nat, Nat2N.id.
+  apply natToWord_wordToNat.
 Qed.
 
 Lemma length_of_fixed_length_list :

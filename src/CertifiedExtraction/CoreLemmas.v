@@ -390,7 +390,6 @@ Proof.
              H'': StringMap.MapsTo ?key ?v' _  |- _ ] => specialize (H v key ext st H' v' H''); rename H into IHREC
          | [ H: StringMap.MapsTo ?k ?v (StringMap.remove _ ?s) |- StringMap.MapsTo ?k ?v ?s ] => solve[eauto using MapsTo_remove]
          | [ H: match StringMap.find ?s ?st with _ => _ end |- _ ] => let a := fresh in destruct (StringMap.find s st) eqn:a
-         | [ H: wrap _ = wrap _ |- _ ] => apply wrap_inj in H
          | [ H: exists v, _ |- _ ] => destruct H
          end; eauto using WeakEq_Mapsto_MapsTo. (* NOTE adding the eauto at the end of the match makes things slower *)
 Qed.

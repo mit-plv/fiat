@@ -222,25 +222,6 @@ Proof.
     reflexivity.
 Qed.
 
-Definition PacketAsCollectionOfVariables
-           {av} vid vmask vquestion vanswer vauthority vadditional (p: packet_t)
-  : Telescope av :=
-  [[ vid <-- ` p.(pid) as _ ]]
-    :: [[ vmask <-- ` p.(pmask) as _ ]]
-    :: [[ vquestion <-- ` p.(pquestion) as _ ]]
-    :: [[ vanswer <-- ` p.(panswer) as _ ]]
-    :: [[ vauthority <-- ` p.(pauthority) as _ ]]
-    :: [[ vadditional <-- ` p.(padditional) as _ ]]
-    :: Nil.
-
-Definition DnsCacheAsCollectionOfVariables
-           {av} veMap vdMap voffs (c: DnsMap.CacheT)
-  : Telescope av :=
-  [[ veMap <-- c.(DnsMap.eMap) as _ ]]
-    :: [[ vdMap <-- c.(DnsMap.dMap) as _ ]]
-    :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
-    :: Nil.
-
 Lemma ProgOk_Transitivity_First :
   forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
     {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
@@ -302,19 +283,6 @@ Ltac _compile_callWrite16 :=
 (*               | @Telescope _ => unify x term *)
 (*               end *)
 (*             end). *)
-
-(* Ltac find_packet := *)
-(*   lazymatch goal with *)
-(*   (* Use an explicit match, since match_ProgOk returns tactics, not terms *) *)
-(*   | [  |- {{ ?pre }} _ {{ _ }} ∪ {{ _ }} // _ ] => *)
-(*     match pre with *)
-(*     | context[@PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7] => *)
-(*       constr:(@PacketAsCollectionOfVariables av x0 x1 x2 x3 x4 x5 x6 x7) *)
-(*     end *)
-(*   end. *)
-
-(* Ltac keep_unmodified_packet := *)
-(*   instantiate_tail_of_post find_packet. *)
 
 Ltac standalone_tail tail :=
   (* Recurse down the TAIL of telescope (of type (a: A) → Telescope) to find the
@@ -551,42 +519,6 @@ Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted.
 Instance WrapN : FacadeWrapper (Value ADTValue) N. Admitted.
 Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted.
 
-Fixpoint ListBoolToWord (bs: list bool) : Word.word (List.length bs) :=
-  match bs as l return (Word.word (Datatypes.length l)) with
-  | nil => Word.WO
-  | b :: bs0 => Word.WS b (ListBoolToWord bs0)
-  end.
-
-Require Import Bedrock.Word.
-Definition ListBool16ToWord (bs: {xs: list bool | List.length xs = 16}) : Word.word 32 :=
-  let (bs, p) := bs in
-  match p in _ = n return word (16 + n) with
-  | eq_refl => (ListBoolToWord bs)~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0
-  end.
-
-Definition ListBoolToWord_inj :
-  forall (bs bs': list bool) (p: List.length bs' = List.length bs),
-    ListBoolToWord bs =
-    match p in _ = n return word n with
-    | eq_refl => (ListBoolToWord bs')
-    end ->
-    bs = bs'.
-Admitted.
-
-Definition ListBool16ToWord_inj :
-  forall bs bs', ListBool16ToWord bs = ListBool16ToWord bs' ->
-            bs = bs'.
-Proof.
-  intros.
-  destruct bs, bs'.
-  repeat (destruct x; simpl in *; try congruence; [ idtac ]).
-  repeat (destruct x0; simpl in *; try congruence; [ idtac ]).
-  setoid_rewrite <- (Eqdep_dec.eq_rect_eq_dec Peano_dec.eq_nat_dec) in H.
-  inversion H; subst; clear H.
-  rewrite (Peano_dec.UIP_nat _ _ e e0); reflexivity.
-Qed.                              (* Behold computational proofs. *)
-
-
 Instance WrapListBool16 : FacadeWrapper (Value ADTValue) {xs: list bool | List.length xs = 16}.
 Proof.
   refine {| wrap x := SCA ADTValue (ListBool16ToWord x);
@@ -672,8 +604,6 @@ Ltac _compile_CallListLength :=
             match post with
             | [[ _ <-- Word.natToWord 32 (Datatypes.length ?lst) as _]] :: _ =>
               (* FIXME this should be an equivalent of find_in_ext *)
-              (* FIXME this shoud be more principled *)
-              unfold PacketAsCollectionOfVariables; simpl;
               match_ProgOk
                 ltac:(fun _ pre _ _ _ =>
                         match pre with
@@ -744,26 +674,6 @@ Ltac specialize_body hyp term :=
   clear hyp;
   rename fresh into hyp.
 
-(* Ltac _packet__havoc_packet_in_postcondition := *)
-(*   let p := find_packet in *)
-(*   let p' := fresh in *)
-(*   lazymatch constr:p with *)
-(*   | @PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?tail ?p => *)
-(*     let tail' := fresh in *)
-(*     create_packet_evar p'; *)
-(*     pose (@PacketAsCollectionOfVariables av) as tail'; *)
-(*     (* FIXME generalize this *) *)
-(*     specialize_function_with_evar tail' (Some x0); *)
-(*     specialize_function_with_evar tail' (Some x1); *)
-(*     specialize_function_with_evar tail' (Some x2); *)
-(*     specialize_function_with_evar tail' (Some x3); *)
-(*     specialize_function_with_evar tail' (Some x4); *)
-(*     specialize_function_with_evar tail' (Some x5); *)
-(*     specialize_body tail' tail; *)
-(*     specialize_body tail' p'; *)
-(*     instantiate_tail_of_post tail'; *)
-(*     unfold p', tail' in *; clear p'; clear tail' *)
-(*   end. *)
 
 (* Ltac delete_tagged_var_from_post var := *)
 (*   (* Delete VAR from post-condition. *)
@@ -896,6 +806,59 @@ Qed.
 
 Opaque Transformer.transform_id.
 
+Definition PacketAsCollectionOfVariables
+           {av} vid vmask vquestion vanswer vauthority vadditional (p: packet_t)
+  : Telescope av :=
+  [[ vid <-- p.(pid) as _ ]]
+    :: [[ vmask <-- p.(pmask) as _ ]]
+    :: [[ vquestion <-- ` p.(pquestion) as _ ]]
+    :: [[ vanswer <-- ` p.(panswer) as _ ]]
+    :: [[ vauthority <-- ` p.(pauthority) as _ ]]
+    :: [[ vadditional <-- ` p.(padditional) as _ ]]
+    :: Nil.
+
+Definition DnsCacheAsCollectionOfVariables
+           {av} veMap vdMap voffs (c: DnsMap.CacheT)
+  : Telescope av :=
+  [[ veMap <-- c.(DnsMap.eMap) as _ ]]
+    :: [[ vdMap <-- c.(DnsMap.dMap) as _ ]]
+    :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
+    :: Nil.
+
+(* Ltac find_packet := *)
+(*   lazymatch goal with *)
+(*   (* Use an explicit match, since match_ProgOk returns tactics, not terms *) *)
+(*   | [  |- {{ ?pre }} _ {{ _ }} ∪ {{ _ }} // _ ] => *)
+(*     match pre with *)
+(*     | context[@PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7] => *)
+(*       constr:(@PacketAsCollectionOfVariables av x0 x1 x2 x3 x4 x5 x6 x7) *)
+(*     end *)
+(*   end. *)
+
+(* Ltac keep_unmodified_packet := *)
+(*   instantiate_tail_of_post find_packet. *)
+
+(* Ltac _packet__havoc_packet_in_postcondition := *)
+(*   let p := find_packet in *)
+(*   let p' := fresh in *)
+(*   lazymatch constr:p with *)
+(*   | @PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?tail ?p => *)
+(*     let tail' := fresh in *)
+(*     create_packet_evar p'; *)
+(*     pose (@PacketAsCollectionOfVariables av) as tail'; *)
+(*     (* FIXME generalize this *) *)
+(*     specialize_function_with_evar tail' (Some x0); *)
+(*     specialize_function_with_evar tail' (Some x1); *)
+(*     specialize_function_with_evar tail' (Some x2); *)
+(*     specialize_function_with_evar tail' (Some x3); *)
+(*     specialize_function_with_evar tail' (Some x4); *)
+(*     specialize_function_with_evar tail' (Some x5); *)
+(*     specialize_body tail' tail; *)
+(*     specialize_body tail' p'; *)
+(*     instantiate_tail_of_post tail'; *)
+(*     unfold p', tail' in *; clear p'; clear tail' *)
+(*   end. *)
+
 Create HintDb packet_autorewrite_db.
 Hint Rewrite @NToWord_of_nat : packet_autorewrite_db.
 Hint Rewrite @NToWord_WordToN : packet_autorewrite_db.
@@ -994,7 +957,7 @@ Proof.
 
   {
     _packet_encode_t.
-    
+    Set Printing All.
     instantiate (1 := Assign "arg" (Var "pid")); admit.
   }
 
