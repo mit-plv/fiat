@@ -149,6 +149,7 @@ src/Common/LogicMorphisms.v
 src/Common/Match.v
 src/Common/Monad.v
 src/Common/NatFacts.v
+src/Common/Notations.v
 src/Common/OptionFacts.v
 src/Common/ReservedNotations.v
 src/Common/SetEq.v
@@ -432,6 +433,7 @@ src/Parsers/Reflective/Semantics.v
 src/Parsers/Reflective/SemanticsOptimized.v
 src/Parsers/Reflective/Syntactify.v
 src/Parsers/Reflective/Syntax.v
+src/Parsers/Reflective/SyntaxEquivalence.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v

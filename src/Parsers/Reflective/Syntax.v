@@ -1,6 +1,7 @@
 Require Import Coq.Classes.Morphisms. (* for reserved [-->] notation *)
 Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
+Require Import Fiat.Common.Notations.
 
 Set Implicit Arguments.
 Delimit Scope typecode_scope with typecode.
@@ -131,6 +132,12 @@ Arguments RApp {var} {A B}%typecode (f x)%term.
 Arguments RLiteralApp {var} {c}%typecode t%term args%termargs.
 Arguments an_arg {var} {A B}%typecode arg%term args%termargs.
 Arguments noargs {var T}.
+
+Notation "# v" := (RVar v) : term_scope.
+Infix "@" := RApp : term_scope.
+
+Notation "\ x , e" := (RLambda (fun x => e)) : source_scope.
+Notation "\ ! , e" := (RLambda (fun _ => e)) : source_scope.
 
 Infix "::" := an_arg : termargs_scope.
 

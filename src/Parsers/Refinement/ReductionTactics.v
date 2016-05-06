@@ -9,6 +9,7 @@ Require Import Fiat.Common.List.Operations.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Require Import Fiat.Parsers.StringLike.String.
 Require Import Fiat.Parsers.Refinement.FinishingLemma.
+Require Import Fiat.Parsers.ParserInterfaceReflective.
 
 Global Arguments ilist.ith _ _ _ _ _ !_ / .
 Global Arguments min !_ !_.
@@ -31,59 +32,43 @@ Ltac splitter_red term :=
 
 Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
 
-Declare Reduction parser_red0 := cbv beta iota zeta delta [list_to_grammar grammar_of_pregrammar pregrammar'_of_pregrammar pregrammar_productions pregrammar_rproductions rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions projT1 projT2 proj1_sig proj2_sig char_to_test_eq rproduction_of_RCharExpr ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring (*magic_juxta_append_from_char_test*)].
-Declare Reduction parser_red1 := simpl List.hd.
-Declare Reduction parser_red2 := simpl List.fold_right.
-Declare Reduction parser_red3 := simpl List.map.
-Declare Reduction parser_red4 := cbv beta iota zeta delta [ParserInterface.parse ParserInterface.has_parse ParserFromParserADT.parser projT1 projT2 ComputationalADT.pcMethods ComputationalADT.pcConstructors ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd StringLike.String StringLike.length StringLike.take StringLike.drop StringLike.get StringLike.is_char StringLike.bool_eq StringLike.beq string_stringlike string_stringlikemin OcamlString.Ocaml.string_stringlike OcamlString.Ocaml.string_stringlikemin BooleanRecognizerOptimized.rdp_list_to_production_opt item_rect grammar_of_pregrammar pregrammar'_of_pregrammar pregrammar_productions pregrammar_rproductions ContextFreeGrammar.Notations.opt'.map ContextFreeGrammar.Notations.opt'.list_of_string ContextFreeGrammar.Notations.opt'.pred ContextFreeGrammar.Notations.opt'.length ContextFreeGrammar.Notations.opt'.substring].
-Declare Reduction parser_red5 := opt_red.
-Declare Reduction parser_red6 := simpl @fst.
-Declare Reduction parser_red7 := simpl @snd.
-Declare Reduction parser_red8 := opt2_red.
-Declare Reduction parser_red9 := simpl orb.
-Declare Reduction parser_red10 := opt3_red.
-Declare Reduction parser_red11 := simpl orb.
-Declare Reduction parser_red12 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].
-(*Declare Reduction parser_red6 := simpl @fst.
-Declare Reduction parser_red7 := simpl @snd.
-Declare Reduction parser_red8 := simpl List.length.
-Declare Reduction parser_red9 := simpl List.fold_right.
-Declare Reduction parser_red10 := simpl @List.first_index_default.
-Declare Reduction parser_red11 := simpl @List.up_to.
-Declare Reduction parser_red12 := simpl @Compare_dec.leb.
-Declare Reduction parser_red13 := simpl @Operations.List.uniquize.
-Declare Reduction parser_red14 := simpl @List.combine.
-Declare Reduction parser_red15 := simpl @BooleanRecognizerOptimized.inner_nth'.
-(*Declare Reduction parser_red16 := simpl List.map.*)
-Declare Reduction parser_red17 := cbv beta iota zeta delta [List.nth' Fix2 Fix2_F].*)
+(*(** Coq is stupid and doesn't have a version of [simpl]/[cbv] which unfolds *only* the given list of constants but *does not* unfold them if there's not a constructor in the head position of specified arguments.  See https://coq.inria.fr/bugs/show_bug.cgi?id=4639.  So we write a tactic that works in a specific case. *)
+Ltac eval_change_bool term :=
+  match eval cbv beta in term with
+  | appcontext T[andb true]
+    => let term' := context T[fun x : bool => x] in
+       eval_change_bool term'
+  | appcontext T[andb false]
+    => let term' := context T[fun x : bool => false] in
+       eval_change_bool term'
+  | appcontext T[orb true]
+    => let term' := context T[fun x : bool => true] in
+       eval_change_bool term'
+  | appcontext T[orb false]
+    => let term' := context T[fun x : bool => x] in
+       eval_change_bool term'
+  | appcontext T[@If_Then_Else ?A true]
+    => let term' := context T[fun x y : A => x] in
+       eval_change_bool term'
+  | appcontext T[@If_Then_Else ?A false]
+    => let term' := context T[fun x y : A => y] in
+       eval_change_bool term'
+  | ?term' => term'
+  end.*)
+
+Declare Reduction parser_red0 := cbv [ParserInterface.parse ParserInterface.has_parse ParserFromParserADT.parser ParserInterfaceReflective.rhas_parse SemanticsOptimized.opt.interp_Term Semantics.interp_SimpleTypeCode Semantics.interp_SimpleTypeCode_step interp_RCharExpr SemanticsOptimized.opt.interp_RLiteralTerm projT2 projT1 ComputationalADT.pcMethods BuildComputationalADT.getcMethDef ilist.ith VectorFacts.Vector_caseS' Vector.caseS ilist.ilist_hd ilist.ilist_tl ilist.prim_fst ilist.prim_snd ComputationalADT.pcConstructors BuildComputationalADT.getcConsDef BuildComputationalADT.cMethBody BuildComputationalADT.cConsBody StringLike.length String.string_stringlikemin OcamlString.Ocaml.string_stringlikemin irbeq irnat_of ascii_interp_RCharExpr_data char_at_matches Common.opt2.fst Common.opt2.snd Common.opt2.beq_nat Common.opt2.leb Common.opt2.andb Common.opt2.orb If_Then_Else].
+Declare Reduction parser_red1 := cbv [SemanticsOptimized.opt.nth' SemanticsOptimized.opt.fold_left SemanticsOptimized.opt.map bool_rect_nodep bool_rec_nodep Fix2 Fix2_F].
 
 Ltac parser_red_gen term :=
   let term := match term with
-                | context[ParserFromParserADT.parser _ ?splitter]
+                | context[ParserFromParserADT.parser _ _ ?splitter]
                   => let splitter' := head splitter in
                      (eval unfold splitter' in term)
                 | _ => constr:(term)
               end in
   let term := (eval parser_red0 in term) in
   let term := (eval parser_red1 in term) in
-  let term := (eval parser_red2 in term) in
-  let term := (eval parser_red3 in term) in
-  let term := (eval parser_red4 in term) in
-  let term := (eval parser_red5 in term) in
-  let term := (eval parser_red6 in term) in
-  let term := (eval parser_red7 in term) in
-  let term := (eval parser_red8 in term) in
-  let term := (eval parser_red9 in term) in
-  let term := (eval parser_red10 in term) in
-  let term := (eval parser_red11 in term) in
-  let term := (eval parser_red12 in term) in
-(*
-  let term := (match do_simpl_list_map with
-                 | true => eval simpl List.map in term
-                 | _ => term
-               end) in
-  let term := (eval parser_red17 in term) in*)
-  constr:(term).
+  term.
 
 Class eq_refl_vm_cast T := by_vm_cast : T.
 Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
@@ -95,7 +80,11 @@ Ltac type_of_no_anomaly x :=
   (eval cbv beta in T).
 
 Ltac make_Parser splitter :=
-  let b0 := constr:(fun pf => ParserFromParserADT.parser pf splitter) in
+  let G := match type of splitter with
+           | context[pregrammar'_of_pregrammar ?G] => G
+           end in
+  let preparser := make_ParserReflective G in
+  let b0 := constr:(fun pf => ParserFromParserADT.parser preparser pf splitter) in
   let T := match type_of_no_anomaly b0 with ?T -> _ => constr:(T) end in
   let quicker_opaque_eq_refl := constr:(_ : eq_refl_vm_cast T) in
   let b := constr:(b0 quicker_opaque_eq_refl) in

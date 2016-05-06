@@ -12,6 +12,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Export Fiat.Parsers.ParserImplementationOptimized.
+Require Import Fiat.Parsers.ParserInterfaceReflective.
 Require Import Fiat.Parsers.SplitterFromParserADT.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.BaseTypes.
@@ -29,6 +30,7 @@ Section parser.
           {stringlike_stringlike : StringLike Ascii.ascii}
           {stringlike_stringlike_properties : StringLikeProperties Ascii.ascii}.
   Context {G : pregrammar Ascii.ascii}.
+  Context (preparser : ParserReflective G).
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter_impl : FullySharpened (string_spec G stringlike_stringlike)).
 
@@ -80,7 +82,7 @@ Section parser.
 
   Definition parser' : Parser G stringlike_stringlike.
   Proof.
-    refine (@parser G Hvalid (adt_based_splitter splitter_impl)
+    refine (@parser G preparser Hvalid (adt_based_splitter splitter_impl)
                     (adt_based_StringLikeMin_lite splitter_impl)
                     _
                     _
@@ -111,10 +113,11 @@ End parser.
 Definition parser''
            {HSLM HSL HSLP}
            {G}
+           preparser
            Hvalid
            splitter_impl
-           val (H : val = has_parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
-           valp (Hp : valp = parse (@parser' HSLM HSL HSLP G Hvalid splitter_impl))
+           val (H : val = has_parse (@parser' HSLM HSL HSLP G preparser Hvalid splitter_impl))
+           valp (Hp : valp = parse (@parser' HSLM HSL HSLP G preparser Hvalid splitter_impl))
 : Parser G HSL.
 Proof.
   refine {| has_parse := val ; parse := valp |};
@@ -218,48 +221,27 @@ Definition parser
            {HSL : StringLike Ascii.ascii}
            {HSLP : StringLikeProperties Ascii.ascii}
            {G : pregrammar Ascii.ascii}
+           (preparser : ParserReflective G)
            (Hvalid : is_true (grammar_rvalid G))
            (splitter_impl : FullySharpened (string_spec G HSL))
 : Parser G HSL.
 Proof.
-  let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP G Hvalid splitter_impl)) in
+  let term := (eval cbv beta delta [parser''] in (@parser'' HSLM HSL HSLP G preparser Hvalid splitter_impl)) in
   refine (term _ _ _ _);
-    cbv beta iota zeta delta [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser];
-    progress repeat replace_rewrite_map_map; simpl @fst;
-      progress repeat replace_rewrite_map_length;
-      change (fun x : ?A * ?B => fst x) with (@fst A B);
-      cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar pregrammar'_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string pregrammar_productions];
-    change_opt (pregrammar_rproductions G) nt str.
+    cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser];
+    cbv [BaseTypes.split_string_for_production char_at_matches msplits mchar_at_matches new_string_of_string BuildComputationalADT.callcADTMethod cMethods adt_based_StringLikeMin_lite ibound indexb proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length mlength newS Fin.R];
+    cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar pregrammar'_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string pregrammar_productions];
+    change_opt (pregrammar_rproductions G) nt str;
+    [ cbv [snd] (* [snd] only appears applied to [pcMethods] *)
+    | ].
   { lazymatch goal with
-    | [ |- appcontext[BooleanRecognizerOptimized.opt.opt.id
-                        (BooleanRecognizerOptimized.opt.opt.first_index_default
-                           ?a ?b
-                           (BooleanRecognizerOptimized.opt.opt.map
-                              BooleanRecognizerOptimized.opt.opt.fst (pregrammar_rproductions G)))] ]
-      => replace (BooleanRecognizerOptimized.opt.opt.id
-                    (BooleanRecognizerOptimized.opt.opt.first_index_default
-                       a
-                       b
-                       (BooleanRecognizerOptimized.opt.opt.map
-                          BooleanRecognizerOptimized.opt.opt.fst (pregrammar_rproductions G))))
-         with (BooleanRecognizerOptimized.opt.opt.list_caset
-                 (fun _ => _)
-                 b
-                 (fun _ _ => 0)
-                 (pregrammar_rproductions G))
-    end.
-    { match goal with
-      | [ |- _ = ?x :> ?T ] => instantiate (1 := x); exact_no_check (@eq_refl T x)
-      end. }
-    { abstract (
-          clear;
-          destruct (pregrammar_rproductions G); unfold BooleanRecognizerOptimized.opt.opt.first_index_default, BooleanRecognizerOptimized.opt.opt.id; simpl;
-          [ reflexivity | ];
-          change @BooleanRecognizerOptimized.opt.opt.string_beq with Equality.string_beq;
-          rewrite Equality.string_lb by reflexivity;
-          reflexivity
-        ). } }
-  { reflexivity. }
+    | [ |- ?e = ?x :> ?T ]
+      => unify e x; exact_no_check (@eq_refl T x)
+    end. }
+  { lazymatch goal with
+    | [ |- ?e = ?x :> ?T ]
+      => unify e x; exact_no_check (@eq_refl T x)
+    end. }
 Defined.
 
-Global Arguments parser {HSLM HSL HSLP} {G} Hvalid splitter_impl / .
+Global Arguments parser {HSLM HSL HSLP} {G} preparser Hvalid splitter_impl / .

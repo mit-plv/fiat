@@ -80,7 +80,7 @@ Ltac do_reify_has_parse has_parse cont :=
                 ?strlen
                 _
                 ?nt_idx
-              => constr:(fun var f => @RFix2 var valid_len valids' f valid_len valids' nt_idx)
+              => constr:(fun var fv => @RFix2 var valid_len valids' fv valid_len valids' nt_idx)
             end in
   let rp := constr:(fun var => rp var (r var)) in
   let rp := (eval cbv beta in rp) in

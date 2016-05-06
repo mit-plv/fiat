@@ -69,6 +69,7 @@ Section correctness.
       = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
   Proof.
     clear splitdata_correct HSLP.
+    cbv [rinterp_parse parse_nonterminal_reified parse_nonterminal_preopt proj1_sig].
   Admitted.
 
   Lemma parse_nonterminal_reified_opt_interp_correct

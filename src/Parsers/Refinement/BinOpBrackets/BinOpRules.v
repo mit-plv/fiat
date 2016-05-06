@@ -495,6 +495,7 @@ Global Arguments bin_op_data_of_maybe / .
 Global Arguments default_list_of_next_bin_ops_opt_data / .
 Global Arguments take : simpl never.
 Global Arguments drop : simpl never.
+Global Arguments list_of_next_bin_ops_opt_nor : simpl never.
 
 (** [simpl] is very slow at simplifying [correct_open_close], so we
     help it along.  If the machinery of [Defined] changes, we may have

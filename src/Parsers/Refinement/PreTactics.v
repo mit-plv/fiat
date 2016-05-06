@@ -16,6 +16,8 @@ Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Computation.Refinements.General.
 
+Export Common.opt2.Notations.
+
 Global Open Scope string_scope.
 Global Open Scope list_scope.
 Global Arguments string_beq : simpl never.
@@ -132,14 +134,51 @@ Ltac solve_prod_beq :=
          end.
 
 Definition if_aggregate {A} (b1 b2 : bool) (x y : A)
-: (If b1 Then x Else If b2 Then x Else y) = (If (b1 || b2)%bool Then x Else y)
+: (If b1 Then x Else If b2 Then x Else y) = (If (b1 || b2)%opt2_bool Then x Else y)
   := if_aggregate b1 b2 x y.
 Definition if_aggregate2 {A} (b1 b2 b3 : bool) (x y z : A) (H : b1 = false -> b2 = true -> b3 = true -> False)
-: (If b1 Then x Else If b2 Then y Else If b3 Then x Else z) = (If (b1 || b3)%bool Then x Else If b2 Then y Else z)
+: (If b1 Then x Else If b2 Then y Else If b3 Then x Else z) = (If (b1 || b3)%opt2_bool Then x Else If b2 Then y Else z)
   := if_aggregate2 x y z H.
 Definition if_aggregate3 {A} (b1 b2 b3 b4 : bool) (x y z w : A) (H : b1 = false -> (b2 || b3)%bool = true -> b4 = true -> False)
-: (If b1 Then x Else If b2 Then y Else If b3 Then z Else If b4 Then x Else w) = (If (b1 || b4)%bool Then x Else If b2 Then y Else If b3 Then z Else w)
+: (If b1 Then x Else If b2 Then y Else If b3 Then z Else If b4 Then x Else w) = (If (b1 || b4)%opt2_bool Then x Else If b2 Then y Else If b3 Then z Else w)
   := if_aggregate3 _ _ x y z w H.
+
+Module opt2.
+  Definition orb_false_r : forall b, (b || false)%opt2_bool = b
+    := Bool.orb_false_r.
+  Definition andb_orb_distrib_r : forall b1 b2 b3 : bool,
+      (b1 && (b2 || b3))%opt2_bool = (b1 && b2 || b1 && b3)%opt2_bool
+    := Bool.andb_orb_distrib_r.
+  Definition andb_orb_distrib_l : forall b1 b2 b3 : bool,
+      ((b1 || b2) && b3)%opt2_bool = (b1 && b3 || b2 && b3)%opt2_bool
+    := Bool.andb_orb_distrib_l.
+  Definition orb_andb_distrib_r
+    : forall b1 b2 b3 : bool,
+      (b1 || b2 && b3)%opt2_bool = ((b1 || b2) && (b1 || b3))%opt2_bool
+    := Bool.orb_andb_distrib_r.
+  Definition orb_andb_distrib_l
+    : forall b1 b2 b3 : bool,
+      (b1 && b2 || b3)%opt2_bool = ((b1 || b3) && (b2 || b3))%opt2_bool
+    := Bool.orb_andb_distrib_l.
+  Definition andb_assoc
+    : forall b1 b2 b3 : bool, (b1 && (b2 && b3))%opt2_bool = (b1 && b2 && b3)%opt2_bool
+    := Bool.andb_assoc.
+  Definition orb_assoc
+    : forall b1 b2 b3 : bool, (b1 || (b2 || b3))%opt2_bool = (b1 || b2 || b3)%opt2_bool
+    := Bool.orb_assoc.
+  Definition andb_orb_distrib_r_assoc
+    : forall b1 b2 b3 b4 : bool,
+      (b1 && (b2 || b3) || b4)%opt2_bool = (b1 && b2 || (b1 && b3 || b4))%opt2_bool
+    := andb_orb_distrib_r_assoc.
+  Definition beq_0_1_leb
+    : forall x : nat,
+      (opt2.beq_nat x 1 || opt2.beq_nat x 0)%opt2_bool = opt2.leb x 1
+    := beq_0_1_leb.
+  Definition beq_S_leb
+    : forall x n : nat,
+      (opt2.beq_nat x (S n) || opt2.leb x n)%opt2_bool = opt2.leb x (S n)
+    := beq_S_leb.
+End opt2.
 
 Ltac simplify_parser_splitter' :=
   first [ progress unguard
@@ -152,19 +191,23 @@ Ltac simplify_parser_splitter' :=
         | progress change (orb true) with (fun x : bool => true); cbv beta
         | progress change (andb false) with (fun x : bool => false); cbv beta
         | progress change (andb true) with (fun x : bool => x); cbv beta
-        | rewrite !Bool.orb_false_r
-        | rewrite <- !Bool.andb_orb_distrib_r
+        | progress change (Common.opt2.orb false) with (fun x : bool => x); cbv beta
+        | progress change (Common.opt2.orb true) with (fun x : bool => true); cbv beta
+        | progress change (Common.opt2.andb false) with (fun x : bool => false); cbv beta
+        | progress change (Common.opt2.andb true) with (fun x : bool => x); cbv beta
+        | rewrite !opt2.orb_false_r
+        | rewrite <- !opt2.andb_orb_distrib_r
         | progress simplify with monad laws
-        | rewrite <- !Bool.andb_orb_distrib_r
-        | rewrite <- !Bool.andb_orb_distrib_l
-        | rewrite <- !Bool.orb_andb_distrib_r
-        | rewrite <- !Bool.orb_andb_distrib_l
-        | rewrite <- !Bool.andb_assoc
-        | rewrite <- !Bool.orb_assoc
-        | rewrite <- !andb_orb_distrib_r_assoc
+        | rewrite <- !opt2.andb_orb_distrib_r
+        | rewrite <- !opt2.andb_orb_distrib_l
+        | rewrite <- !opt2.orb_andb_distrib_r
+        | rewrite <- !opt2.orb_andb_distrib_l
+        | rewrite <- !opt2.andb_assoc
+        | rewrite <- !opt2.orb_assoc
+        | rewrite <- !opt2.andb_orb_distrib_r_assoc
         | rewrite !if_aggregate
-        | rewrite !beq_0_1_leb
-        | rewrite !beq_S_leb
+        | rewrite !opt2.beq_0_1_leb
+        | rewrite !opt2.beq_S_leb
         | idtac;
           match goal with
             | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]

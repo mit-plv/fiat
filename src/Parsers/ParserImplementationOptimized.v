@@ -3,7 +3,10 @@ Require Import Fiat.Parsers.GenericRecognizerEquality.
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.RecognizerPreOptimized.
-Require Import Fiat.Parsers.BooleanRecognizerOptimized.
+Require Import Fiat.Parsers.BooleanRecognizerOptimizedReflective.
+Require Import Fiat.Parsers.BooleanRecognizerOptimizedReflectiveCorrectness.
+Require Import Fiat.Parsers.Reflective.ParserSoundnessOptimized.
+Require Import Fiat.Parsers.ParserInterfaceReflective.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
@@ -87,6 +90,7 @@ Arguments transfer_parser {_ _ _ _ _ _} _ _ _ _ _ _ _ _ _ _.
 
 Section implementation.
   Context {G : pregrammar Ascii.ascii}.
+  Context (preparser : ParserReflective G).
   Context (Hvalid : is_true (grammar_rvalid G)).
   Context (splitter : Splitter G).
   Context {string_like_min_lite : StringLikeMin Ascii.ascii}
@@ -119,11 +123,31 @@ Section implementation.
   Proof.
     pose proof Hvalid as Hrvalid.
     apply grammar_rvalid_correct in Hvalid.
-    let impl0 := constr:(fun str => parse_nonterminal_opt (G := G) (splitdata := pdata) Hrvalid (@proj _ _ _ _ _ _ HSLPr (make_string str)) (Start_symbol G)) in
-    let impl := (eval simpl in (fun str => proj1_sig (impl0 str))) in
-    let implH := constr:(fun str => proj2_sig (impl0 str)) in
-    let impl' := (eval cbv beta iota zeta delta [RDPList.rdp_list_remove_nonterminal RDPList.rdp_list_initial_nonterminals_data RDPList.rdp_list_nonterminals_listT RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_ntl_wf RDPList.rdp_list_nonterminals_listT_R RDPList.rdp_list_of_nonterminal RDPList.rdp_list_to_nonterminal Carriers.default_nonterminal_carrierT Carriers.some_invalid_nonterminal Carriers.default_to_production Carriers.default_to_nonterminal] in impl) in
-    let impl := (eval simpl in impl') in
+    let impl0 := constr:(fun str => rinterp_parse
+                                      (G := G)
+                                      (splitdata := pdata)
+                                      (@proj _ _ _ _ _ _ HSLPr (make_string str))
+                                      (rhas_parse preparser _)) in
+    let impl := (eval cbv [rinterp_parse] in impl0) in
+    let implH := constr:(fun str => f_equal
+                                      (fun p
+                                       => rinterp_parse
+                                            (G := G)
+                                            (splitdata := pdata)
+                                            (@proj _ _ _ _ _ _ HSLPr (make_string str))
+                                            p)
+                                      (f_equal
+                                         (fun f => f Semantics.interp_TypeCode)
+                                         (rhas_parse_correct preparser))) in
+    let implH := (eval cbv [rinterp_parse] in implH) in
+    let implH := constr:(fun str
+                         => eq_trans
+                              (implH str)
+                              (parse_nonterminal_reified_opt_interp_polynormalize_precorrect
+                                 (G := G)
+                                 Hrvalid _ _)) in
+    let impl := (eval cbv [ParserSemanticsOptimized.opt.interp_has_parse_term Semantics.interp_SimpleTypeCode Semantics.interp_SimpleTypeCode_step] in impl) in
+    let impl := (eval simpl in impl) in
     let s_impl0 := constr:(fun str => option_map (SimpleParseNonTerminal (Start_symbol G))
                                                  (SimpleRecognizer.parse_nonterminal (make_string str) (Start_symbol G))) in
     let s_impl := (eval simpl in s_impl0) in
@@ -139,5 +163,4 @@ Section implementation.
               (fun str => eq_refl : s_impl0 str = _ (SimpleRecognizer.parse_nonterminal (make_string str) G))
               R R_make _ _).
   Defined.
-
 End implementation.

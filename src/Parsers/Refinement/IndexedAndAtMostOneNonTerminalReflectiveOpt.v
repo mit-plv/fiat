@@ -388,110 +388,121 @@ Section IndexedImpl_opt.
                intros y' H; subst y'; reflexivity
              | ]
       end.
-      unfold opt.id, opt2.id.
-      repeat match goal with
-             | [ |- opt.length (opt.nth ?n ?ls nil) = _ ]
-               => etransitivity;
-                    [ symmetry;
-                      eexact (List.map_nth opt.length ls nil n
-                              : opt.nth _ (opt.map _ _) 0 = opt.length (opt.nth _ _ _))
-                    | ]
-             | [ |- opt.map (fun x : ?T => opt.minus (opt.length (opt.snd x)) ?v) (pregrammar_productions G) = _ ]
-               => transitivity (opt.map (fun x => opt.minus x v) (opt.map opt.length (opt.map opt.snd (pregrammar_productions G))));
-                    [ change @opt.map with @List.map;
-                      rewrite !List.map_map;
-                      reflexivity
-                    | reflexivity ]
-             | [ |- context[opt.length (opt.map ?f ?ls)] ]
-               => replace (opt.length (opt.map f ls)) with (opt.length ls)
-                 by (change @opt.length with @List.length;
-                     change @opt.map with @List.map;
-                     rewrite List.map_length;
-                     reflexivity)
-             | [ |- context[opt.length (opt.up_to ?n)] ]
-               => replace (opt.length (opt.up_to n)) with n
-                 by (change @opt.length with @List.length;
-                     change @opt.up_to with @Operations.List.up_to;
-                     rewrite length_up_to; reflexivity)
-             | [ |- opt.map opt.length (opt.nth ?n ?ls nil) = _ ]
-               => etransitivity;
-                    [ symmetry;
-                      eexact (List.map_nth (opt.map opt.length) ls nil n
-                              : opt.nth _ (opt.map _ _) nil = opt.map opt.length (opt.nth _ _ _))
-                    | ]
-             (*| [ |- opt.id _ = _ ] => apply f_equal*)
-             | [ |- ret _ = _ ] => apply f_equal
-             | [ |- fst _ = _ ] => apply f_equal
-             | [ |- snd _ = _ ] => apply f_equal
-             | [ |- opt.fst _ = _ ] => apply f_equal
-             | [ |- opt.snd _ = _ ] => apply f_equal
-             | [ |- S _ = _ ] => apply f_equal
-             | [ |- opt.collapse_length_result _ = _ ] => apply f_equal
-             | [ |- ret_length_less _ = _ ] => apply f_equal
-             | [ |- ret_nat _ = _ ] => apply f_equal
-             | [ |- ret_nat _ = _ ] => eapply (f_equal ret_nat)
-             | [ |- ret_pick _ = _ ] => eapply (f_equal ret_pick)
-             | [ |- opt.has_only_terminals _ = _ ] => apply f_equal
-             | [ |- opt.up_to _ = _ ] => apply f_equal
-             | [ |- cons _ _ = _ ] => apply f_equal2
-             | [ |- pair _ _ = _ ] => apply f_equal2
-             | [ |- cons _ _ = _ ] => eapply (f_equal2 cons)
-             | [ |- pair _ _ = _ ] => eapply (f_equal2 pair)
-             | [ |- orb _ _ = _ ] => apply f_equal2
-             | [ |- andb _ _ = _ ] => apply f_equal2
-             | [ |- opt.andb _ _ = _ ] => apply f_equal2
-             | [ |- opt.drop _ _ = _ ] => apply f_equal2
-             | [ |- opt.leb _ _ = _ ] => apply f_equal2
-             | [ |- opt.minus _ _ = _ ] => apply f_equal2
-             | [ |- opt.combine _ _ = _ ] => apply f_equal2
-             | [ |- opt2.ret_cases_BoolDecR _ _ = _ ] => apply f_equal2
-             | [ |- EqNat.beq_nat _ _ = _ ] => apply f_equal2
-             | [ |- opt.nth _ _ _ = _ ] => apply f_equal3
-             | [ |- 0 = _ ] => reflexivity
-             | [ |- opt.length (pregrammar_productions G) = _ ] => reflexivity
-             | [ |- opt.length ?x = _ ] => is_var x; reflexivity
-             | [ |- opt.map opt.length ?x = _ ] => is_var x; reflexivity
-             | [ |- nil = _ ] => reflexivity
-             | [ |- false = _ ] => reflexivity
-             | [ |- ret_dummy = _ ] => reflexivity
-             | [ |- invalid = _ ] => reflexivity
-             | [ |- ?x = _ ] => is_var x; reflexivity
-             | [ |- opt.map opt.snd (pregrammar_productions G) = _ ] => reflexivity
-             | [ |- opt.map opt.length (opt.map opt.snd (pregrammar_productions G)) = _ ] => reflexivity
-             | [ |- opt2.uniquize opt2.ret_cases_BoolDecR _ = _ ] => apply f_equal
-             | [ |- (If _ Then _ Else _) = _ ] => apply (f_equal3 If_Then_Else)
-             | [ |- (match _ with true => _ | false => _ end) = _ ]
-               => apply (f_equal3 (fun (b : bool) A B => if b then A else B))
-             | [ |- match ?v with nil => _ | cons x xs => _ end = _ :> ?P ]
-               => let T := type of v in
-                  let A := match (eval hnf in T) with list ?A => A end in
-                  etransitivity;
-                    [ refine (@ListMorphisms.list_caset_Proper' A P _ _ _ _ _ _ _ _ _
-                              : _ = match _ with nil => _ | cons x xs => _ end);
-                      [ | intros ?? | ]
-                    | reflexivity ]
-             | [ |- @opt2.fold_right ?A ?B _ _ _ = _ ]
-               => refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> _ ==> eq) (@List.fold_right A B)) : Proper _ (@opt2.fold_right A B)) _ _ _ _ _ _ _ _ _);
-                    [ intros ?? | | ]
-             | [ |- @opt.map ?A ?B ?f ?v = _ ]
-               => not constr_eq v (pregrammar_productions G);
-                    let f' := head f in
-                    not constr_eq f' (@opt.length);
-                    refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@List.map A B)) : Proper _ (@opt.map A B)) _ _ _ _ _ _);
-                    [ intro | ]
-             | [ |- @opt.flat_map ?A ?B _ ?v = _ ]
-               => not constr_eq v (pregrammar_productions G);
-                    refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@List.flat_map A B)) : Proper _ (@opt.flat_map A B)) _ _ _ _ _ _);
-                    [ intro | ]
-             | [ |- match ?v with Core.Terminal t => _ | Core.NonTerminal nt => _ end = _ :> ?P ]
-               => apply match_item_Proper; [ | intro | intro ]
-             | [ |- opt.option_rect _ _ _ _ = _ ]
-               => eapply (option_rect_Proper : Proper _ (opt.option_rect _));
-                    [ intro | | ]
-             | _ => progress cbv beta
-             end.
-      reflexivity.
-      reflexivity.
+      etransitivity.
+      { unfold opt.id, opt2.id.
+        repeat match goal with
+               | [ |- opt.length (opt.nth ?n ?ls nil) = _ ]
+                 => etransitivity;
+                      [ symmetry;
+                        eexact (List.map_nth opt.length ls nil n
+                                : opt.nth _ (opt.map _ _) 0 = opt.length (opt.nth _ _ _))
+                      | ]
+               | [ |- opt.map (fun x : ?T => opt.minus (opt.length (opt.snd x)) ?v) (pregrammar_productions G) = _ ]
+                 => transitivity (opt.map (fun x => opt.minus x v) (opt.map opt.length (opt.map opt.snd (pregrammar_productions G))));
+                      [ change @opt.map with @List.map;
+                        rewrite !List.map_map;
+                        reflexivity
+                      | reflexivity ]
+               | [ |- context[opt.length (opt.map ?f ?ls)] ]
+                 => replace (opt.length (opt.map f ls)) with (opt.length ls)
+                   by (change @opt.length with @List.length;
+                       change @opt.map with @List.map;
+                       rewrite List.map_length;
+                       reflexivity)
+               | [ |- context[opt.length (opt.up_to ?n)] ]
+                 => replace (opt.length (opt.up_to n)) with n
+                   by (change @opt.length with @List.length;
+                       change @opt.up_to with @Operations.List.up_to;
+                       rewrite length_up_to; reflexivity)
+               | [ |- opt.map opt.length (opt.nth ?n ?ls nil) = _ ]
+                 => etransitivity;
+                      [ symmetry;
+                        eexact (List.map_nth (opt.map opt.length) ls nil n
+                                : opt.nth _ (opt.map _ _) nil = opt.map opt.length (opt.nth _ _ _))
+                      | ]
+               (*| [ |- opt.id _ = _ ] => apply f_equal*)
+               | [ |- ret _ = _ ] => apply f_equal
+               | [ |- fst _ = _ ] => apply f_equal
+               | [ |- snd _ = _ ] => apply f_equal
+               | [ |- opt.fst _ = _ ] => apply f_equal
+               | [ |- opt.snd _ = _ ] => apply f_equal
+               | [ |- S _ = _ ] => apply f_equal
+               | [ |- opt.collapse_length_result _ = _ ] => apply f_equal
+               | [ |- ret_length_less _ = _ ] => apply f_equal
+               | [ |- ret_nat _ = _ ] => apply f_equal
+               | [ |- ret_nat _ = _ ] => eapply (f_equal ret_nat)
+               | [ |- ret_pick _ = _ ] => eapply (f_equal ret_pick)
+               | [ |- opt.has_only_terminals _ = _ ] => apply f_equal
+               | [ |- opt.up_to _ = _ ] => apply f_equal
+               | [ |- cons _ _ = _ ] => apply f_equal2
+               | [ |- pair _ _ = _ ] => apply f_equal2
+               | [ |- cons _ _ = _ ] => eapply (f_equal2 cons)
+               | [ |- pair _ _ = _ ] => eapply (f_equal2 pair)
+               | [ |- orb _ _ = _ ] => apply f_equal2
+               | [ |- andb _ _ = _ ] => apply f_equal2
+               | [ |- opt.andb _ _ = _ ] => apply f_equal2
+               | [ |- opt.drop _ _ = _ ] => apply f_equal2
+               | [ |- opt.leb _ _ = _ ] => apply f_equal2
+               | [ |- opt.minus _ _ = _ ] => apply f_equal2
+               | [ |- opt.combine _ _ = _ ] => apply f_equal2
+               | [ |- opt2.ret_cases_BoolDecR _ _ = _ ] => apply f_equal2
+               | [ |- EqNat.beq_nat _ _ = _ ] => apply f_equal2
+               | [ |- opt.nth _ _ _ = _ ] => apply f_equal3
+               | [ |- 0 = _ ] => reflexivity
+               | [ |- opt.length (pregrammar_productions G) = _ ] => reflexivity
+               | [ |- opt.length ?x = _ ] => is_var x; reflexivity
+               | [ |- opt.map opt.length ?x = _ ] => is_var x; reflexivity
+               | [ |- nil = _ ] => reflexivity
+               | [ |- false = _ ] => reflexivity
+               | [ |- ret_dummy = _ ] => reflexivity
+               | [ |- invalid = _ ] => reflexivity
+               | [ |- ?x = _ ] => is_var x; reflexivity
+               | [ |- opt.map opt.snd (pregrammar_productions G) = _ ] => reflexivity
+               | [ |- opt.map opt.length (opt.map opt.snd (pregrammar_productions G)) = _ ] => reflexivity
+               | [ |- opt2.uniquize opt2.ret_cases_BoolDecR _ = _ ] => apply f_equal
+               | [ |- (If _ Then _ Else _) = _ ] => apply (f_equal3 If_Then_Else)
+               | [ |- (match _ with true => _ | false => _ end) = _ ]
+                 => apply (f_equal3 (fun (b : bool) A B => if b then A else B))
+               | [ |- match ?v with nil => _ | cons x xs => _ end = _ :> ?P ]
+                 => let T := type of v in
+                    let A := match (eval hnf in T) with list ?A => A end in
+                    etransitivity;
+                      [ refine (@ListMorphisms.list_caset_Proper' A P _ _ _ _ _ _ _ _ _
+                                : _ = match _ with nil => _ | cons x xs => _ end);
+                        [ | intros ?? | ]
+                      | reflexivity ]
+               | [ |- @opt2.fold_right ?A ?B _ _ _ = _ ]
+                 => refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> _ ==> eq) (@List.fold_right A B)) : Proper _ (@opt2.fold_right A B)) _ _ _ _ _ _ _ _ _);
+                      [ intros ?? | | ]
+               | [ |- @opt.map ?A ?B ?f ?v = _ ]
+                 => not constr_eq v (pregrammar_productions G);
+                      let f' := head f in
+                      not constr_eq f' (@opt.length);
+                        refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@List.map A B)) : Proper _ (@opt.map A B)) _ _ _ _ _ _);
+                        [ intro | ]
+               | [ |- @opt.flat_map ?A ?B _ ?v = _ ]
+                 => not constr_eq v (pregrammar_productions G);
+                      refine (((_ : Proper (pointwise_relation _ _ ==> _ ==> eq) (@List.flat_map A B)) : Proper _ (@opt.flat_map A B)) _ _ _ _ _ _);
+                      [ intro | ]
+               | [ |- match ?v with Core.Terminal t => _ | Core.NonTerminal nt => _ end = _ :> ?P ]
+                 => apply match_item_Proper; [ | intro | intro ]
+               | [ |- opt.option_rect _ _ _ _ = _ ]
+                 => eapply (option_rect_Proper : Proper _ (opt.option_rect _));
+                      [ intro | | ]
+               | _ => progress cbv beta
+               end.
+        reflexivity.
+        reflexivity.
+        reflexivity. }
+      Set Printing Depth 10000.
+      change orb with Common.opt2.orb.
+      let d := match goal with d : (nat * (nat * nat))%type |- _ => d end in
+      change (fst d) with (Common.opt2.fst d);
+      change (snd d) with (Common.opt2.snd d);
+      change (fst (Common.opt2.snd d)) with (Common.opt2.fst (Common.opt2.snd d));
+      change (snd (Common.opt2.snd d)) with (Common.opt2.snd (Common.opt2.snd d)).
+      change EqNat.beq_nat with Common.opt2.beq_nat.
+      change andb with Common.opt2.andb.
       reflexivity.
     }
     cbv beta.
