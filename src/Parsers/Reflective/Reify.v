@@ -1,4 +1,5 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
+Require Export Coq.Strings.String. (* for error messages *)
+Require Import Coq.Strings.Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.Syntactify.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
@@ -294,3 +295,9 @@ Ltac reify_Term var term
      end.
 Hint Extern 0 (reif_Term_of ?var ?term)
 => (let term' := reify_Term var term in eexact term') : typeclass_instances.
+
+Module Exports.
+  Export Syntax.Coercions.
+  Export Coq.Strings.String.
+  Open Scope string_scope.
+End Exports.

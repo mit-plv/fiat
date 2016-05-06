@@ -296,6 +296,7 @@ src/Parsers/BooleanRecognizerExt.v
 src/Parsers/BooleanRecognizerFull.v
 src/Parsers/BooleanRecognizerMin.v
 src/Parsers/BooleanRecognizerOptimized.v
+src/Parsers/BooleanRecognizerOptimizedReflective.v
 src/Parsers/BooleanRecognizerTests.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v

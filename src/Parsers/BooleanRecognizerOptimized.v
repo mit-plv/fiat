@@ -2046,7 +2046,7 @@ Section recursive_descent_parser.
   Proof.
     let c := constr:(parse_nonterminal_opt'2 str nt) in
     let h := head c in
-    let impl := (eval cbv beta iota zeta delta [h proj1_sig item_rect ritem_rect list_caset] in (proj1_sig c)) in
+    let impl := (eval cbv beta iota zeta delta [h proj1_sig] in (proj1_sig c)) in
     (exists impl);
       abstract (exact (proj2_sig c)).
   Defined.

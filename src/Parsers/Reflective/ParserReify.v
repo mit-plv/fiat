@@ -8,7 +8,12 @@ Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.List.Operations.
-Export Syntax.Coercions.
+
+Module Export Exports.
+   Export Reify.Exports.
+   Export StringLike.Core.
+End Exports.
+
 Set Implicit Arguments.
 
 Section parser.
@@ -25,20 +30,22 @@ Section parser.
   Definition split_string_for_production_flip str (n : production_carrierT) := @split_string_for_production _ _ _ _ n str.
 End parser.
 
-Ltac do_reify_has_parse cont :=
+Ltac do_reify_has_parse has_parse cont :=
   idtac;
-  let Char := match goal with |- appcontext[@char_at_matches ?Char ?HSLM] => Char end in
-  let HSLM := match goal with |- appcontext[@char_at_matches Char ?HSLM] => HSLM end in
-  let predata := match goal with |- appcontext[@split_string_for_production Char HSLM ?predata ?splitdata] => predata end in
-  let splitdata := match goal with |- appcontext[@split_string_for_production Char HSLM predata ?splitdata] => splitdata end in
-  let str := match goal with |- appcontext[@char_at_matches Char HSLM _ ?str] => str end in
+  let Char := match has_parse with appcontext[@char_at_matches ?Char ?HSLM] => Char end in
+  let HSLM := match has_parse with appcontext[@char_at_matches Char ?HSLM] => HSLM end in
+  let predata := match has_parse with appcontext[@split_string_for_production Char HSLM ?predata ?splitdata] => predata end in
+  let splitdata := match has_parse with appcontext[@split_string_for_production Char HSLM predata ?splitdata] => splitdata end in
+  let str := match has_parse with appcontext[@char_at_matches Char HSLM _ ?str] => str end in
+  let hp := fresh "hp" in
+  pose has_parse as hp;
   progress change (@char_at_matches Char HSLM)
-  with (fun n str' => @char_at_matches_flip Char HSLM str' n);
+  with (fun n str' => @char_at_matches_flip Char HSLM str' n) in hp;
   progress change (@split_string_for_production Char HSLM predata splitdata)
-  with (fun n str' => @split_string_for_production_flip Char HSLM predata splitdata str' n);
-  cbv beta;
-  let x := match goal with |- _ = ?x => x end in
-  let f := lazymatch x with
+  with (fun n str' => @split_string_for_production_flip Char HSLM predata splitdata str' n) in hp;
+  let has_parse := (eval cbv beta delta [hp] in hp) in
+  clear hp;
+  let f := lazymatch has_parse with
            | Wf2.Fix2
                _ _
                (fun len0 valid_len0 parse_nt valids offset len pf nt
@@ -63,7 +70,7 @@ Ltac do_reify_has_parse cont :=
             end in
   let r := constr:(fun var => (_ : reif_Term_of var f')) in
   let r := (eval cbv [reif_Term_of range_of] in r) in
-  let rp := lazymatch x with
+  let rp := lazymatch has_parse with
             | Wf2.Fix2
                 _ _ _
                 ?strlen
