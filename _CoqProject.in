@@ -319,6 +319,7 @@ src/Parsers/ParserFromParserADT.v
 src/Parsers/ParserImplementation.v
 src/Parsers/ParserImplementationOptimized.v
 src/Parsers/ParserInterface.v
+src/Parsers/ParserInterfaceReflective.v
 src/Parsers/RecognizerPreOptimized.v
 src/Parsers/SimpleBooleanRecognizerEquality.v
 src/Parsers/SimpleRecognizer.v
