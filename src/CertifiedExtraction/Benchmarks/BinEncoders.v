@@ -231,24 +231,57 @@ Proof.
 Qed.
 
 Lemma CompileCallWrite16:
-  forall {av} {W: FacadeWrapper av (list bool)}
+  forall {av} {W: FacadeWrapper av (list bool)} {W': FacadeWrapper (Value av) (BitArray 16)}
     (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope av)
-    (n : N) ext env
+    (n : BitArray 16) ext env
     pArg pNext fWrite16,
     {{ [[ ` vstream <-- stream as _]]::tenv }}
       pArg
-    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- Word.NToWord n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv' }}
+    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- n as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv' }}
       pNext
-    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv'' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env ->
     {{ [[ ` vstream <-- stream as _]]::tenv }}
       Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream <-- stream ++ EncodeAndPad n 16 as _]]::tenv'' }} ∪ {{ ext }} // env.
+    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env.
 Proof.
   hoare.
   hoare.
   hoare.
 Admitted.
+
+Lemma TelEq_same_wrap :
+  forall {av A1 A2} {W1: FacadeWrapper (Value av) A1} {W2: FacadeWrapper (Value av) A2}
+    (x1: A1) (x2: A2),
+    wrap x1 = wrap x2 ->
+    forall (t: Telescope av) ext k,
+      TelEq ext (Cons (NTSome k) (ret x1) (fun _ => t)) (Cons (NTSome k) (ret x2) (fun _ => t)).
+Proof.
+  split; SameValues_Fiat_t.
+Qed.
+
+Lemma CompileCallWrite16_EncodeAndPad:
+  forall {av} {W: FacadeWrapper av (list bool)}
+    {W': FacadeWrapper (Value av) (BitArray 16)}
+    {W': FacadeWrapper (Value av) (BoundedN 16)}
+    (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope av)
+    (n : BoundedN 16) ext env
+    pArg pNext fWrite16,
+    wrap n = wrap (EncodeAndPad n) ->
+    {{ [[ ` vstream <-- stream as _]]::tenv }}
+      pArg
+    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- n as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv' }}
+      pNext
+    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream <-- stream as _]]::tenv }}
+      Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
+    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env.
+Proof.
+  intros * Heq H ?.
+  setoid_rewrite (TelEq_same_wrap _ _ Heq) in H.
+  eapply CompileCallWrite16; eauto.
+Qed.
 
 Ltac rewrite_posed term equation :=
   let head := fresh in
@@ -262,14 +295,13 @@ Ltac _compile_CallWrite16 :=
     ltac:(fun prog pre post ext env =>
             let post' := (eval simpl in post) in
             lazymatch post' with
-            | Cons ?k (ret (?v ++ ?arg)) ?tail =>
+            | Cons _ (ret (_ ++ ` ?arg)) _ =>
               let vtmp := gensym "tmp" in
               let varg := gensym "arg" in
-              lazymatch arg with
-              | ` _ => rewrite_posed (Cons k (ret (v ++ arg)) tail) @EncodeAndPad_ListBool16ToWord
-              | _ => idtac
-              end;
-              eapply (CompileCallWrite16 vtmp varg)
+              match arg with
+              | EncodeAndPad _ => eapply (CompileCallWrite16_EncodeAndPad vtmp varg)
+              | _ => eapply (CompileCallWrite16 vtmp varg)
+              end
             end).
 
 (* Ltac instantiate_tail_of_post term := *)
@@ -518,13 +550,46 @@ Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted.
 Instance WrapN : FacadeWrapper (Value ADTValue) N. Admitted.
 Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted.
 
-Instance WrapListBool16 : FacadeWrapper (Value ADTValue) {xs: list bool | List.length xs = 16}.
-Proof.
-  refine {| wrap x := wrap (ListBool16ToWord x);
-            wrap_inj := _ |}; abstract (intros * H; inversion H; eauto using ListBool16ToWord_inj).
-Defined.
 
-Instance WrapPacket : FacadeWrapper ADTValue (packet_t). Admitted.
+Lemma BoundedN_below_pow2_1632:
+  forall v : BoundedN 16,
+    (lt (N.to_nat (` v)) (Word.pow2 32)).
+Proof.
+  intros; eapply Lt.lt_trans;
+    eauto using BoundedN_below_pow2, Array.pow2_monotone, nat_16_lt_32.
+Qed.
+
+Lemma WrapN16_inj {av} {W: FacadeWrapper (Value av) (Word.word 32)}:
+  forall v v' : BoundedN 16,
+    wrap (FacadeWrapper := W) (Word.NToWord (sz := 32) (` v)) =
+    wrap (FacadeWrapper := W) (Word.NToWord (sz := 32) (` v')) ->
+    v = v'.
+Proof.
+  intros; rewrite !Word.NToWord_nat in H.
+  apply wrap_inj, Word.natToWord_inj, N2Nat.inj in H;
+  eauto using exist_irrel', UipComparison.UIP, BoundedN_below_pow2_1632.
+Qed.
+
+Instance WrapN16 : FacadeWrapper (Value ADTValue) (BoundedN 16) :=
+  {| wrap x := wrap (Word.NToWord (sz := 32) (` x));
+     wrap_inj := WrapN16_inj |}.
+
+Require Import Word.
+
+Lemma WrapListBool16_inj {av} {W: FacadeWrapper (Value av) (Word.word 32)}:
+  forall v v' : BitArray 16,
+    wrap (FacadeWrapper := W) (Word16ToWord32 (FixListBoolToWord v)) =
+    wrap (FacadeWrapper := W) (Word16ToWord32 (FixListBoolToWord v')) ->
+    v = v'.
+Proof.
+  eauto using FixListBoolToWord_inj, Word16ToWord32_inj, wrap_inj.
+Qed.
+
+Instance WrapListBool16 : FacadeWrapper (Value ADTValue) (BitArray 16).
+Proof.
+  refine {| wrap x := wrap (Word16ToWord32 (FixListBoolToWord x));
+            wrap_inj := WrapListBool16_inj |}.
+Defined.
 
 Lemma CompileCallAllocEMap:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
@@ -567,28 +632,28 @@ Admitted.
 
 Lemma CompileCallListResourceLength:
   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
-    env (lst : list resource_t)
+    env (lst : FixList.FixList 16 resource_t)
     flength tenv',
-    TelEq ext tenv ([[`vlst <-- lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    TelEq ext tenv ([[`vlst <-- `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
     {{ tenv }}
       Call varg flength [vlst]
-    {{ [[ ` varg <-- Word.natToWord 32 (Datatypes.length lst) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` varg <-- FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
 Admitted.
 
 Lemma CompileCallListQuestionLength:
   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
-    env (lst : list question_t)
+    env (lst : FixList.FixList 16 question_t)
     flength tenv',
-    TelEq ext tenv ([[`vlst <-- lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    TelEq ext tenv ([[`vlst <-- `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
     {{ tenv }}
       Call varg flength [vlst]
-    {{ [[ ` varg <-- Word.natToWord 32 (Datatypes.length lst) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` varg <-- FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
 Admitted.
 
 Ltac _packet_encode_FixInt :=
-  match_ProgOk
+  match_ProgOk                  (* FIXME check when this is needed *)
     ltac:(fun prog pre post ext env =>
             match post with
             | [[ret (FixInt.FixInt_encode _ _) as _]] :: _ =>
@@ -601,12 +666,12 @@ Ltac _compile_CallListLength :=
   match_ProgOk
     ltac:(fun _ _ post _ _ =>
             match post with
-            | [[ _ <-- Word.natToWord 32 (Datatypes.length ?lst) as _]] :: _ =>
+            | [[ _ <-- FixList.FixList_getlength ?lst as _]] :: _ =>
               (* FIXME this should be an equivalent of find_in_ext *)
               match_ProgOk
                 ltac:(fun _ pre _ _ _ =>
                         match pre with
-                        | context[Cons (NTSome ?k) (ret lst) _] =>
+                        | context[Cons (NTSome ?k) (ret (` lst)) _] =>
                           (* FIXME use this instead of explicit continuations in every lemma *)
                           compile_do_use_transitivity_to_handle_head_separately;
                           [ (eapply (CompileCallListResourceLength k) ||
@@ -614,6 +679,39 @@ Ltac _compile_CallListLength :=
                           | ]
                         end)
             end).
+
+Lemma WrapN16_WrapListBool16:
+  forall s : BoundedN 16,
+    wrap (FacadeWrapper := WrapN16) s = wrap (FacadeWrapper := WrapListBool16) (EncodeAndPad s).
+Proof.
+Admitted.
+
+Lemma CompileCallAdd16 :
+  forall `{FacadeWrapper (Value av) N} (tenv : Telescope av) (n : N) vn
+    ext env,
+    {{ [[`vn <-- n as _]]::tenv }}
+      (Assign vn (Binop IL.Plus (Var vn) 16))
+    {{ [[`vn <-- (n + 16)%N as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
+
+(* Handle the case of modifying the head *)
+Ltac compile_do_use_transitivity_to_handle_head_separately ::=
+  (* NOTE: this is a very risky rule; it doesn't make much sense to apply it
+     unless one has a good way to handle the first goal that it produces. *)
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       match constr:(post) with
+                       | Cons ?k _ _ =>
+                         match constr:(pre) with
+                         | Cons ?k _ _ => apply ProgOk_Transitivity_First
+                         | context[k] => fail 1 "Head variable appears in pre-condition"
+                         | _ => apply ProgOk_Transitivity_Cons
+                         end
+                       end).
+
+Ltac _compile_CallAdd16 :=
+  (* FIXME generalize *)
+  eapply CompileCallAdd16.
 
 Ltac may_alloc_head :=
   (* Fail if pre-condition contains identifier in head of post-condition. *)
@@ -805,16 +903,16 @@ Proof.
 Qed.
 
 Lemma CompileRead16:
-  forall {av} {W: FacadeWrapper (Value av) {s : list bool | Datatypes.length s = 16} }
+  forall {av} {W: FacadeWrapper (Value av) (BitArray 16) }
     (vfrom vto : string) (bs: {s : list bool | Datatypes.length s = 16})
     (tenv tenv0 tenv': Telescope av) pNext  ext env,
     TelEq ext tenv ([[` vfrom <-- bs as _]] :: tenv0) ->
-    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv }}
+    {{ [[ ` vto <-- bs as _]]::tenv }}
       pNext
-    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vto <-- bs as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Assign vto (Var vfrom)) pNext
-    {{ [[ ` vto <-- ListBool16ToWord bs as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` vto <-- bs as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros * H; rewrite H.
   hoare.
@@ -826,7 +924,7 @@ Ltac _compile_Read16 :=
   match_ProgOk
     ltac:(fun _ pre post _ _ =>
             match post with
-            | [[ _ <-- ListBool16ToWord ?bs as _]] :: _ =>
+            | [[ _ <-- ?bs as _]] :: _ =>
               (* FIXME this should be an equivalent of find_in_ext *)
               match pre with
               | context[Cons (NTSome ?k) (ret bs) _] =>
@@ -950,6 +1048,17 @@ Ltac match_ProgOk continuation ::=
   | _ => fail "Goal does not look like a ProgOk statement"
   end.
 
+Arguments NotInTelescope: simpl never.
+
+(* Use unfold instead of simpl *)
+Ltac decide_NotInTelescope ::=
+  progress repeat match goal with
+                  | _ => cleanup
+                  | _ => congruence
+                  | [  |- NotInTelescope _ Nil ] => reflexivity
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
+                  end.
+
 Ltac packet_compile_compose :=
   change_post_into_TelAppend; eapply CompileCompose; intros.
 
@@ -959,6 +1068,26 @@ Ltac packet_start_compiling :=
          | _ => progress unfold packet_encode, encode_packet; simpl
          end.
 
+
+(* Added tge database of side conditions *)
+Create HintDb compile_do_side_conditions_db discriminated.
+Ltac compile_do_side_conditions_internal ::=
+  repeat cleanup; PreconditionSet_t;
+   match goal with
+   | _ => exact I (* NOTE This is much faster than adding a match for True; why? *)
+   | |- _ <> _ => discriminate 1
+   | |- _ <> _ => congruence
+   | |- _ ∉ _ => decide_not_in
+   | |- TelEq _ _ _ => decide_TelEq_instantiate
+   | |- NotInTelescope _ _ => decide_NotInTelescope
+   | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
+   | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
+   | |- GLabelMap.MapsTo _ _ _ => GLabelMapUtils.decide_mapsto_maybe_instantiate
+   | _ => auto with compile_do_side_conditions_db
+   end.
+
+Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db.
+
 Ltac _packet_encode_step :=
   match goal with
   | _ => _packet_encode_cleanup
@@ -967,6 +1096,7 @@ Ltac _packet_encode_step :=
   | _ => _compile_CallWrite16
   | _ => _compile_Read16
   | _ => _compile_ReadConstantN
+  | _ => _compile_CallAdd16
   | _ => _compile_CallListLength
   | _ => _compile_CallAllocString
   | _ => _compile_CallAllocEMap
@@ -978,6 +1108,8 @@ Ltac _packet_encode_step :=
 
 Ltac _packet_encode_t :=
   progress (repeat _packet_encode_step).
+
+Opaque EncodeAndPad. (* FIXME move *)
 
 Example encode :
   ParametricExtraction
@@ -1002,319 +1134,153 @@ Proof.
 
   {
     _packet_encode_t.
-    decide_TelEq_instantiate.
   }
 
   {
     _packet_encode_t.
-    decide_TelEq_instantiate.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
   }
 
-  {
-    _packet_encode_t.
-    decide_TelEq_instantiate.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-  }
-
-  {
-    _packet_encode_t.
-    decide_TelEq_instantiate.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  {
-    _packet_encode_t.
-    decide_TelEq_instantiate.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  {
-    _packet_encode_t.
-    decide_TelEq_instantiate.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment cache counter") nil); admit.
-  }
-
-  {
-    Arguments NotInTelescope: simpl never.
-    _packet_encode_step; try _packet_encode_cleanup.
-Ltac decide_NotInTelescope ::=
-  progress repeat match goal with
-            | _ => cleanup
-            | _ => congruence
-            | [  |- NotInTelescope _ Nil ] => reflexivity
-            | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
-            end.
-
-    2: decide_TelEq_instantiate.
-    { _packet_encode_t. }
-    { _packet_encode_t. }
-    { _packet_encode_t. }
-
-    {
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      Focus 3.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-            
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      _packet_encode_step.
-      instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "answer" <-- ` panswer as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit.
-    }
-
-    {
-      
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit.
-    }
-
-    {
-      mod_first.
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-    }
-
-    {                           (* FIXME why is there no mod_first here? *)
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit.
-    }
-
-    {
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-    }
-  }
-
-  {
-    _packet_encode_step.
-    2: decide_TelEq_instantiate.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    {
-      instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "answer" <-- ` panswer as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit.
-    }
-
-    { _packet_encode_t. }
-
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    _packet_encode_step.
-    2: decide_TelEq_instantiate.
-    { _packet_encode_t. }
-    { _packet_encode_t. }
-    
-    {
-      instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "answer" <-- ` panswer as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit.
-    }
-
-    {
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit.
-    }
-
-    {
-      mod_first.
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-    }
-
-    {                           (* FIXME why is there no mod_first here? *)
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit.
-    }
-
-    {
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-    }
-  }
-
-  
-  {
-    _packet_encode_t.
-    _packet_encode_t.
-    _packet_encode_t.
-  _packet_encode_t.       (* FIXME investigate if IList_encode'_body_simpl is a special case of IList_post_transform_TelEq *)
-
-  (* move_to_front "head". *)
-  (* apply CompileExtendLifetime'. *)
-(* _packet_encode_t. *)
-
-  unfold encode_question.
-
-  repeat (try _packet_encode_cleanup; compile_compose).
-  
-  _packet_encode_t.
-  _packet_encode_t.
-  unfold SteppingCacheList.SteppingList_encode.
-
-  _packet_encode_t.
-  repeat lazymatch goal with
-         | [  |- context[_ ++ nil] ] => setoid_rewrite app_nil_r
-         end.
-  _packet_encode_t.
-  _packet_encode_t.
-  Unfocus.
-  (* FIXME remove the rewrite from the FixInt tactic *)
-
-
-  { _packet_encode_t.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit.
-  }
+  (* FIXME remove compile_do_use_transitivity_to_handle_head_separately? Or
+       add a case with [fun _ => _] as the function for [ProgOk_Transitivity_First] *)
 
   { _packet_encode_t. }
-  
-  { _packet_encode_t.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit.
-    mod_first.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Increment counter in cache") nil); admit. }
 
+  { _packet_encode_t. }
 
-  { _packet_encode_t.
+  { _packet_encode_t. }
 
-    }
+  { _packet_encode_t. }
+
+  {
     _packet_encode_t.
-    
-  repeat lazymatch goal with
-         | [  |- context[Transformer.transform nil _] ] => setoid_rewrite @Transformer.transform_id_left
-         | [  |- context[Transformer.transform _ nil] ] => setoid_rewrite @Transformer.transform_id_right
-         end.
-  _packet_encode_t.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate question") nil); admit.
+    { _packet_encode_t. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "answer" <-- ` panswer as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit. }
 
-  {
-  _packet_encode_t.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode answer") nil); admit.
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "answer" <-- ` panswer as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit. }
+
+    { (* FIXME why no other instantiate? *)
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit. }
   }
 
-  {
-  _packet_encode_t.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority") nil); admit.
-  }
+  { _packet_encode_t.
+    { _packet_encode_t. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource name") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource type") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource class") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource ttl") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "authority" <-- ` pauthority as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of resource data") nil); admit. }
+    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource data") nil); admit. } }
 
-  {
-  _packet_encode_t.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional") nil); admit.
-  }
+  { _packet_encode_t.
+    { _packet_encode_t. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority name") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority type") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority class") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority ttl") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of authority data") nil); admit. }
+    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority data") nil); admit. } }
 
-  repeat lazymatch goal with
-         | [  |- context[Transformer.transform nil _] ] => setoid_rewrite @Transformer.transform_id_left
-         | [  |- context[Transformer.transform _ nil] ] => setoid_rewrite @Transformer.transform_id_right
-         end.
+  { _packet_encode_t.
+    { _packet_encode_t. }
+    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate pid and mask") nil); admit. }
 
-  _packet_encode_t.
-  unfold PacketAsCollectionOfVariables; simpl.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate packet") nil); admit.
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional name") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional type") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional class") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional ttl") nil); admit. }
+    { instantiate (1 := [[ ` "head" <-- head as _]]
+                         ::[[ ` "id" <-- ` pid as _]]
+                         ::[[ ` "mask" <-- ` pmask as _]]
+                         ::Nil).
+      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of additional data") nil); admit. }
+    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional data") nil); admit. } }
 
-  _packet_encode_t.
-  unfold DnsCacheAsCollectionOfVariables, PacketAsCollectionOfVariables; simpl.
-  instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate cache") nil); admit.
-
+  { _packet_encode_t.
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate cache") nil); admit. }
   Grab Existential Variables.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
   repeat constructor.
   repeat constructor.
   repeat constructor.
