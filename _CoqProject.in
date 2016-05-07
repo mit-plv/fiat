@@ -297,6 +297,7 @@ src/Parsers/BooleanRecognizerFull.v
 src/Parsers/BooleanRecognizerMin.v
 src/Parsers/BooleanRecognizerOptimized.v
 src/Parsers/BooleanRecognizerOptimizedReflective.v
+src/Parsers/BooleanRecognizerOptimizedReflectiveCorrectness.v
 src/Parsers/BooleanRecognizerTests.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
@@ -422,6 +423,8 @@ src/Parsers/Reflective/ParserPartialUnfold.v
 src/Parsers/Reflective/ParserReify.v
 src/Parsers/Reflective/ParserSemantics.v
 src/Parsers/Reflective/ParserSemanticsOptimized.v
+src/Parsers/Reflective/ParserSoundness.v
+src/Parsers/Reflective/ParserSoundnessOptimized.v
 src/Parsers/Reflective/ParserSyntax.v
 src/Parsers/Reflective/PartialUnfold.v
 src/Parsers/Reflective/Reify.v
