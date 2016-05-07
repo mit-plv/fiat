@@ -260,6 +260,8 @@ Module Export PrettyNotations.
   Global Arguments Compare_dec.leb !_ !_.
 
   Infix "=p" := default_production_carrierT_beq (at level 70, no associativity).
+  Infix "=ℕ" := opt.beq_nat (at level 70, no associativity).
+  Infix "=ℕ" := opt2.beq_nat (at level 70, no associativity).
   Infix "=ℕ" := EqNat.beq_nat (at level 70, no associativity).
 End PrettyNotations.
 
