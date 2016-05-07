@@ -122,6 +122,24 @@ Section term.
     | an_arg _ _ _ af' => af'
     | _ => tt
     end.
+
+  Definition invert_args_for {T} (args : args_for T)
+    : args = match T return args_for T -> args_for T with
+             | csimple T' => fun _ => noargs
+             | carrow A B => fun args' => an_arg (ahd args') (atl args')
+             end args.
+  Proof.
+    destruct args; reflexivity.
+  Defined.
+
+  Definition invert_args_for_ex {T} (args : args_for T)
+    : match T return args_for T -> Prop with
+      | csimple T' => fun args => args = noargs
+      | carrow A B => fun args => exists hd tl, args = an_arg hd tl
+      end args.
+  Proof.
+    destruct args; repeat esplit.
+  Defined.
 End term.
 
 Bind Scope term_scope with Term.

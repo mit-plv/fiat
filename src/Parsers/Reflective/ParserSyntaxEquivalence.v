@@ -16,7 +16,5 @@ Section has_parse_term_equiv.
       -> has_parse_term_equiv
            G
            (RFix2 G_length up_to_G_length f1 valid_len valids nt_idx)
-           (RFix2 G_length up_to_G_length f2 valid_len valids nt_idx)
-  | EqRefl' : forall (E : polyhas_parse_term),
-      has_parse_term_equiv nil (E var1) (E var2).
+           (RFix2 G_length up_to_G_length f2 valid_len valids nt_idx).
 End has_parse_term_equiv.
