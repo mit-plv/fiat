@@ -88,6 +88,7 @@ PARSERS_UNMADE_VO := \
 	src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.vo \
 	src/Parsers/Grammars/JavaScriptWithoutStatements.vo \
 	src/Parsers/GenericRecognizerOptimized.vo \
+	src/Parsers/Reflective/LogicalRelations.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo
 
 FIAT4MONITORS_UNMADE_VO := \
