@@ -1712,7 +1712,31 @@ Global Arguments injective_projections' {_ _ _ _} !_ !_.
 Module opt.
   Definition fst {A B} := Eval compute in @fst A B.
   Definition snd {A B} := Eval compute in @snd A B.
+  Definition andb := Eval compute in andb.
+  Definition orb := Eval compute in orb.
+  Definition beq_nat := Eval compute in EqNat.beq_nat.
+
+  Module Export Notations.
+    Delimit Scope opt_bool_scope with opt_bool.
+    Notation "x && y" := (andb x%opt_bool y%opt_bool) : opt_bool_scope.
+    Notation "x || y" := (orb x%opt_bool y%opt_bool) : opt_bool_scope.
+  End Notations.
 End opt.
+
+Module opt2.
+  Definition fst {A B} := Eval compute in @fst A B.
+  Definition snd {A B} := Eval compute in @snd A B.
+  Definition andb := Eval compute in andb.
+  Definition orb := Eval compute in orb.
+  Definition beq_nat := Eval compute in EqNat.beq_nat.
+  Definition leb := Eval compute in Compare_dec.leb.
+
+  Module Export Notations.
+    Delimit Scope opt2_bool_scope with opt2_bool.
+    Notation "x && y" := (andb x%opt2_bool y%opt2_bool) : opt2_bool_scope.
+    Notation "x || y" := (orb x%opt2_bool y%opt2_bool) : opt2_bool_scope.
+  End Notations.
+End opt2.
 
 (** Work around broken [intros []] in trunk (https://coq.inria.fr/bugs/show_bug.cgi?id=4470) *)
 Definition intros_destruct_dummy := True.

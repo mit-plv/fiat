@@ -56,23 +56,24 @@ Section correctness.
 
   Context (str : String) (nt : String.string).
 
-  Local Notation rparse
+  Definition rinterp_parse pnt
     := (opt.interp_has_parse_term
           (@is_valid_nonterminal _ _)
           (length str)
           (fun n => char_at_matches n str)
           (fun n => split_string_for_production n str)
-          (parse_nonterminal_reified G nt _))
-         (only parsing).
+          pnt).
 
   Lemma parse_nonterminal_reified_opt_interp_precorrect
-    : rparse = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
+    : rinterp_parse (parse_nonterminal_reified G nt _)
+      = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
   Proof.
     clear splitdata_correct HSLP.
   Admitted.
 
   Lemma parse_nonterminal_reified_opt_interp_correct
-    : rparse = BooleanRecognizer.parse_nonterminal (data := data) str nt.
+    : rinterp_parse (parse_nonterminal_reified G nt _)
+      = BooleanRecognizer.parse_nonterminal (data := data) str nt.
   Proof.
     rewrite parse_nonterminal_reified_opt_interp_precorrect.
     apply parse_nonterminal_preopt_eq; assumption.
