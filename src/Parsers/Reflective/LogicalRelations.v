@@ -82,6 +82,7 @@ Proof.
                      end in
             destruct f).
     simpl.
+(*
       simpler.
     { simpler.
       unfold vars in *.
@@ -256,3 +257,4 @@ Qed.
 
 
 Inductive
+*)
