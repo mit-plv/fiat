@@ -91,6 +91,7 @@ Section term.
   | RLC (_ : RLiteralConstructor T)
   | RLNC (_ : RLiteralNonConstructor T).
 
+  Local Unset Elimination Schemes.
   Inductive Term : TypeCode -> Type :=
   | RVar {T} (v : var T) : Term T
   | RLambda {A B} (f : var A -> Term B)
@@ -104,6 +105,14 @@ Section term.
        | noargs {T} : args_for (csimple T).
   Bind Scope term_scope with Term.
   Bind Scope termargs_scope with args_for.
+
+  Scheme Term_rect := Induction for Term Sort Type
+                     with args_for_rect := Induction for args_for Sort Type.
+  Scheme Term_rec := Induction for Term Sort Set
+                     with args_for_rec := Induction for args_for Sort Set.
+  Scheme Term_ind := Induction for Term Sort Prop
+                     with args_for_ind := Induction for args_for Sort Prop.
+  Combined Scheme Term_args_for_mutind from Term_ind, args_for_ind.
 
   Definition ahd {A B} (af : args_for (A --> B)) : Term A :=
     match af in args_for T return match T with

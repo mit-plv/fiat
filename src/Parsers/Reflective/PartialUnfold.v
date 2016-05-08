@@ -71,6 +71,15 @@ Section normalization_by_evaluation.
     | _ => tt
     end.
 
+  Fixpoint aino {T U} (v : onelevelG T) (args : args_for_onelevel U) : Prop
+    := match args with
+       | an_arg_ol A B arg args
+         => (exists pf : T = A,
+                arg = Some (eq_rect T onelevelG v A pf))
+            \/ @aino _ _ v args
+       | noargs_ol T => False
+       end.
+
   Section constantOfs.
     Context (constantOf : forall {T} (t : Term var T), option (onelevelG T)).
 
@@ -387,3 +396,38 @@ End normalization_by_evaluation.
 
 Definition polynormalize {T} (term : polyTerm T) : polyTerm T
   := fun var => normalize (term _).
+
+Section lemmas.
+  Definition interp_constantOf {T} : onelevelG interp_TypeCode T -> interp_TypeCode T
+    := match T return onelevelG _ T -> interp_TypeCode T with
+       | cnat
+       | cbool
+       | cstring
+       | cascii
+       | critem_ascii
+       | crchar_expr_ascii
+         => fun x => x
+       | clist T => List.map interp_Term
+       | cprod A B => fun xy => (interp_Term (fst xy), interp_Term (snd xy))
+       | carrow A B => fun x : Empty_set => match x with end
+       end.
+
+  Fixpoint has_no_nones {var T}
+           (args : args_for_onelevel var T)
+    : bool
+    := match args with
+       | an_arg_ol _ _ (Some _) args => @has_no_nones _ _ args
+       | an_arg_ol A B None _ => false
+       | noargs_ol _ => true
+       end.
+
+  Fixpoint interp_constantOfs {T} (f : interp_TypeCode T)
+           (args : args_for_onelevel interp_TypeCode T)
+           (H : has_no_nones args = true)
+    : interp_TypeCode (range_of T)
+    := match args in args_for_onelevel _ T return interp_TypeCode T -> has_no_nones args -> interp_TypeCode (range_of T) with
+       | an_arg_ol _ _ (Some arg) args => fun f H => @interp_constantOfs _ (f (interp_constantOf arg)) args H
+       | an_arg_ol _ _ None args => fun _ H => match (Bool.diff_false_true H : False) with end
+       | noargs_ol T => fun f _ => f
+       end f H.
+End lemmas.
