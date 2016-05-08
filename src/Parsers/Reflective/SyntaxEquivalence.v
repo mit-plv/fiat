@@ -11,6 +11,7 @@ Section Term_equiv.
   Definition vars t (x1 : var1 t) (x2 : var2 t) : vpair := existT _ _ (x1, x2).
   Definition ctxt := list vpair.
 
+  Local Unset Elimination Schemes.
   Inductive Term_equiv : ctxt -> forall {t}, Term var1 t -> Term var2 t -> Prop :=
   | EqVar : forall G t (v1 : var1 t) v2,
     List.In (vars v1 v2) G
@@ -34,6 +35,9 @@ Section Term_equiv.
            -> args_for_equiv G args1 args2
            -> args_for_equiv G (an_arg arg1 args1) (an_arg arg2 args2)
        | Eq_noargs {G T} : args_for_equiv G (@noargs var1 T) (@noargs var2 T).
+  Scheme Term_equiv_ind := Induction for Term_equiv Sort Prop
+                           with args_for_equiv_ind := Induction for args_for_equiv Sort Prop.
+  Combined Scheme Term_equiv_args_for_equiv_mutind from Term_equiv_ind, args_for_equiv_ind.
 End Term_equiv.
 
 Arguments vars {var1 var2 t} _ _.
