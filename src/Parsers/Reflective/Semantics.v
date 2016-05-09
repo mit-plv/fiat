@@ -31,6 +31,33 @@ Fixpoint interp_TypeCode (t : TypeCode) : Type
      | carrow A B => interp_TypeCode A -> interp_TypeCode B
      end%type.
 
+Fixpoint apply_args_for {T}
+         (f : interp_TypeCode T)
+         (argsv : args_for interp_TypeCode T)
+  : interp_TypeCode (range_of T)
+  := match argsv in args_for _ T return interp_TypeCode T -> interp_TypeCode (range_of T) with
+     | an_arg A B arg args => fun f => @apply_args_for _ (f arg) args
+     | noargs T => fun f => f
+     end f.
+
+Section step.
+  Context (interp_RLiteralTerm : forall {T}, RLiteralTerm T -> interp_TypeCode T).
+  Context (interp_Term_gen : forall {T} (t : Term interp_TypeCode T), interp_TypeCode T).
+
+  Definition interp_Term_gen_step {T} (t : Term interp_TypeCode T) : interp_TypeCode T
+    := match t in (Term _ T') return interp_TypeCode T' with
+       | RVar T v => v
+       | RLambda A B f => fun x => @interp_Term_gen _ (f x)
+       | RApp A B f x => @interp_Term_gen _ f (@interp_Term_gen _ x)
+       | RLiteralApp c t args => apply_args_for (interp_RLiteralTerm t)
+                                                (map_args_for (@interp_Term_gen) args)
+       end.
+End step.
+
+Fixpoint interp_Term_gen (interp_RLiteralTerm : forall T, RLiteralTerm T -> interp_TypeCode T)
+         {T} (t : Term interp_TypeCode T) : interp_TypeCode T
+  := @interp_Term_gen_step interp_RLiteralTerm (@interp_Term_gen interp_RLiteralTerm) T t.
+
 Definition interp_RLiteralTerm {T} (t : RLiteralTerm T) : interp_TypeCode T
   := match t with
      | RLC t'
@@ -76,49 +103,34 @@ Definition interp_RLiteralTerm {T} (t : RLiteralTerm T) : interp_TypeCode T
           | Rup_to => up_to
           | Rmax => max
           | Rinterp_RCharExpr_ascii => Reflective.interp_RCharExpr
-          (*| Rchar_at_matches => fun n => char_at_matches n str
-          | Rsplit_string_for_production => fun n => split_string_for_production n str*)
           end
      end.
 
-Fixpoint interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
-  := match t in (Term _ T') return interp_TypeCode T' with
-     | RVar T v => v
-     | RLambda A B f => fun x => @interp_Term _ (f x)
-     | RApp A B f x => @interp_Term _ f (@interp_Term _ x)
-     | RLiteralApp c t args => interp_args_for (interp_RLiteralTerm t) args
-     end
-with interp_args_for {T} (f : interp_TypeCode T)
-                     (args : args_for interp_TypeCode T)
-     : interp_TypeCode (range_of T)
-     := match args in args_for _ T return interp_TypeCode T -> interp_TypeCode (range_of T) with
-        | an_arg A B arg args => fun f => @interp_args_for _ (f (@interp_Term _ arg)) args
-        | noargs T => fun f => f
-        end f.
+Definition interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
+  := interp_Term_gen (@interp_RLiteralTerm) t.
 
-Section defaulted_fun.
-  Context {var}
-          (interp_var : forall T, var T -> interp_TypeCode T)
-          (uninterp_var : forall T, interp_TypeCode T -> var T).
+(* Section equality.
+  Context {M : Type -> Type}.
 
-  Fixpoint interp_Term_fun
-           {T}
-           (t : Term var T) : interp_TypeCode T
-    := match t in (Term _ T') return interp_TypeCode T' with
-       | RVar _ v
-         => interp_var v
-       | RLambda A B f
-         => fun x => @interp_Term_fun _ (f (uninterp_var _ x))
-       | RApp A B f x
-         => @interp_Term_fun
-              _ f
-              (@interp_Term_fun _ x)
-       | RLiteralApp _ t' args
-         => interp_args_for_fun (interp_RLiteralTerm t') args
-       end
-  with interp_args_for_fun {T} (f : interp_TypeCode T) (args : args_for _ T) : interp_TypeCode (range_of T)
-       := match args in args_for _ T return interp_TypeCode T -> interp_TypeCode (range_of T) with
-          | an_arg A B arg args => fun f => interp_args_for_fun (f (interp_Term_fun arg)) args
-          | noargs T => fun f => f
-          end f.
-End defaulted_fun.
+  Definition args_for_values_code {T} (a0 : @args_for_values M T)
+    : @args_for_values M T -> Prop
+    := match a0 in @args_for_values _ T return @args_for_values _ T -> Prop with
+       | an_argv A B a0 as0
+         => fun a1
+            => a0 = ahdv a1 /\ as0 = atlv a1
+       | noargsv _
+         => fun a1 => noargsv = a1
+       end.
+
+  Global Instance args_for_values_code_refl {T} : RelationClasses.Reflexive (@args_for_values_code T).
+  Proof.
+    intro a; destruct a; simpl; repeat split.
+  Qed.
+
+  Lemma args_for_values_encode {T} (a0 a1 : @args_for_values M T)
+    : a0 = a1 -> args_for_values_code a0 a1.
+  Proof.
+    intro; subst; reflexivity.
+  Qed.
+End equality.
+ *)

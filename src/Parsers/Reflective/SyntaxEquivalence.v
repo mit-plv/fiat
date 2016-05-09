@@ -18,7 +18,7 @@ Section Term_equiv.
     -> Term_equiv G (#v1) (#v2)
 
   | EqLiteralApp : forall G T f v1 v2,
-      args_for_equiv G v1 v2
+      args_for_related_ind (@Term_equiv G) v1 v2
       -> Term_equiv G (@RLiteralApp var1 T f v1) (@RLiteralApp var2 T f v2)
 
   | EqApp : forall G t1 t2 (f1 : Term _ (t1 --> t2)) (x1 : Term _ t1) f2 x2,
@@ -27,21 +27,58 @@ Section Term_equiv.
     -> Term_equiv G (f1 @ x1) (f2 @ x2)
   | EqLambda : forall G t1 t2 (f1 : var1 t1 -> Term var1 t2) f2,
     (forall v1 v2, Term_equiv (vars v1 v2 :: G) (f1 v1) (f2 v2))
-    -> Term_equiv G (RLambda f1) (RLambda f2)
-  with args_for_equiv : ctxt -> forall {t}, args_for var1 t -> args_for var2 t -> Prop :=
-       | Eq_an_arg {G A B} (arg1 : Term var1 A) (arg2 : Term var2 A)
-                   (args1 : args_for var1 B) (args2 : args_for var2 B)
-         : Term_equiv G arg1 arg2
-           -> args_for_equiv G args1 args2
-           -> args_for_equiv G (an_arg arg1 args1) (an_arg arg2 args2)
-       | Eq_noargs {G T} : args_for_equiv G (@noargs var1 T) (@noargs var2 T).
-  Scheme Term_equiv_ind := Induction for Term_equiv Sort Prop
-                           with args_for_equiv_ind := Induction for args_for_equiv Sort Prop.
-  Combined Scheme Term_equiv_args_for_equiv_mutind from Term_equiv_ind, args_for_equiv_ind.
+    -> Term_equiv G (RLambda f1) (RLambda f2).
+
+  Section ind.
+    Context (P : ctxt -> forall t, Term var1 t -> Term var2 t -> Prop)
+            (EqVarCase : forall G t v1 v2,
+                In (vars v1 v2) G -> P G t (#v1)%term (#v2)%term)
+            (EqLiteralAppCase : forall G T f v1 v2,
+                args_for_related_ind (@Term_equiv G) v1 v2
+                -> (forall A vv1 vv2, @aIn2 _ _ A _ vv1 vv2 v1 v2
+                                      -> P G A vv1 vv2)
+                -> P G (range_of T) (RLiteralApp f v1) (RLiteralApp f v2))
+            (EqAppCase : forall G t1 t2 f1 x1 f2 x2,
+                Term_equiv G f1 f2
+                -> P G (t1 --> t2)%typecode f1 f2
+                -> Term_equiv G x1 x2
+                -> P G t1 x1 x2
+                -> P G t2 (f1 @ x1)%term (f2 @ x2)%term)
+            (EqLambdaCase : forall G t1 t2 f2 f3,
+                (forall v1 v2, Term_equiv (vars v1 v2 :: G) (f2 v1) (f3 v2))
+                -> (forall v1 v2, P (vars v1 v2 :: G) t2 (f2 v1) (f3 v2))
+                -> P G (t1 --> t2)%typecode (\ x, f2 x)%term (\ x, f3 x)%term).
+
+    Fixpoint Term_equiv_ind (c : ctxt) (t : TypeCode) (t0 : Term var1 t) (t1 : Term var2 t)
+             (H : @Term_equiv c t t0 t1)
+      : @P c t t0 t1.
+    Proof.
+      refine match H in @Term_equiv c t t0 t1 return @P c t t0 t1 with
+             | EqVar G t v1 v2 x => EqVarCase _ _ _ x
+             | EqLiteralApp G T f v1 v2 x => EqLiteralAppCase _ x _
+             | EqApp G t1 t2 f1 x1 f2 x2 x x0 => EqAppCase
+                                                   x
+                                                   (@Term_equiv_ind _ _ _ _ x)
+                                                   x0
+                                                   (@Term_equiv_ind _ _ _ _ x0)
+             | EqLambda G t1 t2 f1 f2 x => EqLambdaCase _ _ x (fun v1 v2 => @Term_equiv_ind _ _ _ _ (x v1 v2))
+             end.
+      clear f.
+      induction x as [A B ?? x xs e es IHxs|].
+      { specialize (Term_equiv_ind G _ _ _ e).
+        simpl.
+        intros ??? [[pf [H0 H1]]|H'].
+        { destruct pf, H0, H1; simpl.
+          exact Term_equiv_ind. }
+        { apply IHxs; assumption. } }
+      { simpl.
+        intros ??? []. }
+    Qed.
+  End ind.
 End Term_equiv.
 
 Arguments vars {var1 var2 t} _ _.
-
+(*
 Definition invert_args_for_equiv {var1 var2 G T v1 v2}
            (H : @args_for_equiv var1 var2 G T v1 v2)
   : match T return args_for var1 T -> args_for var2 T -> Prop
@@ -57,3 +94,4 @@ Definition invert_args_for_equiv {var1 var2 G T v1 v2}
 Proof.
   destruct H; repeat esplit; assumption.
 Defined.
+*)

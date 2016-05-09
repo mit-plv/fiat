@@ -49,6 +49,6 @@ Module opt.
                nt_idx
         end.
 End opt.
-Declare Reduction propt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term].
-Ltac propt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term].
-Ltac propt_red_in H := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term] in H.
+Declare Reduction propt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term].
+Ltac propt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term].
+Ltac propt_red_in H := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data opt.interp_has_parse_term] in H.

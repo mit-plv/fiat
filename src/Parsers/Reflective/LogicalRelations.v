@@ -10,10 +10,10 @@ Fixpoint related {T} : interp_TypeCode T -> normalized_of interp_TypeCode T -> P
        => fun f1 f2 => forall x1 x2, related x1 x2 -> related (f1 x1) (f2 x2)
      end.
 
-Ltac concretize := cbv zeta.
-Ltac simpler' := concretize; simpl in *; try subst; intros; auto; try subst; intros; auto;
+Local Ltac concretize := cbv zeta.
+Local Ltac simpler' := concretize; simpl in *; try subst; intros; auto; try subst; intros; auto;
   try congruence; try omega; try (elimtype False; omega).
-Ltac simplerGoal :=
+Local Ltac simplerGoal :=
   idtac;
   match goal with
   | [ H : False |- _ ] => destruct H
@@ -41,20 +41,33 @@ Ltac simplerGoal :=
     end
   | [ H : option_map _ ?x = Some _ |- _ ]
     => destruct x eqn:?; unfold option_map at 1 in H
+  | [ H : Some _ = option_map _ ?x |- _ ]
+    => destruct x eqn:?; unfold option_map at 1 in H
+  (*| [ H : an_arg _ _ = an_arg _ _ |- _ ]
+    => apply args_for_encode in H; unfold args_for_code in H
+  | [ H : noargsv = noargsv |- _ ] => clear H
   | [ H : @args_for_equiv _ _ _ (carrow _ _) _ _ |- _ ]
     => apply invert_args_for_equiv in H; cbv beta iota in H
   | [ H : @args_for_equiv _ _ _ (csimple _) _ _ |- _ ]
-    => apply invert_args_for_equiv in H; cbv beta iota in H
+    => apply invert_args_for_equiv in H; cbv beta iota in H*)
   | [ |- _ /\ _ ] => split
 
   | [ |- context[if ?E then _ else _] ] => destruct E eqn:?
   (*| [ |- context[match ?pf with refl_equal => _ end] ] => rewrite (UIP_refl _ _ pf)*)
   | [ H : context[if ?E then _ else _] |- _ ] => destruct E eqn:?
   | [ |- (_, _) = (_, _) ] => apply f_equal2
+  | [ |- cons _ _ = cons _ _ ] => apply f_equal2
+  (*| [ |- an_argv _ _ = an_argv _ _ ] => apply f_equal2*)
   | _ => progress simpl
+  | [ |- context[interp_Term_gen ?f ?v] ]
+    => change (interp_Term_gen f v)
+       with (@interp_Term_gen_step f (@interp_Term_gen f) _ v)
+  | [ |- context[option_map _ ?x] ]
+    => destruct x eqn:?; simpl
+  (*| _ => progress unfold interp_args_for, interp_Term in **)
   end.
-Ltac simpler := simpler'; repeat (simplerGoal; simpler').
-Ltac simpler_args_for' :=
+Local Ltac simpler := simpler'; repeat (simplerGoal; simpler').
+Local Ltac simpler_args_for' :=
   idtac;
   match goal with
   | [ args : args_for _ (carrow ?A ?B) |- _ ]
@@ -66,7 +79,7 @@ Ltac simpler_args_for' :=
        pose proof (invert_args_for_ex args) as H; cbv beta iota in H;
        subst args
   end.
-Ltac simpler_args_for := repeat simpler_args_for'.
+Local Ltac simpler_args_for := repeat simpler_args_for'.
 
 
 Lemma push_var : forall t v1 v2 t' v1' v2' G,
@@ -79,6 +92,30 @@ Proof.
   simpler.
 Qed.
 
+Lemma constantOf_correct
+  : forall {T} (t : Term interp_TypeCode T) v
+           (H : constantOf t = Some v),
+    interp_Term t = interp_constantOf v.
+Proof.
+  intros T t; induction t;
+  repeat match goal with
+         | [ t : RLiteralTerm _ |- _ ] => destruct t
+         | [ t : RLiteralConstructor _ |- _ ] => destruct t
+         | [ H : constantOf ?bv = Some ?dv, H' : forall a b c d, constantOf b = Some d -> _ |- _ ]
+           => pose proof (fun c => H' _ bv c dv H); clear H
+         | _ => progress simpler_args_for
+         | _ => simpler
+         end.
+  simpler.
+  apply H in Heqo.
+Qed.
+
+Local Ltac simpler_constantOf
+  := repeat match goal with
+            | [ H : constantOf ?t = Some ?v |- _ ]
+              => apply (proj1 constantOf_correct _ t v) in H
+            end.
+
 Local Hint Resolve push_var.
 Lemma meaning_correct
   : (forall G t e1 e2,
@@ -90,15 +127,33 @@ Lemma meaning_correct
            args_for_equiv G e1 e2
            -> (forall t' v1 v2, List.In (vars v1 v2) G
                                 -> @related t' v1 v2)
-           -> forall f,
-               @interp_args_for t f e1
-               = @interp_args_for t f (unmeanings (meanings (@meaning interp_TypeCode) e2))).
+           -> args_for_values_related
+                (fun _ => eq)
+                (@interp_args_for t e1)
+                (@interp_args_for t (unmeanings (meanings (@meaning interp_TypeCode) e2)))).
 Proof.
+  split.
+  Focus 2.
+  intros.
+  pose (meanings (@meaning interp_TypeCode) e2).
+  unfold interp_Term, interp_args_for.
   apply Term_equiv_args_for_equiv_mutind;
   try solve [ simpler; eauto ].
+  Focus 2.
+  Set Printing Implicit.
+  unfold id.
+About interp_args_for.
+
+  intros.
+  simpl.
+  apply f_equal2; try solve [ simpler; eauto ].
+
+  Print reify.
+  simpler; eauto.
+
   { simpler; eauto.
-    match goal with
-    | [ H : forall f, interp_args_for f ?v = _ |- interp_args_for _ ?v = _ ]
+   match goal with
+    | [ H : ?v = _ |- context[?v] ]
       => rewrite H; clear H
     end.
     repeat match goal with
@@ -106,37 +161,40 @@ Proof.
            | [ x : args_for _ _ |- _ ] => clear dependent x
            | [ f : RLiteralTerm _ |- _ ] => destruct f
            | [ f : RLiteralNonConstructor _ |- _ ] => destruct f
-           end.
-    { simpl in *.
-      match goal with
-      | [ |- context[constantOf ?x] ]
-        => destruct (constantOf x) eqn:?
-      end.
-      simpl.
-Lemma constantOf_correct
-  : (forall {T} (t : Term interp_TypeCode T) v
-            (H : constantOf t = Some v),
-        interp_Term t = interp_constantOf v)
-    /\ (forall {T} (args : args_for interp_TypeCode T)
-               (f : interp_TypeCode T)
-               (H : has_no_nones (constantOfs (@constantOf _) args) = true),
-           interp_args_for f args = interp_constantOfs f _ H).
-Proof.
-  apply Term_args_for_mutind; intros;
-  repeat match goal with
-         | _ => simpl in *; congruence
-         | [ t : RLiteralTerm _ |- _ ] => destruct t
-         | [ t : RLiteralConstructor _ |- _ ] => destruct t
-         | _ => solve [ repeat (simpler || simpler_args_for) ]
-         | [ |- interp_Term (RLiteralApp _ _) = _ ] => simpl
-         | [ H : forall f h, interp_args_for f ?args = _ |- interp_args_for ?f' ?args = _ ]
-           => specialize (H f')
-         | _ => progress simpler_args_for
-         | [ H : constantOf (RLiteralApp _ _) = Some _ |- _ ] => simpl in H
-         | _ => progress unfold constantOfs in *
-         | [ H : option_map _ (constantOf ?x) = Some _ |- _ ]
-           => destruct (constantOf x) eqn:?; unfold option_map at 1 in H
-         end. (*
+           end;
+      repeat match goal with
+             | _ => progress simpler_constantOf
+             | _ => progress simpler_args_for
+             | _ => progress simpler
+             | [ |- context[constantOf ?x] ]
+               => destruct (constantOf x) eqn:?
+             | [ H : ?v = _ |- context[?v] ]
+               => rewrite H
+             end.
+      simpler_constantOf;
+      simpler.
+      simpler_args_for.
+      simpler.
+   match goal with
+    end.
+
+      {
+
+simplerGoal.
+simpl.
+{ simpler.
+match goal with
+end.
+simpler.
+simpler.
+unfold interp_Term in *.
+rewrite H, H0.
+
+  lazymatch goal with  | [ H : an_argv _ _ = an_argv _ _ |- _ ]
+    => apply args_for_values_encode in H; unfold args_for_values_code in H
+end.
+simpl in *.
+ (*
 unfold constantOfs in *.
 simpl in *.
   simpl in *.

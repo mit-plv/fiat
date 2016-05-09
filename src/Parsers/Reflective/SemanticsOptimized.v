@@ -27,22 +27,6 @@ Module opt.
              end
         end.
 
-  Fixpoint interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
-    := match t in (Term _ T') return interp_TypeCode T' with
-       | RVar T v => v
-       | RLambda A B f => fun x => @interp_Term _ (f x)
-       | RApp A B f x => @interp_Term _ f (@interp_Term _ x)
-       | RLiteralApp c t args => interp_args_for (interp_RLiteralTerm t) args
-       end
-  with interp_args_for {T} (f : interp_TypeCode T)
-                       (args : args_for interp_TypeCode T)
-       : interp_TypeCode (range_of T)
-       := match args in args_for _ T return interp_TypeCode T -> interp_TypeCode (range_of T) with
-          | an_arg A B arg args => fun f => @interp_args_for _ (f (@interp_Term _ arg)) args
-          | noargs T => fun f => f
-          end f.
+  Definition interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
+    := interp_Term_gen (@interp_RLiteralTerm) t.
 End opt.
-
-Declare Reduction ropt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data].
-Ltac ropt_red := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data].
-Ltac ropt_red_in H := cbv [opt.map opt.fold_left opt.nth' opt.interp_RLiteralTerm opt.interp_args_for opt.interp_Term interp_TypeCode interp_SimpleTypeCode interp_SimpleTypeCode_step Reflective.interp_RCharExpr Reflective.irbeq Reflective.ascii_interp_RCharExpr_data] in H.
