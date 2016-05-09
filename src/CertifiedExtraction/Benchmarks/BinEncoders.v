@@ -230,6 +230,24 @@ Proof.
   eauto using CompileSeq.
 Qed.
 
+Lemma ProgOk_Transitivity_First_defunc :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
+    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env ->
+    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+Qed.
+
+Lemma ProgOk_Transitivity_Cons_defunc :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v: Comp A),
+    {{ t1 }}                     prog1      {{ [[k <~~ v as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v as _]]::t1 }}      prog2      {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env ->
+    {{ t1 }}                Seq prog1 prog2 {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env.
+Proof.
+  repeat hoare.
+Qed.
+
 Lemma CompileCallWrite16:
   forall {av} {W: FacadeWrapper av (list bool)} {W': FacadeWrapper (Value av) (BitArray 16)}
     (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope av)
@@ -517,6 +535,39 @@ Proof.
   erewrite (H (Transformer.transform _ _)); rewrite Transformer.transform_assoc; eassumption.
 Qed.
 
+Lemma CompileCompose_init :
+  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B) (cache: E)
+    (tenv t1 t2: Telescope av) f ext env p1 p2 pAlloc,
+    (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
+    {{ tenv }}
+      pAlloc
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[ vstream  <--  Transformer.transform_id as _ ]] :: tenv }}
+      p1
+    {{ TelAppend ([[ NTNone  <--  enc1 cache as encoded1 ]]
+                    :: [[ vstream  <--  Transformer.transform (Transformer.transform_id) (fst encoded1) as _ ]]
+                    :: f encoded1)
+                 t1 }} ∪ {{ ext }} // env ->
+    (let encoded1 := enc1 cache in
+     let stream1 := Transformer.transform Transformer.transform_id (fst encoded1) in
+     {{ TelAppend ([[ vstream  <--  stream1 as _ ]] :: f encoded1) t1 }}
+       p2
+     {{ TelAppend ([[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
+                     :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as _ ]]
+                     :: f encoded2) t2 }} ∪ {{ ext }} // env) ->
+    {{ tenv }}
+      (Seq pAlloc (Seq p1 p2))
+    {{ TelAppend ([[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+                    :: [[ vstream  <--  (fst composed) as _ ]]
+                    :: f composed) t2 }}
+    ∪ {{ ext }} // env.
+Proof.
+  intros; hoare.
+  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
+  eauto using CompileCompose.
+Qed.
+
 Lemma Propagate_anonymous_ret__fast:
   forall {av A} (v : A) (tenv : Telescope av) tenv' env ext p,
     {{ tenv }} p {{ tenv' v }} ∪ {{ ext }} // env ->
@@ -652,12 +703,187 @@ Lemma CompileCallListQuestionLength:
 Proof.
 Admitted.
 
+Ltac match_ProgOk_constr continuation :=
+  lazymatch goal with
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] =>
+    let ret := continuation prog pre post ext env in
+    constr:ret
+  end.
+
+Ltac find_in_tenv tenv v :=
+  lazymatch tenv with
+  | context[Cons ?k (ret v) _] => constr:k
+  end.
+
+Ltac find_in_precondition v :=
+  match_ProgOk_constr
+    ltac:(fun prog pre post ext env => find_in_tenv pre v).
+
+Ltac NameTag_name v :=
+  match v with
+  | NTSome ?name => constr:name
+  end.
+
+Ltac find_name_in_precondition v :=
+  let nt := find_in_precondition v in
+  let v := NameTag_name nt in
+  constr:v.
+
+Ltac may_alloc k :=
+  (* Fail if ‘k’ is bound in precondition. *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match pre with
+            | context[Cons k _ _] => fail 1 "Precondition contains" k
+            | context[Cons (NTSome k) _ _] => fail 1 "Precondition contains" k
+            | _ => idtac
+            end).
+
+Ltac may_alloc_head :=
+  (* Fail if pre-condition contains key of head of post-condition. *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match post with
+            | Cons ?k _ _ => may_alloc k
+            end).
+
+Lemma CompileCallGetQuestionType:
+  forall (vtmp vquestion vtype : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (question : question_t)
+    fget tenv',
+    vtmp ∉ ext ->
+    NotInTelescope vtmp tenv ->
+    TelEq ext tenv ([[`vquestion <-- question as _]]::tenv') ->
+    {{ tenv }}
+      Seq (Assign vtmp (Const 1)) (Call vtype fget [vtmp; vquestion])
+    {{ [[ ` vtype <-- FixInt_of_type (qtype question) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? Teq.
+  hoare; eauto using CompileConstant.
+  setoid_rewrite Teq.
+Admitted.
+
+Ltac _packet_encodeQuestionType :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | Cons _ (ret (FixInt_of_type (qtype ?question))) _ =>
+              let vtmp := gensym "tmp" in
+              let vquestion := find_name_in_precondition question in
+              compile_do_use_transitivity_to_handle_head_separately;
+              [ eapply (CompileCallGetQuestionType vtmp vquestion) | ]
+            end).
+
+Lemma CompileCallGetResourceType:
+  forall (vtmp vresource vtype : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (resource : resource_t)
+    fget tenv',
+    vtmp ∉ ext ->
+    NotInTelescope vtmp tenv ->
+    TelEq ext tenv ([[`vresource <-- resource as _]]::tenv') ->
+    {{ tenv }}
+      Seq (Assign vtmp (Const 1)) (Call vtype fget [vtmp; vresource])
+    {{ [[ ` vtype <-- FixInt_of_type (rtype resource) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? Teq.
+  hoare; eauto using CompileConstant.
+  setoid_rewrite Teq.
+Admitted.
+
+Ltac _packet_encodeType :=
+  may_alloc_head;
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | Cons _ (ret (FixInt_of_type (_ ?question))) _ =>
+              let vtmp := gensym "tmp" in
+              let vquestion := find_name_in_precondition question in
+              compile_do_use_transitivity_to_handle_head_separately;
+              [ (eapply (CompileCallGetQuestionType vtmp vquestion) ||
+                 eapply (CompileCallGetResourceType vtmp vquestion))
+              | ]
+            end).
+
+Lemma CompileCallGetQuestionClass: (* FIXME merge into a single lemma once encoding of questions and answers is decided upon *)
+  forall (vtmp vquestion vclass : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (question : question_t)
+    fget tenv',
+    vtmp ∉ ext ->
+    NotInTelescope vtmp tenv ->
+    TelEq ext tenv ([[`vquestion <-- question as _]]::tenv') ->
+    {{ tenv }}
+      Seq (Assign vtmp (Const 2)) (Call vclass fget [vtmp; vquestion])
+    {{ [[ ` vclass <-- FixInt_of_class (qclass question) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? Teq.
+  hoare; eauto using CompileConstant.
+  setoid_rewrite Teq.
+Admitted.
+
+Lemma CompileCallGetResourceClass: (* FIXME merge into a single lemma once encoding of questions and answers is decided upon *)
+  forall (vtmp vresource vclass : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (resource : resource_t)
+    fget tenv',
+    vtmp ∉ ext ->
+    NotInTelescope vtmp tenv ->
+    TelEq ext tenv ([[`vresource <-- resource as _]]::tenv') ->
+    {{ tenv }}
+      Seq (Assign vtmp (Const 2)) (Call vclass fget [vtmp; vresource])
+    {{ [[ ` vclass <-- FixInt_of_class (rclass resource) as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? Teq.
+  hoare; eauto using CompileConstant.
+  setoid_rewrite Teq.
+Admitted.
+
+Ltac _packet_encodeClass :=
+  may_alloc_head;
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | Cons _ (ret (FixInt_of_class (_ ?question))) _ =>
+              let vtmp := gensym "tmp" in
+              let vquestion := find_name_in_precondition question in
+              compile_do_use_transitivity_to_handle_head_separately;
+              [ ( eapply (CompileCallGetQuestionClass vtmp vquestion) ||
+                  eapply (CompileCallGetResourceClass vtmp vquestion) )
+              | ]
+            end).
+
+Lemma CompileCallDeallocQuestion: (* FIXME merge with other lemmas regarding deallocation of tuple-encoded structures *)
+  forall (vtmp vquestion: string) (q: question_t) (tenv: Telescope ADTValue)
+    ext env fDealloc,
+    NotInTelescope vquestion tenv ->
+    {{ [[ ` vquestion <-- q as _]]::tenv }}
+      (Call vtmp fDealloc [vquestion])
+    {{ tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
+
+Ltac _compile_CallDeallocQuestion :=
+  let vtmp := gensym "tmp" in
+  eapply (CompileCallDeallocQuestion vtmp).
+
+Lemma CompileCallDeallocResource: (* FIXME merge with other lemmas regarding deallocation of tuple-encoded structures *)
+  forall (vtmp vresource: string) (q: resource_t) (tenv: Telescope ADTValue)
+    ext env fDealloc,
+    NotInTelescope vresource tenv ->
+    {{ [[ ` vresource <-- q as _]]::tenv }}
+      (Call vtmp fDealloc [vresource])
+    {{ tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
+
+Ltac _compile_CallDeallocResource :=
+  let vtmp := gensym "tmp" in
+  eapply (CompileCallDeallocResource vtmp).
+
 Ltac _packet_encode_FixInt :=
   match_ProgOk                  (* FIXME check when this is needed *)
     ltac:(fun prog pre post ext env =>
             match post with
             | [[ret (FixInt.FixInt_encode _ _) as _]] :: _ =>
-              rewrite FixInt_encode_is_copy;
+              rewrite FixInt_encode_is_copy; (* FIXME make this an autorewrite *)
               setoid_rewrite Propagate_anonymous_ret; simpl;
               apply ProgOk_Transitivity_First
             end).
@@ -667,17 +893,12 @@ Ltac _compile_CallListLength :=
     ltac:(fun _ _ post _ _ =>
             match post with
             | [[ _ <-- FixList.FixList_getlength ?lst as _]] :: _ =>
-              (* FIXME this should be an equivalent of find_in_ext *)
-              match_ProgOk
-                ltac:(fun _ pre _ _ _ =>
-                        match pre with
-                        | context[Cons (NTSome ?k) (ret (` lst)) _] =>
-                          (* FIXME use this instead of explicit continuations in every lemma *)
-                          compile_do_use_transitivity_to_handle_head_separately;
-                          [ (eapply (CompileCallListResourceLength k) ||
-                             eapply (CompileCallListQuestionLength k))
-                          | ]
-                        end)
+              let vlst := find_name_in_precondition (` lst) in
+              (* FIXME use this instead of explicit continuations in every lemma *)
+              compile_do_use_transitivity_to_handle_head_separately;
+              [ (eapply (CompileCallListResourceLength vlst) ||
+                 eapply (CompileCallListQuestionLength vlst))
+              | ]
             end).
 
 Lemma WrapN16_WrapListBool16:
@@ -703,61 +924,20 @@ Ltac compile_do_use_transitivity_to_handle_head_separately ::=
                        match constr:(post) with
                        | Cons ?k _ _ =>
                          match constr:(pre) with
-                         | Cons ?k _ _ => apply ProgOk_Transitivity_First
+                         | Cons k _ _ => (apply ProgOk_Transitivity_First || apply ProgOk_Transitivity_First_defunc)
                          | context[k] => fail 1 "Head variable appears in pre-condition"
-                         | _ => apply ProgOk_Transitivity_Cons
+                         | _ => (apply ProgOk_Transitivity_Cons || apply ProgOk_Transitivity_Cons_defunc)
                          end
                        end).
 
 Ltac _compile_CallAdd16 :=
-  (* FIXME generalize *)
-  eapply CompileCallAdd16.
-
-Ltac may_alloc_head :=
-  (* Fail if pre-condition contains identifier in head of post-condition. *)
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match post with
-            | Cons ?k _ _ =>
-              match pre with
-              | context[Cons k _ _] => fail 1
-              | _ => idtac
-              end
-            end).
+  compile_do_use_transitivity_to_handle_head_separately;
+  [ apply CompileCallAdd16 | ].
 
 Ltac _compile_CallAllocString :=
   may_alloc_head;
   let vtmp := gensym "tmp" in
   eapply (CompileCallAllocString vtmp).
-
-(* Inductive EvarTag {T A} (a: A) (t: T) := __EvarTag. *)
-
-(* Ltac _packet_encode__clear_EvarTags := *)
-(*   repeat match goal with *)
-(*          | [ H: EvarTag ?v ?tag |- _ ] => try unify v tag; clear H *)
-(*          end. *)
-
-(* Ltac specialize_function_with_evar f tag := *)
-(*   lazymatch type of f with *)
-(*   | ?A -> _ => let a := fresh in *)
-(*              let old_f := fresh "old" in *)
-(*              evar (a: A); *)
-(*              rename f into old_f; *)
-(*              pose (old_f a) as f; *)
-(*              lazymatch constr:tag with *)
-(*              | Some ?t => pose proof (__EvarTag a t) *)
-(*              | _ => idtac *)
-(*              end; *)
-(*              unfold old_f, a in *; *)
-(*              clear old_f; clear a *)
-(*   end. *)
-
-(* Ltac specialize_function_with_evars f := *)
-(*   repeat (specialize_function_with_evar f None). *)
-
-(* Ltac create_packet_evar name := *)
-(*   pose @Build_packet_t as name; *)
-(*   specialize_function_with_evars name. *)
 
 Ltac _packet_encode_IList__rewrite_as_fold :=
   lazymatch goal with         (* FIXME make this an autorewrite *)
@@ -771,26 +951,6 @@ Ltac specialize_body hyp term :=
   unfold hyp in *;
   clear hyp;
   rename fresh into hyp.
-
-
-(* Ltac delete_tagged_var_from_post var := *)
-(*   (* Delete VAR from post-condition. *)
-(*      Since VAR doesn't appear litteraly in the post-condition, use an EvarTag *)
-(*      to find which evar to remove in the post instead. *) *)
-(*   lazymatch goal with *)
-(*   | [ H: EvarTag ?k (@NTSome ?av ?T var ?wrp) |- _ ] => *)
-(*     let kk := fresh in *)
-(*     set (kk := k); (* Otherwise the match below fails *) *)
-(*     lazymatch goal with *)
-(*     | [  |- context[Cons (@NTSome av T var wrp) (ret ?old_val) _] ] => *)
-(*       lazymatch goal with *)
-(*       | [  |- context[Cons kk ?new_val ?tenv] ] => *)
-(*         unify k (@NTNone av T); unfold kk; clear kk; *)
-(*         unify (ret old_val) new_val; *)
-(*         setoid_rewrite (@Propagate_anonymous_ret _ _ tenv _ old_val) *)
-(*       end *)
-(*     end *)
-(*   end. *)
 
 Ltac _compile_LoopMany vlst :=
   change_post_into_TelAppend;
@@ -811,7 +971,6 @@ Ltac _packet_encode_IList__compile_loop :=
 
 Ltac _packet_encode_IList_compile :=
   _packet_encode_IList__rewrite_as_fold;
-  (* _packet__havoc_packet_in_postcondition; *)
   _packet_encode_IList__compile_loop.
 
 Ltac _compile_CallAllocEMap :=
@@ -925,11 +1084,8 @@ Ltac _compile_Read16 :=
     ltac:(fun _ pre post _ _ =>
             match post with
             | [[ _ <-- ?bs as _]] :: _ =>
-              (* FIXME this should be an equivalent of find_in_ext *)
-              match pre with
-              | context[Cons (NTSome ?k) (ret bs) _] =>
-                eapply (CompileRead16 k)
-              end
+              let k := find_name_in_precondition bs in
+              eapply (CompileRead16 k)
             end).
 
 Lemma CompileConstantN :
@@ -972,40 +1128,6 @@ Definition DnsCacheAsCollectionOfVariables
     :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
     :: Nil.
 
-(* Ltac find_packet := *)
-(*   lazymatch goal with *)
-(*   (* Use an explicit match, since match_ProgOk returns tactics, not terms *) *)
-(*   | [  |- {{ ?pre }} _ {{ _ }} ∪ {{ _ }} // _ ] => *)
-(*     match pre with *)
-(*     | context[@PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?x6 ?x7] => *)
-(*       constr:(@PacketAsCollectionOfVariables av x0 x1 x2 x3 x4 x5 x6 x7) *)
-(*     end *)
-(*   end. *)
-
-(* Ltac keep_unmodified_packet := *)
-(*   instantiate_tail_of_post find_packet. *)
-
-(* Ltac _packet__havoc_packet_in_postcondition := *)
-(*   let p := find_packet in *)
-(*   let p' := fresh in *)
-(*   lazymatch constr:p with *)
-(*   | @PacketAsCollectionOfVariables ?av ?x0 ?x1 ?x2 ?x3 ?x4 ?x5 ?tail ?p => *)
-(*     let tail' := fresh in *)
-(*     create_packet_evar p'; *)
-(*     pose (@PacketAsCollectionOfVariables av) as tail'; *)
-(*     (* FIXME generalize this *) *)
-(*     specialize_function_with_evar tail' (Some x0); *)
-(*     specialize_function_with_evar tail' (Some x1); *)
-(*     specialize_function_with_evar tail' (Some x2); *)
-(*     specialize_function_with_evar tail' (Some x3); *)
-(*     specialize_function_with_evar tail' (Some x4); *)
-(*     specialize_function_with_evar tail' (Some x5); *)
-(*     specialize_body tail' tail; *)
-(*     specialize_body tail' p'; *)
-(*     instantiate_tail_of_post tail'; *)
-(*     unfold p', tail' in *; clear p'; clear tail' *)
-(*   end. *)
-
 Create HintDb packet_autorewrite_db.
 Hint Rewrite @NToWord_of_nat : packet_autorewrite_db.
 Hint Rewrite @NToWord_WordToN : packet_autorewrite_db.
@@ -1022,6 +1144,12 @@ Hint Unfold TelAppend : packet_autorewrite_db.
 Hint Unfold PacketAsCollectionOfVariables : packet_autorewrite_db.
 Hint Unfold DnsCacheAsCollectionOfVariables : packet_autorewrite_db.
 Hint Unfold Enum.Enum_encode : packet_autorewrite_db.
+Hint Unfold encode_question : packet_autorewrite_db.
+Hint Unfold encode_resource : packet_autorewrite_db.
+
+Ltac simpl_without_uncaught_exception :=
+  (* Avoids an “Uncaught exception: not found” *)
+  set_evars; simpl; subst_evars.
 
 Ltac _packet_encode_cleanup :=
   match goal with
@@ -1038,7 +1166,7 @@ Ltac _packet_encode_cleanup :=
 
 (*  Disable the propagation of rets for this file, since we use them for structure *)
 Ltac _compile_rewrite_bind ::= fail.
-(*  Disable automatic decompilation for this file (it only orks for simple examples with no evars in the post) *)
+(*  Disable automatic decompilation for this file (it only works for simple examples with no evars in the post) *)
 Ltac _compile_destructor ::= fail.
 
 (* Get good error messages. FIXME: check what this breaks. *)
@@ -1050,6 +1178,12 @@ Ltac match_ProgOk continuation ::=
 
 Arguments NotInTelescope: simpl never.
 
+Tactic Notation "apply_in_body" hyp(H) constr(f) :=
+  let H' := fresh in
+  pose (f H) as H';
+  unfold H in *; clear H;
+  rename H' into H.
+
 (* Use unfold instead of simpl *)
 Ltac decide_NotInTelescope ::=
   progress repeat match goal with
@@ -1059,8 +1193,35 @@ Ltac decide_NotInTelescope ::=
                   | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
                   end.
 
+Definition CompositionDepth (n: nat) := S n.
+
 Ltac packet_compile_compose :=
-  change_post_into_TelAppend; eapply CompileCompose; intros.
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | [[ ret _ as _ ]] :: [[ ?k <-- _ as _ ]] :: _ =>
+              change_post_into_TelAppend;
+              first [ eapply CompileCompose |
+                      may_alloc k; eapply CompileCompose_init ];
+              [ try match goal with
+                    | [ H := CompositionDepth _ |- _ ] => apply_in_body H CompositionDepth
+                    end.. | ];
+              intros
+            end).
+
+Ltac _packet_prepare_cache :=
+  may_alloc_head; (* Only create bindings for the cache once. *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match post with
+            | Cons (NTSome _) (ret (fst (Compose.compose _ _ _ _))) _ =>
+              let veMap := gensym "eMap" in
+              let vdMap := gensym "dMap" in
+              let voffs := gensym "offs" in
+              apply (ProgOk_Add_snd_ret
+                       (DnsCacheAsCollectionOfVariables
+                          (NTSome veMap) (NTSome vdMap) (NTSome voffs)))
+            end).
 
 Ltac packet_start_compiling :=
   repeat match goal with
@@ -1068,8 +1229,7 @@ Ltac packet_start_compiling :=
          | _ => progress unfold packet_encode, encode_packet; simpl
          end.
 
-
-(* Added tge database of side conditions *)
+(* Added the database of side conditions *)
 Create HintDb compile_do_side_conditions_db discriminated.
 Ltac compile_do_side_conditions_internal ::=
   repeat cleanup; PreconditionSet_t;
@@ -1088,11 +1248,87 @@ Ltac compile_do_side_conditions_internal ::=
 
 Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db.
 
+Definition Counted {A} (x: A) := x.
+
+Ltac count_instances head_symbol counter_var :=
+  pose 0 as counter_var;
+  repeat match goal with
+         | [  |- appcontext C [head_symbol ?x] ] =>
+           apply_in_body counter_var S;
+           let C' := context C[(Counted head_symbol) x] in change C'
+         end;
+  change (Counted head_symbol) with (head_symbol).
+
+Ltac last_argument fun_appl :=
+  lazymatch fun_appl with
+  | _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ _ ?x => x
+  | _ _ _ _ _ ?x => x
+  | _ _ _ _ ?x => x
+  | _ _ _ ?x => x
+  | _ _ ?x => x
+  | _ ?x => x
+  | ?x => x
+  end.
+
+Fixpoint MakeString base ncopies :=
+  match ncopies with
+  | O => ""%string
+  | S n => String.append base (MakeString base n)
+  end.
+
+Ltac _packet_show_progress :=
+  try match_ProgOk
+      ltac:(fun prog pre post ext env =>
+              lazymatch pre with
+              | context[@Compose.compose] => fail "In final (deallocation) goals"
+              | _ => lazymatch post with
+                    | Cons NTNone (ret (Compose.compose _ ?action _ _)) _ =>
+                      lazymatch goal with
+                      | H := Counted action |- _ => fail "Already counted"
+                      | _ => pose (Counted action);
+                            let counter := fresh in
+                            count_instances @Compose.compose counter;
+                            let arg := last_argument action in
+                            let steps_left := (eval unfold counter in counter) in
+                            (try pose (CompositionDepth 0) as CompositionDepth);
+                            lazymatch goal with
+                            | H := CompositionDepth _ |- _ =>
+                              let indent := (eval compute in (MakeString """" (pred H))) in
+                              match steps_left with
+                              | 1 => idtac "<infomsg>" indent "-" steps_left "step left:"
+                                          "compiling encoder for" arg "...</infomsg>"
+                              | _ => idtac "<infomsg>" indent "-" steps_left "steps left:"
+                                          "compiling encoder for" arg "...</infomsg>"
+                              end
+                            end;
+                            clear counter
+                      end
+                    end
+              end).
+
+Ltac _packet_trace_progress :=
+  debug "--------------------------------------------------------------------------------";
+  match goal with
+  | |- ?g => debug g
+  end.
+
 Ltac _packet_encode_step :=
+  (* try _packet_show_progress; *)
   match goal with
   | _ => _packet_encode_cleanup
+  | _ => _packet_prepare_cache
   | _ => _packet_encode_FixInt
   | _ => _packet_encode_IList_compile
+  | _ => _packet_encodeType
+  | _ => _packet_encodeClass
   | _ => _compile_CallWrite16
   | _ => _compile_Read16
   | _ => _compile_ReadConstantN
@@ -1102,6 +1338,8 @@ Ltac _packet_encode_step :=
   | _ => _compile_CallAllocEMap
   | _ => _compile_CallAllocDMap
   | _ => _compile_CallAllocOffset
+  | _ => _compile_CallDeallocQuestion
+  | _ => _compile_CallDeallocResource
   | _ => packet_compile_compose
   | _ => _compile_step
   end.
@@ -1124,153 +1362,116 @@ Proof.
   start_compiling.
   packet_start_compiling.
 
-  _packet_encode_t.
-
-  apply (ProgOk_Add_snd_ret (DnsCacheAsCollectionOfVariables (NTSome "eMap") (NTSome "dMap") (NTSome "offs"))).
-
-  setoid_rewrite <- (Transformer.transform_id_left (fst _)).
-
-  eapply CompileSeq; [ | _packet_encode_t].
-
-  {
-    _packet_encode_t.
-  }
-
-  {
-    _packet_encode_t.
-  }
+  Start Profiling.
+  Time repeat _packet_encode_t. (* 411s *)
+  Show Profile.
 
   (* FIXME remove compile_do_use_transitivity_to_handle_head_separately? Or
        add a case with [fun _ => _] as the function for [ProgOk_Transitivity_First] *)
 
-  { _packet_encode_t. }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "answer" <-- ` panswer as _]]
+                       ::[[ ` "authority" <-- ` pauthority as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit. }
+
 
   { _packet_encode_t. }
 
   { _packet_encode_t. }
 
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "authority" <-- ` pauthority as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource name") nil); admit. }
+
+  { _packet_encode_t. }
+  
   { _packet_encode_t. }
 
-  {
-    _packet_encode_t.
-    { _packet_encode_t. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "answer" <-- ` panswer as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit. }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "authority" <-- ` pauthority as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource ttl") nil); admit. }
 
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "answer" <-- ` panswer as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question type") nil); admit. }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "authority" <-- ` pauthority as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of resource data") nil); admit. }
 
-    { (* FIXME why no other instantiate? *)
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode question class") nil); admit. }
-  }
+  { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource data") nil); admit. }
 
-  { _packet_encode_t.
-    { _packet_encode_t. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource name") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource type") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource class") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource ttl") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "authority" <-- ` pauthority as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of resource data") nil); admit. }
-    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource data") nil); admit. } }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority name") nil); admit. }
 
-  { _packet_encode_t.
-    { _packet_encode_t. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority name") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority type") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority class") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority ttl") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::[[ ` "additional" <-- ` padditional as _]]::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of authority data") nil); admit. }
-    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority data") nil); admit. } }
+  { _packet_encode_t. }
 
-  { _packet_encode_t.
-    { _packet_encode_t. }
-    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate pid and mask") nil); admit. }
+  { _packet_encode_t. }
 
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional name") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional type") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional class") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional ttl") nil); admit. }
-    { instantiate (1 := [[ ` "head" <-- head as _]]
-                         ::[[ ` "id" <-- ` pid as _]]
-                         ::[[ ` "mask" <-- ` pmask as _]]
-                         ::Nil).
-      instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of additional data") nil); admit. }
-    { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional data") nil); admit. } }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority ttl") nil); admit. }
 
-  { _packet_encode_t.
-    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate cache") nil); admit. }
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of authority data") nil); admit. }
+
+  { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority data") nil); admit. }
+
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional name") nil); admit. }
+
+  { _packet_encode_t. }
+
+  { _packet_encode_t. }
+
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                     ::[[ ` "id" <-- pid as _]]
+                     ::[[ ` "mask" <-- pmask as _]]
+                     ::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional ttl") nil); admit. }
+
+  { instantiate (1 := [[ ` "head" <-- head as _]]
+                       ::[[ ` "id" <-- pid as _]]
+                       ::[[ ` "mask" <-- pmask as _]]
+                       ::Nil).
+    instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of additional data") nil); admit. }
+
+  { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional data") nil); admit. }
+
+  { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate pid and mask") nil); admit. }
+
+  { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Deallocate cache") nil); admit. }
+
   Grab Existential Variables.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
+  exact "AAAAAA".
+  repeat constructor.
+  repeat constructor.
   repeat constructor.
   repeat constructor.
   repeat constructor.
@@ -1311,115 +1512,4 @@ Defined.
 
 Eval lazy in (extract_facade encode).
 
-Example encode :
-  ParametricExtraction
-    #vars      p
-    #program   ret (packet_encode p)
-    #arguments [[`"p" <-- (proj1_sig (pid p)) as _ ]] :: Nil
-    #env       (GLabelMap.empty (FuncSpec ADTValue)).
-Proof.
-  assert (FacadeWrapper (Value ADTValue) DnsMap.CacheT) by admit.
-
-  _compile.
-  unfold packet_encode, encode_packet.
-  unfold Compose.compose, Transformer.transform, Core.btransformer.
-
-  rewrite (push_function_into_destructuring_let2 fst).
-  unfold IList.IList_encode; rewrite IList.IList_encode'_as_foldl.
-
-  set (` (pid p)).
-  set ((IList.IList_encode'_body DnsMap.cache
-              {|
-              Transformer.transform := app (A:=bool);
-              Transformer.transform_id := nil;
-              Transformer.transform_id_left := app_nil_l (A:=bool);
-              Transformer.transform_id_right := app_nil_r (A:=bool);
-              Transformer.transform_assoc := app_assoc (A:=bool) |} Bool.Bool_encode)).
-  lazymatch goal with
-  | [  |- context C[let (a1, a2) := ?x in (@?f a1 a2)] ] =>
-    let ff := fresh in
-    pose f as ff;
-      let ctx_new := context C[let (a1, a2) := x in (ff a1 a2)] in
-      change ctx_new
-  end.
-
-  eapply CompileDestructuringLet2_ret with (k1 := NTSome "fst") (k2 := NTSome "snd").
-  eapply (CompileLoop2_Alloc "vhead" "vtest"); [ compile_do_side_conditions | .. ].
-
-  simpl.
-  instantiate (1 := Call (DummyArgument "tmp") ("Initialization", "code") nil); admit.
-  Focus 2.
-
-  (* Loop body *)
-  intros; unfold p0, IList.IList_encode'_body.
-  rewrite (push_function_into_destructuring_let2 fst), (push_function_into_destructuring_let2 snd); simpl.
-
-  setoid_rewrite (TelEq_swap (NTSome "snd")).
-  eapply CompileAppendBool.
-  _compile.
-  apply CompileExtendLifetime'.
-  _compile.
-  instantiate (1 := (Call "ignore" ("DNS", "UpdateCache") (cons "snd" nil))); admit.
-
-  _compile.
-
-  eapply CompileDeallocSCA_discretely; try compile_do_side_conditions.
-  _compile.
-
-  unfold H.
-  setoid_rewrite (push_function_into_destructuring_let2 fst _ _); unfold fst.
-
-  
-
-
-
-  eapply (@CompileDeallocSCA_discretely _ ([[ ` "snd" <--
-        {| DnsMap.eMap := DnsMap.eMap acc2; DnsMap.dMap := DnsMap.dMap acc2; DnsMap.offs := DnsMap.offs acc2 + 1 |}
-        as _]]::Nil) ([[ ` "snd" <--
-      {| DnsMap.eMap := DnsMap.eMap acc2; DnsMap.dMap := DnsMap.dMap acc2; DnsMap.offs := DnsMap.offs acc2 + 1 |}
-      as _]]::Nil) (["fst" <-- wrap (acc1 ++ (cons vv nil))]::["vtest" <-- wrap W0]::["p" <-- wrap s]::∅) (GLabelMap.empty (FuncSpec ADTValue)) "vhead").
-
-
-  eapply CompileExtendLifetime.
-  compile_do_use_transitivity_to_handle_head_separately.
-
-Example decode :
-  ParametricExtraction
-    #vars      p
-    #program   ret (packet_decode p)
-    #arguments [[`"p" <-- p as _ ]] :: Nil
-    #env       Microbenchmarks_Env.
-Proof.
-  _compile.
-  unfold packet_decode, packet_decoder', IList.IList_decode.
-
-  (* Goal { f | forall p, f p = packet_decode p }. *)
-  (* Proof. *)
-  (*   eexists; intros. *)
-  (*   unfold packet_decode, packet_decoder', IList.IList_decode. *)
-
-  (*   setoid_replace IList.IList_decode' with IList.IList_decode_hack. *)
-  (*   Axiom aa: IList.IList_decode_hack = IList.IList_decode'. *)
-  (*   setoid_rewrite <- aa. *)
-  (*   setoid_rewrite (IList.IList_decode'_as_fold DnsMap.cache (Bool.Bool_decode DnsMap.cacheAddN) 16 p empty). *)
-
-  rewrite (push_function_into_destructuring_let2 fst).
-  rewrite (push_function_into_destructuring_let2 fst).
-  (* setoid_rewrite (push_function_into_destructuring_let2 fst _ _). *)
-
-  lazymatch goal with
-  | [  |- context C[let (a1, a2) := ?x in fst (@?f a1 a2)] ] =>
-    let ff := fresh in
-    pose f as ff;
-      let ctx_new := context C[let (a1, a2) := x in fst (ff a1 a2)] in
-      change ctx_new
-  end.
-
-  eapply CompileDestructuringLet23'_ret.
-  unfold IList.IList_decode, fst, snd.
-
-  pose proof (IList.IList_decode'_as_fold DnsMap.cache (Bool.Bool_decode DnsMap.cacheAddN) 16 p empty).
-  rewrite H0.
-  setoid_replace (IList.IList_decode' DnsMap.cache (Bool.Bool_decode DnsMap.cacheAddN) 16 p empty)
-  with (IList.DoTimes 16 (IList.IList_decode'_body DnsMap.cache (Bool.Bool_decode DnsMap.cacheAddN))
-                      (nil, p, empty)).
+(*  *)
