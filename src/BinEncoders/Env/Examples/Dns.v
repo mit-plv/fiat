@@ -186,7 +186,7 @@ Definition packet_compressed :=
 Goal True.
   pose (packet_decode packet_uncompressed) as goal.
   unfold packet_decode in goal.
-  (* Time simpl in goal. (* ~ 100 seconds in 8.5 *) *)
+  (* Time vm_compute in goal. (* ~ 100 seconds in 8.5 *) *)
 Abort.
 
 Goal True.

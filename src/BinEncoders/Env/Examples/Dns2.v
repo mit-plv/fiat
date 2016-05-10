@@ -58,8 +58,6 @@ Section DnsPacket.
   Variable Opcode_Ws : t (word 4) 4.
   Variable RCODE_Ws : t (word 4) 12.
 
-
-
   Definition encode_question (q : question) :=
        encode_list encode_string q!"qname"
   Then encode_enum QType_Ws encode_word q!"qtype"

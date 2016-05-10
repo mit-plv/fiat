@@ -38,16 +38,12 @@ Section FueledFixRefinements.
   (* Lemmas for refining FueledFix. *)
 
   Lemma refine_FueledFix_Bind (B : Type) :
-    forall fuel body (base : Comp R) (arg : A) (k k' : R -> Comp B),
-      refine (r <- base; k r) (r <- base; k' r)
-      -> (forall fuel',
-            refine (a <- FueledFix fuel' base body arg; k a)
-                   (a <- FueledFix fuel' base body arg; k' a)
-            -> refine
-                 (a <- FueledFix (S fuel') base body arg; k a)
-                 (a <- FueledFix (S fuel') base body arg; k' a))
+    forall fuel body body' (base base' : Comp R) (arg : A) (k k' : R -> Comp B),
+      refine base base'
+      -> (forall a, refine (body a) (body' a))
+      -> (forall r, refine (k r) (k' r))
       ->  refine (a <- FueledFix fuel base body arg; k a)
-                 (a <- FueledFix fuel base body arg; k' a).
+                 (a <- FueledFix fuel base body' arg; k' a).
   Proof.
     induction fuel; eauto.
   Qed.

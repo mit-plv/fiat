@@ -94,6 +94,7 @@ Definition DnsSpec : ADT _ :=
                               Where (curTime <= server!sTTL)
                               Return server);
              Ifopt bestServer as bestServer Then (* Pick the first server*)
+             `(this, _) <- Delete req from this ! sREQUESTS where (req!sTTL <= curTime);
              `(this, b) <- Insert < sID :: newID,
                                     sIP :: sourceIP,
                                     sTTL :: curTime ^+ requestTTL > ++ p into this!sREQUESTS; (* Add the request to the list. *)
@@ -181,19 +182,19 @@ Definition DnsSpec : ADT _ :=
                         List.In soa soas <->
                         List.In (A := resourceRecord) soa (p!"authority") };
          Ifopt List.hd_error soas as soa Then (* The response has an SOA *)
-         reqType <- SingletonSet (fun b : CachedQueryTypes => req!"question"!"qtype" = CachedQueryTypes_inj b);
-         Ifopt reqType as reqType Then
-         (`(this, foo) <- Insert (< sTTL :: curTime ^+ cachedTTL,
-                                   sCACHETYPE :: ``"Failure",
-                                   sDOMAIN :: req!"question"!"qname",
-                                   sQTYPE :: reqType,
-                                   sCACHEDVALUE :: Failure2CachedValue (<"RCODE" :: (p!"RCODE" : ResponseCode) > ++ soa!sRDATA : FailureRecord ) > )
-                               into this!sCACHE;
-         ret (this, (p, Some req!sIP))  )
-         Else
-         ret (this, (p, Some req!sIP) )
-         Else (* If there's no SOA record in authority, don't cache *)
-         ret (this, (p, Some req!sIP ) ) ) )
+           reqType <- SingletonSet (fun b : CachedQueryTypes => req!"question"!"qtype" = CachedQueryTypes_inj b);
+           Ifopt reqType as reqType Then
+             (`(this, foo) <- Insert (< sTTL :: curTime ^+ cachedTTL,
+                                        sCACHETYPE :: ``"Failure",
+                                        sDOMAIN :: req!"question"!"qname",
+                                        sQTYPE :: reqType,
+                                        sCACHEDVALUE :: Failure2CachedValue (<"RCODE" :: (p!"RCODE" : ResponseCode) > ++ soa!sRDATA : FailureRecord ) > )
+               into this!sCACHE;
+              ret (this, (p, Some req!sIP))  )
+            Else (* It's not a record we care to cache *)
+             ret (this, (p, Some req!sIP) )
+           Else (* If there's no SOA record in authority, don't cache *)
+           ret (this, (p, Some req!sIP ) ) ) )
          Else (* The answer is not affiliated with the packet *)
-         ret (this, (p, None ) ) )
+           ret (this, (p, None ) ) )
        }.

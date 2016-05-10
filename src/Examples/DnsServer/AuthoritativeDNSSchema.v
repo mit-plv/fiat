@@ -24,5 +24,6 @@ Definition DnsSchema :=
         [ relation sRRecords has
                    schema resourceRecordHeading
           where (fun t t' => t!sNAME = t'!sNAME -> t!sTYPE <> CNAME) ]
-        (* constraint on every pair of tuples: an ip address cannot have multiple aliases *)
+        (* constraint on every pair of tuples: if a domain name is an alias, the CNAME record *)
+        (* is the only resource record in the table. *)
         enforcing [ ].

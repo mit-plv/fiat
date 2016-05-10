@@ -112,51 +112,189 @@ Definition DnsSpec : ADT DnsSig :=
                  ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
           }} >>= fun p => ret (this, fst (encode_packet' p))}.
 
+Lemma DropQSConstraints_AbsR_SatisfiesTupleConstraints
+  : forall {qs_schema} r_o r_n,
+    @DropQSConstraints_AbsR qs_schema r_o r_n
+    -> forall idx tup tup',
+      elementIndex tup <> elementIndex tup'
+      -> GetUnConstrRelation r_n idx tup
+      -> GetUnConstrRelation r_n idx tup'
+      -> SatisfiesTupleConstraints idx (indexedElement tup) (indexedElement tup').
+Proof.
+  intros. rewrite <- H in *.
+  unfold SatisfiesTupleConstraints, GetNRelSchema,
+  GetUnConstrRelation, DropQSConstraints in *.
+  generalize (rawTupleconstr (ith2 (rawRels r_o) idx)).
+  rewrite <- ith_imap2 in *.
+  destruct (tupleConstraints (Vector.nth (qschemaSchemas qs_schema) idx)); eauto.
+Qed.
+
+Lemma DropQSConstraints_AbsR_SatisfiesAttribute
+  : forall {qs_schema} r_o r_n,
+    @DropQSConstraints_AbsR qs_schema r_o r_n
+    -> forall idx tup,
+      GetUnConstrRelation r_n idx tup
+      -> SatisfiesAttributeConstraints idx (indexedElement tup).
+Proof.
+  intros. rewrite <- H in *.
+  unfold SatisfiesAttributeConstraints, GetNRelSchema,
+  GetUnConstrRelation, DropQSConstraints in *.
+  generalize (rawAttrconstr (ith2 (rawRels r_o) idx)).
+  rewrite <- ith_imap2 in *.
+  destruct (attrConstraints (Vector.nth (qschemaSchemas qs_schema) idx)); eauto.
+Qed.
+
+Lemma refine_beq_RRecordType_dec :
+  forall rr : resourceRecord,
+    refine {b | decides b (rr!sTYPE = CNAME)}
+           (ret (beq_RRecordType rr!sTYPE CNAME)).
+Proof.
+  intros; rewrite <- beq_RRecordType_dec.
+  intros; refine pick val _.
+  finish honing.
+  find_if_inside; simpl; eauto.
+Qed.
+
+Lemma refine_constraint_check_into_query'' :
+  forall heading R P' P
+         (P_dec : DecideableEnsemble P),
+    Same_set _ (fun tup => P (indexedElement tup)) P'
+    -> refine
+         (Pick (fun (b : bool) =>
+                  decides b
+                          (exists tup2: @IndexedRawTuple heading,
+                              (R tup2 /\ P' tup2))))
+         (Bind
+            (Count (For (QueryResultComp R (fun tup => Where (P tup) Return tup))))
+            (fun count => ret (negb (beq_nat count 0)))).
+Proof.
+  Local Transparent Count.
+  unfold refine, Count, UnConstrQuery_In;
+    intros * excl * P_iff_P' pick_comp ** .
+  computes_to_inv; subst.
+
+  computes_to_constructor.
+
+  destruct (Datatypes.length v0) eqn:eq_length;
+    destruct v0 as [ | head tail ]; simpl in *; try discriminate; simpl.
+
+  pose proof (For_computes_to_nil _ R H).
+  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
+  unfold not; intros; eapply H0; eauto; apply P_iff_P'; eauto.
+
+  apply For_computes_to_In with (x := head) in H; try solve [intuition].
+  destruct H as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
+  eexists; split; eauto; apply P_iff_P'; eauto.
+
+  apply decidable_excl; assumption.
+Qed.
+
+Lemma refine_noDup_CNAME_check :
+  forall (rr : resourceRecord)
+         (R : @IndexedEnsemble resourceRecord),
+  (forall tup tup' : IndexedElement,
+          elementIndex tup <> elementIndex tup' ->
+          R tup ->
+          R tup' ->
+          (indexedElement tup)!sNAME = (indexedElement tup')!sNAME
+          -> (indexedElement tup)!sTYPE <> CNAME)
+  -> refine {b |
+            decides b
+                    (forall tup',
+                        R tup' ->
+                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
+           (If (beq_RRecordType rr!sTYPE CNAME)
+               Then count <- Count
+               For
+               (QueryResultComp R
+                                (fun tup => Where (rr!sNAME = tup!sNAME)
+                                                  Return tup )%QueryImpl);
+                  ret (beq_nat count 0) Else ret true).
+Proof.
+  intros.
+    intros; setoid_rewrite refine_pick_decides at 1;
+    [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
+    setoid_rewrite refine_beq_RRecordType_dec; simplify with monad laws.
+    apply refine_If_Then_Else; eauto.
+    setoid_rewrite refine_constraint_check_into_query'' with (P := fun tup => rr!sNAME = tup!sNAME);
+      eauto with typeclass_instances.
+    rewrite refineEquiv_bind_bind.
+    f_equiv.
+    unfold pointwise_relation; intros; simplify with monad laws;
+      rewrite <- negb_involutive_reverse; reflexivity.
+    intuition.
+  reflexivity.
+Qed.
+
+Corollary refine_noDup_CNAME_check_dns :
+  forall (rr : resourceRecord) r_o r_n,
+    @DropQSConstraints_AbsR DnsSchema r_o r_n
+  -> refine {b |
+            decides b
+                    (forall tup',
+                        (GetUnConstrRelation r_n Fin.F1) tup' ->
+                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
+           (If (beq_RRecordType rr!sTYPE CNAME)
+               Then count <- Count
+               For
+               (UnConstrQuery_In r_n Fin.F1
+                                (fun tup => Where (rr!sNAME = tup!sNAME)
+                                                  Return tup )%QueryImpl);
+                  ret (beq_nat count 0) Else ret true).
+Proof.
+  intros; eapply refine_noDup_CNAME_check.
+  intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
+Qed.
+
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof.
-Admitted.
-(*start sharpening ADT; unfold DnsSpec.
-  simpl; pose_string_hyps; pose_heading_hyps.
-  hone method "Process".
-  simpl in *.
-  { simplify with monad laws.
-
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    apply refineFueledFix.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    intros.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-    doOne srewrite_each_all drills_each_all finish_each_all.
-
+  start sharpening ADT; unfold DnsSpec.
+  pose_string_hyps; pose_heading_hyps.
+  drop_constraintsfrom_DNS.
+  { (* Add Data. *)
+      match goal with
+        H : DropQSConstraints_AbsR ?r_o ?r_n
+        |- refine (u <- QSInsert ?r_o ?Ridx ?tup;
+                   @?k u) _ =>
+        eapply (@QSInsertSpec_refine_subgoals _ _ r_o r_n Ridx tup); try exact H
+      end; try set_refine_evar.
+      - rewrite decides_True; finish honing.
+      - simpl; rewrite refine_noDup_CNAME_check_dns by eauto; finish honing.
+      - simpl; set_evars; intros; setoid_rewrite refine_count_constraint_broken'; finish honing.
+      - simpl; finish honing.
+      - simpl; intros; finish honing.
+      - intros. refine pick val _; eauto; simplify with monad laws.
+        simpl; finish honing.
+      - intros. refine pick val _; eauto; simplify with monad laws.
+        simpl; finish honing.
+  }
+  { (* Process *)
+    simplify with monad laws.
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    eapply refineFueledFix.
+    - finish honing.
+    - intros.
+      doOne drop_constraints
+          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doOne drop_constraints
+            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      setoid_rewrite H2.
+      finish honing.
+    - doOne drop_constraints
+            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doOne drop_constraints
+            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doOne drop_constraints
+            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+  }
+  simpl.
+  (* All constraints dropped. *)
     progress doOne srewrite_each_all drills_each_all finish_each_all.
     doOne srewrite_each_all drills_each_all finish_each_all.
     doOne srewrite_each_all drills_each_all finish_each_all.

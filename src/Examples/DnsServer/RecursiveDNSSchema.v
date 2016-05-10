@@ -160,6 +160,8 @@ Definition requestTTL : timeT := 500.
 Definition serverTTL : timeT := 500.
 Definition cachedTTL : timeT := 500.
 
+Section DecomposeEnumField.
+
 Definition IsComputedField
              {heading}
              (idx idx' : BoundedString (HeadingNames heading))
@@ -212,3 +214,79 @@ Definition IsComputedField
                      Where (r!"BID" = p)
                      Return r;
     ret (this, results)}.
+
+  (* Define new schema *)
+
+  Fixpoint BreakdownHeading'
+             {n m}
+             (attr : Fin.t n)
+             (sch : Vector.t Type n)
+             (a : Vector.t Type m)
+             {struct attr}
+    : Vector.t (Vector.t Type n) m :=
+    match attr in Fin.t n return Vector.t _ n ->  Vector.t (Vector.t _ n) m with
+    | Fin.F1 _ =>
+      fun sch =>
+        Vector.map (fun t => Vector.cons _ t _ (Vector.tl sch)) a
+    | Fin.FS _ attr' =>
+      fun sch =>
+        Vector.map (fun t => Vector.cons _ (Vector.hd sch) _ t)
+                   (BreakdownHeading' attr' (Vector.tl sch) a)
+    end sch.
+
+  (* Could fuse this with Breakdown Heading, but efficiency shouldn't matter too much. *)
+  Definition BreakdownSchema
+             {m}
+             (heading : RawSchema)
+             (attr : Fin.t _)
+             (a : Vector.t Type m)
+    : Vector.t RawSchema m :=
+    Vector.map
+      (fun rawheading =>
+         {| rawSchemaHeading := Build_RawHeading rawheading;
+            attrConstraints := None;
+            tupleConstraints := None |})
+      (BreakdownHeading' attr (AttrList (rawSchemaHeading heading)) a).
+
+  Definition VectorNthTail
+             {n}
+           (schemaIdx : Fin.t n)
+           (rawSchemas : Vector.t RawSchema (S n))
+           (attrIdx : Fin.t (NumAttr (rawSchemaHeading rawSchemas[@Fin.FS schemaIdx])))
+    : Fin.t (NumAttr (rawSchemaHeading (Vector.tl rawSchemas)[@schemaIdx])).
+    revert schemaIdx attrIdx; pattern n, rawSchemas; eapply Vector.caseS; intros;
+      exact attrIdx.
+  Defined.
+
+  Fixpoint BreakdownRawQueryStructureSchema'
+           {n m}
+           (schemaIdx : Fin.t n)
+           (rawSchemas : Vector.t RawSchema n)
+           (attrIdx : Fin.t (NumAttr (rawSchemaHeading (Vector.nth rawSchemas schemaIdx))))
+           (a : Vector.t Type (S m))
+           {struct schemaIdx}
+    : Vector.t RawSchema (n + m) :=
+    match schemaIdx in Fin.t n return
+          forall (rawSchemas : Vector.t _ n),
+            Fin.t (NumAttr (rawSchemaHeading (Vector.nth rawSchemas schemaIdx)))
+            -> Vector.t RawSchema (n + m)  with
+    | Fin.F1 _ =>
+      fun rawSchemas attrIdx =>
+        let newSchema := BreakdownSchema _ attrIdx a in
+        Vector.append (Vector.cons _ (Vector.hd newSchema) _ (Vector.tl rawSchemas)) (Vector.tl newSchema)
+    | Fin.FS _ attr' =>
+      fun rawSchemas attrIdx =>
+        Vector.cons _ (Vector.hd rawSchemas) _
+                    (BreakdownRawQueryStructureSchema' attr' _ (VectorNthTail _ _ attrIdx) a)
+    end rawSchemas attrIdx.
+
+    Definition BreakdownRawQueryStructureSchema
+               {m}
+               (raw_qs_schema : RawQueryStructureSchema)
+               (schemaIdx : Fin.t _)
+               (attrIdx : Fin.t _)
+               (a : Vector.t Type (S m))
+      : RawQueryStructureSchema :=
+      {| qschemaSchemas :=
+           BreakdownRawQueryStructureSchema' schemaIdx (qschemaSchemas raw_qs_schema) attrIdx a;
+         qschemaConstraints := [ ] |}.

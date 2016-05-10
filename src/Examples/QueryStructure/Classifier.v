@@ -104,7 +104,7 @@ Section ADT.
                    FollowPolicy rule!PROTOCOL (protocol p))
             Return rule;
       ret (r, rules)
-  }%methDefParsing.
+  }.
 
   Theorem SharpenedClassifier :
     FullySharpened ClassifierSpec.
