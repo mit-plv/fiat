@@ -37,7 +37,7 @@ Section FueledFixRefinements.
 
   (* Lemmas for refining FueledFix. *)
 
-  Lemma refine_FueledFix_Bind (B : Type) :
+  (* Lemma refine_FueledFix_Bind (B : Type) :
     forall fuel body body' (base base' : Comp R) (arg : A) (k k' : R -> Comp B),
       refine base base'
       -> (forall a, refine (body a) (body' a))
@@ -46,7 +46,7 @@ Section FueledFixRefinements.
                  (a <- FueledFix fuel base body' arg; k' a).
   Proof.
     induction fuel; eauto.
-  Qed.
+  Qed. *)
 
 Definition pointwise_refine
   (f g : (A -> Comp R) -> A -> Comp R) :=
