@@ -131,23 +131,7 @@ Section correctness.
       = BooleanRecognizer.parse_nonterminal (data := optdata) str nt.
   Proof.
     cbv [rinterp_parse].
-    rewrite <- opt.polypnormalize_correct.
-    3:apply parse_nonterminal_reified_unfold_extensional.
-    2:admit.
-    (*Focus 2.
-    About char_at_matches.
-    Global Instance char_at_matches_Proper
-      : Proper (eq ==> beq ==> pointwise_relation _ eq ==> eq) char_at_matches.
-    Proof.
-      repeat intro; subst.
-      pose (fun offset => char_at_matches_is_char offset 1).
-    SearchAbout char_at_matches.
-      sub
-      Require Import Common.
-      setoid_subst_rel beq.
-
-    Focus 2.
-    SearchAbout char_at_matches.*)
+    rewrite <- opt.polypnormalize_correct by apply parse_nonterminal_reified_unfold_extensional.
     etransitivity; [ | apply (proj2_sig (BooleanRecognizerOptimized.parse_nonterminal_preopt Hvalid _ _)) ].
     etransitivity; [ | apply parse_nonterminal_reified_opt_interp_precorrect ].
     cbv [rinterp_parse].
