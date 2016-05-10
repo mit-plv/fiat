@@ -16,6 +16,7 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.Word
         Fiat.BinEncoders.Env.Lib2.Nat
         Fiat.BinEncoders.Env.Lib2.String
+        Fiat.BinEncoders.Env.Lib2.Enum
         Fiat.BinEncoders.Env.Lib2.FixList
         Fiat.BinEncoders.Env.Lib2.SumType
         Fiat.BinEncoders.Env.Lib2.SteppingList.
@@ -30,26 +31,11 @@ Section DnsPacket.
   Open Scope Tuple_scope.
 
   Variable bin : Type.
-
   Variable cache : Cache.
   Variable cacheAddNat : CacheAdd cache nat.
 
   Variable transformer : Transformer bin.
   Variable transformerUnit : TransformerUnit transformer bool.
-
-  Notation encoder x := (x ->  CacheEncode -> bin * CacheEncode).
-  Notation decoder x := (bin -> CacheDecode -> x * bin * CacheDecode).
-  Variable encode_enum :
-    forall (sz : nat) (A B : Type) (ta : t A sz) (tb : t B sz),
-      encoder B -> encoder (BoundedIndex ta).
-  Variable decode_enum :
-    forall (sz : nat) (A B : Type) (ta : t A sz) (tb : t B sz),
-      decoder B -> decoder (BoundedIndex ta).
-  Axiom encode_decode_enum :
-    forall sz A B (ta : t A sz) tb B_predicate (B_encode : encoder B) (B_decode : decoder B) pred,
-      encode_decode_correct cache transformer B_predicate B_encode B_decode ->
-      encode_decode_correct cache transformer pred (encode_enum tb B_encode)
-                                                   (decode_enum ta tb B_decode).
 
   Variable QType_Ws : t (word 16) 66.
   Variable QClass_Ws : t (word 16) 4.
@@ -60,8 +46,8 @@ Section DnsPacket.
 
   Definition encode_question (q : question) :=
        encode_list encode_string q!"qname"
-  Then encode_enum QType_Ws encode_word q!"qtype"
-  Then encode_enum QClass_Ws encode_word q!"qclass"
+  Then encode_enum QType_Ws q!"qtype"
+  Then encode_enum QClass_Ws q!"qclass"
   Done.
 
   Definition encode_SOA_RDATA (soa : SOA_RDATA) :=
@@ -90,7 +76,7 @@ Section DnsPacket.
   Then encode_list encode_string mx!"Exchange"
   Done.
 
-  Definition encode_rdata : encoder RDataType :=
+  Definition encode_rdata :=
   encode_SumType ResourceRecordTypeTypes
   (icons encode_word
   (icons (encode_list encode_string)
@@ -104,8 +90,8 @@ Section DnsPacket.
 
   Definition encode_resource (r : resourceRecord) :=
        encode_list encode_string r!sNAME
-  Then encode_enum RRecordType_Ws encode_word r!sTYPE
-  Then encode_enum RRecordClass_Ws encode_word r!sCLASS
+  Then encode_enum RRecordType_Ws r!sTYPE
+  Then encode_enum RRecordClass_Ws r!sCLASS
   Then encode_word r!sTTL
   Then encode_rdata r!sRDATA
   Done.
@@ -113,13 +99,13 @@ Section DnsPacket.
   Definition encode_packet (p : packet) :=
        encode_word p!"id"
   Then encode_word (WS p!"QR" WO)
-  Then encode_enum Opcode_Ws encode_word p!"Opcode"
+  Then encode_enum Opcode_Ws p!"Opcode"
   Then encode_word (WS p!"AA" WO)
   Then encode_word (WS p!"TC" WO)
   Then encode_word (WS p!"RD" WO)
   Then encode_word (WS p!"RA" WO)
   Then encode_word (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-  Then encode_enum RCODE_Ws encode_word p!"RCODE"
+  Then encode_enum RCODE_Ws p!"RCODE"
   Then encode_nat 16 1 (* length of question field *)
   Then encode_nat 16 (|p!"answers"|)
   Then encode_nat 16 (|p!"authority"|)
@@ -133,6 +119,9 @@ Section DnsPacket.
   Definition packet_decoder
   : { decode | encode_decode_correct cache transformer (fun _ => True) encode_packet decode }.
   Proof.
+  Admitted.
+End DnsPacket.
+    (*
     eexists.
 
     eapply compose_encode_correct.
@@ -191,7 +180,7 @@ Section DnsPacket.
 
     eapply compose_encode_correct.
   Abort.
-  (*{ unfold encode_question.
+  { unfold encode_question.
       eapply compose_encode_correct.
 
       eapply FixList_decode_correct.
@@ -262,4 +251,3 @@ Section DnsPacket.
                             | H : _ /\ _ |- _ => inversion H; subst; clear H
                             end. admit.
       solve_predicate. intro. *)
-End DnsPacket.

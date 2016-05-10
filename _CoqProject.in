@@ -53,6 +53,7 @@ src/BinEncoders/Env/Lib/FixList.v
 src/BinEncoders/Env/Lib/IList.v
 src/BinEncoders/Env/Lib/SteppingCacheList.v
 src/BinEncoders/Env/Lib2/Ascii.v
+src/BinEncoders/Env/Lib2/Enum.v
 src/BinEncoders/Env/Lib2/FixList.v
 src/BinEncoders/Env/Lib2/Nat.v
 src/BinEncoders/Env/Lib2/SteppingList.v

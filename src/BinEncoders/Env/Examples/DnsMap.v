@@ -304,6 +304,7 @@ Lemma cacheAddPair' :
       then cd
       else {| eMap := EMap.add l p (eMap cd); dMap := DMap.add p l (dMap cd); offs := offs cd |}).
 Proof.
+  Local Hint Resolve EMap.E.eq_refl.
   simpl; intuition; simpl in *; subst; eauto.
   - destruct (EMap.mem a (eMap cd)) eqn: eq1; destruct (DMap.mem b (dMap cd)) eqn: eq2;
       simpl in *; try apply H1; eauto.
