@@ -2055,4 +2055,35 @@ Section ListFacts.
       injections; eauto.
   Qed.
 
+  Lemma first_index_helper_default_map {A' A B}
+        (rect : forall A, option (nat * A) -> B)
+        (rec : forall A, nat * A -> nat * A)
+        (test : A -> bool)
+        (f : A' -> A) (ls : list A')
+        (rectNone : rect A None = rect A' None)
+        (rectSome : forall n x, rect A (Some (rec _ (n, f x))) = rect A' (Some (rec _ (n, x))))
+    : Operations.List.first_index_helper test (rect _) (List.map f ls) (rec _)
+      = Operations.List.first_index_helper
+          (fun x => test (f x))
+          (rect _) ls (rec _).
+  Proof.
+    revert dependent rec; induction ls as [|x xs IHxs]; simpl; intros; [ apply rectNone | ].
+    specialize (IHxs (fun _ x0 => rec _ (S (fst x0), snd x0))); simpl in *.
+    rewrite IHxs by eauto; clear IHxs.
+    destruct (test (f x)); simpl; [ | reflexivity ].
+    apply rectSome.
+  Qed.
+
+  Lemma first_index_default_map {A B} (test : B -> bool) (f : A -> B) (ls : list A) (default : nat)
+    : Operations.List.first_index_default test default (List.map f ls)
+      = Operations.List.first_index_default (fun x => test (f x)) default ls.
+  Proof.
+    unfold Operations.List.first_index_default in *.
+    rewrite (@first_index_helper_default_map
+               _ _ _
+               (fun _ => option_rect (fun _ => nat) (@fst _ _) default)
+               (fun _ x => x))
+      by reflexivity.
+    reflexivity.
+  Qed.
 End ListFacts.

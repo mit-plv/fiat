@@ -267,7 +267,7 @@ Module Export List.
       end
     end.
 
-  Fixpoint first_index_default_partial {A} (f : A -> option bool) (default : nat) (ls : list A) :=
+  Definition first_index_default_partial {A} (f : A -> option bool) (default : nat) (ls : list A) :=
     match first_index_partial f ls with
     | None => None
     | Some None => Some default
