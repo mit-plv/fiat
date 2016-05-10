@@ -266,34 +266,26 @@ Proof.
 Qed.
 
 
-Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?X))) =>
-change (@related T (interp_Term (RVar X)) (reflect (RVar X))).
-Local Hint Extern 5 (_ = _) => symmetry.
+Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?Y))) =>
+change (@related T (interp_Term (RVar X)) (reflect (RVar Y))).
 Local Hint Extern 1 (@related _ (interp_Term_gen ?iRLT ?A ?X1) _) =>
-match goal with
-| [ _ : @related _ X1 ?X2 |- _ ] =>
-  replace (interp_Term_gen iRLT A X1)
-  with (interp_Term_gen iRLT (RApp A (reify _ X2)))
-end.
-Local Hint Extern 1 (interp_Term_gen _ _ = interp_Term_gen _ _ _) => simpl; f_equal.
+  change (interp_Term_gen iRLT A X1)
+  with (interp_Term_gen iRLT (RApp A (RVar X1))).
 Lemma reify_and_reflect_correct : forall t,
-  (forall v r,
-    @related t v r
-    -> v = (interp_Term (reify _ r)))
-  /\ (forall a,
-    @related t (interp_Term a) (reflect a)).
+    (forall v r,
+        @related t v r
+        -> interp_related v (interp_Term (reify _ r)))
+    /\ (forall a a',
+           @interp_related t (interp_Term a) (interp_Term a')
+           -> @related t (interp_Term a) (reflect a')).
 Proof.
-  (*Local Hint Resolve ext_eq.*)
   unfold interp_Term;
   induction t; simpler; eauto.
-  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *.
-  fold @interp_TypeCode.
-  admit.
 Qed.
 
 Lemma reify_correct : forall t v r,
   @related t v r
-  -> v = interp_Term (reify _ r).
+  -> interp_related v (interp_Term (reify _ r)).
 Proof.
   generalize reify_and_reflect_correct; firstorder.
 Qed.
@@ -308,7 +300,7 @@ Qed.
 Local Hint Resolve nil_context meaning_correct reify_correct.
 Theorem polynormalize_correct : forall t (E : polyTerm t),
     Term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
-    -> interp_Term (E _) = interp_Term (polynormalize E _).
+    -> interp_related (interp_Term (E _)) (interp_Term (polynormalize E _)).
 Proof.
   unfold interp_Term, polynormalize, normalize; eauto.
 Qed.
