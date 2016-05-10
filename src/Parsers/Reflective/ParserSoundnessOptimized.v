@@ -1,4 +1,5 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii.
+Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.ParserSyntax.
@@ -15,7 +16,8 @@ Module opt.
     Context (is_valid_nonterminal : list nat -> nat -> bool)
             (strlen : nat)
             (char_at_matches : nat -> (Ascii.ascii -> bool) -> bool)
-            (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat).
+            (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
+            (char_at_matches_Proper : Proper (eq ==> pointwise_relation _ eq ==> eq) char_at_matches).
 
     Let interp := opt.interp_has_parse_term is_valid_nonterminal strlen char_at_matches split_string_for_production.
 
@@ -25,7 +27,7 @@ Module opt.
           (term interp_TypeCode) (term (normalized_of interp_TypeCode))
         -> interp (term _) = interp (polypnormalize term _).
     Proof.
-      apply polypnormalize_correct.
+      apply polypnormalize_correct; assumption.
     Qed.
   End polypnormalize.
 End opt.

@@ -1,4 +1,6 @@
+Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
@@ -83,6 +85,7 @@ Section correctness.
     unfold parse_nonterminal_reified, Syntactify.syntactify_rproductions,
     Syntactify.syntactify_prod, Syntactify.syntactify_string, Syntactify.syntactify_ritem_ascii;
       constructor.
+    (*Start Profiling.*)
     repeat first [ progress intros
                  | (match goal with
                     | [ |- Term_equiv _ _ _ ]
@@ -104,6 +107,23 @@ Section correctness.
                              (Syntactify.syntactify_list (List.map ?g ?ls)) ]
                       => apply Term_equiv_syntactify_list_map; simpl @fst; simpl @snd
                     end) ].
+    (*Show Profile.*)
+    (* total time:     25.328s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─econstructor --------------------------  60.4%  60.4%    1224    0.260s
+─apply (EqLiteralApp (G:=G) f (v1:=v1) (  27.4%  27.4%     297    0.312s
+─right ---------------------------------   8.3%   8.3%     438    0.020s
+─left ----------------------------------   2.0%   2.0%     117    0.012s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─econstructor --------------------------  60.4%  60.4%    1224    0.260s
+─apply (EqLiteralApp (G:=G) f (v1:=v1) (  27.4%  27.4%     297    0.312s
+─right ---------------------------------   8.3%   8.3%     438    0.020s
+─left ----------------------------------   2.0%   2.0%     117    0.012s
+ *)
   Qed.
 
   Lemma parse_nonterminal_reified_opt_interp_polynormalize_precorrect
@@ -111,7 +131,23 @@ Section correctness.
       = BooleanRecognizer.parse_nonterminal (data := optdata) str nt.
   Proof.
     cbv [rinterp_parse].
-    rewrite <- opt.polypnormalize_correct by apply parse_nonterminal_reified_unfold_extensional.
+    rewrite <- opt.polypnormalize_correct.
+    3:apply parse_nonterminal_reified_unfold_extensional.
+    2:admit.
+    (*Focus 2.
+    About char_at_matches.
+    Global Instance char_at_matches_Proper
+      : Proper (eq ==> beq ==> pointwise_relation _ eq ==> eq) char_at_matches.
+    Proof.
+      repeat intro; subst.
+      pose (fun offset => char_at_matches_is_char offset 1).
+    SearchAbout char_at_matches.
+      sub
+      Require Import Common.
+      setoid_subst_rel beq.
+
+    Focus 2.
+    SearchAbout char_at_matches.*)
     etransitivity; [ | apply (proj2_sig (BooleanRecognizerOptimized.parse_nonterminal_preopt Hvalid _ _)) ].
     etransitivity; [ | apply parse_nonterminal_reified_opt_interp_precorrect ].
     cbv [rinterp_parse].
