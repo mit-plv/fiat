@@ -22,6 +22,7 @@ Theorem polypnormalize_correct
         (strlen : nat)
         (char_at_matches : nat -> (Ascii.ascii -> bool) -> bool)
         (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
+        (char_at_matches_Proper : Proper (eq ==> pointwise_relation _ eq ==> eq) char_at_matches)
   : forall (E : polyhas_parse_term),
     has_parse_term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
     -> interp_has_parse_term
@@ -44,19 +45,13 @@ Proof.
   refine (Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _);
     unfold forall_relation, pointwise_relation;
     repeat intro.
-  rewrite <- H''.
+  simpl in *.
   unfold step_option_rec.
+  unfold Proper, respectful, pointwise_relation in *.
   edestruct Compare_dec.lt_dec; simpl;
     [
-    | edestruct Sumbool.sumbool_of_bool; simpl; [ | reflexivity ] ].
-  (*
-    rewrite H''.
-    Focus 2.
-  { change (fun x => ?f x) with f.
-    simpl in *.
-
-  unfold interp_has_parse_term.
-  unfold interp_Term, polynormalize, normalize; eauto.*)
-  admit.
-  admit.
+    | edestruct Sumbool.sumbool_of_bool; simpl; [ | reflexivity ] ];
+    (erewrite <- H''; [ reflexivity | .. ]);
+    try solve [ intros; subst; reflexivity
+              | intros; subst; eauto using eq_refl with nocore ].
 Qed.
