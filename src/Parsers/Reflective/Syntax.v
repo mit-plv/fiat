@@ -146,6 +146,18 @@ Section args.
                  /\ @args_for_related _ args (atl args1)
          | noargs T => fun args1 => noargs = args1
          end.
+
+    Lemma args_for_related_noind_ind {T args0 args1}
+      : @args_for_related T args0 args1 <-> @args_for_related_ind T args0 args1.
+    Proof.
+      split; intro H.
+      { revert dependent args1; induction args0; intros; simpl in *;
+        pose proof (invert_args_for_ex args1) as H'; simpl in *;
+        subst; [ | solve [ repeat (intro || constructor) ] ].
+        destruct H' as [? [? H']]; subst; simpl in *.
+        inversion H; constructor; eauto. }
+      { induction H; simpl; intuition. }
+    Qed.
   End related.
 End args.
 
