@@ -20,9 +20,8 @@ Definition extract_Term {var} (E : has_parse_term var) : Term var _
 Theorem polypnormalize_correct
         (is_valid_nonterminal : list nat -> nat -> bool)
         (strlen : nat)
-        (char_at_matches : nat -> (Ascii.ascii -> bool) -> bool)
+        (char_at_matches : nat -> Reflective.RCharExpr Ascii.ascii -> bool)
         (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
-        (char_at_matches_Proper : Proper (eq ==> pointwise_relation _ eq ==> eq) char_at_matches)
   : forall (E : polyhas_parse_term),
     has_parse_term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
     -> interp_has_parse_term

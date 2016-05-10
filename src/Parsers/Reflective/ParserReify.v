@@ -1,4 +1,5 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii.
+Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.ParserSyntax Fiat.Parsers.Reflective.ParserSemantics.
 Require Import Fiat.Parsers.Reflective.Reify.
@@ -26,21 +27,23 @@ Section parser.
           (splitdata : split_dataT).
   Context (str : String).
 
-  Definition char_at_matches_flip str (n : nat) := char_at_matches n str.
+  Definition char_at_matches_interp_flip {_ : Reflective.interp_RCharExpr_data Char} str (n : nat)
+    := Reflective.char_at_matches_interp n str.
   Definition split_string_for_production_flip str (n : production_carrierT) := @split_string_for_production _ _ _ _ n str.
 End parser.
 
 Ltac do_reify_has_parse has_parse cont :=
   idtac;
-  let Char := match has_parse with appcontext[@char_at_matches ?Char ?HSLM] => Char end in
-  let HSLM := match has_parse with appcontext[@char_at_matches Char ?HSLM] => HSLM end in
+  let Char := match has_parse with appcontext[@char_at_matches_interp ?Char ?HSLM] => Char end in
+  let HSLM := match has_parse with appcontext[@char_at_matches_interp Char ?HSLM] => HSLM end in
+  let idata := match has_parse with appcontext[@char_at_matches_interp Char HSLM ?idata] => idata end in
   let predata := match has_parse with appcontext[@split_string_for_production Char HSLM ?predata ?splitdata] => predata end in
   let splitdata := match has_parse with appcontext[@split_string_for_production Char HSLM predata ?splitdata] => splitdata end in
-  let str := match has_parse with appcontext[@char_at_matches Char HSLM _ ?str] => str end in
+  let str := match has_parse with appcontext[@char_at_matches_interp Char HSLM idata _ ?str] => str end in
   let hp := fresh "hp" in
   pose has_parse as hp;
-  progress change (@char_at_matches Char HSLM)
-  with (fun n str' => @char_at_matches_flip Char HSLM str' n) in hp;
+  progress change (@char_at_matches_interp Char HSLM idata)
+  with (fun n str' => @char_at_matches_interp_flip Char HSLM idata str' n) in hp;
   progress change (@split_string_for_production Char HSLM predata splitdata)
   with (fun n str' => @split_string_for_production_flip Char HSLM predata splitdata str' n) in hp;
   let has_parse := (eval cbv beta delta [hp] in hp) in
@@ -65,7 +68,7 @@ Ltac do_reify_has_parse has_parse cont :=
            end in
   let f' := constr:(fun len0 valid_len0 parse_nt valids offset len nt
                     => f len0 valid_len0 valids offset len nt parse_nt) in
-  let f' := match (eval pattern (@char_at_matches_flip Char HSLM str), (@split_string_for_production_flip Char HSLM predata splitdata str) in f') with
+  let f' := match (eval pattern (@char_at_matches_interp_flip Char HSLM idata str), (@split_string_for_production_flip Char HSLM predata splitdata str) in f') with
             | ?f' _ _ => f'
             end in
   let r := constr:(fun var => (_ : reif_Term_of var f')) in

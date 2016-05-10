@@ -118,3 +118,8 @@ Global Arguments interp_RCharExpr_data : clear implicits.
 Global Instance ascii_interp_RCharExpr_data : interp_RCharExpr_data Ascii.ascii
   := { irbeq := Equality.ascii_beq;
        irnat_of := opt.nat_of_ascii }.
+
+(** Alternative that isn't higher order *)
+Definition char_at_matches_interp {Char} {HSLM : StringLikeMin Char}
+           {_ : interp_RCharExpr_data Char} n str P
+  := char_at_matches n str (interp_RCharExpr P).

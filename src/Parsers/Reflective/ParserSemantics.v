@@ -51,7 +51,7 @@ Defined.
 Definition interp_has_parse_term
            (is_valid_nonterminal : list nat -> nat -> bool)
            (strlen : nat)
-           (char_at_matches : nat -> (Ascii.ascii -> bool) -> bool)
+           (char_at_matches_interp : nat -> Reflective.RCharExpr Ascii.ascii -> bool)
            (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
            (t : has_parse_term interp_TypeCode) : bool
   := match t with
@@ -72,7 +72,7 @@ Definition interp_has_parse_term
                   (fun parse_nt
                    => interp_Term
                         f
-                        (fun n => char_at_matches n (*str*))
+                        (fun n => char_at_matches_interp n (*str*))
                         (fun n => split_string_for_production n (*str*))
                         len0 valid_len parse_nt valids offset len nt)
                   false

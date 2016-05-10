@@ -165,7 +165,7 @@ Create HintDb partial_unfold_hints discriminated.
 
 Hint Rewrite <- @interp_Term_syntactify_list @interp_Term_syntactify_nat @List.map_rev : partial_unfold_hints.
 Hint Rewrite @nth'_nth List.map_nth List.map_map List.map_length List.map_id @combine_map_r @combine_map_l @first_index_default_map : partial_unfold_hints.
-Hint Resolve map_ext_in fold_left_app : partial_unfold_hints.
+Hint Resolve map_ext_in fold_left_app (@constantOf_correct cbool) @first_index_default_first_index_partial : partial_unfold_hints.
 
 Local Ltac meaning_tac_helper' :=
   idtac;
@@ -191,6 +191,8 @@ Local Ltac meaning_tac_helper' :=
     => destruct x eqn:?; simpl
   | [ H : forall x, _ = _ |- _ ] => rewrite <- H; reflexivity
   | [ H : forall x, _ = _ |- _ ] => setoid_rewrite <- H; reflexivity
+  | [ |- context[match ?x with Some _ => _ | None => _ end] ]
+    => destruct x eqn:?
   end.
 Local Ltac meaning_tac_helper := repeat meaning_tac_helper'.
 
@@ -259,83 +261,7 @@ Proof.
     { meaning_tac. }
     { meaning_tac. }
     { meaning_tac. }
-    { meaning_tac.
-      match goal with
-      | [ |- context[match ?x with Some _ => _ | None => _ end] ]
-        => destruct x eqn:?
-      end;
-      meaning_tac.
-(*Print Operations.List.first_index_helper.
-Hint Rewrite  : partial_unfold_hints.
-meaning_tac.
-match goal with
-| [ H : forall x, _ = _ |- _ ] => setoid_rewrite H
-end.
-pose (fun arg : Term interp_TypeCode A => @constantOf_correct cbool (meaning x arg)).
-simpl in e.
-Lemma first_index_default_first_index_partial
-      {A} (test : A -> bool) (testo : A -> option bool)
-      (H : forall a v, testo a = Some v -> test a = v)
-      (ls : list A)
-      v
-      (Heq : Operations.List.first_index_partial
-               testo ls = Some v)
-  : Operations.List.first_index_error test ls = v.
-Proof.
-  revert dependent v; induction ls as [|x xs IHxs]; simpl in *; intros; [ congruence | ].
-  destruct (testo x) as [[]|] eqn:H'; simpl in *;
-    [ erewrite H by eassumption.. | ];
-    simpl;
-    [ congruence
-    | | ].
-  { destruct (Operations.List.first_index_partial testo xs) as [[]|] eqn:H''; simpl in *.
-    specialize (IHxs _ eq_refl).
-
-    simpl in *.
-
-Lemma first_index_default_first_index_default_partial
-      {A} (test : A -> bool) (testo : A -> option bool)
-      (H : forall a v, testo a = Some v -> test a = v)
-      (default : nat)
-      (ls : list A)
-      v
-      (Heq : Operations.List.first_index_default_partial
-               testo default ls = Some v)
-  : Operations.List.first_index_default test default ls = v.
-Proof.
-  revert dependent default; induction ls as [|x xs IHxs]; simpl in *; intros.
-  { unfold Operations.List.first_index_default_partial in *.
-
-  : forall {T} (t : Term interp_TypeCode T) v
-           (H : constantOf t = Some v),
-    interp_Term t = interp_constantOf v.
-
-
-rewrite first_index_default_map.
-simpler.
-
-Lemma first_index_default_helper_map {A' A B}
-      (test : A -> bool)
-      (f : A' -> A)
-      (ls : list A')
-      (rec : nat -> nat)
-      (default : A)
-      (rect := option_rect (fun _ : option (nat * B) => nat) fst default)
-  : Operations.List.first_index_helper
-      test rect (List.map f ls) rec
-    = Operations.List.first_index_helper
-        (fun x => test (f x))
-        (fun na' => rect (option_map (fun na' => (fst na', f (snd na'))) na'))
-        ls
-        rec.
-Proof.
-
-
-  rewrite !first_index_helper_first_index_error; simpl.
-  *)
-      admit.
-
- }
+    { meaning_tac. }
     { meaning_tac. }
     { meaning_tac. } }
 Qed.

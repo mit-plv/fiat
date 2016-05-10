@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.BooleanRecognizerOptimized.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.ParserSyntax.
 Require Import Fiat.Parsers.Reflective.Semantics Fiat.Parsers.Reflective.ParserSemantics.
 Require Import Fiat.Parsers.Reflective.SemanticsOptimized Fiat.Parsers.Reflective.ParserSemanticsOptimized.
+Require Import Fiat.Parsers.Reflective.Morphisms.
 Require Import Fiat.Parsers.Reflective.ParserReify.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Common.
@@ -60,17 +61,136 @@ Section correctness.
     := (opt.interp_has_parse_term
           (@is_valid_nonterminal _ _)
           (length str)
-          (fun n => char_at_matches n str)
+          (fun n => Reflective.char_at_matches_interp n str)
           (fun n => split_string_for_production n str)
           pnt).
+
+  Local Ltac step_interp_Term_fold :=
+    unfold interp_Term, interp_Term_gen; fold @interp_Term_gen;
+    unfold interp_Term_gen_step;
+    change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term);
+    fold @interp_TypeCode.
+
+  Local Ltac fin_proper' :=
+    idtac;
+    instantiate;
+    match goal with
+    | [ |- ?x = ?x ] => reflexivity
+    | _ => progress cbv beta iota
+    | _ => intro
+    | _ => progress subst
+    | _ => progress unfold Proper in *
+    | [ H : ?R ?f ?g |- ?f ?x = ?g ?x ]
+      => apply H
+    | _ => progress unfold map_args_for
+    | _ => progress unfold args_for_related
+    | [ |- ?LHS = ahd ?e ]
+      => is_evar e; refine (_ : LHS = ahd (an_arg _ _)); fin_proper'
+    | [ |- ?LHS = atl ?e ]
+      => is_evar e; refine (_ : LHS = atl (an_arg _ _)); fin_proper'
+    | [ |- ?LHS = ?f (atl ?e) ]
+      => is_evar e; refine (_ : LHS = f (atl (an_arg _ _))); fin_proper'
+    | [ |- ?LHS = ?a (?b (atl ?e)) ]
+      => is_evar e; refine (_ : LHS = a (b (atl (an_arg _ _)))); fin_proper'
+    | [ |- ?LHS = ?a (?b (?c (atl ?e))) ]
+      => is_evar e; refine (_ : LHS = a (b (c (atl (an_arg _ _))))); fin_proper'
+    | [ |- ?LHS = ?a (?b (?c (?d (atl ?e)))) ]
+      => is_evar e; refine (_ : LHS = a (b (c (d (atl (an_arg _ _)))))); fin_proper'
+    | [ |- noargs = _ ] => reflexivity
+    | [ |- appcontext G[ahd (an_arg ?x ?y)] ]
+      => let G' := context G[x] in
+         change G'
+    | [ |- appcontext G[atl (an_arg ?x ?y)] ]
+      => let G' := context G[y] in
+         change G'
+    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
+    | [ |- _ /\ _ ] => split
+    end.
+  Local Ltac fin_proper := repeat fin_proper'.
+
+  Local Ltac head_app x :=
+    match x with
+    | RApp ?x' _ => head_app x'
+    | _ => x
+    end.
+  Local Ltac handle_var :=
+    repeat lazymatch goal with
+           | [ |- ?LHS = _ ]
+             => lazymatch LHS with
+                | appcontext[interp_Term ?x]
+                  => match head_app x with
+                     | RVar _ => step_interp_Term_fold
+                     end
+                end
+           end;
+    lazymatch goal with
+    | [ |- ?LHS = ?RHS ]
+      => let x := head LHS in
+         let y := head RHS in
+         match goal with
+         | [ H : ?R x y |- _ ]
+           => first [ apply H
+                    | etransitivity; [ apply H | instantiate; f_equal ] ]
+         end
+    end.
+
+  Local Ltac reified_eq' :=
+    idtac;
+    match goal with
+    | _ => reflexivity
+    | [ |- appcontext G[@list_rect ?A (fun _ => ?T)] ]
+      => let G' := context G[@Operations.List.list_rect_nodep A T] in change G'
+    | [ |- appcontext G[@Operations.List.list_caset ?A (fun _ => ?T)] ]
+      => let G' := context G[@Operations.List.list_caset_nodep A T] in change G'
+    | [ |- context G[if ?b then ?t else ?f] ]
+      => let G' := context G[@bool_rect_nodep _ t f b] in change G'
+    | [ |- interp_Term (RLambda _) _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
+    | [ |- ?LHS = _ ]
+      => let test := head LHS in
+         constr_eq test (@interp_Term);
+         lazymatch LHS with
+         | appcontext[interp_Term ?x]
+           => match head_app x with
+              | RVar _ => idtac
+              end
+         end;
+         handle_var; fin_proper
+    | [ |- @apply_args_for ?T (interp_RLiteralTerm ?f) ?args = _ ]
+      => etransitivity;
+         [ apply (@apply_args_for_Proper T);
+           [ first [ reflexivity
+                   | lazymatch goal with
+                     | [ |- appcontext[interp_RLiteralTerm ?f] ]
+                       => apply (@RLiteralTerm_Proper _ f)
+                     end ]
+           | fin_proper.. ]
+         | instantiate; simpl @apply_args_for; reflexivity ]
+    | [ |- interp_Term (RLiteralApp ?f ?args) = _ ]
+      => step_interp_Term_fold
+    | [ |- context[Syntactify.syntactify_rproductions _ _] ]
+      => rewrite <- interp_Term_syntactify_rproductions
+    | _ => instantiate; progress fin_proper
+    end.
+
+  Local Ltac reified_eq := reified_eq'; try reified_eq.
 
   Lemma parse_nonterminal_reified_opt_interp_precorrect
     : rinterp_parse (parse_nonterminal_reified G nt _)
       = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
   Proof.
     clear splitdata_correct HSLP.
+    cbv [rinterp_parse parse_nonterminal_reified].
+    change @opt.interp_has_parse_term with @interp_has_parse_term.
+    cbv [interp_has_parse_term].
     cbv [proj1_sig parse_nonterminal_preopt].
-    cbv [rinterp_parse opt.interp_has_parse_term parse_nonterminal_reified].
     match goal with
     | [ |- ?f ?x = ?g ?y ]
       => replace x with y
@@ -82,55 +202,19 @@ Section correctness.
       reflexivity. }
     Unfocus.
     refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
-    unfold forall_relation, pointwise_relation; repeat intro.
-    change @opt.interp_Term with @interp_Term.
-    unfold interp_Term.
-    simpl.
-    cbv [Syntactify.syntactify_rproductions interp_SimpleTypeCode interp_SimpleTypeCode_step Syntactify.syntactify_prod Syntactify.syntactify_ritem_ascii].
-    change @opt.nth' with @Operations.List.nth'.
-    change @opt.map with @List.map.
-    change @opt.fold_left with @List.fold_left.
-    edestruct Compare_dec.lt_dec; simpl.
-    { repeat match goal with
-             | [ |- ?x = ?x ] => reflexivity
-             | _ => intro
-             | _ => rewrite <- !interp_Term_syntactify_list
-             | _ => rewrite !List.map_map
-             | _ => rewrite !List.map_length
-             | _ => progress unfold interp_Term; simpl
-             | [ |- Operations.List.nth' _ _ _ = _ ]
-               => rewrite !ListFacts.nth'_nth
-             | [ |- List.nth _ _ _ = List.nth _ _ _ ]
-               => apply f_equal3
-             | [ |- List.map _ _ = List.map _ _ ]
-               => apply (_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
-             | [ |- List.fold_left _ _ _ = List.fold_left _ _ _ ]
-               => apply (_ : Proper (pointwise_relation _ _ ==> eq ==> eq ==> eq) (@List.fold_left _ _))
-             | [ |- bool_rect_nodep _ _ _ ?b = bool_rect _ _ _ ?b' ]
-               => replace b' with b; [ destruct b; simpl | ]
-             | [ |- ?f _ _ = ?f _ _ ]
-               => match f with
-                  | EqNat.beq_nat => idtac
-                  | Compare_dec.leb => idtac
-                  | orb => idtac
-                  | andb => idtac
-                  | orbr => idtac
-                  | andbr => idtac
-                  | @List.combine _ _ => idtac
-                  end;
-                  apply f_equal2
-             | [ |- ?f _ = ?f _ ]
-               => match f with
-                  | S => idtac
-                  | @List.rev _ => idtac
-                  end;
-                  apply f_equal
-             end.
+    repeat intro.
+    unfold step_option_rec.
+    unfold option_rect, sumbool_rect.
+    edestruct Compare_dec.lt_dec;
+      simpl @is_valid_nonterminal; unfold rdp_list_is_valid_nonterminal;
+        [ | edestruct dec; [ | reflexivity ] ].
+    { reified_eq.
+      admit.
       admit. }
-    { unfold rdp_list_is_valid_nonterminal.
-      edestruct dec; simpl; [ | reflexivity ].
+    { reified_eq.
+      admit.
       admit. }
-  Admitted.
+  Qed.
 
   Lemma parse_nonterminal_reified_opt_interp_correct
     : rinterp_parse (parse_nonterminal_reified G nt _)

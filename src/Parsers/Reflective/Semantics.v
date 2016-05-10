@@ -135,6 +135,18 @@ Definition interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
 End equality.
  *)
 
+Ltac fold_interp_Term :=
+  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *;
+  fold @interp_TypeCode in *.
+
+Ltac simpl_interp_Term :=
+  unfold interp_Term; simpl @interp_Term_gen;
+  fold_interp_Term.
+
+Ltac simpl_interp_Term_in_all :=
+  unfold interp_Term in *; simpl @interp_Term_gen in *;
+  fold_interp_Term.
+
 Lemma interp_Term_syntactify_list {T : SimpleTypeCode}
       (ls : list (Term interp_TypeCode T))
 : List.map interp_Term ls = interp_Term (Syntactify.syntactify_list ls).
@@ -152,12 +164,21 @@ Proof.
   rewrite <- IHv; reflexivity.
 Qed.
 
-Ltac simpl_interp_Term :=
-  unfold interp_Term; simpl @interp_Term_gen;
-  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term);
-  fold @interp_TypeCode.
-
-Ltac simpl_interp_Term_in_all :=
-  unfold interp_Term in *; simpl @interp_Term_gen in *;
-  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *;
-  fold @interp_TypeCode in *.
+Lemma interp_Term_syntactify_rproductions
+      ls
+: ls = interp_Term (Syntactify.syntactify_rproductions _ ls).
+Proof.
+  repeat match goal with
+         | [ |- ?x = ?x ] => reflexivity
+         | _ => progress unfold Syntactify.syntactify_rproductions, syntactify_prod, syntactify_string
+         | _ => progress simpl
+         | _ => progress simpl_interp_Term
+         | _ => rewrite <- interp_Term_syntactify_list, List.map_map
+         | [ |- ?x = List.map _ ?x ]
+           => etransitivity; [ symmetry; apply List.map_id | ]
+         | [ |- List.map _ ?x = List.map _ ?x ]
+           => apply List.map_ext; intro
+         | [ |- _ = _ :> prod _ _ ]
+           => apply injective_projections
+         end.
+Qed.

@@ -15,11 +15,10 @@ Module opt.
   Section polypnormalize.
     Context (is_valid_nonterminal : list nat -> nat -> bool)
             (strlen : nat)
-            (char_at_matches : nat -> (Ascii.ascii -> bool) -> bool)
-            (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
-            (char_at_matches_Proper : Proper (eq ==> pointwise_relation _ eq ==> eq) char_at_matches).
+            (char_at_matches_interp : nat -> Reflective.RCharExpr Ascii.ascii -> bool)
+            (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat).
 
-    Let interp := opt.interp_has_parse_term is_valid_nonterminal strlen char_at_matches split_string_for_production.
+    Let interp := opt.interp_has_parse_term is_valid_nonterminal strlen char_at_matches_interp split_string_for_production.
 
     Lemma polypnormalize_correct (term : polyhas_parse_term)
       : ParserSyntaxEquivalence.has_parse_term_equiv

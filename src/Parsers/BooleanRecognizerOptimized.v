@@ -1525,6 +1525,15 @@ Section recursive_descent_parser.
     reflexivity.
   Defined.
 
+  Local Ltac change_char_at_matches :=
+    idtac;
+    lazymatch goal with
+    | [ |- appcontext G[@char_at_matches ?Char ?HSLM ?n ?str (@interp_RCharExpr _ ?data ?P)] ]
+      => idtac;
+         let G' := context G[@char_at_matches_interp Char HSLM data n str P] in
+         change G'
+    end.
+
   Definition parse_nonterminal_opt'2
              (str : String)
              (nt : String.string)
@@ -1569,20 +1578,8 @@ Section recursive_descent_parser.
             step_opt'; [ | ].
             { rewrite nth'_nth.
               rewrite <- andbr_andb at 1.
-              apply (f_equal2 andbr); [ | reflexivity ].
-              match goal with
-              | [ |- _ = ?f ?x ?a ?b ]
-                => refine (f_equal (fun x' => f x' a b) _)
-              end.
-              fin_step_opt; [ reflexivity | ].
-              apply (f_equal2 (nth _)); [ | reflexivity ].
-              step_opt'; [ | reflexivity ].
-              rewrite nth'_nth; reflexivity. }
-            { step_opt'.
-              { rewrite <- andbr_andb at 1.
-                apply (f_equal2 andbr); [ reflexivity | ].
-                rewrite nth'_nth.
-                match goal with
+              apply (f_equal2 andbr).
+              { match goal with
                 | [ |- _ = ?f ?x ?a ?b ]
                   => refine (f_equal (fun x' => f x' a b) _)
                 end.
@@ -1590,6 +1587,23 @@ Section recursive_descent_parser.
                 apply (f_equal2 (nth _)); [ | reflexivity ].
                 step_opt'; [ | reflexivity ].
                 rewrite nth'_nth; reflexivity. }
+              { step_opt'; [ | reflexivity ].
+                change_char_at_matches.
+                reflexivity. } }
+            { step_opt'.
+              { rewrite <- andbr_andb at 1.
+                apply (f_equal2 andbr); [ | ].
+                { change_char_at_matches.
+                  reflexivity. }
+                { rewrite nth'_nth.
+                  match goal with
+                  | [ |- _ = ?f ?x ?a ?b ]
+                    => refine (f_equal (fun x' => f x' a b) _)
+                  end.
+                  fin_step_opt; [ reflexivity | ].
+                  apply (f_equal2 (nth _)); [ | reflexivity ].
+                  step_opt'; [ | reflexivity ].
+                  rewrite nth'_nth; reflexivity. } }
               { step_opt'; [ | reflexivity ].
                 apply (f_equal2 andb); [ reflexivity | ].
                 rewrite nth'_nth.
@@ -1905,6 +1919,7 @@ Section recursive_descent_parser.
     | [ |- _ = opt.combine _ _ ] => reflexivity
     | [ |- _ = opt.length ?x ] => is_var x; reflexivity
     | [ |- _ = char_at_matches _ _ _ ] => apply f_equal3
+    | [ |- _ = char_at_matches_interp _ _ _ ] => apply f_equal3
     end.
 
   Local Ltac safe_change_opt := repeat safe_change_opt'.

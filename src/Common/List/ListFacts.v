@@ -2086,4 +2086,51 @@ Section ListFacts.
       by reflexivity.
     reflexivity.
   Qed.
+
+  Lemma first_index_error_first_index_partial
+        {A} (test : A -> bool) (testo : A -> option bool)
+        (H : forall a v, testo a = Some v -> test a = v)
+        (ls : list A)
+        v
+        (Heq : Operations.List.first_index_partial
+                 testo ls = Some v)
+    : Operations.List.first_index_error test ls = v.
+  Proof.
+    revert dependent v; induction ls as [|x xs IHxs]; simpl in *; intros; [ congruence | ].
+    destruct (testo x) as [[]|] eqn:H'; simpl in *;
+      [ erewrite H by eassumption.. | ];
+      simpl;
+      [ congruence
+      | | ].
+    { destruct (Operations.List.first_index_partial testo xs) as [[]|] eqn:H''; simpl in *;
+      try specialize (IHxs _ eq_refl).
+      { rewrite first_index_helper_first_index_error, IHxs; simpl.
+        apply first_index_error_Some_correct in IHxs.
+        destruct IHxs as [[? [IHxs ?]] ?].
+        rewrite IHxs; simpl; congruence. }
+      { rewrite first_index_helper_first_index_error, IHxs; simpl; congruence. }
+      { congruence. } }
+    { congruence. }
+  Qed.
+
+  Lemma first_index_default_first_index_partial
+        {A} (test : A -> bool)
+        (ls : list A)
+        default
+        v
+        (testo : A -> option bool)
+        (Heq : Operations.List.first_index_default_partial
+                 testo default ls = Some v)
+        (H : forall a v, testo a = Some v -> test a = v)
+    : Operations.List.first_index_default test default ls = v.
+  Proof.
+    unfold Operations.List.first_index_default_partial in *.
+    rewrite first_index_default_first_index_error.
+    destruct (Operations.List.first_index_partial testo ls) as [[]|] eqn:H'.
+    { eapply first_index_error_first_index_partial in H'; [ | eassumption ].
+      rewrite H'; simpl; congruence. }
+    { eapply first_index_error_first_index_partial in H'; [ | eassumption ].
+      rewrite H'; simpl; congruence. }
+    { congruence. }
+  Qed.
 End ListFacts.
