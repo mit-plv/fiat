@@ -198,7 +198,8 @@ Local Ltac meaning_tac :=
   repeat first [ progress autorewrite with partial_unfold_hints
                | progress eauto with partial_unfold_hints
                | progress rewrite_strat (topdown (hints partial_unfold_hints))
-               | progress meaning_tac_helper ].
+               | progress meaning_tac_helper
+               | progress simpl_interp_Term_in_all ].
 
 Local Hint Resolve push_var.
 Lemma meaning_correct
@@ -257,14 +258,26 @@ Proof.
       match goal with
       | [ |- context[match ?x with Some _ => _ | None => _ end] ]
         => destruct x eqn:?
-      end.
+      end;
       meaning_tac.
+      (*SearchAbout Operations.List.first_index_default List.map.
+Lemma first_index_default_map {A B} (test : B -> bool) (f : A -> B) (ls : list A) (default : nat)
+  : Operations.List.first_index_default test default (List.map f ls)
+    = Operations.List.first_index_default (fun x => test (f x)) default ls.
+Proof.
+About Operations.List.first_index_helper.
+  revert default; induction ls as [|x xs IHxs]; simpl; [ reflexivity | ]; intros.
+  f_equal; [].
+  unfold Operations.List.first_index_default in *.
+
+  rewrite !first_index_helper_first_index_error; simpl.
+  *)
       admit.
-      admit. }
+
+ }
     { meaning_tac. }
     { meaning_tac. } }
 Qed.
-
 
 Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?Y))) =>
 change (@related T (interp_Term (RVar X)) (reflect (RVar Y))).

@@ -151,3 +151,13 @@ Proof.
   induction v as [|v IHv]; [ reflexivity | simpl ].
   rewrite <- IHv; reflexivity.
 Qed.
+
+Ltac simpl_interp_Term :=
+  unfold interp_Term; simpl @interp_Term_gen;
+  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term);
+  fold @interp_TypeCode.
+
+Ltac simpl_interp_Term_in_all :=
+  unfold interp_Term in *; simpl @interp_Term_gen in *;
+  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *;
+  fold @interp_TypeCode in *.
