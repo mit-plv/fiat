@@ -158,8 +158,7 @@ Section term.
   | RO : RLiteralConstructor cnat
   | Rnil {A} : RLiteralConstructor (clist A)
   | Rcons {A : SimpleTypeCode} : RLiteralConstructor (A --> clist A --> clist A)
-  | Rfalse : RLiteralConstructor cbool
-  | Rtrue : RLiteralConstructor cbool
+  | Rbool (b : bool) : RLiteralConstructor cbool
   | Rrchar_expr_ascii (_ : Reflective.RCharExpr ascii) : RLiteralConstructor crchar_expr_ascii
   | Rstring (_ : string) : RLiteralConstructor cstring
   | Rritem_ascii (_ : Reflective.ritem ascii) : RLiteralConstructor critem_ascii.

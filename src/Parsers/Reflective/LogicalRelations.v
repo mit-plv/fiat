@@ -1,13 +1,23 @@
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.
+Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.List.ListMorphisms.
 
 Fixpoint related {T} : interp_TypeCode T -> normalized_of interp_TypeCode T -> Prop
   := match T return interp_TypeCode T -> normalized_of interp_TypeCode T -> Prop with
      | csimple T' => fun b e => b = interp_Term e
      | (dom --> ran)%typecode
        => fun f1 f2 => forall x1 x2, related x1 x2 -> related (f1 x1) (f2 x2)
+     end.
+
+Fixpoint interp_related {T} : interp_TypeCode T -> interp_TypeCode T -> Prop
+  := match T return interp_TypeCode T -> interp_TypeCode T -> Prop with
+     | csimple T' => fun b e => b = e
+     | (dom --> ran)%typecode
+       => fun f1 f2 => forall x1 x2, interp_related x1 x2 -> interp_related (f1 x1) (f2 x2)
      end.
 
 Local Ltac concretize := cbv zeta.
@@ -23,6 +33,24 @@ Local Ltac simplerGoal :=
   | [ H : _ /\ _ |- _ ] => destruct H
   | [ H : _ \/ _ |- _ ] => destruct H
   | _ => progress unfold eq_rect in *
+  | [ H : (_ + _)%type -> _ |- _ ]
+    => pose proof (fun x => H (inl x));
+       pose proof (fun x => H (inr x));
+       clear H
+  | [ H : forall x : ?A = clist ?A, _ |- _ ] => clear H
+  | [ H : forall x : csimple ?A = csimple (clist ?A), _ |- _ ] => clear H
+  | [ H : False -> _ |- _ ] => clear H
+  | [ H : sigT ?P -> _ |- _ ] => specialize (fun x p => H (existT P x p))
+  | [ H : sig ?P -> _ |- _ ] => specialize (fun x p => H (exist P x p))
+  | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+  | [ H : forall a b c, (_ + _)%type -> _ |- _ ]
+    => pose proof (fun a b c x => H a b c (inl x));
+       pose proof (fun a b c x => H a b c (inr x));
+       clear H
+  | [ H : forall a b c, False -> _ |- _ ] => clear H
+  | [ H : forall a b c, sigT _ -> _ |- _ ] => specialize (fun a b c x p => H a b c (existT _ x p))
+  | [ H : forall a b c, sig _ -> _ |- _ ] => specialize (fun a b c x p => H a b c (exist _ x p))
+  | [ H : forall a b c (d : ?x = a), _ |- _ ] => specialize (fun b c => H _ b c eq_refl)
   | [ H : ?P -> _ |- _ ] =>
     let H' := fresh "H'" in
     assert (H' : P); [ solve [ auto ]
@@ -32,6 +60,13 @@ Local Ltac simplerGoal :=
        generalize dependent (pr1_path H);
        clear H;
        intros ??
+    | [ H : forall a b, _ /\ _ -> _ |- _ ]
+      => specialize (fun a b c d => H a b (conj c d))
+    | [ H : forall a b (c : ?v = a), _ |- _ ]
+      => specialize (fun b => H _ b eq_refl)
+    | [ H : forall a (b : ?v = a), _ |- _ ]
+      => specialize (H _ eq_refl)
+    | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
   (*| [ H : existT ?F ?T ?X = existT _ ?T ?Y |- _ ] =>
                         generalize (inj_pair2 _ F _ X Y H); clear H*)
   | [ H : Some ?X = Some ?Y |- _ ] =>
@@ -97,6 +132,7 @@ Lemma constantOf_correct
            (H : constantOf t = Some v),
     interp_Term t = interp_constantOf v.
 Proof.
+  unfold interp_Term;
   intros T t; induction t;
   repeat match goal with
          | [ t : RLiteralTerm _ |- _ ] => destruct t
@@ -104,62 +140,82 @@ Proof.
          | [ H : constantOf ?bv = Some ?dv, H' : forall a b c d, constantOf b = Some d -> _ |- _ ]
            => pose proof (fun c => H' _ bv c dv H); clear H
          | _ => progress simpler_args_for
-         | _ => simpler
+         | _ => progress simpler
          end.
-  simpler.
-  apply H in Heqo.
 Qed.
 
 Local Ltac simpler_constantOf
   := repeat match goal with
             | [ H : constantOf ?t = Some ?v |- _ ]
-              => apply (proj1 constantOf_correct _ t v) in H
+              => apply (@constantOf_correct _ t v) in H
             end.
+
+Lemma fold_left_app {A B A' B'}
+      (f : A -> B -> A) (ls : list B) (init : A)
+      (g : A' -> B' -> A') (ha : A -> A') (hb : B -> B')
+      (H : forall x y, g (ha x) (hb y) = ha (f x y))
+  : List.fold_left g (List.map hb ls) (ha init)
+    = ha (List.fold_left f ls init).
+Proof.
+  revert init; induction ls as [|x xs IHxs]; simpl; [ reflexivity | ]; intros.
+  rewrite <- IHxs, H; reflexivity.
+Qed.
+
+Create HintDb partial_unfold_hints discriminated.
+
+Hint Rewrite <- @interp_Term_syntactify_list @interp_Term_syntactify_nat @List.map_rev : partial_unfold_hints.
+Hint Rewrite @nth'_nth List.map_nth List.map_map List.map_length List.map_id @combine_map_r @combine_map_l : partial_unfold_hints.
+Hint Resolve map_ext_in fold_left_app : partial_unfold_hints.
+
+Local Ltac meaning_tac_helper' :=
+  idtac;
+  match goal with
+  | [ |- ?x = ?y ] => reflexivity
+  | [ H : forall a b (c : a = _), _ |- _ ] => specialize (fun b => H _ b eq_refl)
+  | [ H : forall a b c (d : b = _), _ |- _ ] => specialize (fun a c => H a _ c eq_refl)
+  | [ H : forall x y, _ = _ |- _ ] => setoid_rewrite <- H
+  | [ |- appcontext[Common.apply_n ?n ?f ?x] ]
+    => clear;
+       let IH := fresh "IH" in
+       generalize x; induction n as [|? IH]; simpl;
+       [ reflexivity
+       | intro; rewrite <- IH; unfold interp_Term; simpl;
+         first [ reflexivity
+               | omega ] ]
+  | [ |- context[Operations.List.list_caset_nodep _ _ ?ls] ]
+    => is_var ls; destruct ls
+  | [ |- Operations.List.list_caset_nodep _ _ ?ls = Operations.List.list_caset_nodep _ _ ?ls ]
+    => destruct ls
+  | [ H : ?x = _ |- context[?x] ] => rewrite H
+  | [ |- context[Reflective.ritem_rect_nodep _ _ ?x] ]
+    => destruct x eqn:?; simpl
+  | [ H : forall x, _ = _ |- _ ] => rewrite <- H; reflexivity
+  | [ H : forall x, _ = _ |- _ ] => setoid_rewrite <- H; reflexivity
+  end.
+Local Ltac meaning_tac_helper := repeat meaning_tac_helper'.
+
+Local Ltac meaning_tac :=
+  repeat first [ progress autorewrite with partial_unfold_hints
+               | progress eauto with partial_unfold_hints
+               | progress rewrite_strat (topdown (hints partial_unfold_hints))
+               | progress meaning_tac_helper ].
 
 Local Hint Resolve push_var.
 Lemma meaning_correct
-  : (forall G t e1 e2,
-        Term_equiv G e1 e2
-        -> (forall t' v1 v2, List.In (vars v1 v2) G
-                             -> @related t' v1 v2)
-        -> @related t (interp_Term e1) (meaning e2))
-    /\ (forall G t e1 e2,
-           args_for_equiv G e1 e2
-           -> (forall t' v1 v2, List.In (vars v1 v2) G
-                                -> @related t' v1 v2)
-           -> args_for_values_related
-                (fun _ => eq)
-                (@interp_args_for t e1)
-                (@interp_args_for t (unmeanings (meanings (@meaning interp_TypeCode) e2)))).
+  : forall G t e1 e2,
+    Term_equiv G e1 e2
+    -> (forall t' v1 v2, List.In (vars v1 v2) G
+                         -> @related t' v1 v2)
+    -> @related t (interp_Term e1) (meaning e2).
 Proof.
-  split.
-  Focus 2.
-  intros.
-  pose (meanings (@meaning interp_TypeCode) e2).
-  unfold interp_Term, interp_args_for.
-  apply Term_equiv_args_for_equiv_mutind;
-  try solve [ simpler; eauto ].
-  Focus 2.
-  Set Printing Implicit.
-  unfold id.
-About interp_args_for.
-
-  intros.
-  simpl.
-  apply f_equal2; try solve [ simpler; eauto ].
-
-  Print reify.
-  simpler; eauto.
-
-  { simpler; eauto.
-   match goal with
-    | [ H : ?v = _ |- context[?v] ]
-      => rewrite H; clear H
-    end.
+  unfold interp_Term;
+  induction 1; try solve [ simpler; eauto ].
+  { simpler; unfold interp_Term in *; eauto.
     repeat match goal with
            | [ |- _ = _ ] => reflexivity
            | [ x : args_for _ _ |- _ ] => clear dependent x
            | [ f : RLiteralTerm _ |- _ ] => destruct f
+           | [ f : RLiteralConstructor _ |- _ ] => destruct f
            | [ f : RLiteralNonConstructor _ |- _ ] => destruct f
            end;
       repeat match goal with
@@ -170,284 +226,89 @@ About interp_args_for.
                => destruct (constantOf x) eqn:?
              | [ H : ?v = _ |- context[?v] ]
                => rewrite H
-             end.
-      simpler_constantOf;
-      simpler.
-      simpler_args_for.
-      simpler.
-   match goal with
-    end.
+             end;
+      change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *.
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac.
+      admit. }
+    { meaning_tac.
+      admit. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac. }
+    { meaning_tac.
+      match goal with
+      | [ |- context[match ?x with Some _ => _ | None => _ end] ]
+        => destruct x eqn:?
+      end.
+      meaning_tac.
+      admit.
+      admit. }
+    { meaning_tac. }
+    { meaning_tac. } }
+Qed.
 
-      {
 
-simplerGoal.
-simpl.
-{ simpler.
+Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?X))) =>
+change (@related T (interp_Term (RVar X)) (reflect (RVar X))).
+Local Hint Extern 5 (_ = _) => symmetry.
+Local Hint Extern 1 (@related _ (interp_Term_gen ?iRLT ?A ?X1) _) =>
 match goal with
+| [ _ : @related _ X1 ?X2 |- _ ] =>
+  replace (interp_Term_gen iRLT A X1)
+  with (interp_Term_gen iRLT (RApp A (reify _ X2)))
 end.
-simpler.
-simpler.
-unfold interp_Term in *.
-rewrite H, H0.
-
-  lazymatch goal with  | [ H : an_argv _ _ = an_argv _ _ |- _ ]
-    => apply args_for_values_encode in H; unfold args_for_values_code in H
-end.
-simpl in *.
- (*
-unfold constantOfs in *.
-simpl in *.
-  simpl in *.
-  end.
-  try .
-  simpl.
-  match goal with
-  erewrite H; simpl in *.
-  simpl
-pose ((constantOfs (@constantOf interp_TypeCode) args)).
-About Term_args_for_mutind.
-repeat
-About interp_args_for.
-simpl in *.
-  simpl in *
-         | [ H : @constantOf _ ?T _ = Some _ |- _ ] => apply (@constantOf_correct T) in H
-         end.
-Guarded.
-
-         end.
-  Guarded.
-Set Printing Implicit.
-  eapply constantOf_correct in Heqo.
-  simpl in *.
-  induction t; try (simpl in *; congruence).
-  simpl in H.
-  destruct T as [T|]; [ | simpl in *; tauto ].
-
-  Print constantOf.
-  induction T; simpl in *.
-  induction T; simpl in *.
-  Print interp_constantOf.
-  destruct t.
-  :
-      Print constantOf.
-lazymatch goal with
-           | [ args : args_for _ (csimple ?A) |- _ ]
-             => let H := fresh in
-                pose proof (invert_args_for_ex args) as H; cbv beta iota in H
-end.
-                  destruct H as [? [? ?]]; subst args
-
-      Set Printing Implicit.
-lazymatch goal with
-end.
-            destruct fespeci).
-    let f := match goal with
-             | [ f : RLiteralTerm _ |- _ ] => f
-             end in
-    destruct f; try reflexivity; [].
-
-
-    match goal with
-    match goal with
-    destruct f; simpl.
-    repeat (let f := match goal with
-                     | [ f : RLiteralTerm _ |- _ ] => f
-                     | [ f : RLiteralNonConstructor _ |- _ ] => f
-                     end in
-            destruct f).
-
-    simpler; eauto.
-    pose v1.
-    pose ( (meanings (@meaning interp_TypeCode) v2)).
-Print meanings.
-Set Printing Implicit.
-simpl.
-Fixpoint args_related {T} : interp_TypeCode T -> interp_TypeCode (range_of T) -> arg_meanings_for interp_TypeCode T -> Prop
-  := match T return interp_TypeCode T -> interp_TypeCode (range_of T) -> arg_meanings_for interp_TypeCode T -> Prop with
-     | csimple T' => fun f v args => f = v
-     | (dom --> ran)%typecode
-       => fun f fargs args => forall x1 x2, related x1 x2 -> args_related f fargs (an_argm x2 args)
-     end.
-
-
-    cbv [interp_Term interp_RLiteralTerm].
-    fold @interp_args_for.
-About meanings.
-    simpl.
-
-(*
-      simpler.
-    { simpler.
-      unfold vars in *.
-Set Printing All.
-
-    simpl in *.
-    match goal with
-    end.
-Definition invert_args_for_equiv {var1 var2 G T v1 v2}
-           (H : @args_for_equiv var1 var2 G T v1 v2)
-  : match T return args_for var1 T -> args_for var2 T -> Prop
-    with
-    | csimple _ => fun v1 v2 => v1 = noargs /\ v2 = noargs
-    | carrow A B
-      => fun v1 v2
-         => exists h1 t1 h2 t2,
-             v1 = an_arg h1 t1 /\ v2 = an_arg h2 t2
-             /\ Term_equiv G h1 h2
-             /\ args_for_equiv G t1 t2
-    end v1 v2.
-Proof.
-  destruct H; repeat esplit; assumption.
-Defined.
-    match goal with
-    | [ args : args_for _ (carrow ?A ?B) |- _ ]
-      => let H := fresh in
-         pose proof (invert_args_for_ex args) as H; cbv beta iota in H;
-           destruct H as [? [? ?]]; subst args
-    end.
-Print args_for.
-Definition invert_args_for {var T} (args : args_for var T)
-  : args = match T return args_for var T -> args_for var T with
-           | csimple T' => fun _ => noargs
-           | carrow A B => fun args' => an_arg (ahd args') (atl args')
-           end args.
-Proof.
-  destruct args; reflexivity.
-Defined.
-
-    let RHS := match goal with |- _ = ?RHS => RHS end in
-    lazymatch RHS with
-    | appcontext G[?f (match ?x with
-                       | RLC x' => @?c x'
-                       | RLNC y' => @?nc y'
-                       end ?arg1)]
-      => idtac;
-           let G' := context G[match x with
-                               | RLC x' => fun a1 => f (c x' a1)
-                               | RLNC y' => fun a1 => f (nc y' a1)
-                               end arg1] in
-           transitivity G';
-             [ simpl | destruct x; reflexivity ]
-    end.
-    Print RLC.
-Lemma push_apply_match_RLiteralTerm {T A}
-           (t : RLiteralTerm T)
-           (c : RLiteralConstructor T -> A)
-           (nc
-           (f : forall t : RLiteralTerm T, P t)
-  : f (match
-  solve [ simpler; eauto ].
-  Focus 2.
-  { intro H'; eapply push_var; [ left | eexact H' | ].
-    unfold vars.
-eapply push_var. induction T; simpl.
-
-
-Qed.
-
+Local Hint Extern 1 (interp_Term_gen _ _ = interp_Term_gen _ _ _) => simpl; f_equal.
 Lemma reify_and_reflect_correct : forall t,
   (forall v r,
     @related t v r
-    -> v = ninterp_Term (reify r))
+    -> v = (interp_Term (reify _ r)))
   /\ (forall a,
-    @related t (appsDenote a) (reflect a)).
-  Hint Resolve ext_eq.
-  Hint Extern 1 (@related ?T ?X (reflect (Var ?X))) =>
-    change (@related T (appsDenote (Var X)) (reflect (Var X))).
-  Hint Extern 5 (_ = _) => symmetry.
-
-  Hint Extern 1 (@related _ (appsDenote ?A ?X1) _) =>
-    match goal with
-      | [ _ : @related _ X1 ?X2 |- _ ] =>
-        replace (appsDenote A X1)
-          with (appsDenote (App A (reify X2)))
-    end.
-  Hint Extern 1 (appsDenote _ = appsDenote _ _) => simpl; f_equal.
-
-  induction t; simpler.
+    @related t (interp_Term a) (reflect a)).
+Proof.
+  (*Local Hint Resolve ext_eq.*)
+  unfold interp_Term;
+  induction t; simpler; eauto.
+  change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *.
+  fold @interp_TypeCode.
+  admit.
 Qed.
 
 Lemma reify_correct : forall t v r,
   @related t v r
-  -> v = ninterp_Term (reify r).
+  -> v = interp_Term (reify _ r).
+Proof.
   generalize reify_and_reflect_correct; firstorder.
 Qed.
 
 Lemma nil_context : forall t v1 v2,
   List.In (vars v1 v2) nil
   -> @related t v1 v2.
+Proof.
   simpl; tauto.
 Qed.
 
-Theorem Normalize_correct : forall t (E : Exp t),
-  ExpDenote E = Ninterp_Term (Normalize E).
-  Hint Resolve Term_equiv nil_context meaning_correct reify_correct.
-
-  unfold Ninterp_Term, Normalize, normalize, ExpDenote; eauto.
+Local Hint Resolve nil_context meaning_correct reify_correct.
+Theorem polynormalize_correct : forall t (E : polyTerm t),
+    Term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
+    -> interp_Term (E _) = interp_Term (polynormalize E _).
+Proof.
+  unfold interp_Term, polynormalize, normalize; eauto.
 Qed.
-
-
-
-Lemma push_var : forall t v1 v2 t' v1' v2' G,
-  Source.vars v1' v2' = Source.vars v1 v2
-  \/ List.In (Source.vars v1 v2) G
-  -> (forall t'' v1'' v2'', List.In (Source.vars v1'' v2'') G -> @related t'' v1'' v2'')
-  -> @related t' v1' v2'
-  -> @related t v1 v2.
-  simpler.
-Qed.
-
-Lemma meaning_correct : forall G t e1 e2,
-  Term_equiv G e1 e2
-  -> (forall t' v1 v2, List.In (vars v1 v2) G
-    -> @related t' v1 v2)
-  -> @related t (interp_Term e1) (meaning e2).
-  Hint Resolve push_var.
-
-  induction 1; simpler; eauto.
-Qed.
-
-Lemma reify_and_reflect_correct : forall t,
-  (forall v r,
-    @related t v r
-    -> v = ninterp_Term (reify r))
-  /\ (forall a,
-    @related t (appsDenote a) (reflect a)).
-  Hint Resolve ext_eq.
-  Hint Extern 1 (@related ?T ?X (reflect (Var ?X))) =>
-    change (@related T (appsDenote (Var X)) (reflect (Var X))).
-  Hint Extern 5 (_ = _) => symmetry.
-
-  Hint Extern 1 (@related _ (appsDenote ?A ?X1) _) =>
-    match goal with
-      | [ _ : @related _ X1 ?X2 |- _ ] =>
-        replace (appsDenote A X1)
-          with (appsDenote (App A (reify X2)))
-    end.
-  Hint Extern 1 (appsDenote _ = appsDenote _ _) => simpl; f_equal.
-
-  induction t; simpler.
-Qed.
-
-Lemma reify_correct : forall t v r,
-  @related t v r
-  -> v = ninterp_Term (reify r).
-  generalize reify_and_reflect_correct; firstorder.
-Qed.
-
-Lemma nil_context : forall t v1 v2,
-  List.In (vars v1 v2) nil
-  -> @related t v1 v2.
-  simpl; tauto.
-Qed.
-
-Theorem Normalize_correct : forall t (E : Exp t),
-  ExpDenote E = Ninterp_Term (Normalize E).
-  Hint Resolve Term_equiv nil_context meaning_correct reify_correct.
-
-  unfold Ninterp_Term, Normalize, normalize, ExpDenote; eauto.
-Qed.
-
-
-Inductive
-*)

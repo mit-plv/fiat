@@ -61,8 +61,7 @@ Section normalization_by_evaluation.
               | RO => fun _ _ => Some O
               | Rnil _ => fun _ _ => Some nil
               | Rcons _ => fun af afr => option_map (cons (ahd af)) (ahd (atl afr))
-              | Rfalse => fun _ _ => Some false
-              | Rtrue => fun _ _ => Some true
+              | Rbool v
               | Rrchar_expr_ascii v
               | Rstring v
               | Rritem_ascii v
@@ -275,7 +274,7 @@ Section normalization_by_evaluation.
                              | Some n, Some n'
                                => syntactify_nat var (plus n n')
                              | Some n, _
-                               => apply_n n (fun n0 => RLiteralApp RS (n0 :: noargs)) (ahd af)
+                               => apply_n n (fun n0 => RLiteralApp RS (n0 :: noargs)) (ahd (atl af))
                              | _, _ => default
                              end
                      | Rmax

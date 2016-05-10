@@ -69,7 +69,67 @@ Section correctness.
       = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
   Proof.
     clear splitdata_correct HSLP.
-    cbv [rinterp_parse parse_nonterminal_reified parse_nonterminal_preopt proj1_sig].
+    cbv [proj1_sig parse_nonterminal_preopt].
+    cbv [rinterp_parse opt.interp_has_parse_term parse_nonterminal_reified].
+    match goal with
+    | [ |- ?f ?x = ?g ?y ]
+      => replace x with y
+    end.
+    Focus 2.
+    { unfold rdp_list_of_nonterminal.
+      cbv [pregrammar_productions pregrammar'_of_pregrammar].
+      rewrite !List.map_length, !List.map_map; simpl.
+      reflexivity. }
+    Unfocus.
+    refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
+    unfold forall_relation, pointwise_relation; repeat intro.
+    change @opt.interp_Term with @interp_Term.
+    unfold interp_Term.
+    simpl.
+    cbv [Syntactify.syntactify_rproductions interp_SimpleTypeCode interp_SimpleTypeCode_step Syntactify.syntactify_prod Syntactify.syntactify_ritem_ascii].
+    change @opt.nth' with @Operations.List.nth'.
+    change @opt.map with @List.map.
+    change @opt.fold_left with @List.fold_left.
+    edestruct Compare_dec.lt_dec; simpl.
+    { repeat match goal with
+             | [ |- ?x = ?x ] => reflexivity
+             | _ => intro
+             | _ => rewrite <- !interp_Term_syntactify_list
+             | _ => rewrite !List.map_map
+             | _ => rewrite !List.map_length
+             | _ => progress unfold interp_Term; simpl
+             | [ |- Operations.List.nth' _ _ _ = _ ]
+               => rewrite !ListFacts.nth'_nth
+             | [ |- List.nth _ _ _ = List.nth _ _ _ ]
+               => apply f_equal3
+             | [ |- List.map _ _ = List.map _ _ ]
+               => apply (_ : Proper (pointwise_relation _ _ ==> eq ==> eq) (@List.map _ _))
+             | [ |- List.fold_left _ _ _ = List.fold_left _ _ _ ]
+               => apply (_ : Proper (pointwise_relation _ _ ==> eq ==> eq ==> eq) (@List.fold_left _ _))
+             | [ |- bool_rect_nodep _ _ _ ?b = bool_rect _ _ _ ?b' ]
+               => replace b' with b; [ destruct b; simpl | ]
+             | [ |- ?f _ _ = ?f _ _ ]
+               => match f with
+                  | EqNat.beq_nat => idtac
+                  | Compare_dec.leb => idtac
+                  | orb => idtac
+                  | andb => idtac
+                  | orbr => idtac
+                  | andbr => idtac
+                  | @List.combine _ _ => idtac
+                  end;
+                  apply f_equal2
+             | [ |- ?f _ = ?f _ ]
+               => match f with
+                  | S => idtac
+                  | @List.rev _ => idtac
+                  end;
+                  apply f_equal
+             end.
+      admit. }
+    { unfold rdp_list_is_valid_nonterminal.
+      edestruct dec; simpl; [ | reflexivity ].
+      admit. }
   Admitted.
 
   Lemma parse_nonterminal_reified_opt_interp_correct

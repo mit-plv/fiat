@@ -157,8 +157,8 @@ Ltac reify_Term var term
      | ?term'
        => let Rterm := match term' with
                        | O => constr:(@RO)
-                       | true => constr:(@Rtrue)
-                       | false => constr:(@Rfalse)
+                       | true => constr:(@Rbool true)
+                       | false => constr:(@Rbool false)
                        end in
           let ret := reify_Term_lit0 var Rterm in
           reify_args_for_apply0 reify_Term var ret
@@ -178,8 +178,8 @@ Ltac reify_Term var term
                        | orbr => constr:(@Rorbr)
                        | pred => constr:(@Rpred)
                        | plus => constr:(@Rplus)
-                       | true => constr:(@Rtrue)
-                       | false => constr:(@Rfalse)
+                       | true => constr:(@Rbool true)
+                       | false => constr:(@Rbool false)
                        | andbr => constr:(@Randbr)
                        | minusr => constr:(@Rminusr)
                        | Compare_dec.leb => constr:(@Rleb)

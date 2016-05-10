@@ -28,12 +28,7 @@ Section syntactify.
          n.
 
   Definition syntactify_bool (v : bool) : Term var cbool
-    := bool_rect
-         (fun _ => Term _ _)
-         (RLiteralApp Rtrue noargs)
-         (RLiteralApp Rfalse noargs)
-         v.
-
+    := RLiteralApp (Rbool v) noargs.
   Definition syntactify_rchar_expr_ascii (v : Reflective.RCharExpr ascii)
     : Term var crchar_expr_ascii
     := RLiteralApp (Rrchar_expr_ascii v) noargs.

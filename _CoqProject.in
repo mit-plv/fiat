@@ -421,6 +421,7 @@ src/Parsers/Refinement/BinOpBrackets/ParenBalanced.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalancedGrammar.v
 src/Parsers/Refinement/BinOpBrackets/ParenBalancedLemmas.v
 src/Parsers/Reflective/LogicalRelations.v
+src/Parsers/Reflective/ParserLogicalRelations.v
 src/Parsers/Reflective/ParserPartialUnfold.v
 src/Parsers/Reflective/ParserReify.v
 src/Parsers/Reflective/ParserSemantics.v

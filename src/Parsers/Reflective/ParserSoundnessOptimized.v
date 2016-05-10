@@ -20,7 +20,10 @@ Module opt.
     Let interp := opt.interp_has_parse_term is_valid_nonterminal strlen char_at_matches split_string_for_production.
 
     Lemma polypnormalize_correct (term : polyhas_parse_term)
-      : interp (polypnormalize term _) = interp (term _).
+      : ParserSyntaxEquivalence.has_parse_term_equiv
+          nil
+          (term interp_TypeCode) (term (normalized_of interp_TypeCode))
+        -> interp (term _) = interp (polypnormalize term _).
     Proof.
       apply polypnormalize_correct.
     Qed.

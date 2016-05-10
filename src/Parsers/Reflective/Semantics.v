@@ -1,5 +1,6 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax.
+Require Import Fiat.Parsers.Reflective.Syntactify.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.List.Operations.
@@ -67,8 +68,7 @@ Definition interp_RLiteralTerm {T} (t : RLiteralTerm T) : interp_TypeCode T
           | RO => O
           | Rnil _ => @nil _
           | Rcons _ => @cons _
-          | Rfalse => false
-          | Rtrue => true
+          | Rbool v
           | Rrchar_expr_ascii v
           | Rstring v
           | Rritem_ascii v
@@ -134,3 +134,20 @@ Definition interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
   Qed.
 End equality.
  *)
+
+Lemma interp_Term_syntactify_list {T : SimpleTypeCode}
+      (ls : list (Term interp_TypeCode T))
+: List.map interp_Term ls = interp_Term (Syntactify.syntactify_list ls).
+Proof.
+  unfold interp_Term; induction ls; simpl; [ reflexivity | ].
+  rewrite <- IHls; reflexivity.
+Qed.
+
+Lemma interp_Term_syntactify_nat
+      (v : nat)
+: v = interp_Term (Syntactify.syntactify_nat _ v).
+Proof.
+  unfold interp_Term.
+  induction v as [|v IHv]; [ reflexivity | simpl ].
+  rewrite <- IHv; reflexivity.
+Qed.
