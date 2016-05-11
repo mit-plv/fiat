@@ -268,6 +268,19 @@ Local Ltac simpler_meaning :=
            => destruct (constantOf x) eqn:?
          end.
 
+Lemma list_rect_nodep_meaning_correct {A : SimpleTypeCode} {P} f f' n n'
+      (Hn : @related P n n')
+      (Hf : @related (A --> clist A --> P --> P) f f')
+      (ls : list (Term interp_TypeCode A))
+  : related (Operations.List.list_rect_nodep n f (List.map (@interp_Term _) ls))
+            (Operations.List.list_rect_nodep n' (fun x xs => f' x (Syntactify.syntactify_list xs)) ls).
+Proof.
+  induction ls; simpl in *; [ assumption | ].
+  apply Hf; eauto using eq_refl, @interp_Term_syntactify_list with nocore.
+Qed.
+
+Hint Resolve @list_rect_nodep_meaning_correct : partial_unfold_hints.
+
 Lemma specific_meaning_correct
       t r val v1 v2
       (Hrel : args_for_related
@@ -280,27 +293,8 @@ Proof.
     try solve [ simpler_meaning; meaning_tac ].
   { simpler_meaning; meaning_tac.
     apply interp_apply_meaning_helper; simpl; try assumption; [].
-    let ls := match goal with
-              | [ |- context[Operations.List.list_rect_nodep _ _ (List.map _ ?ls)] ]
-                => ls
-              end in
-    is_var ls;
-      match goal with
-      | [ H : interp_Term (meaning ?x) = List.map _ ls |- _ ] => clear dependent x
-      end;
-      induction ls as [|?? IHxs].
-    { assumption. }
-    { simpl in *.
-      change (fun t : Term _ ?T => interp_Term t) with (@interp_Term T).
-      match goal with
-      | [ |- context[@List.map ?A ?B (@interp_Term ?T) ?ls] ]
-        => rewrite (interp_Term_syntactify_list ls : @List.map A B (@interp_Term T) ls = _)
-      end.
-      match goal with
-      | [ H : _ |- _ ] => apply H
-      end.
-      rewrite <- interp_Term_syntactify_list.
-      eauto with nocore. } }
+    apply list_rect_nodep_meaning_correct; simpl; eauto with nocore.
+    simpler_meaning; meaning_tac. }
   { simpler_meaning; meaning_tac.
     rewrite Plus.plus_comm; meaning_tac. }
 Qed.
