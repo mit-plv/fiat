@@ -2,6 +2,7 @@ Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.
+Require Import Fiat.Parsers.Reflective.Morphisms.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.ListMorphisms.
@@ -11,13 +12,6 @@ Fixpoint related {T} : interp_TypeCode T -> normalized_of interp_TypeCode T -> P
      | csimple T' => fun b e => b = interp_Term e
      | (dom --> ran)%typecode
        => fun f1 f2 => forall x1 x2, related x1 x2 -> related (f1 x1) (f2 x2)
-     end.
-
-Fixpoint interp_related {T} : interp_TypeCode T -> interp_TypeCode T -> Prop
-  := match T return interp_TypeCode T -> interp_TypeCode T -> Prop with
-     | csimple T' => fun b e => b = e
-     | (dom --> ran)%typecode
-       => fun f1 f2 => forall x1 x2, interp_related x1 x2 -> interp_related (f1 x1) (f2 x2)
      end.
 
 Local Ltac concretize := cbv zeta.
@@ -203,6 +197,30 @@ Local Ltac meaning_tac :=
                | progress meaning_tac_helper
                | progress simpl_interp_Term_in_all ].
 
+Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?Y))) =>
+change (@related T (interp_Term (RVar X)) (reflect (RVar Y))).
+Local Hint Extern 1 (@related _ (interp_Term_gen ?iRLT ?A ?X1) _) =>
+  change (interp_Term_gen iRLT A X1)
+  with (interp_Term_gen iRLT (RApp A (RVar X1))).
+Lemma reify_and_reflect_correct : forall t,
+    (forall v r,
+        @related t v r
+        -> Proper_relation_for _ v (interp_Term (reify _ r)))
+    /\ (forall a a',
+           @Proper_relation_for t (interp_Term a) (interp_Term a')
+           -> @related t (interp_Term a) (reflect a')).
+Proof.
+  unfold interp_Term;
+  induction t; simpler; unfold respectful; eauto.
+Qed.
+
+Lemma reify_correct : forall t v r,
+  @related t v r
+  -> Proper_relation_for _ v (interp_Term (reify _ r)).
+Proof.
+  generalize reify_and_reflect_correct; firstorder.
+Qed.
+
 Local Hint Resolve push_var.
 Lemma meaning_correct
   : forall G t e1 e2,
@@ -244,12 +262,24 @@ Proof.
     { meaning_tac.
       admit. }
     { meaning_tac.
+      admit.
+      (*induction (interp_Term (meaning x0)) as [|?? IHxs]; simpl.
+      { eapply apply_args_for_Proper.
+        apply reify_and_reflect_correct; assumption.
+        admit. }
+      { rewrite IHxs.
+        meaning_tac.
+        move x2 at bottom.
+        apply
+
+*)
+
       (*SearchAbout Operations.List.list_rect_nodep.
       match goal with
 
       | [ |- context[Operations.List.list_rect_nodep
       move x2 at bottom.*)
-      admit. }
+       }
     { meaning_tac. }
     { meaning_tac. }
     { meaning_tac. }
@@ -264,30 +294,6 @@ Proof.
     { meaning_tac. }
     { meaning_tac. }
     { meaning_tac. } }
-Qed.
-
-Local Hint Extern 1 (@related ?T ?X (reflect (RVar ?Y))) =>
-change (@related T (interp_Term (RVar X)) (reflect (RVar Y))).
-Local Hint Extern 1 (@related _ (interp_Term_gen ?iRLT ?A ?X1) _) =>
-  change (interp_Term_gen iRLT A X1)
-  with (interp_Term_gen iRLT (RApp A (RVar X1))).
-Lemma reify_and_reflect_correct : forall t,
-    (forall v r,
-        @related t v r
-        -> interp_related v (interp_Term (reify _ r)))
-    /\ (forall a a',
-           @interp_related t (interp_Term a) (interp_Term a')
-           -> @related t (interp_Term a) (reflect a')).
-Proof.
-  unfold interp_Term;
-  induction t; simpler; eauto.
-Qed.
-
-Lemma reify_correct : forall t v r,
-  @related t v r
-  -> interp_related v (interp_Term (reify _ r)).
-Proof.
-  generalize reify_and_reflect_correct; firstorder.
 Qed.
 
 Lemma nil_context : forall t v1 v2,
