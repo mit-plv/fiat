@@ -159,6 +159,18 @@ Section args.
       { induction H; simpl; intuition. }
     Qed.
   End related.
+
+  Lemma args_for_related_impl {M N P R T} args0 args1
+    : (P -> @args_for_related M N R T args0 args1)
+      <-> @args_for_related M N (fun _ m n => P -> R _ m n) T args0 args1.
+  Proof.
+    revert dependent args1; induction args0; simpl in *; intros;
+      pose proof (invert_args_for_ex args1) as H'; simpl in H';
+        subst; [ destruct H' as [? [? ?]]; subst | tauto ];
+          simpl in *.
+    setoid_rewrite <- IHargs0.
+    tauto.
+  Qed.
 End args.
 
 Section term.
