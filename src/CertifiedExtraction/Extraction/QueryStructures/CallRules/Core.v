@@ -1,4 +1,4 @@
-Require Export Program.
+Require Export Coq.Program.Program.
 Require Export CertifiedExtraction.Extraction.QueryStructures.Basics.
 Require Export CertifiedExtraction.Extraction.QueryStructures.TupleToListW.
 Require Export CertifiedExtraction.Extraction.QueryStructures.EnsemblesOfTuplesAndListW.
@@ -30,7 +30,7 @@ Ltac not_mapsto_adt_external_t :=
 
 Ltac side_conditions_fast :=
   repeat match goal with
-         | _ => apply CompileDeallocSCA_discretely; [ .. | apply ProgOk_Chomp_Some; intros ]
+         | _ => apply CompileDeallocW_discretely; [ .. | apply ProgOk_Chomp_Some; intros ]
          | |- NotInTelescope _ _ => simpl; repeat (split; intro; [ congruence | intros ]); eassumption
          | [  |- _ ∉ _ ] => decide_not_in
          end.

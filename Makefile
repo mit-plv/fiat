@@ -120,6 +120,9 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/SearchTest.vo \
 	src/Examples/Ics/WaterTankExtract.vo
 
+EXTRACTION_UNMADE_VO := \
+	src/CertifiedExtraction/Benchmarks/DNS.vo \
+
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
@@ -129,7 +132,7 @@ PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFI
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
 DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
-EXTRACTION_VO := $(filter src/CertifiedExtraction/%.vo,$(VOFILES)) src/Examples/QueryStructure/ProcessScheduler.vo
+EXTRACTION_VO := $(filter-out $(EXTRACTION_UNMADE_VO),$(filter src/CertifiedExtraction/%.vo,$(VOFILES))) src/Examples/QueryStructure/ProcessScheduler.vo
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 TUTORIAL_VO := src/Examples/Tutorial/Tutorial.vo src/Examples/Tutorial/NotInList.vo src/Examples/Tutorial/Queue.vo src/Examples/Tutorial/BookstoreMoreManual.vo

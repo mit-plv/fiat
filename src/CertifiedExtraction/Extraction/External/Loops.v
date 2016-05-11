@@ -54,7 +54,7 @@ Lemma CompileWhileFalse_Loop:
 Proof.
   intros * H **.
   rewrite <- H.
-  apply CompileDeallocSCA_discretely; eauto.
+  apply CompileDeallocW_discretely; eauto.
   apply CompileWhileFalse.
   reflexivity.
   unfold Lifted_is_false, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;

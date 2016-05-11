@@ -192,7 +192,7 @@ Module WBagOfTuples2Compilation.
            | _ => setoid_rewrite Propagate_anonymous_ret
            | _ => fold @DropName
            end.
-    apply CompileDeallocSCA_discretely; repeat (compile_do_side_conditions || decide_NotInTelescope).
+    apply CompileDeallocW_discretely; repeat (compile_do_side_conditions || decide_NotInTelescope).
     apply CompileSkip.
   Qed.
 

@@ -204,7 +204,7 @@ Module WTupleListCompilation.
            | [ H: NotInTelescope _ _ |- _ ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
            | _ => setoid_rewrite Propagate_anonymous_ret
            end.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply CompileSkip.
   Qed.
 
@@ -253,7 +253,7 @@ Module WTupleListCompilation.
 
     rewrite TelEq_swap.
     apply ProgOk_Remove_Skip_L; hoare.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
     apply CompileSkip.
     apply CompileEmpty_alt; loop_t.
@@ -441,7 +441,7 @@ Module WTupleListCompilation.
     intros. apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
     apply (WTupleCompilation.CompileDelete_spec (vtmp := vtmp2) (vsize := vsize)); try compile_do_side_conditions.
     apply CompileSkip.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply CompileSkip.
   Defined.
 End WTupleListCompilation.

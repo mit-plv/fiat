@@ -687,14 +687,26 @@ Hint Resolve @SameValues_not_In_Telescope_not_in_Ext_remove : SameValues_db.
 Hint Resolve @SameValues_forget_Ext_helper : SameValues_db.
 
 Lemma SameValues_add_SCA:
-  forall av tel (st: StringMap.t (Value av)) k ext (v: W),
+  forall av {A} (Wrp: FacadeWrapper (Value av) A)
+    tel (st: StringMap.t (Value av)) k ext (v: A),
+    (forall a, is_adt (wrap a) = false) ->
     k ∉ st ->
     st ≲ tel ∪ ext ->
     (StringMap.add k (wrap v) st) ≲ tel ∪ ext.
 Proof.
   induction tel;
   repeat (t_Morphism || SameValues_Facade_t).
+  pose proof (H v); destruct (wrap v); try (simpl in *; congruence); SameValues_Facade_t.
   apply H; repeat (t_Morphism || SameValues_Facade_t).
+Qed.
+
+Lemma SameValues_add_W:
+  forall av tel (st: StringMap.t (Value av)) k ext (v: W),
+    k ∉ st ->
+    st ≲ tel ∪ ext ->
+    (StringMap.add k (wrap v) st) ≲ tel ∪ ext.
+Proof.
+  intros; eauto using SameValues_add_SCA.
 Qed.
 
 Lemma SameValues_Nil_inv :
@@ -721,7 +733,9 @@ Qed.
 Hint Resolve @SameValues_forget_Ext : SameValues_db.
 
 Lemma SameValues_Dealloc_SCA :
-  forall {av} st k (v: Comp W) tail ext,
+  forall {av} {A} (Wrp: FacadeWrapper (Value av) A)
+    st k (v: Comp A) tail ext,
+    (forall a, is_adt (wrap a) = false) ->
     st ≲ Cons (av := av) (NTSome k) v tail ∪ ext ->
     st ≲ Cons NTNone v tail ∪ ext.
 Proof.
@@ -733,6 +747,14 @@ Proof.
          | [ H: match ?x with _ => _ end = _ |- _ ] => destruct x; try congruence
          end.
   apply SameValues_add_SCA; eauto using StringMap.remove_1.
+Qed.
+
+Lemma SameValues_Dealloc_W :
+  forall {av} st k (v: Comp W) tail ext,
+    st ≲ Cons (av := av) (NTSome k) v tail ∪ ext ->
+    st ≲ Cons NTNone v tail ∪ ext.
+Proof.
+  intros; eauto using SameValues_Dealloc_SCA.
 Qed.
 
 Lemma not_in_WeakEq_not_mapsto_adt:
@@ -803,7 +825,7 @@ Hint Resolve @not_in_WeakEq_not_mapsto_adt : SameValues_db.
 (*   unfold WeakEq; intuition (eauto using SameADTs_remove_SCA, SameSCAs_remove_SCA). *)
 (* Qed. *)
 
-Lemma SameValues_add_SCA_notIn_ext :
+Lemma SameValues_add_W_notIn_ext :
   forall {av} k (v: W) (st: StringMap.t (Value av)) tenv ext,
     k ∉ ext ->
     NotInTelescope k tenv ->
@@ -813,7 +835,7 @@ Proof.
   eauto with SameValues_db.
 Qed.
 
-Hint Resolve @SameValues_add_SCA_notIn_ext : SameValues_db.
+Hint Resolve @SameValues_add_W_notIn_ext : SameValues_db.
 
 Lemma WeakEq_add_MapsTo :
   forall {av} k v m1 m2,
@@ -863,6 +885,14 @@ Proof.
   unfold TelEq; SameValues_Fiat_t.
 Qed.
 
+Lemma Propagate_anonymous_ret__fast:
+  forall {av A} (v : A) (tenv : Telescope av) tenv' env ext p,
+    {{ tenv }} p {{ tenv' v }} ∪ {{ ext }} // env ->
+    {{ tenv }} p {{ Cons NTNone (ret v) tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; rewrite Propagate_anonymous_ret; assumption.
+Qed.
+
 Ltac miniChomp_t_step :=
   match goal with
   | _ => solve [simpl; eauto]
@@ -905,18 +935,20 @@ Proof.
   intros; apply miniChomp; intros; rewrite Propagate_anonymous_ret by reflexivity; eauto.
 Qed.
 
-
 Lemma SameValues_remove_SCA:
-  forall (av0 : Type) (tenv' : Telescope av0)
-    (ext : StringMap.t (Value av0)) (k : StringMap.key)
-    (final_state : State av0) (x : W),
+  forall (av : Type) {A} (Wrapper: FacadeWrapper (Value av) A),
+    (forall a, is_adt (wrap a) = false) ->
+    forall (tenv' : Telescope av)
+    (ext : StringMap.t (Value av)) (k : StringMap.key)
+    (final_state : State av) (x : A),
     StringMap.MapsTo k (wrap x) final_state ->
-    StringMap.remove (elt:=Value av0) k final_state ≲ tenv' ∪ ext ->
+    StringMap.remove (elt:=Value av) k final_state ≲ tenv' ∪ ext ->
     final_state ≲ tenv' ∪ ext.
 Proof.
   induction tenv'; simpl; intros.
-  - rewrite (add_redundant_cancel H).
+  - rewrite (add_redundant_cancel H0).
     rewrite <- add_remove_cancel; try reflexivity.
+    pose proof (H x) as p; destruct (wrap x); simpl in p; try congruence; clear p.
     apply WeakEq_pop_SCA.
     apply StringMap.remove_1; reflexivity.
     assumption.
@@ -928,14 +960,38 @@ Proof.
       cleanup.
       StringMap_t.
       eexists; repeat cleanup; eauto.
-      eapply H.
+      eapply H0.
       rewrite remove_mapsto_iff in *; eauto.
       rewrite remove_remove_comm; eauto.
 Qed.
 
 Hint Resolve SameValues_remove_SCA : SameValues_db.
 
+Lemma SameValues_remove_W:
+  forall (av0 : Type) (tenv' : Telescope av0)
+    (ext : StringMap.t (Value av0)) (k : StringMap.key)
+    (final_state : State av0) (x : W),
+    StringMap.MapsTo k (wrap x) final_state ->
+    StringMap.remove (elt:=Value av0) k final_state ≲ tenv' ∪ ext ->
+    final_state ≲ tenv' ∪ ext.
+Proof.
+  intros; eauto using (SameValues_remove_SCA FacadeWrapper_SCA).
+Qed.
+
+Hint Resolve SameValues_remove_W : SameValues_db.
+
 Lemma CompileDeallocSCA_discretely :
+  forall {av} {A} (H: FacadeWrapper (Value av) A) (tenv tenv': Telescope av) ext env k (v: Comp A) prog,
+    k ∉ ext ->
+    NotInTelescope k tenv ->
+    (forall a, is_adt (wrap a) = false) ->
+    {{ [[`k ~~> v as _]] :: tenv }} prog {{ [[`k ~~> v as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`k ~~> v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Lemma CompileDeallocW_discretely :
   forall {av} (tenv tenv': Telescope av) ext env k (v: Comp W) prog,
     k ∉ ext ->
     NotInTelescope k tenv ->

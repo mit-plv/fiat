@@ -83,7 +83,7 @@ Ltac decide_NotInTelescope :=
                   | _ => cleanup
                   | _ => congruence
                   | [  |- NotInTelescope _ Nil ] => reflexivity
-                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope; fold @NotInTelescope
                   end.
 
 Fixpoint DropName {A} k (t: Telescope A) :=
@@ -255,3 +255,4 @@ Proof.
   - reflexivity.
   - intros; computes_to_inv; subst; reflexivity.
 Qed.
+

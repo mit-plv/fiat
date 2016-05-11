@@ -1,6 +1,7 @@
 Require Import
         CertifiedExtraction.StringMapUtils
-        CertifiedExtraction.ExtendedLemmas.
+        CertifiedExtraction.ExtendedLemmas
+        CertifiedExtraction.TelAppend.
 
 Lemma CompileConstant:
   forall {av} name env w ext (tenv: Telescope av),
@@ -127,7 +128,7 @@ Lemma ProgOk_Transitivity_Name_SCA :
     {{ t1 }} prog1 {{ [[v as kk]]::t2 kk }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
-  eauto using SameValues_Dealloc_SCA.
+  eauto using SameValues_Dealloc_W.
 Qed.
 
 Lemma CompileSeq :
@@ -143,6 +144,31 @@ Lemma CompileSeq :
     {{ tenv2 }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
+Qed.
+
+Lemma ProgOk_Add_snd_ret :
+  forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+    {{ tenv }}
+      p1
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
+         :: TelAppend (f (snd pair)) tenv' }}
+      p2
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
+         :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq p1 p2)
+    {{ [[ kfst  ->>  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; eapply CompileSeq; try eassumption.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  assumption.
 Qed.
 
 Ltac hoare :=

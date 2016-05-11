@@ -102,7 +102,7 @@ Module TupleCompilation
     intros.
     apply ProgOk_Remove_Skip_R; hoare.
     hoare. apply CompileConstant; try compile_do_side_conditions.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros; computes_to_inv; subst; simpl.
     apply generalized CompileDelete; try (compile_do_side_conditions ||  Lifted_t).
     apply Lifted_MapsTo_Ext; compile_do_side_conditions.
@@ -110,7 +110,7 @@ Module TupleCompilation
            | [ H: NotInTelescope _ _ |- _ ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
            | _ => setoid_rewrite Propagate_anonymous_ret
            end.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply CompileSkip.
   Qed.
 End TupleCompilation.
@@ -409,7 +409,7 @@ Module WTupleCompilation.
     intros.
     hoare.
     apply CompileConstant; try compile_do_side_conditions.
-    apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+    apply CompileDeallocW_discretely; try compile_do_side_conditions.
     apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
     apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
 

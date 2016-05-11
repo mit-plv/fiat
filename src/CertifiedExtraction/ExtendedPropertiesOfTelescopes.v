@@ -144,6 +144,27 @@ Proof.
   split; eauto with SameValues_db.
 Qed.
 
+Lemma TelEq_same_wrap :
+  forall {av A1 A2} {W1: FacadeWrapper (Value av) A1} {W2: FacadeWrapper (Value av) A2}
+    (x1: A1) (x2: A2),
+    wrap x1 = wrap x2 ->
+    forall (t: Telescope av) ext k,
+      TelEq ext (Cons (NTSome k) (ret x1) (fun _ => t)) (Cons (NTSome k) (ret x2) (fun _ => t)).
+Proof.
+  split; SameValues_Fiat_t.
+Qed.
+
+Lemma TelEq_let_ret2 {A1 A2 B av}:
+  forall (xy: A1 * A2) (f: A1 -> A2 -> B) tenv (ext: StringMap.t (Value av)),
+    TelEq ext
+          ([[ ret (let (x, y) := xy in f x y) as fxy ]] :: tenv fxy)
+          ([[ ret xy as xy ]] :: tenv (f (fst xy) (snd xy))).
+Proof.
+  intros (? & ?) *.
+  rewrite !Propagate_anonymous_ret; simpl.
+  reflexivity.
+Qed.
+
 Lemma TelStrongEq_Stronger :
   forall {A} ext tenv tenv',
     @TelStrongEq A tenv tenv' ->
@@ -245,6 +266,12 @@ Ltac is_dirty_telescope term :=
   | _ => fail 1
   end.
 
+Ltac is_clean_telescope term :=
+  match term with
+  | appcontext[DropName] => fail 1
+  | _ => idtac
+  end.
+
 Ltac decide_TelEq_instantiate_do_swaps k target :=
   match target with
   | context[k] => repeat setoid_rewrite (TelEq_swap _ k)
@@ -252,13 +279,19 @@ Ltac decide_TelEq_instantiate_do_swaps k target :=
   end.
 
 Ltac decide_TelEq_instantiate_step :=
+  (* NOTE: When one of the telescopes contains a [DropName] that we want to
+     remove, we need to descend on both sides. On the other hand, when we're
+     just searching for a simple unification, descending on both sides cuases
+     plenty of issues with [TelEq_chomp_head] introducing higher-order
+     unification problems. *)
   match goal with
   | [  |- TelEq _ ?from ?to ] =>
     match constr:((from, to)) with
     | _ => rewrite DropName_Cons_Some_eq by congruence
     | _ => rewrite DropName_Cons_Some_neq by congruence
-    (* We need to descend on each side to ensure that we remove [DropName]s *)
-    (* | _ => (is_evar from || is_evar to); apply TelEq_refl *)
+    | _ =>
+      is_clean_telescope from; is_clean_telescope to;
+      (is_evar from || is_evar to); apply TelEq_refl
     | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
     | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
     | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros

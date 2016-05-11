@@ -69,7 +69,7 @@ Proof.
   intros.
   apply ProgOk_Remove_Skip_R. hoare. PreconditionSet_t.
   apply generalized CompileWordList_push; repeat (compile_do_side_conditions || Lifted_t).
-  apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
-  move_to_front vhd; apply CompileDeallocSCA_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  apply CompileDeallocW_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
+  move_to_front vhd; apply CompileDeallocW_discretely; try compile_do_side_conditions; apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   apply CompileSkip.
 Qed.

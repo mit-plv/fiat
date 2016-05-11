@@ -1,8 +1,4 @@
-Require Import BinEncoders.Env.Examples.Dns.
-Require Import Bedrock.Memory.
-Require Import NArith.
-
-Unset Implicit Arguments.
+Require Import CertifiedExtraction.Extraction.BinEncoders.Basics.
 
 Definition encode_continue {E B}
            (transformer : Transformer.Transformer B)
@@ -49,9 +45,6 @@ Fixpoint ListBoolToWord (bs: list bool) : word (List.length bs) :=
   | nil => WO
   | b :: bs0 => WS b (ListBoolToWord bs0)
   end.
-
-Notation BitArray size := { bs: list bool | List.length bs = size }.
-Notation BoundedN size := { n: N | (n < FixInt.exp2 size)%N }.
 
 Definition FixListBoolToWord {size} (bs: BitArray size) : word (size) :=
   match proj2_sig bs in _ = n with
@@ -174,24 +167,32 @@ Definition EncodeAndPad {size} (n: BoundedN size) :
   {xs : list bool | length xs = size} :=
   exist _ (EncodeAndPad1 n) (EncodeAndPad1_length n).
 
-Lemma FixInt_encode_is_copy {size}:
-  forall num cache,
+Lemma FixInt_encode_is_copy {size} {H: Cache.Cache} {C: Cache.CacheAdd H N}:
+  forall num (cache: @Cache.CacheEncode H),
     (FixInt.FixInt_encode (size := size) num cache) =
-    (proj1_sig (EncodeAndPad num), {| DnsMap.eMap := DnsMap.eMap cache;
-                                      DnsMap.dMap := DnsMap.dMap cache;
-                                      DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}).
+    (proj1_sig (EncodeAndPad num), Cache.addE cache (N.of_nat size)).
 Proof.
-  destruct cache.
-  unfold FixInt.FixInt_encode.
   reflexivity.
 Qed.
 
-Inductive ListBoolEq : (list bool) -> (list bool) -> Prop :=
-| ListBoolEqLeft : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq (false :: l1) l2
-| ListBoolEqRight : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq l1 (false :: l2)
-| ListBoolEqEq : forall l1 l2, l1 = l2 -> ListBoolEq l1 l2.
+(* Lemma FixInt_encode_is_copy {size}: *)
+(*   forall num cache, *)
+(*     (FixInt.FixInt_encode (size := size) num cache) = *)
+(*     (proj1_sig (EncodeAndPad num), {| DnsMap.eMap := DnsMap.eMap cache; *)
+(*                                       DnsMap.dMap := DnsMap.dMap cache; *)
+(*                                       DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}). *)
+(* Proof. *)
+(*   destruct cache. *)
+(*   unfold FixInt.FixInt_encode. *)
+(*   reflexivity. *)
+(* Qed. *)
 
-Hint Constructors ListBoolEq : listBoolEq.
+(* Inductive ListBoolEq : (list bool) -> (list bool) -> Prop := *)
+(* | ListBoolEqLeft : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq (false :: l1) l2 *)
+(* | ListBoolEqRight : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq l1 (false :: l2) *)
+(* | ListBoolEqEq : forall l1 l2, l1 = l2 -> ListBoolEq l1 l2. *)
+
+(* Hint Constructors ListBoolEq : listBoolEq. *)
 
 Require Import Program.
 
@@ -295,21 +296,6 @@ Proof.
   + apply FixInt_exp2_increasing_step.
   + etransitivity; eauto using FixInt_exp2_increasing_step.
 Qed.
-
-Lemma nat_16_lt_32 :
-  (16 < 32)%nat.
-Proof.
-  apply Compare_dec.nat_compare_lt; reflexivity.
-Qed.
-
-Print nat_16_lt_32.
-Definition N_bounded_16_32 (n: BoundedN 16) :
-  BoundedN 32.
-  refine (exist _ (proj1_sig n) _).
-  abstract (destruct n; simpl;
-            etransitivity;
-            eauto using FixInt_exp2_increasing, nat_16_lt_32).
-Defined.
 
 Lemma EncodeAndPad_ListBoolToWord {size} :
   forall ls : BitArray size,
@@ -438,28 +424,11 @@ Proof.
     rewrite IHxs; reflexivity.
 Qed.
 
-Require Import
-        CertifiedExtraction.Core
-        CertifiedExtraction.ExtendedLemmas
-        CertifiedExtraction.PropertiesOfTelescopes.
-
-Lemma IList_post_transform_TelEq :
-  forall {av} {A bin : Type}
-    (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
-    (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
-    (xs : list A) (base : bin) (env : Cache.CacheEncode)
-    k__stream (tenv: _ -> Telescope av) ext,
-    let fold_on b :=
-        List.fold_left (IList.IList_encode'_body cache transformer A_encode) xs (b, env) in
-    (forall a1 a2 b, tenv (a1, b) = tenv (a2, b)) ->
-    TelEq ext
-          ([[ret (fold_on Transformer.transform_id) as folded]]
-             ::[[ k__stream ->> Transformer.transform base (fst folded) as _]] :: tenv folded)
-          ([[ret (fold_on base) as folded]]
-             ::[[ k__stream ->> fst folded as _]] :: tenv folded).
+Lemma IList_encode'_body_as_compose {HD bin : Type} :
+  forall (cache : Cache.Cache) (transformer : Transformer.Transformer bin) f acc (head: HD),
+    (IList.IList_encode'_body cache transformer f acc head) = (* Cache parameter isn't used *)
+    Compose.compose transformer (fun c => (fst acc, c)) (f head) (snd acc).
 Proof.
-  cbv zeta; intros * H.
-  setoid_rewrite Propagate_anonymous_ret.
-  rewrite (IList.IList_encode'_body_characterization _ _ _ _ base).
-  destruct (List.fold_left _ _ _); simpl; erewrite H; reflexivity.
+  intros; unfold IList.IList_encode'_body, Compose.compose; simpl.
+  destruct acc; simpl; destruct (f _ _); reflexivity.
 Qed.

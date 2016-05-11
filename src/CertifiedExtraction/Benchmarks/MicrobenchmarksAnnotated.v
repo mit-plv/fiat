@@ -427,7 +427,7 @@ Ltac _compile_any :=
               | _ => idtac
               end;              (* Compile the call *)
               first [ call_tactic_after_moving_head_binding_to_separate_goal ltac:(apply CompileCallAny)
-                    | apply miniChomp', CompileDeallocSCA_discretely ]
+                    | apply miniChomp', CompileDeallocW_discretely ]
             end).
 
 (* This hook allows us to extend the compiler transparently: *)

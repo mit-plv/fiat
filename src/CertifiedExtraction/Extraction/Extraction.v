@@ -278,7 +278,7 @@ Ltac _compile_fold :=
             end).
 
 Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
-  (apply CompileDeallocSCA_discretely ||
+  (apply CompileDeallocW_discretely ||
    first [ unify tenv tenv';
            apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp))
          | eapply CompileSeq;
@@ -300,7 +300,7 @@ Ltac _compile_destructor :=
                       lazymatch is_sca with
                       | true => (match post with
                                 | context[k] => fail 1
-                                | _ => apply CompileDeallocSCA_discretely
+                                | _ => apply CompileDeallocW_discretely
                                 end)
                       | false => (lazymatch v with
                                   | ret ?vv => first [ tenv_mentions_fast post vv; fail 1

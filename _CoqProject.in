@@ -49,6 +49,7 @@ src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/Dns2.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/Toy.v
+src/BinEncoders/Env/Examples/Toy2.v
 src/BinEncoders/Env/Lib/FixList.v
 src/BinEncoders/Env/Lib/IList.v
 src/BinEncoders/Env/Lib/SteppingCacheList.v
@@ -88,9 +89,14 @@ src/CertifiedExtraction/HintDBs.v
 src/CertifiedExtraction/PropertiesOfTelescopes.v
 src/CertifiedExtraction/PureFacadeLemmas.v
 src/CertifiedExtraction/PureUtils.v
+src/CertifiedExtraction/RemoveSkips.v
 src/CertifiedExtraction/StringMapUtils.v
+src/CertifiedExtraction/TelAppend.v
 src/CertifiedExtraction/Utils.v
 src/CertifiedExtraction/Benchmarks/Any.v
+src/CertifiedExtraction/Benchmarks/DNS.v
+src/CertifiedExtraction/Benchmarks/MicroEncoders.v
+src/CertifiedExtraction/Benchmarks/MicroEncodersSetup.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksAnnotated.v
 src/CertifiedExtraction/Benchmarks/MicrobenchmarksSetup.v
 src/CertifiedExtraction/Benchmarks/ProcessScheduler.v
@@ -106,6 +112,12 @@ src/CertifiedExtraction/Extraction/Extraction.v
 src/CertifiedExtraction/Extraction/Gensym.v
 src/CertifiedExtraction/Extraction/Internal.v
 src/CertifiedExtraction/Extraction/PreconditionSets.v
+src/CertifiedExtraction/Extraction/BinEncoders/Basics.v
+src/CertifiedExtraction/Extraction/BinEncoders/BinEncoders.v
+src/CertifiedExtraction/Extraction/BinEncoders/CallRules.v
+src/CertifiedExtraction/Extraction/BinEncoders/Properties.v
+src/CertifiedExtraction/Extraction/BinEncoders/RewriteRules.v
+src/CertifiedExtraction/Extraction/BinEncoders/Wrappers.v
 src/CertifiedExtraction/Extraction/External/Core.v
 src/CertifiedExtraction/Extraction/External/External.v
 src/CertifiedExtraction/Extraction/External/FacadeADTs.v

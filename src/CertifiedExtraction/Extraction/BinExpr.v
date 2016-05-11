@@ -294,7 +294,7 @@ Lemma CompileBinopOrTest_right_inPlace_tel:
 Proof.
   repeat hoare.
   move_to_front varg.
-  apply CompileDeallocSCA_discretely; try compile_do_side_conditions.
+  apply CompileDeallocW_discretely; try compile_do_side_conditions.
   apply ProgOk_Chomp_Some; try compile_do_side_conditions.
   intros; apply CompileBinopOrTest_right_inPlace; try compile_do_side_conditions.
 Qed.
