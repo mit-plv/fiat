@@ -26,21 +26,21 @@ Global Open Scope list_scope.
 Definition extract_facade := proj1_sig.
 
 Notation "'ParametricExtraction' '#vars' x .. y '#program' post '#arguments' pre '#env' env '#carrier' carrier" :=
-  (sigT (fun prog => (forall x, .. (forall y, {{ pre }} prog {{ [[`"out" <~~ post as _]]::Nil }} ∪ {{ ∅ }} // (env: Env carrier)) ..)))
+  (sigT (fun prog => (forall x, .. (forall y, {{ pre }} prog {{ [[`"out" ~~> post as _]]::Nil }} ∪ {{ ∅ }} // (env: Env carrier)) ..)))
     (at level 200,
      x binder,
      y binder,
      format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'        env '//'    '#carrier'    carrier").
 
 Notation "'ParametricExtraction' '#vars' x .. y '#program' post '#arguments' pre '#env' env" :=
-  (sigT (fun prog => (forall x, .. (forall y, {{ pre }} prog {{ [[`"out" <~~ post as _]]::Nil }} ∪ {{ ∅ }} // env) ..)))
+  (sigT (fun prog => (forall x, .. (forall y, {{ pre }} prog {{ [[`"out" ~~> post as _]]::Nil }} ∪ {{ ∅ }} // env) ..)))
     (at level 200,
      x binder,
      y binder,
      format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'         env").
 
 Notation "'ParametricExtraction' '#program' post '#env' env" :=
-  (sigT (fun prog => {{ Nil }} prog {{ [[`"out" <~~ post as _]]::Nil }} ∪ {{ ∅ }} // env))
+  (sigT (fun prog => {{ Nil }} prog {{ [[`"out" ~~> post as _]]::Nil }} ∪ {{ ∅ }} // env))
     (at level 200,
      format "'ParametricExtraction' '//'    '#program'  post '//'    '#env'      env").
 

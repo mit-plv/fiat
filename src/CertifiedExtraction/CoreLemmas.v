@@ -251,7 +251,7 @@ Ltac t_Same :=
 Lemma SameADTs_add:
   forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : StringMap.key) (v : Value av),
-    SameADTs m2 m1 -> SameADTs ([s0 <-- v]::m2) ([s0 <-- v]::m1).
+    SameADTs m2 m1 -> SameADTs ([s0 |> v]::m2) ([s0 |> v]::m1).
 Proof.
   unfold SameADTs; t_Same.
 Qed.
@@ -259,7 +259,7 @@ Qed.
 Lemma SameSCAs_add:
   forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : StringMap.key) (v : Value av),
-    SameSCAs m2 m1 -> SameSCAs ([s0 <-- v]::m2) ([s0 <-- v]::m1).
+    SameSCAs m2 m1 -> SameSCAs ([s0 |> v]::m2) ([s0 |> v]::m1).
 Proof.
   unfold SameSCAs; t_Same.
 Qed.
@@ -267,7 +267,7 @@ Qed.
 Lemma WeakEq_add:
   forall (av : Type) (m1 m2 : StringMap.t (Value av))
     (s0 : StringMap.key) (v : Value av),
-    WeakEq m2 m1 -> WeakEq ([s0 <-- v]::m2) ([s0 <-- v]::m1).
+    WeakEq m2 m1 -> WeakEq ([s0 |> v]::m2) ([s0 |> v]::m1).
 Proof.
   unfold WeakEq; t_Morphism;
   eauto using SameSCAs_add, SameADTs_add.
@@ -338,7 +338,7 @@ Lemma SameValues_Pop_Both:
     k ext tenv (st : State av) cmp (v: A),
     cmp ↝ v ->
     StringMap.remove k st ≲ tenv ∪ ext ->
-    [k <-- wrap v] :: st ≲ [[`k <~~ cmp as _]] :: tenv ∪ ext.
+    [k |> wrap v] :: st ≲ [[ `k ~~> cmp as _ ]] :: tenv ∪ ext.
 Proof.
   intros; simpl; repeat (StringMap_t || cleanup || eexists); eauto.
 Qed.
@@ -397,7 +397,7 @@ Qed.
 Lemma SameValues_MapsTo_Ext_State_add:
   forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key)
     {v: A} {ext st : StringMap.t (Value av)},
-    st ≲ tel ∪ [key <-- wrap v]::ext ->
+    st ≲ tel ∪ [key |> wrap v]::ext ->
     StringMap.MapsTo key (wrap v) st.
 Proof.
   intros; eauto using SameValues_MapsTo_Ext_State, StringMap.add_1.
@@ -418,7 +418,7 @@ Qed.
 Lemma SameValues_In_Ext_State_add:
   forall `{FacadeWrapper (Value av) A} {tel: Telescope av} (key : StringMap.key) (v: A)
     {ext st : StringMap.t (Value av)},
-    st ≲ tel ∪ [key <-- wrap v]::ext ->
+    st ≲ tel ∪ [key |> wrap v]::ext ->
     StringMap.In key st.
 Proof.
   intros; eapply MapsTo_In; eauto using SameValues_MapsTo_Ext_State_add.

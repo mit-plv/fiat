@@ -7,9 +7,11 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
 
   Set Implicit Arguments.
 
-  Notation "A ∈ B" := (In A B) (at level 10, no associativity) : map_scope.
-  Notation "A ∉ B" := (not (In A B)) (at level 10, no associativity) : map_scope.
-  Notation "[ k <-- v ] :: m" :=
+  Notation "∅" := (empty _) : map_scope.
+  Notation "A  ∈  B" := (In A B) (at level 10, no associativity) : map_scope.
+  Notation "A  ∉  B" := (not (In A B)) (at level 10, no associativity) : map_scope.
+
+  Notation "[ k  |>  v ]  ::  m" :=
     (add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
   Local Open Scope map_scope.
 
@@ -42,7 +44,7 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
 
   Lemma add_remove_cancel:
     forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
-      k = k' -> Equal ([k <-- v] :: remove k' m) ([k <-- v] :: m).
+      k = k' -> Equal ([k |> v] :: remove k' m) ([k |> v] :: m).
   Proof.
     intros.
     rewrite Equal_mapsto_iff.
@@ -122,7 +124,7 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
     forall (elt : Type) (k k' : key) (v : elt) (m : t elt),
       k ∉ m ->
       k = k' ->
-      Equal (remove k' ([k <-- v] :: m)) m.
+      Equal (remove k' ([k |> v] :: m)) m.
   Proof.
     intros.
     rewrite Equal_mapsto_iff.
@@ -138,7 +140,7 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
 
   Lemma add_redundant_cancel:
     forall (elt : Type) (k : key) (v : elt) (m : t elt),
-      MapsTo k v m -> Equal m ([k <-- v] :: m).
+      MapsTo k v m -> Equal m ([k |> v] :: m).
   Proof.
     intros.
     rewrite Equal_mapsto_iff.
@@ -247,7 +249,7 @@ Module WMoreFacts_fun (E:DecidableType) (Import M:WSfun E).
   Lemma remove_trickle :
     forall {elt : Type} (k k' : M.key) (v' : elt) (m : M.t elt),
       k = k' ->
-      Equal (remove k ([k' <-- v']::m)) (remove k m).
+      Equal (remove k ([k' |> v']::m)) (remove k m).
   Proof.
     intros.
     rewrite Equal_mapsto_iff; intros; map_iff.

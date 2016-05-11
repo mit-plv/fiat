@@ -55,16 +55,16 @@ Lemma CompileIf :
     NotInTelescope tmp tenv ->
     {{ tenv }}
       facadeTest
-    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }} ∪ {{ ext }} // env ->
-    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+    {{ [[`tmp ->> (bool2w gallinaTest) as _]]::tenv }} ∪ {{ ext }} // env ->
+    {{ [[`tmp ->> (bool2w gallinaTest) as _]]::tenv }}
       facadeT
-    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[k <~~ gallinaT as v]]::tenv' v }} ∪ {{ ext }} // env ->
-    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::tenv }}
+    {{ [[`tmp ->> (bool2w gallinaTest) as _]]::[[k ~~> gallinaT as v]]::tenv' v }} ∪ {{ ext }} // env ->
+    {{ [[`tmp ->> (bool2w gallinaTest) as _]]::tenv }}
       facadeF
-    {{ [[`tmp <-- (bool2w gallinaTest) as _]]::[[k <~~ gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env ->
+    {{ [[`tmp ->> (bool2w gallinaTest) as _]]::[[k ~~> gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq facadeTest (DFacade.If (isTrueExpr tmp) facadeT facadeF))
-    {{ [[k <~~ if gallinaTest then gallinaT else gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env.
+    {{ [[k ~~> if gallinaTest then gallinaT else gallinaF as v]]::tenv' v }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare.
   repeat (SameValues_Facade_t_step || facade_if_helper).

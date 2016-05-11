@@ -49,8 +49,8 @@ Lemma CompileDeallocSCA_discretely :
     k ∉ ext ->
     NotInTelescope k tenv ->
     (forall a, is_adt (wrap a) = false) ->
-    {{ [[`k <~~ v as _]] :: tenv }} prog {{ [[`k <~~ v as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`k <~~ v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
+    {{ [[`k ~~> v as _]] :: tenv }} prog {{ [[`k ~~> v as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`k ~~> v as _]] :: tenv }} prog {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
 Qed.
@@ -92,7 +92,7 @@ Lemma CompileDeallocSCA:
     {{ [[compSCA as kk]]::(tail kk)}}
       prog
     {{ [[compSCA as kk]]::(tail' kk) }} ∪ {{ ext }} // env ->
-    {{ [[`k <~~ compSCA as kk]]::(tail kk)}}
+    {{ [[`k ~~> compSCA as kk]]::(tail kk)}}
       prog
     {{ [[compSCA as kk]]::(tail' kk) }} ∪ {{ ext }} // env.
 Proof.
@@ -107,7 +107,7 @@ Lemma CompileDeallocSCA_discretely_anonymous:
     {{ [[compSCA as _]]::tail}}
       prog
     {{ [[compSCA as _]]::tail' }} ∪ {{ ext }} // env ->
-    {{ [[`k <~~ compSCA as _]]::tail}}
+    {{ [[`k ~~> compSCA as _]]::tail}}
       prog
     {{ tail' }} ∪ {{ ext }} // env.
 Proof.
@@ -134,8 +134,8 @@ Qed.
 Lemma TelEq_TelAppend_Cons_Second {av A B}:
   forall {H : FacadeWrapper (Value av) B} (t1: Telescope av) t2 k (v : Comp A) ext,
     TelEq ext
-          ([[ k <~~ v as vv]] :: TelAppend t1 (t2 vv))
-          (TelAppend t1 ([[ k <~~ v as vv]] :: (t2 vv))).
+          ([[ k ~~> v as vv]] :: TelAppend t1 (t2 vv))
+          (TelAppend t1 ([[ k ~~> v as vv]] :: (t2 vv))).
 Proof.
   intros.
   induction t1; simpl.
@@ -184,15 +184,15 @@ Lemma CompileCallWrite16:
     (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope av)
     (n : BitArray 16) ext env
     pArg pNext fWrite16,
-    {{ [[ ` vstream <-- stream as _]]::tenv }}
+    {{ [[ ` vstream ->> stream as _]]::tenv }}
       pArg
-    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv' }}
+    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv' }}
       pNext
-    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream <-- stream as _]]::tenv }}
+    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> stream as _]]::tenv }}
       Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream <-- stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env.
+    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env.
 Proof.
   hoare.
   hoare.
@@ -217,15 +217,15 @@ Lemma CompileCallWrite16_EncodeAndPad:
     (n : BoundedN 16) ext env
     pArg pNext fWrite16,
     wrap n = wrap (EncodeAndPad n) ->
-    {{ [[ ` vstream <-- stream as _]]::tenv }}
+    {{ [[ ` vstream ->> stream as _]]::tenv }}
       pArg
-    {{ [[ ` vstream <-- stream as _]]::[[ ` varg <-- n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv' }}
+    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv' }}
       pNext
-    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream <-- stream as _]]::tenv }}
+    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> stream as _]]::tenv }}
       Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream <-- stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env.
+    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env.
 Proof.
   intros * Heq H ?.
   setoid_rewrite (TelEq_same_wrap _ _ Heq) in H.
@@ -328,27 +328,27 @@ Lemma CompileLoopBase__many :
     (* (forall tenv a1 a2 b, tenvF tenv (a1, b) = tenvF tenv (a2, b)) -> *)
     PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
     (forall v, NotInTelescope vtest (tenvF tenv v)) ->
-    (forall v (h: B), TelEq ext ([[ ` vhead <-- h as _]]::tenvF tenv v) (tenvF ([[ ` vhead <-- h as _]]::tenv) v)) ->
+    (forall v (h: B), TelEq ext ([[ ` vhead ->> h as _]]::tenvF tenv v) (tenvF ([[ ` vhead ->> h as _]]::tenv) v)) ->
     (forall head (acc: A) (s: list B),
-        {{ tenvF ([[`vhead <-- head as _]] :: tenv) acc }}
+        {{ tenvF ([[`vhead ->> head as _]] :: tenv) acc }}
           facadeBody
         {{ [[ ret (f acc head) as facc ]] :: tenvF tenv facc }} ∪
-        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <-- lst as _]] :: tenvF tenv init }}
+        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vlst ->> lst as _]] :: tenvF tenv init }}
       (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
     {{ tenvF tenv (fold_left f lst init) }} ∪ {{ ext }} // env.
 Proof.
   Transparent DummyArgument.
   unfold DummyArgument; loop_t.
 
-  instantiate (1 := [[`vlst <-- lst as ls]] :: [[`vtest <-- (bool2w match ls with
+  instantiate (1 := [[`vlst ->> lst as ls]] :: [[`vtest ->> (bool2w match ls with
                                                               | nil => true
                                                               | _ :: _ => false
                                                               end) as _]]
                                          :: tenvF tenv init); admit.
   (* eapply (CompileTupleList_Empty_alt (N := N)); loop_t. *)
 
-  2:instantiate (1 := [[ ` vlst <-- nil as _]] :: tenvF tenv (fold_left f lst init)); admit.
+  2:instantiate (1 := [[ ` vlst ->> nil as _]] :: tenvF tenv (fold_left f lst init)); admit.
 
   loop_t.
   generalize dependent init;
@@ -360,7 +360,7 @@ Proof.
   simpl.
   eapply CompileWhileTrue; [ loop_t.. | ].
 
-  instantiate (1 := [[ `vhead <-- a as _ ]] :: [[ `vlst <-- lst as _ ]] :: [[ ` vtest <-- W0 as _]] :: tenvF tenv init); admit.
+  instantiate (1 := [[ `vhead ->> a as _ ]] :: [[ `vlst ->> lst as _ ]] :: [[ ` vtest ->> W0 as _]] :: tenvF tenv init); admit.
 
   (* rewrite <- GLabelMapFacts.find_mapsto_iff; assumption. *)
 
@@ -377,8 +377,8 @@ Proof.
   apply ProgOk_Chomp_Some; try compile_do_side_conditions; intros.
   apply CompileSkip.
 
-  instantiate (1 := [[ ` vlst <-- lst as ls]]
-                     :: [[`vtest <-- (bool2w match ls with
+  instantiate (1 := [[ ` vlst ->> lst as ls]]
+                     :: [[`vtest ->> (bool2w match ls with
                                           | nil => true
                                           | _ :: _ => false
                                           end) as _]]
@@ -400,17 +400,17 @@ Lemma CompileLoop__many :
     (* GLabelMap.MapsTo fempty (Axiomatic (QsADTs.TupleList_empty)) env -> *)
     (* GLabelMap.MapsTo fdealloc (Axiomatic (QsADTs.TupleList_delete)) env -> *)
     PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
-    TelEq ext tenv0 ([[`vlst <-- lst as _]] :: TelAppend (tenvF init) tenv) ->
+    TelEq ext tenv0 ([[`vlst ->> lst as _]] :: TelAppend (tenvF init) tenv) ->
     (forall v, NotInTelescope vtest (TelAppend (tenvF v) tenv)) ->
     {{ TelAppend (tenvF (fold_left f lst init)) tenv }}
       facadeConclude
     {{ TelAppend (tenvF (fold_left f lst init)) tenv' }}
     ∪ {{ ext }} // env ->
     (forall head (acc: A) (s: list B),
-        {{ TelAppend (tenvF acc) ([[`vhead <-- head as _]] :: tenv) }}
+        {{ TelAppend (tenvF acc) ([[`vhead ->> head as _]] :: tenv) }}
           facadeBody
         {{ TelAppend ([[ ret (f acc head) as facc ]] :: tenvF facc) tenv }} ∪
-        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
+        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
     {{ tenv0 }}
       (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
     {{ TelAppend ([[ ret (fold_left f lst init) as folded ]] :: tenvF folded) tenv' }} ∪ {{ ext }} // env.
@@ -430,26 +430,26 @@ Lemma CompileCompose :
     (vstream: NameTag av B) (stream: B) (cache: E)
     (tenv t1 t2: Telescope av) f ext env p1 p2,
     (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
-    {{ [[ vstream  <--  stream as _ ]]
+    {{ [[ vstream  ->>  stream as _ ]]
          :: tenv }}
       p1
-    {{ TelAppend ([[ NTNone  <--  enc1 cache as encoded1 ]]
-                    :: [[ vstream  <--  Transformer.transform stream (fst encoded1) as _ ]]
+    {{ TelAppend ([[ NTNone  ->>  enc1 cache as encoded1 ]]
+                    :: [[ vstream  ->>  Transformer.transform stream (fst encoded1) as _ ]]
                     :: f encoded1)
                  t1 }}
     ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
      let stream1 := Transformer.transform stream (fst encoded1) in
-     {{ TelAppend ([[ vstream  <--  stream1 as _ ]] :: f encoded1) t1 }}
+     {{ TelAppend ([[ vstream  ->>  stream1 as _ ]] :: f encoded1) t1 }}
        p2
-     {{ TelAppend ([[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
-                     :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as _ ]]
+     {{ TelAppend ([[ NTNone  ->>  enc2 (snd encoded1) as encoded2 ]]
+                     :: [[ vstream  ->>  Transformer.transform stream1 (fst encoded2) as _ ]]
                      :: f encoded2) t2 }}
      ∪ {{ ext }} // env) ->
-    {{ [[ vstream  <--  stream as _ ]] :: tenv }}
+    {{ [[ vstream  ->>  stream as _ ]] :: tenv }}
       (Seq p1 p2)
-    {{ TelAppend ([[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
-                    :: [[ vstream  <--  Transformer.transform stream (fst composed) as _ ]]
+    {{ TelAppend ([[ NTNone  ->>  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+                    :: [[ vstream  ->>  Transformer.transform stream (fst composed) as _ ]]
                     :: f composed) t2 }}
     ∪ {{ ext }} // env.
 Proof.
@@ -473,24 +473,24 @@ Lemma CompileCompose_init :
     (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
     {{ tenv }}
       pAlloc
-    {{ [[ vstream  <--  Transformer.transform_id as _ ]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ [[ vstream  <--  Transformer.transform_id as _ ]] :: tenv }}
+    {{ [[ vstream  ->>  Transformer.transform_id as _ ]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[ vstream  ->>  Transformer.transform_id as _ ]] :: tenv }}
       p1
-    {{ TelAppend ([[ NTNone  <--  enc1 cache as encoded1 ]]
-                    :: [[ vstream  <--  Transformer.transform (Transformer.transform_id) (fst encoded1) as _ ]]
+    {{ TelAppend ([[ NTNone  ->>  enc1 cache as encoded1 ]]
+                    :: [[ vstream  ->>  Transformer.transform (Transformer.transform_id) (fst encoded1) as _ ]]
                     :: f encoded1)
                  t1 }} ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
      let stream1 := Transformer.transform Transformer.transform_id (fst encoded1) in
-     {{ TelAppend ([[ vstream  <--  stream1 as _ ]] :: f encoded1) t1 }}
+     {{ TelAppend ([[ vstream  ->>  stream1 as _ ]] :: f encoded1) t1 }}
        p2
-     {{ TelAppend ([[ NTNone  <--  enc2 (snd encoded1) as encoded2 ]]
-                     :: [[ vstream  <--  Transformer.transform stream1 (fst encoded2) as _ ]]
+     {{ TelAppend ([[ NTNone  ->>  enc2 (snd encoded1) as encoded2 ]]
+                     :: [[ vstream  ->>  Transformer.transform stream1 (fst encoded2) as _ ]]
                      :: f encoded2) t2 }} ∪ {{ ext }} // env) ->
     {{ tenv }}
       (Seq pAlloc (Seq p1 p2))
-    {{ TelAppend ([[ NTNone  <--  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
-                    :: [[ vstream  <--  (fst composed) as _ ]]
+    {{ TelAppend ([[ NTNone  ->>  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+                    :: [[ vstream  ->>  (fst composed) as _ ]]
                     :: f composed) t2 }}
     ∪ {{ ext }} // env.
 Proof.
@@ -512,12 +512,12 @@ Lemma CompileCallAllocString:
     (vtmp vstream : string) (tenv tenv' : Telescope av)
     ext (env : GLabelMap.t (FuncSpec av))
     pNext fAllocString,
-    {{ [[ ` vstream <-- @nil bool as _]]::tenv }}
+    {{ [[ ` vstream ->> @nil bool as _]]::tenv }}
       pNext
-    {{ [[ ` vstream <-- @nil bool as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> @nil bool as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Call vtmp fAllocString [vstream]) pNext
-    {{ [[ ` vstream <-- @nil bool as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` vstream ->> @nil bool as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare.
 Admitted.
@@ -576,12 +576,12 @@ Defined.
 Lemma CompileCallAllocEMap:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
     ext env pNext fAllocCache,
-    {{ [[ ` veMap <-- DnsMap.EMap.empty DnsMap.position_t as _]]::tenv }}
+    {{ [[ ` veMap ->> DnsMap.EMap.empty DnsMap.position_t as _]]::tenv }}
       pNext
-    {{ [[ ` veMap <-- DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` veMap ->> DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Call vtmp fAllocCache [veMap]) pNext
-    {{ [[ ` veMap <-- DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` veMap ->> DnsMap.EMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare.
 Admitted.
@@ -589,12 +589,12 @@ Admitted.
 Lemma CompileCallAllocDMap:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
     ext env pNext fAllocCache,
-    {{ [[ ` veMap <-- DnsMap.DMap.empty (list DnsMap.word_t) as _]]::tenv }}
+    {{ [[ ` veMap ->> DnsMap.DMap.empty (list DnsMap.word_t) as _]]::tenv }}
       pNext
-    {{ [[ ` veMap <-- DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` veMap ->> DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Call vtmp fAllocCache [veMap]) pNext
-    {{ [[ ` veMap <-- DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` veMap ->> DnsMap.DMap.empty _ as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare.
 Admitted.
@@ -602,12 +602,12 @@ Admitted.
 Lemma CompileCallAllocOffset:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)
     ext env pNext fAllocCache,
-    {{ [[ ` veMap <-- 0%N as _]]::tenv }}
+    {{ [[ ` veMap ->> 0%N as _]]::tenv }}
       pNext
-    {{ [[ ` veMap <-- 0%N as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` veMap ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Call vtmp fAllocCache [veMap]) pNext
-    {{ [[ ` veMap <-- 0%N as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` veMap ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare.
 Admitted.
@@ -616,10 +616,10 @@ Lemma CompileCallListResourceLength:
   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
     env (lst : FixList.FixList 16 resource_t)
     flength tenv',
-    TelEq ext tenv ([[`vlst <-- `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
     {{ tenv }}
       Call varg flength [vlst]
-    {{ [[ ` varg <-- FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
 Admitted.
 
@@ -627,10 +627,10 @@ Lemma CompileCallListQuestionLength:
   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
     env (lst : FixList.FixList 16 question_t)
     flength tenv',
-    TelEq ext tenv ([[`vlst <-- `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
     {{ tenv }}
       Call varg flength [vlst]
-    {{ [[ ` varg <-- FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
 Admitted.
 
@@ -684,10 +684,10 @@ Lemma CompileCallGetQuestionType:
     fget tenv',
     vtmp ∉ ext ->
     NotInTelescope vtmp tenv ->
-    TelEq ext tenv ([[`vquestion <-- question as _]]::tenv') ->
+    TelEq ext tenv ([[`vquestion ->> question as _]]::tenv') ->
     {{ tenv }}
       Seq (Assign vtmp (Const 1)) (Call vtype fget [vtmp; vquestion])
-    {{ [[ ` vtype <-- FixInt_of_type (qtype question) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` vtype ->> FixInt_of_type (qtype question) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   intros * ? ? Teq.
   hoare; eauto using CompileConstant.
@@ -711,10 +711,10 @@ Lemma CompileCallGetResourceType:
     fget tenv',
     vtmp ∉ ext ->
     NotInTelescope vtmp tenv ->
-    TelEq ext tenv ([[`vresource <-- resource as _]]::tenv') ->
+    TelEq ext tenv ([[`vresource ->> resource as _]]::tenv') ->
     {{ tenv }}
       Seq (Assign vtmp (Const 1)) (Call vtype fget [vtmp; vresource])
-    {{ [[ ` vtype <-- FixInt_of_type (rtype resource) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` vtype ->> FixInt_of_type (rtype resource) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   intros * ? ? Teq.
   hoare; eauto using CompileConstant.
@@ -741,10 +741,10 @@ Lemma CompileCallGetQuestionClass: (* FIXME merge into a single lemma once encod
     fget tenv',
     vtmp ∉ ext ->
     NotInTelescope vtmp tenv ->
-    TelEq ext tenv ([[`vquestion <-- question as _]]::tenv') ->
+    TelEq ext tenv ([[`vquestion ->> question as _]]::tenv') ->
     {{ tenv }}
       Seq (Assign vtmp (Const 2)) (Call vclass fget [vtmp; vquestion])
-    {{ [[ ` vclass <-- FixInt_of_class (qclass question) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` vclass ->> FixInt_of_class (qclass question) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   intros * ? ? Teq.
   hoare; eauto using CompileConstant.
@@ -757,10 +757,10 @@ Lemma CompileCallGetResourceClass: (* FIXME merge into a single lemma once encod
     fget tenv',
     vtmp ∉ ext ->
     NotInTelescope vtmp tenv ->
-    TelEq ext tenv ([[`vresource <-- resource as _]]::tenv') ->
+    TelEq ext tenv ([[`vresource ->> resource as _]]::tenv') ->
     {{ tenv }}
       Seq (Assign vtmp (Const 2)) (Call vclass fget [vtmp; vresource])
-    {{ [[ ` vclass <-- FixInt_of_class (rclass resource) as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[ ` vclass ->> FixInt_of_class (rclass resource) as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   intros * ? ? Teq.
   hoare; eauto using CompileConstant.
@@ -785,7 +785,7 @@ Lemma CompileCallDeallocQuestion: (* FIXME merge with other lemmas regarding dea
   forall (vtmp vquestion: string) (q: question_t) (tenv: Telescope ADTValue)
     ext env fDealloc,
     NotInTelescope vquestion tenv ->
-    {{ [[ ` vquestion <-- q as _]]::tenv }}
+    {{ [[ ` vquestion ->> q as _]]::tenv }}
       (Call vtmp fDealloc [vquestion])
     {{ tenv }} ∪ {{ ext }} // env.
 Proof.
@@ -799,7 +799,7 @@ Lemma CompileCallDeallocResource: (* FIXME merge with other lemmas regarding dea
   forall (vtmp vresource: string) (q: resource_t) (tenv: Telescope ADTValue)
     ext env fDealloc,
     NotInTelescope vresource tenv ->
-    {{ [[ ` vresource <-- q as _]]::tenv }}
+    {{ [[ ` vresource ->> q as _]]::tenv }}
       (Call vtmp fDealloc [vresource])
     {{ tenv }} ∪ {{ ext }} // env.
 Proof.
@@ -823,7 +823,7 @@ Ltac _compile_CallListLength :=
   match_ProgOk
     ltac:(fun _ _ post _ _ =>
             match post with
-            | [[ _ <-- FixList.FixList_getlength ?lst as _]] :: _ =>
+            | [[ _ ->> FixList.FixList_getlength ?lst as _]] :: _ =>
               let vlst := find_name_in_precondition (` lst) in
               (* FIXME use this instead of explicit continuations in every lemma *)
               compile_do_use_transitivity_to_handle_head_separately;
@@ -841,9 +841,9 @@ Admitted.
 Lemma CompileCallAdd16 :
   forall `{FacadeWrapper (Value av) N} (tenv : Telescope av) (n : N) vn
     ext env,
-    {{ [[`vn <-- n as _]]::tenv }}
+    {{ [[`vn ->> n as _]]::tenv }}
       (Assign vn (Binop IL.Plus (Var vn) 16))
-    {{ [[`vn <-- (n + 16)%N as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[`vn ->> (n + 16)%N as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
 Admitted.
 
@@ -909,19 +909,19 @@ Lemma ProgOk_Add_snd_ret :
   forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
     {{ tenv }}
       p1
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
          :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
          :: TelAppend (f (snd pair)) tenv' }}
       p2
-    {{ [[ NTNone  <--  cpair as pair ]]
-         :: [[ kfst  <--  fst pair as p1 ]]
+    {{ [[ NTNone  ->>  cpair as pair ]]
+         :: [[ kfst  ->>  fst pair as p1 ]]
          :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       (Seq p1 p2)
-    {{ [[ kfst  <--  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[ kfst  ->>  fst cpair as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   repeat setoid_rewrite Propagate_anonymous_ret.
@@ -982,13 +982,13 @@ Lemma CompileRead16:
   forall {av} {W: FacadeWrapper (Value av) (BitArray 16) }
     (vfrom vto : string) (bs: {s : list bool | Datatypes.length s = 16})
     (tenv tenv0 tenv': Telescope av) pNext  ext env,
-    TelEq ext tenv ([[` vfrom <-- bs as _]] :: tenv0) ->
-    {{ [[ ` vto <-- bs as _]]::tenv }}
+    TelEq ext tenv ([[` vfrom ->> bs as _]] :: tenv0) ->
+    {{ [[ ` vto ->> bs as _]]::tenv }}
       pNext
-    {{ [[ ` vto <-- bs as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vto ->> bs as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Assign vto (Var vfrom)) pNext
-    {{ [[ ` vto <-- bs as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` vto ->> bs as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros * H; rewrite H.
   hoare.
@@ -1000,7 +1000,7 @@ Ltac _compile_Read16 :=
   match_ProgOk
     ltac:(fun _ pre post _ _ =>
             match post with
-            | [[ _ <-- ?bs as _]] :: _ =>
+            | [[ _ ->> ?bs as _]] :: _ =>
               let k := find_name_in_precondition bs in
               eapply (CompileRead16 k)
             end).
@@ -1009,12 +1009,12 @@ Lemma CompileConstantN :
   forall {av} {W: FacadeWrapper (Value av) N}
     N (vto : string)
     (tenv tenv': Telescope av) pNext ext env,
-    {{ [[ ` vto <-- N as _]]::tenv }}
+    {{ [[ ` vto ->> N as _]]::tenv }}
       pNext
-    {{ [[ ` vto <-- N as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
       Seq (Assign vto (Const (Word.NToWord N))) pNext
-    {{ [[ ` vto <-- N as _]]::tenv' }} ∪ {{ ext }} // env.
+    {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare.
   hoare.
@@ -1029,20 +1029,20 @@ Opaque Transformer.transform_id.
 Definition PacketAsCollectionOfVariables
            {av} vid vmask vquestion vanswer vauthority vadditional (p: packet_t)
   : Telescope av :=
-  [[ vid <-- p.(pid) as _ ]]
-    :: [[ vmask <-- p.(pmask) as _ ]]
-    :: [[ vquestion <-- ` p.(pquestion) as _ ]]
-    :: [[ vanswer <-- ` p.(panswer) as _ ]]
-    :: [[ vauthority <-- ` p.(pauthority) as _ ]]
-    :: [[ vadditional <-- ` p.(padditional) as _ ]]
+  [[ vid ->> p.(pid) as _ ]]
+    :: [[ vmask ->> p.(pmask) as _ ]]
+    :: [[ vquestion ->> ` p.(pquestion) as _ ]]
+    :: [[ vanswer ->> ` p.(panswer) as _ ]]
+    :: [[ vauthority ->> ` p.(pauthority) as _ ]]
+    :: [[ vadditional ->> ` p.(padditional) as _ ]]
     :: Nil.
 
 Definition DnsCacheAsCollectionOfVariables
            {av} veMap vdMap voffs (c: DnsMap.CacheT)
   : Telescope av :=
-  [[ veMap <-- c.(DnsMap.eMap) as _ ]]
-    :: [[ vdMap <-- c.(DnsMap.dMap) as _ ]]
-    :: [[ voffs <-- c.(DnsMap.offs) as _ ]]
+  [[ veMap ->> c.(DnsMap.eMap) as _ ]]
+    :: [[ vdMap ->> c.(DnsMap.dMap) as _ ]]
+    :: [[ voffs ->> c.(DnsMap.offs) as _ ]]
     :: Nil.
 
 Create HintDb packet_autorewrite_db.
@@ -1100,7 +1100,7 @@ Ltac packet_compile_compose :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             lazymatch post with
-            | [[ ret _ as _ ]] :: [[ ?k <-- _ as _ ]] :: _ =>
+            | [[ ret _ as _ ]] :: [[ ?k ->> _ as _ ]] :: _ =>
               change_post_into_TelAppend;
               first [ eapply CompileCompose |
                       may_alloc k; eapply CompileCompose_init ];
@@ -1253,12 +1253,12 @@ Proof.
   (* FIXME remove compile_do_use_transitivity_to_handle_head_separately? Or
        add a case with [fun _ => _] as the function for [ProgOk_Transitivity_First] *)
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "answer" <-- ` panswer as _]]
-                       ::[[ ` "authority" <-- ` pauthority as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "answer" ->> ` panswer as _]]
+                       ::[[ ` "authority" ->> ` pauthority as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode name") nil); admit. }
 
 
@@ -1266,60 +1266,60 @@ Proof.
 
   { _packet_encode_t. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "authority" <-- ` pauthority as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "authority" ->> ` pauthority as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource name") nil); admit. }
 
   { _packet_encode_t. }
   
   { _packet_encode_t. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "authority" <-- ` pauthority as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "authority" ->> ` pauthority as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource ttl") nil); admit. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "authority" <-- ` pauthority as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "authority" ->> ` pauthority as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of resource data") nil); admit. }
 
   { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode resource data") nil); admit. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority name") nil); admit. }
 
   { _packet_encode_t. }
 
   { _packet_encode_t. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority ttl") nil); admit. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
-                       ::[[ ` "additional" <-- ` padditional as _]]::Nil).
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
+                       ::[[ ` "additional" ->> ` padditional as _]]::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of authority data") nil); admit. }
 
   { instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode authority data") nil); admit. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
                        ::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional name") nil); admit. }
 
@@ -1327,15 +1327,15 @@ Proof.
 
   { _packet_encode_t. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                     ::[[ ` "id" <-- pid as _]]
-                     ::[[ ` "mask" <-- pmask as _]]
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                     ::[[ ` "id" ->> pid as _]]
+                     ::[[ ` "mask" ->> pmask as _]]
                      ::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode additional ttl") nil); admit. }
 
-  { instantiate (1 := [[ ` "head" <-- head as _]]
-                       ::[[ ` "id" <-- pid as _]]
-                       ::[[ ` "mask" <-- pmask as _]]
+  { instantiate (1 := [[ ` "head" ->> head as _]]
+                       ::[[ ` "id" ->> pid as _]]
+                       ::[[ ` "mask" ->> pmask as _]]
                        ::Nil).
     instantiate (1 := Call (DummyArgument "tmp") ("admitted", "Encode length of additional data") nil); admit. }
 

@@ -267,13 +267,13 @@ Ltac _compile_fold :=
             let vtest := gensym "test" in
             let vhead := gensym "head" in
             match constr:((pre, post)) with
-            | ([[`?vinit <~~ ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <~~ fold_left _ ?seq ?init as _]] :: ?tenv') =>
+            | ([[`?vinit ~~> ?init as _]] :: [[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ~~> fold_left _ ?seq ?init as _]] :: ?tenv') =>
               apply (CompileLoop seq init (vtest := vtest) (vhead := vhead))
-            | ([[`?vinit <-- ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <-- fold_left _ ?seq ?init as _]] :: ?tenv') =>
+            | ([[`?vinit ->> ?init as _]] :: [[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ->> fold_left _ ?seq ?init as _]] :: ?tenv') =>
               apply (CompileLoop_ret seq init (vtest := vtest) (vhead := vhead))
-            | ([[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <~~ fold_left _ ?seq _ as _]] :: ?tenv') =>
+            | ([[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ~~> fold_left _ ?seq _ as _]] :: ?tenv') =>
               apply (CompileLoopAlloc (vtest := vtest) (vhead := vhead))
-            | ([[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <-- fold_left _ ?seq _ as _]] :: ?tenv') =>
+            | ([[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ->> fold_left _ ?seq _ as _]] :: ?tenv') =>
               apply (CompileLoopAlloc_ret (vtest := vtest) (vhead := vhead))
             end).
 
@@ -316,7 +316,7 @@ Ltac _compile_mutation :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match post with
-            | [[`?s <-- ?f _ _ as _]]::?tenv =>
+            | [[`?s ->> ?f _ _ as _]]::?tenv =>
               let arg := gensym "arg" in
               let tmp := gensym "tmp" in
               let arg_type := first_arg f in
@@ -349,7 +349,7 @@ Ltac _compile_constructor :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
-            | (?tenv, [[?s <-- ?adt as _]]::?tenv') =>
+            | (?tenv, [[?s ->> ?adt as _]]::?tenv') =>
               match type of adt with
               | W => fail 1
               | _ => call_tactic_after_moving_head_binding_to_separate_goal

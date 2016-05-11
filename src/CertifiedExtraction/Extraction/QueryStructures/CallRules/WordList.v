@@ -11,7 +11,7 @@ Lemma CompileWordList_pop:
     GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
-    {{ [[`vhead <-- head as _]]::[[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+    {{ [[`vhead ->> head as _]]::[[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) ->> tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.
@@ -25,7 +25,7 @@ Lemma CompileWordList_new:
     GLabelMap.MapsTo fnew (Axiomatic QsADTs.WordListADTSpec.New) env ->
     {{ tenv }}
       Call vlst fnew (nil)
-    {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- @nil W as _]]::tenv }} ∪ {{ ext }} // env.
+    {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) ->> @nil W as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.
@@ -49,7 +49,7 @@ Lemma CompileWordList_push :
     vret ∉ ext ->
     {{ tenv }}
       Call vret fpointer (vlst :: vhd :: nil)
-    {{ [[ `vret <-- (Word.natToWord 32 0) as _ ]] :: [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- h :: t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
+    {{ [[ `vret ->> (Word.natToWord 32 0) as _ ]] :: [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst ->> h :: t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
   facade_eauto.
@@ -62,9 +62,9 @@ Lemma CompileWordList_push_spec :
     h (t: list W),
     GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordListADTSpec.Push) env ->
     PreconditionSet tenv ext [[[vtmp;vhd;vlst]]] ->
-    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
+    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst ->> t as _ ]] :: [[ `vhd ->> h as _ ]] :: tenv }}
       Call vtmp fpointer (vlst :: vhd :: nil)
-    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- h :: t as _ ]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst ->> h :: t as _ ]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   apply ProgOk_Remove_Skip_R. hoare. PreconditionSet_t.

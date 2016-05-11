@@ -23,7 +23,7 @@ Module WBagOfTuples2Compilation.
       ~ Word.wlt (Word.natToWord 32 N) (Word.natToWord 32 2) ->
       {{ tenv }}
         Call vret fpointer (vsize :: vkey1 :: vkey2 :: nil)
-      {{ [[ NTSomeBag k1 k2 vret <-- @FiatWBagEmpty N as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
+      {{ [[ NTSomeBag k1 k2 vret ->> @FiatWBagEmpty N as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
     facade_eauto.
@@ -59,8 +59,8 @@ Module WBagOfTuples2Compilation.
       {{ tenv }}
         Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-             :: [[ NTSomeBag k1 k2 vtable <-- fst retv as _ ]]
-             :: [[ NTSome (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) vret <-- snd retv as _ ]]
+             :: [[ NTSomeBag k1 k2 vtable ->> fst retv as _ ]]
+             :: [[ NTSome (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) vret ->> snd retv as _ ]]
              :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
@@ -99,11 +99,11 @@ Module WBagOfTuples2Compilation.
       vret <> vkey ->
       vtable <> vkey ->
       TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
-      {{ [[ NTSomeBag k1 k2 vtable <-- table as _]] :: tenv }}
+      {{ [[ NTSomeBag k1 k2 vtable ->> table as _]] :: tenv }}
         Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-             :: [[ NTSomeBag k1 k2 vtable <-- fst retv as _ ]]
-             :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) <-- snd retv as _ ]]
+             :: [[ NTSomeBag k1 k2 vtable ->> fst retv as _ ]]
+             :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) ->> snd retv as _ ]]
              :: tenv }} ∪ {{ ext }} // env.
   Proof.
     intros.
@@ -135,8 +135,8 @@ Module WBagOfTuples2Compilation.
                   ret (Ensembles.Add IndexedEnsembles.IndexedElement table
                                      {| IndexedEnsembles.elementIndex := freshIdx;
                                         IndexedEnsembles.indexedElement := tuple |})) as rep ]]
-             :: [[`vret <-- (Word.natToWord 32 0) as _ ]]
-             :: [[ (NTSomeBag k1 k2 vtable) <-- rep as _ ]]
+             :: [[`vret ->> (Word.natToWord 32 0) as _ ]]
+             :: [[ (NTSomeBag k1 k2 vtable) ->> rep as _ ]]
              :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
@@ -171,15 +171,15 @@ Module WBagOfTuples2Compilation.
       NotInTelescope vtable tenv ->
       BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
       TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW table) idx ->
-      {{ [[ (NTSomeBag k1 k2 vtable) <-- table as _ ]]
-           :: [[ (NTSome (H := @WrapInstance _ _ WTupleCompilation.FiatWrapper) vtuple) <-- tuple as _ ]]
+      {{ [[ (NTSomeBag k1 k2 vtable) ->> table as _ ]]
+           :: [[ (NTSome (H := @WrapInstance _ _ WTupleCompilation.FiatWrapper) vtuple) ->> tuple as _ ]]
            :: tenv }}
         Call vtmp fpointer (vtable :: vtuple :: nil)
       {{ [[ ( freshIdx <- {freshIdx : nat | IndexedEnsembles.UnConstrFreshIdx table freshIdx};
                   ret (Ensembles.Add IndexedEnsembles.IndexedElement table
                                      {| IndexedEnsembles.elementIndex := freshIdx;
                                         IndexedEnsembles.indexedElement := tuple |})) as rep ]]
-             :: [[ (NTSomeBag k1 k2 vtable) <-- rep as _ ]]
+             :: [[ (NTSomeBag k1 k2 vtable) ->> rep as _ ]]
              :: tenv }} ∪ {{ ext }} // env.
   Proof.
     intros. PreconditionSet_t.
@@ -223,8 +223,8 @@ Module WBagOfTuples2Compilation.
       {{ tenv }}
         Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-             :: [[ NTSomeBag k1 k2 vtable <-- fst retv as _ ]]
-             :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) <-- snd retv as _ ]]
+             :: [[ NTSomeBag k1 k2 vtable ->> fst retv as _ ]]
+             :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) ->> snd retv as _ ]]
              :: DropName vret (DropName vtable tenv) }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
@@ -260,11 +260,11 @@ Module WBagOfTuples2Compilation.
       vtable <> vkey ->
       BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
       TuplesF.functional (IndexedEnsemble_TupleToListW table) ->
-      {{ [[ NTSomeBag k1 k2 vtable <-- table as _]] :: tenv }}
+      {{ [[ NTSomeBag k1 k2 vtable ->> table as _]] :: tenv }}
         Call vret fpointer (vtable :: vkey :: nil)
       {{ [[ table' as retv ]]
-           :: [[ NTSomeBag k1 k2 vtable <-- fst retv as _ ]]
-           :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) <-- snd retv as _ ]]
+           :: [[ NTSomeBag k1 k2 vtable ->> fst retv as _ ]]
+           :: [[ NTSome vret (H := (@WrapInstance _ _ QS_WrapFiatWTupleList)) ->> snd retv as _ ]]
            :: tenv }} ∪ {{ ext }} // env.
   Proof.
     intros.

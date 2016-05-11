@@ -54,7 +54,7 @@ Lemma SameValues_Mutation_helper:
     NotInTelescope vret tenv ->
     StringMap.MapsTo vsrc x initial_state ->
     initial_state ≲ tenv ∪ ext ->
-    [vsrc <-- x]::M.remove vret initial_state ≲ tenv ∪ ext.
+    [vsrc |> x]::M.remove vret initial_state ≲ tenv ∪ ext.
 Proof.
   intros;
   rewrite <- remove_add_comm, <- add_redundant_cancel by congruence;
@@ -74,7 +74,7 @@ Lemma CompileCallFacadeImplementationOfCopy:
       StringMap.MapsTo vsrc (wrap adt) ext ->
       {{ tenv }}
         (Call vret fpointer (vsrc :: nil))
-      {{ [[ `vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> adt as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -93,9 +93,9 @@ Lemma CompileCallFacadeImplementationOfMutation_SCA:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA _ fADT)) env ->
     forall (vret : StringMap.key) (ext : StringMap.t (Value av)),
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[`vret <-- target as _]]::[[`varg <-- arg as _]]::tenv }}
+      {{ [[`vret ->> target as _]]::[[`varg ->> arg as _]]::tenv }}
         Call vtmp fpointer (vret :: varg :: nil)
-      {{ [[`vret <-- fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
+      {{ [[`vret ->> fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || PreconditionSet_t);
   facade_eauto.
@@ -109,13 +109,13 @@ Lemma CompileCallFacadeImplementationOfMutation_SCA_Alloc:
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
       {{ tenv }}
         pSCA
-      {{ [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `varg <-- arg as _]] :: tenv }}
+      {{ [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg ->> arg as _]] :: tenv }}
         pADT
-      {{ [[ `varg <-- arg as _]] :: [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg ->> arg as _]] :: [[ `vret ->> target as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq pSCA (Seq pADT (Call vtmp fpointer (vret :: varg :: nil)))
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   rewrite TelEq_swap.
@@ -128,12 +128,12 @@ Lemma CompileCallFacadeImplementationOfMutation_SCA_Replace:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA _ fADT)) env ->
     forall vret ext pSCA,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pSCA
-      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         Seq pSCA (Call vtmp fpointer (vret :: varg :: nil))
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   eauto using CompileCallFacadeImplementationOfMutation_SCA.
@@ -145,15 +145,15 @@ Lemma CompileCallFacadeImplementationOfMutation_SCA_Replace_strong:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA Tadt fADT)) env ->
     forall vret ext pArg pCoda,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pArg
-        {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+        {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }}
         pCoda
-        {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+        {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         Seq (Seq pArg (Call vtmp fpointer (vret :: varg :: nil))) pCoda
-        {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+        {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare.
   apply CompileCallFacadeImplementationOfMutation_SCA_Replace; PreconditionSet_t; eauto.
@@ -166,18 +166,18 @@ Lemma CompileCallFacadeImplementationOfMutation_SCA_Replace_strong':
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_SCA Tadt fADT)) env ->
     forall vret ext pTarget pArg pCoda,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- orig as _]] :: tenv }}
+      {{ [[ `vret ->> orig as _]] :: tenv }}
         pTarget
-      {{ [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pArg
-      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }}
         pCoda
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- orig as _]] :: tenv }}
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> orig as _]] :: tenv }}
         Seq (Seq pTarget (Seq pArg (Call vtmp fpointer (vret :: varg :: nil)))) pCoda
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare. hoare.
   apply CompileCallFacadeImplementationOfMutation_SCA_Replace; PreconditionSet_t; eauto.
@@ -191,9 +191,9 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
     forall (vret : StringMap.key) (ext : StringMap.t (Value av)),
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[`vret <-- target as _]]::[[`varg <-- arg as _]]::tenv }}
+      {{ [[`vret ->> target as _]]::[[`varg ->> arg as _]]::tenv }}
         Call vtmp fpointer (vret :: varg :: nil)
-      {{ [[`vret <-- fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
+      {{ [[`vret ->> fADT arg target as _]]::tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -215,13 +215,13 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT_Alloc:
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
       {{ tenv }}
         pArg
-      {{ [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `varg <-- arg as _]] :: tenv }}
+      {{ [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg ->> arg as _]] :: tenv }}
         pTarget
-      {{ [[ `varg <-- arg as _]] :: [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg ->> arg as _]] :: [[ `vret ->> target as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq pArg (Seq pTarget (Call vtmp fpointer (vret :: varg :: nil)))
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   rewrite TelEq_swap.
@@ -234,12 +234,12 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
     forall vret ext pArg,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pArg
-      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         Seq pArg (Call vtmp fpointer (vret :: varg :: nil))
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   apply CompileCallFacadeImplementationOfMutation_ADT; eauto.
@@ -251,15 +251,15 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace_strong:
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
     forall vret ext pArg pCoda,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pArg
-        {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+        {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }}
         pCoda
-        {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+        {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         Seq (Seq pArg (Call vtmp fpointer (vret :: varg :: nil))) pCoda
-        {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+        {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare.
   apply CompileCallFacadeImplementationOfMutation_ADT_Replace; PreconditionSet_t; eauto.
@@ -271,18 +271,18 @@ Lemma CompileCallFacadeImplementationOfMutation_ADT_Replace_strong':
     GLabelMap.MapsTo fpointer (Axiomatic (FacadeImplementationOfMutation_ADT Targ Tadt fADT)) env ->
     forall vret ext pTarget pArg pCoda,
       PreconditionSet tenv ext [[[varg; vtmp; vret]]] ->
-      {{ [[ `vret <-- orig as _]] :: tenv }}
+      {{ [[ `vret ->> orig as _]] :: tenv }}
         pTarget
-      {{ [[ `vret <-- target as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- target as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> target as _]] :: tenv }}
         pArg
-      {{ [[ `vret <-- target as _]] :: [[ `varg <-- arg as _]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv }}
+      {{ [[ `vret ->> target as _]] :: [[ `varg ->> arg as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv }}
         pCoda
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-      {{ [[ `vret <-- orig as _]] :: tenv }}
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ `vret ->> orig as _]] :: tenv }}
         Seq (Seq pTarget (Seq pArg (Call vtmp fpointer (vret :: varg :: nil)))) pCoda
-      {{ [[ `vret <-- (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fADT arg target) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros; hoare.
   hoare. eauto.
@@ -298,7 +298,7 @@ Lemma CompileCallFacadeImplementationOfConstructor:
       NotInTelescope vret tenv ->
       {{ tenv }}
         (Call vret fpointer nil)
-      {{ [[ `vret <-- adt as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> adt as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -319,7 +319,7 @@ Lemma CompileCallFacadeImplementationOfDestructor:
       NotInTelescope vtmp tenv ->
       vadt ∉ ext ->
       NotInTelescope vadt tenv ->
-      {{ [[ `vadt <-- adt as _]] :: tenv }}
+      {{ [[ `vadt ->> adt as _]] :: tenv }}
         (Call vtmp fpointer (vadt :: nil))
       {{ tenv }} ∪ {{ ext }} // env.
 Proof.
@@ -339,7 +339,7 @@ Lemma CompileCallFacadeImplementationOfDestructor':
       (forall aadt, adt ↝ aadt -> NotInTelescope vtmp (tenv aadt)) ->
       vadt ∉ ext ->
       (forall aadt, adt ↝ aadt -> NotInTelescope vadt (tenv aadt)) ->
-      {{ [[`vadt <~~ adt as aadt]] :: tenv aadt}}
+      {{ [[`vadt ~~> adt as aadt]] :: tenv aadt}}
         (Call vtmp fpointer (vadt :: nil))
       {{ [[adt as aadt]] :: tenv aadt }} ∪ {{ ext }} // env.
 Proof.

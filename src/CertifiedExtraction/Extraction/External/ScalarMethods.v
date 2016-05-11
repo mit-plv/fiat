@@ -14,7 +14,7 @@ Lemma CompileCallFacadeImplementationWW:
       StringMap.MapsTo varg (wrap arg) ext ->
       {{ tenv }}
         Call vret fpointer (varg :: nil)
-      {{ [[ `vret <-- (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat match goal with
          | _ => SameValues_Facade_t_step
@@ -34,10 +34,10 @@ Lemma CompileCallFacadeImplementationWW_full:
       vret <> varg ->
       {{ tenv }}
         p
-      {{ [[ `varg <-- arg as _]]:: tenv }} ∪ {{ ext }} // env ->
+      {{ [[ `varg ->> arg as _]]:: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq p (Call vret fpointer (varg :: nil))
-      {{ [[ `vret <-- (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> (fWW arg) as _]]:: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat hoare.
   repeat match goal with

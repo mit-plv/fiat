@@ -123,12 +123,12 @@ Ltac _compile_CallBagFind :=
                 eapply CompileSeq
                 with ([[bf as retv]]
                         :: [[(NTSome (H := h) vdb)
-                              <-- prim_fst (Refinements.UpdateIndexedRelation
+                              ->> prim_fst (Refinements.UpdateIndexedRelation
                                             (QueryStructureSchema.QueryStructureSchemaRaw
                                                ProcessScheduler.SchedulerSchema)
                                             (icons3 ProcessScheduler.SearchUpdateTerm inil3)
                                             db Fin.F1 (fst retv)) as _]]
-                        :: [[`vsnd <-- snd retv as s]]
+                        :: [[`vsnd ->> snd retv as s]]
                         :: tenv);
                 [ match kwd with
                   | (Some ?v, (None, fun _ => true)) =>

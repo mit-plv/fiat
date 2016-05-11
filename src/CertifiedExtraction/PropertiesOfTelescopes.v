@@ -60,7 +60,7 @@ Fixpoint NotInTelescope {av} k (tenv: Telescope av) :=
 Lemma NotInTelescope_not_eq_head:
   forall `{FacadeWrapper (Value av) A} (key : string) (val : Comp A)
     (tail : A -> Telescope av) (var : StringMap.key),
-    NotInTelescope var ([[` key <~~ val as kk]]::tail kk) ->
+    NotInTelescope var ([[` key ~~> val as kk]]::tail kk) ->
     key <> var.
 Proof.
   simpl; intros; repeat cleanup; eauto.
@@ -71,7 +71,7 @@ Lemma NotInTelescope_not_in_tail:
     (tail : A -> Telescope av) (var : StringMap.key)
     (v : A),
     val ↝ v ->
-    NotInTelescope var ([[ s <~~ val as kk]]::tail kk) ->
+    NotInTelescope var ([[ s ~~> val as kk]]::tail kk) ->
     NotInTelescope var (tail v).
 Proof.
   simpl; intros.

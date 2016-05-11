@@ -454,9 +454,9 @@ Lemma IList_post_transform_TelEq :
     (forall a1 a2 b, tenv (a1, b) = tenv (a2, b)) ->
     TelEq ext
           ([[ret (fold_on Transformer.transform_id) as folded]]
-             ::[[ k__stream <-- Transformer.transform base (fst folded) as _]] :: tenv folded)
+             ::[[ k__stream ->> Transformer.transform base (fst folded) as _]] :: tenv folded)
           ([[ret (fold_on base) as folded]]
-             ::[[ k__stream <-- fst folded as _]] :: tenv folded).
+             ::[[ k__stream ->> fst folded as _]] :: tenv folded).
 Proof.
   cbv zeta; intros * H.
   setoid_rewrite Propagate_anonymous_ret.

@@ -40,22 +40,22 @@ Arguments Cons {av T} key val tail.
 (** Telescope notations **)
 (*************************)
 
-Notation "[[ k <~~ v 'as' kk ]] :: t" :=
+Notation "[[  k ~~> v 'as' kk  ]]  ::  t" :=
   (Cons k v (fun kk => t)) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
 Global Open Scope telescope_scope.
 
-Notation "[[ ` k <~~ v 'as' kk ]] :: t" :=
-  ([[ NTSome k <~~ v as kk]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+Notation "[[  ` k ~~> v 'as' kk  ]]  ::  t" :=
+  ([[ NTSome k ~~> v as kk]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
-Notation "[[ k <-- v 'as' kk ]] :: t" :=
-  ([[ k <~~ (ret v) as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+Notation "[[  k ->> v 'as' kk  ]]  ::  t" :=
+  ([[ k ~~> (ret v) as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
-Notation "[[ ` k <-- v 'as' kk ]] :: t" :=
-  ([[ NTSome k <-- v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+Notation "[[  ` k ->> v 'as' kk  ]]  ::  t" :=
+  ([[ NTSome k ->> v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
-Notation "[[ v 'as' kk ]] :: t" :=
-  ([[ NTNone <~~ v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
+Notation "[[  v 'as' kk  ]]  ::  t" :=
+  ([[ NTNone ~~> v as kk ]] :: t) (at level 21, right associativity, arguments at next level) : telescope_scope.
 
 (**********************************************)
 (** SameValues: matching FMaps to Telescopes **)

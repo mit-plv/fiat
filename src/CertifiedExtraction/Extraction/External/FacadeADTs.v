@@ -41,7 +41,7 @@ Lemma CompileCallEmpty:
     GLabelMap.MapsTo fempty (Axiomatic (List_empty _)) env ->
     {{ tenv }}
       Call vtest fempty (vlst :: nil)
-    {{ [[`vtest <-- (bool2w match lst with
+    {{ [[`vtest ->> (bool2w match lst with
                          | nil => true
                          | _ :: _ => false
                          end) as _]]::(DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -61,9 +61,9 @@ Lemma CompileCallEmpty_spec:
     vtest ∉ ext ->
     Lifted_not_mapsto_adt ext tenv vtest ->
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
-    {{ [[`vlst <~~ lst as _]] :: tenv }}
+    {{ [[`vlst ~~> lst as _]] :: tenv }}
       Call vtest fempty (vlst :: nil)
-    {{ [[`vlst <~~ lst as ls]] :: [[`vtest <-- (bool2w match ls with
+    {{ [[`vlst ~~> lst as ls]] :: [[`vtest ->> (bool2w match ls with
                                                 | nil => true
                                                 | _ :: _ => false
                                                 end) as _]] :: (DropName vtest tenv) }} ∪ {{ ext }} // env.
@@ -83,7 +83,7 @@ Lemma CompileCallPop:
     GLabelMap.MapsTo fpop (Axiomatic (List_pop _)) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
-    {{ [[`vhead <-- head as _]]::[[`vlst <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
+    {{ [[`vhead ->> head as _]]::[[`vlst ->> tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
   facade_eauto.

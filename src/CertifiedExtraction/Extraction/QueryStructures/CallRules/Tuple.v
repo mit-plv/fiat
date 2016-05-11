@@ -39,7 +39,7 @@ Module TupleCompilation
       StringMap.MapsTo vlen (wrap w) initial_state ->
       GLabelMap.MapsTo fnew (Axiomatic New) env ->
       RunsTo env (Call vtup fnew [[[vlen]]]) initial_state st' ->
-      exists x1, M.Equal st' ([vtup <-- ADT (TupleConstructor x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
+      exists x1, M.Equal st' ([vtup |> ADT (TupleConstructor x1)]::initial_state) /\ Datatypes.length x1 = Word.wordToNat w.
   Proof.
     repeat QS_t.
     reflexivity.
@@ -73,7 +73,7 @@ Module TupleCompilation
       GLabelMap.MapsTo fpointer (Axiomatic Delete) env ->
       {{ tenv }}
         Call vtmp fpointer (vtup :: vsize :: nil)
-      {{ [[`vtmp <-- (Word.natToWord 32 0) as _]] :: (DropName vtmp (DropName vtup tenv)) }} ∪ {{ ext }} // env.
+      {{ [[`vtmp ->> (Word.natToWord 32 0) as _]] :: (DropName vtmp (DropName vtup tenv)) }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t).
     autorewrite with call_helpers_db; facade_eauto.
@@ -95,7 +95,7 @@ Module TupleCompilation
       NotInTelescope vsize tenv ->
       BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
       GLabelMap.MapsTo fpointer (Axiomatic Delete) env ->
-      {{ [[ (NTSome (H := WrapInstance (H := FiatWrapper)) vtup) <-- tup as _]] :: tenv }}
+      {{ [[ (NTSome (H := WrapInstance (H := FiatWrapper)) vtup) ->> tup as _]] :: tenv }}
         (Seq (Assign vsize (Const (Word.natToWord 32 N))) (Call vtmp fpointer (vtup :: vsize :: nil)))
       {{ tenv }} ∪ {{ ext }} // env.
   Proof.
@@ -147,7 +147,7 @@ Module WTupleCompilation.
       StringMap.MapsTo vtup (wrap (FacadeWrapper := WrapInstance (H := BedrockWrapper)) tup) initial_state ->
       GLabelMap.MapsTo fset (Axiomatic WTupleADTSpec.Put) env ->
       RunsTo env (Call vtmp fset [[[vtup;vpos;v]]]) initial_state st' ->
-      M.Equal st' ([vtmp <-- QsADTs.SCAZero]::[vtup <-- ADT (QsADTs.WTuple (Array.upd tup pos val))]::initial_state).
+      M.Equal st' ([vtmp |> QsADTs.SCAZero]::[vtup |> ADT (QsADTs.WTuple (Array.upd tup pos val))]::initial_state).
   Proof.
     repeat QS_t.
     reflexivity.
@@ -194,8 +194,8 @@ Module WTupleCompilation.
              (Seq (Call vtmp fset (vtup :: o1 :: v1 :: nil))
                   (Seq (Call vtmp fset (vtup :: o2 :: v2 :: nil))
                        (Call vtmp fset (vtup :: o3 :: v3 :: nil)))))
-      {{ [[(NTSome (H := WrapInstance (H := FiatWrapper)) vtup) <-- ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
-           :: [[(NTSome (H := @FacadeWrapper_SCA QsADTs.ADTValue) vtmp) <-- (Word.natToWord 32 0) as _]]
+      {{ [[(NTSome (H := WrapInstance (H := FiatWrapper)) vtup) ->> ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
+           :: [[(NTSome (H := @FacadeWrapper_SCA QsADTs.ADTValue) vtmp) ->> (Word.natToWord 32 0) as _]]
            :: (DropName vtup (DropName vtmp tenv)) }} ∪ {{ ext }} // env.
   Proof.
     unfold ProgOk.
@@ -274,20 +274,20 @@ Module WTupleCompilation.
       GLabelMap.MapsTo (elt:=FuncSpec QsADTs.ADTValue) fset (Axiomatic WTupleADTSpec.Put) env ->
       {{ tenv }}
         setup
-      {{ [[`v1 <-- val1 as _]]
-           :: [[`v2 <-- val2 as _]]
-           :: [[`v3 <-- val3 as _]]
-           :: [[`o1 <-- (Word.natToWord 32 0) as _]]
-           :: [[`o2 <-- (Word.natToWord 32 1) as _]]
-           :: [[`o3 <-- (Word.natToWord 32 2) as _]]
-           :: [[`vlen <-- (Word.natToWord 32 3) as _]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ [[`v1 ->> val1 as _]]
+           :: [[`v2 ->> val2 as _]]
+           :: [[`v3 ->> val3 as _]]
+           :: [[`o1 ->> (Word.natToWord 32 0) as _]]
+           :: [[`o2 ->> (Word.natToWord 32 1) as _]]
+           :: [[`o3 ->> (Word.natToWord 32 2) as _]]
+           :: [[`vlen ->> (Word.natToWord 32 3) as _]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         (Seq setup
              (Seq (Call vtup fnew (vlen :: nil))
                   (Seq (Call vtmp fset (vtup :: o1 :: v1 :: nil))
                        (Seq (Call vtmp fset (vtup :: o2 :: v2 :: nil))
                             (Call vtmp fset (vtup :: o3 :: v3 :: nil))))))
-      {{ [[`vtup <-- ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
+      {{ [[`vtup ->> ListWToTuple [[[val1;val2;val3]]] : FiatTuple 3 as _]]
              :: tenv }} ∪ {{ ext }} // env.
   Proof.
     intros.
@@ -372,7 +372,7 @@ Module WTupleCompilation.
       GLabelMap.MapsTo fpointer (Axiomatic WTupleADTSpec.Get) env ->
       {{ tenv }}
         Call vret fpointer (vtup :: vpos :: nil)
-      {{ [[(NTSome (H := FacadeWrapper_SCA) vret) <--
+      {{ [[(NTSome (H := FacadeWrapper_SCA) vret) ->>
                                                    (match CompileGet_helper idx in _ = W return _ -> W with
                                                     | eq_refl => fun t => t
                                                     end) (ilist2.ith2 tup idx) as _]]
@@ -398,10 +398,10 @@ Module WTupleCompilation.
       NotInTelescope vret tenv ->
       BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
       GLabelMap.MapsTo fpointer (Axiomatic WTupleADTSpec.Get) env ->
-      {{ [[ `vtup <-- tup as _ ]] :: tenv }}
+      {{ [[ `vtup ->> tup as _ ]] :: tenv }}
         (Seq (Assign vpos (Const (Word.natToWord 32 (proj1_sig (Fin.to_nat idx))))) (Call vret fpointer (vtup :: vpos :: nil)))
-      {{ [[ `vtup <-- tup  as _]]
-           :: [[(NTSome (H := FacadeWrapper_SCA) vret) <-- (match CompileGet_helper idx in _ = W return _ -> W with
+      {{ [[ `vtup ->> tup  as _]]
+           :: [[(NTSome (H := FacadeWrapper_SCA) vret) ->> (match CompileGet_helper idx in _ = W return _ -> W with
                                                         | eq_refl => fun t => t
                                                         end) (ilist2.ith2 tup idx) as _]]
            :: tenv }} ∪ {{ ext }} // env.

@@ -34,7 +34,7 @@ Module BagOfTuples0Compilation
       ~ Word.wlt (Word.natToWord 32 N) (Word.natToWord 32 2) ->
       {{ tenv }}
         Call vret fpointer (vsize :: nil)
-      {{ [[ `vret <-- TreeConstructor N Empty as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> TreeConstructor N Empty as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
   Proof.
     repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
     facade_eauto.
@@ -62,7 +62,7 @@ Module WBagOfTuples0Compilation.
       k (a: A) (b: B) (tenv tenv': Telescope av) ext,
       wrap a = wrap b ->
       TelEq ext tenv tenv' ->
-      TelEq ext ([[ ` k <-- a as _]] :: tenv) ([[ ` k <-- b as _]] :: tenv).
+      TelEq ext ([[ ` k ->> a as _]] :: tenv) ([[ ` k ->> b as _]] :: tenv).
   Proof.
     intros.
     unfold TelEq; SameValues_Fiat_t.
@@ -77,7 +77,7 @@ Module WBagOfTuples0Compilation.
       ~ Word.wlt (Word.natToWord 32 N) (Word.natToWord 32 2) ->
       {{ tenv }}
         Call vret fpointer (vsize :: nil)
-      {{ [[ `vret <-- FiatWBagEmpty N as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
+      {{ [[ `vret ->> FiatWBagEmpty N as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env.
   Proof.
     intros.
     apply generalized CompileNew_helper; try eassumption.
@@ -102,8 +102,8 @@ Module WBagOfTuples0Compilation.
   (*     minFreshIndex (IndexedEnsemble_TupleToListW table) idx -> *)
   (*     {{ tenv }} *)
   (*       Call vret fpointer (vtable :: vtuple :: nil) *)
-  (*     {{ [[ `vret <-- SCAZero as _ ]] *)
-  (*          :: [[ `vtable <-- table as _ ]] *)
+  (*     {{ [[ `vret ->> SCAZero as _ ]] *)
+  (*          :: [[ `vtable ->> table as _ ]] *)
   (*          :: DropName vtable (DropName vret (DropName vtuple tenv)) }} ∪ {{ ext }} // env. *)
   (* Proof. *)
   (*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t). *)
@@ -165,7 +165,7 @@ Module WBagOfTuples0Compilation.
   (*     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) -> *)
   (*     {{ tenv }} *)
   (*       Call vret fpointer (vtable :: nil) *)
-  (*     {{ [[ `vret <-- @nil (FiatWTuple N) as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env. *)
+  (*     {{ [[ `vret ->> @nil (FiatWTuple N) as _ ]] :: DropName vret tenv }} ∪ {{ ext }} // env. *)
   (* Proof. *)
   (*   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || PreconditionSet_t). *)
   (*   facade_eauto. *)
