@@ -61,7 +61,7 @@ Section correctness.
     := (opt.interp_has_parse_term
           (@is_valid_nonterminal _ _)
           (length str)
-          (fun n => Reflective.char_at_matches_interp n str)
+          (fun n => @Reflective.char_at_matches_interp _ _ (pregrammar_idata G) n str)
           (fun n => split_string_for_production n str)
           pnt).
 
@@ -204,16 +204,37 @@ Section correctness.
     refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
     repeat intro.
     unfold step_option_rec.
-    unfold option_rect, sumbool_rect.
-    edestruct Compare_dec.lt_dec;
-      simpl @is_valid_nonterminal; unfold rdp_list_is_valid_nonterminal;
-        [ | edestruct dec; [ | reflexivity ] ].
-    { reified_eq.
-      admit.
-      admit. }
-    { reified_eq.
-      admit.
-      admit. }
+    lazymatch goal with
+    | [ |- option_rect (fun _ : option (interp_SimpleTypeCode ?T0 -> interp_SimpleTypeCode ?T1 -> interp_SimpleTypeCode ?T2 -> interp_SimpleTypeCode ?T3) => _) _ _ ?x = option_rect _ _ _ ?y ]
+        => let x0 := fresh "x" in
+           let y0 := fresh "y" in
+           destruct x as [x0|] eqn:?, y as [y0|] eqn:?;
+             [ let p := fresh "P" in
+               cut ((Proper_relation_for (T0 --> T1 --> T2 --> T3))%signature x0 y0); [ intro p | ]
+             | exfalso
+             | exfalso
+             | reflexivity ]
+    end;
+      [
+      |
+      | edestruct Compare_dec.lt_dec;
+        simpl @is_valid_nonterminal in *; unfold rdp_list_is_valid_nonterminal in *;
+        [ | edestruct dec ];
+        simpl in *;
+        congruence.. ].
+    { unfold option_rect.
+      reified_eq. }
+    { unfold forall_relation, pointwise_relation in *.
+      edestruct Compare_dec.lt_dec;
+      simpl @is_valid_nonterminal in *; unfold rdp_list_is_valid_nonterminal in *;
+      [ | edestruct dec ];
+      simpl in *; try congruence;
+      repeat match goal with
+             | _ => progress subst
+             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+             end.
+      { repeat intro; subst; eauto with nocore. }
+      { repeat intro; subst; eauto with nocore. } }
   Qed.
 
   Lemma parse_nonterminal_reified_opt_interp_correct
