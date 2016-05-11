@@ -26,7 +26,7 @@ Example micro_plus :
   ParametricExtraction
     #vars      x y
     #program   ret (x ⊕ y) (* ⊕ is addition on machine words *)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -42,7 +42,7 @@ Example micro_plus_minus :
   ParametricExtraction
     #vars      x y
     #program   ret (x ⊕ (y ⊖ x)) (* ⊖ is subtraction on machine words *)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -59,7 +59,7 @@ Example micro_min :
   ParametricExtraction
     #vars      x y
     #program   ret (if x ≺ y then x else y)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -80,7 +80,7 @@ Example micro_max :
   ParametricExtraction
     #vars      x y
     #program   ret (if x ≺ y then y else x)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -101,7 +101,7 @@ Example micro_squared_max :
   ParametricExtraction
     #vars      x y
     #program   ret (if x ≺ y then y ⊗ y else x ⊗ x) (* ⊗ is multiplication on machine words *)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -122,7 +122,7 @@ Example micro_make_singleton :
   ParametricExtraction
     #vars      x y
     #program   ret (x :: y :: nil)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -142,7 +142,7 @@ Example micro_duplicate_word :
   ParametricExtraction
     #vars      x
     #program   ret (x :: x :: nil)
-    #arguments [[`"x" ->> x as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -162,7 +162,7 @@ Example micro_sort_pair1 :
   ParametricExtraction
     #vars      x y
     #program   ret (if x ≺ y then x :: y :: nil else y :: x :: nil)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -191,7 +191,7 @@ Example micro_sort_pair2 :
   ParametricExtraction
     #vars      x y
     #program   ret ((if x ≺ y then x else y) :: (if x ≺ y then y else x) :: nil)
-    #arguments [[`"x" ->> x as _ ]] :: [[`"y" ->> y as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: [[`"y" ->> y as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -221,7 +221,7 @@ Example micro_double :
   ParametricExtraction
     #vars      seq
     #program   ret (revmap (fun w => w ⊗ 2) seq)
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -251,7 +251,7 @@ Example micro_nibble_power_of_two :
   ParametricExtraction
     #vars      x
     #program   ret (nibble_power_of_two_p (x ⊕ 1))
-    #arguments [[`"x" ->> x as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -301,7 +301,7 @@ Example micro_nibble_power_of_two__intrinsic :
   ParametricExtraction
     #vars      x
     #program   ret (nibble_power_of_two_p (x ⊕ 1))
-    #arguments [[`"x" ->> x as _ ]] :: Nil
+    #arguments [[`"x" ->> x as _]] :: Nil
     #env       Microbenchmarks_Env ### ("intrinsics", "nibble_pow2") ->> (Axiomatic (FacadeImplementationWW _ nibble_power_of_two_p)).
 Proof.
   _compile.
@@ -319,7 +319,7 @@ Example micro_fold_plus :
   ParametricExtraction
     #vars      seq
     #program   ret (fold_left (@Word.wplus 32) seq 0)
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -342,7 +342,7 @@ Example micro_fold_plus_x :
   ParametricExtraction
     #vars      seq x
     #program   ret (fold_left (@Word.wplus 32) seq x)
-    #arguments [[`"seq" ->> seq as _ ]] :: [[`"x" ->> x as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: [[`"x" ->> x as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -367,7 +367,7 @@ Example micro_fold_reverse :
   ParametricExtraction
     #vars      seq
     #program   ret (List.rev seq)
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -390,7 +390,7 @@ Example micro_fold_flatten_rev :
   ParametricExtraction
     #vars      seqs
     #program   ret (fold_left (fun acc seq => fold_left (fun acc' x => x :: acc') seq acc) seqs nil)
-    #arguments [[`"seqs" ->> seqs as _ ]] :: Nil
+    #arguments [[`"seqs" ->> seqs as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -470,7 +470,7 @@ Example micro_push_random :
     #vars      seq: list W
     #program ( r <- Any;
                ret (r :: seq) )
-    #arguments [[`"out" ->> seq as _ ]] :: Nil
+    #arguments [[`"out" ->> seq as _]] :: Nil
     #env     Microbenchmarks_Env.
 Proof.
   _compile.
@@ -511,7 +511,7 @@ Example micro_randomize :
     #program   fold_left (fun acc elem => ( a <- acc;
                                          r <- Any;
                                          ret (r :: a) )%comp) seq (ret nil)
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -542,7 +542,7 @@ Example micro_double_larger_than_random :
                                     else
                                       w)
                              seq) )
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -574,7 +574,7 @@ Example micro_duplicate_all :
     #vars      (seq: list W)
     #program   ( ret (fold_left (fun acc w => w :: w :: acc)
                                 seq nil) )
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -605,7 +605,7 @@ Example micro_increment_zeroes :
                                             else
                                               w) :: acc)
                                 seq nil) )
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -636,7 +636,7 @@ Example micro_read_baseN :
     #vars      (seq: list W) N
     #program   ( ret (fold_left (fun acc w => ( w ⊗ N) :: acc)
                                 seq nil) )
-    #arguments [[`"seq" ->> seq as _ ]] :: [[`"N" ->> N as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: [[`"N" ->> N as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
@@ -666,7 +666,7 @@ Example micro_drop_larger_than_random :
                                            else
                                              w :: acc)
                                 seq nil) )
-    #arguments [[`"seq" ->> seq as _ ]] :: Nil
+    #arguments [[`"seq" ->> seq as _]] :: Nil
     #env       Microbenchmarks_Env.
 Proof.
   _compile.
