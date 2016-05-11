@@ -29,7 +29,7 @@ Section Term_equiv.
     (forall v1 v2, Term_equiv (vars v1 v2 :: G) (f1 v1) (f2 v2))
     -> Term_equiv G (RLambda f1) (RLambda f2).
 
-  Section ind.
+  Section ind_in.
     Context (P : ctxt -> forall t, Term var1 t -> Term var2 t -> Prop)
             (EqVarCase : forall G t v1 v2,
                 In (vars v1 v2) G -> P G t (#v1)%term (#v2)%term)
@@ -37,6 +37,52 @@ Section Term_equiv.
                 args_for_related_ind (@Term_equiv G) v1 v2
                 -> (forall A vv1 vv2, @aIn2 _ _ A _ vv1 vv2 v1 v2
                                       -> P G A vv1 vv2)
+                -> P G (range_of T) (RLiteralApp f v1) (RLiteralApp f v2))
+            (EqAppCase : forall G t1 t2 f1 x1 f2 x2,
+                Term_equiv G f1 f2
+                -> P G (t1 --> t2)%typecode f1 f2
+                -> Term_equiv G x1 x2
+                -> P G t1 x1 x2
+                -> P G t2 (f1 @ x1)%term (f2 @ x2)%term)
+            (EqLambdaCase : forall G t1 t2 f2 f3,
+                (forall v1 v2, Term_equiv (vars v1 v2 :: G) (f2 v1) (f3 v2))
+                -> (forall v1 v2, P (vars v1 v2 :: G) t2 (f2 v1) (f3 v2))
+                -> P G (t1 --> t2)%typecode (\ x, f2 x)%term (\ x, f3 x)%term).
+
+    Fixpoint Term_equiv_ind_in (c : ctxt) (t : TypeCode) (t0 : Term var1 t) (t1 : Term var2 t)
+             (H : @Term_equiv c t t0 t1)
+      : @P c t t0 t1.
+    Proof.
+      refine match H in @Term_equiv c t t0 t1 return @P c t t0 t1 with
+             | EqVar G t v1 v2 x => EqVarCase _ _ _ x
+             | EqLiteralApp G T f v1 v2 x => EqLiteralAppCase _ x _
+             | EqApp G t1 t2 f1 x1 f2 x2 x x0 => EqAppCase
+                                                   x
+                                                   (@Term_equiv_ind_in _ _ _ _ x)
+                                                   x0
+                                                   (@Term_equiv_ind_in _ _ _ _ x0)
+             | EqLambda G t1 t2 f1 f2 x => EqLambdaCase _ _ x (fun v1 v2 => @Term_equiv_ind_in _ _ _ _ (x v1 v2))
+             end.
+      clear f.
+      induction x as [A B ?? x xs e es IHxs|].
+      { specialize (Term_equiv_ind_in G _ _ _ e).
+        simpl.
+        intros ??? [[pf [H0 H1]]|H'].
+        { destruct pf, H0, H1; simpl.
+          exact Term_equiv_ind_in. }
+        { apply IHxs; assumption. } }
+      { simpl.
+        intros ??? []. }
+    Qed.
+  End ind_in.
+
+  Section ind.
+    Context (P : ctxt -> forall t, Term var1 t -> Term var2 t -> Prop)
+            (EqVarCase : forall G t v1 v2,
+                In (vars v1 v2) G -> P G t (#v1)%term (#v2)%term)
+            (EqLiteralAppCase : forall G T f v1 v2,
+                args_for_related_ind (@Term_equiv G) v1 v2
+                -> args_for_related_ind (@P G) v1 v2
                 -> P G (range_of T) (RLiteralApp f v1) (RLiteralApp f v2))
             (EqAppCase : forall G t1 t2 f1 x1 f2 x2,
                 Term_equiv G f1 f2
@@ -67,12 +113,11 @@ Section Term_equiv.
       induction x as [A B ?? x xs e es IHxs|].
       { specialize (Term_equiv_ind G _ _ _ e).
         simpl.
-        intros ??? [[pf [H0 H1]]|H'].
-        { destruct pf, H0, H1; simpl.
-          exact Term_equiv_ind. }
-        { apply IHxs; assumption. } }
+        constructor.
+        { exact Term_equiv_ind. }
+        { exact IHxs. } }
       { simpl.
-        intros ??? []. }
+        constructor. }
     Qed.
   End ind.
 End Term_equiv.
