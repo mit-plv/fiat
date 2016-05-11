@@ -306,7 +306,7 @@ Qed.
 Local Hint Resolve nil_context meaning_correct reify_correct.
 Theorem polynormalize_correct : forall t (E : polyTerm t),
     Term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
-    -> interp_related (interp_Term (E _)) (interp_Term (polynormalize E _)).
+    -> Proper_relation_for _ (interp_Term (E _)) (interp_Term (polynormalize E _)).
 Proof.
   unfold interp_Term, polynormalize, normalize; eauto.
 Qed.
