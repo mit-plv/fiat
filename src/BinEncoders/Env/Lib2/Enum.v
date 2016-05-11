@@ -52,7 +52,7 @@ Section Enum.
            match word_indexed w t' with
            | Some f => Some (Fin.FS f)
            | None => None
-                end
+           end
        end.
 
   Definition decode_enum (b : B)
@@ -92,7 +92,7 @@ Section Enum.
         case_eq (weqb (nth t t1) h); intros; eauto.
         * apply weqb_true_iff in H0; subst; econstructor.
         * rewrite H0 in H.
-          econstructor 2; apply IHt1.         
+          econstructor 2; apply IHt1.
           destruct (word_indexed (nth t t1) t); try discriminate.
           f_equal; apply Fin.FS_inj; congruence.
   Qed.
@@ -111,7 +111,7 @@ Section Enum.
     rewrite <- H1.
     apply (word_indexed_correct (ibound (indexb data))) in H.
     destruct (word_indexed (nth tb (ibound (indexb data))) tb); intros.
-    rewrite <- H; 
+    rewrite <- H;
     destruct data. destruct indexb. simpl. rewrite <- boundi. reflexivity.
     intuition.
   Qed.
