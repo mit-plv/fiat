@@ -158,7 +158,7 @@ Qed.
 Create HintDb partial_unfold_hints discriminated.
 
 Hint Rewrite <- @interp_Term_syntactify_list @interp_Term_syntactify_nat @List.map_rev : partial_unfold_hints.
-Hint Rewrite @nth'_nth List.map_nth List.map_map List.map_length List.map_id @combine_map_r @combine_map_l @first_index_default_map : partial_unfold_hints.
+Hint Rewrite @nth'_nth List.map_nth List.map_map List.map_length List.map_id @combine_map_r @combine_map_l @first_index_default_map Bool.orb_true_r Bool.orb_true_l Bool.andb_true_l Bool.andb_true_r Bool.orb_false_r Bool.orb_false_l Bool.andb_false_l Bool.andb_false_r BoolFacts.andbr_andb BoolFacts.orbr_orb : partial_unfold_hints.
 Hint Resolve map_ext_in fold_left_app (@constantOf_correct cbool) @first_index_default_first_index_partial : partial_unfold_hints.
 
 Local Ltac meaning_tac_helper' :=
@@ -221,6 +221,84 @@ Proof.
   generalize reify_and_reflect_correct; firstorder.
 Qed.
 
+Lemma args_for_related_related_map {T v1 v2} (f := @meaning _)
+  : (args_for_related
+       (T := T)
+       (fun T (m : Term interp_TypeCode T) (n : Term (normalized_of interp_TypeCode) T)
+        => related (interp_Term m) (f T n))
+       v1 v2)
+    -> (args_for_related (fun T => Proper_relation_for T)
+                          (map_args_for (@interp_Term) v1)
+                          (map_args_for (@interp_Term) (unmeanings (meanings f v2)))).
+Proof.
+  subst f; revert v2.
+  induction v1; intro;
+    pose proof (invert_args_for_ex v2) as H'; simpl in *;
+      [ destruct H' as [? [? ?]] | subst; split; reflexivity ];
+      subst; simpl in *.
+  intros [H0 H1]; split; try assumption;
+    [ | apply IHv1; assumption ]; clear IHv1.
+  apply reify_and_reflect_correct; assumption.
+Qed.
+
+Lemma interp_apply_meaning_helper
+      T f f' (Hf : @related T f f')
+      args args'
+      (Hargs : args_for_related (fun T' m n => related (interp_Term m) (meaning n)) args args')
+  : apply_args_for f (map_args_for (fun _ t => interp_Term t) args)
+    = interp_Term (apply_meaning_helper (meanings (@meaning interp_TypeCode) args') f').
+Proof.
+  apply args_for_related_noind_ind in Hargs.
+  revert f f' Hf.
+  induction Hargs; [ | solve [ simpl; trivial ] ].
+  apply args_for_related_noind_ind in Hargs.
+  simpl in *.
+  eauto with nocore.
+Qed.
+
+Local Ltac simpler_meaning :=
+  repeat match goal with
+         | _ => progress simpler_constantOf
+         | _ => progress simpler_args_for
+         | _ => progress simpl_interp_Term_in_all
+         | _ => progress simpler
+         | _ => progress simpl in *
+         | [ H : ?x = _ |- context[?x] ] => rewrite H
+         | [ H : context[match constantOf ?x with _ => _ end] |- _ ]
+           => destruct (constantOf x) eqn:?
+         end.
+
+Lemma list_rect_nodep_meaning_correct {A : SimpleTypeCode} {P} f f' n n'
+      (Hn : @related P n n')
+      (Hf : @related (A --> clist A --> P --> P) f f')
+      (ls : list (Term interp_TypeCode A))
+  : related (Operations.List.list_rect_nodep n f (List.map (@interp_Term _) ls))
+            (Operations.List.list_rect_nodep n' (fun x xs => f' x (Syntactify.syntactify_list xs)) ls).
+Proof.
+  induction ls; simpl in *; [ assumption | ].
+  apply Hf; eauto using eq_refl, @interp_Term_syntactify_list with nocore.
+Qed.
+
+Hint Resolve @list_rect_nodep_meaning_correct : partial_unfold_hints.
+
+Lemma specific_meaning_correct
+      t r val v1 v2
+      (Hrel : args_for_related
+                (fun T' m n => @related T' (interp_Term m) (meaning n)) v1 v2)
+      (Heq : specific_meaning r (meanings (@meaning interp_TypeCode) v2) = Some val)
+  : interp_Term (@RLiteralApp _ t r v1) = interp_Term val.
+Proof.
+  destruct r; simpl in Heq;
+    unfold specific_meaning_apply1, specific_meaning_apply2 in *;
+    try solve [ simpler_meaning; meaning_tac ].
+  { simpler_meaning; meaning_tac.
+    apply interp_apply_meaning_helper; simpl; try assumption; [].
+    apply list_rect_nodep_meaning_correct; simpl; eauto with nocore.
+    simpler_meaning; meaning_tac. }
+  { simpler_meaning; meaning_tac.
+    rewrite Plus.plus_comm; meaning_tac. }
+Qed.
+
 Local Hint Resolve push_var.
 Lemma meaning_correct
   : forall G t e1 e2,
@@ -230,70 +308,23 @@ Lemma meaning_correct
     -> @related t (interp_Term e1) (meaning e2).
 Proof.
   unfold interp_Term;
-    induction 1 using Term_equiv_ind_in; try solve [ simpler; eauto ].
-  { simpler; unfold interp_Term in *; eauto.
+    induction 1 (*using Term_equiv_ind_in*); try solve [ simpler; eauto ].
+  { simpler.
     repeat match goal with
-           | [ |- _ = _ ] => reflexivity
-           | [ x : args_for _ _ |- _ ] => clear dependent x
+           | [ H : args_for_related_ind _ _ _ |- _ ]
+             => apply args_for_related_noind_ind in H
+           | [ H : args_for_related (fun x y z => ?P -> _) _ _ |- _ ]
+             => setoid_rewrite <- args_for_related_impl in H
+           | _ => progress simpl_interp_Term_in_all
+           | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
            | [ f : RLiteralTerm _ |- _ ] => destruct f
-           | [ f : RLiteralConstructor _ |- _ ] => destruct f
-           | [ f : RLiteralNonConstructor _ |- _ ] => destruct f
-           end;
-      repeat match goal with
-             | _ => progress simpler_constantOf
-             | _ => progress simpler_args_for
-             | _ => progress simpler
-             | [ |- context[constantOf ?x] ]
-               => destruct (constantOf x) eqn:?
-             | [ H : ?v = _ |- context[?v] ]
-               => rewrite H
-             end;
-      change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term) in *.
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac.
-      admit. }
-    { meaning_tac.
-      admit.
-      (*induction (interp_Term (meaning x0)) as [|?? IHxs]; simpl.
-      { eapply apply_args_for_Proper.
-        apply reify_and_reflect_correct; assumption.
-        admit. }
-      { rewrite IHxs.
-        meaning_tac.
-        move x2 at bottom.
-        apply
-
-*)
-
-      (*SearchAbout Operations.List.list_rect_nodep.
-      match goal with
-
-      | [ |- context[Operations.List.list_rect_nodep
-      move x2 at bottom.*)
-       }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. }
-    { meaning_tac. } }
+           | [ |- apply_args_for _ _ = apply_args_for _ _ ]
+             => apply apply_args_for_Proper;
+                  [ apply RLiteralTerm_Proper | apply args_for_related_related_map; assumption ]
+           | [ |- context[specific_meaning ?r ?x] ]
+             => destruct (specific_meaning r x) eqn:?
+           end.
+    eapply specific_meaning_correct; eassumption. }
 Qed.
 
 Lemma nil_context : forall t v1 v2,

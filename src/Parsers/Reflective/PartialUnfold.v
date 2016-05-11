@@ -98,228 +98,188 @@ Section normalization_by_evaluation.
        | noargs _ => fun v => v
        end.
 
-  Fixpoint meaning {T} (t : Term normalized_of T) : normalized_of T.
-  Proof.
-    refine match t in Term _ T return normalized_of T with
-           | RLiteralApp _ l af =>
-             match l with
-             | RLC l'
-               => fun af => RLiteralApp l' (unmeanings af)
-             | RLNC l'
-               => fun af
-                  => match l' in RLiteralNonConstructor T return arg_meanings_for T -> normalized_of (range_of T) -> normalized_of (range_of T) with
-                     | Rfst _ _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         fst default
-                                         (constantOf (ahd af))
-                     | Rsnd _ _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         snd default
-                                         (constantOf (ahd af))
-                     | Rnth' _
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some ls
-                               => List.nth' n ls (ahd (atl (atl af)))
-                             | _, _ => default
-                             end
-                     | Rnth _
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some ls
-                               => List.nth n ls (ahd (atl (atl af)))
-                             | _, _ => default
-                             end
-                     | Rbeq_nat
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n' =>
-                               syntactify_bool var (EqNat.beq_nat n n')
-                             | _, _ => default
-                             end
-                     | Rmap A B
-                       => fun af default
-                          => option_rect
-                               (fun _ => _)
-                               (fun ls => syntactify_list (List.map (ahd af) ls))
-                               default
-                               (constantOf (ahd (atl af)))
-                     | Rfold_left A B
-                       => fun af default
-                          => option_rect
-                               (fun _ => _)
-                               (fun ls =>
-                                  let init := ahd (atl (atl af)) in
-                                  let f := ahd af in
-                                  List.fold_left f ls init)
-                               default
-                               (constantOf (ahd (atl af)))
-                     | Rorb
-                       => fun af default
-                          => match constantOf (ahd af) with
-                             | Some b
-                               => if b then syntactify_bool var true else ahd (atl af)
-                             | _ => default
-                             end
-                     | Randb
-                       => fun af default
-                          => match constantOf (ahd af) with
-                             | Some b
-                               => if b then ahd (atl af) else syntactify_bool var false
-                             | _ => default
-                             end
-                     | Rorbr
-                       => fun af default
-                          => match constantOf (ahd (atl af)) with
-                             | Some b
-                               => if b then syntactify_bool var true else ahd af
-                             | _ => default
-                             end
-                     | Randbr
-                       => fun af default
-                          => match constantOf (ahd (atl af)) with
-                             | Some b
-                               => if b then ahd af else syntactify_bool var false
-                             | _ => default
-                             end
-                     | Rminusr
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n'
-                               => syntactify_nat var (minusr n n')
-                             | _, Some n'
-                               => apply_n n' (fun n0 => RLiteralApp Rpred (n0 :: noargs)) (ahd af)
-                             | _, _ => default
-                             end
-                     | Rpred
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun n => syntactify_nat var (pred n))
-                                         default
-                                         (constantOf (ahd af))
-                     | Rlength _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun ls => syntactify_nat var (List.length ls))
-                                         default
-                                         (constantOf (ahd af))
-                     | Rbool_rect_nodep _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun b : bool
-                                          => if b
-                                             then ahd af
-                                             else ahd (atl af))
-                                         default
-                                         (constantOf (ahd (atl (atl af))))
-                     | Rlist_rect_nodep A P
-                       => fun af default
-                          => option_rect (fun _ => normalized_of (range_of P))
-                                         (fun ls
-                                          => apply_meaning_helper
-                                               (atl (atl (atl af)))
-                                               (list_rect_nodep
-                                                  (ahd af)
-                                                  (fun x xs => ahd (atl af) x (syntactify_list xs))
-                                                  ls))
-                                         default
-                                         (constantOf (ahd (atl (atl af))))
-                     | Rlist_caset_nodep _ _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun ls
-                                          => list_caset_nodep
-                                               (ahd af)
-                                               (fun x xs => ahd (atl af) x (syntactify_list xs))
-                                               ls)
-                                         default
-                                         (constantOf (ahd (atl (atl af))))
-                     | Rleb
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n' =>
-                               syntactify_bool var (Compare_dec.leb n n')
-                             | _, _ => default
-                             end
-                     | Rcombine _ _
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some ls1, Some ls2 =>
-                               syntactify_list
-                                 (List.map
-                                    (fun p => RLiteralApp
-                                                Rpair
-                                                (fst p :: snd p :: noargs))
-                                    (List.combine ls1 ls2))
-                             | _, _ => default
-                             end
-                     | Rrev _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun ls => syntactify_list (List.rev ls))
-                                         default
-                                         (constantOf (ahd af))
-                     | Rup_to
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun n
-                                          => syntactify_list (List.map (syntactify_nat var) (List.up_to n)))
-                                         default
-                                         (constantOf (ahd af))
-                     | Rplus
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n'
-                               => syntactify_nat var (plus n n')
-                             | Some n, _
-                               => apply_n n (fun n0 => RLiteralApp RS (n0 :: noargs)) (ahd (atl af))
-                             | _, _ => default
-                             end
-                     | Rmax
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n'
-                               => syntactify_nat var (max n n')
-                             | _, _ => default
-                             end
-                     | Rritem_rect_nodep _
-                       => fun af default
-                          => option_rect (fun _ => _)
-                                         (fun v
-                                          => Reflective.ritem_rect_nodep
-                                               (fun x => ahd af (syntactify_rchar_expr_ascii var x))
-                                               (fun s => ahd (atl af) (syntactify_string var s))
-                                               v)
-                                         default
-                                         (constantOf (ahd (atl (atl af))))
-                     | Rfirst_index_default _
-                       => fun af default
-                          => match constantOf (ahd (atl af)), constantOf (ahd (atl (atl af))) with
-                             | Some v, Some ls =>
-                               let f := ahd af in
-                               match first_index_default_partial (fun a => constantOf (f a)) v ls with
-                               | None => default
-                               | Some n => syntactify_nat var n
-                               end
-                             | _, _ => default
-                             end
-                     | Rinterp_RCharExpr_ascii => fun af default => default
-                     | Rstring_beq
-                       => fun af default
-                          => match constantOf (ahd af), constantOf (ahd (atl af)) with
-                             | Some n, Some n' =>
-                               syntactify_bool var (Equality.string_beq n n')
-                             | _, _ => default
-                             end
-                     end af (RLiteralApp l' (unmeanings af))
-             end (meanings (@meaning) af)
-           | RLambda _ _ f => fun x => @meaning _ (f x)
-           | RVar _ v => v
-           | RApp _ _ f x => @meaning _ f (@meaning _ x)
-           end.
-  Defined.
+  Definition specific_meaning_apply1 {A : SimpleTypeCode} {B} {B'}
+             (syntactify : B' -> normalized_of (range_of B))
+             (f : onelevelG A -> B')
+             (args : arg_meanings_for (A --> B))
+    : option (normalized_of (range_of (A --> B)))
+      := option_map (fun v => syntactify (f v)) (constantOf (ahd args)).
+  Global Arguments specific_meaning_apply1 _ _ {_} _ _ _.
+
+  Definition specific_meaning_apply2 {A B : SimpleTypeCode} {C} {C'}
+             (syntactify : C' -> normalized_of (range_of C))
+             (f : onelevelG A -> onelevelG B -> C')
+             (args : arg_meanings_for (A --> B --> C))
+    : option (normalized_of (range_of (A --> B --> C)))
+      := match constantOf (ahd args), constantOf (ahd (atl args)) with
+         | Some v0, Some v1 => Some (syntactify (f v0 v1))
+         | _, _ => None
+         end.
+  Global Arguments specific_meaning_apply2 _ _ _ {_} _ _ _.
+
+  Definition specific_meaning {T} (t : RLiteralNonConstructor T)
+    : arg_meanings_for T -> option (normalized_of (range_of T))
+    := match t in RLiteralNonConstructor T return arg_meanings_for T -> option (normalized_of (range_of T)) with
+       | Rfst _ _ => specific_meaning_apply1 (cprod _ _) (csimple _) (fun x => x) fst
+       | Rsnd _ _ => specific_meaning_apply1 (cprod _ _) (csimple _) (fun x => x) snd
+       | Rnth' _
+         => fun af
+            => specific_meaning_apply2
+                 cnat (clist _) (_ --> csimple _) (fun x => x)
+                 (fun n ls => List.nth' n ls (ahd (atl (atl af))))
+                 af
+       | Rnth _
+         => fun af
+            => specific_meaning_apply2
+                 cnat (clist _) (_ --> csimple _) (fun x => x)
+                 (fun n ls => List.nth n ls (ahd (atl (atl af))))
+                 af
+       | Rbeq_nat
+         => specific_meaning_apply2
+              cnat cnat cbool (syntactify_bool _)
+              EqNat.beq_nat
+       | Rmap A B
+         => fun af
+            => option_map (@syntactify_list _ _)
+                          (option_map (List.map (ahd af))
+                                      (constantOf (ahd (atl af))))
+       | Rfold_left A B
+         => fun af
+            => option_map
+                 (fun ls =>
+                    let init := ahd (atl (atl af)) in
+                    let f := ahd af in
+                    List.fold_left f ls init)
+                 (constantOf (ahd (atl af)))
+       | Rorb | Rorbr
+         => fun af
+            => match constantOf (ahd af), constantOf (ahd (atl af)) with
+               | Some b, _
+                 => Some (if b then syntactify_bool var true else ahd (atl af))
+               | _, Some b
+                 => Some (if b then syntactify_bool var true else ahd af)
+               | None, None => None
+               end
+       | Randb | Randbr
+         => fun af
+            => match constantOf (ahd af), constantOf (ahd (atl af)) with
+               | Some b, _
+                 => Some (if b then ahd (atl af) else syntactify_bool var false)
+               | _, Some b
+                 => Some (if b then ahd af else syntactify_bool var false)
+               | None, None => None
+               end
+       | Rminusr
+         => fun af
+            => match constantOf (ahd af), constantOf (ahd (atl af)) with
+               | Some n, Some n'
+                 => Some (syntactify_nat var (minusr n n'))
+               | _, Some n'
+                 => Some (apply_n n' (fun n0 => RLiteralApp Rpred (n0 :: noargs)) (ahd af))
+               | _, _ => None
+               end
+       | Rpred
+         => specific_meaning_apply1
+              cnat cnat (syntactify_nat _)
+              pred
+       | Rlength _
+         => specific_meaning_apply1
+              (clist _) cnat (syntactify_nat _)
+              (@List.length _)
+       | Rbool_rect_nodep _
+         => fun af
+            => option_map (fun b : bool
+                           => if b
+                              then ahd af
+                              else ahd (atl af))
+                          (constantOf (ahd (atl (atl af))))
+       | Rlist_rect_nodep A P
+         => fun af
+            => option_map (fun ls
+                           => apply_meaning_helper
+                                (atl (atl (atl af)))
+                                (list_rect_nodep
+                                   (ahd af)
+                                   (fun x xs => ahd (atl af) x (syntactify_list xs))
+                                   ls))
+                          (constantOf (ahd (atl (atl af))))
+       | Rlist_caset_nodep _ _
+         => fun af
+            => option_map (fun ls
+                           => list_caset_nodep
+                                (ahd af)
+                                (fun x xs => ahd (atl af) x (syntactify_list xs))
+                                ls)
+                          (constantOf (ahd (atl (atl af))))
+       | Rleb
+         => specific_meaning_apply2
+              cnat cnat cbool (syntactify_bool _)
+              Compare_dec.leb
+       | Rcombine _ _
+         => specific_meaning_apply2
+              (clist _) (clist _) (clist _) (fun ls => syntactify_list (List.map (@syntactify_prod _ _ _) ls))
+              (@List.combine _ _)
+       | Rrev _
+         => specific_meaning_apply1 (clist _) (csimple _) (@syntactify_list _ _) (@List.rev _)
+       | Rup_to
+         => specific_meaning_apply1
+              cnat (clist _) (fun ls => syntactify_list (List.map (@syntactify_nat _) ls))
+              List.up_to
+       | Rplus
+         => fun af
+            => match constantOf (ahd af), constantOf (ahd (atl af)) with
+               | Some n, Some n'
+                 => Some (syntactify_nat var (plus n n'))
+               | Some n, _
+                 => Some (apply_n n (fun n0 => RLiteralApp RS (n0 :: noargs)) (ahd (atl af)))
+               | _, Some n'
+                 => Some (apply_n n' (fun n0 => RLiteralApp RS (n0 :: noargs)) (ahd af))
+               | None, None => None
+               end
+       | Rmax
+         => specific_meaning_apply2
+              cnat cnat cnat (syntactify_nat _)
+              max
+       | Rritem_rect_nodep _
+         => fun af
+            => option_map (fun v
+                           => Reflective.ritem_rect_nodep
+                                (fun x => ahd af (syntactify_rchar_expr_ascii var x))
+                                (fun s => ahd (atl af) (syntactify_string var s))
+                                v)
+                          (constantOf (ahd (atl (atl af))))
+       | Rfirst_index_default _
+         => fun af
+            => match constantOf (ahd (atl af)), constantOf (ahd (atl (atl af))) with
+               | Some v, Some ls =>
+                 let f := ahd af in
+                 option_map (syntactify_nat var)
+                            (first_index_default_partial (fun a => constantOf (f a)) v ls)
+               | _, _ => None
+               end
+       | Rstring_beq
+         => specific_meaning_apply2
+              cstring cstring cbool (syntactify_bool _)
+              Equality.string_beq
+       | Rinterp_RCharExpr_ascii => fun _ => None
+       end.
+
+  Fixpoint meaning {T} (t : Term normalized_of T) : normalized_of T
+      := match t in Term _ T return normalized_of T with
+         | RLiteralApp _ l af =>
+           match l with
+           | RLC l'
+             => fun af => RLiteralApp l' (unmeanings af)
+           | RLNC l'
+             => fun af => option_rect (fun _ => _)
+                                      (fun x => x)
+                                      (RLiteralApp l' (unmeanings af))
+                                      (specific_meaning l' af)
+           end (meanings (@meaning) af)
+         | RLambda _ _ f => fun x => @meaning _ (f x)
+         | RVar _ v => v
+         | RApp _ _ f x => @meaning _ f (@meaning _ x)
+         end.
 
   Definition normalize {T} (term : Term normalized_of T) : Term var T := reify (meaning term).
 End normalization_by_evaluation.
