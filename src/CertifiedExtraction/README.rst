@@ -14,13 +14,13 @@ Setting up
 
 1. Bedrock::
 
-     git clone --recursive git@github.mit.edu/plv/bedrock.git
+     git clone --recursive git@github.mit.edu:plv/bedrock.git --branch facade-generic-specs
      make -C bedrock -j4 qsfacade
 
 2. Fiat::
 
      export COQPATH=PATH_TO_BEDROCK_CLONE
-     git clone --recursive git@github.mit.edu/plv/fiat.git
+     git clone --recursive git@github.mit.edu:plv/fiat.git --branch binencoders-compiler
      make -C fiat -j4 extraction
 
 Browsing the code
@@ -52,5 +52,5 @@ Here is an outline of the CertifiedExtraction folder::
 Diving in
 ---------
 
-To get started, open ./Benchmarks/MicrobenchmarksAnnotated.v.  That file contains
-a enough explanations to start stepping through examples.
+The file ./Benchmarks/MicrobenchmarksAnnotated.v contains a short introduction
+and a collection of simple compilation examples.
