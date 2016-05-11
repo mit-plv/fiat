@@ -212,7 +212,7 @@ Lemma meaning_correct
     -> @related t (interp_Term e1) (meaning e2).
 Proof.
   unfold interp_Term;
-  induction 1; try solve [ simpler; eauto ].
+    induction 1 using Term_equiv_ind_in; try solve [ simpler; eauto ].
   { simpler; unfold interp_Term in *; eauto.
     repeat match goal with
            | [ |- _ = _ ] => reflexivity
