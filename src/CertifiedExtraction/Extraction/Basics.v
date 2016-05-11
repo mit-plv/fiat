@@ -48,6 +48,24 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
+Lemma ProgOk_Transitivity_First :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
+    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env ->
+    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env.
+Proof.
+  SameValues_Facade_t.
+Qed.
+
+Lemma ProgOk_Transitivity_First_defunc :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
+    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env ->
+    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env.
+Proof.
+  intros; apply ProgOk_Transitivity_First; assumption.
+Qed.
+
 Lemma ProgOk_Transitivity_Cons :
   forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v: Comp A),
     {{ t1 }}                     prog1      {{ [[k <~~ v as _]]::t1 }}     ∪ {{ ext }} // env ->
@@ -55,6 +73,15 @@ Lemma ProgOk_Transitivity_Cons :
     {{ t1 }}                Seq prog1 prog2 {{ [[k <~~ v as kk]]::t2 kk }} ∪ {{ ext }} // env.
 Proof.
   SameValues_Facade_t.
+Qed.
+
+Lemma ProgOk_Transitivity_Cons_defunc :
+  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v: Comp A),
+    {{ t1 }}                     prog1      {{ [[k <~~ v as _]]::t1 }}     ∪ {{ ext }} // env ->
+    {{ [[k <~~ v as _]]::t1 }}      prog2      {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env ->
+    {{ t1 }}                Seq prog1 prog2 {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env.
+Proof.
+  intros; apply ProgOk_Transitivity_Cons; assumption.
 Qed.
 
 Lemma ProgOk_Transitivity_Name :

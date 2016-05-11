@@ -102,6 +102,8 @@ Tactic Notation "debug" constr(m1) constr(m2) :=
 Hint Extern 1 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
 Hint Extern 1 (_ ∉ _) => decide_not_in : SameValues_db.
 
+Create HintDb compile_do_side_conditions_db discriminated.
+
 Ltac compile_do_side_conditions_internal :=
   repeat cleanup; PreconditionSet_t;
    match goal with
@@ -109,10 +111,12 @@ Ltac compile_do_side_conditions_internal :=
    | |- _ <> _ => discriminate 1
    | |- _ <> _ => congruence
    | |- _ ∉ _ => decide_not_in
+   | |- TelEq _ _ _ => decide_TelEq_instantiate
    | |- NotInTelescope _ _ => decide_NotInTelescope
    | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
    | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
    | |- GLabelMap.MapsTo _ _ _ => GLabelMapUtils.decide_mapsto_maybe_instantiate
+   | _ => auto with compile_do_side_conditions_db
    end.
 
 Ltac compile_do_side_conditions :=
@@ -120,7 +124,7 @@ Ltac compile_do_side_conditions :=
 
 Ltac match_ProgOk continuation :=
   lazymatch goal with
-  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext env | fail]
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => idtac; continuation prog pre post ext env
   | _ => fail "Goal does not look like a ProgOk statement"
   end.
 

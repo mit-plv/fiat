@@ -6,8 +6,8 @@ Require Export Bedrock.Platform.Facade.examples.TuplesF.
 Require Export CertifiedExtraction.Utils.
 Require Export Bedrock.Memory.
 
-Notation BedrockElement := (@TuplesF.IndexedElement (list W)).
-Notation BedrockBag := (@TuplesF.IndexedEnsemble (list W)).
+Notation BedrockWElement := (@TuplesF.IndexedElement (GenericTuple W)).
+Notation BedrockWBag := (@TuplesF.IndexedEnsemble (GenericTuple W)).
 
 Fixpoint MakeVectorOfW N : Vector.t Type N :=
   match N with
@@ -19,9 +19,9 @@ Definition MakeWordHeading (N: nat) :=
   {| NumAttr := N;
      AttrList := MakeVectorOfW N |}.
 
-Notation FiatTuple N := (@RawTuple (MakeWordHeading N)).
-Notation FiatElement N := (@IndexedEnsembles.IndexedElement (FiatTuple N)).
-Notation FiatBag N := (@IndexedEnsembles.IndexedEnsemble (FiatTuple N)).
+Notation FiatWTuple N := (@RawTuple (MakeWordHeading N)).
+Notation FiatWElement N := (@IndexedEnsembles.IndexedElement (FiatWTuple N)).
+Notation FiatWBag N := (@IndexedEnsembles.IndexedEnsemble (FiatWTuple N)).
 
 Lemma MakeWordHeading_allWords :
   forall {N} (idx: Fin.t N),

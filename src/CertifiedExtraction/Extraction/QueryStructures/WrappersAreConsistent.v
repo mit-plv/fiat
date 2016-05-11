@@ -4,7 +4,7 @@ Require Import CertifiedExtraction.FacadeWrappers.
 Require Import CertifiedExtraction.Core.
 Require Import Bedrock.Memory.
 
-(* FIXME: Just embed the definition of ‘Good’ into the ‘Wrapper’ typeclass *)
+(* FIXME: Just embed the definition of ‘Good’ into the ‘FacadeWrapper’ typeclass *)
 
 Definition Good_bool {av}
   : GoodWrapper av bool.
@@ -21,10 +21,10 @@ Proof.
     simpl; eauto.
 Defined.
 
-Definition Good_BedrockTuple
-  : GoodWrapper QsADTs.ADTValue (list W).
+Definition Good_BedrockWTuple
+  : GoodWrapper QsADTs.ADTValue (TuplesF.GenericTuple W).
 Proof.
-  refine {| gWrap := WrapInstance (H := QS_WrapBedrockTuple);
+  refine {| gWrap := WrapInstance (H := QS_WrapBedrockWTuple);
             gWrapTag := true
          |}; intros; unfold wrap; simpl; eauto.
 Defined.
@@ -36,4 +36,3 @@ Proof.
             gWrapTag := false
          |}; intros; unfold wrap; simpl; eauto.
 Defined.
-

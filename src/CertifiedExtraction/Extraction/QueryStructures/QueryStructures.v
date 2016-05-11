@@ -29,7 +29,7 @@ Definition BagSanityConditions {N} tbl :=
   /\ exists idx, TuplesF.minFreshIndex (IndexedEnsemble_TupleToListW tbl) idx.
 
 Lemma Lift_Ensemble :
-  forall n r idx (el: FiatTuple n),
+  forall n r idx (el: FiatWTuple n),
     Ensembles.In _ r
                  {| IndexedEnsembles.elementIndex := idx;
                     IndexedEnsembles.indexedElement := el |} <->
@@ -48,7 +48,7 @@ Proof.
 Qed.
 
 Lemma BagSanityConditions_Add:
-  forall n (r : FiatBag n) el,
+  forall n (r : FiatWBag n) el,
     TuplesF.functional (IndexedEnsemble_TupleToListW r) ->
     IndexedEnsembles.UnConstrFreshIdx r (IndexedEnsembles.elementIndex el) ->
     BagSanityConditions (Ensembles.Add IndexedEnsembles.IndexedElement r el).
@@ -134,13 +134,15 @@ Ltac _compile_CallBagFind :=
                   | (Some ?v, (None, fun _ => true)) =>
                     let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
                     match vkwd with
-                    | Some ?vkwd => apply (CompileTuples2_findFirst_spec (* FIXME get (Fin.FS Fin.F1) generically *)
+                    | Some ?vkwd => apply (WBagOfTuples2Compilation.CompileFindFirst_spec
+                                            (* FIXME get (Fin.FS Fin.F1) generically *)
                                             (Fin.FS Fin.F1) (vkey := vkwd) _ (table := prim_fst db))
                     end
                   | (None, (Some ?v, fun _ => true)) =>
                     let vkwd := find_fast (wrap (WrappingType := Value QsADTs.ADTValue) v) ext in
                     match vkwd with
-                    | Some ?vkwd => apply (CompileTuples2_findSecond_spec (* FIXME get (Fin.F1) generically *)
+                    | Some ?vkwd => apply (WBagOfTuples2Compilation.CompileFindSecond_spec
+                                            (* FIXME get (Fin.F1) generically *)
                                             _ (Fin.F1) (vkey := vkwd) (table := prim_fst db))
                     end
                   end | ]
@@ -152,9 +154,9 @@ Ltac _compile_length :=
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
             | (?pre, Cons ?k (ret (bool2w (EqNat.beq_nat (Datatypes.length (rev ?seq)) 0))) (fun _ => ?pre')) =>
-              let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapTupleList)) seq) ext in
+              let vlst := find_fast (wrap (FacadeWrapper := WrapInstance (H := QS_WrapFiatWTupleList)) seq) ext in
               match vlst with
-              | Some ?vlst => eapply (CompileTupleList_Empty_spec (vlst := vlst))
+              | Some ?vlst => eapply (WTupleListCompilation.CompileEmpty_spec (vlst := vlst))
               end
             end).
 
@@ -173,8 +175,8 @@ Ltac _compile_CallBagInsert := (* FIXME should do the insert in the second branc
                   (* match pre with *)
                   change (ilist2.icons2 a (ilist2.icons2 b (ilist2.icons2 c ilist2.inil2))) with (ListWToTuple [[[a; b; c]]]);
                     apply CompileSeq with (Cons (NTSome (H := h) vrep) (ret db)
-                                                (fun _ => Cons (NTSome (H := WrapInstance (H := QS_WrapTuple)) vtup) (ret ((ListWToTuple [[[a; b; c]]]): FiatTuple 3)) (fun _ => tenv)));
-                    [ | eapply CompileSeq; [ let vtmp := gensym "vtmp" in eapply (CompileTuples2_insert_spec (vtmp := vtmp)) | ] ]
+                                                (fun _ => Cons (NTSome (H := WrapInstance (H := WTupleCompilation.FiatWrapper)) vtup) (ret ((ListWToTuple [[[a; b; c]]]): FiatWTuple 3)) (fun _ => tenv)));
+                    [ | eapply CompileSeq; [ let vtmp := gensym "vtmp" in eapply (WBagOfTuples2Compilation.CompileInsert_spec (vtmp := vtmp)) | ] ]
                 end
             end).
 
@@ -193,7 +195,7 @@ Ltac _compile_allocTuple :=
             match constr:((pre, post)) with
             | (?pre, Cons ?k (ret ?tup) (fun _ => ?pre)) =>
               match type of tup with
-              | FiatTuple _ =>
+              | FiatWTuple _ =>
                 let v1 := gensym "v1" in
                 let v2 := gensym "v2" in
                 let v3 := gensym "v3" in
@@ -202,7 +204,7 @@ Ltac _compile_allocTuple :=
                 let o3 := gensym "o3" in
                 let vlen := gensym "vlen" in
                 let vtmp := gensym "vtmp" in
-                apply (CompileTuple_new_spec (v1 := "v1") (v2 := "v2") (v3 := "v3") (o1 := "o1") (o2 := "o2") (o3 := "o3") (vlen := "vlen") (vtmp := "vtmp")); try explode 6
+                apply (WTupleCompilation.CompileNew_spec (v1 := "v1") (v2 := "v2") (v3 := "v3") (o1 := "o1") (o2 := "o2") (o3 := "o3") (vlen := "vlen") (vtmp := "vtmp")); try explode 6
               end
             end).
 
@@ -212,11 +214,13 @@ Ltac _compile_destructor_unsafe vtmp tenv tenv' ::=
      let vtest := gensym "test" in
      let vhead := gensym "head" in
      first [ unify tenv tenv';
-             apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
-                                                    (vtest := vtest) (vhead := vhead))
+             apply (WTupleListCompilation.CompileDeleteAny_spec
+                      (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                      (vtest := vtest) (vhead := vhead))
            | eapply CompileSeq;
-             [ apply (CompileTupleList_DeleteAny_spec (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
-                                                      (vtest := vtest) (vhead := vhead)) | ] ].
+             [ apply (WTupleListCompilation.CompileDeleteAny_spec
+                        (N := 3) (vtmp := vtmp) (vtmp2 := vtmp2) (vsize := vsize)
+                        (vtest := vtest) (vhead := vhead)) | ] ].
 
 Lemma map_rev_def :
   forall {A B} f seq,
@@ -235,7 +239,8 @@ Ltac _compile_map ::= (* ‘_compile_map’ from the stdlib uses generic push-po
              match constr:((pre, post)) with
              | (Cons (NTSome ?vseq) (ret ?seq) ?tenv, Cons (NTSome ?vret) (ret (revmap _ ?seq')) ?tenv') =>
                unify seq seq';
-               apply (CompileMap_TuplesToWords (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
+               apply (WTupleListCompilation.CompileMap_TuplesToWords
+                        (N := 3) seq (vhead := vhead) (vhead' := vhead') (vtest := vtest) (vtmp := vtmp))
              end).
 
 Ltac _compile_get :=
@@ -249,10 +254,10 @@ Ltac _compile_get :=
                 eapply CompileSeq with (Cons (NTSome (H:=h) k) (ret tup)
                                              (fun a => Cons (NTSome (H:=h') k') (ret (ilist2.ith2 tup' idx'))
                                                          (fun _ => tenv a)));
-                  [ apply (CompileTuple_Get_spec (N := 3) tup' idx' (vpos := vpos)) |
+                  [ apply (WTupleCompilation.CompileGet_spec (N := 3) tup' idx' (vpos := vpos)) |
                     let vtmp := gensym "tmp" in
                     let vsize := gensym "size" in
-                    apply (CompileTuple_Delete_spec (vtmp := vtmp) (vsize := vsize)) ]
+                    apply (WTupleCompilation.CompileDelete_spec (vtmp := vtmp) (vsize := vsize)) ]
             end).
 
 Lemma GLabelMapFacts_map_add_1 :
@@ -439,42 +444,42 @@ Transparent Vector.to_list.
 
 Definition QSEnv_Ax : GLabelMap.t (AxiomaticSpec QsADTs.ADTValue) :=
   (GLabelMap.empty _)
-  ### ("ADT", "Tuple_new") ->> (QsADTs.Tuple_new)
-  ### ("ADT", "Tuple_delete") ->> (QsADTs.Tuple_delete)
-  ### ("ADT", "Tuple_copy") ->> ( QsADTs.Tuple_copy)
-  ### ("ADT", "Tuple_get") ->> ( QsADTs.Tuple_get)
-  ### ("ADT", "Tuple_set") ->> ( QsADTs.Tuple_set)
+  ### ("ADT", "WordList_new") ->> (QsADTs.WordListADTSpec.New)
+  ### ("ADT", "WordList_delete") ->> (QsADTs.WordListADTSpec.Delete)
+  ### ("ADT", "WordList_pop") ->> (QsADTs.WordListADTSpec.Pop)
+  ### ("ADT", "WordList_empty") ->> (QsADTs.WordListADTSpec.Empty)
+  ### ("ADT", "WordList_push") ->> (QsADTs.WordListADTSpec.Push)
+  ### ("ADT", "WordList_copy") ->> (QsADTs.WordListADTSpec.Copy)
+  ### ("ADT", "WordList_rev") ->> (QsADTs.WordListADTSpec.Rev)
+  ### ("ADT", "WordList_length") ->> (QsADTs.WordListADTSpec.Length)
 
-  ### ("ADT", "WordList_new") ->> ( QsADTs.WordList_new)
-  ### ("ADT", "WordList_delete") ->> ( QsADTs.WordList_delete)
-  ### ("ADT", "WordList_pop") ->> ( QsADTs.WordList_pop)
-  ### ("ADT", "WordList_empty") ->> ( QsADTs.WordList_empty)
-  ### ("ADT", "WordList_push") ->> ( QsADTs.WordList_push)
-  ### ("ADT", "WordList_copy") ->> ( QsADTs.WordList_copy)
-  ### ("ADT", "WordList_rev") ->> ( QsADTs.WordList_rev)
-  ### ("ADT", "WordList_length") ->> ( QsADTs.WordList_length)
+  ### ("ADT", "WTuple_new") ->> (QsADTs.WTupleADTSpec.New)
+  ### ("ADT", "WTuple_delete") ->> (QsADTs.WTupleADTSpec.Delete)
+  ### ("ADT", "WTuple_copy") ->> (QsADTs.WTupleADTSpec.Copy)
+  ### ("ADT", "WTuple_get") ->> (QsADTs.WTupleADTSpec.Get)
+  ### ("ADT", "WTuple_put") ->> (QsADTs.WTupleADTSpec.Put)
 
-  ### ("ADT", "TupleList_new") ->> ( QsADTs.TupleList_new)
-  ### ("ADT", "TupleList_delete") ->> ( QsADTs.TupleList_delete)
-  ### ("ADT", "TupleList_copy") ->> ( QsADTs.TupleList_copy)
-  ### ("ADT", "TupleList_pop") ->> ( QsADTs.TupleList_pop)
-  ### ("ADT", "TupleList_empty") ->> ( QsADTs.TupleList_empty)
-  ### ("ADT", "TupleList_push") ->> ( QsADTs.TupleList_push)
-  ### ("ADT", "TupleList_rev") ->> ( QsADTs.TupleList_rev)
-  ### ("ADT", "TupleList_length") ->> ( QsADTs.TupleList_length)
+  ### ("ADT", "WTupleList_new") ->> (QsADTs.WTupleListADTSpec.New)
+  ### ("ADT", "WTupleList_delete") ->> (QsADTs.WTupleListADTSpec.Delete)
+  ### ("ADT", "WTupleList_copy") ->> (QsADTs.WTupleListADTSpec.Copy)
+  ### ("ADT", "WTupleList_pop") ->> (QsADTs.WTupleListADTSpec.Pop)
+  ### ("ADT", "WTupleList_empty") ->> (QsADTs.WTupleListADTSpec.Empty)
+  ### ("ADT", "WTupleList_push") ->> (QsADTs.WTupleListADTSpec.Push)
+  ### ("ADT", "WTupleList_rev") ->> (QsADTs.WTupleListADTSpec.Rev)
+  ### ("ADT", "WTupleList_length") ->> (QsADTs.WTupleListADTSpec.Length)
 
-  ### ("ADT", "Tuples0_new") ->> ( QsADTs.Tuples0_new)
-  ### ("ADT", "Tuples0_insert") ->> ( QsADTs.Tuples0_insert)
-  ### ("ADT", "Tuples0_enumerate") ->> ( QsADTs.Tuples0_enumerate)
+  ### ("ADT", "WBagOfTuples0_new") ->> (QsADTs.WBagOfTuples0ADTSpec.New)
+  ### ("ADT", "WBagOfTuples0_insert") ->> (QsADTs.WBagOfTuples0ADTSpec.Insert)
+  ### ("ADT", "WBagOfTuples0_enumerate") ->> (QsADTs.WBagOfTuples0ADTSpec.Enumerate)
 
-  ### ("ADT", "Tuples1_new") ->> ( QsADTs.Tuples1_new)
-  ### ("ADT", "Tuples1_insert") ->> ( QsADTs.Tuples1_insert)
-  ### ("ADT", "Tuples1_find") ->> ( QsADTs.Tuples1_find)
-  ### ("ADT", "Tuples1_enumerate") ->> ( QsADTs.Tuples1_enumerate)
+  ### ("ADT", "WBagOfTuples1_new") ->> (QsADTs.WBagOfTuples1ADTSpec.New)
+  ### ("ADT", "WBagOfTuples1_insert") ->> (QsADTs.WBagOfTuples1ADTSpec.Insert)
+  ### ("ADT", "WBagOfTuples1_find") ->> (QsADTs.WBagOfTuples1ADTSpec.Find)
+  ### ("ADT", "WBagOfTuples1_enumerate") ->> (QsADTs.WBagOfTuples1ADTSpec.Enumerate)
 
-  ### ("ADT", "Tuples2_new") ->> ( QsADTs.Tuples2_new)
-  ### ("ADT", "Tuples2_insert") ->> ( QsADTs.Tuples2_insert)
-  ### ("ADT", "Tuples2_findBoth") ->> ( QsADTs.Tuples2_findBoth)
-  ### ("ADT", "Tuples2_findFirst") ->> ( QsADTs.Tuples2_findFirst)
-  ### ("ADT", "Tuples2_findSecond") ->> ( QsADTs.Tuples2_findSecond)
-  ### ("ADT", "Tuples2_enumerate") ->> ( QsADTs.Tuples2_enumerate).
+  ### ("ADT", "WBagOfTuples2_new") ->> (QsADTs.WBagOfTuples2ADTSpec.New)
+  ### ("ADT", "WBagOfTuples2_insert") ->> (QsADTs.WBagOfTuples2ADTSpec.Insert)
+  ### ("ADT", "WBagOfTuples2_findBoth") ->> (QsADTs.WBagOfTuples2ADTSpec.FindBoth)
+  ### ("ADT", "WBagOfTuples2_findFirst") ->> (QsADTs.WBagOfTuples2ADTSpec.FindFirst)
+  ### ("ADT", "WBagOfTuples2_findSecond") ->> (QsADTs.WBagOfTuples2ADTSpec.FindSecond)
+  ### ("ADT", "WBagOfTuples2_enumerate") ->> (QsADTs.WBagOfTuples2ADTSpec.Enumerate).

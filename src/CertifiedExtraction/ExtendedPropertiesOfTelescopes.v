@@ -257,6 +257,8 @@ Ltac decide_TelEq_instantiate_step :=
     match constr:((from, to)) with
     | _ => rewrite DropName_Cons_Some_eq by congruence
     | _ => rewrite DropName_Cons_Some_neq by congruence
+    (* We need to descend on each side to ensure that we remove [DropName]s *)
+    (* | _ => (is_evar from || is_evar to); apply TelEq_refl *)
     | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
     | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
     | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros

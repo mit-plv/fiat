@@ -10,49 +10,7 @@ Require Import CertifiedExtraction.Extraction.External.FacadeLoops.
 
 (* FIXME Rename SameValues_remove_SCA to SameValues_remove_W *)
 
-Ltac decide_NotInTelescope ::=  (* FIXME merge *)
-  progress repeat match goal with
-                  | _ => cleanup
-                  | _ => congruence
-                  | [  |- NotInTelescope _ Nil ] => reflexivity
-                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
-                  | _ => auto 1  (* Added for tricky cases like CompileLoopBase2 *)
-                  end.
-
-Ltac compile_simple_inplace ::=
-  match_ProgOk                (* FIXME merge this upstream (made it faster in the failing case) *)
-  ltac:(fun prog pre post ext env =>
-          match post with
-          | Cons (NTSome ?s) (ret (?op ?a' ?b)) ?tenv' =>
-            match pre with
-            | context[Cons (NTSome ?s) (ret ?a) _] =>
-              unify a a';
-              is_word (op a b);
-              let facade_op := translate_op op in
-              move_to_front s;
-              first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
-                    | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
-            end
-          end).
-
-Ltac decide_TelEq_instantiate_step ::= (* FIXME merge  *)
-  match goal with
-  | [  |- TelEq _ ?from ?to ] =>
-    match constr:((from, to)) with
-    | _ => rewrite DropName_Cons_Some_eq by congruence
-    | _ => rewrite DropName_Cons_Some_neq by congruence
-    | _ => (is_evar from || is_evar to); apply TelEq_refl
-    | (Cons NTNone _ _, _) => apply TelEq_chomp_None_left; [ eexists; reflexivity | red; intros ]
-    | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
-    | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
-    | (?t, Cons ?k _ _) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
-    | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
-                                            rewrite (DropName_NotInTelescope tenv k) by eauto ]
-    | _ => apply TelEq_refl
-    end
-  end.
-
-(* FIXME merge thee general lemmas about non-adts, renaming the existing versions to _W *)
+(* FIXME merge these general lemmas about non-adts, renaming the existing versions to _W *)
 
 Lemma SameValues_remove_SCA:
   forall (av : Type) {A} (Wrapper: FacadeWrapper (Value av) A),
@@ -219,33 +177,6 @@ Proof.
   + setoid_rewrite <- TelEq_TelAppend_Cons_Second.
     setoid_rewrite H0.
     reflexivity.
-Qed.
-
-Lemma ProgOk_Transitivity_First :
-  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
-    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
-    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env ->
-    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 kk }} ∪ {{ ext }} // env.
-Proof.
-  eauto using CompileSeq.
-Qed.
-
-Lemma ProgOk_Transitivity_First_defunc :
-  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v1 v2: Comp A),
-    {{ [[k <~~ v1 as _]]::t1 }}       prog1      {{ [[k <~~ v2 as _]]::t1 }}     ∪ {{ ext }} // env ->
-    {{ [[k <~~ v2 as _]]::t1 }}       prog2      {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env ->
-    {{ [[k <~~ v1 as _]]::t1 }}  Seq prog1 prog2 {{ [[k <~~ v2 as kk]]::t2 }} ∪ {{ ext }} // env.
-Proof.
-  repeat hoare.
-Qed.
-
-Lemma ProgOk_Transitivity_Cons_defunc :
-  forall {av A} env ext t1 t2 prog1 prog2 (k: NameTag av A) (v: Comp A),
-    {{ t1 }}                     prog1      {{ [[k <~~ v as _]]::t1 }}     ∪ {{ ext }} // env ->
-    {{ [[k <~~ v as _]]::t1 }}      prog2      {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env ->
-    {{ t1 }}                Seq prog1 prog2 {{ [[k <~~ v as kk]]::t2 }} ∪ {{ ext }} // env.
-Proof.
-  repeat hoare.
 Qed.
 
 Lemma CompileCallWrite16:
@@ -916,20 +847,6 @@ Lemma CompileCallAdd16 :
 Proof.
 Admitted.
 
-(* Handle the case of modifying the head *)
-Ltac compile_do_use_transitivity_to_handle_head_separately ::=
-  (* NOTE: this is a very risky rule; it doesn't make much sense to apply it
-     unless one has a good way to handle the first goal that it produces. *)
-  match_ProgOk ltac:(fun prog pre post ext env =>
-                       match constr:(post) with
-                       | Cons ?k _ _ =>
-                         match constr:(pre) with
-                         | Cons k _ _ => (apply ProgOk_Transitivity_First || apply ProgOk_Transitivity_First_defunc)
-                         | context[k] => fail 1 "Head variable appears in pre-condition"
-                         | _ => (apply ProgOk_Transitivity_Cons || apply ProgOk_Transitivity_Cons_defunc)
-                         end
-                       end).
-
 Ltac _compile_CallAdd16 :=
   compile_do_use_transitivity_to_handle_head_separately;
   [ apply CompileCallAdd16 | ].
@@ -1169,13 +1086,6 @@ Ltac _compile_rewrite_bind ::= fail.
 (*  Disable automatic decompilation for this file (it only works for simple examples with no evars in the post) *)
 Ltac _compile_destructor ::= fail.
 
-(* Get good error messages. FIXME: check what this breaks. *)
-Ltac match_ProgOk continuation ::=
-  lazymatch goal with
-  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => continuation prog pre post ext env
-  | _ => fail "Goal does not look like a ProgOk statement"
-  end.
-
 Arguments NotInTelescope: simpl never.
 
 Tactic Notation "apply_in_body" hyp(H) constr(f) :=
@@ -1183,15 +1093,6 @@ Tactic Notation "apply_in_body" hyp(H) constr(f) :=
   pose (f H) as H';
   unfold H in *; clear H;
   rename H' into H.
-
-(* Use unfold instead of simpl *)
-Ltac decide_NotInTelescope ::=
-  progress repeat match goal with
-                  | _ => cleanup
-                  | _ => congruence
-                  | [  |- NotInTelescope _ Nil ] => reflexivity
-                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope
-                  end.
 
 Definition CompositionDepth (n: nat) := S n.
 
@@ -1228,23 +1129,6 @@ Ltac packet_start_compiling :=
          | [ p: packet_t |- _ ] => destruct p
          | _ => progress unfold packet_encode, encode_packet; simpl
          end.
-
-(* Added the database of side conditions *)
-Create HintDb compile_do_side_conditions_db discriminated.
-Ltac compile_do_side_conditions_internal ::=
-  repeat cleanup; PreconditionSet_t;
-   match goal with
-   | _ => exact I (* NOTE This is much faster than adding a match for True; why? *)
-   | |- _ <> _ => discriminate 1
-   | |- _ <> _ => congruence
-   | |- _ ∉ _ => decide_not_in
-   | |- TelEq _ _ _ => decide_TelEq_instantiate
-   | |- NotInTelescope _ _ => decide_NotInTelescope
-   | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
-   | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
-   | |- GLabelMap.MapsTo _ _ _ => GLabelMapUtils.decide_mapsto_maybe_instantiate
-   | _ => auto with compile_do_side_conditions_db
-   end.
 
 Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db.
 

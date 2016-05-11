@@ -8,7 +8,7 @@ Lemma CompileWordList_pop:
     vlst ∉ ext ->
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := QS_WrapWordList)) (head :: tail)) ->
     Lifted_not_mapsto_adt ext tenv vhead ->
-    GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordList_pop) env ->
+    GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
     {{ tenv }}
       Call vhead fpop (vlst :: nil)
     {{ [[`vhead <-- head as _]]::[[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- tail as _]]::(DropName vlst (DropName vhead tenv)) }} ∪ {{ ext }} // env.
@@ -22,7 +22,7 @@ Lemma CompileWordList_new:
     (fnew : GLabelMap.key),
     vlst ∉ ext ->
     NotInTelescope vlst tenv ->
-    GLabelMap.MapsTo fnew (Axiomatic QsADTs.WordList_new) env ->
+    GLabelMap.MapsTo fnew (Axiomatic QsADTs.WordListADTSpec.New) env ->
     {{ tenv }}
       Call vlst fnew (nil)
     {{ [[(NTSome vlst (H := WrapInstance (H := QS_WrapWordList))) <-- @nil W as _]]::tenv }} ∪ {{ ext }} // env.
@@ -37,7 +37,7 @@ Qed.
 Lemma CompileWordList_push :
   forall vret vhd vlst fpointer (env: Env QsADTs.ADTValue) ext tenv
     h (t: list W),
-    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordList_push) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordListADTSpec.Push) env ->
     Lifted_MapsTo ext tenv vhd (wrap h) ->
     Lifted_MapsTo ext tenv vlst (wrap (FacadeWrapper := WrapInstance (H := QS_WrapWordList)) t) ->
     Lifted_not_mapsto_adt ext tenv vret ->
@@ -60,7 +60,7 @@ Qed.
 Lemma CompileWordList_push_spec :
   forall vtmp vhd vlst fpointer (env: Env QsADTs.ADTValue) ext tenv
     h (t: list W),
-    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordList_push) env ->
+    GLabelMap.MapsTo fpointer (Axiomatic QsADTs.WordListADTSpec.Push) env ->
     PreconditionSet tenv ext [[[vtmp;vhd;vlst]]] ->
     {{ [[ NTSome (H := WrapInstance (H := QS_WrapWordList)) vlst <-- t as _ ]] :: [[ `vhd <-- h as _ ]] :: tenv }}
       Call vtmp fpointer (vlst :: vhd :: nil)

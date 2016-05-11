@@ -15,8 +15,9 @@ Ltac compile_do_use_transitivity_to_handle_head_separately :=
                        match constr:(post) with
                        | Cons ?k _ _ =>
                          match constr:(pre) with
+                         | Cons k _ _ => (apply ProgOk_Transitivity_First || apply ProgOk_Transitivity_First_defunc)
                          | context[k] => fail 1 "Head variable appears in pre-condition"
-                         | _ => apply ProgOk_Transitivity_Cons
+                         | _ => (apply ProgOk_Transitivity_Cons || apply ProgOk_Transitivity_Cons_defunc)
                          end
                        end).
 
@@ -233,18 +234,15 @@ Ltac compile_simple_inplace :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match post with
-            | Cons (NTSome ?s) (ret ?final) ?tenv' =>
+            | Cons (NTSome ?s) (ret (?op ?a' ?b)) ?tenv' =>
               match pre with
-              | context[Cons (NTSome ?s) (ret ?initial) _] =>
+              | context[Cons (NTSome ?s) (ret ?a) _] =>
+                unify a a';
+                is_word (op a b);
+                let facade_op := translate_op op in
                 move_to_front s;
-                  match constr:((initial, final)) with
-                  | (?a, ?op ?a' ?b) =>
-                    unify a a';
-                      is_word (op a b);
-                      let facade_op := translate_op op in
-                      first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
-                            | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
-                  end
+                first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
+                      | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
               end
             end).
 
