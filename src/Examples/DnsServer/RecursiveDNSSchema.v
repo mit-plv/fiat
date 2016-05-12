@@ -417,10 +417,40 @@ Section DecomposeEnumField.
                          attrIdx a;
        qschemaConstraints := [ ] |}.
 
-(*  ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx))
-         ============================
-         ilist2 (DecomposeHeading attrIdx (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) a)[@a_proj_index (ith2 tup attrIdx)] =
-   ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx))))
+  Definition Tuple_DecomposeRawQueryStructure_proj
+             {m : nat}
+             {qs_schema : RawQueryStructureSchema}
+             (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             (a : Vector.t Type m)
+             (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+             (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+             (tup : ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)))
+    :  ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx)))).
+    unfold DecomposeRawQueryStructureSchema; simpl.
+    unfold GetNRelSchema, DecomposeSchema;
+      simpl.
+    erewrite VectorSpec.nth_map by eauto; simpl.
+    apply Tuple_DecomposeHeading_proj; eauto.
+  Defined.
+  
+  Definition Tuple_DecomposeRawQueryStructure_inj
+             {m : nat}
+             {qs_schema : RawQueryStructureSchema}
+             (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             (a : Vector.t Type m)
+             (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+             (idx : Fin.t m)
+             (tup : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) idx)))
+    : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)).
+    unfold DecomposeRawQueryStructureSchema in *; simpl in *.
+    unfold GetNRelSchema, DecomposeSchema in *;
+      simpl in *.
+    erewrite VectorSpec.nth_map in tup by eauto; simpl.
+    simpl in tup.
+    eapply Tuple_DecomposeHeading_inj; eauto.
+  Defined.
 
   Definition DecomposeRawQueryStructureSchema_AbsR
              {m : nat}
@@ -430,70 +460,18 @@ Section DecomposeEnumField.
              (a : Vector.t Type m)
              (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
              (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+             (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
              (r_o : UnConstrQueryStructure qs_schema)
              (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
-    : Prop.
-    refine ((forall Ridx, Same_set _ (GetUnConstrRelation r_o Ridx)
-                           (GetUnConstrRelation (fst r_n) Ridx)) /\ _).
-    assert (forall tup, @ilist2 Type (@id Type) (NumAttr (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx))
-    (@DecomposeHeading (NumAttr (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx)) m attrIdx
-       (AttrList (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx)) a)[@
-    a_proj_index
-      (@ith2 Type (@id Type) (NumAttr (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx))
-         (AttrList (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx)) tup attrIdx)] = @RawTuple
-    (@GetNRelSchemaHeading (numRawQSschemaSchemas (@DecomposeRawQueryStructureSchema m qs_schema schemaIdx attrIdx a))
-       (qschemaSchemas (@DecomposeRawQueryStructureSchema m qs_schema schemaIdx attrIdx a))
-       (a_proj_index (@GetAttributeRaw (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx) tup attrIdx)))).
-    unfold RawTuple.
-    intro.
-
-    simpl.
-    unfold
-    pose (forall tup tup',
-              IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
-              -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeHeading_proj attrIdx _ a _ a_proj tup)).
-    Check (fun (tup : @RawTuple (rawSchemaHeading (@GetNRelSchema (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx))) => Tuple_DecomposeHeading_proj attrIdx _ a _ a_proj tup).
-    simpl in P.
-
-    /\ (forall tup,
-                   IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
-                .
-
-  Definition DecomposeRawQueryStructureSchema_AbsR
-             {m : nat}
-             {qs_schema : RawQueryStructureSchema}
-             (schemaIdx : Fin.t _)
-             (attrIdx : Fin.t _)
-             (a : Vector.t Type m)
-             (r_o : UnConstrQueryStructure qs_schema)
-             (r_n : UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
-             (RelationMap : forall (Ridx : Fin.t (numRawQSschemaSchemas qs_schema)),
-                 RawTuple
-                 -> Fin.t ((numRawQSschemaSchemas qs_schema) + m))
-             (TupleMap : forall Ridx (tup : RawTuple), RawTuple)
-             (RelationMap' : forall (Ridx : Fin.t ((numRawQSschemaSchemas qs_schema) + m)),
-                 RawTuple
-                 -> Fin.t (numRawQSschemaSchemas qs_schema))
-             (TupleMap' : forall Ridx' (tup : RawTuple), RawTuple)
     : Prop :=
-    (forall Ridx tup,
-        IndexedEnsemble_In (GetUnConstrRelation r_o Ridx) tup
-        -> IndexedEnsemble_In (GetUnConstrRelation r_n (RelationMap Ridx tup)) (TupleMap Ridx tup) )
-    /\ (forall Ridx' tup',
-           IndexedEnsemble_In (GetUnConstrRelation r_n Ridx') tup'
-           -> IndexedEnsemble_In (GetUnConstrRelation r_o (RelationMap' Ridx' tup')) (TupleMap' Ridx' tup') ).
-
-  Definition DecomposeRelationMap
-             {m : nat}
-             {qs_schema : RawQueryStructureSchema}
-             (schemaIdx : Fin.t (numRawQSschemaSchemas qs_schema))
-             (attrIdx : Fin.t (NumAttr (rawSchemaHeading (qschemaSchemas qs_schema)[@schemaIdx])))
-             (a : Vector.t Type (S m))
-             (Ridx : Fin.t (numRawQSschemaSchemas qs_schema))
-             (tup : @RawTuple (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) Ridx))
-    : Fin.t (numRawQSschemaSchemas qs_schema + m).
-
-    (RelationMap : Fin.t (numRawQSschemaSchemas qs_schema)
-                   -> Fin.t ((numRawQSschemaSchemas qs_schema) + m)) *)
+    (forall Ridx, Same_set _ (GetUnConstrRelation r_o Ridx)
+                           (GetUnConstrRelation (fst r_n) Ridx))
+    /\ (forall Ridx tup,
+           IndexedEnsemble_In (GetUnConstrRelation (snd r_n) Ridx) tup
+           ->  IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx)
+                                  (Tuple_DecomposeRawQueryStructure_inj _ _ a a_inj _ tup))
+    /\ (forall tup,
+           IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
+           -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeRawQueryStructure_proj _ _ a _ a_proj tup)).
 
 End DecomposeEnumField.
