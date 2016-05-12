@@ -62,7 +62,7 @@ Definition DnsSig : ADTSig :=
 
 Definition encode_packet' b :=
   @encode_packet bin cache cacheAddNat transformer transformerUnit
-                encode_enum QType_Ws QClass_Ws RRecordType_Ws
+                QType_Ws QClass_Ws RRecordType_Ws
                 RRecordClass_Ws Opcode_Ws RCODE_Ws b cacheEmpty.
 
 Definition DnsSpec : ADT DnsSig :=
@@ -81,9 +81,9 @@ Definition DnsSpec : ADT DnsSig :=
         p <- {p | fst (encode_packet' p) = b};
         Repeat recurseDepth initializing n with p!"question"!"qname"
                defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
-        {{ results <- MaxElements (fun r r' : resourceRecord => IsPrefix r!sNAME r'!sNAME)
+        {{ results <- MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
                              (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
-                               Where (IsPrefix r!sNAME n)   (* prefixed with [n] to [rs] *)
+                               Where (prefix r!sNAME n)   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
             Then ret (buildempty true ``"NXDomain" p) (* No matching records, set name error *)

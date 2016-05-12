@@ -305,7 +305,7 @@ Definition ID : Type := word 16.
            "additional" ::= additional'].
 
   Definition get_name (r : resourceRecord) := r!sNAME.
-  Definition name_length (r : resourceRecord) := List.length (get_name r).
+  Definition name_length (r : resourceRecord) := String.length (get_name r).
 
   Definition isQuestion (p : packet) :=
     match p!"answers", p!"authority", p!"additional" with

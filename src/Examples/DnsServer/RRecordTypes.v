@@ -147,19 +147,19 @@ Section RData.
   (* types here for non-obsolete record types from RFC 1035. *)
 
   (* A label is a list of ascii characters (string) *)
-  Print string.
+
   Definition Label := string.
   (* A domain name is a list of labels. *)
-  Definition DomainName : Type := list Label.
+  Definition DomainName : Type := Label.
 
   Definition beq_name (a b : DomainName) : bool :=
-    if (list_eq_dec string_dec a b) then true else false.
+    if (string_dec a b) then true else false.
 
   Lemma beq_name_dec
     : forall (a b : DomainName), beq_name a b = true <-> a = b.
   Proof.
     unfold beq_name; intros;
-      destruct (list_eq_dec string_dec a b);
+      destruct (string_dec a b);
       intuition; intros; congruence.
   Qed.
 
@@ -211,7 +211,7 @@ Section RData.
        MX_RDATA; (* MX *)
        (string : Type) (* TXT *)
     ].
-  
+
   (* The RDATA field is a variant type built from these building blocks. *)
   Definition RDataType := SumType ResourceRecordTypeTypes.
 

@@ -87,10 +87,10 @@ Definition DnsSpec : ADT _ :=
              (* Find the best known servers to query *)
              bestServer <- MaxElement
                              (fun r r' : @Tuple SLISTHeading =>
-                                IsPrefix r!sDOMAIN r'!sDOMAIN
+                                (prefix r!sDOMAIN r'!sDOMAIN)
                                 /\ r!sQUERYCOUNT <= r'!sQUERYCOUNT)
                              (For (server in this!sSLIST)
-                              Where (IsPrefix server!sDOMAIN p!"question"!"qname")
+                              Where (prefix server!sDOMAIN p!"question"!"qname")
                               Where (curTime <= server!sTTL)
                               Return server);
              Ifopt bestServer as bestServer Then (* Pick the first server*)
@@ -154,10 +154,10 @@ Definition DnsSpec : ADT _ :=
            (this <- linkAuthorityToAdditional curTime this p!"authority" p!"additional";
              bestServer <- MaxElement
                              (fun r r' : @Tuple SLISTHeading =>
-                                IsPrefix r!sDOMAIN r'!sDOMAIN
+                                (prefix r!sDOMAIN r'!sDOMAIN)
                                 /\ r!sQUERYCOUNT <= r'!sQUERYCOUNT)
                              (For (server in this!sSLIST)
-                              Where (IsPrefix server!sDOMAIN p!"question"!"qname")
+                              Where (prefix server!sDOMAIN p!"question"!"qname")
                               Where (curTime <= server!sTTL)
                               Return server);
              Ifopt bestServer as bestServer Then (* Pick the first server*)

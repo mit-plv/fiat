@@ -45,14 +45,14 @@ Section DnsPacket.
   Variable RCODE_Ws : t (word 4) 12.
 
   Definition encode_question (q : question) :=
-       encode_list encode_string q!"qname"
+       encode_string q!"qname"
   Then encode_enum QType_Ws q!"qtype"
   Then encode_enum QClass_Ws q!"qclass"
   Done.
 
   Definition encode_SOA_RDATA (soa : SOA_RDATA) :=
-       encode_list encode_string soa!"sourcehost"
-  Then encode_list encode_string soa!"contact_email"
+       encode_string soa!"sourcehost"
+  Then encode_string soa!"contact_email"
   Then encode_word soa!"serial"
   Then encode_word soa!"refresh"
   Then encode_word soa!"retry"
@@ -73,23 +73,23 @@ Section DnsPacket.
 
   Definition encode_MX_RDATA (mx : MX_RDATA) :=
        encode_word mx!"Preference"
-  Then encode_list encode_string mx!"Exchange"
+  Then encode_string mx!"Exchange"
   Done.
 
   Definition encode_rdata :=
   encode_SumType ResourceRecordTypeTypes
   (icons encode_word
-  (icons (encode_list encode_string)
-  (icons (encode_list encode_string)
+  (icons (encode_string)
+  (icons (encode_string)
   (icons encode_SOA_RDATA
   (icons encode_WKS_RDATA
-  (icons (encode_list encode_string)
+  (icons (encode_string)
   (icons encode_HINFO_RDATA
-  (icons (encode_list encode_string)
+  (icons (encode_string)
   (icons encode_MX_RDATA (icons encode_string inil)))))))))).
 
   Definition encode_resource (r : resourceRecord) :=
-       encode_list encode_string r!sNAME
+       encode_string r!sNAME
   Then encode_enum RRecordType_Ws r!sTYPE
   Then encode_enum RRecordClass_Ws r!sCLASS
   Then encode_word r!sTTL

@@ -222,11 +222,11 @@ Section DecomposeEnumField.
     : RawQueryStructureSchema :=
     {| qschemaSchemas := Vector.append (qschemaSchemas raw_qs_schema) new_schemas;
        qschemaConstraints := [ ] |}.
-  
+
   Fixpoint LiftTuple_AddRawQueryStructureSchema
            {n m : nat}
            (old_schemas : Vector.t RawSchema n)
-           (new_schemas : Vector.t RawSchema m)             
+           (new_schemas : Vector.t RawSchema m)
            Ridx
            (tup : @RawTuple (GetNRelSchemaHeading old_schemas Ridx))
            {struct old_schemas}
@@ -257,7 +257,7 @@ Section DecomposeEnumField.
     (forall Ridx tup,
         IndexedEnsemble_In (GetUnConstrRelation r_o Ridx) tup
         <-> IndexedEnsemble_In (GetUnConstrRelation r_n (Fin.L m Ridx)) (LiftTuple_AddRawQueryStructureSchema _ _ Ridx tup)).
-  
+
   (* Define new schema *)
 
   Fixpoint DecomposeHeading
@@ -281,13 +281,13 @@ Section DecomposeEnumField.
            {m q} {A' B' C}
            (idx : Fin.t m)
            (a : Vector.t C m)
-           (f : _ -> _ q) 
+           (f : _ -> _ q)
            (tup : ilist2 (A := A') (B := B') (Vector.map f a)[@idx])
            {struct idx}
     : ilist2 (B := B') (f a[@idx]).
     refine (match idx in Fin.t m return
                   forall (a : Vector.t C m)
-                         (f : _ -> _ q) 
+                         (f : _ -> _ q)
                          (tup : ilist2 (B := B') (Vector.map f a)[@idx]),
                     ilist2 (B := B') (f a[@idx]) with
             | Fin.F1 _ => _
@@ -302,13 +302,13 @@ Section DecomposeEnumField.
            {m q} {A' B' C}
            (idx : Fin.t m)
            (a : Vector.t C m)
-           (f : _ -> _ q) 
+           (f : _ -> _ q)
            (tup : ilist2 (B := B') (f a[@idx]))
            {struct idx}
     : ilist2 (A := A') (B := B') (Vector.map f a)[@idx].
     refine (match idx in Fin.t m return
                   forall (a : Vector.t C m)
-                         (f : _ -> _ q) 
+                         (f : _ -> _ q)
                          (tup : ilist2 (B := B') (f a[@idx])),
                     ilist2 (B := B') (Vector.map f a)[@idx] with
             | Fin.F1 _ => _
@@ -320,7 +320,7 @@ Section DecomposeEnumField.
   Defined.
 
   Fixpoint Tuple_DecomposeHeading_inj
-           {n m}             
+           {n m}
            (attrIdx : Fin.t n)
            (heading : Vector.t Type n)
            (a : Vector.t Type m)
@@ -347,15 +347,15 @@ Section DecomposeEnumField.
                     (ilist2_tl (Tuple_mapHeading idx a _ tup))).
     - revert attr'; pattern n0, heading'; eapply Vector.caseS.
       simpl; intros.
-      exact (icons2 
-               (ilist2_hd (Tuple_mapHeading _ _ _ tup0)) 
+      exact (icons2
+               (ilist2_hd (Tuple_mapHeading _ _ _ tup0))
                (Tuple_DecomposeHeading_inj
                   _ _ attr' t _ a_inj0 _
                   (ilist2_tl (Tuple_mapHeading _ _ _ tup0)))).
   Defined.
 
   Fixpoint Tuple_DecomposeHeading_proj
-           {n m}             
+           {n m}
            (attrIdx : Fin.t n)
            (heading : Vector.t Type n)
            (a : Vector.t Type m)
@@ -389,7 +389,7 @@ Section DecomposeEnumField.
                 (icons2 (B := @id Type)
                         (ilist2_hd tup0)
                         (Tuple_DecomposeHeading_proj _ _ _ _ _ _ a_proj0 (ilist2_tl tup0)))).
-  Defined.  
+  Defined.
 
   (* Could fuse this with Decompose Heading, but efficiency shouldn't matter too much. *)
   Definition DecomposeSchema
@@ -404,7 +404,7 @@ Section DecomposeEnumField.
             attrConstraints := None;
             tupleConstraints := None |})
       (DecomposeHeading attr (AttrList (rawSchemaHeading heading)) a).
-  
+
   Definition DecomposeRawQueryStructureSchema
              {m}
              (raw_qs_schema : RawQueryStructureSchema)
@@ -421,7 +421,7 @@ Section DecomposeEnumField.
          ============================
          ilist2 (DecomposeHeading attrIdx (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) a)[@a_proj_index (ith2 tup attrIdx)] =
    ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx))))
-  
+
   Definition DecomposeRawQueryStructureSchema_AbsR
              {m : nat}
              {qs_schema : RawQueryStructureSchema}
@@ -446,18 +446,18 @@ Section DecomposeEnumField.
        (a_proj_index (@GetAttributeRaw (@GetNRelSchemaHeading (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx) tup attrIdx)))).
     unfold RawTuple.
     intro.
-    
+
     simpl.
-    unfold 
+    unfold
     pose (forall tup tup',
               IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
               -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeHeading_proj attrIdx _ a _ a_proj tup)).
-    Check (fun (tup : @RawTuple (rawSchemaHeading (@GetNRelSchema (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx))) => Tuple_DecomposeHeading_proj attrIdx _ a _ a_proj tup). 
+    Check (fun (tup : @RawTuple (rawSchemaHeading (@GetNRelSchema (numRawQSschemaSchemas qs_schema) (qschemaSchemas qs_schema) schemaIdx))) => Tuple_DecomposeHeading_proj attrIdx _ a _ a_proj tup).
     simpl in P.
-    
+
     /\ (forall tup,
                    IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
-                . 
+                .
 
   Definition DecomposeRawQueryStructureSchema_AbsR
              {m : nat}
@@ -495,3 +495,5 @@ Section DecomposeEnumField.
 
     (RelationMap : Fin.t (numRawQSschemaSchemas qs_schema)
                    -> Fin.t ((numRawQSschemaSchemas qs_schema) + m)) *)
+
+End DecomposeEnumField.

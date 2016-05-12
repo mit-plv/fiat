@@ -112,7 +112,7 @@ Section SteppingList.
         destruct (A_halt_dec a); inversion Pdec; subst; clear Pdec.
         destruct (A_decode_pf _ _ _ _ _ _ _ _ _ H Ppredh Heqp0 Heqp2) as [? [? ?]]; intuition.
         destruct (A_decode_pf _ _ _ _ _ _ _ _ _ H Ppredh Heqp0 Heqp2) as [? [? ?]]; congruence. } }
-    { destruct fuel as [| fuel']; try solve [ exfalso; intuition ].
+    { destruct fuel as [| fuel']; try solve [ exfalso; intuition; inversion PPredlen ].
       destruct (getE env (a :: l)) eqn: ?.
       { destruct (P_predicate_dec p).
         { destruct (X_encode true env) eqn: ?.

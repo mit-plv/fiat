@@ -43,7 +43,7 @@ Global Instance Query_eq_RRecordType :
   Query_eq RRecordType := {| A_eq_dec := RRecordType_dec |}.
 
 Global Instance Query_eq_name :
-  Query_eq DomainName := {| A_eq_dec := list_eq_dec string_dec |}.
+  Query_eq DomainName := {| A_eq_dec := string_dec |}.
 
 Lemma beq_QType_dec :
   forall a b, ?[QType_dec a b] = beq_QType a b.
@@ -374,11 +374,11 @@ Qed.
 
 (* used in refine_check_one_longest_prefix_s and refine_check_one_longest_prefix_CNAME *)
 Lemma all_longest_prefixes_same :
-  forall (ns : list resourceRecord) (s : list string),
+  forall (ns : list resourceRecord) (s : DomainName),
     (* the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
     (* e.g. [com.google, com.google.us, com.google.us.scholar] with s = com.google.us.scholar *)
-    (forall (n' : resourceRecord), List.In n' ns -> IsPrefix (get_name n') s)
+    (forall (n' : resourceRecord), List.In n' ns -> prefix (get_name n') s)
 
     (* for two records, if they both have the longest names in the list of records
            (AND as before, they are prefixes of s)
@@ -396,23 +396,10 @@ Proof.
   unfold name_length in *.
   apply (le_antisym _ _ H2') in H2; apply (le_antisym _ _ H3') in H3.
   rewrite <- H2 in H3.
-  unfold IsPrefix in *; destruct H4; destruct H5; rewrite <- H5 in H4.
-  clear H2' H3' H H2 H0 H1 H5 s ns.
-  remember (get_name n); remember (get_name n'); clear Heqd Heqd0.
-  (* if 2 lists have the same length and are both prefixes of some list, they are the same list *)
-  apply eqListA_eq in H4.
-  revert x0 d d0 H4 H3.
-  induction x; destruct x0; intros.
-  - repeat rewrite app_nil_r in H4; assumption.
-  - apply f_equal with (f := @Datatypes.length string) in H4.
-    repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
-  - apply f_equal with (f := @Datatypes.length string) in H4.
-    repeat rewrite app_length in H4; subst; exfalso; simpl in *; omega.
-  - rewrite app_comm_cons' with (As := d) in H4.
-    rewrite app_comm_cons' with (As := d0) in H4.
-    apply IHx in H4;
-      [ apply (app_inj_tail d d0) in H4; destruct H4; auto
-      | repeat rewrite app_length; rewrite H3; reflexivity ].
+  repeat unfold is_true in *.
+  rewrite prefix_correct in H4, H5.
+  rewrite <- H3 in H4; rewrite H4 in H5.
+  eauto.
 Qed.
 
 Ltac find_if_inside_eqn :=
@@ -428,10 +415,10 @@ Ltac find_if_inside_eqn :=
 (* Implement the check for an exact match *)
 (* uses all_longest_prefixes_same *)
 Lemma refine_check_one_longest_prefix_s
-  : forall (ns : list resourceRecord) (s : list string),
+  : forall (ns : list resourceRecord) (s : DomainName),
     (* the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
-    (forall n' : resourceRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
+    (forall n' : resourceRecord, List.In n' ns -> prefix (get_name n') s) ->
 
     (* there exists no record such that it is one of the longest prefixes of the name
            AND is not the name itself -- refines to a computation that just checks the first
@@ -449,7 +436,7 @@ Lemma refine_check_one_longest_prefix_s
                 end).
 Proof.
   computes_to_econstructor; simpl in H; intros; computes_to_inv.
-  subst; unfold decides; pose proof (all_longest_prefixes_same ns H); clear H.
+  subst; unfold decides; pose proof (all_longest_prefixes_same ns _ H); clear H.
   remember (find_UpperBound name_length ns) as l.
   unfold If_Then_Else.
   find_if_inside_eqn.
@@ -463,7 +450,7 @@ Qed.
 
 (* uses all_longest_prefixes_same; very similar to refine_check_one_longest_prefix_s but with an extra condition/Tuple type *)
 Lemma refine_check_one_longest_prefix_CNAME
-  : forall (ns : list resourceRecord) (n : RRecordType) (s : list string)
+  : forall (ns : list resourceRecord) (n : RRecordType) (s : DomainName)
            (HH : forall (t t' : resourceRecord) (n n' : nat),
                n <> n'
                -> nth_error ns n  = Some t
@@ -474,7 +461,7 @@ Lemma refine_check_one_longest_prefix_CNAME
 
     (* as before, the name (list string) of every record in the list is a prefix
            of the given name (list string) *)
-    (forall n' : resourceRecord, List.In n' ns -> IsPrefix (get_name n') s) ->
+    (forall n' : resourceRecord, List.In n' ns -> prefix (get_name n') s) ->
 
     (* Tuple type instead of record?
         all "records" that contain the longest prefixes and are not CNAME, and n isn't CNAME  *)
@@ -495,7 +482,7 @@ Lemma refine_check_one_longest_prefix_CNAME
                              else None
                 end).
 Proof.
-  unfold refine, not; intros; pose proof (all_longest_prefixes_same ns H); clear H.
+  unfold refine, not; intros; pose proof (all_longest_prefixes_same ns _ H); clear H.
   remember (find_UpperBound name_length ns) as l.
   computes_to_inv; computes_to_econstructor; split; intros.
   - destruct l; [ subst; inversion H | ].
@@ -603,7 +590,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
          (r_n : QueryStructure DnsSchema),
     (* TODO *)
     For (r in r_n!sRRecords)
-        (Where (IsPrefix r!sNAME ((n!"question"!"qname" ))) (* Where Predicate ... *)
+        (Where (prefix r!sNAME ((n!"question"!"qname" ))) (* Where Predicate ... *)
                Return r ) ↝ a ->
     forall (t t' : resourceRecord) (n0 n' : nat),
       n0 <> n' ->
@@ -682,7 +669,10 @@ this is because x is a list of tuples that all came from r *)
 
         apply H5. clear H5.
 
-        eapply in_flatten; eauto using IsPrefix_string_dec.
+        eapply in_flatten; eauto using string_dec.
+        intros; setoid_rewrite prefix_correct;
+          setoid_rewrite <- string_dec_bool_true_iff;
+          find_if_inside; eauto.
 
         rewrite Heqx1elems in H1.
         rewrite List.map_map in H1.
@@ -824,4 +814,5 @@ this is because x is a list of tuples that all came from r *)
   assert (List.In {| elementIndex := idx'; indexedElement := t' |} x').
   { eapply exists_in_list; eauto. }
   apply Equiv' in H15; destruct H15;  apply H15.
+  apply DecideableEnsemble_bool.
 Qed.
