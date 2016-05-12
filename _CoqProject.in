@@ -49,6 +49,7 @@ src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/Dns2.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/Toy.v
+src/BinEncoders/Env/Examples/Toy2.v
 src/BinEncoders/Env/Lib/FixList.v
 src/BinEncoders/Env/Lib/IList.v
 src/BinEncoders/Env/Lib/SteppingCacheList.v
@@ -315,6 +316,7 @@ src/Parsers/GenericRecognizerEquality.v
 src/Parsers/GenericRecognizerExt.v
 src/Parsers/GenericRecognizerMin.v
 src/Parsers/GenericRecognizerOptimized.v
+src/Parsers/GenericRecognizerOptimizedTactics.v
 src/Parsers/MinimalParse.v
 src/Parsers/MinimalParseOfParse.v
 src/Parsers/ParserADTSpecification.v
