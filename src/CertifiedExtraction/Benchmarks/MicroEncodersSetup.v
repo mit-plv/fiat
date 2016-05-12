@@ -63,4 +63,5 @@ Global Opaque EncodeAndPad. (* FIXME move *)
 Definition MicroEncoders_Env : Env ADTValue :=
   (GLabelMap.empty (FuncSpec _))
     ### ("ByteString", "New") ->> (Axiomatic BytesADTSpec.New)
-    ### ("ByteString", "Push") ->> (Axiomatic BytesADTSpec.Push).
+    ### ("ByteString", "Push") ->> (Axiomatic BytesADTSpec.Push)
+    ### ("list[W]", "Length") ->> (Axiomatic WordListADTSpec.Length).

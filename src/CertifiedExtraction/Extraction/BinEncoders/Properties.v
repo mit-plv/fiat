@@ -22,19 +22,20 @@ Proof.
   destruct (encode1 _); simpl; destruct (encode2 _); reflexivity.
 Qed.
 
-Lemma IList_encode_bools_is_copy:
-  forall bits cache,
-    (IList.IList_encode' DnsMap.cache Core.btransformer Bool.Bool_encode bits cache) =
-    (bits, {| DnsMap.eMap := DnsMap.eMap cache;
-              DnsMap.dMap := DnsMap.dMap cache;
-              DnsMap.offs := DnsMap.offs cache + (N.of_nat (List.length bits)) |}).
+Fixpoint addE_n {H: Cache.Cache} {C: Cache.CacheAdd H N} n (cache: @Cache.CacheEncode H) : @Cache.CacheEncode H :=
+  match n with
+  | O => cache
+  | S n => (addE_n n (Cache.addE cache 1%N))
+  end.
+
+Lemma IList_encode_bools_is_copy {H: Cache.Cache} {C: Cache.CacheAdd H N}:
+forall bits (cache: @Cache.CacheEncode H),
+  (IList.IList_encode' H Core.btransformer Bool.Bool_encode bits cache) =
+  (bits, (addE_n (List.length bits) cache)).
 Proof.
-  Opaque N.of_nat.
-  induction bits; destruct cache; simpl in *.
-  + rewrite N.add_0_r; reflexivity.
-  + rewrite IHbits; simpl.
-    rewrite <- N.add_assoc, N.add_1_l, Nat2N.inj_succ; reflexivity.
-    Transparent N.of_nat.
+  induction bits; simpl in *.
+  + reflexivity.
+  + intros; rewrite (IHbits (Cache.addE cache 1%N)); reflexivity.
 Qed.
 
 Require Import Coq.Lists.List.

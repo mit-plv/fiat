@@ -9,9 +9,10 @@ Unset Implicit Arguments.
 Require Import Coq.Lists.List.
 
 Ltac _encode_IList__rewrite_as_fold :=
-  lazymatch goal with         (* FIXME make this an autorewrite *)
+  lazymatch goal with (* FIXME make this an autorewrite? *)
   | [  |- appcontext[fold_left (IList.IList_encode'_body ?cache ?transformer _)] ] =>
-    setoid_rewrite (IList_post_transform_TelEq cache transformer); [ | reflexivity ]
+    change_post_into_TelAppend; (* FIXME: Need either this, or a set_evars call; why? *)
+    setoid_rewrite (IList_post_transform_TelEq_TelAppend cache transformer)
   end.
 
 Ltac _encode_IList__compile_loop :=
@@ -27,7 +28,7 @@ Ltac _encode_IList__compile_loop :=
 
 Ltac _encode_IList_compile :=
   _encode_IList__rewrite_as_fold;
-  _encode_IList__compile_loop.
+  [ _encode_IList__compile_loop | idtac.. ].
 
 Ltac mod_first :=
   match_ProgOk

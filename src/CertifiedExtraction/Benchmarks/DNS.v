@@ -78,6 +78,21 @@ Ltac _packet_encode_t :=
   progress (repeat _packet_encode_step).
 
 
+Lemma DnsCache_addE_is_plus1 :
+  forall n (cache: @Cache.CacheEncode DnsMap.cache),
+    addE_n n cache =
+    {| DnsMap.eMap := DnsMap.eMap cache;
+       DnsMap.dMap := DnsMap.dMap cache;
+       DnsMap.offs := DnsMap.offs cache + N.of_nat n |}.
+Proof.
+  Opaque N.of_nat.
+  induction n; destruct cache; simpl in *.
+  + rewrite N.add_0_r; reflexivity.
+  + rewrite IHn; simpl in *.
+    rewrite <- N.add_assoc, N.add_1_l, Nat2N.inj_succ; reflexivity.
+    Transparent N.of_nat.
+Qed.
+
 Example encode :
   ParametricExtraction
     #vars      p

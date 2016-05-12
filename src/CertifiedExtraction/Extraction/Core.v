@@ -154,6 +154,7 @@ Ltac clean_DropName_in_ProgOk :=
                        try (is_dirty_telescope post; PreconditionSet_t; clean_telescope post ext)).
 
 Ltac change_post_into_TelAppend :=
+  simpl (TelAppend _ _); (* Make sure that there are no leftover [TelAppend]s *)
   match_ProgOk ltac:(fun prog pre post ext env =>
                        let pp := fresh in
                        set post as pp; (* Otherwise change sometimes fails *)

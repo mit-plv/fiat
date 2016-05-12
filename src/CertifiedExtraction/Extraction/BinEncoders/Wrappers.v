@@ -23,7 +23,7 @@ Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted.
 Instance WrapListOfBoundedValues :
   (* FIXME when the elements of the list inject into W, we should have a
      canonical into lists of words. *)
-  FacadeWrapper ADTValue {l : list (BoundedN 16) | Datatypes.length l < exp2_nat 16}. Admitted.
+  FacadeWrapper (Value ADTValue) (list (BoundedN 8)). Admitted.
 
 Lemma pow2_weakly_monotone : forall n m,
     (n <= m)%nat

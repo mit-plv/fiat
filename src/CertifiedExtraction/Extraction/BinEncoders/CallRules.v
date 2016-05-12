@@ -50,7 +50,7 @@ Proof.
   eapply CompileCallWrite16; eauto.
 Qed.
 
-Lemma CompileCallWrite8 {size} (p: size <= 32):
+Lemma CompileCallWrite8:
   forall (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope ADTValue)
     (n : BitArray 8) ext env
     pArg pNext fWrite8,
@@ -373,6 +373,18 @@ Lemma CompileCallListQuestionLength:
 Proof.
 Admitted.
 
+(* FIXME there should be a generic wrapper for list of SCA-injected things *)
+Lemma CompileCallListSCALength {A} {W: FacadeWrapper (Value ADTValue) (list A)}:
+  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (lst : FixList.FixList 8 A)
+    fLength tenv',
+    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
+    TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    {{ tenv }}
+      Call varg fLength [vlst]
+    {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+Admitted.
 
 Lemma CompileCallGetQuestionType:
   forall (vtmp vquestion vtype : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
@@ -512,7 +524,8 @@ Ltac _compile_CallListLength :=
               let vlst := find_name_in_precondition (` lst) in
               (* FIXME use this instead of explicit continuations in every lemma *)
               compile_do_use_transitivity_to_handle_head_separately;
-              [ (eapply (CompileCallListResourceLength vlst) ||
+              [ (eapply (CompileCallListSCALength vlst) ||
+                 eapply (CompileCallListResourceLength vlst) ||
                  eapply (CompileCallListQuestionLength vlst))
               | ]
             end).

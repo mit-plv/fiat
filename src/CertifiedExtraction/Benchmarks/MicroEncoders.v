@@ -42,15 +42,15 @@ Example FourWords_compile :
                   (NTSome "w0") (NTSome "w1") (NTSome "w2") (NTSome "w3") fourWords)
     #env       MicroEncoders_Env.
 Proof.
-  repeat compile_encoder_t.
+  compile_encoder_t.
   repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).  (* TODO automate *)
 Defined.
 
 Eval lazy in (extract_facade FourWords_compile).
 
 Record BitArrayAndList :=
-  { f1 : BitArray 16;
-    f2 : { l : list {n : N | (n < exp2 16)%N} | List.length l < exp2_nat 16} } .
+  { f1 : BitArray 8;
+    f2 : { l : list {n : N | (n < exp2 8)%N} | List.length l < exp2_nat 8} } .
 
 Definition BitArrayAndList_encode (t : BitArrayAndList) :=
   fst ((IList.IList_encode Bool.Bool_encode (f1 t)
@@ -58,16 +58,24 @@ Definition BitArrayAndList_encode (t : BitArrayAndList) :=
    Then FixList_encode FixInt_encode (f2 t)
    Then (fun e => (nil, e))) tt).
 
+Require Import Coq.Program.Program.
+
 Definition BitArrayAndListAsCollectionOfVariables
   {av} vf1 vf2 ll
   : Telescope av :=
   [[ vf1 ->> ll.(f1) as _ ]] ::
-  [[ vf2 ->> ll.(f2) as _ ]] :: Nil.
+  [[ vf2 ->> `ll.(f2) as _ ]] :: Nil.
 
 Hint Unfold BitArrayAndList_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold BitArrayAndListAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
+Hint Rewrite (@IList_encode'_body_simpl empty_cache) : f2f_binencoders_autorewrite_db.
 
 Typeclasses eauto := 10.
+
+Instance WrapListOfBoundedValues :
+  (* FIXME when the elements of the list inject into W, we should have a
+     canonical into lists of words. *)
+  FacadeWrapper (Value ADTValue) (list (BoundedN 8)). Admitted.
 
 Example BitArrayAndList_compile :
   ParametricExtraction
@@ -77,6 +85,14 @@ Example BitArrayAndList_compile :
                   (NTSome "f1") (NTSome "f2") bitArrayAndList)
     #env       MicroEncoders_Env.
 Proof.
-  repeat compile_encoder_t.
-
+  compile_encoder_t.
+  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).  (* TODO automate *)
+  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).
+  Grab Existential Variables.
+  repeat constructor.
+  repeat constructor.
+  repeat constructor.
 Defined.
+
+Eval lazy in (extract_facade BitArrayAndList_compile).
+

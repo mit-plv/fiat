@@ -1,5 +1,6 @@
 Require Import
         CertifiedExtraction.Core
+        CertifiedExtraction.TelAppend
         CertifiedExtraction.ExtendedLemmas
         CertifiedExtraction.ExtendedPropertiesOfTelescopes
         CertifiedExtraction.Extraction.BinEncoders.Basics.
@@ -23,6 +24,25 @@ Proof.
   setoid_rewrite Propagate_anonymous_ret.
   rewrite (IList.IList_encode'_body_characterization _ _ _ _ base).
   destruct (List.fold_left _ _ _); simpl; erewrite H; reflexivity.
+Qed.
+
+Lemma IList_post_transform_TelEq_TelAppend :
+  forall {av} {A bin : Type}
+    (cache : Cache.Cache) (transformer : Transformer.Transformer bin)
+    (A_encode : A -> Cache.CacheEncode -> bin * Cache.CacheEncode)
+    (xs : list A) (base : bin) (env : Cache.CacheEncode)
+    k__stream ext (tenv: _ -> Telescope av) tenv',
+    let fold_on b :=
+        List.fold_left (IList.IList_encode'_body cache transformer A_encode) xs (b, env) in
+    (forall a1 a2 b, tenv (a1, b) = tenv (a2, b)) ->
+    TelEq ext
+          (TelAppend ([[ret (fold_on Transformer.transform_id) as folded]]
+                        ::[[ k__stream ->> Transformer.transform base (fst folded) as _]] :: tenv folded) tenv')
+          (TelAppend ([[ret (fold_on base) as folded]]
+                        ::[[ k__stream ->> fst folded as _]] :: tenv folded) tenv').
+Proof.
+  simpl; intros.
+  apply IList_post_transform_TelEq; intros; erewrite H; reflexivity.
 Qed.
 
 Lemma IList_encode'_body_simpl :

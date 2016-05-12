@@ -54,3 +54,5 @@ Diving in
 
 The file ./Benchmarks/MicrobenchmarksAnnotated.v contains a short introduction
 and a collection of simple compilation examples.
+
+Two preliminary examples of Binary encoders are in ./Benchmarks/MicroEncoders.v.
