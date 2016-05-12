@@ -2133,4 +2133,27 @@ Section ListFacts.
       rewrite H'; simpl; congruence. }
     { congruence. }
   Qed.
+
+  Lemma nth'_map_property {A B B'} P Q (n : nat) (f g : A -> B) (f' : A -> list B') d ls
+        (H' : forall v, (forall x, In x (f' v) -> Q x) -> f v = g v)
+        (Hf : P (nth' n (map f ls) d))
+        (H : forall x, In x (nth' n (map f' ls) nil) -> Q x)
+    : P (nth' n (map g ls) d).
+  Proof.
+    revert dependent n; induction ls as [|x xs IHxs]; intros.
+    { simpl in *; assumption. }
+    { destruct n as [|n];
+      simpl in *;
+      rewrite nth'_nth in Hf |- *; simpl in *.
+      { specialize (H' x).
+        rewrite <- H'; [ assumption | ].
+        intro x'; specialize (H x').
+        rewrite nth'_nth in H; simpl in H.
+        assumption. }
+      { rewrite <- nth'_nth in Hf |- *.
+        apply IHxs; clear IHxs; try assumption; [].
+        intro x'; specialize (H x').
+        rewrite nth'_nth in H |- *; simpl in H.
+        assumption. } }
+  Qed.
 End ListFacts.
