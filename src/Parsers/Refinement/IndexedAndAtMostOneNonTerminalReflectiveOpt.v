@@ -494,7 +494,6 @@ Section IndexedImpl_opt.
         reflexivity.
         reflexivity.
         reflexivity. }
-      Set Printing Depth 10000.
       change orb with Common.opt2.orb.
       let d := match goal with d : (nat * (nat * nat))%type |- _ => d end in
       change (fst d) with (Common.opt2.fst d);

@@ -203,15 +203,15 @@ Section correctness.
     Unfocus.
     refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
     repeat intro.
-    unfold step_option_rec, interp_TypeCode.
+    unfold step_option_rec.
     lazymatch goal with
-    | [ |- option_rect (fun _ : option (interp_SimpleTypeCode ?T0 -> interp_SimpleTypeCode ?T1 -> interp_SimpleTypeCode ?T2 -> interp_SimpleTypeCode ?T3) => _) _ _ ?x = option_rect _ _ _ ?y ]
+    | [ |- option_rect (fun _ : option (interp_TypeCode ?T) => _) _ _ ?x = option_rect _ _ _ ?y ]
         => idtac;
              let x0 := fresh "x" in
            let y0 := fresh "y" in
            destruct x as [x0|] eqn:?, y as [y0|] eqn:?;
              [ let p := fresh "P" in
-               cut ((Proper_relation_for (T0 --> T1 --> T2 --> T3))%signature x0 y0); [ intro p | ]
+               cut ((Proper_relation_for T)%signature x0 y0); [ intro p | ]
              | exfalso
              | exfalso
              | reflexivity ]
