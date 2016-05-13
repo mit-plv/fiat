@@ -203,10 +203,11 @@ Section correctness.
     Unfocus.
     refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
     repeat intro.
-    unfold step_option_rec.
+    unfold step_option_rec, interp_TypeCode.
     lazymatch goal with
     | [ |- option_rect (fun _ : option (interp_SimpleTypeCode ?T0 -> interp_SimpleTypeCode ?T1 -> interp_SimpleTypeCode ?T2 -> interp_SimpleTypeCode ?T3) => _) _ _ ?x = option_rect _ _ _ ?y ]
-        => let x0 := fresh "x" in
+        => idtac;
+             let x0 := fresh "x" in
            let y0 := fresh "y" in
            destruct x as [x0|] eqn:?, y as [y0|] eqn:?;
              [ let p := fresh "P" in
