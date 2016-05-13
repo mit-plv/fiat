@@ -194,7 +194,7 @@ Section DecomposeEnumField.
     Query Structure Schema
           [ relation "foo" has
                      schema <"A" :: nat, "BID" :: EnumID, "B" :: EnumType>
-            where (fun t => ibound (indexb t!"BID") = SumType_index _ t!"B" ) and (fun t t' => True);
+            (*where (fun t => ibound (indexb t!"BID") = SumType_index _ t!"B" ) and (fun t t' => True) *);
                     relation "bar" has
                              schema <"C" :: nat, "D" :: list string>
           ]
@@ -427,13 +427,13 @@ Section DecomposeEnumField.
              (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
              (tup : ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)))
     :  ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx)))).
-    unfold DecomposeRawQueryStructureSchema; simpl.
-    unfold GetNRelSchema, DecomposeSchema;
-      simpl.
+    unfold DecomposeRawQueryStructureSchema in *; simpl in *.
+    unfold GetNRelSchema, DecomposeSchema in *;
+      simpl in *.
     erewrite VectorSpec.nth_map by eauto; simpl.
-    apply Tuple_DecomposeHeading_proj; eauto.
+    eapply Tuple_DecomposeHeading_proj; eauto.
   Defined.
-  
+
   Definition Tuple_DecomposeRawQueryStructure_inj
              {m : nat}
              {qs_schema : RawQueryStructureSchema}
@@ -474,4 +474,192 @@ Section DecomposeEnumField.
            IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
            -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeRawQueryStructure_proj _ _ a _ a_proj tup)).
 
+    Definition DecomposeRawQueryStructureSchema_AbsR'
+             {m : nat}
+             {qs_schema : QueryStructureSchema}
+             ( schemaIdx' : BoundedIndex (QSschemaNames qs_schema))
+             (schemaIdx := ibound (indexb schemaIdx'))
+             {attrIdx' : BoundedIndex (HeadingNames (QSGetNRelSchemaHeading (qs_schema) schemaIdx'))}
+             (attrIdx := ibound (indexb attrIdx'))
+             (attrIdx_inj : Fin.t _ -> Fin.t _)
+             (EnumTypes : Vector.t Type m)
+             (f' : Vector.nth (AttrList _) (attrIdx_inj attrIdx) -> SumType EnumTypes)
+             (f'' : SumType EnumTypes -> Vector.nth (AttrList _) (attrIdx_inj attrIdx))
+             (a_proj_index : Vector.nth (AttrList _) (attrIdx_inj attrIdx) -> Fin.t m :=
+                fun attr => SumType_index EnumTypes (f' attr))
+             (a_proj : forall (attr : Vector.nth _ (attrIdx_inj attrIdx)), EnumTypes[@a_proj_index attr] :=
+                fun attr => SumType_proj EnumTypes (f' attr))
+             (a_inj : forall idx, Vector.nth EnumTypes idx -> Vector.nth (AttrList _) (attrIdx_inj attrIdx) :=
+                fun idx attr => f'' (inj_SumType EnumTypes idx attr))
+             (r_o : UnConstrQueryStructure qs_schema)
+             (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx (attrIdx_inj attrIdx) EnumTypes))
+      : Prop :=
+      DecomposeRawQueryStructureSchema_AbsR (qs_schema := qs_schema)
+                                            schemaIdx (attrIdx_inj attrIdx)
+                                            EnumTypes a_proj_index a_proj a_inj r_o r_n.
+
+Definition DecomposeRawQueryStructureSchema_empty_AbsR
+             {m : nat}
+             {qs_schema : QueryStructureSchema}
+  : forall (schemaIdx : Fin.t _)
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx),
+        DecomposeRawQueryStructureSchema_AbsR
+          schemaIdx attrIdx a a_proj_index a_proj a_inj
+          (DropQSConstraints (QSEmptySpec qs_schema))
+          (DropQSConstraints (QSEmptySpec qs_schema),
+           imap2 (fun ns : RawSchema => rawRel (RelationSchema:=ns))
+                 (Build_EmptyRelations
+                    (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)))).
+Proof.
+  intros.
+  repeat split; simpl; intros; intuition.
+  - unfold GetUnConstrRelation in H.
+    rewrite <- ith_imap2,
+     EmptyRefinements.ith_Bounded_BuildEmptyRelations in H.
+    simpl in H; unfold IndexedEnsemble_In in H; destruct_ex;
+      inversion H.
+  - unfold GetUnConstrRelation, DropQSConstraints, QSEmptySpec in H.
+    rewrite <- ith_imap2 in H.
+    simpl in H.
+    rewrite EmptyRefinements.ith_Bounded_BuildEmptyRelations in H.
+    simpl in H; unfold IndexedEnsemble_In in H; destruct_ex;
+      inversion H.
+Qed.
+
+Definition DecomposeRawQueryStructureSchema_Insert_AbsR_neq
+             {m : nat}
+             {qs_schema : QueryStructureSchema}
+  : forall (schemaIdx : Fin.t _)
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+           r_o
+           r_n,
+    DecomposeRawQueryStructureSchema_AbsR
+      schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+    ->
+    forall Ridx tup,
+      Ridx <> schemaIdx
+      -> DecomposeRawQueryStructureSchema_AbsR
+        schemaIdx attrIdx a a_proj_index a_proj a_inj
+        (UpdateUnConstrRelation r_o Ridx (EnsembleInsert tup (GetUnConstrRelation r_o Ridx)))
+        (UpdateUnConstrRelation (fst r_n) Ridx (EnsembleInsert tup (GetUnConstrRelation (fst r_n) Ridx)), snd r_n).
+Proof.
+  repeat split; simpl; intros.
+Admitted.
+
+Definition DecomposeRawQueryStructureSchema_Insert_AbsR_eq
+             {m : nat}
+             {qs_schema : QueryStructureSchema}
+  : forall (schemaIdx : Fin.t _)
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+           r_o
+           r_n,
+    DecomposeRawQueryStructureSchema_AbsR
+      schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+    ->
+    forall tup,
+      DecomposeRawQueryStructureSchema_AbsR
+        schemaIdx attrIdx a a_proj_index a_proj a_inj
+        (UpdateUnConstrRelation r_o schemaIdx (EnsembleInsert tup (GetUnConstrRelation r_o schemaIdx)))
+        (UpdateUnConstrRelation (fst r_n) schemaIdx (EnsembleInsert tup (GetUnConstrRelation (fst r_n) schemaIdx)),
+         UpdateUnConstrRelation (snd r_n)
+                                (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx))
+                                (EnsembleInsert {| elementIndex := elementIndex tup;
+                                                   indexedElement :=
+                                                     Tuple_DecomposeRawQueryStructure_proj
+                                                       _ _ _ _ a_proj
+                                                       (indexedElement tup) |} (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx))))).
+Admitted.
+
+Lemma UnConstrFreshIdx_Same_Set_Equiv {ElementType} :
+  forall (ensemble ensemble' : @IndexedEnsemble ElementType),
+    Same_set _ ensemble ensemble'
+    -> forall bound,
+      UnConstrFreshIdx ensemble bound
+      <-> UnConstrFreshIdx ensemble' bound.
+Proof.
+  unfold Same_set, UnConstrFreshIdx; intros.
+  intuition.
+  - eapply H; eapply H1; eauto.
+  - eapply H; eapply H0; eauto.
+Qed.
+
+Lemma refine_UnConstrFreshIdx_Same_Set_Equiv {ElementType} :
+  forall (ensemble ensemble' : @IndexedEnsemble ElementType),
+    Same_set _ ensemble ensemble'
+    -> refine {idx : nat | UnConstrFreshIdx ensemble idx}
+              {idx : nat | UnConstrFreshIdx ensemble' idx}.
+Proof.
+  intros.
+  unfold refine; intros; computes_to_inv; computes_to_econstructor.
+  rewrite UnConstrFreshIdx_Same_Set_Equiv; eauto.
+Qed.
+
+Corollary refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv
+  {m : nat}
+  {qs_schema : RawQueryStructureSchema}
+  (schemaIdx : Fin.t _)
+  (attrIdx : Fin.t _)
+  (a : Vector.t Type m)
+  (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+  (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+  (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+  (r_o : UnConstrQueryStructure qs_schema)
+  (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+  : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+    -> forall Ridx,
+    refine {idx : nat | UnConstrFreshIdx (GetUnConstrRelation r_o Ridx) idx}
+           {idx : nat | UnConstrFreshIdx (GetUnConstrRelation (fst r_n) Ridx) idx}.
+Proof.
+  intros; apply refine_UnConstrFreshIdx_Same_Set_Equiv.
+  apply (proj1 H Ridx).
+Qed.
+
+Arguments DecomposeRawQueryStructureSchema : simpl never.
+Arguments DecomposeRawQueryStructureSchema_AbsR : simpl never.
+Arguments inj_SumType : simpl never.
+Arguments inj_SumType : simpl never.
+Arguments SumType_proj : simpl never.
+Arguments SumType_index : simpl never.
+Arguments Vector.nth _ _ _ !_ / .
+
+Definition EEImpl : FullySharpened EESpec.
+    unfold EESpec.
+    start sharpening ADT.
+    start_honing_QueryStructure'.
+    let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' _ EESchema ``"foo" ``"B"
+                                                                id EnumTypes id id) in
+    hone representation using AbsR'.
+    {
+      simplify with monad laws.
+      apply refine_pick_val.
+      apply DecomposeRawQueryStructureSchema_empty_AbsR.
+    }
+    { (* Insert *)
+      unfold DecomposeRawQueryStructureSchema_AbsR' in *.
+      simpl in *; simplify with monad laws; cbv beta; simpl.
+      rewrite (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0 Fin.F1).
+      unfold H; eapply refine_under_bind; intros.
+      apply refine_under_bind_both; intros.
+      apply refine_pick_val.
+      eapply (DecomposeRawQueryStructureSchema_Insert_AbsR_eq H0).
+      finish honing.
+    }
+    { (* Query *)
+      unfold DecomposeRawQueryStructureSchema_AbsR' in *.
+      simpl in *; simplify with monad laws; cbv beta; simpl.
+      (* More refinements here. *)
+
+Abort.
 End DecomposeEnumField.
