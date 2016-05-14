@@ -77,6 +77,7 @@ Section correctness.
     match goal with
     | [ |- ?x = ?x ] => reflexivity
     | _ => progress cbv beta iota
+    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
     | _ => intro
     | _ => progress subst
     | _ => progress unfold Proper in *
@@ -103,7 +104,6 @@ Section correctness.
     | [ |- appcontext G[atl (an_arg ?x ?y)] ]
       => let G' := context G[y] in
          change G'
-    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
     | [ |- _ /\ _ ] => split
     end.
   Local Ltac fin_proper := repeat fin_proper'.
