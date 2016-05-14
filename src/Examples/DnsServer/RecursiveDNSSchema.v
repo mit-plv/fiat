@@ -452,6 +452,104 @@ Section DecomposeEnumField.
     eapply Tuple_DecomposeHeading_inj; eauto.
   Defined.
 
+  Fixpoint Tuple_DecomposeRawQueryStructure_Tuple_inj
+             {n m : nat}
+             (headings : _ )
+             (idx : Fin.t m)
+             (tup : ilist2 (B := @id Type)
+          (AttrList
+             (rawSchemaHeading
+                (Vector.map
+                   (fun
+                      rawheading : t Type n =>
+                    {|
+                    rawSchemaHeading := {|
+                                        NumAttr := _;
+                                        AttrList := rawheading |};
+                    attrConstraints := None;
+                    tupleConstraints := None |})
+                   headings)[@idx])))
+             {struct idx}
+      : ilist2 (B := @id Type) headings[@idx].
+  Proof.
+    destruct idx; simpl in *; 
+      revert tup; try revert idx;
+        pattern n0, headings; apply Vector.caseS.
+    - simpl; intros; exact tup.
+    - simpl; intros.
+      apply Tuple_DecomposeRawQueryStructure_Tuple_inj.
+      apply tup.
+  Defined.
+
+  Definition Tuple_DecomposeRawQueryStructure_inj'
+             {m : nat}
+             {qs_schema : RawQueryStructureSchema}
+             (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             (a : Vector.t Type m)
+             (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+             (idx : Fin.t m)
+             (tup : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) idx)))
+             (Tuple_inj :
+                ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) idx))
+                ->
+                ilist2 (B := @id Type)
+     (DecomposeHeading attrIdx
+        (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) a)[@idx] := Tuple_DecomposeRawQueryStructure_Tuple_inj _ idx)
+    : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)).
+    eapply Tuple_DecomposeHeading_inj; eauto.
+  Defined.
+
+    Fixpoint Tuple_DecomposeRawQueryStructure_Tuple_proj
+             {n m : nat}
+             (headings : _ )
+             (idx : Fin.t m)
+             (tup : ilist2 (B := @id Type) headings[@idx])
+             {struct idx}
+             :
+ilist2 (B := @id Type)
+          (AttrList
+             (rawSchemaHeading
+                (Vector.map
+                   (fun
+                      rawheading : t Type n =>
+                    {|
+                    rawSchemaHeading := {|
+                                        NumAttr := _;
+                                        AttrList := rawheading |};
+                    attrConstraints := None;
+                    tupleConstraints := None |})
+                   headings)[@idx]))
+          .
+  Proof.
+    destruct idx; simpl in *; 
+      revert tup; try revert idx;
+        pattern n0, headings; apply Vector.caseS.
+    - simpl; intros; exact tup.
+    - simpl; intros.
+      apply Tuple_DecomposeRawQueryStructure_Tuple_proj.
+      apply tup.
+  Defined.
+
+  Definition Tuple_DecomposeRawQueryStructure_proj'
+             {m : nat}
+             {qs_schema : RawQueryStructureSchema}
+             (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             (a : Vector.t Type m)
+             (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+             (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+             (tup : ilist2 (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)))
+             (Tuple_proj :
+                ilist2 (B := @id Type)
+                       (DecomposeHeading attrIdx
+                                         (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) a)[@a_proj_index (GetAttributeRaw tup attrIdx)]
+                -> ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx))))
+              := Tuple_DecomposeRawQueryStructure_Tuple_proj _ (a_proj_index _))
+    : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx)))).
+    eapply Tuple_proj; eapply Tuple_DecomposeHeading_proj; eauto.
+  Defined.
+  
   Definition DecomposeRawQueryStructureSchema_AbsR
              {m : nat}
              {qs_schema : RawQueryStructureSchema}
@@ -469,10 +567,10 @@ Section DecomposeEnumField.
     /\ (forall Ridx tup,
            IndexedEnsemble_In (GetUnConstrRelation (snd r_n) Ridx) tup
            ->  IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx)
-                                  (Tuple_DecomposeRawQueryStructure_inj _ _ a a_inj _ tup))
+                                  (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj _ tup))
     /\ (forall tup,
            IndexedEnsemble_In (GetUnConstrRelation (fst r_n) schemaIdx) tup
-           -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeRawQueryStructure_proj _ _ a _ a_proj tup)).
+           -> IndexedEnsemble_In (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw tup attrIdx))) (Tuple_DecomposeRawQueryStructure_proj' _ _ a _ a_proj tup)).
 
     Definition DecomposeRawQueryStructureSchema_AbsR'
              {m : nat}
@@ -552,6 +650,46 @@ Definition DecomposeRawQueryStructureSchema_Insert_AbsR_neq
         (UpdateUnConstrRelation (fst r_n) Ridx (EnsembleInsert tup (GetUnConstrRelation (fst r_n) Ridx)), snd r_n).
 Proof.
   repeat split; simpl; intros.
+  - destruct (fin_eq_dec Ridx Ridx0); subst;
+      unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    + rewrite !ith_replace2_Index_eq.
+      unfold Included; intros.
+      inversion H1; subst; intuition.
+      * econstructor; eauto.
+      * econstructor 2; eapply (proj1 H Ridx0); apply H2.
+    + rewrite !ith_replace2_Index_neq; eauto.
+      unfold Included; intros; eapply (proj1 H Ridx0); apply H1.
+  - destruct (fin_eq_dec Ridx Ridx0); subst;
+      unfold GetUnConstrRelation, UpdateUnConstrRelation.   
+    + rewrite !ith_replace2_Index_eq.
+      unfold Included; intros.
+      inversion H1; subst; intuition.
+      * econstructor; eauto.
+      * econstructor 2; eapply (proj1 H Ridx0); apply H2.
+    + rewrite !ith_replace2_Index_neq; eauto.
+      unfold Included; intros; eapply (proj1 H Ridx0); apply H1.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.  
+    rewrite !ith_replace2_Index_neq; eauto.
+    eapply (proj2 H); eauto.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation in *.  
+    rewrite !ith_replace2_Index_neq in H1; eauto.
+    eapply (proj2 H); eauto.
+Qed.
+
+Lemma Tuple_DecomposeRawQueryStructure_inj_inverse
+      {m : nat}
+      {qs_schema : QueryStructureSchema}
+  : forall (schemaIdx : Fin.t _)
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+           tup,
+    Tuple_DecomposeRawQueryStructure_inj' schemaIdx attrIdx a a_inj
+                                          (a_proj_index (GetAttributeRaw tup attrIdx))
+                                          (Tuple_DecomposeRawQueryStructure_proj' schemaIdx attrIdx a a_proj_index a_proj
+                                                                                 tup) = tup.
 Admitted.
 
 Definition DecomposeRawQueryStructureSchema_Insert_AbsR_eq
@@ -566,7 +704,8 @@ Definition DecomposeRawQueryStructureSchema_Insert_AbsR_eq
            r_o
            r_n,
     DecomposeRawQueryStructureSchema_AbsR
-      schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+      schemaIdx attrIdx a a_proj_index a_proj a_inj
+      r_o r_n
     ->
     forall tup,
       DecomposeRawQueryStructureSchema_AbsR
@@ -577,9 +716,65 @@ Definition DecomposeRawQueryStructureSchema_Insert_AbsR_eq
                                 (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx))
                                 (EnsembleInsert {| elementIndex := elementIndex tup;
                                                    indexedElement :=
-                                                     Tuple_DecomposeRawQueryStructure_proj
+                                                     Tuple_DecomposeRawQueryStructure_proj'
                                                        _ _ _ _ a_proj
                                                        (indexedElement tup) |} (GetUnConstrRelation (snd r_n) (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx))))).
+  repeat split; simpl; intros.
+  - destruct (fin_eq_dec schemaIdx Ridx); subst;
+      unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    + rewrite !ith_replace2_Index_eq.
+      unfold Included; intros.
+      inversion H0; subst; intuition.
+      * econstructor; eauto.
+      * econstructor 2; eapply (proj1 H Ridx); apply H1.
+    + rewrite !ith_replace2_Index_neq; eauto.
+      unfold Included; intros; eapply (proj1 H Ridx); apply H0.
+  - destruct (fin_eq_dec schemaIdx Ridx); subst;
+      unfold GetUnConstrRelation, UpdateUnConstrRelation.
+    + rewrite !ith_replace2_Index_eq.
+      unfold Included; intros.
+      inversion H0; subst; intuition.
+      * econstructor; eauto.
+      * econstructor 2; eapply (proj1 H Ridx); apply H1.
+    + rewrite !ith_replace2_Index_neq; eauto.
+      unfold Included; intros; eapply (proj1 H Ridx); apply H0.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
+    + rewrite !ith_replace2_Index_eq in *.
+      simpl in H0.
+      destruct (fin_eq_dec
+                  Ridx
+                  (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx))); subst.
+      rewrite !ith_replace2_Index_eq in H0.
+      destruct H0 as [? [? | ?] ].
+      * destruct tup; injections; econstructor; econstructor.
+        f_equal; simpl.
+        apply Tuple_DecomposeRawQueryStructure_inj_inverse.
+      * destruct (proj1 (proj2 H) (a_proj_index (GetAttributeRaw (indexedElement tup) attrIdx)) tup0).
+        econstructor; eauto.
+        econstructor; econstructor 2; eauto.
+      * rewrite !ith_replace2_Index_neq in H0 by eauto.
+        destruct (proj1 (proj2 H) Ridx tup0 H0); eauto.
+        econstructor; econstructor 2; eauto.
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
+    + rewrite !ith_replace2_Index_eq in H0.
+      destruct H0 as [? [? | ?] ]; subst.
+      * try rewrite !ith_replace2_Index_eq.
+        econstructor; econstructor; f_equal.
+      * destruct (proj2 (proj2 H) tup0).
+        econstructor; eauto.
+        simpl in *.
+        econstructor; simpl.
+        destruct tup; simpl in *.
+        clear r_o H H0 a_inj.
+        unfold In.
+        destruct (fin_eq_dec (a_proj_index (GetAttributeRaw tup0 attrIdx))
+                             (a_proj_index (GetAttributeRaw indexedElement attrIdx))
+                 ); subst; 
+          [ | rewrite !ith_replace2_Index_neq; eauto].
+        match goal with
+          |- ith2 (replace_Index2 _ _ ?idx _) ?idx' _ =>
+          assert (idx = idx')
+        end.
 Admitted.
 
 Lemma UnConstrFreshIdx_Same_Set_Equiv {ElementType} :
@@ -626,6 +821,64 @@ Proof.
   apply (proj1 H Ridx).
 Qed.
 
+Fixpoint Iterate_Equiv_QueryResultComp
+         m
+         {ResultT}
+         (heading : RawHeading)
+         (headings : Fin.t m -> RawHeading)
+         (Ensembles : forall (idx : Fin.t m),
+             @IndexedEnsemble (@RawTuple (headings idx)))
+         (inj_Tuple : forall (idx : Fin.t m),
+             @RawTuple (headings idx)
+             -> @RawTuple heading)
+         (body : @RawTuple heading -> Comp (list ResultT))
+         {struct m}
+  : Comp (list ResultT) :=
+  match m return
+        forall (headings : Fin.t m -> RawHeading),
+          (forall (idx : Fin.t m),
+              @IndexedEnsemble (@RawTuple (headings idx)))
+          -> (forall (idx : Fin.t m),
+                 @RawTuple (headings idx)
+                 -> @RawTuple heading)
+          -> Comp (list ResultT)
+         with
+         | 0 => fun _ _ _ => (ret List.nil)
+         | S m =>
+           fun headings Ensembles inj_Tuple =>
+             res <- QueryResultComp (Ensembles Fin.F1)
+                 (fun tup => body (inj_Tuple Fin.F1 tup));
+             res' <- Iterate_Equiv_QueryResultComp heading
+                  (fun idx => headings (Fin.FS idx))
+                  (fun idx => Ensembles (Fin.FS idx))
+                  (fun idx tup => (inj_Tuple (Fin.FS idx) tup))
+                  body
+             ;
+             ret (List.app res res')
+          end headings Ensembles inj_Tuple.
+
+Lemma refine_Iterate_Equiv_QueryResultComp
+  {m : nat}
+  {qs_schema : RawQueryStructureSchema}
+  {ResultT}
+  (schemaIdx : Fin.t _)
+  (body : @RawTuple _ -> Comp (list ResultT))
+  (attrIdx : Fin.t _)
+  (a : Vector.t Type m)
+  (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+  (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+  (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+  (r_o : UnConstrQueryStructure qs_schema)
+  (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+  : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+    ->
+    refine (UnConstrQuery_In r_o schemaIdx body)
+           (Iterate_Equiv_QueryResultComp
+              _ _
+              (GetUnConstrRelation (snd r_n))
+              (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj) body).
+Admitted.
+
 Arguments DecomposeRawQueryStructureSchema : simpl never.
 Arguments DecomposeRawQueryStructureSchema_AbsR : simpl never.
 Arguments inj_SumType : simpl never.
@@ -639,8 +892,7 @@ Definition EEImpl : FullySharpened EESpec.
     start sharpening ADT.
     start_honing_QueryStructure'.
     let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' _ EESchema ``"foo" ``"B"
-                                                                id EnumTypes id id) in
-    hone representation using AbsR'.
+                                                                id EnumTypes id id) in  hone representation using AbsR'.
     {
       simplify with monad laws.
       apply refine_pick_val.
@@ -659,6 +911,15 @@ Definition EEImpl : FullySharpened EESpec.
     { (* Query *)
       unfold DecomposeRawQueryStructureSchema_AbsR' in *.
       simpl in *; simplify with monad laws; cbv beta; simpl.
+      rewrite refine_For; simplify with monad laws.
+      rewrite (refine_Iterate_Equiv_QueryResultComp _ H0).
+      simpl.
+      simplify with monad laws.
+      unfold Tuple_DecomposeRawQueryStructure_inj'.
+      simpl.
+      unfold GetAttributeRaw; simpl.
+      unfold icons2; simpl.
+      unfold ilist2_tl, ilist2_hd; simpl.
       (* More refinements here. *)
 
 Abort.
