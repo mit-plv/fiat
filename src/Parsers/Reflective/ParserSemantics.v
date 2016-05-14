@@ -68,12 +68,12 @@ Definition interp_has_parse_term
                  (pf : len <= len0)
                  (nt : nat)
              => option_rect
-                  (fun _ => bool)
+                  (fun _ : option (interp_TypeCode (cnat --> cnat --> cnat --> cbool)) => bool)
                   (fun parse_nt
                    => interp_Term
                         f
-                        (fun n => char_at_matches_interp n (*str*))
-                        (fun n => split_string_for_production n (*str*))
+                        (fun n : interp_TypeCode cnat => char_at_matches_interp n (*str*))
+                        (fun n : interp_TypeCode (cnat * (cnat * cnat)) => split_string_for_production n (*str*))
                         len0 valid_len parse_nt valids offset len nt)
                   false
                   (@step_option_rec is_valid_nonterminal len0 valid_len0 parse_nt G_length up_to_G_length valids offset len nt))

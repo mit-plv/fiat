@@ -51,6 +51,10 @@ Module opt2.
   Definition ret_cases_BoolDecR := Eval compute in ret_cases_BoolDecR.
 End opt2.
 
+Module opt3.
+  Definition fold_right {A B} := Eval compute in @List.fold_right A B.
+End opt3.
+
 Module opt.
   Definition map {A B} := Eval compute in @List.map A B.
   Definition flat_map {A B} := Eval compute in @List.flat_map A B.
@@ -494,7 +498,6 @@ Section IndexedImpl_opt.
         reflexivity.
         reflexivity.
         reflexivity. }
-      Set Printing Depth 10000.
       change orb with Common.opt2.orb.
       let d := match goal with d : (nat * (nat * nat))%type |- _ => d end in
       change (fst d) with (Common.opt2.fst d);
@@ -523,3 +526,59 @@ Declare Reduction opt_red_FirstStep := cbv [opt_rindexed_spec opt.map opt.flat_m
 
 Ltac opt_red_FirstStep :=
   cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.length_of_any_productions' opt.collapse_length_result opt.fst opt.snd].
+
+Section tower.
+  Context {A}
+          (r_o : list nat -> Comp A)
+          (retv : Comp A)
+          (test : ret_cases -> bool)
+          (test_true : ret_cases -> Comp (list nat)).
+
+  Fixpoint make_tower base (ls : list ret_cases) new_comp old_comp
+    := match ls with
+       | nil => refine (x0 <- new_comp base; r_o x0) retv
+                -> refine (x0 <- old_comp base; r_o x0) retv
+       | cons x xs
+         => match x with
+            | ret_pick _
+              => forall part_retv,
+                (test x -> refine (test_true x) part_retv)
+                -> make_tower
+                     base
+                     xs
+                     (fun new_comp' => new_comp (If test x Then part_retv Else new_comp'))
+                     (fun old_comp' => old_comp (If test x Then test_true x Else old_comp'))
+            | _
+              => make_tower
+                   base
+                   xs
+                   (fun new_comp' => new_comp (If test x Then test_true x Else new_comp'))
+                   (fun old_comp' => old_comp (If test x Then test_true x Else old_comp'))
+            end
+       end.
+
+  Lemma refine_opt2_fold_right' base ls new_comp old_comp
+        (H : forall base base',
+            refine base' base
+            -> refine (x0 <- new_comp base; r_o x0) retv
+            -> refine (x0 <- old_comp base'; r_o x0) retv)
+    : make_tower base ls new_comp old_comp.
+  Proof.
+    revert base new_comp old_comp H; induction ls as [|x xs IHxs]; simpl; intros.
+    { eapply H; [ | eassumption ].
+      reflexivity. }
+    { destruct x; simpl; intros;
+      apply IHxs; clear IHxs; try intros ?? H';
+      apply H;
+      edestruct test; specialize_by ltac:(exact eq_refl); simpl;
+      try setoid_rewrite_hyp'; reflexivity. }
+  Qed.
+
+  Lemma refine_opt2_fold_right base ls
+    : make_tower base ls (fun x => x) (fun x => x).
+  Proof.
+    apply refine_opt2_fold_right'.
+    intros.
+    setoid_rewrite_hyp; reflexivity.
+  Qed.
+End tower.

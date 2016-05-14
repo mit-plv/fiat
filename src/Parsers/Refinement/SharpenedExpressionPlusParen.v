@@ -13,6 +13,7 @@ Section IndexedImpl.
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
     start sharpening ADT.
+
     Time start honing parser using indexed representation.
 
     Time hone method "splits".
@@ -21,86 +22,77 @@ Section IndexedImpl.
       Time simplify parser splitter.
       (*Show Profile.*)
       (*
-
-total time:      3.578s
-
- tactic                                    self  total   calls       max
-────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    3.578s
-─simplify_parser_splitter' -------------   0.4% 100.0%      13    0.406s
-─simplify ------------------------------   0.0% 100.0%       1    3.578s
-─simplify with monad laws --------------   0.0%  37.1%      12    0.281s
-─simplify_with_applied_monad_laws ------   1.7%  37.1%      12    0.281s
-─unguard -------------------------------   0.0%  10.9%      13    0.188s
-─rewrite ?(unguard [0]) ----------------  10.5%  10.9%      13    0.188s
-─rewrite !if_aggregate3 by solve_prod_be   3.9%   7.9%       4    0.172s
-─eapply refine_under_bind_helper -------   7.9%   7.9%      91    0.016s
-─rewrite !if_aggregate2 by solve_prod_be   4.8%   7.0%       6    0.109s
-─eapply refine_under_bind_helper_1 -----   6.6%   6.6%      91    0.031s
-─rewrite <- !Bool.andb_orb_distrib_r ---   6.6%   6.6%      11    0.078s
-─eapply refine_under_bind_helper_2 -----   6.6%   6.6%      91    0.031s
-─solve_prod_beq ------------------------   0.9%   6.1%       8    0.063s
-─rewrite !if_aggregate -----------------   5.2%   5.2%       8    0.109s
-─rewrite <- !Bool.andb_orb_distrib_l ---   5.2%   5.2%       9    0.063s
-─apply refine_bind_bind_helper ---------   4.8%   4.8%      93    0.016s
-─apply refine_unit_bind_helper ---------   4.8%   4.8%      93    0.016s
-─apply refine_bind_unit_helper ---------   3.9%   3.9%      95    0.016s
-─rewrite !beq_0_1_leb ------------------   3.5%   3.5%       7    0.031s
-─rewrite <- !BoolFacts.andb_orb_distrib_   3.5%   3.5%       8    0.031s
-─rewrite <- !Bool.andb_assoc -----------   3.1%   3.1%       8    0.031s
-─rewrite <- !Bool.orb_andb_distrib_l ---   2.6%   2.6%       8    0.016s
-─rewrite <- !Bool.orb_assoc ------------   2.6%   2.6%       8    0.031s
-─rewrite <- !Bool.orb_andb_distrib_r ---   2.6%   2.6%       8    0.016s
+total time:      0.712s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    3.578s
-└simplify ------------------------------   0.0% 100.0%       1    3.578s
-└simplify_parser_splitter' -------------   0.4% 100.0%      13    0.406s
- ├─simplify with monad laws ------------   0.0%  37.1%      12    0.281s
- │└simplify_with_applied_monad_laws ----   1.7%  37.1%      12    0.281s
- │ ├─eapply refine_under_bind_helper ---   7.9%   7.9%      91    0.016s
- │ ├─eapply refine_under_bind_helper_1 -   6.6%   6.6%      91    0.031s
- │ ├─eapply refine_under_bind_helper_2 -   6.6%   6.6%      91    0.031s
- │ ├─apply refine_unit_bind_helper -----   4.8%   4.8%      93    0.016s
- │ ├─apply refine_bind_bind_helper -----   4.8%   4.8%      93    0.016s
- │ └─apply refine_bind_unit_helper -----   3.9%   3.9%      95    0.016s
- ├─unguard -----------------------------   0.0%  10.9%      13    0.188s
- │└rewrite ?(unguard [0]) --------------  10.5%  10.9%      13    0.188s
- ├─rewrite !if_aggregate3 by solve_prod_   3.9%   7.9%       4    0.172s
- │└solve_prod_beq ----------------------   0.0%   3.9%       4    0.063s
- ├─rewrite !if_aggregate2 by solve_prod_   4.8%   7.0%       6    0.109s
- │└solve_prod_beq ----------------------   0.9%   2.2%       4    0.047s
- ├─rewrite <- !Bool.andb_orb_distrib_r -   6.6%   6.6%      11    0.078s
- ├─rewrite !if_aggregate ---------------   5.2%   5.2%       8    0.109s
- ├─rewrite <- !Bool.andb_orb_distrib_l -   5.2%   5.2%       9    0.063s
- ├─rewrite !beq_0_1_leb ----------------   3.5%   3.5%       7    0.031s
- ├─rewrite <- !BoolFacts.andb_orb_distri   3.5%   3.5%       8    0.031s
- ├─rewrite <- !Bool.andb_assoc ---------   3.1%   3.1%       8    0.031s
- ├─rewrite <- !Bool.orb_andb_distrib_l -   2.6%   2.6%       8    0.016s
- ├─rewrite <- !Bool.orb_andb_distrib_r -   2.6%   2.6%       8    0.016s
- └─rewrite <- !Bool.orb_assoc ----------   2.6%   2.6%       8    0.031s
+─simplify parser splitter --------------   0.0% 100.0%       1    0.712s
+─simplify_parser_splitter' -------------   1.7% 100.0%       6    0.340s
+─simplify ------------------------------   0.0% 100.0%       1    0.712s
+─simplify with monad laws --------------   0.0%  64.6%       4    0.268s
+─simplify_with_applied_monad_laws ------   0.6%  64.6%       4    0.268s
+─eapply (refine_opt2_fold_right r_o retv  26.4%  26.4%       1    0.188s
+─apply refine_bind_unit_helper ---------  11.8%  11.8%      31    0.008s
+─eapply refine_under_bind_helper -------  11.8%  11.8%      29    0.012s
+─apply refine_bind_bind_helper ---------  11.2%  11.2%      30    0.008s
+─eapply refine_under_bind_helper_1 -----  10.7%  10.7%      29    0.008s
+─apply refine_unit_bind_helper ---------   9.6%   9.6%      30    0.008s
+─eapply refine_under_bind_helper_2 -----   9.0%   9.0%      29    0.008s
+─autounfold  with parser_sharpen_db ----   6.2%   6.2%       6    0.012s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─simplify parser splitter --------------   0.0% 100.0%       1    0.712s
+└simplify ------------------------------   0.0% 100.0%       1    0.712s
+└simplify_parser_splitter' -------------   1.7% 100.0%       6    0.340s
+ ├─simplify with monad laws ------------   0.0%  64.6%       4    0.268s
+ │└simplify_with_applied_monad_laws ----   0.6%  64.6%       4    0.268s
+ │ ├─apply refine_bind_unit_helper -----  11.8%  11.8%      31    0.008s
+ │ ├─eapply refine_under_bind_helper ---  11.8%  11.8%      29    0.012s
+ │ ├─apply refine_bind_bind_helper -----  11.2%  11.2%      30    0.008s
+ │ ├─eapply refine_under_bind_helper_1 -  10.7%  10.7%      29    0.008s
+ │ ├─apply refine_unit_bind_helper -----   9.6%   9.6%      30    0.008s
+ │ └─eapply refine_under_bind_helper_2 -   9.0%   9.0%      29    0.008s
+ ├─eapply (refine_opt2_fold_right r_o re  26.4%  26.4%       1    0.188s
+ └─autounfold  with parser_sharpen_db --   6.2%   6.2%       6    0.012s
  *)
-      (*Start Profiling.*)
-      Time refine_binop_table.
-      (*Show Profile.*)
+      { (*Start Profiling.*)
+        Time refine_binop_table.
+        (*Show Profile.*)
       (*
-total time:      6.094s
+total time:      0.548s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─setoid_rewrite_refine_binop_table_idx -   1.0% 100.0%       1    6.094s
-─refine_binop_table --------------------   0.0% 100.0%       1    6.094s
-─lazy beta iota zeta delta in c0 -------  92.1%  92.1%       1    5.609s
-─setoid_rewrite H ----------------------   4.1%   5.4%       1    0.328s
+─refine_binop_table --------------------   0.7% 100.0%       1    0.548s
+─setoid_rewrite_refine_binop_table_idx -  62.8%  99.3%       1    0.544s
+─replace_with_at_by --------------------   0.0%  18.2%       1    0.100s
+─replace_with_vm_compute_in ------------   0.0%  18.2%       1    0.100s
+─replace c with c' in H by (clear; vm_ca   0.0%  18.2%       1    0.100s
+─set_tac -------------------------------   0.0%   9.5%       1    0.052s
+─set (x' := x) in H --------------------   9.5%   9.5%       1    0.052s
+─induction H ---------------------------   6.6%   6.6%       1    0.036s
+─setoid_rewrite H ----------------------   4.4%   5.1%       1    0.028s
+─pose proof lem as H -------------------   4.4%   4.4%       1    0.024s
+─assert T0 as H0 by (clear; lazy beta io   0.7%   3.6%       1    0.020s
+─clear ---------------------------------   2.9%   2.9%       2    0.016s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─refine_binop_table --------------------   0.0% 100.0%       1    6.094s
-└setoid_rewrite_refine_binop_table_idx -   1.0% 100.0%       1    6.094s
- ├─lazy beta iota zeta delta in c0 -----  92.1%  92.1%       1    5.609s
- └─setoid_rewrite H --------------------   4.1%   5.4%       1    0.328s
+─refine_binop_table --------------------   0.7% 100.0%       1    0.548s
+└setoid_rewrite_refine_binop_table_idx -  62.8%  99.3%       1    0.544s
+ ├─replace_with_vm_compute_in ----------   0.0%  18.2%       1    0.100s
+ │└replace c with c' in H by (clear; vm_   0.0%  18.2%       1    0.100s
+ │└replace_with_at_by ------------------   0.0%  18.2%       1    0.100s
+ │ ├─set_tac ---------------------------   0.0%   9.5%       1    0.052s
+ │ │└set (x' := x) in H ----------------   9.5%   9.5%       1    0.052s
+ │ └─induction H -----------------------   6.6%   6.6%       1    0.036s
+ ├─setoid_rewrite H --------------------   4.4%   5.1%       1    0.028s
+ ├─pose proof lem as H -----------------   4.4%   4.4%       1    0.024s
+ └─assert T0 as H0 by (clear; lazy beta    0.7%   3.6%       1    0.020s
+  └clear -------------------------------   2.9%   2.9%       1    0.016s
  *)
+        reflexivity. }
       finish honing parser method.
     }
 
@@ -121,7 +113,7 @@ Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Definition paren_expr_parser (str : String.string) : bool.
 Proof.
-  Time make_parser ComputationalSplitter. (* 20 s *)
+  Time make_parser ComputationalSplitter. (* 0.18 s *)
 (*  Show Proof.
 
   pose (has_parse (parser ComputationalSplitter) str) as p.

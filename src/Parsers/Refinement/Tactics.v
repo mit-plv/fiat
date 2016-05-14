@@ -67,9 +67,9 @@ Ltac start_honing :=
          => replace_with_vm_compute (opt.combine ls ls')
        | [ |- context[opt2.uniquize ?beq ?ls] ]
          => replace_with_vm_compute (opt2.uniquize beq ls)
-       end;
+       end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
-  change (orb false) with (fun x : bool => x); cbv beta.
+  change (orb false) with (fun x : bool => x); cbv beta*).
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
   := (lazymatch goal with
@@ -91,6 +91,61 @@ Tactic Notation "finish" "honing" "parser" "method"
 Ltac finish_Sharpening_SplitterADT
   := solve [ refine finish_Sharpening_SplitterADT ].
 
+Ltac simplify_parser_splitter' :=
+  first [ progress autounfold with parser_sharpen_db;
+          cbv beta iota zeta;
+          simpl @Operations.List.uniquize;
+          simpl @List.fold_right
+        | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
+        | progress simplify with monad laws
+        | idtac;
+          lazymatch goal with
+          | [ |- refine (x0 <- (opt2.fold_right
+                                  (fun a a0 => If @?test a Then @?test_true a Else a0)
+                                  ?base
+                                  ?ls);
+                         (@?r_o x0))
+                        ?retv ]
+            => eapply (@refine_opt2_fold_right _ r_o retv test test_true base ls)
+          end;
+          cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
+          change (opt2.orb false) with (fun x : bool => x);
+          cbv beta; intros
+        (*| progress unguard
+        | progress change (orb false) with (fun x : bool => x); cbv beta
+        | progress change (orb true) with (fun x : bool => true); cbv beta
+        | progress change (andb false) with (fun x : bool => false); cbv beta
+        | progress change (andb true) with (fun x : bool => x); cbv beta
+        | progress change (Common.opt2.orb false) with (fun x : bool => x); cbv beta
+        | progress change (Common.opt2.orb true) with (fun x : bool => true); cbv beta
+        | progress change (Common.opt2.andb false) with (fun x : bool => false); cbv beta
+        | progress change (Common.opt2.andb true) with (fun x : bool => x); cbv beta
+        | rewrite !opt2.orb_false_r
+        | rewrite <- !opt2.andb_orb_distrib_r
+        | rewrite <- !opt2.andb_orb_distrib_r
+        | rewrite <- !opt2.andb_orb_distrib_l
+        | rewrite <- !opt2.orb_andb_distrib_r
+        | rewrite <- !opt2.orb_andb_distrib_l
+        | rewrite <- !opt2.andb_assoc
+        | rewrite <- !opt2.orb_assoc
+        | rewrite <- !opt2.andb_orb_distrib_r_assoc
+        | rewrite !if_aggregate
+        | rewrite !opt2.beq_0_1_leb
+        | rewrite !opt2.beq_S_leb
+        | idtac;
+          match goal with
+            | [ |- context[If ?b Then ?x Else If ?b' Then ?x Else _] ]
+              => idtac
+          end;
+          progress repeat setoid_rewrite if_aggregate
+        | rewrite !if_aggregate2 by solve_prod_beq
+        | rewrite !if_aggregate3 by solve_prod_beq
+        | progress parser_pull_tac
+        | progress (simpl @fst; simpl @snd)*) ].
+
+Tactic Notation "simplify" "parser" "splitter" :=
+  repeat simplify_parser_splitter'.
+
 Ltac splitter_start :=
   start sharpening ADT;
   start honing parser using indexed representation;
@@ -104,3 +159,9 @@ Ltac splitter_finish :=
   | [ |- refine _ _ ] => finish honing parser method
   | [ |- Sharpened _ ] => finish_Sharpening_SplitterADT
   end.
+
+(** For [start honing ...] *)
+Global Arguments opt3.fold_right : simpl never.
+Global Arguments opt2.ret_cases_BoolDecR !_ !_ / .
+Global Arguments opt2.fold_right : simpl never.
+Global Arguments opt.map : simpl never.

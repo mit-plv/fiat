@@ -77,6 +77,7 @@ Section correctness.
     match goal with
     | [ |- ?x = ?x ] => reflexivity
     | _ => progress cbv beta iota
+    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
     | _ => intro
     | _ => progress subst
     | _ => progress unfold Proper in *
@@ -103,7 +104,6 @@ Section correctness.
     | [ |- appcontext G[atl (an_arg ?x ?y)] ]
       => let G' := context G[y] in
          change G'
-    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
     | [ |- _ /\ _ ] => split
     end.
   Local Ltac fin_proper := repeat fin_proper'.
@@ -205,12 +205,13 @@ Section correctness.
     repeat intro.
     unfold step_option_rec.
     lazymatch goal with
-    | [ |- option_rect (fun _ : option (interp_SimpleTypeCode ?T0 -> interp_SimpleTypeCode ?T1 -> interp_SimpleTypeCode ?T2 -> interp_SimpleTypeCode ?T3) => _) _ _ ?x = option_rect _ _ _ ?y ]
-        => let x0 := fresh "x" in
+    | [ |- option_rect (fun _ : option (interp_TypeCode ?T) => _) _ _ ?x = option_rect _ _ _ ?y ]
+        => idtac;
+             let x0 := fresh "x" in
            let y0 := fresh "y" in
            destruct x as [x0|] eqn:?, y as [y0|] eqn:?;
              [ let p := fresh "P" in
-               cut ((Proper_relation_for (T0 --> T1 --> T2 --> T3))%signature x0 y0); [ intro p | ]
+               cut ((Proper_relation_for T)%signature x0 y0); [ intro p | ]
              | exfalso
              | exfalso
              | reflexivity ]
