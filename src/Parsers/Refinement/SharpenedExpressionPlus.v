@@ -17,107 +17,66 @@ Section IndexedImpl.
     hone method "splits".
     {
       Time simplify parser splitter.
-      (*Start Profiling.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      simplify_parser_splitter'.
-      Show Profile. *)
-(*
-total time:     23.641s
+      { (*Start Profiling.*)
+        rewrite_disjoint_search_for.
+        reflexivity.
+        (*Show Profile.*)
+        (*
+total time:      0.496s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify_parser_splitter' -------------   0.0% 100.0%      38    5.016s
-─solve_prod_beq ------------------------   2.9%  64.1%      15    4.797s
-─rewrite !if_aggregate2 by solve_prod_be   2.2%  51.2%       6    4.828s
-─destruct H ----------------------------  18.1%  18.1%     650    0.016s
-─rewrite !if_aggregate3 by solve_prod_be   0.1%  15.2%       2    3.594s
-─simplify with monad laws --------------   0.0%  13.4%      37    0.313s
-─simplify_with_applied_monad_laws ------   0.3%  13.4%      37    0.313s
-─apply (proj1 (EqNat.beq_nat_true_iff _   11.2%  11.2%     549    0.016s
-─apply (proj1 (Bool.andb_true_iff _ _))    7.1%   7.1%     350    0.016s
-─subst ---------------------------------   5.2%   5.2%     879    0.016s
-─discriminate --------------------------   4.9%   4.9%     249    0.016s
-─unguard -------------------------------   0.0%   4.2%      38    0.172s
-─rewrite ?(unguard [0]) ----------------   4.0%   4.2%      38    0.172s
-─destruct x ----------------------------   3.6%   3.6%      75    0.016s
-─apply Bool.orb_true_iff in H ----------   3.2%   3.2%      81    0.016s
-─rewrite <- !Bool.andb_orb_distrib_r ---   3.2%   3.2%      36    0.203s
-─rewrite <- !Bool.andb_orb_distrib_l ---   2.9%   2.9%      31    0.156s
-─apply Bool.andb_false_iff in H --------   2.5%   2.5%      60    0.016s
-─eapply refine_under_bind_helper -------   2.5%   2.5%     266    0.031s
-─eapply refine_under_bind_helper_2 -----   2.4%   2.4%     266    0.016s
-─eapply refine_under_bind_helper_1 -----   2.4%   2.4%     266    0.016s
-─rewrite <- !Bool.orb_assoc ------------   2.3%   2.3%      23    0.141s
-─apply Bool.orb_false_iff in H ---------   2.2%   2.2%      66    0.016s
-─apply refine_bind_unit_helper ---------   2.1%   2.1%     270    0.016s
+─rewrite_disjoint_search_for -----------   0.0%  99.2%       1    0.492s
+─rewrite_disjoint_search_for_no_clear --   0.0%  97.6%       1    0.484s
+─rewrite_once_disjoint_search_for ------   0.0%  92.7%       2    0.460s
+─rewrite_once_disjoint_search_for_specia   4.0%  86.3%       2    0.428s
+─replace_with_at_by --------------------   0.0%  58.9%       1    0.292s
+─replace_with_vm_compute_in ------------   0.0%  58.9%       1    0.292s
+─replace c with c' in H by (clear; vm_ca   0.0%  58.9%       1    0.292s
+─set_tac -------------------------------   0.0%  43.5%       1    0.216s
+─set (x' := x) in H --------------------  43.5%  43.5%       1    0.216s
+─induction H ---------------------------   9.7%   9.7%       1    0.048s
+─assert T as H' by solve_disjoint_side_c   0.8%   5.6%       2    0.016s
+─clear H' ------------------------------   5.6%   5.6%       3    0.012s
+─setoid_rewrite lem' -------------------   4.8%   5.6%       1    0.028s
+─solve_disjoint_side_conditions --------   0.8%   4.8%       2    0.016s
+─assert (y = x') as H by (subst x'; tac)   0.0%   4.8%       1    0.024s
+─subst x -------------------------------   4.8%   4.8%       2    0.012s
+─pose_disjoint_search_for --------------   0.8%   4.8%       1    0.024s
+─specialize (lem' H') ------------------   4.0%   4.0%       2    0.012s
+─specialize (lem' x) -------------------   3.2%   3.2%       2    0.008s
+─reflexivity ---------------------------   3.2%   3.2%       4    0.012s
+─subst x' ------------------------------   2.4%   2.4%       1    0.012s
+─vm_compute ----------------------------   2.4%   2.4%       2    0.008s
+─tac -----------------------------------   0.0%   2.4%       1    0.012s
+─clear ---------------------------------   2.4%   2.4%       1    0.012s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify_parser_splitter' -------------   0.0% 100.0%      38    5.016s
- ├─rewrite !if_aggregate2 by solve_prod_   2.2%  51.2%       6    4.828s
- │└solve_prod_beq ----------------------   2.5%  49.0%      14    4.797s
- │ ├─destruct H ------------------------  14.8%  14.8%     510    0.016s
- │ ├─apply (proj1 (EqNat.beq_nat_true_if   8.7%   8.7%     399    0.016s
- │ ├─apply (proj1 (Bool.andb_true_iff _    5.2%   5.2%     255    0.016s
- │ ├─discriminate ----------------------   3.8%   3.8%     204    0.016s
- │ ├─subst -----------------------------   2.8%   2.8%     622    0.016s
- │ ├─apply Bool.orb_true_iff in H ------   2.5%   2.5%      64    0.016s
- │ ├─apply Bool.andb_false_iff in H ----   2.4%   2.4%      57    0.016s
- │ ├─apply Bool.orb_false_iff in H -----   2.2%   2.2%      65    0.016s
- │ └─destruct x ------------------------   2.0%   2.0%      40    0.016s
- ├─rewrite !if_aggregate3 by solve_prod_   0.1%  15.2%       2    3.594s
- │└solve_prod_beq ----------------------   0.4%  15.1%       1    3.578s
- │ ├─destruct H ------------------------   3.3%   3.3%     140    0.016s
- │ ├─apply (proj1 (EqNat.beq_nat_true_if   2.5%   2.5%     150    0.016s
- │ └─subst -----------------------------   2.4%   2.4%     257    0.016s
- ├─simplify with monad laws ------------   0.0%  13.4%      37    0.313s
- │└simplify_with_applied_monad_laws ----   0.3%  13.4%      37    0.313s
- │ ├─eapply refine_under_bind_helper ---   2.5%   2.5%     266    0.031s
- │ ├─eapply refine_under_bind_helper_2 -   2.4%   2.4%     266    0.016s
- │ ├─eapply refine_under_bind_helper_1 -   2.4%   2.4%     266    0.016s
- │ └─apply refine_bind_unit_helper -----   2.1%   2.1%     270    0.016s
- ├─unguard -----------------------------   0.0%   4.2%      38    0.172s
- │└rewrite ?(unguard [0]) --------------   4.0%   4.2%      38    0.172s
- ├─rewrite <- !Bool.andb_orb_distrib_r -   3.2%   3.2%      36    0.203s
- ├─rewrite <- !Bool.andb_orb_distrib_l -   2.9%   2.9%      31    0.156s
- └─rewrite <- !Bool.orb_assoc ----------   2.3%   2.3%      23    0.141s *)
-      rewrite_disjoint_search_for.
+─rewrite_disjoint_search_for -----------   0.0%  99.2%       1    0.492s
+└rewrite_disjoint_search_for_no_clear --   0.0%  97.6%       1    0.484s
+ ├─rewrite_once_disjoint_search_for ----   0.0%  92.7%       2    0.460s
+ │ ├─rewrite_once_disjoint_search_for_sp   4.0%  86.3%       2    0.428s
+ │ │ ├─replace_with_vm_compute_in ------   0.0%  58.9%       1    0.292s
+ │ │ │└replace c with c' in H by (clear;   0.0%  58.9%       1    0.292s
+ │ │ │└replace_with_at_by --------------   0.0%  58.9%       1    0.292s
+ │ │ │ ├─set_tac -----------------------   0.0%  43.5%       1    0.216s
+ │ │ │ │└set (x' := x) in H ------------  43.5%  43.5%       1    0.216s
+ │ │ │ ├─induction H -------------------   9.7%   9.7%       1    0.048s
+ │ │ │ └─assert (y = x') as H by (subst    0.0%   4.8%       1    0.024s
+ │ │ │   ├─subst x' --------------------   2.4%   2.4%       1    0.012s
+ │ │ │   └─tac -------------------------   0.0%   2.4%       1    0.012s
+ │ │ │    └clear -----------------------   2.4%   2.4%       1    0.012s
+ │ │ ├─assert T as H' by solve_disjoint_   0.8%   5.6%       2    0.016s
+ │ │ │└solve_disjoint_side_conditions --   0.8%   4.8%       2    0.016s
+ │ │ │└reflexivity ---------------------   2.4%   2.4%       2    0.012s
+ │ │ ├─subst x -------------------------   4.8%   4.8%       2    0.012s
+ │ │ ├─clear H' ------------------------   4.0%   4.0%       2    0.012s
+ │ │ ├─specialize (lem' H') ------------   4.0%   4.0%       2    0.012s
+ │ │ └─specialize (lem' x) -------------   3.2%   3.2%       2    0.008s
+ │ └─setoid_rewrite lem' ---------------   4.8%   5.6%       1    0.028s
+ └─pose_disjoint_search_for ------------   0.8%   4.8%       1    0.024s
+         *) }
       simpl.
       finish honing parser method.
     }
@@ -138,7 +97,7 @@ Import Fiat.Parsers.ExtrOcamlParsers.HideProofs.
 
 Definition paren_expr_parser (str : String.string) : bool.
 Proof.
-  Time make_parser ComputationalSplitter. (* 15 s *)
+  Time make_parser ComputationalSplitter. (* 0.088 s *)
 Defined.
 
 Print paren_expr_parser.

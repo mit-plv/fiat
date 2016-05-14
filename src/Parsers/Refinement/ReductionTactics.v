@@ -66,6 +66,12 @@ Ltac parser_red_gen term :=
                      (eval unfold splitter' in term)
                 | _ => constr:(term)
               end in
+  let term := match term with
+                | context[ParserFromParserADT.parser (G := ?G) _ _ _]
+                  => let G' := head G in
+                     (eval unfold G' in term)
+                | _ => constr:(term)
+              end in
   let term := (eval parser_red0 in term) in
   let term := (eval parser_red1 in term) in
   term.
