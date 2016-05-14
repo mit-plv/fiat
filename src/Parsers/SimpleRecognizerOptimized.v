@@ -86,7 +86,7 @@ Section recursive_descent_parser.
   Proof.
     let p := match goal with |- context[proj1_sig ?p] => p end in
     rewrite (proj2_sig p).
-    apply (@parse_nonterminal_optdata_eq _ _ _ G splitdata simple_gendata simple_gencdata2 _ _ str nt).
+    refine (proj2 (@parse_nonterminal_optdata_eq _ _ _ G splitdata simple_gendata simple_gencdata2 _ _ str nt _ ) _).
     unfold parse_nonterminal.
     exact (GenericRecognizerMin.parse_nonterminal_correct (gcdata := simple_gencdata2) str nt).
   Qed.
