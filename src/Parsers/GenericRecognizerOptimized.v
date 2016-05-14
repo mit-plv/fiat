@@ -413,7 +413,7 @@ Section recursive_descent_parser.
             unfold list_caset, item_rect.
             repeat optsplit_t'.
             { apply (f_equal2 ret_production_cons); [ | reflexivity ].
-              misc_opt.
+              repeat misc_opt'.
               rewrite Min.min_idempotent.
               reflexivity. }
             { apply (f_equal2 ret_production_cons).
