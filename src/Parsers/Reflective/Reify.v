@@ -143,6 +143,7 @@ Ltac reify_Term var term
                       | @snd _ _ => constr:(I)
                       | @Reflective.interp_RCharExpr _ _ _ => constr:(I)
                       | Equality.string_beq _ => constr:(I)
+                      | @List.length _ => constr:(I)
                       end in
           let term' := context G[f (fun x => v x)] in reify_Term var term'
      | appcontext G[?f ?v]

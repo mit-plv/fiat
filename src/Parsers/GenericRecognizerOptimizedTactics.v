@@ -193,6 +193,7 @@ Ltac fin_step_opt :=
          | [ |- _ = false ] => reflexivity
          | [ |- _ = ret_nt_invalid ] => reflexivity
          | [ |- _ = ret_production_nil_true ] => reflexivity
+         | [ |- _ = ret_orb_productions_base ] => reflexivity
          | [ |- ?x = ?x ] => reflexivity
          | [ |- _ = ?x ] => is_var x; reflexivity
          | [ |- _ = (_::_) ] => apply (f_equal2 (@cons _))
@@ -208,7 +209,8 @@ Ltac fin_step_opt :=
          | [ |- _ = snd ?x ] => is_var x; reflexivity
          | [ |- _ = pregrammar_productions ?x ] => is_var x; reflexivity
          | [ |- _ = pregrammar_rproductions ?x ] => is_var x; reflexivity
-         | [ |- context[(0 - _)%natr] ] => rewrite (minusr_minus 0); simpl (minus 0)
+         | [ |- context[(0 - _)%natr] ] => rewrite (minusr_minus 0); change (minus 0) with (fun x : nat => 0); cbv beta
+         | [ |- appcontext[minus 0] ] => change (minus 0) with (fun x : nat => 0); cbv beta
          | [ |- _ = (_, _) ] => apply f_equal2
          | _ => progress cbv beta
          | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
@@ -219,6 +221,7 @@ Ltac fin_step_opt :=
          | [ |- context[andb _ true] ] => rewrite Bool.andb_true_r
          | [ |- _ = match ?b with true => ret_production_nil_true | false => ret_production_nil_false end ]
            => refine (f_equal (fun b' : bool => if b' then ret_production_nil_true else ret_production_nil_false) _)
+         | _ => rewrite <- !minusr_minus
          end.
 
 Ltac misc_opt' :=
@@ -232,6 +235,8 @@ Ltac misc_opt' :=
   | [ |- context[(min ?x ?y - ?x)%natr] ] => rewrite min_subr_same
   | [ |- context[?x - (?x - ?y)%natr] ]
     => rewrite !(minusr_minus x y), sub_twice, <- ?minusr_minus
+  | [ |- context[(?x - (?x - ?y)%natr)%natr] ]
+    => rewrite !minusr_minus, sub_twice, <- ?minusr_minus
   | _ => progress fin_step_opt
   end.
 
@@ -446,9 +451,11 @@ Ltac t_reduce_list_evar :=
 
 Ltac t_postreduce_list_with_hyp :=
   idtac;
-  match goal with
-  | [ |- list_rect ?P ?N ?C (?f ?a) ?a ?b ?c = list_rect ?P ?N' ?C' (?f ?a) ?a ?b ?c ]
-    => let P0 := fresh in
+  lazymatch goal with
+  | [ |- list_rect ?P ?N ?C ?fa ?a ?b ?c = list_rect ?P ?N' ?C' ?fa ?a ?b ?c ]
+    => idtac;
+       let f := match (eval pattern a in fa) with ?f _ => f end in
+       let P0 := fresh in
        let N0 := fresh in
        let C0 := fresh in
        let N1 := fresh in
@@ -715,4 +722,18 @@ Ltac change_char_at_matches :=
     => idtac;
        let G' := context G[@char_at_matches_interp Char HSLM data n str P] in
        change G'
+  end.
+
+Ltac rewrite_map_map :=
+  idtac;
+  match goal with
+  | [ |- context[@map ?B ?C ?g (@map ?A ?B ?f ?ls)] ]
+    => rewrite (@map_map A B C f g)
+  end.
+
+Ltac rewrite_map_length :=
+  idtac;
+  match goal with
+  | [ |- context[@List.length ?B (@List.map ?A ?B ?f ?ls)] ]
+    => rewrite (@map_length A B f ls)
   end.

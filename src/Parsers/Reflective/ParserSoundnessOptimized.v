@@ -18,9 +18,9 @@ Module opt.
             (char_at_matches_interp : nat -> Reflective.RCharExpr Ascii.ascii -> bool)
             (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat).
 
-    Let interp := opt.interp_has_parse_term is_valid_nonterminal strlen char_at_matches_interp split_string_for_production.
+    Let interp {T} := opt.interp_has_parse_term (T := T) is_valid_nonterminal strlen char_at_matches_interp split_string_for_production.
 
-    Lemma polypnormalize_correct (term : polyhas_parse_term)
+    Lemma polypnormalize_correct {T} (term : polyhas_parse_term T)
       : ParserSyntaxEquivalence.has_parse_term_equiv
           nil
           (term interp_TypeCode) (term (normalized_of interp_TypeCode))

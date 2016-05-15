@@ -565,7 +565,7 @@ Section recursive_descent_parser.
             unfold interp_rproductions, interp_rproduction, rproductions, rproduction, production.
             rewrite !map_length.
             progress repeat match goal with
-                            | [ |- appcontext[List.nth (@List.length ?B (@List.map ?A ?B ?f ?ls) - _)] ]
+                            | [ |- appcontext[List.nth (?minus (@List.length ?B (@List.map ?A ?B ?f ?ls)) _)] ]
                               => rewrite (@map_length A B f ls)
                             end.
             rewrite_map_nth_rhs; simpl.

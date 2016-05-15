@@ -11,18 +11,25 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Common.Wf2.
 
-Definition extract_Term {var} (E : has_parse_term var) : Term var _
+Definition extract_Term {var T} (E : has_parse_term var T) : Term var _
   := match E with
-     | RFix2 G_length up_to_G_length f valid_len valids nt_idx
+     | RFix2 G_length up_to_G_length f default valid_len valids nt_idx
        => f
      end.
 
+Definition extract_default {var T} (E : has_parse_term var T) : Term var _
+  := match E with
+     | RFix2 G_length up_to_G_length f default valid_len valids nt_idx
+       => default
+     end.
+
 Theorem polypnormalize_correct
+        {T}
         (is_valid_nonterminal : list nat -> nat -> bool)
         (strlen : nat)
         (char_at_matches : nat -> Reflective.RCharExpr Ascii.ascii -> bool)
         (split_string_for_production : nat * (nat * nat) -> nat -> nat -> list nat)
-  : forall (E : polyhas_parse_term),
+  : forall (E : polyhas_parse_term T),
     has_parse_term_equiv nil (E interp_TypeCode) (E (normalized_of interp_TypeCode))
     -> interp_has_parse_term
          is_valid_nonterminal strlen char_at_matches split_string_for_production
@@ -34,9 +41,10 @@ Proof.
   intros E H.
   unfold polypnormalize, pnormalize.
   pose proof (fun H => @polynormalize_correct _ (fun var => extract_Term (E _)) H) as H''.
+  pose proof (fun H => @polynormalize_correct _ (fun var => extract_default (E _)) H) as H''d.
   unfold extract_Term in *.
   unfold polynormalize in *.
-  destruct H; simpl.
+  destruct H; simpl in *.
   repeat match goal with
          | [ H : _ /\ _ |- _ ] => destruct H
          | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
@@ -45,6 +53,7 @@ Proof.
     unfold forall_relation, pointwise_relation;
     repeat intro.
   simpl in *.
+  rewrite H''d; clear H''d.
   unfold step_option_rec.
   unfold Proper, respectful, pointwise_relation in *.
   edestruct Compare_dec.lt_dec; simpl;

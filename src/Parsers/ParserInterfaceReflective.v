@@ -2,12 +2,13 @@
 Require Import Fiat.Parsers.BooleanRecognizerOptimizedReflective.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.ParserSyntax.
 Require Import Fiat.Parsers.Reflective.ParserPartialUnfold.
 
 Record ParserReflective (G : pregrammar Ascii.ascii) :=
   {
-    rhas_parse : polyhas_parse_term;
+    rhas_parse : polyhas_parse_term cbool;
 
     rhas_parse_correct : rhas_parse = polypnormalize (parse_nonterminal_reified G (Start_symbol G))
   }.

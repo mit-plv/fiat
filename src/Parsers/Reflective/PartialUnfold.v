@@ -186,6 +186,25 @@ Section normalization_by_evaluation.
          => specific_meaning_apply1
               (clist _) cnat (syntactify_nat _)
               (@List.length _)
+       | Rbool_rect_nodep cbool
+         => fun af
+            => let rtest := ahd (atl (atl af)) in
+               let rtrue := ahd af in
+               let rfalse := ahd (atl af) in
+               match constantOf rtest, constantOf rtrue, constantOf rfalse with
+               | Some b, _, _
+                 => Some (if b then rtrue else rfalse)
+               | None, Some true, Some true
+                 => Some (Syntactify.syntactify_bool _ true)
+               | None, Some false, Some false
+                 => Some (Syntactify.syntactify_bool _ false)
+               | None, Some true, Some false
+                 => Some rtest
+               | None, Some false, Some true
+               | None, None, _
+               | None, _, None
+                 => None
+               end
        | Rbool_rect_nodep _
          => fun af
             => option_map (fun b : bool
