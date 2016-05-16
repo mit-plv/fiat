@@ -22,7 +22,7 @@ Section recursive_descent_parser.
 
   Context {splitdata : @split_dataT Ascii.ascii _ _}.
 
-  Definition parse_nonterminal_prereified0 (str : String) (nt : String.string) : polyhas_parse_term.
+  Definition parse_nonterminal_prereified0 (str : String) (nt : String.string) : polyhas_parse_term cbool.
   Proof.
     let p := constr:(parse_nonterminal_preopt Hvalid str nt) in
     let h := head p in
@@ -31,7 +31,7 @@ Section recursive_descent_parser.
   Defined.
 End recursive_descent_parser.
 
-Definition parse_nonterminal_reified (G : pregrammar Ascii.ascii) (nt : String.string) : polyhas_parse_term.
+Definition parse_nonterminal_reified (G : pregrammar Ascii.ascii) (nt : String.string) : polyhas_parse_term cbool.
 Proof.
   let p := constr:(fun HSLM => @parse_nonterminal_prereified0 HSLM G) in
   let p := (eval cbv [parse_nonterminal_prereified0] in p) in
@@ -59,6 +59,7 @@ Section correctness.
 
   Definition rinterp_parse pnt
     := (opt.interp_has_parse_term
+          (T := cbool)
           (@is_valid_nonterminal _ _)
           (length str)
           (fun n => @Reflective.char_at_matches_interp _ _ (pregrammar_idata G) n str)

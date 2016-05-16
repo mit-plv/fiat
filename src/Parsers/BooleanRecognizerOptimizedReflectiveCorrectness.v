@@ -75,6 +75,30 @@ Section correctness.
 
   Context (str : String) (nt : String.string).
 
+  Local Ltac build_term_equiv_step :=
+    idtac;
+    match goal with
+    | _ => progress intros
+    | [ |- Term_equiv _ _ _ ]
+      => econstructor
+    | [ |- args_for_related_ind _ _ _ ]
+      => econstructor
+    | [ |- Term_equiv ?G (RLiteralApp ?f ?v1) (RLiteralApp ?f ?v2) ]
+      => apply (@EqLiteralApp _ _ G _ f v1 v2)
+    | [ |- List.In ?v (?v :: _) ]
+      => left; reflexivity
+    | [ |- List.In ?v (?x :: ?xs) ]
+      => match xs with
+         | context[v]
+           => right
+         end
+    | [ |- Term_equiv
+             _
+             (Syntactify.syntactify_list (List.map ?f ?ls))
+             (Syntactify.syntactify_list (List.map ?g ?ls)) ]
+      => apply Term_equiv_syntactify_list_map; simpl @fst; simpl @snd
+    end.
+
   Lemma parse_nonterminal_reified_unfold_extensional
     : ParserSyntaxEquivalence.has_parse_term_equiv
         nil
@@ -86,27 +110,7 @@ Section correctness.
     Syntactify.syntactify_prod, Syntactify.syntactify_string, Syntactify.syntactify_ritem_ascii;
       constructor.
     (*Start Profiling.*)
-    repeat first [ progress intros
-                 | (match goal with
-                    | [ |- Term_equiv _ _ _ ]
-                      => econstructor
-                    | [ |- args_for_related_ind _ _ _ ]
-                      => econstructor
-                    | [ |- Term_equiv ?G (RLiteralApp ?f ?v1) (RLiteralApp ?f ?v2) ]
-                      => apply (@EqLiteralApp _ _ G _ f v1 v2)
-                    | [ |- List.In ?v (?v :: _) ]
-                      => left; reflexivity
-                    | [ |- List.In ?v (?x :: ?xs) ]
-                      => match xs with
-                         | context[v]
-                           => right
-                         end
-                    | [ |- Term_equiv
-                             _
-                             (Syntactify.syntactify_list (List.map ?f ?ls))
-                             (Syntactify.syntactify_list (List.map ?g ?ls)) ]
-                      => apply Term_equiv_syntactify_list_map; simpl @fst; simpl @snd
-                    end) ].
+    repeat build_term_equiv_step.
     (*Show Profile.*)
     (* total time:     25.328s
 
@@ -124,6 +128,7 @@ Section correctness.
 ─right ---------------------------------   8.3%   8.3%     438    0.020s
 ─left ----------------------------------   2.0%   2.0%     117    0.012s
  *)
+    repeat build_term_equiv_step.
   Qed.
 
   Lemma parse_nonterminal_reified_opt_interp_polynormalize_precorrect
@@ -132,9 +137,13 @@ Section correctness.
   Proof.
     cbv [rinterp_parse].
     rewrite <- opt.polypnormalize_correct by apply parse_nonterminal_reified_unfold_extensional.
-    etransitivity; [ | apply (proj2_sig (BooleanRecognizerOptimized.parse_nonterminal_preopt Hvalid _ _)) ].
-    etransitivity; [ | apply parse_nonterminal_reified_opt_interp_precorrect ].
+    etransitivity;
+      [ etransitivity; [ | apply parse_nonterminal_reified_opt_interp_precorrect ]
+      | let p := match goal with |- context[proj1_sig ?p] => p end in
+        apply (proj2_sig p) ].
     cbv [rinterp_parse].
     reflexivity.
+    Grab Existential Variables.
+    assumption.
   Qed.
 End correctness.

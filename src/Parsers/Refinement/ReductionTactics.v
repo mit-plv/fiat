@@ -30,7 +30,7 @@ Ltac splitter_red term :=
   let term := (eval splitter_red1 in term) in
   constr:(term).
 
-Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .
+(*Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .*)
 
 (*(** Coq is stupid and doesn't have a version of [simpl]/[cbv] which unfolds *only* the given list of constants but *does not* unfold them if there's not a constructor in the head position of specified arguments.  See https://coq.inria.fr/bugs/show_bug.cgi?id=4639.  So we write a tactic that works in a specific case. *)
 Ltac eval_change_bool term :=
