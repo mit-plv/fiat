@@ -160,6 +160,107 @@ Definition requestTTL : timeT := 500.
 Definition serverTTL : timeT := 500.
 Definition cachedTTL : timeT := 500.
 
+Section FixComp.
+  
+  Record funSig :=
+    { funDom : list Type;
+      funCod : Type }.
+
+  Fixpoint funType
+           (fDom : list Type)
+           (fCod : Type)
+           {struct fDom}
+    : Type :=
+    match fDom with
+    | nil => Comp fCod
+    | cons T fDom' => T -> funType fDom' fCod
+    end.
+
+  Fixpoint cfunType
+           (fDom : list Type)
+           (fCod : Type)
+           {struct fDom}
+    : Type :=
+    match fDom with
+    | nil => fCod
+    | cons T fDom' => T -> cfunType fDom' fCod
+    end.
+
+  Definition funDef (fSig : funSig) :=
+    funType (funDom fSig) (funCod fSig).
+
+  Fixpoint SubsetFun
+           {fDom : list Type}
+           {fCod : Type}
+           (fSet' fSet : funType fDom fCod)
+           {struct fDom} : Prop :=
+    match fDom as fDom' return
+          funType fDom' fCod
+          -> funType fDom' fCod
+          -> Prop
+    with
+    | nil =>
+      fun fSet' fSet => refine fSet' fSet
+    | cons T fDom' =>
+      fun fSet' fSet => 
+        forall (t : T), SubsetFun (fSet' t) (fSet t)
+    end fSet' fSet.
+
+  Definition FixedPointP
+             {fDom : list Type}
+             {fCod : Type}
+             (fDef : funType fDom fCod -> funType fDom fCod)
+             (fSet : funType fDom fCod)
+    : Prop :=
+    SubsetFun (fDef fSet) fSet /\ SubsetFun fSet (fDef fSet).
+
+  Definition LeastFixedPointP
+             {fDom : list Type}
+             {fCod : Type}
+             (fDef : funType fDom fCod -> funType fDom fCod)
+             (fSet : funType fDom fCod)
+    : Prop :=
+    FixedPointP fDef fSet /\
+    forall fSet', FixedPointP fDef fSet'
+                  -> SubsetFun fSet fSet'.
+
+    Fixpoint LeastFixedPoint'
+               (fDom : list Type)
+               {fCod : Type}
+               {struct fDom}
+      : ((funType fDom fCod -> Prop) -> Prop) ->  funType fDom fCod :=
+      match fDom return
+            ((funType fDom fCod -> Prop) -> Prop)
+            -> funType fDom fCod with
+      | nil => fun LFP_P v => (LFP_P (fun cv => computes_to cv v))
+      | cons T fDom' =>
+        fun LFP_P => 
+          fun (t : T) => LeastFixedPoint' fDom' (fun cv => LFP_P (fun cv' => cv (cv' t)))
+      end.
+    
+    Definition LeastFixedPoint
+               {fDom : list Type}
+               {fCod : Type}
+               (fDef : funType fDom fCod -> funType fDom fCod)
+      : funType fDom fCod :=
+      LeastFixedPoint' fDom (fun z => exists s, LeastFixedPointP fDef s /\ z s).
+
+    Definition FibannacciSpec 
+               (rec : funType ((nat : Type) :: @nil Type)%list nat)
+      : funType ((nat : Type) :: @nil Type)%list nat :=
+      fun (n : nat) =>
+        match n with
+        | 0 => ret 0
+        | 1 => ret 1
+        | S (S n') => n1 <- rec n';
+                      n2 <- rec (S n');
+                      ret (n1 + n2)
+        end.
+
+                     
+      unfold funType. 
+        funType (nat :: nat :: nil) nat.
+    
 Section DecomposeEnumField.
 
   Definition IsComputedField
@@ -472,7 +573,7 @@ Section DecomposeEnumField.
              {struct idx}
       : ilist2 (B := @id Type) headings[@idx].
   Proof.
-    destruct idx; simpl in *; 
+    destruct idx; simpl in *;
       revert tup; try revert idx;
         pattern n0, headings; apply Vector.caseS.
     - simpl; intros; exact tup.
@@ -522,7 +623,7 @@ ilist2 (B := @id Type)
                    headings)[@idx]))
           .
   Proof.
-    destruct idx; simpl in *; 
+    destruct idx; simpl in *;
       revert tup; try revert idx;
         pattern n0, headings; apply Vector.caseS.
     - simpl; intros; exact tup.
@@ -549,7 +650,7 @@ ilist2 (B := @id Type)
     : ilist2 (B := @id Type) (AttrList (GetNRelSchemaHeading (qschemaSchemas (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a)) (a_proj_index (GetAttributeRaw tup attrIdx)))).
     eapply Tuple_proj; eapply Tuple_DecomposeHeading_proj; eauto.
   Defined.
-  
+
   Definition DecomposeRawQueryStructureSchema_AbsR
              {m : nat}
              {qs_schema : RawQueryStructureSchema}
@@ -660,7 +761,7 @@ Proof.
     + rewrite !ith_replace2_Index_neq; eauto.
       unfold Included; intros; eapply (proj1 H Ridx0); apply H1.
   - destruct (fin_eq_dec Ridx Ridx0); subst;
-      unfold GetUnConstrRelation, UpdateUnConstrRelation.   
+      unfold GetUnConstrRelation, UpdateUnConstrRelation.
     + rewrite !ith_replace2_Index_eq.
       unfold Included; intros.
       inversion H1; subst; intuition.
@@ -668,10 +769,10 @@ Proof.
       * econstructor 2; eapply (proj1 H Ridx0); apply H2.
     + rewrite !ith_replace2_Index_neq; eauto.
       unfold Included; intros; eapply (proj1 H Ridx0); apply H1.
-  - unfold GetUnConstrRelation, UpdateUnConstrRelation.  
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation.
     rewrite !ith_replace2_Index_neq; eauto.
     eapply (proj2 H); eauto.
-  - unfold GetUnConstrRelation, UpdateUnConstrRelation in *.  
+  - unfold GetUnConstrRelation, UpdateUnConstrRelation in *.
     rewrite !ith_replace2_Index_neq in H1; eauto.
     eapply (proj2 H); eauto.
 Qed.
@@ -769,7 +870,7 @@ Definition DecomposeRawQueryStructureSchema_Insert_AbsR_eq
         unfold In.
         destruct (fin_eq_dec (a_proj_index (GetAttributeRaw tup0 attrIdx))
                              (a_proj_index (GetAttributeRaw indexedElement attrIdx))
-                 ); subst; 
+                 ); subst;
           [ | rewrite !ith_replace2_Index_neq; eauto].
         match goal with
           |- ith2 (replace_Index2 _ _ ?idx _) ?idx' _ =>
