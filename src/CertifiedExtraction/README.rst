@@ -15,7 +15,7 @@ Setting up
 1. Bedrock::
 
      git clone --recursive git@github.mit.edu:plv/bedrock.git --branch facade-generic-specs
-     make -C bedrock -j4 qsfacade
+     make -C bedrock -j4 facade qsfacade
 
 2. Fiat::
 
