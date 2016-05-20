@@ -1069,23 +1069,20 @@ Section CompleteLattice.
   Context {l : Lattice.t A O}.
 
   Definition glb (f : A -> Prop) (a : A)
-    :=  forall a',
-      f a'
-      -> le a' a
-         /\ forall a'', le a' a'' -> le a a''.
+    := (forall a', f a' -> le a a')
+       /\ forall a'', (forall a', f a' -> le a'' a') -> le a'' a.
 
   Definition lub (f : A -> Prop) (a : A)
-    := forall a',
-      f a'
-      -> le a a'
-         /\ forall a'', le a'' a' -> le a' a''.
+    :=
+      (forall a', f a' -> le a' a)
+      /\ forall a'', (forall a', f a' -> le a' a'') -> le a a''.
 
   Class CompleteLattice
-    : Prop :=
-    { ex_glb : forall (f : A -> Prop),
-        exists a, glb f a;
-      ex_lub : forall (f : A -> Prop),
-          exists a, lub f a }.
+    : Type :=
+    { cl_sup : forall (f : A -> Prop), A;
+      sup_glb : forall (f : A -> Prop), glb f (cl_sup f);
+      cl_inf : forall (f : A -> Prop), A;
+      inf_lub : forall (f : A -> Prop), lub f (cl_inf f) }.
 
   Context {cl : CompleteLattice}.
 
@@ -1111,28 +1108,58 @@ Section CompleteLattice.
     rewrite H; apply PreO.le_refl.
   Qed.
 
-  Lemma Exists_LeastFixedPoint
-        (f_monotone : monotonic_function f)
-    : exists a,
-      glb prefixed_point a /\ glb fixed_point a.
+  Lemma Is_PrefixedPoint
+        (f_monotonic : monotonic_function f)
+    : prefixed_point (cl_sup prefixed_point).
   Proof.
-    destruct (ex_glb prefixed_point) as [p glb_p].
-    exists p; split; eauto.
-    unfold glb in *; intros.
-    apply fixed_point_is_prefixed in H; apply glb_p in H;
-      intuition.
+    unfold prefixed_point at 1.
+    destruct (sup_glb prefixed_point).
+    apply H0.
+    intros.
+    unfold prefixed_point in H1.
+    rewrite <- H1.
+    apply f_monotonic.
+    apply H; eauto.
   Qed.
 
-  Lemma Exists_GreatestFixedPoint
-        (f_monotone : monotonic_function f)
-    : exists a,
-      lub postfixed_point a /\ lub fixed_point a.
+  Lemma Is_LeastFixedPoint
+        (f_monotonic : monotonic_function f)
+    : fixed_point (cl_sup prefixed_point).
   Proof.
-    destruct (ex_lub postfixed_point) as [p lub_p].
-    exists p; split; eauto.
-    unfold lub in *; intros.
-    apply fixed_point_is_postfixed in H; apply lub_p in H;
-      intuition.
+    pose proof Is_PrefixedPoint.
+    apply f_monotonic in H.
+    destruct (sup_glb prefixed_point).
+    apply H0 in H.
+    apply PO.le_antisym; eauto.
+    apply Is_PrefixedPoint; eauto.
+    eauto.
+  Qed.
+
+  Lemma Is_PostfixedPoint
+        (f_monotonic : monotonic_function f)
+    : postfixed_point (cl_inf postfixed_point).
+  Proof.
+    unfold postfixed_point at 1.
+    destruct (inf_lub postfixed_point).
+    apply H0.
+    intros.
+    unfold postfixed_point in H1.
+    rewrite H1.
+    apply f_monotonic.
+    apply H; eauto.
+  Qed.
+
+  Lemma Is_GreatestFixedPoint
+        (f_monotonic : monotonic_function f)
+    : fixed_point (cl_inf postfixed_point).
+  Proof.
+    pose proof Is_PostfixedPoint.
+    apply f_monotonic in H.
+    destruct (inf_lub postfixed_point).
+    apply H0 in H.
+    apply PO.le_antisym; eauto.
+    apply Is_PostfixedPoint; eauto.
+    eauto.
   Qed.
 
 End CompleteLattice.
