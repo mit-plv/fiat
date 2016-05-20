@@ -127,11 +127,6 @@ Module LeastFixedPointFun.
       min := FunMin
     }.
 
-  Instance LatticeFun
-           {fDom : list Type}
-           {fCod : Type}
-    : Fiat.Common.Frame.Lattice.t (funType fDom fCod) funDefOps.
-
   Instance PreO_refineFun
            {fDom : list Type}
            {fCod : Type}
@@ -439,7 +434,8 @@ Module LeastFixedPointFun.
     eapply refineFun_trans.
     eapply refine_LeastFixedPoint; intros.
     unfold respectful; simpl; intros.
-    Focus 3.
+  Abort.
+  (* Focus 3.
 
     unfold refineFun; unfold refine; intros.
     unfold FibonacciSpec, LeastFixedPoint''; simpl.
@@ -450,7 +446,7 @@ Module LeastFixedPointFun.
     admit.
     admit.
     admit.
-  Admitted.
+  Admitted. *)
 (*rewrite H1.
     induction t0.
     - reflexivity.
@@ -647,4 +643,4 @@ Module LeastFixedPointFun.
       apply H0.
   Qed.
  *)
-End FixComp.
+  End LeastFixedPointFun.
