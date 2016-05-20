@@ -2156,4 +2156,131 @@ Section ListFacts.
         rewrite nth'_nth in H |- *; simpl in H.
         assumption. } }
   Qed.
+
+  Lemma InA_R_InA {A} {R : relation A}
+        {_ : @Transitive A R}
+        ls x y
+        (HR : R y x)
+    : InA R x ls -> InA R y ls.
+  Proof.
+    induction ls.
+    { intro H'; inversion H'. }
+    { intro H'; (inversion H'; [ left | right ]); subst; clear H'; auto with nocore.
+      etransitivity; eassumption. }
+  Qed.
+
+  Local Ltac InA_t :=
+    repeat match goal with
+           | _ => assumption
+           | [ H : iff _ _ |- _ ] => destruct H
+           | [ H : InA _ _ nil -> _ |- _ ] => clear H
+           | [ H : and _ _ -> _ |- _ ] => specialize (fun a b => H (conj a b))
+           | [ H : NoDupA _ (_::_) |- _ ] => inversion H; clear H
+           | [ H : InA _ _ (_::_) |- _ ] => inversion H; clear H
+           | _ => progress subst
+           | _ => progress unfold not in *
+           | [ H : InA _ _ (_::_) -> _ |- _ ]
+             => pose proof (fun x => H (InA_cons_hd _ x));
+                pose proof (fun x => H (InA_cons_tl _ x));
+                clear H
+           | [ H : ?R ?x ?x -> _ |- _ ] => specialize (H (reflexivity _))
+           | [ H : ?A -> ?B, H' : ?A |- _ ] => specialize (H H')
+           | [ H : ?A -> False, H' : ?A -> _ |- _ ] => clear H'
+           | [ H : ?A -> ?B, H' : ?B |- _ ] => clear H
+           | [ H : ?A -> InA _ _ nil |- _ ]
+             => assert (A -> False) by (let a := fresh in intro a; specialize (H a); inversion H);
+                clear H
+           | [ H : forall x y, ((?R x y -> False) -> False) -> ?R x y,
+                 H' : (?R ?x' ?y' -> False) -> False |- _ ]
+             => apply H in H'
+           | [ H0 : ?R ?x ?y, H1 : ?R ?y ?z, H2 : ?R ?z ?x -> False |- _ ]
+             => exfalso; apply H2; symmetry; etransitivity; eassumption
+           | _ => progress specialize_by ltac:(constructor; assumption)
+           | _ => progress split_iff
+           | _ => progress split_and
+           | [ HE : Equivalence ?R, H : InA ?R ?x ?ls -> False, H' : InA ?R ?y ?ls, H'' : ?R ?x ?y |- _ ]
+             => exfalso; apply H; clear -HE H' H''; eapply InA_R_InA; try eassumption
+           | [ H : InA _ _ nil |- _ ] => inversion H
+           | [ H : False |- _ ] => destruct H
+           | [ H : ?R ?x ?y |- _ ]
+             => unique pose proof (symmetry H)
+           | [ H : ?R ?x ?y, H' : ?R ?y ?z |- _ ]
+             => unique pose proof (transitivity H H')
+           end.
+
+  Lemma removeA_length {A eqA} {_ : @Symmetric A eqA} {_ : @Transitive A eqA} {dec} x ls
+        (HD : NoDupA eqA ls)
+    : let postlen := List.length (@removeA A eqA dec x ls) in
+      (if InA_dec dec x ls then S postlen else postlen) = List.length ls.
+  Proof.
+    induction HD as [|y ys IHys HD].
+    { reflexivity. }
+    { simpl in *.
+      edestruct dec; simpl in *;
+        edestruct InA_dec; simpl in *;
+          try solve [ apply f_equal; assumption ].
+      { exfalso; apply IHys.
+        eapply InA_R_InA; try eassumption; symmetry; eassumption. } }
+  Qed.
+  Lemma removeA_length_In {A eqA} {_ : @Symmetric A eqA} {_ : @Transitive A eqA} {dec} x ls
+        (HD : NoDupA eqA ls)
+        (Hin : InA eqA x ls)
+    : S (List.length (@removeA A eqA dec x ls)) = List.length ls.
+  Proof.
+    etransitivity; [ | eapply removeA_length; assumption ].
+    edestruct InA_dec; [ reflexivity | tauto ].
+  Qed.
+
+  Lemma equivlist_length {A R} {_ : @Equivalence A R}
+        (dec : forall x y, {R x y} + {~R x y})
+        (ls ls' : list A)
+        (Hls : NoDupA R ls)
+        (Hls' : NoDupA R ls')
+        (H2 : equivlistA R ls ls')
+    : List.length ls = List.length ls'.
+  Proof.
+    revert dependent ls'.
+    induction Hls as [|x xs Hin Hls IHxs]; intros.
+    { destruct ls' as [|y].
+      { reflexivity. }
+      { specialize (H2 y); InA_t. } }
+    { pose proof (H2 x) as Heq.
+      specialize (IHxs (removeA dec x ls')).
+      simpl; rewrite IHxs; clear IHxs;
+        [
+        | apply removeA_NoDupA; assumption
+        | apply removeA_equivlistA; assumption ].
+      rewrite removeA_length_In by InA_t; reflexivity. }
+  Qed.
+
+  Lemma remove_length_eq_S {A R} {_ : @Equivalence A R}
+        (dec : forall x y, {R x y} + {~R x y})
+        (ls ls' : list A) x
+        (H0 : InA R x ls)
+        (H1 : ~InA R x ls')
+        (Hls : NoDupA R ls)
+        (Hls' : NoDupA R ls')
+        (H2 : forall y, (InA R y ls /\ ~R y x) <-> InA R y ls')
+    : List.length ls = S (List.length ls').
+  Proof.
+    rewrite <- (@removeA_length_In _ R _ _ dec x ls) by assumption.
+    apply f_equal, equivlist_length; try assumption.
+    { apply removeA_NoDupA; assumption. }
+    { intro y; specialize (H2 y); rewrite <- H2; clear H2.
+      rewrite removeA_InA by assumption.
+      intuition. }
+  Qed.
+  Lemma remove_length_lt {A R} {_ : @Equivalence A R}
+        (dec : forall x y, {R x y} + {~R x y})
+        (ls ls' : list A) x
+        (H0 : InA R x ls)
+        (H1 : ~InA R x ls')
+        (Hls : NoDupA R ls)
+        (Hls' : NoDupA R ls')
+        (H2 : forall y, (InA R y ls /\ ~R y x) <-> InA R y ls')
+    : List.length ls' < List.length ls.
+  Proof.
+    hnf.
+    erewrite <- remove_length_eq_S; [ reflexivity | .. ]; try eassumption.
+  Qed.
 End ListFacts.

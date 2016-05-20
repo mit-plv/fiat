@@ -1603,6 +1603,13 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
         eauto using (@reflexivity _ (@eq_key_elt T)), InA_cons_hd. }
     Qed.
 
+    Lemma empty_length_elements {A} (ls : t A)
+          (H : Empty ls)
+      : List.length (elements ls) = 0.
+    Proof.
+      rewrite <- M.cardinal_1.
+      apply cardinal_Empty; assumption.
+    Qed.
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
