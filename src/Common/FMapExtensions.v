@@ -13,6 +13,12 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Module Export BasicFacts := WFacts_fun E M.
   Module Export BasicProperties := WProperties_fun E M.
 
+  Definition of_list {T} (ls : list (key * T)) : t T
+    := List.fold_right
+         (fun kv => add (fst kv) (snd kv))
+         (empty _)
+         ls.
+
   Definition TKey := key.
 
   Definition FindWithDefault {A} (key: TKey) (default: A) (fmap: t A) :=
@@ -1432,6 +1438,169 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
             inversion H; subst.
             destruct H2; rewrite Proper_f in H0; eauto.
             eauto.
+    Qed.
+
+    Ltac FMap_convert_step should_convert_from_to :=
+      idtac;
+      first [ should_convert_from_to (@find) (@MapsTo);
+              setoid_rewrite <- find_mapsto_iff
+            | should_convert_from_to (@MapsTo) (@find);
+              setoid_rewrite find_mapsto_iff
+            | should_convert_from_to (@InA) (@MapsTo);
+              setoid_rewrite <- elements_mapsto_iff
+            | should_convert_from_to (@MapsTo) (@InA);
+              setoid_rewrite elements_mapsto_iff
+            | should_convert_from_to (@find) (@add);
+              setoid_rewrite add_o
+            | should_convert_from_to (@add) (@find);
+              setoid_rewrite <- add_o
+            | should_convert_from_to (@find) (@In);
+              setoid_rewrite <- not_find_in_iff
+            | should_convert_from_to (@In) (@find);
+              setoid_rewrite not_find_in_iff
+            | should_convert_from_to (@InA) (@In);
+              setoid_rewrite <- elements_in_iff
+            | should_convert_from_to (@In) (@InA);
+              setoid_rewrite elements_in_iff
+            | setoid_rewrite empty_o
+            | match goal with H : _ |- _ => revert H end ].
+
+    Ltac FMap_convert' should_convert_from_to :=
+      repeat FMap_convert_step should_convert_from_to;
+      intros.
+
+    Ltac default_should_convert_from_to from to :=
+      match from with
+      | @find
+        => match to with
+           | @MapsTo => idtac
+           | @InA => idtac
+           | @add => idtac
+           | @In => idtac
+           end
+      | @MapsTo
+        => match to with
+           | @InA => idtac
+           end
+      | @In
+        => match to with
+           | @InA => idtac
+           end
+      end.
+
+    Ltac default_should_convert_from_to_find from to :=
+      match from with
+      | @MapsTo
+        => match to with
+           | @find => idtac
+           end
+      | @InA
+        => match to with
+           | @MapsTo => idtac
+           | @find => idtac
+           | @In => idtac
+           end
+      | @In
+        => match to with
+           | @find => idtac
+           end
+      | @find
+        => match to with
+           | @add => idtac
+           end
+      end.
+
+    Ltac FMap_convert := FMap_convert' default_should_convert_from_to.
+    Ltac FMap_convert_to_find := FMap_convert' default_should_convert_from_to_find.
+
+    Ltac setoid_subst_E_eq :=
+      repeat match goal with
+             | [ H : E.eq ?x ?y |- _ ]
+               => is_var x;
+                  move H at top;
+                  revert dependent x;
+                  intros x H;
+                  setoid_rewrite H;
+                  clear x H;
+                  intros
+             | [ H : E.eq ?x ?y |- _ ]
+               => is_var y;
+                  move H at top;
+                  revert dependent y;
+                  intros y H;
+                  setoid_rewrite <- H;
+                  clear y H;
+                  intros
+             | [ H : eq_key_elt _ _ |- _ ] => destruct H
+             end.
+
+    Ltac saturate_E_eq :=
+      repeat match goal with
+             | [ H : E.eq ?x ?y |- _ ]
+               => lazymatch goal with
+                  | [ _ : E.eq y x |- _ ] => fail
+                  | _ => pose proof (symmetry H)
+                  end
+             | [ H : E.eq ?x ?y, H' : E.eq ?y ?z |- _ ]
+               => lazymatch goal with
+                  | [ _ : E.eq x z |- _ ] => fail
+                  | _ => pose proof (transitivity H H')
+                  end
+             end.
+
+    Lemma elements_correct {A} (m : t A) (i : key) (v : A)
+          (H : find i m = Some v)
+      : InA (eq_key_elt (elt:=A)) (i, v) (elements m).
+    Proof.
+      FMap_convert; assumption.
+    Qed.
+
+    Global Instance eq_key_elt_pair_Proper {elt}
+      : Proper (E.eq ==> eq ==> @eq_key_elt elt) pair | 10.
+    Proof.
+      repeat intro; subst.
+      hnf; intuition.
+    Qed.
+
+    Global Hint Extern 0 (Proper (E.eq ==> _) pair) => eapply eq_key_elt_pair_Proper : typeclass_instances.
+
+    Local Hint Extern 1 (eq_key_elt _ _) => reflexivity.
+
+    Global Instance eq_key_elt_Equivalence {elt} : Equivalence (@eq_key_elt elt) | 100.
+    Proof.
+      split; unfold eq_key_elt; repeat (intros [] || intro); simpl in *; intuition.
+      etransitivity; eassumption.
+    Qed.
+
+    Lemma of_list_elements {T} (v : t T)
+      : Equal (of_list (elements v)) v.
+    Proof.
+      unfold of_list, Equal; intro y.
+      destruct (find y v) eqn:H;
+        FMap_convert;
+        revert H;
+        generalize (elements_3w v);
+        induction (elements v) as [|x xs IHxs]; clear v.
+      { simpl; intros; invlist InA. }
+      { intros; invlist InA; invlist NoDupA; simpl in *;
+        FMap_convert_to_find;
+        edestruct F.eq_dec; setoid_subst_E_eq; simpl in *; intuition (subst; setoid_subst_E_eq; eauto using (@reflexivity _ E.eq)).
+        { exfalso; eauto using (@reflexivity _ E.eq). }
+        { exfalso; destruct_head prod; eauto using InA_eqke_eqk. } }
+      { simpl; intros; invlist InA.
+        FMap_convert_to_find.
+        intro; destruct_head ex; congruence. }
+      { intros; invlist InA; invlist NoDupA; simpl in *;
+        FMap_convert_to_find;
+        edestruct F.eq_dec; setoid_subst_E_eq; simpl in *; intuition (subst; setoid_subst_E_eq; eauto using (@reflexivity _ E.eq));
+        destruct_head prod;
+        repeat match goal with
+               | [ H : (ex _) -> _ |- _ ] => specialize (fun x pf => H (ex_intro _ x pf))
+               | [ H : ((ex _) -> _) -> _ |- _ ] => specialize (fun f => H (fun xpf => match xpf with ex_intro x pf => f x pf end))
+               | [ H : ?A -> ?B -> ?C, H' : ?B |- _ ] => specialize (fun pf => H pf H')
+               | _ => progress simpl in *
+               end;
+        eauto using (@reflexivity _ (@eq_key_elt T)), InA_cons_hd. }
     Qed.
 
 End FMapExtensions_fun.

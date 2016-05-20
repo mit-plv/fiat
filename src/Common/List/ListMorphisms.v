@@ -455,3 +455,16 @@ Proof.
   unfold first_index_default.
   repeat intro; subst; apply first_index_helper_Proper_pointwise; try assumption; repeat intro; trivial.
 Qed.
+
+Global Instance NoDupA_compat {A eqA} {_ : @Equivalence A eqA}
+  : Proper (SetoidList.eqlistA eqA ==> iff) (SetoidList.NoDupA eqA).
+Proof.
+  intros ls ls' H'.
+  induction H' as [|???? H0 H1 IH]; [ reflexivity | ].
+  split; intro H'; inversion H'; clear H'; subst; constructor;
+    try apply IH;
+    try rewrite <- H0, <- H1;
+    try assumption;
+    try rewrite H0, H1;
+    try assumption.
+Qed.
