@@ -342,6 +342,7 @@ src/Parsers/WellFoundedParseProperties.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
+src/Parsers/ContextFreeGrammar/Fix.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
