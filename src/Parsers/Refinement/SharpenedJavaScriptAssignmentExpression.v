@@ -1,5 +1,4 @@
-(** Sharpened ADT for JSON *)
-Require Import Fiat.Parsers.Grammars.JSONImpoverished.
+Require Import Fiat.Parsers.Grammars.JavaScriptAssignmentExpression.
 Require Import Fiat.Parsers.Refinement.Tactics.
 Require Import Fiat.Parsers.Refinement.DisjointRules.
 Require Import Fiat.Parsers.Refinement.DisjointRulesRev.
@@ -16,7 +15,7 @@ Section IndexedImpl.
           {HSIP : StringIsoProperties Ascii.ascii}.*)
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec json'_grammar string_stringlike).
+  : FullySharpened (string_spec javascript_assignment_expression_pregrammar string_stringlike).
   Proof.
 
     Time start sharpening ADT.
