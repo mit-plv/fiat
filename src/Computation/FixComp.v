@@ -265,7 +265,144 @@ Module LeastFixedPointFun.
       min_ok := FunMin_ok
     }.
 
-  Fixpoint refineFun_inf'
+  Fixpoint unCurry_funType
+           (fDom : list Type)
+    : Type :=
+    match fDom with
+    | nil => unit
+    | cons T fDom' => prod T (unCurry_funType fDom')
+    end.
+
+  Fixpoint unCurry
+           (fDom : list Type)
+           {fCod : Type}
+           (f : funType fDom fCod)
+           {struct fDom}
+    : funType (cons (unCurry_funType fDom) nil) fCod :=
+    match fDom return
+          funType fDom fCod
+          -> funType (cons (unCurry_funType fDom) nil) fCod
+    with
+    | nil => fun f _ => f
+    | cons T fDom' => fun f t => unCurry fDom' (f (fst t)) (snd t)
+    end f.
+
+  Fixpoint Curry
+           (fDom : list Type)
+           {fCod : Type}
+           (f : funType (cons (unCurry_funType fDom) nil) fCod)
+           {struct fDom}
+    : funType fDom fCod :=
+    match fDom return
+          funType (cons (unCurry_funType fDom) nil) fCod
+          -> funType fDom fCod
+    with
+    | nil => fun f => f tt
+    | cons T fDom' => fun f t => Curry _ (fun t' => f (t, t'))
+    end f.
+
+  Lemma refineFunEquiv_Curry
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f : funType (cons (unCurry_funType fDom) nil) fCod),
+      refineEquivFun f (unCurry _ (Curry _ f)).
+  Proof.
+    induction fDom; simpl.
+    - split; simpl; intros; destruct t; apply PreOrder_Reflexive.
+    - simpl in *; split; simpl; intros.
+      + destruct t; simpl in *.
+        eapply (IHfDom (fun u => f (a0, u))).
+      + destruct t; simpl in *.
+        eapply (IHfDom (fun u => f (a0, u))).
+  Qed.
+
+  Lemma refineFunEquiv_unCurry
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f : funType fDom fCod),
+      refineEquivFun f (Curry _ (unCurry _ f)).
+  Proof.
+    induction fDom; simpl.
+    - split; simpl; intros; apply PreOrder_Reflexive.
+    - simpl in *; split; simpl; intros.
+      + eapply (IHfDom (f t)).
+      + eapply (IHfDom (f t)).
+  Qed.
+
+  Lemma refineFun_Curry'
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f f' : funType (cons (unCurry_funType fDom) nil) fCod),
+      refineFun f f'
+      -> refineFun (Curry _ f) (Curry _ f').
+  Proof.
+    induction fDom; simpl.
+    - intros; simpl in *; eauto.
+    - simpl in *; intros.
+      + eapply IHfDom; intros; eauto.
+  Qed.
+
+  Lemma refineFunEquiv_Curry'
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f f' : funType (cons (unCurry_funType fDom) nil) fCod),
+      refineEquivFun f f'
+      -> refineEquivFun (Curry _ f) (Curry _ f').
+  Proof.
+    induction fDom; simpl.
+    - split; intros; destruct H; simpl in *; eauto.
+    - split; destruct H; simpl in *; intros.
+      + eapply IHfDom; split; intros; eauto.
+        * simpl in *; intros; eauto.
+        * simpl in *; intros; eauto.
+      + eapply IHfDom; split; intros; eauto.
+        * simpl in *; intros; eauto.
+        * simpl in *; intros; eauto.
+  Qed.
+
+    Lemma refineFunEquiv_unCurry'
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f f' : funType fDom fCod),
+      refineEquivFun f f'
+      -> refineEquivFun (unCurry _ f) (unCurry _ f').
+  Proof.
+    induction fDom; simpl.
+    - split; intros; destruct H; simpl in *; eauto.
+    - split; destruct H; simpl in *; intros.
+      + eapply IHfDom; split; intros; eauto.
+      + eapply IHfDom; split; intros; eauto.
+  Qed.
+
+    Lemma refineFun_unCurry
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f f' : funType fDom fCod),
+      refineFun f f'
+      -> refineFun (unCurry _ f) (unCurry _ f').
+  Proof.
+    induction fDom; simpl.
+    - intros; eauto.
+    - intros.
+      eapply IHfDom; eauto.
+  Qed.
+
+  Lemma refineFun_unCurry'
+        (fDom : list Type)
+        {fCod : Type}
+    : forall (f f' : funType fDom fCod),
+      refineFun (unCurry _ f) (unCurry _ f')
+      -> refineFun f f'.
+  Proof.
+    induction fDom; simpl.
+    - intros; eapply (H tt).
+    - intros.
+      eapply IHfDom; eauto.
+      simpl; intros.
+      eapply (H (t, t0)).
+  Qed.
+
+  Fixpoint refineFun_lift
            (fDom : list Type)
            {fCod : Type}
            {struct fDom}
@@ -276,7 +413,7 @@ Module LeastFixedPointFun.
     | nil => fun LFP_P v => (LFP_P (fun cv => computes_to cv v))
     | cons T fDom' =>
       fun LFP_P =>
-        fun (t : T) => refineFun_inf' fDom' (fun cv => LFP_P (fun cv' => cv (cv' t)))
+        fun (t : T) => refineFun_lift fDom' (fun cv => LFP_P (fun cv' => cv (cv' t)))
     end.
 
   Definition refineFun_inf
@@ -284,36 +421,59 @@ Module LeastFixedPointFun.
              {fCod : Type}
              (f : funType fDom fCod -> Prop)
     : funType fDom fCod :=
-    refineFun_inf' fDom (fun z => (forall s, f s -> z s)).
+    refineFun_lift fDom (fun z => (forall s, f s -> z s)).
+
+  Lemma refineEquivFun_lift
+             {fDom : list Type}
+             {fCod : Type}
+    : forall (f : (funType fDom fCod -> Prop) -> Prop),
+      refineEquivFun
+        (refineFun_lift fDom f)
+        (Curry _ (refineFun_lift _ (fun p : funType (cons (unCurry_funType fDom) nil) fCod -> Prop => f (fun f' => p (unCurry _ f' ))))).
+  Proof.
+    induction fDom; simpl.
+    - intros; split; apply refineFun_refl.
+    - simpl; split; simpl; intros.
+      destruct (IHfDom (fun f' => f (fun a' => f' (a' t)))); simpl in *.
+      eapply H.
+      destruct (IHfDom (fun f' => f (fun a' => f' (a' t)))); simpl in *.
+      eapply H0.
+  Qed.
 
   Lemma lub_refineFun_inf
-             (fDom : list Type)
-             {fCod : Type}
-             (f : funType fDom fCod -> Prop)
+        (fDom : list Type)
+        {fCod : Type}
+        (f : funType fDom fCod -> Prop)
     : lub f (refineFun_inf f).
   Proof.
-    unfold lub, refineFun_inf; simpl.
-    induction fDom.
-    - unfold lub; simpl in *.
-      unfold refineFun_inf; simpl.
-      intuition.
-      intros v Comp_v.
-      unfold computes_to in *.
-      eapply (Comp_v a'); eauto.
-      intros v Comp_v.
-      unfold computes_to in *.
-      intros; apply H; eauto.
-    - simpl in *.
-      unfold lub in *; simpl in *; intuition.
-      unfold refineFun_inf.
-  Admitted.
+    unfold refineFun_inf.
+    unfold lub; split.
+    - simpl; intros.
+      eapply refineFun_trans; [ | eapply refineEquivFun_lift].
+      simpl.
+      + eapply refineFun_trans.
+        eapply refineFunEquiv_unCurry.
+        eapply refineFun_Curry'.
+        simpl. unfold refine, computes_to.
+        intros; eauto.
+    - simpl; intros.
+      eapply refineFun_trans; [ eapply refineEquivFun_lift | ].
+      eapply refineFun_unCurry'.
+      simpl; intros.
+      eapply PreOrder_Transitive.
+      eapply (proj1 (refineFunEquiv_Curry  _ _)).
+      simpl.
+      unfold refine, computes_to; intros.
+      eapply H in H1.
+      eapply (refineFun_unCurry _ _ _ H1); eauto.
+  Qed.
 
   Definition refineFun_sup
            {fDom : list Type}
            {fCod : Type}
            (f : funType fDom fCod -> Prop)
     : funType fDom fCod :=
-    refineFun_inf' fDom (fun z => exists s, f s /\ z s).
+    refineFun_lift fDom (fun z => exists s, f s /\ z s).
 
   Definition glb_refineFun_sup
              (fDom : list Type)
@@ -321,22 +481,27 @@ Module LeastFixedPointFun.
              (f : funType fDom fCod -> Prop)
     : glb f (refineFun_sup f).
   Proof.
-    induction fDom.
-    - unfold glb; simpl in *.
-      unfold refineFun_sup; simpl.
-      intuition.
-      + intros v Comp_v.
-        unfold computes_to in *.
-        eexists a'; intuition.
-      + intros v Comp_v.
-        unfold computes_to in *.
-        destruct Comp_v as [? [? ? ] ].
-        eapply H in H0.
-        apply H0 in H1; eauto.
-    - simpl in *.
-
-      unfold glb in *; simpl in *; intuition.
-  Admitted.
+    unfold refineFun_sup.
+    unfold glb; split.
+    - simpl; intros.
+      eapply refineFun_trans; [ eapply refineEquivFun_lift | ].
+      simpl.
+      eapply refineFun_trans.
+      eapply refineFun_Curry'.
+      simpl; unfold refine, computes_to.
+      intros; eauto.
+      eapply refineFunEquiv_unCurry.
+    - simpl; intros.
+      eapply refineFun_trans; [ | eapply refineEquivFun_lift ].
+      eapply refineFun_unCurry'.
+      simpl; intros.
+      unfold refine, computes_to; intros.
+      pose proof (proj2 (refineFunEquiv_Curry _ _) t _ H0).
+      simpl in H1; unfold computes_to in H1; destruct H1;
+        intuition.
+      apply H in H2.
+      eapply refineFun_unCurry in H2; apply H2; eauto.
+  Qed.
 
   Instance CompleteLattice_funDef
            {fDom : list Type}
@@ -434,6 +599,7 @@ Module LeastFixedPointFun.
     eapply refineFun_trans.
     eapply refine_LeastFixedPoint; intros.
     unfold respectful; simpl; intros.
+
   Abort.
   (* Focus 3.
 
