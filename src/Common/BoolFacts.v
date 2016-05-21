@@ -135,6 +135,10 @@ Section BoolFacts.
       = ((b && t) || (negb b && f))%bool.
   Proof. destruct b, t, f; reflexivity. Qed.
 
+  Lemma not_andb_negb_iff {a b : bool} : (a -> b) <-> ~a && negb b.
+  Proof.
+    destruct a, b; simpl; intuition.
+  Qed.
 End BoolFacts.
 
 Create HintDb bool_congr discriminated.
