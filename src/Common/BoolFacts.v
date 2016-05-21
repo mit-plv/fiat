@@ -135,7 +135,7 @@ Section BoolFacts.
       = ((b && t) || (negb b && f))%bool.
   Proof. destruct b, t, f; reflexivity. Qed.
 
-  Lemma not_andb_negb_iff {a b : bool} : (a -> b) <-> ~a && negb b.
+  Lemma not_andb_negb_iff {a b : bool} : (is_true a -> is_true b) <-> ~is_true (a && negb b).
   Proof.
     destruct a, b; simpl; intuition.
   Qed.
