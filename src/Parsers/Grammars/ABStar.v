@@ -1,8 +1,10 @@
 (** * Definition of grammar for regular expression [(ab)*] *)
 Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 
-Definition ab_star_grammar : grammar ascii :=
+Definition ab_star_pregrammar : pregrammar ascii :=
   [[[ "(ab)*" ::== "" || "a" "b" "(ab)*" ]]]%grammar.
+
+Definition ab_star_grammar : grammar ascii := Eval cbv [ab_star_pregrammar] in ab_star_pregrammar.
 
 Local Open Scope list_scope.
 
