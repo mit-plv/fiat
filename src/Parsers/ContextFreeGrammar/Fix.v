@@ -420,6 +420,17 @@ Section grammar_fixedpoint.
                    (initial_state nt)
                    (PositiveMap.find (nonterminal_to_positive nt) st).
 
+  Lemma lookup_state_aggregate_state_max nt
+    : lookup_state aggregate_state_max nt = initial_state nt.
+  Proof.
+    unfold lookup_state.
+    destruct (PositiveMap.find (nonterminal_to_positive nt) aggregate_state_max) eqn:H; [ | reflexivity ].
+    simpl.
+    erewrite find_aggregate_state_max in H by eassumption.
+    inversion H; subst.
+    rewrite nonterminal_to_positive_to_nonterminal; reflexivity.
+  Qed.
+
   Lemma pre_Fix_grammar_fixedpoint
     : aggregate_state_eq pre_Fix_grammar (aggregate_step pre_Fix_grammar).
   Proof.
