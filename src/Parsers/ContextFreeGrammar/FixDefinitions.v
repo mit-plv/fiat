@@ -1,6 +1,6 @@
 Require Import Coq.PArith.BinPos Coq.PArith.Pnat.
 Require Import Coq.Arith.Arith.
-Require Import Coq.Classes.RelationClasses.
+Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Notations.
@@ -20,6 +20,8 @@ Class grammar_fixedpoint_lattice_data state :=
     : forall a b, state_le (greatest_lower_bound a b) a;
     greatest_lower_bound_correct_r
     : forall a b, state_le (greatest_lower_bound a b) b;
+    (*greatest_lower_bound_greatest
+    : forall a b c, state_le c a -> state_le c b -> state_le c (greatest_lower_bound a b);*)
     initial_state : default_nonterminal_carrierT -> state;
     bottom : state;
     bottom_bottom : forall st, state_le bottom st;
@@ -29,9 +31,11 @@ Class grammar_fixedpoint_lattice_data state :=
 Record grammar_fixedpoint_data :=
   { state :> Type;
     lattice_data :> grammar_fixedpoint_lattice_data state;
-    step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state) }.
+    step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state);
+    step_constraints_ext : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq) step_constraints }.
 
 Global Existing Instance lattice_data.
+Global Existing Instance step_constraints_ext.
 
 Delimit Scope grammar_fixedpoint_scope with fixedpoint.
 Local Open Scope grammar_fixedpoint_scope.

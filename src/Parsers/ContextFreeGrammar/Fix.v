@@ -66,21 +66,48 @@ Proof.
   eapply state_lt_Transitive; eassumption.
 Qed.
 
-Lemma state_le_bottom_eq_bottom {state} {d : grammar_fixedpoint_lattice_data state} (s : state)
-  : (s <= ⊥) = (s =b ⊥).
+Lemma no_state_lt_bottom {state} {d : grammar_fixedpoint_lattice_data state} (s : state)
+  : (s < ⊥) = false.
 Proof.
   pose proof (bottom_bottom s) as H.
   unfold state_le in *.
-  destruct (s =b ⊥) eqn:H'.
+  destruct (⊥ =b s) eqn:H'.
   { apply state_beq_bl in H'; subst.
-    reflexivity. }
-  { simpl.
-    apply orb_true_iff in H; destruct H as [H|H].
-    { apply state_beq_bl in H; subst.
-      rewrite state_beq_refl in H'; congruence. }
-    { destruct (s < ⊥) eqn:H''; trivial.
-      exfalso; eapply state_lt_Irreflexive.
-      etransitivity; eassumption. } }
+    destruct (⊥ < ⊥) eqn:?; trivial.
+    exfalso; eapply state_lt_Irreflexive; eassumption. }
+  { simpl in *.
+    destruct (s < ⊥) eqn:H''; trivial.
+    exfalso; eapply state_lt_Irreflexive.
+    etransitivity; eassumption. }
+Qed.
+
+Lemma state_le_bottom_eq_bottom {state} {d : grammar_fixedpoint_lattice_data state} (s : state)
+  : (s <= ⊥) = (s =b ⊥).
+Proof.
+  unfold state_le.
+  rewrite no_state_lt_bottom, orb_false_r; reflexivity.
+Qed.
+
+Lemma bottom_glb_r {state} {d : grammar_fixedpoint_lattice_data state} (s : state)
+  : (s ⊓ ⊥) = ⊥.
+Proof.
+  apply state_beq_bl.
+  pose proof (bottom_bottom s) as H.
+  pose proof (greatest_lower_bound_correct_r s ⊥) as H0.
+  unfold state_le in *.
+  rewrite no_state_lt_bottom, orb_false_r in H0.
+  assumption.
+Qed.
+
+Lemma bottom_glb_l {state} {d : grammar_fixedpoint_lattice_data state} (s : state)
+  : (⊥ ⊓ s) = ⊥.
+Proof.
+  apply state_beq_bl.
+  pose proof (bottom_bottom s) as H.
+  pose proof (greatest_lower_bound_correct_l ⊥ s) as H0.
+  unfold state_le in *.
+  rewrite no_state_lt_bottom, orb_false_r in H0.
+  assumption.
 Qed.
 
 Section grammar_fixedpoint.
@@ -92,7 +119,7 @@ Section grammar_fixedpoint.
   Definition aggregate_state := PositiveMap.t (state gdata).
 
   Definition from_aggregate_state (f : aggregate_state) : default_nonterminal_carrierT -> state gdata
-    := fun nt => option_rect (fun _ => state gdata) (fun v => v) (initial_state nt)
+    := fun nt => option_rect (fun _ => state gdata) (fun v => v) ⊥
                              (PositiveMap.find (nonterminal_to_positive nt) f).
 
   Definition aggregate_state_le (v1 v2 : aggregate_state) : bool
@@ -153,7 +180,8 @@ Section grammar_fixedpoint.
   Qed.
 
   Create HintDb aggregate_step_db discriminated.
-  Hint Rewrite PositiveMap.fold_1 PositiveMap.gmapi nonterminal_to_positive_to_nonterminal positive_to_nonterminal_to_positive PositiveMap.gempty PositiveMapAdditionalFacts.gsspec @state_beq_refl orb_true_iff orb_true_r orb_false_iff @greatest_lower_bound_correct_l @greatest_lower_bound_correct_r @bottom_bottom @state_le_bottom_eq_bottom : aggregate_step_db.
+  Hint Rewrite PositiveMap.fold_1 PositiveMap.gmapi nonterminal_to_positive_to_nonterminal positive_to_nonterminal_to_positive PositiveMap.gempty PositiveMapAdditionalFacts.gsspec (@state_beq_refl _ gdata) orb_true_iff orb_true_r orb_false_iff (@state_le_bottom_eq_bottom _ gdata) (@no_state_lt_bottom _ gdata) (@state_le_bottom_eq_bottom _ gdata) (@bottom_glb_r _ gdata) (@bottom_glb_l _ gdata)  (fun a b => @greatest_lower_bound_correct_l _ gdata a b : _ = true) (fun a b => @greatest_lower_bound_correct_r _ gdata a b : _ = true) (fun s => @bottom_bottom _ gdata s : _ = true) beq_nat_true_iff : aggregate_step_db.
+  Hint Rewrite <- beq_nat_refl : aggregate_step_db.
   Definition map2_1bis_for_rewrite (* no metavariables deep inside the beta-iota normal form *)
              elt elt' elt'' f H m m' x
     := @PositiveMapExtensions.BasicFacts.map2_1bis elt elt' elt'' m m' x f H.
@@ -197,10 +225,16 @@ Section grammar_fixedpoint.
       => setoid_rewrite (@map2_1bis_for_rewrite _ _ _ f eq_refl)
     | [ H : ?x = _, H' : context[?x] |- _ ] => rewrite H in H'
     | [ H : and _ _ |- _ ] => destruct H
+    | [ H : pointwise_relation _ eq ?x ?y, H' : appcontext[step_constraints _ ?x] |- _ ]
+      => rewrite H in H'
     | _ => progress autorewrite with aggregate_step_db in *
     | [ H : forall k : positive, _ |- _ ]
       => repeat match goal with
                 | [ k' : positive |- _ ]
+                  => unique pose proof (H k')
+                | [ |- context[PositiveMap.find ?k' _] ]
+                  => unique pose proof (H k')
+                | [ _ : context[PositiveMap.find ?k' _] |- _ ]
                   => unique pose proof (H k')
                 end;
          clear H
@@ -230,14 +264,33 @@ Section grammar_fixedpoint.
   Global Instance aggregate_state_le_Transitive : Transitive aggregate_state_le.
   Proof. unfold aggregate_state_le, state_le; repeat intro; fold_andb_t. Qed.
 
-  Global Instance aggregate_state_eq_Proper
-    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_eq.
+  Global Instance aggregate_state_eq_Proper_Equal
+    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_eq | 100.
   Proof.
     intros a b H a' b' H'.
     destruct (aggregate_state_eq a a') eqn:Ha;
     destruct (aggregate_state_eq b b') eqn:Hb;
     unfold aggregate_state_eq in *;
     try reflexivity; fold_andb_t.
+  Qed.
+
+  Global Instance aggregate_state_eq_Proper
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_eq.
+  Proof.
+    intros a b H a' b' H'.
+    destruct (aggregate_state_eq a a') eqn:Ha;
+      try change (is_true (aggregate_state_eq a a')) in Ha;
+      destruct (aggregate_state_eq b b') eqn:Hb;
+      try change (is_true (aggregate_state_eq b b')) in Hb;
+      trivial.
+    { rewrite <- Hb; symmetry; clear Hb; change (is_true (aggregate_state_eq b b')).
+      etransitivity; [ | eassumption ].
+      etransitivity; [ | eassumption ].
+      symmetry; assumption. }
+    { rewrite <- Ha; clear Ha; change (is_true (aggregate_state_eq a a')).
+      etransitivity; [ eassumption | ].
+      etransitivity; [ eassumption | ].
+      symmetry; assumption. }
   Qed.
 
   Global Instance aggregate_state_le_Proper
@@ -297,22 +350,40 @@ Section grammar_fixedpoint.
          (PositiveMap.empty _)
          initial_nonterminals_data.
 
+  Lemma find_aggregate_state_max_spec k v
+    : PositiveMap.find k aggregate_state_max = Some v
+      <-> (v = initial_state (positive_to_nonterminal k) /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
+  Proof.
+    unfold aggregate_state_max in *.
+    generalize dependent (@initial_nonterminals_data _ _); intros ls.
+    induction ls as [|x xs IHxs].
+    { simpl in *.
+      autorewrite with aggregate_step_db in *.
+      intuition (tauto || congruence || eauto). }
+    { simpl in *.
+      autorewrite with aggregate_step_db in *.
+      edestruct PositiveMap.E.eq_dec; subst;
+        autorewrite with aggregate_step_db in *;
+        auto using eq_refl with nocore.
+      { intuition (congruence || eauto). }
+      { intuition (congruence || subst || eauto).
+        { apply orb_true_iff; intuition. }
+        { do 2 match goal with
+               | [ H : is_true (orb _ _) |- _ ] => apply orb_true_iff in H
+               | [ H : _ |- _ ] => setoid_rewrite beq_nat_true_iff in H
+               end.
+          repeat intuition (congruence || subst || (autorewrite with aggregate_step_db in * ) || eauto). } } }
+  Qed.
+
   Lemma find_aggregate_state_max k v
     : PositiveMap.find k aggregate_state_max = Some v
       -> PositiveMap.find k aggregate_state_max = Some (initial_state (positive_to_nonterminal k)).
   Proof.
-    unfold aggregate_state_max in *.
-    generalize (@initial_nonterminals_data _ _); intros ls H.
-    induction ls as [|x xs IHxs].
-    { simpl in *.
-      autorewrite with aggregate_step_db in *.
-      congruence. }
-    { simpl in *.
-      autorewrite with aggregate_step_db in *.
-      edestruct PositiveMap.E.eq_dec; subst;
-      autorewrite with aggregate_step_db in *;
-      auto using eq_refl with nocore. }
+    setoid_rewrite find_aggregate_state_max_spec.
+    tauto.
   Qed.
+
+  Hint Rewrite find_aggregate_state_max_spec : aggregate_step_db.
 
   Local Ltac aggregate_step_t :=
     repeat match goal with
@@ -402,7 +473,26 @@ Section grammar_fixedpoint.
       ).
   Defined.
 
-  Definition pre_Fix_grammar : aggregate_state
+  Global Instance aggregate_state_glb_Proper
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> aggregate_state_eq) aggregate_state_glb.
+  Proof. unfold aggregate_state_eq, aggregate_state_glb; repeat intro; fold_andb_t. Qed.
+
+  Global Instance from_aggregate_state_Proper
+    : Proper (aggregate_state_eq ==> eq ==> eq) from_aggregate_state.
+  Proof.
+    unfold aggregate_state_eq, from_aggregate_state, option_rect; repeat intro; fold_andb_t.
+  Qed.
+
+  Global Instance aggregate_step_Proper
+    : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step.
+  Proof.
+    intros x y H.
+    assert (H' : pointwise_relation _ eq (from_aggregate_state x) (from_aggregate_state y)) by (intro; setoid_rewrite H; reflexivity).
+    unfold aggregate_state_eq, aggregate_step, aggregate_state_glb, aggregate_prestep in *.
+    fold_andb_t.
+  Qed.
+
+  Definition pre_Fix_grammar_helper : aggregate_state -> aggregate_state
     := Fix
          (aggregate_state_lt_wf_idx (10 * List.length initial_nonterminals_data))
          (fun _ => aggregate_state)
@@ -410,31 +500,77 @@ Section grammar_fixedpoint.
           => match Sumbool.sumbool_of_bool (aggregate_state_eq (aggregate_step st) st) with
              | left pf => st
              | right pf => Fix_grammar_internal (aggregate_step st) (step_lt pf)
-             end)
-         aggregate_state_max.
+             end).
+
+  Definition pre_Fix_grammar : aggregate_state
+    := pre_Fix_grammar_helper aggregate_state_max.
+
+  Lemma pre_Fix_grammar_helper_fixed st (H : aggregate_state_eq (aggregate_step st) st)
+    : aggregate_state_eq (pre_Fix_grammar_helper st) st.
+  Proof.
+    unfold pre_Fix_grammar_helper.
+    rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
+    edestruct dec; [ | congruence ].
+    reflexivity.
+  Qed.
+
+  Lemma pre_Fix_grammar_helper_commute v
+    : aggregate_state_eq (pre_Fix_grammar_helper (aggregate_step v))
+                         (aggregate_step (pre_Fix_grammar_helper v)).
+  Proof.
+    unfold pre_Fix_grammar_helper.
+    induction (aggregate_state_lt_wf v) as [v H IHv].
+    rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial);
+    symmetry;
+    rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial);
+    symmetry.
+    do 2 edestruct dec; try reflexivity;
+    repeat match goal with
+           | [ H : ?x = true |- _ ] => change (is_true x) in H
+           end.
+    { rewrite pre_Fix_grammar_helper_fixed by assumption.
+      symmetry; assumption. }
+    { match goal with
+      | [ H : is_true (aggregate_state_eq ?x ?y), H' : context[?x] |- _ ]
+        => rewrite H in H'
+      end.
+      congruence. }
+    { apply IHv.
+      apply step_lt; assumption. }
+  Qed.
 
   Definition lookup_state (st : aggregate_state) (nt : default_nonterminal_carrierT)
     : state gdata
     := option_rect (fun _ => state gdata)
                    (fun v => v)
-                   (initial_state nt)
+                   ⊥
                    (PositiveMap.find (nonterminal_to_positive nt) st).
 
   Lemma lookup_state_aggregate_state_max nt
-    : lookup_state aggregate_state_max nt = initial_state nt.
+    : lookup_state aggregate_state_max nt
+      = if is_valid_nonterminal initial_nonterminals_data nt
+        then initial_state nt
+        else ⊥.
   Proof.
     unfold lookup_state.
-    destruct (PositiveMap.find (nonterminal_to_positive nt) aggregate_state_max) eqn:H; [ | reflexivity ].
-    simpl.
-    erewrite find_aggregate_state_max in H by eassumption.
-    inversion H; subst.
-    rewrite nonterminal_to_positive_to_nonterminal; reflexivity.
+    destruct (PositiveMap.find (nonterminal_to_positive nt) aggregate_state_max) eqn:H; [ | ].
+    { simpl.
+      apply find_aggregate_state_max_spec in H.
+      rewrite nonterminal_to_positive_to_nonterminal in H.
+      destruct H as [? H']; subst; simpl in *; rewrite H'; intuition. }
+    { match goal with |- context[if ?e then _ else _] => destruct e eqn:H' end;
+      [ | reflexivity ].
+      pose proof (find_aggregate_state_max_spec (nonterminal_to_positive nt) (initial_state (positive_to_nonterminal (nonterminal_to_positive nt)))) as H''.
+      rewrite nonterminal_to_positive_to_nonterminal, H' in H''.
+      destruct H'' as [_ H''].
+      rewrite H'' in H by intuition.
+      congruence. }
   Qed.
 
   Lemma pre_Fix_grammar_fixedpoint
     : aggregate_state_eq pre_Fix_grammar (aggregate_step pre_Fix_grammar).
   Proof.
-    unfold pre_Fix_grammar.
+    unfold pre_Fix_grammar, pre_Fix_grammar_helper.
     generalize aggregate_state_max; intro a.
     rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
     edestruct dec as [pf|pf].
