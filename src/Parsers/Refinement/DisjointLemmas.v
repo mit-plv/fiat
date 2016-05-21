@@ -28,7 +28,7 @@ Require Import Fiat.Parsers.StringLike.LastCharSuchThat.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
-Require Import Fiat.Parsers.FoldGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fold.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.

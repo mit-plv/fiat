@@ -7,7 +7,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.FoldGrammar.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fold.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.
