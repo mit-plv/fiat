@@ -312,18 +312,21 @@ Section grammar_fixedpoint.
     reflexivity.
   Qed.
 
+  Definition aggregate_state_glb_f
+    := (fun x1 x2 : option (state gdata)
+        => match x1, x2 with
+           | Some x1, Some x2 => Some (x1 ⊓ x2)
+           | Some x, _
+           | _, Some x
+             => None
+           | None, None => None
+           (*| None, _ => None
+             | _, None => None*)
+           end).
+
   Definition aggregate_state_glb (v1 v2 : aggregate_state) : aggregate_state
     := PositiveMap.map2
-         (fun x1 x2
-          => match x1, x2 with
-             | Some x1, Some x2 => Some (x1 ⊓ x2)
-             | Some x, _
-             | _, Some x
-               => None
-             | None, None => None
-             (*| None, _ => None
-             | _, None => None*)
-             end)
+         aggregate_state_glb_f
          v1 v2.
 
   Definition aggregate_prestep (v : aggregate_state) : aggregate_state
@@ -337,7 +340,7 @@ Section grammar_fixedpoint.
     : aggregate_state_le (aggregate_state_glb v1 v2) v1
       /\ aggregate_state_le (aggregate_state_glb v1 v2) v2.
   Proof.
-    unfold aggregate_state_le, aggregate_state_glb.
+    unfold aggregate_state_le, aggregate_state_glb, aggregate_state_glb_f.
     fold_andb_t.
   Qed.
 
@@ -349,6 +352,14 @@ Section grammar_fixedpoint.
          (fun nt st => PositiveMap.add (nonterminal_to_positive nt) (initial_state nt) st)
          (PositiveMap.empty _)
          initial_nonterminals_data.
+
+  Lemma find_aggregate_state_glb a b k
+    : PositiveMap.find k (aggregate_state_glb a b)
+      = aggregate_state_glb_f (PositiveMap.find k a) (PositiveMap.find k b).
+  Proof.
+    unfold aggregate_state_glb.
+    fold_andb_t.
+  Qed.
 
   Lemma find_aggregate_state_max_spec k v
     : PositiveMap.find k aggregate_state_max = Some v
@@ -565,6 +576,33 @@ Section grammar_fixedpoint.
       destruct H'' as [_ H''].
       rewrite H'' in H by intuition.
       congruence. }
+  Qed.
+
+  Lemma lookup_state_aggregate_state_glb a b nt
+    : lookup_state (aggregate_state_glb a b) nt = (lookup_state a nt ⊓ lookup_state b nt).
+  Proof.
+    unfold lookup_state.
+    rewrite find_aggregate_state_glb.
+    unfold option_rect, aggregate_state_glb_f.
+    fold_andb_t.
+  Qed.
+
+  Lemma lookup_state_invalid_pre_Fix_grammar (nt : default_nonterminal_carrierT)
+        (Hinvalid : is_valid_nonterminal initial_nonterminals_data nt = false)
+    : lookup_state pre_Fix_grammar nt = ⊥.
+  Proof.
+    unfold pre_Fix_grammar, pre_Fix_grammar_helper.
+    pose proof (lookup_state_aggregate_state_max nt) as H.
+    rewrite Hinvalid in H.
+    generalize dependent aggregate_state_max; intro a; intros.
+    induction (aggregate_state_lt_wf a) as [?? IH].
+    rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
+    edestruct dec as [pf|pf]; [ assumption | ].
+    apply IH.
+    { apply step_lt; assumption. }
+    { unfold aggregate_step.
+      rewrite lookup_state_aggregate_state_glb, H.
+      fold_andb_t. }
   Qed.
 
   Lemma pre_Fix_grammar_fixedpoint
