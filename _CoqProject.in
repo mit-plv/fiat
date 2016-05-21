@@ -308,7 +308,6 @@ src/Parsers/BooleanRecognizerTests.v
 src/Parsers/CorrectnessBaseTypes.v
 src/Parsers/ExtrOcamlParsers.v
 src/Parsers/ExtrOcamlPrimitives.v
-src/Parsers/FoldGrammar.v
 src/Parsers/GenericBaseTypes.v
 src/Parsers/GenericBoolCorrectnessBaseTypes.v
 src/Parsers/GenericCorrectnessBaseTypes.v
@@ -343,6 +342,7 @@ src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
 src/Parsers/ContextFreeGrammar/Fix.v
+src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
