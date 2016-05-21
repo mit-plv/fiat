@@ -87,7 +87,7 @@ Section grammar_fixedpoint.
   Context {Char : Type}.
 
   Context (gdata : grammar_fixedpoint_data)
-          (G : pregrammar Char).
+          (G : pregrammar' Char).
 
   Definition aggregate_state := PositiveMap.t (state gdata).
 
