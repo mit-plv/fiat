@@ -77,34 +77,21 @@ Section grammar_fixedpoint.
         eauto. }
       { apply step_lt in Heq.
         intros nt.
-        apply IHa; eauto.
-        { intros nt' Hnt'.
-          rewrite find_aggregate_step.
-          specialize (Hvalid' _ Hnt').
-          specialize (IHv _ Hnt').
-          move IHv at bottom.
-          move Hvalid' at bottom.
-          rewrite nonterminal_to_positive_to_nonterminal.
-          unfold lookup_state at 2 in IHv.
-          edestruct FMapPositive.PositiveMap.find; simpl in *; [ | destruct Hvalid' ].
-          apply P_glb; assumption. }
-        { intros nt' Hnt'.
-          rewrite lookup_state_aggregate_step.
-          specialize (Hvalid' _ Hnt').
-          specialize (IHv _ Hnt').
-          move IHv at bottom.
-          move Hvalid' at bottom.
-          edestruct FMapPositive.PositiveMap.find; simpl in *; [ | destruct Hvalid' ].
-          apply P_glb; assumption. }
-        { intros nt' Hnt'.
-          apply IH.
-          rewrite lookup_state_aggregate_step.
-          specialize (Hvalid' _ Hnt').
-          specialize (IHv _ Hnt').
-          move IHv at bottom.
-          move Hvalid' at bottom.
-          edestruct FMapPositive.PositiveMap.find; simpl in *; [ | destruct Hvalid' ].
-          apply P_glb; assumption. } } }
+        apply IHa; eauto; intros; try apply IH;
+          repeat match goal with
+                 | _ => progress intros
+                 | _ => rewrite find_aggregate_step
+                 | _ => rewrite lookup_state_aggregate_step
+                 | _ => rewrite nonterminal_to_positive_to_nonterminal
+                 | _ => tauto
+                 | _ => assumption
+                 | _ => progress unfold lookup_state, option_map, option_rect in *
+                 | [ H : forall nt, is_true (?P nt) -> _, H' : is_true (?P _) |- _ ]
+                   => specialize (H _ H')
+                 | [ |- ?P ?nt (_ ⊓ _) ] => apply P_glb
+                 | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
+                 | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+                 end. } }
     { rewrite lookup_state_invalid_pre_Fix_grammar by assumption; eauto. }
   Qed.
 End grammar_fixedpoint.
