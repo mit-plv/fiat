@@ -587,6 +587,12 @@ Section grammar_fixedpoint.
     fold_andb_t.
   Qed.
 
+  Global Instance lookup_state_Proper
+    : Proper (aggregate_state_eq ==> eq ==> eq) lookup_state.
+  Proof.
+    unfold aggregate_state_eq, lookup_state, option_rect; repeat intro; fold_andb_t.
+  Qed.
+
   Lemma lookup_state_invalid_pre_Fix_grammar (nt : default_nonterminal_carrierT)
         (Hinvalid : is_valid_nonterminal initial_nonterminals_data nt = false)
     : lookup_state pre_Fix_grammar nt = ⊥.
@@ -603,6 +609,55 @@ Section grammar_fixedpoint.
     { unfold aggregate_step.
       rewrite lookup_state_aggregate_state_glb, H.
       fold_andb_t. }
+  Qed.
+
+  Lemma find_aggregate_prestep st nt
+    : PositiveMap.find nt (aggregate_prestep st)
+      = option_map (step_constraints gdata (lookup_state st) (positive_to_nonterminal nt))
+                   (PositiveMap.find nt st).
+  Proof.
+    unfold aggregate_prestep.
+    autorewrite with aggregate_step_db.
+    unfold from_aggregate_state, option_rect, option_map.
+    edestruct PositiveMap.find; reflexivity.
+  Qed.
+
+  Lemma lookup_state_aggregate_prestep st nt
+    : lookup_state (aggregate_prestep st) nt
+      = option_rect (fun _ => _)
+                    (fun _ => step_constraints gdata (lookup_state st) nt (lookup_state st nt))
+                    ⊥
+                    (PositiveMap.find (nonterminal_to_positive nt) st).
+  Proof.
+    unfold lookup_state.
+    rewrite find_aggregate_prestep.
+    unfold lookup_state.
+    rewrite nonterminal_to_positive_to_nonterminal.
+    edestruct PositiveMap.find; reflexivity.
+  Qed.
+
+  Lemma find_aggregate_step st nt
+    : PositiveMap.find nt (aggregate_step st)
+      = option_map (fun v => v ⊓ step_constraints gdata (lookup_state st) (positive_to_nonterminal nt) v)
+                   (PositiveMap.find nt st).
+  Proof.
+    unfold aggregate_step.
+    rewrite find_aggregate_state_glb, find_aggregate_prestep.
+    edestruct PositiveMap.find; reflexivity.
+  Qed.
+
+  Lemma lookup_state_aggregate_step st nt
+    : lookup_state (aggregate_step st) nt
+      = option_rect (fun _ => _)
+                    (fun s => s ⊓ step_constraints gdata (lookup_state st) nt (lookup_state st nt))
+                    ⊥
+                    (PositiveMap.find (nonterminal_to_positive nt) st).
+  Proof.
+    unfold lookup_state.
+    rewrite find_aggregate_step.
+    unfold lookup_state.
+    rewrite nonterminal_to_positive_to_nonterminal.
+    edestruct PositiveMap.find; reflexivity.
   Qed.
 
   Lemma pre_Fix_grammar_fixedpoint
