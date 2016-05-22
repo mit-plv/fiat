@@ -91,7 +91,6 @@ PARSERS_UNMADE_VO := \
 	src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.vo \
 	src/Parsers/Grammars/JavaScriptWithoutStatements.vo \
 	src/Parsers/Grammars/SimpleRecognizerOptimized.vo \
-	src/Parsers/ContextFreeGrammar/FixFromFold.vo \
 	src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo \
 	$(PARSERS_EXAMPLES_UNMADE_VO)
