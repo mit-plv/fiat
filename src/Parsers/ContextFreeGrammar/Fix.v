@@ -293,8 +293,8 @@ Section grammar_fixedpoint.
       symmetry; assumption. }
   Qed.
 
-  Global Instance aggregate_state_le_Proper
-    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_le.
+  Global Instance aggregate_state_le_Proper_Equal
+    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_le | 100.
   Proof.
     intros a b H a' b' H'.
     destruct (aggregate_state_le a a') eqn:Ha;
@@ -303,8 +303,35 @@ Section grammar_fixedpoint.
     try reflexivity; fold_andb_t.
   Qed.
 
+  Global Instance aggregate_state_lt_Proper_Equal
+    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_lt | 100.
+  Proof.
+    unfold aggregate_state_lt.
+    intros ?? H ?? H'.
+    pose aggregate_state_le_Proper_Equal.
+    pose aggregate_state_eq_Proper_Equal.
+    rewrite H, H'.
+    reflexivity.
+  Qed.
+
+  Global Instance aggregate_state_le_Proper
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_le.
+  Proof.
+    intros a b H a' b' H'.
+    unfold aggregate_state_eq in *.
+    destruct (aggregate_state_le a a') eqn:Ha;
+      try change (is_true (aggregate_state_le a a')) in Ha;
+      destruct (aggregate_state_le b b') eqn:Hb;
+      try change (is_true (aggregate_state_eq b b')) in Hb;
+      trivial;
+      [ rewrite <- Hb; symmetry; clear Hb; change (is_true (aggregate_state_le b b'))
+      | rewrite <- Ha; clear Ha; change (is_true (aggregate_state_le a a')) ];
+      unfold aggregate_state_le in *;
+      fold_andb_t.
+  Qed.
+
   Global Instance aggregate_state_lt_Proper
-    : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_lt.
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_lt.
   Proof.
     unfold aggregate_state_lt.
     intros ?? H ?? H'.
@@ -432,13 +459,51 @@ Section grammar_fixedpoint.
     fold_andb_t.
   Qed.
 
+  Lemma aggregate_state_of_list_lt_Acc_eq v1 v2
+        (m1 := PositiveMapExtensions.of_list v1)
+        (m2 := PositiveMapExtensions.of_list v2)
+        (Heq : aggregate_state_eq m1 m2)
+        (H : Acc (fun v1 v2 => aggregate_state_lt (PositiveMapExtensions.of_list v1) (PositiveMapExtensions.of_list v2)) v1)
+    : Acc (fun v1 v2 => aggregate_state_lt (PositiveMapExtensions.of_list v1) (PositiveMapExtensions.of_list v2)) v2.
+  Proof.
+    subst m1 m2.
+    revert dependent v2.
+    induction H as [v1 Hacc IHv1].
+    intros v1' Heq.
+    constructor.
+    intros y Hlt.
+    eapply IHv1; [ | reflexivity ].
+    rewrite Heq.
+    assumption.
+  Qed.
+
   Lemma aggregate_state_of_list_lt_wf : well_founded (fun v1 v2 => aggregate_state_lt (PositiveMapExtensions.of_list v1) (PositiveMapExtensions.of_list v2)).
   Proof.
     intro a.
-    induction a as [|x xs IHxs];
+    induction a as [|[x0 x1] xs IHxs];
       constructor; simpl; intros y H.
     { exfalso; eapply nothing_lt_empty; eassumption. }
-    { admit. }
+    { assert (H' : exists w y',
+                 aggregate_state_eq (PositiveMapExtensions.of_list ((x0, w) :: y')) (PositiveMapExtensions.of_list y)
+                 /\ ((w < x1)
+                     \/ (w = x1
+                         /\ aggregate_state_lt (PositiveMapExtensions.of_list y') (PositiveMapExtensions.of_list xs)))) by admit.
+      clear H.
+      destruct H' as [w [y' [H'eq [H'lt|H'lt]]]].
+      { eapply aggregate_state_of_list_lt_Acc_eq; [ eassumption | ].
+        clear H'eq. (*
+        apply IHx1.
+destruct x as [x0 x1].
+        simpl in *.
+        induction (state_lt_wf x1) as [x1 Hacc IHx1].
+        constructor.
+        intros y
+induction IHxs as [xs IHacc IHxs].
+      induction (state_lt_wf x1) as [x1 Hacc IHx1].
+constructor.
+                     *)
+        admit. }
+      { admit. } }
   Admitted.
 
   Lemma aggregate_state_lt_wf : well_founded aggregate_state_lt.
