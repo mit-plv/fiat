@@ -345,6 +345,7 @@ src/Parsers/ContextFreeGrammar/Fix.v
 src/Parsers/ContextFreeGrammar/FixCorrect.v
 src/Parsers/ContextFreeGrammar/FixDefinitions.v
 src/Parsers/ContextFreeGrammar/FixFromFold.v
+src/Parsers/ContextFreeGrammar/FixFromFoldDefinitions.v
 src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
