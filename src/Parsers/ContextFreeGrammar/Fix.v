@@ -205,7 +205,7 @@ Section grammar_fixedpoint.
     | _ => progress intros
     | _ => progress subst
     | _ => congruence
-    | _ => progress unfold is_true in *
+    | _ => progress unfold is_true, PositiveMap.key in *
     | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
     | [ H : (_ =b _) = true |- _ ] => apply state_beq_bl in H
     | [ H : Some ?b <> Some false |- _ ] => destruct b eqn:?; [ clear H | congruence ]
