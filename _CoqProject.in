@@ -341,11 +341,6 @@ src/Parsers/WellFoundedParseProperties.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
-src/Parsers/ContextFreeGrammar/Fix.v
-src/Parsers/ContextFreeGrammar/FixCorrect.v
-src/Parsers/ContextFreeGrammar/FixDefinitions.v
-src/Parsers/ContextFreeGrammar/FixFromFold.v
-src/Parsers/ContextFreeGrammar/FixFromFoldDefinitions.v
 src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
@@ -361,6 +356,11 @@ src/Parsers/ContextFreeGrammar/TransferProperties.v
 src/Parsers/ContextFreeGrammar/Valid.v
 src/Parsers/ContextFreeGrammar/ValidProperties.v
 src/Parsers/ContextFreeGrammar/ValidReflective.v
+src/Parsers/ContextFreeGrammar/Fix/Correct.v
+src/Parsers/ContextFreeGrammar/Fix/Definitions.v
+src/Parsers/ContextFreeGrammar/Fix/Fix.v
+src/Parsers/ContextFreeGrammar/Fix/FromFold.v
+src/Parsers/ContextFreeGrammar/Fix/FromFoldDefinitions.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/EvalGrammarTactics.v
 src/Parsers/Grammars/ExpressionNumPlus.v
