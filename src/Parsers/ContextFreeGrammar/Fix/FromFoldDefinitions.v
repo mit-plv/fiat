@@ -5,7 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fold.
-Require Import Fiat.Parsers.ContextFreeGrammar.FixDefinitions.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 
 Set Implicit Arguments.
 Local Coercion is_true : bool >-> Sortclass.

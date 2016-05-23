@@ -9,7 +9,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
-Require Export Fiat.Parsers.ContextFreeGrammar.FixDefinitions.
+Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Common.FMapExtensions.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.ListFacts.
