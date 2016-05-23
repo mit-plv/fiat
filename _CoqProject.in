@@ -142,6 +142,7 @@ src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
 src/Common/FixedPoints.v
+src/Common/Frame.v
 src/Common/Gensym.v
 src/Common/Instances.v
 src/Common/IterateBoundedIndex.v
@@ -202,6 +203,7 @@ src/Common/Telescope/Instances.v
 src/Computation/ApplyMonad.v
 src/Computation/Core.v
 src/Computation/Decidable.v
+src/Computation/FixComp.v
 src/Computation/FoldComp.v
 src/Computation/FueledFix.v
 src/Computation/IfDec.v
@@ -227,6 +229,7 @@ src/Examples/CacheADT/LRUCache.v
 src/Examples/CacheADT/TrivialADTCache.v
 src/Examples/DnsServer/AuthoritativeDNSSchema.v
 src/Examples/DnsServer/AuthoritativeDNSServer.v
+src/Examples/DnsServer/DecomposeEnumField.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/Packet.v
