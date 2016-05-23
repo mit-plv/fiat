@@ -477,9 +477,45 @@ Section grammar_fixedpoint.
     assumption.
   Qed.
 
+(*(** TODO: try saying that the accesibility proofs are equal *)
+  Definition aggregate_state_same_keys
+PositiveMap.fold (fun _ => andb)
+                              (PositiveMap.map2
+                                 (fun a b
+                                  => match a, b with
+                                     | Some a', Some b' => Some true
+                                     | None, None => None
+                                     | _, _ => Some false
+                                     end)
+                                 m1 m2)
+                              true
+
+                              Definition acc_state_lt (m1 m2 : PositiveMap.t (sigT (fun v => Acc (@state_lt _ gdata) v))) : bool
+    := (aggregate_state_lt (PositiveMap.map (@projT1 _ _) m1) (PositiveMap.map (@projT1 _ _) m2))
+         && ().
+         && (PositiveMap.fold (fun _ => andb)
+                              (PositiveMap.map2
+                                 (fun a b
+                                  => match a, b with
+                                     | Some a', Some b' => Some (a' <= b')
+                                     | _, _ => None
+                                     end)
+                                 m1 m2)
+                              false)
+
+
+*)
   Lemma aggregate_state_of_list_lt_wf : well_founded (fun v1 v2 => aggregate_state_lt (PositiveMapExtensions.of_list v1) (PositiveMapExtensions.of_list v2)).
   Proof.
     intro a.
+    (*pose (List.map (fun kv => (fst kv, existT (fun v => Acc state_lt v) (snd kv) (state_lt_wf _))) a) as a_wf.
+    assert (Ha : a = List.map (fun kv => (fst kv, projT1 (snd kv))) a_wf).
+    { subst a_wf.
+      rewrite map_map; simpl.
+      rewrite <- map_id at 1; apply map_ext.
+      intros []; reflexivity. }
+    clearbody a_wf.
+    subst a.*)
     induction a as [|[x0 x1] xs IHxs];
       constructor; simpl; intros y H.
     { exfalso; eapply nothing_lt_empty; eassumption. }
@@ -489,6 +525,7 @@ Section grammar_fixedpoint.
                      \/ (w = x1
                          /\ aggregate_state_lt (PositiveMapExtensions.of_list y') (PositiveMapExtensions.of_list xs)))) by admit.
       clear H.
+Print Acc.
       destruct H' as [w [y' [H'eq [H'lt|H'lt]]]].
       { eapply aggregate_state_of_list_lt_Acc_eq; [ eassumption | ].
         clear H'eq. (*
