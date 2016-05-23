@@ -11,333 +11,173 @@ Require Import Coq.Program.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
 
 Set Implicit Arguments.
 
-Inductive length_result := same_length (n : nat) | different_lengths | cyclic_length | not_yet_handled_empty_rule.
+Local Open Scope grammar_fixedpoint_scope.
 
-Coercion collapse_length_result (l : length_result) : option nat
-  := match l with
-       | same_length n => Some n
-       | _ => None
-     end.
+Definition length_result_lub (l1 l2 : nat) : lattice_for nat
+  := if beq_nat l1 l2 then constant l1 else ⊤.
 
-Fixpoint length_of_any_production' {Char} (length_of_any_nt : String.string -> length_result)
-         (its : production Char) : length_result
-  := match its with
-       | nil => same_length 0
-       | (Terminal _)::xs => match length_of_any_production' length_of_any_nt xs with
-                               | same_length n => same_length (S n)
-                               | different_lengths => different_lengths
-                               | cyclic_length => cyclic_length
-                               | not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                             end
-       | (NonTerminal nt)::xs => match length_of_any_nt nt, length_of_any_production' length_of_any_nt xs with
-                                   | same_length n1, same_length n2 => same_length (n1 + n2)
-                                   | cyclic_length, _ => cyclic_length
-                                   | _, cyclic_length => cyclic_length
-                                   | different_lengths, _ => different_lengths
-                                   | _, different_lengths => different_lengths
-                                   | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
-                                   | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
-                                 end
-     end.
-
-Lemma length_of_any_production'_ext {Char}
-      f g
-      (ext : forall b, f b = g b)
-      b
-: @length_of_any_production' Char f b = length_of_any_production' g b.
+Global Instance length_result_lattice : grammar_fixedpoint_lattice_data nat.
 Proof.
-  induction b as [ | x ]; try reflexivity; simpl.
-  destruct x; rewrite ?IHb, ?ext; reflexivity.
-Qed.
+  refine {| prestate_lt x y := false;
+            prestate_beq := beq_nat;
+            prestate_beq_lb x y := proj2 (beq_nat_true_iff x y);
+            prestate_beq_bl x y := proj1 (beq_nat_true_iff x y);
+            preleast_upper_bound := length_result_lub |};
+    try abstract (repeat match goal with
+                         | [ |- is_true true ] => reflexivity
+                         | _ => congruence
+                         | _ => progress intros
+                         | _ => progress simpl in *
+                         | _ => progress unfold length_result_lub
+                         | _ => progress subst
+                         | [ H : constant _ = constant _ |- _ ] => inversion H; clear H
+                         | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
+                         | _ => rewrite <- beq_nat_refl
+                         | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
+                         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+                         end).
+  { unfold Basics.flip; constructor; simpl; intros ? H; exfalso; clear -H.
+    abstract congruence. }
+Defined.
 
-Definition length_of_any_productions'_f
-  := (fun x1 x2
-      => match x1, x2 with
-           | same_length n1, same_length n2 => if EqNat.beq_nat n1 n2 then same_length n1 else different_lengths
-           | cyclic_length, _ => cyclic_length
-           | _, cyclic_length => cyclic_length
-           | _, different_lengths => different_lengths
-           | different_lengths, _ => different_lengths
-           | not_yet_handled_empty_rule, _ => not_yet_handled_empty_rule
-           | _, not_yet_handled_empty_rule => not_yet_handled_empty_rule
-         end).
+Global Instance length_result_aidata {Char} : @AbstractInterpretation Char nat
+  := { on_terminal t := constant 1;
+       on_nil_production := constant 0;
+       precombine_production x y := constant (x + y) }.
 
-Arguments length_of_any_productions'_f !_ !_ / .
+Section correctness.
+  Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
-Lemma length_of_any_productions'_f_same_length {n x1 x2}
-: length_of_any_productions'_f x1 x2 = same_length n
-  <-> (x1 = same_length n /\ x2 = same_length n).
-Proof.
-  destruct x1, x2; simpl in *;
-  repeat match goal with
-           | _ => reflexivity
-           | [ H : context[if EqNat.beq_nat ?x ?y then _ else _] |- _ ] => destruct (EqNat.beq_nat x y) eqn:?
-           | [ |- context[EqNat.beq_nat ?x ?y] ] => destruct (EqNat.beq_nat x y) eqn:?
-           | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true in H
-           | [ H : context[beq_nat ?n ?n] |- _ ] => rewrite <- beq_nat_refl in H
-           | _ => progress subst
-           | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
-           | _ => intro
-           | [ H : _ /\ _ |- _ ] => destruct H
-           | [ |- _ /\ _ ] => split
-           | [ |- _ <-> _ ] => split
-           | _ => congruence
-           | _ => tauto
-         end.
-Qed.
+  Definition length_result_accurate
+             (P : String -> Prop) (n : nat)
+    : Prop
+    := forall str, P str -> length str = n.
 
-Lemma length_of_any_productions'_f_same_length_fold_right {n x1 x2}
-: fold_right length_of_any_productions'_f x1 x2 = same_length n
-  <-> (x1 = same_length n /\ fold_right and True (map (fun k => k = same_length n) x2)).
-Proof.
-  induction x2; simpl in *; eauto; try tauto.
-  rewrite length_of_any_productions'_f_same_length.
-  rewrite IHx2.
-  tauto.
-Qed.
+  Local Ltac t_Proper_step :=
+    idtac;
+    match goal with
+    | _ => tauto
+    | _ => congruence
+    | [ |- is_true _ ] => reflexivity
+    | _ => omega_with_min_max
+    | _ => progress unfold respectful, pointwise_relation, length_result_accurate, length_result_accurate, ensemble_bottom, ensemble_top, ensemble_least_upper_bound, ensemble_on_terminal, ensemble_combine_production, lattice_for_related, not, length_result_lub, prestate_le in *
+    | _ => intro
+    | _ => progress subst
+    | [ H : is_true (state_beq _ _) |- _ ] => apply state_beq_bl in H
+    | [ H : is_true (beq_nat _ _) |- _ ] => apply beq_nat_true_iff in H
+    | _ => progress destruct_head lattice_for
+    | [ |- iff _ _ ] => split
+    | [ H : forall x y, _ -> (_ <-> _) |- _ ] => specialize (fun x => H x x (reflexivity _))
+    | _ => progress split_iff
+    | _ => progress destruct_head ex
+    | _ => progress destruct_head and
+    | _ => solve [ eauto using length_singleton with nocore
+                 | exfalso; eauto with nocore ]
+    | [ H : forall str, length str = ?v |- _ ] => apply not_all_lengths in H
+    | [ H : forall v, True -> _ |- _ ] => specialize (fun v => H v I)
+    | [ H : String -> False |- _ ] => apply not_not_string in H
+    | [ H : forall a, ?x a = ?y a, H' : context[?x _] |- _ ] => setoid_rewrite H in H'
+    | [ H : forall a, ?x a = ?y a, H' : context[?x _] |- _ ] => rewrite H in H'
+    | [ H : forall a, ?x a = ?y a |- _ ] => is_var x; clear x H
+    | [ H : constant _ = constant _ |- _ ] => inversion H; clear H
+    | _ => progress unfold state_le in *
+    | _ => progress simpl in *
+    | [ H : forall v, (forall x y, True) -> _ |- _ ]
+      => specialize (fun v => H v (fun _ _ => I))
+    | [ H : forall P str, P str -> @?A str |- _ ]
+      => specialize (fun str => H (fun _ => True) str I)
+    | [ H : _ |- _ ] => rewrite Bool.orb_false_r in H
+    | _ => rewrite Bool.orb_false_r
+    | [ |- is_true (beq_nat _ _) ] => apply beq_nat_true_iff
+    | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
+    | [ H : forall P, (forall str, P str -> @?P' str) -> forall str, P str -> @?Q' str |- _ ]
+      => specialize (H P' (fun str pf => pf))
+    | [ H : forall str, length str = ?n -> length str = ?n' |- _ ]
+      => let H' := fresh in
+         destruct (strings_nontrivial n) as [? H'];
+         specialize (H _ H')
+    | [ H : forall str, length str = ?n -> ?T |- _ ]
+      => let H' := fresh in
+         destruct (strings_nontrivial n) as [? H'];
+         specialize (H _ H')
+    | [ H : forall str, ?P str -> @?Q str, H' : ?P ?str' |- _ ]
+      => is_var P; pose proof (H _ H'); clear P H H'
+    | _ => progress rewrite ?take_length, ?drop_length
+    | _ => progress destruct_head or
+    | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+    | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
+    end.
 
-Definition length_of_any_productions' {Char} (length_of_any_nt : String.string -> length_result)
-           (prods : productions Char)
-: length_result
-  := match prods with
-       | nil => not_yet_handled_empty_rule
-       | p::ps => fold_right
-                    length_of_any_productions'_f
-                    (length_of_any_production' length_of_any_nt p)
-                    (map (length_of_any_production' length_of_any_nt) ps)
-     end.
+  Local Ltac t_Proper := repeat t_Proper_step.
 
-Lemma length_of_any_productions'_ext {Char}
-      f g
-      (ext : forall b, f b = g b)
-      b
-: @length_of_any_productions' Char f b = length_of_any_productions' g b.
-Proof.
-  unfold length_of_any_productions'.
-  destruct b as [ | ? b]; trivial; [].
-  induction b; try reflexivity; simpl;
-  erewrite length_of_any_production'_ext by eassumption; trivial; [].
-  edestruct (length_of_any_production' g);
-    rewrite IHb; reflexivity.
-Qed.
+  Section instances.
+    Local Obligation Tactic := t_Proper.
+    Global Program Instance length_result_accurate_Proper0
+      : Proper ((beq ==> iff) ==> eq ==> iff) length_result_accurate.
+    Global Program Instance length_result_accurate_Proper1
+      : Proper ((beq ==> iff) ==> prestate_beq ==> iff) length_result_accurate.
+    Global Program Instance length_result_accurate_Proper2
+      : Proper (pointwise_relation _ iff ==> eq ==> iff) length_result_accurate.
+    Global Program Instance length_result_accurate_Proper3
+      : Proper (pointwise_relation _ iff ==> prestate_beq ==> iff) length_result_accurate.
+    Global Program Instance length_result_accurate_Proper4
+      : Proper (pointwise_relation _ eq ==> eq ==> iff) length_result_accurate.
+    Global Program Instance length_result_accurate_Proper5
+      : Proper (pointwise_relation _ eq ==> prestate_beq ==> iff) length_result_accurate.
+  End instances.
 
-Definition length_of_any_nt_step
-           {Char} (G : pregrammar' Char)
-           (predata := @rdp_list_predata _ G)
-           (valid0_len : nat)
-           (length_of_any_nt : forall (*valid0_len : nat*) (valid0 : nonterminals_listT),
-                                 String.string -> length_result)
-           (valid0 : nonterminals_listT)
-           (nt : String.string)
-: length_result
-  := match valid0_len with
-       | 0 => different_lengths
-       | S valid0_len'
-         => if Sumbool.sumbool_of_bool (is_valid_nonterminal valid0 (of_nonterminal nt))
-            then length_of_any_productions'
-                   (@length_of_any_nt (*valid0_len'*) (remove_nonterminal valid0 (of_nonterminal nt)))
-                   (Lookup G nt)
-            else different_lengths
-     end.
+  Global Instance length_result_aicdata
+    : AbstractInterpretationCorrectness length_result_accurate.
+  Proof.
+    split; try exact _;
+      try solve [ t_Proper ].
+  Qed.
+End correctness.
 
-Lemma length_of_any_nt_step_ext {Char G}
-      x0 x1 f g
-      (ext : forall p b, f p b = g p b)
-      b
-: @length_of_any_nt_step Char G x0 f x1 b = length_of_any_nt_step x0 g x1 b.
-Proof.
-  unfold length_of_any_nt_step.
-  edestruct Sumbool.sumbool_of_bool; trivial.
-  destruct x0; trivial.
-  apply length_of_any_productions'_ext; eauto.
-Qed.
-
-Definition length_of_any_nt'
-           {Char} (G : pregrammar' Char)
-           (valid0_len : nat)
-  : forall (valid0 : nonterminals_listT)
-           (nt : String.string),
-    length_result
-  := nat_rect
-       (fun _ => forall (valid0 : nonterminals_listT)
-                        (nt : String.string),
-            length_result)
-       (fun _ _ => different_lengths)
-       (@length_of_any_nt_step Char G)
-       valid0_len.
-
-Global Arguments length_of_any_nt' _ _ !_ _ _ / .
-
-Definition length_of_any_nt {Char} (G : pregrammar' Char)
-           initial
-: String.string -> length_result
-  := @length_of_any_nt' Char G (nonterminals_length initial) initial.
+Definition length_result := lattice_for nat.
+Coercion collapse_length_result (v : length_result) : option nat
+  := Eval cbv [collapse_lattice_for] in collapse_lattice_for v.
 
 Definition length_of_any {Char} (G : pregrammar' Char)
 : String.string -> length_result
-  := @length_of_any_nt Char G initial_nonterminals_data.
+  := fun nt => lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt).
 
-Definition length_of_any_productions {Char} G := @length_of_any_productions' Char (@length_of_any Char G).
+Section has_only_terminals.
+  Context {Char}
+          {HSLM : StringLikeMin Char}
+          {HSL : StringLike Char}
+          {HSLP : StringLikeProperties Char}
+          (G : pregrammar' Char) {n}
+          nt
+          (H : length_of_any G nt = constant n)
+          (str : String).
 
-Lemma has_only_terminals_parse_of_production_length
-      {HSLM : StringLikeMin Ascii.ascii}
-      {HSL : StringLike Ascii.ascii}
-      {HSLP : StringLikeProperties Ascii.ascii}
-      (G : grammar Ascii.ascii) {n}
-      f pat
-      (H_f : forall nt str n', f nt = same_length n' -> parse_of G str (Lookup G nt) -> length str = n')
-      (H : length_of_any_production' f pat = same_length n)
-      str
-      (p : parse_of_production G str pat)
-: length str = n.
-Proof.
-  revert n H; induction p; simpl in *.
-  { congruence. }
-  { edestruct (_ : item _).
-    { match goal with
-        | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
-      end;
-      repeat match goal with
-               | [ H : ?x = ?x |- _ ] => clear H
-               | [ H : ?x = _ :> length_result, H' : context[?x] |- _ ] => rewrite H in H'
-               | _ => exfalso; discriminate
-               | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
-               | _ => progress subst
-               | [ H : parse_of_item _ _ (Terminal _) |- _ ] => inversion p; clear p
-               | [ H : is_true (_ ~= [ _ ])%string_like |- _ ] => apply length_singleton in H
-               | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub in H
-               | [ H : context[min ?x (?y + ?z) - ?z] |- _ ] => rewrite <- (@NPeano.Nat.sub_min_distr_r x (y + z) z) in H
-               | [ H : context[min ?x ?y], H' : ?x <= ?y |- _ ] => rewrite (@Min.min_l x y) in H by assumption
-               | [ H : context[min ?x ?y], H' : ?y <= ?x |- _ ] => rewrite (@Min.min_r x y) in H by assumption
-               | [ H : context[min (?x - ?y) ?x] |- _ ] => rewrite (@Min.min_l (x - y) x) in H by (clear; omega)
-               | [ H : forall n, same_length _ = same_length n -> _ |- _ ] => specialize (H _ eq_refl)
-               | [ H : context[min _ _] |- _ ] => revert H; apply Min.min_case_strong; intros; omega
-             end. }
-    { intros.
-      match goal with
-        | [ H : context[f ?x] |- _ ] => revert H; case_eq (f x); intros
-      end;
-        match goal with
-          | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
-        end;
-        repeat match goal with
-                 | [ H : ?x = ?x |- _ ] => clear H
-                 | [ H : ?x = _ :> length_result, H' : context[?x] |- _ ] => rewrite H in H'
-                 | _ => exfalso; discriminate
-                 | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
-                 | _ => progress subst
-                 | [ H : forall n, same_length _ = same_length n -> _ |- _ ] => specialize (H _ eq_refl)
-                 | _ => progress rewrite ?take_length, ?drop_length, ?substring_length, ?Plus.plus_0_r, ?NPeano.Nat.sub_0_r, ?NPeano.Nat.add_sub
-                 | [ |- context[min ?x (?y + ?z) - ?z] ] => rewrite <- (@NPeano.Nat.sub_min_distr_r x (y + z) z)
-                 | [ |- context[min (?x - ?y) ?x] ] => rewrite (@Min.min_l (x - y) x) by (clear; omega)
-                 | [ H : parse_of_item _ _ (Terminal _) |- _ ] => let p := fresh in rename H into p; dependent destruction p
-                 | [ H : parse_of_item _ _ (NonTerminal _) |- _ ] => let p := fresh in rename H into p; dependent destruction p
-                 | [ H : parse_of _ _ _ |- _ ] => eapply H_f in H; [ | eassumption.. ]
-                 | _ => apply Min.min_case_strong; omega
-               end. } }
-Qed.
+  Lemma has_only_terminals_parse_of_item_length
+        (p : parse_of_item G str (NonTerminal nt))
+    : length str = n.
+  Proof.
+    unfold length_of_any in H.
+    apply fold_grammar_correct_item in p.
+    rewrite H in p.
+    destruct p; intuition.
+  Qed.
 
-Lemma has_only_terminals_parse_of_length
-      {HSLM : StringLikeMin Ascii.ascii}
-      {HSL : StringLike Ascii.ascii}
-      {HSLP : StringLikeProperties Ascii.ascii}
-      (G : pregrammar' Ascii.ascii) {n}
-      (predata := @rdp_list_predata _ G)
-      nt
-      (H : length_of_any G nt = same_length n)
-      str
-      (p : parse_of G str (Lookup G nt))
-: length str = n.
-Proof.
-  unfold length_of_any, length_of_any_nt in H.
-  revert nt str n H p.
-  match goal with
-    | [ |- context[nonterminals_length ?ls] ]
-      => set (len := nonterminals_length ls);
-        generalize (reflexivity _ : nonterminals_length ls <= len);
-        clearbody len;
-        generalize ls
-  end.
-  induction len as [|len IHlen];
-    [ intros [|??]; simpl; intros; congruence
-    | ].
-  intro valid.
-  unfold length_of_any_nt'; fold @length_of_any_nt'.
-  intros H' nt.
-  specialize (IHlen (remove_nonterminal valid (of_nonterminal nt))).
-  pose proof (rdp_list_remove_nonterminal_dec valid (of_nonterminal nt)) as H''.
-  unfold rdp_list_nonterminals_listT_R, ltof, lt in H''.
-  pose proof (fun pf => le_S_n _ _ (transitivity (H'' pf) H')) as H; clear H' H''.
-  specialize (fun pf => IHlen (H pf)); clear H.
-  unfold length_of_any_nt' in *.
-  simpl nat_rect; unfold length_of_any_nt_step at 1; cbv beta zeta.
-  edestruct dec; simpl in *;
-    [ specialize_by assumption
-    | solve [ destruct len; intros; discriminate ] ].
-  destruct len; [ solve [ intros; discriminate ] | ].
-  generalize dependent (Lookup_string G nt).
-  intros.
-  unfold length_of_any_productions' in *.
-  let p := match goal with H : parse_of _ _ _ |- _ => constr:(H) end in
-  let H := fresh in
-  rename p into H;
-    induction H; simpl in *.
-  { match goal with
-      | [ H : context[length_of_any_production' ?f ?p] |- _ ] => revert H; case_eq (length_of_any_production' f p); intros
-    end;
-    repeat match goal with
-             | [ H' : rdp_list_is_valid_nonterminal ?x ?nt = true,
-                      H : forall y, rdp_list_nonterminals_listT_R y ?x -> _ |- _ ]
-               => specialize (fun nt' str0 n' H0 => H _ (@rdp_list_remove_nonterminal_dec _ nt H') n' nt' H0 str0)
-             | [ H' : rdp_list_is_valid_nonterminal ?x ?nt = true,
-                      H : forall y, nonterminals_listT_R y ?x -> _ |- _ ]
-               => specialize (H _ (@rdp_list_remove_nonterminal_dec _ nt H'));
-                 let H'' := fresh in
-                 rename H into H'';
-                   specialize (fun nt' str0 n' H0 => H'' n' nt' H0 str0)
-             | [ H : length_of_any_production' _ _ = same_length _ |- _ ] => eapply has_only_terminals_parse_of_production_length in H; [ | eassumption'.. ]
-             | _ => reflexivity
-             | _ => discriminate
-             | _ => progress subst
-             | [ H : length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length in H
-             | [ H : same_length _ = same_length _ |- _ ] => inversion H; clear H
-             | [ H : _ /\ _ |- _ ] => destruct H
-             | [ H : _ \/ _ |- _ ] => destruct H; [ (discriminate || congruence) | ]
-             | [ H : _ \/ _ |- _ ] => destruct H; [ | (discriminate || congruence) ]
-             | [ H : ?x = same_length _, H' : context[?x] |- _ ] => rewrite H in H'
-             | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length_fold_right in H
-           end. }
-  { edestruct (_ : productions _).
-    { match goal with
-        | [ H : parse_of _ _ [] |- _ ] => inversion H
-      end. }
-    { repeat match goal with
-               | _ => progress simpl in *
-               | [ H : length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length in H
-               | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ |- _ ] => apply length_of_any_productions'_f_same_length_fold_right in H
-               | [ H : fold_right length_of_any_productions'_f _ _ = same_length _ -> _ |- _ ]
-                 => specialize (fun H' => H (proj2 length_of_any_productions'_f_same_length_fold_right H'))
-               | _ => progress eauto
-             end. } }
-Qed.
-
-Lemma has_only_terminals_parse_of_item_length
-      {HSLM : StringLikeMin Ascii.ascii}
-      {HSL : StringLike Ascii.ascii}
-      {HSLP : StringLikeProperties Ascii.ascii}
-      (G : pregrammar' Ascii.ascii) {n}
-      nt
-      (H : length_of_any G nt = same_length n)
-      str
-      (p : parse_of_item G str (NonTerminal nt))
-: length str = n.
-Proof.
-  dependent destruction p.
-  eapply has_only_terminals_parse_of_length; eassumption.
-Qed.
+  Lemma has_only_terminals_parse_of_length
+        (p : parse_of G str (Lookup G nt))
+    : length str = n.
+  Proof.
+    unfold length_of_any in H.
+    apply fold_grammar_correct in p.
+    rewrite H in p.
+    destruct p; intuition.
+  Qed.
+End has_only_terminals.

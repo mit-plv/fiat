@@ -83,12 +83,41 @@ Module opt.
   Definition option_rect {A} := Eval compute in @option_rect A.
   Definition has_only_terminals {Char} := Eval compute in @has_only_terminals Char.
   Definition sumbool_of_bool := Eval compute in Sumbool.sumbool_of_bool.
-  Definition length_of_any_productions' {Char} := Eval compute in @FixedLengthLemmas.length_of_any_productions' Char.
+  Local Declare Reduction red_fp := cbv [FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation Fix.aggregate_state Definitions.prestate Definitions.lattice_data Definitions.state FromAbstractInterpretation.fold_grammar initial_nonterminals_data rdp_list_predata rdp_list_initial_nonterminals_data pregrammar_productions FromAbstractInterpretationDefinitions.fold_constraints FromAbstractInterpretationDefinitions.fold_productions' FromAbstractInterpretationDefinitions.fold_production' FromAbstractInterpretationDefinitions.fold_item' of_nonterminal rdp_list_of_nonterminal Lookup_idx FromAbstractInterpretationDefinitions.fold_constraints_Proper FromAbstractInterpretationDefinitions.fold_constraints_ext FromAbstractInterpretationDefinitions.fold_productions'_ext FromAbstractInterpretationDefinitions.fold_production'_ext FromAbstractInterpretationDefinitions.fold_item'_ext Fix.lookup_state].
+  Definition lookup_state' {G} :=
+    Eval red_fp in
+      @Fix.lookup_state
+        (@FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation
+           Ascii.ascii nat FixedLengthLemmas.length_result_lattice
+           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G).
+  Definition fold_grammar' pp unix
+    := Eval red_fp in
+        let G := {| pregrammar_productions := pp ; nonterminals_unique := unix |} in
+        (@FromAbstractInterpretation.fold_grammar
+           Ascii.ascii nat
+           FixedLengthLemmas.length_result_lattice
+           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G).
+  Definition lookup_state : FMapPositive.PositiveMap.tree (Definitions.lattice_for nat) -> nat -> Definitions.lattice_for nat.
+  Proof.
+    let term := match (eval cbv [lookup_state'] in @lookup_state') with
+                | fun _ => ?term => term
+                end in
+    exact term.
+  Defined.
+  Definition fold_grammar (pp : list (string * Core.productions Ascii.ascii)) : FMapPositive.PositiveMap.t (Definitions.lattice_for nat).
+  Proof.
+    let term := match (eval cbv [fold_grammar'] in (@fold_grammar' pp)) with
+                | fun _ => ?term => term
+                end in
+    exact term.
+  Defined.
   Definition collapse_length_result := Eval compute in FixedLengthLemmas.collapse_length_result.
   Definition expanded_fallback_list'_body_sig {G} : { b : _ | b = @expanded_fallback_list'_body G }.
   Proof.
     eexists.
-    cbv [expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any_nt FixedLengthLemmas.length_of_any_nt' nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data FixedLengthLemmas.length_of_any_nt_step is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else].
+    cbv [expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else].
+    change (@Fix.lookup_state ?v) with (@lookup_state).
+    change (FromAbstractInterpretation.fold_grammar G) with (fold_grammar (pregrammar_productions G)).
     change @fst with @opt.fst.
     change @snd with @opt.snd.
     change @List.map with @map.
@@ -107,17 +136,25 @@ Module opt.
     change @Datatypes.nat_rect with @nat_rect.
     change @Datatypes.option_rect with @option_rect.
     change @Sumbool.sumbool_of_bool with sumbool_of_bool.
-    change @FixedLengthLemmas.length_of_any_productions' with @length_of_any_productions'.
     change @FixedLengthLemmas.collapse_length_result with collapse_length_result.
     change @IndexedAndAtMostOneNonTerminalReflective.has_only_terminals with @has_only_terminals.
     reflexivity.
   Defined.
-  Definition expanded_fallback_list'_body (ps : list (String.string * Core.productions Ascii.ascii)) : default_production_carrierT -> ret_cases.
+  Definition expanded_fallback_list'_body' (ps : list (String.string * Core.productions Ascii.ascii)) : default_production_carrierT -> ret_cases.
   Proof.
     let term := constr:(fun H : NoDupR _ _ => proj1_sig (@expanded_fallback_list'_body_sig {| pregrammar_productions := ps |})) in
     let term := (eval cbv [proj1_sig expanded_fallback_list'_body_sig pregrammar_productions] in term) in
     let term := match term with
                   | (fun _ => ?term) => term
+                end in
+    exact term.
+  Defined.
+  Definition expanded_fallback_list'_body (ps : list (String.string * Core.productions Ascii.ascii))
+    : FMapPositive.PositiveMap.t (Definitions.lattice_for nat) -> default_production_carrierT -> ret_cases.
+  Proof.
+    let term := (eval cbv [expanded_fallback_list'_body'] in (@expanded_fallback_list'_body' ps)) in
+    let term := match (eval pattern (fold_grammar ps) in term) with
+                | ?term _ => term
                 end in
     exact term.
   Defined.
@@ -144,12 +181,15 @@ Module opt.
                 end in
     exact term.
   Defined.
-
-  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
-    := map (@expanded_fallback_list'_body G) (premap_expanded_fallback_list'_body G).
+  Definition Let_In {A B} (x : A) (f : A -> B) := let y := x in f y.
+  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ret_cases
+    := map (@expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G).
   Definition expanded_fallback_list'_body_values (G : pregrammar' Ascii.ascii) : list _ * list ret_cases
-    := (combine (map_expanded_fallback_list'_body G) (premap_expanded_fallback_list'_body G),
-        opt2.uniquize ret_cases_BoolDecR (map_expanded_fallback_list'_body G)).
+    := Let_In
+         (fold_grammar G)
+         (fun fg
+          => (combine (map_expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G),
+              opt2.uniquize ret_cases_BoolDecR (map_expanded_fallback_list'_body G fg))).
   Definition uniquize_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
     := opt0.snd (expanded_fallback_list'_body_values G).
   Definition combine_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list _
@@ -380,7 +420,6 @@ Section IndexedImpl_opt.
     change ret_cases_BoolDecR with (opt2.id opt2.ret_cases_BoolDecR).
     change (@nil ?A) with (opt.id (@nil A)).
     change (0::opt.id nil)%list with (opt.id (0::nil)%list).
-    unfold opt.expanded_fallback_list'_body.
     do 2 (idtac;
           let G := match goal with |- ?G => G end in
           let G' := opt_of G in
@@ -558,10 +597,10 @@ Section IndexedImpl_opt.
   Qed.
 End IndexedImpl_opt.
 
-Declare Reduction opt_red_FirstStep := cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.length_of_any_productions' opt.collapse_length_result opt.fst opt.snd].
+Declare Reduction opt_red_FirstStep := cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.collapse_length_result opt.fst opt.snd].
 
 Ltac opt_red_FirstStep :=
-  cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.length_of_any_productions' opt.collapse_length_result opt.fst opt.snd].
+  cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.collapse_length_result opt.fst opt.snd].
 
 Section tower.
   Context {A}
