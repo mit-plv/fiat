@@ -359,6 +359,8 @@ src/Parsers/ContextFreeGrammar/ValidReflective.v
 src/Parsers/ContextFreeGrammar/Fix/Correct.v
 src/Parsers/ContextFreeGrammar/Fix/Definitions.v
 src/Parsers/ContextFreeGrammar/Fix/Fix.v
+src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretation.v
+src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/FromFold.v
 src/Parsers/ContextFreeGrammar/Fix/FromFoldDefinitions.v
 src/Parsers/Grammars/ABStar.v
