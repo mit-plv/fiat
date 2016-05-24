@@ -131,9 +131,4 @@ Section fold_correctness.
             -> related (fun str => exists n, P1 (take n str) /\ P2 (drop n str))
                        (combine_production st1 st2)
     }.
-
-  Context {aicdata : AbstractInterpretationCorrectness}.
-
-  Let predata := @rdp_list_predata _ G.
-  Local Existing Instance predata.
 End fold_correctness.
