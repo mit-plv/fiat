@@ -20,34 +20,10 @@ Section fold_correctness.
           {irdata : Reflective.interp_RCharExpr_data Char}.
   Context {T : Type}.
   Context {fpdata : @grammar_fixedpoint_lattice_data T}
-          {aidata : @AbstractInterpretation Char T}.
+          {aidata : @AbstractInterpretation Char T}
+          (related : Ensemble String -> T -> Prop)
+          {aicdata : AbstractInterpretationCorrectness related}.
   Context (G : pregrammar Char).
-
-  Class AbstractInterpretationCorrectness :=
-    { related : Ensemble String -> T -> Prop;
-      related_ext : Proper ((beq ==> iff) ==> state_beq ==> iff) related;
-      related_monotonic : forall s0 s1, s0 <= s1 <-> (forall v, related v s0 -> related v s1);
-      bottom_related : (related (Full_set _) ⊥);
-      on_terminal_correct
-      : forall P,
-          related (fun str => exists ch, Reflective.interp_RCharExpr P ch /\ str ~= [ ch ])%string_like
-                  (on_terminal P);
-      on_nil_production_correct
-      : related (fun str => length str = 0) on_nil_production;
-      combine_production_Proper_eq
-      : Proper (state_beq ==> state_beq ==> state_beq) combine_production;
-      combine_production_Proper_le
-      : Proper (state_le ==> state_le ==> state_le) combine_production;
-      combine_production_correct
-      : forall P1 st1,
-          related P1 st1
-          -> forall P2 st2,
-            related P2 st2
-            -> related (fun str => exists n, P1 (take n str) /\ P2 (drop n str))
-                       (combine_production st1 st2)
-    }.
-
-  Context {aicdata : AbstractInterpretationCorrectness}.
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
