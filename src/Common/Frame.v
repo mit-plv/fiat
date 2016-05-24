@@ -59,7 +59,7 @@ Module PreO.
 
   Arguments t {A} le : clear implicits.
 
-  Instance PreOrder_I `{tle : t A leA} : PreOrder leA.
+  Local Instance PreOrder_I `{tle : t A leA} : PreOrder leA.
   Proof.
     constructor.
     - unfold Reflexive. apply le_refl.
@@ -259,7 +259,7 @@ Module PreO.
 
   (** The type of propositions forms a preorder, where "<=" is
       implication. *)
-  Instance prop : t (fun (P Q : Prop) => P -> Q).
+  Local Instance prop : t (fun (P Q : Prop) => P -> Q).
   Proof.
     constructor; auto.
   Qed.
@@ -268,7 +268,7 @@ Module PreO.
       i.e., subsets on [A] are functions of type [f : A -> Prop],
       form a preorder ordered by subset inclusion. This is actually just
       the preorder on propositions applied pointwise to functions. *)
-  Instance subset (A : Type) : @t (A -> Prop) _ := pointwise (fun _ => prop).
+  Local Instance subset (A : Type) : @t (A -> Prop) _ := pointwise (fun _ => prop).
 
 End PreO.
 
@@ -347,7 +347,7 @@ Module PO.
 
   End Facts.
 
-  Instance t_equiv `{tA : t A leA eqA} : Equivalence eqA.
+  Local Instance t_equiv `{tA : t A leA eqA} : Equivalence eqA.
   Proof.
     split; [apply eq_refl | apply eq_sym | apply eq_trans ].
   Qed.
@@ -367,13 +367,13 @@ Module PO.
     - solve_proper.
   Qed.
 
-  Instance le_properI `(tA : t A leA eqA)
+  Local Instance le_properI `(tA : t A leA eqA)
     : Proper (eqA ==> eqA ==> iff) leA.
   Proof. intros. apply le_proper. Qed.
 
   (** Morphisms must respect the equality relations on both their
       source (domain) and target (codomain). *)
-  Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
+  Local Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
     : morph leA eqA leB eqB f -> Proper (eqA ==> eqB) f.
   Proof.
     intros. destruct H. unfold Proper, respectful. apply f_eq0.
@@ -460,13 +460,13 @@ Module PO.
     - unfold pointwise_op in *. solve_proper.
   Qed.
 
-  Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
+  Local Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof.
     constructor; intuition.
     split; simpl in *; intros; intuition.
   Qed.
 
-  Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).
+  Local Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).
 
 End PO.
 
@@ -496,7 +496,7 @@ Module JoinLat.
 
   Arguments t : clear implicits.
 
-  Instance max_properI `(tA : t A)
+  Local Instance max_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) max.
   Proof. intros. apply max_proper. Qed.
 
@@ -524,6 +524,8 @@ Module JoinLat.
     - apply PO.morph_id.
     - apply PO.eq_refl.
   Qed.
+
+  Local Existing Instance PO.t_equiv.
 
   Lemma morph_compose {A B C OA OB OC}
         (tA : t A OA) (tB : t B OB) (tC : t C OC)
@@ -568,14 +570,14 @@ Module JoinLat.
                    end; simpl; auto)).
   Qed.
 
-  Instance Nat_ops : Ops nat :=
+  Local Instance Nat_ops : Ops nat :=
     {| le := Peano.le
        ; eq := Logic.eq
        ; max := Peano.max
     |}.
 
   Require Coq.Arith.Max.
-  Instance Nat : t nat Nat_ops.
+  Local Instance Nat : t nat Nat_ops.
   Proof. constructor; intros.
          - apply PO.Nat.
          - solve_proper.
@@ -584,13 +586,13 @@ Module JoinLat.
   Qed.
 
   (** Max for propositions is the propositional OR, i.e., disjunction *)
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
        ; eq := fun P Q : Prop => P <-> Q
        ; max := fun P Q : Prop => P \/ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof.
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -621,7 +623,7 @@ Module JoinLat.
     - unfold pointwise_op. intros. apply PO.eq_refl.
   Qed.
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -671,7 +673,7 @@ Module MeetLat.
 
   Arguments t : clear implicits.
 
-  Instance min_properI `(tA : t A)
+  Local Instance min_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) min.
   Proof. intros. apply min_proper. Qed.
 
@@ -698,6 +700,8 @@ Module MeetLat.
     - apply PO.eq_refl.
   Qed.
 
+  Local Existing Instance PO.t_equiv.
+  
   Lemma morph_compose {A B C OA OB OC}
         (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f
@@ -777,13 +781,13 @@ Module MeetLat.
                    end; simpl; auto)).
   Qed.
 
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
        ; eq := fun P Q : Prop => P <-> Q
        ; min := fun P Q : Prop => P /\ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof.
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -814,7 +818,7 @@ Module MeetLat.
     - unfold pointwise_op. intros. apply PO.eq_refl.
   Qed.
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -873,10 +877,10 @@ Module Lattice.
        ; MeetLat.min := min
     |}.
 
-  Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
+  Local Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
     := toMeetLatOps'.
 
-  Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
+  Local Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
   Proof.
     intros. constructor.
     - apply PO.
@@ -890,10 +894,10 @@ Module Lattice.
        ; JoinLat.max := max
     |}.
 
-  Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
+  Local Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
     := toJoinLatOps'.
 
-  Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
+  Local Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
   Proof.
     intros. constructor.
     - apply PO.
@@ -901,11 +905,11 @@ Module Lattice.
     - apply max_ok.
   Qed.
 
-  Instance max_properI `(tA : t A)
+  Local Instance max_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) max.
   Proof. intros. apply max_proper. Qed.
 
-  Instance min_properI `(tA : t A)
+  Local Instance min_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) min.
   Proof. intros. apply min_proper. Qed.
 
@@ -934,6 +938,8 @@ Module Lattice.
     - apply PO.eq_refl.
   Qed.
 
+  Local Existing Instance PO.t_equiv.
+  
   Lemma morph_compose {A B C OA OB OC}
         (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f
@@ -980,14 +986,14 @@ Module Lattice.
                    end; simpl; auto)).
   Qed.
 
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
        ; eq := fun P Q : Prop => P <-> Q
        ; max := fun P Q : Prop => P \/ Q
        ; min := fun P Q : Prop => P /\ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof.
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -1024,7 +1030,7 @@ Module Lattice.
     - unfold pointwise_op. intros. apply PO.eq_refl.
   Qed.
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops))
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -1093,19 +1099,23 @@ Section CompleteLattice.
   Definition prefixed_point (a : A) := le (f a) a.
   Definition postfixed_point (a : A) := le a (f a).
   Definition fixed_point (a : A) := eq (f a) a.
-
+  
   Lemma fixed_point_is_prefixed
     : forall a, fixed_point a -> prefixed_point a.
   Proof.
     unfold fixed_point, prefixed_point; intros.
-    rewrite H; apply PreO.le_refl.
+    eapply PO.le_proper; eauto.
+    apply PO.eq_refl.
+    apply PreO.le_refl.
   Qed.
 
   Lemma fixed_point_is_postfixed
     : forall a, fixed_point a -> postfixed_point a.
   Proof.
     unfold fixed_point, postfixed_point; intros.
-    rewrite H; apply PreO.le_refl.
+    eapply PO.le_proper; eauto.
+    apply PO.eq_refl.
+    apply PreO.le_refl.
   Qed.
 
   Lemma Is_PrefixedPoint
@@ -1117,9 +1127,7 @@ Section CompleteLattice.
     apply H0.
     intros.
     unfold prefixed_point in H1.
-    rewrite <- H1.
-    apply f_monotonic.
-    apply H; eauto.
+    eapply PreO.le_trans; eauto.
   Qed.
 
   Lemma Is_LeastFixedPoint
@@ -1144,9 +1152,7 @@ Section CompleteLattice.
     apply H0.
     intros.
     unfold postfixed_point in H1.
-    rewrite H1.
-    apply f_monotonic.
-    apply H; eauto.
+    eapply PreO.le_trans; eauto.
   Qed.
 
   Lemma Is_GreatestFixedPoint
@@ -1252,9 +1258,12 @@ Module Frame.
       intros. apply (L.f_eq (f_L H)).
     Qed.
 
+    Local Existing Instance PO.t_equiv.
+    
     Lemma f_bottom {f : A -> B} : morph f -> L.eq (f bottom) bottom.
     Proof.
-      intros MF. unfold bottom. rewrite (f_sup MF). apply sup_proper.
+      intros MF. unfold bottom.
+      rewrite (f_sup MF). apply sup_proper.
       unfold pointwise_relation. intros. contradiction.
     Qed.
 
@@ -1265,10 +1274,13 @@ Module Frame.
   Section MorphProps.
     Context {A OA} {tA : t A OA}.
 
+    Local Existing Instance PO.t_equiv.
+    
     Lemma morph_id : morph OA OA (fun x => x).
     Proof.
       intros. constructor. apply L.morph_id. apply L.
-      reflexivity. reflexivity.
+      intros; eapply reflexivity.
+      eapply reflexivity.
     Qed.
 
     Lemma morph_compose {B OB} {tB : t B OB}
@@ -1301,12 +1313,12 @@ Module Frame.
 
   (** Propositions form a frame, where supremum is given by the
       existential quantifier. *)
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| LOps := L.prop_ops
        ; sup := (fun _ f => exists i, f i)
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof. constructor; simpl; intros.
          - apply L.prop.
          - constructor; unfold pointwise_relation in H; simpl in H;
@@ -1437,7 +1449,7 @@ Module CommIdemSG.
          ; MeetLat.min := dot
       |}.
 
-    Instance ops' : MeetLat.Ops A := ops.
+    Local Instance ops' : MeetLat.Ops A := ops.
 
     (** Next, we prove successively, that these definitions using
     the [dot] operator indeed define a preorder, a partial order,
@@ -1461,7 +1473,7 @@ Module CommIdemSG.
         rewrite dot_comm. reflexivity.
     Qed.
 
-    Instance asMeetLat : MeetLat.t A ops.
+    Local Instance asMeetLat : MeetLat.t A ops.
     Proof.
       constructor.
       - apply asPO.

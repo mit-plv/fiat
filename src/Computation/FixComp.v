@@ -3,7 +3,8 @@ Require Import
         Coq.Classes.Morphisms
         Coq.Classes.SetoidTactics
         Fiat.Computation
-        Fiat.Computation.SetoidMorphisms.
+        Fiat.Computation.SetoidMorphisms
+        Coq.Logic.FunctionalExtensionality.
 
 Record funSig :=
   { funDom : list Type;
@@ -17,16 +18,6 @@ Fixpoint funType
   match fDom with
   | nil => Comp fCod
   | cons T fDom' => T -> funType fDom' fCod
-  end.
-
-Fixpoint cfunType
-         (fDom : list Type)
-         (fCod : Type)
-         {struct fDom}
-  : Type :=
-  match fDom with
-  | nil => fCod
-  | cons T fDom' => T -> cfunType fDom' fCod
   end.
 
 Definition funDef (fSig : funSig) :=
@@ -73,12 +64,32 @@ Proof.
   - eauto.
 Qed.
 
+Instance PreOrder_refineFun
+         {fDom : list Type}
+         {fCod : Type}
+  : PreOrder (@refineFun fDom fCod).
+Proof.
+  constructor.
+  unfold Reflexive; apply refineFun_refl.
+  unfold Transitive; apply refineFun_trans.
+Qed.
+
 Definition refineEquivFun
            {fDom : list Type}
            {fCod : Type}
            (fSet' fSet : funType fDom fCod)
   : Prop :=
   refineFun fSet fSet' /\ refineFun fSet' fSet.
+
+Add Parametric Morphism fDom fCod
+  : (@refineFun fDom fCod)
+    with signature (refineEquivFun
+                      ==> refineEquivFun
+                      ==> Basics.impl)
+      as refineEquiv_iff.
+  unfold Basics.impl, refineEquivFun; intuition.
+  rewrite H0, <- H4; eauto.
+Qed.
 
 Fixpoint FunMax
          {fDom : list Type}
@@ -140,12 +151,10 @@ Module LeastFixedPointFun.
     : Proper (refineEquivFun ==> refineEquivFun ==> iff)
              (@refineFun fDom fCod).
   Proof.
-    unfold Proper, respectful; intros.
-    destruct H; destruct H0; intuition intros.
-    eapply refineFun_trans; eauto.
-    eapply refineFun_trans; eauto.
-    eapply refineFun_trans; eauto.
-    eapply refineFun_trans; eauto.
+    unfold Proper, respectful, refineEquivFun;
+      intros; intuition.
+    rewrite H1, H0; eauto.
+    rewrite H2, H0; eauto.
   Qed.
 
   Lemma refineFun_antisym
@@ -181,12 +190,12 @@ Module LeastFixedPointFun.
     - induction fDom; simpl in *.
       + intros c Comp_v; destruct Comp_v.
         apply H0 in H; apply H2 in H4;
-        constructor; eauto.
+          constructor; eauto.
       + intros. eapply IHfDom; eauto.
     - induction fDom; simpl in *.
       + intros c Comp_v; destruct Comp_v.
         apply H1 in H; apply H3 in H4;
-        constructor; eauto.
+          constructor; eauto.
       + intros. eapply IHfDom; eauto.
   Qed.
 
@@ -360,7 +369,7 @@ Module LeastFixedPointFun.
         * simpl in *; intros; eauto.
   Qed.
 
-    Lemma refineFunEquiv_unCurry'
+  Lemma refineFunEquiv_unCurry'
         (fDom : list Type)
         {fCod : Type}
     : forall (f f' : funType fDom fCod),
@@ -374,7 +383,7 @@ Module LeastFixedPointFun.
       + eapply IHfDom; split; intros; eauto.
   Qed.
 
-    Lemma refineFun_unCurry
+  Lemma refineFun_unCurry
         (fDom : list Type)
         {fCod : Type}
     : forall (f f' : funType fDom fCod),
@@ -424,20 +433,44 @@ Module LeastFixedPointFun.
     refineFun_lift fDom (fun z => (forall s, f s -> z s)).
 
   Lemma refineEquivFun_lift
-             {fDom : list Type}
-             {fCod : Type}
+        {fDom : list Type}
+        {fCod : Type}
     : forall (f : (funType fDom fCod -> Prop) -> Prop),
       refineEquivFun
         (refineFun_lift fDom f)
         (Curry _ (refineFun_lift _ (fun p : funType (cons (unCurry_funType fDom) nil) fCod -> Prop => f (fun f' => p (unCurry _ f' ))))).
   Proof.
     induction fDom; simpl.
-    - intros; split; apply refineFun_refl.
+    - intros; split; reflexivity.
     - simpl; split; simpl; intros.
       destruct (IHfDom (fun f' => f (fun a' => f' (a' t)))); simpl in *.
       eapply H.
       destruct (IHfDom (fun f' => f (fun a' => f' (a' t)))); simpl in *.
       eapply H0.
+  Qed.
+
+  Instance refineFun_Proper'
+           {fDom : list Type}
+           {fCod : Type}
+    : Proper (refineEquivFun ==> refineEquivFun ==> Basics.flip Basics.impl)
+             (@refineFun fDom fCod).
+  Proof.
+    unfold Proper, respectful, refineEquivFun, Basics.flip,
+    Basics.impl; intros; simpl; intuition.
+    rewrite H3, H1; eauto.
+  Qed.
+
+  Instance refineFun_Proper''
+           {fDom : list Type}
+           {fCod : Type}
+           a
+    : Proper (refineEquivFun
+                ==> Basics.flip Basics.impl)
+             (@refineFun fDom fCod a).
+  Proof.
+    unfold Proper, respectful, refineEquivFun, Basics.flip,
+    Basics.impl; intros; simpl; intuition.
+    rewrite H0; eauto.
   Qed.
 
   Lemma lub_refineFun_inf
@@ -449,18 +482,16 @@ Module LeastFixedPointFun.
     unfold refineFun_inf.
     unfold lub; split.
     - simpl; intros.
-      eapply refineFun_trans; [ | eapply refineEquivFun_lift].
-      simpl.
-      + eapply refineFun_trans.
-        eapply refineFunEquiv_unCurry.
-        eapply refineFun_Curry'.
-        simpl. unfold refine, computes_to.
-        intros; eauto.
+      rewrite refineEquivFun_lift; simpl.
+      etransitivity.
+      eapply refineFunEquiv_unCurry.
+      eapply refineFun_Curry'.
+      simpl; unfold refine, computes_to; intros; eauto.
     - simpl; intros.
-      eapply refineFun_trans; [ eapply refineEquivFun_lift | ].
-      eapply refineFun_unCurry'.
+      etransitivity; [ eapply refineEquivFun_lift |
+                       eapply refineFun_unCurry' ].
       simpl; intros.
-      eapply PreOrder_Transitive.
+      etransitivity.
       eapply (proj1 (refineFunEquiv_Curry  _ _)).
       simpl.
       unfold refine, computes_to; intros.
@@ -469,9 +500,9 @@ Module LeastFixedPointFun.
   Qed.
 
   Definition refineFun_sup
-           {fDom : list Type}
-           {fCod : Type}
-           (f : funType fDom fCod -> Prop)
+             {fDom : list Type}
+             {fCod : Type}
+             (f : funType fDom fCod -> Prop)
     : funType fDom fCod :=
     refineFun_lift fDom (fun z => exists s, f s /\ z s).
 
@@ -484,15 +515,13 @@ Module LeastFixedPointFun.
     unfold refineFun_sup.
     unfold glb; split.
     - simpl; intros.
-      eapply refineFun_trans; [ eapply refineEquivFun_lift | ].
-      simpl.
-      eapply refineFun_trans.
-      eapply refineFun_Curry'.
+      etransitivity; [ eapply refineEquivFun_lift | ].
+      etransitivity; [eapply refineFun_Curry' | ].
       simpl; unfold refine, computes_to.
       intros; eauto.
       eapply refineFunEquiv_unCurry.
     - simpl; intros.
-      eapply refineFun_trans; [ | eapply refineEquivFun_lift ].
+      etransitivity; [ | eapply refineEquivFun_lift ].
       eapply refineFun_unCurry'.
       simpl; intros.
       unfold refine, computes_to; intros.
@@ -522,291 +551,197 @@ Module LeastFixedPointFun.
     : funType fDom fCod :=
     (cl_sup (prefixed_point fDef)).
 
-  Instance PreOrder_refineFun
-           {fDom : list Type}
-           {fCod : Type}
-    : PreOrder (@refineFun fDom fCod).
-  Proof.
-    constructor.
-    unfold Reflexive; apply refineFun_refl.
-    unfold Transitive; apply refineFun_trans.
-  Qed.
-
   Lemma refine_LeastFixedPoint
         {fDom : list Type}
         {fCod : Type}
         (fDef fDef' : funType fDom fCod -> funType fDom fCod)
-      : respectful (@refineFun fDom fCod)
-                   (@refineFun fDom fCod)
-                   fDef fDef'
-        ->
-        forall (fDef_monotone : forall rec rec',
-                   refineFun rec rec'
-                   -> refineFun (fDef rec) (fDef rec'))
-               (fDef'_monotone : forall rec rec',
-                   refineFun rec rec'
-                   -> refineFun (fDef' rec) (fDef' rec')),
+    : respectful (@refineFun fDom fCod)
+                 (@refineFun fDom fCod)
+                 fDef fDef'
+      ->
+      forall (fDef_monotone : forall rec rec',
+                 refineFun rec rec'
+                 -> refineFun (fDef rec) (fDef rec'))
+             (fDef'_monotone : forall rec rec',
+                 refineFun rec rec'
+                 -> refineFun (fDef' rec) (fDef' rec')),
         refineFun (LeastFixedPoint fDef)
-                     (LeastFixedPoint fDef').
+                  (LeastFixedPoint fDef').
   Proof.
     unfold LeastFixedPoint, respectful; intros.
     destruct (sup_glb (prefixed_point fDef)) as [? ?];
       destruct (sup_glb (prefixed_point fDef')) as [? ?];
       simpl in *.
-    eapply refineFun_trans.
+    etransitivity.
     eapply (H0 (fDef (refineFun_sup (prefixed_point fDef')))).
     eapply fDef_monotone.
-    eapply refineFun_trans.
+    etransitivity.
     eapply H.
-    eapply refineFun_refl.
+    reflexivity.
     pose proof (proj2 (Is_LeastFixedPoint (O := @funDefOps fDom fCod) _ (fDef'_monotone))); eapply H4.
-    eapply refineFun_trans.
-    eapply H.
-    eapply refineFun_refl.
+    etransitivity.
+    eapply H; reflexivity.
     pose proof (proj2 (Is_LeastFixedPoint (O := @funDefOps fDom fCod) _ (fDef'_monotone))); eapply H4.
+  Qed.
+
+  Fixpoint cfunType
+           (fDom : list Type)
+           (fCod : Type)
+           {struct fDom}
+    : Type :=
+    match fDom with
+    | nil => fCod
+    | cons T fDom' => T -> cfunType fDom' fCod
+    end.
+
+  Fixpoint Lift_cfunType
+           (fDom : list Type)
+           (fCod : Type)
+           (fDef : cfunType fDom fCod)
+           {struct fDom}
+    : funType fDom fCod :=
+    match fDom return cfunType fDom fCod
+                      -> funType fDom fCod with
+    | nil => fun f => ret f
+    | cons T fDom' => fun f' (t : T) => Lift_cfunType fDom' fCod (f' t)
+    end fDef.
+
+  Lemma Finish_refining_LeastFixedPoint
+        {fDom : list Type}
+        {recT fCod : Type}
+        {P : recT -> recT -> Prop}
+        (wf_P : well_founded P)
+        (fDef : funType (recT :: fDom) fCod -> funType (recT :: fDom) fCod)
+        (fDef_monotone : forall rec rec',
+            refineFun rec rec'
+            -> refineFun (fDef rec) (fDef rec'))
+        (fDef' : forall r,
+            (forall r', P r' r -> cfunType fDom fCod)
+            -> cfunType fDom fCod)
+    : (forall r,
+          respectful_hetero (funType (recT :: fDom) fCod)
+                            (forall r', P r' r -> cfunType fDom fCod)
+                            (fun _ => funType fDom fCod)
+                            (fun _ => cfunType fDom fCod)
+                            (fun f f' => forall r' wf_r,
+                                 @refineFun fDom fCod (f r') ((Lift_cfunType _ _ (f' r' wf_r))))
+                            (fun rec rec' f f' =>
+                               @refineFun fDom fCod f
+                                          (Lift_cfunType _ _ f'))
+                            (fun rec => fDef rec r) (fDef' r))
+      ->
+      refineFun (LeastFixedPoint fDef )
+                (Lift_cfunType (recT :: fDom) fCod (Fix wf_P _ fDef' )).
+  Proof.
+    unfold LeastFixedPoint, respectful_hetero; intros.
+    destruct (sup_glb (O := @funDefOps (recT :: fDom) fCod) (prefixed_point fDef)) as [? ?].
+    simpl; intros; eapply refineFun_trans.
+    - eapply (H0 (fDef (fun t => Lift_cfunType _ _ (Fix wf_P (fun _ : recT => cfunType fDom fCod) fDef' t)))).
+      simpl; intros; eapply fDef_monotone.
+      simpl; intros. rewrite Fix_eq.
+      + eapply H.
+        simpl; intros; eapply refineFun_refl.
+      + intros; f_equal.
+        repeat (eapply functional_extensionality_dep; intros); eauto.
+    - simpl; intros; rewrite Fix_eq.
+      + eapply H.
+        simpl; intros; eapply refineFun_refl.
+      + intros; f_equal.
+        repeat (eapply functional_extensionality_dep; intros); eauto.
   Qed.
 
   Definition FibonacciSpec
     : funType ((nat : Type) :: @nil Type)%list nat :=
     LeastFixedPoint (fDom := (nat : Type) :: @nil Type)%list
-                      (fun rec (n : nat) =>
-                         match n with
-                         | 0 => ret 0
-                         | 1 => ret 1
-                         | S (S n') =>
-                           n1 <- rec n';
-                             n2 <- rec (S n');
-                             ret (n1 + n2)
-                         end).
+                    (fun rec (n : nat) =>
+                       match n with
+                       | 0 => { x | x < 1}
+                       | 1 => ret 1
+                       | S (S n') =>
+                         n1 <- rec n';
+                           n2 <- rec (S n');
+                           ret (n1 + n2)
+                       end).
 
-  Fixpoint FibonacciImpl
-           (n : nat)
-    : Comp nat :=
-    match n with
-    | 0 => ret 0
-    | (S p) =>
-      match p with
-      | 0 => ret 1
-      | (S m) => n1 <- FibonacciImpl p;
-                   n2 <- FibonacciImpl m;
-                   ret (n1 + n2)
-      end
+  Lemma refine_match_nat {A}
+        {P : nat -> nat -> Prop}
+        {Q : forall n,  (forall n', P n' n -> A) -> Prop}
+    : forall (cO : Comp A) cS n cO'
+             cS'
+             (y : forall n', P n' n -> A),
+      (refine cO (ret cO'))
+      -> (forall n (y : forall n', P n' (S n) -> A),
+             Q (S n) y
+             -> refine (cS n) (ret (cS' n y)))
+      ->
+      Q n y
+      -> refine (match n with
+                 | 0 => cO
+                 | S n' => cS n'
+                 end)
+                (ret (match n return
+                            (forall n', P n' n -> A)
+                            -> A
+                      with
+                      | 0 => fun _ => cO'
+                      | S n' => fun y => cS' n' y
+                      end y)).
+  Proof.
+    destruct n; eauto.
+  Qed.
+
+  Require Import Fiat.Common.
+
+  Ltac solve_rec_obligation x solveTac idm :=
+    lazymatch goal with
+    | H : forall r' (wf_r : @?P r'), refine (x r') _
+                                     |- context [x ?r] =>
+      let idm' := fresh idm in
+      let wf_sub' := fresh in
+      let wf_subP' := (eval pattern r in (P r)) in
+      let wf_subP := match wf_subP' with ?P' _ => constr:(P') end in
+      assert (forall r, wf_subP r) as wf_sub';
+      [clear; abstract solveTac using idm'
+      | clear wf_sub' ]
     end.
 
-  Lemma foo
-    : refineFun FibonacciSpec FibonacciImpl.
+  Definition FibonacciImpl'
+    : {Impl | refineFun FibonacciSpec (Lift_cfunType _ _ Impl)}.
   Proof.
-    eapply refineFun_trans.
-    eapply refine_LeastFixedPoint; intros.
-    unfold respectful; simpl; intros.
-
-  Abort.
-  (* Focus 3.
-
-    unfold refineFun; unfold refine; intros.
-    unfold FibonacciSpec, LeastFixedPoint''; simpl.
-    unfold LeastFixedPointP, FixedPointP, computes_to; simpl.
-    exists FibonacciImpl; split; eauto.
-    clear H.
-    intuition.
-    admit.
-    admit.
-    admit.
-  Admitted. *)
-(*rewrite H1.
-    induction t0.
-    - reflexivity.
-    - simpl.
-      assert (refine (fSet' t0) (FibonacciImpl t0)).
-      intros; rewrite H1.
-      apply IHt0.
-      revert H.
-      destruct t0; intros.
-      * reflexivity.
-      * simpl in *.
-        setoid_rewrite H.
-        intros v' Comp_v'.
-        computes_to_inv; subst.
-        rewrite H1.
-        eapply BindComputes with (a := v1);
-        repeat computes_to_econstructor.
-        2: apply Comp_v'.
-        2: rewrite plus_comm; repeat computes_to_econstructor.
-
-
-        eapply H1 in IHt0.
-      assert (refine
-                (match t0 with
-                 | 0 => ret 1
-                 | S m => n1 <- match t0 with
-                                | 0 => ret 0
-                                | 1 => ret 1
-                                | S (S n') => n1 <- fSet' n';
-                                              n2 <- fSet' (S n');
-                                              ret (n1 + n2)
-                                end;
-                          n2 <- FibonacciImpl m;
-                          ret (n1 + n2)
-                 end)
-                match t0 with
-                | 0 => ret 1
-                | S m => n1 <- FibonacciImpl t0;
-                         n2 <- FibonacciImpl m;
-                         ret (n1 + n2)
-     end).
-      destruct t0.
-      reflexivity.
-      rewrite IHt0.
-      reflexivity.
-      etransitivity; try eauto.
-      clear H.
-
-      apply
-      rewrite <- IHt0.
-      induction t0.
-    reflexivity.
-    rewrite H1.
-    setoid_rewrite H1.
-    rewrite <- IHt0.
-    destruct t0.
-    Focus 2.
-
-    unfold FibonacciImpl.
-    unfold
-    - induction t0; simpl in *.
-      + simpl; reflexivity.
-      + induction t0.
-        reflexivity.
-        rewrite <- IHt0.
-
-        intros v Comp_v; computes_to_inv.
-        subst.
-        apply IHt in Comp_v.
-        computes_to_econstructor; eauto.
-        destruct t.
-        computes_to_econstructor; eauto.
-        rewrite plus_comm; computes_to_econstructor.
-        simpl in *.
-        computes_to_inv; subst.
-        repeat computes_to_econstructor.
-        apply Comp_v'0.
-        apply Comp_v.
-        rewrite plus_assoc.
-        rewrite plus_comm.
-        rewrite (plus_comm v1 v2).
-        rewrite plus_assoc.
-        computes_to_econstructor; eauto.
-      + induction t.
-        * reflexivity.
-        * simpl.
-          destruct t; eauto.
+    eexists.
+    etransitivity.
+    - eapply Finish_refining_LeastFixedPoint with (wf_P := Wf_nat.lt_wf);
+        simpl; intros.
+      + destruct t; try reflexivity.
+        destruct t; try reflexivity.
+        repeat setoid_rewrite H; reflexivity.
+      + unfold respectful_hetero; simpl; intros.
+        revert H.
+        eapply (@refine_match_nat
+                  _ lt
+                  (fun r y => forall (r' : nat) (wf_r : r' < r), refine (x r') (ret (y r' wf_r)))).
+        * refine pick val 0; auto with arith; reflexivity.
+        * intros; simpl in *.
+          revert H.
+          eapply (@refine_match_nat _ (fun n' n => n' < S n)
+                                    (fun r y => forall (r' : nat) (wf_r : r' < S r), refine (x r') (ret (y r' wf_r)))).
           reflexivity.
-          rewrite IHt.
-          induction t.
-          intros v Comp_v.
-          simpl in *; computes_to_inv; subst.
-          repeat computes_to_econstructor; eauto.
+          intros; subst; set_evars.
           simpl in *.
-          simpl in
-          apply IHt in Comp_v.
-          computes_to_econstructor; eauto.
-          destruct t.
-          computes_to_econstructor; eauto.
-          rewrite plus_comm; computes_to_econstructor.
-          simpl in *.
-          computes_to_inv; subst.
-          repeat computes_to_econstructor.
-          apply Comp_v'0.
-          apply Comp_v.
-          rewrite plus_assoc.
-          rewrite plus_comm.
-          rewrite (plus_comm v1 v2).
-          rewrite plus_assoc.
-          computes_to_econstructor; eauto.
 
-        reflexivity.
-        simpl.
+          (* Having to provide new, unique identifiers is not ideal. *)
+          (* Have to go to ML for a better solution. *)
+          solve_rec_obligation x ltac:(intros; omega) foo;
+            rewrite (H _ (foo _)); simplify with monad laws.
 
-        setoid_rewrite <- IHt.
-      intros.
+          solve_rec_obligation x ltac:(intros; omega) foo2;
+            rewrite (H _ (foo2 _)); simplify with monad laws.
+          subst H0; higher_order_reflexivity.
+    - simpl; intros; higher_order_reflexivity.
+  Defined.
 
-        simpl.
+  Definition FibonacciImpl :=
+    Eval simpl in (projT1 FibonacciImpl').
 
-    - unfold FibonacciSpec, LeastFixedPoint''; simpl.
-        unfold LeastFixedPointP, FixedPointP; simpl.
-      unfold refine; intros.
-      computes_to_inv; subst.
-      unfold computes_to; intuition.
-      eexists.
-    - unfold FibonacciSpec, LeastFixedPointFun in *; simpl in *.
-      destruct t.
-      + unfold refine, LeastFixedPoint; simpl; intros.
-        computes_to_inv; subst.
-        unfold computes_to; intuition.
-      + simpl in *.
-        rewrite <- IHt.
-        clear.
-        destruct t; simpl.
-
-  Lemma refine_LeastFixedPoint''
-        {fDom : list Type}
-        {fCod : Type}
-        (fDef fDef' : funType fDom fCod -> funType fDom fCod)
-        (f_monotone : forall rec rec',
-            refineFun rec rec'
-            -> refineFun (fDef rec) (fDef rec'))
-      : respectful (@refineFun fDom fCod)
-                   (@refineFun fDom fCod)
-                   fDef fDef'
-        -> refineFun (LeastFixedPoint'' fDef)
-                     (LeastFixedPoint'' fDef').
-  Proof.
-    induction fDom; simpl; intros.
-    - unfold LeastFixedPoint''; simpl in *.
-      unfold refine; intros v Comp_v; intuition.
-      unfold computes_to, FixedPointP, respectful in *; simpl in *.
-      destruct Comp_v as [Fix' [LFP_Fix' computes_to_v] ].
-      unfold LeastFixedPointP, FixedPointP in LFP_Fix'; simpl in *;
-        intuition.
-      exists Fix'; split; eauto.
-      unfold LeastFixedPointP, FixedPointP; repeat split.
-      simpl.
-      etransitivity; eauto.
-      Focus 3.
-      simpl.
-      apply H1.
-
-
-
-      simpl in *.
-      unfold FixedPoint
-
-      exists (LeastFixedPoint fDef).
-      unfold LeastFixedPointP; repeat split.
-      + apply refine_LeastFixedPoint; admit.
-      + apply refine_LeastFixedPoint; admit.
-      + unfold FixedPointP; intros; simpl in *.
-        intros v' Comp_v'.
-        unfold LeastFixedPoint in Comp_v'.
-        apply H0; apply Comp_v'.
-      + unfold LeastFixedPoint; intros.
-        destruct Comp_v; intuition.
-        rewrite H; try reflexivity.
-        unfold LeastFixedPointP in H1; simpl in *.
-        intuition.
-        unfold FixedPointP in H0.
-        admit.
-    - simpl in *.
-      pose (
-      unfold respectful in H.
-      rewrite IHfDom.
-      unfold LeastFixedPoint''; simpl.
-
-      eapply IHfDom; eauto.
-      unfold respectful in *; intros.
-      eapply H.
-      intro.
-      apply H0.
-  Qed.
- *)
-  End LeastFixedPointFun.
+  Print FibonacciImpl.
+End LeastFixedPointFun.
