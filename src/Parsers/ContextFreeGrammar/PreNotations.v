@@ -35,7 +35,9 @@ Record pregrammar Char :=
     pregrammar_rnonterminals : list string
     := map fst pregrammar_rproductions;
     rnonterminals_unique
-    : NoDupR string_beq pregrammar_rnonterminals
+    : NoDupR string_beq pregrammar_rnonterminals;
+    RLookup_idx : nat -> rproductions Char
+    := fun n => nth n (map snd pregrammar_rproductions) nil
   }.
 
 Global Existing Instance pregrammar_idata.

@@ -83,7 +83,7 @@ Section fold_correctness.
           -> Pnt nt ⊥;
       Pnt_init : forall nt,
           is_valid_nonterminal initial_nonterminals_data nt = true
-          -> Pnt nt (initial_state nt);
+          -> Pnt nt (initial_state (*nt*));
       Pnt_glb : forall nt a b,
           is_valid_nonterminal initial_nonterminals_data nt = true
           -> Pnt nt a

@@ -376,7 +376,7 @@ Section grammar_fixedpoint.
 
   Definition aggregate_state_max : aggregate_state
     := List.fold_right
-         (fun nt st => PositiveMap.add (nonterminal_to_positive nt) (initial_state nt) st)
+         (fun nt st => PositiveMap.add (nonterminal_to_positive nt) (initial_state (*nt*)) st)
          (PositiveMap.empty _)
          initial_nonterminals_data.
 
@@ -390,7 +390,7 @@ Section grammar_fixedpoint.
 
   Lemma find_aggregate_state_max_spec k v
     : PositiveMap.find k aggregate_state_max = Some v
-      <-> (v = initial_state (positive_to_nonterminal k) /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
+      <-> (v = initial_state (*(positive_to_nonterminal k)*) /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
   Proof.
     unfold aggregate_state_max in *.
     generalize dependent (@initial_nonterminals_data _ _); intros ls.
@@ -415,7 +415,7 @@ Section grammar_fixedpoint.
 
   Lemma find_aggregate_state_max k v
     : PositiveMap.find k aggregate_state_max = Some v
-      -> PositiveMap.find k aggregate_state_max = Some (initial_state (positive_to_nonterminal k)).
+      -> PositiveMap.find k aggregate_state_max = Some (initial_state (*(positive_to_nonterminal k)*)).
   Proof.
     setoid_rewrite find_aggregate_state_max_spec.
     tauto.
@@ -662,7 +662,7 @@ constructor.
   Lemma lookup_state_aggregate_state_max nt
     : lookup_state aggregate_state_max nt
       = if is_valid_nonterminal initial_nonterminals_data nt
-        then initial_state nt
+        then initial_state (*nt*)
         else ⊥.
   Proof.
     unfold lookup_state.
@@ -673,7 +673,7 @@ constructor.
       destruct H as [? H']; subst; simpl in *; rewrite H'; intuition. }
     { match goal with |- context[if ?e then _ else _] => destruct e eqn:H' end;
       [ | reflexivity ].
-      pose proof (find_aggregate_state_max_spec (nonterminal_to_positive nt) (initial_state (positive_to_nonterminal (nonterminal_to_positive nt)))) as H''.
+      pose proof (find_aggregate_state_max_spec (nonterminal_to_positive nt) (initial_state (*(positive_to_nonterminal (nonterminal_to_positive nt))*))) as H''.
       rewrite nonterminal_to_positive_to_nonterminal, H' in H''.
       destruct H'' as [_ H''].
       rewrite H'' in H by intuition.
