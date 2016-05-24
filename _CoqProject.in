@@ -346,8 +346,12 @@ src/Parsers/ContextFreeGrammar/Fold.v
 =======
 src/Parsers/ContextFreeGrammar/Fix.v
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 4b67cf4... Add grammar fixedpoints
 =======
+=======
+src/Parsers/ContextFreeGrammar/FixDefinitions.v
+>>>>>>> 866b577... Separate out grammar fixed point definitions
 src/Parsers/ContextFreeGrammar/Fold.v
 >>>>>>> d7b8983... FoldGrammar -> ContextFreeGrammar.Fold
 src/Parsers/ContextFreeGrammar/Notations.v
