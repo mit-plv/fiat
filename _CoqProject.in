@@ -355,7 +355,11 @@ src/Parsers/ContextFreeGrammar/Fix.v
 src/Parsers/ContextFreeGrammar/FixCorrect.v
 >>>>>>> a63d4e2... Add some more grammar fixedpoint lemmas
 src/Parsers/ContextFreeGrammar/FixDefinitions.v
+<<<<<<< HEAD
 >>>>>>> 866b577... Separate out grammar fixed point definitions
+=======
+src/Parsers/ContextFreeGrammar/FixFromFold.v
+>>>>>>> 63da23a... Work in progress on reusing grammar fold data for fixedpoints
 src/Parsers/ContextFreeGrammar/Fold.v
 >>>>>>> d7b8983... FoldGrammar -> ContextFreeGrammar.Fold
 src/Parsers/ContextFreeGrammar/Notations.v
