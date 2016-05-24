@@ -342,6 +342,7 @@ src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
 <<<<<<< HEAD
+<<<<<<< HEAD
 src/Parsers/ContextFreeGrammar/Fold.v
 =======
 src/Parsers/ContextFreeGrammar/Fix.v
@@ -364,6 +365,8 @@ src/Parsers/ContextFreeGrammar/FixFromFold.v
 =======
 src/Parsers/ContextFreeGrammar/FixFromFoldDefinitions.v
 >>>>>>> 8285498... Add FixFromFold
+=======
+>>>>>>> b9d4fc8... Make a folder for CFG Fix
 src/Parsers/ContextFreeGrammar/Fold.v
 >>>>>>> d7b8983... FoldGrammar -> ContextFreeGrammar.Fold
 src/Parsers/ContextFreeGrammar/Notations.v
