@@ -903,6 +903,21 @@ Section String.
       rewrite substring_length, <- Nat.sub_min_distr_r, Nat.add_sub, Min.min_0_r in H1.
       omega. }
   Qed.
+
+  Lemma not_all_lengths n : ~ forall str, length str = n.
+  Proof.
+    destruct n; intro H;
+      [ destruct (strings_nontrivial 1) as [? H']
+      | destruct (strings_nontrivial 0) as [? H'] ];
+      rewrite H in H';
+      congruence.
+  Qed.
+
+  Lemma not_not_string : ~ (String -> False).
+  Proof.
+    destruct (strings_nontrivial 0) as [str ?].
+    eauto.
+  Qed.
 End String.
 
 Section Iso.

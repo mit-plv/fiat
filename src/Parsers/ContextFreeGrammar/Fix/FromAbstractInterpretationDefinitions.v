@@ -109,8 +109,8 @@ Section fold_correctness.
   Context (G : pregrammar Char).
 
   Class AbstractInterpretationCorrectness (related : Ensemble String -> T -> Prop) :=
-    { related_ext : Proper ((beq ==> iff) ==> state_beq ==> iff) related;
-      related_monotonic : forall s0 s1, s0 <= s1 <-> (forall v, related v s0 -> related v s1);
+    { related_ext : Proper ((beq ==> iff) ==> eq ==> iff) related;
+      related_monotonic : forall s0 s1, s0 <= s1 <-> (forall v, related v s1 -> related v s0);
       bottom_related : (related (Full_set _) ⊥);
       on_terminal_correct
       : forall P,

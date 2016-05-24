@@ -1,4 +1,5 @@
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.ZArith.BinInt.
 Require Import Fiat.Common.Equality.
@@ -49,7 +50,7 @@ Local Ltac t' :=
     | _ => rewrite Nat.add_1_r
     | _ => rewrite <- Min.min_assoc
     | [ |- String.get _ _ = _ ] => apply StringProperties.get_correct
-    | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct
+    | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct, ?string_copy_length
     | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
     | [ |- context[min ?m (?m - ?n)] ]
       => replace (min m (m - n)) with (m - max 0 n)
@@ -129,7 +130,8 @@ Module Export Ocaml.
 
   Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
   Proof.
-    split; try abstract t.
+    refine {| strings_nontrivial n := ex_intro (fun str : String => length str = n) (Ocaml.implode (string_copy n "."%char)) _ |};
+      t.
   Qed.
 
   Global Instance string_stringiso_properties : StringIsoProperties Ascii.ascii.

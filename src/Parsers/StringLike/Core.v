@@ -126,7 +126,8 @@ Module Export StringLike.
       drop_drop : forall str n m, drop n (drop m str) =s drop (n + m) str;
       drop_take : forall str n m, drop n (take m str) =s take (m - n) (drop n str);
       take_drop : forall str n m, take n (drop m str) =s drop m (take (n + m) str);
-      bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str'
+      bool_eq_from_get : forall str str', (forall n, get n str = get n str') -> str =s str';
+      strings_nontrivial : forall n, exists str, length str = n
     }.
 
   Class StringIsoProperties {Char} {HSLM} {HSL : @StringLike Char HSLM} {HSI : @StringIso Char HSLM} :=
