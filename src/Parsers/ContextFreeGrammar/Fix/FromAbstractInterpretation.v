@@ -30,8 +30,53 @@ Section fold_correctness.
 
   Definition fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G)
     := pre_Fix_grammar _ G.
-(*
-  Definition state_reachable
+
+  Section step.
+    Context (state_of_parse : forall str pats, parse_of G str pats -> T)
+            (state_of_parse_production : forall str pat, parse_of_production G str pat -> T)
+            (state_of_parse_item : forall str it, parse_of_item G str it -> T).
+
+    Definition state_of_parse_item'
+               str it (p : parse_of_item G str it)
+      : T
+      := match p with
+         | ParseTerminal ch P Hch Hstr => on_terminal P
+         | ParseNonTerminal nt Hvalid p' => state_of_parse p'
+         end.
+
+    Definition state_of_parse_production'
+               str pat (p : parse_of_production G str pat)
+      : T
+      := match p with
+         | ParseProductionNil Hlen => on_nil_production
+         | ParseProductionCons n pat pats p' p's
+           => combine_production
+                (state_of_parse_item p')
+                (state_of_parse_production p's)
+         end.
+
+    Definition state_of_parse'
+               str pats (p : parse_of G str pats)
+      : T
+      := match p with
+         | ParseHead pat pats p' => state_of_parse_production p'
+         | ParseTail pat pats p' => state_of_parse p'
+         end.
+  End step.
+
+  Fixpoint state_of_parse str pats (p : parse_of G str pats) : T
+    := @state_of_parse' (@state_of_parse) (@state_of_parse_production) str pats p
+  with state_of_parse_production str pat (p : parse_of_production G str pat) : T
+    := @state_of_parse_production' (@state_of_parse_production) (@state_of_parse_item) str pat p
+  with state_of_parse_item str it (p : parse_of_item G str it) : T
+    := @state_of_parse_item' (@state_of_parse) str it p.
+
+  (*Lemma fold_nt_correct nt
+    : related (fun str => inhabited (parse_of_item G str (NonTerminal (to_nonterminal nt))))
+              (lookup_state fold_grammar nt).
+  Proof.
+    unfold fold_grammar.
+    SearchAbout lookup_state
 
   Lemma fixedpoint_lower_bound_for_reachable
 
