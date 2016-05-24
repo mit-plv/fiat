@@ -462,8 +462,8 @@ Module PO.
 
   Local Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof.
-    constructor; intuition;
-    split; simpl in *; intros; intuition.
+    constructor; unfold Proper, respectful;
+      intuition; split; simpl in *; intros; intuition.
   Qed.
 
   Local Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).

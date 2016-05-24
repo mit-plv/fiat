@@ -706,7 +706,7 @@ Module LeastFixedPointFun.
     end.
 
   Definition FibonacciImpl'
-    : {Impl | refineFun FibonacciSpec (Lift_cfunType _ _ Impl)}.
+    : {Impl : _ & refineFun FibonacciSpec (Lift_cfunType _ _ Impl)}.
   Proof.
     eexists.
     etransitivity.
