@@ -341,7 +341,11 @@ src/Parsers/WellFoundedParseProperties.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
+<<<<<<< HEAD
 src/Parsers/ContextFreeGrammar/Fold.v
+=======
+src/Parsers/ContextFreeGrammar/Fix.v
+>>>>>>> 4b67cf4... Add grammar fixedpoints
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
