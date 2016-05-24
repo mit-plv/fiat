@@ -13,3 +13,11 @@ Class TransformerUnit (bin : Type) (trans : Transformer bin) (T : Type) :=
     transform_push_pop : forall t m, transform_pop (transform_push t m) = (t, m);
     transform_push_step : forall t m n, transform (transform_push t m) n =
                                         transform_push t (transform m n) }.
+
+Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
+  { transform_push_opt : T -> bin -> bin;
+    transform_pop_opt : bin -> option (T * bin);
+    transform_push_pop_opt :
+      forall t m, transform_pop_opt (transform_push_opt t m) = Some (t, m);
+    transform_push_step_opt : forall t m n, transform (transform_push_opt t m) n =
+                                            transform_push_opt t (transform m n) }.

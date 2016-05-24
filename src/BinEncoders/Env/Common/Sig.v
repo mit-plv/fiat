@@ -1,6 +1,7 @@
-Require Import Coq.Logic.ProofIrrelevance.
+Require Import
+        Fiat.BinEncoders.Env.Common.Specs.
 
-Notation "[ n ]" := (exist _ n _).
+Notation "[ n ]" := (exist _ n _) : binencoders.
 
 Lemma sig_equivalence :
   forall (A : Type) (P : A -> Prop) (n m : A) (n_pf : P n) (m_pf : P m),

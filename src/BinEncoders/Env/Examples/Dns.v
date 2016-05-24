@@ -60,26 +60,28 @@ Section DnsExample.
       panswer     : { s : list resource_t | length s < exp2_nat 16 };
       pauthority  : { s : list resource_t | length s < exp2_nat 16 };
       padditional : { s : list resource_t | length s < exp2_nat 16 } }.
-
+  
+  Open Scope binencoders_scope.
+  
   Definition FixInt_of_branch (b : CacheBranch) : {n | (n < exp2 2)%N}.
     refine (match b with
-            | Yes => [3%N]
-            | No  => [0%N]
+            | Yes => existT _ 3%N _
+            | No  => existT _ 0%N _
             end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
     refine (match t with
-            | A     => [1%N]
-            | CNAME => [5%N]
-            | NS    => [2%N]
-            | MX    => [15%N]
-            end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
+            | A     => existT _ 1%N _
+            | CNAME => existT _ 5%N _
+            | NS    => existT _ 2%N _
+            | MX    => existT _ 15%N _
+            end%binencoders); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
     refine (match c with
-            | IN => [1%N]
-            | CH => [3%N]
-            | HS => [4%N]
+            | IN => existT _ 1%N _
+            | CH => existT _ 3%N _
+            | HS => existT _ 4%N _
             end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition encode_word (w : word_t) :=

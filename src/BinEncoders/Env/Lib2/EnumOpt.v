@@ -2,7 +2,7 @@ Require Import
         Fiat.Common.BoundedLookup.
 Require Import
         Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.Lib2.Word.
+        Fiat.BinEncoders.Env.Lib2.WordOpt.
 Require Import
         Coq.Vectors.Vector
         Bedrock.Word.
@@ -14,7 +14,7 @@ Section Enum.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnit transformer bool}.
+  Context {transformerUnit : TransformerUnitOpt transformer bool}.
 
   Context {sz : nat}.
   Context {ta : t A (S len)}.
@@ -57,15 +57,14 @@ Section Enum.
 
   Definition decode_enum (b : B)
              (cd : CacheDecode)
-    : BoundedIndex ta * B * CacheDecode :=
-    match decode_word (sz:=sz) b cd with
-    | (w, b', cd') =>
-      ({| bindex := _;
-          indexb := {| ibound := match word_indexed w tb with
-                                 | Some i => i
-                                 | None => Fin.F1 end;
+    : option (BoundedIndex ta * B * CacheDecode) :=
+    `(w, b', cd') <- decode_word (sz:=sz) b cd;
+      Ifopt word_indexed w tb as i Then 
+      Some ({| bindex := _;
+          indexb := {| ibound := i;
                        boundi := eq_refl _ |} |}, b', cd')
-    end.
+      Else None
+  .
 
   Lemma word_indexed_correct :
     forall n (i : Fin.t n) (t : t (word sz) n),
@@ -99,20 +98,23 @@ Section Enum.
 
   Theorem Enum_decode_correct :
     NoDupVector tb
-    -> encode_decode_correct cache transformer (fun _ => True) encode_enum decode_enum.
+    -> encode_decode_correct_f cache transformer (fun _ => True) encode_enum decode_enum.
   Proof.
     unfold encode_decode_correct, encode_enum, decode_enum.
-    intros ? env env' xenv xenv' data data' bin' ext ext' Eeq PPred Penc Pdec.
-    destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
-    pose proof (Word_decode_correct _ _ _ _ _ _ _ _ _ Eeq I Penc Heqp).
-    inversion Pdec; subst; clear Pdec.
-    destruct H0 as [? [? ?]].
-    repeat split; eauto.
-    rewrite <- H1.
-    apply (word_indexed_correct _ (ibound (indexb data))) in H.
-    destruct (word_indexed (nth tb (ibound (indexb data))) tb); intros.
-    rewrite <- H;
-    destruct data. destruct indexb. simpl. rewrite <- boundi. reflexivity.
-    intuition.
+    intros ? env env' xenv c c' ext Eeq Ppred Penc.
+    destruct (Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+    rewrite H0; simpl.
+    apply (word_indexed_correct _ (ibound (indexb c))) in H.
+    subst; simpl in *.
+    destruct (word_indexed (nth tb (ibound (indexb c))) tb);
+      intros; simpl in *.
+    + eexists; intuition eauto.
+      repeat f_equal.
+      destruct c.
+      destruct indexb.
+      rewrite <- boundi.
+      simpl in H; subst.
+      reflexivity.
+    + intuition.
   Qed.
 End Enum.
