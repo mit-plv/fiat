@@ -525,7 +525,7 @@ PositiveMap.fold (fun _ => andb)
                      \/ (w = x1
                          /\ aggregate_state_lt (PositiveMapExtensions.of_list y') (PositiveMapExtensions.of_list xs)))) by admit.
       clear H.
-Print Acc.
+
       destruct H' as [w [y' [H'eq [H'lt|H'lt]]]].
       { eapply aggregate_state_of_list_lt_Acc_eq; [ eassumption | ].
         clear H'eq. (*

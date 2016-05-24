@@ -700,7 +700,7 @@ Module LeastFixedPointFun.
       let wf_sub' := fresh in
       let wf_subP' := (eval pattern r in (P r)) in
       let wf_subP := match wf_subP' with ?P' _ => constr:(P') end in
-      assert (forall r, wf_subP r) as wf_sub';
+      assert (forall r'', wf_subP r'') as wf_sub';
       [clear; abstract solveTac using idm'
       | clear wf_sub' ]
     end.
@@ -719,12 +719,12 @@ Module LeastFixedPointFun.
         revert H.
         eapply (@refine_match_nat
                   _ lt
-                  (fun r y => forall (r' : nat) (wf_r : r' < r), refine (x r') (ret (y r' wf_r)))).
+                  (fun r y => forall (r' : nat) (wf_r : r' < r), refine (x r') (ret (y r' wf_r))) _ _ r _ _ y).
         * refine pick val 0; auto with arith; reflexivity.
         * intros; simpl in *.
           revert H.
           eapply (@refine_match_nat _ (fun n' n => n' < S n)
-                                    (fun r y => forall (r' : nat) (wf_r : r' < S r), refine (x r') (ret (y r' wf_r)))).
+                                    (fun r y => forall (r' : nat) (wf_r : r' < S r), refine (x r') (ret (y r' wf_r))) _ _ n _ _ y0).
           reflexivity.
           intros; subst; set_evars.
           simpl in *.

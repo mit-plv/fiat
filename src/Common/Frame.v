@@ -462,7 +462,7 @@ Module PO.
 
   Local Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof.
-    constructor; intuition.
+    constructor; intuition;
     split; simpl in *; intros; intuition.
   Qed.
 
@@ -701,7 +701,7 @@ Module MeetLat.
   Qed.
 
   Local Existing Instance PO.t_equiv.
-  
+
   Lemma morph_compose {A B C OA OB OC}
         (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f
@@ -939,7 +939,7 @@ Module Lattice.
   Qed.
 
   Local Existing Instance PO.t_equiv.
-  
+
   Lemma morph_compose {A B C OA OB OC}
         (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f
@@ -1099,7 +1099,7 @@ Section CompleteLattice.
   Definition prefixed_point (a : A) := le (f a) a.
   Definition postfixed_point (a : A) := le a (f a).
   Definition fixed_point (a : A) := eq (f a) a.
-  
+
   Lemma fixed_point_is_prefixed
     : forall a, fixed_point a -> prefixed_point a.
   Proof.
@@ -1259,7 +1259,7 @@ Module Frame.
     Qed.
 
     Local Existing Instance PO.t_equiv.
-    
+
     Lemma f_bottom {f : A -> B} : morph f -> L.eq (f bottom) bottom.
     Proof.
       intros MF. unfold bottom.
@@ -1275,7 +1275,7 @@ Module Frame.
     Context {A OA} {tA : t A OA}.
 
     Local Existing Instance PO.t_equiv.
-    
+
     Lemma morph_id : morph OA OA (fun x => x).
     Proof.
       intros. constructor. apply L.morph_id. apply L.
