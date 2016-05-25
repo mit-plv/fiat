@@ -14,14 +14,14 @@ Local Open Scope grammar_fixedpoint_scope.
 
 Section general_fold.
   Context {Char : Type} {T : Type}.
-  Context {fgdata : @fold_grammar_data Char T}
-          {fpdata : @grammar_fixedpoint_lattice_data T}
+  Context {fpdata : @grammar_fixedpoint_lattice_data T}
+          {fgdata : @fold_grammar_data Char state}
           (G : pregrammar' Char).
 
   Definition fold_constraints
-             (fold_nt : default_nonterminal_carrierT -> T)
+             (fold_nt : default_nonterminal_carrierT -> state)
              (nt : default_nonterminal_carrierT)
-    : T
+    : state
     := fold_productions'
          (fun nt => fold_nt (@of_nonterminal _ (@rdp_list_predata _ G) nt))
          (Lookup_idx G nt).
@@ -44,7 +44,7 @@ Section general_fold.
 
   Definition fixedpoint_from_fold : grammar_fixedpoint_data.
   Proof.
-    refine {| state := T;
+    refine {| prestate := T;
               step_constraints folder nt st := fold_constraints folder nt;
               lattice_data := fpdata |}.
     { repeat intro; apply fold_constraints_Proper; assumption. }
@@ -54,19 +54,19 @@ End general_fold.
 
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
-  Context {FGD : fold_grammar_data Char T}
-          {fpdata : @grammar_fixedpoint_lattice_data T}
+  Context {fpdata : @grammar_fixedpoint_lattice_data T}
+          {FGD : fold_grammar_data Char state}
           (G : pregrammar' Char).
 
   Class fold_fix_grammar_correctness_computational_data :=
-    { Pnt : default_nonterminal_carrierT -> T -> Type;
-      Ppat : production Char -> T -> Type;
-      Ppats : productions Char -> T -> Type }.
+    { Pnt : default_nonterminal_carrierT -> state -> Type;
+      Ppat : production Char -> state -> Type;
+      Ppats : productions Char -> state -> Type }.
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
-  Global Instance fold_fix_of_fold_ccdata_compat {_ : @fold_grammar_correctness_computational_data Char T G}
+  Global Instance fold_fix_of_fold_ccdata_compat {_ : @fold_grammar_correctness_computational_data Char state G}
     : fold_fix_grammar_correctness_computational_data
     := { Pnt nt := Fold.Pnt initial_nonterminals_data (to_nonterminal nt);
          Ppat := Fold.Ppat initial_nonterminals_data;
@@ -79,16 +79,16 @@ Section fold_correctness.
           -> Ppats (Lookup_idx G nt) value
           -> Pnt nt value;
       Pnt_bottom : forall nt,
-          is_valid_nonterminal initial_nonterminals_data nt = false
-          -> Pnt nt ⊥;
-      Pnt_init : forall nt,
           is_valid_nonterminal initial_nonterminals_data nt = true
-          -> Pnt nt (initial_state (*nt*));
-      Pnt_glb : forall nt a b,
+          -> Pnt nt ⊥;
+      Pnt_top : forall nt,
+          is_valid_nonterminal initial_nonterminals_data nt = false
+          -> Pnt nt ⊤;
+      Pnt_lub : forall nt a b,
           is_valid_nonterminal initial_nonterminals_data nt = true
           -> Pnt nt a
           -> Pnt nt b
-          -> Pnt nt (a ⊓ b);
+          -> Pnt nt (a ⊔ b);
       Ppat_nil : Ppat nil on_nil_production;
       Ppat_cons_nt : forall nt xs p ps,
                        Pnt (of_nonterminal nt) p

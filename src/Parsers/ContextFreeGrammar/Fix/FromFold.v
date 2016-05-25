@@ -17,8 +17,8 @@ Local Open Scope grammar_fixedpoint_scope.
 
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
-  Context {FGD : fold_grammar_data Char T}
-          {fpdata : @grammar_fixedpoint_lattice_data T}
+  Context {fpdata : @grammar_fixedpoint_lattice_data T}
+          {FGD : fold_grammar_data Char state}
           (G : pregrammar' Char).
 
   Let predata := @rdp_list_predata _ G.
@@ -62,10 +62,10 @@ Section fold_correctness.
     unfold fold_grammar.
     intro.
     apply pre_Fix_grammar_fixedpoint_correct_stronger.
-    { apply Pnt_init. }
     { apply Pnt_bottom. }
+    { apply Pnt_top. }
     { intros ?? Hinvalid Hbot Hvalid.
-      apply Pnt_glb; [ assumption | solve [ eauto ] | ].
+      apply Pnt_lub; [ assumption | solve [ eauto ] | ].
       unfold step_constraints, fixedpoint_from_fold.
       unfold fold_constraints.
       apply Pnt_lift; [ assumption | ].
