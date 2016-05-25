@@ -443,6 +443,15 @@ Section parser.
     t'' H (@bool_eq_from_get);
       apply H; intro; erewrite <- !msafe_get_eq by eassumption; trivial.
   Qed.
+  Next Obligation.
+  Proof.
+    let H := fresh in
+    t'' H (@strings_nontrivial);
+      edestruct H as [str Hlen]; (eexists (exist _ (cnew str) _));
+        erewrite @mlength_eq by eapply cnew_R; eassumption.
+    Grab Existential Variables.
+    eexists; eapply cnew_R.
+  Qed.
 
   Local Program Instance adt_based_StringIsoProperties : @StringIsoProperties Ascii.ascii adt_based_StringLikeMin _ _
     := { }.

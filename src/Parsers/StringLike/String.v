@@ -1,4 +1,5 @@
 (** * Definitions of some specific string-like types *)
+Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
@@ -73,7 +74,7 @@ Local Ltac t :=
            | _ => rewrite Nat.add_1_r
            | _ => rewrite <- Min.min_assoc
            | [ H : ?x = Some _ |- context[match ?x with _ => _ end] ] => rewrite H
-           | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct
+           | _ => progress rewrite ?string_beq_correct, ?ascii_beq_correct, ?string_copy_length
            | [ H : _ |- _ ] => progress rewrite ?string_beq_correct, ?ascii_beq_correct in H
            | [ |- context[min ?m (?m - ?n)] ]
              => replace (min m (m - n)) with (m - max 0 n)
@@ -106,7 +107,10 @@ Local Ltac t :=
          end.
 
 Global Instance string_stringlike_properties : StringLikeProperties Ascii.ascii.
-Proof. split; t. Qed.
+Proof.
+  refine {| strings_nontrivial n := ex_intro (fun str : String => length str = n) (string_copy n "."%char) _ |};
+    t.
+Qed.
 
 Global Instance string_stringiso_properties : StringIsoProperties Ascii.ascii.
 Proof. split; t. Qed.

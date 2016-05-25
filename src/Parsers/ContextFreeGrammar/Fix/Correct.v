@@ -22,7 +22,7 @@ Section grammar_fixedpoint.
   Lemma pre_Fix_grammar_fixedpoint_correct_valid
         (P : default_nonterminal_carrierT -> state gdata -> Type)
         (Pinit : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt)
-                            -> P nt (initial_state nt))
+                            -> P nt (initial_state (*nt*)))
         (IH : forall nt st v,
             st nt = v
             -> is_true (is_valid_nonterminal initial_nonterminals_data nt)
@@ -48,7 +48,7 @@ Section grammar_fixedpoint.
       eauto. }
     pose proof (fun nt (pf : is_true (is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt))
                 => match eq_sym pf in (_ = b)
-                         return (if b then initial_state nt else ⊥) =
+                         return (if b then initial_state (*nt*) else ⊥) =
                                 lookup_state (aggregate_state_max gdata G) nt
                                 -> _
                    with
@@ -93,7 +93,7 @@ Section grammar_fixedpoint.
   Lemma pre_Fix_grammar_fixedpoint_correct
         (P : default_nonterminal_carrierT -> state gdata -> Type)
         (Pinit : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt)
-                            -> P nt (initial_state nt))
+                            -> P nt (initial_state (*nt*)))
         (Pbot : forall nt, is_valid_nonterminal initial_nonterminals_data nt = false
                            -> P nt ⊥)
         (IH : forall nt st v,
@@ -112,7 +112,7 @@ Section grammar_fixedpoint.
   Lemma pre_Fix_grammar_fixedpoint_correct_stronger'
         (P : default_nonterminal_carrierT -> state gdata -> Type)
         (Pinit : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt)
-                            -> P nt (initial_state nt))
+                            -> P nt (initial_state (*nt*)))
         (Pbot : forall nt, is_valid_nonterminal initial_nonterminals_data nt = false
                            -> P nt ⊥)
         (IH : forall nt st,
@@ -143,7 +143,7 @@ Section grammar_fixedpoint.
     pose proof (fun nt
                 => match is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt as b
                          return is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt = b
-                                -> (if b then initial_state nt else ⊥) =
+                                -> (if b then initial_state (*nt*) else ⊥) =
                                    lookup_state (aggregate_state_max gdata G) nt
                                 -> _
                    with
@@ -209,7 +209,7 @@ Section grammar_fixedpoint.
   Lemma pre_Fix_grammar_fixedpoint_correct_stronger
         (P : default_nonterminal_carrierT -> state gdata -> Type)
         (Pinit : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt)
-                            -> P nt (initial_state nt))
+                            -> P nt (initial_state (*nt*)))
         (Pbot : forall nt, is_valid_nonterminal initial_nonterminals_data nt = false
                            -> P nt ⊥)
         (IH : forall nt st,

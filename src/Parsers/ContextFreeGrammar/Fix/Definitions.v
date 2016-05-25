@@ -22,7 +22,7 @@ Class grammar_fixedpoint_lattice_data state :=
     : forall a b, state_le (greatest_lower_bound a b) b;
     (*greatest_lower_bound_greatest
     : forall a b c, state_le c a -> state_le c b -> state_le c (greatest_lower_bound a b);*)
-    initial_state : default_nonterminal_carrierT -> state;
+    initial_state : state;
     bottom : state;
     bottom_bottom : forall st, state_le bottom st;
     state_lt_wf : well_founded state_lt;
