@@ -25,7 +25,7 @@ Section fold_correctness.
   Local Existing Instance predata.
 
   Definition fold_grammar : aggregate_state (fixedpoint_from_fold G)
-    := pre_Fix_grammar _ G.
+    := pre_Fix_grammar _ initial_nonterminals_data.
 
   Context {FGCD : fold_fix_grammar_correctness_data G}.
 

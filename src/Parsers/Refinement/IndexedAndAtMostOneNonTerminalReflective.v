@@ -1107,16 +1107,16 @@ Section IndexedImpl.
                  | _ => reflexivity
                  end
         ). }
-    { abstract (
+    {  abstract (
           repeat match goal with
                    | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
                    | _ => progress subst
                    | [ H : collapse_length_result ?e = Some _ |- _ ]
-                     => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
+                     => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
                    | _ => intro
                    | [ H : length_of_any ?G ?nt = same_length ?n,
                            p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
+                     => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
                  end;
           fin2
         ). }
@@ -1138,16 +1138,16 @@ Section IndexedImpl.
                    | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
                  end
          ). }
-    {  abstract (
+    { abstract (
           repeat match goal with
                    | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
                    | _ => progress subst
                    | [ H : collapse_length_result ?e = Some _ |- _ ]
-                     => (revert H; case_eq e; simpl; [ | intros; congruence.. ])
+                     => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
                    | _ => intro
                    | [ H : length_of_any ?G ?nt = same_length ?n,
                            p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (@has_only_terminals_parse_of_item_length _ _ _ G n nt H str p); clear H)
+                     => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
                  end;
           fin2
         ). }
