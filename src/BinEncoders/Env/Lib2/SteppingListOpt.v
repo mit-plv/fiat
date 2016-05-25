@@ -15,166 +15,270 @@ Section SteppingList.
   Variable A_halt : A.
   Variable A_halt_dec : forall a, {a = A_halt} + {~ a = A_halt}.
   Variable A_predicate : A -> Prop.
-  Variable A_encode : A -> CacheEncode -> B * CacheEncode.
+  Variable A_predicate_halt : A_predicate A_halt.
+  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
-  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode A_decode.
+  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode.
 
   Variable P_predicate : P -> Prop.
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
-  Variable P_encode : P -> CacheEncode -> B * CacheEncode.
+  Variable P_encode_Spec : P -> CacheEncode -> Comp (B * CacheEncode).
   Variable P_decode : B -> CacheDecode -> option (P * B * CacheDecode).
-  Variable P_decode_pf : encode_decode_correct_f cache transformer P_predicate P_encode P_decode.
+  Variable P_decode_pf : encode_decode_correct_f cache transformer P_predicate P_encode_Spec P_decode.
 
-  Variable X_encode : bool -> CacheEncode -> B * CacheEncode.
+  Variable X_encode_Spec : bool -> CacheEncode -> Comp (B * CacheEncode).
   Variable X_decode : B -> CacheDecode -> option (bool * B * CacheDecode).
-  Variable X_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) X_encode X_decode.
+  Variable X_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) X_encode_Spec X_decode.
 
   Variable cacheAdd : CacheAdd cache (list A * P).
   Variable cacheGet : CacheGet cache (list A) P.
   Variable cachePeek : CachePeek cache P.
 
-  Fixpoint encode_list_step (l : list A) (ce : CacheEncode) : B * CacheEncode :=
+  Fixpoint encode_list_step_Spec (l : list A) (ce : CacheEncode)
+    : Comp (B * CacheEncode) :=
     match l with
-    | nil => let (b1, e1) := X_encode false ce in
-             let (b2, e2) := A_encode A_halt e1 in
-                 (transform b1 b2, e2)
+    | nil => `(b1, e1) <- X_encode_Spec false ce;
+             `(b2, e2) <- A_encode_Spec A_halt e1;
+             ret (transform b1 b2, e2)
     | cons x l' =>
       match getE ce l with
       | Some position =>
-        if P_predicate_dec position
-        then let (b1, e1) := X_encode true ce in
-             let (b2, e2) := P_encode position e1 in
-                 (transform b1 b2, e2)
-        else let (b1, e1) := X_encode false ce in
-             let (b2, e2) := A_encode x e1 in
-             let (b3, e3) := encode_list_step l' e2 in
-                 (transform (transform b1 b2) b3, addE e3 (l, peekE ce))
-      | None => let (b1, e1) := X_encode false ce in
-                let (b2, e2) := A_encode x e1 in
-                let (b3, e3) := encode_list_step l' e2 in
-                    (transform (transform b1 b2) b3, addE e3 (l, peekE ce))
+        b <- {b : bool | True};
+          If b Then (* Nondeterministically pick whether to use a cached value. *)
+           If (P_predicate_dec position)
+           Then (`(b1, e1) <- X_encode_Spec true ce;
+                `(b2, e2) <- P_encode_Spec position e1;
+                  ret (transform b1 b2, e2))
+           Else (`(b1, e1) <- X_encode_Spec false ce;
+             `(b2, e2) <- A_encode_Spec x e1;
+             `(b3, e3) <- encode_list_step_Spec l' e2;
+             ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
+           Else
+           (`(b1, e1) <- X_encode_Spec false ce;
+              `(b2, e2) <- A_encode_Spec x e1;
+              `(b3, e3) <- encode_list_step_Spec l' e2;
+              ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
+      | None => `(b1, e1) <- X_encode_Spec false ce;
+                     `(b2, e2) <- A_encode_Spec x e1;
+                     `(b3, e3) <- encode_list_step_Spec l' e2;
+                     ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce))
       end
-    end.
+    end%comp.
 
+  (* Fuel isn't playing well with our data invariants... *)
+  (* Need a better measure function. *)
   Fixpoint decode'_list_step (f : nat) (b : B) (cd : CacheDecode) : option (list A * B * CacheDecode) :=
-    `(br, b1, e1) <- X_decode b cd;
-      If br Then
-       `(ps, b2, e2) <- P_decode b1 e1;
-        match getD cd ps with
-        | Some l => Some (l, b2, e2)
-        | None => None (* bogus *)
-        end
-      Else
-        (`(a , b2, e2) <- A_decode b1 e1;
-           If A_halt_dec a Then
-              Some (nil, b2, e2)
+    match f with
+    | O => None (* bogus *)
+    | S f' =>
+      `(br, b1, e1) <- X_decode b cd;
+        If br Then
+           `(ps, b2, e2) <- P_decode b1 e1;
+            match getD cd ps with
+            | Some [] => None (* bogus *)
+            | Some l => Some (l, b2, e2)
+            | None => None (* bogus *)
+            end
               Else
-              match f with
-              | O => None (* bogus *)
-              | S f' => `(l, b3, e3) <- decode'_list_step f' b2 e2;
-                          Some (a :: l, b3, addD e3 (a :: l, peekD cd))
-              end).
+              (`(a , b2, e2) <- A_decode b1 e1;
+                 If A_halt_dec a Then
+                    Some (nil, b2, e2)
+                    Else
+                    (`(l, b3, e3) <- decode'_list_step f' b2 e2;
+                       Some (a :: l, b3, addD e3 (a :: l, peekD cd))))
+    end.
 
   Definition decode_list_step := decode'_list_step fuel.
 
   Theorem SteppingList_decode_correct :
     encode_decode_correct_f
       cache transformer
-      (fun ls => A_predicate A_halt /\ |ls| <= fuel /\ (forall x, In x ls -> A_predicate x /\
-                                                                             ~ x = A_halt))
-      encode_list_step decode_list_step.
+      (fun ls => (forall x, In x ls -> A_predicate x /\ ~ x = A_halt))
+      encode_list_step_Spec decode_list_step.
   Proof.
-    unfold encode_decode_correct_f.
-    intros env xenv xenv' l l' ext Eeq [Ppredh [PPredlen PPredA]] Penc;
+    unfold encode_decode_correct_f; split.
+    { intros env xenv xenv' l l' ext Eeq Ppredh Penc;
       subst.
-    unfold decode_list_step in *; simpl in *.
-    generalize dependent l'; generalize dependent fuel; clear fuel;
-      generalize dependent env; 
-      generalize dependent xenv; 
-      generalize ext; generalize dependent xenv';
-    induction l; intros; simpl in *.
-    { destruct (X_encode false env) eqn: ?.
-      destruct (A_encode A_halt c) eqn: ?.
-      inversion Penc; subst; clear Penc.
-      destruct (X_decode_pf _ _ _ _ _ (transform b0 ext0) Eeq I Heqp) as [? [? ?]]; subst.
-      rewrite <- transform_assoc.
-      destruct fuel eqn: ?; subst; simpl in *.
-      { rewrite H; simpl.
-        destruct (A_decode_pf _ _ _ _ _ ext0 H0 Ppredh Heqp0) as [? [? ?]]; subst.
-        rewrite H1.
-        simpl.
-        destruct (A_halt_dec A_halt); simpl; eexists; eauto.
-        congruence.
-      }
-      { rewrite H; simpl.
-        destruct (A_decode_pf _ _ _ _ _ ext0 H0 Ppredh Heqp0) as [? [? ?]]; subst.
-        rewrite H1.
-        simpl.
-        destruct (A_halt_dec A_halt); simpl; eexists; eauto.
-        congruence.
-      } 
-    }
-    destruct fuel; try omega; simpl.
-    destruct (getE env (a :: l)) eqn: ?.
-    - destruct (P_predicate_dec p).
-      + destruct (X_encode true env) eqn: ? ;
-          destruct (P_encode p c) eqn: ?; intros; injections.
-        destruct (X_decode_pf _ _ _ _ _ (transform b0 ext0) Eeq I Heqp1) as [? [? ?]]; subst.
-        rewrite <- transform_assoc; rewrite H; simpl.
-        destruct (P_decode_pf _ _ _ _ _ ext0 H0 p0 Heqp0) as [? [? ?]];
-          subst; rewrite H1; simpl.
-        eapply get_correct in Heqo; eauto; rewrite Heqo.
-        eauto.
-      + destruct (X_encode false env) eqn: ? ;
-          destruct (P_encode p c) eqn: ?; intros; injections.
-        destruct (A_encode a c) eqn: ?.
-        destruct (encode_list_step l c1) eqn: ?.
+      unfold decode_list_step in *; simpl in *.
+      generalize dependent l'; generalize dependent fuel; clear fuel;
+        generalize dependent env;
+        generalize dependent xenv;
+        generalize ext; generalize dependent xenv';
+          induction l; intros; simpl in *.
+      { unfold Bind2 in *; computes_to_inv; subst.
+        destruct v; destruct v0.
         injections.
-        destruct (X_decode_pf _ _ _ _ _ (transform b1 (transform b2 ext0))
-                              Eeq I Heqp0) as [? [? ?]]; subst.
-        rewrite <- !transform_assoc; rewrite H; simpl.
-        destruct (A_decode_pf _ _ _ _ _ (transform b2 ext0) H0 (proj1 (PPredA _ (or_introl _ eq_refl))) Heqp2) as [? [? ?]]; subst.
-        rewrite H1; simpl.
-        destruct (A_halt_dec a); simpl.
-        elimtype False; apply (proj2 (PPredA _ (or_introl _ eq_refl)));
+        destruct (proj1 X_decode_pf _ _ _ _ _ (transform b0 ext0) Eeq I Penc) as [? [? ?]]; subst.
+        rewrite <- transform_assoc.
+        destruct fuel eqn: ?; subst; simpl in *.
+
+        { rewrite H; simpl.
+          destruct (proj1 A_decode_pf _ _ _ _ _ ext0 H0 A_predicate_halt Penc') as [? [? ?]]; subst.
+          rewrite H1.
+          simpl.
+          destruct (A_halt_dec A_halt); simpl; eexists; eauto.
+          congruence.
+        }
+      }
+      destruct fuel; try omega; simpl.
+      destruct (getE env (a :: l)) eqn: ?.
+      computes_to_inv.
+      destruct v; simpl in Penc'.
+      { (* Case where the encoder decided to use compression. *)
+        destruct (P_predicate_dec p); simpl in Penc';
+        unfold Bind2 in Penc'; computes_to_inv; injections;
+        subst; destruct v; destruct v0.
+        - destruct (proj1 X_decode_pf _ _ _ _ _ (transform b0 ext0) Eeq I Penc') as [? [? ?]]; subst.
+          rewrite <- transform_assoc; simpl; rewrite H; simpl.
+          destruct (proj1 P_decode_pf _ _ _ _ _ ext0 H0 p0 Penc'') as [? [? ?]];
+            subst; rewrite H1; simpl.
+          eapply get_correct in Heqo; eauto; rewrite Heqo.
           eauto.
-        eapply (fun H => IHl H _ ext0) in Heqp3; intros.
-        destruct_ex; intuition.
-        rewrite H4; simpl.
-        eexists; intuition eauto.
-        erewrite peek_correct.
-        eapply add_correct.
+        - destruct v1.
+          destruct (proj1 X_decode_pf _ _ _ _ _ (transform b0 (transform b1 ext0))
+                          Eeq I Penc') as [? [? ?]]; subst.
+          rewrite <- !transform_assoc; simpl. rewrite H; simpl.
+          destruct (proj1 A_decode_pf _ _ _ _ _ (transform b1 ext0) H0 (proj1 (PPredlen _ (or_introl _ eq_refl))) Penc'') as [? [? ?]]; subst.
+          rewrite H1; simpl.
+          destruct (A_halt_dec a); simpl.
+          elimtype False; apply (proj2 (PPredlen _ (or_introl _ eq_refl)));
+            eauto.
+          eapply (fun H => IHl H _ ext0) in Penc'''; intros.
+          destruct_ex; intuition.
+          rewrite H4; simpl.
+          eexists; intuition eauto.
+          erewrite peek_correct.
+          eapply add_correct.
+          eauto.
+          eauto.
+          eapply PPredlen; eauto.
+          eauto.
+          omega.
+      }
+      {
+        unfold Bind2 in Penc'; computes_to_inv; injections;
+        subst; destruct v; destruct v0; destruct v1.
+        - destruct (proj1 X_decode_pf _ _ _ _ _ (transform b0 (transform b1 ext0)) Eeq I Penc') as [? [? ?]]; subst.
+          rewrite <- !transform_assoc; simpl; rewrite H; simpl.
+          destruct (proj1 A_decode_pf _ _ _ _ _ (transform b1 ext0) H0 (proj1 (PPredlen _ (or_introl _ eq_refl))) Penc'') as [? [? ?]]; subst.
+          rewrite H1; simpl.
+          destruct (A_halt_dec a); simpl.
+          elimtype False; apply (proj2 (PPredlen _ (or_introl _ eq_refl)));
+            eauto.
+          eapply (fun H => IHl H _ ext0) in Penc'''; intros.
+          destruct_ex; intuition.
+          rewrite H4; simpl.
+          eexists; intuition eauto.
+          erewrite peek_correct.
+          eapply add_correct.
+          eauto.
+          eauto.
+          eapply PPredlen; eauto.
+          eauto.
+          omega.
+      }
+      - unfold Bind2 in Penc; computes_to_inv; injections;
+            subst; destruct v; destruct v0; destruct v1;
+              simpl in *.
+          destruct (proj1 X_decode_pf _ _ _ _ _ (transform b0 (transform b1 ext0))
+                                Eeq I Penc) as [? [? ?]]; subst.
+          rewrite <- !transform_assoc; rewrite H; simpl.
+          destruct (proj1 A_decode_pf _ _ _ _ _ (transform b1 ext0) H0 (proj1 (PPredlen _ (or_introl _ eq_refl))) Penc') as [? [? ?]]; subst.
+          rewrite H1; simpl.
+          destruct (A_halt_dec a); simpl.
+          elimtype False; apply (proj2 (PPredlen _ (or_introl _ eq_refl)));
+            eauto.
+          eapply (fun H => IHl H _ ext0) in Penc''; intros.
+          destruct_ex; intuition.
+          rewrite H4; simpl.
+          eexists; intuition eauto.
+          erewrite peek_correct.
+          eapply add_correct.
+          eauto.
+          eauto.
+          eapply PPredlen; eauto.
+          eauto.
+          omega.
+      }
+    { unfold decode_list_step, encode_list_step_Spec.
+      induction fuel; simpl; intros.
+      - discriminate.
+      - destruct (X_decode bin env')
+          as [ [ [ [ | ] ?] ?] | ] eqn: ?; simpl in *; try discriminate.
+        destruct (P_decode b c)
+          as [ [ [ ? ?] ?] | ] eqn: ?; simpl in *; try discriminate.
+        destruct (getD env' p) eqn: ?; simpl in *; try discriminate.
+        injections.
+        destruct l; try discriminate; injections.
+        eapply (proj2 X_decode_pf) in Heqo; destruct_ex;
+          intuition eauto; subst.
+        eapply (proj2 P_decode_pf) in Heqo0; destruct_ex;
+          intuition eauto; subst.
+        simpl.
+        rewrite (proj2 (get_correct _ _ _ _ H) Heqo1).
+        eexists; eexists; intuition eauto.
+        computes_to_econstructor.
+        apply (@PickComputes _ _ true); eauto.
+        simpl.
+        destruct (P_predicate_dec p).
+        repeat computes_to_econstructor; eauto.
+        intuition.
+        simpl; rewrite transform_assoc; reflexivity.
+        (* Need better invariants on the cache for these proofs *)
+        (* to go through :p *)
+        Focus 6.
+        { destruct (A_decode b c)
+            as [ [ [ ? ?] ?] | ] eqn: ?; simpl in *; try discriminate.
+          eapply (proj2 X_decode_pf) in Heqo; eauto; destruct_ex;
+            intuition eauto; subst.
+          eapply (proj2 A_decode_pf) in Heqo0; eauto; destruct_ex;
+            intuition eauto; subst.
+          destruct (A_halt_dec a); simpl in *.
+          - injections; simpl.
+            eexists; eexists; intuition.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            simpl; rewrite transform_assoc; reflexivity.
+            eauto.
+          - destruct (decode'_list_step n b0 c0)
+              as [ [ [ ? ?] ?] | ] eqn: ?; simpl in *; try discriminate.
+            simpl in H0; injections.
+            eapply IHn in Heqo; eauto; destruct_ex; intuition;
+              subst; eauto.
+            destruct (getE env (a :: l)) eqn : ? .
+            eexists; eexists; intuition eauto.
+            computes_to_econstructor.
+            apply (@PickComputes _ _ false); eauto.
+            simpl.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            rewrite !transform_assoc; reflexivity.
+            simpl; omega.
+            simpl in *; intuition subst; eauto.
+            eapply H11; eauto.
+            simpl in *; intuition subst; eauto.
+            eapply H11; eauto.
+            simpl.
+            erewrite peek_correct; eauto.
+            eapply add_correct; eauto.
+            eexists; eexists; intuition eauto.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            computes_to_econstructor; eauto.
+            rewrite !transform_assoc; reflexivity.
+            simpl; omega.
+            simpl in *; intuition subst; eauto.
+            eapply H11; eauto.
+            simpl in *; intuition subst; eauto.
+            eapply H11; eauto.
+            simpl.
+            erewrite peek_correct; eauto.
+            eapply add_correct; eauto.
+        }
+
+        Grab Existential Variables.
         eauto.
         eauto.
-        eapply PPredA; eauto.
-        eauto.
-        omega.
-    - destruct (X_encode false env) eqn: ? ;
-        destruct (A_encode a c) eqn: ?.
-      destruct (encode_list_step l c0) eqn: ?.
-      injections.
-      destruct (X_decode_pf _ _ _ _ _ (transform b0 (transform b1 ext0))
-                            Eeq I Heqp) as [? [? ?]]; subst.
-      rewrite <- !transform_assoc; rewrite H; simpl.
-      destruct (A_decode_pf _ _ _ _ _ (transform b1 ext0) H0 (proj1 (PPredA _ (or_introl _ eq_refl))) Heqp0) as [? [? ?]]; subst.
-      rewrite H1; simpl.
-      destruct (A_halt_dec a); simpl.
-      elimtype False; apply (proj2 (PPredA _ (or_introl _ eq_refl)));
-        eauto.
-      eapply (fun H => IHl H _ ext0) in Heqp1; intros.
-      destruct_ex; intuition.
-      rewrite H4; simpl.
-      eexists; intuition eauto.
-      erewrite peek_correct.
-      eapply add_correct.
-      eauto.
-      eauto.
-      eapply PPredA; eauto.
-      eauto.
-      omega.
-      Grab Existential Variables.
-      eauto.
-      eauto.
   Qed.
 End SteppingList.
-

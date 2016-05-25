@@ -15,11 +15,20 @@ Section String.
   Context {transformer : Transformer B}.
   Context {transformerUnit : TransformerUnitOpt transformer bool}.
 
-  Fixpoint encode_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
+  Fixpoint encode_string_Spec (xs : string) (ce : CacheEncode)
+    : Comp (B * CacheEncode) :=
+    match xs with
+    | EmptyString => ret (transform_id, ce)
+    | String x xs' => `(b1, env1) <- encode_ascii_Spec x ce;
+                      `(b2, env2) <- encode_string_Spec xs' env1;
+                      ret (transform b1 b2, env2)
+    end%comp.
+
+    Fixpoint encode_string_Impl (xs : string) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
     | EmptyString => (transform_id, ce)
-    | String x xs' => let (b1, env1) := encode_ascii x ce in
-                      let (b2, env2) := encode_string xs' env1 in
+    | String x xs' => let (b1, env1) := encode_ascii_Impl x ce in
+                      let (b2, env2) := encode_string_Impl xs' env1 in
                           (transform b1 b2, env2)
     end.
 
@@ -31,31 +40,50 @@ Section String.
               Some (String x xs, b2, e2)
     end.
 
-  Local Opaque encode_ascii.
+  Local Opaque encode_ascii_Spec.
+  Local Opaque encode_ascii_Impl.
   Theorem String_decode_correct :
     forall sz,
       encode_decode_correct_f
         cache transformer
         (fun ls => length ls = sz)
-        encode_string (decode_string sz).
+        encode_string_Spec (decode_string sz).
   Proof.
-    intros ? env env' xenv l l' ext Eeq Ppred Penc.
-    subst.
-    generalize dependent env.
-    revert env' xenv l'.
-    induction l.
-    { intros.
-      inversion Penc; subst; clear Penc.
-      rewrite transform_id_left; eexists; intuition eauto.  }
-    { intros.
-      simpl in *.
-      destruct (encode_ascii a env) eqn: ?.
-      destruct (encode_string l c) eqn: ?.
-      injection Penc; intros; subst.
-      destruct (Ascii_decode_correct _ _ _ _ _ (transform b0 ext) Eeq I Heqp) as [? [? ?] ].
-      rewrite <- transform_assoc, H; simpl.
-      destruct (IHl _ _ _ _ H0 Heqp0) as [? [? ?] ].
+    split.
+    { intros env env' xenv l l' ext Eeq Ppred Penc.
+      subst.
+      generalize dependent env.
+      revert env' xenv l'.
+      induction l.
+      { intros.
+        inversion Penc; subst; clear Penc.
+        rewrite transform_id_left; eexists; intuition eauto.  }
+      { intros.
+        simpl in *.
+        unfold Bind2 in *; computes_to_inv; subst.
+        injection Penc''; intros; subst.
+        destruct v; destruct v0.
+        destruct (proj1 Ascii_decode_correct _ _ _ _ _ (transform b0 ext) Eeq I Penc) as [? [? ?] ].
+      simpl. rewrite <- transform_assoc, H; simpl.
+      destruct (IHl _ _ _ _ H0 Penc') as [? [? ?] ].
       rewrite H1; simpl; eexists; eauto.
+      }
     }
+    { induction sz; simpl; intros.
+      { injections; repeat eexists; eauto using transform_id_left. }
+      { destruct (decode_ascii bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate.
+        destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate; injections.
+        eapply (proj2 Ascii_decode_correct) in Heqo; eauto;
+          destruct_ex; intuition; subst.
+        eapply IHsz in Heqo0; eauto; destruct_ex; intuition; subst.
+        simpl.
+        eexists; eexists; intuition eauto.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        rewrite transform_assoc; reflexivity.
+      }
+    } 
   Qed.
 End String.

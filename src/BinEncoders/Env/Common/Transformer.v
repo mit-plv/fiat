@@ -20,4 +20,10 @@ Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
     transform_push_pop_opt :
       forall t m, transform_pop_opt (transform_push_opt t m) = Some (t, m);
     transform_push_step_opt : forall t m n, transform (transform_push_opt t m) n =
-                                            transform_push_opt t (transform m n) }.
+                                            transform_push_opt t (transform m n);
+    transform_pop_opt_inj :
+      forall t m b b',
+        transform_pop_opt b = Some (t, m) ->
+        transform_pop_opt b' = Some (t, m) ->
+        b = b'
+  }.

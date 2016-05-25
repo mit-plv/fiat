@@ -38,9 +38,15 @@ Section Enum.
     clear; induction 1; eauto.
   Qed.
 
-  Definition encode_enum (i : BoundedIndex ta) (ce : CacheEncode) : B * CacheEncode :=
+  Definition encode_enum_Spec (i : BoundedIndex ta) (ce : CacheEncode) :
+    Comp (B * CacheEncode) :=
     let fin := i.(indexb).(ibound)
-    in  encode_word (nth tb fin) ce.
+    in  encode_word_Spec (nth tb fin) ce.
+
+  Definition encode_enum_Impl (i : BoundedIndex ta) (ce : CacheEncode) :
+    B * CacheEncode :=
+    let fin := i.(indexb).(ibound)
+    in  encode_word_Impl (nth tb fin) ce.
 
   Fixpoint word_indexed {n : nat}
            (w : word sz)
@@ -59,7 +65,7 @@ Section Enum.
              (cd : CacheDecode)
     : option (BoundedIndex ta * B * CacheDecode) :=
     `(w, b', cd') <- decode_word (sz:=sz) b cd;
-      Ifopt word_indexed w tb as i Then 
+      Ifopt word_indexed w tb as i Then
       Some ({| bindex := _;
           indexb := {| ibound := i;
                        boundi := eq_refl _ |} |}, b', cd')
@@ -98,23 +104,57 @@ Section Enum.
 
   Theorem Enum_decode_correct :
     NoDupVector tb
-    -> encode_decode_correct_f cache transformer (fun _ => True) encode_enum decode_enum.
+    -> encode_decode_correct_f cache transformer (fun _ => True) encode_enum_Spec decode_enum.
   Proof.
-    unfold encode_decode_correct, encode_enum, decode_enum.
-    intros ? env env' xenv c c' ext Eeq Ppred Penc.
-    destruct (Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
-    rewrite H0; simpl.
-    apply (word_indexed_correct _ (ibound (indexb c))) in H.
-    subst; simpl in *.
-    destruct (word_indexed (nth tb (ibound (indexb c))) tb);
-      intros; simpl in *.
-    + eexists; intuition eauto.
+    split; unfold encode_enum_Spec, decode_enum.
+    { intros env env' xenv c c' ext Eeq Ppred Penc.
+      destruct (proj1 Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+      rewrite H0; simpl.
+      apply (word_indexed_correct _ (ibound (indexb c))) in H.
+      subst; simpl in *.
+      destruct (word_indexed (nth tb (ibound (indexb c))) tb);
+        intros; simpl in *.
+      + eexists; intuition eauto.
+        repeat f_equal.
+        destruct c.
+        destruct indexb.
+        rewrite <- boundi.
+        simpl in H; subst.
+        reflexivity.
+      + intuition.
+    }
+    { intros.
+      destruct (decode_word bin env') as [ [ [? ?] ?] | ] eqn: ? ;
+          simpl in *; try discriminate.
+      destruct (word_indexed w tb) eqn: ? ;
+        simpl in *; try discriminate; injections.
+      eapply (proj2 Word_decode_correct) in Heqo; eauto;
+        destruct_ex; intuition; subst.
+      simpl.
+      unfold encode_word_Spec in H2; computes_to_inv; injections.
+      unfold encode_word_Spec; repeat eexists; eauto.
       repeat f_equal.
-      destruct c.
-      destruct indexb.
-      rewrite <- boundi.
-      simpl in H; subst.
-      reflexivity.
-    + intuition.
+      revert Heqo0; clear.
+      remember (S len) as n'; clear len Heqn'.
+      revert w tb; induction t.
+      - intros w tb; pattern n, tb;
+          eapply Vector.caseS; simpl.
+        intros; destruct (weqb w h) eqn: ?.
+        eapply weqb_true_iff; eauto.
+        destruct ( word_indexed w t); try discriminate.
+      - intros w tb.
+        revert w t IHt.
+        pattern n, tb; eapply Vector.rectS; simpl; intros.
+        inversion t.
+        intros; destruct (weqb w a) eqn: ?.
+        discriminate.
+        destruct (word_indexed w v) eqn : ? ; try discriminate.
+        eapply IHt.
+        rewrite Heqo.
+        f_equal.
+        eapply Fin.FS_inj.
+        revert Heqo0.
+        congruence.
+    }
   Qed.
 End Enum.

@@ -33,7 +33,7 @@ Fixpoint inj_SumType {n}
           | Vector.cons T n' v' => fun tag0 el1 => _
           end tag el).
   generalize v' (inj_SumType n' v') el1; pattern n', tag0.
-  eapply Fin.caseS; simpl. 
+  eapply Fin.caseS; simpl.
   - intros ? v'0 ? ?; destruct v'0; simpl.
     + eapply el0.
     + exact (inl el0).
@@ -105,4 +105,25 @@ Proof.
     + inversion tag.
     + f_equal.
       eapply IHtag.
+Qed.
+
+Lemma SumType_proj_inj {n} (v : Vector.t Type n):
+  forall tag (P : forall (tag : Fin.t n),
+                 VectorDef.nth v tag -> Type),
+  forall el,
+    P tag el ->
+    P (SumType_index v (inj_SumType v tag el))
+      (SumType_proj v (inj_SumType v tag el)).
+  induction v.
+  - simpl; inversion tag.
+  - intro; revert v IHv; pattern n, tag;
+      apply Fin.caseS.
+    + intros.
+      revert X.
+      destruct v; simpl; eauto.
+    + intros.
+      eapply (IHv _ (fun tag => P (Fin.FS tag))) in X.
+      simpl; destruct v.
+      * inversion p.
+      * apply X.
 Qed.

@@ -1,6 +1,7 @@
 Require Export
         Coq.Lists.List
         Fiat.Common
+        Fiat.Computation.Core
         Fiat.Computation.Notations
         Fiat.BinEncoders.Env.Common.Transformer
         Fiat.BinEncoders.Env.Common.Cache.
@@ -30,15 +31,24 @@ Section Specifications.
              (cache : Cache)
              (transformer : Transformer B)
              (predicate : A -> Prop)
-             (encode : A -> CacheEncode -> B * CacheEncode)
+             (encode : A -> CacheEncode -> Comp (B * CacheEncode))
              (decode : B -> CacheDecode -> option (A * B * CacheDecode)) :=
-    forall env env' xenv data bin ext,
+    (forall env env' xenv data bin ext,
       Equiv env env' ->
       predicate data ->
-      encode data env = (bin, xenv) ->
+      encode data env ↝ (bin, xenv) ->
       exists xenv',
         decode (transform bin ext) env' = Some (data, ext, xenv')
-        /\ Equiv xenv xenv'.
+        /\ Equiv xenv xenv') /\
+    (forall env env' xenv' data bin ext,
+      Equiv env env' ->
+      decode bin env' = Some (data, ext, xenv') ->
+      exists bin' xenv,
+        encode data env ↝ (bin', xenv)
+        /\ bin = transform bin' ext
+        /\ predicate data
+        /\ Equiv xenv xenv').
+
 
   Definition DecodeBindOpt2
              {C D}
