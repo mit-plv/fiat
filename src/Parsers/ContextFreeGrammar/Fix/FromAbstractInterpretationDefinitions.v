@@ -24,7 +24,22 @@ Section general_fold.
 
   Context {aidata : AbstractInterpretation}.
 
-  Context (G : pregrammar Char).
+  Context (G : pregrammar' Char).
+
+  Definition fold_item'
+             (fold_nt : default_nonterminal_carrierT -> T)
+             (it : item Char)
+    := match it with
+       | Terminal ch => on_terminal ch
+       | NonTerminal nt => fold_nt (@of_nonterminal _ (@rdp_list_predata _ G) nt)
+       end.
+
+  Lemma fold_item'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_item' f b = fold_item' g b.
+  Proof.
+    unfold fold_item'.
+    destruct b; rewrite ?ext; reflexivity.
+  Qed.
 
   Definition fold_production'
              (fold_nt : default_nonterminal_carrierT -> T)
@@ -33,19 +48,15 @@ Section general_fold.
          combine_production
          on_nil_production
          (List.map
-            (fun it =>
-               match it with
-               | Terminal ch => on_terminal ch
-               | NonTerminal nt => fold_nt (@of_nonterminal _ (@rdp_list_predata _ G) nt)
-               end)
+            (fold_item' fold_nt)
             its).
 
   Lemma fold_production'_ext {f g} (ext : forall b, f b = g b) b
   : fold_production' f b = fold_production' g b.
   Proof.
     unfold fold_production'.
-    induction b as [ | x ]; try reflexivity; simpl in *; [].
-    rewrite IHb; destruct x; rewrite ?ext; reflexivity.
+    induction b as [ | x ]; try reflexivity; simpl.
+    rewrite IHb, (fold_item'_ext ext); reflexivity.
   Qed.
 
   Definition fold_productions'

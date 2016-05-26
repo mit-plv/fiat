@@ -1,6 +1,8 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Arith.Arith Coq.ZArith.BinInt Coq.NArith.BinNat Coq.Bool.Bool.
 Require Import Coq.Classes.Morphisms.
 
+Local Coercion is_true : bool >-> Sortclass.
+
 Module Export Bool.
   Scheme Minimality for bool Sort Type.
   Scheme Minimality for bool Sort Set.
@@ -138,6 +140,12 @@ Section BoolFacts.
   Lemma not_andb_negb_iff {a b : bool} : (is_true a -> is_true b) <-> ~is_true (a && negb b).
   Proof.
     destruct a, b; simpl; intuition.
+  Qed.
+
+  Global Instance is_true_implb_impl_Proper_flip
+    : Proper (Basics.flip implb ==> Basics.flip Basics.impl) is_true.
+  Proof.
+    unfold Basics.flip, Basics.impl; intros [] []; simpl; tauto.
   Qed.
 End BoolFacts.
 

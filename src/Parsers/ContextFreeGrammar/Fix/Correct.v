@@ -28,14 +28,14 @@ Section grammar_fixedpoint.
             -> is_true (is_valid_nonterminal initial_nonterminals_data nt)
             -> P nt v
             -> P nt (v ⊓ step_constraints gdata st nt v))
-    : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt) -> P nt (lookup_state (pre_Fix_grammar gdata G) nt).
+    : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt) -> P nt (lookup_state (pre_Fix_grammar gdata initial_nonterminals_data) nt).
   Proof.
     specialize (fun nt st => IH nt st _ eq_refl).
     assert (Hvalid' : forall nt,
                is_true (is_valid_nonterminal initial_nonterminals_data nt)
                -> match FMapPositive.PositiveMap.find
                           (nonterminal_to_positive nt)
-                          (aggregate_state_max gdata G)
+                          (aggregate_state_max gdata initial_nonterminals_data)
                   with
                   | Some v => P nt v
                   | None => False
@@ -44,12 +44,13 @@ Section grammar_fixedpoint.
       pose proof (find_aggregate_state_max_spec gdata G (nonterminal_to_positive nt)) as Hvalid'.
       rewrite nonterminal_to_positive_to_nonterminal in Hvalid'.
       edestruct Hvalid' as [Hvalid'0 Hvalid'1].
+      simpl in *.
       rewrite Hvalid'1 by (split; [ reflexivity | assumption ]).
       eauto. }
     pose proof (fun nt (pf : is_true (is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt))
                 => match eq_sym pf in (_ = b)
                          return (if b then initial_state (*nt*) else ⊥) =
-                                lookup_state (aggregate_state_max gdata G) nt
+                                lookup_state (aggregate_state_max gdata initial_nonterminals_data) nt
                                 -> _
                    with
                    | eq_refl => eq_rect _ (P nt) (Pinit _ pf) _
@@ -62,11 +63,11 @@ Section grammar_fixedpoint.
       induction (Rwf v) as [a Ha IHa].
     rewrite Init.Wf.Fix_eq by (intros; edestruct Sumbool.sumbool_of_bool; trivial).
     edestruct Sumbool.sumbool_of_bool; [ intros; apply Pinit'; assumption | ].
-    fold (pre_Fix_grammar_helper (gdata := gdata) G) in *.
+    fold (pre_Fix_grammar_helper (gdata := gdata) initial_nonterminals_data) in *.
     destruct (aggregate_state_eq (aggregate_step a) a) eqn:Heq.
     { change (is_true (aggregate_state_eq (aggregate_step a) a)) in Heq.
       intros nt Hvalid.
-      remember (lookup_state (pre_Fix_grammar_helper G (aggregate_step a)) nt) as st eqn:Hst.
+      remember (lookup_state (pre_Fix_grammar_helper (@initial_nonterminals_data _ predata) (aggregate_step a)) nt) as st eqn:Hst.
       rewrite pre_Fix_grammar_helper_fixed in Hst by (rewrite !Heq; reflexivity).
       rewrite Heq in Hst.
       subst.
@@ -101,12 +102,12 @@ Section grammar_fixedpoint.
             -> is_true (is_valid_nonterminal initial_nonterminals_data nt)
             -> P nt v
             -> P nt (v ⊓ step_constraints gdata st nt v))
-    : forall nt, P nt (lookup_state (pre_Fix_grammar gdata G) nt).
+    : forall nt, P nt (lookup_state (pre_Fix_grammar gdata initial_nonterminals_data) nt).
   Proof.
     intro nt.
     destruct (is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt) eqn:Hvalid.
     { apply pre_Fix_grammar_fixedpoint_correct_valid; eauto with nocore. }
-    { rewrite lookup_state_invalid_pre_Fix_grammar by assumption. eauto with nocore. }
+    { simpl rewrite lookup_state_invalid_pre_Fix_grammar; [ | assumption ]. eauto with nocore. }
   Qed.
 
   Lemma pre_Fix_grammar_fixedpoint_correct_stronger'
@@ -119,17 +120,17 @@ Section grammar_fixedpoint.
             (forall nt', is_valid_nonterminal initial_nonterminals_data nt' = false -> st nt' = ⊥)
             -> (forall nt', P nt' (st nt'))
             -> P nt (st nt ⊓ step_constraints gdata st nt (st nt)))
-    : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt) -> P nt (lookup_state (pre_Fix_grammar gdata G) nt).
+    : forall nt, is_true (is_valid_nonterminal initial_nonterminals_data nt) -> P nt (lookup_state (pre_Fix_grammar gdata initial_nonterminals_data) nt).
   Proof.
-    assert (Hbot : forall nt', is_valid_nonterminal initial_nonterminals_data nt' = false -> lookup_state (aggregate_state_max gdata G) nt' = ⊥).
+    assert (Hbot : forall nt', is_valid_nonterminal initial_nonterminals_data nt' = false -> lookup_state (aggregate_state_max gdata initial_nonterminals_data) nt' = ⊥).
     { intros nt' Hinvalid.
-      rewrite lookup_state_aggregate_state_max; simpl in *; rewrite Hinvalid.
+      simpl rewrite lookup_state_aggregate_state_max; simpl in *; rewrite Hinvalid.
       reflexivity. }
     assert (Hvalid' : forall nt,
                is_true (is_valid_nonterminal initial_nonterminals_data nt)
                -> match FMapPositive.PositiveMap.find
                           (nonterminal_to_positive nt)
-                          (aggregate_state_max gdata G)
+                          (aggregate_state_max gdata initial_nonterminals_data)
                   with
                   | Some v => P nt v
                   | None => False
@@ -138,13 +139,13 @@ Section grammar_fixedpoint.
       pose proof (find_aggregate_state_max_spec gdata G (nonterminal_to_positive nt)) as Hvalid'.
       rewrite nonterminal_to_positive_to_nonterminal in Hvalid'.
       edestruct Hvalid' as [Hvalid'0 Hvalid'1].
-      rewrite Hvalid'1 by (split; [ reflexivity | assumption ]).
+      simpl rewrite Hvalid'1; [ | split; [ reflexivity | assumption ] ].
       eauto. }
     pose proof (fun nt
                 => match is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt as b
                          return is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt = b
                                 -> (if b then initial_state (*nt*) else ⊥) =
-                                   lookup_state (aggregate_state_max gdata G) nt
+                                   lookup_state (aggregate_state_max gdata initial_nonterminals_data) nt
                                 -> _
                    with
                    | true => fun pf => eq_rect _ (P nt) (Pinit _ pf) _
@@ -158,11 +159,11 @@ Section grammar_fixedpoint.
       induction (Rwf v) as [a Ha IHa].
     rewrite Init.Wf.Fix_eq by (intros; edestruct Sumbool.sumbool_of_bool; trivial).
     edestruct Sumbool.sumbool_of_bool; [ intros; apply Pinit'; assumption | ].
-    fold (pre_Fix_grammar_helper (gdata := gdata) G) in *.
+    fold (pre_Fix_grammar_helper (gdata := gdata) initial_nonterminals_data) in *.
     destruct (aggregate_state_eq (aggregate_step a) a) eqn:Heq.
     { change (is_true (aggregate_state_eq (aggregate_step a) a)) in Heq.
       intros nt Hvalid.
-      remember (lookup_state (pre_Fix_grammar_helper G (aggregate_step a)) nt) as st eqn:Hst.
+      remember (lookup_state (pre_Fix_grammar_helper (@initial_nonterminals_data _ predata) (aggregate_step a)) nt) as st eqn:Hst.
       rewrite pre_Fix_grammar_helper_fixed in Hst by (rewrite !Heq; reflexivity).
       rewrite Heq in Hst.
       subst.
@@ -217,7 +218,7 @@ Section grammar_fixedpoint.
             -> (forall nt', P nt' (st nt'))
             -> is_true (is_valid_nonterminal initial_nonterminals_data nt)
             -> P nt (st nt ⊓ step_constraints gdata st nt (st nt)))
-    : forall nt, P nt (lookup_state (pre_Fix_grammar gdata G) nt).
+    : forall nt, P nt (lookup_state (pre_Fix_grammar gdata initial_nonterminals_data) nt).
   Proof.
     intro nt.
     destruct (is_valid_nonterminal (@initial_nonterminals_data _ (@rdp_list_predata _ G)) nt) eqn:Hvalid.
@@ -230,6 +231,6 @@ Section grammar_fixedpoint.
         { rewrite Hfalse by assumption.
           rewrite bottom_glb_l.
           eauto. } } }
-    { rewrite lookup_state_invalid_pre_Fix_grammar by assumption. eauto with nocore. }
+    { simpl rewrite lookup_state_invalid_pre_Fix_grammar; [ | assumption ]. eauto with nocore. }
   Qed.
 End grammar_fixedpoint.
