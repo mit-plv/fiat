@@ -50,6 +50,20 @@ Ltac change_with_cbv c :=
     let c' := (eval cbv in c) in
     change c with c'.
 
+Ltac replace_by_vm_compute_opt0_proj v :=
+  idtac;
+  let vH := fresh in
+  let H := fresh in
+  let v'H := fresh in
+  let v' := (eval vm_compute in v) in
+  set (vH := v);
+  pose v' as v'H;
+  assert (H : v'H = vH) by (subst vH v'H; clear; vm_cast_no_check (eq_refl v'));
+  clearbody vH;
+  destruct H;
+  cbv [opt0.fst opt0.snd v'H];
+  clear v'H.
+
 Ltac start_honing :=
   eapply SharpenStep;
   [ solve [ apply FirstStep ] | ];
@@ -62,12 +76,10 @@ Ltac start_honing :=
        set (p' := p);
        hnf in p'
   end; *)
-  do 2 match goal with
-       | [ |- context[opt.combine ?ls ?ls'] ]
-         => replace_with_vm_compute_by_set (opt.combine ls ls')
-       | [ |- context[opt2.uniquize ?beq ?ls] ]
-         => replace_with_vm_compute_by_set (opt2.uniquize beq ls)
-       end(*;
+  lazymatch goal with
+  | [ |- context[opt0.fst ?v] ]
+    => replace_by_vm_compute_opt0_proj v
+  end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
 
