@@ -41,20 +41,19 @@ Section Specifications.
         decode (transform bin ext) env' = Some (data, ext, xenv')
         /\ Equiv xenv xenv') /\
     (forall env env' xenv' data bin ext,
-      Equiv env env' ->
-      decode bin env' = Some (data, ext, xenv') ->
-      exists bin' xenv,
-        encode data env ↝ (bin', xenv)
-        /\ bin = transform bin' ext
-        /\ predicate data
-        /\ Equiv xenv xenv').
-
+        Equiv env env'
+        -> decode bin env' = Some (data, ext, xenv')
+        -> exists bin' xenv,
+            encode data env ↝ (bin', xenv)
+            /\ bin = transform bin' ext
+            /\ predicate data
+            /\ Equiv xenv xenv').
 
   Definition DecodeBindOpt2
-             {C D}
+             {C D E}
              (a : option (A * B * D))
-             (k : A -> B -> D -> option (C * B * D))
-    : option (C * B * D) :=
+             (k : A -> B -> D -> option (C * E * D))
+    : option (C * E * D) :=
     Ifopt a as a_opt Then
       match a_opt with (a, bin', env') => k a bin' env' end
       Else None.
@@ -69,6 +68,52 @@ Section Specifications.
     Else None.
 
 End Specifications.
+
+Section DecodeWMeasure.
+  Context {A : Type}. (* data type *)
+  Context {B : Type}. (* bin type *)
+  Context {cache : Cache}.
+  Context {transformer : Transformer B}.
+
+  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
+  Variable A_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) A_encode_Spec A_decode.
+
+  Definition Decode_w_Measure_lt
+        (b : B)
+        (cd : CacheDecode)
+        (A_decode_lt
+         : forall  (b : B)
+                   (cd : CacheDecode)
+                   (a : A)
+                   (b' : B)
+                   (cd' : CacheDecode),
+            A_decode b cd = Some (a, b', cd')
+      -> lt_B b' b)
+    : option (A * {b' : B | lt_B b' b} * CacheDecode).
+    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ] eqn: Heqo ;
+      [ refine (Some (a, exist _ b' (A_decode_lt _ _ _ _ _ Heqo), cd'))
+        | exact None ].
+  Defined.
+
+  Definition Decode_w_Measure_le
+             (b : B)
+             (cd : CacheDecode)
+             (A_decode_le
+              : forall  (b : B)
+                        (cd : CacheDecode)
+                        (a : A)
+                        (b' : B)
+                        (cd' : CacheDecode),
+                 A_decode b cd = Some (a, b', cd')
+                 -> le_B b' b)
+    : option (A * {b' : B | le_B b' b} * CacheDecode).
+    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ] eqn: Heqo ;
+      [ refine (Some (a, exist _ b' (A_decode_le _ _ _ _ _ Heqo), cd'))
+      | exact None ].
+  Defined.
+
+End DecodeWMeasure.
 
 Notation "`( a , b , env ) <- c ; k" :=
   (DecodeBindOpt2 c%binencoders (fun a b env => k%binencoders)) : binencoders_scope.

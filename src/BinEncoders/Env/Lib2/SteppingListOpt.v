@@ -19,16 +19,38 @@ Section SteppingList.
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode.
+  Variable A_decode_lt
+    : forall  (b : B)
+              (cd : CacheDecode)
+              (a : A)
+              (b' : B)
+              (cd' : CacheDecode),
+      A_decode b cd = Some (a, b', cd')
+      -> lt_B b' b.
 
   Variable P_predicate : P -> Prop.
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
   Variable P_encode_Spec : P -> CacheEncode -> Comp (B * CacheEncode).
   Variable P_decode : B -> CacheDecode -> option (P * B * CacheDecode).
   Variable P_decode_pf : encode_decode_correct_f cache transformer P_predicate P_encode_Spec P_decode.
+  Variable P_decode_le :
+    forall (b1 : B)
+           (cd1 : CacheDecode)
+           (a : P)
+           (b' : B)
+           (cd' : CacheDecode),
+      P_decode b1 cd1 = Some (a, b', cd') -> le_B b' b1.
 
   Variable X_encode_Spec : bool -> CacheEncode -> Comp (B * CacheEncode).
   Variable X_decode : B -> CacheDecode -> option (bool * B * CacheDecode).
   Variable X_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) X_encode_Spec X_decode.
+  Variable X_decode_le :
+    forall (b1 : B)
+           (cd1 : CacheDecode)
+           (a : bool)
+           (b' : B)
+           (cd' : CacheDecode),
+      X_decode b1 cd1 = Some (a, b', cd') -> le_B b' b1.
 
   Variable cacheAdd : CacheAdd cache (list A * P).
   Variable cacheGet : CacheGet cache (list A) P.
@@ -65,30 +87,40 @@ Section SteppingList.
       end
     end%comp.
 
-  (* Fuel isn't playing well with our data invariants... *)
-  (* Need a better measure function. *)
-  Fixpoint decode'_list_step (f : nat) (b : B) (cd : CacheDecode) : option (list A * B * CacheDecode) :=
-    match f with
-    | O => None (* bogus *)
-    | S f' =>
-      `(br, b1, e1) <- X_decode b cd;
-        If br Then
-           `(ps, b2, e2) <- P_decode b1 e1;
-            match getD cd ps with
-            | Some [] => None (* bogus *)
-            | Some l => Some (l, b2, e2)
-            | None => None (* bogus *)
-            end
-              Else
-              (`(a , b2, e2) <- A_decode b1 e1;
-                 If A_halt_dec a Then
-                    Some (nil, b2, e2)
-                    Else
-                    (`(l, b3, e3) <- decode'_list_step f' b2 e2;
-                       Some (a :: l, b3, addD e3 (a :: l, peekD cd))))
-    end.
+  (* Decode now uses a measure on the length of B *)
 
-  Definition decode_list_step := decode'_list_step fuel.
+  Lemma lt_B_trans : 
+    forall b
+           (b1 : {b' : B | le_B b' b})
+           (b2 : {b' : B | lt_B b' (` b1)}),
+      lt_B (` b2) b.
+  Proof.
+    intros; destruct b1; destruct b2; simpl in *.
+    unfold le_B, lt_B in *; omega.
+  Qed.   
+    
+  Definition decode_list_step (b : B) (cd : CacheDecode) :
+    option (list A * B * CacheDecode) := 
+    Fix well_founded_lt_b
+           (fun _ => CacheDecode -> option (list A * B * CacheDecode))
+      (fun b rec cd =>
+         `(br, b1, e1) <- Decode_w_Measure_le X_decode b cd X_decode_le;
+         If br Then
+            (`(ps, b2, e2) <- Decode_w_Measure_le P_decode (proj1_sig b1) e1 P_decode_le;
+             match getD cd ps return
+                   option (list A * B * CacheDecode)
+             with
+             | Some [] => None (* bogus *)
+             | Some l => Some (l, proj1_sig b2, e2)
+             | None => None (* bogus *)
+             end)
+            Else
+            (`(a , b2, e2) <- Decode_w_Measure_lt A_decode (proj1_sig b1) e1 A_decode_lt;
+             If A_halt_dec a Then
+                Some (nil, proj1_sig b2, e2)
+                Else
+                (`(l, b3, e3) <- rec (proj1_sig b2) (lt_B_trans _ _ _) e2;
+                 Some (a :: l, b3, addD e3 (a :: l, peekD cd))))) b cd.
 
   Theorem SteppingList_decode_correct :
     encode_decode_correct_f
