@@ -64,9 +64,9 @@ Ltac start_honing :=
   end; *)
   do 2 match goal with
        | [ |- context[opt.combine ?ls ?ls'] ]
-         => replace_with_vm_compute (opt.combine ls ls')
+         => replace_with_vm_compute_by_set (opt.combine ls ls')
        | [ |- context[opt2.uniquize ?beq ?ls] ]
-         => replace_with_vm_compute (opt2.uniquize beq ls)
+         => replace_with_vm_compute_by_set (opt2.uniquize beq ls)
        end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
