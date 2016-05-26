@@ -10,6 +10,15 @@ Require Import Fiat.Common.Equality.
 Set Implicit Arguments.
 
 Section wf.
+  Global Instance well_founded_subrelation {A}
+    : Proper (flip subrelation ==> impl) (@well_founded A).
+  Proof.
+    intros R R' HR Rwf a.
+    induction (Rwf a) as [a Ra R'a].
+    constructor; intros y Hy.
+    apply R'a, HR, Hy.
+  Defined.
+
   Section wf_prod.
     Context A B (RA : relation A) (RB : relation B).
 
