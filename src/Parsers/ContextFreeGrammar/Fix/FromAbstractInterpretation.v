@@ -17,12 +17,12 @@ Local Open Scope list_scope.
 Local Open Scope grammar_fixedpoint_scope.
 
 Section fold_correctness.
-  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char}.
+  Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {T : Type}.
   Context {fpdata : @grammar_fixedpoint_lattice_data T}
           {aidata : @AbstractInterpretation Char T}
-          (related : Ensemble String -> T -> Prop)
-          {aicdata : AbstractInterpretationCorrectness related}.
+          (prerelated : Ensemble String -> T -> Prop)
+          {aicdata : AbstractInterpretationCorrectness prerelated}.
   Context (G : pregrammar' Char).
 
   Let predata := @rdp_list_predata _ G.
@@ -31,44 +31,44 @@ Section fold_correctness.
   Definition fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G)
     := pre_Fix_grammar _ initial_nonterminals_data.
 
-  Record ensemble_result (str : String) (fold_state : T) :=
+  Record ensemble_result (str : String) (fold_state : state) :=
     { er_ensemble :> Ensemble String;
-      er_state :> T;
+      er_state :> state;
       er_related :> related er_ensemble er_state;
       er_correct :> Ensembles.In _ er_ensemble str;
-      er_state_le :> fold_state <= er_state }.
+      er_state_le :> er_state <= fold_state }.
 
   Definition er_lift {str st1 st2}
              (v : ensemble_result str st1)
-             (Hle : st2 <= st1)
+             (Hle : st1 <= st2)
     : ensemble_result str st2
     := {| er_ensemble := v;
           er_state := v;
           er_related := er_related v;
           er_correct := er_correct v;
-          er_state_le := transitivity Hle (er_state_le v) |}.
+          er_state_le := transitivity (R := state_le) (er_state_le v) Hle |}.
 
   Definition er_combine_production n str st1 st2 (it : ensemble_result (take n str) st1) (its : ensemble_result (drop n str) st2)
     : ensemble_result str (combine_production st1 st2)
     := {| er_ensemble := ensemble_combine_production it its;
-          er_state := combine_production (T := T) it its;
-          er_related := combine_production_correct (er_related it) (er_related its);
+          er_state := combine_production (T := T) (it : state) (its : state);
+          er_related := combine_production_correct it it (er_related it) its its (er_related its);
           er_correct := ex_intro _ n (conj (er_correct it) (er_correct its));
           er_state_le := combine_production_Proper_le (er_state_le it) (er_state_le its) |}.
 
   Lemma fold_le nt st
-        (H : fold_productions' G (lookup_state fold_grammar) (Lookup_string G nt) <= st)
-    : lookup_state fold_grammar (of_nonterminal nt) <= st.
+        (H : st <= fold_productions' G (lookup_state fold_grammar) (Lookup_string G nt))
+    : st <= lookup_state fold_grammar (of_nonterminal nt).
   Proof.
     unfold fold_grammar.
     rewrite pre_Fix_grammar_fixedpoint.
     unfold aggregate_step.
-    rewrite lookup_state_aggregate_state_glb, greatest_lower_bound_correct_r.
+    rewrite lookup_state_aggregate_state_lub, <- least_upper_bound_correct_r.
     rewrite lookup_state_aggregate_prestep, (find_pre_Fix_grammar_to_lookup_state _ G).
     let v := match goal with |- context[if ?v then _ else _] => v end in
-    destruct v eqn:Hvalid; unfold option_rect; [ | apply bottom_bottom ].
+    destruct v eqn:Hvalid; unfold option_rect; [ | apply top_top ].
     unfold step_constraints.
-    unfold fixedpoint_by_abstract_interpretation at 1.
+    unfold fixedpoint_by_abstract_interpretation at 3.
     unfold fold_constraints.
     rewrite <- list_to_productions_to_nonterminal.
     change (default_to_nonterminal ?nt) with (to_nonterminal nt).
@@ -99,7 +99,7 @@ Section fold_correctness.
                  er_ensemble := ensemble_on_terminal P;
                  er_related := on_terminal_correct P;
                  er_correct := ex_intro _ ch (conj Hch Hstr);
-                 er_state_le := reflexivity _ |}
+                 er_state_le := reflexivity (R := state_le) _ |}
          | ParseNonTerminal nt Hvalid p' => lift_ensemble_result (state_of_parse p')
          end.
 
@@ -110,9 +110,9 @@ Section fold_correctness.
          | ParseProductionNil Hlen
            => {| er_state := on_nil_production;
                  er_ensemble := ensemble_on_nil_production;
-                 er_related := on_nil_production_correct (related := related);
+                 er_related := on_nil_production_correct (prerelated := prerelated);
                  er_correct := Hlen;
-                 er_state_le := reflexivity _ |}
+                 er_state_le := reflexivity (R := state_le) _ |}
          | ParseProductionCons n pat pats p' p's
            => er_combine_production
                 n
@@ -125,8 +125,8 @@ Section fold_correctness.
                str pats (p : parse_of G str pats)
       : ensemble_result str (fold_productions' G (lookup_state fold_grammar) pats)
       := match p in parse_of _ _ pats return ensemble_result _ (fold_productions' _ _ pats) with
-         | ParseHead pat pats p' => er_lift (state_of_parse_production p') (greatest_lower_bound_correct_l _ _)
-         | ParseTail pat pats p' => er_lift (state_of_parse p') (greatest_lower_bound_correct_r _ _)
+         | ParseHead pat pats p' => er_lift (state_of_parse_production p') (least_upper_bound_correct_l _ _)
+         | ParseTail pat pats p' => er_lift (state_of_parse p') (least_upper_bound_correct_r _ _)
          end.
   End step.
 
@@ -158,10 +158,10 @@ Section fold_correctness.
       { assumption. } }
     { unfold fold_grammar.
       rewrite (lookup_state_invalid_pre_Fix_grammar _ G) by assumption.
-      do 2 esplit; [ | eexact (bottom_related (related := related)) ].
+      do 2 esplit; [ | eapply top_related ].
       constructor. }
   Qed.
 End fold_correctness.
 
-Global Arguments fold_grammar_correct {_ HSLM HSL _ _ _ _ _} [_ _ _] _.
-Global Arguments fold_grammar_correct_item {_ HSLM HSL _ _ _ _ _} [_ _ _] _.
+Global Arguments fold_grammar_correct {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.
+Global Arguments fold_grammar_correct_item {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.

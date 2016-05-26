@@ -1958,6 +1958,14 @@ Section ListFacts.
     { destruct (f l) eqn:H; simpl; rewrite ?H; simpl; assumption. }
   Qed.
 
+  Lemma fold_right_andb_false (ls : list bool)
+    : fold_right andb false ls = false.
+  Proof.
+    induction ls as [|l ls IHls]; simpl.
+    { reflexivity. }
+    { destruct l; simpl; try reflexivity; assumption. }
+  Qed.
+
   Lemma fold_left_assoc {A} (f : A -> A -> A)
         (f_assoc : forall x y z, f x (f y z) = f (f x y) z)
         (a0 a1 : A) (ls : list A)

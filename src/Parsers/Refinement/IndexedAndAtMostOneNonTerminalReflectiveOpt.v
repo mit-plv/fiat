@@ -37,6 +37,13 @@ Proof.
   intros ?????? []; repeat intro; subst; simpl; auto.
 Qed.
 
+Module opt0.
+  Definition fst {A B} := Eval compute in @fst A B.
+  Definition snd {A B} := Eval compute in @snd A B.
+End opt0.
+Global Arguments opt0.fst : simpl never.
+Global Arguments opt0.snd : simpl never.
+
 Module opt2.
   Definition id {A} := Eval compute in @id A.
   Definition fold_right {A B} := Eval compute in @List.fold_right A B.
@@ -129,6 +136,24 @@ Module opt.
   Defined.
   Definition ret_cases_to_comp {HSLM G}
     := Eval cbv [proj1_sig ret_cases_to_comp_sig] in proj1_sig (@ret_cases_to_comp_sig HSLM G).
+
+  Definition premap_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list (nat * (nat * nat)).
+  Proof.
+    let term := match (eval cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq] in (fun HSLM HSL => @rindexed_spec HSLM HSL G)) with
+                | appcontext[Operations.List.uniquize ret_cases_BoolDecR (List.map ?f ?ls)] => ls
+                end in
+    exact term.
+  Defined.
+
+  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
+    := map (@expanded_fallback_list'_body G) (premap_expanded_fallback_list'_body G).
+  Definition expanded_fallback_list'_body_values (G : pregrammar' Ascii.ascii) : list _ * list ret_cases
+    := (combine (map_expanded_fallback_list'_body G) (premap_expanded_fallback_list'_body G),
+        opt2.uniquize ret_cases_BoolDecR (map_expanded_fallback_list'_body G)).
+  Definition uniquize_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
+    := opt0.snd (expanded_fallback_list'_body_values G).
+  Definition combine_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list _
+    := opt0.fst (expanded_fallback_list'_body_values G).
 End opt.
 
 Class opt_of {T} (term : T) := mk_opt_of : T.
@@ -339,8 +364,19 @@ Section IndexedImpl_opt.
     cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq].
     simpl @production_carrierT.
     cbv [default_production_carrierT default_nonterminal_carrierT].
-    change (@expanded_fallback_list'_body G) with (opt.id (@opt.expanded_fallback_list'_body G)).
-    change (pregrammar_productions G) with (opt.id (pregrammar_productions G)).
+    lazymatch goal with
+    | [ |- appcontext g[Operations.List.uniquize ?beq ?ls] ]
+      => idtac;
+           let G' := context g[opt.id (opt.uniquize_expanded_fallback_list'_body G)] in
+           change G'
+    end.
+    lazymatch goal with
+    | [ |- appcontext g[List.combine ?ls1 ?ls2] ]
+      => idtac;
+           let G' := context g[opt.id (opt.combine_expanded_fallback_list'_body G)] in
+           change G'
+    end.
+    cbv [opt.combine_expanded_fallback_list'_body opt.map_expanded_fallback_list'_body opt.uniquize_expanded_fallback_list'_body].
     change ret_cases_BoolDecR with (opt2.id opt2.ret_cases_BoolDecR).
     change (@nil ?A) with (opt.id (@nil A)).
     change (0::opt.id nil)%list with (opt.id (0::nil)%list).

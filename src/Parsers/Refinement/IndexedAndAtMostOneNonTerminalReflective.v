@@ -1114,7 +1114,7 @@ Section IndexedImpl.
                    | [ H : collapse_length_result ?e = Some _ |- _ ]
                      => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
                    | _ => intro
-                   | [ H : length_of_any ?G ?nt = same_length ?n,
+                   | [ H : length_of_any ?G ?nt = _,
                            p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
                      => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
                  end;
@@ -1145,7 +1145,7 @@ Section IndexedImpl.
                    | [ H : collapse_length_result ?e = Some _ |- _ ]
                      => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
                    | _ => intro
-                   | [ H : length_of_any ?G ?nt = same_length ?n,
+                   | [ H : length_of_any ?G ?nt = _,
                            p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
                      => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
                  end;
