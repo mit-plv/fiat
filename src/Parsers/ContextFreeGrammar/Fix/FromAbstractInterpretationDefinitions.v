@@ -54,8 +54,13 @@ Section general_fold.
   : fold_item' f b = fold_item' g b.
   Proof.
     unfold fold_item'.
-    destruct b; rewrite ?ext; reflexivity.
-  Qed.
+    generalize (@of_nonterminal _ (@rdp_list_predata _ G)); simpl; intro.
+    generalize on_terminal; intro.
+    unfold state in *.
+    simpl in *.
+    clear -ext.
+    abstract (destruct b; rewrite ?ext; reflexivity).
+  Defined.
 
   Definition fold_production'
              (fold_nt : default_nonterminal_carrierT -> state)
@@ -73,7 +78,7 @@ Section general_fold.
     unfold fold_production'.
     induction b as [ | x ]; try reflexivity; simpl.
     rewrite IHb, (fold_item'_ext ext); reflexivity.
-  Qed.
+  Defined.
 
   Definition fold_productions'
              (fold_nt : default_nonterminal_carrierT -> state)
@@ -91,7 +96,7 @@ Section general_fold.
     unfold fold_productions'.
     induction b as [ | x ]; try reflexivity; simpl.
     rewrite IHb, (fold_production'_ext ext); reflexivity.
-  Qed.
+  Defined.
 
   Definition fold_constraints
              (fold_nt : default_nonterminal_carrierT -> state)
@@ -107,7 +112,7 @@ Section general_fold.
     unfold fold_constraints.
     apply fold_productions'_ext.
     intro; apply H.
-  Qed.
+  Defined.
 
   Global Instance fold_constraints_Proper
     : Proper (pointwise_relation default_nonterminal_carrierT eq ==> eq ==> eq)
@@ -115,7 +120,7 @@ Section general_fold.
   Proof.
     intros f g H; repeat intro; subst.
     apply fold_constraints_ext; assumption.
-  Qed.
+  Defined.
 
   Definition fixedpoint_by_abstract_interpretation : grammar_fixedpoint_data.
   Proof.
@@ -218,7 +223,7 @@ Section fold_correctness.
 
   Definition lattice_for_related (P : Ensemble String) (st : lattice_for T) : Prop
     := match st with
-       | ⊤ => forall str, P str
+       | ⊤ => True
        | ⊥ => forall str, ~P str
        | constant n => prerelated P n
        end.

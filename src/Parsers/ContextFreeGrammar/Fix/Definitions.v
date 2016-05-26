@@ -15,6 +15,12 @@ Inductive lattice_for T := top | constant (_ : T) | bottom.
 Bind Scope grammar_fixedpoint_scope with lattice_for.
 Scheme Equality for lattice_for.
 
+Definition collapse_lattice_for {T} (l : lattice_for T) : option T
+  := match l with
+       | constant n => Some n
+       | _ => None
+     end.
+
 Arguments bottom {_}.
 Arguments top {_}.
 Notation "'⊥'" := bottom : grammar_fixedpoint_scope.
