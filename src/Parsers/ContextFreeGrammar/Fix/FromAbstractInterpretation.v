@@ -46,7 +46,7 @@ Section fold_correctness.
           er_state := v;
           er_related := er_related v;
           er_correct := er_correct v;
-          er_state_le := transitivity (er_state_le v) Hle |}.
+          er_state_le := transitivity (R := state_le) (er_state_le v) Hle |}.
 
   Definition er_combine_production n str st1 st2 (it : ensemble_result (take n str) st1) (its : ensemble_result (drop n str) st2)
     : ensemble_result str (combine_production st1 st2)
@@ -99,7 +99,7 @@ Section fold_correctness.
                  er_ensemble := ensemble_on_terminal P;
                  er_related := on_terminal_correct P;
                  er_correct := ex_intro _ ch (conj Hch Hstr);
-                 er_state_le := reflexivity _ |}
+                 er_state_le := reflexivity (R := state_le) _ |}
          | ParseNonTerminal nt Hvalid p' => lift_ensemble_result (state_of_parse p')
          end.
 
@@ -112,7 +112,7 @@ Section fold_correctness.
                  er_ensemble := ensemble_on_nil_production;
                  er_related := on_nil_production_correct (prerelated := prerelated);
                  er_correct := Hlen;
-                 er_state_le := reflexivity _ |}
+                 er_state_le := reflexivity (R := state_le) _ |}
          | ParseProductionCons n pat pats p' p's
            => er_combine_production
                 n
