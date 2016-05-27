@@ -214,20 +214,6 @@ Section grammar_fixedpoint.
   Definition aggregate_state_lt (v1 v2 : aggregate_state) : bool
     := aggregate_state_le v1 v2 && negb (aggregate_state_eq v1 v2).
 
-  Local Ltac handle_PositiveMap_fold :=
-    repeat match goal with
-           | _ => rewrite !PositiveMap.fold_1
-           | [ H : _ |- _ ] => rewrite !PositiveMap.fold_1 in H
-           | [ |- appcontext[fold_left (fun a b => @?f b && a)%bool] ]
-             => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => andb b a) f), <- fold_left_rev_right, <- map_rev
-           | [ H : appcontext[fold_left (fun a b => ?g (@?f b) a)] |- _ ]
-             => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev in H
-           | [ H : context[fold_right andb true _] |- _ ] => setoid_rewrite fold_right_andb_map_in_iff in H
-           | [ |- context[fold_right andb true _] ] => setoid_rewrite fold_right_andb_map_in_iff
-           | [ H : context[In _ (rev _)] |- _ ] => setoid_rewrite <- in_rev in H
-           | [ |- context[In _ (rev _)] ] => setoid_rewrite <- in_rev
-           end.
-
   Lemma PositiveMap_elements_iff {A m k v}
     : @PositiveMap.find A k m = Some v <-> In (k, v) (PositiveMap.elements m).
   Proof.
@@ -620,14 +606,8 @@ PositiveMap.fold (fun _ => andb)
     unfold lookup_state.
     rewrite nonterminal_to_positive_to_nonterminal.
     unfold PositiveMapExtensions.find_default.
-    unfold option_rect.
-    simpl in *.
-    match goal with
-    | [ |- context[PositiveMap.find ?k ?v] ]
-      => destruct (PositiveMap.find k v) eqn:Heq; simpl; try reflexivity
-    end.
-    apply f_equal.
-    setoid_rewrite Heq; reflexivity.
+    unfold state in *; simpl in *.
+    edestruct PositiveMap.find; reflexivity.
   Qed.
 
   Lemma lookup_state_aggregate_step st nt
@@ -641,13 +621,8 @@ PositiveMap.fold (fun _ => andb)
     rewrite find_aggregate_step.
     unfold lookup_state, PositiveMapExtensions.find_default.
     rewrite nonterminal_to_positive_to_nonterminal.
-    unfold option_rect.
-    match goal with
-    | [ |- context[PositiveMap.find ?k ?v] ]
-      => destruct (PositiveMap.find k v) eqn:Heq; simpl; try reflexivity
-    end.
-    do 2 apply f_equal.
-    setoid_rewrite Heq; reflexivity.
+    unfold state in *; simpl in *.
+    edestruct PositiveMap.find; reflexivity.
   Qed.
 
   Section with_initial.
@@ -831,12 +806,8 @@ PositiveMap.fold (fun _ => andb)
       let v := match goal with |- context[if ?v then _ else _] => v end in
       destruct v eqn:Hvalid.
       { apply find_pre_Fix_grammar in Hvalid.
-        unfold lookup_state, PositiveMapExtensions.find_default, option_rect.
-        match goal with
-        | [ |- context[PositiveMap.find ?k ?v] ]
-          => destruct (PositiveMap.find k v) eqn:Heq; simpl in *; try reflexivity
-        end;
-          setoid_rewrite Heq;
+        unfold lookup_state, PositiveMapExtensions.find_default, state in *; simpl in *.
+        edestruct PositiveMap.find;
           [ reflexivity | congruence ]. }
       { destruct (PositiveMap.find (nonterminal_to_positive nt) (pre_Fix_grammar (@initial_nonterminals_data _ predata))) eqn:H; [ | reflexivity ].
         rewrite (proj2 (find_pre_Fix_grammar _)) in Hvalid; congruence. }
@@ -849,12 +820,8 @@ PositiveMap.fold (fun _ => andb)
       unfold lookup_state, PositiveMapExtensions.find_default.
       pose proof (find_pre_Fix_grammar nt).
       rewrite Hinvalid in H; destruct H.
-      unfold option_rect.
-      match goal with
-      | [ |- context[PositiveMap.find ?k ?v] ]
-        => destruct (PositiveMap.find k v) eqn:Heq; simpl in *; try reflexivity
-      end;
-        try setoid_rewrite Heq.
+      unfold state in *; simpl in *.
+      edestruct PositiveMap.find.
       { intuition congruence. }
       { reflexivity. }
     Qed.
