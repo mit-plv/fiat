@@ -1532,6 +1532,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
           | should_convert_from_to (@find) (@map2);
             setoid_rewrite_in_all (@map2_1bis_for_rewrite _ _ _ _ eq_refl)
           | should_convert_from_to (@find) (@map2);
+            setoid_rewrite_in_all map2_1bis_for_rewrite; [ | (reflexivity || assumption).. ]
+          | should_convert_from_to (@find) (@map2);
             setoid_rewrite_in_all map2_1bis; [ | (reflexivity || assumption).. ]
           | should_convert_from_to (@find) (@In);
             setoid_rewrite_in_all <- not_find_in_iff
