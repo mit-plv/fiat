@@ -1780,25 +1780,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     destruct_head bool; eauto.
   Qed.
 
-  Global Instance map2_Proper_Equal {A B C} f (Hf : f None None = None)
-    : Proper (Equal ==> Equal ==> Equal) (@map2 A B C f).
-  Proof.
-    intros ?? H' ?? H''.
-    rewrite Equal_mapsto_iff.
-    FMap_convert_to_find.
-    setoid_subst_rel (@Equal A).
-    setoid_subst_rel (@Equal B).
-    reflexivity.
-  Qed.
-
-  Global Hint Extern 1 (Proper _ (@map2 ?A ?B ?C ?f))
-  => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
-
-  Global Instance lift_brelation_Reflexive {A} {R : A -> A -> bool} {HR : @Reflexive A R} {default}
-    : Reflexive (lift_brelation R default).
-  Proof. intro; FMap_convert_to_find; edestruct find; congruence. Qed.
-
-
   Local Ltac instance_t :=
     repeat match goal with
            | _ => congruence
@@ -1830,6 +1811,38 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
            | [ H : forall x : ?T, ?R x x = true, x' : ?T |- _ ]
              => unique pose proof (H x')
            end.
+
+  Lemma lift_brelation_iff {A} (R : A -> A -> bool) (default : A) (m1 m2 : t A)
+    : lift_brelation R default m1 m2 <-> forall k, match find k m1, find k m2 return bool with
+                                                   | Some x1, Some x2 => R x1 x2
+                                                   | Some x, None => R x default
+                                                   | None, Some x => R default x
+                                                   | None, None => true
+                                                   end.
+  Proof.
+    FMap_convert_to_find.
+    split; intro H; [ intro k; specialize (H (k, false)) | intros [k v]; specialize (H k) ];
+      instance_t.
+  Qed.
+
+  Global Instance map2_Proper_Equal {A B C} f (Hf : f None None = None)
+    : Proper (Equal ==> Equal ==> Equal) (@map2 A B C f).
+  Proof.
+    intros ?? H' ?? H''.
+    rewrite Equal_mapsto_iff.
+    FMap_convert_to_find.
+    setoid_subst_rel (@Equal A).
+    setoid_subst_rel (@Equal B).
+    reflexivity.
+  Qed.
+
+  Global Hint Extern 1 (Proper _ (@map2 ?A ?B ?C ?f))
+  => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
+
+  Global Instance lift_brelation_Reflexive {A} {R : A -> A -> bool} {HR : @Reflexive A R} {default}
+    : Reflexive (lift_brelation R default).
+  Proof. intro; FMap_convert_to_find; edestruct find; congruence. Qed.
+
 
   Global Instance lift_brelation_Symmetric {A} {R : A -> A -> bool} {HR : @Symmetric A R} {default}
     : Symmetric (lift_brelation R default).
