@@ -42,12 +42,15 @@ Section String.
 
   Local Opaque encode_ascii_Spec.
   Local Opaque encode_ascii_Impl.
-  Theorem String_decode_correct :
-    forall sz,
+
+  Theorem String_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : forall b cd, P cd -> P (addD cd b))
+    : forall sz,
       encode_decode_correct_f
         cache transformer
         (fun ls => length ls = sz)
-        encode_string_Spec (decode_string sz).
+        encode_string_Spec (decode_string sz) P.
   Proof.
     split.
     { intros env env' xenv l l' ext Eeq Ppred Penc.
@@ -63,7 +66,7 @@ Section String.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 Ascii_decode_correct _ _ _ _ _ (transform b0 ext) Eeq I Penc) as [? [? ?] ].
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (transform b0 ext) Eeq I Penc) as [? [? ?] ].
       simpl. rewrite <- transform_assoc, H; simpl.
       destruct (IHl _ _ _ _ H0 Penc') as [? [? ?] ].
       rewrite H1; simpl; eexists; eauto.
@@ -75,15 +78,16 @@ Section String.
           simpl in *; try discriminate.
         destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
-        eapply (proj2 Ascii_decode_correct) in Heqo; eauto;
-          destruct_ex; intuition; subst.
-        eapply IHsz in Heqo0; eauto; destruct_ex; intuition; subst.
+        eapply (proj2 (Ascii_decode_correct P_OK)) in Heqo; eauto;
+          destruct Heqo; destruct_ex; intuition; subst;
+            eapply IHsz in Heqo0; eauto; destruct Heqo0;
+              destruct_ex; intuition; subst.
         simpl.
         eexists; eexists; intuition eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
         rewrite transform_assoc; reflexivity.
       }
-    } 
+    }
   Qed.
 End String.

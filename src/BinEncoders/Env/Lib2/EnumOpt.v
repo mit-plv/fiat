@@ -102,13 +102,15 @@ Section Enum.
           f_equal; apply Fin.FS_inj; congruence.
   Qed.
 
-  Theorem Enum_decode_correct :
-    NoDupVector tb
-    -> encode_decode_correct_f cache transformer (fun _ => True) encode_enum_Spec decode_enum.
+  Theorem Enum_decode_correct
+    {P : CacheDecode -> Prop}
+      (P_OK : forall b cd, P cd -> P (addD cd b))
+    : NoDupVector tb
+    -> encode_decode_correct_f cache transformer (fun _ => True) encode_enum_Spec decode_enum P.
   Proof.
     split; unfold encode_enum_Spec, decode_enum.
     { intros env env' xenv c c' ext Eeq Ppred Penc.
-      destruct (proj1 Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
       rewrite H0; simpl.
       apply (word_indexed_correct _ (ibound (indexb c))) in H.
       subst; simpl in *.
@@ -128,10 +130,10 @@ Section Enum.
           simpl in *; try discriminate.
       destruct (word_indexed w tb) eqn: ? ;
         simpl in *; try discriminate; injections.
-      eapply (proj2 Word_decode_correct) in Heqo; eauto;
-        destruct_ex; intuition; subst.
+      eapply (proj2 (Word_decode_correct P_OK)) in Heqo; eauto;
+        destruct Heqo; destruct_ex; intuition; subst.
       simpl.
-      unfold encode_word_Spec in H2; computes_to_inv; injections.
+      unfold encode_word_Spec in *; computes_to_inv; injections.
       unfold encode_word_Spec; repeat eexists; eauto.
       repeat f_equal.
       revert Heqo0; clear.

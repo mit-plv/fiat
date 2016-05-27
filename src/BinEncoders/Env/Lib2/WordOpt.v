@@ -39,8 +39,11 @@ Section Word.
   Definition decode_word (b : B) (cd : CacheDecode) : option (word sz * B * CacheDecode) :=
     Ifopt decode_word' sz b as decoded Then Some (decoded, addD cd sz) Else None.
 
-  Theorem Word_decode_correct :
-    encode_decode_correct_f cache transformer (fun _ => True) encode_word_Spec decode_word.
+  Theorem Word_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : forall b cd, P cd -> P (addD cd b))
+    :
+    encode_decode_correct_f cache transformer (fun _ => True) encode_word_Spec decode_word P.
   Proof.
     unfold encode_decode_correct_f, encode_word_Spec, decode_word; split.
     - intros env env' xenv w w' ext Eeq _ Penc.
@@ -64,19 +67,18 @@ Section Word.
       induction data; simpl in *.
       { intros; computes_to_inv; intros; injection Heqo; clear Heqo;
         intros; subst.
-        repeat eexists. eauto; try rewrite !transform_id_left;
+        repeat eexists; eauto; try rewrite !transform_id_left;
         eauto using add_correct.
-        apply add_correct; eauto.
       }
-      { intros.
+      { intros; intuition.
         destruct (transform_pop_opt bin) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_word' n b1) as [ [? ? ] | ] eqn: ? ;
           simpl in *; try discriminate.
         injection Heqo; intros; subst.
-        apply Eqdep_dec.inj_pair2_eq_dec in H1; subst.
+        apply Eqdep_dec.inj_pair2_eq_dec in H2; subst.
         eapply IHdata in Heqo1.
-        destruct_ex; intuition; subst.
+        intuition; destruct_ex; intuition; subst.
         computes_to_inv; injections.
         eexists; eexists; repeat split.
         setoid_rewrite transform_push_step_opt.

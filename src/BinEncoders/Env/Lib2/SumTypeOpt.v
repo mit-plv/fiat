@@ -43,6 +43,7 @@ Section SumType.
   Qed.
 
   Theorem SumType_decode_correct {m}
+          {P}
           (types : Vector.t Type m)
           (encoders : ilist (B := fun T => T -> CacheEncode ->
                                            Comp (B * CacheEncode)) types)
@@ -53,12 +54,14 @@ Section SumType.
                 cache transformer
                 (fun st => invariants idx st)
                 (ith encoders idx)
-                (ith decoders idx))
+                (ith decoders idx)
+                P)
           idx
     :
     encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
                           (encode_SumType_Spec types encoders)
-                          (decode_SumType types decoders idx).
+                          (decode_SumType types decoders idx)
+                          P.
   Proof.
     split;
       revert types encoders decoders invariants encoders_decoders_correct;
@@ -75,7 +78,7 @@ Section SumType.
       destruct (ith decoders idx bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
         simpl in *; try discriminate; injections.
       eapply (proj2 (encoders_decoders_correct idx)) in Heqo;
-        eauto; destruct_ex; intuition; subst.
+        eauto; destruct Heqo; destruct_ex; intuition; subst.
       exists x; exists x0; intuition;
         try rewrite index_SumType_inj_inverse; eauto.
       - pattern (SumType_index types (inj_SumType types idx n)),

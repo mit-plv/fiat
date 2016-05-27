@@ -25,13 +25,15 @@ Section Nat.
       Some (wordToNat w, b, cd).
 
   Local Open Scope nat.
-  Theorem Nat_decode_correct :
-    encode_decode_correct_f cache transformer (fun n => n < pow2 sz) encode_nat_Spec decode_nat.
+  Theorem Nat_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : forall b cd, P cd -> P (addD cd b))
+    : encode_decode_correct_f cache transformer (fun n => n < pow2 sz) encode_nat_Spec decode_nat P.
   Proof.
     unfold encode_decode_correct_f, encode_nat_Spec, decode_nat.
     split.
     { intros env xenv xenv' n n' ext Eeq Ppred Penc.
-      destruct (proj1 Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
       - rewrite H; simpl; eexists; intuition eauto.
         repeat f_equal.
         destruct (wordToNat_natToWord' sz n).
@@ -45,13 +47,14 @@ Section Nat.
           omega. }
         rewrite H2 in H1. simpl in H1. rewrite <- plus_n_O in H1. eauto.
         }
-    { intros env xenv xenv' n n' ext Eeq Penc.
+    { intros env xenv xenv' n n' ext Eeq OK_env Penc.
       destruct (decode_word n' xenv) as [ [ [? ? ] ? ] | ] eqn: ? ;
         simpl in *; try discriminate.
       injections.
-      eapply (proj2 Word_decode_correct) in Heqo; destruct_ex;
-        intuition; subst; eauto.
-      unfold encode_word_Spec in H0; computes_to_inv; injections.
+      eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
+        destruct Heqo; destruct_ex; intuition; subst; eauto.
+      unfold encode_word_Spec in *; computes_to_inv; injections.
+      eauto.
       rewrite natToWord_wordToNat; repeat eexists; eauto.
       apply wordToNat_bound.
     }

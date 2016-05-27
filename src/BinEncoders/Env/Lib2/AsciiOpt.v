@@ -27,13 +27,16 @@ Section Ascii.
       Some (ascii_of_N (wordToN n), b, cd).
 
   Open Local Scope nat.
-  Theorem Ascii_decode_correct :
-    encode_decode_correct_f cache transformer (fun n => True) encode_ascii_Spec decode_ascii.
+  Theorem Ascii_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : forall b cd, P cd -> P (addD cd b))
+    :
+    encode_decode_correct_f cache transformer (fun n => True) encode_ascii_Spec decode_ascii P.
   Proof.
     unfold decode_ascii; split.
-    { 
+    {
       intros env env' xenv c c' ext Eeq Ppred Penc.
-      destruct (proj1 Word_decode_correct _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
       rewrite H; simpl.
       eexists; intuition eauto.
       repeat f_equal.
@@ -55,13 +58,13 @@ Section Ascii.
       subst. rewrite <- plus_n_O in H1. rewrite H1. clear H1.
       rewrite Nnat.N2Nat.id. rewrite ascii_N_embedding. eauto.
     }
-    { intros env xenv xenv' n n' ext Eeq Penc.
+    { intros env xenv xenv' n n' ext Eeq OK_env' Penc.
       destruct (decode_word n' xenv) as [ [ [? ? ] ? ] | ] eqn: ? ;
         simpl in *; try discriminate.
       injections.
-      eapply (proj2 Word_decode_correct) in Heqo; destruct_ex;
-        intuition; subst; eauto.
-      unfold encode_word_Spec in H0; computes_to_inv; injections.
+      eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
+        destruct Heqo; destruct_ex; intuition; subst; eauto.
+      unfold encode_word_Spec in *; computes_to_inv; injections.
       repeat eexists; eauto.
       repeat f_equal.
       rewrite N_ascii_embedding.
@@ -73,7 +76,7 @@ Section Ascii.
       simpl in H.
       eapply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id.
-      apply H.
+      eauto.
     }
   Qed.
 End Ascii.

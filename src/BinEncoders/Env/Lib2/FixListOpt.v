@@ -15,7 +15,8 @@ Section FixList.
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_encode_Impl : A -> CacheEncode -> B * CacheEncode.
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
-  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode.
+  Variable A_cache_inv : CacheDecode -> Prop.
+  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
   Fixpoint encode_list_Spec (xs : list A) (ce : CacheEncode)
@@ -44,12 +45,13 @@ Section FixList.
               Some (x :: xs, b2, e2)
     end.
 
-  Theorem FixList_decode_correct :
-    forall sz,
+  Theorem FixList_decode_correct
+    :
+    forall sz ,
       encode_decode_correct_f
         cache transformer
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-        encode_list_Spec (decode_list sz).
+        encode_list_Spec (decode_list sz) A_cache_inv.
   Proof.
     split.
     {
@@ -84,8 +86,9 @@ Section FixList.
         destruct (decode_list sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
         eapply (proj2 A_decode_pf) in Heqo; eauto;
-          destruct_ex; intuition; subst.
-        eapply IHsz in Heqo0; eauto; destruct_ex; intuition; subst.
+          destruct Heqo; destruct_ex; intuition; subst;
+            eapply IHsz in Heqo0; eauto; destruct Heqo0;
+              destruct_ex; intuition; subst.
         simpl.
         eexists; eexists; intuition eauto.
         computes_to_econstructor; eauto.

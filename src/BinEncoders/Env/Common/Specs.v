@@ -32,7 +32,8 @@ Section Specifications.
              (transformer : Transformer B)
              (predicate : A -> Prop)
              (encode : A -> CacheEncode -> Comp (B * CacheEncode))
-             (decode : B -> CacheDecode -> option (A * B * CacheDecode)) :=
+             (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (decode_inv : CacheDecode -> Prop) :=
     (forall env env' xenv data bin ext,
       Equiv env env' ->
       predicate data ->
@@ -42,8 +43,10 @@ Section Specifications.
         /\ Equiv xenv xenv') /\
     (forall env env' xenv' data bin ext,
         Equiv env env'
+        -> decode_inv env'
         -> decode bin env' = Some (data, ext, xenv')
-        -> exists bin' xenv,
+        -> decode_inv xenv'
+           /\ exists bin' xenv,
             encode data env ↝ (bin', xenv)
             /\ bin = transform bin' ext
             /\ predicate data
@@ -77,7 +80,6 @@ Section DecodeWMeasure.
 
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
-  Variable A_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) A_encode_Spec A_decode.
 
   Definition Decode_w_Measure_lt
         (b : B)
@@ -91,10 +93,55 @@ Section DecodeWMeasure.
             A_decode b cd = Some (a, b', cd')
       -> lt_B b' b)
     : option (A * {b' : B | lt_B b' b} * CacheDecode).
-    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ] eqn: Heqo ;
-      [ refine (Some (a, exist _ b' (A_decode_lt _ _ _ _ _ Heqo), cd'))
+    generalize (A_decode_lt b cd); clear.
+    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
+      [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
         | exact None ].
   Defined.
+
+  Lemma Decode_w_Measure_lt_eq
+        (b : B)
+        (cd : CacheDecode)
+        (A_decode_lt
+         : forall  (b : B)
+                   (cd : CacheDecode)
+                   (a : A)
+                   (b' : B)
+                   (cd' : CacheDecode),
+            A_decode b cd = Some (a, b', cd')
+            -> lt_B b' b)
+    : forall a' b' cd',
+      A_decode b cd = Some (a', b', cd')
+      -> exists pf,
+        Decode_w_Measure_lt b cd A_decode_lt =
+        Some (a', exist _ b' pf , cd').
+  Proof.
+    clear; intros; unfold Decode_w_Measure_lt.
+    remember (A_decode_lt b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ].
+    injections; eauto.
+    discriminate.
+  Qed.
+
+  Lemma Decode_w_Measure_lt_eq'
+        (b : B)
+        (cd : CacheDecode)
+        (A_decode_lt
+         : forall  (b : B)
+                   (cd : CacheDecode)
+                   (a : A)
+                   (b' : B)
+                   (cd' : CacheDecode),
+            A_decode b cd = Some (a, b', cd')
+            -> lt_B b' b)
+    : A_decode b cd = None
+      -> Decode_w_Measure_lt b cd A_decode_lt = None.
+  Proof.
+    clear; intros; unfold Decode_w_Measure_lt.
+    remember (A_decode_lt b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    discriminate.
+  Qed.
 
   Definition Decode_w_Measure_le
              (b : B)
@@ -108,10 +155,55 @@ Section DecodeWMeasure.
                  A_decode b cd = Some (a, b', cd')
                  -> le_B b' b)
     : option (A * {b' : B | le_B b' b} * CacheDecode).
-    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ] eqn: Heqo ;
-      [ refine (Some (a, exist _ b' (A_decode_le _ _ _ _ _ Heqo), cd'))
-      | exact None ].
+    generalize (A_decode_le b cd); clear.
+    destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
+      [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
+        | exact None ].
   Defined.
+
+  Lemma Decode_w_Measure_le_eq
+        (b : B)
+        (cd : CacheDecode)
+        (A_decode_le
+         : forall  (b : B)
+                   (cd : CacheDecode)
+                   (a : A)
+                   (b' : B)
+                   (cd' : CacheDecode),
+            A_decode b cd = Some (a, b', cd')
+            -> le_B b' b)
+    : forall a' b' cd',
+      A_decode b cd = Some (a', b', cd')
+      -> exists pf,
+        Decode_w_Measure_le b cd A_decode_le =
+        Some (a', exist _ b' pf , cd').
+  Proof.
+    clear; intros; unfold Decode_w_Measure_le.
+    remember (A_decode_le b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ].
+    injections; eauto.
+    discriminate.
+  Qed.
+
+  Lemma Decode_w_Measure_le_eq'
+        (b : B)
+        (cd : CacheDecode)
+        (A_decode_le
+         : forall  (b : B)
+                   (cd : CacheDecode)
+                   (a : A)
+                   (b' : B)
+                   (cd' : CacheDecode),
+            A_decode b cd = Some (a, b', cd')
+            -> le_B b' b)
+    : A_decode b cd = None
+      -> Decode_w_Measure_le b cd A_decode_le = None.
+  Proof.
+    clear; intros; unfold Decode_w_Measure_le.
+    remember (A_decode_le b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    discriminate.
+  Qed.
 
 End DecodeWMeasure.
 

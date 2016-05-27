@@ -6,6 +6,7 @@ Set Implicit Arguments.
 
 Lemma compose_encode_correct A A' B
       (cache : Cache)
+      {P : CacheDecode -> Prop}
       (transformer : Transformer B)
       (project : A -> A')
       (predicate : A -> Prop)
@@ -13,14 +14,14 @@ Lemma compose_encode_correct A A' B
       (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
       (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
-      (decode1_pf : encode_decode_correct_f cache transformer predicate' encode1 decode1)
+      (decode1_pf : encode_decode_correct_f cache transformer predicate' encode1 decode1 P)
       (pred_pf : forall data, predicate data -> predicate' (project data))
       (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (decode2_pf : forall proj,
           encode_decode_correct_f cache transformer
             (fun data => predicate data /\ project data = proj)
             encode2
-            (decode2 proj))
+            (decode2 proj) P)
   : encode_decode_correct_f
       cache transformer predicate
       (fun (data : A) (ctx : CacheEncode) =>
@@ -30,7 +31,7 @@ Lemma compose_encode_correct A A' B
       )%comp
      (fun (bin : B) (env : CacheDecode) =>
         `(proj, rest, env') <- decode1 bin env;
-          decode2 proj rest env').
+          decode2 proj rest env') P.
 Proof.
   split.
   { intros env env' xenv data bin ext env_pm pred_pm com_pf.
@@ -42,12 +43,12 @@ Proof.
     destruct (proj1 (decode2_pf (project data)) _ _ _ _ _ ext H1 (conj pred_pm (eq_refl _)) com_pf'); intuition; simpl in *; injections.
     rewrite H2; eauto. }
   { intros.
-    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ; simpl in *;
-      try discriminate.
+    destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+      simpl in *; try discriminate.
     eapply (proj2 decode1_pf) in Heqo; eauto;
-      destruct_ex; intuition; subst.
-    eapply (proj2 (decode2_pf a)) in H0; eauto.
-    destruct_ex; intuition; subst.
+      destruct Heqo; destruct_ex; intuition;
+        eapply (proj2 (decode2_pf a)) in H1; eauto;
+          destruct H1; destruct_ex; intuition; subst.
     eexists; eexists; repeat split.
     repeat computes_to_econstructor; eauto.
     simpl; rewrite transform_assoc; reflexivity.
