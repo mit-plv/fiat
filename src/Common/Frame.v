@@ -1085,10 +1085,10 @@ Section CompleteLattice.
 
   Class CompleteLattice
     : Type :=
-    { cl_sup : forall (f : A -> Prop), A;
-      sup_glb : forall (f : A -> Prop), glb f (cl_sup f);
-      cl_inf : forall (f : A -> Prop), A;
-      inf_lub : forall (f : A -> Prop), lub f (cl_inf f) }.
+    { cl_inf : forall (f : A -> Prop), A;
+      inf_glb : forall (f : A -> Prop), glb f (cl_inf f);
+      cl_sup : forall (f : A -> Prop), A;
+      sup_lub : forall (f : A -> Prop), lub f (cl_sup f) }.
 
   Context {cl : CompleteLattice}.
 
@@ -1120,10 +1120,10 @@ Section CompleteLattice.
 
   Lemma Is_PrefixedPoint
         (f_monotonic : monotonic_function f)
-    : prefixed_point (cl_sup prefixed_point).
+    : prefixed_point (cl_inf prefixed_point).
   Proof.
     unfold prefixed_point at 1.
-    destruct (sup_glb prefixed_point).
+    destruct (inf_glb prefixed_point).
     apply H0.
     intros.
     unfold prefixed_point in H1.
@@ -1132,11 +1132,11 @@ Section CompleteLattice.
 
   Lemma Is_LeastFixedPoint
         (f_monotonic : monotonic_function f)
-    : fixed_point (cl_sup prefixed_point).
+    : fixed_point (cl_inf prefixed_point).
   Proof.
     pose proof Is_PrefixedPoint.
     apply f_monotonic in H.
-    destruct (sup_glb prefixed_point).
+    destruct (inf_glb prefixed_point).
     apply H0 in H.
     apply PO.le_antisym; eauto.
     apply Is_PrefixedPoint; eauto.
@@ -1145,10 +1145,10 @@ Section CompleteLattice.
 
   Lemma Is_PostfixedPoint
         (f_monotonic : monotonic_function f)
-    : postfixed_point (cl_inf postfixed_point).
+    : postfixed_point (cl_sup postfixed_point).
   Proof.
     unfold postfixed_point at 1.
-    destruct (inf_lub postfixed_point).
+    destruct (sup_lub postfixed_point).
     apply H0.
     intros.
     unfold postfixed_point in H1.
@@ -1157,11 +1157,11 @@ Section CompleteLattice.
 
   Lemma Is_GreatestFixedPoint
         (f_monotonic : monotonic_function f)
-    : fixed_point (cl_inf postfixed_point).
+    : fixed_point (cl_sup postfixed_point).
   Proof.
     pose proof Is_PostfixedPoint.
     apply f_monotonic in H.
-    destruct (inf_lub postfixed_point).
+    destruct (sup_lub postfixed_point).
     apply H0 in H.
     apply PO.le_antisym; eauto.
     apply Is_PostfixedPoint; eauto.

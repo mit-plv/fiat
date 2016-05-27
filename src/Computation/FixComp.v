@@ -425,7 +425,7 @@ Module LeastFixedPointFun.
         fun (t : T) => refineFun_lift fDom' (fun cv => LFP_P (fun cv' => cv (cv' t)))
     end.
 
-  Definition refineFun_inf
+  Definition refineFun_sup
              {fDom : list Type}
              {fCod : Type}
              (f : funType fDom fCod -> Prop)
@@ -473,13 +473,13 @@ Module LeastFixedPointFun.
     rewrite H0; eauto.
   Qed.
 
-  Lemma lub_refineFun_inf
+  Lemma lub_refineFun_sup
         (fDom : list Type)
         {fCod : Type}
         (f : funType fDom fCod -> Prop)
-    : lub f (refineFun_inf f).
+    : lub f (refineFun_sup f).
   Proof.
-    unfold refineFun_inf.
+    unfold refineFun_sup.
     unfold lub; split.
     - simpl; intros.
       rewrite refineEquivFun_lift; simpl.
@@ -499,20 +499,20 @@ Module LeastFixedPointFun.
       eapply (refineFun_unCurry _ _ _ H1); eauto.
   Qed.
 
-  Definition refineFun_sup
+  Definition refineFun_inf
              {fDom : list Type}
              {fCod : Type}
              (f : funType fDom fCod -> Prop)
     : funType fDom fCod :=
     refineFun_lift fDom (fun z => exists s, f s /\ z s).
 
-  Definition glb_refineFun_sup
+  Definition glb_refineFun_inf
              (fDom : list Type)
              {fCod : Type}
              (f : funType fDom fCod -> Prop)
-    : glb f (refineFun_sup f).
+    : glb f (refineFun_inf f).
   Proof.
-    unfold refineFun_sup.
+    unfold refineFun_inf.
     unfold glb; split.
     - simpl; intros.
       etransitivity; [ eapply refineEquivFun_lift | ].
@@ -540,8 +540,8 @@ Module LeastFixedPointFun.
       cl_inf := refineFun_inf
     }.
   Proof.
-    eapply glb_refineFun_sup.
-    eapply lub_refineFun_inf.
+    eapply glb_refineFun_inf.
+    eapply lub_refineFun_sup.
   Defined.
 
   Definition LeastFixedPoint
@@ -549,7 +549,7 @@ Module LeastFixedPointFun.
              {fCod : Type}
              (fDef : funType fDom fCod -> funType fDom fCod)
     : funType fDom fCod :=
-    (cl_sup (prefixed_point fDef)).
+    (cl_inf (prefixed_point fDef)).
 
   Lemma refine_LeastFixedPoint
         {fDom : list Type}
@@ -569,11 +569,11 @@ Module LeastFixedPointFun.
                   (LeastFixedPoint fDef').
   Proof.
     unfold LeastFixedPoint, respectful; intros.
-    destruct (sup_glb (prefixed_point fDef)) as [? ?];
-      destruct (sup_glb (prefixed_point fDef')) as [? ?];
+    destruct (inf_glb (prefixed_point fDef)) as [? ?];
+      destruct (inf_glb (prefixed_point fDef')) as [? ?];
       simpl in *.
     etransitivity.
-    eapply (H0 (fDef (refineFun_sup (prefixed_point fDef')))).
+    eapply (H0 (fDef (refineFun_inf (prefixed_point fDef')))).
     eapply fDef_monotone.
     etransitivity.
     eapply H.
@@ -634,7 +634,7 @@ Module LeastFixedPointFun.
                 (Lift_cfunType (recT :: fDom) fCod (Fix wf_P _ fDef' )).
   Proof.
     unfold LeastFixedPoint, respectful_hetero; intros.
-    destruct (sup_glb (O := @funDefOps (recT :: fDom) fCod) (prefixed_point fDef)) as [? ?].
+    destruct (inf_glb (O := @funDefOps (recT :: fDom) fCod) (prefixed_point fDef)) as [? ?].
     simpl; intros; eapply refineFun_trans.
     - eapply (H0 (fDef (fun t => Lift_cfunType _ _ (Fix wf_P (fun _ : recT => cfunType fDom fCod) fDef' t)))).
       simpl; intros; eapply fDef_monotone.
