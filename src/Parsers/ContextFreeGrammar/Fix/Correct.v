@@ -76,7 +76,7 @@ Section grammar_fixedpoint.
                | _ => rewrite nonterminal_to_positive_to_nonterminal
                | _ => tauto
                | _ => assumption
-               | _ => progress unfold lookup_state, option_map, option_rect in *
+               | _ => progress unfold lookup_state, PositiveMapExtensions.find_default, state, option_map, option_rect in *
                | [ H : forall nt, is_true (?P nt) -> _, H' : is_true (?P _) |- _ ]
                  => specialize (H _ H')
                | [ |- ?P ?nt (_ ⊔ _) ] => apply P_lub
@@ -168,7 +168,7 @@ Section grammar_fixedpoint.
                | _ => tauto
                | _ => assumption
                | _ => progress subst
-               | _ => progress unfold lookup_state, option_map, option_rect in *
+               | _ => progress unfold lookup_state, PositiveMapExtensions.find_default, state, option_map, option_rect in *
                | [ H : ?A -> ?B, H' : ?A |- _ ]
                  => specialize (H H')
                | [ H : is_true true -> _ |- _ ] => specialize (H eq_refl)
