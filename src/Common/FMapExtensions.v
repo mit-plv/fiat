@@ -93,6 +93,28 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       eauto using elements_1, elements_2.
   Qed.
 
+  Lemma elements_iff_find :
+    forall (elt : Type) (m : t elt) (x : key) (e : elt),
+      find x m = Some e <-> InA (eq_key_elt (elt:=elt)) (x, e) (elements (elt:=elt) m).
+  Proof.
+    intros; rewrite <- elements_iff.
+    rewrite find_mapsto_iff; reflexivity.
+  Qed.
+
+  Lemma elements_iff' :
+    forall (elt : Type) (m : t elt) (xe : key * elt),
+      MapsTo (fst xe) (snd xe) m <-> InA (eq_key_elt (elt:=elt)) xe (elements (elt:=elt) m).
+  Proof.
+    intros; rewrite elements_iff; destruct xe; reflexivity.
+  Qed.
+
+  Lemma elements_iff_find' :
+    forall (elt : Type) (m : t elt) (xe : key * elt),
+      find (fst xe) m = Some (snd xe) <-> InA (eq_key_elt (elt:=elt)) xe (elements (elt:=elt) m).
+  Proof.
+    intros; rewrite elements_iff_find; destruct xe; reflexivity.
+  Qed.
+
   Lemma InA_In_snd :
     forall {A: Type} (k: key) (e: A) (l : list (key*A)),
       InA (eq_key_elt (elt:=A)) (k, e) l -> List.In e (List.map snd l).
@@ -1440,34 +1462,117 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
           eauto.
   Qed.
 
+  Global Instance eq_key_elt_Equivalence {elt} : Equivalence (@eq_key_elt elt) | 100.
+  Proof.
+    split; unfold eq_key_elt; repeat (intros [] || intro); simpl in *; intuition.
+    etransitivity; eassumption.
+  Qed.
+
+  Local Hint Extern 1 (eq_key_elt _ _) => reflexivity.
+
+  Lemma forall_in_eq_key_elt_snd {A} ls (P : _ -> Prop)
+    : (forall x : key * A, List.In x ls -> P (snd x))
+      <-> (forall x : key * A, InA (@eq_key_elt A) x ls -> P (snd x)).
+  Proof.
+    split; intros H x H'.
+    { rewrite InA_alt in H'.
+      destruct H' as [y [[H'0 ?] H'1]].
+      specialize (H y); destruct y; simpl in *; subst.
+      eauto. }
+    { apply H.
+      apply InA_In; [ exact _ | ].
+      assumption. }
+  Qed.
+
+  Lemma elements_mapsto_iff'
+    : forall (elt : Type) (m : t elt) (xe : key * elt),
+    MapsTo (fst xe) (snd xe) m <-> InA (eq_key_elt (elt:=elt)) xe (elements m).
+  Proof.
+    intros; rewrite elements_mapsto_iff; destruct xe; reflexivity.
+  Qed.
+
+  Definition map2_1bis_for_rewrite (* no metavariables deep inside the beta-iota normal form *)
+             elt elt' elt'' f H m m' x
+    := @BasicFacts.map2_1bis elt elt' elt'' m m' x f H.
+
+  Tactic Notation "setoid_rewrite_in_all" open_constr(lem) :=
+    idtac;
+    match goal with
+    | _ => rewrite !lem
+    | [ H : _ |- _ ] => rewrite !lem in H
+    | _ => setoid_rewrite lem
+    | [ H : _ |- _ ] => setoid_rewrite lem in H
+    end.
+
+  Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) :=
+    idtac;
+    match goal with
+    | _ => rewrite <- !lem
+    | [ H : _ |- _ ] => rewrite <- !lem in H
+    | _ => setoid_rewrite <- lem
+    | [ H : _ |- _ ] => setoid_rewrite <- lem in H
+    end.
+
   Ltac FMap_convert_step should_convert_from_to :=
     idtac;
-    first [ should_convert_from_to (@find) (@MapsTo);
-            setoid_rewrite <- find_mapsto_iff
+    first [ setoid_rewrite_in_all <- in_rev
+          | setoid_rewrite_in_all fold_right_andb_false
+          | should_convert_from_to (@find) (@MapsTo);
+            setoid_rewrite_in_all <- find_mapsto_iff
           | should_convert_from_to (@MapsTo) (@find);
-            setoid_rewrite find_mapsto_iff
+            setoid_rewrite_in_all find_mapsto_iff
           | should_convert_from_to (@InA) (@MapsTo);
-            setoid_rewrite <- elements_mapsto_iff
+            setoid_rewrite_in_all <- elements_mapsto_iff
           | should_convert_from_to (@MapsTo) (@InA);
-            setoid_rewrite elements_mapsto_iff
+            setoid_rewrite_in_all elements_mapsto_iff
+          | should_convert_from_to (@InA) (@MapsTo);
+            setoid_rewrite_in_all <- elements_mapsto_iff'
+          | should_convert_from_to (@MapsTo) (@InA);
+            setoid_rewrite_in_all elements_mapsto_iff'
           | should_convert_from_to (@find) (@add);
-            setoid_rewrite add_o
+            setoid_rewrite_in_all add_o
           | should_convert_from_to (@add) (@find);
-            setoid_rewrite <- add_o
+            setoid_rewrite_in_all <- add_o
+          | should_convert_from_to (@find) (@map2);
+            setoid_rewrite_in_all (@map2_1bis_for_rewrite _ _ _ _ eq_refl)
+          | should_convert_from_to (@find) (@map2);
+            setoid_rewrite_in_all map2_1bis_for_rewrite; [ | (reflexivity || assumption).. ]
+          | should_convert_from_to (@find) (@map2);
+            setoid_rewrite_in_all map2_1bis; [ | (reflexivity || assumption).. ]
           | should_convert_from_to (@find) (@In);
-            setoid_rewrite <- not_find_in_iff
+            setoid_rewrite_in_all <- not_find_in_iff
           | should_convert_from_to (@In) (@find);
-            setoid_rewrite not_find_in_iff
+            setoid_rewrite_in_all not_find_in_iff
           | should_convert_from_to (@InA) (@In);
-            setoid_rewrite <- elements_in_iff
+            setoid_rewrite_in_all <- elements_in_iff
           | should_convert_from_to (@In) (@InA);
-            setoid_rewrite elements_in_iff
-          | setoid_rewrite empty_o
-          | match goal with H : _ |- _ => revert H end ].
+            setoid_rewrite_in_all elements_in_iff
+          | should_convert_from_to (@fold) (@fold_left);
+            setoid_rewrite_in_all fold_1
+          | should_convert_from_to (@fold_left) (@fold);
+            setoid_rewrite_in_all <- fold_1
+          | should_convert_from_to (@fold_left) (@fold_right);
+            match goal with
+            | [ |- appcontext[fold_left (fun a b => @?f b && a)%bool] ]
+              => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => andb b a) f), <- fold_left_rev_right, <- map_rev
+            | [ H : appcontext[fold_left (fun a b => ?g (@?f b) a)] |- _ ]
+              => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev in H
+            end
+          | should_convert_from_to (@fold_right) (@List.In);
+            setoid_rewrite_in_all fold_right_andb_map_in_iff
+          | should_convert_from_to (@List.In) (@InA);
+            setoid_rewrite_in_all forall_in_eq_key_elt_snd
+          | should_convert_from_to (@List.In) (@InA);
+            setoid_rewrite_in_all (@forall_in_eq_key_elt_snd _ _ (fun k => _ k _))
+          | should_convert_from_to false true;
+            setoid_rewrite_in_all <- not_true_iff_false
+          | setoid_rewrite_in_all empty_o
+          | match goal with H : _ |- _ => revert H end;
+            FMap_convert_step should_convert_from_to;
+            intros ].
 
   Ltac FMap_convert' should_convert_from_to :=
-    repeat FMap_convert_step should_convert_from_to;
-    intros.
+    intros; repeat (intros; FMap_convert_step should_convert_from_to).
 
   Ltac default_should_convert_from_to from to :=
     match from with
@@ -1477,6 +1582,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
          | @InA => idtac
          | @add => idtac
          | @In => idtac
+         | @map2 => idtac
          end
     | @MapsTo
       => match to with
@@ -1485,6 +1591,30 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     | @In
       => match to with
          | @InA => idtac
+         end
+    | @List.In
+      => match to with
+         | @InA => idtac
+         end
+    | @fold
+      => match to with
+         | @fold_left => idtac
+         end
+    | @fold_left
+      => match to with
+         | @fold_right => idtac
+         end
+    | @fold_right
+      => match to with
+         | @List.In => idtac
+         end
+    | @map2
+      => match to with
+         | @find => idtac
+         end
+    | false
+      => match to with
+         | true => idtac
          end
     end.
 
@@ -1504,9 +1634,30 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       => match to with
          | @find => idtac
          end
+    | @List.In
+      => match to with
+         | @InA => idtac
+         end
     | @find
       => match to with
          | @add => idtac
+         | @map2 => idtac
+         end
+    | @fold
+      => match to with
+         | @fold_left => idtac
+         end
+    | @fold_left
+      => match to with
+         | @fold_right => idtac
+         end
+    | @fold_right
+      => match to with
+         | @List.In => idtac
+         end
+    | false
+      => match to with
+         | true => idtac
          end
     end.
 
@@ -1564,14 +1715,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
   Global Hint Extern 0 (Proper (E.eq ==> _) pair) => eapply eq_key_elt_pair_Proper : typeclass_instances.
 
-  Local Hint Extern 1 (eq_key_elt _ _) => reflexivity.
-
-  Global Instance eq_key_elt_Equivalence {elt} : Equivalence (@eq_key_elt elt) | 100.
-  Proof.
-    split; unfold eq_key_elt; repeat (intros [] || intro); simpl in *; intuition.
-    etransitivity; eassumption.
-  Qed.
-
   Lemma of_list_elements {T} (v : t T)
     : Equal (of_list (elements v)) v.
   Proof.
@@ -1611,6 +1754,265 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     apply cardinal_Empty; assumption.
   Qed.
 
+  Definition lift_brelation {A} (R : A -> A -> bool) (default : A) : t A -> t A -> bool
+    := fun m1 m2
+       => fold
+            (fun _ => andb)
+            (map2
+               (fun x1 x2
+                => match x1, x2 with
+                   | Some x1, Some x2 => Some (R x1 x2)
+                   | Some x, None => Some (R x default)
+                   | None, Some x => Some (R default x)
+                   | None, None => None
+                   end)
+               m1 m2)
+            true.
+
+  Lemma fold_andb_true v
+    : fold (fun _ => andb) v true <-> forall k, find k v <> Some false.
+  Proof.
+    FMap_convert.
+    split; intro H; [ specialize (fun k v => H (k, v)) | ];
+      simpl in *;
+      intuition eauto using diff_false_true.
+    destruct_head prod.
+    destruct_head bool; eauto.
+  Qed.
+
+  Local Ltac instance_t :=
+    repeat match goal with
+           | _ => congruence
+           | _ => progress destruct_head prod
+           | _ => progress destruct_head bool
+           | _ => progress simpl in *
+           | _ => progress subst
+           | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
+           | _ => progress specialize_by assumption
+           | _ => progress specialize_by ltac:(exact eq_refl)
+           | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
+           | [ H : Some _ = Some _ -> _ |- _ ] => specialize (fun H' => H (f_equal (@Some _) H'))
+           | [ H : ?x = false -> false = true |- _ ]
+             => destruct x eqn:?; [ clear H | specialize (H eq_refl); congruence ]
+           | _ => progress unfold is_true in *
+           end;
+    repeat match goal with
+           | _ => congruence
+           | _ => progress specialize_by assumption
+           | _ => progress specialize_by ltac:(exact eq_refl)
+           | [ H : forall x, ?R x ?y = ?v -> _, H' : ?R ?x' ?y = ?v |- _ ]
+             => unique pose proof (H _ H')
+           | [ H : forall y, ?R ?x y = ?v -> _, H' : ?R ?x ?y' = ?v |- _ ]
+             => unique pose proof (H _ H')
+           | [ H : forall x y, ?R x y = ?v -> _, H' : ?R ?x' ?y' = ?v |- _ ]
+             => unique pose proof (H _ _ H')
+           | [ H : forall x y z, ?R x y = ?v -> _, H' : ?R ?x' ?y' = ?v |- _ ]
+             => unique pose proof (fun z => H _ _ z H')
+           | [ H : forall x : ?T, ?R x x = true, x' : ?T |- _ ]
+             => unique pose proof (H x')
+           end.
+
+  Lemma lift_brelation_iff {A} (R : A -> A -> bool) (default : A) (m1 m2 : t A)
+    : lift_brelation R default m1 m2 <-> forall k, match find k m1, find k m2 return bool with
+                                                   | Some x1, Some x2 => R x1 x2
+                                                   | Some x, None => R x default
+                                                   | None, Some x => R default x
+                                                   | None, None => true
+                                                   end.
+  Proof.
+    FMap_convert_to_find.
+    split; intro H; [ intro k; specialize (H (k, false)) | intros [k v]; specialize (H k) ];
+      instance_t.
+  Qed.
+
+  Global Instance map2_Proper_Equal {A B C} f (Hf : f None None = None)
+    : Proper (Equal ==> Equal ==> Equal) (@map2 A B C f).
+  Proof.
+    intros ?? H' ?? H''.
+    rewrite Equal_mapsto_iff.
+    FMap_convert_to_find.
+    setoid_subst_rel (@Equal A).
+    setoid_subst_rel (@Equal B).
+    reflexivity.
+  Qed.
+
+  Global Hint Extern 1 (Proper _ (@map2 ?A ?B ?C ?f))
+  => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
+
+  Global Instance lift_brelation_Reflexive {A} {R : A -> A -> bool} {HR : @Reflexive A R} {default}
+    : Reflexive (lift_brelation R default).
+  Proof. intro; FMap_convert_to_find; edestruct find; congruence. Qed.
+
+
+  Global Instance lift_brelation_Symmetric {A} {R : A -> A -> bool} {HR : @Symmetric A R} {default}
+    : Symmetric (lift_brelation R default).
+  Proof.
+    intro; FMap_convert_to_find.
+    repeat match goal with
+           | [ H : forall x : ?T, _, x' : ?T |- _ ] => specialize (H x')
+           end.
+    hnf in HR; instance_t.
+  Qed.
+
+  Global Instance lift_brelation_Transitive {A} {R : A -> A -> bool} {HR : @Transitive A R} {default}
+    : Transitive (lift_brelation R default).
+  Proof.
+    intro; FMap_convert_to_find.
+    repeat match goal with
+           | [ H : forall x : ?T, _, x' : ?T |- _ ] => specialize (H x')
+           end.
+    hnf in HR; instance_t.
+  Qed.
+
+  Global Instance fold_andb_true_Proper_Equal
+    : Proper (@Equal _ ==> eq ==> eq) (fold (fun _ => andb)).
+  Proof.
+    intros ?? H [] ??; subst;
+      match goal with
+      | [ |- ?x = ?y ] => destruct x eqn:?; destruct y eqn:?; trivial
+      end;
+      FMap_convert_to_find;
+      setoid_subst_rel (@Equal bool);
+      try tauto.
+  Qed.
+
+  Global Instance lift_brelation_Proper_Equal {A R default}
+    : Proper (@Equal A ==> @Equal A ==> eq) (@lift_brelation A R default) | 2.
+  Proof.
+    intros a b H a' b' H'.
+    destruct (lift_brelation R default a a') eqn:Ha;
+    destruct (lift_brelation R default b b') eqn:Hb;
+    unfold lift_brelation in *;
+    try reflexivity;
+    setoid_subst_rel (@Equal A);
+    congruence.
+  Qed.
+
+  Global Instance lift_brelation_Proper_Proper_subrelation {A} {R1 R2 R : A -> A -> bool} {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> eq) R}
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2.
+  Proof.
+    intros a b H a' b' H'.
+    destruct (lift_brelation R default a a') eqn:Ha;
+    destruct (lift_brelation R default b b') eqn:Hb;
+    unfold lift_brelation in *;
+    try reflexivity;
+    FMap_convert_to_find;
+    repeat match goal with
+           | [ |- false = true ] => exfalso
+           | [ |- true <> true ] => exfalso
+           | [ H : ~_ |- False ] => apply H; clear H
+           | _ => progress intros
+           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
+           end;
+      specialize (fun x y H z w => R_Proper x y H z w);
+      unfold Reflexive, Symmetric, Transitive, subrelation, predicate_implication, pointwise_lifting, impl in *;
+      instance_t.
+  Qed.
+
+  Global Instance lift_brelation_Proper_Proper {A} {R : A -> A -> bool} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> eq) R}
+    : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2.
+  Proof.
+    apply lift_brelation_Proper_Proper_subrelation.
+  Qed.
+
+  Global Instance lift_brelation_Equivalence
+         {A} {R : A -> A -> bool}
+         {R_Equiv : @Equivalence A R}
+         {default}
+    : Equivalence (lift_brelation R default).
+  Proof.
+    split; exact _.
+  Qed.
+
+  Global Instance lift_brelation_Antisymmetric
+         {A} {R RE : A -> A -> bool}
+         {RE_Equivalence : @Equivalence A RE}
+         {AS : Antisymmetric A RE R}
+         {default}
+    : Antisymmetric _ (lift_brelation RE default) (lift_brelation R default).
+  Proof.
+    intros a b H H'.
+    FMap_convert_to_find.
+    repeat match goal with
+           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
+           end.
+    destruct RE_Equivalence.
+    do 2 edestruct find;
+      unfold Reflexive, Symmetric, Transitive, Antisymmetric, subrelation, predicate_implication, pointwise_lifting, impl in *;
+      instance_t.
+  Qed.
+
+  Definition find_default {elt} (default : elt) (k : key) (m : t elt) : elt
+    := option_rect (fun _ => elt)
+                   (fun v => v)
+                   default
+                   (find k m).
+
+  Lemma find_default_map2 {elt elt' elt''} f (H : f None None = None)
+        default default' default''
+        (Hfl : forall v, f None (Some v) = f (Some default) (Some v))
+        (Hfr : forall v, f (Some v) None = f (Some v) (Some default'))
+        (Hfd : f (Some default) (Some default') = Some default'')
+        (m : t elt) (m' : t elt')
+        k
+    : find_default default'' k (map2 f m m')
+      = option_rect (fun _ => elt'')
+                    (fun v => v)
+                    default''
+                    (f (Some (find_default default k m)) (Some (find_default default' k m'))).
+  Proof.
+    unfold find_default.
+    rewrite map2_1bis by assumption.
+    do 2 edestruct find; simpl;
+      rewrite ?Hfl, ?Hfr, ?Hfd, ?H;
+      try reflexivity.
+  Qed.
+
+  Definition defaulted_f {elt elt' elt''} (default : elt) (default' : elt') f
+    := fun x y => match x, y return option elt'' with
+                  | Some x, Some y => Some (f x y)
+                  | Some x, None => Some (f x default')
+                  | None, Some y => Some (f default y)
+                  | None, None => None
+                  end.
+
+  Lemma find_default_map2_defaulted {elt elt' elt''} (f : elt -> elt' -> elt'')
+        default default' default''
+        (Hdefault'' : f default default' = default'')
+        (m : t elt) (m' : t elt')
+        k
+    : find_default default'' k (map2 (defaulted_f default default' f) m m')
+      = f (find_default default k m) (find_default default' k m').
+  Proof.
+    subst.
+    erewrite find_default_map2 by reflexivity; reflexivity.
+  Qed.
+
+  Global Instance map2_defaulted_Proper_lift_brelation {elt elt' elt''} {default : elt} {default' : elt'} {f}
+         {R1 : elt -> elt -> bool}
+         {R2 : elt' -> elt' -> bool}
+         {R : elt'' -> elt'' -> bool}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {f_Proper : Proper (R1 ==> R2 ==> R) f}
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default' ==> lift_brelation R (f default default'))
+             (map2 (defaulted_f default default' f)).
+  Proof.
+    repeat intro; FMap_convert_to_find.
+    repeat match goal with
+           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
+           end.
+    unfold defaulted_f in *.
+    unfold Proper, respectful, Reflexive in *.
+    instance_t.
+  Qed.
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
