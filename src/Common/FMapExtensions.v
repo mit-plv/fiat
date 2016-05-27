@@ -21,6 +21,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
   Definition TKey := key.
 
+  (** TODO: merge with find_default *)
   Definition FindWithDefault {A} (key: TKey) (default: A) (fmap: t A) :=
     match find key fmap with
     | Some result => result
@@ -1949,6 +1950,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       instance_t.
   Qed.
 
+  (** TODO: merge with FindWithDefault *)
   Definition find_default {elt} (default : elt) (k : key) (m : t elt) : elt
     := option_rect (fun _ => elt)
                    (fun v => v)
