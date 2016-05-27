@@ -203,12 +203,22 @@ ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around th
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 else
+ifneq (,$(filter 8.5%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v85
+ML_DESCRIPTION := "Coq v8.5"
+else
+ifneq (,$(filter trunk,$(COQ_VERSION)))
+EXPECTED_EXT:=.trunk
+ML_DESCRIPTION := "Coq trunk"
+else
 ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 else
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
+endif
+endif
 endif
 endif
 
