@@ -1498,6 +1498,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Tactic Notation "setoid_rewrite_in_all" open_constr(lem) :=
     idtac;
     match goal with
+    | _ => rewrite !lem
+    | [ H : _ |- _ ] => rewrite !lem in H
     | _ => setoid_rewrite lem
     | [ H : _ |- _ ] => setoid_rewrite lem in H
     end.
@@ -1505,6 +1507,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) :=
     idtac;
     match goal with
+    | _ => rewrite <- !lem
+    | [ H : _ |- _ ] => rewrite <- !lem in H
     | _ => setoid_rewrite <- lem
     | [ H : _ |- _ ] => setoid_rewrite <- lem in H
     end.
@@ -1874,7 +1878,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Global Instance lift_brelation_Proper_Proper_subrelation {A} {R1 R2 R : A -> A -> bool} {default}
          {R1_Reflexive : Reflexive R1}
          {R2_Reflexive : Reflexive R2}
-         {R_Symmetric : Symmetric R}
          {R1_subrelation : subrelation R1 R}
          {R2_subrelation : subrelation R2 R}
          {R_Proper : Proper (R1 ==> R2 ==> eq) R}
@@ -1900,7 +1903,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
   Global Instance lift_brelation_Proper_Proper {A} {R : A -> A -> bool} {default}
          {R_Reflexive : Reflexive R}
-         {R_Symmetric : Symmetric R}
          {R_Proper : Proper (R ==> R ==> eq) R}
     : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2.
   Proof.
