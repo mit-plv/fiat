@@ -87,9 +87,6 @@ PARSERS_EXAMPLES_UNMADE_VO := \
 	src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.vo
 
 PARSERS_UNMADE_VO := \
-	src/Parsers/Grammars/JavaScriptExpression.vo \
-	src/Parsers/Grammars/JavaScriptStatementsWithoutAssignmentExpression.vo \
-	src/Parsers/Grammars/JavaScriptWithoutStatements.vo \
 	src/Parsers/Grammars/SimpleRecognizerOptimized.vo \
 	src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo \
