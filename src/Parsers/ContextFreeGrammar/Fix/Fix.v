@@ -351,8 +351,10 @@ Section grammar_fixedpoint.
     repeat lazymatch goal with
            | [ |- appcontext[forall k : PositiveMap.key, is_true (option_rect_nodep (fun x => match @?e k x with Some s => @?S k x s | None => @?N k x end) _ _)] ]
              => setoid_rewrite (fun k x => @fold_option_rect_nodep _ _ (S k x) (N k x) (e k x))
+           | [ |- appcontext[forall k : PositiveMap.key, is_true (option_rect_nodep _ (match @?e k with Some s => @?S k s | None => @?N k end) _)] ]
+             => setoid_rewrite (fun k => @fold_option_rect_nodep _ _ (S k) (N k) (e k))
            end.
-    setoid_rewrite (PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ _ eq_refl).
+    setoid_rewrite (PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ _ _); [ | reflexivity.. ].
     unfold option_rect_nodep.
     repeat match goal with
            | [ |- and _ _ ] => split
@@ -550,7 +552,7 @@ PositiveMap.fold (fun _ => andb)
            | [ |- appcontext[forall k : PositiveMap.key, is_true (option_rect_nodep (fun x => match @?e k x with Some s => @?S k x s | None => @?N k x end) _ _)] ]
              => setoid_rewrite (fun k x => @fold_option_rect_nodep _ _ (S k x) (N k x) (e k x))
            end.
-    setoid_rewrite (PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ _ eq_refl).
+    setoid_rewrite (PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ _ _); [ | reflexivity.. ].
     setoid_rewrite PositiveMap.gmapi.
     unfold option_rect_nodep, option_map.
     intro k; specialize (H k).
