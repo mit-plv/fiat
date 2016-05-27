@@ -151,6 +151,7 @@ src/Common/Ensembles.v
 src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
+src/Common/FMapExtensionsWf.v
 src/Common/FixedPoints.v
 src/Common/Frame.v
 src/Common/Gensym.v
