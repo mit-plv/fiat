@@ -9,6 +9,10 @@ Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 
+Scheme Induction for Acc Sort Prop.
+Scheme Induction for Acc Sort Set.
+Scheme Induction for Acc Sort Type.
+
 Section wf.
   Global Instance well_founded_subrelation {A}
     : Proper (flip subrelation ==> impl) (@well_founded A).
@@ -18,6 +22,174 @@ Section wf.
     constructor; intros y Hy.
     apply R'a, HR, Hy.
   Defined.
+
+  Inductive RT_closure {A} (R : relation A) : relation A :=
+  | cinject {x y} : R x y -> RT_closure R x y
+  | crefl {x} : RT_closure R x x
+  | ctrans {x y z} : RT_closure R x y -> RT_closure R y z -> RT_closure R x z.
+
+  Fixpoint Acc_subrelation {A} (R1 R2 : relation A) (v : A) (Hacc : Acc R1 v)
+        (HR : forall x y, RT_closure R2 y v -> R2 x y -> R1 x y) {struct Hacc}
+    : Acc R2 v.
+  Proof.
+    destruct Hacc as [Hacc].
+    constructor.
+    intros y Hy.
+    specialize (fun pf => @Acc_subrelation A R1 R2 y (Hacc y pf)).
+    specialize (@Acc_subrelation (HR _ _ (@crefl _ _ _) Hy)).
+    apply Acc_subrelation; clear -HR Hy.
+    intros x y' Hxy Hr2.
+    apply HR; clear HR; [ | assumption ].
+    clear -Hy Hxy.
+    eapply ctrans; [ eassumption | eapply cinject; eassumption ].
+  Defined.
+
+  Section wf_acc_of.
+    Context A (RA : relation A).
+
+    Definition well_founded_acc_relation_of
+              B (f : B -> A) (fA : forall b, Acc RA (f b))
+      : relation B
+      := fun b0 b1 => match fA b1 with
+                      | Acc_intro fAb1 => exists pf,
+                                          fAb1 (f b0) pf = fA b0
+                      end.
+
+
+    Lemma well_founded_well_founded_acc_relation_of B f fA
+      : well_founded (@well_founded_acc_relation_of B f fA).
+    Proof.
+      intro b.
+      constructor.
+      unfold well_founded_acc_relation_of.
+      generalize (fA b).
+      generalize (f b).
+      lazymatch goal with
+      | [ |- forall a' wf', @?P a' wf' ]
+        => apply (@Acc_ind_dep A RA P)
+      end.
+      intros a Ha IH y [pf Hy].
+      constructor.
+      intros z Hz.
+      specialize (IH (f y) pf z).
+      apply IH; clear IH.
+      destruct Hy.
+      apply Hz.
+    Defined.
+
+    Fixpoint Acc_RA_of B (f : B -> A) b (ac : Acc RA (f b))
+      : Acc (fun x y => RA (f x) (f y)) b.
+    Proof.
+      refine match ac with
+             | Acc_intro fg => Acc_intro _ (fun y Ry => @Acc_RA_of _ _ _ (fg _ _))
+             end.
+      assumption.
+    Defined.
+
+    Lemma well_founded_RA_of B (f : B -> A) (wf_A : well_founded RA)
+      : well_founded (fun x y => RA (f x) (f y)).
+    Proof.
+      intro a.
+      apply Acc_RA_of, wf_A.
+    Defined.
+  End wf_acc_of.
+
+  Section wf_acc_of_option.
+    Context A (RA : relation A).
+
+    Definition well_founded_acc_relation_of_opt
+              B (f : B -> option A) (fA : forall b, match f b with
+                                                    | Some fb => Acc RA fb
+                                                    | None => True
+                                                    end)
+      : relation B
+      := fun b0 b1
+         => match f b1 as fb1 return match fb1 with
+                                     | Some fb => Acc RA fb
+                                     | None => True
+                                     end -> _
+            with
+            | Some fb1
+              => fun fAb
+                 => match fAb with
+                    | Acc_intro fAb1
+                      => match f b0 as fb0 return match fb0 with
+                                                  | Some fb => Acc RA fb
+                                                  | None => True
+                                                  end -> _
+                         with
+                         | Some fb0
+                           => fun fAb0 => exists pf,
+                                  fAb1 fb0 pf = fAb0
+                         | None => fun _ => False
+                         end (fA b0)
+                    end
+            | None => fun _ => False
+            end (fA b1).
+
+    Lemma well_founded_well_founded_acc_relation_of_opt B f fA
+      : well_founded (@well_founded_acc_relation_of_opt B f fA).
+    Proof.
+      intro b.
+      constructor.
+      unfold well_founded_acc_relation_of_opt.
+      generalize (fA b).
+      generalize (f b).
+      intros [fb|].
+      { revert fb.
+        lazymatch goal with
+        | [ |- forall a' wf', @?P a' wf' ]
+          => apply (@Acc_ind_dep A RA P)
+        end.
+        intros a Ha IH y.
+        constructor.
+        generalize dependent (fA y).
+        destruct (f y) as [fy|] eqn:Hfy.
+        { intros y0 [pf Hy].
+          intros z Hz.
+          specialize (IH fy pf z).
+          apply IH; clear IH.
+          destruct Hy.
+          apply Hz. }
+        { intros ? []. } }
+      { intros ?? []. }
+    Defined.
+
+    Fixpoint Acc_RA_of_opt B (f : B -> option A) b v (Heq : f b = Some v)
+             (ac : Acc RA v) {struct ac}
+      : Acc (fun x y => match f x, f y with
+                        | Some fx, Some fy => RA fx fy
+                        | _, _ => False
+                        end) b.
+    Proof.
+      destruct ac as [fg].
+      constructor.
+      intros y Ry.
+      specialize (fun v H Rv => Acc_RA_of_opt B f y v H (fg _ Rv)); clear fg.
+      destruct (f y) as [fy|] eqn:Hfy.
+      { specialize (Acc_RA_of_opt _ eq_refl).
+        destruct (f b) as [fb|] eqn:Hfb.
+        { inversion Heq; clear Heq; subst.
+          specialize (Acc_RA_of_opt Ry).
+          assumption. }
+        { destruct Ry. } }
+      { destruct Ry. }
+    Defined.
+
+    Lemma well_founded_RA_of_opt B (f : B -> option A) (wf_A : well_founded RA)
+      : well_founded (fun x y => match f x, f y with
+                                 | Some fx, Some fy => RA fx fy
+                                 | _, _ => False
+                                 end).
+    Proof.
+      intro a.
+      destruct (f a) eqn:H.
+      { eapply Acc_RA_of_opt, wf_A; eassumption. }
+      { constructor.
+        intro y.
+        destruct (f y); [ rewrite H | ]; intros []. }
+    Defined.
+  End wf_acc_of_option.
 
   Section wf_prod.
     Context A B (RA : relation A) (RB : relation B).
@@ -139,6 +311,146 @@ Section wf.
       exact IH.
     Defined.
   End wf_projT1.
+
+  Section wf_iterated_prod_of.
+    Context A (R : relation A) (Rwf : well_founded R).
+
+    Fixpoint iterated_prod (n : nat) : Type
+      := match n with
+         | 0 => unit
+         | S n' => A * iterated_prod n'
+         end%type.
+
+    Fixpoint iterated_prod_relation {n} : relation (iterated_prod n)
+      := match n return relation (iterated_prod n) with
+         | 0 => fun _ _ => False
+         | S n' => prod_relation R (@iterated_prod_relation n')
+         end.
+
+    Fixpoint nat_eq_transfer (P : nat -> Type) (n m : nat) : P n -> (P m) + (EqNat.beq_nat n m = false)
+      := match n, m return P n -> (P m) + (EqNat.beq_nat n m = false) with
+         | 0, 0 => fun x => inl x
+         | S n', S m' => @nat_eq_transfer (fun v => P (S v)) n' m'
+         | _, _ => fun _ => inr eq_refl
+         end.
+
+    Fixpoint nat_eq_transfer_refl (P : nat -> Type) (n : nat) : forall v : P n, nat_eq_transfer P n n v = inl v
+      := match n return forall v : P n, nat_eq_transfer P n n v = inl v with
+         | 0 => fun v => eq_refl
+         | S n' => @nat_eq_transfer_refl (fun k => P (S k)) n'
+         end.
+
+    Fixpoint nat_eq_transfer_neq (P : nat -> Type) (n m : nat)
+      : forall v : P n, (if EqNat.beq_nat n m as b return ((P m) + (b = false)) -> Prop
+                         then fun _ => True
+                         else fun v => v = inr eq_refl)
+                          (nat_eq_transfer P n m v)
+      := match n, m return forall v : P n, (if EqNat.beq_nat n m as b return ((P m) + (b = false)) -> Prop
+                                            then fun _ => True
+                                            else fun v => v = inr eq_refl)
+                                             (nat_eq_transfer P n m v)
+         with
+         | 0, 0 => fun _ => I
+         | S n', S m' => @nat_eq_transfer_neq (fun v => P (S v)) n' m'
+         | _, _ => fun _ => eq_refl
+         end.
+
+    Definition iterated_prod_relation_of
+               B (sz : B -> nat) (f : forall b, iterated_prod (sz b))
+      : relation B
+      := fun x y => match nat_eq_transfer _ (sz x) (sz y) (f x) with
+                    | inl fx => iterated_prod_relation fx (f y)
+                    | inr _ => False
+                    end.
+
+    Lemma well_founded_iterated_prod_relation {n} : well_founded (@iterated_prod_relation n).
+    Proof.
+      induction n as [|n IHn]; simpl.
+      { constructor; intros ? []. }
+      { apply well_founded_prod_relation; assumption. }
+    Defined.
+
+    Local Ltac handle_nat_eq_transfer
+      := repeat lazymatch goal with
+                | [ |- forall n0 n1, @?P n0 n1 ]
+                  => let n0' := fresh "n" in
+                     let n1' := fresh "n" in
+                     let H := fresh in
+                     let H' := fresh in
+                     intros n0' n1';
+                     destruct (@nat_eq_transfer (P n0') n0' n1') as [H|H];
+                     [ clear n1'; revert n0'
+                     | apply H
+                     | lazymatch goal with
+                       | [ |- appcontext[@nat_eq_transfer iterated_prod n1' n0'] ]
+                         => pose proof (@nat_eq_transfer_neq iterated_prod n1' n0') as H';
+                            cbv beta in *;
+                            generalize dependent (nat_eq_transfer iterated_prod n1' n0');
+                            let Heq := fresh in
+                            destruct (EqNat.beq_nat n1' n0') eqn:Heq;
+                            [ apply EqNat.beq_nat_true_iff in Heq; subst; rewrite <- EqNat.beq_nat_refl in H;
+                              exfalso; clear -H; congruence
+                            | ]
+                       | [ |- appcontext[@nat_eq_transfer iterated_prod n0' n1'] ]
+                         => pose proof (@nat_eq_transfer_neq iterated_prod n0' n1') as H';
+                            cbv beta in *;
+                            generalize dependent (nat_eq_transfer iterated_prod n0' n1');
+                            rewrite H
+                       end
+                     ]
+                end;
+         repeat match goal with
+                | _ => reflexivity
+                | [ H : False |- _ ] => exfalso; exact H
+                | [ H : forall v, _ = inr _ |- _ ] => rewrite H
+                | _ => intro
+                end.
+
+    Lemma RT_closure_same_size B (sz : B -> nat) (f : forall b, iterated_prod (sz b))
+          a b
+          (H : RT_closure (iterated_prod_relation_of sz f) a b)
+      : sz a = sz b.
+    Proof.
+      induction H as [x y H | | ].
+      { unfold iterated_prod_relation_of in *.
+        generalize dependent (f x).
+        generalize dependent (f y).
+        generalize dependent (sz x).
+        generalize dependent (sz y).
+        handle_nat_eq_transfer. }
+      { reflexivity. }
+      { etransitivity; eassumption. }
+    Defined.
+
+    Lemma well_founded_iterated_prod_relation_of
+          B (sz : B -> nat) (f : forall b, iterated_prod (sz b))
+      : well_founded (@iterated_prod_relation_of B sz f).
+    Proof.
+      intro b.
+      pose proof (@well_founded_RA_of_opt (iterated_prod (sz b)) iterated_prod_relation B) as wf.
+      specialize (wf (fun b' => match nat_eq_transfer _ (sz b') (sz b) (f b') with
+                                | inl v => Some v
+                                | inr _ => None
+                                end)).
+      specialize (wf well_founded_iterated_prod_relation).
+      eapply Acc_subrelation; [ eapply wf | clear wf ].
+      intros x y H.
+      apply RT_closure_same_size in H.
+      unfold iterated_prod_relation_of.
+      generalize dependent (f b).
+      generalize dependent (f x).
+      generalize dependent (f y).
+      generalize dependent (sz y).
+      intros ??; subst.
+      clear y.
+      generalize dependent (sz b).
+      generalize dependent (sz x).
+      clear.
+      handle_nat_eq_transfer.
+      rewrite !nat_eq_transfer_refl in *.
+      assumption.
+    Defined.
+  End wf_iterated_prod_of.
 End wf.
 
 Local Ltac Fix_eq_t F_ext Rwf :=
