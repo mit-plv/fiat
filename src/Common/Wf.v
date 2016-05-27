@@ -23,6 +23,20 @@ Section wf.
     apply R'a, HR, Hy.
   Defined.
 
+  Fixpoint no_wf_cycle_helper {A} {R : relation A} x y
+           (H0 : R x y) (H1 : R y x) (wf : Acc R x)
+    : False
+    := match wf with
+       | Acc_intro f => @no_wf_cycle_helper A R y x H1 H0 (f _ H1)
+       end.
+
+  Global Instance no_wf_cycle {A R} (Rwf : @well_founded A R) : Asymmetric R.
+  Proof.
+    intros x y H0 H1.
+    specialize (Rwf x).
+    eapply no_wf_cycle_helper; [ .. | eassumption ]; eassumption.
+  Qed.
+
   Inductive RT_closure {A} (R : relation A) : relation A :=
   | cinject {x y} : R x y -> RT_closure R x y
   | crefl {x} : RT_closure R x x
@@ -363,11 +377,25 @@ Section wf.
                     | inr _ => False
                     end.
 
+    Definition iterated_prod_relation_of_opt
+               B (sz : nat) (f : B -> option (iterated_prod sz))
+      : relation B
+      := fun x y => match f x, f y with
+                    | Some fx, Some fy => iterated_prod_relation fx fy
+                    | _, _ => False
+                    end.
+
     Lemma well_founded_iterated_prod_relation {n} : well_founded (@iterated_prod_relation n).
     Proof.
       induction n as [|n IHn]; simpl.
       { constructor; intros ? []. }
       { apply well_founded_prod_relation; assumption. }
+    Defined.
+
+    Lemma well_founded_iterated_prod_relation_of_opt {B n f} : well_founded (@iterated_prod_relation_of_opt B n f).
+    Proof.
+      unfold iterated_prod_relation_of_opt.
+      apply well_founded_RA_of_opt, well_founded_iterated_prod_relation.
     Defined.
 
     Local Ltac handle_nat_eq_transfer
@@ -451,4 +479,93 @@ Section wf.
       assumption.
     Defined.
   End wf_iterated_prod_of.
+
+  Section wf_functions.
+    Context A (R : relation A).
+
+    Local Infix "<" := R.
+    Local Notation "x <= y" := (x = y \/ x < y).
+
+    Context (bot : A) (bot_bot : forall a, bot <= a)
+            (Rwf : well_founded R)
+            (B : Type).
+
+    Definition function_relation : relation (B -> A)
+      := fun f g => (forall x, f x <= g x)
+                    /\ exists x, f x <> g x.
+
+    Definition is_finite_for (ls : list B) (f : B -> A)
+      := forall x, ~List.In x ls -> f x = bot.
+
+    Definition iterated_prod_of_function_for (ls : list B) (f : B -> A)
+      : iterated_prod A (List.length ls)
+      := list_rect (fun ls => iterated_prod A (List.length ls))
+                   tt
+                   (fun x _ v => (f x, v))
+                   ls.
+
+    Global Instance is_finite_for_Proper_fr
+      : Proper (eq ==> function_relation ==> flip impl) is_finite_for.
+    Proof.
+      unfold is_finite_for, function_relation.
+      intros ls g ?; subst g.
+      intros f g [Hle Hne] Hfin x Hnin.
+      specialize (Hle x); specialize (Hfin x Hnin).
+      destruct Hle as [Heq|Hlt]; [ congruence | ].
+      specialize (bot_bot (f x)).
+      destruct bot_bot as [Heq|Hlt']; [ congruence | ].
+      rewrite Hfin in Hlt.
+      clear -Hlt Hlt' Rwf.
+      exfalso; eapply no_wf_cycle; eassumption.
+    Qed.
+
+    Global Instance is_finite_for_Proper_frc
+      : Proper (eq ==> RT_closure function_relation ==> flip impl) is_finite_for.
+    Proof.
+      intros ls ls' ? f g H Hfin.
+      induction H as [ ?? H | | ].
+      { eapply is_finite_for_Proper_fr; eassumption. }
+      { subst; assumption. }
+      { subst; eauto with nocore. }
+    Qed.
+
+    Lemma function_subrelation ls (f : B -> A) (H : is_finite_for ls f)
+      : forall x y : B -> A,
+        RT_closure function_relation y f ->
+        function_relation x y ->
+        iterated_prod_relation_of R (fun _ : B -> A => length ls)
+                                  (iterated_prod_of_function_for ls) x y.
+    Proof.
+      clear -H.
+      intros g h Hhf Hgh.
+      assert (Hfinh : is_finite_for ls h) by (rewrite Hhf; assumption).
+      assert (Hfing : is_finite_for ls g) by (rewrite Hgh; assumption).
+      clear -Hgh Hfinh Hfing.
+      unfold iterated_prod_relation_of, function_relation, iterated_prod_of_function_for in *.
+      rewrite nat_eq_transfer_refl.
+      destruct Hgh as [Hle Hne].
+      destruct Hne as [b Hne].
+      unfold is_finite_for in *.
+      assert (Hin : ~~List.In b ls).
+      { intro Hnin.
+        rewrite Hfinh in Hne by assumption.
+        rewrite Hfing in Hne by assumption.
+        congruence. }
+      clear Hfinh Hfing.
+      induction ls as [|x xs IHxs];
+        [ | specialize (Hle x) ];
+        simpl; unfold prod_relation; simpl in *;
+          intuition (congruence || tauto).
+    Qed.
+
+    Definition function_relation_Acc ls (f : B -> A) (H : is_finite_for ls f)
+      : Acc function_relation f.
+    Proof.
+      pose proof (@well_founded_iterated_prod_relation_of
+                    A R Rwf (B -> A) (fun _ => List.length ls) (@iterated_prod_of_function_for ls) f)
+        as wf.
+      eapply Acc_subrelation; [ eexact wf | ].
+      apply function_subrelation; assumption.
+    Defined.
+  End wf_functions.
 End wf.
