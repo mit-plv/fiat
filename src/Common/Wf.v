@@ -488,7 +488,7 @@ Section wf.
 
     Context (bot : A) (bot_bot : forall a, bot <= a)
             (Rwf : well_founded R)
-            (B : Type).
+            {B : Type}.
 
     Definition function_relation : relation (B -> A)
       := fun f g => (forall x, f x <= g x)
@@ -568,4 +568,126 @@ Section wf.
       apply function_subrelation; assumption.
     Defined.
   End wf_functions.
+
+  Section wf_functionsA.
+    Context A (R : relation A).
+
+    Local Infix "<" := R.
+    Local Notation "x <= y" := (x = y \/ x < y).
+
+    Context (bot : A) (bot_bot : forall a, bot <= a)
+            (Rwf : well_founded R)
+            (B C : Type)
+            (eqv : relation B)
+            {Heqv : Reflexive eqv}
+            (F : C -> (B -> A))
+            (F_Proper : forall a b k k', eqv k' k -> F a k = F b k -> F a k' = F b k').
+
+
+    Definition is_finite_forA' (ls : list B) (f : B -> A)
+      := forall x, ~SetoidList.InA eqv x ls -> f x = bot.
+
+    Definition is_finite_forA (ls : list B) (c : C) := is_finite_forA' ls (F c).
+
+    Global Instance is_finite_forA'_Proper_fr
+      : Proper (eq ==> function_relation R ==> flip impl) is_finite_forA'.
+    Proof.
+      unfold is_finite_forA', function_relation.
+      intros ls g ?; subst g.
+      intros f g [Hle Hne] Hfin x Hnin.
+      specialize (Hle x); specialize (Hfin x Hnin).
+      destruct Hle as [Heq|Hlt]; [ congruence | ].
+      specialize (bot_bot (f x)).
+      destruct bot_bot as [Heq|Hlt']; [ congruence | ].
+      rewrite Hfin in Hlt.
+      clear -Hlt Hlt' Rwf.
+      exfalso; eapply no_wf_cycle; eassumption.
+    Qed.
+
+    Global Instance is_finite_forA_Proper_fr
+      : Proper (eq ==> (fun x y => function_relation R (F x) (F y)) ==> flip impl) is_finite_forA.
+    Proof.
+      unfold is_finite_forA.
+      intros ??????.
+      eapply is_finite_forA'_Proper_fr; eassumption.
+    Qed.
+
+    Global Instance is_finite_forA'_Proper_frc
+      : Proper (eq ==> RT_closure (function_relation R) ==> flip impl) is_finite_forA'.
+    Proof.
+      intros ls ls' ? f g H Hfin.
+      induction H as [ ?? H | | ].
+      { eapply is_finite_forA'_Proper_fr; eassumption. }
+      { subst; assumption. }
+      { subst; eauto with nocore. }
+    Qed.
+
+    Global Instance is_finite_forA_Proper_frc
+      : Proper (eq ==> (fun x y => RT_closure (function_relation R) (F x) (F y)) ==> flip impl) is_finite_forA.
+    Proof.
+      unfold is_finite_forA.
+      intros ??????.
+      eapply is_finite_forA'_Proper_frc; eassumption.
+    Qed.
+
+    Global Instance is_finite_forA_Proper_frc'
+      : Proper (eq ==> RT_closure (fun x y => function_relation R (F x) (F y)) ==> flip impl) is_finite_forA.
+    Proof.
+      intros ls ls' ? f g H Hfin.
+      induction H as [ ?? H | | ].
+      { eapply is_finite_forA_Proper_fr; eassumption. }
+      { subst; assumption. }
+      { subst; eauto with nocore. }
+    Qed.
+
+    Lemma function_subrelationA ls c (H : is_finite_forA ls c)
+      : forall x y : C,
+        RT_closure (fun x0 y0 : C => function_relation R (F x0) (F y0)) y c ->
+        function_relation R (F x) (F y) ->
+        (fun x0 y0 : C =>
+           iterated_prod_relation_of R (fun _ : B -> A => length ls)
+                                     (iterated_prod_of_function_for ls) (F x0) (F y0)) x y.
+    Proof.
+      clear -H Heqv F_Proper.
+      intros g h Hhf Hgh; cbv beta.
+      assert (Hfinh : is_finite_forA ls h) by (rewrite Hhf; assumption).
+      assert (Hfing : is_finite_forA ls g) by (unfold is_finite_forA; rewrite Hgh; assumption).
+      clear -Hgh Hfinh Hfing F_Proper.
+      unfold iterated_prod_relation_of, function_relation, iterated_prod_of_function_for in *.
+      rewrite nat_eq_transfer_refl.
+      destruct Hgh as [Hle Hne].
+      destruct Hne as [b Hne].
+      assert (Hin : ~~SetoidList.InA eqv b ls).
+      { intro Hnin.
+        rewrite Hfinh in Hne by assumption.
+        rewrite Hfing in Hne by assumption.
+        congruence. }
+      clear Hfinh Hfing.
+      rewrite SetoidList.InA_alt in Hin.
+      induction ls as [|x xs IHxs];
+        [ | pose proof (Hle x) as Hlex ];
+        simpl; unfold prod_relation; simpl in *;
+          intuition repeat (congruence
+                            || tauto
+                            || destruct_head ex
+                            || destruct_head and
+                            || destruct_head or
+                            || subst
+                            || eauto
+                            || (exfalso; eauto)).
+    Qed.
+
+    Definition function_relationA_of_Acc ls (c : C) (H : is_finite_forA ls c)
+      : Acc (fun x y => function_relation R (F x) (F y)) c.
+    Proof.
+      pose proof (@well_founded_RA_of
+                    _ _ _ F
+                    (well_founded_iterated_prod_relation_of
+                         Rwf (fun _ => List.length ls) (iterated_prod_of_function_for ls))
+                    c)
+        as wf.
+      eapply Acc_subrelation; [ eexact wf | ].
+      apply function_subrelationA; assumption.
+    Defined.
+  End wf_functionsA.
 End wf.
