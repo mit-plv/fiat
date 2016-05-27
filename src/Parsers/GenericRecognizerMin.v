@@ -16,7 +16,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFound
 Require Import Fiat.Parsers.MinimalParseOfParse.
 Require Import Fiat.Parsers.GenericRecognizer.
 Require Import Fiat.Parsers.GenericRecognizerExt.
-Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.Wf Fiat.Common.Wf1.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.NatFacts.
 Require Import Fiat.Common.UIP.

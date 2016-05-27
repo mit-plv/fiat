@@ -49,6 +49,7 @@ src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/Dns2.v
 src/BinEncoders/Env/Examples/DnsMap.v
+src/BinEncoders/Env/Examples/DnsOpt.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
 src/BinEncoders/Env/Lib/FixList.v
@@ -176,6 +177,7 @@ src/Common/SumType.v
 src/Common/UIP.v
 src/Common/VectorFacts.v
 src/Common/Wf.v
+src/Common/Wf1.v
 src/Common/Wf2.v
 src/Common/i2list.v
 src/Common/i2list2.v

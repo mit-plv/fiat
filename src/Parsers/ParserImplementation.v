@@ -147,7 +147,7 @@ Section implementation.
            end.
     unfold SimpleRecognizer.parse_nonterminal', SimpleRecognizer.parse_nonterminal_or_abort, GenericRecognizer.parse_nonterminal', GenericRecognizer.parse_nonterminal_or_abort in *.
     let H := match goal with H : appcontext[Fix] |- _ => H end in
-    rewrite Common.Wf.Fix5_eq
+    rewrite Common.Wf1.Fix5_eq
       in H
       by (intros; eapply SimpleRecognizerExt.parse_nonterminal_step_ext; assumption);
       unfold GenericRecognizer.parse_nonterminal_step at 1 in H.
