@@ -1994,6 +1994,25 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     subst.
     erewrite find_default_map2 by reflexivity; reflexivity.
   Qed.
+
+  Global Instance map2_defaulted_Proper_lift_brelation {elt elt' elt''} {default : elt} {default' : elt'} {f}
+         {R1 : elt -> elt -> bool}
+         {R2 : elt' -> elt' -> bool}
+         {R : elt'' -> elt'' -> bool}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {f_Proper : Proper (R1 ==> R2 ==> R) f}
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default' ==> lift_brelation R (f default default'))
+             (map2 (defaulted_f default default' f)).
+  Proof.
+    repeat intro; FMap_convert_to_find.
+    repeat match goal with
+           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
+           end.
+    unfold defaulted_f in *.
+    unfold Proper, respectful, Reflexive in *.
+    instance_t.
+  Qed.
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
