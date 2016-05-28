@@ -1,11 +1,6 @@
 (** * Miscellaneous Well-Foundedness Facts *)
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Classes.Morphisms Coq.Init.Wf.
-Require Import Fiat.Common.Telescope.Core.
-Require Import Fiat.Common.Telescope.Instances.
-Require Import Fiat.Common.Telescope.Equality.
-Require Import Fiat.Common.
-Require Import Fiat.Common.Equality.
+Require Import Coq.Lists.SetoidList.
 
 Set Implicit Arguments.
 
@@ -667,14 +662,16 @@ Section wf.
       induction ls as [|x xs IHxs];
         [ | pose proof (Hle x) as Hlex ];
         simpl; unfold prod_relation; simpl in *;
-          intuition repeat (congruence
-                            || tauto
-                            || destruct_head ex
-                            || destruct_head and
-                            || destruct_head or
-                            || subst
-                            || eauto
-                            || (exfalso; eauto)).
+          intuition repeat match goal with
+                           | _ => congruence
+                           | _ => tauto
+                           | [ H : ex _ |- _ ] => destruct H
+                           | [ H : and _ _ |- _ ] => destruct H
+                           | [ H : or _ _ |- _ ] => destruct H
+                           | _ => progress subst
+                           | _ => progress eauto
+                           | _ => solve [ exfalso; eauto ]
+                           end.
     Qed.
 
     Definition function_relationA_of_Acc ls (c : C) (H : is_finite_forA ls c)
