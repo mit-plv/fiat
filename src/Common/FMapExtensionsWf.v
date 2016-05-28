@@ -74,7 +74,7 @@ Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
         destruct (find k m) eqn:Hfind; simpl; [ | reflexivity ].
         apply elements_iff_find in Hfind.
         rewrite InA_alt in Hfind.
-        destruct Hfind as [kv [[H0 ?] H1]]; simpl in *; subst.
+        destruct Hfind as [kv [[? ?] ?]]; simpl in *; subst.
         exfalso; apply H.
         intuition eauto.
       Qed.
