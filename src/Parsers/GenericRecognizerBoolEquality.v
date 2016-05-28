@@ -6,6 +6,7 @@ Require Import Fiat.Parsers.GenericBoolCorrectnessBaseTypes.
 Require Import Fiat.Parsers.GenericRecognizer.
 Require Import Fiat.Parsers.GenericRecognizerExt.
 Require Import Fiat.Common.
+Require Import Fiat.Common.Wf1.
 
 Section eq.
   Context {Char} {HSLM : StringLikeMin Char} {G : grammar Char}.
@@ -188,7 +189,7 @@ Section eq.
           => revert a b c d e;
                induction (rwf x);
                intros;
-               rewrite !Wf.Fix5_eq
+               rewrite !Wf1.Fix5_eq
                  by (intros; apply parse_nonterminal_step_ext; trivial)
         end.
         apply parse_nonterminal_step_eq.

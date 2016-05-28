@@ -7,7 +7,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.GenericRecognizerCorrect.
 Require Import Fiat.Parsers.GenericRecognizerExt.
-Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.Wf1.
 Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Parsers.GenericRecognizer.
 

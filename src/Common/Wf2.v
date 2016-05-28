@@ -6,7 +6,7 @@ Require Import Fiat.Common.Telescope.Instances.
 Require Import Fiat.Common.Telescope.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.Wf.
+Require Import Fiat.Common.Wf1.
 
 Set Implicit Arguments.
 

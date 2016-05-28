@@ -5,7 +5,8 @@ Require Import Coq.FSets.FMapFacts
         Fiat.Common
         Fiat.Common.SetEq
         Fiat.Common.SetEqProperties
-        Fiat.Common.List.ListFacts.
+        Fiat.Common.List.ListFacts
+        Fiat.Common.LogicFacts.
 
 Unset Implicit Arguments.
 
@@ -21,6 +22,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
   Definition TKey := key.
 
+  (** TODO: merge with find_default *)
   Definition FindWithDefault {A} (key: TKey) (default: A) (fmap: t A) :=
     match find key fmap with
     | Some result => result
@@ -1949,6 +1951,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       instance_t.
   Qed.
 
+  (** TODO: merge with FindWithDefault *)
   Definition find_default {elt} (default : elt) (k : key) (m : t elt) : elt
     := option_rect (fun _ => elt)
                    (fun v => v)
@@ -2012,6 +2015,63 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     unfold defaulted_f in *.
     unfold Proper, respectful, Reflexive in *.
     instance_t.
+  Qed.
+
+  Lemma lift_brelation_iff_false_elements {A} (R : A -> A -> bool) (default : A) (m1 m2 : t A)
+        (elms := (elements (map2 (fun x1 x2 => match x1, x2 with
+                                               | Some x1, Some x2 => Some (R x1 x2)
+                                               | Some x, None => Some (R x default)
+                                               | None, Some x => Some (R default x)
+                                               | None, None => None
+                                               end)
+                                 m1 m2)))
+    : lift_brelation R default m1 m2 = false
+      <-> (exists x, InA (@eq_key_elt _) x elms /\ snd x = false).
+  Proof.
+    FMap_convert.
+    setoid_rewrite InA_alt.
+    subst elms.
+    let ls := match goal with |- context[elements ?m] => constr:(elements m) end in
+    induction ls as [|x xs IHxs].
+    { simpl.
+      split; intro H; [ exfalso; apply H | ];
+        repeat intuition (tauto || congruence || simpl in * || destruct_head ex || eauto). }
+    { simpl.
+      setoid_rewrite_logic.
+      setoid_rewrite <- IHxs; clear IHxs.
+      setoid_rewrite <- InA_alt.
+      repeat setoid_rewrite (and_comm _ (_ = _)).
+      setoid_rewrite_logic.
+      destruct x as [? []]; simpl;
+        setoid_rewrite_logic.
+      { reflexivity. }
+      { setoid_rewrite (True_iff (ex_intro (fun y => E.eq y _) _ (reflexivity _))).
+        setoid_rewrite (forall_iff_nondep (ex_intro (fun y => E.eq y _) _ (reflexivity _))).
+        tauto. } }
+  Qed.
+
+  Lemma lift_brelation_iff_false {A} (R : A -> A -> bool) (default : A) (m1 m2 : t A)
+    : lift_brelation R default m1 m2 = false <-> exists k, match find k m1, find k m2 return bool with
+                                                           | Some x1, Some x2 => negb (R x1 x2)
+                                                           | Some x, None => negb (R x default)
+                                                           | None, Some x => negb (R default x)
+                                                           | None, None => false
+                                                           end.
+  Proof.
+    rewrite lift_brelation_iff_false_elements.
+    FMap_convert_to_find.
+    split;
+      [ intros [[k v] H]; exists k; simpl in *
+      | intros [k H]; exists (k, false); split; simpl in *; [ | congruence ] ];
+      do 2 edestruct find;
+      repeat match goal with
+             | [ H : and _ _ |- _ ] => destruct H
+             | [ H : _ <> true |- _ ] => apply not_true_iff_false in H
+             | _ => progress subst
+             | _ => setoid_rewrite negb_true_iff
+             | [ H : context[negb _] |- _ ] => setoid_rewrite negb_true_iff in H
+             | _ => congruence
+             end.
   Qed.
 End FMapExtensions_fun.
 

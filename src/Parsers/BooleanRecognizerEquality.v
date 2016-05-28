@@ -6,7 +6,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BooleanRecognizerCorrect.
 Require Import Fiat.Parsers.BooleanRecognizerExt.
-Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Parsers.BooleanRecognizer.
 
