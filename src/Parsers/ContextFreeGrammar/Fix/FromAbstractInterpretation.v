@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Correct.
 Require Import Fiat.Common.BoolFacts.
 

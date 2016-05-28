@@ -5,6 +5,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.
