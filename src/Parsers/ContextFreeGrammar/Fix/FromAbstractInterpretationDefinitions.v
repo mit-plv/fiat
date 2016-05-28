@@ -273,7 +273,7 @@ Section fold_correctness.
       := lattice_for_related;
       related_ext : Proper ((beq ==> iff) ==> eq ==> iff) related
       := lattice_for_related_ext;
-      related_monotonic : forall s0 s1, s0 <= s1 <-> (forall v, related v s0 -> related v s1);
+      related_monotonic : forall s0 s1, s0 <= s1 -> (forall v, related v s0 -> related v s1);
       lub_correct
       : forall P1 st1,
           related P1 st1
