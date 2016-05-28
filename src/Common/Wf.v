@@ -531,7 +531,6 @@ Section wf.
         iterated_prod_relation_of R (fun _ : B -> A => length ls)
                                   (iterated_prod_of_function_for ls) x y.
     Proof.
-      clear -H.
       intros g h Hhf Hgh.
       assert (Hfinh : is_finite_for ls h) by (rewrite Hhf; assumption).
       assert (Hfing : is_finite_for ls g) by (rewrite Hgh; assumption).
@@ -643,7 +642,6 @@ Section wf.
            iterated_prod_relation_of R (fun _ : B -> A => length ls)
                                      (iterated_prod_of_function_for ls) (F x0) (F y0)) x y.
     Proof.
-      clear -H Heqv F_Proper.
       intros g h Hhf Hgh; cbv beta.
       assert (Hfinh : is_finite_forA ls h) by (rewrite Hhf; assumption).
       assert (Hfing : is_finite_forA ls g) by (unfold is_finite_forA; rewrite Hgh; assumption).
