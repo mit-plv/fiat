@@ -90,3 +90,5 @@ Section gen.
       assumption. }
   Defined.
 End gen.
+
+Definition max_ascii := Eval compute in BinPos.Pos.of_nat (S (nat_of_ascii (Ascii true true true true true true true true))).
