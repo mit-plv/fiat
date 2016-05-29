@@ -2,8 +2,6 @@ Require Import Coq.Init.Wf Coq.Numbers.BinNums Coq.PArith.BinPos Coq.PArith.Pnat
 Require Import Coq.Arith.Arith.
 Require Import Coq.FSets.FMapPositive.
 Require Import Coq.FSets.FMaps.
-Require Import Coq.MSets.MSets.
-Require Import Coq.MSets.MSetPositive.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
@@ -23,12 +21,6 @@ Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
 Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
-
-Definition PositiveSet_of_list (ls : list positive) : PositiveSet.t
-  := List.fold_right
-       PositiveSet.add
-       PositiveSet.empty
-       ls.
 
 Section grammar_fixedpoint.
   Context {Char : Type}.
@@ -79,9 +71,8 @@ Section grammar_fixedpoint.
     | _ => progress intros
     | _ => progress subst
     | _ => congruence
-    | _ => progress unfold is_true, PositiveMap.key in *
+    | _ => progress unfold PositiveMap.key in *
     | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-    | [ H : (_ =b _) = true |- _ ] => apply state_beq_bl in H
     | [ H : Some ?b <> Some false |- _ ] => destruct b eqn:?; [ clear H | congruence ]
     | [ H : (⊥ =b ?s) = false, H' : (⊥ < ?s) = false |- _ ]
       => let H'' := fresh in
@@ -125,6 +116,14 @@ Section grammar_fixedpoint.
     | [ |- and _ _ ] => split
     | [ H : (?x < ?y) = true, H' : (?y < ?z) = true |- _ ]
       => unique pose proof (state_lt_Transitive H H' : (x < z) = true)
+    | [ H : is_true (?x =b ?y) |- _ ]
+      => rewrite H in *; clear x H
+    | [ H : is_true (?x =b ?y) |- _ ]
+      => rewrite <- H in *; clear x H
+    | [ H : ?R ?x ?y |- _ ]
+      => is_var x; rewrite H in *; clear x H
+    | [ H : ?R ?x ?y |- _ ]
+      => is_var y; rewrite <- H in *; clear y H
     end.
   Local Ltac fold_andb_t := repeat fold_andb_t_step.
 
@@ -210,9 +209,10 @@ Section grammar_fixedpoint.
       destruct (y < x); [ reflexivity | simpl in * ].
       destruct (y =b x) eqn:Heqb; simpl in *; assumption. }
     { apply top_top. }
-    { setoid_rewrite state_ge_top_eq_top; intros; symmetry; assumption. }
-    { apply state_beq_bl. }
-    { apply state_beq_lb. }
+    { exact _. }
+    { exact _. }
+    { exact _. }
+    { exact _. }
   Defined.
 
   Section wrap_wf.
@@ -262,7 +262,7 @@ Section grammar_fixedpoint.
   Qed.
 
   Global Instance from_aggregate_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> eq) from_aggregate_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) from_aggregate_state.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, from_aggregate_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
@@ -271,7 +271,7 @@ Section grammar_fixedpoint.
     : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step.
   Proof.
     intros x y H.
-    assert (H' : pointwise_relation _ eq (from_aggregate_state x) (from_aggregate_state y)) by (intro; setoid_rewrite H; reflexivity).
+    assert (H' : pointwise_relation _ state_beq (from_aggregate_state x) (from_aggregate_state y)) by (intro; setoid_rewrite H; reflexivity).
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, aggregate_step, aggregate_state_lub, aggregate_prestep in *.
     setoid_rewrite PositiveMapExtensions.lift_brelation_iff in H.
     setoid_rewrite PositiveMapExtensions.lift_brelation_iff.
@@ -281,7 +281,9 @@ Section grammar_fixedpoint.
     setoid_rewrite PositiveMap.gmapi.
     unfold option_rect_nodep, option_map.
     intro k; specialize (H k).
-    fold_andb_t.
+    generalize dependent (lookup_state x); generalize dependent (lookup_state y); intros;
+      do 2 edestruct PositiveMap.find;
+      fold_andb_t.
   Qed.
 
   Lemma lookup_state_aggregate_state_lub a b nt
@@ -294,7 +296,7 @@ Section grammar_fixedpoint.
   Qed.
 
   Global Instance lookup_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> eq) lookup_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) lookup_state.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, lookup_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
@@ -407,6 +409,13 @@ Section grammar_fixedpoint.
       { apply IHv.
         apply step_lt; assumption. }
     Qed.
+
+    Global Instance aggregate_state_eq_Proper_eq
+      : Proper (eq ==> eq ==> eq) aggregate_state_eq
+      := _.
+    Global Instance aggregate_step_Proper_eq
+      : Proper (eq ==> eq) aggregate_step
+      := _.
 
     Lemma pre_Fix_grammar_fixedpoint
       : aggregate_state_eq pre_Fix_grammar (aggregate_step pre_Fix_grammar).

@@ -18,6 +18,7 @@ src/ADTNotation/BuildComputationalADT.v
 src/ADTRefinement/BuildADTRefinements.v
 src/ADTRefinement/BuildADTSetoidMorphisms.v
 src/ADTRefinement/Core.v
+src/ADTRefinement/FixedPoint.v
 src/ADTRefinement/GeneralBuildADTRefinements.v
 src/ADTRefinement/GeneralBuildADTTactics.v
 src/ADTRefinement/GeneralRefinements.v
@@ -160,6 +161,8 @@ src/Common/IterateBoundedIndex.v
 src/Common/Le.v
 src/Common/LogicFacts.v
 src/Common/LogicMorphisms.v
+src/Common/MSetBoundedLattice.v
+src/Common/MSetExtensions.v
 src/Common/Match.v
 src/Common/Monad.v
 src/Common/NatFacts.v
@@ -373,8 +376,6 @@ src/Parsers/ContextFreeGrammar/Fix/Definitions.v
 src/Parsers/ContextFreeGrammar/Fix/Fix.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretation.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretationDefinitions.v
-src/Parsers/ContextFreeGrammar/Fix/FromFold.v
-src/Parsers/ContextFreeGrammar/Fix/FromFoldDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Properties.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/EvalGrammarTactics.v

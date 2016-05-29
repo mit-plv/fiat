@@ -30,12 +30,28 @@ Section general_fold.
                     => combine_production x' y'
                   end.
 
+  Global Instance lattice_for_combine_production_Proper
+         {precombine_production}
+         {H : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production}
+    : Proper (state_beq ==> state_beq ==> state_beq) (lattice_for_combine_production precombine_production).
+  Proof.
+    intros [|?|] [|?|] H0 [|?|] [|?|] H1; simpl in *;
+      try congruence.
+    apply H; assumption.
+  Defined.
+
   Class AbstractInterpretation :=
     { on_terminal : (Char -> bool) -> lattice_for T;
       on_nil_production : lattice_for T;
       precombine_production : T -> T -> lattice_for T;
       combine_production : lattice_for T -> lattice_for T -> lattice_for T
-      := lattice_for_combine_production precombine_production }.
+      := lattice_for_combine_production precombine_production;
+      precombine_production_Proper : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production;
+      combine_production_Proper : Proper (state_beq ==> state_beq ==> state_beq) combine_production
+      := lattice_for_combine_production_Proper }.
+
+  Global Existing Instance precombine_production_Proper.
+  Global Existing Instance combine_production_Proper.
 
   Context {aidata : AbstractInterpretation}.
 
@@ -50,18 +66,6 @@ Section general_fold.
        | NonTerminal nt => fold_nt (@of_nonterminal _ (@rdp_list_predata _ G) nt)
        end.
 
-  Lemma fold_item'_ext {f g} (ext : forall b, f b = g b) b
-  : fold_item' f b = fold_item' g b.
-  Proof.
-    unfold fold_item'.
-    generalize (@of_nonterminal _ (@rdp_list_predata _ G)); simpl; intro.
-    generalize on_terminal; intro.
-    unfold state in *.
-    simpl in *.
-    clear -ext.
-    abstract (destruct b; rewrite ?ext; reflexivity).
-  Defined.
-
   Definition fold_production'
              (fold_nt : default_nonterminal_carrierT -> state)
              (its : production Char)
@@ -71,14 +75,6 @@ Section general_fold.
          (List.map
             (fold_item' fold_nt)
             its).
-
-  Lemma fold_production'_ext {f g} (ext : forall b, f b = g b) b
-  : fold_production' f b = fold_production' g b.
-  Proof.
-    unfold fold_production'.
-    induction b as [ | x ]; try reflexivity; simpl.
-    rewrite IHb, (fold_item'_ext ext); reflexivity.
-  Defined.
 
   Definition fold_productions'
              (fold_nt : default_nonterminal_carrierT -> state)
@@ -90,14 +86,6 @@ Section general_fold.
             (fold_production' fold_nt)
             its).
 
-  Lemma fold_productions'_ext {f g} (ext : forall b, f b = g b) b
-  : fold_productions' f b = fold_productions' g b.
-  Proof.
-    unfold fold_productions'.
-    induction b as [ | x ]; try reflexivity; simpl.
-    rewrite IHb, (fold_production'_ext ext); reflexivity.
-  Defined.
-
   Definition fold_constraints
              (fold_nt : default_nonterminal_carrierT -> state)
              (nt : default_nonterminal_carrierT)
@@ -106,28 +94,107 @@ Section general_fold.
          fold_nt
          (Lookup_idx G nt).
 
-  Lemma fold_constraints_ext f g (H : forall x, f x = g x) nt
-    : fold_constraints f nt = fold_constraints g nt.
+  Section extR.
+    Context (R : state -> state -> Prop)
+            (combine_production_Proper : Proper (R ==> R ==> R) combine_production)
+            (lub_Proper : Proper (R ==> R ==> R) least_upper_bound)
+            (R_Reflexive : Reflexive R).
+
+    Lemma fold_item'_extR {f g} (ext : forall b, R (f b) (g b)) b
+      : R (fold_item' f b) (fold_item' g b).
+    Proof.
+      unfold fold_item'.
+      generalize (@of_nonterminal _ (@rdp_list_predata _ G)); simpl; intro.
+      generalize on_terminal; intro.
+      unfold state in *.
+      simpl in *.
+      clear -ext R_Reflexive.
+      abstract (destruct b; try apply ext; reflexivity).
+    Defined.
+
+    Lemma fold_production'_extR {f g} (ext : forall b, R (f b) (g b)) b
+      : R (fold_production' f b) (fold_production' g b).
+    Proof.
+      unfold fold_production'.
+      induction b as [ | x ]; try reflexivity; simpl.
+      apply combine_production_Proper; [ apply (fold_item'_extR ext) | apply IHb ].
+    Defined.
+
+    Lemma fold_productions'_extR {f g} (ext : forall b, R (f b) (g b)) b
+      : R (fold_productions' f b) (fold_productions' g b).
+    Proof.
+      unfold fold_productions'.
+      induction b as [ | x ]; try reflexivity; simpl.
+      apply lub_Proper; [ apply (fold_production'_extR ext) | apply IHb ].
+    Defined.
+
+    Lemma fold_constraints_extR f g (H : forall x, R (f x) (g x)) nt
+      : R (fold_constraints f nt) (fold_constraints g nt).
+    Proof.
+      unfold fold_constraints.
+      apply fold_productions'_extR.
+      intro; apply H.
+    Defined.
+  End extR.
+
+  Definition fold_item'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_item' f b = fold_item' g b
+    := fold_item'_extR (R := eq) _ ext b.
+  Definition fold_production'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_production' f b = fold_production' g b
+    := fold_production'_extR (R := eq) _ _ ext b.
+  Definition fold_productions'_ext {f g} (ext : forall b, f b = g b) b
+  : fold_productions' f b = fold_productions' g b
+    := fold_productions'_extR (R := eq) _ _ _ ext b.
+  Definition fold_constraints_ext f g (H : forall x, f x = g x) nt
+    : fold_constraints f nt = fold_constraints g nt
+    := fold_constraints_extR (R := eq) _ _ _ _ _ H nt.
+
+  Definition fold_item'_ext_beq {f g} (ext : forall b, f b =b g b) b
+  : fold_item' f b =b fold_item' g b
+    := fold_item'_extR (R := state_beq) _ ext b.
+  Definition fold_production'_ext_beq
+             {f g} (ext : forall b, f b =b g b) b
+  : fold_production' f b =b fold_production' g b
+    := fold_production'_extR (R := state_beq) _ _ ext b.
+  Definition fold_productions'_ext_beq
+             {f g} (ext : forall b, f b =b g b) b
+  : fold_productions' f b =b fold_productions' g b
+    := fold_productions'_extR (R := state_beq) _ _ _ ext b.
+  Definition fold_constraints_ext_beq
+             f g (H : forall x, f x =b g x) nt
+    : fold_constraints f nt =b fold_constraints g nt
+    := fold_constraints_extR (R := state_beq) _ _ _ _ _ H nt.
+
+  Global Instance fold_constraints_ProperR
+         {R : state -> state -> Prop}
+         {combine_production_Proper : Proper (R ==> R ==> R) combine_production}
+         {lub_Proper : Proper (R ==> R ==> R) least_upper_bound}
+         {R_Reflexive : Reflexive R}
+    : Proper (pointwise_relation default_nonterminal_carrierT R ==> eq ==> R)
+             fold_constraints
+  | 10.
   Proof.
-    unfold fold_constraints.
-    apply fold_productions'_ext.
-    intro; apply H.
+    intros f g H; repeat intro; subst.
+    apply fold_constraints_extR; assumption.
   Defined.
 
   Global Instance fold_constraints_Proper
     : Proper (pointwise_relation default_nonterminal_carrierT eq ==> eq ==> eq)
-             fold_constraints.
-  Proof.
-    intros f g H; repeat intro; subst.
-    apply fold_constraints_ext; assumption.
-  Defined.
+             fold_constraints
+    := _.
+
+  Global Instance fold_constraints_Proper_state_beq
+    : Proper (pointwise_relation default_nonterminal_carrierT state_beq ==> eq ==> state_beq)
+             fold_constraints
+    := _.
 
   Definition fixedpoint_by_abstract_interpretation : grammar_fixedpoint_data.
   Proof.
     refine {| prestate := T;
               step_constraints folder nt st := fold_constraints folder nt;
               lattice_data := fpdata |}.
-    { repeat intro; apply fold_constraints_Proper; assumption. }
+    { repeat intro; apply fold_constraints_Proper_state_beq; assumption. }
   Defined.
 End general_fold.
 
@@ -217,7 +284,7 @@ Section fold_correctness.
   Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {T : Type}.
   Context {fpdata : @grammar_fixedpoint_lattice_data T}
-          {aidata : @AbstractInterpretation Char T}.
+          {aidata : @AbstractInterpretation Char T fpdata}.
   Context (G : pregrammar Char)
           (prerelated : Ensemble String -> T -> Prop).
 
@@ -237,22 +304,16 @@ Section fold_correctness.
   Section related.
     Local Notation related := lattice_for_related.
 
-    Global Instance lattice_for_related_ext {_ : Proper ((beq ==> iff) ==> eq ==> iff) prerelated}
-      : Proper ((beq ==> iff) ==> eq ==> iff) related.
+    Global Instance lattice_for_related_ext {_ : Proper ((beq ==> iff) ==> prestate_beq ==> iff) prerelated}
+      : Proper ((beq ==> iff) ==> state_beq ==> iff) related.
     Proof.
-      intros ?? H' [|?|]??; subst; unfold related;
-        try setoid_rewrite (fun x => H' x x (reflexivity _));
+      intros ?? H' [|?|] [|?|] ?; simpl in *;
+        try tauto;
+        try congruence;
+        try (apply H; assumption);
         try setoid_rewrite H';
+        try setoid_rewrite (fun x => H' x x (reflexivity _));
         try reflexivity.
-    Qed.
-
-    Global Instance lattice_for_combine_production_Proper_eq
-           {H : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production}
-      : Proper (state_beq ==> state_beq ==> state_beq) combine_production.
-    Proof.
-      intros [|?|] [|?|] ? [|?|] [|?|] ?; simpl in *;
-        trivial; try congruence.
-      apply H; assumption.
     Qed.
 
     Global Instance lattice_for_combine_production_Proper_le
@@ -268,12 +329,12 @@ Section fold_correctness.
   End related.
 
   Class AbstractInterpretationCorrectness :=
-    { prerelated_ext : Proper ((beq ==> iff) ==> eq ==> iff) prerelated;
+    { prerelated_ext : Proper ((beq ==> iff) ==> prestate_beq ==> iff) prerelated;
       related : Ensemble String -> state -> Prop
       := lattice_for_related;
-      related_ext : Proper ((beq ==> iff) ==> eq ==> iff) related
+      related_ext : Proper ((beq ==> iff) ==> state_beq ==> iff) related
       := lattice_for_related_ext;
-      related_monotonic : forall s0 s1, s0 <= s1 <-> (forall v, related v s0 -> related v s1);
+      related_monotonic : forall s0 s1, s0 <= s1 -> (forall v, related v s0 -> related v s1);
       lub_correct
       : forall P1 st1,
           related P1 st1
@@ -285,13 +346,8 @@ Section fold_correctness.
           related (ensemble_on_terminal P) (on_terminal P);
       on_nil_production_correct
       : related ensemble_on_nil_production on_nil_production;
-      precombine_production_Proper_eq
-      : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production;
       precombine_production_Proper_le
       : Proper (prestate_le ==> prestate_le ==> state_le) precombine_production;
-      combine_production_Proper_eq
-      : Proper (state_beq ==> state_beq ==> state_beq) combine_production
-      := _;
       combine_production_Proper_le
       : Proper (state_le ==> state_le ==> state_le) combine_production
       := _;

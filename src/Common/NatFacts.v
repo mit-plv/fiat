@@ -1,3 +1,4 @@
+Require Import Coq.Classes.Morphisms.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
 
@@ -249,3 +250,6 @@ Proof. destruct x, y; simpl; reflexivity. Qed.
 
 Lemma max_min_n {x y} : max (min x y) y = y.
 Proof. omega *. Qed.
+
+Global Instance S_Proper_le : Proper (le ==> le) S.
+Proof. repeat intro; omega. Qed.

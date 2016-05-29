@@ -26,6 +26,37 @@ Arguments top {_}.
 Notation "'⊥'" := bottom : grammar_fixedpoint_scope.
 Notation "'⊤'" := top : grammar_fixedpoint_scope.
 
+Global Instance lattice_for_Reflexive {T} {beq : T -> T -> bool}
+       {H : Reflexive beq}
+  : Reflexive (lattice_for_beq beq).
+Proof.
+  intros [|?|]; simpl; reflexivity.
+Qed.
+
+Global Instance lattice_for_Symmetric {T} {beq : T -> T -> bool}
+       {H : Symmetric beq}
+  : Symmetric (lattice_for_beq beq).
+Proof.
+  intros [|?|] [|?|]; simpl; trivial; intro; symmetry; assumption.
+Qed.
+
+Global Instance lattice_for_Transitive {T} {beq : T -> T -> bool}
+       {H : Transitive beq}
+  : Transitive (lattice_for_beq beq).
+Proof.
+  intros [|?|] [|?|] [|?|]; simpl; trivial;
+    try reflexivity;
+    try congruence;
+    intros; etransitivity; eassumption.
+Qed.
+
+Global Instance lattice_for_Equivalence {T} {beq : T -> T -> bool}
+       {H : Equivalence beq}
+  : Equivalence (lattice_for_beq beq).
+Proof.
+  split; exact _.
+Qed.
+
 Definition lattice_for_lt {T} (lt : T -> T -> bool) (x y : lattice_for T)
   := match x, y with
      | ⊤, ⊤ => false
@@ -36,6 +67,15 @@ Definition lattice_for_lt {T} (lt : T -> T -> bool) (x y : lattice_for T)
      | _, constant _ => true
      | constant _, _ => false
      end.
+
+Global Instance lattice_for_lt_Proper {T} {beq lt : T -> T -> bool}
+       {H : Proper (beq ==> beq ==> eq) lt}
+  : Proper (lattice_for_beq beq ==> lattice_for_beq beq ==> eq) (lattice_for_lt lt).
+Proof.
+  intros [|a|] [|b|] H0 [|a'|] [|b'|] H1; simpl in *;
+    trivial; try congruence.
+  apply H; assumption.
+Qed.
 
 Definition lattice_for_lub {T} (lub : T -> T -> lattice_for T) (x y : lattice_for T)
   := match x, y with
@@ -57,7 +97,7 @@ Section lub_correct.
 
   Context (lub_correct_l : forall x y, constant x <= lub x y)
           (lub_correct_r : forall x y, constant y <= lub x y)
-          (beq_refl : forall x y, x = y -> beq x y).
+          (beq_Reflexive : Reflexive beq).
 
   Lemma lattice_for_lub_correct_l x y
     : x <= lattice_for_lub lub x y.
@@ -66,7 +106,8 @@ Section lub_correct.
     destruct x as [|x|], y as [|y|]; try reflexivity.
     { exact (lub_correct_l x y). }
     { simpl.
-      rewrite beq_refl by reflexivity; reflexivity. }
+      rewrite (reflexivity x : is_true (beq x x)).
+      reflexivity. }
   Qed.
 
   Lemma lattice_for_lub_correct_r x y
@@ -76,7 +117,17 @@ Section lub_correct.
     destruct x as [|x|], y as [|y|]; try reflexivity.
     { exact (lub_correct_r x y). }
     { simpl.
-      rewrite beq_refl by reflexivity; reflexivity. }
+      rewrite (reflexivity y : is_true (beq y y)).
+      reflexivity. }
+  Qed.
+
+  Global Instance lattice_for_lub_Proper
+         {lub_Proper : Proper (beq ==> beq ==> lattice_for_beq beq) lub}
+    : Proper (lattice_for_beq beq ==> lattice_for_beq beq ==> lattice_for_beq beq) (lattice_for_lub lub).
+  Proof.
+    intros [|a|] [|b|] H [|a'|] [|b'|] H'; simpl in *;
+      trivial; try congruence.
+    apply lub_Proper; assumption.
   Qed.
 End lub_correct.
 
@@ -114,12 +165,9 @@ Class grammar_fixedpoint_lattice_data prestate :=
     := lattice_for_beq prestate_beq;
     prestate_le s1 s2 := (prestate_beq s1 s2 || prestate_lt s1 s2)%bool;
     state_le s1 s2 := (state_beq s1 s2 || state_lt s1 s2)%bool;
-    prestate_beq_lb : forall s1 s2, s1 = s2 -> prestate_beq s1 s2;
-    prestate_beq_bl : forall s1 s2, prestate_beq s1 s2 -> s1 = s2;
-    state_beq_lb : forall s1 s2, s1 = s2 -> state_beq s1 s2
-    := internal_lattice_for_dec_lb _ prestate_beq_lb;
-    state_beq_bl : forall s1 s2, state_beq s1 s2 -> s1 = s2
-    := internal_lattice_for_dec_bl _ prestate_beq_bl;
+    prestate_beq_Equivalence : Equivalence prestate_beq;
+    state_beq_Equivalence : Equivalence state_beq
+    := lattice_for_Equivalence;
     preleast_upper_bound : prestate -> prestate -> state;
     least_upper_bound : state -> state -> state
     := lattice_for_lub preleast_upper_bound;
@@ -129,13 +177,19 @@ Class grammar_fixedpoint_lattice_data prestate :=
     : forall a b, state_le (constant b) (preleast_upper_bound a b);
     least_upper_bound_correct_l
     : forall a b, state_le a (least_upper_bound a b)
-    := lattice_for_lub_correct_l prestate_beq prestate_lt preleast_upper_bound preleast_upper_bound_correct_l prestate_beq_lb;
+    := lattice_for_lub_correct_l prestate_beq prestate_lt preleast_upper_bound preleast_upper_bound_correct_l _;
     least_upper_bound_correct_r
     : forall a b, state_le b (least_upper_bound a b)
-    := lattice_for_lub_correct_r prestate_beq prestate_lt preleast_upper_bound preleast_upper_bound_correct_r prestate_beq_lb;
+    := lattice_for_lub_correct_r prestate_beq prestate_lt preleast_upper_bound preleast_upper_bound_correct_r _;
     prestate_gt_wf : well_founded (Basics.flip prestate_lt);
     state_gt_wf : well_founded (Basics.flip state_lt)
     := lattice_for_gt_well_founded prestate_gt_wf;
+    preleast_upper_bound_Proper : Proper (prestate_beq ==> prestate_beq ==> state_beq) preleast_upper_bound;
+    least_upper_bound_Proper : Proper (state_beq ==> state_beq ==> state_beq) least_upper_bound
+    := @lattice_for_lub_Proper _ _ _ _;
+    prestate_lt_Proper : Proper (prestate_beq ==> prestate_beq ==> eq) prestate_lt;
+    state_lt_Proper : Proper (state_beq ==> state_beq ==> eq) state_lt
+    := lattice_for_lt_Proper;
     prestate_lt_Transitive : Transitive prestate_lt;
     state_lt_Transitive : Transitive state_lt
     := lattice_for_lt_Transitive }.
@@ -144,11 +198,17 @@ Record grammar_fixedpoint_data :=
   { prestate : Type;
     lattice_data :> grammar_fixedpoint_lattice_data prestate;
     step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state);
-    step_constraints_ext : Proper (pointwise_relation _ eq ==> eq ==> eq ==> eq) step_constraints }.
+    step_constraints_ext : Proper (pointwise_relation _ state_beq ==> eq ==> state_beq ==> state_beq) step_constraints }.
 
 Global Existing Instance lattice_data.
 Global Existing Instance step_constraints_ext.
 Global Existing Instance state_lt_Transitive.
+Global Existing Instance state_beq_Equivalence.
+Global Existing Instance prestate_beq_Equivalence.
+Global Existing Instance state_lt_Proper.
+Global Existing Instance prestate_lt_Proper.
+Global Existing Instance least_upper_bound_Proper.
+Global Existing Instance preleast_upper_bound_Proper.
 
 Global Arguments state_lt_Transitive {_ _} [_ _ _] _ _.
 Global Arguments state_le _ _ !_ !_ / .

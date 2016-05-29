@@ -2042,11 +2042,11 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       setoid_rewrite <- InA_alt.
       repeat setoid_rewrite (and_comm _ (_ = _)).
       setoid_rewrite_logic.
-      destruct x as [? []]; simpl;
+      destruct x as [k []]; simpl;
         setoid_rewrite_logic.
       { reflexivity. }
-      { setoid_rewrite (True_iff (ex_intro (fun y => E.eq y _) _ (reflexivity _))).
-        setoid_rewrite (forall_iff_nondep (ex_intro (fun y => E.eq y _) _ (reflexivity _))).
+      { setoid_rewrite (True_iff (ex_intro (fun y => E.eq y k) k (reflexivity _))).
+        setoid_rewrite (forall_iff_nondep (ex_intro (fun y => E.eq y k) k (reflexivity _))).
         tauto. } }
   Qed.
 

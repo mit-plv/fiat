@@ -29,15 +29,15 @@ Global Instance length_result_lattice : grammar_fixedpoint_lattice_data nat.
 Proof.
   refine {| prestate_lt x y := false;
             prestate_beq := beq_nat;
-            prestate_beq_lb x y := proj2 (beq_nat_true_iff x y);
-            prestate_beq_bl x y := proj1 (beq_nat_true_iff x y);
             preleast_upper_bound := length_result_lub |};
     try abstract (repeat match goal with
                          | [ |- is_true true ] => reflexivity
                          | _ => congruence
+                         | [ |- Equivalence _ ] => split; hnf
+                         | [ |- Proper _ _ ] => unfold Proper, respectful
                          | _ => progress intros
                          | _ => progress simpl in *
-                         | _ => progress unfold length_result_lub
+                         | _ => progress unfold length_result_lub, is_true in *
                          | _ => progress subst
                          | [ H : constant _ = constant _ |- _ ] => inversion H; clear H
                          | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
@@ -49,10 +49,24 @@ Proof.
     abstract congruence. }
 Defined.
 
-Global Instance length_result_aidata {Char} : @AbstractInterpretation Char nat
-  := { on_terminal t := constant 1;
-       on_nil_production := constant 0;
-       precombine_production x y := constant (x + y) }.
+Global Instance length_result_aidata {Char} : @AbstractInterpretation Char nat _.
+Proof.
+  refine {| on_terminal t := constant 1;
+            on_nil_production := constant 0;
+            precombine_production x y := constant (x + y) |}.
+  { simpl; unfold state, state_beq, prestate_beq, length_result_lattice.
+    abstract (
+        repeat match goal with
+               | _ => intro
+               | _ => progress simpl in *
+               | _ => progress unfold is_true in *
+               | _ => progress subst
+               | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
+               | [ |- beq_nat _ _ = true ] => apply beq_nat_true_iff
+               | _ => reflexivity
+               end
+      ). }
+Defined.
 
 Section correctness.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
@@ -72,7 +86,6 @@ Section correctness.
     | _ => progress unfold respectful, pointwise_relation, length_result_accurate, length_result_accurate, ensemble_bottom, ensemble_top, ensemble_least_upper_bound, ensemble_on_terminal, ensemble_combine_production, lattice_for_related, not, length_result_lub, prestate_le in *
     | _ => intro
     | _ => progress subst
-    | [ H : is_true (state_beq _ _) |- _ ] => apply state_beq_bl in H
     | [ H : is_true (beq_nat _ _) |- _ ] => apply beq_nat_true_iff in H
     | _ => progress destruct_head lattice_for
     | [ |- iff _ _ ] => split
