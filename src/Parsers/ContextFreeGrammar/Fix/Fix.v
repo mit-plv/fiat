@@ -2,8 +2,6 @@ Require Import Coq.Init.Wf Coq.Numbers.BinNums Coq.PArith.BinPos Coq.PArith.Pnat
 Require Import Coq.Arith.Arith.
 Require Import Coq.FSets.FMapPositive.
 Require Import Coq.FSets.FMaps.
-Require Import Coq.MSets.MSets.
-Require Import Coq.MSets.MSetPositive.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
@@ -23,12 +21,6 @@ Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
 Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
-
-Definition PositiveSet_of_list (ls : list positive) : PositiveSet.t
-  := List.fold_right
-       PositiveSet.add
-       PositiveSet.empty
-       ls.
 
 Section grammar_fixedpoint.
   Context {Char : Type}.

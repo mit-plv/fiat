@@ -162,6 +162,7 @@ src/Common/Le.v
 src/Common/LogicFacts.v
 src/Common/LogicMorphisms.v
 src/Common/MSetBoundedLattice.v
+src/Common/MSetExtensions.v
 src/Common/Match.v
 src/Common/Monad.v
 src/Common/NatFacts.v
