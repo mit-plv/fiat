@@ -124,3 +124,11 @@ Global Instance and_Proper_eq: Proper (Logic.eq ==> Logic.eq ==> Logic.eq) and :
 Global Instance eq_flip_impl_flip_impl_impl_Prper
   : Proper (Logic.eq ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) Basics.impl.
 Proof. compute; intros; subst; tauto. Qed.
+
+Global Instance and_flip_impl_iff_Proper
+  : Proper (flip impl ==> iff ==> flip impl) and.
+Proof. compute; tauto. Qed.
+Global Instance and_iff_eq_iff_Proper : Proper (iff ==> Logic.eq ==> iff) and.
+Proof. compute; intros; subst; tauto. Qed.
+Global Instance impl_iff_iff_flip_impl_Proper : Proper (iff ==> iff ==> flip impl) impl | 1.
+Proof. compute; tauto. Qed.
