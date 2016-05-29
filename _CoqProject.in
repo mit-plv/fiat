@@ -371,6 +371,7 @@ src/Parsers/ContextFreeGrammar/TransferProperties.v
 src/Parsers/ContextFreeGrammar/Valid.v
 src/Parsers/ContextFreeGrammar/ValidProperties.v
 src/Parsers/ContextFreeGrammar/ValidReflective.v
+src/Parsers/ContextFreeGrammar/Fix/AsciiLattice.v
 src/Parsers/ContextFreeGrammar/Fix/Correct.v
 src/Parsers/ContextFreeGrammar/Fix/Definitions.v
 src/Parsers/ContextFreeGrammar/Fix/Fix.v
