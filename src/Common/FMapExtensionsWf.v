@@ -1,8 +1,7 @@
 Require Export Coq.FSets.FMapInterface.
 Require Import Fiat.Common.Wf.
 Require Export Fiat.Common.FMapExtensions.
-
-Local Coercion is_true : bool >-> Sortclass.
+Require Import Fiat.Common.
 
 Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
   Module BasicExtensions := FMapExtensions_fun E M.
