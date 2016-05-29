@@ -81,3 +81,38 @@ Global Instance forall_fun3_Proper {A X Y Z RX RY RZ} {B : _ -> _ -> _ -> _ -> P
 Proof.
   lazy in H |- *; eauto with nocore.
 Defined.
+
+Local Ltac equiv_t :=
+  unfold pointwise_relation;
+  let H := fresh in
+  intros ?? H; split; intro; try split; repeat intro;
+  try apply H;
+  try reflexivity;
+  try (symmetry; apply H; assumption);
+  try (etransitivity; apply H; eassumption);
+  try (apply antisymmetry; apply H; assumption);
+  try (eapply asymmetry; apply H; eassumption).
+
+Global Instance Reflexive_Proper {T}
+  : Proper (pointwise_relation T (pointwise_relation T iff) ==> iff) Reflexive.
+Proof. equiv_t. Qed.
+
+Global Instance Symmetric_Proper {T}
+  : Proper (pointwise_relation T (pointwise_relation T iff) ==> iff) Symmetric.
+Proof. equiv_t. Qed.
+
+Global Instance Transitive_Proper {T}
+  : Proper (pointwise_relation T (pointwise_relation T iff) ==> iff) Transitive.
+Proof. equiv_t. Qed.
+
+Global Instance Equivalence_Proper {T}
+  : Proper (pointwise_relation T (pointwise_relation T iff) ==> iff) Equivalence.
+Proof. equiv_t. Qed.
+
+Global Instance Antisymmetric_Proper {A eqA eqvA}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> iff) (@Antisymmetric A eqA eqvA).
+Proof. equiv_t. Qed.
+
+Global Instance Asymmetric_Proper {T}
+  : Proper (pointwise_relation T (pointwise_relation _ iff) ==> iff) Asymmetric.
+Proof. equiv_t. Qed.
