@@ -18,6 +18,7 @@ src/ADTNotation/BuildComputationalADT.v
 src/ADTRefinement/BuildADTRefinements.v
 src/ADTRefinement/BuildADTSetoidMorphisms.v
 src/ADTRefinement/Core.v
+src/ADTRefinement/FixedPoint.v
 src/ADTRefinement/GeneralBuildADTRefinements.v
 src/ADTRefinement/GeneralBuildADTTactics.v
 src/ADTRefinement/GeneralRefinements.v
@@ -160,6 +161,7 @@ src/Common/IterateBoundedIndex.v
 src/Common/Le.v
 src/Common/LogicFacts.v
 src/Common/LogicMorphisms.v
+src/Common/MSetBoundedLattice.v
 src/Common/Match.v
 src/Common/Monad.v
 src/Common/NatFacts.v
