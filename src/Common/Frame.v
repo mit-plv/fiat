@@ -1100,6 +1100,46 @@ Section CompleteLattice.
   Definition postfixed_point (a : A) := le a (f a).
   Definition fixed_point (a : A) := eq (f a) a.
 
+  Lemma cl_inf_superset
+    : forall (P P' : A -> Prop),
+      (forall a, P' a -> P a)
+      -> le (cl_inf P) (cl_inf P').
+  Proof.
+    intros.
+    eapply (proj2 (inf_glb P')); intros.
+    eapply (proj1 (inf_glb P)); eauto.
+  Qed.
+
+  Lemma cl_inf_same_set
+    : forall (f f' : A -> Prop),
+      (forall a, f a <-> f' a)
+      -> eq (cl_inf f) (cl_inf f').
+  Proof.
+    intros.
+    apply PO.le_antisym; eapply cl_inf_superset;
+      intuition; eapply H; eauto.
+  Qed.
+
+  Lemma cl_sup_subset
+    : forall (P P' : A -> Prop),
+      (forall a, P a -> P' a)
+      -> le (cl_sup P) (cl_sup P').
+  Proof.
+    intros.
+    eapply (proj2 (sup_lub P)); intros.
+    eapply (proj1 (sup_lub P')); eauto.
+  Qed.
+
+  Lemma cl_sup_same_set
+    : forall (f f' : A -> Prop),
+      (forall a, f a <-> f' a)
+      -> eq (cl_sup f) (cl_sup f').
+  Proof.
+    intros.
+    apply PO.le_antisym; eapply cl_sup_subset;
+      intuition; eapply H; eauto.
+  Qed.
+
   Lemma fixed_point_is_prefixed
     : forall a, fixed_point a -> prefixed_point a.
   Proof.
