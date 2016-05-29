@@ -375,8 +375,6 @@ src/Parsers/ContextFreeGrammar/Fix/Definitions.v
 src/Parsers/ContextFreeGrammar/Fix/Fix.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretation.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretationDefinitions.v
-src/Parsers/ContextFreeGrammar/Fix/FromFold.v
-src/Parsers/ContextFreeGrammar/Fix/FromFoldDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Properties.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/EvalGrammarTactics.v

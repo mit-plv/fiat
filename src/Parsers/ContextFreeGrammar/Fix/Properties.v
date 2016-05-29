@@ -5,9 +5,13 @@ Require Import Fiat.Common.Notations.
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
 
+Lemma state_beq_lb {prestate} {fp : grammar_fixedpoint_lattice_data prestate} (s s' : state) (H : s = s') : s =b s'.
+Proof.
+  subst; reflexivity.
+Qed.
+
 Lemma state_beq_refl {prestate} {fp : grammar_fixedpoint_lattice_data prestate} (s : state) : s =b s.
 Proof.
-  rewrite state_beq_lb by reflexivity.
   reflexivity.
 Qed.
 
@@ -16,13 +20,6 @@ Proof.
   unfold state_le.
   rewrite state_beq_lb by reflexivity.
   reflexivity.
-Qed.
-
-Global Instance state_beq_Equivalence {T d} : Equivalence (@state_beq T d).
-Proof.
-  split; repeat intro;
-    repeat match goal with H : _ |- _ => apply state_beq_bl in H end;
-    subst; apply state_beq_refl.
 Qed.
 
 Global Instance state_lt_Irreflexive {T d} : Irreflexive (@state_lt T d).
@@ -37,16 +34,54 @@ Proof.
   unfold state_le; repeat intro; rewrite state_beq_refl; reflexivity.
 Qed.
 
+Global Instance state_beq_Proper_Proper {prestate} {d : grammar_fixedpoint_lattice_data prestate}
+  : Proper (state_beq ==> state_beq ==> eq) state_beq.
+Proof.
+  intros a b H a' b' H'.
+  destruct (b =b b') eqn:H'';
+    change (?x = true) with (is_true x) in *.
+  { etransitivity; [ eassumption | ].
+    etransitivity; [ eassumption | ].
+    symmetry; assumption. }
+  { destruct (a =b a') eqn:H'''; trivial;
+    rewrite <- H''; clear H''; symmetry;
+    change (?x = true) with (is_true x) in *.
+    etransitivity; [ | eassumption ].
+    etransitivity; [ | eassumption ].
+    symmetry; assumption. }
+Qed.
+
+
+Global Instance state_beq_Proper_le {prestate} {d : grammar_fixedpoint_lattice_data prestate}
+  : Proper (state_beq ==> state_beq ==> eq) state_le.
+Proof.
+  intros a b H a' b' H'.
+  unfold state_le.
+  rewrite H, H'.
+  reflexivity.
+Qed.
+
+Global Instance beq_subrelation_le {prestate} {d : grammar_fixedpoint_lattice_data prestate}
+  : subrelation state_beq state_le.
+Proof.
+  intros ?? H.
+  setoid_rewrite H.
+  reflexivity.
+Qed.
+
 Global Instance state_le_Transitive {T d} : Transitive (@state_le T d).
 Proof.
   unfold state_le, is_true; repeat intro;
     rewrite Bool.orb_true_iff in *;
     destruct_head or;
-    repeat match goal with H : _ |- _ => apply state_beq_bl in H end;
-    subst;
-    rewrite ?state_beq_refl; try solve [ eauto ].
-  right.
-  eapply state_lt_Transitive; eassumption.
+    repeat match goal with
+           | [ H : context[?x = true] |- _ ] => progress fold (is_true x) in *
+           | [ |- context[?x = true] ] => progress fold (is_true x) in *
+           | [ H : is_true (?x =b ?y) |- _ ] => rewrite H in *; clear x H
+           | _ => left; reflexivity
+           | _ => solve [ eauto ]
+           | _ => right; etransitivity; eassumption
+           end.
 Qed.
 
 Lemma bottom_bottom {prestate} {d : grammar_fixedpoint_lattice_data prestate} (s : state)
@@ -128,42 +163,4 @@ Global Instance state_le_flip_Reflexive {state} {d : grammar_fixedpoint_lattice_
 : Reflexive (Basics.flip (@state_le _ d)) | 2.
 Proof.
   unfold Basics.flip; intro; reflexivity.
-Qed.
-
-Global Instance state_beq_Proper_Proper {prestate} {d : grammar_fixedpoint_lattice_data prestate}
-  : Proper (state_beq ==> state_beq ==> eq) state_beq.
-Proof.
-  intros a b H a' b' H'.
-  apply state_beq_bl in H.
-  apply state_beq_bl in H'.
-  subst.
-  reflexivity.
-Qed.
-
-Global Instance state_beq_Proper_le {prestate} {d : grammar_fixedpoint_lattice_data prestate}
-  : Proper (state_beq ==> state_beq ==> eq) state_le.
-Proof.
-  intros a b H a' b' H'.
-  apply state_beq_bl in H.
-  apply state_beq_bl in H'.
-  subst.
-  reflexivity.
-Qed.
-
-Global Instance beq_subrelation_le {prestate} {d : grammar_fixedpoint_lattice_data prestate}
-  : subrelation state_beq state_le.
-Proof.
-  intros ?? H.
-  setoid_rewrite H.
-  reflexivity.
-Qed.
-
-Global Instance least_upper_bound_Proper {prestate} {d : grammar_fixedpoint_lattice_data prestate}
-  : Proper (state_beq ==> state_beq ==> state_beq) least_upper_bound.
-Proof.
-  intros ?? H ?? H'.
-  apply state_beq_bl in H.
-  apply state_beq_bl in H'.
-  subst.
-  reflexivity.
 Qed.

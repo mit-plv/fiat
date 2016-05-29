@@ -21,7 +21,7 @@ Section fold_correctness.
   Context {Char : Type} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
   Context {T : Type}.
   Context {fpdata : @grammar_fixedpoint_lattice_data T}
-          {aidata : @AbstractInterpretation Char T}
+          {aidata : @AbstractInterpretation Char T fpdata}
           (prerelated : Ensemble String -> T -> Prop)
           {aicdata : AbstractInterpretationCorrectness prerelated}.
   Context (G : pregrammar' Char).
