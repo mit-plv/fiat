@@ -47,6 +47,17 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Create HintDb sets discriminated.
   Global Hint Immediate union_subset_1 union_subset_2 equal_refl : sets.
 
+  Ltac simplify_sets_step :=
+    idtac;
+    match goal with
+    | [ H : ?x [<=] ?y, H' : ?y [<=] ?x |- _ ]
+      => pose proof (subset_antisym H H');
+         clear H H'
+    | _ => setoid_subst_rel Equal
+    end.
+
+  Ltac simplify_sets := repeat simplify_sets_step.
+
   Lemma equal_refl_b x : equal x x.
   Proof. to_caps; auto with sets. Qed.
 
@@ -75,7 +86,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Hint Rewrite union_idempotent_b : sets.
 
   Global Instance Subset_Proper_Equal_iff
-    : Proper (Equal ==> Equal ==> iff) Subset | 1.
+    : Proper (Equal ==> Equal ==> iff) Subset.
   Proof.
     intros ?? H ?? H'.
     unfold Subset, Equal in *.
@@ -83,11 +94,11 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     setoid_rewrite H'.
     reflexivity.
   Qed.
-  Global Instance Subset_Proper_Equal : Proper (Equal ==> Equal ==> impl) Subset.
+  Global Instance Subset_Proper_Equal : Proper (Equal ==> Equal ==> impl) Subset | 1.
   Proof.
     intros ?? H ?? H'; rewrite H, H'; reflexivity.
   Qed.
-  Global Instance Subset_Proper_Equal_flip : Proper (Equal ==> Equal ==> flip impl) Subset.
+  Global Instance Subset_Proper_Equal_flip : Proper (Equal ==> Equal ==> flip impl) Subset | 1.
   Proof.
     intros ?? H ?? H'; rewrite H, H'; reflexivity.
   Qed.
@@ -102,7 +113,6 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
       to_caps;
       setoid_subst_rel Equal; assumption.
   Qed.
-
 End MSetExtensionsOn.
 
 Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.

@@ -126,9 +126,13 @@ Global Instance eq_flip_impl_flip_impl_impl_Prper
 Proof. compute; intros; subst; tauto. Qed.
 
 Global Instance and_flip_impl_iff_Proper
-  : Proper (flip impl ==> iff ==> flip impl) and.
+  : Proper (flip impl ==> iff ==> flip impl) and | 5.
 Proof. compute; tauto. Qed.
-Global Instance and_iff_eq_iff_Proper : Proper (iff ==> Logic.eq ==> iff) and.
+Global Instance and_iff_eq_iff_Proper : Proper (iff ==> Logic.eq ==> iff) and | 4.
 Proof. compute; intros; subst; tauto. Qed.
-Global Instance impl_iff_iff_flip_impl_Proper : Proper (iff ==> iff ==> flip impl) impl | 1.
+Global Instance and_iff_iff_iff_Proper : Proper (iff ==> iff ==> iff) and | 1
+  := _.
+Global Instance impl_iff_iff_flip_impl_Proper : Proper (iff ==> iff ==> flip impl) impl | 2.
+Proof. compute; tauto. Qed.
+Global Instance impl_iff_iff_iff_Proper : Proper (iff ==> iff ==> iff) impl | 1.
 Proof. compute; tauto. Qed.
