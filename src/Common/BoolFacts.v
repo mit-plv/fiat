@@ -151,7 +151,7 @@ End BoolFacts.
 
 Create HintDb bool_congr discriminated.
 
-Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff : bool_congr.
+Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r : bool_congr.
 
 Ltac bool_congr' :=
   idtac;

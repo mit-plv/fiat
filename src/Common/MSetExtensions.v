@@ -39,13 +39,29 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     | [ H : _ |- _ ] => setoid_rewrite <- lem in H
     end.
 
+  Ltac eq_bools_to_is_trues :=
+    idtac;
+    let x := match goal with |- ?x = ?y :> bool => x end in
+    let y := match goal with |- x = ?y :> bool => y end in
+    let Hx := fresh in
+    let Hy := fresh in
+    destruct x eqn:Hx;
+    [ symmetry
+    | destruct y eqn:Hy;
+      [ rewrite <- Hx; clear Hx
+      | reflexivity ] ];
+    fold_is_true.
+
+
   Ltac to_caps_step :=
     first [ setoid_rewrite_in_all subset_spec
-          | setoid_rewrite_in_all equal_spec ].
+          | setoid_rewrite_in_all equal_spec
+          | progress fold_is_true
+          | eq_bools_to_is_trues ].
   Ltac to_caps := repeat to_caps_step.
 
   Create HintDb sets discriminated.
-  Global Hint Immediate union_subset_1 union_subset_2 equal_refl : sets.
+  Global Hint Immediate union_subset_1 union_subset_2 inter_subset_1 inter_subset_2 equal_refl : sets.
 
   Ltac simplify_sets_step :=
     idtac;
@@ -58,8 +74,18 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
 
   Ltac simplify_sets := repeat simplify_sets_step.
 
+  Ltac push_In_step :=
+    first [ progress unfold Equal in *
+          | setoid_rewrite_in_all union_spec
+          | setoid_rewrite_in_all inter_spec ].
+
+  Ltac push_In := repeat push_In_step.
+
   Lemma equal_refl_b x : equal x x.
   Proof. to_caps; auto with sets. Qed.
+
+  Lemma equal_sym_b x y : equal x y = equal y x.
+  Proof. to_caps; simplify_sets; reflexivity. Qed.
 
   Lemma union_subset_1b
     : forall s s', subset s (union s s').
@@ -69,50 +95,62 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     : forall s s', subset s' (union s s').
   Proof. to_caps; auto with sets. Qed.
 
-  Hint Rewrite union_subset_1b union_subset_2b equal_refl_b : sets.
+  Lemma inter_subset_1b
+    : forall s s', subset (inter s s') s.
+  Proof. to_caps; auto with sets. Qed.
+
+  Lemma inter_subset_2b
+    : forall s s', subset (inter s s') s'.
+  Proof. to_caps; auto with sets. Qed.
+
+  Hint Rewrite union_subset_1b union_subset_2b inter_subset_1b inter_subset_2b equal_refl_b : sets.
 
   Lemma union_idempotent x : Equal (union x x) x.
-  Proof.
-    unfold Equal.
-    setoid_rewrite union_spec.
-    tauto.
-  Qed.
+  Proof. push_In; tauto. Qed.
 
-  Hint Immediate union_idempotent : sets.
+  Lemma inter_idempotent x : Equal (inter x x) x.
+  Proof. push_In; tauto. Qed.
+
+  Hint Immediate union_idempotent inter_idempotent : sets.
 
   Lemma union_idempotent_b x : equal (union x x) x.
   Proof. to_caps; auto with sets. Qed.
 
-  Hint Rewrite union_idempotent_b : sets.
+  Lemma inter_idempotent_b x : equal (inter x x) x.
+  Proof. to_caps; auto with sets. Qed.
+
+  Hint Rewrite union_idempotent_b inter_idempotent_b : sets.
+
+  Ltac handle_known_comparisons_step :=
+    idtac;
+    lazymatch goal with
+    | [ |- context[subset (inter ?x ?y) ?x] ]
+      => replace (subset (inter x y) x) with true by (symmetry; apply inter_subset_1b)
+    | [ |- context[subset (inter ?x ?y) ?y] ]
+      => replace (subset (inter x y) y) with true by (symmetry; apply inter_subset_2b)
+    | [ |- context[subset ?x (union ?x ?y)] ]
+      => replace (subset x (union x y)) with true by (symmetry; apply union_subset_1b)
+    | [ |- context[subset ?y (union ?x ?y)] ]
+      => replace (subset y (union x y)) with true by (symmetry; apply union_subset_2b)
+    | [ |- context[equal (?f ?x ?y) ?x] ]
+      => replace (equal (f x y) x) with (equal x (f x y)) by apply equal_sym_b
+    | [ |- context[equal (?f ?x ?y) ?y] ]
+      => replace (equal (f x y) y) with (equal y (f x y)) by apply equal_sym_b
+    end.
+
+  Ltac handle_known_comparisons := repeat handle_known_comparisons_step.
 
   Global Instance Subset_Proper_Equal_iff
     : Proper (Equal ==> Equal ==> iff) Subset.
-  Proof.
-    intros ?? H ?? H'.
-    unfold Subset, Equal in *.
-    setoid_rewrite H.
-    setoid_rewrite H'.
-    reflexivity.
-  Qed.
+  Proof. repeat intro; unfold Subset; simplify_sets; reflexivity. Qed.
   Global Instance Subset_Proper_Equal : Proper (Equal ==> Equal ==> impl) Subset | 1.
-  Proof.
-    intros ?? H ?? H'; rewrite H, H'; reflexivity.
-  Qed.
+  Proof. repeat intro; simplify_sets; eauto with nocore. Qed.
   Global Instance Subset_Proper_Equal_flip : Proper (Equal ==> Equal ==> flip impl) Subset | 1.
-  Proof.
-    intros ?? H ?? H'; rewrite H, H'; reflexivity.
-  Qed.
+  Proof. repeat intro; simplify_sets; eauto with nocore. Qed.
 
   Global Instance subset_Proper_equal
     : Proper (equal ==> equal ==> Logic.eq) subset.
-  Proof.
-    intros a b H a' b' H'.
-    destruct (subset b b') eqn:H'';
-      [ | destruct (subset a a') eqn:H''';
-          [ rewrite <- H''; clear H''; symmetry | reflexivity ] ];
-      to_caps;
-      setoid_subst_rel Equal; assumption.
-  Qed.
+  Proof. repeat intro; to_caps; simplify_sets; assumption. Qed.
 End MSetExtensionsOn.
 
 Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.
