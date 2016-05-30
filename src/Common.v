@@ -1847,3 +1847,13 @@ Ltac fold_is_true :=
          | [ H : context[?x = true] |- _ ] => fold_is_true' x
          | [ |- context[?x = true] ] => fold_is_true' x
          end.
+
+(** Get access to an abstracted, non-re-typechecked version of a vm-computed lemma *)
+Class eq_refl_vm_cast T := by_vm_cast : T.
+Global Hint Extern 0 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
+
+(** assume that the left-hand side is alread vm_computed; this way we only vm_compute once in the tactic, not twice *)
+Class eq_refl_vm_cast_l {T} (x y : T) := by_vm_cast_l : x = y.
+Global Hint Extern 0 (@eq_refl_vm_cast_l ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T x)) : typeclass_instances.
+Class eq_refl_vm_cast_r {T} (x y : T) := by_vm_cast_r : x = y.
+Global Hint Extern 0 (@eq_refl_vm_cast_r ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T y)) : typeclass_instances.

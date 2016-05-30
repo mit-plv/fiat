@@ -11,9 +11,10 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Correct.
 Require Import Fiat.Common.BoolFacts.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
-Local Coercion is_true : bool >-> Sortclass.
+
 Local Open Scope list_scope.
 Local Open Scope grammar_fixedpoint_scope.
 
@@ -166,3 +167,19 @@ End fold_correctness.
 
 Global Arguments fold_grammar_correct {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.
 Global Arguments fold_grammar_correct_item {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.
+
+Class fold_grammar_data {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
+      {aidata : AbstractInterpretation}
+      (G : pregrammar' Char) :=
+  { fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G);
+    fgd_fold_grammar_correct : fgd_fold_grammar = fold_grammar G }.
+Coercion fgd_fold_grammar : fold_grammar_data >-> aggregate_state.
+
+Ltac make_fold_grammar_data G :=
+  let v := constr:(fold_grammar G) in
+  let lem := match v with
+             | @fold_grammar ?Char ?T ?fpdata ?aidata ?G
+               => constr:(@Build_fold_grammar_data Char T fpdata aidata G)
+             end in
+  let v' := (eval vm_compute in v) in
+  constr:(lem v' (_ : eq_refl_vm_cast_l v' v)).

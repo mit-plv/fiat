@@ -76,9 +76,6 @@ Ltac parser_red_gen term :=
   let term := (eval parser_red1 in term) in
   term.
 
-Class eq_refl_vm_cast T := by_vm_cast : T.
-Hint Extern 1 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
-
 (* Work around an anomaly in 8.5 *)
 Local Notation type_of x := ((fun T (y : T) => T) _ x).
 Ltac type_of_no_anomaly x :=

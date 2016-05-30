@@ -6,8 +6,9 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
-Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 
@@ -101,9 +102,10 @@ Coercion collapse_might_be_empty (x : might_be_emptyT) : bool
      | ⊥ => false
      end.
 
-Definition might_be_empty_nt {Char} (G : pregrammar' Char)
+Definition might_be_empty_nt {Char} (G : pregrammar' Char) {mbedata : fold_grammar_data G}
 : String.string -> might_be_emptyT
-  := fun nt => lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt).
+  := fun nt => lookup_state mbedata (@of_nonterminal _ (@rdp_list_predata _ G) nt).
+Global Arguments might_be_empty_nt {_} G {_} _.
 
 Section might_be_empty.
   Context {Char}
@@ -111,6 +113,7 @@ Section might_be_empty.
           {HSL : StringLike Char}
           {HSLP : StringLikeProperties Char}
           (G : pregrammar' Char)
+          {mbedata : fold_grammar_data G}
           (nt : String.string)
           (str : String)
           (Hlen : length str = 0).
@@ -122,6 +125,7 @@ Section might_be_empty.
     unfold might_be_empty_nt.
     apply fold_grammar_correct_item in p.
     destruct p as [P [Hp0 p]].
+    rewrite fgd_fold_grammar_correct.
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       specialize (p _ Hp0); (congruence || tauto).
@@ -132,6 +136,7 @@ Section might_be_empty.
     : might_be_empty_nt G nt = ⊤.
   Proof.
     unfold might_be_empty_nt.
+    rewrite fgd_fold_grammar_correct.
     apply fold_grammar_correct in p.
     destruct p as [P [Hp0 p]].
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
