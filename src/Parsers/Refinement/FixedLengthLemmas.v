@@ -1,4 +1,3 @@
-(** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.omega.Omega.
