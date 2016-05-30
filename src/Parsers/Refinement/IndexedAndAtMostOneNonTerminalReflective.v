@@ -547,7 +547,7 @@ Section IndexedImpl.
 
     Def Method3 "splits"(s : rep) (idx : default_production_carrierT) (offset : nat) (len : nat) : rep * (list nat) :=
       (*dummy <- { ls : list nat | True };*)
-      let dummy := 0::nil in
+      let dummy := nil in
       expanded_fallback_list' P s offset len idx dummy
   }.
 
