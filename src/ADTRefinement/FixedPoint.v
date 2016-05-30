@@ -98,36 +98,9 @@ transitivity y; trivial.
 transitivity y; trivial.
 Qed.
 
-(*
-Corollary FixedPointP_is_refineFunEquiv
-          {fDom : list Type}
-          {fCod : Type}
-          (fDef : funType fDom fCod -> funType fDom fCod)
-          (fSet : funType fDom fCod) :
-  FixedPointP fDef fSet = refineFunEquiv (fDef fSet) fSet.
-Proof. reflexivity. Qed.
- *)
-
 Instance refineFun_refineFunEquiv_subrelation fDom fCod :
   subrelation (@refineFunEquiv fDom fCod) (@refineFun fDom fCod).
 Proof. intros ? ? [? ?]; assumption. Qed.
-
-(*
-Add Parametric Morphism fDom fCod : (@FixedPointP fDom fCod)
-  with signature
-    ((@refineFunEquiv fDom fCod) ==> (@refineFunEquiv fDom fCod))
-       ==> (@refineFunEquiv fDom fCod) ==> impl
-    as refineFun_FixedPointP.
-Proof.
-  unfold respectful, FixedPointP, refineFunEquiv, impl; simpl; intros.
-  specialize (H _ _ H0).
-  intuition.
-  - rewrite H3, H0; assumption.
-  - rewrite H2 in H5.
-    rewrite H5 in H4.
-    assumption.
-Qed.
- *)
 
 Lemma length_wf' : forall A len l,
     length l < len -> Acc (fun l1 l2 : list A => length l1 < length l2) l.
@@ -255,7 +228,7 @@ Proof.
   simpl; intros f.
   induction fDom; simpl in *.
   exact { o : newRep * fCod |
-          exists p, 
+          exists p,
           computes_to f (p, snd o) /\ AbsR p (fst o)}.
   intro x.
   exact (IHfDom (f x)).
@@ -308,59 +281,9 @@ Proof.
   exact (IHfDom (f <- X; ret (f x))).
 Defined.
 
-(*Definition refineFun_invert
-           {newRep oldRep fDom fCod}
-           (AbsR : oldRep -> newRep -> Prop)
-           (f : funType (oldRep :: fDom) (oldRep * fCod))
-           (f' : funType (newRep :: fDom) (newRep * fCod)) :
-  (forall (args : hetero fDom),
-      pointwise_relation _ refine
-                         (fun or =>
-                            p <- funApply (f or) args;
-                              n <- { n : newRep | AbsR (fst p) n };
-                              ret (n, snd p))
-                         (fun or =>
-                            n <- { n : newRep | AbsR or n };
-                              funApply (f' n) args))
-  -> refineFun (cod_old_to_new AbsR f)
-               (dom_new_to_old AbsR f').
-Proof.
-  intros H.
-  under_fDom.
-  unfold refine;intros.
-  exact (H hnil).
-  apply IHfDom; intros.
-  exact (H (hcons (B:=id) _ args t0)).
-Defined. *)
-
 Require Import
         Fiat.ADTRefinement
         Fiat.ADTRefinement.BuildADTRefinements.
-
-(*Lemma refineFunMethod :
-  forall oldRep newRep (AbsR : oldRep -> newRep -> Prop) fDom fCod
-         (f : methodType oldRep fDom (Some fCod))
-         (f' : methodType newRep fDom (Some fCod)),
-    refineFun (cod_old_to_new AbsR (methodType_to_funType f))
-              (dom_new_to_old AbsR (methodType_to_funType f'))
-    -> refineMethod AbsR f f'.
-Proof.
-  unfold dom_new_to_old, refineMethod,
-  methodType, methodType_to_funType; simpl in *; intros.
-  specialize (H r_o).
-  under_fDom.
-  {
-    unfold refine; intros.
-    assert (computes_to
-              {v : newRep * fCod | forall r_n : newRep, AbsR r_o r_n -> f' r_n ↝ v}
-         v).
-    computes_to_econstructor.
-    eapply H in H2; computes_to_inv.
-    destruct v.
-    destruct_ex; intuition; simpl in *.
-    eauto. }
-  eauto.
-Defined. *)
 
 Fixpoint refineFun_AbsR'
          {oldRep newRep}
@@ -480,64 +403,6 @@ Proof.
         eapply (IHfDom (fun r => fDef r t0) (fun r => fDef' r t0)); eauto.
 Qed.
 
-(* Lemma refineFun_To_refineFunAbsR'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-  : forall (fDef  : funType (oldRep :: fDom) (oldRep * fCod))
-           (fDef' : funType (newRep :: fDom) (newRep * fCod)),
-    refineFun fDef (domcod_new_to_old AbsR fDef')
-    <-> refineFun_AbsR AbsR fDef fDef'.
-Proof.
-  simpl.
-  unfold refineFun_AbsR, domcod_new_to_old; split.
-  - induction fDom; simpl; intros; eauto.
-    + unfold refine; intros.
-      computes_to_econstructor.
-      assert (computes_to {v : oldRep * fCod |
-                           forall r_n : newRep,
-                             AbsR r_o r_n ->
-                             {o : oldRep * fCod | exists p : newRep, fDef' r_n ↝ (p, snd o) /\ AbsR (fst o) p} ↝ v} v).
-      eapply H in H1; computes_to_inv; subst; eauto.
-    + intros;
-        eapply (IHfDom (fun r => fDef r t) (fun r => fDef' r t)); eauto.
-      intros; eapply H.
-  - induction fDom; simpl; intros; eauto.
-    + unfold refine; intros.
-      computes_to_econstructor; intros.
-      eapply H in H0; computes_to_inv; subst; eauto.
-    + intros;
-        eapply (IHfDom (fun r => fDef r t0) (fun r => fDef' r t0)); eauto.
-Qed. 
-
-Lemma refineFunAbsR_To_refineFun
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-  : forall (fDef : funType (oldRep :: fDom) (oldRep * fCod))
-           (fDef' : funType (newRep :: fDom) (newRep * fCod)),
-    refineFun (cod_old_to_new AbsR fDef) (dom_new_to_old AbsR fDef')
-    <-> refineFun_AbsR AbsR fDef fDef'.
-Proof.
-  intros.
-  unfold refineFun_AbsR, cod_old_to_new, dom_new_to_old.
-  under_fDom.
-  { split; intros.
-    - setoid_rewrite H.
-      refine pick val r_n.
-      simplify with monad laws.
-      reflexivity.
-      exact H0.
-    - unfold refine; intros; computes_to_inv.
-      eapply H in H0'; eauto.
-  }
-  split; intros.
-  eapply (IHfDom (fun r => fDef r t) (fun r => fDef' r t)); eauto.
-  eapply (IHfDom (fun r => fDef r t0) (fun r => fDef' r t0)); eauto.
-Qed. *)
-
 Lemma refineFunAbsR_domcod_old_to_new
       {oldRep newRep}
       (AbsR : oldRep -> newRep -> Prop)
@@ -562,23 +427,6 @@ Definition domcod_new_to_old'
   : funType (oldRep :: fDom) (oldRep * fCod) :=
   cl_sup (fun a : funType (oldRep :: fDom) (oldRep * fCod) =>
             refineFun (domcod_old_to_new AbsR a) fDef').
-
-(* Lemma refineFunAbsR_domcod_new_to_old'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-  : forall (fDef : funType (newRep :: fDom) (newRep * fCod)),
-    refineFun_AbsR AbsR (domcod_new_to_old AbsR fDef) fDef.
-Proof.
-  unfold refineFun_AbsR, domcod_old_to_new, domcod_new_to_old; intros.
-  under_fDom.
-  { unfold domcod_old_to_new, refine; simpl; intros.
-    computes_to_econstructor.
-    computes_to_inv; destruct_ex; intuition eauto; subst.
-  }
-  eauto.
-Qed. *)
 
 Lemma cod_old_to_new_monotone
       {oldRep newRep}
@@ -610,18 +458,6 @@ Proof.
     simpl; eapply (IHfDom (fun r => fDef r t0) (fun r => fDef' r t0)); eauto.
     simpl; eauto.
 Qed.
-
-(*Lemma domcod_old_to_new_resp_sup'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-  : forall P,
-    refineFun (@domcod_old_to_new _ _ fDom fCod AbsR (cl_sup P))
-              (cl_sup (fun f (* new Point *) =>
-                         exists f',
-                           P f'
-                           /\ f = @domcod_old_to_new _ _ fDom fCod AbsR f')). *)
 
 Lemma domcod_old_to_new_resp_inf_1'
       {oldRep newRep}
@@ -668,29 +504,6 @@ Proof.
   reflexivity.
 Qed.
 
-(* Lemma domcod_new_to_old_resp_inf_2' *)
-(*       {oldRep newRep} *)
-(*       (AbsR : oldRep -> newRep -> Prop) *)
-(*       {fDom : list Type} *)
-(*       {fCod : Type} *)
-(*   : forall P, *)
-(*     P (refineFun_inf P) *)
-(*     -> refineFun (cl_inf (fun f (* new Point *) => *)
-(*                          exists f', *)
-(*                            P f' *)
-(*                            /\ refineFun (@domcod_new_to_old' _ _ fDom fCod AbsR f') f)) *)
-(*               (@domcod_new_to_old' _ _ fDom fCod AbsR (cl_inf P)) *)
-(* . *)
-(* Proof. *)
-(*   intros; eapply (glb_refineFun_inf _ (fun f (* new Point *) => *)
-(*                          exists f', *)
-(*                            P f' *)
-(*                            /\ refineFun (@domcod_old_to_new _ _ fDom fCod AbsR f') f)). *)
-(*   simpl; intros; destruct_ex; intuition subst. *)
-(*   eexists (refineFun_inf P); split; intros; eauto. *)
-(*   reflexivity. *)
-(* Qed. *)
-
 Lemma domcod_old_to_new_resp_sup_1'
       {oldRep newRep}
       (AbsR : oldRep -> newRep -> Prop)
@@ -736,68 +549,6 @@ Proof.
   eexists (refineFun_sup P); intuition.
 Qed.
 
-(*Lemma domcod_old_to_new_resp_sup_2'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-  : forall P,
-    refineFun (cl_sup (fun f (* new Point *) =>
-                         exists f',
-                           P f'
-                           /\ refineFunEquiv f (@domcod_old_to_new _ _ fDom fCod AbsR f')))
-              (@domcod_old_to_new _ _ fDom fCod AbsR (cl_sup P)).
-Proof.
-  intros; eapply (glb_refineFun_sup _ (fun f (* new Point *) =>
-                         exists f',
-                           P f'
-                           /\ refineFunEquiv f (@domcod_old_to_new _ _ fDom fCod AbsR f'))).
-  eexists (refineFun_sup P); intuition.
-  destruct (glb_refineFun_sup _ P).
-  simpl in *.
-  eapply H; eauto.
-Qed.
-
-
-  (fDef fDef'  : funType (oldRep :: fDom) (oldRep * fCod)),
-    refineFun fDef fDef'
-    -> refineFun (domcod_old_to_new AbsR fDef) (domcod_old_to_new AbsR fDef').
-Proof.
-  induction fDom; simpl; intros.
-  - unfold domcod_old_to_new; simpl.
-    setoid_rewrite H; reflexivity.
-  - unfold domcod_old_to_new in *.
-    simpl; eapply (IHfDom (fun r => fDef r t0) (fun r => fDef' r t0)); eauto.
-    simpl; eauto.
-Qed. *)
-
-(*Lemma domcod_old_to_new_roundtrip
-      {newRep oldRep fDom fCod}
-      (AbsR : oldRep -> newRep -> Prop)
-  : forall (fDef' : funType (newRep :: fDom) (newRep * fCod))
-           (t : newRep),
-    refineFun (domcod_old_to_new AbsR (domcod_new_to_old' AbsR fDef') t) (fDef' t).
-Proof.
-  induction fDom; simpl.
-  - unfold domcod_new_to_old', domcod_old_to_new; simpl.
-    unfold refine; intros.
-    destruct v.
-    computes_to_econstructor.
-    apply PickComputes with (a := (t, f)).
-    intros.
-
-    unfold refineFun_sup; simpl.
-    Local Transparent computes_to.
-
-    unfold computes_to.
-    eexists; split; eauto.
-    Focus 2.
-    apply H0.
-
-
-    unfold ref
- *)
-
 Lemma refineFun_AbsR_unCurry
       {oldRep newRep}
       (AbsR : oldRep -> newRep -> Prop)
@@ -831,7 +582,9 @@ Lemma refineFun_AbsR_unCurry'
       simpl; intros.
       eapply (H (t, t0)).
   Qed.
-  
+
+  (* Here's the main refinement lemma for switching the *)
+  (* representation type of a fixed point! *)
 Lemma refine_LeastFixedPoint_AbsR
       {oldRep newRep}
       (AbsR : oldRep -> newRep -> Prop)
@@ -841,16 +594,6 @@ Lemma refine_LeastFixedPoint_AbsR
               -> funType (oldRep :: fDom) (oldRep * fCod))
       (fDef' : funType (newRep :: fDom) (newRep * fCod)
                -> funType (newRep :: fDom) (newRep * fCod))
-      (strongH :
-         forall rec_n : newRep -> funType fDom (newRep * fCod),
-         forall r_n : newRep,
-             refineFun (domcod_old_to_new AbsR ((LeastFixedPoint fDef)) r_n) (fDef' rec_n r_n)) (* would like to get rid of this assumption, *)
-  (* or make it less gross to work with. :p *)
-  (* States that our new function will never produce values *)
-  (* that we couldn't get to by running the old function under *)
-  (* the abstraction relation. Seems overly constraining, *)
-  (* can I put a invariant on rec that it takes similar values to *)
-  (* similar values? *)
   : respectful_hetero
       (funType (oldRep :: fDom) (oldRep * fCod))
       (funType (newRep :: fDom) (newRep * fCod))
@@ -872,160 +615,26 @@ Proof.
   unfold LeastFixedPoint, respectful_hetero; intros.
   unfold refineFun_AbsR; intros;
   simpl; eapply refineFun_AbsR'_trans.
-  pose proof (proj1 (Is_LeastFixedPoint
+  pose proof (proj1 (Is_GreatestFixedPoint
                        (O := @funDefOps (oldRep :: fDom) (oldRep * fCod))
                        _ (fDef_monotone))).
   simpl in *; rewrite H1; reflexivity.
   eapply refineFun_AbsR_trans'; eauto;
     [ | eapply H; eapply refineFunAbsR_domcod_old_to_new ].
-  pose proof (proj2 (Is_LeastFixedPoint
+  pose proof (proj2 (Is_GreatestFixedPoint
                        (O := @funDefOps (newRep :: fDom) (newRep * fCod))
                        _ (fDef'_monotone))).
   rewrite <- H1.
   eapply fDef'_monotone.
-  pose proof (@domcod_old_to_new_resp_inf_1' _ _ AbsR fDom fCod) as H';
-    simpl in H'; simpl; intros; rewrite H'.
-  unfold prefixed_point; simpl.
-  pose proof (cl_inf_superset (O := @funDefOps (newRep :: fDom) (newRep * fCod))) as l'; simpl in l'; eapply l'; intros.
-  eexists (LeastFixedPoint fDef); split; intros.
-  eapply (proj2 (Is_LeastFixedPoint
+  eapply (@LeastFixedPoint_ind (newRep :: fDom)).
+  2: reflexivity.
+  eapply refineFun_To_refineFunAbsR.
+  eapply refineFun_AbsR_trans; eauto.
+  pose proof (proj1 (Is_GreatestFixedPoint
                        (O := @funDefOps (oldRep :: fDom) (oldRep * fCod))
                        _ (fDef_monotone))).
-  rewrite <- H2; eauto.
-Qed.
-
-(* eexists (domcod_new_to_old' AbsR a).
-  split.
-  unfold domcod_new_to_old'.
-  simpl.
-    
-  (* *)
-  
-  
-  (* Proof ends here with strongH. *)
-
-  eapply refineFun_To_refineFunAbsR.
-  simpl; eapply refineFun_AbsR_trans.
-  pose proof (proj1 (Is_LeastFixedPoint (O := @funDefOps (oldRep :: fDom) (oldRep * fCod)) _ (fDef_monotone))) as H4; simpl in H4;
-    unfold LeastFixedPoint; simpl; eapply H4.
-  unfold refineFun_AbsR; intros.
+  eapply H2.
   eapply H.
-  simpl; eapply refineFun_AbsR_trans.
-  eapply l'.
-  simpl in H4.
-  simpl ineapply refineFun_To_refineFunAbsR'.
-  unfold domcod_old_to_new, refine; simpl; unfold refine; intros.
-  Focus 2.
-  simpl; intros.
-  eapply IHfDom.
-  computes_to_econstructor.
-  intros.
-  eapply H in H3; eauto.
-  unfold cod_old_to_new in H3; simpl in H3.
-  computes_to_inv; destruct_ex; intuition.
-  computes_to_econstructor.
-  eexists ; intuition eauto.
-  eapply (proj1 (Is_LeastFixedPoint
-                   (O := @funDefOps (oldRep :: nil) (oldRep * fCod))
-                   _ (fDef_monotone))); eauto.
-  unfold refineFun_AbsR; intros; simpl.
-  computes_to_econstructor.
-  
-  
-  
-  
-  
-  eauto.
-  simpl in 
-
-  rewrite <- H2; eapply strongH; eauto.
-Qed. *)
-
-(* Lemma refine_LeastFixedPoint_AbsR'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-      (fDef : funType (oldRep :: fDom) (oldRep * fCod)
-              -> funType (oldRep :: fDom) (oldRep * fCod))
-  : exists fDef' ,
-         forall rec_n : newRep -> funType fDom (newRep * fCod),
-           (forall r_n : newRep, refineFun (fDef' rec_n r_n) (rec_n r_n))
-           -> forall r_n : newRep,
-             refineFun (domcod_old_to_new AbsR ((LeastFixedPoint fDef)) r_n) (rec_n r_n).
-  eexists.
-  simpl in fDef.
-  unfold LeastFixedPoint; simpl.
-  pose proof (@domcod_old_to_new_resp_inf_1' _ _ AbsR fDom fCod) as H';
-    simpl in H'; simpl; intros; rewrite H'; clear H'.
-  setoid_rewrite <- H.
-  finish honing.
-  intros; rewrite domcod_old_to_new_resp_inf_1'.
-  unfold domcod_old_to_new.
-
-
-Lemma refine_LeastFixedPoint_AbsR
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-      (fDef : funType (oldRep :: fDom) (oldRep * fCod)
-              -> funType (oldRep :: fDom) (oldRep * fCod))
-      (fDef' : funType (newRep :: fDom) (newRep * fCod)
-               -> funType (newRep :: fDom) (newRep * fCod))
-      (strongH :
-         forall rec_n : newRep -> funType fDom (newRep * fCod),
-           (forall r_n : newRep, refineFun (fDef' rec_n r_n) (rec_n r_n))
-           -> forall r_n : newRep,
-             refineFun (domcod_old_to_new AbsR ((LeastFixedPoint fDef)) r_n) (rec_n r_n))
-  : respectful_hetero
-      (funType (oldRep :: fDom) (oldRep * fCod))
-      (funType (newRep :: fDom) (newRep * fCod))
-      (fun _ => funType (oldRep :: fDom) (oldRep * fCod))
-      (fun _ => funType (newRep :: fDom) (newRep * fCod))
-      (fun f f' => @refineFun_AbsR _ _ AbsR fDom fCod f f')
-      (fun rec rec' f f' =>
-         @refineFun_AbsR _ _ AbsR fDom fCod f f')
-      fDef fDef'
-    -> forall (fDef_monotone : forall rec rec',
-                  refineFun rec rec'
-                  -> refineFun (fDef rec) (fDef rec'))
-              (fDef'_monotone : forall rec rec',
-                  refineFun rec rec'
-                  -> refineFun (fDef' rec) (fDef' rec')),
-      refineFun_AbsR AbsR (LeastFixedPoint fDef)
-                     (LeastFixedPoint fDef').
-Proof.
-
-
-  Lemma refine_LeastFixedPoint_AbsR'
-      {oldRep newRep}
-      (AbsR : oldRep -> newRep -> Prop)
-      {fDom : list Type}
-      {fCod : Type}
-      (fDef : funType (oldRep :: fDom) (oldRep * fCod)
-              -> funType (oldRep :: fDom) (oldRep * fCod))
-      (fDef' : funType (newRep :: fDom) (newRep * fCod))
-      (fDef_monotone : forall rec rec',
-          refineFun rec rec'
-          -> refineFun (fDef rec) (fDef rec'))
-      (_ : refineFun_AbsR AbsR (fDef (domcod_new_to_old' AbsR fDef')) fDef')
-  : refineFun_AbsR AbsR (refineFun_inf (prefixed_point fDef)) fDef'.
-Proof.
-  intros r_o r_n AbsR'.
-  eapply refineFun_AbsR_unCurry'.
-  generalize H; intros H'.
-  eapply refineFun_AbsR_unCurry in H; eauto; simpl in *.
-  intros.
-  rewrite <- H.
-  f_equiv.
-  eapply refineFun_unCurry.
-  pose proof (proj1 (Is_LeastFixedPoint
-                       (O := @funDefOps (oldRep :: fDom) (oldRep * fCod))
-                       _ (fDef_monotone))) as H1;
-    simpl in H1; rewrite H1; clear H1.
-  apply fDef_monotone.
-  intros.
-  eapply refineFun_unCurry'; simpl; intros.
-  admit.
-Admitted. *)
+  eapply refineFun_To_refineFunAbsR.
+  reflexivity.
+Qed.

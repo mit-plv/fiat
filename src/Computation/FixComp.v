@@ -544,12 +544,19 @@ Module LeastFixedPointFun.
     eapply lub_refineFun_sup.
   Defined.
 
+  (* The use of refineFun as the relation on our lattice makes  *)
+  (* this definition counterintuitive: the 'standard' definition *)
+  (* of least fixed point of f as the intersection of all f-closed *)
+  (* sets, is in fact, the supremum (defined above as the intersection *)
+  (* operator of the postfixed sets (as refineFun is pointwise *)
+  (* superset relation. *)
+
   Definition LeastFixedPoint
              {fDom : list Type}
              {fCod : Type}
              (fDef : funType fDom fCod -> funType fDom fCod)
     : funType fDom fCod :=
-    (cl_inf (prefixed_point fDef)).
+    (cl_sup (postfixed_point fDef)).
 
   Lemma refine_LeastFixedPoint
         {fDom : list Type}
@@ -569,19 +576,48 @@ Module LeastFixedPointFun.
                   (LeastFixedPoint fDef').
   Proof.
     unfold LeastFixedPoint, respectful; intros.
-    destruct (inf_glb (prefixed_point fDef)) as [? ?];
-      destruct (inf_glb (prefixed_point fDef')) as [? ?];
+    destruct (sup_lub (postfixed_point fDef)) as [? ?];
+      destruct (sup_lub (postfixed_point fDef')) as [? ?];
       simpl in *.
     etransitivity.
-    eapply (H0 (fDef (refineFun_inf (prefixed_point fDef')))).
-    eapply fDef_monotone.
-    etransitivity.
+    - pose proof (proj1 (Is_GreatestFixedPoint (O := @funDefOps fDom fCod) _ (fDef_monotone))); etransitivity.
+      apply H4.
+      eapply H; reflexivity.
+    - eapply (H2 (fDef' (refineFun_sup (postfixed_point fDef)))).
+      eapply fDef'_monotone.
+      etransitivity.
+      pose proof (proj1 (Is_GreatestFixedPoint (O := @funDefOps fDom fCod) _ (fDef_monotone))); eapply H4.
+      eapply H; reflexivity.
+  Qed.
+
+  Lemma LeastFixedPoint_ind
+        {fDom : list Type}
+        {fCod : Type}
+        (fDef : funType fDom fCod -> funType fDom fCod)
+        (Inv Post : funType fDom fCod)
+    : refineFun Inv (fDef Inv)
+      -> (refineFun Post Inv)
+      -> refineFun Post (LeastFixedPoint fDef).
+  Proof.
+    intros; rewrite H0; simpl in *.
+    destruct (sup_lub (postfixed_point fDef)) as [? ?].
+    simpl in H1; eapply H1.
     eapply H.
-    reflexivity.
-    pose proof (proj2 (Is_LeastFixedPoint (O := @funDefOps fDom fCod) _ (fDef'_monotone))); eapply H4.
-    etransitivity.
-    eapply H; reflexivity.
-    pose proof (proj2 (Is_LeastFixedPoint (O := @funDefOps fDom fCod) _ (fDef'_monotone))); eapply H4.
+  Qed.
+
+  Lemma GreatestFixedPoint_ind
+        {fDom : list Type}
+        {fCod : Type}
+        (fDef : funType fDom fCod -> funType fDom fCod)
+        (Inv Post : funType fDom fCod)
+    : refineFun (fDef Inv) Inv
+      -> (refineFun Inv Post)
+      -> refineFun (cl_inf (prefixed_point fDef)) Post.
+  Proof.
+    intros; rewrite <- H0; simpl in *.
+    destruct (inf_glb (prefixed_point fDef)) as [? ?].
+    simpl in H1; eapply H1.
+    eapply H.
   Qed.
 
   Fixpoint cfunType
@@ -634,20 +670,14 @@ Module LeastFixedPointFun.
                 (Lift_cfunType (recT :: fDom) fCod (Fix wf_P _ fDef' )).
   Proof.
     unfold LeastFixedPoint, respectful_hetero; intros.
-    destruct (inf_glb (O := @funDefOps (recT :: fDom) fCod) (prefixed_point fDef)) as [? ?].
-    simpl; intros; eapply refineFun_trans.
-    - eapply (H0 (fDef (fun t => Lift_cfunType _ _ (Fix wf_P (fun _ : recT => cfunType fDom fCod) fDef' t)))).
-      simpl; intros; eapply fDef_monotone.
-      simpl; intros. rewrite Fix_eq.
-      + eapply H.
-        simpl; intros; eapply refineFun_refl.
-      + intros; f_equal.
-        repeat (eapply functional_extensionality_dep; intros); eauto.
-    - simpl; intros; rewrite Fix_eq.
-      + eapply H.
-        simpl; intros; eapply refineFun_refl.
-      + intros; f_equal.
-        repeat (eapply functional_extensionality_dep; intros); eauto.
+    simpl.
+    intros; pattern t; eapply (well_founded_ind wf_P).
+    simpl; intros; rewrite Fix_eq.
+    pose proof (proj1 (Is_GreatestFixedPoint (O := @funDefOps (recT :: fDom) fCod) _ (fDef_monotone))); etransitivity.
+    eapply H1; eauto.
+    eapply H; eauto.
+    intros; f_equal.
+    repeat (eapply functional_extensionality_dep; intros); eauto.
   Qed.
 
   Definition FibonacciSpec

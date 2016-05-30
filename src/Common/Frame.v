@@ -1208,6 +1208,34 @@ Section CompleteLattice.
     eauto.
   Qed.
 
+  (*Lemma LeastFixedPoint_ind
+        (Inv Post : A -> Prop)
+        (Inv_Inclusive :
+           forall (P : A -> Prop),
+             (forall a, P a -> Inv a)
+             -> Inv (cl_inf P))
+    : (forall a, Inv a -> Inv (f a))
+      -> (forall a, Inv a -> Post a)
+      -> Post (cl_inf prefixed_point).
+  Proof.
+    intros; eapply H0; simpl in *.
+    eapply Inv_Inclusive.
+    intros.
+    unfold prefixed_point in *.
+    eapply Inv_resp_le.
+    Focus 2.
+    Focus 2.
+    apply Inv_resp_le in H1.
+    eapply Inv_Inclusive.
+    intros.
+    destruct (inf_glb Inv).
+    eapply Inv_resp_le.
+    eapply H2.
+
+    simpl in H1. *)
+
+
+
 End CompleteLattice.
 
 (** A frame represents the essence of the algebraic structure of topologies,
