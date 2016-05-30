@@ -1,3 +1,5 @@
+(** FIXME Use sets of characters *not* accepted by any string of a given nonterminal; makes wf easier *)
+
 Require Import Coq.Strings.Ascii.
 Require Import Coq.MSets.MSetPositive.
 Require Import Coq.MSets.MSetFacts.
