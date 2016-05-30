@@ -371,6 +371,7 @@ src/Parsers/ContextFreeGrammar/TransferProperties.v
 src/Parsers/ContextFreeGrammar/Valid.v
 src/Parsers/ContextFreeGrammar/ValidProperties.v
 src/Parsers/ContextFreeGrammar/ValidReflective.v
+src/Parsers/ContextFreeGrammar/Fix/AsciiLattice.v
 src/Parsers/ContextFreeGrammar/Fix/Correct.v
 src/Parsers/ContextFreeGrammar/Fix/Definitions.v
 src/Parsers/ContextFreeGrammar/Fix/Fix.v
@@ -426,6 +427,7 @@ src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
 src/Parsers/Refinement/DisjointRules.v
 src/Parsers/Refinement/DisjointRulesRev.v
+src/Parsers/Refinement/EmptyLemmas.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v

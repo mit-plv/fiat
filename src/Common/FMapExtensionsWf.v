@@ -1,8 +1,7 @@
 Require Export Coq.FSets.FMapInterface.
 Require Import Fiat.Common.Wf.
 Require Export Fiat.Common.FMapExtensions.
-
-Local Coercion is_true : bool >-> Sortclass.
+Require Import Fiat.Common.
 
 Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
   Module BasicExtensions := FMapExtensions_fun E M.
@@ -104,7 +103,7 @@ Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
           { simpl; unfold gtb, flip, ltb in *.
             intro x; rewrite top_top; simpl.
             destruct (eqb x top) eqn:Heqb; [ left | right; reflexivity ].
-            change (?x = true) with (is_true x) in *.
+            fold_is_true.
             rewrite Heqb; reflexivity. }
           { unfold to_function, find_default.
             intros ???? H.

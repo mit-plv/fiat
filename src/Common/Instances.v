@@ -116,3 +116,23 @@ Proof. equiv_t. Qed.
 Global Instance Asymmetric_Proper {T}
   : Proper (pointwise_relation T (pointwise_relation _ iff) ==> iff) Asymmetric.
 Proof. equiv_t. Qed.
+
+Global Instance is_true_Proper_eq: Proper (Logic.eq ==> Logic.eq) is_true := _.
+Global Instance negb_Proper_eq: Proper (Logic.eq ==> Logic.eq) negb := _.
+Global Instance and_Proper_eq: Proper (Logic.eq ==> Logic.eq ==> Logic.eq) and := _.
+
+Global Instance eq_flip_impl_flip_impl_impl_Prper
+  : Proper (Logic.eq ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) Basics.impl.
+Proof. compute; intros; subst; tauto. Qed.
+
+Global Instance and_flip_impl_iff_Proper
+  : Proper (flip impl ==> iff ==> flip impl) and | 5.
+Proof. compute; tauto. Qed.
+Global Instance and_iff_eq_iff_Proper : Proper (iff ==> Logic.eq ==> iff) and | 4.
+Proof. compute; intros; subst; tauto. Qed.
+Global Instance and_iff_iff_iff_Proper : Proper (iff ==> iff ==> iff) and | 1
+  := _.
+Global Instance impl_iff_iff_flip_impl_Proper : Proper (iff ==> iff ==> flip impl) impl | 2.
+Proof. compute; tauto. Qed.
+Global Instance impl_iff_iff_iff_Proper : Proper (iff ==> iff ==> iff) impl | 1.
+Proof. compute; tauto. Qed.

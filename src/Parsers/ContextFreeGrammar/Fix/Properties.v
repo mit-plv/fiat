@@ -39,13 +39,13 @@ Global Instance state_beq_Proper_Proper {prestate} {d : grammar_fixedpoint_latti
 Proof.
   intros a b H a' b' H'.
   destruct (b =b b') eqn:H'';
-    change (?x = true) with (is_true x) in *.
+    fold_is_true.
   { etransitivity; [ eassumption | ].
     etransitivity; [ eassumption | ].
     symmetry; assumption. }
   { destruct (a =b a') eqn:H'''; trivial;
     rewrite <- H''; clear H''; symmetry;
-    change (?x = true) with (is_true x) in *.
+    fold_is_true.
     etransitivity; [ | eassumption ].
     etransitivity; [ | eassumption ].
     symmetry; assumption. }

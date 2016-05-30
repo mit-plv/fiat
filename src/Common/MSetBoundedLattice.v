@@ -3,15 +3,42 @@ Require Import Coq.MSets.MSetFacts.
 Require Import Coq.MSets.MSetProperties.
 Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.LogicFacts.
+Require Import Fiat.Common.Instances.
 Require Import Fiat.Common.NatFacts.
+Require Import Fiat.Common.MSetExtensions.
 Require Import Fiat.Common.
 
 Module MSetBoundedLatticeOn (E: OrderedType) (Import M: SetsOn E).
   Module Import BasicFacts := WFactsOn E M.
   Module Import BasicProperties := WPropertiesOn E M.
+  Module Import BasicExtensions := MSetExtensionsOn E M.
 
   Definition lift_ltb (x y : t) : bool
     := ((subset x y) && negb (equal x y)).
+
+  Global Instance eq_flip_impl_flip_impl_impl_Prper
+    : Proper (Logic.eq ==> flip impl ==> flip impl) impl.
+  Proof. compute; intros; subst; tauto. Qed.
+
+  Global Instance lift_ltb_Transitive : Transitive lift_ltb.
+  Proof.
+    unfold lift_ltb.
+    intros x y z.
+    setoid_rewrite andb_true_iff.
+    destruct (equal x z) eqn:H;
+      revert H;
+      setoid_rewrite negb_true_iff;
+      setoid_rewrite <- not_true_iff_false;
+      to_caps;
+      setoid_subst_rel Equal;
+      intros; destruct_head and;
+        simplify_sets;
+        unfold not in *;
+        specialize_by ltac:(reflexivity);
+        try tauto.
+    split; try congruence.
+    etransitivity; eassumption.
+  Qed.
 
   Lemma not_equal_ex
         x y (H : ~Equal x y)
