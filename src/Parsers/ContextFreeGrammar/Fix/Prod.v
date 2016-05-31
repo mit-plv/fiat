@@ -16,11 +16,12 @@ Global Instance prod_fixedpoint_lattice {prestate0 prestate1}
 Proof.
   refine {| prestate_lt x y := ((state_le (fst x) (fst y) && state_le (snd x) (snd y))
                                   && negb (state_beq (fst x) (fst y) && state_beq (snd x) (snd y)));
-            prestate_beq x y := state_beq (fst x) (fst y) && state_beq (snd x) (snd y);
+            prestate_beq := Equality.prod_beq state_beq state_beq;
             preleast_upper_bound x y
             := constant (least_upper_bound (fst x) (fst y), least_upper_bound (snd x) (snd y)) |};
   try abstract (
         repeat match goal with
+               | _ => progress unfold Equality.prod_beq
                | [ |- RelationClasses.Equivalence _ ]
                  => split; repeat intro
                | [ |- well_founded _ ] => fail 1
@@ -91,3 +92,9 @@ Proof.
       unfold flip; intros ??? x y H H'; subst.
       rewrite H; assumption. } }
 Defined.
+
+Global Instance prod_fixedpoint_lattice' {prestate0 prestate1}
+       {fpldata0 : grammar_fixedpoint_lattice_data prestate0}
+       {fpldata1 : grammar_fixedpoint_lattice_data prestate1}
+  : grammar_fixedpoint_lattice_data (lattice_for prestate0 * lattice_for prestate1)
+  := prod_fixedpoint_lattice.
