@@ -91,6 +91,13 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     | [ H : ?x [<=] ?y, H' : ?y [<=] ?x |- _ ]
       => pose proof (subset_antisym H H');
          clear H H'
+    | [ H : context[subset ?x ?y] |- _ ]
+      => match type of H with
+         | context[subset y x] => fail 1
+         | _ => idtac
+         end;
+         progress replace (equal y x) with (equal x y)
+           in H by auto with sets
     | _ => setoid_subst_rel Equal
     end.
 
@@ -108,6 +115,8 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
 
   Lemma equal_sym_b x y : equal x y = equal y x.
   Proof. to_caps; simplify_sets; reflexivity. Qed.
+
+  Hint Immediate equal_sym_b : sets.
 
   Lemma union_subset_1b
     : forall s s', subset s (union s s').
@@ -143,25 +152,6 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
 
   Hint Rewrite union_idempotent_b inter_idempotent_b : sets.
 
-  Ltac handle_known_comparisons_step :=
-    idtac;
-    lazymatch goal with
-    | [ |- context[subset (inter ?x ?y) ?x] ]
-      => replace (subset (inter x y) x) with true by (symmetry; apply inter_subset_1b)
-    | [ |- context[subset (inter ?x ?y) ?y] ]
-      => replace (subset (inter x y) y) with true by (symmetry; apply inter_subset_2b)
-    | [ |- context[subset ?x (union ?x ?y)] ]
-      => replace (subset x (union x y)) with true by (symmetry; apply union_subset_1b)
-    | [ |- context[subset ?y (union ?x ?y)] ]
-      => replace (subset y (union x y)) with true by (symmetry; apply union_subset_2b)
-    | [ |- context[equal (?f ?x ?y) ?x] ]
-      => replace (equal (f x y) x) with (equal x (f x y)) by apply equal_sym_b
-    | [ |- context[equal (?f ?x ?y) ?y] ]
-      => replace (equal (f x y) y) with (equal y (f x y)) by apply equal_sym_b
-    end.
-
-  Ltac handle_known_comparisons := repeat handle_known_comparisons_step.
-
   Global Instance Subset_Proper_Equal_iff
     : Proper (Equal ==> Equal ==> iff) Subset.
   Proof. repeat intro; unfold Subset; simplify_sets; reflexivity. Qed.
@@ -188,6 +178,27 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     destruct (equal x y) eqn:?; simpl; bool_congr; to_caps; simplify_sets;
       intuition.
   Qed.
+
+  Hint Rewrite @equal_or_subset_and_not_equal_subset @equal_or_subset_and_not_equal_subset_b : sets.
+
+  Ltac handle_known_comparisons_step :=
+    idtac;
+    lazymatch goal with
+    | [ |- context[subset (inter ?x ?y) ?x] ]
+      => replace (subset (inter x y) x) with true by (symmetry; apply inter_subset_1b)
+    | [ |- context[subset (inter ?x ?y) ?y] ]
+      => replace (subset (inter x y) y) with true by (symmetry; apply inter_subset_2b)
+    | [ |- context[subset ?x (union ?x ?y)] ]
+      => replace (subset x (union x y)) with true by (symmetry; apply union_subset_1b)
+    | [ |- context[subset ?y (union ?x ?y)] ]
+      => replace (subset y (union x y)) with true by (symmetry; apply union_subset_2b)
+    | [ |- context[equal (?f ?x ?y) ?x] ]
+      => replace (equal (f x y) x) with (equal x (f x y)) by apply equal_sym_b
+    | [ |- context[equal (?f ?x ?y) ?y] ]
+      => replace (equal (f x y) y) with (equal y (f x y)) by apply equal_sym_b
+    end.
+
+  Ltac handle_known_comparisons := repeat handle_known_comparisons_step.
 End MSetExtensionsOn.
 
 Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.
