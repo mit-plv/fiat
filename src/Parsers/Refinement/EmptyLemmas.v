@@ -122,18 +122,8 @@ Section defs.
   Definition might_be_empty_nt
     : String.string -> might_be_emptyT
     := fun nt => lookup_state mbedata (@of_nonterminal _ (@rdp_list_predata _ G) nt).
-
-  Definition might_be_empty_item
-    : item Char -> might_be_emptyT
-    := fold_item' G (lookup_state mbedata).
-
-  Definition might_be_empty_production
-    : production Char -> might_be_emptyT
-    := fold_production' G (lookup_state mbedata).
 End defs.
 Global Arguments might_be_empty_nt {_} G {_} _.
-Global Arguments might_be_empty_item {_} G {_} _.
-Global Arguments might_be_empty_production {_} G {_} _.
 
 Section might_be_empty.
   Context {Char}
@@ -173,43 +163,5 @@ Section might_be_empty.
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       specialize (p _ Hp0); (congruence || tauto).
-  Qed.
-
-  Lemma might_be_empty_parse_of_item
-        (it : item Char)
-        (str : String)
-        (Hlen : length str = 0)
-        (p : parse_of_item G str it)
-    : might_be_empty_item G it = ⊤.
-  Proof.
-    unfold might_be_empty_item.
-    rewrite fgd_fold_grammar_correct.
-    unfold fold_item'.
-    destruct p as [ch P Hch Hstr|nt' Hvalid p].
-    { apply is_char_parts in Hstr; simpl in *.
-      omega. }
-    { apply fold_grammar_correct in p.
-      destruct p as [P [Hp0 p]].
-      destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt')) eqn:H; [ reflexivity | | ];
-        simpl in p; unfold might_be_empty_accurate in p;
-          specialize (p _ Hp0); (congruence || tauto). }
-  Qed.
-
-  Lemma might_be_empty_parse_of_production
-        (pat : production Char)
-        (str : String)
-        (Hlen : length str = 0)
-        (p : parse_of_production G str pat)
-    : might_be_empty_production G pat = ⊤.
-  Proof.
-    unfold might_be_empty_production.
-    unfold fold_production'.
-    induction p as [|str n it its p0 p1 IHp]; simpl; [ reflexivity | ].
-    rewrite drop_length, Hlen in IHp.
-    simpl in *.
-    rewrite IHp by omega; simpl.
-    setoid_rewrite might_be_empty_parse_of_item; [ | | eassumption ];
-      [ | rewrite take_length, Hlen; omega_with_min_max ].
-    reflexivity.
   Qed.
 End might_be_empty.
