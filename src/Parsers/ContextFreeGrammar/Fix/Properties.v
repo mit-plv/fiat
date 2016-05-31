@@ -1,6 +1,8 @@
 Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Common.
+Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.Notations.
+Require Import Fiat.Common.BoolFacts.
 
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
@@ -163,4 +165,32 @@ Global Instance state_le_flip_Reflexive {state} {d : grammar_fixedpoint_lattice_
 : Reflexive (Basics.flip (@state_le _ d)) | 2.
 Proof.
   unfold Basics.flip; intro; reflexivity.
+Qed.
+
+Global Instance prestate_le_Antisymmetric {prestate} {fpdata : grammar_fixedpoint_lattice_data prestate}
+  : Antisymmetric _ prestate_beq prestate_le.
+Proof.
+  unfold prestate_le.
+  intros x y H0 H1.
+  bool_congr_setoid.
+  destruct H0 as [H0|H0]; [ | destruct H1 as [H1|H1] ];
+    [ assumption
+    | symmetry; assumption
+    | ].
+  exfalso; eapply no_wf_cycle; [ eexact prestate_gt_wf | | ];
+    unfold flip; eassumption.
+Qed.
+
+Global Instance state_le_Antisymmetric {prestate} {fpdata : grammar_fixedpoint_lattice_data prestate}
+  : Antisymmetric _ state_beq state_le.
+Proof.
+  unfold state_le.
+  intros x y H0 H1.
+  bool_congr_setoid.
+  destruct H0 as [H0|H0]; [ | destruct H1 as [H1|H1] ];
+    [ assumption
+    | symmetry; assumption
+    | ].
+  exfalso; eapply no_wf_cycle; [ eexact state_gt_wf | | ];
+    unfold flip; eassumption.
 Qed.
