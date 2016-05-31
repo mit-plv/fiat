@@ -194,3 +194,7 @@ Proof.
   exfalso; eapply no_wf_cycle; [ eexact state_gt_wf | | ];
     unfold flip; eassumption.
 Qed.
+
+Global Instance state_beq_Proper_eq {a b}
+  : Proper (eq ==> eq ==> eq) (@state_beq a b)
+  := _.

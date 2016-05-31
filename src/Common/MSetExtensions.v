@@ -2,6 +2,7 @@ Require Export Coq.MSets.MSetInterface.
 Require Import Coq.MSets.MSetProperties
         Coq.MSets.MSetFacts.
 Require Import Fiat.Common.Instances.
+Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.
 
 Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
@@ -52,12 +53,33 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
       | reflexivity ] ];
     fold_is_true.
 
+  Ltac eq_bools_to_is_trues_in H :=
+    idtac;
+    let x := match type of H with ?x = ?y :> bool => x end in
+    let y := match type of H with x = ?y :> bool => y end in
+    let Hx := fresh in
+    let Hy := fresh in
+    destruct x eqn:Hx;
+    [ symmetry
+    | destruct y eqn:Hy;
+      [ rewrite <- Hx; clear Hx
+      | reflexivity ] ];
+    fold_is_true.
+  Ltac eq_bools_to_is_trues_in_all :=
+    idtac;
+    match goal with
+    | [ H : _ = _ :> bool |- _ ]
+      => eq_bools_to_is_trues_in H
+    end.
 
   Ltac to_caps_step :=
     first [ setoid_rewrite_in_all subset_spec
           | setoid_rewrite_in_all equal_spec
+          | setoid_rewrite_in_all <- not_true_iff_false
+          | setoid_rewrite_in_all negb_true_iff
           | progress fold_is_true
-          | eq_bools_to_is_trues ].
+          | progress eq_bools_to_is_trues
+          | progress eq_bools_to_is_trues_in_all ].
   Ltac to_caps := repeat to_caps_step.
 
   Create HintDb sets discriminated.
@@ -151,6 +173,21 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Global Instance subset_Proper_equal
     : Proper (equal ==> equal ==> Logic.eq) subset.
   Proof. repeat intro; to_caps; simplify_sets; assumption. Qed.
+
+  Lemma equal_or_subset_and_not_equal_subset_b {x y}
+    : (equal x y || (subset x y && negb (equal x y))) = subset x y.
+  Proof.
+    destruct (equal x y) eqn:?; simpl; bool_congr; to_caps; simplify_sets;
+      try reflexivity;
+      try assumption.
+  Qed.
+
+  Lemma equal_or_subset_and_not_equal_subset {x y}
+    : (Equal x y \/ (Subset x y /\ ~Equal x y)) <-> Subset x y.
+  Proof.
+    destruct (equal x y) eqn:?; simpl; bool_congr; to_caps; simplify_sets;
+      intuition.
+  Qed.
 End MSetExtensionsOn.
 
 Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.

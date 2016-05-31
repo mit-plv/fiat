@@ -15,7 +15,6 @@ Local Open Scope grammar_fixedpoint_scope.
 Section general_fold.
   Context {Char : Type}
           {T : Type}.
-  Context {fpdata : @grammar_fixedpoint_lattice_data T}.
 
   Definition lattice_for_combine_production combine_production
     : lattice_for T -> lattice_for T -> lattice_for T
@@ -31,14 +30,17 @@ Section general_fold.
                   end.
 
   Global Instance lattice_for_combine_production_Proper
+         {prestate_beq : T -> T -> bool}
          {precombine_production}
-         {H : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production}
-    : Proper (state_beq ==> state_beq ==> state_beq) (lattice_for_combine_production precombine_production).
+         {H : Proper (prestate_beq ==> prestate_beq ==> lattice_for_beq prestate_beq) precombine_production}
+    : Proper (lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq) (lattice_for_combine_production precombine_production).
   Proof.
     intros [|?|] [|?|] H0 [|?|] [|?|] H1; simpl in *;
       try congruence.
     apply H; assumption.
   Defined.
+
+  Context {fpdata : @grammar_fixedpoint_lattice_data T}.
 
   Class AbstractInterpretation :=
     { on_terminal : (Char -> bool) -> lattice_for T;

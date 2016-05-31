@@ -103,6 +103,16 @@ Coercion collapse_might_be_empty (x : might_be_emptyT) : bool
      | ⊥ => false
      end.
 
+
+Global Instance collapse_might_be_empty_ProperR {R}
+  : Proper (lattice_for_beq R ==> eq) collapse_might_be_empty.
+Proof.
+  intros [|?|] [|?|]; simpl; trivial; congruence.
+Qed.
+Global Instance collapse_might_be_empty_Proper
+  : Proper (state_beq ==> eq) collapse_might_be_empty
+  := _.
+
 Definition might_be_empty_data {Char} (G : pregrammar' Char) := fold_grammar_data G.
 Existing Class might_be_empty_data.
 
