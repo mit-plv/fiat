@@ -150,20 +150,30 @@ Section BoolFacts.
 End BoolFacts.
 
 Create HintDb bool_congr discriminated.
+Create HintDb bool_congr_setoid discriminated.
 
 Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r : bool_congr.
+Hint Rewrite Bool.andb_true_iff Bool.orb_true_iff Bool.andb_false_iff Bool.orb_false_iff
+     (Bool.andb_true_iff : forall x y, is_true _ <-> (is_true _ /\ is_true _))
+     (Bool.orb_true_iff : forall x y, is_true _ <-> (is_true _ \/ is_true _))
+  : bool_congr_setoid.
 
 Ltac bool_congr' :=
   idtac;
   match goal with
   | [ H : false = true |- _ ] => solve [ inversion H ]
   | [ H : true = false |- _ ] => solve [ inversion H ]
-  | _ => progress autorewrite with bool_congr in *
   | [ H : ?x = true |- _ ] => is_var x; subst x
   | [ H : ?x = false |- _ ] => is_var x; subst x
   | [ H : true = ?x |- _ ] => is_var x; subst x
   | [ H : false = ?x |- _ ] => is_var x; subst x
   | [ H : ?x = ?x :> bool |- _ ] => clear H
+  | _ => progress autorewrite with bool_congr in *
   end.
 
+Ltac bool_congr_setoid' :=
+  first [ progress bool_congr'
+        | progress autorewrite with bool_congr_setoid in * ].
+
 Ltac bool_congr := repeat bool_congr'.
+Ltac bool_congr_setoid := repeat bool_congr_setoid'.
