@@ -9,6 +9,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDef
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
 Require Import Fiat.Common.
+Require Import Fiat.Common.NatFacts.
 
 Set Implicit Arguments.
 
@@ -102,10 +103,27 @@ Coercion collapse_might_be_empty (x : might_be_emptyT) : bool
      | ⊥ => false
      end.
 
-Definition might_be_empty_nt {Char} (G : pregrammar' Char) {mbedata : fold_grammar_data G}
-: String.string -> might_be_emptyT
-  := fun nt => lookup_state mbedata (@of_nonterminal _ (@rdp_list_predata _ G) nt).
+Definition might_be_empty_data {Char} (G : pregrammar' Char) := fold_grammar_data G.
+Existing Class might_be_empty_data.
+
+Section defs.
+  Context {Char} (G : pregrammar' Char) {mbedata : might_be_empty_data G}.
+
+  Definition might_be_empty_nt
+    : String.string -> might_be_emptyT
+    := fun nt => lookup_state mbedata (@of_nonterminal _ (@rdp_list_predata _ G) nt).
+
+  Definition might_be_empty_item
+    : item Char -> might_be_emptyT
+    := fold_item' G (lookup_state mbedata).
+
+  Definition might_be_empty_production
+    : production Char -> might_be_emptyT
+    := fold_production' G (lookup_state mbedata).
+End defs.
 Global Arguments might_be_empty_nt {_} G {_} _.
+Global Arguments might_be_empty_item {_} G {_} _.
+Global Arguments might_be_empty_production {_} G {_} _.
 
 Section might_be_empty.
   Context {Char}
@@ -113,12 +131,12 @@ Section might_be_empty.
           {HSL : StringLike Char}
           {HSLP : StringLikeProperties Char}
           (G : pregrammar' Char)
-          {mbedata : fold_grammar_data G}
-          (nt : String.string)
-          (str : String)
-          (Hlen : length str = 0).
+          {mbedata : might_be_empty_data G}.
 
-  Lemma might_be_empty_parse_of_item
+  Lemma might_be_empty_parse_of_item_nt
+        (nt : String.string)
+        (str : String)
+        (Hlen : length str = 0)
         (p : parse_of_item G str (NonTerminal nt))
     : might_be_empty_nt G nt = ⊤.
   Proof.
@@ -132,6 +150,9 @@ Section might_be_empty.
   Qed.
 
   Lemma might_be_empty_parse_of
+        (nt : String.string)
+        (str : String)
+        (Hlen : length str = 0)
         (p : parse_of G str (Lookup G nt))
     : might_be_empty_nt G nt = ⊤.
   Proof.
@@ -142,5 +163,43 @@ Section might_be_empty.
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       specialize (p _ Hp0); (congruence || tauto).
+  Qed.
+
+  Lemma might_be_empty_parse_of_item
+        (it : item Char)
+        (str : String)
+        (Hlen : length str = 0)
+        (p : parse_of_item G str it)
+    : might_be_empty_item G it = ⊤.
+  Proof.
+    unfold might_be_empty_item.
+    rewrite fgd_fold_grammar_correct.
+    unfold fold_item'.
+    destruct p as [ch P Hch Hstr|nt' Hvalid p].
+    { apply is_char_parts in Hstr; simpl in *.
+      omega. }
+    { apply fold_grammar_correct in p.
+      destruct p as [P [Hp0 p]].
+      destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt')) eqn:H; [ reflexivity | | ];
+        simpl in p; unfold might_be_empty_accurate in p;
+          specialize (p _ Hp0); (congruence || tauto). }
+  Qed.
+
+  Lemma might_be_empty_parse_of_production
+        (pat : production Char)
+        (str : String)
+        (Hlen : length str = 0)
+        (p : parse_of_production G str pat)
+    : might_be_empty_production G pat = ⊤.
+  Proof.
+    unfold might_be_empty_production.
+    unfold fold_production'.
+    induction p as [|str n it its p0 p1 IHp]; simpl; [ reflexivity | ].
+    rewrite drop_length, Hlen in IHp.
+    simpl in *.
+    rewrite IHp by omega; simpl.
+    setoid_rewrite might_be_empty_parse_of_item; [ | | eassumption ];
+      [ | rewrite take_length, Hlen; omega_with_min_max ].
+    reflexivity.
   Qed.
 End might_be_empty.
