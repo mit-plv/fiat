@@ -918,6 +918,13 @@ Section String.
     destruct (strings_nontrivial 0) as [str ?].
     eauto.
   Qed.
+
+  Global Instance beq_subrelation_pointwise_iff {A} {R : relation A}
+    : subrelation (beq ==> R)%signature (pointwise_relation String R).
+  Proof.
+    intros f g H x.
+    specialize (H x x (reflexivity _)); assumption.
+  Qed.
 End String.
 
 Section Iso.
