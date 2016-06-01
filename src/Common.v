@@ -1507,7 +1507,7 @@ Ltac free_in x y :=
   end.
 
 Ltac setoid_subst'' R x :=
-  atomic x;
+  is_var x;
   match goal with
   | [ H : R x ?y |- _ ]
     => free_in x y;
@@ -1532,7 +1532,7 @@ Ltac setoid_subst'' R x :=
   end.
 
 Ltac setoid_subst' x :=
-  atomic x;
+  is_var x;
   match goal with
   | [ H : ?R x _ |- _ ] => setoid_subst'' R x
   | [ H : ?R _ x |- _ ] => setoid_subst'' R x
@@ -1549,11 +1549,11 @@ Ltac setoid_subst_rel R := repeat setoid_subst_rel' R.
 
 Ltac setoid_subst_all :=
   repeat match goal with
-         | [ H : ?R ?x ?y |- _ ] => atomic x; setoid_subst'' R x
-         | [ H : ?R ?x ?y |- _ ] => atomic y; setoid_subst'' R y
+         | [ H : ?R ?x ?y |- _ ] => is_var x; setoid_subst'' R x
+         | [ H : ?R ?x ?y |- _ ] => is_var y; setoid_subst'' R y
          end.
 
-Tactic Notation "setoid_subst" ident(x) := setoid_subst' x.
+Tactic Notation "setoid_subst" constr(x) := setoid_subst' x.
 Tactic Notation "setoid_subst" := setoid_subst_all.
 
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)

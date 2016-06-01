@@ -83,6 +83,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Ltac to_caps := repeat to_caps_step.
 
   Create HintDb sets discriminated.
+  Create HintDb setsb discriminated.
   Global Hint Immediate union_subset_1 union_subset_2 inter_subset_1 inter_subset_2 equal_refl : sets.
 
   Ltac simplify_sets_step :=
@@ -134,7 +135,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     : forall s s', subset (inter s s') s'.
   Proof. to_caps; auto with sets. Qed.
 
-  Hint Rewrite union_subset_1b union_subset_2b inter_subset_1b inter_subset_2b equal_refl_b : sets.
+  Hint Rewrite union_subset_1b union_subset_2b inter_subset_1b inter_subset_2b equal_refl_b : setsb.
 
   Lemma union_idempotent x : Equal (union x x) x.
   Proof. push_In; tauto. Qed.
@@ -179,7 +180,8 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
       intuition.
   Qed.
 
-  Hint Rewrite @equal_or_subset_and_not_equal_subset @equal_or_subset_and_not_equal_subset_b : sets.
+  Hint Rewrite @equal_or_subset_and_not_equal_subset : sets.
+  Hint Rewrite @equal_or_subset_and_not_equal_subset_b : setsb.
 
   Ltac handle_known_comparisons_step :=
     idtac;
