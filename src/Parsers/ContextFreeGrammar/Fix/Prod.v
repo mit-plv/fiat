@@ -53,7 +53,7 @@ Proof.
                | [ H : context[@state_beq ?A ?B ?x ?x] |- _ ]
                  => replace (@state_beq A B x x) with true in H by (symmetry; change (is_true (@state_beq A B x x)); reflexivity)
                | [ H : is_true (?R ?x ?y), H' : is_true (?R ?y ?z) |- _ ]
-                 => unique pose proof (transitivity H H' : is_true (R x z))
+                 => unique pose proof (transitivity (R := R) H H' : is_true (R x z))
                | [ H : is_true (@state_le ?A ?B ?x ?y), H' : is_true (state_le ?y ?x) |- _ ]
                  => unique pose proof (@antisymmetry _ (@state_beq A B) _ (@state_le A B) _ x y H H' : is_true (state_beq x y))
                | [ |- context[is_true (negb ?x)] ]
