@@ -72,4 +72,40 @@ Section aidata.
     Grab Existential Variables.
     intros ??????; exact HP1.
   Qed.
+
+  Definition prod_aidata_dep
+             (on_terminal0 : (Char -> bool) -> lattice_for T0)
+             (on_nil_production0 : lattice_for T0)
+             (precombine_production0 : T0 -> T0 -> lattice_for T0)
+             (on_terminal1 : (Char -> bool) -> lattice_for T1)
+             (on_nil_production1 : lattice_for T1)
+             (precombine_production1 : lattice_for T0 -> lattice_for T0 -> T1 -> T1 -> lattice_for T1)
+             (precombine_production0_Proper
+              : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production0)
+             (precombine_production1_Proper
+              : Proper (state_beq ==> state_beq ==> prestate_beq ==> prestate_beq ==> state_beq) precombine_production1)
+    : @AbstractInterpretation Char (lattice_for T0 * lattice_for T1) prod_fixedpoint_lattice'.
+  Proof.
+    refine {| on_terminal := prod_on_terminal on_terminal0 on_terminal1;
+              on_nil_production := prod_on_nil_production on_nil_production0 on_nil_production1;
+              precombine_production := prod_precombine_production_dep precombine_production0 precombine_production1 |}.
+  Defined.
+
+  Definition prod_aidata_nondep
+             (on_terminal0 : (Char -> bool) -> lattice_for T0)
+             (on_nil_production0 : lattice_for T0)
+             (precombine_production0 : T0 -> T0 -> lattice_for T0)
+             (on_terminal1 : (Char -> bool) -> lattice_for T1)
+             (on_nil_production1 : lattice_for T1)
+             (precombine_production1 : T1 -> T1 -> lattice_for T1)
+             (precombine_production0_Proper
+              : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production0)
+             (precombine_production1_Proper
+              : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production1)
+    : @AbstractInterpretation Char (lattice_for T0 * lattice_for T1) prod_fixedpoint_lattice'.
+  Proof.
+    refine {| on_terminal := prod_on_terminal on_terminal0 on_terminal1;
+              on_nil_production := prod_on_nil_production on_nil_production0 on_nil_production1;
+              precombine_production := prod_precombine_production_nondep precombine_production0 precombine_production1 |}.
+  Defined.
 End aidata.
