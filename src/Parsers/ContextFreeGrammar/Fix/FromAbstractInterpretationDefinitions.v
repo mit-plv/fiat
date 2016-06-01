@@ -307,7 +307,7 @@ Section fold_correctness.
     Local Notation related := lattice_for_related.
 
     Global Instance lattice_for_related_ext {_ : Proper ((beq ==> iff) ==> prestate_beq ==> iff) prerelated}
-      : Proper ((beq ==> iff) ==> state_beq ==> iff) related.
+      : Proper ((beq ==> iff) ==> state_beq ==> iff) related | 2.
     Proof.
       intros ?? H' [|?|] [|?|] ?; simpl in *;
         try tauto;
@@ -318,14 +318,19 @@ Section fold_correctness.
         try reflexivity.
     Qed.
 
+    Global Instance lattice_for_related_eq_Proper
+      : Proper (eq ==> eq ==> eq) related | 0 := _.
+
     Global Instance lattice_for_combine_production_Proper_le
-           {H : Proper (prestate_le ==> prestate_le ==> state_le) precombine_production}
-      : Proper (state_le ==> state_le ==> state_le) combine_production.
+           {precombine_production'}
+           {H : Proper (prestate_le ==> prestate_le ==> state_le) precombine_production'}
+      : Proper (state_le ==> state_le ==> state_le) (lattice_for_combine_production precombine_production').
     Proof.
+      clear aidata.
       intros [|?|] [|?|] ? [|?|] [|?|] ?; simpl in *;
         try solve [ trivial
                   | congruence
-                  | edestruct precombine_production; reflexivity ].
+                  | edestruct precombine_production'; reflexivity ].
       apply H; assumption.
     Qed.
   End related.

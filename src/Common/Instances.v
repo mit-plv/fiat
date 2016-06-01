@@ -136,3 +136,11 @@ Global Instance impl_iff_iff_flip_impl_Proper : Proper (iff ==> iff ==> flip imp
 Proof. compute; tauto. Qed.
 Global Instance impl_iff_iff_iff_Proper : Proper (iff ==> iff ==> iff) impl | 1.
 Proof. compute; tauto. Qed.
+
+Global Instance impl_eq_eq_eq_Proper : Proper (eq ==> eq ==> eq) impl | 0 := _.
+Global Instance all_pointwise_eq_iff_Proper A : Proper (pointwise_relation A eq ==> iff) (all (A:=A)) | 2.
+Proof.
+  compute; intros ?? H'.
+  split; intros H'' x';
+    first [ rewrite H' | rewrite <- H' ]; auto.
+Qed.
