@@ -52,6 +52,13 @@ Section Specifications.
             /\ predicate data
             /\ Equiv xenv xenv').
 
+  (* Definition that identifies properties of cache invariants for automation. *)
+  Definition cache_inv_Property
+             {cache : Cache}
+             (P : CacheDecode -> Prop)
+             (P_inv : (CacheDecode -> Prop) -> Prop) :=
+    P_inv P.
+
   Definition DecodeBindOpt2
              {C D E}
              (a : option (A * B * D))

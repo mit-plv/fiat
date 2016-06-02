@@ -27,7 +27,7 @@ Section Nat.
   Local Open Scope nat.
   Theorem Nat_decode_correct
           {P : CacheDecode -> Prop}
-          (P_OK : forall b cd, P cd -> P (addD cd b))
+          (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     : encode_decode_correct_f cache transformer (fun n => n < pow2 sz) encode_nat_Spec decode_nat P.
   Proof.
     unfold encode_decode_correct_f, encode_nat_Spec, decode_nat.

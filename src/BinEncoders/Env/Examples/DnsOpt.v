@@ -10,6 +10,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.BinEncoders.Env.BinLib.Core
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose
         Fiat.BinEncoders.Env.Common.ComposeOpt
@@ -31,96 +32,235 @@ Section DnsPacket.
 
   Open Scope Tuple_scope.
 
-  Variable bin : Type.
   Variable cache : Cache.
   Variable cacheAddNat : CacheAdd cache nat.
 
-  Variable transformer : Transformer bin.
+  Definition transformer : Transformer bin := btransformer.
   Variable transformerUnit : TransformerUnitOpt transformer bool.
 
   Variable QType_Ws : t (word 16) 66.
+  Variable QType_Ws_OK : NoDupVector QType_Ws.
   Variable QClass_Ws : t (word 16) 4.
+  Variable QClass_Ws_OK : NoDupVector QClass_Ws.
   Variable RRecordType_Ws : t (word 16) 59.
+  Variable RRecordType_Ws_OK : NoDupVector  RRecordType_Ws.
   Variable RRecordClass_Ws : t (word 16) 3.
+  Variable RRecordClass_Ws_OK : NoDupVector  RRecordClass_Ws.
   Variable Opcode_Ws : t (word 4) 4.
+  Variable Opcode_Ws_OK : NoDupVector  Opcode_Ws.
   Variable RCODE_Ws : t (word 4) 12.
+  Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
 
-  Definition encode_question (q : question) :=
-       encode_string q!"qname"
-  Then encode_enum QType_Ws q!"qtype"
-  Then encode_enum QClass_Ws q!"qclass"
+  Definition encode_question_Spec (q : question) :=
+       encode_string_Spec q!"qname"
+  Then encode_enum_Spec QType_Ws q!"qtype"
+  Then encode_enum_Spec QClass_Ws q!"qclass"
   Done.
 
-  Definition encode_SOA_RDATA (soa : SOA_RDATA) :=
-       encode_string soa!"sourcehost"
-  Then encode_string soa!"contact_email"
-  Then encode_word soa!"serial"
-  Then encode_word soa!"refresh"
-  Then encode_word soa!"retry"
-  Then encode_word soa!"expire"
-  Then encode_word soa!"minTTL"
+  Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
+       encode_string_Spec soa!"sourcehost"
+  Then encode_string_Spec soa!"contact_email"
+  Then encode_word_Spec soa!"serial"
+  Then encode_word_Spec soa!"refresh"
+  Then encode_word_Spec soa!"retry"
+  Then encode_word_Spec soa!"expire"
+  Then encode_word_Spec soa!"minTTL"
   Done.
 
-  Definition encode_WKS_RDATA (wks : WKS_RDATA) :=
-       encode_word wks!"Address"
-  Then encode_word wks!"Protocol"
-  Then encode_list encode_word wks!"Bit-Map"
+  Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
+       encode_word_Spec wks!"Address"
+  Then encode_word_Spec wks!"Protocol"
+  Then encode_list_Spec encode_word_Spec wks!"Bit-Map"
   Done.
 
-  Definition encode_HINFO_RDATA (hinfo : HINFO_RDATA) :=
-       encode_string hinfo!"CPU"
-  Then encode_string hinfo!"OS"
+  Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
+       encode_string_Spec hinfo!"CPU"
+  Then encode_string_Spec hinfo!"OS"
   Done.
 
-  Definition encode_MX_RDATA (mx : MX_RDATA) :=
-       encode_word mx!"Preference"
-  Then encode_string mx!"Exchange"
+  Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
+       encode_word_Spec mx!"Preference"
+  Then encode_string_Spec mx!"Exchange"
   Done.
 
-  Definition encode_rdata :=
-  encode_SumType ResourceRecordTypeTypes
-  (icons encode_word
-  (icons (encode_string)
-  (icons (encode_string)
-  (icons encode_SOA_RDATA
-  (icons encode_WKS_RDATA
-  (icons (encode_string)
-  (icons encode_HINFO_RDATA
-  (icons (encode_string)
-  (icons encode_MX_RDATA (icons encode_string inil)))))))))).
+  Definition encode_rdata_Spec :=
+  encode_SumType_Spec ResourceRecordTypeTypes
+  (icons encode_word_Spec
+  (icons (encode_string_Spec)
+  (icons (encode_string_Spec)
+  (icons encode_SOA_RDATA_Spec
+  (icons encode_WKS_RDATA_Spec
+  (icons (encode_string_Spec)
+  (icons encode_HINFO_RDATA_Spec
+  (icons (encode_string_Spec)
+  (icons encode_MX_RDATA_Spec (icons encode_string_Spec inil)))))))))).
 
-  Definition encode_resource (r : resourceRecord) :=
-       encode_string r!sNAME
-  Then encode_enum RRecordType_Ws r!sTYPE
-  Then encode_enum RRecordClass_Ws r!sCLASS
-  Then encode_word r!sTTL
-  Then encode_rdata r!sRDATA
+  Definition encode_resource_Spec(r : resourceRecord) :=
+       encode_string_Spec r!sNAME
+  Then encode_enum_Spec RRecordType_Ws r!sTYPE
+  Then encode_enum_Spec RRecordClass_Ws r!sCLASS
+  Then encode_word_Spec r!sTTL
+  Then encode_rdata_Spec r!sRDATA
   Done.
 
-  Definition encode_packet (p : packet) :=
-       encode_word p!"id"
-  Then encode_word (WS p!"QR" WO)
-  Then encode_enum Opcode_Ws p!"Opcode"
-  Then encode_word (WS p!"AA" WO)
-  Then encode_word (WS p!"TC" WO)
-  Then encode_word (WS p!"RD" WO)
-  Then encode_word (WS p!"RA" WO)
-  Then encode_word (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-  Then encode_enum RCODE_Ws p!"RCODE"
-  Then encode_nat 16 1 (* length of question field *)
-  Then encode_nat 16 (|p!"answers"|)
-  Then encode_nat 16 (|p!"authority"|)
-  Then encode_nat 16 (|p!"additional"|)
-  Then encode_question p!"question"
-  Then encode_list encode_resource p!"answers"
-  Then encode_list encode_resource p!"additional"
-  Then encode_list encode_resource p!"authority"
+  Definition encode_packet_Spec (p : packet) :=
+       encode_word_Spec p!"id"
+  Then encode_word_Spec (WS p!"QR" WO)
+  Then encode_enum_Spec Opcode_Ws p!"Opcode"
+  Then encode_word_Spec (WS p!"AA" WO)
+  Then encode_word_Spec (WS p!"TC" WO)
+  Then encode_word_Spec (WS p!"RD" WO)
+  Then encode_word_Spec (WS p!"RA" WO)
+  Then encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
+  Then encode_enum_Spec RCODE_Ws p!"RCODE"
+  Then encode_nat_Spec 16 1 (* length of question field *)
+  Then encode_nat_Spec 16 (|p!"answers"|)
+  Then encode_nat_Spec 16 (|p!"authority"|)
+  Then encode_nat_Spec 16 (|p!"additional"|)
+  Then encode_question_Spec p!"question"
+  Then encode_list_Spec encode_resource_Spec p!"answers"
+  Then encode_list_Spec encode_resource_Spec p!"additional"
+  Then encode_list_Spec encode_resource_Spec p!"authority"
   Done.
 
   Definition packet_decoder
-  : { decode | encode_decode_correct_f cache transformer (fun _ => True) encode_packet decode }.
+    : { decodePlusCacheInv |
+        exists P_inv,
+        (cache_inv_Property (snd decodePlusCacheInv) P_inv
+        -> encode_decode_correct_f cache transformer (fun _ => True) encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
   Proof.
-    unfold encode_decode_correct_f.
+    eexists (_, _); eexists _; split; simpl.
+    unfold encode_packet_Spec.
+    Ltac apply_compose :=
+      intros;
+      match goal with
+        H : cache_inv_Property ?P ?P_inv |- _ =>
+        eapply (compose_encode_correct H); clear H
+      end.
+    apply_compose.
+    eapply Word_decode_correct.
+    apply_compose.
+    eapply Word_decode_correct.
+    apply_compose.
+    eapply Enum_decode_correct; eauto.
+    apply_compose.
+    first [ solve [eapply Enum_decode_correct; eauto ]
+          | solve [eapply Word_decode_correct ] ].
+
+    intros; eapply compose_encode_correct; simpl.
+    eapply Word_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Word_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Word_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Word_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Word_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Enum_decode_correct.
+    Focus 3.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Nat_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Nat_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Nat_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Nat_decode_correct.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    intros; eapply compose_encode_correct; simpl.
+    intros; eapply String_decode_correct; simpl.
+    Focus 2.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Enum_decode_correct; eauto.
+    Focus 2.
+    intros.
+    intros; eapply compose_encode_correct; simpl.
+    eapply Enum_decode_correct; eauto.
+    Focus 2.
+    intros; intuition; subst.
+    unfold encode_decode_correct_f; intuition eauto.
+    destruct data as [? [? [? [ ] ] ] ]; simpl in *.
+    unfold GetAttribute, GetAttributeRaw in *; simpl in *;
+      subst.
+    computes_to_inv; injections.
+    eexists; intuition eauto; simpl.
+    match goal with
+      |- ?f ?a ?b ?c = ?P =>
+      let P' := (eval pattern a, b, c in P) in
+      let f' := match P' with ?f a b c => f end in
+      unify f f'; reflexivity
+    end.
+    injections; eauto.
+    eexists _; eexists _.
+    intuition eauto.
+    injections; eauto.
+    injections; eauto.
+    solve_predicate.
+    injections; eauto.
+    injections; eauto.
+    injections; eauto.
+    injections; eauto.
+    instantiate (1 := fun _ => False); admit.
+    simpl; eauto.
+    instantiate (1 := fun _ => False); admit.
+    admit.
+    simpl; eauto.
+    admit.
+    simpl; intros; eauto.
+
+
+    Show Existentials.
+    instantiate (1 := fun a b c => Some ().
+    unfold transform; simpl.
+
+    Show Existentials.
+    eapply eapply encode_decode_enum
+
+    destruct data; simpl in *.
+
+    computes_to_inv; subst.
+    eexists; intuition.
+
+
+    repeat destruct data; simpl in *
+    intros; eapply Enum_decode_correct; simpl.
+    intros; repeat split; intros.
+    intuition; subst.
+
+
+
+
+
+    intros; eapply compose_encode_correct; simpl.
+
+
+    simpl.
+    eapply Nat_decode_correct.
+
+
+
+
+
+    eapply Enum_decode_correct.
+
+
+
+    intros.
+    eapply compose_encode_correct.
+    eapply Word_decode_correct.
+
   Admitted.
 End DnsPacket.
     (*
