@@ -147,10 +147,18 @@ Section RData.
   (* types here for non-obsolete record types from RFC 1035. *)
 
   (* A label is a list of ascii characters (string) *)
-
   Definition Label := string.
-  (* A domain name is a list of labels. *)
+  Definition ValidLabel label := index 0 "." label = None.
+
+  (* A domain name is a sequence of labels separated by '.' *)
   Definition DomainName : Type := Label.
+
+  (* A domain name is valid iff every substring not containing the '.' *)
+  (* separator (and thus all labels) is less than 64 characters long. *)
+  Definition ValidDomainName s :=
+    (forall pre label post, s = pre ++ label ++ post
+                            -> ValidLabel label
+                            -> String.length label <= 63)%string%nat.
 
   Definition beq_name (a b : DomainName) : bool :=
     if (string_dec a b) then true else false.

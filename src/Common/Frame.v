@@ -1208,33 +1208,25 @@ Section CompleteLattice.
     eauto.
   Qed.
 
-  (*Lemma LeastFixedPoint_ind
-        (Inv Post : A -> Prop)
-        (Inv_Inclusive :
-           forall (P : A -> Prop),
-             (forall a, P a -> Inv a)
-             -> Inv (cl_inf P))
-    : (forall a, Inv a -> Inv (f a))
-      -> (forall a, Inv a -> Post a)
-      -> Post (cl_inf prefixed_point).
+  Lemma LeastFixedPoint_ind
+        (Inv : A)
+    : (le (f Inv) Inv)
+      -> le (cl_inf prefixed_point) Inv.
   Proof.
-    intros; eapply H0; simpl in *.
-    eapply Inv_Inclusive.
-    intros.
-    unfold prefixed_point in *.
-    eapply Inv_resp_le.
-    Focus 2.
-    Focus 2.
-    apply Inv_resp_le in H1.
-    eapply Inv_Inclusive.
-    intros.
-    destruct (inf_glb Inv).
-    eapply Inv_resp_le.
-    eapply H2.
+    intros; destruct (inf_glb prefixed_point) as [? ?].
+    eapply H0; simpl; intros.
+    unfold prefixed_point; eauto.
+  Qed.
 
-    simpl in H1. *)
-
-
+  Lemma GreatestFixedPoint_ind
+        (Inv : A)
+    : (le Inv (f Inv))
+      -> le Inv (cl_sup postfixed_point).
+  Proof.
+    intros; destruct (sup_lub postfixed_point) as [? ?].
+    eapply H0; simpl; intros.
+    unfold prefixed_point; eauto.
+  Qed.
 
 End CompleteLattice.
 
