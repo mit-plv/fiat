@@ -359,3 +359,13 @@ Section aicdata.
       t.
   Qed.
 End aicdata.
+
+Global Arguments prod_prerelated_ext {_ _ _ _ T0 T1 _ _ prerelated0 prerelated1} _ _ _ _ _ _ _ _.
+Global Arguments prod_related_monotonic {_ _ T0 T1 _ _ prerelated0 prerelated1} _ _ _ _ _ _ _.
+Global Arguments prod_lub_correct {_ _ T0 T1 _ _ prerelated0 prerelated1} _ _ _ _ _ _ _ _.
+Global Arguments prod_on_terminal_correct {_ _ _ T0 T1 prerelated0 prerelated1 on_terminal0 on_terminal1} _ _ _.
+Global Arguments prod_on_nil_production_correct {_ _ T0 T1 prerelated0 prerelated1 on_nil_production0 on_nil_production1} _ _.
+Global Arguments prod_precombine_production_dep_Proper_le {T0 T1 _ _ precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
+Global Arguments prod_precombine_production_nondep_Proper_le {T0 T1 _ _ precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
+Global Arguments prod_combine_production_dep_correct {_ _ _ T0 T1 prerelated0 prerelated1 precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
+Global Arguments prod_combine_production_nondep_correct {_ _ _ T0 T1 prerelated0 prerelated1 precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
