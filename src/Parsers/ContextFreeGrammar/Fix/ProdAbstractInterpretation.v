@@ -369,3 +369,4 @@ Global Arguments prod_precombine_production_dep_Proper_le {T0 T1 _ _ precombine_
 Global Arguments prod_precombine_production_nondep_Proper_le {T0 T1 _ _ precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
 Global Arguments prod_combine_production_dep_correct {_ _ _ T0 T1 prerelated0 prerelated1 precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
 Global Arguments prod_combine_production_nondep_correct {_ _ _ T0 T1 prerelated0 prerelated1 precombine_production0 precombine_production1} _ _ _ _ _ _ _ _.
+Global Arguments prod_precombine_production_nondep_dep_Proper_le {T T0 T1 _ _ _ precombine_production0 precombine_production1} _ _ _ _ _ _ _ _ _ _ _ _ _ _.
