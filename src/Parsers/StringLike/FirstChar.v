@@ -352,7 +352,7 @@ Section for_first_char.
       intuition.
   Qed.
 
-  Lemma for_first_char__True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
+  Lemma for_first_char_True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
   : for_first_char str P.
   Proof.
     destruct (length str) eqn:H.

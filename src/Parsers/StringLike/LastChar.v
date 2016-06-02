@@ -415,7 +415,7 @@ Section for_last_char.
       intuition.
   Qed.
 
-  Lemma for_last_char__True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
+  Lemma for_last_char_True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
   : for_last_char str P.
   Proof.
     destruct (length str) eqn:H.
