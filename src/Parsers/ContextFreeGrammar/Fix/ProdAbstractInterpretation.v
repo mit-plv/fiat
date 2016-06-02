@@ -331,4 +331,31 @@ Section aicdata.
         lattice_for_related prod_prerelated P2 st2
         -> lattice_for_related prod_prerelated (ensemble_combine_production P1 P2) (lattice_for_combine_production (prod_precombine_production_nondep precombine_production0 precombine_production1) st1 st2).
   Proof. t. Qed.
+
+  Lemma prod_combine_production_nondep_correct_specific
+        (precombine_production0 : T0 -> T0 -> lattice_for T0)
+        (precombine_production1 : T1 -> T1 -> lattice_for T1)
+        P1 st1
+        (Hrel1 : lattice_for_related prod_prerelated P1 st1)
+        P2 st2
+        (Hrel2 : lattice_for_related prod_prerelated P2 st2)
+        (combine_production0_correct
+         : forall st1v,
+            st1 = constant st1v
+            -> forall st2v,
+              st2 = constant st2v
+              -> lattice_for_related prerelated0 (ensemble_combine_production P1 P2) (lattice_for_combine_production precombine_production0 (fst st1v) (fst st2v)))
+        (combine_production1_correct
+         : forall st1v,
+            st1 = constant st1v
+            -> forall st2v,
+              st2 = constant st2v
+              -> lattice_for_related prerelated1 (ensemble_combine_production P1 P2) (lattice_for_combine_production precombine_production1 (snd st1v) (snd st2v)))
+    : lattice_for_related prod_prerelated (ensemble_combine_production P1 P2) (lattice_for_combine_production (prod_precombine_production_nondep precombine_production0 precombine_production1) st1 st2).
+  Proof.
+    destruct st1 as [|st1|], st2 as [|st2|];
+      try specialize (combine_production0_correct _ eq_refl _ eq_refl);
+      try specialize (combine_production1_correct _ eq_refl _ eq_refl);
+      t.
+  Qed.
 End aicdata.
