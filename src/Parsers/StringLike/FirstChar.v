@@ -343,4 +343,12 @@ Section for_first_char.
       reflexivity. }
   Qed.
 
+  Lemma for_first_char__split (str : String) P n
+  : for_first_char str P
+    <-> ((n = 0 /\ for_first_char (drop n str) P)
+         \/ (n <> 0 /\ for_first_char (take n str) P)).
+  Proof.
+    destruct n; [ rewrite drop_0 | rewrite <- for_first_char__take ];
+      intuition.
+  Qed.
 End for_first_char.

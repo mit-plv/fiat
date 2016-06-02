@@ -403,4 +403,15 @@ Section for_last_char.
     rewrite take_long by (rewrite drop_length; omega);
     trivial.
   Qed.
+
+  Lemma for_last_char__split (str : String) P n
+  : for_last_char str P
+    <-> ((n < length str /\ for_last_char (drop n str) P)
+         \/ (n >= length str /\ for_last_char (take n str) P)).
+  Proof.
+    destruct (le_lt_dec (length str) n);
+      [ rewrite take_long by assumption
+      | rewrite <- for_last_char__drop by assumption ];
+      intuition.
+  Qed.
 End for_last_char.
