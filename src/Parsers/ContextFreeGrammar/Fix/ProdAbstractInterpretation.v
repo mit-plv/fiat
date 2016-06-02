@@ -23,7 +23,8 @@ Lemma simplify_bool_expr' a b (Himpl : is_true a -> is_true b)
 Proof. rewrite simplify_bool_expr by assumption; trivial. Qed.
 
 Section aidata.
-  Context {Char : Type} {T0 T1}
+  Context {Char : Type} {T T0 T1}
+          {fpldata : grammar_fixedpoint_lattice_data T}
           {fpldata0 : grammar_fixedpoint_lattice_data T0}
           {fpldata1 : grammar_fixedpoint_lattice_data T1}.
 
@@ -154,8 +155,8 @@ Section aidata.
   Qed.
 
   Global Instance prod_precombine_production_nondep_dep_Proper_le
-         {precombine_production0 : lattice_for T0 -> lattice_for T0 -> T0 -> T0 -> lattice_for T0}
-         {precombine_production1 : lattice_for T0 -> lattice_for T0 -> T1 -> T1 -> lattice_for T1}
+         {precombine_production0 : lattice_for T -> lattice_for T -> T0 -> T0 -> lattice_for T0}
+         {precombine_production1 : lattice_for T -> lattice_for T -> T1 -> T1 -> lattice_for T1}
          {HP0 : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) precombine_production0}
          {HP1 : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) precombine_production1}
     : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) (fun x y => prod_precombine_production_nondep (precombine_production0 x y) (precombine_production1 x y)).
