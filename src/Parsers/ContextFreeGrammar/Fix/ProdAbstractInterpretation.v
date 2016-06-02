@@ -53,25 +53,40 @@ Section aidata.
     := fun x y => constant (lattice_for_combine_production precombine_production0 (fst x) (fst y),
                             lattice_for_combine_production precombine_production1 (snd x) (snd y)).
 
+  Local Ltac t_Proper_step :=
+    idtac;
+    match goal with
+    | _ => intro
+    | _ => congruence
+    | [ |- is_true (_ <= ⊤)%fixedpoint ] => apply top_top
+    | [ |- is_true (⊥ <= _)%fixedpoint ] => apply bottom_bottom
+    | _ => progress unfold Equality.prod_beq in *
+    | _ => progress fold_is_true
+    | _ => progress simpl in *
+    | [ H : is_true (andb _ _) |- _ ] => apply Bool.andb_true_iff in H
+    | [ |- is_true (andb _ _) ] => apply Bool.andb_true_iff
+    | _ => progress destruct_head and
+    | _ => progress destruct_head prod
+    | [ |- and _ _ ] => split
+    | [ H : is_true (?R ?x ?y) |- appcontext[lattice_for_combine_production _ ?x] ]
+      => is_var x; is_var y; destruct x, y; simpl in H; try congruence
+    | [ |- context[match ?x with _ => _ end] ]
+      => is_var x; destruct x
+    | [ H : Proper _ ?f |- appcontext[?f] ] => apply H; assumption
+    | _ => rewrite simplify_bool_expr
+          in *
+          by (clear; unfold state_le, state_beq, state_lt; bool_congr_setoid; tauto)
+    end.
+
+  Local Ltac t_Proper := repeat t_Proper_step.
+
   Global Instance prod_precombine_production_dep_Proper
          {precombine_production0 : T0 -> T0 -> lattice_for T0}
          {precombine_production1 : lattice_for T0 -> lattice_for T0 -> T1 -> T1 -> lattice_for T1}
          {HP0 : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production0}
          {HP1 : Proper (state_beq ==> state_beq ==> prestate_beq ==> prestate_beq ==> state_beq) precombine_production1}
     : Proper (prestate_beq ==> prestate_beq ==> state_beq) (prod_precombine_production_dep precombine_production0 precombine_production1).
-  Proof.
-    unfold state_beq, prestate_beq, prod_fixedpoint_lattice', prod_fixedpoint_lattice, Equality.prod_beq, state_beq.
-    intros x y H x' y' H'; simpl.
-    apply Bool.andb_true_iff in H; apply Bool.andb_true_iff in H'; apply Bool.andb_true_iff;
-      fold_is_true.
-    destruct H as [H0 H1], H' as [H0' H1'].
-    split.
-    { eapply lattice_for_combine_production_Proper; assumption. }
-    { specialize (HP1 _ _ H0 _ _ H0').
-      destruct x as [x0 [|x1|]], y as [y0 [|y1|]]; simpl in *; try congruence;
-        destruct x' as [x0' [|x1'|]], y' as [y0' [|y1'|]]; simpl in *; try congruence.
-      apply HP1; assumption. }
-  Qed.
+  Proof. unfold state_le, prestate_le; simpl; t_Proper. Qed.
 
   Global Instance prod_precombine_production_nondep_Proper
          {precombine_production0 : T0 -> T0 -> lattice_for T0}
@@ -79,12 +94,7 @@ Section aidata.
          {HP0 : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production0}
          {HP1 : Proper (prestate_beq ==> prestate_beq ==> state_beq) precombine_production1}
     : Proper (prestate_beq ==> prestate_beq ==> state_beq) (prod_precombine_production_nondep precombine_production0 precombine_production1).
-  Proof.
-    intros x y H x' y' H'.
-    change (prod_precombine_production_nondep precombine_production0 precombine_production1) with
-    (prod_precombine_production_dep precombine_production0 (fun _ _ => precombine_production1)).
-    eapply prod_precombine_production_dep_Proper; assumption.
-  Qed.
+  Proof. unfold state_le, prestate_le; simpl; t_Proper. Qed.
 
   Definition prod_aidata_dep
              (on_terminal0 : (Char -> bool) -> lattice_for T0)
@@ -128,26 +138,7 @@ Section aidata.
          {HP0 : Proper (prestate_le ==> prestate_le ==> state_le) precombine_production0}
          {HP1 : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) precombine_production1}
     : Proper (prestate_le ==> prestate_le ==> state_le) (prod_precombine_production_dep precombine_production0 precombine_production1).
-  Proof.
-    unfold prestate_le, state_le, prestate_lt, state_beq, prestate_beq, prod_fixedpoint_lattice', prod_fixedpoint_lattice, Equality.prod_beq, state_beq.
-    intros x y H x' y' H'; simpl.
-    apply simplify_bool_expr' in H;
-      [ | clear; unfold state_le, state_beq, state_lt; bool_congr_setoid; tauto ].
-    apply simplify_bool_expr' in H';
-      [ | clear; unfold state_le, state_beq, state_lt; bool_congr_setoid; tauto ].
-    rewrite simplify_bool_expr by (clear; unfold state_le, state_beq, state_lt; bool_congr_setoid; tauto).
-    apply Bool.andb_true_iff in H; apply Bool.andb_true_iff in H'; apply Bool.andb_true_iff;
-      fold_is_true.
-    destruct H as [H0 H1], H' as [H0' H1'].
-    split.
-    { apply lattice_for_combine_production_Proper_le; assumption. }
-    { specialize (HP1 _ _ H0 _ _ H0').
-      destruct x as [x0 [|x1|]], y as [y0 [|y1|]]; simpl in *; try congruence;
-        destruct x' as [x0' [|x1'|]], y' as [y0' [|y1'|]]; simpl in *; try congruence;
-          try apply top_top;
-          try apply bottom_bottom.
-      apply HP1; assumption. }
-  Qed.
+  Proof. unfold state_le, prestate_le; simpl; t_Proper. Qed.
 
   Global Instance prod_precombine_production_nondep_Proper_le
          {precombine_production0 : T0 -> T0 -> lattice_for T0}
@@ -161,6 +152,14 @@ Section aidata.
     (prod_precombine_production_dep precombine_production0 (fun _ _ => precombine_production1)).
     eapply prod_precombine_production_dep_Proper_le; assumption.
   Qed.
+
+  Global Instance prod_precombine_production_nondep_dep_Proper_le
+         {precombine_production0 : lattice_for T0 -> lattice_for T0 -> T0 -> T0 -> lattice_for T0}
+         {precombine_production1 : lattice_for T0 -> lattice_for T0 -> T1 -> T1 -> lattice_for T1}
+         {HP0 : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) precombine_production0}
+         {HP1 : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) precombine_production1}
+    : Proper (state_le ==> state_le ==> prestate_le ==> prestate_le ==> state_le) (fun x y => prod_precombine_production_nondep (precombine_production0 x y) (precombine_production1 x y)).
+  Proof. unfold state_le, prestate_le; simpl; t_Proper. Qed.
 End aidata.
 
 Section aicdata.
