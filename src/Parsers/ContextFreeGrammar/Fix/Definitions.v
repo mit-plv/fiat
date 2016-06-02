@@ -236,3 +236,11 @@ Proof.
   rewrite Nat2Pos.id_max; simpl.
   reflexivity.
 Qed.
+
+Global Instance lattice_for_rect_Proper {A}
+  : Proper (eq ==> forall_relation (fun _ => eq) ==> eq ==> forall_relation (fun _ => flip impl))
+           (@lattice_for_rect A (fun _ => Prop)) | 3.
+Proof.
+  unfold forall_relation; intros ??? ?? H' ??? [|?|] H''; subst; simpl in *; trivial.
+  rewrite H'; assumption.
+Qed.
