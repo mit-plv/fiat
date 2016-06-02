@@ -351,4 +351,19 @@ Section for_first_char.
     destruct n; [ rewrite drop_0 | rewrite <- for_first_char__take ];
       intuition.
   Qed.
+
+  Lemma for_first_char__True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
+  : for_first_char str P.
+  Proof.
+    destruct (length str) eqn:H.
+    { apply for_first_char_nil; assumption. }
+    { rewrite for_first_char_exists by omega.
+      destruct (get 0 (take 1 str)) as [ch|] eqn:Heq.
+      { exists ch; split; auto.
+        rewrite is_char_parts.
+        rewrite take_length; split; [ apply Min.min_case_strong; omega | assumption ]. }
+      { apply no_first_char_empty in Heq.
+        rewrite take_length, H in Heq.
+        simpl in *; omega. } }
+  Qed.
 End for_first_char.

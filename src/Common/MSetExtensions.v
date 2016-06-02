@@ -77,6 +77,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
           | setoid_rewrite_in_all equal_spec
           | setoid_rewrite_in_all <- not_true_iff_false
           | setoid_rewrite_in_all negb_true_iff
+          | setoid_rewrite_in_all mem_spec
           | progress fold_is_true
           | progress eq_bools_to_is_trues
           | progress eq_bools_to_is_trues_in_all ].
@@ -115,7 +116,8 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Ltac push_In_step :=
     first [ progress unfold Equal in *
           | setoid_rewrite_in_all union_spec
-          | setoid_rewrite_in_all inter_spec ].
+          | setoid_rewrite_in_all inter_spec
+          | setoid_rewrite_in_all filter_spec; [ | let H := fresh in intros ?? H; hnf in H; subst; reflexivity.. ] ].
 
   Ltac push_In := repeat push_In_step.
 
