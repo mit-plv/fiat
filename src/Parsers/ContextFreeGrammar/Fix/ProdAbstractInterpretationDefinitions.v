@@ -171,6 +171,8 @@ Section aidata.
   Proof. unfold state_le, prestate_le; simpl; t_Proper. Qed.
 End aidata.
 
+Global Arguments prod_AbstractInterpretation {_ T0 T1 _ _ _ _}, {_ T0 T1 _ _} _ _.
+
 Section aicdata.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}
           {T0 T1}
