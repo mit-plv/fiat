@@ -133,6 +133,14 @@ Section aidata.
               precombine_production := prod_precombine_production_nondep precombine_production0 precombine_production1 |}.
   Defined.
 
+  Global Instance prod_AbstractInterpretation
+             {aidata0 : @AbstractInterpretation Char T0 fpldata0}
+             {aidata1 : @AbstractInterpretation Char T1 fpldata1}
+    : @AbstractInterpretation Char (lattice_for T0 * lattice_for T1) prod_fixedpoint_lattice'
+    := { on_terminal := prod_on_terminal on_terminal on_terminal;
+         on_nil_production := prod_on_nil_production on_nil_production on_nil_production;
+         precombine_production := prod_precombine_production_nondep precombine_production precombine_production }.
+
   Global Instance prod_precombine_production_dep_Proper_le
          {precombine_production0 : T0 -> T0 -> lattice_for T0}
          {precombine_production1 : lattice_for T0 -> lattice_for T0 -> T1 -> T1 -> lattice_for T1}
