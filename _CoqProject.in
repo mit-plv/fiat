@@ -379,7 +379,7 @@ src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretation.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Inject.v
 src/Parsers/ContextFreeGrammar/Fix/Prod.v
-src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretation.v
+src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Properties.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/EvalGrammarTactics.v

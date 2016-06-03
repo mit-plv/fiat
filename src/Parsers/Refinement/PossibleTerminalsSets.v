@@ -11,7 +11,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDef
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.AsciiLattice.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Prod.
-Require Import Fiat.Parsers.ContextFreeGrammar.Fix.ProdAbstractInterpretation.
+Require Import Fiat.Parsers.ContextFreeGrammar.Fix.ProdAbstractInterpretationDefinitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
 Require Import Fiat.Parsers.Refinement.EmptyLemmas.
 Require Import Fiat.Common.BoolFacts.
