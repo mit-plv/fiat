@@ -245,6 +245,14 @@ Proof.
   rewrite H'; assumption.
 Qed.
 
+Global Instance lattice_for_rect_Proper_85 {A}
+  : Proper (eq ==> forall_relation (fun _ => eq) ==> eq ==> eq ==> Basics.flip Basics.impl)
+           (@lattice_for_rect A (fun _ => Prop)) | 3.
+Proof.
+  unfold forall_relation; intros ??? ?? H' ??? [|?|] ?? H''; subst; simpl in *; trivial.
+  rewrite H'; assumption.
+Qed.
+
 Lemma lattice_for_rect_pull {A B C} f t c b v
   : f (@lattice_for_rect A (fun _ => B) t c b v)
     = @lattice_for_rect A (fun _ => C) (f t) (fun x => f (c x)) (f b) v.
