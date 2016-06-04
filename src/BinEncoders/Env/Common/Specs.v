@@ -79,6 +79,28 @@ Section Specifications.
 
 End Specifications.
 
+Add Parametric Morphism
+    A B
+    (cache : Cache)
+    (transformer : Transformer B)
+    (predicate : A -> Prop)
+    (decode : B -> CacheDecode -> option (A * B * CacheDecode))
+    (decode_inv : CacheDecode -> Prop)
+  : (fun encoder =>
+       @encode_decode_correct_f A B cache transformer predicate
+                               encoder decode decode_inv)
+    with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
+      as encode_decode_correct_refineEquiv.
+Proof.
+  unfold impl, pointwise_relation, encode_decode_correct_f;
+    intuition eauto; intros.
+  - eapply H1; eauto; apply H; eauto.
+  - eapply H2; eauto.
+  - destruct (H2 _ _ _ _ _ _ H0 H3 H4) as [ ? [? [? ?] ] ];
+      intuition.
+    repeat eexists; eauto; apply H; eauto.
+Qed.
+
 Section DecodeWMeasure.
   Context {A : Type}. (* data type *)
   Context {B : Type}. (* bin type *)

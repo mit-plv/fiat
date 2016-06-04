@@ -88,4 +88,68 @@ Section Word.
         eapply Peano_dec.eq_nat_dec.
       }
   Qed.
+
+  Lemma decode_word'_le
+    : forall (a : word sz) (b' b1 : B),
+      decode_word' _ b1  = Some (a, b') -> le_B b' b1.
+  Proof.
+    induction a; simpl.
+    - intros; injections; unfold le_B; omega.
+    - intros; simpl.
+      destruct (transform_pop_opt b1) as [ [? ?] | ] eqn: ? ;
+        subst; simpl in *; try discriminate.
+      destruct (decode_word' n b2) as [ [? ?] | ] eqn: ? ;
+        subst; simpl in *; try discriminate.
+      injection H; intros; subst; unfold le_B in *.
+      pose proof (IHa b' b2).
+      rewrite Heqo0 in H0; simpl in *.
+      apply Eqdep_dec.inj_pair2_eq_dec in H1; subst.
+      pose proof (H0 (eq_refl _)).
+      eapply measure_pop_Some in Heqo; subst.
+      omega.
+      eapply Peano_dec.eq_nat_dec.
+  Qed.
+
+  Lemma decode_word_le
+    : forall (cd : CacheDecode) (a : word sz)
+             (b' b1 : B) (cd' : CacheDecode),
+      decode_word b1 cd = Some (a, b', cd') -> le_B b' b1.
+  Proof.
+    unfold decode_word.
+    intros; destruct (decode_word' sz b1) as [ [? ?] | ] eqn: ? ;
+      subst; simpl in *; try discriminate.
+    injections.
+    eapply decode_word'_le; eauto.
+  Qed.
+
+  Lemma decode_word'_lt
+    : forall (a : word (S sz)) (b' b1 : B),
+      decode_word' _ b1 = Some (a, b') -> lt_B b' b1.
+  Proof.
+    simpl; intros; injections; unfold lt_B.
+    destruct (transform_pop_opt b1) as [ [? ?] | ] eqn: ? ;
+      subst; simpl in *; try discriminate.
+    apply measure_pop_Some in Heqo; subst.
+    destruct (decode_word' sz b0) as [ [? ?] | ] eqn: ? ;
+        subst; simpl in *; try discriminate.
+    eapply decode_word'_le in Heqo0; injections.
+    rewrite Heqo.
+    unfold le_B in *.
+    pose proof (T_measure_gt_0 b).
+    omega.
+  Qed.
+
+  Lemma decode_word_lt
+    : forall (cd : CacheDecode) (a : word (S sz))
+             (b' b1 : B) (cd' : CacheDecode),
+      Ifopt decode_word' _ b' as decoded Then Some (decoded, addD cd (S sz)) Else None = Some (a, b1, cd') -> lt_B b1 b'.
+  Proof.
+    intros; destruct (decode_word' (S sz) b') as [ [? ?] | ] eqn: ? ;
+    try eapply decode_word'_lt in Heqo;
+      simpl in *; try (subst; discriminate).
+    injections.
+    unfold lt_B in *.
+    omega.
+  Qed.
+
 End Word.

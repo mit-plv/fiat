@@ -45,8 +45,8 @@ Section String.
 
   Theorem String_decode_correct
           {P : CacheDecode -> Prop}
-          (P_OK : forall b cd, P cd -> P (addD cd b))
-    : forall sz,
+    : forall sz
+             (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b))),
       encode_decode_correct_f
         cache transformer
         (fun ls => length ls = sz)

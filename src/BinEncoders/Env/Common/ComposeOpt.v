@@ -1,4 +1,5 @@
 Require Import
+        Fiat.Computation
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose.
 
@@ -15,6 +16,56 @@ Definition compose E B
 
 Notation "x 'Then' y" := (compose _ x y) (at level 100, right associativity).
 Notation "x 'Done'"   := (x Then fun e => ret (transform_id, e)) (at level 99, right associativity).
+
+Lemma refineEquiv_compose_compose E B
+           (transformer : Transformer B)
+           (encode1 encode2 encode3 : E -> Comp (B * E))
+  : forall ctx,
+    refineEquiv (compose _ (compose _ encode1 encode2) encode3 ctx)
+                (compose _ encode1 (compose _ encode2 encode3) ctx).
+Proof.
+  unfold compose; intros.
+  rewrite refineEquiv_bind2_bind.
+  eapply refineEquiv_bind; [ reflexivity | ].
+  intro; rewrite refineEquiv_bind2_bind.
+  symmetry; rewrite refineEquiv_bind2_bind.
+  eapply refineEquiv_bind; [ reflexivity | ].
+  intro; rewrite refineEquiv_bind2_bind.
+  rewrite refineEquiv_bind2_unit.
+  eapply refineEquiv_bind; [ reflexivity | ].
+  intro; rewrite refineEquiv_bind2_unit; simpl.
+  rewrite transform_assoc; reflexivity.
+Qed.
+
+Lemma refineEquiv_compose_Done E B
+           (transformer : Transformer B)
+           (encode2 : E -> Comp (B * E))
+  : forall ctx,
+    refineEquiv (compose _ (fun ctx => ret (transform_id, ctx)) encode2 ctx)
+                  (encode2 ctx).
+Proof.
+  unfold compose; simpl; intros.
+  rewrite refineEquiv_bind2_unit; simpl.
+  split; unfold Bind2; intros v Comp_v.
+  - computes_to_econstructor; eauto; destruct v; simpl;
+      rewrite transform_id_left; eauto.
+  - computes_to_inv; subst; destruct v0;
+    rewrite transform_id_left; eauto.
+Qed.
+
+Lemma refineEquiv_under_compose E B
+           (transformer : Transformer B)
+           (encode1 encode2 encode2' : E -> Comp (B * E))
+  : (forall ctx', refineEquiv (encode2 ctx') (encode2' ctx'))
+    -> forall ctx,
+      refineEquiv (compose _ encode1 encode2 ctx)
+                  (compose _ encode1 encode2' ctx).
+Proof.
+  unfold compose; intros.
+  eapply refineEquiv_bind; [ reflexivity | ].
+  intro ab; destruct ab; simpl.
+  eapply refineEquiv_bind; [ apply H | reflexivity ].
+Qed.
 
 Lemma compose_encode_correct
       {A A' B}
@@ -34,6 +85,7 @@ Lemma compose_encode_correct
          -> encode_decode_correct_f cache transformer predicate' encode1 decode1 P)
       (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (decode2_pf : forall proj,
+          predicate' proj ->
           cache_inv_Property P P_inv2 ->
           encode_decode_correct_f cache transformer
             (fun data => predicate data /\ project data = proj)
@@ -56,7 +108,7 @@ Proof.
     destruct (proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) com_pf); intuition; simpl in *; injections.
     setoid_rewrite <- transform_assoc; rewrite H2.
     simpl.
-    destruct (proj1 (decode2_pf (project data) H1)
+    destruct (proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H1)
                     _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) com_pf');
       intuition; simpl in *; injections.
     eauto. }
@@ -65,7 +117,7 @@ Proof.
       simpl in *; try discriminate.
     eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto;
       destruct Heqo; destruct_ex; intuition;
-        eapply (proj2 (decode2_pf a H5)) in H1; eauto;
+        eapply (proj2 (decode2_pf a H7 H5)) in H1; eauto;
           destruct H1; destruct_ex; intuition; subst.
     eexists; eexists; repeat split.
     repeat computes_to_econstructor; eauto.

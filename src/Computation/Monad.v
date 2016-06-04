@@ -17,37 +17,37 @@ Section monad.
     split;
     intro;
     repeat match goal with
-             | [ H : _ |- _ ]
-               => inversion H; clear H; subst; [];
-                  repeat match goal with
-                           | [ H : _ |- _ ] => apply inj_pair2 in H; subst
-                         end
+           | [ H : _ |- _ ]
+             => inversion H; clear H; subst; [];
+                repeat match goal with
+                       | [ H : _ |- _ ] => apply inj_pair2 in H; subst
+                       end
            end;
-      repeat first [ eassumption
-                   | solve [ constructor ]
-                   | eapply BindComputes; (eassumption || (try eassumption; [])) ].
+    repeat first [ eassumption
+                 | solve [ constructor ]
+                 | eapply BindComputes; (eassumption || (try eassumption; [])) ].
 
   Lemma bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
-  : Bind (Bind x f) g ~ Bind x (fun u => Bind (f u) g).
+    : Bind (Bind x f) g ~ Bind x (fun u => Bind (f u) g).
   Proof.
     t.
   Qed.
 
   Lemma bind_unit X Y (f : X -> Comp Y) x
-  : Bind (Return x) f ~ f x.
+    : Bind (Return x) f ~ f x.
   Proof.
     t.
   Qed.
 
   Lemma unit_bind X (x : Comp X)
-  : (Bind x (@Return X)) ~ x.
+    : (Bind x (@Return X)) ~ x.
   Proof.
     t.
   Qed.
 
   Lemma computes_under_bind X Y (f g : X -> Comp Y) x
-  : (forall x, f x ~ g x) ->
-    Bind x f ~ Bind x g.
+    : (forall x, f x ~ g x) ->
+      Bind x f ~ Bind x g.
   Proof.
     t; unfold equiv in *; split_iff; eauto.
   Qed.
@@ -70,8 +70,8 @@ Section monad_refine.
     := proj2 (@refineEquiv_bind_bind X Y Z f g x).
 
   Lemma refineEquiv_bind_unit X Y (f : X -> Comp Y) x
-  : refineEquiv (Bind (Return x) f)
-                (f x).
+    : refineEquiv (Bind (Return x) f)
+                  (f x).
   Proof.
     split; intro; simpl; apply bind_unit.
   Qed.
@@ -82,8 +82,8 @@ Section monad_refine.
     := proj2 (@refineEquiv_bind_unit X Y f x).
 
   Lemma refineEquiv_unit_bind X (x : Comp X)
-  : refineEquiv (Bind x (@Return X))
-                x.
+    : refineEquiv (Bind x (@Return X))
+                  x.
   Proof.
     split; intro; apply unit_bind.
   Qed.
@@ -92,6 +92,33 @@ Section monad_refine.
     := proj1 (@refineEquiv_unit_bind X x).
   Definition refine_unit_bind' X x
     := proj2 (@refineEquiv_unit_bind X x).
+
+  Lemma refineEquiv_bind2_bind A B C D Z (f : A -> B -> Comp (C * D))
+        (g : C ->D -> Comp Z) x
+    : refineEquiv (Bind2 (Bind2 x f) g)
+                  (Bind2 x (fun a b => Bind2 (f a b) g)).
+  Proof.
+    split; intro; apply bind_bind.
+  Qed.
+
+  Lemma refineEquiv_bind2_unit A B C (f : A -> B -> Comp C) x
+    : refineEquiv (Bind2 (Return x) f)
+                  (f (fst x) (snd x)).
+  Proof.
+    unfold Bind2; split; intros; destruct x; simpl.
+    rewrite refine_bind_unit; reflexivity.
+    rewrite <- refine_bind_unit'; reflexivity.
+  Qed.
+
+  Lemma refineEquiv_unit_bind2 A B (x : Comp (A * B))
+    : refineEquiv (Bind2 x (fun x y => Return (x, y))) x.
+  Proof.
+    unfold Bind2; split; intros; simpl.
+    intros v Comp_v; computes_to_econstructor; eauto; destruct v; eauto.
+    intros v Comp_v; computes_to_inv; subst; destruct v0; eauto.
+  Qed.
+
+
 End monad_refine.
 
 Create HintDb refine_monad discriminated.
@@ -125,4 +152,4 @@ Ltac interleave_autorewrite_refine_monad_with tac :=
                | rewrite <- !refineEquiv_bind_bind; progress tac
                | rewrite <- !refineEquiv_bind_unit; progress tac
                | rewrite <- !refineEquiv_unit_bind; progress tac
-               (*| rewrite <- !refineEquiv_under_bind; progress tac *)].
+(*| rewrite <- !refineEquiv_under_bind; progress tac *)].

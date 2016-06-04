@@ -5,16 +5,16 @@ Require Import
 
 Require Import
         Fiat.Computation.Core
+        Fiat.Computation.FixComp
         Fiat.Computation.Notations
         Fiat.Examples.DnsServer.Packet
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Lib2.FixStringOpt
-        Fiat.BinEncoders.Env.Lib2.NatOpt
+        Fiat.BinEncoders.Env.Lib2.WordOpt
         Fiat.BinEncoders.Env.Lib2.AsciiOpt.
 
 Section DomainName.
   Context {B : Type}. (* bin type *)
-  Context {P : Type}. (* cache pointer type *)
   Context {cache : Cache}.
   Context {cache_inv : CacheDecode -> Prop}.
   Context {cacheAddNat : CacheAdd cache nat}.
@@ -23,23 +23,11 @@ Section DomainName.
 
   (* The terminal character for domain names is the byte of all zeros. *)
   Definition terminal_char : ascii := zero.
+  Definition pointerT := word 6.
 
-  Variable P_predicate : P -> Prop.
-  Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
-  Variable P_encode_Spec : P -> CacheEncode -> Comp (B * CacheEncode).
-  Variable P_decode : B -> CacheDecode -> option (P * B * CacheDecode).
-  Variable P_decode_pf : encode_decode_correct_f cache transformer P_predicate P_encode_Spec P_decode cache_inv.
-  Variable P_decode_le :
-    forall (b1 : B)
-           (cd1 : CacheDecode)
-           (a : P)
-           (b' : B)
-           (cd' : CacheDecode),
-      P_decode b1 cd1 = Some (a, b', cd') -> le_B b' b1.
-
-  Variable cacheAdd : CacheAdd cache (string * P).
-  Variable cacheGet : CacheGet cache string P.
-  Variable cachePeek : CachePeek cache P.
+  Context {cacheAdd : CacheAdd cache (string * pointerT)}.
+  Context {cacheGet : CacheGet cache string pointerT}.
+  Context {cachePeek : CachePeek cache pointerT}.
 
   Variable cacheGet_OK :
     forall env p domain,
@@ -54,16 +42,21 @@ Section DomainName.
         -> cache_inv (addD env (domain, p)).
   Open Scope comp_scope.
 
-  Fixpoint encode_list_step_Spec (domain : DomainName) (env : CacheEncode)
+  Import FixComp.LeastFixedPointFun.
+  Print LeastFixedPoint.
+
+  Definition encode_DomainName_Spec (domain : DomainName) (env : CacheEncode)
     : Comp (B * CacheEncode) :=
+    LeastFixedPoint
+      (fDom := [DomainName; CacheEncode])
+      (fun encode_DomainName_Spec domain env =>
     If (string_dec domain "") Then
          encode_ascii_Spec terminal_char env
     Else
     (Ifopt (getE env domain) as position Then
         b <- {b : bool | True};
           If b Then (* Nondeterministically pick whether to use a cached value. *)
-             (If (P_predicate_dec position)
-             Then (P_encode_Spec position env)
+             (encode_word_Spec position env)
              Else (`(label, domain') <- { labeldomain' |
                                           domain = (fst labeldomain') ++ (snd labeldomain')
                                           /\ ValidLabel (fst labeldomain')
@@ -71,78 +64,94 @@ Section DomainName.
                                                  domain = label' ++ post'
                                                  -> ValidLabel label'
                                                  -> String.length label' <= String.length (fst labeldomain'))}%string%nat;
-                     `(lenb, env) <- encode_nat_Spec 8 (String.length label) env);
-                     `(labelb, env) <- encode_string_Spec
-
-             )
-             Else encode_nat_Spec 8 (String.length domain) env
-             Else encode_nat_Spec 8 (String.length domain) env).
-         end.
-
-      Else
-
-           If (P_predicate_dec position)
-           Then (P_encode_Spec position e1)
-           Else (`(b1, e1) <- X_encode_Spec false ce;
-             `(b2, e2) <- A_encode_Spec x e1;
-             `(b3, e3) <- encode_list_step_Spec l' e2;
-             ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
-           Else
-           (`(b1, e1) <- X_encode_Spec false ce;
-              `(b2, e2) <- A_encode_Spec x e1;
-              `(b3, e3) <- encode_list_step_Spec l' e2;
-              ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
-      | None => `(b1, e1) <- X_encode_Spec false ce;
-                     `(b2, e2) <- A_encode_Spec x e1;
-                     `(b3, e3) <- encode_list_step_Spec l' e2;
-                     ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce))
-      end
-    end%comp.
+                     `(lenb, env') <- encode_word_Spec (natToWord 8 (String.length label)) env;
+                     `(labelb, env') <- encode_string_Spec label env';
+                     `(domainb, env') <- encode_DomainName_Spec domain' env';
+                     ret (transform (transform lenb labelb) domainb, addE env (domain, peekE env)))
+             Else
+             (`(label, domain') <- { labeldomain' |
+                                          domain = (fst labeldomain') ++ (snd labeldomain')
+                                          /\ ValidLabel (fst labeldomain')
+                                          /\ (forall label' post',
+                                                 domain = label' ++ post'
+                                                 -> ValidLabel label'
+                                                 -> String.length label' <= String.length (fst labeldomain'))}%string%nat;
+                     `(lenb, env') <- encode_word_Spec (natToWord 8 (String.length label)) env;
+                     `(labelb, env') <- encode_string_Spec label env';
+                     `(domainb, env') <- encode_DomainName_Spec domain' env';
+                     ret (transform (transform lenb labelb) domainb, addE env (domain, peekE env))))) domain env.
 
   (* Decode now uses a measure on the length of B *)
 
   Lemma lt_B_trans :
     forall b
            (b1 : {b' : B | le_B b' b})
-           (b2 : {b' : B | lt_B b' (` b1)}),
-      lt_B (` b2) b.
+           (b2 : {b' : B | lt_B b' (` b1)})
+           (b3 : {b' : B | lt_B b' (` b2)}),
+      lt_B (` b3) b.
   Proof.
-    intros; destruct b1; destruct b2; simpl in *.
+    intros; destruct b1; destruct b2; destruct b3; simpl in *.
     unfold le_B, lt_B in *; omega.
   Qed.
 
-  Definition decode_list_step (b : B) (cd : CacheDecode):
-    option (list A * B * CacheDecode) :=
-    Fix well_founded_lt_b
-           (fun _ => CacheDecode -> option (list A * B * CacheDecode))
-      (fun b rec cd =>
-         `(br, b1, e1) <- Decode_w_Measure_le X_decode b cd X_decode_le;
-         If br Then
-            (`(ps, b2, e2) <- Decode_w_Measure_le P_decode (proj1_sig b1) e1 P_decode_le;
-             match getD cd ps  with
-             | Some [] => None (* bogus *)
-             | Some l => Some (l, proj1_sig b2, e2)
-             | None => None (* bogus *)
-             end)
-            Else
-            (`(a , b2, e2) <- Decode_w_Measure_lt A_decode (proj1_sig b1) e1 A_decode_lt;
-             If A_halt_dec a Then
-                Some (nil, proj1_sig b2, e2)
-                Else
-                (`(l, b3, e3) <- rec (proj1_sig b2) (lt_B_trans _ _ _) e2;
-                 Some (a :: l, b3, addD e3 (a :: l, peekD cd))))) b cd.
+  Lemma n_eq_0_lt :
+    forall n,
+      n <> wzero 6
+      -> (0 < wordToNat n)%nat.
+  Proof.
+    induction n; unfold wzero; simpl.
+    - congruence.
+    - destruct b; simpl; try omega.
+      intros.
+      assert (n0 <> wzero n) by
+          (intro; subst; apply H; f_equal).
+      apply IHn in H0.
+      omega.
+  Qed.
 
-  Theorem SteppingList_decode_correct :
+  Definition decode_DomainName (b : B) (env : CacheDecode):
+    option (DomainName * B * CacheDecode).
+    refine (Fix well_founded_lt_b
+           (fun _ => CacheDecode -> option (DomainName * B * CacheDecode))
+      (fun b rec cd =>
+         `(labelheader, b1, env') <- Decode_w_Measure_le (decode_word (sz := 2)) b env _;
+           If (weq labelheader WO~1~1) (* It's a pointer! *)
+           Then (`(ps, b2, env') <- Decode_w_Measure_le (decode_word (sz := 6)) (proj1_sig b1) env' _;
+               match getD cd ps with
+                 | Some EmptyString => None (* bogus *)
+                 | Some domain => Some (domain, proj1_sig b2, env')
+                 | None => None (* bogus *)
+                 end)
+           Else (If (weq labelheader WO~0~0) Then (* It's a length octet *)
+         (`(labellength, b2, env') <- Decode_w_Measure_lt (decode_word (sz := 6)) (proj1_sig b1) env' _;
+            match (weq labellength (wzero 6)) with (* It's the terminal character. *)
+              | left _ => Some (EmptyString, proj1_sig b2, env')
+              | right _ =>
+             (`(label, b3, env') <- Decode_w_Measure_lt (decode_string (wordToNat labellength))
+               (proj1_sig b2) env' _;
+              `(domain, b4, e3) <- rec (proj1_sig b3) _ env';
+              Some (label ++ domain, b4, addD env' (label ++ domain, peekD env))) end)
+         Else None))%string b env);
+      try solve [intros; unfold decode_word; eapply decode_word_lt; eauto];
+      try solve [intros; eapply decode_word_le; eauto].
+    intros; eapply decode_string_lt; try eapply H.
+    apply n_eq_0_lt; eauto.
+    apply lt_B_trans.
+  Defined.
+
+  Theorem DomainName_decode_correct :
     encode_decode_correct_f
       cache transformer
-      (fun ls => (forall x, In x ls -> A_predicate x /\ ~ x = A_halt))
-      encode_list_step_Spec decode_list_step cache_inv.
+      (fun domain => ValidDomainName domain /\ (String.length domain > 0)%nat)
+      encode_DomainName_Spec decode_DomainName cache_inv.
   Proof.
     unfold encode_decode_correct_f; split.
     { intros env xenv xenv' l l' ext Eeq Ppredh Penc;
       subst.
-      unfold decode_list_step in *; simpl in *.
-      generalize dependent l';
+      unfold decode_DomainName in *; simpl in *.
+      unfold encode_DomainName_Spec in Penc.
+  Admitted.
+  (*generalize dependent l';
         generalize dependent env;
         generalize dependent xenv;
         generalize ext; generalize dependent xenv';
@@ -384,5 +393,5 @@ Section DomainName.
         Grab Existential Variables.
         eauto.
     }
-  Qed.
-End SteppingList.
+  Qed. *)
+End DomainName.

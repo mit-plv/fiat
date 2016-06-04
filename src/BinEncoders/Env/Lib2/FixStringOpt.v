@@ -89,4 +89,22 @@ Section String.
       }
     }
   Qed.
+
+  Theorem decode_string_lt
+    : forall len (b3 : B) (cd0 : CacheDecode) (a : string) (b' : B) (cd' : CacheDecode),
+      lt 0 len
+      -> decode_string len b3 cd0 = Some (a, b', cd') -> lt_B b' b3.
+  Proof.
+    induction len; simpl; intros; try omega.
+    destruct (decode_ascii b3 cd0) as [ [ [? ?] ?] | ] eqn: ? ;
+      simpl in *; try discriminate.
+    eapply ascii_decode_lt in Heqo.
+    destruct (decode_string len b c) as [ [ [? ?] ?] | ] eqn: ? ;
+      simpl in *; try discriminate.
+    injections.
+    inversion H; subst; simpl in *.
+    - injections; eauto.
+    - eapply IHlen in Heqo0; eauto; unfold lt_B in *; omega.
+  Qed.
+
 End String.

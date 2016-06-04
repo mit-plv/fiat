@@ -20,6 +20,7 @@ Class TransformerUnit (bin : Type) (trans : Transformer bin) (T : Type) :=
 
 Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
   { T_measure : T -> nat;
+    T_measure_gt_0 : forall t, 0 < T_measure t;
     transform_push_opt : T -> bin -> bin;
     transform_pop_opt : bin -> option (T * bin);
     measure_push :

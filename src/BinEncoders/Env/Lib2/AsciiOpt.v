@@ -79,4 +79,16 @@ Section Ascii.
       eauto.
     }
   Qed.
+
+  Lemma ascii_decode_lt
+    : forall (b3 : B) (cd0 : CacheDecode) (a : ascii) (b' : B) (cd' : CacheDecode),
+      decode_ascii b3 cd0 = Some (a, b', cd') -> lt_B b' b3.
+  Proof.
+    unfold decode_ascii; intros.
+    destruct (WordOpt.decode_word b3 cd0) as [ [ [? ?] ?] | ] eqn: ? ;
+      simpl in *; try discriminate.
+    apply WordOpt.decode_word_lt in Heqo.
+    injections; eauto.
+  Qed.
+
 End Ascii.

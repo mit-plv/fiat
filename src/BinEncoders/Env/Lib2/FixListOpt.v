@@ -13,7 +13,6 @@ Section FixList.
 
   Variable A_predicate : A -> Prop.
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
-  Variable A_encode_Impl : A -> CacheEncode -> B * CacheEncode.
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode A_cache_inv.
@@ -28,12 +27,14 @@ Section FixList.
                     ret (transform b1 b2, env2)
     end%comp.
 
-  Fixpoint encode_list_Impl (xs : list A) (ce : CacheEncode)
+  Fixpoint encode_list_Impl
+           (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
+           (xs : list A) (ce : CacheEncode)
     : B * CacheEncode :=
     match xs with
     | nil => (transform_id, ce)
     | x :: xs' =>  let (b1, env1) := A_encode_Impl x ce in
-                   let (b2, env2) := encode_list_Impl xs' env1 in
+                   let (b2, env2) := encode_list_Impl A_encode_Impl xs' env1 in
                    (transform b1 b2, env2)
     end%comp.
 
@@ -98,15 +99,17 @@ Section FixList.
     }
   Qed.
 
-  Definition encode_list_body := (fun (acc: B * CacheEncode) x =>
+  Definition encode_list_body 
+               (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
+:= (fun (acc: B * CacheEncode) x =>
                                     let (bacc, env) := acc in
                                        let (b1, env1) := A_encode_Impl x env in
                                        (transform bacc b1, env1)).
 
-  Lemma encode_list_body_characterization :
+  Lemma encode_list_body_characterization A_encode_Impl :
     forall xs base env,
-      fold_left encode_list_body xs (base, env) =
-      (let (b2, env2) := fold_left encode_list_body xs (transform_id, env) in
+      fold_left (encode_list_body A_encode_Impl) xs (base, env) =
+      (let (b2, env2) := fold_left (encode_list_body A_encode_Impl) xs (transform_id, env) in
        (transform base b2, env2)).
   Proof.
     induction xs; simpl.
@@ -117,15 +120,15 @@ Section FixList.
       rewrite transform_assoc; reflexivity.
   Qed.
 
-  Lemma encode_list_as_foldl :
+  Lemma encode_list_as_foldl A_encode_Impl :
     forall xs env,
-      encode_list_Impl xs env =
-      fold_left encode_list_body xs (transform_id, env).
+      encode_list_Impl A_encode_Impl xs env =
+      fold_left (encode_list_body A_encode_Impl) xs (transform_id, env).
   Proof.
     induction xs; simpl.
     + reflexivity.
     + intros; destruct (A_encode_Impl _ _).
-      rewrite IHxs, transform_id_left, (encode_list_body_characterization xs b c).
+      rewrite IHxs, transform_id_left, (encode_list_body_characterization A_encode_Impl xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
 End FixList.
