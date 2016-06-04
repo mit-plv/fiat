@@ -626,8 +626,8 @@ Proof.
                        _ (fDef'_monotone))).
   rewrite <- H1.
   eapply fDef'_monotone.
-  eapply (@LeastFixedPoint_ind (newRep :: fDom)).
-  2: reflexivity.
+  eapply (GreatestFixedPoint_ind (O := @funDefOps (newRep :: fDom) (newRep * fCod))).
+  simpl.
   eapply refineFun_To_refineFunAbsR.
   eapply refineFun_AbsR_trans; eauto.
   pose proof (proj1 (Is_GreatestFixedPoint

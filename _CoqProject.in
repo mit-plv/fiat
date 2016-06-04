@@ -58,10 +58,12 @@ src/BinEncoders/Env/Lib/IList.v
 src/BinEncoders/Env/Lib/SteppingCacheList.v
 src/BinEncoders/Env/Lib2/Ascii.v
 src/BinEncoders/Env/Lib2/AsciiOpt.v
+src/BinEncoders/Env/Lib2/DomainNameOpt.v
 src/BinEncoders/Env/Lib2/Enum.v
 src/BinEncoders/Env/Lib2/EnumOpt.v
 src/BinEncoders/Env/Lib2/FixList.v
 src/BinEncoders/Env/Lib2/FixListOpt.v
+src/BinEncoders/Env/Lib2/FixStringOpt.v
 src/BinEncoders/Env/Lib2/Nat.v
 src/BinEncoders/Env/Lib2/NatOpt.v
 src/BinEncoders/Env/Lib2/SteppingList.v
