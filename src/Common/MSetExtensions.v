@@ -1,6 +1,7 @@
 Require Export Coq.MSets.MSetInterface.
 Require Import Coq.MSets.MSetProperties
-        Coq.MSets.MSetFacts.
+        Coq.MSets.MSetFacts
+        Coq.MSets.MSetDecide.
 Require Import Fiat.Common.Instances.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.
@@ -8,6 +9,7 @@ Require Import Fiat.Common.
 Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Module Export BasicFacts := WFactsOn E M.
   Module Export BasicProperties := WPropertiesOn E M.
+  Module Export BasicDec := WDecideOn E M.
 
   Definition of_list (ls : list E.t) : t
     := List.fold_right
@@ -77,6 +79,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
           | setoid_rewrite_in_all equal_spec
           | setoid_rewrite_in_all <- not_true_iff_false
           | setoid_rewrite_in_all negb_true_iff
+          | setoid_rewrite_in_all mem_spec
           | progress fold_is_true
           | progress eq_bools_to_is_trues
           | progress eq_bools_to_is_trues_in_all ].
@@ -115,7 +118,8 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Ltac push_In_step :=
     first [ progress unfold Equal in *
           | setoid_rewrite_in_all union_spec
-          | setoid_rewrite_in_all inter_spec ].
+          | setoid_rewrite_in_all inter_spec
+          | setoid_rewrite_in_all filter_spec; [ | let H := fresh in intros ?? H; hnf in H; subst; reflexivity.. ] ].
 
   Ltac push_In := repeat push_In_step.
 
@@ -123,7 +127,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Proof. to_caps; auto with sets. Qed.
 
   Lemma equal_sym_b x y : equal x y = equal y x.
-  Proof. to_caps; simplify_sets; reflexivity. Qed.
+  Proof. to_caps; fsetdec. Qed.
 
   Hint Immediate equal_sym_b : sets.
 
@@ -146,10 +150,10 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
   Hint Rewrite union_subset_1b union_subset_2b inter_subset_1b inter_subset_2b equal_refl_b : setsb.
 
   Lemma union_idempotent x : Equal (union x x) x.
-  Proof. push_In; tauto. Qed.
+  Proof. fsetdec. Qed.
 
   Lemma inter_idempotent x : Equal (inter x x) x.
-  Proof. push_In; tauto. Qed.
+  Proof. fsetdec. Qed.
 
   Hint Immediate union_idempotent inter_idempotent : sets.
 
@@ -163,23 +167,19 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
 
   Global Instance Subset_Proper_Equal_iff
     : Proper (Equal ==> Equal ==> iff) Subset.
-  Proof. repeat intro; unfold Subset; simplify_sets; reflexivity. Qed.
+  Proof. repeat intro; split; fsetdec. Qed.
   Global Instance Subset_Proper_Equal : Proper (Equal ==> Equal ==> impl) Subset | 1.
-  Proof. repeat intro; simplify_sets; eauto with nocore. Qed.
+  Proof. repeat intro; fsetdec. Qed.
   Global Instance Subset_Proper_Equal_flip : Proper (Equal ==> Equal ==> flip impl) Subset | 1.
-  Proof. repeat intro; simplify_sets; eauto with nocore. Qed.
+  Proof. repeat intro; fsetdec. Qed.
 
   Global Instance subset_Proper_equal
     : Proper (equal ==> equal ==> Logic.eq) subset.
-  Proof. repeat intro; to_caps; simplify_sets; assumption. Qed.
+  Proof. repeat intro; to_caps; fsetdec. Qed.
 
   Lemma equal_or_subset_and_not_equal_subset_b {x y}
     : (equal x y || (subset x y && negb (equal x y))) = subset x y.
-  Proof.
-    destruct (equal x y) eqn:?; simpl; bool_congr; to_caps; simplify_sets;
-      try reflexivity;
-      try assumption.
-  Qed.
+  Proof. to_caps; bool_congr_setoid; to_caps; intuition; try fsetdec. Qed.
 
   Lemma equal_or_subset_and_not_equal_subset {x y}
     : (Equal x y \/ (Subset x y /\ ~Equal x y)) <-> Subset x y.

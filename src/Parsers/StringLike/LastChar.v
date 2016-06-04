@@ -414,4 +414,19 @@ Section for_last_char.
       | rewrite <- for_last_char__drop by assumption ];
       intuition.
   Qed.
+
+  Lemma for_last_char_True (str : String) (P : _ -> Prop) (p : forall ch, P ch)
+  : for_last_char str P.
+  Proof.
+    destruct (length str) eqn:H.
+    { apply for_last_char_nil; assumption. }
+    { rewrite for_last_char_exists by omega.
+      destruct (get 0 (drop (pred (length str)) str)) as [ch|] eqn:Heq.
+      { exists ch; split; auto.
+        rewrite is_char_parts.
+        rewrite drop_length; split; [ omega | assumption ]. }
+      { apply no_first_char_empty in Heq.
+        rewrite drop_length, H in Heq.
+        simpl in *; omega. } }
+  Qed.
 End for_last_char.

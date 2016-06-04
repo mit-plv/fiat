@@ -381,7 +381,7 @@ src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretation.v
 src/Parsers/ContextFreeGrammar/Fix/FromAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Inject.v
 src/Parsers/ContextFreeGrammar/Fix/Prod.v
-src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretation.v
+src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Properties.v
 src/Parsers/Grammars/ABStar.v
 src/Parsers/Grammars/EvalGrammarTactics.v
@@ -438,6 +438,7 @@ src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflectiveOpt.v
+src/Parsers/Refinement/PossibleTerminalsSets.v
 src/Parsers/Refinement/PreTactics.v
 src/Parsers/Refinement/ReductionTactics.v
 src/Parsers/Refinement/SharpenedABStar.v
