@@ -122,9 +122,7 @@ Section DnsPacket.
   Then encode_nat_Spec 16 (|p!"authority"|)
   Then encode_nat_Spec 16 (|p!"additional"|)
   Then encode_question_Spec p!"question"
-  Then (encode_list_Spec encode_resource_Spec p!"answers")
-  Then (encode_list_Spec encode_resource_Spec p!"additional")
-  Then (encode_list_Spec encode_resource_Spec p!"authority")
+  Then (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
   Done.
 
   Ltac normalize_compose :=
@@ -136,21 +134,131 @@ Section DnsPacket.
       intros; higher_order_reflexivity
         | ].
 
+  Lemma firstn_app {A}
+    : forall (l1 l2 : list A),
+      firstn (|l1 |) (l1 ++ l2) = l1.
+  Proof.
+    induction l1; intros; simpl; eauto.
+    f_equal; eauto.
+  Qed.
+
+  Lemma firstn_self {A}
+    : forall (l1 : list A),
+      firstn (|l1 |) l1 = l1.
+  Proof.
+    induction l1; intros; simpl; eauto.
+    f_equal; eauto.
+  Qed.
+
+  Lemma skipn_app {A}
+    : forall (l1 l2 : list A),
+      skipn (|l1|) (l1 ++ l2) = l2.
+  Proof.
+    induction l1; intros; simpl; eauto.
+  Qed.
+
+  Lemma firstn_skipn_app {A}
+    : forall (l1 l2 l3 : list A),
+      firstn (|l3|) (skipn (|l1| + |l2|) (l1 ++ l2 ++ l3)) = l3.
+  Proof.
+    simpl; intros.
+    rewrite <- app_length, List.app_assoc, skipn_app.
+    apply firstn_self.
+  Qed.
+
+  Lemma firstn_skipn_self' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (firstn n l ++ firstn m (skipn n l) ++ firstn o (skipn (n + m) l))%list =
+      l.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    destruct l; simpl; eauto.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma length_firstn_skipn_app {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn m (skipn n l) |) = m.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma length_firstn_skipn_app' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn o (skipn (n + m) l) |) = o.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    destruct l; simpl; eauto.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma length_firstn_skipn_app'' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn n l |) = n.
+  Proof.
+    induction n; destruct l; simpl; intros;
+      try discriminate; eauto.
+  Qed.
+
+  Lemma whd_word_1_refl :
+    forall (b : word 1),
+      WS (whd b) WO = b.
+  Proof.
+    intros; destruct (shatter_word_S b) as [? [? ?] ]; subst.
+    rewrite (shatter_word_0 x0); reflexivity.
+  Qed.
+
+  Require Import Fiat.Common.IterateBoundedIndex.
+
   Definition packet_decoder
     : { decodePlusCacheInv |
-        exists P_inv,
+        exists P_inv pred,
         (cache_inv_Property (snd decodePlusCacheInv) P_inv
-        -> encode_decode_correct_f cache transformer (fun _ => True) encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+        -> encode_decode_correct_f cache transformer pred encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
   Proof.
-    eexists (_, _); eexists _; split; simpl.
+    eexists (_, _); eexists _; eexists _; split; simpl.
     intros; normalize_compose.
 
     Ltac apply_compose :=
       intros;
       match goal with
         H : cache_inv_Property ?P ?P_inv |- _ =>
-        eapply (compose_encode_correct H); clear H
+        first [eapply (compose_encode_correct_no_dep H); clear H
+              | eapply (compose_encode_correct H); clear H
+              ]
       end.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
@@ -158,57 +266,72 @@ Section DnsPacket.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | apply_compose].
+    first [ solve [eapply Enum_decode_correct; eauto ]
+          | solve [eapply Word_decode_correct ]
+          | solve [eapply Nat_decode_correct ]
+          | apply_compose ].
+    cbv beta; transitivity (wordToNat (natToWord 16 2));
+      [simpl; omega | eapply wordToNat_bound].
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -217,6 +340,24 @@ Section DnsPacket.
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
           | apply_compose ].
+    Ltac makeEvar T k :=
+      let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+    Ltac shelve_inv :=
+      let H' := fresh in
+      let data := fresh in
+      intros data H';
+      repeat destruct H';
+      match goal with
+      | H : ?P data |- ?P_inv' =>
+        is_evar P;
+        let P_inv' := (eval pattern data in P_inv') in
+        let P_inv := match P_inv' with ?P_inv data => P_inv end in
+        let new_P_T := type of P in
+        makeEvar new_P_T
+                 ltac:(fun new_P =>
+                         unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
+      end.
+    shelve_inv.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -225,6 +366,7 @@ Section DnsPacket.
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
           | apply_compose ].
+    shelve_inv.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -233,6 +375,7 @@ Section DnsPacket.
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
           | apply_compose ].
+    shelve_inv.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -240,8 +383,9 @@ Section DnsPacket.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
+          | solve [intros; eapply DomainName_decode_correct ]
           | apply_compose ].
-
+    shelve_inv.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -252,6 +396,7 @@ Section DnsPacket.
           | solve [eapply Nat_decode_correct ]
           | solve [intros; eapply DomainName_decode_correct ]
           | apply_compose ].
+    intros; simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -262,11 +407,7 @@ Section DnsPacket.
           | solve [eapply Nat_decode_correct ]
           | solve [intros; eapply DomainName_decode_correct ]
           | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
+    intros; simpl; eauto.
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
           | solve [eapply Nat_decode_correct ]
@@ -281,17 +422,21 @@ Section DnsPacket.
               |- encode_decode_correct_f
                    _ _ _
                    (encode_list_Spec _) _ _ =>
-              apply FixList_decode_correct end
+              eapply FixList_decode_correct  end
           | apply_compose ].
     foo'.
     foo'.
     foo'.
+    shelve_inv.
     foo'.
     foo'.
+    simpl; eauto.
     foo'.
     foo'.
+    simpl; eauto.
     foo'.
     foo'.
+    simpl; eauto.
     foo'.
     eapply SumType_decode_correct.
     instantiate (2 := (icons _
@@ -303,7 +448,6 @@ Section DnsPacket.
                           (icons _
                              (icons _
                                     (icons _ (icons _ inil))))))))))).
-    Require Import Fiat.Common.IterateBoundedIndex.
     instantiate (13 := @Iterate_Dep_Type_equiv' 10 _
                                                (icons _
            (icons _
@@ -337,44 +481,46 @@ Section DnsPacket.
     apply Build_prim_and.
     apply String_decode_correct.
     apply Build_prim_and.
-    {foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    intros.
-    unfold encode_decode_correct_f; intuition eauto.
-    destruct data as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ].
-    unfold GetAttribute, GetAttributeRaw in *.
+    {
+      foo'.
+      foo'.
+      shelve_inv.
+      foo'.
+      foo'.
+      shelve_inv.
+      foo'.
+      foo'.
+      intros; simpl; eauto.
+      foo'.
+      foo'.
+      intros; simpl; eauto.
+      foo'.
+      foo'.
+      intros; simpl; eauto.
+      foo'.
+      foo'.
+      intros; simpl; eauto.
+      foo'.
+      foo'.
+      intros; simpl; eauto.
+      intros.
+      unfold encode_decode_correct_f; intuition eauto.
+      destruct data as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ].
+      unfold GetAttribute, GetAttributeRaw in *.
       subst; simpl.
       computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
+      eexists; intuition eauto; simpl.
+      match goal with
+        |- ?f ?a ?b ?c = ?P =>
+        let P' := (eval pattern a, b, c in P) in
+        let f' := match P' with ?f a b c => f end in
       unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
+      end.
+      injections; eauto.
+      eexists _; eexists _.
     intuition eauto.
     injections; eauto.
     injections.
-    instantiate (1 := fun data => ((fun domain : string => ValidDomainName domain /\ (String.length domain > 0)%nat)
-                                     data!"contact_email")
-                                  /\ ((fun domain : string => ValidDomainName domain /\ (String.length domain > 0)%nat)
-                                       data!"sourcehost")
-                ).
-    simpl.
     solve_predicate.
     injections; eauto.
     injections; eauto.
@@ -384,60 +530,56 @@ Section DnsPacket.
     injections; eauto.
     injections; eauto.
     injections; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    intros; intuition.
-    simpl; intros; intuition.
+    injections; eauto.
+    injections; eauto.
+    injections; eauto.
+    injections; eauto.
     }
     apply Build_prim_and.
-    {foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    foo'.
-    revert H21; foo'.
-    intros.
-    unfold encode_decode_correct_f; intuition eauto.
-    destruct data as [? [? [? [ ] ] ] ].
-    unfold GetAttribute, GetAttributeRaw in *.
+    {
+      foo'.
+      foo'.
+      simpl; intros; eauto.
+      foo'.
+      foo'.
+      simpl; intros; eauto.
+      foo'.
+      foo'.
+      revert H21; foo'.
+      shelve_inv.
+      unfold encode_decode_correct_f; intuition eauto.
+      destruct data as [? [? [? [ ] ] ] ].
+      unfold GetAttribute, GetAttributeRaw in *.
       subst; simpl.
       computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
-      unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
-    intuition eauto.
-    injections; eauto.
-    injections.
-    solve_predicate.
-
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    simpl; intros; intuition eauto.
-    instantiate (1 := 0); admit.
-    (* Need to find proper values for this field from RFC 1010*)
-    injections; eauto.
-    injections; eauto.
+      eexists; intuition eauto; simpl.
+      match goal with
+        |- ?f ?a ?b ?c = ?P =>
+        let P' := (eval pattern a, b, c in P) in
+        let f' := match P' with ?f a b c => f end in
+        unify f f'; reflexivity
+      end.
+      simpl in H25; injections; eauto.
+      eexists _; eexists _.
+      intuition eauto.
+      injections; eauto.
+      injections.
+      solve_predicate.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
     }
     apply Build_prim_and.
     apply String_decode_correct.
     apply Build_prim_and.
     {foo'.
      foo'.
+     shelve_inv.
      foo'.
      foo'.
+     shelve_inv.
      intros.
      unfold encode_decode_correct_f; intuition eauto.
      destruct data as [? [? [ ] ] ].
@@ -455,55 +597,51 @@ Section DnsPacket.
     eexists _; eexists _.
     intuition eauto.
     injections; eauto.
-    injections.
-    instantiate (1 := fun data => ((fun domain : string => ValidDomainName domain /\ (String.length domain > 0)%nat)
-                                     data!"OS")
-                                  /\ ((fun domain : string => ValidDomainName domain /\ (String.length domain > 0)%nat)
-                                     data!"CPU")
-                )
-    .
-    solve_predicate.
+    injections; solve_predicate.
     injections; eauto.
     injections; eauto.
     injections; eauto.
-    simpl; intros; intuition eauto.
-    simpl; intros; intuition eauto.
+    injections; solve_predicate.
+    injections; solve_predicate.
+    injections; solve_predicate.
+    injections; solve_predicate.
     }
     apply Build_prim_and.
     apply String_decode_correct.
     apply Build_prim_and.
     { foo'.
       foo'.
+      simpl; intros; eauto.
       foo'.
       foo'.
-     unfold encode_decode_correct_f; intuition eauto.
-     destruct data as [? [? [ ] ] ].
-     unfold GetAttribute, GetAttributeRaw in *.
-     subst; simpl.
+      shelve_inv.
+      unfold encode_decode_correct_f; intuition eauto.
+      destruct data as [? [? [ ] ] ].
+      unfold GetAttribute, GetAttributeRaw in *.
+      subst; simpl.
       computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
-      unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
-    intuition eauto.
-    injections; eauto.
-    instantiate (1 := fun data => ((fun domain : string => ValidDomainName domain /\ (String.length domain > 0)%nat)
-                                     data!"Exchange")).
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    simpl; intros; intuition eauto.
-    simpl; intros; intuition eauto.
+      eexists; intuition eauto; simpl.
+      match goal with
+        |- ?f ?a ?b ?c = ?P =>
+        let P' := (eval pattern a, b, c in P) in
+        let f' := match P' with ?f a b c => f end in
+        unify f f'; reflexivity
+      end.
+      injections; eauto.
+      eexists _; eexists _.
+      intuition eauto.
+      injections; eauto.
+      solve_predicate.
+      injections; eauto.
+      injections; eauto.
+      injections; solve_predicate.
+      injections; eauto.
+      injections; eauto.
     }
     apply Build_prim_and.
     apply String_decode_correct.
     eauto.
+    shelve_inv.
     intros.
     { unfold encode_decode_correct_f; intuition eauto.
       destruct data as [? [? [? [? [? [ ] ] ] ] ] ].
@@ -516,215 +654,192 @@ Section DnsPacket.
       let P' := (eval pattern a, b, c in P) in
       let f' := match P' with ?f a b c => f end in
       unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
-    intuition eauto.
-    injections; eauto.
-    solve_predicate.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
+      end.
+      injections; eauto.
+      eexists _; eexists _.
+      intuition eauto.
+      injections; eauto.
+      solve_predicate.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
     }
+    Opaque pow2.
     simpl; intros; intuition eauto.
-    subst.
+    rewrite !app_length, H20, H21, H22.
     reflexivity.
-    simpl.
-
-    admit. (* Contact Emails should be character strings. *)
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-
-    apply H.
-    eapply String_decode_correct.
-    eapply compose_encode_correct.
-    revert H; apply_compose.
-
-    unfold Iterate_Dep_Type_equiv'; simpl.
-    simpl.
-    foo'.
-
-    foo'.
-
-
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-
-
-
-    intros; intuition; subst.
+    generalize data H15 x H34.
+    shelve_inv.
+    generalize data H15 x H34.
+    shelve_inv.
+    generalize data H15 x H34.
+    shelve_inv.
+    generalize data H15 x H34.
+    shelve_inv.
+    simpl; intros; intuition eauto.
     unfold encode_decode_correct_f; intuition eauto.
-    destruct data as [? [? [? [ ] ] ] ]; simpl in *.
-    unfold GetAttribute, GetAttributeRaw in *; simpl in *;
-      subst.
-    computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
-      unify f f'; reflexivity
-    end.
+    repeat destruct data.
+    repeat destruct prim_snd.
+    unfold GetAttribute, GetAttributeRaw in *.
+    computes_to_inv.
+    repeat match goal with
+             H : context [ilist2.ith2]
+             |- _ => simpl in H
+           end.
+    repeat match goal with
+             H : ?Z
+             |- _ => match Z with context [ilist2.ith2 _ _] => simpl in H
+                     end
+           end.
+    simpl.
+    destruct prim_fst7.
+    destruct prim_snd.
+    simpl in H21; simpl in H22; simpl in H23.
+    destruct prim_snd.
+    simpl in H21.
+    destruct prim_snd.
+    simpl.
+    eexists; repeat split.
+    repeat match goal with
+             H : WS _ WO = _ |- _ =>
+             let H' := fresh in
+             pose proof (f_equal (@whd _) H) as H'; simpl in H';
+               rewrite H'; clear H' H
+           end.
+    Opaque pow2.
+    simpl in *.
+    revert H29 H27 H28; subst.
+    injection H21; intros ? ?; subst.
+    instantiate (2 := fun al ext env' =>
+                         Some
+                           ({|
+      ilist.prim_fst := _;
+      ilist.prim_snd := {|
+                         ilist.prim_fst := _;
+                        ilist.prim_snd := {|
+                                          ilist.prim_fst := _;
+                                          ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := _;
+                                                  ilist.prim_snd := () |} |} |};
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := firstn proj7 al;
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := firstn proj8 (skipn (proj7 + proj9) al);
+                                                  ilist.prim_snd := {|
+                                                  ilist.prim_fst := firstn proj9 (skipn proj7 al); ilist.prim_snd := () |}
+                                                   |} |} |} |} |} |} |} |} |} |} |},
+     ext, env')).
+    simpl; intros; repeat progress f_equal.
+    eauto.
+    eauto.
+    eauto.
+    subst; apply firstn_app.
+    subst; apply firstn_skipn_app.
+    subst; rewrite skipn_app.
+    apply firstn_app.
     injections; eauto.
-    eexists _; eexists _.
+    injections; eauto.
+    eexists _; eexists _; split; split; eauto.
+    injections; simpl; eauto.
+    split.
+    simpl in H21.
+    injection H21; intros; subst.
+    unfold GetAttribute, GetAttributeRaw; simpl.
     intuition eauto.
-    injections; eauto.
     solve_predicate.
     injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    simpl; eauto.
-    simpl; eauto.
-    simpl; eauto.
-
-    simpl; eauto.
-    instantiate (1 := fun _ => False); admit.
+    eapply H18.
+    rewrite firstn_skipn_self' in H34.
+    eauto.
+    eauto.
+    rewrite H17; clear; omega.
+    eapply H18.
+    rewrite firstn_skipn_self' in H34.
+    eauto.
+    rewrite H17; clear; omega.
+    eapply H18.
+    rewrite firstn_skipn_self' in H34.
+    eauto.
+    rewrite H17; clear; omega.
+    eapply H18.
+    rewrite firstn_skipn_self' in H34.
+    eauto.
+    rewrite H17; clear; omega.
+    revert H17 H11; clear.
+    rewrite Plus.plus_assoc; intros.
+    erewrite length_firstn_skipn_app by eauto.
+    apply H11.
+    revert H17 H10; clear.
+    rewrite Plus.plus_assoc; intros.
+    erewrite length_firstn_skipn_app' by eauto.
+    apply H10.
+    revert H17 H9; clear.
+    rewrite Plus.plus_assoc; intros.
+    erewrite length_firstn_skipn_app'' by eauto.
+    apply H9.
+    apply whd_word_1_refl.
+    apply whd_word_1_refl.
+    apply whd_word_1_refl.
+    apply whd_word_1_refl.
+    apply whd_word_1_refl.
+    revert H17; clear.
+    rewrite Plus.plus_assoc; intros.
+    eapply length_firstn_skipn_app''; eauto.
+    revert H17; clear.
+    rewrite Plus.plus_assoc; intros.
+    eapply length_firstn_skipn_app'; eauto.
+    revert H17; clear.
+    rewrite Plus.plus_assoc; intros.
+    eapply length_firstn_skipn_app; eauto.
+    eapply firstn_skipn_self'.
+    rewrite H17; omega.
+    simpl in H21.
+    injection H21; intros; subst.
+    eauto.
+    instantiate (1 := fun _ => True).
+    instantiate (1 := fun _ => True).
+    repeat instantiate (1 := fun _ => True).
     admit.
-    simpl; eauto.
-    admit.
-    simpl; intros; eauto.
+    Grab Existential Variables.
+    exact 0.
+    exact 0.
+    exact 0.
+    exact 0.
+    exact 0.
+    exact 0.
+    apply (@Fin.F1 _).
+    apply Peano_dec.eq_nat_dec.
+    intros; destruct (weqb a a') eqn:Heq; [left | right].
+    apply weqb_sound; eauto.
+    intro; apply weqb_true_iff in H; congruence.
+  Defined.
 
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
+  Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
 
+  Print packetDecoderImpl.
 
-
-
-
-
-
-
-    apply_compose.
-    eapply Word_decode_correct.
-    apply_compose.
-    eapply Word_decode_correct.
-    apply_compose.
-    eapply Enum_decode_correct; eauto.
-    apply_compose.
-
-    intros; eapply compose_encode_correct; simpl.
-    eapply Word_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Word_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Word_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Word_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Word_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Enum_decode_correct.
-    Focus 3.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Nat_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Nat_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Nat_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Nat_decode_correct.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    intros; eapply compose_encode_correct; simpl.
-    intros; eapply String_decode_correct; simpl.
-    Focus 2.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Enum_decode_correct; eauto.
-    Focus 2.
-    intros.
-    intros; eapply compose_encode_correct; simpl.
-    eapply Enum_decode_correct; eauto.
-    Focus 2.
-    intros; intuition; subst.
-    unfold encode_decode_correct_f; intuition eauto.
-    destruct data as [? [? [? [ ] ] ] ]; simpl in *.
-    unfold GetAttribute, GetAttributeRaw in *; simpl in *;
-      subst.
-    computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
-      unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
-    intuition eauto.
-    injections; eauto.
-    injections; eauto.
-    solve_predicate.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    instantiate (1 := fun _ => False); admit.
-    simpl; eauto.
-    instantiate (1 := fun _ => False); admit.
-    admit.
-    simpl; eauto.
-    admit.
-    simpl; intros; eauto.
-
-
-    Show Existentials.
-    instantiate (1 := fun a b c => Some ().
-    unfold transform; simpl.
-
-    Show Existentials.
-    eapply eapply encode_decode_enum
-
-    destruct data; simpl in *.
-
-    computes_to_inv; subst.
-    eexists; intuition.
-
-
-    repeat destruct data; simpl in *
-    intros; eapply Enum_decode_correct; simpl.
-    intros; repeat split; intros.
-    intuition; subst.
-
-
-
-
-
-    intros; eapply compose_encode_correct; simpl.
-
-
-    simpl.
-    eapply Nat_decode_correct.
-
-
-
-
-
-    eapply Enum_decode_correct.
-
-
-
-    intros.
-    eapply compose_encode_correct.
-    eapply Word_decode_correct.
-
-  Admitted.
 End DnsPacket.
     (*
     eexists.
