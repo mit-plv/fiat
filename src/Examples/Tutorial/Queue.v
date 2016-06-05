@@ -19,11 +19,13 @@ Section data.
 
   (** The specification of functional correctness *)
   Definition spec : ADT sig :=
-    ADTRep (list data)
-           (* This first part is the abstract representation type. *)
+    Def ADT
     {
-      Def Constructor "empty" : rep :=
-        ret nil,
+      rep := (list data),
+      (* This first part is the abstract representation type. *)
+
+      Def Constructor0 "empty" : rep :=
+        ret nil,,
       Def Method1 "enqueue" (self : rep) (d : data) : rep :=
         ret (self ++ d :: nil),
       Def Method0 "dequeue"(self : rep) : rep * (option data) :=
