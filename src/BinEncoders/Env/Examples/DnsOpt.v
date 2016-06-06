@@ -55,6 +55,12 @@ Section DnsPacket.
   Variable RCODE_Ws : t (word 4) 12.
   Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
 
+  (* Resource Record <character-string>s are a byte, *)
+  (* followed by that many characters. *)
+  Definition encode_characterString_Spec (s : string) :=
+    encode_nat_Spec 8 (String.length s)
+    Then encode_string_Spec s.
+
   Definition encode_question_Spec (q : question) :=
        encode_DomainName_Spec q!"qname"
   Then encode_enum_Spec QType_Ws q!"qtype"
@@ -78,8 +84,8 @@ Section DnsPacket.
   Done.
 
   Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
-       encode_DomainName_Spec hinfo!"CPU" (* Should be character string!*)
-  Then encode_DomainName_Spec hinfo!"OS" (* Should be character string!*)
+       encode_characterString_Spec hinfo!"CPU"
+  Then encode_characterString_Spec hinfo!"OS" (* Should be character string!*)
   Done.
 
   Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
@@ -87,23 +93,29 @@ Section DnsPacket.
   Then encode_DomainName_Spec mx!"Exchange"
   Done.
 
+  Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
+       encode_DomainName_Spec minfo!"rMailBx"
+  Then encode_DomainName_Spec minfo!"eMailBx"
+  Done.
+
   Definition encode_rdata_Spec :=
   encode_SumType_Spec ResourceRecordTypeTypes
-  (icons encode_word_Spec
-  (icons (encode_string_Spec)
-  (icons (encode_string_Spec)
-  (icons encode_SOA_RDATA_Spec
-  (icons encode_WKS_RDATA_Spec
-  (icons (encode_string_Spec)
-  (icons encode_HINFO_RDATA_Spec
-  (icons (encode_string_Spec)
-  (icons encode_MX_RDATA_Spec (icons encode_string_Spec inil)))))))))).
+  (icons encode_word_Spec (* A; host address 	[RFC1035] *)
+  (icons (encode_DomainName_Spec) (* NS; authoritative name server 	[RFC1035] *)
+  (icons (encode_DomainName_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
+  (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
+  (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
+  (icons (encode_DomainName_Spec) (* PTR domain name pointer 	[RFC1035] *)
+  (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
+  (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
+  (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
+  (icons encode_characterString_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
 
   Definition encode_resource_Spec(r : resourceRecord) :=
        encode_DomainName_Spec r!sNAME
   Then encode_enum_Spec RRecordType_Ws r!sTYPE
   Then encode_enum_Spec RRecordClass_Ws r!sCLASS
-  Then encode_word_Spec r!sTTL
+  Then encode_word_Spec r!sTTL (* Missing length field*)
   Then encode_rdata_Spec r!sRDATA
   Done.
 
@@ -240,7 +252,80 @@ Section DnsPacket.
     rewrite (shatter_word_0 x0); reflexivity.
   Qed.
 
+  Ltac apply_compose :=
+    intros;
+    match goal with
+      H : cache_inv_Property ?P ?P_inv |- _ =>
+      first [eapply (compose_encode_correct_no_dep H); clear H
+            | eapply (compose_encode_correct H); clear H
+            ]
+    end.
+
+  Theorem characterString_decode_correct
+          {P : CacheDecode -> Prop}
+          (P_OK : cache_inv_Property P (fun P => forall (b : nat) cd, P cd -> P (addD cd b)))
+    : encode_decode_correct_f cache transformer (fun ls => lt (String.length ls) (pow2 8))
+                              encode_characterString_Spec
+                              (fun (bin' : _) (env : CacheDecode) =>
+                                 `(proj, rest, env') <- decode_nat 8 bin' env;
+                                   decode_string proj rest env')
+                              P.
+  Proof.
+    intros; normalize_compose.
+    eapply compose_encode_correct.
+    2: apply Nat_decode_correct.
+    2: eauto.
+    Focus 2.
+    unfold encode_decode_correct_f; intuition eauto.
+    eapply String_decode_correct; eauto.
+    eapply String_decode_correct in H3; intuition eauto.
+    eapply String_decode_correct in H3; intuition eauto.
+    destruct_ex; intuition; eexists _; eexists _; subst;
+      intuition eauto.
+    unfold cache_inv_Property in *; eauto.
+  Qed.
+
+  Ltac makeEvar T k :=
+    let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+  Ltac shelve_inv :=
+    let H' := fresh in
+    let data := fresh in
+    intros data H';
+    repeat destruct H';
+    match goal with
+    | H : ?P data |- ?P_inv' =>
+      is_evar P;
+      let P_inv' := (eval pattern data in P_inv') in
+      let P_inv := match P_inv' with ?P_inv data => P_inv end in
+      let new_P_T := type of P in
+      makeEvar new_P_T
+               ltac:(fun new_P =>
+                       unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
+    end.
+
+  Ltac solve_data_inv :=
+    first [ intros; exact I
+          | shelve_inv ].
+
+  Ltac build_decoder :=
+    first [ solve [eapply Enum_decode_correct; eauto ]
+          | solve [eapply Word_decode_correct ]
+          | solve [eapply characterString_decode_correct ]
+          | solve [eapply Nat_decode_correct ]
+          | solve [eapply String_decode_correct ]
+          | solve [intros; eapply DomainName_decode_correct ]
+          | intros;
+            match goal with
+              |- encode_decode_correct_f
+                   _ _ _
+                   (encode_list_Spec _) _ _ =>
+              eapply FixList_decode_correct end
+          | apply_compose ].
+
   Require Import Fiat.Common.IterateBoundedIndex.
+
+  Opaque pow2. (* Don't want to be evaluating this. *)
 
   Definition packet_decoder
     : { decodePlusCacheInv |
@@ -251,193 +336,70 @@ Section DnsPacket.
   Proof.
     eexists (_, _); eexists _; eexists _; split; simpl.
     intros; normalize_compose.
-
-    Ltac apply_compose :=
-      intros;
-      match goal with
-        H : cache_inv_Property ?P ?P_inv |- _ =>
-        first [eapply (compose_encode_correct_no_dep H); clear H
-              | eapply (compose_encode_correct H); clear H
-              ]
-      end.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | apply_compose].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
     cbv beta; transitivity (wordToNat (natToWord 16 2));
       [simpl; omega | eapply wordToNat_bound].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    Ltac makeEvar T k :=
-      let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
-    Ltac shelve_inv :=
-      let H' := fresh in
-      let data := fresh in
-      intros data H';
-      repeat destruct H';
-      match goal with
-      | H : ?P data |- ?P_inv' =>
-        is_evar P;
-        let P_inv' := (eval pattern data in P_inv') in
-        let P_inv := match P_inv' with ?P_inv data => P_inv end in
-        let new_P_T := type of P in
-        makeEvar new_P_T
-                 ltac:(fun new_P =>
-                         unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
-      end.
-    shelve_inv.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    shelve_inv.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    shelve_inv.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    shelve_inv.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    intros; simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    intros; simpl; eauto.
-    first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | apply_compose ].
-    Ltac foo' := first [ solve [eapply Enum_decode_correct; eauto ]
-          | solve [eapply Word_decode_correct ]
-          | solve [eapply Nat_decode_correct ]
-          | solve [intros; eapply DomainName_decode_correct ]
-          | intros;
-            match goal with
-              |- encode_decode_correct_f
-                   _ _ _
-                   (encode_list_Spec _) _ _ =>
-              eapply FixList_decode_correct  end
-          | apply_compose ].
-    foo'.
-    foo'.
-    foo'.
-    shelve_inv.
-    foo'.
-    foo'.
-    simpl; eauto.
-    foo'.
-    foo'.
-    simpl; eauto.
-    foo'.
-    foo'.
-    simpl; eauto.
-    foo'.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
+    build_decoder.
+    solve_data_inv.
+    build_decoder.
     eapply SumType_decode_correct.
     instantiate (2 := (icons _
            (icons _
@@ -475,35 +437,34 @@ Section DnsPacket.
     intro; pattern idx.
     eapply Iterate_Ensemble_equiv' with (idx := idx); simpl.
     apply Build_prim_and.
-    foo'.
+    build_decoder.
     apply Build_prim_and.
-    apply String_decode_correct.
+    build_decoder.
     apply Build_prim_and.
-    apply String_decode_correct.
+    build_decoder.
     apply Build_prim_and.
     {
-      foo'.
-      foo'.
-      shelve_inv.
-      foo'.
-      foo'.
-      shelve_inv.
-      foo'.
-      foo'.
-      intros; simpl; eauto.
-      foo'.
-      foo'.
-      intros; simpl; eauto.
-      foo'.
-      foo'.
-      intros; simpl; eauto.
-      foo'.
-      foo'.
-      intros; simpl; eauto.
-      foo'.
-      foo'.
-      intros; simpl; eauto.
-      intros.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
       unfold encode_decode_correct_f; intuition eauto.
       destruct data as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ].
       unfold GetAttribute, GetAttributeRaw in *.
@@ -537,15 +498,15 @@ Section DnsPacket.
     }
     apply Build_prim_and.
     {
-      foo'.
-      foo'.
-      simpl; intros; eauto.
-      foo'.
-      foo'.
-      simpl; intros; eauto.
-      foo'.
-      foo'.
-      revert H21; foo'.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      revert H21; build_decoder.
       shelve_inv.
       unfold encode_decode_correct_f; intuition eauto.
       destruct data as [? [? [? [ ] ] ] ].
@@ -572,49 +533,15 @@ Section DnsPacket.
       injections; eauto.
     }
     apply Build_prim_and.
-    apply String_decode_correct.
+    build_decoder.
     apply Build_prim_and.
-    {foo'.
-     foo'.
-     shelve_inv.
-     foo'.
-     foo'.
-     shelve_inv.
-     intros.
-     unfold encode_decode_correct_f; intuition eauto.
-     destruct data as [? [? [ ] ] ].
-     unfold GetAttribute, GetAttributeRaw in *.
-     subst; simpl.
-      computes_to_inv; injections.
-    eexists; intuition eauto; simpl.
-    match goal with
-      |- ?f ?a ?b ?c = ?P =>
-      let P' := (eval pattern a, b, c in P) in
-      let f' := match P' with ?f a b c => f end in
-      unify f f'; reflexivity
-    end.
-    injections; eauto.
-    eexists _; eexists _.
-    intuition eauto.
-    injections; eauto.
-    injections; solve_predicate.
-    injections; eauto.
-    injections; eauto.
-    injections; eauto.
-    injections; solve_predicate.
-    injections; solve_predicate.
-    injections; solve_predicate.
-    injections; solve_predicate.
-    }
-    apply Build_prim_and.
-    apply String_decode_correct.
-    apply Build_prim_and.
-    { foo'.
-      foo'.
-      simpl; intros; eauto.
-      foo'.
-      foo'.
-      shelve_inv.
+    {
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
       unfold encode_decode_correct_f; intuition eauto.
       destruct data as [? [? [ ] ] ].
       unfold GetAttribute, GetAttributeRaw in *.
@@ -631,22 +558,83 @@ Section DnsPacket.
       eexists _; eexists _.
       intuition eauto.
       injections; eauto.
-      solve_predicate.
+      injections; solve_predicate.
       injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; solve_predicate.
+    }
+    apply Build_prim_and.
+    { build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      unfold encode_decode_correct_f; intuition eauto.
+      destruct data as [? [? [ ] ] ].
+      unfold GetAttribute, GetAttributeRaw in *.
+      subst; simpl.
+      computes_to_inv; injections.
+      eexists; intuition eauto; simpl.
+      match goal with
+        |- ?f ?a ?b ?c = ?P =>
+        let P' := (eval pattern a, b, c in P) in
+        let f' := match P' with ?f a b c => f end in
+        unify f f'; reflexivity
+      end.
+      injections; eauto.
+      eexists _; eexists _.
+      intuition eauto.
       injections; eauto.
       injections; solve_predicate.
       injections; eauto.
       injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; solve_predicate.
+      injections; solve_predicate.
+      injections; solve_predicate.
     }
     apply Build_prim_and.
-    apply String_decode_correct.
+    { build_decoder.
+      build_decoder.
+      solve_data_inv.
+      build_decoder.
+      build_decoder.
+      solve_data_inv.
+      unfold encode_decode_correct_f; intuition eauto.
+      destruct data as [? [? [ ] ] ].
+      unfold GetAttribute, GetAttributeRaw in *.
+      subst; simpl.
+      computes_to_inv; injections.
+      eexists; intuition eauto; simpl.
+      match goal with
+        |- ?f ?a ?b ?c = ?P =>
+        let P' := (eval pattern a, b, c in P) in
+        let f' := match P' with ?f a b c => f end in
+        unify f f'; reflexivity
+      end.
+      injections; eauto.
+      eexists _; eexists _.
+      intuition eauto.
+      injections; eauto.
+      injections; solve_predicate.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; eauto.
+      injections; solve_predicate.
+    }
+    apply Build_prim_and.
+    build_decoder.
     eauto.
     shelve_inv.
-    intros.
     { unfold encode_decode_correct_f; intuition eauto.
       destruct data as [? [? [? [? [? [ ] ] ] ] ] ].
       unfold GetAttribute, GetAttributeRaw in *.
-      subst; simpl.
+      simpl in *; subst.
       computes_to_inv; injections.
       eexists; intuition eauto; simpl.
       match goal with
@@ -671,7 +659,6 @@ Section DnsPacket.
       injections; eauto.
       injections; eauto.
     }
-    Opaque pow2.
     simpl; intros; intuition eauto.
     rewrite !app_length, H20, H21, H22.
     reflexivity.
@@ -713,7 +700,6 @@ Section DnsPacket.
              pose proof (f_equal (@whd _) H) as H'; simpl in H';
                rewrite H'; clear H' H
            end.
-    Opaque pow2.
     simpl in *.
     revert H29 H27 H28; subst.
     injection H21; intros ? ?; subst.
@@ -818,18 +804,10 @@ Section DnsPacket.
     simpl in H21.
     injection H21; intros; subst.
     eauto.
-    instantiate (1 := fun _ => True).
-    instantiate (1 := fun _ => True).
-    repeat instantiate (1 := fun _ => True).
-    admit.
+    repeat instantiate (1 := fun _ => True); admit.
     Grab Existential Variables.
-    exact 0.
-    exact 0.
-    exact 0.
-    exact 0.
-    exact 0.
-    exact 0.
-    apply (@Fin.F1 _).
+    exact 0. (* Length of the Bit-Map in WKS RDATA. *)
+    apply (@Fin.F1 _). (* RDATA Type. *)
     apply Peano_dec.eq_nat_dec.
     intros; destruct (weqb a a') eqn:Heq; [left | right].
     apply weqb_sound; eauto.
@@ -841,133 +819,3 @@ Section DnsPacket.
   Print packetDecoderImpl.
 
 End DnsPacket.
-    (*
-    eexists.
-
-    eapply compose_encode_correct.
-      eapply Word_decode_correct.
-      solve_predicate. intro.
-
-      eapply compose_encode_correct.
-      eapply Word_decode_correct.
-      solve_predicate. intro.
-
-      eapply compose_encode_correct.
-      eapply encode_decode_enum.
-      eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-    eapply Word_decode_correct.
-      solve_predicate. intro.
-
-      eapply compose_encode_correct.
-      eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-    eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-    eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-    eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-    eapply encode_decode_enum.
-    eapply Word_decode_correct.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-      eapply Nat_decode_correct.
-      admit. intro.
-
-    eapply compose_encode_correct.
-      eapply Nat_decode_correct.
-      admit. intro.
-
-    eapply compose_encode_correct.
-      eapply Nat_decode_correct.
-      admit. intro.
-
-    eapply compose_encode_correct.
-    eapply Nat_decode_correct.
-    admit. intro.
-
-    eapply compose_encode_correct.
-  Abort.
-  { unfold encode_question.
-      eapply compose_encode_correct.
-
-      eapply FixList_decode_correct.
-      eapply String_decode_correct.
-      simpl.
-      solve_predicate.
-    eapply Nat_decode_correct.
-    admit. intro.
-
-    solve_predicate. intro.
-
-    eapply compose_encode_correct.
-      eapply encode_decode_nat.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-      instantiate (2:=fun _ => True).
-      eapply compose_encode_correct.
-        eapply encode_decode_list. eapply encode_decode_string.
-        solve_predicate. intro.
-
-      eapply compose_encode_correct.
-        eapply encode_decode_enum. eapply encode_decode_word.
-        solve_predicate. intro.
-
-      eapply compose_encode_correct.
-        eapply encode_decode_enum. eapply encode_decode_word.
-        solve_predicate. intro.
-
-      intros ? ? ? ? data ? ? ? ?.
-      instantiate (1:=fun l b e => (_ l, b, e)).
-      repeat destruct data as [? data].
-      intros. simpl in *.
-      cbv in H0.
-      repeat match goal with
-             | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
-             | H : _ /\ _ |- _ => inversion H; subst; clear H
-             end.
-      intuition eauto. symmetry. eauto.
-      solve_predicate. intro.
-
-    eapply compose_encode_correct.
-      instantiate (2:=fun _ => True).
-      eapply encode_decode_list.
-      eapply compose_encode_correct.
-        eapply encode_decode_list. eapply encode_decode_string.
-        solve_predicate. intro.
-
-      eapply compose_encode_correct.
-        eapply encode_decode_enum. eapply encode_decode_word.
-        solve_predicate. intro.
-
-      eapply compose_encode_correct.
-        eapply encode_decode_enum. eapply encode_decode_word.
-        solve_predicate. intro.
-
-      eapply compose_encode_correct.
-        eapply encode_decode_word.
-        solve_predicate. intro.
-
-      intros ? ? ? ? data ? ? ? ?. Show Existentials.
-      instantiate (1:=fun l b e => (<"Name" :: proj13,
-                                     sTYPE :: proj14,
-                                     sCLASS :: proj15,
-                                     sTTL :: l>, b, e)).
-      simpl. intros. repeat match goal with
-                            | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
-                            | H : _ /\ _ |- _ => inversion H; subst; clear H
-                            end. admit.
-      solve_predicate. intro. *)

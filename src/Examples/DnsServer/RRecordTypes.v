@@ -207,6 +207,12 @@ Section RData.
       "Bit-Map"  :: list (word 8)>%Heading.
   Definition WKS_RDATA : Type := @Tuple WKSHeading.
 
+  (* Mailing List (MINFO) Records *)
+  Definition MINFOHeading :=
+    < "rMailBx" :: DomainName,
+      "eMailBx" :: DomainName>%Heading.
+  Definition MINFO_RDATA : Type := @Tuple MINFOHeading.
+
   Definition ResourceRecordTypeTypes :=
     [ (W : Type); (* A *)
        DomainName; (* NS *)
@@ -215,7 +221,7 @@ Section RData.
        WKS_RDATA; (* WKS *)
        DomainName; (* PTR *)
        HINFO_RDATA; (* HINFO *)
-       DomainName; (* MINFO *)
+       MINFO_RDATA; (* MINFO *)
        MX_RDATA; (* MX *)
        (string : Type) (* TXT *)
     ].
