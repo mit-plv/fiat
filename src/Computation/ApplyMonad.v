@@ -6,7 +6,7 @@ Require Import Fiat.Computation.Core Fiat.Computation.Monad Fiat.Computation.Set
 (** ** Helper monad laws, on the left side of a [refine] *)
 
 Section monad.
-  Local Ltac t := intro H; autorewrite with refine_monad; exact H.
+  Local Ltac t := let H := fresh in intro H; autorewrite with refine_monad; exact H.
 
   Lemma refine_bind_bind_helper X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x y
   : refine (Bind x (fun u => Bind (f u) g)) y
