@@ -125,6 +125,7 @@ Definition unit_lb := internal_unit_dec_lb.
 
 Local Ltac t bl :=
   abstract (
+      let x := fresh in
       intro x; apply (list_in_bl bl); revert x;
       repeat intros []; simpl; try reflexivity
     ).
