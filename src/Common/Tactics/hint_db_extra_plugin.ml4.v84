@@ -1,6 +1,4 @@
 open Hint_db_extra_tactics
-open Stdarg
-open Constrarg
 
 TACTIC EXTEND foreach_db
   | [ "foreach" "[" ne_preident_list(l) "]" "run" tactic(k) ]  ->

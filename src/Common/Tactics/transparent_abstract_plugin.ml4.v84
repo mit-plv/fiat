@@ -1,5 +1,4 @@
 open Transparent_abstract_tactics
-open Constrarg
 
   TACTIC EXTEND abstracttermas
   | [ "cache_term" constr(term) "as" ident(name) "run" tactic(tacK)]  ->
