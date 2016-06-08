@@ -431,3 +431,33 @@ Ltac BuildQSIndexedBag heading AttrList BuildEarlyBag BuildLastBag k ::=
   Ltac insertOne :=
     insertion CreateTerm EarlyIndex LastIndex
               makeClause_dep EarlyIndex_dep LastIndex_dep.
+
+Global Instance cache : Cache :=
+  {| CacheEncode := unit;
+     CacheDecode := unit;
+     Equiv ce cd := True |}.
+Global Instance cacheAddNat : CacheAdd cache nat :=
+  {| addE ce n := tt;
+     addD cd n := tt;
+     add_correct ce cd t m := I |}.
+
+Definition transformer : Transformer bin := btransformer.
+Global Instance transformerUnit : TransformerUnitOpt transformer bool :=
+  {| T_measure t := 1;
+     transform_push_opt b t := (b :: t)%list;
+     transform_pop_opt t :=
+       match t with
+       | b :: t' => Some (b, t')
+       | _ => None
+       end%list
+  |}.
+abstract (simpl; intros; omega).
+abstract (simpl; intros; omega).
+abstract (destruct b;
+          [ simpl; discriminate
+          | intros; injections; simpl; omega ] ).
+reflexivity.
+reflexivity.
+abstract (destruct b; destruct b'; simpl; intros; congruence).
+Defined.
+Definition Empty : CacheEncode := tt.

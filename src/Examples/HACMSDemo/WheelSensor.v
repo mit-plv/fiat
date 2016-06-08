@@ -70,12 +70,6 @@ Qed.
 Hint Resolve IPAddress_decideable.
 Hint Resolve SensorID_decideable.
 
-Variable cache : Cache.
-Variable cacheAddNat : CacheAdd cache nat.
-Definition transformer : Transformer bin := btransformer.
-Variable transformerUnit : TransformerUnitOpt transformer bool.
-Variable Empty : CacheEncode.
-
 Definition encode_SensorData_Spec (val : SensorType) :=
        encode_enum_Spec SensorTypeCode {| bindex := SensorIDs[@SumType_index _ val];
                                           indexb := {| ibound := SumType_index _ val;
@@ -86,45 +80,42 @@ Definition encode_SensorData_Spec (val : SensorType) :=
          inil)) val
   Done.
 
-Definition encode_SensorData_Impl (val : SensorType) ce :=
-  let (bin', ce') := encode_enum_Impl SensorTypeCode {| bindex := SensorIDs[@SumType_index _ val];
-                                                        indexb := {| ibound := SumType_index _ val;
-                                                                     boundi := @eq_refl _ _ |} |} ce in
-  let (bin'', ce'') := (encode_SumType_Impl (B := bin) (cache := cache) SensorTypes
-                (icons (encode_nat_Impl 8) (* Wheel Speed *)
-                       (icons (encode_nat_Impl 8) (* Tire Pressure *)
-                              inil)) val ce') in
-  (app bin' bin'', ce'').
-
-Lemma refine_encode_SensorData_Impl
-  : forall ce (val : SensorType),
-    refine (encode_SensorData_Spec val ce)
-           (ret (encode_SensorData_Impl val ce)).
+(* We first synthesize an implementation of our encoder. *)
+Lemma Sharpened_encode_SensorData_Impl
+  : { encode_SensorData_Impl : _ &
+      forall ce (val : SensorType),
+        refine (encode_SensorData_Spec val ce)
+               (ret (encode_SensorData_Impl val ce))}.
 Proof.
-  intros.
-  unfold encode_SensorData_Spec, encode_SensorData_Impl.
+  eexists; intros; set_evars.
+  unfold encode_SensorData_Spec.
   unfold compose, Bind2.
   setoid_rewrite refine_encode_enum; simplify with monad laws.
-  rewrite (@refine_encode_SumType
+  setoid_rewrite (@refine_encode_SumType
           bin
           _
           2
           ([nat : Type; nat : Type])
           _
-          (icons (B := (fun T : Type =>
-                          T -> @CacheEncode cache -> bin * @CacheEncode cache)) (encode_nat_Impl 8)
-                 (icons (B := (fun T : Type =>
-                                 T -> @CacheEncode cache -> bin * @CacheEncode cache))
-                        (encode_nat_Impl 8) (inil (A := Type))))).
+          (icons _
+                 (icons _ (inil (A := Type))))).
   simplify with monad laws.
   simpl; rewrite app_nil_r.
-  unfold SensorTypes.
-  destruct (encode_SumType_Impl [nat : Type; nat : Type]
-                                (icons (encode_nat_Impl 8) (icons (encode_nat_Impl 8) inil)) val
-                                (addE ce 4)).
+  finish honing.
   simpl; f_equiv.
   simpl; repeat apply Build_prim_and; eauto;
-    intros; eapply refine_encode_nat.
+    intros; rewrite refine_encode_nat; finish honing.
+Defined.
+
+Definition encode_SensorData_Impl :=
+  Eval simpl in projT1 Sharpened_encode_SensorData_Impl.
+
+Lemma refine_encode_SensorData_Impl
+  : forall ce (val : SensorType),
+        refine (encode_SensorData_Spec val ce)
+               (ret (encode_SensorData_Impl val ce)).
+Proof.
+  exact (projT2 Sharpened_encode_SensorData_Impl).
 Qed.
 
 Opaque encode_SensorData_Spec.
@@ -190,7 +181,6 @@ Definition WheelSensorSpec : ADT WheelSensorSig :=
                   Return (sub!"address", msg);
           ret (r, subs)
   }%methDefParsing.
-
 
 Theorem SharpenedWheelSensor :
     FullySharpened WheelSensorSpec.
