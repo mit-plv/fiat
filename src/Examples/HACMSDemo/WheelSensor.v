@@ -80,45 +80,14 @@ Definition encode_SensorData_Spec (val : SensorType) :=
          inil)) val
   Done.
 
-(* We first synthesize an implementation of our encoder. *)
-Lemma Sharpened_encode_SensorData_Impl
-  : { encode_SensorData_Impl : _ &
-      forall ce (val : SensorType),
-        refine (encode_SensorData_Spec val ce)
-               (ret (encode_SensorData_Impl val ce))}.
-Proof.
-  eexists; intros; set_evars.
-  unfold encode_SensorData_Spec.
-  unfold compose, Bind2.
-  setoid_rewrite refine_encode_enum; simplify with monad laws.
-  setoid_rewrite (@refine_encode_SumType
-          bin
-          _
-          2
-          ([nat : Type; nat : Type])
-          _
-          (icons _
-                 (icons _ (inil (A := Type))))).
-  simplify with monad laws.
-  simpl; rewrite app_nil_r.
-  finish honing.
-  simpl; f_equiv.
-  simpl; repeat apply Build_prim_and; eauto;
-    intros; rewrite refine_encode_nat; finish honing.
-Defined.
-
-Definition encode_SensorData_Impl :=
-  Eval simpl in projT1 Sharpened_encode_SensorData_Impl.
-
-Lemma refine_encode_SensorData_Impl
-  : forall ce (val : SensorType),
-        refine (encode_SensorData_Spec val ce)
-               (ret (encode_SensorData_Impl val ce)).
-Proof.
-  exact (projT2 Sharpened_encode_SensorData_Impl).
-Qed.
-
-Opaque encode_SensorData_Spec.
+(* As we're using fixed-length words to encode the sensor values,  *)
+(* they need to be under 256 for the decoder to properly map to the *)
+(* original value. *)
+Definition good_reading (val : SensorType) :=
+  match val with
+  | inl n => lt n 256
+  | inr n => lt n 256
+  end.
 
 (* The 'schema' (in the SQL sense) of our database of subscribers. *)
 Definition WheelSensorSchema :=
@@ -181,60 +150,3 @@ Definition WheelSensorSpec : ADT WheelSensorSig :=
                   Return (sub!"address", msg);
           ret (r, subs)
   }%methDefParsing.
-
-Theorem SharpenedWheelSensor :
-    FullySharpened WheelSensorSpec.
-Proof.
-  start sharpening ADT.
-  start_honing_QueryStructure'.
-  (* We first insert checks for the DuplicateFree constraints.  *)
-  hone method "AddSpeedSubscriber". { dropDuplicateFree. }
-  hone method "AddTirePressureSubscriber". { dropDuplicateFree. }
-  let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' 2 WheelSensorSchema ``"subscribers" ``"topic" id (fun i => ibound (indexb i))
-                                                (fun val =>
-                                                   {| bindex := _;
-                                                      indexb := {| ibound := val;
-                                                                   boundi := @eq_refl _ _ |} |})) in hone representation using AbsR'.
-  {
-    simplify with monad laws.
-    apply refine_pick_val.
-    apply DecomposeRawQueryStructureSchema_empty_AbsR.
-  }
-  { doAny ltac:(implement_DecomposeRawQueryStructure)
-                 rewrite_drill ltac:(finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure)
-                 rewrite_drill ltac:(finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure)
-                 rewrite_drill ltac:(simpl; finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure)
-                 rewrite_drill ltac:(simpl; finish honing). }
-  simpl; hone representation using (fun r_o r_n => snd r_o = r_n).
-  { simplify with monad laws; apply refine_pick_val; reflexivity. }
-  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
-                 ltac:(rewrite_drill; simpl)
-                        ltac:(finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
-                 ltac:(rewrite_drill; simpl)
-                        ltac:(finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
-                 ltac:(rewrite_drill; simpl)
-                        ltac:(finish honing). }
-  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
-                 ltac:(rewrite_drill; simpl)
-                        ltac:(finish honing). }
-  unfold DecomposeRawQueryStructureSchema, DecomposeSchema; simpl.
-  chooseIndexes.
-  initializer.
-  insertOne.
-  insertOne.
-  rewrite refine_encode_SensorData_Impl; planOne.
-  rewrite refine_encode_SensorData_Impl; planOne.
-  final_optimizations.
-  determinize.
-  choose_data_structures.
-  final_simplification.
-  use_this_one.
-Defined.
-
-Definition WheelSensorImpl := Eval simpl in projT1 SharpenedWheelSensor.
-Print WheelSensorImpl.

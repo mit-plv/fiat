@@ -461,3 +461,169 @@ reflexivity.
 abstract (destruct b; destruct b'; simpl; intros; congruence).
 Defined.
 Definition Empty : CacheEncode := tt.
+
+  Ltac decompose_EnumField Ridx Fidx :=
+    match goal with
+      |- appcontext[ @BuildADT (UnConstrQueryStructure (QueryStructureSchemaRaw ?qs_schema)) ]
+      =>
+      let n := eval compute in (NumAttr (GetHeading qs_schema Ridx)) in
+    let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' n qs_schema ``Ridx ``Fidx id (fun i => ibound (indexb i))
+                                                (fun val =>
+                                                   {| bindex := _;
+                                                      indexb := {| ibound := val;
+                                                                   boundi := @eq_refl _ _ |} |})) in hone representation using AbsR'
+    end;
+      try first [ solve [simplify with monad laws;
+                         apply refine_pick_val;
+                         apply DecomposeRawQueryStructureSchema_empty_AbsR ]
+                | doAny ltac:(implement_DecomposeRawQueryStructure)
+                               rewrite_drill ltac:(cbv beta; simpl; finish honing) ];
+  simpl; hone representation using (fun r_o r_n => snd r_o = r_n);
+    try first [
+        solve [simplify with monad laws; apply refine_pick_val; reflexivity ]
+      |
+      match goal with
+        H : snd ?r_o = ?r_n |- _
+        => doAny ltac:(implement_DecomposeRawQueryStructure' H)
+                        ltac:(rewrite_drill; simpl)
+                               ltac:(finish honing)
+      end
+        ];
+    cbv beta; unfold DecomposeRawQueryStructureSchema, DecomposeSchema; simpl.
+
+
+  Ltac makeEvar T k :=
+    let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
+
+  Ltac shelve_inv :=
+    let H' := fresh in
+    let data := fresh in
+    intros data H';
+    repeat destruct H';
+    match goal with
+    | H : ?P data |- ?P_inv' =>
+      is_evar P;
+      let P_inv' := (eval pattern data in P_inv') in
+      let P_inv := match P_inv' with ?P_inv data => P_inv end in
+      let new_P_T := type of P in
+      makeEvar new_P_T
+               ltac:(fun new_P =>
+                       unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
+    end.
+
+  Ltac solve_data_inv :=
+    first [ intros; exact I
+          | solve
+              [ let data := fresh in
+                let H' := fresh in
+                let H'' := fresh in
+                intros data H' *;
+                match goal with
+                  proj : BoundedIndex _ |- _ =>
+                  instantiate (1 := ibound (indexb proj));
+                  destruct H' as [? H'']; intuition;
+                  try (rewrite <- H''; reflexivity);
+                  destruct data; simpl; eauto
+                end ]
+          | shelve_inv ].
+
+  Ltac apply_compose :=
+    intros;
+    match goal with
+      H : cache_inv_Property ?P ?P_inv |- _ =>
+      first [eapply (compose_encode_correct_no_dep H); clear H
+            | eapply (compose_encode_correct H); clear H
+            ]
+    end.
+
+  Ltac build_decoder :=
+    first [ solve [eapply Enum_decode_correct; [   repeat econstructor; simpl; intuition;
+    repeat match goal with
+            H : @Vector.In _ _ _ _ |- _ =>
+            inversion H;
+              apply_in_hyp Eqdep.EqdepTheory.inj_pair2; subst
+          end
+ | .. ]; eauto  ]
+          | solve [eapply Word_decode_correct ]
+          | solve [eapply Nat_decode_correct ]
+          | solve [eapply String_decode_correct ]
+          | eapply (SumType_decode_correct
+            [ _ ]%vector
+            (icons _ inil)
+            (icons _ inil)
+            (@Iterate_Dep_Type_equiv' 1 _ (icons _ inil))
+            (@Iterate_Dep_Type_equiv' 1 _ (icons _ inil)));
+            [let idx' := fresh in
+             intro idx'; pattern idx';
+             eapply Iterate_Ensemble_equiv' with (idx := idx'); simpl;
+             repeat (match goal with |- prim_and _ _ => apply Build_prim_and; try exact I end)
+            | .. ]
+          | eapply (SumType_decode_correct
+            [ _; _]%vector
+            (icons _ (icons _ inil))
+            (icons _ (icons _ inil))
+            (@Iterate_Dep_Type_equiv' 2 _ (icons _ (icons _ inil)))
+            (@Iterate_Dep_Type_equiv' 2 _ (icons _ (icons _ inil))));
+            [let idx' := fresh in
+             intro idx'; pattern idx';
+             eapply Iterate_Ensemble_equiv' with (idx := idx'); simpl;
+             repeat (match goal with |- prim_and _ _ => apply Build_prim_and; try exact I end)
+                     | .. ]
+          | eapply (SumType_decode_correct
+            [ _; _; _ ]%vector
+            (icons _ (icons _ (icons _ inil)))
+            (icons _ (icons _ (icons _ inil)))
+            (@Iterate_Dep_Type_equiv' 3 _ (icons _ (icons _ (icons _ inil))))
+            (@Iterate_Dep_Type_equiv' 3 _ (icons (icons _ (icons _ inil)))));
+            [let idx' := fresh in
+             intro idx'; pattern idx';
+             eapply Iterate_Ensemble_equiv' with (idx := idx'); simpl;
+             repeat (match goal with |- prim_and _ _ => apply Build_prim_and; try exact I  end)
+            | .. ]
+          | intros;
+            match goal with
+              |- encode_decode_correct_f
+                   _ _ _
+                   (encode_list_Spec _) _ _ =>
+              eapply FixList_decode_correct end
+          | apply_compose ].
+
+  Lemma Fin_inv :
+    forall n (idx : Fin.t (S n)),
+      idx = Fin.F1 \/ exists n', idx = Fin.FS n'.
+  Proof. apply Fin.caseS; eauto. Qed.
+
+  Ltac solve_cache_inv :=
+    repeat instantiate (1 := fun _ => True);
+    unfold cache_inv_Property; intuition;
+    repeat match goal with
+           | idx : Fin.t (S _) |- _ =>
+             destruct (Fin_inv _ idx) as [? | [? ?] ]; subst; simpl; eauto
+           | idx : Fin.t 0 |- _ =>  inversion idx
+           end.
+
+  Ltac finalize_decoder P_inv :=
+  (unfold encode_decode_correct_f; intuition eauto);
+    [ computes_to_inv; injections; subst; simpl;
+      match goal with
+        H : Equiv _ ?env |- _ =>
+        eexists env; intuition eauto;
+        simpl;
+        match goal with
+          |- ?f ?a ?b ?c = ?P =>
+          let P' := (eval pattern a, b, c in P) in
+          let f' := match P' with ?f a b c => f end in
+          unify f f'; reflexivity
+        end
+      end
+    | injections; eauto
+    | eexists _; eexists _;
+      intuition eauto; injections; eauto using idx_ibound_eq;
+      try match goal with
+        |- P_inv ?data => destruct data;
+                                 simpl in *; eauto
+      end
+    ].
+
+  Ltac build_decoder_component :=
+    (build_decoder || solve_data_inv).
