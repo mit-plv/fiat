@@ -22,7 +22,8 @@ Require Import
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
+        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
+        Fiat.Examples.HACMSDemo.DuplicateFree.
 
 Require Import
         Bedrock.Word
@@ -43,161 +44,28 @@ Definition SensorID := BoundedString SensorIDs.
 Definition SensorTypes := [nat : Type; nat : Type].
 Definition SensorType := SumType SensorTypes.
 
-Definition DuplicateFree {heading} (tup1 tup2 : @RawTuple heading) := tup1 <> tup2.
 Definition IPAddress := word 32.
 
 Definition SensorTypeCode : Vector.t (word 4) 2
   := [ natToWord 4 3; natToWord 4 0].
 
-Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
-  match n return list (Fin.t n) with
-  | 0  => nil
-  | S n' => cons (@Fin.F1 _) (map (@Fin.FS _) (BuildFinUpTo n'))
-  end.
-
-Definition allAttributes heading
-  : list (Attributes heading) :=
-  BuildFinUpTo (NumAttr heading).
-
-Lemma agreeAllAttributes_eq
-  : forall heading tup tup',
-    tupleAgree_computational tup tup'
-                             (allAttributes heading) <-> tup = tup'.
+Lemma IPAddress_decideable
+  : forall (addr addr' : IPAddress),
+    (addr = addr') \/ (addr <> addr').
 Proof.
-  destruct heading.
-  induction AttrList; unfold RawTuple; simpl; intros.
-  - destruct tup; destruct tup'; intuition.
-  - destruct tup; destruct tup'; simpl.
-    intuition.
-    + unfold GetAttributeRaw in H0; simpl in H0; unfold ilist2_hd in H0;
-      simpl in H0; subst.
-      unfold allAttributes in IHAttrList.
-      rewrite (proj1 (IHAttrList prim_snd prim_snd0)); eauto; simpl.
-      revert H1.
-      induction (BuildFinUpTo n); simpl; intuition.
-    + injections; eauto.
-    + injections.
-      generalize (proj2 (IHAttrList prim_snd0 prim_snd0) eq_refl); clear.
-      induction (BuildFinUpTo n); simpl; intuition.
+  intros; destruct (weq addr addr'); intuition.
 Qed.
 
-Lemma refine_DuplicateFree
-      {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema) Ridx tup',
-    (forall tup , tup = tup' \/ tup <> tup')
-    -> refine
-      {b : bool |
-       decides b
-               (forall tup : IndexedElement,
-                   GetUnConstrRelation qs Ridx tup ->
-                   DuplicateFree tup' (indexedElement tup))}
-      (xs <- For (UnConstrQuery_In qs Ridx
-                           (fun tup => Where (tupleAgree_computational tup tup' (allAttributes _) )
-                                             Return tup));
-       ret (If_Opt_Then_Else (hd_error xs) (fun _ => false) true)).
+Lemma SensorID_decideable
+  : forall (id1 id2 : SensorID),
+    (id1 = id2) \/ (id1 <> id2).
 Proof.
-  unfold refine; intros.
-  computes_to_inv; subst.
-  destruct v0; simpl; computes_to_econstructor; simpl; intros.
-  unfold not; intro.
-  unfold UnConstrQuery_In in H0; simpl; subst.
-  apply (For_computes_to_nil (fun tup0 => (tupleAgree_computational tup0
-                                                                    (indexedElement tup)
-                        (allAttributes
-                           (GetNRelSchemaHeading (qschemaSchemas qsSchema)
-                              Ridx)))) _ H0 _ H1).
-  apply agreeAllAttributes_eq; eauto.
-  intro.
-  apply For_computes_to_In with (x := r) in H0; intuition.
-  destruct_ex; intuition; subst.
-  apply H1 in H3.
-  apply agreeAllAttributes_eq in H2; unfold DuplicateFree in *.
-  rewrite <- H2 in H3; apply H3; reflexivity.
-  rewrite agreeAllAttributes_eq; eapply (H a).
+  intros; destruct (BoundedIndex_eq_dec id1 id2); intuition.
 Qed.
 
-Lemma DeleteDuplicateFreeOK {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema)
-           (Ridx :Fin.t _)
-           DeletedTuples,
-      refine {b | (forall tup tup',
-                      elementIndex tup <> elementIndex tup'
-                      -> GetUnConstrRelation qs Ridx tup
-                      -> GetUnConstrRelation qs Ridx tup'
-                      -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
-                  -> decides b (Mutate.MutationPreservesTupleConstraints
-                                  (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
-                                  DuplicateFree
-             )}
-             (ret true).
-Proof.
-  unfold Mutate.MutationPreservesTupleConstraints, DuplicateFree;
-  intros * v Comp_v;  computes_to_inv; subst.
-  computes_to_constructor; simpl.
-  intros.
-  unfold EnsembleDelete in *; destruct H1; destruct H2; eauto.
-Qed.
+Hint Resolve IPAddress_decideable.
+Hint Resolve SensorID_decideable.
 
-Lemma refine_DuplicateFree_symmetry
-      {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema) Ridx tup' b',
-    computes_to {b : bool | decides b
-                                     (forall tup : IndexedElement,
-                                         GetUnConstrRelation qs Ridx tup ->
-                                         DuplicateFree tup' (indexedElement tup)  )} b'
-    -> refine
-         {b : bool |
-          decides b
-                  (forall tup : IndexedElement,
-                      GetUnConstrRelation qs Ridx tup ->
-                      DuplicateFree (indexedElement tup) tup')}
-         (ret b').
-Proof.
-  intros.
-  repeat computes_to_inv; computes_to_econstructor.
-  computes_to_inv; subst.
-  destruct v; simpl in *; unfold DuplicateFree in *; intros.
-  intuition eauto.
-  intuition eauto.
-Qed.
-
-Ltac implement_DuplicateFree :=
-  match goal with
-    |- context [{b : bool |
-                 decides b
-                         (forall tup' : IndexedElement,
-                             GetUnConstrRelation ?r ?Ridx tup' ->
-                                 DuplicateFree ?tup (indexedElement tup'))}] =>
-    rewrite (@refine_DuplicateFree _ r Ridx); [ | intros; repeat decide equality]
-  end.
-
-Ltac implement_DuplicateFree_symmetry :=
-  match goal with
-    |- context [{b : bool |
-                 decides b
-                         (forall tup' : IndexedElement,
-                             GetUnConstrRelation ?r ?Ridx tup' ->
-                                 DuplicateFree  (indexedElement tup') ?tup)}] =>
-    rewrite (@refine_DuplicateFree_symmetry _ r Ridx)
-  end.
-
-Ltac RemoveDeleteDuplicateFreeCheck :=
-    match goal with
-        |- context[{b | (forall tup tup',
-                           elementIndex tup <> elementIndex tup'
-                           -> GetUnConstrRelation ?qs ?Ridx tup
-                           -> GetUnConstrRelation ?qs ?Ridx tup'
-                           -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
-                        -> decides b (Mutate.MutationPreservesTupleConstraints
-                                        (EnsembleDelete (GetUnConstrRelation ?qs ?Ridx) ?DeletedTuples)
-                                        DuplicateFree
-                                     )}] =>
-        let refinePK := fresh in
-        pose proof (DeleteDuplicateFreeOK qs Ridx DeletedTuples) as refinePK;
-          simpl in refinePK; pose_string_hyps_in refinePK; pose_heading_hyps_in refinePK;
-          setoid_rewrite refinePK; clear refinePK;
-          try setoid_rewrite refineEquiv_bind_unit
-    end.
 
 Variable cache : Cache.
 Variable cacheAddNat : CacheAdd cache nat.
@@ -214,6 +82,8 @@ Definition encode_SensorData_Spec (val : SensorType) :=
   (icons (encode_nat_Spec 8) (* Tire Pressure *)
          inil)) val
   Done.
+
+Opaque encode_SensorData_Spec.
 
 (* The 'schema' (in the SQL sense) of our database of subscribers. *)
 Definition WheelSensorSchema :=
@@ -309,20 +179,6 @@ Proof.
   intro; apply refineEquiv_Query_Where_And; eauto.
 Qed.
 
-Lemma IPAddress_decideable
-  : forall (addr addr' : IPAddress),
-    (addr = addr') \/ (addr <> addr').
-Proof.
-  intros; destruct (weq addr addr'); intuition.
-Qed.
-
-Lemma SensorID_decideable
-  : forall (id1 id2 : SensorID),
-    (id1 = id2) \/ (id1 <> id2).
-Proof.
-  intros; destruct (BoundedIndex_eq_dec id1 id2); intuition.
-Qed.
-
 Lemma refine_If_IfOpt {A B}
   : forall (a_opt : option A) (t e : Comp B),
     refine (If_Then_Else (If_Opt_Then_Else a_opt (fun _ => false) true)
@@ -332,50 +188,23 @@ Proof.
   destruct a_opt; simpl; intros; reflexivity.
 Qed.
 
+Global Arguments icons2 _ _ _ _ _ _ _ / .
+Global Arguments GetAttributeRaw _ !tup !attr / .
+Global Arguments ilist2_tl _ _ _ _ !il / .
+Global Arguments ilist2_hd _ _ _ _ !il / .
+
 Theorem SharpenedWheelSensor :
   FullySharpened WheelSensorSpec.
 Proof.
   start sharpening ADT.
   start_honing_QueryStructure'.
   hone method "AddSpeedSubscriber".
-  { simplify with monad laws.
-    etransitivity.
-    eapply refine_under_bind; intros.
-    implement_DuplicateFree;
-      try first [eapply IPAddress_decideable | eapply SensorID_decideable].
-    eapply refine_under_bind; intros.
-    implement_DuplicateFree_symmetry; eauto;
-    [ | apply refine_DuplicateFree; eauto ].
-    simplify with monad laws.
-    set_evars.
-    rewrite !refine_if_If.
-    rewrite refine_If_Then_Else_Duplicate.
-    setoid_rewrite refine_pick_eq'; simplify with monad laws.
-    finish honing.
-    intros; repeat decide equality;
-      first [eapply IPAddress_decideable | eapply SensorID_decideable].
-    simpl; simplify with monad laws.
-    subst; finish honing.
+  {
+    dropDuplicateFree.
   }
   hone method "AddTirePressureSubscriber".
-  { simplify with monad laws.
-    etransitivity.
-    eapply refine_under_bind; intros.
-    implement_DuplicateFree;
-      try first [eapply IPAddress_decideable | eapply SensorID_decideable].
-    eapply refine_under_bind; intros.
-    implement_DuplicateFree_symmetry; eauto;
-    [ | apply refine_DuplicateFree; eauto ].
-    simplify with monad laws.
-    set_evars.
-    rewrite !refine_if_If.
-    rewrite refine_If_Then_Else_Duplicate.
-    setoid_rewrite refine_pick_eq'; simplify with monad laws.
-    finish honing.
-    intros; repeat decide equality;
-      first [eapply IPAddress_decideable | eapply SensorID_decideable].
-    simpl; simplify with monad laws.
-    subst; finish honing.
+  {
+    dropDuplicateFree.
   }
   let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' 2 WheelSensorSchema ``"subscribers" ``"topic" id (fun i => ibound (indexb i))
                                                 (fun val =>
@@ -479,13 +308,21 @@ Proof.
     apply refine_If_Opt_Then_Else_Bind.
     unfold H2; eapply refine_If_Opt_Then_Else.
     intro; simplify with monad laws.
+    etransitivity.
     apply refine_bind.
-    apply refine_pick_val; eauto.
+    rewrite refine_pick_val; eauto.
+    finish honing.
     intro; simpl; finish honing.
     simplify with monad laws.
+    finish honing.
+    simplify with monad laws.
+    etransitivity.
     simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
+    rewrite refine_pick_val; eauto.
+    finish honing.
     intro; simpl; finish honing.
+    simplify with monad laws.
+    finish honing.
   }
   { simplify with monad laws.
     rewrite H0.
@@ -495,34 +332,43 @@ Proof.
     apply refine_If_Opt_Then_Else_Bind.
     unfold H2; eapply refine_If_Opt_Then_Else.
     intro; simplify with monad laws.
+    etransitivity.
     apply refine_bind.
-    apply refine_pick_val; eauto.
+    rewrite refine_pick_val; eauto.
+    finish honing.
     intro; simpl; finish honing.
     simplify with monad laws.
-    simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
-    intro; simpl; finish honing.
-  }
-  { simplify with monad laws.
-    rewrite H0.
+    finish honing.
+    simplify with monad laws.
     etransitivity.
-    apply refine_under_bind; intros.
     simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
+    rewrite refine_pick_val; eauto.
+    finish honing.
     intro; simpl; finish honing.
-    simpl. finish honing.
-  }
-  { simplify with monad laws.
-    rewrite H0.
-    etransitivity.
-    apply refine_under_bind; intros.
-    simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
-    intro; simpl; finish honing.
-    simpl.
+    simplify with monad laws.
     finish honing.
   }
-  unfold  Tuple_DecomposeRawQueryStructure_proj; simpl.
+  { simplify with monad laws.
+    rewrite H0.
+    etransitivity.
+    apply refine_under_bind; intros.
+    simpl; apply refine_bind.
+    apply refine_pick_val; eauto.
+    intro; simpl; finish honing.
+    simplify with monad laws; simpl.
+    finish honing.
+  }
+  { simplify with monad laws.
+    rewrite H0.
+    etransitivity.
+    apply refine_under_bind; intros.
+    simpl; apply refine_bind.
+    apply refine_pick_val; eauto.
+    intro; simpl; finish honing.
+    simplify with monad laws; simpl.
+    finish honing.
+  }
+  unfold Tuple_DecomposeRawQueryStructure_proj; simpl.
   unfold DecomposeRawQueryStructureSchema, DecomposeSchema; simpl.
   let makeIndex attrlist :=
       make_simple_indexes attrlist
