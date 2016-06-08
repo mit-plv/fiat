@@ -257,6 +257,8 @@ src/Examples/DnsServer/RecursiveDNSSchema.v
 src/Examples/HACMSDemo/DuplicateFree.v
 src/Examples/HACMSDemo/HACMSDemo.v
 src/Examples/HACMSDemo/WheelSensor.v
+src/Examples/HACMSDemo/WheelSensorDecoder.v
+src/Examples/HACMSDemo/WheelSensorEncoder.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v

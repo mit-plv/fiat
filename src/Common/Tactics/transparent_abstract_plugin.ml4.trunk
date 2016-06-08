@@ -15,15 +15,13 @@ module TRANSPARENT_ABSTRACT =
     open Safe_typing
     open Proof_global
     (* Copied from tactics.ml *)
-    let interpretable_as_section_decl evd d1 d2 = match d2,d1 with
-      | (_,Some _,_), (_,None,_) -> false
-      | (_,Some b1,t1), (_,Some b2,t2) ->
-	 Evd.e_eq_constr_univs evd b1 b2 && Evd.e_eq_constr_univs evd t1 t2
-      | (_,None,t1), (_,_,t2) -> Evd.e_eq_constr_univs evd t1 t2
-
-    (* Copied from tactics.ml *)
-    let new_exact_no_check c =
-      Proofview.Refine.refine ~unsafe:true (fun h -> (h, c))
+    let interpretable_as_section_decl evd d1 d2 =
+      let open Context.Named.Declaration in
+      match d2, d1 with
+      | LocalDef _, LocalAssum _ -> false
+      | LocalDef (_,b1,t1), LocalDef (_,b2,t2) ->
+        Evd.e_eq_constr_univs evd b1 b2 && Evd.e_eq_constr_univs evd t1 t2
+      | LocalAssum (_,t1), d2 -> Evd.e_eq_constr_univs evd t1 (get_type d2)
 
     (* [tac] : string representing identifier *)
     (* [args] : tactic arguments *)
@@ -192,7 +190,7 @@ module TRANSPARENT_ABSTRACT =
 	  let solve =
 	    Proofview.Unsafe.tclEVARS evd <*>
 	      Proofview.tclEFFECTS effs <*>
-	      new_exact_no_check (Term.applist (df, args))
+	      Tactics.exact_no_check (Term.applist (df, args))
 	  in
 	  if not safe then Proofview.mark_as_unsafe <*> solve else solve
 	end
