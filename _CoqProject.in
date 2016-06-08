@@ -247,12 +247,16 @@ src/Examples/CacheADT/TrivialADTCache.v
 src/Examples/DnsServer/AuthoritativeDNSSchema.v
 src/Examples/DnsServer/AuthoritativeDNSServer.v
 src/Examples/DnsServer/DecomposeEnumField.v
+src/Examples/DnsServer/DecomposeSumField.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
 src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
 src/Examples/DnsServer/RecursiveDNSSchema.v
+src/Examples/HACMSDemo/DuplicateFree.v
+src/Examples/HACMSDemo/HACMSDemo.v
+src/Examples/HACMSDemo/WheelSensor.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v

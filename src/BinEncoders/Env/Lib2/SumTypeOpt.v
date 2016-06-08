@@ -1,6 +1,7 @@
 Require Import
         Fiat.Common.ilist
         Fiat.Common.SumType
+        Fiat.Common.IterateBoundedIndex
         Fiat.Examples.DnsServer.Packet
         Fiat.BinEncoders.Env.Common.Specs.
 
@@ -22,6 +23,34 @@ Section SumType.
              (st : SumType types)
     : CacheEncode -> Comp (B * CacheEncode) :=
     ith encoders (SumType_index types st) (SumType_proj types st).
+
+  Definition encode_SumType_Impl {m}
+             (types : Vector.t Type m)
+             (encoders : ilist (B := fun T => T -> CacheEncode -> (B * CacheEncode)) types)
+             (st : SumType types)
+    : CacheEncode -> (B * CacheEncode) :=
+    ith encoders (SumType_index types st) (SumType_proj types st).
+
+  Lemma refine_encode_SumType {m}
+        (types : Vector.t Type m)
+        (encoder_Specs : ilist (B := fun T => T -> CacheEncode -> Comp (B * CacheEncode)) types)
+        (encoder_Impls : ilist (B := fun T => T -> CacheEncode -> (B * CacheEncode)) types)
+        (st : SumType types)
+        (ce : CacheEncode)
+    :
+      Iterate_Ensemble_BoundedIndex'
+        (fun idx => forall a ce,
+             refine (ith encoder_Specs idx a ce)
+                    (ret (ith encoder_Impls idx a ce)))
+      -> refine (encode_SumType_Spec types encoder_Specs st ce) (ret (encode_SumType_Impl types encoder_Impls st ce)).
+  Proof.
+    intros.
+    unfold encode_SumType_Impl, encode_SumType_Spec; simpl.
+    remember (SumType_proj types st); clear Heqn.
+    revert n ce; pattern (SumType_index types st).
+    eapply Iterate_Ensemble_equiv'.
+    apply H.
+  Qed.
 
   Definition decode_SumType {m}
              (types : Vector.t Type m)

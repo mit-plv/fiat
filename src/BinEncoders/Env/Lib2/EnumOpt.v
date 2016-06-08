@@ -48,6 +48,14 @@ Section Enum.
     let fin := i.(indexb).(ibound)
     in  encode_word_Impl (nth tb fin) ce.
 
+  Lemma refine_encode_enum :
+    forall i ce,
+      refine (encode_enum_Spec i ce)
+             (ret (encode_enum_Impl i ce)).
+  Proof.
+    intros; reflexivity.
+  Qed.
+
   Fixpoint word_indexed {n : nat}
            (w : word sz)
            (t : t (word sz) n) : option (Fin.t n)

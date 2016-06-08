@@ -1,6 +1,7 @@
 Require Import Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Lists.List.
+        Coq.Lists.List
+        Coq.Structures.OrderedType.
 
 Require Import
         Fiat.BinEncoders.Env.BinLib.Core
@@ -17,13 +18,16 @@ Require Import
 
 Require Import
         Fiat.Common.SumType
+        Fiat.Examples.Tutorial.Tutorial
         Fiat.Examples.DnsServer.DecomposeEnumField
         Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
-        Fiat.Examples.HACMSDemo.DuplicateFree.
+        Fiat.QueryStructure.Automation.MasterPlan
+        Fiat.Examples.HACMSDemo.DuplicateFree
+        Fiat.Examples.HACMSDemo.HACMSDemo.
 
 Require Import
         Bedrock.Word
@@ -66,7 +70,6 @@ Qed.
 Hint Resolve IPAddress_decideable.
 Hint Resolve SensorID_decideable.
 
-
 Variable cache : Cache.
 Variable cacheAddNat : CacheAdd cache nat.
 Definition transformer : Transformer bin := btransformer.
@@ -82,6 +85,47 @@ Definition encode_SensorData_Spec (val : SensorType) :=
   (icons (encode_nat_Spec 8) (* Tire Pressure *)
          inil)) val
   Done.
+
+Definition encode_SensorData_Impl (val : SensorType) ce :=
+  let (bin', ce') := encode_enum_Impl SensorTypeCode {| bindex := SensorIDs[@SumType_index _ val];
+                                                        indexb := {| ibound := SumType_index _ val;
+                                                                     boundi := @eq_refl _ _ |} |} ce in
+  let (bin'', ce'') := (encode_SumType_Impl (B := bin) (cache := cache) SensorTypes
+                (icons (encode_nat_Impl 8) (* Wheel Speed *)
+                       (icons (encode_nat_Impl 8) (* Tire Pressure *)
+                              inil)) val ce') in
+  (app bin' bin'', ce'').
+
+Lemma refine_encode_SensorData_Impl
+  : forall ce (val : SensorType),
+    refine (encode_SensorData_Spec val ce)
+           (ret (encode_SensorData_Impl val ce)).
+Proof.
+  intros.
+  unfold encode_SensorData_Spec, encode_SensorData_Impl.
+  unfold compose, Bind2.
+  setoid_rewrite refine_encode_enum; simplify with monad laws.
+  rewrite (@refine_encode_SumType
+          bin
+          _
+          2
+          ([nat : Type; nat : Type])
+          _
+          (icons (B := (fun T : Type =>
+                          T -> @CacheEncode cache -> bin * @CacheEncode cache)) (encode_nat_Impl 8)
+                 (icons (B := (fun T : Type =>
+                                 T -> @CacheEncode cache -> bin * @CacheEncode cache))
+                        (encode_nat_Impl 8) (inil (A := Type))))).
+  simplify with monad laws.
+  simpl; rewrite app_nil_r.
+  unfold SensorTypes.
+  destruct (encode_SumType_Impl [nat : Type; nat : Type]
+                                (icons (encode_nat_Impl 8) (icons (encode_nat_Impl 8) inil)) val
+                                (addE ce 4)).
+  simpl; f_equiv.
+  simpl; repeat apply Build_prim_and; eauto;
+    intros; eapply refine_encode_nat.
+Qed.
 
 Opaque encode_SensorData_Spec.
 
@@ -147,65 +191,15 @@ Definition WheelSensorSpec : ADT WheelSensorSig :=
           ret (r, subs)
   }%methDefParsing.
 
-Lemma refineEquiv_Query_Where_And
-      {ResultT}
-  : forall P P' bod,
-    (P \/ ~ P)
-    -> refineEquiv (@Query_Where ResultT (P /\ P') bod)
-                (Query_Where P (Query_Where P' bod)).
-Proof.
-  split; unfold refine, Query_Where; intros;
-    computes_to_inv; computes_to_econstructor;
-      intuition.
-  - computes_to_inv; intuition.
-  - computes_to_inv; intuition.
-  - computes_to_econstructor; intuition.
-Qed.
-
-Corollary refineEquiv_For_Query_Where_And
-          {ResultT}
-          {qs_schema}
-  : forall (r : UnConstrQueryStructure qs_schema) idx P P' bod,
-    (forall tup, P tup \/ ~ P tup)
-    -> refine (For (UnConstrQuery_In
-                      r idx
-                      (fun tup => @Query_Where ResultT (P tup /\ P' tup) (bod tup))))
-              (For (UnConstrQuery_In
-                      r idx
-                      (fun tup => Where (P tup) (Where (P' tup) (bod tup))))).
-Proof.
-  intros; apply refine_refine_For_Proper.
-  apply refine_UnConstrQuery_In_Proper.
-  intro; apply refineEquiv_Query_Where_And; eauto.
-Qed.
-
-Lemma refine_If_IfOpt {A B}
-  : forall (a_opt : option A) (t e : Comp B),
-    refine (If_Then_Else (If_Opt_Then_Else a_opt (fun _ => false) true)
-                         t e)
-           (If_Opt_Then_Else a_opt (fun _ => e) t).
-Proof.
-  destruct a_opt; simpl; intros; reflexivity.
-Qed.
-
-Global Arguments icons2 _ _ _ _ _ _ _ / .
-Global Arguments GetAttributeRaw _ !tup !attr / .
-Global Arguments ilist2_tl _ _ _ _ !il / .
-Global Arguments ilist2_hd _ _ _ _ !il / .
 
 Theorem SharpenedWheelSensor :
-  FullySharpened WheelSensorSpec.
+    FullySharpened WheelSensorSpec.
 Proof.
   start sharpening ADT.
   start_honing_QueryStructure'.
-  hone method "AddSpeedSubscriber".
-  {
-    dropDuplicateFree.
-  }
-  hone method "AddTirePressureSubscriber".
-  {
-    dropDuplicateFree.
-  }
+  (* We first insert checks for the DuplicateFree constraints.  *)
+  hone method "AddSpeedSubscriber". { dropDuplicateFree. }
+  hone method "AddTirePressureSubscriber". { dropDuplicateFree. }
   let AbsR' := constr:(@DecomposeRawQueryStructureSchema_AbsR' 2 WheelSensorSchema ``"subscribers" ``"topic" id (fun i => ibound (indexb i))
                                                 (fun val =>
                                                    {| bindex := _;
@@ -216,169 +210,41 @@ Proof.
     apply refine_pick_val.
     apply DecomposeRawQueryStructureSchema_empty_AbsR.
   }
-  {
-    simplify with monad laws.
-    etransitivity.
-    apply refine_under_bind_both; intros.
-    apply (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0 Fin.F1).
-    apply refine_under_bind_both; intros.
-    etransitivity.
-    eapply (refineEquiv_For_Query_Where_And r_o Fin.F1).
-    intros; eapply SensorID_decideable.
-    simpl.
-    setoid_rewrite (@refine_QueryIn_Where _ WheelSensorSchema Fin.F1 _ _ _ _ _ H0 _ _ _ ).
-    unfold Tuple_DecomposeRawQueryStructure_inj; simpl.
-    reflexivity.
-    rewrite refine_If_IfOpt.
-    etransitivity.
-    eapply refine_If_Opt_Then_Else_Bind; simpl.
-    apply refine_If_Opt_Then_Else; unfold pointwise_relation; intros.
-    simplify with monad laws.
-    rewrite_drill.
-    apply refine_pick_val.
-    apply H0.
-    simpl; finish honing.
-    simplify with monad laws; simpl.
-    rewrite_drill.
-    apply refine_pick_val.
-    apply (DecomposeRawQueryStructureSchema_Insert_AbsR_eq H0).
-    finish honing.
-    simpl; finish honing.
-  }
-  {
-    simplify with monad laws.
-    etransitivity.
-    apply refine_under_bind_both; intros.
-    apply (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0 Fin.F1).
-    apply refine_under_bind_both; intros.
-    etransitivity.
-    eapply (refineEquiv_For_Query_Where_And r_o Fin.F1).
-    intros; eapply SensorID_decideable.
-    simpl.
-    setoid_rewrite (@refine_QueryIn_Where _ WheelSensorSchema Fin.F1 _ _ _ _ _ H0 _ _ _ ).
-    unfold Tuple_DecomposeRawQueryStructure_inj; simpl.
-    reflexivity.
-    rewrite refine_If_IfOpt.
-    etransitivity.
-    eapply refine_If_Opt_Then_Else_Bind; simpl.
-    apply refine_If_Opt_Then_Else; unfold pointwise_relation; intros.
-    simplify with monad laws.
-    rewrite_drill.
-    apply refine_pick_val.
-    apply H0.
-    simpl; finish honing.
-    simplify with monad laws; simpl.
-    rewrite_drill.
-    apply refine_pick_val.
-    apply (DecomposeRawQueryStructureSchema_Insert_AbsR_eq H0).
-    finish honing.
-    simpl; finish honing.
-  }
-  {
-    simplify with monad laws.
-    rewrite_drill.
-    setoid_rewrite (@refine_QueryIn_Where _ WheelSensorSchema Fin.F1 _ _ _ _ _ H0 _ _ _ ).
-    unfold Tuple_DecomposeRawQueryStructure_inj; simpl.
-    finish honing.
-    rewrite_drill.
-    apply refine_pick_val; eassumption.
-    simpl.
-    finish honing.
-  }
-  { simplify with monad laws.
-    rewrite_drill.
-    setoid_rewrite (@refine_QueryIn_Where _ WheelSensorSchema Fin.F1 _ _ _ _ _ H0 _ _ _ ).
-    unfold Tuple_DecomposeRawQueryStructure_inj; simpl.
-    finish honing.
-    rewrite_drill.
-    apply refine_pick_val; eassumption.
-    simpl.
-    finish honing.
-  }
-  hone representation using (fun r_o r_n => snd r_o = r_n).
-  { simplify with monad laws.
-    apply refine_pick_val.
-    reflexivity.
-  }
-  { simplify with monad laws.
-    rewrite H0.
-    rewrite_drill; try (clear r_o H0; finish honing).
-    rewrite_drill; try (clear r_o H0; finish honing).
-    etransitivity.
-    apply refine_If_Opt_Then_Else_Bind.
-    unfold H2; eapply refine_If_Opt_Then_Else.
-    intro; simplify with monad laws.
-    etransitivity.
-    apply refine_bind.
-    rewrite refine_pick_val; eauto.
-    finish honing.
-    intro; simpl; finish honing.
-    simplify with monad laws.
-    finish honing.
-    simplify with monad laws.
-    etransitivity.
-    simpl; apply refine_bind.
-    rewrite refine_pick_val; eauto.
-    finish honing.
-    intro; simpl; finish honing.
-    simplify with monad laws.
-    finish honing.
-  }
-  { simplify with monad laws.
-    rewrite H0.
-    rewrite_drill; try (clear r_o H0; finish honing).
-    rewrite_drill; try (clear r_o H0; finish honing).
-    etransitivity.
-    apply refine_If_Opt_Then_Else_Bind.
-    unfold H2; eapply refine_If_Opt_Then_Else.
-    intro; simplify with monad laws.
-    etransitivity.
-    apply refine_bind.
-    rewrite refine_pick_val; eauto.
-    finish honing.
-    intro; simpl; finish honing.
-    simplify with monad laws.
-    finish honing.
-    simplify with monad laws.
-    etransitivity.
-    simpl; apply refine_bind.
-    rewrite refine_pick_val; eauto.
-    finish honing.
-    intro; simpl; finish honing.
-    simplify with monad laws.
-    finish honing.
-  }
-  { simplify with monad laws.
-    rewrite H0.
-    etransitivity.
-    apply refine_under_bind; intros.
-    simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
-    intro; simpl; finish honing.
-    simplify with monad laws; simpl.
-    finish honing.
-  }
-  { simplify with monad laws.
-    rewrite H0.
-    etransitivity.
-    apply refine_under_bind; intros.
-    simpl; apply refine_bind.
-    apply refine_pick_val; eauto.
-    intro; simpl; finish honing.
-    simplify with monad laws; simpl.
-    finish honing.
-  }
-  unfold Tuple_DecomposeRawQueryStructure_proj; simpl.
+  { doAny ltac:(implement_DecomposeRawQueryStructure)
+                 rewrite_drill ltac:(finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure)
+                 rewrite_drill ltac:(finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure)
+                 rewrite_drill ltac:(simpl; finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure)
+                 rewrite_drill ltac:(simpl; finish honing). }
+  simpl; hone representation using (fun r_o r_n => snd r_o = r_n).
+  { simplify with monad laws; apply refine_pick_val; reflexivity. }
+  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
+                 ltac:(rewrite_drill; simpl)
+                        ltac:(finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
+                 ltac:(rewrite_drill; simpl)
+                        ltac:(finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
+                 ltac:(rewrite_drill; simpl)
+                        ltac:(finish honing). }
+  { doAny ltac:(implement_DecomposeRawQueryStructure' H0)
+                 ltac:(rewrite_drill; simpl)
+                        ltac:(finish honing). }
   unfold DecomposeRawQueryStructureSchema, DecomposeSchema; simpl.
-  let makeIndex attrlist :=
-      make_simple_indexes attrlist
-        ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-        ltac:(LastCombineCase5 BuildLastEqualityIndex) in
-  GenerateIndexesForAll EqExpressionAttributeCounter ltac:(fun attrlist =>
-                                                             let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in makeIndex attrlist').
-  Require Import Fiat.Examples.Tutorial.Tutorial.
-  simplify with monad laws.
+  chooseIndexes.
   initializer.
-  - implement_insert CreateTerm EarlyIndex LastIndex
-                     makeClause_dep EarlyIndex_dep LastIndex_dep.
-    simplify with monad laws.
+  insertOne.
+  insertOne.
+  rewrite refine_encode_SensorData_Impl; planOne.
+  rewrite refine_encode_SensorData_Impl; planOne.
+  final_optimizations.
+  determinize.
+  choose_data_structures.
+  final_simplification.
+  use_this_one.
+Defined.
+
+Definition WheelSensorImpl := Eval simpl in projT1 SharpenedWheelSensor.
+Print WheelSensorImpl.

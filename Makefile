@@ -136,6 +136,7 @@ EXTRACTION_VO := $(filter src/CertifiedExtraction/%.vo,$(VOFILES)) src/Examples/
 FACADE_TEST_VO := src/Examples/FacadeTest.vo
 ICS_VO := $(filter-out $(WATER_TANK_EXTRACT_VO),$(filter src/Examples/Ics/%.vo,$(VOFILES)))
 TUTORIAL_VO := src/Examples/Tutorial/Tutorial.vo src/Examples/Tutorial/NotInList.vo src/Examples/Tutorial/Queue.vo src/Examples/Tutorial/BookstoreMoreManual.vo
+HACMSDEMO_VO := src/Examples/HACMSDemo/DuplicateFree.vo src/Examples/HACMSDemo/HACMSDemo.vo src/Examples/HACMSDemo/WheelSensor.vo
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(TUTORIAL_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
 BINENCODERS_VO := $(filter src/BinEncoders/%.vo,$(VOFILES))
@@ -154,6 +155,7 @@ extraction: $(EXTRACTION_VO)
 facade-test: $(FACADE_TEST_VO)
 ics: $(ICS_VO)
 tutorial: $(TUTORIAL_VO)
+hacms-demo: $(HACMSDEMO_VO)
 fiat4monitors: $(FIAT4MONITORS_VO)
 examples: $(EXAMPLES_VO)
 binencoders: $(BINENCODERS_VO)

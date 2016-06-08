@@ -13,11 +13,35 @@ Definition allAttributes heading
   : list (Attributes heading) :=
   BuildFinUpTo (NumAttr heading).
 
+Fixpoint tupleAgree_computational'
+         {h}
+         (tup1 tup2 : @RawTuple h)
+         (attrlist : list (Attributes h))
+  {struct attrlist} :=
+  match attrlist with
+  | [] => True
+  | [attr] => GetAttributeRaw tup1 attr = GetAttributeRaw tup2 attr
+  | attr :: more => GetAttributeRaw tup1 attr = GetAttributeRaw tup2 attr /\ tupleAgree_computational' tup1 tup2 more
+  end.
+
+Lemma tupleAgree_equivalence' :
+  forall {h} tup1 tup2 attrlist,
+    @tupleAgree_computational h tup1 tup2 attrlist <->
+    @tupleAgree_computational' h tup1 tup2 attrlist.
+Proof.
+  induction attrlist; simpl; intros.
+  - intuition eauto.
+  - destruct attrlist; simpl.
+    + intuition.
+    + simpl in *; intuition eauto.
+Qed.
+
 Lemma agreeAllAttributes_eq
   : forall heading tup tup',
-    tupleAgree_computational tup tup'
+    tupleAgree_computational' tup tup'
                              (allAttributes heading) <-> tup = tup'.
 Proof.
+  setoid_rewrite <- tupleAgree_equivalence'.
   destruct heading.
   induction AttrList; unfold RawTuple; simpl; intros.
   - destruct tup; destruct tup'; intuition.
@@ -46,7 +70,7 @@ Lemma refine_DuplicateFree
                    GetUnConstrRelation qs Ridx tup ->
                    DuplicateFree tup' (indexedElement tup))}
       (xs <- For (UnConstrQuery_In qs Ridx
-                           (fun tup => Where (tupleAgree_computational tup tup' (allAttributes _) )
+                           (fun tup => Where (tupleAgree_computational' tup tup' (allAttributes _) )
                                              Return tup));
        ret (If_Opt_Then_Else (hd_error xs) (fun _ => false) true)).
 Proof.
@@ -55,7 +79,7 @@ Proof.
   destruct v0; simpl; computes_to_econstructor; simpl; intros.
   unfold not; intro.
   unfold UnConstrQuery_In in H0; simpl; subst.
-  apply (For_computes_to_nil (fun tup0 => (tupleAgree_computational tup0
+  apply (For_computes_to_nil (fun tup0 => (tupleAgree_computational' tup0
                                                                     (indexedElement tup)
                         (allAttributes
                            (GetNRelSchemaHeading (qschemaSchemas qsSchema)

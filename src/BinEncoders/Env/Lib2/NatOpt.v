@@ -20,6 +20,13 @@ Section Nat.
   Definition encode_nat_Impl (n : nat) (ce : CacheEncode) : B * CacheEncode :=
     encode_word_Impl (natToWord sz n) ce.
 
+  Lemma refine_encode_nat :
+    forall n ce,
+      refine (encode_nat_Spec n ce) (ret (encode_nat_Impl n ce)).
+  Proof.
+    reflexivity.
+  Qed.
+
   Definition decode_nat (b : B) (cd : CacheDecode) : option (nat * B * CacheDecode) :=
     `(w, b, cd) <- decode_word (sz:=sz) b cd;
       Some (wordToNat w, b, cd).
