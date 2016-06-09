@@ -45,7 +45,7 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 STRICT_COQDEP ?= 1
 
-ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_tactics.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml
+ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_tactics.ml
 
 -include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
