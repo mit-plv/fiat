@@ -1,0 +1,56 @@
+module WITH_DB =
+struct
+
+  (* [tac] : string representing identifier *)
+  (* [args] : tactic arguments *)
+  (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+  let ltac_lcall tac args =
+    Tacexpr.TacArg(Util.dummy_loc,Tacexpr.TacCall(Util.dummy_loc, Glob_term.ArgVar(Util.dummy_loc, Names.id_of_string tac),args))
+
+  (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+  let ltac_letin (x, e1) e2 =
+    Tacexpr.TacLetIn(false,[(Util.dummy_loc,Names.id_of_string x),e1],e2)
+
+  (* [ltac_apply] : Run a tactic by let binding it... *)
+  let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
+    Tacinterp.eval_tactic
+      (ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args))
+
+  (* Lift a constructor to an ltac value. *)
+  let to_ltac_val c = Tacexpr.TacDynamic(Util.dummy_loc, Pretyping.constr_in c)
+
+  let with_hint_db dbs tacK =
+    (* [dbs] : list of hint databases *)
+    (* [tacK] : tactic to run on a hint *)
+    let syms = ref [] in
+    let _ =
+      List.iter (fun l ->
+		 (* Fetch the searchtable from the database*)
+		 let db = Auto.searchtable_map l in
+		 (* iterate over the hint database, pulling the hint *)
+		 (* list out for each. *)
+		 Auto.Hint_db.iter (fun _ hintlist ->
+				    syms := hintlist::!syms) db) dbs in
+    (* Now iterate over the list of list of hints, *)
+    List.fold_left
+      (fun tac hints ->
+       List.fold_left
+	 (fun tac hint ->
+	  (* match the type of the hint to pull out the lemma *)
+	  match hint.Auto.code with
+	    Auto.Give_exact lem
+	  | Auto.Res_pf (lem,_)
+	  | Auto.ERes_pf (lem,_) ->
+	     (* *)
+	     let this_tac : Proof_type.tactic =
+	       ltac_apply tacK [to_ltac_val lem] in
+	     Tacticals.tclORELSE this_tac tac
+	  | _ -> tac)
+	 tac hints)
+      (Tacticals.tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
+
+  let add_resolve_to_db lem db =
+    let _ = Auto.add_hints true db (Auto.HintsResolveEntry [(Some 1,false,Auto.PathAny,lem)]) in
+    Tacticals.tclIDTAC
+
+end

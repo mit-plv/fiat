@@ -192,7 +192,7 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4') | $(SORT_COQPROJECT)) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4'; echo 'src/Common/Tactics/hint_db_extra_tactics.ml'; echo 'src/Common/Tactics/transparent_abstract_tactics.ml'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
 # >= 8.5 if it exists
@@ -222,8 +222,10 @@ endif
 endif
 
 # see http://stackoverflow.com/a/9691619/377022 for why we need $(eval $(call ...))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_tactics.ml,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/hint_db_extra_plugin.ml4,$(EXPECTED_EXT)))
 $(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_plugin.ml4,$(EXPECTED_EXT)))
+$(eval $(call SET_ML_COMPATIBILITY,src/Common/Tactics/transparent_abstract_tactics.ml,$(EXPECTED_EXT)))
 
 endif
 

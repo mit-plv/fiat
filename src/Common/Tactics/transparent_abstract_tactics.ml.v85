@@ -1,0 +1,238 @@
+module TRANSPARENT_ABSTRACT =
+  struct
+    open Environ
+    open Context
+    open Termops
+    open Evarutil
+    open Errors
+    open Decl_kinds
+    open Pfedit
+    open Names
+    open Nameops
+    open Tacticals.New
+    open Tacmach.New
+    open Proofview.Notations
+    open Safe_typing
+    open Proof_global
+    (* Copied from tactics.ml *)
+    let interpretable_as_section_decl evd d1 d2 = match d2,d1 with
+      | (_,Some _,_), (_,None,_) -> false
+      | (_,Some b1,t1), (_,Some b2,t2) ->
+	 Evd.e_eq_constr_univs evd b1 b2 && Evd.e_eq_constr_univs evd t1 t2
+      | (_,None,t1), (_,_,t2) -> Evd.e_eq_constr_univs evd t1 t2
+
+    (* Copied from tactics.ml *)
+    let new_exact_no_check c =
+      Proofview.Refine.refine ~unsafe:true (fun h -> (h, c))
+
+    (* [tac] : string representing identifier *)
+    (* [args] : tactic arguments *)
+    (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+    let ltac_lcall tac args =
+      Tacexpr.TacArg(Loc.dummy_loc,Tacexpr.TacCall(Loc.dummy_loc, Misctypes.ArgVar(Loc.dummy_loc, Names.id_of_string tac),args))
+
+    (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+    let ltac_letin (x, e1) e2 =
+      Tacexpr.TacLetIn(false,[(Loc.dummy_loc,Names.id_of_string x),e1],e2)
+
+    (* [ltac_apply] : Run a tactic by let binding it... *)
+    let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
+      ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args)
+
+    (* Lift a constr to an ltac value. *)
+    let to_ltac_val c = Tacexpr.TacDynamic(Loc.dummy_loc, Pretyping.constr_in c)
+
+    (* Build a new definition for [term] with identifier [id] and call *)
+    (* the [tacK] tactic with the result, using [lcl] to decide if the *)
+    (* definition is local. *)
+    let transparent_abstract_term id (term : Term.constr) tacK gk lcl =
+      (* Apply to each goal, normalizing evars in each first. *)
+      Proofview.Goal.nf_enter begin
+	  fun gl ->
+	  let current_sign = Global.named_context()
+	  and global_sign = Proofview.Goal.hyps gl in
+	  let evdref = ref (Proofview.Goal.sigma gl) in
+	  (* Identify which hypotheses are local and which are section variables. *)
+	  let sign,secsign =
+	    List.fold_right
+	      (fun (id,_,_ as d) (s1,s2) ->
+	       if mem_named_context id current_sign &&
+		    interpretable_as_section_decl evdref (lookup_named id current_sign) d
+               then (s1,push_named_context_val d s2)
+	       else (add_named_decl d s1,s2))
+	      global_sign (empty_named_context,empty_named_context_val) in
+	  (* Build the identifier for the new term *)
+	  let id = Namegen.next_global_ident_away id (pf_ids_of_hyps gl) in
+	  (* Construct the type of the term by abstracting over the *)
+	  (* local hypotheses and definitions. *)
+	  let (_, termType) = Tacmach.New.pf_type_of gl term in
+	  let termType = it_mkNamedProd_or_LetIn termType sign in
+	  let termType =
+	    try flush_and_check_evars !evdref termType
+	    with Uninstantiated_evar _ ->
+	      error "\"abstract\" cannot handle existentials." in
+	  (* *)
+	  let term =
+	    try flush_and_check_evars !evdref term
+	    with Uninstantiated_evar _ ->
+	      error "\"abstract\" cannot handle existentials." in
+	  let evd, ctx, termType =
+	    (* FIXME: should be done only if the tactic succeeds *)
+	    let evd, nf = nf_evars_and_universes !evdref in
+	    let ctx = Evd.universe_context_set evd in
+	    evd, ctx, nf termType
+	  in
+	  let constr = { Entries.const_entry_body =
+			   Future.from_val ((term ,Univ.ContextSet.empty),
+					    Safe_typing.empty_private_constants);
+			 (* FIXME: what's the right set of section variables *)
+			 const_entry_secctx = Proof_global.get_used_variables ();
+			 (* bendy: Not sure how these feedback entries are used. None seems safe? *)
+			 const_entry_feedback = None;
+			 const_entry_type = Some termType;
+
+			 (* bendy: I assume we don't want polymorphic definitions?*)
+			 const_entry_polymorphic = false;
+			 const_entry_universes = snd (Evd.universe_context evd);
+
+			 const_entry_opaque = false;
+			 (* bendy: again, not sure how this is used, false appears *)
+			 (* to be the default in the code base.  *)
+			 const_entry_inline_code = false } in
+	  (* Create a global definition for const *)
+	  let cd = Entries.DefinitionEntry constr in
+	  let decl = (cd, IsDefinition Definition) in
+	  (** bendy: Seems okay for new constant to be local, but may have unintended **)
+	  (** consequences if abstracted terms should be accessed outside the proof. **)
+	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
+	  let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
+	  (* Get the universe context associated with the evar map [evd] *)
+	  let ectx = Evd.evar_universe_context evd in
+	  (* Universe Variable stuff? *)
+	  let evd = Evd.set_universe_context evd ectx in
+	  (* Build a private constant for the new constant *)
+	  let eff = private_con_of_con (Global.safe_env ()) cst in
+	  (* Add that constant to the private constants *)
+	  let effs = add_private eff
+				 Entries.(snd (Future.force constr.const_entry_body)) in
+	  Proofview.Unsafe.tclEVARS evd <*>
+	    Proofview.tclEFFECTS effs <*>
+	    Tacinterp.eval_tactic (ltac_apply tacK [to_ltac_val df])
+	end
+
+    (* Solve the goal [gk] by tactic [tak] and save the constructed term as *)
+    (* a transparent definition with identifier [id], using [lcl] to decide *)
+    (* if the definition is local.  *)
+    let transparent_abstract_by_tac id tac gk lcl =
+      (* Apply to each goal, normalizing evars in each first. *)
+      Proofview.Goal.nf_enter begin
+	  fun gl ->
+	  let current_sign = Global.named_context()
+	  and global_sign = Proofview.Goal.hyps gl in
+	  let evdref = ref (Proofview.Goal.sigma gl) in
+	  (* Identify which hypotheses are local and which are section variables. *)
+	  let sign,secsign =
+	    List.fold_right
+	      (fun (id,_,_ as d) (s1,s2) ->
+	       if mem_named_context id current_sign &&
+		    interpretable_as_section_decl evdref (lookup_named id current_sign) d
+               then (s1,push_named_context_val d s2)
+	       else (add_named_decl d s1,s2))
+	      global_sign (empty_named_context,empty_named_context_val) in
+	  (* Build the identifier for the new term *)
+	  let id = Namegen.next_global_ident_away id (pf_ids_of_hyps gl) in
+	  (* Construct the type of the term by abstracting over the *)
+	  (* local hypotheses and definitions. *)
+	  let concl = it_mkNamedProd_or_LetIn (Proofview.Goal.concl gl) sign in
+	  (* Make sure there are no uninstantiated evars in the type of the target. *)
+	  let concl =
+	    try flush_and_check_evars !evdref concl
+	    with Uninstantiated_evar _ ->
+	      error "\"abstract\" cannot handle existentials." in
+	  (* Normalize evars in the goal, for reasons unknown *)
+	  let evd, ctx, concl =
+	    (* FIXME: should be done only if the tactic succeeds *)
+	    let evd, nf = nf_evars_and_universes !evdref in
+	    let ctx = Evd.universe_context_set evd in
+	    evd, ctx, nf concl
+	  in
+	  (* This is the tactic script that should solve the goal. *)
+	  let solve_tac = tclCOMPLETE (tclTHEN (tclDO (List.length sign) Tactics.intro) tac) in
+	  (* Get the universe context associated with the evar map [evd] *)
+	  let ectx = Evd.evar_universe_context evd in
+	  let (const, safe, ectx) =
+	    (* Actually build the constant using [solve_tac] *)
+	    try Pfedit.build_constant_by_tactic ~goal_kind:gk id ectx secsign concl solve_tac
+	    with Logic_monad.TacticFailure e as src ->
+	      (* if the tactic [tac] fails, it reports a [TacticFailure e], *)
+	      (* which is an error irrelevant to the proof system (in fact it *)
+	      (* means that [e] comes from [tac] failing to yield enough *)
+	      (* success). Hence it reraises [e]. *)
+	      let (_, info) = Errors.push src in
+	      Exninfo.iraise (e, info)
+	  in
+	  (* Create a global definition for const *)
+	  let cd = Entries.DefinitionEntry const in
+ 	  let decl = (cd, IsDefinition Definition) in
+	  (** bendy: Seems okay for new constant to be local, but may have unintended **)
+	  (** consequences if abstracted terms should be accessed outside the proof. **)
+	  let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
+	  (* Tactic Monad *)
+	  let df, ctx = Universes.unsafe_constr_of_global (Globnames.ConstRef cst) in
+	  (* Universe Variable stuff? *)
+	  let evd = Evd.set_universe_context evd ectx in
+	  (* Build a private constant for the new constant *)
+	  let eff = private_con_of_con (Global.safe_env ()) cst in
+	  (* Add that constant to the private constants *)
+	  let effs = add_private eff
+				 Entries.(snd (Future.force const.const_entry_body)) in
+	  (* Get the local arguments to apply the new constant to. *)
+	  let args = List.rev (instance_from_named_context sign) in
+	  (* Use the definition built above to solve the goal. *)
+	  let solve =
+	    Proofview.Unsafe.tclEVARS evd <*>
+	      Proofview.tclEFFECTS effs <*>
+	      new_exact_no_check (Term.applist (df, args))
+	  in
+	  if not safe then Proofview.mark_as_unsafe <*> solve else solve
+	end
+
+    (* Default identifier *)
+    let anon_id = Id.of_string "anonymous"
+
+    let tclTRABSTRACT name_op tac =
+      (* What's the right default goal kind?*)
+      let default_gk = (Global, false, Proof Theorem) in
+      let s, gk = match name_op with
+	| Some s ->
+	   (try let _, gk, _ = current_proof_statement () in s, gk
+	    with NoCurrentProof -> s, default_gk)
+	| None   ->
+	   let name, gk =
+	     try let name, gk, _ = current_proof_statement () in name, gk
+	     with NoCurrentProof -> anon_id, default_gk in
+	   add_suffix name "_term", gk
+      in
+      transparent_abstract_by_tac s tac gk false
+
+    let tclABSTRACTTERM name_op term tacK =
+      (* What's the right default goal kind?*)
+      let default_gk = (Global, false, Proof Theorem) in
+      let s, gk = match name_op with
+	| Some s ->
+	   (try let _, gk, _ = current_proof_statement () in s, gk
+	    with NoCurrentProof -> s, default_gk)
+	| None   ->
+	   let name, gk =
+	     try let name, gk, _ = current_proof_statement () in name, gk
+	     with NoCurrentProof -> anon_id, default_gk in
+	   add_suffix name "_term", gk
+      in
+      transparent_abstract_term s term tacK gk false
+  end
+
+    (*let tclABSTRACT2 name_op tac gl =
+    let s = match name_op with
+      | Some s -> s
+      | None   -> Nameops.add_suffix (Pfedit.get_current_proof_name ()) "_term"
+    in *)

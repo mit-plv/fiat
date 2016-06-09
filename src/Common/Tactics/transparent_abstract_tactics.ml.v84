@@ -1,0 +1,99 @@
+module TRANSPARENT_ABSTRACT =
+struct
+
+  (* [tac] : string representing identifier *)
+  (* [args] : tactic arguments *)
+  (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+  let ltac_lcall tac args =
+    Tacexpr.TacArg(Util.dummy_loc,Tacexpr.TacCall(Util.dummy_loc, Glob_term.ArgVar(Util.dummy_loc, Names.id_of_string tac),args))
+
+  (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+  let ltac_letin (x, e1) e2 =
+    Tacexpr.TacLetIn(false,[(Util.dummy_loc,Names.id_of_string x),e1],e2)
+
+  (* [ltac_apply] : Run a tactic by let binding it... *)
+  let ltac_apply (f:Tacexpr.glob_tactic_expr) (args:Tacexpr.glob_tactic_arg list) =
+    Tacinterp.eval_tactic
+      (ltac_letin ("F", Tacexpr.Tacexp f) (ltac_lcall "F" args))
+
+  (* Lift a constructor to an ltac value. *)
+  let to_ltac_val c = Tacexpr.TacDynamic(Util.dummy_loc, Pretyping.constr_in c)
+
+  let interpretable_as_section_decl d1 d2 = match d1,d2 with
+    | (_,Some _,_), (_,None,_) -> false
+    | (_,Some b1,t1), (_,Some b2,t2) -> Term.eq_constr b1 b2 && Term.eq_constr t1 t2
+    | (_,None,t1), (_,_,t2) -> Term.eq_constr t1 t2
+
+  (* Build a new definition for [term] with identifier [id] and call *)
+  (* the [tacK] tactic with the result. *)
+  let transparent_abstract_term id (term : Term.constr) tacK gl =
+    let current_sign = Global.named_context()
+    and global_sign = Tacmach.pf_hyps gl in
+    let sign,secsign =
+      List.fold_right
+	(fun (id,_,_ as d) (s1,s2) ->
+	 if Termops.mem_named_context id current_sign &&
+              interpretable_as_section_decl (Sign.lookup_named id current_sign) d
+         then (s1,Environ.push_named_context_val d s2)
+	 else (Sign.add_named_decl d s1,s2))
+	global_sign (Sign.empty_named_context,Environ.empty_named_context_val) in
+    let id = Namegen.next_global_ident_away id (Tacmach.pf_ids_of_hyps gl) in
+    let concl = Termops.it_mkNamedProd_or_LetIn (Tacmach.pf_type_of gl term) sign in
+    let term =
+      try Evarutil.flush_and_check_evars (Tacmach.project gl) term
+      with Evarutil.Uninstantiated_evar _ ->
+	Util.error "\"abstract\" cannot handle existentials." in
+    let concl =
+      try Evarutil.flush_and_check_evars (Tacmach.project gl) concl
+      with Evarutil.Uninstantiated_evar _ ->
+	Util.error "\"abstract\" cannot handle existentials." in
+    let prf = Proof_global.give_me_the_proof () in
+    let constr = { Entries.const_entry_body = term;
+                   const_entry_secctx = Proof.get_used_variables prf;
+                   const_entry_type = Some concl;
+		   const_entry_opaque = false} in
+    let cd = Entries.DefinitionEntry constr in
+    let lem = Term.mkConst (Declare.declare_constant ~internal:Declare.KernelSilent id (cd,Decl_kinds.IsDefinition Decl_kinds.Definition)) in
+    ltac_apply tacK [to_ltac_val lem] gl
+
+  (* Transparently abstract the goal *)
+  let transparent_abstract_by_tac id tac gl =
+    let current_sign = Global.named_context()
+    and global_sign = Tacmach.pf_hyps gl in
+    let sign,secsign =
+      List.fold_right
+	(fun (id,_,_ as d) (s1,s2) ->
+	 if Termops.mem_named_context id current_sign &&
+              interpretable_as_section_decl (Sign.lookup_named id current_sign) d
+         then (s1,Environ.push_named_context_val d s2)
+	 else (Sign.add_named_decl d s1,s2))
+	global_sign (Sign.empty_named_context,Environ.empty_named_context_val) in
+    let id = Namegen.next_global_ident_away id (Tacmach.pf_ids_of_hyps gl) in
+    let concl = Termops.it_mkNamedProd_or_LetIn (Tacmach.pf_concl gl) sign in
+    let concl =
+      try Evarutil.flush_and_check_evars (Tacmach.project gl) concl
+      with Evarutil.Uninstantiated_evar _ ->
+	Util.error "\"abstract\" cannot handle existentials." in
+    let const = Pfedit.build_constant_by_tactic id secsign concl
+						(Tacticals.tclCOMPLETE (Tacticals.tclTHEN (Tacticals.tclDO (List.length sign) Tactics.intro) tac)) in
+    let cd = Entries.DefinitionEntry const in
+    let lem = Term.mkConst (Declare.declare_constant ~internal:Declare.KernelSilent id (cd,Decl_kinds.IsDefinition Decl_kinds.Definition)) in
+    Tactics.exact_no_check
+      (Term.applist (lem,List.rev (Array.to_list (Sign.instance_from_named_context sign))))
+      gl
+
+  let tclABSTRACT2 name_op tac gl =
+    let s = match name_op with
+      | Some s -> s
+      | None   -> Nameops.add_suffix (Pfedit.get_current_proof_name ()) "_term"
+    in
+    transparent_abstract_by_tac s (ltac_apply tac []) gl
+
+  let tclABSTRACTTERM name_op term tacK gl =
+    let s = match name_op with
+      | Some s -> s
+      | None   -> Nameops.add_suffix (Pfedit.get_current_proof_name ()) "_term"
+    in
+    transparent_abstract_term s term tacK gl
+
+end
