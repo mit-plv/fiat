@@ -34,17 +34,21 @@ Require Import
 
 Require Import Bedrock.Word.
 
-Extract Inlined Constant fst => fst.
-Extract Inlined Constant snd => snd.
+Require Import Coq.extraction.ExtrOcamlBasic Coq.extraction.ExtrOcamlNatInt Coq.extraction.ExtrOcamlZInt Coq.extraction.ExtrOcamlString.
+
+Extract Inductive bool => bool [ true false ].
+Extract Inductive list => "list" [ "[]" "(::)" ].
 Extract Inlined Constant negb => not.
 Extract Inlined Constant List.length => "List.length".
 Extract Inlined Constant app => "( @ )".
 Extract Constant word_as_OT.eq_dec  => "(=)".
-
 Extract Constant word_as_OT.compare => "fun a b -> let comp = compare a b in
                                           if comp = 0 then EQ else if comp < 0 then LT else GT".
+
+Extract Inductive sumbool => "bool" [ "true" "false" ].
 Extract Inductive reflect            => bool [ true false ].
 Extract Inlined Constant iff_reflect => "".
+Extract Inductive prod => "(*)"  [ "(,)" ].
 
 Open Scope string_scope.
 Definition InitS := "Init".
@@ -95,6 +99,8 @@ Definition DecodeMessage (b : bin) : option SensorType :=
                  | _ => None
                  end).
 
+Extraction "wheelSensorEncoder.ml" InitSensor PublishTirePressure PublishSpeed AddTirePressureSubscriber AddSpeedSubscriber.
+
 (* Initialize the subscriber database with some random values.*)
 Definition LoadUpSubscribers :=
   let r := InitSensor in
@@ -121,5 +127,3 @@ Goal (fst (AddSpeedSubscriber (WO~1~1~0~1~0~0~0~1~1~1~0~0~1~0~1~1~0~0~0~0~0~1~0~
   vm_compute; reflexivity.
   vm_compute; reflexivity.
 Qed.
-
-Extraction "wheelSensorEncoder.ml" InitSensor PublishTirePressure PublishSpeed AddTirePressureSubscriber AddSpeedSubscriber.

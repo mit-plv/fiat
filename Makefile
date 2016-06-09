@@ -263,3 +263,9 @@ src/Examples/QueryStructure/classifier_unopt.cmxa: src/Examples/QueryStructure/C
 
 classifierUnOpt_repl: src/Examples/QueryStructure/classifierUnOpt_repl.ml src/Examples/QueryStructure/classifier_unopt.cmxa
 	cd src/Examples/QueryStructure && ocamlopt -w -a -o classifierUnOpt_repl unix.cmxa str.cmxa classifier_unopt.cmxa classifierUnOpt_repl.ml
+
+src/Examples/HACMSDemo/wheelSensorEncoder.cmxa: src/examples/hacmsdemo/WheelSensorExtraction.vo
+	cd src/Examples/HACMSDemo && ocamlopt -w -a -o wheelSensorEncoder.cmxa -a wheelSensorEncoder.mli wheelSensorEncoder.ml
+
+encoder_repl: src/Examples/HACMSDemo/encoder_repl.ml src/Examples/HACMSDemo/wheelSensorEncoder.cmxa
+	cd src/Examples/HACMSDemo && ocamlopt -w -a -o encoder_repl unix.cmxa str.cmxa wheelSensorEncoder.cmxa encoder_repl.ml
