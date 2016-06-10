@@ -45,6 +45,8 @@ Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/
 
 STRICT_COQDEP ?= 1
 
+ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_tactics.ml
+
 -include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
 
 -include etc/coq-scripts/Makefile.coq.common
@@ -195,7 +197,7 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo 'src/Common/Tactics/hint_db_extra_plugin.ml4'; echo 'src/Common/Tactics/transparent_abstract_plugin.ml4'; echo 'src/Common/Tactics/hint_db_extra_tactics.ml'; echo 'src/Common/Tactics/transparent_abstract_tactics.ml'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
+	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
 
 ifeq ($(IS_FAST),0)
 # >= 8.5 if it exists
