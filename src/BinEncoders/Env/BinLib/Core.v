@@ -599,16 +599,6 @@ Fixpoint plus_assoc' (n : nat) {struct n}
   simpl; destruct (plus_assoc' n' m p); reflexivity.
 Defined.
 
-Lemma succ_eq_rect
-  : forall b (n : nat) w m (e : n = m),
-    WS b (eq_rect n word w m e) = eq_rect (S n) word (WS b w) (S m) (f_equal S e).
-Proof.
-  induction w.
-  - intros; subst; simpl; eauto.
-  - intros; subst.
-    simpl; reflexivity.
-Qed.
-
 Lemma append_word_assoc {n m p}
   : forall w w' w'',
     append_word w (append_word w' w'') = eq_rect _ _ (append_word (append_word w w') w'') _ (eq_sym (plus_assoc' n m p)).
