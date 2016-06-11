@@ -123,8 +123,8 @@ EXAMPLES_UNMADE_VO := \
 	src/Examples/QueryStructure/SearchTest.vo \
 	src/Examples/SearchTest.vo \
 	src/Examples/Ics/WaterTankExtract.vo \
-	src/Examples/HACMSDemo/wheelSensorEncoder.vo \
-	src/Examples/HACMSDemo/wheelSensorDecoder.vo \
+	src/Examples/HACMSDemo/WheelSensorEncoder.vo \
+	src/Examples/HACMSDemo/WheelSensorDecoder.vo \
 	src/Examples/HACMSDemo/WheelSensorExtraction.vo
 
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
