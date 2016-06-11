@@ -147,12 +147,15 @@ Section BoolFacts.
   Proof.
     unfold Basics.flip, Basics.impl; intros [] []; simpl; tauto.
   Qed.
+
+  Lemma not_negb x : ~negb x <-> x.
+  Proof. destruct x; simpl; lazy; intuition. Qed.
 End BoolFacts.
 
 Create HintDb bool_congr discriminated.
 Create HintDb bool_congr_setoid discriminated.
 
-Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r : bool_congr.
+Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r not_negb : bool_congr.
 Hint Rewrite Bool.andb_true_iff Bool.orb_true_iff Bool.andb_false_iff Bool.orb_false_iff
      (Bool.andb_true_iff : forall x y, is_true _ <-> (is_true _ /\ is_true _))
      (Bool.orb_true_iff : forall x y, is_true _ <-> (is_true _ \/ is_true _))
