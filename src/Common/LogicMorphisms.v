@@ -54,3 +54,8 @@ Proof.
   unfold flip, implb, andb.
   intros [] [] ? [] [] ?; trivial.
 Qed.
+
+Global Instance or_iff_iff_impl_Proper : Proper (iff ==> iff ==> impl) or | 2.
+Proof. lazy; tauto. Qed.
+Global Instance and_iff_iff_impl_Proper : Proper (iff ==> iff ==> impl) and | 2.
+Proof. lazy; tauto. Qed.
