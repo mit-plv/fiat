@@ -30,7 +30,7 @@ Section BoundedIndex.
       indexb : IndexBound bindex Bound
     }.
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   Definition BoundedIndex_nil
              (AnyT : Type)
@@ -310,7 +310,7 @@ let n' := eval compute in n in
     Build_nth_IndexBound n' A a As As 0 : typeclass_instances.
 
 (*
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Fixpoint foo (n : nat) : Vector.t nat (S n) :=
   match n with
@@ -346,7 +346,7 @@ Arguments BoundedString {n} _%vector_scope.
 Section ithIndexBound.
 
   Require Import Fiat.Common.ilist.
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].
@@ -478,7 +478,7 @@ End ithIndexBound.
 Section ithIndexBound2.
 
   Require Import Fiat.Common.ilist2.
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   (* Given a bounded index [BoundedIndex Bound], we can wrap
      various lookup functions over lists indexed over [Bound].

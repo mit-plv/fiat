@@ -15,7 +15,7 @@ Require Import
         Bedrock.Memory.
 
 
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Local Open Scope vector_scope.
 

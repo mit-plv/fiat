@@ -90,7 +90,7 @@ Section BagsQueryStructureRefinements.
       ret (DropQSConstraints or')) (foo1).
 
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
   Variable BagIndexKeys :

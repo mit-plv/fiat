@@ -19,7 +19,7 @@ Require Import
         Bedrock.Memory.
 
 Import Coq.Lists.List.ListNotations.
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Local Open Scope string_scope.
 Local Open Scope Tuple_scope.

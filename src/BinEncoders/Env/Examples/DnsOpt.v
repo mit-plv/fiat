@@ -27,7 +27,7 @@ Require Import
 Require Import
         Bedrock.Word.
 
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Section DnsPacket.
 

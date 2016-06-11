@@ -260,7 +260,7 @@ t__goal : topic { FIELDS
   Definition pan := "pan".
   Definition tilt := "tilt".
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   Definition Landshark_Topics :=
     [ (* base topics *)

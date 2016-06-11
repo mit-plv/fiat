@@ -22,7 +22,7 @@ Require Import
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Representation.QueryStructure.
 
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 (* [Query_For] and all aggregates are opaque, so we need to make them
    transparent in order to reason about them. *)
 Local Transparent Query_For Count Max MaxN MaxZ Sum SumN SumZ.

@@ -15,7 +15,7 @@ Section i2list.
      by our ADT notations uses these to implement notation-friendly
      method lookups.  *)
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   Context {A : Type}. (* The indexing type. *)
   Context {B : A -> Type}. (* The type of indexed elements. *)
@@ -124,7 +124,7 @@ Section i2list_replace.
   Variable B : A -> Type. (* The two types of indexed elements. *)
   Variable C : forall a, B a -> Type. (* The type of doubly-indexed elements. *)
 
-  Import Coq.Vectors.VectorDef.VectorNotations.
+  Import Vectors.VectorDef.VectorNotations.
 
   Fixpoint replace2_Index2
           {m : nat}

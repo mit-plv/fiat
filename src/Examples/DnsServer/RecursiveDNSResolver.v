@@ -14,7 +14,7 @@ Require Import
         Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.RecursiveDNSSchema.
 
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Local Open Scope vector.
 Local Open Scope Tuple_scope.

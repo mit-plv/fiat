@@ -1,5 +1,5 @@
 Require Coq.Vectors.Vector.
-Import Coq.Vectors.VectorDef.VectorNotations.
+Import Vectors.VectorDef.VectorNotations.
 
 Set Implicit Arguments.
 
