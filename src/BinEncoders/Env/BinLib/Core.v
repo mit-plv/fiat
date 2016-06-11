@@ -404,13 +404,13 @@ Proof.
   omega.
 Qed.
 
-Fixpoint word_into_char {n}
+Fixpoint word_into_ByteString' {n}
            (w : word n)
            {struct w}
   : (word (Nat.modulo n 8) * list char).
   refine (match w in word n return word (Nat.modulo n 8) * list char with
           | WO => (WO, [ ])
-          | WS b n' w' => let (b', chars) := word_into_char _ w' in
+          | WS b n' w' => let (b', chars) := word_into_ByteString' _ w' in
                           (if (eq_nat_dec (Nat.modulo n' 8) 7) then _
                                                 else (_ , chars))
           end).
@@ -420,57 +420,111 @@ Fixpoint word_into_char {n}
     exact (WS b b').
 Defined.
 
-(*Lemma ByteString_push_front_eq
-  : forall bs {n} (w : word n) pf,
-    ByteString_push_front w bs =
-    {| front := fst (word_into_char (append_word w (front bs)));
-       paddingOK := pf;
-       byteString := snd (word_into_char (append_word w (front bs)))
-                         ++ byteString bs|}.
-Proof.
-  destruct bs; simpl front; simpl byteString; simpl padding.
-  induction w.
-Admitted.
-  Focus 2.
-  simpl ByteString_push_front.
-  cbv beta.
-  simpl wtl; simpl whd.
-  intro. erewrite IHw.
-  unfold ByteString_push.
-  - simpl; intros.
-    assert (word_into_char front0 = (front0, [ ])).
-    assert (match snd (divmod padding0 7 0 7) with
-              | 0 => 7
-              | 1 => 6
-              | 2 => 5
-              | 3 => 4
-              | 4 => 3
-              | 5 => 2
-              | 6 => 1
-              | S (S (S (S (S (S (S _)))))) => 0
-              end = padding0).
-    Focus 2.
-    revert pf. rewrite H.
-    induction front0.
-    + simpl; f_equal; apply le_uniqueness_proof.
-    + assert (S n =
-              match snd (divmod (S n) 7 0 7) with
-              | 0 => 7
-              | 1 => 6
-              | 2 => 5
-              | 3 => 4
-              | 4 => 3
-              | 5 => 2
-              | 6 => 1
-              | S (S (S (S (S (S (S _)))))) => 0
-              end).
-      Focus 2.
-      revert front0 paddingOK0 pf IHfront0.
-      rewrite <- H.
-      rewrite (@divmod_eq' (S n) 7 0 (S n)).
+Definition word_into_ByteString
+           {n}
+           (w : word n)
+  : ByteString.
+  refine {| front := fst (word_into_ByteString' w);
+            paddingOK := _;
+            byteString := snd (word_into_ByteString' w) |}.
+  abstract (simpl; destruct (divmod n 7 0 7); simpl;
+            repeat (destruct n1; try omega)).
+Defined.
 
-  f_equal.
-Admitted. *)
+Fixpoint ByteString_into_word'
+           (chars : list char)
+           {struct chars} : word (8 * length chars).
+Proof.
+  refine (match chars return word (8 * length chars) with
+          | [ ] => WO
+          | char :: chars' => _
+          end).
+  simpl length; rewrite mult_succ_r, plus_comm;
+    exact (append_word char0 (ByteString_into_word' chars')).
+Defined.
+
+Definition ByteString_into_word
+           (bs : ByteString)
+  : word (padding bs + (8 * length (byteString bs))) := 
+  append_word (front bs) (ByteString_into_word' (byteString bs)).
+
+Lemma ByteString_f_equal
+  : forall bs bs'
+           (p_eq : padding bs' = padding bs),
+    paddingOK bs = (@eq_rect nat (padding bs') (fun t => lt t 8) (paddingOK bs') _ p_eq)
+    -> front bs = (@eq_rect nat (padding bs') (fun t => word t) (front bs') _ p_eq)
+    -> byteString bs = byteString bs'
+    -> bs = bs'.
+Proof.
+  destruct bs; destruct bs'; simpl.
+  intros; subst; reflexivity.
+Qed.
+
+Lemma succ_eq_rect
+  : forall b (n : nat) w m (e : n = m),
+    WS b (eq_rect n word w m e) = eq_rect (S n) word (WS b w) (S m) (f_equal S e).
+Proof.
+  induction w.
+  - intros; subst; simpl; eauto.
+  - intros; subst.
+    simpl; reflexivity.
+Qed.
+
+Lemma ByteString_into_word_eq
+  : forall bs,
+    bs = word_into_ByteString (ByteString_into_word bs).
+Proof.
+  destruct bs; simpl.
+  unfold word_into_ByteString, ByteString_into_word.
+  change (padding0 +
+                 (length byteString0 +
+                  (length byteString0 +
+                   (length byteString0 +
+                    (length byteString0 +
+                     (length byteString0 +
+                      (length byteString0 + (length byteString0 + (length byteString0 + 0))))))))) with (padding0 + (8 * length byteString0)).
+  assert (Nat.modulo (padding0 + 8 * length byteString0) 8 = padding0).
+  { unfold Nat.modulo, modulo.
+    assert (exists n, padding0 = 7 - n /\ n <= 7)%nat.
+    { destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ].
+      eexists 7; omega.
+      eexists 6; omega.
+      eexists 5; omega.
+      eexists 4; omega.
+      eexists 3; omega.
+      eexists 2; omega.
+      eexists 1; omega.
+      eexists 0; omega. 
+      omega. }
+    destruct_ex; intuition; rewrite H0.
+    erewrite divmod_eq' with (q := length byteString0)
+                               (u := x); eauto.
+    rewrite plus_comm, mult_comm; reflexivity.
+  }
+  eapply ByteString_f_equal with (p_eq := H).
+  - simpl; apply le_uniqueness_proof.
+  - simpl front; simpl padding.
+    induction front0; simpl.
+    (* admit. *)
+    (* erewrite IHfront0. *)
+    (* rewrite succ_eq_rect by omega. *)
+    (* simpl in H. *)
+    (* rewrite H. *)
+    (* simpl. *)
+    (* progress f_equal. *)    
+Admitted.
+  
+Lemma ByteString_transform_f_equal
+  : forall bs bs'
+           (p_eq : padding bs' = padding bs),
+    paddingOK bs = (@eq_rect nat (padding bs') (fun t => lt t 8) (paddingOK bs') _ p_eq)
+    -> front bs = (@eq_rect nat (padding bs') (fun t => word t) (front bs') _ p_eq)
+    -> byteString bs = byteString bs'
+    -> bs = bs'.
+Proof.
+  destruct bs; destruct bs'; simpl.
+  intros; subst; reflexivity.
+Qed.
 
 Lemma ByteString_push_char_id_right
   : forall (chars : list char) (bs : ByteString),
@@ -525,80 +579,71 @@ Proof.
     f_equal; eauto using le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_transform_f_equal
-  : forall bs bs'
-           (p_eq : padding bs' = padding bs),
-    paddingOK bs = (@eq_rect nat (padding bs') (fun t => lt t 8) (paddingOK bs') _ p_eq)
-    -> front bs = (@eq_rect nat (padding bs') (fun t => word t) (front bs') _ p_eq)
-    -> byteString bs = byteString bs'
-    -> bs = bs'.
+Lemma ByteString_transform_word_into {n m}
+  : forall (w : word n) (w' : word m),
+    ByteString_transformer (word_into_ByteString w) (word_into_ByteString w') = word_into_ByteString (append_word w w').
+  induction w; simpl.
+  - reflexivity.
+  - unfold word_into_ByteString, ByteString_transformer in *.
+    unfold front, byteString in *.
+Admitted.
+
+Fixpoint plus_assoc' (n : nat) {struct n}
+  : forall m p : nat, n + (m + p) = n + m + p.
+  refine match n return
+               forall m p : nat,
+                 n + (m + p) = n + m + p with
+         | 0 => fun m p => eq_refl _
+         | S n' => fun m p => _
+         end.
+  simpl; destruct (plus_assoc' n' m p); reflexivity.
+Defined.
+
+Lemma succ_eq_rect
+  : forall b (n : nat) w m (e : n = m),
+    WS b (eq_rect n word w m e) = eq_rect (S n) word (WS b w) (S m) (f_equal S e).
 Proof.
-  destruct bs; destruct bs'; simpl.
-  intros; subst; reflexivity.
+  induction w.
+  - intros; subst; simpl; eauto.
+  - intros; subst.
+    simpl; reflexivity.
 Qed.
 
-(*Lemma padding_ByteString_transform_assoc
-  : forall l m n : ByteString,
-    padding (ByteString_transformer l (ByteString_transformer m n)) =
-    padding (ByteString_transformer (ByteString_transformer l m) n).
+Lemma append_word_assoc {n m p}
+  : forall w w' w'',
+    append_word w (append_word w' w'') = eq_rect _ _ (append_word (append_word w w') w'') _ (eq_sym (plus_assoc' n m p)).
 Proof.
-  intros; repeat (erewrite ByteString_transformer_eq; simpl padding).
-Admitted. *)
+  induction w; simpl; intros.
+  - reflexivity.
+  - rewrite IHw; clear.
+    rewrite succ_eq_rect.
+    f_equal.
+    apply eq_proofs_unicity; intros.
+    destruct (eq_nat_dec x y); eauto.
+Qed.
 
 Lemma ByteString_transform_assoc
   : forall l m n : ByteString,
     ByteString_transformer l (ByteString_transformer m n) =
     ByteString_transformer (ByteString_transformer l m) n.
 Proof.
-(*
-  revert bs_m padding_l front_l padding_m front_m
-         padding_l_OK padding_m_OK
-         padding_n padding_n_OK front_n bs_n.
-  induction bs_l; simpl.
-  - induction bs_m; simpl.
-    intros; erewrite !ByteString_push_front_eq.
-    assert (Nat.modulo
-                (padding_l +
-                 padding
-                   (ByteString_push_front front_m
-                      {|
-                      padding := padding_n;
-                      paddingOK := padding_n_OK;
-                      front := front_n;
-                      byteString := bs_n |})) 8
-            =  Nat.modulo
-                (padding
-                   (ByteString_push_front front_l
-                      {|
-                      padding := padding_m;
-                      paddingOK := padding_m_OK;
-                      front := front_m;
-                      byteString := [] |}) +
-                 padding
-                   (fold_right ByteString_push_char
-                      {|
-                      padding := padding_n;
-                      paddingOK := padding_n_OK;
-                      front := front_n;
-                      byteString := bs_n |}
-                      (byteString
-                         (ByteString_push_front front_l
-                            {|
-                            padding := padding_m;
-                            paddingOK := padding_m_OK;
-                            front := front_m;
-                            byteString := [] |})))) 8).
-    admit.
-    rewrite H.
-    apply f_equal.
-    repeat f_equal.
-    + induction front_l; simpl.
-      * reflexivity.
-      * intros; erewrite !ByteString_push_front_eq.
-        simpl.
-    + reflexivity.
-    + simpl. *)
-Admitted.
+  intros.
+  rewrite (ByteString_into_word_eq m),
+  (ByteString_into_word_eq n),
+  (ByteString_into_word_eq l).
+  rewrite !ByteString_transform_word_into.
+  rewrite !append_word_assoc.
+  pattern
+    (padding l + 8 * length (byteString l) +
+     (padding m + 8 * length (byteString m) + (padding n + 8 * length (byteString n)))),
+     (eq_sym
+        (plus_assoc' (padding l + 8 * length (byteString l))
+                    (padding m + 8 * length (byteString m)) 
+                    (padding n + 8 * length (byteString n)))).
+  eapply EqdepFacts.eq_indd.
+  simpl.
+  reflexivity.
+Qed.
 
 Global Instance ByteStringTransformer : Transformer ByteString :=
   {| transform := ByteString_transformer;
