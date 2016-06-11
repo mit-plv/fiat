@@ -149,3 +149,11 @@ Module Export StringLike.
   Arguments StringIsoProperties Char {_ _ _}.
   Arguments StringEqProperties Char {_ _}.
 End StringLike.
+
+(* Speed up some setoid lemmas *)
+Global Instance: forall T H,
+    @Params (forall Char
+                    (HSLM : StringLikeMin Char) (HSL : StringLike Char),
+                String -> T)
+            H
+            3.
