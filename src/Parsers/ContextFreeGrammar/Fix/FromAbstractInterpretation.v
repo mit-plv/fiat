@@ -150,6 +150,31 @@ Section fold_correctness.
     eapply (related_monotonic _); apply p'.
   Qed.
 
+  Lemma fold_grammar_correct_item' str it
+        (p : parse_of_item G str it)
+    : exists P, P str /\ related P (fold_item' G (lookup_state fold_grammar) it).
+  Proof.
+    destruct p as [ch P Ppf Hch|] eqn:Hp.
+    { simpl.
+      eexists; split; [ | apply on_terminal_correct ].
+      eexists; split; eassumption. }
+    { apply fold_grammar_correct_item; assumption. }
+  Qed.
+
+  Lemma fold_grammar_correct_production str ps
+        (p : parse_of_production G str ps)
+    : exists P, P str /\ related P (fold_production' G (lookup_state fold_grammar) ps).
+  Proof.
+    unfold fold_production'.
+    induction p as [|str n pat pats p ps IHps].
+    { eexists; split; [ | apply on_nil_production_correct ]; assumption. }
+    { simpl.
+      apply fold_grammar_correct_item' in p.
+      destruct IHps as [P [IHps0 IHps1]], p as [Ps [IHp0 IHp1]].
+      eexists; split; [ | apply combine_production_correct ];
+        hnf; eauto using ex_intro, conj with nocore. }
+  Qed.
+
   Lemma fold_grammar_correct str nt
         (p : parse_of G str (Lookup G nt))
     : exists P, P str /\ related P (lookup_state fold_grammar (of_nonterminal nt)).
