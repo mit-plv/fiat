@@ -306,27 +306,6 @@ Section correctness.
               _
        }.
   Proof.
-    Global Instance: forall H,
-          @Params (forall Char
-                          (HSLM : StringLikeMin Char) (HSL : StringLike Char),
-                      String -> (Char -> Prop) -> Prop)
-                  H
-                  3.
-    Global Instance: forall H,
-          @Params (Prop -> Prop -> Prop)
-                  H
-                  0.
-Global Instance: Proper (iff ==> iff ==> impl) or | 2.
-lazy; tauto.
-Qed.
-      Start Profiling.
-Lemma subrelation_Reflexive A : Reflexive (@subrelation A).
-Proof. lazy; auto. Qed.
-Lemma subrelation_Transitive A : Transitive (@subrelation A).
-Proof. lazy; auto. Qed.
-Hint Extern 0 (Reflexive subrelation) => apply subrelation_Reflexive : typeclass_instances.
-Hint Extern 0 (Transitive subrelation) => apply subrelation_Transitive : typeclass_instances.
-
     { t. }
     { t. }
     { t. }
