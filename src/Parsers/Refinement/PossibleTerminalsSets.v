@@ -306,6 +306,27 @@ Section correctness.
               _
        }.
   Proof.
+    Global Instance: forall H,
+          @Params (forall Char
+                          (HSLM : StringLikeMin Char) (HSL : StringLike Char),
+                      String -> (Char -> Prop) -> Prop)
+                  H
+                  3.
+    Global Instance: forall H,
+          @Params (Prop -> Prop -> Prop)
+                  H
+                  0.
+Global Instance: Proper (iff ==> iff ==> impl) or | 2.
+lazy; tauto.
+Qed.
+      Start Profiling.
+Lemma subrelation_Reflexive A : Reflexive (@subrelation A).
+Proof. lazy; auto. Qed.
+Lemma subrelation_Transitive A : Transitive (@subrelation A).
+Proof. lazy; auto. Qed.
+Hint Extern 0 (Reflexive subrelation) => apply subrelation_Reflexive : typeclass_instances.
+Hint Extern 0 (Transitive subrelation) => apply subrelation_Transitive : typeclass_instances.
+
     { t. }
     { t. }
     { t. }
@@ -391,11 +412,31 @@ Section defs.
   Definition possible_last_characters_of_nt
     : String.string -> possible_characters_result
     := fun nt => possible_last_characters_of_pr (collapse_to_possible_result (lookup_state pdata (@of_nonterminal _ (@rdp_list_predata _ G) nt))).
+
+  Definition all_possible_characters_of_production
+    : production Ascii.ascii -> all_possible_result
+    := fun ps => make_all_possible_result (fold_production' G (lookup_state apdata) ps).
+
+  Definition might_be_empty_of_pr_production
+    : production Ascii.ascii -> bool
+    := fun ps => might_be_empty_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
+
+  Definition possible_first_characters_of_production
+    : production Ascii.ascii -> possible_characters_result
+    := fun ps => possible_first_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
+
+  Definition possible_last_characters_of_production
+    : production Ascii.ascii -> possible_characters_result
+    := fun ps => possible_last_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 End defs.
 Global Arguments all_possible_characters_of_nt G {_} _.
 Global Arguments might_be_empty_of_pr_nt G {_} _.
 Global Arguments possible_first_characters_of_nt G {_} _.
 Global Arguments possible_last_characters_of_nt G {_} _.
+Global Arguments all_possible_characters_of_production G {_} _.
+Global Arguments might_be_empty_of_pr_production G {_} _.
+Global Arguments possible_first_characters_of_production G {_} _.
+Global Arguments possible_last_characters_of_production G {_} _.
 
 Section correctness_lemmas.
   Context {HSLM : StringLikeMin Ascii.ascii}
@@ -405,6 +446,7 @@ Section correctness_lemmas.
           {apdata : all_possible_data G}
           {pdata : possible_data G}
           (nt : String.string)
+          (ps : production Ascii.ascii)
           (str : String).
 
   Local Ltac pre_correct_t :=
@@ -422,10 +464,14 @@ Section correctness_lemmas.
     | _ => rewrite fgd_fold_grammar_correct
     | [ p : parse_of_item _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _) in p
+    | [ p : parse_of_production _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
+      => apply (@fold_grammar_correct_production _ _ _ _ _ _ aidata _ _) in p
     | [ p : parse_of _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct _ _ _ _ _ _ aidata _ _) in p
     | [ |- context[lookup_state ?g ?nt] ]
       => destruct (lookup_state g nt) eqn:?
+    | [ |- context[fold_production' ?G ?f ?ps] ]
+      => destruct (fold_production' G f ps) eqn:?
     | _ => progress simpl in *
     | _ => progress destruct_head ex
     | _ => progress destruct_head and
@@ -508,6 +554,40 @@ Section correctness_lemmas.
     : for_last_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_last_characters_of_nt G nt)).
   Proof.
     unfold possible_last_characters_of_nt; correct_t.
+    eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
+    correct_t.
+  Qed.
+
+  Lemma all_possible_characters_of_parse_of_production
+        (p : parse_of_production G str ps)
+    : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_production G ps)).
+  Proof.
+    unfold all_possible_characters_of_production; correct_t.
+    eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
+    correct_t.
+  Qed.
+
+  Lemma might_be_empty_pr_parse_of_production
+        (Hlen : length str = 0)
+        (p : parse_of_production G str ps)
+    : might_be_empty_of_pr_production G ps = true.
+  Proof. correct_t. Qed.
+
+
+  Lemma possible_first_characters_parse_of_production
+        (p : parse_of_production G str ps)
+    : for_first_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_first_characters_of_production G ps)).
+  Proof.
+    unfold possible_first_characters_of_production; correct_t.
+    eapply for_first_char_Proper; [ reflexivity | intros ?? | eassumption ].
+    correct_t.
+  Qed.
+
+  Lemma possible_last_characters_parse_of_production
+        (p : parse_of_production G str ps)
+    : for_last_char str (fun ch => PositiveSet.In (pos_of_ascii ch) (possible_last_characters_of_production G ps)).
+  Proof.
+    unfold possible_last_characters_of_production; correct_t.
     eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
     correct_t.
   Qed.
