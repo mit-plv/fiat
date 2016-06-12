@@ -1857,10 +1857,3 @@ Class eq_refl_vm_cast_l {T} (x y : T) := by_vm_cast_l : x = y.
 Global Hint Extern 0 (@eq_refl_vm_cast_l ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T x)) : typeclass_instances.
 Class eq_refl_vm_cast_r {T} (x y : T) := by_vm_cast_r : x = y.
 Global Hint Extern 0 (@eq_refl_vm_cast_r ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T y)) : typeclass_instances.
-
-Lemma subrelation_Reflexive A : Reflexive (@subrelation A).
-Proof. lazy; auto. Qed.
-Lemma subrelation_Transitive A : Transitive (@subrelation A).
-Proof. lazy; auto. Qed.
-Hint Extern 0 (Reflexive subrelation) => apply subrelation_Reflexive : typeclass_instances.
-Hint Extern 0 (Transitive subrelation) => apply subrelation_Transitive : typeclass_instances.
