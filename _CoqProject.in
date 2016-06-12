@@ -228,6 +228,7 @@ src/Computation/ListComputations.v
 src/Computation/LogicLemmas.v
 src/Computation/Monad.v
 src/Computation/Notations.v
+src/Computation/SetoidEqMorphisms.v
 src/Computation/SetoidMorphisms.v
 src/Computation/Refinements/General.v
 src/Computation/Refinements/Iterate_Decide_Comp.v
@@ -259,6 +260,7 @@ src/Examples/HACMSDemo/HACMSDemo.v
 src/Examples/HACMSDemo/WheelSensor.v
 src/Examples/HACMSDemo/WheelSensorDecoder.v
 src/Examples/HACMSDemo/WheelSensorEncoder.v
+src/Examples/HACMSDemo/WheelSensorExtraction.v
 src/Examples/Ics/Ics.v
 src/Examples/Ics/WaterTank.v
 src/Examples/Ics/WaterTankExtract.v
