@@ -295,3 +295,16 @@ Global Instance computes_to_to_refine_Proper_fun {T} {A B RA RB f} {v : T}
 Proof.
   unfold Proper, impl, flip, respectful, refine in *; eauto with nocore.
 Qed.
+
+Global Instance ret_Proper_eq {A}
+  : Proper (eq ==> eq) (ret (A:=A)).
+Proof. repeat intro; subst; reflexivity. Qed.
+Global Instance refine_Proper_eq_iff {A}
+  : Proper (eq ==> eq ==> iff) (@refine A).
+Proof. repeat intro; subst; reflexivity. Qed.
+Global Instance refine_Proper_eq_impl {A}
+  : Proper (eq ==> eq ==> impl) (@refine A) | 1.
+Proof. repeat (assumption || subst || intro). Qed.
+Global Instance refine_Proper_eq_flip_impl {A}
+  : Proper (eq ==> eq ==> flip impl) (@refine A) | 1.
+Proof. repeat (assumption || subst || intro). Qed.
