@@ -7,6 +7,7 @@ Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.StringLike.FirstChar.
 Require Import Fiat.Common.
+Require Import Fiat.Common.NatFacts.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.
@@ -197,12 +198,13 @@ Global Opaque is_first_char_such_that.
 Definition find_first_char_such_that' {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
            (P : Char -> bool)
            (len : nat)
-: String -> nat
+           (str : String)
+: nat
   := nat_rect
-       (fun _ => String -> nat)
-       (fun _ => 0)
-       (fun len' find_first_char_such_that' str
-        => let otherwise := S (find_first_char_such_that' str) in
+       (fun _ => nat)
+       0
+       (fun len' find_first_char_such_that'
+        => let otherwise := S find_first_char_such_that' in
            match get (length str - S len') str with
              | Some ch => if P ch
                           then 0
@@ -229,3 +231,29 @@ Qed.
 
 Definition find_first_char_such_that {Char} {HSLM} {HSL} str P
   := @find_first_char_such_that' Char HSLM HSL P (length str) str.
+
+Global Instance find_first_char_such_that'_Proper
+       {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
+       {HSLP : StringLikeProperties Char}
+  : Proper (pointwise_relation _ eq ==> eq ==> beq ==> eq)
+           find_first_char_such_that'.
+Proof.
+  intros ?? Hfg n n' ? s s' H; subst n'.
+  unfold find_first_char_such_that'.
+  apply nat_rect_Proper_nondep; [ reflexivity | repeat intro ].
+  setoid_subst_rel beq.
+  edestruct get; try reflexivity.
+  rewrite Hfg; reflexivity.
+Qed.
+
+Global Instance find_first_char_such_that_Proper
+       {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char}
+       {HSLP : StringLikeProperties Char}
+  : Proper (beq ==> pointwise_relation _ eq ==> eq)
+           find_first_char_such_that.
+Proof.
+  repeat intro; unfold find_first_char_such_that.
+  setoid_subst_rel beq.
+  setoid_subst_rel (pointwise_relation Char (@eq bool)).
+  reflexivity.
+Qed.

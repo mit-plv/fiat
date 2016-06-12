@@ -253,3 +253,27 @@ Proof. omega *. Qed.
 
 Global Instance S_Proper_le : Proper (le ==> le) S.
 Proof. repeat intro; omega. Qed.
+
+Global Instance nat_rect_Proper_nondep {A}
+  : Proper
+      (eq
+         ==> pointwise_relation _ (pointwise_relation _ eq)
+         ==> forall_relation (fun _ => eq))
+      (nat_rect (fun _ => A)).
+Proof.
+  intros ??? ?? H; repeat intro; subst.
+  pose proof (@Nat.recursion_wd A eq) as H'.
+  unfold Nat.recursion in H'.
+  apply H'; try reflexivity.
+  repeat intro; subst; apply H.
+Qed.
+
+Global Instance nat_rect_Proper_nondep_respectful {A}
+  : Proper
+      (eq
+         ==> pointwise_relation _ (pointwise_relation _ eq)
+         ==> eq ==> eq)
+      (nat_rect (fun _ => A)).
+Proof.
+  repeat intro; subst; apply nat_rect_Proper_nondep; try assumption; reflexivity.
+Qed.

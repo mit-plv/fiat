@@ -309,6 +309,12 @@ Section String.
       rewrite H'; reflexivity. }
   Qed.
 
+  Global Instance get_Proper'
+    : Proper (eq ==> beq ==> eq) get.
+  Proof.
+    intros ???; subst; apply get_Proper.
+  Qed.
+
   Lemma get_drop {n str} : get n str = get 0 (drop n str).
   Proof.
     revert str; induction n; intros.
