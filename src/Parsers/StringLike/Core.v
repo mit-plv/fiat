@@ -154,6 +154,6 @@ End StringLike.
 Global Instance: forall T H,
     @Params (forall Char
                     (HSLM : StringLikeMin Char) (HSL : StringLike Char),
-                String -> T)
+                String -> T Char)
             H
             3.
