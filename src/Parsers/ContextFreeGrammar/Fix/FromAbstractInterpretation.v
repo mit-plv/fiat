@@ -200,11 +200,14 @@ Class fold_grammar_data {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
     fgd_fold_grammar_correct : fgd_fold_grammar = fold_grammar G }.
 Coercion fgd_fold_grammar : fold_grammar_data >-> aggregate_state.
 
-Ltac make_fold_grammar_data G :=
-  let v := constr:(fold_grammar G) in
+Ltac make_fold_grammar_data_from v :=
   let lem := match v with
              | @fold_grammar ?Char ?T ?fpdata ?aidata ?G
                => constr:(@Build_fold_grammar_data Char T fpdata aidata G)
              end in
   let v' := (eval vm_compute in v) in
   constr:(lem v' (_ : eq_refl_vm_cast_l v' v)).
+
+Ltac make_fold_grammar_data G :=
+  let v := constr:(fold_grammar G) in
+  make_fold_grammar_data_from v.

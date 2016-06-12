@@ -273,6 +273,14 @@ Class BoolDec_lb `{BoolDecR A} (R : relation A)
   := lb : forall x y, R x y -> beq x y = true.
 Global Arguments lb {A _ R _} [_ _] _.
 
+Definition beq_true_iff `{BoolDecR A} {R : relation A}
+           {_ : BoolDec_bl R} {_ : BoolDec_lb R}
+           x y
+  : beq x y <-> R x y.
+Proof.
+  split; [ apply bl | apply lb ].
+Defined.
+
 Section lift.
   Context {A : Type} {R : relation A}
           {dec : @BoolDecR A}
@@ -380,6 +388,7 @@ Proof. apply internal_unit_dec_lb. Qed.
 Global Instance unit_BoolDecR : BoolDecR unit := unit_beq.
 Global Instance unit_BoolDec_bl : BoolDec_bl (@eq unit) := @unit_bl.
 Global Instance unit_BoolDec_lb : BoolDec_lb (@eq unit) := @unit_lb.
+Definition unit_beq_true_iff x y : unit_beq x y <-> x = y := beq_true_iff x y.
 Lemma Empty_set_bl {x y} : Empty_set_beq x y = true -> x = y.
 Proof. apply internal_Empty_set_dec_bl. Qed.
 Lemma Empty_set_lb {x y} : x = y -> Empty_set_beq x y = true.
@@ -387,6 +396,7 @@ Proof. apply internal_Empty_set_dec_lb. Qed.
 Global Instance Empty_set_BoolDecR : BoolDecR Empty_set := Empty_set_beq.
 Global Instance Empty_set_BoolDec_bl : BoolDec_bl (@eq Empty_set) := @Empty_set_bl.
 Global Instance Empty_set_BoolDec_lb : BoolDec_lb (@eq Empty_set) := @Empty_set_lb.
+Definition Empty_set_beq_true_iff x y : Empty_set_beq x y <-> x = y := beq_true_iff x y.
 Lemma bool_bl {x y} : bool_beq x y = true -> x = y.
 Proof. apply internal_bool_dec_bl. Qed.
 Lemma bool_lb {x y} : x = y -> bool_beq x y = true.
@@ -394,6 +404,7 @@ Proof. apply internal_bool_dec_lb. Qed.
 Global Instance bool_BoolDecR : BoolDecR bool := bool_beq.
 Global Instance bool_BoolDec_bl : BoolDec_bl (@eq bool) := @bool_bl.
 Global Instance bool_BoolDec_lb : BoolDec_lb (@eq bool) := @bool_lb.
+Definition bool_beq_true_iff x y : bool_beq x y <-> x = y := beq_true_iff x y.
 Lemma ascii_bl {x y} : ascii_beq x y = true -> x = y.
 Proof. apply internal_ascii_dec_bl. Qed.
 Lemma ascii_lb {x y} : x = y -> ascii_beq x y = true.
@@ -401,6 +412,7 @@ Proof. apply internal_ascii_dec_lb. Qed.
 Global Instance ascii_BoolDecR : BoolDecR Ascii.ascii := ascii_beq.
 Global Instance ascii_BoolDec_bl : BoolDec_bl (@eq Ascii.ascii) := @ascii_bl.
 Global Instance ascii_BoolDec_lb : BoolDec_lb (@eq Ascii.ascii) := @ascii_lb.
+Definition ascii_beq_true_iff x y : ascii_beq x y <-> x = y := beq_true_iff x y.
 Lemma string_bl {x y} : string_beq x y = true -> x = y.
 Proof. apply internal_string_dec_bl. Qed.
 Lemma string_lb {x y} : x = y -> string_beq x y = true.
@@ -408,6 +420,7 @@ Proof. apply internal_string_dec_lb. Qed.
 Global Instance string_BoolDecR : BoolDecR string := string_beq.
 Global Instance string_BoolDec_bl : BoolDec_bl (@eq string) := @string_bl.
 Global Instance string_BoolDec_lb : BoolDec_lb (@eq string) := @string_lb.
+Definition string_beq_true_iff x y : string_beq x y <-> x = y := beq_true_iff x y.
 Lemma list_beq_eqlistA_iff {A eq_A} {x y : list A}
 : list_beq eq_A x y = true <-> SetoidList.eqlistA eq_A x y.
 Proof.

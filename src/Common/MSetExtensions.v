@@ -119,7 +119,7 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     first [ progress unfold Equal in *
           | setoid_rewrite_in_all union_spec
           | setoid_rewrite_in_all inter_spec
-          | setoid_rewrite_in_all filter_spec; [ | let H := fresh in intros ?? H; hnf in H; subst; reflexivity.. ] ].
+          | setoid_rewrite_in_all filter_spec; [ | let H := fresh in intros ?? H; hnf in H; substs; reflexivity.. ] ].
 
   Ltac push_In := repeat push_In_step.
 
@@ -209,6 +209,46 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     end.
 
   Ltac handle_known_comparisons := repeat handle_known_comparisons_step.
+
+  Ltac cardinal_to_list_step :=
+    idtac;
+    match goal with
+    | [ H : cardinal _ = _ |- _ ]
+      => rewrite cardinal_spec in H
+    | [ H : List.length ?ls = S _ |- _ ]
+      => destruct ls eqn:?; simpl in H; inversion H; clear H
+    | [ H : List.length ?ls = 0 |- _ ]
+      => destruct ls eqn:?; simpl in H; inversion H; clear H
+    | [ H : ?ls = nil |- _ ] => is_var ls; subst ls
+    | [ H : ?ls = (_::_) |- _ ] => is_var ls; subst ls
+    end.
+  Ltac cardinal_to_list := repeat cardinal_to_list_step.
+  Ltac in_to_elements :=
+    repeat setoid_rewrite_in_all BasicFacts.elements_iff;
+    repeat match goal with
+           | [ H : elements ?v = _ |- _ ]
+             => rewrite !H
+           | [ H : elements ?v = _, H' : appcontext[elements ?v] |- _ ]
+             => rewrite !H in H'
+           end.
+  Ltac InA_concretize_step :=
+    idtac;
+    match goal with
+    | _ => progress substs
+    | [ H : SetoidList.InA _ _ nil |- _ ] => solve [ inversion H ]
+    | [ H : SetoidList.InA _ _ (_::_) |- _ ] => inversion H; clear H
+    | [ |- ~SetoidList.InA _ _ _ ] => intro
+    end.
+  Ltac InA_concretitze := repeat InA_concretize_step.
+
+  Lemma cardinal_one_In_same v
+        (H : cardinal v = 1)
+    : forall x y, In x v -> In y v -> E.eq x y.
+  Proof.
+    cardinal_to_list.
+    intros; in_to_elements; InA_concretitze.
+    fsetdec.
+  Qed.
 End MSetExtensionsOn.
 
 Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.

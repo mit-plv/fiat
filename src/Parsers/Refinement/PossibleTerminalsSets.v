@@ -571,3 +571,14 @@ Section correctness_lemmas.
     correct_t.
   Qed.
 End correctness_lemmas.
+
+Set Printing Implicit.
+
+Ltac make_all_possible_data G :=
+  let v := constr:(@fold_grammar _ _ _ all_possible_terminals_aidata G) in
+  let v := make_fold_grammar_data_from v in
+  constr:(v : all_possible_data G).
+Ltac make_possible_data G :=
+  let v := constr:(@fold_grammar _ _ _ possible_terminals_aidata G) in
+  let v := make_fold_grammar_data_from v in
+  constr:(v : possible_data G).
