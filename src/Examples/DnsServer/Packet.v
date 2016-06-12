@@ -18,7 +18,7 @@ Require Import
         Bedrock.Word
         Bedrock.Memory.
 
-Import Coq.Lists.List.ListNotations.
+Import Lists.List.ListNotations.
 Import Vectors.VectorDef.VectorNotations.
 
 Local Open Scope string_scope.
