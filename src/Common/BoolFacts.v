@@ -155,8 +155,8 @@ End BoolFacts.
 Create HintDb bool_congr discriminated.
 Create HintDb bool_congr_setoid discriminated.
 
-Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r not_negb : bool_congr.
-Hint Rewrite Bool.andb_true_iff Bool.orb_true_iff Bool.andb_false_iff Bool.orb_false_iff
+Hint Rewrite Bool.orb_false_l Bool.orb_false_r Bool.andb_true_l Bool.andb_true_r Bool.andb_true_iff Bool.orb_true_iff Bool.orb_negb_r : bool_congr.
+Hint Rewrite Bool.andb_true_iff Bool.orb_true_iff Bool.andb_false_iff Bool.orb_false_iff not_negb
      (Bool.andb_true_iff : forall x y, is_true _ <-> (is_true _ /\ is_true _))
      (Bool.orb_true_iff : forall x y, is_true _ <-> (is_true _ \/ is_true _))
   : bool_congr_setoid.
