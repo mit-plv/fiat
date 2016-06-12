@@ -19,7 +19,6 @@
 *.v.d
 *.vio
 *.vo
-*
 .#*
 .DS_Store
 .coq-native
