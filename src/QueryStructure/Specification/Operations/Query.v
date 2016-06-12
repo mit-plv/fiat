@@ -12,6 +12,8 @@ Require Import Coq.Lists.List
         Fiat.QueryStructure.Specification.Representation.QueryStructure
         Fiat.QueryStructure.Specification.Operations.FlattenCompList.
 
+Import Lists.List.ListNotations.
+
 (* Notations and definitions for queries.
    The basic idea is to represent queries as ensembles of lists of returned values.
  *)
