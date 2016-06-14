@@ -47,6 +47,11 @@ Record ByteString :=
     byteString : list char (* The bytestring. *)
   }.
 
+Local Ltac destruct_matches :=
+  repeat match goal with
+         | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+         end.
+
 Definition ByteString_push
          (b : bool)
          (bs : ByteString)
@@ -60,8 +65,9 @@ Definition ByteString_push
     {| front := WS b (front bs);
        byteString := byteString bs |}).
   abstract omega.
-  pose (front bs) as w; destruct _H; exact w.
-  abstract (pose proof (paddingOK bs); omega).
+  { pose proof (front bs) as w; generalize dependent (padding bs).
+    intros ?? w; subst; exact w. }
+  { abstract (pose proof (paddingOK bs); omega). }
 Defined.
 
 Definition ByteString_pop
@@ -217,16 +223,15 @@ Proof.
      + rewrite <- plus_n_Sm, (IHbs_padding (wtl front0)); clear.
        rewrite plus_n_Sm.
        simpl ByteString_push_front.
-       destruct (ByteString_push_front (wtl front0) y) eqn: ?.
        unfold ByteString_push.
-       destruct (eq_nat_dec (padding (ByteString_push_front (wtl front0) y)) 7);
-         simpl padding; simpl byteString.
-       * simpl length; rewrite Heqb; simpl byteString;
-           rewrite Heqb in e; simpl in e.
-         rewrite e; omega.
-       * rewrite Heqb in n; rewrite Heqb;
-           simpl padding in *; simpl byteString in *; clear Heqb.
-         omega.
+       repeat match goal with
+              | _ => progress simpl in *
+              | _ => progress subst
+              | _ => progress unfold eq_rec_r, eq_rec, eq_rect, eq_sym
+              | _ => progress destruct_matches
+              | [ H : context[padding ?x] |- _ ] => destruct x eqn:?
+              | _ => omega
+              end.
 Qed.
 
 Definition ByteString_id : ByteString.
@@ -332,6 +337,8 @@ Proof.
   omega.
 Qed.
 
+Import Nat.
+
 Lemma divmod_eq' :
   forall x y q u,
     (u <= y)%nat
@@ -414,9 +421,16 @@ Fixpoint word_into_ByteString' {n}
                           (if (eq_nat_dec (Nat.modulo n' 8) 7) then _
                                                 else (_ , chars))
           end).
-  - generalize (WS b b'); rewrite _H, (NatModulo_S_Full _ _H); simpl.
+  - generalize (WS b b').
+    match goal with
+    | [ _H : _ = _ |- _ ]
+      => rewrite _H, (NatModulo_S_Full _ _H); simpl
+    end.
     exact (fun b => (WO, b :: chars)).
-  - rewrite (NatModulo_S_Not_Full _ _H).
+  - lazymatch goal with
+    | [ _H : _ <> _ |- _ ]
+      => rewrite (NatModulo_S_Not_Full _ _H)
+    end.
     exact (WS b b').
 Defined.
 
@@ -437,15 +451,15 @@ Fixpoint ByteString_into_word'
 Proof.
   refine (match chars return word (8 * length chars) with
           | [ ] => WO
-          | char :: chars' => _
+          | char' :: chars' => _
           end).
   simpl length; rewrite mult_succ_r, plus_comm;
-    exact (append_word char0 (ByteString_into_word' chars')).
+    exact (append_word char' (ByteString_into_word' chars')).
 Defined.
 
 Definition ByteString_into_word
            (bs : ByteString)
-  : word (padding bs + (8 * length (byteString bs))) := 
+  : word (padding bs + (8 * length (byteString bs))) :=
   append_word (front bs) (ByteString_into_word' (byteString bs)).
 
 Lemma ByteString_f_equal
@@ -494,7 +508,7 @@ Proof.
       eexists 3; omega.
       eexists 2; omega.
       eexists 1; omega.
-      eexists 0; omega. 
+      eexists 0; omega.
       omega. }
     destruct_ex; intuition; rewrite H0.
     erewrite divmod_eq' with (q := length byteString0)
@@ -511,9 +525,9 @@ Proof.
     (* simpl in H. *)
     (* rewrite H. *)
     (* simpl. *)
-    (* progress f_equal. *)    
+    (* progress f_equal. *)
 Admitted.
-  
+
 Lemma ByteString_transform_f_equal
   : forall bs bs'
            (p_eq : padding bs' = padding bs),
@@ -570,7 +584,7 @@ Proof.
     pose ByteString_id_subproof.
     eapply le_uniqueness_proof.
   + simpl.
-    assert (lt n 8) by omega.
+    assert (lt n 8) by (unfold lt; omega).
     erewrite (IHfront0 H).
     unfold ByteString_push.
     simpl.
@@ -628,7 +642,7 @@ Proof.
      (padding m + 8 * length (byteString m) + (padding n + 8 * length (byteString n)))),
      (eq_sym
         (plus_assoc' (padding l + 8 * length (byteString l))
-                    (padding m + 8 * length (byteString m)) 
+                    (padding m + 8 * length (byteString m))
                     (padding n + 8 * length (byteString n)))).
   eapply EqdepFacts.eq_indd.
   simpl.
@@ -676,6 +690,7 @@ Lemma ByteString_transform_push_pop_opt
 Proof.
   destruct m; simpl.
   unfold ByteString_push; unfold ByteString_pop.
+  simpl.
   simpl padding.
   destruct (eq_nat_dec padding0 7);
     simpl padding; simpl paddingOK; simpl front; simpl byteString.
@@ -701,7 +716,7 @@ Lemma ByteString_transform_push_step_opt
   : forall (t : bool) (m n : ByteString),
     transform (ByteString_push t m) n = ByteString_push t (transform m n).
 Proof.
-  intros; destruct (ByteString_transform_push_eq t m).
+  intros t m n; destruct (ByteString_transform_push_eq t m).
   simpl transform.
   rewrite H, <- ByteString_transform_assoc.
   destruct (ByteString_transform_push_eq t (transform m n)).
