@@ -38,7 +38,7 @@ Require Import Coq.Logic.Eqdep_dec
         Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
-Import Lists.List.ListNotations.
+Export Lists.List.ListNotations.
 
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;

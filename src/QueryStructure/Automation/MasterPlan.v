@@ -2,6 +2,8 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Automation.QSImplementation.
 
+Export Lists.List.ListNotations.
+
   Ltac finish_planning' PickIndex
      BuildEarlyIndex BuildLastIndex
      IndexUse createEarlyTerm createLastTerm

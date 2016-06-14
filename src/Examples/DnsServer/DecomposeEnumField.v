@@ -151,8 +151,11 @@ Section DecomposeEnumField.
     unfold GetNRelSchema, DecomposeSchema in *;
       simpl in *.
     rewrite BuildVector_nth.
-    remember (qschemaSchemas qs_schema)[@schemaIdx] eqn:H;
-      clear H qs_schema schemaIdx.
+    match goal with
+    | [ |- context[DecomposeSchema' ?nthv _] ]
+      => remember nthv as y eqn:H
+    end.
+    clear H qs_schema schemaIdx.
     destruct y as [ [? ?] ? ?]; simpl in *.
     destruct attrIdx.
     eapply Tuple_DecomposeHeading_proj; eassumption.
@@ -172,8 +175,11 @@ Section DecomposeEnumField.
     unfold GetNRelSchema, DecomposeSchema in *;
       simpl in *.
     rewrite BuildVector_nth in tup.
-    remember (qschemaSchemas qs_schema)[@schemaIdx] eqn:H;
-      clear H qs_schema schemaIdx.
+    match goal with
+    | [ |- context[rawSchemaHeading ?nthv] ]
+      => remember nthv as y eqn:H
+    end.
+    clear H qs_schema schemaIdx.
     destruct y as [ [? ?] ? ?]; simpl in *.
     destruct attrIdx.
     eapply Tuple_BreakdownHeading_inj; eassumption.
