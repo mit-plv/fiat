@@ -20,6 +20,8 @@ Require Export Fiat.Common.ilist3_pair
         Fiat.QueryStructure.Implementation.DataStructures.Bags.BagsOfTuples
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagImplementation.
 
+Import Lists.List.ListNotations.
+
 Ltac list_of_evar B As k :=
   match As with
   | nil => k (@nil B)
