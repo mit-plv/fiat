@@ -20,6 +20,8 @@ Require Import Coq.Lists.List
         Fiat.QueryStructure.Specification.Constraints.tupleAgree
         Fiat.QueryStructure.Specification.Operations.Mutate.
 
+Import Lists.List.ListNotations.
+
 Unset Implicit Arguments.
 
 Local Transparent Count Query_For.
