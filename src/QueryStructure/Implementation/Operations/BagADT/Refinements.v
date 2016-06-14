@@ -24,6 +24,8 @@ Require Import Coq.Bool.Bool
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.QueryStructureImplementation.
 
+Import Lists.List.ListNotations.
+
 Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
