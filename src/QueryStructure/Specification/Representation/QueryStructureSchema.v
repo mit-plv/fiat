@@ -143,7 +143,7 @@ Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
    @Build_QueryStructureSchema
      _ relSchemas
      (let relListHint := Build_namedSchemaHint relSchemas relNames in
-          constraints%QSSchemaConstraints)
+          (constraints%QSSchemaConstraints)%list)
      relNames) : QSSchema_scope.
 
 Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ _ (*/*) .
