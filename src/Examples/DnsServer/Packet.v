@@ -315,7 +315,7 @@ Definition ID : Type := word 16.
 
   Definition is_empty {A} (l : list A) : bool :=
     match l with
-    | [ ] => true
+    | nil => true
     | _ => false
     end.
 
