@@ -337,6 +337,8 @@ Proof.
   omega.
 Qed.
 
+Hint Unfold modulo Nat.modulo : modulo_db.
+
 Import Nat.
 
 Lemma divmod_eq' :
@@ -377,7 +379,7 @@ Lemma NatModulo_S_Full
   : forall n' m, Nat.modulo n' (S m) = m
                -> Nat.modulo (S n') (S m) = 0.
 Proof.
-  unfold Nat.modulo, modulo.
+  autounfold with modulo_db.
   intros; assert (exists q, divmod (S n') m 0 m = (q, m)).
   intros; pose proof (divmod_spec n' m 0 m).
   destruct (divmod n' m 0 m) eqn: ? .
@@ -398,7 +400,7 @@ Lemma NatModulo_S_Not_Full
   : forall n' m, Nat.modulo n' (S m) <> m
                -> Nat.modulo (S n') (S m) = S (Nat.modulo n' (S m)).
 Proof.
-  unfold Nat.modulo, modulo.
+  autounfold with modulo_db.
   intros; destruct (divmod n' m 0 m) eqn: ?.
   destruct n0.
   simpl in H; omega.
@@ -498,7 +500,7 @@ Proof.
                      (length byteString0 +
                       (length byteString0 + (length byteString0 + (length byteString0 + 0))))))))) with (padding0 + (8 * length byteString0)).
   assert (Nat.modulo (padding0 + 8 * length byteString0) 8 = padding0).
-  { unfold Nat.modulo, modulo.
+  { autounfold with modulo_db.
     assert (exists n, padding0 = 7 - n /\ n <= 7)%nat.
     { destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ].
       eexists 7; omega.
