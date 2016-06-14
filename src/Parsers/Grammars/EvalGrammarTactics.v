@@ -1,7 +1,6 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Common.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 
 Ltac handle_evalT_parse :=

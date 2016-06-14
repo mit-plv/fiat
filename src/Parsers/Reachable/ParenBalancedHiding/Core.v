@@ -1,10 +1,9 @@
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Export Coq.Classes.RelationPairs.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Common.
-Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Common.Enumerable.
 
 Set Implicit Arguments.

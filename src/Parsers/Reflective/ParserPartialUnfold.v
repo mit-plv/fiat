@@ -1,4 +1,3 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.ParserSyntax.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 

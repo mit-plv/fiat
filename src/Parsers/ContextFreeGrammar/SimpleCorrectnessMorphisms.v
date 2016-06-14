@@ -1,5 +1,4 @@
 (** * Setoid lemmas about what it means for a simple_parse_of to be correct *)
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.SimpleCorrectness.
 Require Import Fiat.Common Fiat.Common.SetoidInstances.

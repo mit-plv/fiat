@@ -1,9 +1,7 @@
 Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
-Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.ADTNotation.BuildADT.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.Computation.Core.
-Require Import Fiat.ADTNotation.BuildADTSig.
 
 Lemma finish_Sharpening_SplitterADT'
       {String : Type}

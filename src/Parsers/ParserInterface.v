@@ -1,7 +1,6 @@
 (** * Simply-typed interface of the parser *)
 Require Export Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.SimpleCorrectness.
-Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Export Fiat.Parsers.ContextFreeGrammar.Carriers.
 

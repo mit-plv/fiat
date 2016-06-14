@@ -1,7 +1,6 @@
 (** * Definition of minimal parse trees *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.Reachable.OnlyFirst.Reachable.
 Require Import Fiat.Parsers.Reachable.MaybeEmpty.Minimal.
 Require Import Fiat.Parsers.BaseTypes.
 

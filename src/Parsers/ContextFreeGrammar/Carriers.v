@@ -1,12 +1,8 @@
-Require Import Coq.Strings.Ascii.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Common.List.FlattenList.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.StringOperations.
-Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Gensym.

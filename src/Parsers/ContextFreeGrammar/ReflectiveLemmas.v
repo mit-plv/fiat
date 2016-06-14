@@ -1,7 +1,6 @@
 (** * Leamms for reflective notations for context free grammars *)
 Require Import Coq.Strings.Ascii Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Common.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 
 Lemma item_rect_ritem_rect {C A T NT} {_ : Reflective.interp_RCharExpr_data C} it

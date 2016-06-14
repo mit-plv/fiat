@@ -1,8 +1,6 @@
 (** * Convenience Notations for Describing Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Common.Equality.
 Require Export Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
 
