@@ -5,18 +5,14 @@ Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Parsers.RecognizerPreOptimized.
 Require Import Fiat.Parsers.BooleanRecognizerOptimizedReflective.
 Require Import Fiat.Parsers.BooleanRecognizerOptimizedReflectiveCorrectness.
-Require Import Fiat.Parsers.Reflective.ParserSoundnessOptimized.
 Require Import Fiat.Parsers.ParserInterfaceReflective.
 Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.ParserImplementation.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
-Require Import Fiat.Parsers.ContextFreeGrammar.TransferProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.SimpleTransfer.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 
 Set Implicit Arguments.
 

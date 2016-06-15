@@ -4,10 +4,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Splitters.RDPList.
-Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.

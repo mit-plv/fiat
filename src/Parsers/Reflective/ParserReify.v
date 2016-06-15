@@ -1,14 +1,9 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
-Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
+Require Import Fiat.Parsers.Reflective.Syntax.
 Require Import Fiat.Parsers.Reflective.ParserSyntax Fiat.Parsers.Reflective.ParserSemantics.
 Require Import Fiat.Parsers.Reflective.Reify.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Common.NatFacts.
-Require Import Fiat.Common.BoolFacts.
-Require Import Fiat.Common.List.Operations.
 
 Module Export Exports.
    Export Reify.Exports.

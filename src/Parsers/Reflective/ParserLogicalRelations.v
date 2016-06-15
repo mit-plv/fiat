@@ -1,14 +1,10 @@
-Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
-Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.
 Require Import Fiat.Parsers.Reflective.ParserSyntax Fiat.Parsers.Reflective.ParserSemantics.
 Require Import Fiat.Parsers.Reflective.ParserPartialUnfold.
 Require Import Fiat.Parsers.Reflective.ParserSyntaxEquivalence.
 Require Import Fiat.Parsers.Reflective.LogicalRelations.
-Require Import Fiat.Common.List.ListFacts.
-Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.List.ListMorphisms.
 Require Import Fiat.Common.Wf2.
 
 Definition extract_Term {var T} (E : has_parse_term var T) : Term var _

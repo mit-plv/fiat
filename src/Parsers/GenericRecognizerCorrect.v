@@ -1,16 +1,10 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.GenericRecognizerMin Fiat.Parsers.GenericRecognizerExt.
-Require Import Fiat.Parsers.MinimalParse.
+Require Import Fiat.Parsers.GenericRecognizerMin.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
-Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.GenericBaseTypes Fiat.Parsers.GenericCorrectnessBaseTypes.
-Require Import Fiat.Parsers.Splitters.RDPList Fiat.Parsers.Splitters.BruteForce.
 Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
-Require Import Fiat.Common Fiat.Common.Wf.
-Require Import Fiat.Common.List.ListFacts.
-Require Import Fiat.Parsers.ParserInterface.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid Fiat.Parsers.ContextFreeGrammar.ValidProperties.
+Require Import Fiat.Common.
+Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.GenericRecognizer.
 Local Open Scope string_like_scope.
 

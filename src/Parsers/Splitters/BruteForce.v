@@ -1,5 +1,5 @@
 (** * Definition of a boolean-returning CFG parser-recognizer *)
-Require Import Coq.Lists.List Coq.Strings.String.
+Require Import Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.

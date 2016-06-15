@@ -1,7 +1,5 @@
 (** * Brute-force boolean recognizer *)
-Require Import Coq.Classes.RelationClasses.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
+
 Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.

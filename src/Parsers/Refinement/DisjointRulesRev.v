@@ -1,19 +1,12 @@
 (** Refinement rules for disjoint rules *)
-Require Import Coq.Lists.List.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.LastCharSuchThat.
-Require Import Fiat.Parsers.StringLike.LastChar.
-Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.List.Operations.
-Require Import Fiat.Parsers.Splitters.RDPList.
-Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.ParserInterface.
-Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 
