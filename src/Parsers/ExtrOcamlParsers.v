@@ -1,10 +1,5 @@
-Require Import Coq.Arith.Compare_dec Coq.Strings.String.
-Require Import Fiat.Common.Equality Fiat.Parsers.ParserFromParserADT Fiat.Parsers.SplitterFromParserADT Fiat.Parsers.ParserInterface.
-Require Import Coq.Arith.Wf_nat.
-Require Import Fiat.Common.Wf.
-Require Import Fiat.Common.NatFacts.
+Require Import Fiat.Common.Equality Fiat.Parsers.ParserFromParserADT.
 Require Import Coq.ZArith.BinInt.
-Require Import Fiat.Parsers.ContextFreeGrammar.Notations.
 Require Export Fiat.Parsers.Refinement.Tactics.
 Require Export Fiat.Common.BoolFacts.
 Require Export Fiat.ADTNotation.BuildComputationalADT.
