@@ -77,8 +77,8 @@ Ltac start_honing :=
        hnf in p'
   end; *)
   lazymatch goal with
-  | [ |- context[opt0.fst ?v] ]
-    => replace_by_vm_compute_opt0_proj v
+  | [ |- context[opt2.fold_right _ _ ?ls] ]
+    => replace_with_vm_compute ls
   end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
@@ -103,14 +103,29 @@ Tactic Notation "finish" "honing" "parser" "method"
 Ltac finish_Sharpening_SplitterADT
   := solve [ refine finish_Sharpening_SplitterADT ].
 
+Lemma simplify_monad_laws_first_step {A B C} (c : Comp A) (f : A -> B * C) v
+      (H : refine (x0 <- c; ret (f x0)) v)
+  : refine (r_o' <- a <- c; ret (f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+           v.
+Proof.
+  simplify with monad laws.
+  setoid_rewrite General.refine_pick_eq'.
+  simplify with monad laws.
+  rewrite <- H.
+  apply General.refine_under_bind; intros.
+  rewrite <- surjective_pairing; reflexivity.
+Qed.
+
 Ltac simplify_parser_splitter' :=
-  first [ progress autounfold with parser_sharpen_db;
-          cbv beta iota zeta;
-          simpl @Operations.List.uniquize;
-          simpl @List.fold_right
-        | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
-        | progress simplify with monad laws
-        | idtac;
+  first [ idtac;
+          match goal with
+          | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+                        ?v ]
+            => apply (@simplify_monad_laws_first_step _ _ _ c f v)
+          end;
+          let lem := fresh in
+          change @fst with @opt0.fst;
+          change @snd with @opt0.snd;
           lazymatch goal with
           | [ |- refine (x0 <- (opt2.fold_right
                                   (fun a a0 => If @?test a Then @?test_true a Else a0)
@@ -118,11 +133,17 @@ Ltac simplify_parser_splitter' :=
                                   ?ls);
                          (@?r_o x0))
                         ?retv ]
-            => eapply (@refine_opt2_fold_right _ r_o retv test test_true base ls)
+            => pose proof (@refine_opt2_fold_right _ _ (@opt0.snd _ _) r_o retv test test_true base ls) as lem
           end;
-          cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
-          change (opt2.orb false) with (fun x : bool => x);
-          cbv beta; intros
+          cbv [make_tower opt0.snd opt0.fst] in lem |- *;
+          eapply lem; clear lem;
+          intros
+        | progress autounfold with parser_sharpen_db;
+          cbv beta iota zeta;
+          simpl @Operations.List.uniquize;
+          simpl @List.fold_right
+        | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
+        | progress simplify with monad laws
         (*| progress unguard
         | progress change (orb false) with (fun x : bool => x); cbv beta
         | progress change (orb true) with (fun x : bool => true); cbv beta

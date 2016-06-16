@@ -177,23 +177,17 @@ Module opt.
   Definition premap_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list (nat * (nat * nat)).
   Proof.
     let term := match (eval cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq] in (fun HSLM HSL => @rindexed_spec HSLM HSL G)) with
-                | appcontext[Operations.List.uniquize ret_cases_BoolDecR (List.map ?f ?ls)] => ls
+                | appcontext[List.map (fun x => (x, ?f x)) ?ls] => ls
                 end in
     exact term.
   Defined.
   Definition Let_In {A B} (x : A) (f : A -> B) := let y := x in f y.
-  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ret_cases
-    := map (@expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G).
-  Definition expanded_fallback_list'_body_values (G : pregrammar' Ascii.ascii) : list _ * list ret_cases
+  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ((nat * (nat * nat)) * ret_cases)
+    := map (fun x => (x, @expanded_fallback_list'_body G fg x)) (premap_expanded_fallback_list'_body G).
+  Definition expanded_fallback_list_body (G : pregrammar' Ascii.ascii) : list ((nat * (nat * nat)) * ret_cases)
     := Let_In
          (fold_grammar G)
-         (fun fg
-          => (combine (map_expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G),
-              opt2.uniquize ret_cases_BoolDecR (map_expanded_fallback_list'_body G fg))).
-  Definition uniquize_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
-    := opt0.snd (expanded_fallback_list'_body_values G).
-  Definition combine_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list _
-    := opt0.fst (expanded_fallback_list'_body_values G).
+         (map_expanded_fallback_list'_body G).
 End opt.
 
 Class opt_of {T} (term : T) := mk_opt_of : T.
@@ -405,21 +399,12 @@ Section IndexedImpl_opt.
     simpl @production_carrierT.
     cbv [default_production_carrierT default_nonterminal_carrierT].
     lazymatch goal with
-    | [ |- appcontext g[Operations.List.uniquize ?beq ?ls] ]
+    | [ |- appcontext g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
       => idtac;
-           let G' := context g[opt.id (opt.uniquize_expanded_fallback_list'_body G)] in
+           let G' := context g[opt.id (opt.expanded_fallback_list_body G)] in
            change G'
     end.
-    lazymatch goal with
-    | [ |- appcontext g[List.combine ?ls1 ?ls2] ]
-      => idtac;
-           let G' := context g[opt.id (opt.combine_expanded_fallback_list'_body G)] in
-           change G'
-    end.
-    cbv [opt.combine_expanded_fallback_list'_body opt.map_expanded_fallback_list'_body opt.uniquize_expanded_fallback_list'_body].
-    change ret_cases_BoolDecR with (opt2.id opt2.ret_cases_BoolDecR).
     change (@nil ?A) with (opt.id (@nil A)).
-    change (0::opt.id nil)%list with (opt.id (0::nil)%list).
     do 2 (idtac;
           let G := match goal with |- ?G => G end in
           let G' := opt_of G in
@@ -571,7 +556,6 @@ Section IndexedImpl_opt.
                | _ => progress cbv beta
                end.
         reflexivity.
-        reflexivity.
         reflexivity. }
       change orb with Common.opt2.orb.
       let d := match goal with d : (nat * (nat * nat))%type |- _ => d end in
@@ -603,18 +587,19 @@ Ltac opt_red_FirstStep :=
   cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.collapse_length_result opt.fst opt.snd].
 
 Section tower.
-  Context {A}
-          (r_o : list nat -> Comp A)
-          (retv : Comp A)
-          (test : ret_cases -> bool)
-          (test_true : ret_cases -> Comp (list nat)).
+  Context {A B}
+          (proj : A -> ret_cases)
+          (r_o : list nat -> Comp B)
+          (retv : Comp B)
+          (test : A -> bool)
+          (test_true : A -> Comp (list nat)).
 
-  Fixpoint make_tower base (ls : list ret_cases) new_comp old_comp
+  Fixpoint make_tower base (ls : list A) new_comp old_comp
     := match ls with
        | nil => refine (x0 <- new_comp base; r_o x0) retv
                 -> refine (x0 <- old_comp base; r_o x0) retv
        | cons x xs
-         => match x with
+         => match proj x with
             | ret_pick _
               => forall part_retv,
                 (test x -> refine (test_true x) part_retv)
@@ -642,7 +627,7 @@ Section tower.
     revert base new_comp old_comp H; induction ls as [|x xs IHxs]; simpl; intros.
     { eapply H; [ | eassumption ].
       reflexivity. }
-    { destruct x; simpl; intros;
+    { destruct (proj x); simpl; intros;
       apply IHxs; clear IHxs; try intros ?? H';
       apply H;
       edestruct test; specialize_by ltac:(exact eq_refl); simpl;

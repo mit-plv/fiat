@@ -22,39 +22,36 @@ Section IndexedImpl.
       Time simplify parser splitter.
       (*Show Profile.*)
       (*
-total time:      0.712s
+
+total time:      0.125s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    0.712s
-─simplify_parser_splitter' -------------   1.7% 100.0%       6    0.340s
-─simplify ------------------------------   0.0% 100.0%       1    0.712s
-─simplify with monad laws --------------   0.0%  64.6%       4    0.268s
-─simplify_with_applied_monad_laws ------   0.6%  64.6%       4    0.268s
-─eapply (refine_opt2_fold_right r_o retv  26.4%  26.4%       1    0.188s
-─apply refine_bind_unit_helper ---------  11.8%  11.8%      31    0.008s
-─eapply refine_under_bind_helper -------  11.8%  11.8%      29    0.012s
-─apply refine_bind_bind_helper ---------  11.2%  11.2%      30    0.008s
-─eapply refine_under_bind_helper_1 -----  10.7%  10.7%      29    0.008s
-─apply refine_unit_bind_helper ---------   9.6%   9.6%      30    0.008s
-─eapply refine_under_bind_helper_2 -----   9.0%   9.0%      29    0.008s
-─autounfold  with parser_sharpen_db ----   6.2%   6.2%       6    0.012s
+─simplify parser splitter --------------   0.0% 100.0%       1    0.125s
+─simplify_parser_splitter' -------------   0.0% 100.0%       3    0.078s
+─simplify ------------------------------   0.0% 100.0%       1    0.125s
+─simplify with monad laws --------------   0.0%  50.0%       2    0.063s
+─simplify_with_applied_monad_laws ------   0.0%  50.0%       2    0.063s
+─eapply refine_under_bind_helper -------  25.0%  25.0%       5    0.016s
+─eapply refine_under_bind_helper_2 -----  25.0%  25.0%       5    0.016s
+─eapply lem ----------------------------  12.5%  12.5%       1    0.016s
+─simpl opt.nat_of_ascii ----------------  12.5%  12.5%       2    0.016s
+─apply (simplify_monad_laws_first_step (  12.5%  12.5%       1    0.016s
+─clear lem -----------------------------  12.5%  12.5%       2    0.016s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    0.712s
-└simplify ------------------------------   0.0% 100.0%       1    0.712s
-└simplify_parser_splitter' -------------   1.7% 100.0%       6    0.340s
- ├─simplify with monad laws ------------   0.0%  64.6%       4    0.268s
- │└simplify_with_applied_monad_laws ----   0.6%  64.6%       4    0.268s
- │ ├─apply refine_bind_unit_helper -----  11.8%  11.8%      31    0.008s
- │ ├─eapply refine_under_bind_helper ---  11.8%  11.8%      29    0.012s
- │ ├─apply refine_bind_bind_helper -----  11.2%  11.2%      30    0.008s
- │ ├─eapply refine_under_bind_helper_1 -  10.7%  10.7%      29    0.008s
- │ ├─apply refine_unit_bind_helper -----   9.6%   9.6%      30    0.008s
- │ └─eapply refine_under_bind_helper_2 -   9.0%   9.0%      29    0.008s
- ├─eapply (refine_opt2_fold_right r_o re  26.4%  26.4%       1    0.188s
- └─autounfold  with parser_sharpen_db --   6.2%   6.2%       6    0.012s
+─simplify parser splitter --------------   0.0% 100.0%       1    0.125s
+└simplify ------------------------------   0.0% 100.0%       1    0.125s
+└simplify_parser_splitter' -------------   0.0% 100.0%       3    0.078s
+ ├─simplify with monad laws ------------   0.0%  50.0%       2    0.063s
+ │└simplify_with_applied_monad_laws ----   0.0%  50.0%       2    0.063s
+ │ ├─eapply refine_under_bind_helper ---  25.0%  25.0%       5    0.016s
+ │ └─eapply refine_under_bind_helper_2 -  25.0%  25.0%       5    0.016s
+ ├─eapply lem --------------------------  12.5%  12.5%       1    0.016s
+ ├─clear lem ---------------------------  12.5%  12.5%       2    0.016s
+ ├─simpl opt.nat_of_ascii --------------  12.5%  12.5%       2    0.016s
+ └─apply (simplify_monad_laws_first_step  12.5%  12.5%       1    0.016s
  *)
       { (*Start Profiling.*)
         Time refine_binop_table.
