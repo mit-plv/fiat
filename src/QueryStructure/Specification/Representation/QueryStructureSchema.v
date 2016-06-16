@@ -93,6 +93,8 @@ Notation "'relation' name 'has' sch " :=
 
 Notation "[ rel1 ; .. ; reln ]" :=
   (@Vector.cons _ rel1 _ (.. (@Vector.cons _ reln _ (Vector.nil _)) .. )) : NamedSchema_scope.
+Notation "[ rel1 ; rel2 ; .. ; reln ]" :=
+  (@Vector.cons _ rel1 _ (@Vector.cons _ rel2 _ (.. (@Vector.cons _ reln _ (Vector.nil _)) .. ))) : NamedSchema_scope.
 
 Bind Scope NamedSchema_scope with NamedSchema.
 
@@ -141,7 +143,7 @@ Notation "'Query' 'Structure' 'Schema' relList 'enforcing' constraints" :=
    @Build_QueryStructureSchema
      _ relSchemas
      (let relListHint := Build_namedSchemaHint relSchemas relNames in
-          constraints%QSSchemaConstraints)
+          (constraints%QSSchemaConstraints)%list)
      relNames) : QSSchema_scope.
 
 Arguments BuildForeignKeyConstraints _ _ [_ _] _ _ _ (*/*) .

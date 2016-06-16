@@ -1,13 +1,9 @@
 Require Import Coq.Strings.Ascii.
 Require Import Coq.MSets.MSetPositive.
-Require Import Coq.MSets.MSetFacts.
-Require Import Coq.MSets.MSetProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Common.MSetBoundedLattice.
 Require Import Fiat.Common.MSetExtensions.
-Require Import Fiat.Common.Wf.
 Require Import Fiat.Common.BoolFacts.
-Require Import Fiat.Common.
 
 Module PositiveSetBoundedLattice := MSetBoundedLattice PositiveSet.
 Module Import PositiveSetExtensions := MSetExtensions PositiveSet.

@@ -1,7 +1,5 @@
-Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
@@ -9,7 +7,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDef
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
 Require Import Fiat.Common.
-Require Import Fiat.Common.NatFacts.
 
 Set Implicit Arguments.
 

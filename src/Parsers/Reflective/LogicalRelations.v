@@ -1,11 +1,10 @@
-Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.SyntaxEquivalence.
 Require Import Fiat.Parsers.Reflective.Morphisms.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
-Require Import Fiat.Common.List.ListMorphisms.
 
 Fixpoint related {T} : interp_TypeCode T -> normalized_of interp_TypeCode T -> Prop
   := match T return interp_TypeCode T -> normalized_of interp_TypeCode T -> Prop with

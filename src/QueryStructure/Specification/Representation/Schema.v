@@ -57,6 +57,13 @@ Notation "[ attr1 ; .. ; attr2 ] " :=
                  (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr2%string _)))) nil) ..)
   : SchemaConstraints_scope.
 
+Notation "[ attr1 ; attr2 ; .. ; attr3 ] " :=
+  (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr1%string _)))
+        (cons (ibound (indexb (@Build_BoundedIndex _ _ (HeadingNames headingHint) attr2%string _)))
+              .. (cons
+                    (ibound (indexb ((@Build_BoundedIndex _ _  (HeadingNames headingHint) attr3%string _)))) nil) ..))
+  : SchemaConstraints_scope.
+
 Definition FunctionalDependency_P
            (hHint : RawHeading)
   :  list (Attributes hHint)

@@ -1,7 +1,5 @@
 Require Import Coq.Lists.List.
-Require Import Coq.Classes.Morphisms.
-Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Coq.Arith.Compare_dec Coq.Program.Utils.
+Require Import Coq.Arith.Compare_dec.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.GenericBaseTypes.

@@ -1,8 +1,6 @@
 (** * Properties about Context Free Grammars *)
 Require Import Coq.Numbers.Natural.Peano.NPeano.
-Require Import Coq.Classes.RelationClasses.
-Require Import Fiat.Common Fiat.Common.UIP Fiat.Common.List.Operations.
-Require Import Fiat.Parsers.StringLike.Core Fiat.Parsers.StringLike.Properties.
+Require Import Fiat.Common Fiat.Common.UIP.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 

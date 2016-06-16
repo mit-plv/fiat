@@ -1,11 +1,7 @@
 (** * The recognizer can work on a projected string type *)
-Require Import Fiat.Parsers.BooleanRecognizer.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.GenericBaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.GenericRecognizerCorrect.
 Require Import Fiat.Parsers.GenericRecognizerExt.
 Require Import Fiat.Common.Wf1.
 Require Import Fiat.Common.SetoidInstances.

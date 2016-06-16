@@ -1,11 +1,9 @@
 (** * Definition of the generic part of the interface of the correctness proof of the CFG parser *)
-Require Import Coq.Strings.String.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Arith.EqNat.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 

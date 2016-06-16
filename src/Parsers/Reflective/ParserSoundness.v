@@ -1,9 +1,6 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
-Require Import Coq.Classes.Morphisms.
-Require Import Fiat.Parsers.Reflective.Syntax.
+
 Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.ParserSyntax.
-Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.ParserSemantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.
 Require Import Fiat.Parsers.Reflective.ParserPartialUnfold.

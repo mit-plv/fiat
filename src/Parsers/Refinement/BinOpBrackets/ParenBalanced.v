@@ -1,5 +1,4 @@
 (** * Build a table for the next binop at a given level *)
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.

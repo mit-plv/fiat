@@ -1,11 +1,7 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.ParserSyntax.
 Require Import Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.GenericRecognizer.
-Require Import Fiat.Common.NatFacts.
-Require Import Fiat.Common.BoolFacts.
-Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Wf Fiat.Common.Wf2.
 Set Implicit Arguments.
 

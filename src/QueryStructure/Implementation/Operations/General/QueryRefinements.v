@@ -1191,7 +1191,7 @@ Proof.
   unfold QSEmptySpec, DropQSConstraints, GetUnConstrRelation.
   setoid_rewrite <- ith_imap2.
   unfold rawRels; intros; rewrite @Build_EmptyRelation_IsEmpty.
-  simpl; eexists [ ].
+  simpl; eexists nil.
   eauto using UnIndexedEnsembleListEquivalence_Empty_set.
 Qed.
 

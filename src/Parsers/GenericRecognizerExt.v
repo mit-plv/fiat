@@ -2,8 +2,6 @@
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.GenericBaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.GenericRecognizer.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.

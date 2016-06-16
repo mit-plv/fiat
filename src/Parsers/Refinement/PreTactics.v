@@ -14,7 +14,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.NatFacts.
-Require Import Fiat.Computation.Refinements.General.
 
 Export Common.opt2.Notations.
 

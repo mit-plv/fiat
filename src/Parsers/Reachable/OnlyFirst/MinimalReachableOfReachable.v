@@ -1,14 +1,11 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
-Require Import Coq.Program.Basics.
-Require Import Coq.Strings.String Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.RelationClasses Coq.Classes.Morphisms.
+Require Import Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.Reachable.OnlyFirst.Reachable.
 Require Import Fiat.Parsers.Reachable.OnlyFirst.MinimalReachable.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.Reachable.OnlyFirst.ReachableWellFounded.
-Require Import Fiat.Parsers.Reachable.MaybeEmpty.Core.
-Require Import Fiat.Parsers.Reachable.MaybeEmpty.Minimal.
 Require Import Fiat.Parsers.Reachable.MaybeEmpty.MinimalOfCore.
 Require Import Fiat.Common.
 

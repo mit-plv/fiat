@@ -1,5 +1,4 @@
 (** * Lemmas about what it means for a simple_parse_of to be correct *)
-Require Import Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.SimpleCorrectness.
 

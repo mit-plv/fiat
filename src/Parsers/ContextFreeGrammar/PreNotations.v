@@ -1,4 +1,4 @@
-Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Import Fiat.Common.List.Operations.

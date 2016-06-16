@@ -1,5 +1,5 @@
 (** * Definition of Context Free Grammars *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Export Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.

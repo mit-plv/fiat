@@ -1,5 +1,5 @@
 (** * Well-founded relation on [parse_of] *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Program.Wf Coq.Arith.Wf_nat Coq.Relations.Relation_Definitions.
+Require Import Coq.Strings.String Coq.Arith.Wf_nat Coq.Relations.Relation_Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 
 Section rel.

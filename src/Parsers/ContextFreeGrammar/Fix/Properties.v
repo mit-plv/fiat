@@ -1,7 +1,6 @@
 Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Wf.
-Require Import Fiat.Common.Notations.
 Require Import Fiat.Common.BoolFacts.
 
 Set Implicit Arguments.

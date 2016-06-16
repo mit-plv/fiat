@@ -6,9 +6,7 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
 Require Import Fiat.Common.
 Require Import Fiat.Parsers.Splitters.RDPList.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Fiat.Parsers.MinimalParseOfParse.
 

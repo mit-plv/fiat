@@ -328,6 +328,8 @@ Proof.
   omega.
 Qed.
 
+Hint Unfold modulo Nat.modulo : modulo_db.
+
 Import Nat.
 
 Lemma divmod_eq' :
@@ -376,13 +378,13 @@ Lemma NatModulo_S_Full
   : forall n' m, Nat.modulo n' (S m) = m
                -> Nat.modulo (S n') (S m) = 0.
 Proof.
-  unfold Nat.modulo, modulo.
+  autounfold with modulo_db.
   intros; assert (exists q, divmod (S n') m 0 m = (q, m)).
   intros; pose proof (divmod_spec n' m 0 m).
   destruct (divmod n' m 0 m) eqn: ? .
   destruct H0; eauto.
   simpl in H.
-  assert (n0 = 0) by (rewrite Heqp in H; simpl in H; omega).
+  assert (n0 = 0) by (simpl in H; omega).
   rewrite H2 in *; clear H H2.
   apply divmod_eq in Heqp.
   eexists (S n).
@@ -397,17 +399,17 @@ Lemma NatModulo_S_Not_Full
   : forall n' m, Nat.modulo n' (S m) <> m
                -> Nat.modulo (S n') (S m) = S (Nat.modulo n' (S m)).
 Proof.
-  unfold Nat.modulo, modulo.
+  autounfold with modulo_db.
   intros; destruct (divmod n' m 0 m) eqn: ?.
   destruct n0.
-  simpl in H; rewrite Heqp in H; simpl in *; omega.
+  simpl in H; simpl in *; omega.
   intros; pose proof (divmod_spec n' m 0 m).
   rewrite Heqp in H0; destruct H0; eauto.
   assert (divmod (S n') m 0 m = (n, n0)).
   apply divmod_eq in Heqp.
   apply divmod_eq'; try omega.
   simpl in *; rewrite H2; simpl.
-  rewrite Heqp; simpl; omega.
+  omega.
 Qed.
 
 Fixpoint word_split {n m}

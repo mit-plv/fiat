@@ -2,7 +2,6 @@
 Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.GenericBaseTypes.
 Require Import Fiat.Parsers.SimpleRecognizer.
 Require Import Fiat.Parsers.GenericRecognizerExt.
 
