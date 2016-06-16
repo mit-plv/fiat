@@ -41,9 +41,9 @@ Definition char_chomp_bits
   NToWord _ (N.modulo (wordToN c) (Npow2 (wordToNat i))).
 
 Record ByteString :=
-  { padding : nat; (* The number of valid bits in front. *)
-    paddingOK : lt padding 8;
+  { padding : nat;
     front : word padding;
+    paddingOK : lt padding 8;
     byteString : list char (* The bytestring. *)
   }.
 
@@ -57,12 +57,12 @@ Definition ByteString_push
          (bs : ByteString)
   : ByteString.
   refine (if (eq_nat_dec (padding bs) 7) then
-    {| front := (wzero _);
-       byteString := WS b _
-                        :: byteString bs;
-       padding := 0 |}
+            {| front := WO;
+               byteString := WS b _
+                                :: byteString bs |}
   else
     {| front := WS b (front bs);
+       padding := S (padding bs);
        byteString := byteString bs |}).
   abstract omega.
   { pose proof (front bs) as w; generalize dependent (padding bs).
@@ -96,29 +96,20 @@ Fixpoint ByteString_push_word
            {n}
            (w : word n)
            (bs : ByteString) :=
-  match w with
-  | WO => bs
-  | WS b _ w' => ByteString_push b (ByteString_push_word w' bs)
-  end.
-
-Definition ByteString_push_char (c : char) (bs : ByteString)
-  := ByteString_push_word c bs.
-
-Fixpoint ByteString_push_front
-           {n}
-           (w : word n)
-           (bs : ByteString) :=
   match n return word n -> ByteString with
   | 0 => fun _ => bs
   | S n' => fun w =>
-              ByteString_push (whd w) (ByteString_push_front (wtl w) bs)
+              ByteString_push (whd w) (ByteString_push_word (wtl w) bs)
   end w.
+
+Definition ByteString_push_char (c : char) (bs : ByteString)
+  := ByteString_push_word c bs.
 
 Definition ByteString_transformer
            (bs bs' : ByteString)
   : ByteString :=
   let bs'' := fold_right ByteString_push_char bs' (byteString bs) in
-  ByteString_push_front (front bs) bs''.
+  ByteString_push_word (front bs) bs''.
 
 Definition length_ByteString (bs : ByteString) :=
   (padding bs) + (8 * (length (byteString bs))).
@@ -170,9 +161,9 @@ Proof.
   omega.
 Qed.
 
-Corollary length_ByteString_push_front
+Corollary length_ByteString_push_word
   : forall n (bs_front : word n) (bs' : ByteString),
-    length_ByteString (ByteString_push_front bs_front bs') =
+    length_ByteString (ByteString_push_word bs_front bs') =
     n + length_ByteString bs'.
 Proof.
   induction n; simpl; intros; eauto.
@@ -213,16 +204,16 @@ Proof.
      (bs_padding + 8 * length bs_byteString +
       (padding bs' + 8 * length (byteString bs'))) by omega.
      rewrite <- IHbs_byteString; clear.
-     rewrite !length_ByteString_push_front.
+     rewrite !length_ByteString_push_word.
      rewrite length_ByteString_push_char, plus_comm, plus_assoc.
      rewrite <- !plus_assoc; f_equal.
      remember (fold_right ByteString_push_char bs' bs_byteString);
        clear.
      induction bs_padding.
      + unfold length_ByteString; simpl; omega.
-     + rewrite <- plus_n_Sm, (IHbs_padding (wtl front0)); clear.
+     + rewrite <- plus_n_Sm, (IHbs_padding (wtl bs_front)); clear.
        rewrite plus_n_Sm.
-       simpl ByteString_push_front.
+       simpl ByteString_push_word.
        unfold ByteString_push.
        repeat match goal with
               | _ => progress simpl in *
@@ -373,6 +364,14 @@ Proof.
   rewrite mult_comm; f_equal.
 Qed.
 
+Corollary divmod_eq'' :
+  forall x y,
+    x = (y - (snd (divmod x y 0 y))) + (fst (divmod x y 0 y)) * (S y).
+Proof.
+  intros; rewrite plus_comm; destruct (divmod x y 0 y) eqn: ? .
+  simpl; eapply divmod_eq; assumption.
+Defined.
+
 Lemma NatModulo_S_Full
   : forall n' m, Nat.modulo n' (S m) = m
                -> Nat.modulo (S n') (S m) = 0.
@@ -383,7 +382,7 @@ Proof.
   destruct (divmod n' m 0 m) eqn: ? .
   destruct H0; eauto.
   simpl in H.
-  assert (n0 = 0) by omega.
+  assert (n0 = 0) by (rewrite Heqp in H; simpl in H; omega).
   rewrite H2 in *; clear H H2.
   apply divmod_eq in Heqp.
   eexists (S n).
@@ -391,7 +390,7 @@ Proof.
   rewrite Heqp.
   rewrite <- !minus_n_O, minus_diag, <- plus_n_O.
   simpl; omega.
-  destruct_ex; rewrite H0; simpl; omega.
+  destruct_ex; simpl in *; rewrite H0; simpl; omega.
 Qed.
 
 Lemma NatModulo_S_Not_Full
@@ -401,66 +400,97 @@ Proof.
   unfold Nat.modulo, modulo.
   intros; destruct (divmod n' m 0 m) eqn: ?.
   destruct n0.
-  simpl in H; omega.
+  simpl in H; rewrite Heqp in H; simpl in *; omega.
   intros; pose proof (divmod_spec n' m 0 m).
   rewrite Heqp in H0; destruct H0; eauto.
   assert (divmod (S n') m 0 m = (n, n0)).
   apply divmod_eq in Heqp.
   apply divmod_eq'; try omega.
-  rewrite H2; simpl.
-  omega.
+  simpl in *; rewrite H2; simpl.
+  rewrite Heqp; simpl; omega.
 Qed.
 
+Fixpoint word_split {n m}
+         (w : word (n + m))
+         {struct n}
+  : word n * word m :=
+  match n return word (n + m) -> word n * word m with
+  | 0 => fun w => (WO, w)
+  | S n' => fun w' =>
+              let (wn, wm) := word_split (wtl w') in
+              (WS (whd w') wn, wm)
+  end w.
+
 Fixpoint word_into_ByteString' {n}
-           (w : word n)
-           {struct w}
-  : (word (Nat.modulo n 8) * list char).
-  refine (match w in word n return word (Nat.modulo n 8) * list char with
-          | WO => (WO, [ ])
-          | WS b n' w' => let (b', chars) := word_into_ByteString' _ w' in
-                          (if (eq_nat_dec (Nat.modulo n' 8) 7) then _
-                                                else (_ , chars))
-          end).
-  - generalize (WS b b').
-    match goal with
-    | [ _H : _ = _ |- _ ]
-      => rewrite _H, (NatModulo_S_Full _ _H); simpl
-    end.
-    exact (fun b => (WO, b :: chars)).
-  - lazymatch goal with
-    | [ _H : _ <> _ |- _ ]
-      => rewrite (NatModulo_S_Not_Full _ _H)
-    end.
-    exact (WS b b').
-Defined.
+         (w : word (n * 8))
+  : list char :=
+  match n return word (n * 8) -> list char with
+  | 0 => fun _ => [ ]
+  | S n' => fun w => let (c, w') := @word_split 8 (n' * 8) w in
+                     c :: (word_into_ByteString' w')
+  end w.
 
 Definition word_into_ByteString
-           {n}
-           (w : word n)
-  : ByteString.
-  refine {| front := fst (word_into_ByteString' w);
-            paddingOK := _;
-            byteString := snd (word_into_ByteString' w) |}.
-  abstract (simpl; destruct (divmod n 7 0 7); simpl;
-            repeat (destruct n1; try omega)).
-Defined.
+           {n m}
+           (H : lt n 8)
+           (w : word (n + (m * 8)))
+  : ByteString :=
+  {| front := fst (word_split w);
+     paddingOK := H;
+     byteString := word_into_ByteString' (snd (@word_split n _ w)) |}.
+
+Definition list_into_ByteString
+           (l : list bool)
+  : ByteString :=
+  fold_right ByteString_push ByteString_id l.
+
+Lemma mult_succ_plus_comm_fuse
+  : forall n m,
+    S n * m = m + n * m.
+Proof.
+  intros; rewrite mult_succ_l, plus_comm; reflexivity.
+Qed.
 
 Fixpoint ByteString_into_word'
            (chars : list char)
-           {struct chars} : word (8 * length chars).
+           {struct chars} : word (length chars * 8).
 Proof.
-  refine (match chars return word (8 * length chars) with
+  refine (match chars return word (length chars * 8) with
           | [ ] => WO
           | char' :: chars' => _
           end).
-  simpl length; rewrite mult_succ_r, plus_comm;
+  simpl length; rewrite mult_succ_plus_comm_fuse.
     exact (append_word char' (ByteString_into_word' chars')).
 Defined.
 
 Definition ByteString_into_word
            (bs : ByteString)
-  : word (padding bs + (8 * length (byteString bs))) :=
+  : word (padding bs + (length (byteString bs) * 8)) :=
   append_word (front bs) (ByteString_into_word' (byteString bs)).
+
+
+Fixpoint wordToList {n}
+           (w : word n)
+  : list bool :=
+  match n return word n -> list bool with
+  | 0 => fun _ => [ ]
+  | S n' => fun w => whd w :: wordToList (wtl w)
+  end w.
+
+Fixpoint ByteString_into_list'
+           (chars : list char)
+           {struct chars} : list bool :=
+  match chars return list bool with
+  | [ ] => [ ]
+  | char' :: chars' =>
+    app (wordToList char')
+        (ByteString_into_list' chars')
+  end.
+
+Definition ByteString_into_list
+           (bs : ByteString)
+  : list bool :=
+  app (wordToList (front bs)) (ByteString_into_list' (byteString bs)).
 
 Lemma ByteString_f_equal
   : forall bs bs'
@@ -484,49 +514,200 @@ Proof.
     simpl; reflexivity.
 Qed.
 
+Lemma ByteString_into_word'_eq
+  : forall bs,
+    bs = word_into_ByteString' (ByteString_into_word' bs).
+Proof.
+  induction bs; simpl; f_equal.
+  - rename a into c.
+    pose proof (shatter_word c); simpl in *;
+      pose proof (shatter_word (wtl c)); simpl in *;
+        pose proof (shatter_word (wtl (wtl c))); simpl in *;
+          pose proof (shatter_word (wtl (wtl (wtl c)))); simpl in *;
+            pose proof (shatter_word (wtl (wtl (wtl (wtl c))))); simpl in *;
+              pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl c)))))); simpl in *;
+                pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl c))))))); simpl in *;
+                  pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))));
+                  pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))))); simpl in *.
+    rewrite H, H0, H1, H2, H3, H4, H5, H6, H7; simpl.
+    repeat f_equal;
+      unfold eq_rec_r, eq_rec; rewrite <- eq_rect_eq_dec;
+        simpl; eauto using eq_nat_dec.
+  - rename a into c.
+    pose proof (shatter_word c); simpl in *;
+      pose proof (shatter_word (wtl c)); simpl in *;
+        pose proof (shatter_word (wtl (wtl c))); simpl in *;
+          pose proof (shatter_word (wtl (wtl (wtl c)))); simpl in *;
+            pose proof (shatter_word (wtl (wtl (wtl (wtl c))))); simpl in *;
+              pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl c)))))); simpl in *;
+                pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl c))))))); simpl in *;
+                  pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))));
+                  pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))))); simpl in *.
+    rewrite H, H0, H1, H2, H3, H4, H5, H6, H7; simpl.
+      unfold eq_rec_r, eq_rec; rewrite <- eq_rect_eq_dec;
+        simpl; eauto using eq_nat_dec.
+Qed.
+
 Lemma ByteString_into_word_eq
   : forall bs,
-    bs = word_into_ByteString (ByteString_into_word bs).
+    bs = word_into_ByteString (paddingOK bs) (ByteString_into_word bs).
 Proof.
   destruct bs; simpl.
   unfold word_into_ByteString, ByteString_into_word.
-  change (padding0 +
-                 (length byteString0 +
-                  (length byteString0 +
-                   (length byteString0 +
-                    (length byteString0 +
-                     (length byteString0 +
-                      (length byteString0 + (length byteString0 + (length byteString0 + 0))))))))) with (padding0 + (8 * length byteString0)).
-  assert (Nat.modulo (padding0 + 8 * length byteString0) 8 = padding0).
-  { unfold Nat.modulo, modulo.
-    assert (exists n, padding0 = 7 - n /\ n <= 7)%nat.
-    { destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ].
-      eexists 7; omega.
-      eexists 6; omega.
-      eexists 5; omega.
-      eexists 4; omega.
-      eexists 3; omega.
-      eexists 2; omega.
-      eexists 1; omega.
-      eexists 0; omega.
-      omega. }
-    destruct_ex; intuition; rewrite H0.
-    erewrite divmod_eq' with (q := length byteString0)
-                               (u := x); eauto.
-    rewrite plus_comm, mult_comm; reflexivity.
-  }
-  eapply ByteString_f_equal with (p_eq := H).
-  - simpl; apply le_uniqueness_proof.
-  - simpl front; simpl padding.
-    induction front0; simpl.
-    (* admit. *)
-    (* erewrite IHfront0. *)
-    (* rewrite succ_eq_rect by omega. *)
-    (* simpl in H. *)
-    (* rewrite H. *)
-    (* simpl. *)
-    (* progress f_equal. *)
-Admitted.
+  f_equal.
+  - destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ].
+    + pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        eauto.
+    + pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+        eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+          let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+        eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+        eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+     eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+                           eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+       let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl front0))))))) as H'; simpl in H'; rewrite H';
+                     eauto.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+       let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl front0))))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl front0)))))))) as H'; simpl in H'; rewrite H';
+                     eauto.
+    + omega.
+  - destruct padding0 as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ].
+    + pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        subst; simpl; eauto using ByteString_into_word'_eq.
+    + pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+          simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+        pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+          let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+                               simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+                           simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+                           let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+                                                simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+       let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl front0))))))) as H'; simpl in H'; rewrite H';
+                     simpl; eauto using ByteString_into_word'_eq.
+    + let H' := fresh in
+      pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      let H'' := fresh in pose proof (shatter_word (wtl front0)) as H''; simpl in H''; rewrite H'';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl front0))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl front0)))) as H'; simpl in H'; rewrite H';
+      let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl front0))))) as H'; simpl in H'; rewrite H';
+       let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl front0)))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl front0))))))) as H'; simpl in H'; rewrite H';
+let H' := fresh in pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl front0)))))))) as H'; simpl in H'; rewrite H';
+simpl; eauto using ByteString_into_word'_eq.
+      + omega.
+Qed.
+
+Lemma ByteString_into_list_eq
+  : forall bs,
+    bs = list_into_ByteString (ByteString_into_list bs).
+Proof.
+  destruct bs; unfold list_into_ByteString, ByteString_into_list;
+    simpl.
+  induction padding0.
+  - simpl; induction byteString0.
+    + unfold ByteString_id; simpl; repeat f_equal.
+      apply (shatter_word front0).
+      apply le_uniqueness_proof.
+    + simpl; rewrite <- IHbyteString0; simpl.
+      unfold ByteString_push at 8; simpl.
+      unfold ByteString_push at 7; simpl.
+      unfold ByteString_push at 6; simpl.
+      unfold ByteString_push at 5; simpl.
+      unfold ByteString_push at 4; simpl.
+      unfold ByteString_push at 3; simpl.
+      unfold ByteString_push at 2; simpl.
+      unfold ByteString_push at 1; simpl.
+      f_equal.
+      * apply (shatter_word front0).
+      * apply le_uniqueness_proof.
+      * f_equal; unfold eq_rec_r; simpl.
+        rename a into c.
+        pose proof (shatter_word c); simpl in *;
+          pose proof (shatter_word (wtl c)); simpl in *;
+            pose proof (shatter_word (wtl (wtl c))); simpl in *;
+              pose proof (shatter_word (wtl (wtl (wtl c)))); simpl in *;
+                pose proof (shatter_word (wtl (wtl (wtl (wtl c))))); simpl in *;
+                  pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl c)))))); simpl in *;
+                    pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl c))))))); simpl in *;
+                      pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))));
+                      pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))))); simpl in *.
+        rewrite H, H0, H1, H2, H3, H4, H5, H6, H7; simpl.
+        repeat f_equal.
+        symmetry; apply (shatter_word front0).
+  - pose proof (shatter_word front0) as H'; simpl in H'; rewrite H';
+      eauto.
+    assert (padding0 < 8)%nat by omega.
+    simpl; erewrite <- (IHpadding0 _ H).
+    unfold ByteString_push; simpl.
+    destruct (eq_nat_dec padding0 7); simpl.
+    elimtype False; rewrite e in paddingOK0; eapply Lt.lt_irrefl; eauto.
+    f_equal.
+    apply le_uniqueness_proof.
+Qed.
 
 Lemma ByteString_transform_f_equal
   : forall bs bs'
@@ -540,6 +721,22 @@ Proof.
   intros; subst; reflexivity.
 Qed.
 
+Lemma ByteString_push_word_WS
+  : forall a n front0 bs,
+    ByteString_push_word (WS a front0) bs
+    = ByteString_push a (@ByteString_push_word n front0 bs).
+Proof.
+  intros; reflexivity.
+Qed.
+
+Corollary ByteString_push_char_WS
+  : forall a front0 bs,
+    ByteString_push_char (WS a front0) bs
+    = ByteString_push a (@ByteString_push_word _ front0 bs).
+Proof.
+  intros; apply ByteString_push_word_WS.
+Qed.
+
 Lemma ByteString_push_char_id_right
   : forall (chars : list char) (bs : ByteString),
     padding bs = 0 ->
@@ -548,8 +745,6 @@ Lemma ByteString_push_char_id_right
        paddingOK := ByteString_id_subproof;
        byteString := chars ++ (byteString bs) |}.
 Proof.
-  (* Commented out because the proof is slow and takes a bunch of memory. *)
-  (*
   destruct bs; simpl; intros; subst.
   induction chars; simpl.
   - f_equal; eauto using le_uniqueness_proof.
@@ -565,12 +760,20 @@ Proof.
                 pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))));
                 pose proof (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl c))))))))); simpl in *.
   rewrite H, H0, H1, H2, H3, H4, H5, H6, H7; simpl.
-  unfold ByteString_push_char; simpl.
-  repeat match goal with
-    |- context [(whd ?c)] => destruct (whd c) end;
-    try solve [compute; f_equal; eapply le_uniqueness_proof].
-Qed. *)
-Admitted.
+  rewrite !ByteString_push_char_WS.
+  rewrite !ByteString_push_word_WS.
+  simpl.
+  unfold ByteString_push at 8; simpl.
+  unfold ByteString_push at 7; simpl.
+  unfold ByteString_push at 6; simpl.
+  unfold ByteString_push at 5; simpl.
+  unfold ByteString_push at 4; simpl.
+  unfold ByteString_push at 3; simpl.
+  unfold ByteString_push at 2; simpl.
+  unfold ByteString_push at 1; simpl.
+  f_equal.
+  eapply le_uniqueness_proof.
+Qed.
 
 Lemma ByteString_transform_id_right
   : forall bs : ByteString,
@@ -593,14 +796,233 @@ Proof.
     f_equal; eauto using le_uniqueness_proof.
 Qed.
 
-Lemma ByteString_transform_word_into {n m}
-  : forall (w : word n) (w' : word m),
-    ByteString_transformer (word_into_ByteString w) (word_into_ByteString w') = word_into_ByteString (append_word w w').
-  induction w; simpl.
-  - reflexivity.
-  - unfold word_into_ByteString, ByteString_transformer in *.
-    unfold front, byteString in *.
-Admitted.
+Lemma ByteString_transform_list_into
+  : forall l l',
+    ByteString_transformer (list_into_ByteString l) (list_into_ByteString l') = list_into_ByteString (app l l').
+Proof.
+  induction l; simpl.
+  - unfold ByteString_transformer; simpl; eauto.
+  - intro; rewrite <- IHl; clear IHl.
+    unfold ByteString_transformer.
+    destruct (list_into_ByteString l); simpl.
+    unfold ByteString_push; simpl.
+    destruct (eq_nat_dec padding0 7); subst.
+    + unfold front at 1; unfold byteString at 1.
+      unfold ByteString_push_word at 1; unfold padding at 1.
+      unfold eq_rec_r, eq_rec, eq_rect, Logic.eq_sym.
+      simpl fold_right.
+      destruct (eq_nat_dec
+                  (padding
+                     (ByteString_push_word front0
+                                            (fold_right ByteString_push_char (list_into_ByteString l') byteString0))) 7).
+    * rewrite ByteString_push_char_WS.
+      assert (0 = padding (ByteString_push a ((ByteString_push_word front0)
+                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+      { induction (fold_right ByteString_push_char (list_into_ByteString l') byteString0).
+        unfold ByteString_push.
+        destruct (eq_nat_dec
+         (padding
+            (ByteString_push_word front0
+               {|
+               padding := padding0;
+               front := front1;
+               paddingOK := paddingOK1;
+               byteString := byteString1 |})) 7).
+        simpl; reflexivity.
+        elimtype False; apply n.
+        apply e.
+      }
+      apply ByteString_transform_f_equal with (p_eq := H).
+      apply le_uniqueness_proof.
+      destruct (fold_right
+                   ByteString_push_char
+                   (list_into_ByteString l')
+                   byteString0).
+      (* *) unfold front at 3; unfold padding at 2.
+      destruct (ByteString_push_word
+                    front0
+                    {|
+                      padding := padding0;
+                      front := front1;
+                      paddingOK := paddingOK1;
+                      byteString := byteString1 |}).
+        revert H; unfold ByteString_push; simpl in *.
+        destruct (eq_nat_dec padding1 7); simpl; intros.
+        apply eq_rect_eq_dec; eauto using eq_nat_dec.
+        congruence.
+        (* *) destruct (fold_right
+                          ByteString_push_char
+                          (list_into_ByteString l')
+                          byteString0).
+        unfold byteString at 2.
+        unfold ByteString_push at 1.
+        destruct (ByteString_push_word
+                    front0
+                    {|
+                      padding := padding0;
+                      front := front1;
+                      paddingOK := paddingOK1;
+                      byteString := byteString1 |}).
+        simpl padding.
+        destruct (eq_nat_dec padding1 7).
+        simpl.
+        repeat f_equal.
+        unfold eq_rec_r, eq_rec_r, eq_rec.
+        unfold Logic.eq_sym.
+        unfold eq_rect.
+        assert (e0 = e) by (apply eq_proofs_unicity; intros; omega).
+        rewrite H0; eauto.
+        simpl in e; congruence.
+    * rewrite ByteString_push_char_WS.
+      assert (S (padding
+                (ByteString_push_word front0
+                                      (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+          = padding (ByteString_push a ((ByteString_push_word front0)
+                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+      { destruct (ByteString_push_word front0
+           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)).
+        simpl in *.
+        unfold ByteString_push.
+        destruct (eq_nat_dec
+         (padding
+            {|
+            padding := padding0;
+            front := front1;
+            paddingOK := paddingOK1;
+            byteString := byteString1 |}) 7).
+        simpl in *|-; congruence.
+        reflexivity.
+      }
+      apply ByteString_transform_f_equal with (p_eq := H).
+      apply le_uniqueness_proof.
+      unfold front at 3; unfold padding at 2.
+      destruct (ByteString_push_word
+                  front0
+                  (fold_right ByteString_push_char
+                              (list_into_ByteString l') byteString0)).
+      simpl.
+      revert H; unfold ByteString_push; simpl in *.
+      destruct (eq_nat_dec padding0 7).
+      simpl; intros.
+      congruence.
+      simpl; intros.
+      apply eq_rect_eq_dec; eauto using eq_nat_dec.
+      destruct (ByteString_push_word
+                  front0
+                  (fold_right ByteString_push_char
+                              (list_into_ByteString l') byteString0)).
+      simpl.
+      revert H; unfold ByteString_push; simpl in *.
+      destruct (eq_nat_dec padding0 7).
+      simpl; intros.
+      congruence.
+      simpl; intros.
+      reflexivity.
+    + unfold front at 1; unfold byteString at 1.
+      destruct (eq_nat_dec
+       (padding
+          (ByteString_push_word front0
+             (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+       7).
+      setoid_rewrite ByteString_push_word_WS.
+      assert (0 = padding (ByteString_push a ((ByteString_push_word front0)
+                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+      { induction (fold_right ByteString_push_char (list_into_ByteString l') byteString0).
+        unfold ByteString_push.
+        destruct (eq_nat_dec
+         (padding
+            (ByteString_push_word front0
+               {|
+               padding := padding1;
+               front := front1;
+               paddingOK := paddingOK1;
+               byteString := byteString1 |})) 7).
+        simpl; reflexivity.
+        congruence.
+      }
+      apply ByteString_transform_f_equal with (p_eq := H).
+      apply le_uniqueness_proof.
+      destruct (fold_right
+                   ByteString_push_char
+                   (list_into_ByteString l')
+                   byteString0).
+      (* *) unfold front at 3; unfold padding at 2.
+      destruct (ByteString_push_word
+                    front0
+                    {|
+                      padding := padding1;
+                      front := front1;
+                      paddingOK := paddingOK1;
+                      byteString := byteString1 |}).
+        revert H; unfold ByteString_push; simpl in *.
+        destruct (eq_nat_dec padding2 7); simpl; intros.
+        apply eq_rect_eq_dec; eauto using eq_nat_dec.
+        congruence.
+        (* *) destruct (fold_right
+                          ByteString_push_char
+                          (list_into_ByteString l')
+                          byteString0).
+        unfold byteString at 2.
+        unfold ByteString_push at 1.
+        destruct (ByteString_push_word
+                    front0
+                    {|
+                      padding := padding1;
+                      front := front1;
+                      paddingOK := paddingOK1;
+                      byteString := byteString1 |}).
+        simpl padding.
+        destruct (eq_nat_dec padding2 7).
+        simpl.
+        repeat f_equal.
+        apply eq_proofs_unicity; intros; omega.
+        simpl in e; congruence.
+        setoid_rewrite ByteString_push_word_WS.
+        assert (S (padding
+                     (ByteString_push_word front0
+                                           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))
+                = padding (ByteString_push a ((ByteString_push_word front0)
+                                                (fold_right ByteString_push_char (list_into_ByteString l') byteString0)))).
+      { destruct (ByteString_push_word front0
+           (fold_right ByteString_push_char (list_into_ByteString l') byteString0)).
+        simpl in *.
+        unfold ByteString_push.
+        destruct (eq_nat_dec
+         (padding
+            {|
+            padding := padding1;
+            front := front1;
+            paddingOK := paddingOK1;
+            byteString := byteString1 |}) 7).
+        simpl in *|-; congruence.
+        reflexivity.
+      }
+      apply ByteString_transform_f_equal with (p_eq := H).
+      apply le_uniqueness_proof.
+      unfold front at 3; unfold padding at 2.
+      destruct (ByteString_push_word
+                  front0
+                  (fold_right ByteString_push_char
+                              (list_into_ByteString l') byteString0)).
+      simpl.
+      revert H; unfold ByteString_push; simpl in *.
+      destruct (eq_nat_dec padding1 7).
+      simpl; intros.
+      congruence.
+      simpl; intros.
+      apply eq_rect_eq_dec; eauto using eq_nat_dec.
+      destruct (ByteString_push_word
+                  front0
+                  (fold_right ByteString_push_char
+                              (list_into_ByteString l') byteString0)).
+      simpl.
+      revert H; unfold ByteString_push; simpl in *.
+      destruct (eq_nat_dec padding1 7).
+      simpl; intros.
+      congruence.
+      simpl; intros.
+      reflexivity.
+Qed.
 
 Fixpoint plus_assoc' (n : nat) {struct n}
   : forall m p : nat, n + (m + p) = n + m + p.
@@ -632,20 +1054,11 @@ Lemma ByteString_transform_assoc
     ByteString_transformer (ByteString_transformer l m) n.
 Proof.
   intros.
-  rewrite (ByteString_into_word_eq m),
-  (ByteString_into_word_eq n),
-  (ByteString_into_word_eq l).
-  rewrite !ByteString_transform_word_into.
-  rewrite !append_word_assoc.
-  pattern
-    (padding l + 8 * length (byteString l) +
-     (padding m + 8 * length (byteString m) + (padding n + 8 * length (byteString n)))),
-     (eq_sym
-        (plus_assoc' (padding l + 8 * length (byteString l))
-                    (padding m + 8 * length (byteString m))
-                    (padding n + 8 * length (byteString n)))).
-  eapply EqdepFacts.eq_indd.
-  simpl.
+  rewrite (ByteString_into_list_eq m),
+  (ByteString_into_list_eq n),
+  (ByteString_into_list_eq l).
+  erewrite !ByteString_transform_list_into.
+  rewrite app_assoc.
   reflexivity.
 Qed.
 
@@ -737,17 +1150,20 @@ Proof.
     destruct byteString1; try discriminate.
     injection H; injection H0; intros.
     subst.
+    injection H3; intros.
+    apply inj_pair2_eq_dec in H2; eauto.
     f_equal.
-    apply le_uniqueness_proof.
     rewrite (shatter_word_0 front0);
       rewrite (shatter_word_0 front1); reflexivity.
+    apply le_uniqueness_proof.
     rewrite (shatter_word c) in *;
       rewrite (shatter_word c0) in *.
     injection H3; intros.
     rewrite H1; f_equal.
     f_equal.
     simpl in H4; rewrite H4; reflexivity.
-    apply inj_pair2_eq_dec in H2; eauto.
+    apply inj_pair2_eq_dec in H6; eauto.
+    apply eq_nat_dec.
     apply eq_nat_dec.
   - destruct byteString0; intros; try discriminate.
     injection H; injection H0; intros.
@@ -764,11 +1180,11 @@ Proof.
   - intros; injection H; injection H0; intros.
     rewrite <- H1 in H3; injection H3; intros; subst.
     repeat f_equal.
-    apply le_uniqueness_proof.
     rewrite (shatter_word front0); rewrite (shatter_word front1);
       f_equal; eauto.
     apply inj_pair2_eq_dec in H6; eauto.
     apply eq_nat_dec.
+    apply le_uniqueness_proof.
 Qed.
 
 Instance ByteString_TransformerUnitOpt
@@ -785,3 +1201,5 @@ Instance ByteString_TransformerUnitOpt
 Proof.
   - abstract eauto.
 Defined.
+
+Print Assumptions ByteString_TransformerUnitOpt.
