@@ -10,13 +10,10 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
-Require Import Fiat.Parsers.ContextFreeGrammar.Transfer.
 Require Export Fiat.Parsers.ParserImplementationOptimized.
 Require Import Fiat.Parsers.ParserInterfaceReflective.
 Require Import Fiat.Parsers.SplitterFromParserADT.
-Require Import Fiat.Parsers.BooleanRecognizerEquality.
 Require Import Fiat.Parsers.BaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
 
 Set Implicit Arguments.
 

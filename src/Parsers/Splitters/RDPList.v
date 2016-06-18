@@ -1,13 +1,9 @@
 (** * Definition of the part of boolean-returning CFG parser-recognizer that instantiates things to lists *)
-Require Import Coq.Lists.List Coq.Strings.String Coq.Arith.Wf_nat.
-Require Import Coq.Strings.Ascii.
+Require Import Coq.Lists.List.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Common.StringOperations.
-Require Import Fiat.Common.StringFacts.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
+Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.

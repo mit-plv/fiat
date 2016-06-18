@@ -1,4 +1,3 @@
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.GenericBaseTypes.

@@ -5,7 +5,6 @@ Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -13,8 +12,6 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Common.
-Require Import Fiat.Common.List.ListFacts.
 
 Local Open Scope string_scope.
 

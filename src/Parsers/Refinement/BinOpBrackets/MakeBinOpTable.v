@@ -1,7 +1,6 @@
 (** * Build a table for the next binop at a given level *)
-Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.Lists.List.
 Require Import Fiat.Common.
-Require Import Fiat.Common.OptionFacts.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.SetoidInstances.

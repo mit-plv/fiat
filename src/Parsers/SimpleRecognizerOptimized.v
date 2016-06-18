@@ -1,9 +1,7 @@
-Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.CorrectnessBaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.SimpleRecognizer.
 Require Import Fiat.Parsers.SimpleRecognizerCorrect.
 Require Import Fiat.Parsers.RecognizerPreOptimized.

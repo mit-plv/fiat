@@ -11,12 +11,9 @@ Require Fiat.Parsers.SimpleBooleanRecognizerEquality.
 Require Fiat.Parsers.SimpleRecognizerCorrect.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes Fiat.Parsers.CorrectnessBaseTypes.
-Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.MinimalParseOfParse.
-Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Common.
-Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 

@@ -1,7 +1,4 @@
-Require Import Coq.Classes.Morphisms.
-Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.BaseTypes.

@@ -1,11 +1,9 @@
 (** * Mapping predicates over [StringLike] things *)
-Require Import Coq.Classes.Morphisms Coq.Classes.RelationClasses Coq.Program.Basics.
 Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.ForallChars.
-Require Import Fiat.Common.SetoidInstances.
 Require Import Fiat.Common.
 
 Set Implicit Arguments.
