@@ -20,12 +20,14 @@ Global Arguments List.nth {A} !_ !_ _.
 Definition myfst := @fst.
 Definition mysnd := @snd.
 
-Declare Reduction splitter_red0 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody fst snd].
-Declare Reduction splitter_red1 := cbv [myfst mysnd].
+Declare Reduction splitter_red0 := hnf.
+Declare Reduction splitter_red1 := cbv [Fiat.ADTRefinement.GeneralRefinements.FullySharpened_Start projT1 FinishingLemma.finish_Sharpening_SplitterADT' ilist.icons BuildComputationalADT.BuildcADT ilist.inil BuildComputationalADT.cConsBody BuildComputationalADT.cMethBody fst snd].
+Declare Reduction splitter_red2 := cbv [myfst mysnd].
 
 Ltac splitter_red term :=
   let term := (eval splitter_red0 in term) in
   let term := (eval splitter_red1 in term) in
+  let term := (eval splitter_red2 in term) in
   constr:(term).
 
 (*Global Arguments BooleanRecognizerOptimized.inner_nth' {_} _ !_ _ / .*)

@@ -12,86 +12,71 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
-    start sharpening ADT.
+    Start Profiling.
+    Time splitter_start.
+    Show Profile.
+    (*
+total time:      0.109s
 
-    Time start honing parser using indexed representation.
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─splitter_start ------------------------  14.3% 100.0%       1    0.109s
+─replace_with_at_by --------------------   0.0%  42.9%       1    0.047s
+─eapply lem ----------------------------  14.3%  14.3%       2    0.016s
+─induction H ---------------------------  14.3%  14.3%       1    0.016s
+─pose proof  (refine_opt2_fold_right_no_  14.3%  14.3%       1    0.016s
+─tac -----------------------------------  14.3%  14.3%       1    0.016s
+─assert (y = x') as H by (subst x'; tac)   0.0%  14.3%       1    0.016s
+─set_tac -------------------------------   0.0%  14.3%       1    0.016s
+─cbv beta ------------------------------  14.3%  14.3%       3    0.016s
+─apply_splitter_tower_lemma ------------   0.0%  14.3%       1    0.016s
+─change x with x' ----------------------  14.3%  14.3%       1    0.016s
 
-    Time hone method "splits".
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─splitter_start ------------------------  14.3% 100.0%       1    0.109s
+ ├─replace_with_at_by ------------------   0.0%  42.9%       1    0.047s
+ │ ├─induction H -----------------------  14.3%  14.3%       1    0.016s
+ │ ├─set_tac ---------------------------   0.0%  14.3%       1    0.016s
+ │ │└change x with x' ------------------  14.3%  14.3%       1    0.016s
+ │ └─assert (y = x') as H by (subst x';    0.0%  14.3%       1    0.016s
+ │  └tac -------------------------------  14.3%  14.3%       1    0.016s
+ ├─eapply lem --------------------------  14.3%  14.3%       1    0.016s
+ ├─cbv beta ----------------------------  14.3%  14.3%       3    0.016s
+ └─apply_splitter_tower_lemma ----------   0.0%  14.3%       1    0.016s
+  └pose proof  (refine_opt2_fold_right_n  14.3%  14.3%       1    0.016s *)
+
     {
       (*Start Profiling.*)
-      Time simplify parser splitter.
+      Time refine_binop_table.
       (*Show Profile.*)
       (*
-
-total time:      0.125s
-
- tactic                                    self  total   calls       max
-────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    0.125s
-─simplify_parser_splitter' -------------   0.0% 100.0%       3    0.078s
-─simplify ------------------------------   0.0% 100.0%       1    0.125s
-─simplify with monad laws --------------   0.0%  50.0%       2    0.063s
-─simplify_with_applied_monad_laws ------   0.0%  50.0%       2    0.063s
-─eapply refine_under_bind_helper -------  25.0%  25.0%       5    0.016s
-─eapply refine_under_bind_helper_2 -----  25.0%  25.0%       5    0.016s
-─eapply lem ----------------------------  12.5%  12.5%       1    0.016s
-─simpl opt.nat_of_ascii ----------------  12.5%  12.5%       2    0.016s
-─apply (simplify_monad_laws_first_step (  12.5%  12.5%       1    0.016s
-─clear lem -----------------------------  12.5%  12.5%       2    0.016s
+total time:      0.531s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─simplify parser splitter --------------   0.0% 100.0%       1    0.125s
-└simplify ------------------------------   0.0% 100.0%       1    0.125s
-└simplify_parser_splitter' -------------   0.0% 100.0%       3    0.078s
- ├─simplify with monad laws ------------   0.0%  50.0%       2    0.063s
- │└simplify_with_applied_monad_laws ----   0.0%  50.0%       2    0.063s
- │ ├─eapply refine_under_bind_helper ---  25.0%  25.0%       5    0.016s
- │ └─eapply refine_under_bind_helper_2 -  25.0%  25.0%       5    0.016s
- ├─eapply lem --------------------------  12.5%  12.5%       1    0.016s
- ├─clear lem ---------------------------  12.5%  12.5%       2    0.016s
- ├─simpl opt.nat_of_ascii --------------  12.5%  12.5%       2    0.016s
- └─apply (simplify_monad_laws_first_step  12.5%  12.5%       1    0.016s
+─setoid_rewrite_refine_binop_table_idx -  88.2% 100.0%       1    0.531s
+─refine_binop_table --------------------   0.0% 100.0%       1    0.531s
+─setoid_rewrite H ----------------------   5.9%   5.9%       1    0.031s
+─replace_with_at_by --------------------   0.0%   2.9%       1    0.016s
+─induction H ---------------------------   2.9%   2.9%       1    0.016s
+─replace_with_vm_compute_in ------------   0.0%   2.9%       1    0.016s
+─pose proof lem as H -------------------   2.9%   2.9%       1    0.016s
+─replace c with c' in H by (clear; vm_ca   0.0%   2.9%       1    0.016s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─refine_binop_table --------------------   0.0% 100.0%       1    0.531s
+└setoid_rewrite_refine_binop_table_idx -  88.2% 100.0%       1    0.531s
+ ├─setoid_rewrite H --------------------   5.9%   5.9%       1    0.031s
+ ├─replace_with_vm_compute_in ----------   0.0%   2.9%       1    0.016s
+ │└replace c with c' in H by (clear; vm_   0.0%   2.9%       1    0.016s
+ │└replace_with_at_by ------------------   0.0%   2.9%       1    0.016s
+ │└induction H -------------------------   2.9%   2.9%       1    0.016s
+ └─pose proof lem as H -----------------   2.9%   2.9%       1    0.016s
  *)
-      { (*Start Profiling.*)
-        Time refine_binop_table.
-        (*Show Profile.*)
-      (*
-total time:      0.548s
-
- tactic                                    self  total   calls       max
-────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─refine_binop_table --------------------   0.7% 100.0%       1    0.548s
-─setoid_rewrite_refine_binop_table_idx -  62.8%  99.3%       1    0.544s
-─replace_with_at_by --------------------   0.0%  18.2%       1    0.100s
-─replace_with_vm_compute_in ------------   0.0%  18.2%       1    0.100s
-─replace c with c' in H by (clear; vm_ca   0.0%  18.2%       1    0.100s
-─set_tac -------------------------------   0.0%   9.5%       1    0.052s
-─set (x' := x) in H --------------------   9.5%   9.5%       1    0.052s
-─induction H ---------------------------   6.6%   6.6%       1    0.036s
-─setoid_rewrite H ----------------------   4.4%   5.1%       1    0.028s
-─pose proof lem as H -------------------   4.4%   4.4%       1    0.024s
-─assert T0 as H0 by (clear; lazy beta io   0.7%   3.6%       1    0.020s
-─clear ---------------------------------   2.9%   2.9%       2    0.016s
-
- tactic                                    self  total   calls       max
-────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─refine_binop_table --------------------   0.7% 100.0%       1    0.548s
-└setoid_rewrite_refine_binop_table_idx -  62.8%  99.3%       1    0.544s
- ├─replace_with_vm_compute_in ----------   0.0%  18.2%       1    0.100s
- │└replace c with c' in H by (clear; vm_   0.0%  18.2%       1    0.100s
- │└replace_with_at_by ------------------   0.0%  18.2%       1    0.100s
- │ ├─set_tac ---------------------------   0.0%   9.5%       1    0.052s
- │ │└set (x' := x) in H ----------------   9.5%   9.5%       1    0.052s
- │ └─induction H -----------------------   6.6%   6.6%       1    0.036s
- ├─setoid_rewrite H --------------------   4.4%   5.1%       1    0.028s
- ├─pose proof lem as H -----------------   4.4%   4.4%       1    0.024s
- └─assert T0 as H0 by (clear; lazy beta    0.7%   3.6%       1    0.020s
-  └clear -------------------------------   2.9%   2.9%       1    0.016s
- *)
-        reflexivity. }
-      finish honing parser method.
-    }
+      reflexivity. }
+    { finish honing parser method. }
 
     finish_Sharpening_SplitterADT.
   Time Defined.

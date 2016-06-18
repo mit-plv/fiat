@@ -18,89 +18,98 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
-
-    Time start sharpening ADT.
     Start Profiling.
-    Time start honing parser using indexed representation.
+    Time splitter_start.
     Show Profile.
+    (*
+total time:      1.250s
 
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─splitter_start ------------------------  10.0% 100.0%       1    1.250s
+─replace_with_at_by --------------------   1.3%  60.0%       1    0.750s
+─set_tac -------------------------------   0.0%  46.3%       1    0.578s
+─change x with x' ----------------------  46.3%  46.3%       1    0.578s
+─apply_splitter_tower_lemma ------------   0.0%  28.7%       1    0.359s
+─eapply lem ----------------------------  18.8%  18.8%       2    0.234s
+─induction H ---------------------------   7.5%   7.5%       1    0.094s
+─pose proof  (refine_opt2_fold_right_no_   5.0%   5.0%       1    0.063s
+─assert (y = x') as H by (subst x'; tac)   0.0%   3.8%       1    0.047s
+─cbv beta iota zeta delta [make_tower_no   3.8%   3.8%       1    0.047s
+─tac -----------------------------------   0.0%   2.5%       1    0.031s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─splitter_start ------------------------  10.0% 100.0%       1    1.250s
+ ├─replace_with_at_by ------------------   1.3%  60.0%       1    0.750s
+ │ ├─set_tac ---------------------------   0.0%  46.3%       1    0.578s
+ │ │└change x with x' ------------------  46.3%  46.3%       1    0.578s
+ │ ├─induction H -----------------------   7.5%   7.5%       1    0.094s
+ │ └─assert (y = x') as H by (subst x';    0.0%   3.8%       1    0.047s
+ │  └tac -------------------------------   0.0%   2.5%       1    0.031s
+ └─apply_splitter_tower_lemma ----------   0.0%  28.7%       1    0.359s
+   ├─eapply lem ------------------------  18.8%  18.8%       1    0.234s
+   ├─pose proof  (refine_opt2_fold_right   5.0%   5.0%       1    0.063s
+   └─cbv beta iota zeta delta [make_towe   3.8%   3.8%       1    0.047s
+*)
     Start Profiling.
-    Time hone method "splits".
-    Show Profile.
-    {
-      Start Profiling.
-      Time simplify parser splitter.
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_rev_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_rev_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-
-      simplify parser splitter.
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_rev_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_binop_table; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_binop_table; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_rev_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_binop_table; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_binop_table; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time rewrite_disjoint_search_for; reflexivity. }
+    { simplify parser splitter.
       Show Profile.
       (*
-total time:     84.328s
+
+total time:    106.375s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─rewrite_disjoint_search_for -----------   0.0%  39.4%      20    4.268s
-─rewrite_disjoint_search_for_no_clear --   0.0%  39.3%      20    4.260s
-─rewrite_once_disjoint_search_for ------   0.0%  38.8%      40    4.240s
-─rewrite_once_disjoint_search_for_specia  33.6%  38.3%      40    4.212s
-─refine_binop_table --------------------   0.0%  37.9%       4    8.036s
-─setoid_rewrite_refine_binop_table_idx -  37.0%  37.9%       4    8.032s
-─simplify parser splitter --------------   0.0%  18.7%       2   14.980s
-─simplify_parser_splitter' -------------   0.0%  18.7%      31   12.444s
-─simplify ------------------------------   0.0%  18.7%       2   14.980s
-─eapply (refine_opt2_fold_right r_o retv  13.5%  13.5%       1   11.364s
-─simplify with monad laws --------------   0.0%   4.4%      30    1.900s
-─simplify_with_applied_monad_laws ------   0.0%   4.4%      30    1.900s
-─rewrite_disjoint_rev_search_for -------   0.0%   3.9%       2    1.636s
-─rewrite_disjoint_rev_search_for_no_clea   0.0%   3.8%       2    1.632s
-─rewrite_once_disjoint_rev_search_for --   0.0%   3.8%       4    1.608s
-─rewrite_once_disjoint_rev_search_for_sp   3.4%   3.7%       4    1.572s
-─specialize (lem' H') ------------------   2.7%   2.7%      44    1.996s
+─rewrite_disjoint_search_for_no_clear --   0.0%  49.7%      20    7.359s
+─rewrite_disjoint_search_for -----------   0.0%  49.7%      20    7.359s
+─rewrite_once_disjoint_search_for ------   0.0%  49.3%      40    7.313s
+─rewrite_once_disjoint_search_for_specia  48.2%  49.0%      40    7.297s
+─setoid_rewrite_refine_binop_table_idx -  43.5%  44.1%       4   12.969s
+─refine_binop_table --------------------   0.0%  44.1%       4   12.969s
+─rewrite_disjoint_rev_search_for_no_clea   0.0%   5.1%       2    2.703s
+─rewrite_disjoint_rev_search_for -------   0.0%   5.1%       2    2.703s
+─rewrite_once_disjoint_rev_search_for --   0.0%   5.0%       4    2.688s
+─rewrite_once_disjoint_rev_search_for_sp   4.9%   5.0%       4    2.656s
 
  tactic                                    self  total   calls       max
 ────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
-─rewrite_disjoint_search_for -----------   0.0%  39.4%      20    4.268s
-└rewrite_disjoint_search_for_no_clear --   0.0%  39.3%      20    4.260s
-└rewrite_once_disjoint_search_for ------   0.0%  38.8%      40    4.240s
-└rewrite_once_disjoint_search_for_specia  33.6%  38.3%      40    4.212s
-└specialize (lem' H') ------------------   2.6%   2.6%      40    1.996s
-─refine_binop_table --------------------   0.0%  37.9%       4    8.036s
-└setoid_rewrite_refine_binop_table_idx -  37.0%  37.9%       4    8.032s
-─simplify parser splitter --------------   0.0%  18.7%       2   14.980s
-└simplify ------------------------------   0.0%  18.7%       2   14.980s
-└simplify_parser_splitter' -------------   0.0%  18.7%      31   12.444s
- ├─eapply (refine_opt2_fold_right r_o re  13.5%  13.5%       1   11.364s
- └─simplify with monad laws ------------   0.0%   4.4%      30    1.900s
-  └simplify_with_applied_monad_laws ----   0.0%   4.4%      30    1.900s
-─rewrite_disjoint_rev_search_for -------   0.0%   3.9%       2    1.636s
-└rewrite_disjoint_rev_search_for_no_clea   0.0%   3.8%       2    1.632s
-└rewrite_once_disjoint_rev_search_for --   0.0%   3.8%       4    1.608s
-└rewrite_once_disjoint_rev_search_for_sp   3.4%   3.7%       4    1.572s
+─rewrite_disjoint_search_for -----------   0.0%  49.7%      20    7.359s
+└rewrite_disjoint_search_for_no_clear --   0.0%  49.7%      20    7.359s
+└rewrite_once_disjoint_search_for ------   0.0%  49.3%      40    7.313s
+└rewrite_once_disjoint_search_for_specia  48.2%  49.0%      40    7.297s
+─refine_binop_table --------------------   0.0%  44.1%       4   12.969s
+└setoid_rewrite_refine_binop_table_idx -  43.5%  44.1%       4   12.969s
+─rewrite_disjoint_rev_search_for -------   0.0%   5.1%       2    2.703s
+└rewrite_disjoint_rev_search_for_no_clea   0.0%   5.1%       2    2.703s
+└rewrite_once_disjoint_rev_search_for --   0.0%   5.0%       4    2.688s
+└rewrite_once_disjoint_rev_search_for_sp   4.9%   5.0%       4    2.656s
  *)
       Time finish honing parser method.
     }
