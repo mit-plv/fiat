@@ -18,9 +18,9 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
-    Start Profiling.
+    (*Start Profiling.*)
     Time splitter_start.
-    Show Profile.
+    (*Show Profile.*)
     (*
 total time:      1.250s
 
@@ -52,7 +52,7 @@ total time:      1.250s
    ├─pose proof  (refine_opt2_fold_right   5.0%   5.0%       1    0.063s
    └─cbv beta iota zeta delta [make_towe   3.8%   3.8%       1    0.047s
 *)
-    Start Profiling.
+    (*Start Profiling.*)
     { Time rewrite_disjoint_search_for; reflexivity. }
     { Time rewrite_disjoint_search_for; reflexivity. }
     { Time rewrite_disjoint_search_for; reflexivity. }
@@ -80,7 +80,7 @@ total time:      1.250s
     { Time rewrite_disjoint_search_for; reflexivity. }
     { Time rewrite_disjoint_search_for; reflexivity. }
     { simplify parser splitter.
-      Show Profile.
+      (*Show Profile.*)
       (*
 
 total time:    106.375s
@@ -121,9 +121,9 @@ total time:    106.375s
   Lemma ComputationalSplitter
   : FullySharpened (string_spec json'_grammar string_stringlike).
   Proof.
-    Start Profiling.
+    (*Start Profiling.*)
     Time make_simplified_splitter ComputationalSplitter'. (* 19 s *)
-    Show Profile.
+    (*Show Profile.*)
   Time Defined.
 
 Time End IndexedImpl.
@@ -135,9 +135,9 @@ Require Export Fiat.Parsers.StringLike.OcamlString.
 
 Definition json_parser (str : Coq.Strings.String.string) : bool.
 Proof.
-  Start Profiling.
+  (*Start Profiling.*)
   Time make_parser (@ComputationalSplitter(* _ String.string_stringlike _ _*)). (* 75 seconds *)
-  Show Profile.
+  (*Show Profile.*)
 Time Defined.
 
 (*Definition json_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
