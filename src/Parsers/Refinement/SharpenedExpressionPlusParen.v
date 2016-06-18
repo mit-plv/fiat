@@ -12,9 +12,9 @@ Section IndexedImpl.
   Lemma ComputationalSplitter'
   : FullySharpened (string_spec plus_expr_grammar string_stringlike).
   Proof.
-    Start Profiling.
+    (*Start Profiling.*)
     Time splitter_start.
-    Show Profile.
+    (*Show Profile.*)
     (*
 total time:      0.109s
 
