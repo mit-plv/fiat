@@ -264,9 +264,9 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
       setoid_rewrite MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
       induction l; simpl; split; intros; intuition.
       - elimtype False; apply H.
-        eapply (inA_map (f := fst)) in H0; eauto with typeclass_instances.
+        eapply (inA_map (f := fst)) in H0; eauto using RelationPairs.fst_compat with typeclass_instances.
       - elimtype False; apply H.
-        eapply (inA_map (f := fst)) in H0; eauto with typeclass_instances.
+        eapply (inA_map (f := fst)) in H0; eauto using RelationPairs.fst_compat with typeclass_instances.
       - inversion H1.
       - destruct (E.eq_dec k a).
         + eauto.
@@ -274,7 +274,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           * apply H.
             let H1 := match goal with H1 : InA _ _ _ |- _ => constr:(H1) end in
             apply inA_map' with (eqA := @MKeys.eq_key_elt _) in H1;
-              eauto with typeclass_instances.
+              eauto using RelationPairs.fst_compat with typeclass_instances.
             destruct_ex; intuition.
             let H3 := match goal with H3 : E.eq _ _ |- _ => constr:(H3) end in
             rewrite H3.
@@ -282,7 +282,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             let H2 := match goal with H2 : InA _ _ _ |- _ => constr:(H2) end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H2.
             eapply inA_map with (eqA := @MKeys.eq_key_elt _);
-              eauto with typeclass_instances.
+              eauto using RelationPairs.fst_compat with typeclass_instances.
             let H2 := match goal with H2 : InA _ _ _ |- _ => constr:(H2) end in
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
             let H2 := match goal with H2 : MKeys.MapsTo _ _ _ |- _ => constr:(H2) end in
@@ -304,7 +304,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
         + eapply IHl with (bag' := MKeys.add a z bag'); eauto.
           intros.
           apply inA_map' with (eqA := @MKeys.eq_key_elt _) in H1;
-            eauto with typeclass_instances.
+            eauto using RelationPairs.fst_compat with typeclass_instances.
           destruct_ex; intuition.
           destruct x;
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H2.
@@ -315,7 +315,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
 	rewrite MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H4.
         eapply inA_map with (f := fst) in H4.
         simpl in *; rewrite H3; eauto.
-        eauto with typeclass_instances.
+        eauto using RelationPairs.fst_compat with typeclass_instances.
       - inversion H1; subst.
         + rewrite H3.
           rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff.
@@ -339,7 +339,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
           * eapply IHl; eauto.
             intro.
             apply inA_map' with (eqA := @MKeys.eq_key_elt _) in H0;
-            eauto with typeclass_instances.
+            eauto using RelationPairs.fst_compat with typeclass_instances.
             destruct_ex; intuition.
             destruct x.
             rewrite <- MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H2.
@@ -352,7 +352,7 @@ Module InvertedIndexBag (MKeys : WS) (MValues : WSfun Nat_as_OT).
             rewrite MoreMKeysFacts.BasicFacts.elements_mapsto_iff in H5.
             rewrite H4.
             eapply inA_map with (f := fst) in H5; simpl in *;
-            eauto with typeclass_instances.
+            eauto using RelationPairs.fst_compat with typeclass_instances.
     Qed.
 
     Lemma InvertedIndex_binsert_Preserves_RepInv :
