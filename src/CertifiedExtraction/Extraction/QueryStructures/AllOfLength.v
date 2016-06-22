@@ -37,9 +37,9 @@ Proof.
 Qed.
 
 Lemma keepEq_length {A B}:
-  forall (N : nat) ens key k (EQ: A -> B -> Prop),
+  forall (N : nat) ens key k default (EQ: A -> B -> Prop),
     AllOfLength_set N ens ->
-    AllOfLength_set N (TuplesF.keepEq EQ ens key k).
+    AllOfLength_set N (TuplesF.keepEq EQ default ens key k).
 Proof.
   unfold AllOfLength_set, TuplesF.keepEq, Ensembles.In; cleanup; intuition.
 Qed.

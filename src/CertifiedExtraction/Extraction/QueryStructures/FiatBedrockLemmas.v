@@ -85,13 +85,12 @@ Proof.
   split; intros ** H; inversion H; firstorder.
 Qed.
 
-
 Lemma Fiat_Bedrock_Filters_Equivalence:
   forall (N : nat) (table : FiatWBag N) (key : W) (x9 : list TuplesF.tupl)
          (idx1: Fin.t N)
          (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq eq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
+    TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq eq (Word.wzero _) (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
     IndexedEnsembles.EnsembleIndexedListEquivalence
       (IndexedEnsembles.IndexedEnsemble_Intersection
          table
@@ -122,15 +121,15 @@ Proof.
            | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
            end.
 
-  - rewrite H4.
+  - setoid_rewrite H4.
     set (IndexedEnsembles.indexedElement x0).
 
     clear H0.
 
     unfold k1.
     rewrite nth_error_GetAttributeRaw; eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat.
-  - rewrite H4 in H2.
-    unfold k1 in *; rewrite nth_error_GetAttributeRaw in H2
+  - unfold W, k1 in *; rewrite H3.
+    unfold k1 in *; rewrite nth_error_GetAttributeRaw
       by eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat; simpl.
     destruct (Word.weq _ _); (reflexivity || exfalso; eauto).
 Qed.

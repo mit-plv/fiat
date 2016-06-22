@@ -75,10 +75,10 @@ repeat match goal with
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
-  forall {N : nat} {table k key seq},
+  forall {N : nat} {table k default key seq},
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.EnsembleIndexedListEquivalence
-      (TuplesF.keepEq eq (@IndexedEnsemble_TupleToListW N table) k key) seq ->
+      (TuplesF.keepEq eq default (@IndexedEnsemble_TupleToListW N table) k key) seq ->
     AllOfLength_list N seq.
 Proof.
   cleanup; eapply EnsembleIndexedListEquivalence_AllOfLength;
@@ -218,9 +218,9 @@ Qed.
 Lemma ListWToTuple_Truncated_map_keepEq:
   forall (N : nat) (table : FiatWBag N) w,
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    forall (x8 : W) (x9 : list TuplesF.tupl),
+    forall (x8 : W) (x9 : list TuplesF.tupl) default,
       TuplesF.EnsembleIndexedListEquivalence
-        (TuplesF.keepEq eq (IndexedEnsemble_TupleToListW table) w x8) x9 ->
+        (TuplesF.keepEq eq default (IndexedEnsemble_TupleToListW table) w x8) x9 ->
       x9 = map TupleToListW (map (ListWToTuple_Truncated N) x9).
 Proof.
   cleanup.
