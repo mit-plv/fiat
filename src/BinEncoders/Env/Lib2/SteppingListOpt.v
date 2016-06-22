@@ -15,6 +15,7 @@ Section SteppingList.
   Variable A_halt : A.
   Variable A_halt_dec : forall a, {a = A_halt} + {~ a = A_halt}.
   Variable A_predicate : A -> Prop.
+  Variable A_predicate_rest : A -> B -> Prop.
   Variable A_predicate_halt : A_predicate A_halt.
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).

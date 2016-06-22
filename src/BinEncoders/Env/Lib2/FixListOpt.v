@@ -1,5 +1,6 @@
 Require Import
-        Fiat.BinEncoders.Env.Common.Specs.
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.ComposeOpt.
 Require Export
         Coq.Lists.List.
 
@@ -12,10 +13,11 @@ Section FixList.
   Context {transformer : Transformer B}.
 
   Variable A_predicate : A -> Prop.
+  Variable A_predicate_rest : A -> B -> Prop.
   Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode A_cache_inv.
+  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_predicate_rest A_encode_Spec A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
   Fixpoint encode_list_Spec (xs : list A) (ce : CacheEncode)
@@ -46,17 +48,31 @@ Section FixList.
               Some (x :: xs, b2, e2)
     end.
 
+  Fixpoint FixList_predicate_rest
+           (As : list A)
+           (b : B)
+    : Prop :=
+    match As with
+    | nil => True
+    | cons a As' =>
+      (forall b' ce ce',
+          computes_to (encode_list_Spec As' ce) (b', ce')
+          -> A_predicate_rest a (transform b' b))
+      /\ FixList_predicate_rest As' b
+    end.
+
   Theorem FixList_decode_correct
     :
     forall sz ,
       encode_decode_correct_f
         cache transformer
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
+        FixList_predicate_rest 
         encode_list_Spec (decode_list sz) A_cache_inv.
   Proof.
     split.
     {
-      intros env env' xenv l l' ext Eeq Ppred Penc.
+      intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
       intuition; subst.
       revert H0.
       generalize dependent env. generalize dependent env'.
@@ -71,11 +87,13 @@ Section FixList.
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) Eeq H Penc) as [ ? [? ?] ].
+        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) Eeq H H' Penc) as [ ? [? ?] ].
+        intuition; destruct_ex.
+        eapply H1; eauto.
         setoid_rewrite <- transform_assoc; setoid_rewrite H1;
           simpl.
-        destruct (IHl b0 xenv x c); intuition eauto.
-        setoid_rewrite H4; simpl.
+        destruct (IHl (proj2 Ppred_rest) b0 xenv x c); intuition eauto.
+        setoid_rewrite H6; simpl.
         eexists; intuition.
       }
     }
@@ -99,7 +117,8 @@ Section FixList.
     }
   Qed.
 
-  Definition encode_list_body 
+
+  Definition encode_list_body
                (A_encode_Impl : A -> CacheEncode -> B * CacheEncode)
 := (fun (acc: B * CacheEncode) x =>
                                     let (bacc, env) := acc in

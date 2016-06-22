@@ -150,8 +150,7 @@ Section DomainName.
       subst.
       unfold decode_DomainName in *; simpl in *.
       unfold encode_DomainName_Spec in Penc.
-  Admitted.
-  (*generalize dependent l';
+      generalize dependent l';
         generalize dependent env;
         generalize dependent xenv;
         generalize ext; generalize dependent xenv';

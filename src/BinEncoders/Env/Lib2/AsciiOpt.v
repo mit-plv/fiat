@@ -31,12 +31,14 @@ Section Ascii.
           {P : CacheDecode -> Prop}
           (P_OK : forall b cd, P cd -> P (addD cd b))
     :
-    encode_decode_correct_f cache transformer (fun n => True) encode_ascii_Spec decode_ascii P.
+      encode_decode_correct_f cache transformer (fun n => True)
+                              (fun _ _ => True)
+                              encode_ascii_Spec decode_ascii P.
   Proof.
     unfold decode_ascii; split.
     {
-      intros env env' xenv c c' ext Eeq Ppred Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+      intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
       rewrite H; simpl.
       eexists; intuition eauto.
       repeat f_equal.
@@ -63,7 +65,7 @@ Section Ascii.
         simpl in *; try discriminate.
       injections.
       eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
-        destruct Heqo; destruct_ex; intuition; subst; eauto.
+        destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst; eauto.
       unfold encode_word_Spec in *; computes_to_inv; injections.
       repeat eexists; eauto.
       repeat f_equal.
@@ -73,7 +75,7 @@ Section Ascii.
       rewrite natToWord_wordToNat; eauto.
       rewrite wordToN_nat.
       pose proof (wordToNat_bound w).
-      simpl in H.
+      simpl in H2.
       eapply Nomega.Nlt_in.
       rewrite Nnat.Nat2N.id.
       eauto.

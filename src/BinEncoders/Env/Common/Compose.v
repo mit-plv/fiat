@@ -12,8 +12,8 @@ Definition compose E B
     let (q, e2) := encode2 e1 in
     (transform p q, e2).
 
-Notation "x 'Then' y" := (compose _ x y) (at level 100, right associativity).
-Notation "x 'Done'"   := (x Then fun e => (transform_id, e)) (at level 99, right associativity).
+Notation "x 'ThenC' y" := (compose _ x y) (at level 100, right associativity).
+Notation "x 'DoneC'"   := (x ThenC fun e => (transform_id, e)) (at level 99, right associativity).
 
 Lemma compose_encode_correct A A' B
       (cache : Cache)
@@ -24,7 +24,7 @@ Lemma compose_encode_correct A A' B
       (encode1 : A' -> CacheEncode -> B * CacheEncode)
       (encode2 : A -> CacheEncode -> B * CacheEncode)
       (decode1 : B -> CacheDecode -> A' * B * CacheDecode)
-      (decode1_pf : encode_decode_correct cache transformer predicate' encode1 decode1)      
+      (decode1_pf : encode_decode_correct cache transformer predicate' encode1 decode1)
       (decode2 : A' -> B -> CacheDecode -> A * B * CacheDecode)
       (decode2_pf : forall proj,
           encode_decode_correct cache transformer

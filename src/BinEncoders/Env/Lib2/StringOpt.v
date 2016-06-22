@@ -50,10 +50,11 @@ Section String.
       encode_decode_correct_f
         cache transformer
         (fun ls => length ls = sz)
+        (fun _ _ => True)
         encode_string_Spec (decode_string sz) P.
   Proof.
     split.
-    { intros env env' xenv l l' ext Eeq Ppred Penc.
+    { intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
       subst.
       generalize dependent env.
       revert env' xenv l'.
@@ -66,7 +67,7 @@ Section String.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (transform b0 ext) Eeq I Penc) as [? [? ?] ].
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (transform b0 ext) Eeq I I Penc) as [? [? ?] ].
       simpl. rewrite <- transform_assoc, H; simpl.
       destruct (IHl _ _ _ _ H0 Penc') as [? [? ?] ].
       rewrite H1; simpl; eexists; eauto.
@@ -79,8 +80,8 @@ Section String.
         destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate; injections.
         eapply (proj2 (Ascii_decode_correct P_OK)) in Heqo; eauto;
-          destruct Heqo; destruct_ex; intuition; subst;
-            eapply IHsz in Heqo0; eauto; destruct Heqo0;
+          destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst;
+            eapply IHsz in Heqo0; eauto; destruct Heqo0 as [? [? ?] ];
               destruct_ex; intuition; subst.
         simpl.
         eexists; eexists; intuition eauto.

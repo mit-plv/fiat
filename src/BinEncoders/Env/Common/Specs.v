@@ -31,12 +31,14 @@ Section Specifications.
              (cache : Cache)
              (transformer : Transformer B)
              (predicate : A -> Prop)
+             (rest_predicate : A -> B -> Prop)
              (encode : A -> CacheEncode -> Comp (B * CacheEncode))
              (decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (decode_inv : CacheDecode -> Prop) :=
     (forall env env' xenv data bin ext,
       Equiv env env' ->
       predicate data ->
+      rest_predicate data ext ->
       encode data env ↝ (bin, xenv) ->
       exists xenv',
         decode (transform bin ext) env' = Some (data, ext, xenv')
@@ -77,6 +79,7 @@ Section Specifications.
       match a_opt with (a, bin') => k a bin' end
     Else None.
 
+
 End Specifications.
 
 Add Parametric Morphism
@@ -84,11 +87,12 @@ Add Parametric Morphism
     (cache : Cache)
     (transformer : Transformer B)
     (predicate : A -> Prop)
+    rest_predicate
     (decode : B -> CacheDecode -> option (A * B * CacheDecode))
     (decode_inv : CacheDecode -> Prop)
   : (fun encoder =>
        @encode_decode_correct_f A B cache transformer predicate
-                               encoder decode decode_inv)
+                               rest_predicate encoder decode decode_inv)
     with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
       as encode_decode_correct_refineEquiv.
 Proof.
@@ -98,8 +102,9 @@ Proof.
   - eapply H2; eauto.
   - destruct (H2 _ _ _ _ _ _ H0 H3 H4) as [ ? [? [? ?] ] ];
       intuition.
-    repeat eexists; eauto; apply H; eauto.
+    repeat eexists; intuition eauto; apply H; eauto.
 Qed.
+
 
 Section DecodeWMeasure.
   Context {A : Type}. (* data type *)

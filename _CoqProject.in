@@ -51,6 +51,7 @@ src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/Dns2.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v
+src/BinEncoders/Env/Examples/EthernetFrame.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
 src/BinEncoders/Env/Lib/FixList.v
@@ -66,12 +67,14 @@ src/BinEncoders/Env/Lib2/FixListOpt.v
 src/BinEncoders/Env/Lib2/FixStringOpt.v
 src/BinEncoders/Env/Lib2/Nat.v
 src/BinEncoders/Env/Lib2/NatOpt.v
+src/BinEncoders/Env/Lib2/NoCache.v
 src/BinEncoders/Env/Lib2/SteppingList.v
 src/BinEncoders/Env/Lib2/SteppingListOpt.v
 src/BinEncoders/Env/Lib2/String.v
 src/BinEncoders/Env/Lib2/StringOpt.v
 src/BinEncoders/Env/Lib2/SumType.v
 src/BinEncoders/Env/Lib2/SumTypeOpt.v
+src/BinEncoders/Env/Lib2/Vector.v
 src/BinEncoders/Env/Lib2/Word.v
 src/BinEncoders/Env/Lib2/WordOpt.v
 src/BinEncoders/NoEnv/Specs.v

@@ -43,10 +43,12 @@ Section Word.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-    encode_decode_correct_f cache transformer (fun _ => True) encode_word_Spec decode_word P.
+      encode_decode_correct_f cache transformer (fun _ => True)
+                              (fun _ _ => True)
+                              encode_word_Spec decode_word P.
   Proof.
     unfold encode_decode_correct_f, encode_word_Spec, decode_word; split.
-    - intros env env' xenv w w' ext Eeq _ Penc.
+    - intros env env' xenv w w' ext Eeq _ _ Penc.
       computes_to_inv; injections.
       generalize dependent sz.
       induction w; simpl in *.

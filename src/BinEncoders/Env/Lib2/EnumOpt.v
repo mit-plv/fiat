@@ -114,11 +114,11 @@ Section Enum.
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : encode_decode_correct_f cache transformer (fun _ => True) encode_enum_Spec decode_enum P.
+    : encode_decode_correct_f cache transformer (fun _ => True) (fun _ _ => True) encode_enum_Spec decode_enum P.
   Proof.
     split; unfold encode_enum_Spec, decode_enum.
-    { intros env env' xenv c c' ext Eeq Ppred Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+    { intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
       rewrite H; simpl.
       apply (word_indexed_correct _ (ibound (indexb c))) in tb_OK.
       subst; simpl in *.

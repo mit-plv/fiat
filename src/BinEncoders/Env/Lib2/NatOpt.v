@@ -35,12 +35,13 @@ Section Nat.
   Theorem Nat_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : encode_decode_correct_f cache transformer (fun n => n < pow2 sz) encode_nat_Spec decode_nat P.
+    : encode_decode_correct_f cache transformer (fun n => n < pow2 sz)
+                              (fun _ _ => True) encode_nat_Spec decode_nat P.
   Proof.
     unfold encode_decode_correct_f, encode_nat_Spec, decode_nat.
     split.
-    { intros env xenv xenv' n n' ext Eeq Ppred Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I Penc) as [? [? ?] ].
+    { intros env xenv xenv' n n' ext Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
       - rewrite H; simpl; eexists; intuition eauto.
         repeat f_equal.
         destruct (wordToNat_natToWord' sz n).

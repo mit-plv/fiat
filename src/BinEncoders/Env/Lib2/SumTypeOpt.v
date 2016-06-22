@@ -78,12 +78,14 @@ Section SumType.
                                            Comp (B * CacheEncode)) types)
           (decoders : ilist (B := fun T => B -> CacheDecode -> option (T * B * CacheDecode)) types)
           (invariants : forall idx, Vector.nth types idx -> Prop)
+          (invariants_rest : forall idx, Vector.nth types idx -> B -> Prop)
           (cache_invariants : forall idx, (CacheDecode -> Prop) -> Prop)
           (encoders_decoders_correct : forall idx,
               cache_inv_Property P (cache_invariants idx)
               -> encode_decode_correct_f
                 cache transformer
                 (fun st => invariants idx st)
+                (invariants_rest idx)
                 (ith encoders idx)
                 (ith decoders idx)
                 P)
@@ -91,17 +93,18 @@ Section SumType.
     :
       cache_inv_Property P (fun P => forall idx, cache_invariants idx P)
       -> encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+                                 (fun st b => invariants_rest _ (SumType_proj _ st) b)
                           (encode_SumType_Spec types encoders)
                           (decode_SumType types decoders idx)
                           P.
   Proof.
     split;
-      revert types encoders decoders invariants encoders_decoders_correct;
+      revert types encoders decoders invariants invariants_rest encoders_decoders_correct;
       unfold encode_decode_correct_f, encode_SumType_Spec, decode_SumType.
     { intros; intuition.
       eapply (proj1 (encoders_decoders_correct _ (H _))) in H2; eauto;
         destruct_ex; intuition.
-      subst; rewrite H2; simpl.
+      subst; setoid_rewrite H2; simpl.
       eexists; intuition eauto.
       repeat f_equal.
       rewrite inj_SumType_proj_inverse; reflexivity.
@@ -110,7 +113,7 @@ Section SumType.
       destruct (ith decoders idx bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
         simpl in *; try discriminate; injections.
       eapply (proj2 (encoders_decoders_correct idx (H _))) in Heqo;
-        eauto; destruct Heqo; destruct_ex; intuition; subst.
+        eauto; destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst.
       exists x; exists x0; intuition;
         try rewrite index_SumType_inj_inverse; eauto.
       - pattern (SumType_index types (inj_SumType types idx n)),

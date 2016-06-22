@@ -59,44 +59,44 @@ Section DnsPacket.
   (* followed by that many characters. *)
   Definition encode_characterString_Spec (s : string) :=
     encode_nat_Spec 8 (String.length s)
-    Then encode_string_Spec s.
+    ThenC encode_string_Spec s.
 
   Definition encode_question_Spec (q : question) :=
        encode_DomainName_Spec q!"qname"
-  Then encode_enum_Spec QType_Ws q!"qtype"
-  Then encode_enum_Spec QClass_Ws q!"qclass"
-  Done.
+  ThenC encode_enum_Spec QType_Ws q!"qtype"
+  ThenC encode_enum_Spec QClass_Ws q!"qclass"
+  DoneC.
 
   Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
        encode_DomainName_Spec soa!"sourcehost"
-  Then encode_DomainName_Spec soa!"contact_email"
-  Then encode_word_Spec soa!"serial"
-  Then encode_word_Spec soa!"refresh"
-  Then encode_word_Spec soa!"retry"
-  Then encode_word_Spec soa!"expire"
-  Then encode_word_Spec soa!"minTTL"
-  Done.
+  ThenC encode_DomainName_Spec soa!"contact_email"
+  ThenC encode_word_Spec soa!"serial"
+  ThenC encode_word_Spec soa!"refresh"
+  ThenC encode_word_Spec soa!"retry"
+  ThenC encode_word_Spec soa!"expire"
+  ThenC encode_word_Spec soa!"minTTL"
+  DoneC.
 
   Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
        encode_word_Spec wks!"Address"
-  Then encode_word_Spec wks!"Protocol"
-  Then (encode_list_Spec encode_word_Spec wks!"Bit-Map")
-  Done.
+  ThenC encode_word_Spec wks!"Protocol"
+  ThenC (encode_list_Spec encode_word_Spec wks!"Bit-Map")
+  DoneC.
 
   Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
        encode_characterString_Spec hinfo!"CPU"
-  Then encode_characterString_Spec hinfo!"OS" (* Should be character string!*)
-  Done.
+  ThenC encode_characterString_Spec hinfo!"OS" (* Should be character string!*)
+  DoneC.
 
   Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
        encode_word_Spec mx!"Preference"
-  Then encode_DomainName_Spec mx!"Exchange"
-  Done.
+  ThenC encode_DomainName_Spec mx!"Exchange"
+  DoneC.
 
   Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
        encode_DomainName_Spec minfo!"rMailBx"
-  Then encode_DomainName_Spec minfo!"eMailBx"
-  Done.
+  ThenC encode_DomainName_Spec minfo!"eMailBx"
+  DoneC.
 
   Definition encode_rdata_Spec :=
   encode_SumType_Spec ResourceRecordTypeTypes
@@ -113,29 +113,29 @@ Section DnsPacket.
 
   Definition encode_resource_Spec(r : resourceRecord) :=
        encode_DomainName_Spec r!sNAME
-  Then encode_enum_Spec RRecordType_Ws r!sTYPE
-  Then encode_enum_Spec RRecordClass_Ws r!sCLASS
-  Then encode_word_Spec r!sTTL (* Missing length field*)
-  Then encode_rdata_Spec r!sRDATA
-  Done.
+  ThenC encode_enum_Spec RRecordType_Ws r!sTYPE
+  ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
+  ThenC encode_word_Spec r!sTTL (* Missing length field*)
+  ThenC encode_rdata_Spec r!sRDATA
+  DoneC.
 
   Definition encode_packet_Spec (p : packet) :=
        encode_word_Spec p!"id"
-  Then encode_word_Spec (WS p!"QR" WO)
-  Then encode_enum_Spec Opcode_Ws p!"Opcode"
-  Then encode_word_Spec (WS p!"AA" WO)
-  Then encode_word_Spec (WS p!"TC" WO)
-  Then encode_word_Spec (WS p!"RD" WO)
-  Then encode_word_Spec (WS p!"RA" WO)
-  Then encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-  Then encode_enum_Spec RCODE_Ws p!"RCODE"
-  Then encode_nat_Spec 16 1 (* length of question field *)
-  Then encode_nat_Spec 16 (|p!"answers"|)
-  Then encode_nat_Spec 16 (|p!"authority"|)
-  Then encode_nat_Spec 16 (|p!"additional"|)
-  Then encode_question_Spec p!"question"
-  Then (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
-  Done.
+  ThenC encode_word_Spec (WS p!"QR" WO)
+  ThenC encode_enum_Spec Opcode_Ws p!"Opcode"
+  ThenC encode_word_Spec (WS p!"AA" WO)
+  ThenC encode_word_Spec (WS p!"TC" WO)
+  ThenC encode_word_Spec (WS p!"RD" WO)
+  ThenC encode_word_Spec (WS p!"RA" WO)
+  ThenC encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
+  ThenC encode_enum_Spec RCODE_Ws p!"RCODE"
+  ThenC encode_nat_Spec 16 1 (* length of question field *)
+  ThenC encode_nat_Spec 16 (|p!"answers"|)
+  ThenC encode_nat_Spec 16 (|p!"authority"|)
+  ThenC encode_nat_Spec 16 (|p!"additional"|)
+  ThenC encode_question_Spec p!"question"
+  ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+  DoneC.
 
   Ltac normalize_compose :=
     eapply encode_decode_correct_refineEquiv;
@@ -261,7 +261,7 @@ Section DnsPacket.
             ]
     end.
 
-  Theorem characterString_decode_correct
+  (*Theorem characterString_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall (b : nat) cd, P cd -> P (addD cd b)))
     : encode_decode_correct_f cache transformer (fun ls => lt (String.length ls) (pow2 8))
@@ -284,7 +284,7 @@ Section DnsPacket.
       intuition eauto.
     unfold cache_inv_Property in *; eauto.
   Qed.
-
+*)
   Ltac makeEvar T k :=
     let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 
@@ -311,7 +311,7 @@ Section DnsPacket.
   Ltac build_decoder :=
     first [ solve [eapply Enum_decode_correct; eauto ]
           | solve [eapply Word_decode_correct ]
-          | solve [eapply characterString_decode_correct ]
+
           | solve [eapply Nat_decode_correct ]
           | solve [eapply String_decode_correct ]
           | solve [intros; eapply DomainName_decode_correct ]
@@ -331,7 +331,7 @@ Section DnsPacket.
     : { decodePlusCacheInv |
         exists P_inv pred,
         (cache_inv_Property (snd decodePlusCacheInv) P_inv
-        -> encode_decode_correct_f cache transformer pred encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+        -> encode_decode_correct_f cache _ pred encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
   Proof.
     eexists (_, _); eexists _; eexists _; split; simpl.
