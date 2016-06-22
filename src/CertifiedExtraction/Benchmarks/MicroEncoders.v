@@ -34,15 +34,24 @@ Definition FourWordsAsCollectionOfVariables
 Hint Unfold FourWords_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold FourWordsAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
 
+Definition FourWords_encode' (t : FourWords) : BytableListOfBools 512.
+Proof.
+  exists (FourWords_encode t).
+  admit.
+Defined.
+
 Example FourWords_compile :
   ParametricExtraction
     #vars      fourWords
-    #program   ret (FourWords_encode fourWords)
+    #program   ret (FourWords_encode' fourWords)
     #arguments (FourWordsAsCollectionOfVariables
                   (NTSome "w0") (NTSome "w1") (NTSome "w2") (NTSome "w3") fourWords)
     #env       MicroEncoders_Env.
 Proof.
+  unfold FourWords_encode'.
   compile_encoder_t.
+
+  CompileCompose
   repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).  (* TODO automate *)
 Defined.
 
@@ -76,6 +85,21 @@ Instance WrapListOfBoundedValues :
   (* FIXME when the elements of the list inject into W, we should have a
      canonical into lists of words. *)
   FacadeWrapper (Value ADTValue) (list (BoundedN 8)). Admitted.
+
+Lemma map_inj {A B}:
+  forall (f: A -> B),
+    (forall x y, f x = f y -> x = y) ->
+    (forall x y, (map f) x = (map f) y -> x = y).
+Proof.
+  induction x; destruct y; simpl; intros HH; try congruence.
+  inversion' HH; f_equal; eauto.
+Qed.
+
+Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B).
+Proof.
+  refine {| wrap x := map wrap x |}.
+  eauto using map_inj, wrap_inj.
+Qed.
 
 Example BitArrayAndList_compile :
   ParametricExtraction
