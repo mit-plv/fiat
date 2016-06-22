@@ -296,7 +296,7 @@ Ltac decide_TelEq_instantiate_step :=
     | (_, Cons NTNone _ _) => apply TelEq_chomp_None_right; [ eexists; reflexivity | red; intros ]
     | (Cons ?k _ _, ?t) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
     | (?t, Cons ?k _ _) => decide_TelEq_instantiate_do_swaps k t; apply TelEq_chomp_head; red; intros
-    | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 |
+    | context [DropName ?k ?tenv] => first [ is_dirty_telescope tenv; fail 1 | (* This rewrite introduces a dependency on eq_rect_eq *)
                                             rewrite (DropName_NotInTelescope tenv k) by eauto ]
     | _ => apply TelEq_refl
     end
@@ -308,7 +308,6 @@ Ltac decide_TelEq_instantiate :=
 Ltac clean_telescope tel ext :=
   let clean := fresh in
   let type := type of tel in
-  let clean := fresh in
   evar (clean: type);
     setoid_replace tel with clean using relation (@TelEq _ ext);
     unfold clean;
