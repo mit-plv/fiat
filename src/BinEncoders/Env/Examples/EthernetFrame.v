@@ -78,7 +78,7 @@ Lemma composeIf_encode_correct
       (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (IComp : Comp bool)
-      (ICompb : A' -> B -> bool)
+      (ICompb : A' -> B -> CacheDecode -> bool)
       (encodeT : A -> CacheEncode -> Comp (B * CacheEncode))
       (decodeT : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (encodeE : A -> CacheEncode -> Comp (B * CacheEncode))
@@ -89,7 +89,7 @@ Lemma composeIf_encode_correct
               cache transformer predicate' predicate_rest
               encode1 decode1 P)
       (decodeT_pf : forall proj,
-          IComp true ->
+          computes_to IComp true ->
           predicate' proj ->
           cache_inv_Property P P_invT ->
           encode_decode_correct_f
@@ -99,7 +99,7 @@ Lemma composeIf_encode_correct
             encodeT
             (decodeT proj) P)
       (decodeE_pf : forall proj,
-          IComp false ->
+          computes_to IComp false ->
           predicate' proj ->
           cache_inv_Property P P_invE ->
           encode_decode_correct_f
@@ -109,22 +109,24 @@ Lemma composeIf_encode_correct
             encodeE
             (decodeE proj) P)
       (ICompb_decT :
-         forall data env b b' c xenv ext,
+         forall data env b b' c xenv c' ext,
            predicate data
            -> encode1 (project data) env ↝ (b, c)
            -> IComp ↝ true
            -> encodeT data c ↝ (b', xenv)
-           -> ICompb (project data) (transform b' ext) = true)
+           -> Equiv c c'
+           -> ICompb (project data) (transform b' ext) c' = true)
       (ICompb_decE :
-         forall data env b b' c xenv ext,
+         forall data env b b' c xenv c' ext,
            predicate data
            -> encode1 (project data) env ↝ (b, c)
            -> IComp ↝ false
            -> encodeE data c ↝ (b', xenv)
-           -> ICompb (project data) (transform b' ext) = false)
+           -> Equiv c c'
+           -> ICompb (project data) (transform b' ext) c' = false)
       (ICompb_dec :
-         forall a b,
-           IComp (ICompb a b))
+         forall a b cd,
+           computes_to IComp (ICompb a b cd))
       (predicate_rest_implT : forall a' b b'',
           (IComp true /\
           exists a ce ce' ce'' b' b'',
@@ -143,7 +145,7 @@ Lemma composeIf_encode_correct
             /\ computes_to (encodeE a ce') (b'', ce'')
             /\ predicate_rest' a b)
           -> predicate_rest a' (transform b'' b))
-      (pred_pf : forall data, predicate data -> predicate' (project data))      
+      (pred_pf : forall data, predicate data -> predicate' (project data))
   : encode_decode_correct_f
       cache transformer
       (fun a => predicate a)
@@ -153,7 +155,7 @@ Lemma composeIf_encode_correct
       )%comp
      (fun (bin : B) (env : CacheDecode) =>
         `(proj, rest, env') <- decode1 bin env;
-          If (ICompb proj) rest Then
+          If ICompb proj rest env' Then
              decodeT proj rest env'
              Else
              decodeE proj rest env'
@@ -166,18 +168,18 @@ Proof.
     - computes_to_inv; destruct v; subst.
       destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) H com_pf); intuition; simpl in *; injections.
       eapply predicate_rest_implT; repeat eexists; intuition eauto.
-      pose proof (ICompb_decT _ _ _ _ _ _ ext pred_pm com_pf com_pf' com_pf'').
       destruct (fun H' => proj1 (decodeT_pf (project data) com_pf' (pred_pf _ pred_pm)
                                   H)
                       _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H' com_pf'');
         intuition; simpl in *; injections.
+      pose proof (ICompb_decT _ _ _ _ _ _ _ ext pred_pm com_pf com_pf' com_pf'' H3).
       setoid_rewrite <- transform_assoc; rewrite H2.
       intuition; simpl in *; injections.
-      rewrite H5, H7; simpl; eauto.
+      rewrite H5, H6; simpl; eauto.
     - computes_to_inv; destruct v; subst.
       destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections.
       eapply predicate_rest_implE; intuition; repeat eexists; intuition eauto.
-      pose proof (ICompb_decE _ _ _ _ _ _ ext pred_pm com_pf com_pf' com_pf'').
+      pose proof (ICompb_decE _ _ _ _ _ _ _ ext pred_pm com_pf com_pf' com_pf'' H3).
       destruct (fun H' => proj1 (decodeE_pf (project data) com_pf' (pred_pf _ pred_pm)
                                   H4)
                       _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H' com_pf'');
@@ -189,8 +191,8 @@ Proof.
   { intros.
     destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
       simpl in *; try discriminate.
-    pose proof (ICompb_dec a b) as ICompb'.
-    destruct (ICompb a b) eqn: ?; simpl in *.
+    pose proof (ICompb_dec a b c) as ICompb'.
+    destruct (ICompb a b c) eqn: ?; simpl in *.
     - eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto;
         destruct Heqo; destruct_ex; intuition;
           eapply (proj2 (decodeT_pf a ICompb' H7 H3)) in H1; eauto;
@@ -264,8 +266,8 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
       makeEvar new_P_T
                ltac:(fun new_P =>
                        unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
-    end.    
-  
+    end.
+
   Theorem decode_list_all_correct_ComposeOpt
       : encode_decode_correct_f
           _ transformer
@@ -355,31 +357,57 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
     rewrite H in H0.
     intros; apply (DecideableEnsembles.dec_decides_P (DecideableEnsemble := b_eq_dec b)) in H0.
     rewrite H0; simpl; intros; eauto.
-  Qed.        
+  Qed.
+
+  Definition ethernet_Frame_OK (e : EthernetFrame) := lt (|e!"Data"|) 1501.
+
+  Lemma ethernet_Frame_OK_good_Len
+    : forall (e : EthernetFrame),
+      ethernet_Frame_OK e
+      -> lt (|e!"Data"|) (pow2 16).
+  Proof.
+    unfold ethernet_Frame_OK; intro.
+    match goal with |- context [| ?e |] => remember (|e|) end.
+    clear Heqn e.
+    etransitivity; eauto.
+    rewrite <- (wordToNat_natToWord_idempotent 16 1501).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+  Qed.
 
   Global Instance Query_eq_nat : DecideableEnsembles.Query_eq nat :=
     {| A_eq_dec := Coq.Arith.Peano_dec.eq_nat_dec |}.
 
   Definition packet_decoder
     : { decodePlusCacheInv |
-        exists P_inv pred,
+        exists P_inv,
         (cache_inv_Property (snd decodePlusCacheInv) P_inv
-        -> encode_decode_correct_f _ transformer pred (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+        -> encode_decode_correct_f _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
   Proof.
-    eexists (_, _); eexists _; eexists _; split; simpl.
+    eexists (_, _); eexists _; split; simpl.
     intros.
     apply_compose.
     intro. eapply Vector_decode_correct.
     revert H; eapply Word_decode_correct.
     solve_data_inv.
     intros; apply Vector_predicate_rest_True.
-    apply_compose.
-    intro. eapply Vector_decode_correct.
+    intros;
+    match goal with
+      H : cache_inv_Property ?P ?P_inv |- _ =>
+      eapply (composeIf_encode_correct H) with
+      (ICompb := fun _ b cd => match decode_nat (pow2 16 - 1) 16 b cd with
+                               | Some (b', _, _) => if Compare_dec.lt_dec 1500 b' then true else false
+                               | None => false end); clear H
+    end.
+    intro; eapply Vector_decode_correct.
     revert H0; eapply Word_decode_correct.
     apply_compose.
-    eapply Nat_decode_correct.
-    solve_data_inv.
+    eapply Nat_decode_correct with (sz' := 1500).
+    rewrite <- (wordToNat_natToWord_idempotent 16 1500).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+    intuition.
     simpl; intros; exact I.
     apply_compose.
     eapply Word_decode_correct.
@@ -415,14 +443,14 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
        exists xenv', ?f' ?proj1 ?b ?env' = Some (?data, ?ext, xenv') /\ Equiv xenv xenv'] =>
       instantiate (1 := fun p b' c => if (DecideableEnsembles.A_eq_dec (f p) proj2) then _ p b' c else None); cbv beta
     end.
-    destruct (@DecideableEnsembles.A_eq_dec nat Query_eq_nat 
-               (@Datatypes.length char proj3) proj1); try congruence. 
-    destruct data as [? [? [? [? [ ] ] ] ] ]; 
+    destruct (@DecideableEnsembles.A_eq_dec nat Query_eq_nat
+               (@Datatypes.length char proj3) proj1); try congruence.
+    destruct data as [? [? [? [? [ ] ] ] ] ];
       unfold GetAttribute, GetAttributeRaw in *;
       simpl in *.
     computes_to_inv; injections; subst; simpl.
     pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-    eexists tt; simpl; intuition eauto.
+    eexists env'; simpl; intuition eauto.
     match goal with
       |- ?f ?a ?b ?c = ?P =>
       let P' := (eval pattern a, b, c in P) in
@@ -430,7 +458,7 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
       try unify f f'; try reflexivity
     end.
     cbv beta in H12.
-    destruct (@DecideableEnsembles.A_eq_dec nat Query_eq_nat 
+    destruct (@DecideableEnsembles.A_eq_dec nat Query_eq_nat
                                               (@Datatypes.length char proj3) proj1); try congruence; subst.
     eexists _; eexists tt;
       intuition eauto; injections; eauto using idx_ibound_eq;
@@ -441,7 +469,7 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
     destruct env; computes_to_econstructor.
     pose proof transform_id_left as H'; simpl in H'; rewrite H'.
     reflexivity.
-    Focus 2.
+    unfold ethernet_Frame_OK; unfold GetAttribute, GetAttributeRaw; simpl; omega.
     apply_compose.
     eapply Enum_decode_correct.
     admit.
@@ -455,55 +483,44 @@ Local Notation "x 'ThenIf' i 'TheniC' t 'ElseiC' e " :=
     pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
     simpl; intros.
     unfold encode_decode_correct_f; intuition eauto.
-    destruct data as [? [? [? [? [ ] ] ] ] ]; 
+    destruct data as [? [? [? [? [ ] ] ] ] ];
       unfold GetAttribute, GetAttributeRaw in *;
       simpl in *.
     computes_to_inv; injections; subst; simpl.
+    unfold ethernet_Frame_OK, GetAttribute, GetAttributeRaw in H6; simpl in H6.
     pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-    eexists tt; simpl; intuition eauto.
+    instantiate (1 := fun p b' c => if (Compare_dec.lt_dec (|p|) 1501) then _ p b' c else None); cbv beta.
+    destruct (Compare_dec.lt_dec (|proj2|) 1501); intuition.
+    eexists env'; simpl; intuition eauto.
     match goal with
       |- ?f ?a ?b ?c = ?P =>
       let P' := (eval pattern a, b, c in P) in
       let f' := match P' with ?f a b c => f end in
       try unify f f'; try reflexivity
     end.
-    eexists _; eexists tt;
+    simpl in H7.
+    destruct (Compare_dec.lt_dec (|proj2|) 1501); try discriminate.
+    eexists _; eexists env;
       intuition eauto; injections; eauto using idx_ibound_eq;
         try match goal with
               |-  ?data => destruct data;
                              simpl in *; eauto
             end.
-    destruct env; computes_to_econstructor.
-    pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-    reflexivity.
+    admit.
+    admit.
+    intros; eauto.
+    intros; eauto.
+    apply Vector_predicate_rest_True.
+    intros; apply Vector_predicate_rest_True.
+    simpl; intros; exact I.
+    repeat (instantiate (1 := fun _ => True)).
+    unfold cache_inv_Property; intuition.
+    Grab Existential Variables.
+    exact (@weq _).
+    exact (@weq _).
+    exact (@weq _).
+    exact (@weq _).
+  Defined.
 
-
-    
-
-        intros; eapply FixList_decode_correct.
-    revert H8; eapply Word_decode_correct.
-    solve_data_inv.
-    unfold encode_decode_correct_f.
-
-    let H' := fresh in
-    let data := fresh in
-    let H'' := fresh in
-    intros H' data H'';
-    repeat destruct H'';
-    match goal with
-    | H : ?P data |- ?P_inv' =>
-      is_evar P;
-        let P_inv' := (eval pattern data in P_inv') in
-        let P_inv := match P_inv' with ?P_inv data => P_inv end in
-        let new_P_T := type of P in
-        makeEvar new_P_T
-                 ltac:(fun new_P =>
-                         try unify P (fun data => new_P data /\ P_inv data)); try apply (Logic.proj2 H)
-    end.
-
-    shelve_inv.
-    split.
-    intros.
-    unfold encode_EthernetFrame_Spec in H2.
-    unfold compose, Bind2 in H2; computes_to_inv.
-    computes_to_inv.
+  Definition frame_decoder := Eval simpl in projT1 packet_decoder.
+  Print frame_decoder.

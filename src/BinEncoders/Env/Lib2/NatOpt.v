@@ -27,16 +27,19 @@ Section Nat.
     reflexivity.
   Qed.
 
-  Definition decode_nat (b : B) (cd : CacheDecode) : option (nat * B * CacheDecode) :=
+  Definition decode_nat sz' (b : B) (cd : CacheDecode) : option (nat * B * CacheDecode) :=
     `(w, b, cd) <- decode_word (sz:=sz) b cd;
-      Some (wordToNat w, b, cd).
+      if (wlt_dec (natToWord sz sz') w) then
+        None else Some (wordToNat w, b, cd).
 
   Local Open Scope nat.
   Theorem Nat_decode_correct
+          sz'
+          (sz_OK : sz' < pow2 sz)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : encode_decode_correct_f cache transformer (fun n => n < pow2 sz)
-                              (fun _ _ => True) encode_nat_Spec decode_nat P.
+    : encode_decode_correct_f cache transformer (fun n => n <= sz')
+                              (fun _ _ => True) encode_nat_Spec (decode_nat sz') P.
   Proof.
     unfold encode_decode_correct_f, encode_nat_Spec, decode_nat.
     split.
@@ -48,23 +51,27 @@ Section Nat.
         assert (x0 = 0).
         { destruct x0; eauto.
           rewrite <- H1 in Ppred. exfalso. simpl in Ppred.
-          clear - Ppred.
+          revert sz_OK.
+          clear - Ppred; intro.
           replace (wordToNat (natToWord sz n) + (pow2 sz + x0 * pow2 sz)) with
           (pow2 sz + (wordToNat (natToWord sz n) + x0 * pow2 sz)) in Ppred by omega.
           remember (wordToNat (natToWord sz n) + x0 * pow2 sz) as n'; clear Heqn'.
           omega. }
-        rewrite H2 in H1. simpl in H1. rewrite <- plus_n_O in H1. eauto.
+        rewrite H2 in H1. simpl in H1; rewrite <- plus_n_O in H1.
+        find_if_inside.
+        + admit.
+        + rewrite H1; eauto.
         }
     { intros env xenv xenv' n n' ext Eeq OK_env Penc.
       destruct (decode_word n' xenv) as [ [ [? ? ] ? ] | ] eqn: ? ;
         simpl in *; try discriminate.
+      find_if_inside; try discriminate.
       injections.
       eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
         destruct Heqo; destruct_ex; intuition; subst; eauto.
       unfold encode_word_Spec in *; computes_to_inv; injections.
-      eauto.
       rewrite natToWord_wordToNat; repeat eexists; eauto.
-      apply wordToNat_bound.
+      admit.
     }
   Qed.
 End Nat.
