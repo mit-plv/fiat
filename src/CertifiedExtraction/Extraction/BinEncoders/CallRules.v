@@ -12,107 +12,6 @@ Require Import
 
 Unset Implicit Arguments.
 
-Lemma CompileCallWrite16:
-  forall (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope ADTValue)
-    (n : BitArray 16) ext env
-    pArg pNext fWrite16,
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      pArg
-    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv' }}
-      pNext
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env.
-Proof.
-  hoare.
-  hoare.
-  hoare.
-Admitted.
-
-Lemma CompileCallWrite16_EncodeAndPad:
-  forall (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope ADTValue)
-    (n : BoundedN 16) ext env
-    pArg pNext fWrite16,
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      pArg
-    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv' }}
-      pNext
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      Seq pArg (Seq (Call vtmp fWrite16 [vstream; varg]) pNext)
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env.
-Proof.
-  intros * H ?.
-  setoid_rewrite (TelEq_same_wrap _ _ (WrapN16_WrapListBool16 _)) in H.
-  eapply CompileCallWrite16; eauto.
-Qed.
-
-Lemma CompileCallWrite8:
-  forall (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope ADTValue)
-    (n : BitArray 8) ext env
-    pArg pNext fWrite8,
-    GLabelMap.MapsTo fWrite8 (Axiomatic BytesADTSpec.Push) env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      pArg
-    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv' }}
-      pNext
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      Seq pArg (Seq (Call vtmp fWrite8 [vstream; varg]) pNext)
-    {{ [[ ` vstream ->> stream ++ ` n as _]]::tenv'' }} ∪ {{ ext }} // env.
-Proof.
-  hoare.
-  hoare.
-  hoare.
-Admitted.
-
-Lemma CompileCallWrite8_EncodeAndPad:
-  forall (vtmp varg vstream : string) (stream : list bool) (tenv tenv' tenv'': Telescope ADTValue)
-    (n : BoundedN 8) ext env
-    pArg pNext fWrite8,
-    GLabelMap.MapsTo fWrite8 (Axiomatic BytesADTSpec.Push) env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      pArg
-    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv' }}
-      pNext
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
-      Seq pArg (Seq (Call vtmp fWrite8 [vstream; varg]) pNext)
-    {{ [[ ` vstream ->> stream ++ ` (EncodeAndPad n) as _]]::tenv'' }} ∪ {{ ext }} // env.
-Proof.
-  intros * ? H ?.
-  setoid_rewrite (TelEq_same_wrap _ _ (WrapN8_WrapListBool8 _)) in H.
-  eapply CompileCallWrite8; eauto.
-Qed.
-
-Ltac rewrite_posed term equation :=
-  let head := fresh in
-  let eqn := fresh in
-  remember term as head eqn:eqn;
-  rewrite equation in eqn;
-  rewrite eqn; clear dependent head.
-
-Ltac _compile_CallWrite :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            let post' := (eval simpl in post) in
-            lazymatch post' with
-            | Cons _ (ret (_ ++ ` ?arg)) _ =>
-              let vtmp := gensym "tmp" in
-              let varg := gensym "arg" in
-              match arg with
-              | EncodeAndPad _ => first [ eapply (CompileCallWrite8_EncodeAndPad vtmp varg) |
-                                         eapply (CompileCallWrite16_EncodeAndPad vtmp varg) ]
-              | _ => first [ eapply (CompileCallWrite8 vtmp varg) |
-                            eapply (CompileCallWrite16 vtmp varg) ]
-              end
-            end).
-
 Lemma CompileLoopBase__many :
   forall {A B}
     `{FacadeWrapper (Value QsADTs.ADTValue) B}
@@ -136,6 +35,8 @@ Lemma CompileLoopBase__many :
       (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
     {{ tenvF tenv (fold_left f lst init) }} ∪ {{ ext }} // env.
 Proof.
+  intros.
+
   Transparent DummyArgument.
   unfold DummyArgument; loop_t.
 
@@ -297,20 +198,36 @@ Proof.
   eauto using CompileCompose.
 Qed.
 
-Lemma CompileCallAllocString:
-  forall (vtmp vstream : string) (tenv tenv' : Telescope ADTValue)
-    ext (env : GLabelMap.t (FuncSpec ADTValue))
-    pNext fAllocString,
+Definition EmptyBytableListOfBools (capacity: W): BytableListOfBools capacity :=
+  existT _ nil (exist _ 0 eq_refl).
+
+Lemma CompileCallAllocString {capacity}:
+  forall (vtmp vstream vcapacity : string) (tenv tenv' : Telescope ADTValue)
+    ext (env : GLabelMap.t (FuncSpec ADTValue)) Wcapacity
+    pNext pArg fAllocString,
+    vcapacity <> vstream ->
+    vstream ∉ ext ->
+    NotInTelescope vstream tenv ->
+    IL.goodSize (2 + Word.wordToNat Wcapacity * 4) ->
+    capacity = Word.wmult Wcapacity (Word.natToWord 32 4) ->
     GLabelMap.MapsTo fAllocString (Axiomatic BytesADTSpec.New) env ->
-    {{ [[ ` vstream ->> @nil bool as _]]::tenv }}
+    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv }}
       pNext
-    {{ [[ ` vstream ->> @nil bool as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv' }} ∪ {{ ext }} // env ->
     {{ tenv }}
-      Seq (Call vtmp fAllocString [vstream]) pNext
-    {{ [[ ` vstream ->> @nil bool as _]]::tenv' }} ∪ {{ ext }} // env.
+      pArg
+    {{ [[ ` vcapacity ->> Wcapacity as _ ]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      Seq (Seq pArg (Call vstream fAllocString [vcapacity])) pNext
+    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
-  hoare; hoare.
-Admitted.
+  hoare; hoare; hoare.
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
+  facade_eauto.
+  facade_eauto.
+  reflexivity.
+  facade_eauto.
+Qed.
 
 Lemma CompileCallAllocEMap:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)

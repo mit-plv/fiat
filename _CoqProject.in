@@ -115,9 +115,11 @@ src/CertifiedExtraction/Extraction/PreconditionSets.v
 src/CertifiedExtraction/Extraction/BinEncoders/Basics.v
 src/CertifiedExtraction/Extraction/BinEncoders/BinEncoders.v
 src/CertifiedExtraction/Extraction/BinEncoders/CallRules.v
+src/CertifiedExtraction/Extraction/BinEncoders/Map8.v
 src/CertifiedExtraction/Extraction/BinEncoders/Properties.v
 src/CertifiedExtraction/Extraction/BinEncoders/RewriteRules.v
 src/CertifiedExtraction/Extraction/BinEncoders/Wrappers.v
+src/CertifiedExtraction/Extraction/BinEncoders/CallRules/ByteString.v
 src/CertifiedExtraction/Extraction/External/Core.v
 src/CertifiedExtraction/Extraction/External/External.v
 src/CertifiedExtraction/Extraction/External/FacadeADTs.v
