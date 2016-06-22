@@ -11,20 +11,20 @@ Require Import
         Coq.Lists.List
         Coq.Program.Program.
 
-(** Connections of [IndexedEnsemble]s, [Tuple]s, and [list W]. *)
+(** Connections of [IndexedEnsemble]s, [Tuple]s, and [GenericTuple W]. *)
 
-Definition IndexedEnsemble_TupleToListW {N} (ensemble: FiatBag N) : BedrockBag :=
-  fun listW => exists tup, ensemble tup /\ RelatedIndexedTupleAndListW listW tup.
+Definition IndexedEnsemble_TupleToListW {N} (ensemble: FiatWBag N) : BedrockWBag :=
+  fun indexedListW => exists tup, ensemble tup /\ RelatedIndexedTupleAndListW indexedListW tup.
 
 Lemma IndexedEnsemble_TupleToListW_refl :
-  forall {N} (tup: FiatElement N) (ens: FiatBag N),
+  forall {N} (tup: FiatWElement N) (ens: FiatWBag N),
     ens tup -> IndexedEnsemble_TupleToListW ens (TupleToListW_indexed tup).
 Proof.
   cleanup; red; eauto using RelatedIndexedTupleAndListW_refl.
 Qed.
 
 Lemma IndexedEnsemble_TupleToListW_inj_helper:
-  forall (N : nat) (e : FiatBag N) (x : FiatElement N),
+  forall (N : nat) (e : FiatWBag N) (x : FiatWElement N),
     (IndexedEnsemble_TupleToListW e (IndexedElement_TupleToListW (N := N) x)) <-> e x.
 Proof.
   unfold IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW;
@@ -32,7 +32,7 @@ Proof.
          | _ => cleanup
          | _ => eassumption
          | _ => progress subst
-         | [ x: FiatElement _ |- _ ] => destruct x
+         | [ x: FiatWElement _ |- _ ] => destruct x
          | [ H: TupleToListW _ = TupleToListW _ |- _ ] => apply TupleToListW_inj in H
          | _ => eexists
          | _ => simpl in *
@@ -46,7 +46,7 @@ Proof.
 Qed.
 
 Lemma IndexedEnsemble_TupleToListW_inj :
-  forall {N} (e1 e2: FiatBag N),
+  forall {N} (e1 e2: FiatWBag N),
     IndexedEnsemble_TupleToListW e1 = IndexedEnsemble_TupleToListW e2 ->
     e1 = e2.
 Proof.
@@ -61,23 +61,24 @@ Qed.
 Hint Resolve IndexedEnsemble_TupleToListW_inj : inj_db.
 
 Lemma IndexedEnsemble_TupleToListW_length:
-  forall (N : nat) (table: FiatBag N),
+  forall (N : nat) (table: FiatWBag N),
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     AllOfLength_set N (IndexedEnsemble_TupleToListW table).
 Proof.
-  repeat match goal with
-         | _ => cleanup
-         | _ => progress destruct_conjs
-         | _ => progress unfold AllOfLength_set, IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW, Ensembles.In
-         | [ H: _ = _ |- _ ] => rewrite H
-         end; auto using TupleToListW_length'.
+repeat match goal with
+       | _ => cleanup
+       | _ => progress destruct_conjs
+       | _ => progress unfold AllOfLength_set, IndexedEnsemble_TupleToListW,
+             RelatedIndexedTupleAndListW, Ensembles.In, GenericTuple in *
+       | [ H: _ = _ |- _ ] => rewrite H
+       end; auto using TupleToListW_length.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_keepEq_AllOfLength:
-  forall {N : nat} {table k key seq},
+  forall {N : nat} {table k default key seq},
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
     TuplesF.EnsembleIndexedListEquivalence
-      (TuplesF.keepEq (@IndexedEnsemble_TupleToListW N table) k key) seq ->
+      (TuplesF.keepEq eq default (@IndexedEnsemble_TupleToListW N table) k key) seq ->
     AllOfLength_list N seq.
 Proof.
   cleanup; eapply EnsembleIndexedListEquivalence_AllOfLength;
@@ -93,7 +94,7 @@ Hint Unfold IndexedEnsembles.EnsembleIndexedListEquivalence
 Hint Unfold Ensembles.Same_set Ensembles.Included Ensembles.In : Ensembles.
 
 Lemma EnsembleIndexedListEquivalence_TupleToListW_FreshIdx:
-  forall (n : nat) (lst : list (FiatTuple n)) (ens : FiatBag n),
+  forall (n : nat) (lst : list (FiatWTuple n)) (ens : FiatWBag n),
     TuplesF.EnsembleIndexedListEquivalence
       (IndexedEnsemble_TupleToListW ens) (map TupleToListW lst) ->
     exists bound : nat, IndexedEnsembles.UnConstrFreshIdx ens bound.
@@ -120,10 +121,10 @@ Proof.
 Qed.
 
 Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv_Characterisation:
-  forall (n : nat) (lst : list (FiatTuple n)) (x : list BedrockElement),
+  forall (n : nat) (lst : list (FiatWTuple n)) (x : list BedrockWElement),
     map TuplesF.indexedElement x = map TupleToListW lst ->
     map2
-      (fun (x0 : BedrockElement) (y : FiatTuple n) =>
+      (fun (x0 : BedrockWElement) (y : FiatWTuple n) =>
          TupleToListW_indexed
            {| IndexedEnsembles.elementIndex := TuplesF.elementIndex x0; IndexedEnsembles.indexedElement := y |})
       x lst = x.
@@ -133,8 +134,8 @@ Proof.
   apply map_id'; destruct 0; reflexivity.
 Qed.
 
-Lemma BedrockElement_roundtrip:
-  forall (b: BedrockElement),
+Lemma BedrockWElement_roundtrip:
+  forall (b: BedrockWElement),
     {| TuplesF.elementIndex := TuplesF.elementIndex b; TuplesF.indexedElement := TuplesF.indexedElement b |}
     = b.
 Proof.
@@ -143,7 +144,7 @@ Qed.
 
 
 Lemma IndexedEnsemble_TupleToListW_Characterization :
-  forall {N} ens (x: BedrockElement) (t: FiatTuple N),
+  forall {N} ens (x: BedrockWElement) (t: FiatWTuple N),
     TuplesF.indexedElement x = TupleToListW t ->
     IndexedEnsemble_TupleToListW (N := N) ens x ->
     ens {| IndexedEnsembles.elementIndex := TuplesF.elementIndex x; IndexedEnsembles.indexedElement := t |}.
@@ -152,8 +153,8 @@ Proof.
   repeat match goal with
          | _ => progress destruct_conjs
          | [ H: TupleToListW _ = TupleToListW _ |- _ ] => apply TupleToListW_inj in H
-         | [ H: FiatElement _ |- _ ] => destruct H
-         | [ H: BedrockElement |- _ ] => destruct H
+         | [ H: FiatWElement _ |- _ ] => destruct H
+         | [ H: BedrockWElement |- _ ] => destruct H
          | _ => progress unfold IndexedEnsemble_TupleToListW, RelatedIndexedTupleAndListW in H0
          | _ => progress (simpl in *; subst)
          | _ => trivial
@@ -178,7 +179,7 @@ Hint Rewrite
 Require Import Coq.Strings.String.
 
 Lemma EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv:
-  forall (n : nat) (lst : list (FiatTuple n)) (ens : FiatBag n),
+  forall (n : nat) (lst : list (FiatWTuple n)) (ens : FiatWBag n),
     TuplesF.EnsembleIndexedListEquivalence (IndexedEnsemble_TupleToListW ens) (map TupleToListW lst) ->
     IndexedEnsembles.UnIndexedEnsembleListEquivalence ens lst.
 Proof.
@@ -206,7 +207,7 @@ Proof.
          | [ H: TuplesF.indexedElement _ = TupleToListW _ |- _ ] => rewrite <- H in *
 
          | [ H: map _ _ = map _ _ |- _ ] => learn (map_map_sameLength H)
-         | _ => progress rewrite BedrockElement_roundtrip in *
+         | _ => progress rewrite BedrockWElement_roundtrip in *
          | _ => progress autounfold with FiatBedrockEquivalences Ensembles in *
          | _ => progress autorewrite with EnsembleIndexedListEquivalence_TupleToListW_UnIndexedEquiv
          | [  |- exists x, _ ] => eexists
@@ -215,11 +216,11 @@ Proof.
 Qed.
 
 Lemma ListWToTuple_Truncated_map_keepEq:
-  forall (N : nat) (table : FiatBag N) w,
+  forall (N : nat) (table : FiatWBag N) w,
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    forall (x8 : W) (x9 : list TuplesF.tupl),
+    forall (x8 : W) (x9 : list TuplesF.tupl) default,
       TuplesF.EnsembleIndexedListEquivalence
-        (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) w x8) x9 ->
+        (TuplesF.keepEq eq default (IndexedEnsemble_TupleToListW table) w x8) x9 ->
       x9 = map TupleToListW (map (ListWToTuple_Truncated N) x9).
 Proof.
   cleanup.
@@ -248,14 +249,14 @@ Proof.
   apply Ensembles.Extensionality_Ensembles in H; rewrite H; reflexivity.
 Qed.
 
-Definition FiatEmpty N : FiatBag N := fun _ => False.
+Definition FiatWBagEmpty N : FiatWBag N := fun _ => False.
 
 Lemma Empty_lift:
   forall N : nat,
-    Empty = IndexedEnsemble_TupleToListW (FiatEmpty N).
+    Empty = IndexedEnsemble_TupleToListW (FiatWBagEmpty N).
 Proof.
   intros; apply Ensembles.Extensionality_Ensembles.
-  unfold Ensembles.Same_set, Ensembles.Included, Ensembles.In, FiatEmpty, Empty, IndexedEnsemble_TupleToListW; split; intros.
+  unfold Ensembles.Same_set, Ensembles.Included, Ensembles.In, FiatWBagEmpty, Empty, IndexedEnsemble_TupleToListW; split; intros.
   - exfalso; assumption.
   - repeat cleanup.
 Qed.

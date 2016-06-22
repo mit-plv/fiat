@@ -4,6 +4,7 @@ Require Export
         CertifiedExtraction.FacadeUtils
         CertifiedExtraction.StringMapUtils
         CertifiedExtraction.ExtendedLemmas
+        CertifiedExtraction.TelAppend
         CertifiedExtraction.PropertiesOfTelescopes
         CertifiedExtraction.ExtendedPropertiesOfTelescopes
         CertifiedExtraction.Extraction.Gensym
@@ -17,30 +18,15 @@ Ltac av_from_ext ext :=
   | StringMap.t (Value ?av) => constr:(av)
   end.
 
-(* Ltac find_function_in_env function env := *)
-(*   match goal with *)
-(*   | [ H: GLabelMap.MapsTo ?k function env |- _ ] => constr:(k) *)
-(*   | _ => let key := GLabelMapUtils.find_fast function env in *)
-(*         match key with *)
-(*         | Some ?k => k *)
-(*         end *)
-(*   end. *)
+Ltac find_in_tenv tenv v :=
+  lazymatch tenv with
+  | context[Cons ?k (ret v) _] => constr:k
+  end.
 
-(* Ltac find_function_pattern_in_env pattern env := *)
-(*   match goal with *)
-(*   | [ H: GLabelMap.MapsTo ?k ?function env |- _ ] => let pr := GLabelMapUtils.matches_pattern function pattern in constr:(k) *)
-(*   | _ => let key := GLabelMapUtils.find_pattern pattern env in *)
-(*         match key with *)
-(*         | Some ?k => k *)
-(*         end *)
-(*   end. *)
-
-(* Ltac assoc_telescope tel needle := *)
-(*   match tel with (* Note that this may return None when a binding in fact exists *) *)
-(*   | Cons (NTSome ?k) ?v _ => let eq := constr:(eq_refl k : k = needle) in constr:(Some v) *)
-(*   | Cons _ _ (fun _ => ?t) => let ret := assoc_telescope t needle in constr:(ret) *)
-(*   | _ => None *)
-(*   end. *)
+Ltac NameTag_name v :=
+  match v with
+  | NTSome ?name => constr:name
+  end.
 
 Ltac ensure_all_pointers_found :=
   match goal with
@@ -102,6 +88,8 @@ Tactic Notation "debug" constr(m1) constr(m2) :=
 Hint Extern 1 (NotInTelescope _ _) => decide_NotInTelescope : SameValues_db.
 Hint Extern 1 (_ ∉ _) => decide_not_in : SameValues_db.
 
+Create HintDb compile_do_side_conditions_db discriminated.
+
 Ltac compile_do_side_conditions_internal :=
   repeat cleanup; PreconditionSet_t;
    match goal with
@@ -109,22 +97,66 @@ Ltac compile_do_side_conditions_internal :=
    | |- _ <> _ => discriminate 1
    | |- _ <> _ => congruence
    | |- _ ∉ _ => decide_not_in
+   | |- TelEq _ _ _ => decide_TelEq_instantiate
    | |- NotInTelescope _ _ => decide_NotInTelescope
    | |- StringMap.find _ _ = Some _ => decide_mapsto_maybe_instantiate
    | |- StringMap.MapsTo _ _ _ => decide_mapsto_maybe_instantiate
    | |- GLabelMap.MapsTo _ _ _ => GLabelMapUtils.decide_mapsto_maybe_instantiate
-   end.
+   | _ => idtac
+   end; auto with compile_do_side_conditions_db.
 
 Ltac compile_do_side_conditions :=
   solve [compile_do_side_conditions_internal].
 
 Ltac match_ProgOk continuation :=
-  lazymatch goal with
-  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => first [continuation prog pre post ext env | fail]
+  lazymatch goal with (* Removing the [idtac] causes failures in [continuation] to cause backtracking *)
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] => idtac; continuation prog pre post ext env
   | _ => fail "Goal does not look like a ProgOk statement"
   end.
+
+Ltac match_ProgOk_constr continuation :=
+  lazymatch goal with
+  | [  |- {{ ?pre }} ?prog {{ ?post }} ∪ {{ ?ext }} // ?env ] =>
+    let ret := continuation prog pre post ext env in
+    constr:ret
+  end.
+
+Ltac may_alloc k :=
+  (* Fail if ‘k’ is bound in precondition. *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match pre with
+            | context[Cons k _ _] => fail 1 "Precondition contains" k
+            | context[Cons (NTSome k) _ _] => fail 1 "Precondition contains" k
+            | _ => idtac
+            end).
+
+Ltac may_alloc_head :=
+  (* Fail if pre-condition contains key of head of post-condition. *)
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            match post with
+            | Cons ?k _ _ => may_alloc k
+            end).
+
+Ltac find_in_precondition v :=
+  match_ProgOk_constr
+    ltac:(fun prog pre post ext env => find_in_tenv pre v).
+
+Ltac find_name_in_precondition v :=
+  let nt := find_in_precondition v in
+  let v := NameTag_name nt in
+  constr:v.
 
 Ltac clean_DropName_in_ProgOk :=
   match_ProgOk ltac:(fun prog pre post ext env =>
                        try (is_dirty_telescope pre; PreconditionSet_t; clean_telescope pre ext);
                        try (is_dirty_telescope post; PreconditionSet_t; clean_telescope post ext)).
+
+Ltac change_post_into_TelAppend :=
+  simpl (TelAppend _ _); (* Make sure that there are no leftover [TelAppend]s *)
+  match_ProgOk ltac:(fun prog pre post ext env =>
+                       let pp := fresh in
+                       set post as pp; (* Otherwise change sometimes fails *)
+                       let post' := make_TelAppend post in
+                       change pp with post'; clear pp).

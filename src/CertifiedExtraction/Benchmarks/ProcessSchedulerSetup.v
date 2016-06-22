@@ -55,7 +55,7 @@ Definition Scheduler_RepWrapperT Index
   : QueryStructureRepWrapperT QsADTs.ADTValue SchedulerSchema Index.
 Proof.
   unfold QueryStructureRepWrapperT; simpl; split.
-  apply (@QS_WrapBag2 3 1 0).   (* FIXME generalize *)
+  apply (@QS_WrapWBagOfTuples2 3 1 0).   (* FIXME generalize *)
   constructor.
 Defined.
 

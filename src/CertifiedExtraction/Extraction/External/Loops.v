@@ -48,13 +48,13 @@ Lemma CompileWhileFalse_Loop:
     TelEq ext tenv tenv' ->
     vtest ∉ ext ->
     NotInTelescope vtest tenv ->
-    {{[[`vtest <-- (Word.natToWord 32 1) as _]]::tenv }}
+    {{[[`vtest ->> (Word.natToWord 32 1) as _]]::tenv }}
       (DFacade.While (TestE IL.Eq vtest O) body)
     {{ tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros * H **.
   rewrite <- H.
-  apply CompileDeallocSCA_discretely; eauto.
+  apply CompileDeallocW_discretely; eauto.
   apply CompileWhileFalse.
   reflexivity.
   unfold Lifted_is_false, LiftPropertyToTelescope, is_true, is_false, eval_bool, eval;

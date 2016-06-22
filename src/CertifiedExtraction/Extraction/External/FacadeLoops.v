@@ -21,13 +21,13 @@ Lemma CompileLoopBase :
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     (forall head (acc: Comp A') (s: list A),
-        {{ [[`vret <~~ acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vret ~~> acc as _]] :: [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
-        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <~~ init as _]] :: [[`vlst <-- lst as _]] :: tenv }}
+        {{ [[`vret ~~> (f acc head) as _]] :: tenv }} ∪
+        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vret ~~> init as _]] :: [[`vlst ->> lst as _]] :: tenv }}
       (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   unfold DummyArgument; loop_t.
 
@@ -67,17 +67,17 @@ Lemma CompileLoop :
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }}
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (acc: Comp A') (s: list A),
-        {{ [[`vret <~~ acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vret ~~> acc as _]] :: [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
-        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <~~ init as _]] :: [[`vlst <-- lst as _]] :: tenv }}
+        {{ [[`vret ~~> (f acc head) as _]] :: tenv }} ∪
+        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vret ~~> init as _]] :: [[`vlst ->> lst as _]] :: tenv }}
       (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   eauto using @CompileSeq, @CompileLoopBase.
 Qed.
@@ -90,20 +90,20 @@ Lemma CompileLoopAlloc :
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       facadeInit
-    {{ [[`vret <~~ init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv }}
+    {{ [[`vret ~~> init as _]] :: [[`vlst ->> lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (acc: Comp A') (s: list A),
-        {{ [[`vret <~~ acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vret ~~> acc as _]] :: [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vret <~~ (f acc head) as _]] :: tenv }} ∪
-        {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+        {{ [[`vret ~~> (f acc head) as _]] :: tenv }} ∪
+        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude))
-    {{ [[`vret <~~ (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ~~> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   eauto using @CompileSeq, @CompileLoop.
 Qed.
@@ -181,15 +181,15 @@ Lemma CompileMap_ADT :
     GLabelMap.MapsTo fcons (Axiomatic (FacadeImplementationOfMutation_ADT A' (list A') cons)) env ->
     (* GLabelMap.MapsTo fdealloc_one (Axiomatic (FacadeImplementationOfDestructor A)) env -> *)
     PreconditionSet tenv ext [[[vhead; vhead'; vtest; vlst; vret; vtmp]]] ->
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv }}
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv }}
       facadeCoda
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (s: list A) (s': list A'),
-        {{ [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vhead' <-- f head as _]] :: tenv }} ∪
-        {{ [vret <-- wrap s'] :: [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+        {{ [[`vhead' ->> f head as _]] :: tenv }} ∪
+        {{ [vret |> wrap s'] :: [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       (Seq
          (Call vret falloc nil)
          (Seq
@@ -199,7 +199,7 @@ Lemma CompileMap_ADT :
                           (Call vtmp fcons (vret :: vhead' :: nil))))
                (Call vtest fdealloc (vlst :: nil)))
             facadeCoda))
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   setoid_rewrite <- revmap_fold_comp.
@@ -226,15 +226,15 @@ Lemma CompileMap_SCA :
     GLabelMap.MapsTo fcons (Axiomatic (FacadeImplementationOfMutation_SCA (list W) cons)) env ->
     (* GLabelMap.MapsTo fdealloc_one (Axiomatic (FacadeImplementationOfDestructor A)) env -> *)
     PreconditionSet tenv ext [[[vhead; vhead'; vtest; vlst; vret; vtmp]]] ->
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv }}
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv }}
       facadeCoda
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env ->
     (forall head (s: list A) (s': list W),
-        {{ [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vhead' <-- f head as _]] :: tenv }} ∪
-        {{ [vret <-- wrap s'] :: [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+        {{ [[`vhead' ->> f head as _]] :: tenv }} ∪
+        {{ [vret |> wrap s'] :: [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       (Seq
          (Call vret falloc nil)
          (Seq
@@ -244,7 +244,7 @@ Lemma CompileMap_SCA :
                           (Call vtmp fcons (vret :: vhead' :: nil))))
                (Call vtest fdealloc (vlst :: nil)))
             facadeCoda))
-    {{ [[`vret <-- (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ->> (revmap f lst) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   setoid_rewrite <- revmap_fold_comp.
@@ -293,15 +293,15 @@ Lemma CompileLoop_ret :
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
     (forall head acc (s: list A),
-        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vret ->> acc as _]] :: [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
+        {{ [[`vret ->> (f acc head) as _]] :: tenv }} ∪ {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }}
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vret ->> init as _]] :: [[`vlst ->> lst as _]] :: tenv }}
       (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   setoid_rewrite ret_fold_fold_ret.
@@ -319,19 +319,19 @@ Lemma CompileLoopAlloc_ret :
     GLabelMap.MapsTo fempty (Axiomatic (List_empty A)) env ->
     GLabelMap.MapsTo fdealloc (Axiomatic (FacadeImplementationOfDestructor (list A))) env ->
     PreconditionSet tenv ext [[[vhead; vtest; vlst; vret]]] ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       facadeInit
-    {{ [[`vret <-- init as _]] :: [[`vlst <-- lst as _]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[`vret ->> init as _]] :: [[`vlst ->> lst as _]] :: tenv }} ∪ {{ ext }} // env ->
     (forall head acc (s: list A),
-        {{ [[`vret <-- acc as _]] :: [[`vhead <-- head as _]] :: tenv }}
+        {{ [[`vret ->> acc as _]] :: [[`vhead ->> head as _]] :: tenv }}
           facadeBody
-        {{ [[`vret <-- (f acc head) as _]] :: tenv }} ∪ {{ [vtest <-- wrap (bool2w false)] :: [vlst <-- wrap s] :: ext }} // env) ->
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv }}
+        {{ [[`vret ->> (f acc head) as _]] :: tenv }} ∪ {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv }}
       facadeConclude
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
-    {{ [[`vlst <-- lst as _]] :: tenv }}
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env ->
+    {{ [[`vlst ->> lst as _]] :: tenv }}
       (Seq facadeInit (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude))
-    {{ [[`vret <-- (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
+    {{ [[`vret ->> (fold_left f lst init) as _]] :: tenv' }} ∪ {{ ext }} // env.
 Proof.
   eauto using @CompileSeq, @CompileLoop_ret.
 Qed.
