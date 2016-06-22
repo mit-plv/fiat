@@ -1,14 +1,13 @@
 (** * Every parse tree has a corresponding minimal parse tree *)
-Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program Coq.Classes.RelationClasses Coq.Classes.Morphisms Coq.Setoids.Setoid Coq.Arith.Compare_dec.
+Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Coq.omega.Omega.
-Require Import Coq.Program.Wf Coq.Arith.Wf_nat.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Properties Fiat.Parsers.WellFoundedParse.
 Require Import Fiat.Parsers.CorrectnessBaseTypes Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Export Fiat.Parsers.MinimalParse.
 Require Export Fiat.Parsers.WellFoundedParseProperties.
-Require Import Fiat.Common Fiat.Common.Le Fiat.Common.Wf.
+Require Import Fiat.Common.
 
 Set Implicit Arguments.
 Local Open Scope string_like_scope.

@@ -1,5 +1,4 @@
-Require Import Coq.Classes.Morphisms.
-Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
+
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.

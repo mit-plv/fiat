@@ -1,15 +1,11 @@
 Require Import Coq.Strings.String Coq.Strings.Ascii Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core Fiat.Parsers.ContextFreeGrammar.Notations.
-Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
-Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.StringLike.String.
 
 Require Import Fiat.Parsers.Grammars.ABStar.
-Require Import Fiat.Parsers.Grammars.ExpressionNumPlus.
 Require Import Fiat.Parsers.Grammars.ExpressionNumPlusParen.
 Require Import Fiat.Parsers.Grammars.ExpressionParen.
 Require Import Fiat.Parsers.Grammars.StringLiteral.
-Require Import Fiat.Parsers.Grammars.FlatComments.
 Require Import Fiat.Parsers.Grammars.JSComment.
 
 Local Arguments Equality.ascii_beq !_ !_.

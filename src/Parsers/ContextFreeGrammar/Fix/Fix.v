@@ -1,9 +1,7 @@
-Require Import Coq.Init.Wf Coq.Numbers.BinNums Coq.PArith.BinPos Coq.PArith.Pnat.
+Require Import Coq.Init.Wf Coq.Numbers.BinNums.
 Require Import Coq.Arith.Arith.
 Require Import Coq.FSets.FMapPositive.
-Require Import Coq.FSets.FMaps.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
-Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
@@ -11,11 +9,7 @@ Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Common.FMapExtensionsWf.
 Require Import Fiat.Common.
-Require Import Fiat.Common.List.ListFacts.
-Require Import Fiat.Common.List.ListMorphisms.
-Require Import Fiat.Common.BoolFacts.
 Require Import Fiat.Common.OptionFacts.
-Require Import Fiat.Common.Notations.
 
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.

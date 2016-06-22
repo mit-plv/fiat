@@ -1,8 +1,6 @@
-Require Import Coq.Classes.Morphisms.
 Require Import Coq.Sets.Ensembles.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
-Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Prod.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.

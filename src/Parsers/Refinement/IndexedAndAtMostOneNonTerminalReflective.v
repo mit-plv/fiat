@@ -33,7 +33,7 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.Enumerable.ReflectiveForall.
-Require Import Fiat.Common.Enumerable.ReflectiveForallAggregate.
+Require Import Fiat.Common.Enumerable.ReflectiveForallStaged.
 Require Import Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
@@ -60,7 +60,7 @@ Section forall_reachable_productions.
 
   Definition forall_reachable_productions_if_eq0
   : T
-    := @forall_enumerable_by_beq_aggregate _ production_carrier_valid _ _ _ _ _ x f g init.
+    := @forall_enumerable_by_beq_staged _ production_carrier_valid _ _ _ _ x f g init.
 
   Local Ltac t_flatten :=
     repeat match goal with
@@ -83,17 +83,18 @@ Section forall_reachable_productions.
   Proof.
     eexists.
     unfold forall_reachable_productions_if_eq0.
-    unfold forall_enumerable_by_beq_aggregate.
+    unfold forall_enumerable_by_beq_staged.
     unfold Equality.beq, prod_BoolDecR, dnc_BoolDecR, nat_BoolDecR, prod_beq.
     match goal with
-    | [ |- appcontext[Operations.List.uniquize _ (List.map f ?ls')] ]
-      => set (ls := ls') at 1 2
+    | [ |- appcontext[combine ?ls' (map _ ?ls')] ]
+      => set (ls := ls')
     end.
     etransitivity_rev _.
     { pattern ls.
       let RHS := match goal with |- (fun ls => _ = @?RHS ls) _ => RHS end in
       eapply (f_equal RHS).
       subst ls.
+      symmetry.
       repeat match goal with
              | [ |- appcontext G[@enumerate ?T ?e] ]
                => let e' := (eval hnf in e) in
@@ -101,7 +102,6 @@ Section forall_reachable_productions.
                   progress change G'
              end.
       cbv beta iota zeta delta [enumerate enumerable_sig_ltb enumerable_sig_andb_dep enumerable_sig_leb].
-      symmetry.
       rewrite map_flat_map.
       etransitivity.
       { t_flatten. }
@@ -122,38 +122,10 @@ Section forall_reachable_productions.
         reflexivity. }
       rewrite <- flat_map_flatten.
       reflexivity. }
+    rewrite combine_map_r, map_combine_id; simpl.
     subst ls.
     unfold Lookup_idx.
     simpl.
-    etransitivity_rev _.
-    { apply (_ : Proper (_ ==> _ ==> _ ==> eq) (@fold_right _ _)); [ | reflexivity.. ];
-      intros ??.
-      apply (f_equal3 (@If_Then_Else _)); [ | reflexivity | reflexivity ].
-      eapply (f_equal (fold_right orb false)).
-      match goal with
-      | [ |- _ = map (fun x => if @?A x then @?B x else @?C x) ?ls ]
-        => etransitivity;
-             [
-             | exact (map_combine_id (fun xx' => if A (fst xx') then B (snd xx') else C (snd xx')) ls) ];
-             cbv beta
-      end.
-      match goal with
-      | [ |- _ = map ?f ?ls ]
-        => let f' := constr:(fun x y => f (x, y)) in
-           let f' := (eval cbv beta in f') in
-           let f' := (eval simpl @fst in f') in
-           let f' := (eval simpl @snd in f') in
-           match f' with
-           | fun x y => if ?R (@?A x) ?z then @?B y else @?C y
-             => transitivity (map (fun xx' => if R (fst xx') z then B (snd xx') else C (snd xx'))
-                                  (map (fun xx' => (A (fst xx'), snd xx'))
-                                       ls));
-                  [
-                  | rewrite map_map; reflexivity ]
-           end
-      end.
-      rewrite <- combine_map_l.
-      reflexivity. }
     reflexivity.
   Defined.
 
@@ -178,7 +150,8 @@ Section forall_reachable_productions.
       : forall_reachable_productions_if_eq = if production_carrier_valid x then g (f x) else init.
     Proof.
       rewrite forall_reachable_productions_if_eq_helper.
-      eapply forall_enumerable_by_beq_aggregate_correct; try exact _.
+      etransitivity; [ eapply forall_enumerable_by_beq_staged_correct | reflexivity ];
+        try exact _.
       assumption.
     Qed.
   End correct.
@@ -188,8 +161,8 @@ Section forall_reachable_productions.
     : forall_reachable_productions_if_eq = g (f x).
   Proof.
     rewrite forall_reachable_productions_if_eq_helper;
-    eapply forall_enumerable_by_beq_aggregate_correct_reachable;
-    first [ assumption | exact _ ].
+      etransitivity; [ eapply forall_enumerable_by_beq_staged_correct_reachable | reflexivity ];
+        first [ assumption | exact _ ].
   Qed.
 End forall_reachable_productions.
 

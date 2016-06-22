@@ -5,7 +5,6 @@ Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.
 Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import Fiat.ADTRefinement.GeneralBuildADTRefinements.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Import Fiat.Parsers.StringLike.Core.
@@ -13,8 +12,6 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Common.
-Require Import Fiat.Common.List.ListFacts.
 
 Local Open Scope string_scope.
 
@@ -177,23 +174,17 @@ Module opt.
   Definition premap_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list (nat * (nat * nat)).
   Proof.
     let term := match (eval cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq] in (fun HSLM HSL => @rindexed_spec HSLM HSL G)) with
-                | appcontext[Operations.List.uniquize ret_cases_BoolDecR (List.map ?f ?ls)] => ls
+                | appcontext[List.map (fun x => (x, ?f x)) ?ls] => ls
                 end in
     exact term.
   Defined.
   Definition Let_In {A B} (x : A) (f : A -> B) := let y := x in f y.
-  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ret_cases
-    := map (@expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G).
-  Definition expanded_fallback_list'_body_values (G : pregrammar' Ascii.ascii) : list _ * list ret_cases
+  Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ((nat * (nat * nat)) * ret_cases)
+    := map (fun x => (x, @expanded_fallback_list'_body G fg x)) (premap_expanded_fallback_list'_body G).
+  Definition expanded_fallback_list_body (G : pregrammar' Ascii.ascii) : list ((nat * (nat * nat)) * ret_cases)
     := Let_In
          (fold_grammar G)
-         (fun fg
-          => (combine (map_expanded_fallback_list'_body G fg) (premap_expanded_fallback_list'_body G),
-              opt2.uniquize ret_cases_BoolDecR (map_expanded_fallback_list'_body G fg))).
-  Definition uniquize_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list ret_cases
-    := opt0.snd (expanded_fallback_list'_body_values G).
-  Definition combine_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list _
-    := opt0.fst (expanded_fallback_list'_body_values G).
+         (map_expanded_fallback_list'_body G).
 End opt.
 
 Class opt_of {T} (term : T) := mk_opt_of : T.
@@ -405,21 +396,12 @@ Section IndexedImpl_opt.
     simpl @production_carrierT.
     cbv [default_production_carrierT default_nonterminal_carrierT].
     lazymatch goal with
-    | [ |- appcontext g[Operations.List.uniquize ?beq ?ls] ]
+    | [ |- appcontext g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
       => idtac;
-           let G' := context g[opt.id (opt.uniquize_expanded_fallback_list'_body G)] in
+           let G' := context g[opt.id (opt.expanded_fallback_list_body G)] in
            change G'
     end.
-    lazymatch goal with
-    | [ |- appcontext g[List.combine ?ls1 ?ls2] ]
-      => idtac;
-           let G' := context g[opt.id (opt.combine_expanded_fallback_list'_body G)] in
-           change G'
-    end.
-    cbv [opt.combine_expanded_fallback_list'_body opt.map_expanded_fallback_list'_body opt.uniquize_expanded_fallback_list'_body].
-    change ret_cases_BoolDecR with (opt2.id opt2.ret_cases_BoolDecR).
     change (@nil ?A) with (opt.id (@nil A)).
-    change (0::opt.id nil)%list with (opt.id (0::nil)%list).
     do 2 (idtac;
           let G := match goal with |- ?G => G end in
           let G' := opt_of G in
@@ -446,7 +428,7 @@ Section IndexedImpl_opt.
   Local Arguments opt.leb !_ !_.
   Local Arguments opt.minus !_ !_.
 
-  Definition FirstStep_sig
+  Definition FirstStep0_sig
   : { sp : _ & refineADT (string_spec G HSL) sp }.
   Proof.
     eexists.
@@ -571,7 +553,6 @@ Section IndexedImpl_opt.
                | _ => progress cbv beta
                end.
         reflexivity.
-        reflexivity.
         reflexivity. }
       change orb with Common.opt2.orb.
       let d := match goal with d : (nat * (nat * nat))%type |- _ => d end in
@@ -587,8 +568,63 @@ Section IndexedImpl_opt.
     apply reflexivityT.
   Defined.
 
+  Definition opt_rindexed_spec0
+    := Eval cbv [projT1 FirstStep0_sig] in projT1 FirstStep0_sig.
+
+  Lemma FirstStep0
+    : refineADT (string_spec G HSL) opt_rindexed_spec0.
+  Proof.
+    apply (projT2 FirstStep0_sig).
+  Qed.
+
+  Definition opt_rindexed_spec_method_default : String -> nat * (nat * nat) -> nat -> nat -> Comp (String * list nat).
+  Proof.
+    let c := (eval cbv [opt_rindexed_spec0] in opt_rindexed_spec0) in
+    let c := lazymatch c with
+             | appcontext[fun r_n d d0 d1 => Bind (opt2.fold_right (@?f r_n d d0 d1) ?init ?ls) (fun a => @?retv r_n d d0 d1 a)]
+               => (eval cbv beta in (fun r_n d d0 d1 => Bind (opt2.fold_right (f r_n d d0 d1) init ls) (fun a => retv r_n d d0 d1 a)))
+             end in
+    exact c.
+  Defined.
+
+  Section gen.
+    Context c
+            (Href : forall str d d0 d1, refine (opt_rindexed_spec_method_default str d d0 d1) (c str d d0 d1)).
+
+    Definition FirstStep_sig_gen
+      : { sp : _ & refineADT (string_spec G HSL) sp }.
+    Proof.
+      eexists.
+      eapply transitivityT; [ apply FirstStep0 | ].
+      unfold opt_rindexed_spec0.
+      hone method "splits".
+      {
+        setoid_rewrite refineEquiv_pick_eq'.
+        simplify with monad laws.
+        simpl; subst_body; subst.
+        cbv [opt_rindexed_spec_method_default] in Href.
+        apply Href.
+      }
+      cbv beta.
+      apply reflexivityT.
+    Defined.
+
+    Definition opt_rindexed_spec_gen
+      := Eval cbv [projT1 FirstStep_sig_gen] in projT1 FirstStep_sig_gen.
+
+    Lemma FirstStep_gen
+      : refineADT (string_spec G HSL) opt_rindexed_spec_gen.
+    Proof.
+      apply (projT2 FirstStep_sig_gen).
+    Qed.
+  End gen.
+
+  Definition FirstStep_sig
+    : { sp : _ & refineADT (string_spec G HSL) sp }
+    := FirstStep_sig_gen _ (fun _ _ _ _ => reflexivity _).
+
   Definition opt_rindexed_spec
-    := Eval cbv [projT1 FirstStep_sig] in projT1 FirstStep_sig.
+    := Eval cbv [projT1 FirstStep_sig FirstStep_sig_gen opt_rindexed_spec_method_default] in projT1 FirstStep_sig.
 
   Lemma FirstStep
     : refineADT (string_spec G HSL) opt_rindexed_spec.
@@ -603,18 +639,19 @@ Ltac opt_red_FirstStep :=
   cbv [opt_rindexed_spec opt.map opt.flat_map opt.up_to opt.length opt.nth opt.id opt.combine opt.expanded_fallback_list'_body opt.minus opt.drop opt.string_beq opt.first_index_default opt.list_bin_eq opt.filter_out_eq opt.find opt.leb opt.andb opt.nat_rect opt.option_rect opt.has_only_terminals opt.sumbool_of_bool opt.collapse_length_result opt.fst opt.snd].
 
 Section tower.
-  Context {A}
-          (r_o : list nat -> Comp A)
-          (retv : Comp A)
-          (test : ret_cases -> bool)
-          (test_true : ret_cases -> Comp (list nat)).
+  Context {A B}
+          (proj : A -> ret_cases)
+          (r_o : list nat -> Comp B)
+          (retv : Comp B)
+          (test : A -> bool)
+          (test_true : A -> Comp (list nat)).
 
-  Fixpoint make_tower base (ls : list ret_cases) new_comp old_comp
+  Fixpoint make_tower base (ls : list A) new_comp old_comp
     := match ls with
        | nil => refine (x0 <- new_comp base; r_o x0) retv
                 -> refine (x0 <- old_comp base; r_o x0) retv
        | cons x xs
-         => match x with
+         => match proj x with
             | ret_pick _
               => forall part_retv,
                 (test x -> refine (test_true x) part_retv)
@@ -642,7 +679,7 @@ Section tower.
     revert base new_comp old_comp H; induction ls as [|x xs IHxs]; simpl; intros.
     { eapply H; [ | eassumption ].
       reflexivity. }
-    { destruct x; simpl; intros;
+    { destruct (proj x); simpl; intros;
       apply IHxs; clear IHxs; try intros ?? H';
       apply H;
       edestruct test; specialize_by ltac:(exact eq_refl); simpl;
@@ -656,4 +693,119 @@ Section tower.
     intros.
     setoid_rewrite_hyp; reflexivity.
   Qed.
+
+  Fixpoint make_tower_no_unif base (ls : list A) new_comp concl
+    := match ls with
+       | nil => refine (x0 <- new_comp base; r_o x0) retv
+                -> concl
+       | cons x xs
+         => match proj x with
+            | ret_pick _
+              => forall part_retv,
+                (test x -> refine (test_true x) part_retv)
+                -> make_tower_no_unif
+                     base
+                     xs
+                     (fun new_comp' => new_comp (If test x Then part_retv Else new_comp'))
+                     concl
+            | _
+              => make_tower_no_unif
+                   base
+                   xs
+                   (fun new_comp' => new_comp (If test x Then test_true x Else new_comp'))
+                   concl
+            end
+       end.
+
+  Lemma make_tower_const base ls v v'
+        (H : refine v' v)
+    : make_tower base ls (fun _ => v) (fun _ => v').
+  Proof.
+    induction ls as [|x xs IHxs]; simpl.
+    { rewrite H; intro; assumption. }
+    { destruct (proj x); intros; assumption. }
+  Qed.
+
+  Lemma make_tower_no_unif_const base ls v v'
+        (H : refine v' v)
+    : make_tower_no_unif base ls (fun _ => v) (refine (x0 <- v'; r_o x0) retv).
+  Proof.
+    induction ls as [|x xs IHxs]; simpl.
+    { rewrite H; intro; assumption. }
+    { destruct (proj x); intros; assumption. }
+  Qed.
+
+  Lemma refine_opt2_fold_right_no_unif base ls
+    : make_tower_no_unif base ls (fun x => x) (refine (x0 <- opt2.fold_right (fun x else_case => If test x Then test_true x Else else_case) base ls; r_o x0) retv).
+  Proof.
+    pose proof (refine_opt2_fold_right base ls) as H.
+    induction ls as [|x xs IHxs].
+    { exact H. }
+    { simpl in *.
+      repeat match goal with
+             | _ => assumption
+             | [ |- appcontext[If test ?x Then _ Else _] ] => destruct (test x) eqn:?
+             | _ => progress simpl in *
+             | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+             | _ => apply make_tower_const; reflexivity
+             | _ => apply make_tower_no_unif_const; first [ reflexivity | assumption ]
+             | _ => progress intros
+             | _ => progress specialize_by ltac:(exact eq_refl)
+             | _ => progress specialize_by assumption
+             | _ => solve [ eauto with nocore ]
+             end. }
+  Qed.
 End tower.
+
+Section step_tower.
+  Context {G' : pregrammar' Ascii.ascii}
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}
+          {HSEP : StringEqProperties Ascii.ascii}.
+  Let A := (nat * (nat * nat) * ret_cases)%type.
+  Let B := (@StringLike.String Ascii.ascii HSLM * list nat)%type.
+  Let proj : A -> ret_cases := @opt0.snd _ _.
+  Let pre_r_o : String -> list nat -> Comp B
+    := fun str => (fun x0 : list nat => ret (str, x0)).
+  Context (pre_retv : String -> nat * (nat * nat) -> nat -> nat -> Comp (String * list nat)).
+  Let test_test_true : String -> nat * (nat * nat) -> nat -> nat
+                       -> (A -> bool) * (A -> Comp (list nat)).
+  Proof.
+    intros r_o d d0 d1.
+    lazymatch (eval cbv [opt_rindexed_spec_method_default] in (opt_rindexed_spec_method_default G' r_o d d0 d1)) with
+    | appcontext[opt2.fold_right
+                   (fun a a0 => If @?test a Then @?test_true a Else a0)
+                   ?base
+                   ?ls]
+      => exact (test, test_true)
+    end.
+  Defined.
+  Let pre_test : String -> nat * (nat * nat) -> nat -> nat -> A -> bool
+    := fun r_o d d0 d1 => let '(test, test_true) := test_test_true r_o d d0 d1 in test.
+  Let pre_test_true : String -> nat * (nat * nat) -> nat -> nat -> A -> Comp (list nat)
+    := fun r_o d d0 d1 => let '(test, test_true) := test_test_true r_o d d0 d1 in test_true.
+
+  Lemma FirstStep_splits
+        (H : forall r_o d d0 d1,
+            refine (x0 <- opt2.fold_right (fun x else_case => If pre_test r_o d d0 d1 x Then pre_test_true r_o d d0 d1 x Else else_case) (ret nil) (opt.expanded_fallback_list_body G'); ret (r_o, x0)) (pre_retv r_o d d0 d1))
+        res
+        (Hres : refineADT (opt_rindexed_spec_gen pre_retv) (ComputationalADT.LiftcADT res))
+    : FullySharpened (@string_spec G' G' eq_refl HSLM HSL).
+  Proof.
+    eexists.
+    eapply transitivityT; [ | exact Hres ].
+    eapply transitivityT; [ apply (@FirstStep _ _ _ _) | ].
+    cbv [opt_rindexed_spec opt_rindexed_spec_gen].
+    hone method "splits".
+    2:apply reflexivityT.
+    {
+      setoid_rewrite General.refineEquiv_pick_eq'.
+      simplify with monad laws.
+      simpl; subst_body; subst.
+      move H at bottom.
+      cbv beta in H.
+      apply H.
+    }
+  Defined.
+End step_tower.

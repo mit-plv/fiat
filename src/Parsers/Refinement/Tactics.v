@@ -77,8 +77,8 @@ Ltac start_honing :=
        hnf in p'
   end; *)
   lazymatch goal with
-  | [ |- context[opt0.fst ?v] ]
-    => replace_by_vm_compute_opt0_proj v
+  | [ |- context[opt2.fold_right _ _ ?ls] ]
+    => replace_with_vm_compute ls
   end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
@@ -103,26 +103,50 @@ Tactic Notation "finish" "honing" "parser" "method"
 Ltac finish_Sharpening_SplitterADT
   := solve [ refine finish_Sharpening_SplitterADT ].
 
+Lemma simplify_monad_laws_first_step {A B C} (c : Comp A) (f : A -> B * C) v
+      (H : refine (x0 <- c; ret (f x0)) v)
+  : refine (r_o' <- a <- c; ret (f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+           v.
+Proof.
+  simplify with monad laws.
+  setoid_rewrite General.refine_pick_eq'.
+  simplify with monad laws.
+  rewrite <- H.
+  apply General.refine_under_bind; intros.
+  rewrite <- surjective_pairing; reflexivity.
+Qed.
+
+Ltac apply_splitter_tower_lemma :=
+  let lem := fresh in
+  change @fst with @opt0.fst;
+  change @snd with @opt0.snd;
+  lazymatch goal with
+  | [ |- refine (x0 <- (opt2.fold_right
+                          (fun a a0 => If @?test a Then @?test_true a Else a0)
+                          ?base
+                          ?ls);
+                 (@?r_o x0))
+                ?retv ]
+    => pose proof (@refine_opt2_fold_right_no_unif _ _ (@opt0.snd _ _) r_o retv test test_true base ls) as lem
+  end;
+  cbv [make_tower_no_unif opt0.snd opt0.fst] in lem |- *;
+  eapply lem; clear lem;
+  intros.
+
 Ltac simplify_parser_splitter' :=
-  first [ progress autounfold with parser_sharpen_db;
+  first [ idtac;
+          match goal with
+          | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+                        ?v ]
+            => apply (@simplify_monad_laws_first_step _ _ _ c f v)
+          end;
+          apply_splitter_tower_lemma
+        | progress autounfold with parser_sharpen_db;
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
         | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
         | progress simplify with monad laws
-        | idtac;
-          lazymatch goal with
-          | [ |- refine (x0 <- (opt2.fold_right
-                                  (fun a a0 => If @?test a Then @?test_true a Else a0)
-                                  ?base
-                                  ?ls);
-                         (@?r_o x0))
-                        ?retv ]
-            => eapply (@refine_opt2_fold_right _ r_o retv test test_true base ls)
-          end;
-          cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
-          change (opt2.orb false) with (fun x : bool => x);
-          cbv beta; intros
         (*| progress unguard
         | progress change (orb false) with (fun x : bool => x); cbv beta
         | progress change (orb true) with (fun x : bool => true); cbv beta
@@ -159,11 +183,31 @@ Tactic Notation "simplify" "parser" "splitter" :=
   repeat simplify_parser_splitter'.
 
 Ltac splitter_start :=
-  start sharpening ADT;
+  let lem := match goal with
+             | [ |- FullySharpened (@string_spec _ ?G _ ?HSLM ?HSL) ]
+               => constr:(@FirstStep_splits G HSLM HSL)
+             end in
+  let lem := constr:(lem _ _) in
+  eapply lem; [ intros ???? | cbv [opt_rindexed_spec_gen] ];
+  [ let ev := match goal with
+              | [ |- refine ?x ?y ]
+                => head y
+              end in
+    is_evar ev;
+    let e := fresh in
+    set (e := ev);
+    lazymatch goal with
+    | [ |- context[opt2.fold_right _ _ ?ls] ]
+      => replace_with_vm_compute ls
+    end;
+    apply_splitter_tower_lemma
+  | ];
+  instantiate; cbv beta.
+(*start sharpening ADT;
   start honing parser using indexed representation;
   hone method "splits";
   [ simplify parser splitter
-  | ].
+  | ].*)
 
 Ltac splitter_finish :=
   idtac;

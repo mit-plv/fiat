@@ -1,14 +1,12 @@
 (** * Theorems about string-like types *)
-Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
-Require Import Coq.Arith.Lt.
+
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega.
-Require Import Fiat.Common.Equality.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
-Require Import Fiat.Parsers.StringLike.Core Fiat.Common.Le Fiat.Common.UIP.
+Require Import Fiat.Parsers.StringLike.Core Fiat.Common.UIP.
 
 Local Open Scope list_scope.
 

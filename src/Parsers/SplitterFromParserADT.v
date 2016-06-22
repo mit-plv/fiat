@@ -13,7 +13,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.ADTRefinement.Core.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.BoundedLookup.
-Require Import Fiat.Common.IterateBoundedIndex.
 Require Import Fiat.Common.StringOperations.
 Require Import Fiat.Common.StringFacts.
 Require Import Fiat.ADTNotation.BuildComputationalADT.

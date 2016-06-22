@@ -10,7 +10,6 @@ Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.GenericBaseTypes Fiat.Parsers.GenericCorrectnessBaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.GenericRecognizerMin.
-Require Import Fiat.Parsers.GenericRecognizerCorrect.
 Require Import Fiat.Parsers.SimpleRecognizer.
 Require Import Fiat.Common.
 
