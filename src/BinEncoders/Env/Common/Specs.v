@@ -3,10 +3,9 @@ Require Export
         Fiat.Common
         Fiat.Computation.Core
         Fiat.Computation.Notations
+        Fiat.BinEncoders.Env.Common.Notations
         Fiat.BinEncoders.Env.Common.Transformer
         Fiat.BinEncoders.Env.Common.Cache.
-
-Delimit Scope binencoders_scope with binencoders.
 
 Set Implicit Arguments.
 
@@ -242,10 +241,10 @@ Section DecodeWMeasure.
 End DecodeWMeasure.
 
 Notation "`( a , b , env ) <- c ; k" :=
-  (DecodeBindOpt2 c%binencoders (fun a b env => k%binencoders)) : binencoders_scope.
+  (DecodeBindOpt2 c%bencode (fun a b env => k%bencode)) : binencoders_scope.
 
 Notation "`( a , b ) <- c ; k" :=
-  (DecodeBindOpt c%binencoders (fun a b => k%binencoders)) : binencoders_scope.
+  (DecodeBindOpt c%bencode (fun a b => k%bencode)) : binencoders_scope.
 
 Open Scope binencoders_scope.
 Global Unset Implicit Arguments.

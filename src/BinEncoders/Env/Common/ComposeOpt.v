@@ -1,6 +1,7 @@
 Require Import
         Fiat.Computation
         Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.Notations
         Fiat.BinEncoders.Env.Common.Compose.
 
 Set Implicit Arguments.
@@ -14,8 +15,8 @@ Definition compose E B
     `(q, e2) <- encode2 e1;
     ret (transform p q, e2))%comp.
 
-Notation "x 'ThenC' y" := (compose _ x y) (at level 100, right associativity).
-Notation "x 'DoneC'"   := (x ThenC fun e => ret (transform_id, e)) (at level 99, right associativity).
+Notation "x 'ThenC' y" := (compose _ x y).
+Notation "x 'DoneC'"   := (x ThenC fun e => ret (transform_id, e)).
 
 Lemma refineEquiv_compose_compose E B
            (transformer : Transformer B)
@@ -123,7 +124,6 @@ Proof.
     unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
     destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
-
     setoid_rewrite <- transform_assoc; rewrite H2.
     simpl.
     destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H1)

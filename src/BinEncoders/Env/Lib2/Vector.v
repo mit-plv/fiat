@@ -147,3 +147,13 @@ Section Vector.
   Qed.
 
 End Vector.
+
+Lemma Vector_predicate_rest_True {A B}
+      {cache : Cache}
+      {transformer : Transformer B}
+      (A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode))
+  : forall {n} (v : Vector.t A n) (b : B),
+    Vector_predicate_rest (fun a b => True) A_encode_Spec n v b.
+Proof.
+  induction v; simpl; eauto.
+Qed.

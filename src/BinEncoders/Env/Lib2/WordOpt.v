@@ -1,10 +1,8 @@
 Require Import
         Fiat.Common
         Fiat.Computation.Notations
-        Fiat.BinEncoders.Env.Common.Specs.
-
-Require Import
-        Bedrock.Word.
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.WordFacts.
 
 Unset Implicit Arguments.
 Section Word.
@@ -155,3 +153,36 @@ Section Word.
   Qed.
 
 End Word.
+
+Fixpoint transformer_get_word {B}
+         {transformer : Transformer B}
+         {transformer_opt : TransformerUnitOpt transformer bool}
+         (sz : nat)
+         (b : B)
+  : option (word sz) :=
+  match sz with
+  | 0 => Some WO
+  | S sz' =>
+    match transform_pop_opt b with
+    | Some (v, b') =>
+      match transformer_get_word sz' b' with
+      | Some w => Some (WS v w)
+      | _ => None
+      end
+    | _ => None
+    end
+  end.
+
+Lemma transformer_get_encode_word' {B}
+      {transformer : Transformer B}
+      {transformer_opt : TransformerUnitOpt transformer bool}
+      (sz : nat)
+  : forall (w : word sz) (ext : B),
+    transformer_get_word sz (transform (encode_word' _ w) ext) = Some w.
+Proof.
+  induction sz; simpl; intros.
+  - rewrite (shatter_word w); eauto.
+  - rewrite (shatter_word w); simpl.
+    rewrite transform_push_step_opt, transform_push_pop_opt.
+    rewrite IHsz; eauto.
+Qed.

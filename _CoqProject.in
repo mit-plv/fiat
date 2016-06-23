@@ -43,7 +43,9 @@ src/BinEncoders/Env/BinLib/Enum.v
 src/BinEncoders/Env/BinLib/FixInt.v
 src/BinEncoders/Env/Common/Cache.v
 src/BinEncoders/Env/Common/Compose.v
+src/BinEncoders/Env/Common/ComposeIf.v
 src/BinEncoders/Env/Common/ComposeOpt.v
+src/BinEncoders/Env/Common/Notations.v
 src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v

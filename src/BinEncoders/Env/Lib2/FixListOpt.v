@@ -1,10 +1,11 @@
 Require Import
+        Fiat.BinEncoders.Env.Common.Notations
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.ComposeOpt.
 Require Export
         Coq.Lists.List.
 
-Notation "| ls |" := (Datatypes.length ls) (at level 200).
+Notation "| ls |" := (Datatypes.length ls) : binencoders_scope.
 
 Section FixList.
   Context {A : Type}.
@@ -67,7 +68,7 @@ Section FixList.
       encode_decode_correct_f
         cache transformer
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
-        FixList_predicate_rest 
+        FixList_predicate_rest
         encode_list_Spec (decode_list sz) A_cache_inv.
   Proof.
     split.
