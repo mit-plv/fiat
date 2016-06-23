@@ -152,3 +152,13 @@ Section FixList.
       destruct (fold_left _ _ _); reflexivity.
   Qed.
 End FixList.
+
+Lemma FixedList_predicate_rest_True {A B}
+      {cache : Cache}
+      {transformer : Transformer B}
+      (A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode))
+  : forall (l : list A) (b : B),
+    FixList_predicate_rest (fun a b => True) A_encode_Spec l b.
+Proof.
+  induction l; simpl; eauto.
+Qed.

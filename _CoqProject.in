@@ -54,6 +54,7 @@ src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v
 src/BinEncoders/Env/Examples/EthernetFrame.v
+src/BinEncoders/Env/Examples/EthernetHeader.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
 src/BinEncoders/Env/Lib/FixList.v
