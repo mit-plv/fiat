@@ -4,7 +4,8 @@ Require Import
 Require Export
         Coq.Lists.List.
 
-Section SteppingList.
+(* Commenting out until useful again. *)
+(*Section SteppingList.
   Context {A : Type}. (* data type *)
   Context {B : Type}. (* bin type *)
   Context {P : Type}. (* cache pointer type *)
@@ -390,4 +391,4 @@ Section SteppingList.
         eauto.
     }
   Qed.
-End SteppingList.
+End SteppingList. *)

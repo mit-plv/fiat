@@ -60,9 +60,9 @@ Section DnsExample.
       panswer     : { s : list resource_t | length s < exp2_nat 16 };
       pauthority  : { s : list resource_t | length s < exp2_nat 16 };
       padditional : { s : list resource_t | length s < exp2_nat 16 } }.
-  
+
   Open Scope binencoders_scope.
-  
+
   Definition FixInt_of_branch (b : CacheBranch) : {n | (n < exp2 2)%N}.
     refine (match b with
             | Yes => existT _ 3%N _
@@ -75,7 +75,7 @@ Section DnsExample.
             | CNAME => existT _ 5%N _
             | NS    => existT _ 2%N _
             | MX    => existT _ 15%N _
-            end%binencoders); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
+            end%bencode); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
     refine (match c with
@@ -84,47 +84,49 @@ Section DnsExample.
             | HS => existT _ 4%N _
             end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
-  Definition encode_word (w : word_t) :=
+  (* Commenting out until we patch up with new notations. *)
+  (*Definition encode_word (w : word_t) :=
          FixInt_encode (FixList_getlength w.(word))
-    Then FixList_encode Char_encode w.(word)
-    Done.
+    ThenC FixList_encode Char_encode w.(word)
+    DoneC.
 
   Definition encode_name (n : name_t) :=
          SteppingList_encode encode_word FixInt_encode (Enum_encode FixInt_of_branch) n.(name)
-    Done.
+    DoneC.
 
   Definition encode_question (q : question_t) :=
          encode_name q.(qname)
-    Then Enum_encode FixInt_of_type q.(qtype)
-    Then Enum_encode FixInt_of_class q.(qclass)
-    Done.
+    ThenC Enum_encode FixInt_of_type q.(qtype)
+    ThenC Enum_encode FixInt_of_class q.(qclass)
+    DoneC.
 
   Definition encode_resource (r : resource_t) :=
          encode_name r.(rname)
-    Then Enum_encode FixInt_of_type r.(rtype)
-    Then Enum_encode FixInt_of_class r.(rclass)
-    Then FixInt_encode r.(rttl)
-    Then FixInt_encode (FixList_getlength r.(rdata))
-    Then FixList_encode Char_encode r.(rdata)
-    Done.
+    ThenC Enum_encode FixInt_of_type r.(rtype)
+    ThenC Enum_encode FixInt_of_class r.(rclass)
+    ThenC FixInt_encode r.(rttl)
+    ThenC FixInt_encode (FixList_getlength r.(rdata))
+    ThenC FixList_encode Char_encode r.(rdata)
+    DoneC.
 
   Definition encode_packet (p : packet_t) :=
          IList_encode Bool_encode p.(pid)
-    Then IList_encode Bool_encode p.(pmask)
-    Then FixInt_encode (FixList_getlength p.(pquestion))
-    Then FixInt_encode (FixList_getlength p.(panswer))
-    Then FixInt_encode (FixList_getlength p.(pauthority))
-    Then FixInt_encode (FixList_getlength p.(padditional))
-    Then FixList_encode encode_question p.(pquestion)
-    Then FixList_encode encode_resource p.(panswer)
-    Then FixList_encode encode_resource p.(pauthority)
-    Then FixList_encode encode_resource p.(padditional)
-    Done.
+    ThenC IList_encode Bool_encode p.(pmask)
+    ThenC FixInt_encode (FixList_getlength p.(pquestion))
+    ThenC FixInt_encode (FixList_getlength p.(panswer))
+    ThenC FixInt_encode (FixList_getlength p.(pauthority))
+    ThenC FixInt_encode (FixList_getlength p.(padditional))
+    ThenC FixList_encode encode_question p.(pquestion)
+    ThenC FixList_encode encode_resource p.(panswer)
+    ThenC FixList_encode encode_resource p.(pauthority)
+    ThenC FixList_encode encode_resource p.(padditional)
+    DoneC.
 
   Definition packet_decoder
     : { decode | encode_decode_correct cache btransformer (fun _ => True) encode_packet decode }.
   Proof.
     eexists.
+    eapply compose_encode_correct.
     Time solve_decoder.
     Grab Existential Variables.
     eauto. eauto. eauto. eauto.
@@ -136,7 +138,7 @@ Section DnsExample.
     let p' := eval cbv delta [ proj1_sig packet_decoder ] beta iota in (proj1_sig packet_decoder) in
                                                                         pose p' as p.
     exact p.
-  Defined.
+  Defined. *)
 End DnsExample.
 
 Definition empty :=
@@ -150,7 +152,7 @@ Proof.
   simpl. intuition eauto.
   inversion H. inversion H.  Qed.
 
-Definition packet_encode (p : packet_t) : list bool :=
+(*Definition packet_encode (p : packet_t) : list bool :=
   fst (encode_packet p empty).
 
 Definition packet_decode (b : list bool) : packet_t :=
@@ -207,7 +209,7 @@ Extract Inductive prod => "(*)"  [ "(,)" ].
 Extract Inductive ascii => char [
 "(fun (b0,b1,b2,b3,b4,b5,b6,b7) -> let f b i = if b then 1 lsl i else 0 in Char.chr (f b0 0 + f b1 1 + f b2 2 + f b3 3 + f b4 4 + f b5 5 + f b6 6 + f b7 7))"
 ]
-"(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".
+"(fun f c -> let n = Char.code c in let h i = (n land (1 lsl i)) <> 0 in f (h 0) (h 1) (h 2) (h 3) (h 4) (h 5) (h 6) (h 7))".  *)
 
 (* Extraction "dns.ml" packet_encode packet_decode packet_uncompressed packet_compressed. *)
 

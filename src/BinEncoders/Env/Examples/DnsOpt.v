@@ -304,7 +304,8 @@ Section DnsPacket.
                        unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
     end.
 
-  Ltac solve_data_inv :=
+  (* Commenting out until patched to work with wrinkles introduced by other examples. *)
+  (*Ltac solve_data_inv :=
     first [ intros; exact I
           | shelve_inv ].
 
@@ -816,6 +817,6 @@ Section DnsPacket.
 
   Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
 
-  Print packetDecoderImpl.
+  Print packetDecoderImpl. *)
 
 End DnsPacket.
