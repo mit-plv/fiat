@@ -12,6 +12,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.BinEncoders.Env.BinLib.Core
         Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.WordFacts
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
         Fiat.BinEncoders.Env.Automation.Solver
@@ -22,6 +23,10 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.Vector
         Fiat.BinEncoders.Env.Lib2.EnumOpt
         Fiat.BinEncoders.Env.Lib2.SumTypeOpt.
+
+Print Grammar constr.
+
+Print Scope binencoders_scope.
 
 Require Import Bedrock.Word.
 
@@ -38,7 +43,10 @@ Ltac apply_compose :=
     H : cache_inv_Property ?P ?P_inv |- _ =>
     first [eapply (compose_encode_correct_no_dep H); clear H
           | eapply (compose_encode_correct H); clear H
-          | eapply (composeIf_encode_correct H); clear H
+          | eapply (composeIf_encode_correct H); clear H;
+            [ |
+              | solve [intros; intuition (eauto with bin_split_hints) ]
+              | solve [intros; intuition (eauto with bin_split_hints) ] ]
           ]
   end.
 
@@ -146,20 +154,20 @@ Definition EtherTypeCodes : Vector.t (word 16) 3 :=
   ].
 
 Definition encode_EthernetFrame_Spec (eth : EthernetFrame) :=
-  (encode_Vector_Spec encode_word_Spec eth!"Destination")
+          encode_Vector_Spec encode_word_Spec eth!"Destination"
     ThenC (encode_Vector_Spec encode_word_Spec eth!"Source")
     ThenC Either
-    encode_nat_Spec 16 (|eth!"Data"|)
-    ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-    ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-    ThenC encode_word_Spec (WO~1~1~0~0~0~0~0~0)
-    ThenC encode_word_Spec (wzero 24)
-    ThenC encode_enum_Spec EtherTypeCodes eth!"Type"
-    ThenC encode_list_Spec encode_word_Spec eth!"Data"
-    DoneC
-    Or encode_enum_Spec EtherTypeCodes eth!"Type"
-    ThenC encode_list_Spec encode_word_Spec eth!"Data"
-    DoneC.
+          encode_nat_Spec 16 (|eth!"Data"|)
+          ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
+          ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
+          ThenC encode_word_Spec (WO~1~1~0~0~0~0~0~0)
+          ThenC encode_word_Spec (wzero 24)
+          ThenC encode_enum_Spec EtherTypeCodes eth!"Type"
+          ThenC encode_list_Spec encode_word_Spec eth!"Data"
+          DoneC
+       Or encode_enum_Spec EtherTypeCodes eth!"Type"
+          ThenC encode_list_Spec encode_word_Spec eth!"Data"
+          DoneC.
 
 Definition ethernet_Frame_OK (e : EthernetFrame) := lt (|e!"Data"|) 1501.
 
@@ -178,7 +186,7 @@ Proof.
 Qed.
 
 Definition v1042_test (b : ByteString) : bool :=
-  match byteString_get_word _ _ 16 b with
+  match transformer_get_word 16 b with
   | Some w => if wlt_dec w (natToWord 16 1501) then true else false
   | _ => false
   end.
@@ -201,7 +209,7 @@ Proof.
   pose proof (f_equal fst H0) as H'; simpl in H'; rewrite <- H'.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  rewrite byteString_get_encode_word'; find_if_inside; eauto.
+  pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
   destruct n.
   eapply natToWord_wlt; eauto; try reflexivity.
   etransitivity.
@@ -210,37 +218,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma VectorIn_cons {A} {n}
-  : forall (v : Vector.t A n) a a',
-    Vector.In a' (a :: v) -> a = a' \/ Vector.In a' v.
-Proof.
-  intros; inversion H; subst; eauto.
-  apply Eqdep_dec.inj_pair2_eq_dec in H3; subst; eauto using Peano_dec.eq_nat_dec.
-Qed.
-
-Lemma forall_Vector_P {A} (P : A -> Prop) {n}
-  : forall v : Vector.t A n,
-    Vector.Forall P v
-    -> forall idx, P (v[@idx]).
-Proof.
-  induction v; simpl; intros.
-  - inversion idx.
-  - revert v IHv H; pattern n, idx; apply Fin.caseS; simpl;
-      intros; inversion H; subst; eauto.
-    eapply IHv.
-    apply Eqdep_dec.inj_pair2_eq_dec in H2; subst; eauto using Peano_dec.eq_nat_dec.
-Qed.
-
-Ltac Discharge_NoDupVector :=
-  match goal with
-  |- NoDupVector _ =>
-  repeat econstructor; intro;
-  repeat match goal with
-         | H : Vector.In _ _ |- _ =>
-           first [apply VectorIn_cons in H; destruct H; try discriminate
-                 | inversion H]
-         end
-  end.
+Hint Resolve v1042_OKT : bin_split_hints.
 
 Lemma v1042_OKE
   : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
@@ -256,7 +234,7 @@ Proof.
   pose proof (f_equal fst H0) as H'; unfold fst in H'; rewrite <- H'.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  rewrite byteString_get_encode_word'; find_if_inside; eauto.
+  pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
   revert w; clear.
   match goal with
     |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
@@ -265,6 +243,8 @@ Proof.
   eapply forall_Vector_P; repeat econstructor;
     unfold wlt; compute; intros; discriminate.
 Qed.
+
+Hint Resolve v1042_OKE : bin_split_hints.
 
 Definition EthernetFrame_decoder
   : { decodePlusCacheInv |
@@ -285,12 +265,7 @@ Proof.
   revert H0; eapply Word_decode_correct.
   solve_data_inv.
   intros; apply Vector_predicate_rest_True.
-  intros;
-    match goal with
-      H : cache_inv_Property ?P ?P_inv |- _ =>
-      eapply (composeIf'_encode_correct H)
-      with (ICompb := v1042_test)
-    end.
+  apply_compose.
   apply_compose.
   eapply Nat_decode_correct.
   intuition eauto using ethernet_Frame_OK_good_Len.
@@ -325,7 +300,7 @@ Proof.
   simpl; intros.
   unfold encode_decode_correct_f; intuition eauto.
   unfold ethernet_Frame_OK in *.
-  instantiate (1 := fun p b' c => if (DecideableEnsembles.A_eq_dec (|p|) proj1) then
+  instantiate (1 := fun p b' c => if (Peano_dec.eq_nat_dec (|p|) proj1) then
                                     _ p b' c
                                   else None).
   instantiate (1 := fun p b' c =>
@@ -347,10 +322,9 @@ Proof.
     let f' := match P' with ?f a b c => f end in
     try unify f f'; try reflexivity
   end.
-  rewrite <- H17 in n; destruct n; eauto.
-  rewrite <- H15, <- H17 in n;
-  destruct n; reflexivity.
-  simpl in H12; repeat find_if_inside; try discriminate.
+  rewrite <- H16 in n; destruct n; eauto.
+  rewrite <- H16, <- H14 in n; destruct n; reflexivity.
+  simpl in H11; repeat find_if_inside; try discriminate.
   eexists _; eexists tt;
     intuition eauto; injections; eauto using idx_ibound_eq;
       try match goal with
@@ -390,7 +364,7 @@ Proof.
     let f' := match P' with ?f a b c => f end in
     try unify f f'; try reflexivity
   end.
-  rewrite <- H10 in n; destruct n; eauto.
+  rewrite <- H9 in n; destruct n; eauto.
   simpl in *; repeat find_if_inside; try discriminate.
   eexists _; eexists tt;
     intuition eauto; injections; eauto using idx_ibound_eq;
@@ -401,8 +375,6 @@ Proof.
   destruct env; computes_to_econstructor.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'.
   reflexivity.
-  intros; eapply v1042_OKT; intuition eauto.
-  intros; eapply v1042_OKE; intuition eauto.
   repeat (instantiate (1 := fun _ => True)).
   unfold cache_inv_Property; intuition.
   Grab Existential Variables.

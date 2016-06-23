@@ -14,7 +14,7 @@ Definition composeIf E B
        If b Then encodeT e
           Else encodeE e.
 
-Local Notation "'Either' t 'Or' e " :=
+Notation "'Either' t 'Or' e " :=
   (composeIf _ _ _ { _ : bool | True} t e) : binencoders_scope.
 
 Lemma composeIf_encode_correct

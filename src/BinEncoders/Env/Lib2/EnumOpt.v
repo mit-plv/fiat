@@ -168,3 +168,35 @@ Section Enum.
     }
   Qed.
 End Enum.
+
+Lemma VectorIn_cons {A} {n}
+  : forall (v : Vector.t A n) a a',
+    Vector.In a' (Vector.cons _ a _ v) -> a = a' \/ Vector.In a' v.
+Proof.
+  intros; inversion H; subst; eauto.
+  apply Eqdep_dec.inj_pair2_eq_dec in H3; subst; eauto using Peano_dec.eq_nat_dec.
+Qed.
+
+Lemma forall_Vector_P {A} (P : A -> Prop) {n}
+  : forall v : Vector.t A n,
+    Vector.Forall P v
+    -> forall idx, P (Vector.nth v idx).
+Proof.
+  induction v; simpl; intros.
+  - inversion idx.
+  - revert v IHv H; pattern n, idx; apply Fin.caseS; simpl;
+      intros; inversion H; subst; eauto.
+    eapply IHv.
+    apply Eqdep_dec.inj_pair2_eq_dec in H2; subst; eauto using Peano_dec.eq_nat_dec.
+Qed.
+
+Ltac Discharge_NoDupVector :=
+  match goal with
+  |- NoDupVector _ =>
+  repeat econstructor; intro;
+  repeat match goal with
+         | H : Vector.In _ _ |- _ =>
+           first [apply VectorIn_cons in H; destruct H; try discriminate
+                 | inversion H]
+         end
+  end.
