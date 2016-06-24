@@ -43,6 +43,7 @@ src/BinEncoders/Env/BinLib/Enum.v
 src/BinEncoders/Env/BinLib/FixInt.v
 src/BinEncoders/Env/Common/Cache.v
 src/BinEncoders/Env/Common/Compose.v
+src/BinEncoders/Env/Common/ComposeCheckSum.v
 src/BinEncoders/Env/Common/ComposeIf.v
 src/BinEncoders/Env/Common/ComposeOpt.v
 src/BinEncoders/Env/Common/Notations.v
@@ -50,6 +51,7 @@ src/BinEncoders/Env/Common/Sig.v
 src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Common/WordFacts.v
+src/BinEncoders/Env/Examples/ARPPacket.v
 src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v

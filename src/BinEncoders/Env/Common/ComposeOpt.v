@@ -1,8 +1,7 @@
 Require Import
         Fiat.Computation
         Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.Common.Notations
-        Fiat.BinEncoders.Env.Common.Compose.
+        Fiat.BinEncoders.Env.Common.Notations.
 
 Set Implicit Arguments.
 
@@ -15,8 +14,8 @@ Definition compose E B
     `(q, e2) <- encode2 e1;
     ret (transform p q, e2))%comp.
 
-Notation "x 'ThenC' y" := (compose _ x y).
-Notation "x 'DoneC'"   := (x ThenC fun e => ret (transform_id, e)).
+Notation "x 'ThenC' y" := (compose _ x y) : binencoders_scope .
+Notation "x 'DoneC'"   := (x ThenC fun e => ret (transform_id, e)) : binencoders_scope.
 
 Lemma refineEquiv_compose_compose E B
            (transformer : Transformer B)
