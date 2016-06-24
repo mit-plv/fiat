@@ -152,7 +152,12 @@ Section Word.
     omega.
   Qed.
 
+  Definition encode_unused_word_Spec (ctx : CacheEncode) :=
+    (w <- { w : word sz | True}; encode_word_Spec w ctx)%comp.
+
 End Word.
+
+Arguments encode_unused_word_Spec sz {_ _ _ _ _} ctx _.
 
 Fixpoint transformer_get_word {B}
          {transformer : Transformer B}
