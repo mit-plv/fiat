@@ -171,5 +171,5 @@ Section Checksum.
 
 End Checksum.
 
-Notation "encode1 'ThenChecksum' c 'ThenC' encode2"
+Notation "encode1 'ThenChecksum' c 'ThenCarryOn' encode2"
   := (composeChecksum _ _ c encode1 encode2) : binencoders_scope.
