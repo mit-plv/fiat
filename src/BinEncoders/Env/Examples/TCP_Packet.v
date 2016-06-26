@@ -17,6 +17,8 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
         Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Lib2.Bool
+        Fiat.BinEncoders.Env.Lib2.Option
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.NoCache
         Fiat.BinEncoders.Env.Lib2.WordOpt

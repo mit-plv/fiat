@@ -10,6 +10,7 @@ Require Import
 Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple.
@@ -40,27 +41,27 @@ Section QTypes.
      "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ].
 
-  Definition QType := BoundedString (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
+  Definition QType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
 
   Definition QType_inj (rr : RRecordType) : QType :=
-    BoundedIndex_injR rr.
+    Fin.L _ rr.
 
   Definition beq_QType (a b : QType) : bool :=
-    BoundedIndex_beq a b.
+    fin_beq a b.
 
   Definition QType_dec (a b : QType) :=
-    BoundedIndex_eq_dec a b.
+    fin_eq_dec a b.
 
   Lemma beq_QType_sym :
     forall rrT rrT', beq_QType rrT rrT' = beq_QType rrT' rrT.
   Proof.
-    intros; eapply BoundedIndex_beq_sym.
+    intros; eapply fin_beq_sym.
   Qed.
 
   Coercion QType_inj : RRecordType >-> QType.
 
   Definition QType_match (rtype : RRecordType) (qtype : QType) :=
-    qtype = ``"STAR" \/ qtype = rtype.
+    qtype = ```"STAR" \/ qtype = rtype.
 
 End QTypes.
 
@@ -72,26 +73,25 @@ Section RRecordClass.
         "Hesiod" (* (HS) 	[Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.] *)
     ].
 
-  Definition RRecordClass := BoundedString RRecordClasses.
+  Definition RRecordClass := EnumType RRecordClasses.
 
   Definition beq_RRecordClass (a b : RRecordClass) : bool
-    := BoundedIndex_beq a b.
+    := fin_beq a b.
 
   Definition RRecordClass_dec (a b : RRecordClass) :=
-    BoundedIndex_eq_dec a b.
+    fin_eq_dec a b.
 
   (* DNS Packet Question Classes *)
-  Definition QClass :=
-    BoundedString (RRecordClasses ++ ["Any"]).
+  Definition QClass := EnumType (RRecordClasses ++ ["Any"]).
 
   Definition QClass_inj (qclass : RRecordClass) : QClass :=
-    BoundedIndex_injR qclass.
+    Fin.L _ qclass.
 
   Definition beq_QClass (a b : QClass) : bool
-    := BoundedIndex_beq a b.
+    := fin_beq a b.
 
   Definition QClass_dec (a b : QClass) :=
-    BoundedIndex_eq_dec a b.
+    fin_eq_dec a b.
 
 End RRecordClass.
 
@@ -112,13 +112,13 @@ Section ResponseCode.
        "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
     ].
 
-  Definition ResponseCode := BoundedString ResponseCodes.
+  Definition ResponseCode := EnumType ResponseCodes.
 
   Definition beq_ResponseCode (a b : ResponseCode) : bool
-    := BoundedIndex_beq a b.
+    := fin_beq a b.
 
   Definition ResponseCode_dec (a b : ResponseCode) :=
-    BoundedIndex_eq_dec a b.
+    fin_eq_dec a b.
 End ResponseCode.
 
 Section OpCode.
@@ -130,13 +130,13 @@ Section OpCode.
      "Notify"  (* [RFC1996] [RFC2136] *)
     ].
 
-  Definition OpCode := BoundedString OpCodes.
+  Definition OpCode := EnumType OpCodes.
 
   Definition beq_OpCode (a b : OpCode) : bool
-    := BoundedIndex_beq a b.
+    := fin_beq a b.
 
   Definition OpCode_dec (a b : OpCode) :=
-    BoundedIndex_eq_dec a b.
+    fin_eq_dec a b.
 
 End OpCode.
 
@@ -180,15 +180,15 @@ Section Packet.
 
   (* Aliases for the Common Record Types *)
   Definition CNAME_Record :=
-    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurCNAME)].
+    VariantResourceRecord ResourceRecordTypeTypes[@ OurCNAME].
   Definition A_Record :=
-    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurA) ].
+    VariantResourceRecord ResourceRecordTypeTypes[@ OurA ].
   Definition NS_Record :=
-    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurNS)].
+    VariantResourceRecord ResourceRecordTypeTypes[@ OurNS].
   Definition MX_Record :=
-    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurMX)].
+    VariantResourceRecord ResourceRecordTypeTypes[@ OurMX].
   Definition SOA_Record :=
-    VariantResourceRecord ResourceRecordTypeTypes[@ ibound (indexb OurSOA)].
+    VariantResourceRecord ResourceRecordTypeTypes[@ OurSOA].
 
   Definition RRecord2VariantResourceRecord
              (rr : resourceRecord)

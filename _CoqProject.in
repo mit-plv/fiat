@@ -165,6 +165,7 @@ src/Common/BoolFacts.v
 src/Common/BoundedLookup.v
 src/Common/DecideableEnsembles.v
 src/Common/Ensembles.v
+src/Common/EnumType.v
 src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v

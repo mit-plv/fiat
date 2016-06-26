@@ -3,7 +3,7 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
@@ -76,7 +76,7 @@ Definition transformer : Transformer ByteString := ByteStringTransformer.
 Definition EthernetHeader :=
   @Tuple <"Destination" :: Vector.t char 6,
   "Source" :: Vector.t char 6,
-  "Type" :: BoundedString ["ARP"; "IP"; "RARP"]>.
+  "Type" :: EnumType ["ARP"; "IP"; "RARP"]>.
 
 Definition EtherTypeCodes : Vector.t (word 16) 3 :=
   [WO~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0;

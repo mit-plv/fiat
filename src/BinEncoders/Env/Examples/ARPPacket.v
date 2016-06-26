@@ -3,7 +3,7 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
@@ -74,12 +74,12 @@ Definition transformer : Transformer ByteString := ByteStringTransformer.
 (* Start Example Derivation. *)
 
 Definition ARPPacket :=
-  @Tuple <"HardType" :: BoundedString ["Ethernet"; "802"; "Chaos"],
-          "ProtType" :: BoundedString ["IPv4"; "IPv6"], (* Overlaps with etherType. *)
-          "Operation" :: BoundedString ["Request";
-                                        "Reply";
-                                        "RARP Request";
-                                        "RARP Reply"],
+  @Tuple <"HardType" :: EnumType ["Ethernet"; "802"; "Chaos"],
+          "ProtType" :: EnumType ["IPv4"; "IPv6"], (* Overlaps with etherType. *)
+          "Operation" :: EnumType ["Request";
+                                   "Reply";
+                                   "RARP Request";
+                                   "RARP Reply"],
           "SenderHardAddress" :: list char,
           "SenderProtAddress" :: list char,
           "TargetHardAddress" :: list char,
@@ -114,22 +114,22 @@ Definition OperationCodes : Vector.t (word 16) 4 :=
   ].
 
 Definition encode_ARPPacket_Spec (arp : ARPPacket) :=
-          encode_enum_Spec HardTypeCodes (arp!"HardType")
-    ThenC encode_enum_Spec EtherTypeCodes (arp!"ProtType")
-    ThenC encode_word_Spec HardSizeCodes[@ (ibound (indexb (arp!"HardType")))]
-    ThenC encode_word_Spec ProtSizeCodes[@ (ibound (indexb (arp!"ProtType")))]
-    ThenC encode_enum_Spec OperationCodes (arp!"Operation")
-    ThenC encode_list_Spec encode_word_Spec (arp!"SenderHardAddress")
-    ThenC encode_list_Spec encode_word_Spec (arp!"SenderProtAddress")
-    ThenC encode_list_Spec encode_word_Spec (arp!"TargetHardAddress")
-    ThenC encode_list_Spec encode_word_Spec (arp!"TargetProtAddress")
+          encode_enum_Spec HardTypeCodes arp!"HardType"
+    ThenC encode_enum_Spec EtherTypeCodes arp!"ProtType"
+    ThenC encode_word_Spec HardSizeCodes[@arp!"HardType"]
+    ThenC encode_word_Spec ProtSizeCodes[@arp!"ProtType"]
+    ThenC encode_enum_Spec OperationCodes arp!"Operation"
+    ThenC encode_list_Spec encode_word_Spec arp!"SenderHardAddress"
+    ThenC encode_list_Spec encode_word_Spec arp!"SenderProtAddress"
+    ThenC encode_list_Spec encode_word_Spec arp!"TargetHardAddress"
+    ThenC encode_list_Spec encode_word_Spec arp!"TargetProtAddress"
     DoneC.
 
 Definition ARP_Packet_OK (arp : ARPPacket) :=
-  (|arp!"SenderHardAddress"|) = wordToNat HardSizeCodes[@ (ibound (indexb (arp!"HardType")))]
-  /\ (|arp!"SenderProtAddress"|) = wordToNat ProtSizeCodes[@ (ibound (indexb (arp!"ProtType")))]
-  /\ (|arp!"TargetHardAddress"|) = wordToNat HardSizeCodes[@ (ibound (indexb (arp!"HardType")))]
-  /\ (|arp!"TargetProtAddress"|) = wordToNat ProtSizeCodes[@ (ibound (indexb (arp!"ProtType")))].
+  (|arp!"SenderHardAddress"|) = wordToNat HardSizeCodes[@arp!"HardType"]
+  /\ (|arp!"SenderProtAddress"|) = wordToNat ProtSizeCodes[@arp!"ProtType"]
+  /\ (|arp!"TargetHardAddress"|) = wordToNat HardSizeCodes[@arp!"HardType"]
+  /\ (|arp!"TargetProtAddress"|) = wordToNat ProtSizeCodes[@arp!"ProtType"].
 
 Definition ARPPacket_decoder
   : { decodePlusCacheInv |
@@ -197,12 +197,12 @@ Proof.
   simpl; intros.
   unfold encode_decode_correct_f; intuition eauto.
   instantiate
-    (1 := fun p b env => if weq (proj1) (HardSizeCodes[@ibound (indexb proj)]) then _ p b env else None).
-  destruct (weq proj1 HardSizeCodes[@ibound (indexb proj)]);
+    (1 := fun p b env => if weq (proj1) (HardSizeCodes[@proj]) then _ p b env else None).
+  destruct (weq proj1 HardSizeCodes[@proj]);
     try congruence.
   instantiate
-    (1 := fun p b env => if weq (proj2) (ProtSizeCodes[@ibound (indexb proj0)]) then _ p b env else None).
-  destruct (weq proj2 ProtSizeCodes[@ibound (indexb proj0)]);
+    (1 := fun p b env => if weq (proj2) (ProtSizeCodes[@proj0]) then _ p b env else None).
+  destruct (weq proj2 ProtSizeCodes[@proj0]);
     try congruence.
   destruct data as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ];
     unfold GetAttribute, GetAttributeRaw in *;
@@ -216,9 +216,6 @@ Proof.
     let f' := match P' with ?f a b c => f end in
     try unify f f'; try reflexivity
   end.
-  rewrite <- H22, H20 in n.
-  congruence.
-  subst; intuition.
   simpl in H12; repeat find_if_inside; injections;
     try discriminate; injections.
   eassumption.
@@ -236,7 +233,6 @@ Proof.
     intuition eauto.
   repeat (instantiate (1 := fun _ => True)).
   unfold cache_inv_Property; intuition.
-  Grab Existential Variables.
 Defined.
 
 Definition ARP_Packet_decoder :=

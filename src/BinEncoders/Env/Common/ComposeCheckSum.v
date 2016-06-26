@@ -30,7 +30,7 @@ Section Checksum.
              (encode2 : Env -> Comp (B * Env))
              (ctx : Env) :=
     `(p, ctx) <- encode1 ctx;
-      `(q, ctx) <- encode2 ctx;
+    `(q, ctx) <- encode2 ctx;
       ret (transform p (transform (calculate_checksum (transform p q)) q), ctx)%comp.
 
   Lemma compose_encode_correct

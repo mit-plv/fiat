@@ -3,7 +3,7 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
@@ -140,7 +140,7 @@ Ltac finalize_decoder P_inv :=
 Definition EthernetFrame :=
   @Tuple <"Destination" :: Vector.t char 6,
   "Source" :: Vector.t char 6,
-  "Type" :: BoundedString ["ARP"; "IP"; "RARP"],
+  "Type" :: EnumType ["ARP"; "IP"; "RARP"],
   "Data" :: list char>.
 
 Definition EtherTypeCodes : Vector.t (word 16) 3 :=
