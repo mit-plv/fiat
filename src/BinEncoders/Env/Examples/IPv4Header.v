@@ -316,5 +316,3 @@ Proof.
   decide equality.
   exact (@weq _).
 Defined.
-
-Print 
