@@ -152,12 +152,87 @@ Section Word.
     omega.
   Qed.
 
-  Definition encode_unused_word_Spec (ctx : CacheEncode) :=
-    (w <- { w : word sz | True}; encode_word_Spec w ctx)%comp.
+  Definition encode_unused_word_Spec' (sz : nat)
+             (_ : unit) (ctx : CacheEncode) :=
+    (w <- { w : word sz | True};
+       ret (encode_word' sz w, addE ctx sz))%comp.
+
+  Definition encode_unused_word_Spec
+             (sz : nat)
+             (ctx : CacheEncode) :=
+    encode_unused_word_Spec' sz tt ctx.
+
+  Fixpoint decode_unused_word' (s : nat) (b : B) : option (unit * B) :=
+    match s with
+    | O => Some (tt, b)
+    | S s' =>
+      `(c, b') <- transform_pop_opt b;
+        decode_unused_word' s' b'
+    end.
+
+  Definition decode_unused_word (sz' : nat)
+             (b : B) (cd : CacheDecode) : option (unit * B * CacheDecode) :=
+    Ifopt decode_unused_word' sz' b as decoded Then Some (decoded, addD cd sz') Else None.
+
+  Theorem unused_word_decode_correct sz'
+          {P : CacheDecode -> Prop}
+          (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
+    :
+      encode_decode_correct_f cache transformer (fun _ => True)
+                              (fun _ _ => True)
+                              (encode_unused_word_Spec' sz') (decode_unused_word sz') P.
+  Proof.
+    unfold encode_decode_correct_f, encode_unused_word_Spec', decode_unused_word; split.
+    - intros env env' xenv w w' ext Eeq _ _ Penc.
+      computes_to_inv; injections.
+      generalize dependent sz'.
+      destruct w.
+      induction v; simpl in *.
+      { eexists; split; eauto; try rewrite !transform_id_left;
+        eauto using add_correct. }
+      { rewrite transform_push_step_opt.
+        rewrite transform_push_pop_opt.
+        destruct_ex; intuition.
+        destruct (decode_unused_word' n (transform (encode_word' n v) ext)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+        injections; eexists; split; eauto using add_correct.
+        rewrite Heqo; simpl; f_equal.
+      }
+    - intros.
+      destruct (decode_unused_word' sz' bin)
+        as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
+      injections.
+      destruct data.
+      generalize dependent bin.
+      induction sz'; simpl in *.
+      { intros; computes_to_inv; intros; injection Heqo; clear Heqo;
+        intros; subst.
+        repeat eexists; eauto; try rewrite !transform_id_left;
+        eauto using add_correct.
+        instantiate (1 := WO); simpl.
+        rewrite !transform_id_left; eauto.
+      }
+      { intros; intuition.
+        destruct (transform_pop_opt bin) as [ [? ?] | ] eqn: ? ;
+          simpl in *; try discriminate.
+        destruct (decode_unused_word' sz' b0) as [ [? ? ] | ] eqn: ? ;
+          simpl in *; try discriminate.
+        injection Heqo; intros; subst.
+        eapply IHsz' in Heqo1.
+        intuition; destruct_ex; intuition; subst.
+        computes_to_inv; injections.
+        eexists; eexists; repeat split.
+        repeat computes_to_econstructor; eauto.
+        instantiate (1 := WS b v); simpl.
+        setoid_rewrite transform_push_step_opt.
+        eapply transform_pop_opt_inj; eauto.
+        rewrite transform_push_pop_opt; reflexivity.
+        apply add_correct; eauto.
+      }
+  Qed.
 
 End Word.
 
-Arguments encode_unused_word_Spec sz {_ _ _ _ _} ctx _.
+Arguments encode_unused_word_Spec {_ _ _ _ _} sz ctx _.
 
 Fixpoint transformer_get_word {B}
          {transformer : Transformer B}
