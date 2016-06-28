@@ -36,7 +36,8 @@ Open Scope Tuple_scope.
 (* Start Example Derivation. *)
 
 Definition IPv4_Packet :=
-  @Tuple <"ID" :: word 16,
+  @Tuple <"TotalLength" :: word 16,
+          "ID" :: word 16,
           "DF" :: bool, (* Don't fragment flag *)
           "MF" :: bool, (*  Multiple fragments flag *)
           "FragmentOffset" :: word 13,
@@ -61,8 +62,7 @@ Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
           (encode_word_Spec (natToWord 4 4)
     ThenC encode_nat_Spec 4 (5 + |ip4!"Options"|)
     ThenC encode_unused_word_Spec 8 (* TOS Field! *)
-    ThenC (fun ctx => payload_len <- {payload_len : nat | lt (20 + (4 * |ip4!"Options"|) + payload_len) (pow2 16)};
-             encode_nat_Spec 16 (20 + (4 * |ip4!"Options"|) + payload_len) ctx) (* payload length is an argument *)
+    ThenC encode_word_Spec ip4!"TotalLength"
     ThenC encode_word_Spec ip4!"ID"
     ThenC encode_unused_word_Spec 1 (* Unused flag! *)
     ThenC encode_bool_Spec ip4!"DF"
@@ -78,7 +78,7 @@ Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
     DoneC).
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
-  lt (|ipv4!"Options"|) 11.
+  lt (|ipv4!"Options"|) 11 /\ lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
 
 Variable IPChecksum_Valid : nat -> ByteString -> Prop.
 Variable IPChecksum_Valid_dec : forall n b, {IPChecksum_Valid n b} + {~IPChecksum_Valid n b}.
@@ -127,31 +127,32 @@ Proof.
   eexists (_, _); intros; eexists _; split; simpl.
   intros.
   unfold encode_IPv4_Packet_Spec; pose_string_ids.
-  eapply (@composeChecksum_encode_correct
-              IPv4_Packet _ transformer IPChecksum
-              IPChecksum_Valid IPChecksum_Valid_dec
-              IPChecksum_OK IPChecksum_commute IPChecksum_Valid_commute _
-              (nat * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"]))))))
-              _ _ _ decodeChecksum H
-              (fun ip4 => (|ip4!StringId10|, (ip4!StringId, (ip4!StringId0,
-                           (ip4!StringId1, (ip4!StringId2, (ip4!StringId3, ip4!StringId4)))))))
-              (IPv4_Packet_OK)
-              _ _ _
-              (fun data' : nat * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"]))))) =>
-                 (encode_word_Spec (natToWord 4 4)
+  let p := (eval unfold Domain in (fun ip4 : IPv4_Packet => (|ip4!StringId11|, (ip4!StringId, (ip4!StringId0, (ip4!StringId1,
+                                                                                                               (ip4!StringId2, (ip4!StringId3, (ip4!StringId4, ip4!StringId5))))))))) in
+  let p := eval simpl in p in 
+      eapply (@composeChecksum_encode_correct
+                IPv4_Packet _ transformer IPChecksum
+                IPChecksum_Valid IPChecksum_Valid_dec
+                IPChecksum_OK IPChecksum_commute IPChecksum_Valid_commute _
+                (nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))))
+                _ _ _ decodeChecksum H
+                p
+                (IPv4_Packet_OK)
+                _ _ _
+                (fun data' : nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))) =>
+                   (encode_word_Spec (natToWord 4 4)
                                    ThenC encode_nat_Spec 4 (5 + fst data')
                                    ThenC encode_unused_word_Spec 8 (* TOS Field! *)
-                                   ThenC (fun ctx => payload_len <- {payload_len : nat | lt (20 + (4 * (fst data')) + payload_len) (pow2 16)};
-             encode_nat_Spec 16 (20 + (4 * (fst data')) + payload_len) ctx)
                                    ThenC encode_word_Spec (fst (snd data'))
+                                   ThenC encode_word_Spec (fst (snd (snd data')))
                                    ThenC encode_unused_word_Spec 1
-                                   ThenC encode_bool_Spec (fst (snd (snd data')))
                                    ThenC encode_bool_Spec (fst (snd (snd (snd data'))))
-                                   ThenC encode_word_Spec (fst (snd (snd (snd (snd data')))))
+                                   ThenC encode_bool_Spec (fst (snd (snd (snd (snd data')))))
                                    ThenC encode_word_Spec (fst (snd (snd (snd (snd (snd data'))))))
-                                   ThenC encode_enum_Spec ProtocolTypeCodes (snd (snd (snd (snd (snd (snd data'))))))
-                                   DoneC)));
-    simpl.
+                                   ThenC encode_word_Spec (fst (snd (snd (snd (snd (snd (snd data')))))))
+                                   ThenC encode_enum_Spec ProtocolTypeCodes (snd (snd (snd (snd (snd (snd (snd data')))))))
+                                   DoneC))).
+  simpl.
   intros; eapply IPv4_Packet_encoded_measure_OK; apply H0.
   apply_compose.
   eapply Word_decode_correct.
@@ -166,9 +167,8 @@ Proof.
   eapply unused_word_decode_correct.
   solve_data_inv.
   solve_data_inv.
-  simpl.
   apply_compose.
-  eapply Nat_decode_correct.
+  eapply Word_decode_correct.
   solve_data_inv.
   solve_data_inv.
   apply_compose.
@@ -207,12 +207,22 @@ Proof.
   rewrite <- H24; simpl.
   assert (a = proj - 5) by
       (rewrite <- H24; simpl; auto with arith).
-  clear H24.
+  instantiate
+    (1 := fun p b env => if Compare_dec.le_lt_dec (wordToNat proj0) (4 * proj) then None else _ p b env).
+  rewrite H24; clear H24.
+  revert H16.
+  instantiate (2 := fun data : nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))) => lt (20 + 4 * (fst data)) (wordToNat (fst (snd data)))).
+  rewrite H13, H23.
+  simpl; intros.
+  assert (~ le (wordToNat proj0) (4 * proj)) by omega.
+  destruct (Compare_dec.le_lt_dec (wordToNat proj0) (proj + (proj + (proj + (proj + 0))))).
+  intuition.
   computes_to_inv; injections; subst; simpl.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'.
   eexists env'; simpl; intuition eauto.
-  instantiate (1 := fun proj6 ext env' => Some (proj - 5, (proj1, (proj2, (proj3, (proj4, (proj5, proj6))))), ext, env')).
-  simpl; rewrite <- Minus.minus_n_O; reflexivity.
+  instantiate (1 := fun proj6 ext env' => Some (proj - 5, (proj0, (proj1, (proj2, (proj3, (proj4, (proj5, proj6)))))), ext, env')).
+  reflexivity.
+  find_if_inside; try discriminate.
   find_if_inside; try discriminate.
   simpl in H14; injections; eauto.
   simpl in H14; repeat find_if_inside; try discriminate.
@@ -227,25 +237,14 @@ Proof.
   destruct env; computes_to_econstructor.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'.
   reflexivity.
-  instantiate (1 := fun _ => True); simpl; eauto.
-  revert H1 l payload_OK; clear; intros;
-  unfold pow2 in H1; simpl in H1.
   omega.
-  revert H1 l; unfold pow2; simpl; intros; omega.
-  revert H1 l; unfold pow2; simpl; intros; omega.
-  simpl.
-  revert H1 l payload_OK; clear; intros;
-  unfold pow2 in H1; simpl in H1.
   omega.
-  unfold IPv4_Packet_OK; intros; destruct H0; repeat split; eauto.
+  omega.
+  unfold IPv4_Packet_OK; clear; intros ? H'; destruct H' as [? ?]; repeat split.
   simpl.
-  unfold StringId10.
-  unfold pow2; simpl.
-  match goal with
-    |- context [length ?x] =>
-    revert H0; simpl; remember (length x); clear;
-      auto with arith
-  end.
+  eassumption.
+  simpl.
+  revert H; unfold StringId11; unfold pow2; simpl; auto with arith.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
   intros; eapply decodeIPChecksum_pf; eauto.
@@ -263,15 +262,12 @@ Proof.
   revert H3; eapply Word_decode_correct.
   simpl in *; split.
   intuition eauto.
-  pose proof (f_equal fst H9).
-  simpl in H4; apply H4.
-  simpl in *; injections.
-  simpl; auto with arith.
-  eauto.
+  eapply (f_equal fst H8).
+  intros; eauto.
   simpl; intros; eauto using FixedList_predicate_rest_True.
   simpl; intros;
     unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ] ] ];
+  destruct data as [? [? [? [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ] ] ] ];
     unfold GetAttribute, GetAttributeRaw in *;
     simpl in *.
   pose proof (f_equal fst H14).
@@ -280,6 +276,7 @@ Proof.
   pose proof (f_equal (fun z => fst (snd (snd (snd z)))) H14).
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd z))))) H14).
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd z)))))) H14).
+  pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd (snd z))))))) H14).
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd (snd z))))))) H14).
   pose proof (f_equal (fun z => snd (snd (snd (snd (snd (snd (snd z))))))) H14).
   simpl in *.
@@ -304,53 +301,20 @@ Proof.
   unfold GetAttribute, GetAttributeRaw.
   simpl.
   rewrite H5.
-  revert payload_OK H0; clear; simpl.
-  intros; destruct H0 as [ [? ?] ?].
-  unfold pow2 in H1; simpl in H1.
   omega.
   destruct proj as [? [? [? [? [? [? [? ?] ] ] ] ] ] ].
   simpl.
   unfold GetAttribute, GetAttributeRaw; simpl in *.
   repeat f_equal.
   eauto.
-  rewrite H5; simpl.
-
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  simpl; intros.
-  unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [ ] ] ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  simpl in *; injections; eauto.
-  simpl in *; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  reflexivity.
+  simpl.
+  intros; clear; admit. (* Proof that checksum is valid. *)
   repeat (instantiate (1 := fun _ => True)).
   unfold cache_inv_Property; intuition.
   Grab Existential Variables.
+  decide equality.
+  decide equality.
   exact (@weq _).
-  exact (@weq _).
-  exact (@weq _).
-  exact (@weq _).
-  exact Peano_dec.eq_nat_dec.
 Defined.
+
+Print 
