@@ -151,6 +151,29 @@ Section FixList.
       rewrite IHxs, transform_id_left, (encode_list_body_characterization A_encode_Impl xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
+
+  Lemma measure_encode_length_Spec n :
+    (forall (a : A) b ctx ctx',
+        computes_to (A_encode_Spec a ctx) (b, ctx')
+        -> bin_measure b = n)
+    -> forall l b ctx ctx',
+      computes_to (encode_list_Spec l ctx) (b, ctx') ->
+      bin_measure b = n * (length l).
+  Proof.
+    induction l; simpl; intros.
+    - computes_to_inv; injections.
+      pose proof (transform_measure transform_id transform_id) as H';
+        rewrite transform_id_left in H'.
+      simpl bin_measure in H'; simpl transform_id in H'; omega.
+    - unfold Bind2 in *; computes_to_inv; injections.
+      destruct v; destruct v0; simpl in *.
+      rewrite transform_measure.
+      apply H in H0; rewrite H0.
+      apply IHl in H0'; rewrite H0'.
+      rewrite Mult.mult_succ_r.
+      auto with arith.
+  Qed.
+
 End FixList.
 
 Lemma FixedList_predicate_rest_True {A B}

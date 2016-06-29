@@ -162,13 +162,65 @@ Section Word.
              (ctx : CacheEncode) :=
     encode_unused_word_Spec' sz tt ctx.
 
-  Fixpoint decode_unused_word' (s : nat) (b : B) : option (unit * B) :=
-    match s with
-    | O => Some (tt, b)
-    | S s' =>
-      `(c, b') <- transform_pop_opt b;
-        decode_unused_word' s' b'
+  Fixpoint transformer_get_word {B}
+           {transformer : Transformer B}
+           {transformer_opt : TransformerUnitOpt transformer bool}
+           (sz : nat)
+           (b : B)
+    : option (word sz) :=
+    match sz with
+    | 0 => Some WO
+    | S sz' =>
+      match transform_pop_opt b with
+      | Some (v, b') =>
+        match transformer_get_word sz' b' with
+        | Some w => Some (WS v w)
+        | _ => None
+        end
+      | _ => None
+      end
     end.
+
+  Fixpoint transformer_pop_word
+         (sz : nat)
+         (b : B)
+  : option (word sz * B) :=
+  match sz with
+  | 0 => Some (WO, b)
+  | S sz' =>
+    match transform_pop_opt b with
+    | Some (v, b') =>
+      match transformer_pop_word sz' b' with
+      | Some (w', b'') => Some (WS v w', b'')
+      | _ => None
+      end
+    | _ => None
+    end
+  end.
+
+  Lemma transformer_pop_word_eq_decode_word' : 
+    forall (sz : nat)
+           (b : B),
+      transformer_pop_word sz b = decode_word' sz b.
+  Proof.
+    induction sz0; simpl; eauto.
+  Qed.  
+
+  Lemma transformer_pop_encode_word'
+        (sz' : nat)
+    : forall (w : word sz') (ext : B),
+      transformer_pop_word sz' (transform (encode_word' _ w) ext) = Some (w, ext).
+  Proof.
+    induction sz'; simpl; intros.
+    - rewrite (shatter_word w); eauto.
+      unfold encode_word'; rewrite transform_id_left; reflexivity.
+    - rewrite (shatter_word w); simpl.
+      rewrite transform_push_step_opt, transform_push_pop_opt.
+      rewrite IHsz'; eauto.
+  Qed.
+
+  Definition decode_unused_word' (s : nat) (b : B) : option (unit * B) :=
+    Ifopt transformer_pop_word s b as b' Then Some (tt, snd b') Else None.
 
   Definition decode_unused_word (sz' : nat)
              (b : B) (cd : CacheDecode) : option (unit * B * CacheDecode) :=
@@ -185,18 +237,10 @@ Section Word.
     unfold encode_decode_correct_f, encode_unused_word_Spec', decode_unused_word; split.
     - intros env env' xenv w w' ext Eeq _ _ Penc.
       computes_to_inv; injections.
-      generalize dependent sz'.
+      unfold decode_unused_word'.
+      rewrite transformer_pop_encode_word'; simpl.
       destruct w.
-      induction v; simpl in *.
-      { eexists; split; eauto; try rewrite !transform_id_left;
-        eauto using add_correct. }
-      { rewrite transform_push_step_opt.
-        rewrite transform_push_pop_opt.
-        destruct_ex; intuition.
-        destruct (decode_unused_word' n (transform (encode_word' n v) ext)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
-        injections; eexists; split; eauto using add_correct.
-        rewrite Heqo; simpl; f_equal.
-      }
+      eexists; split; eauto using add_correct.
     - intros.
       destruct (decode_unused_word' sz' bin)
         as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
@@ -212,12 +256,15 @@ Section Word.
         rewrite !transform_id_left; eauto.
       }
       { intros; intuition.
+        unfold decode_unused_word' in Heqo.
+        simpl in Heqo.
         destruct (transform_pop_opt bin) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
-        destruct (decode_unused_word' sz' b0) as [ [? ? ] | ] eqn: ? ;
+        destruct (transformer_pop_word sz' b0) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         injection Heqo; intros; subst.
-        eapply IHsz' in Heqo1.
+        destruct (IHsz' b0).
+        unfold decode_unused_word'; rewrite Heqo1; simpl; eauto.
         intuition; destruct_ex; intuition; subst.
         computes_to_inv; injections.
         eexists; eexists; repeat split.
@@ -233,25 +280,6 @@ Section Word.
 End Word.
 
 Arguments encode_unused_word_Spec {_ _ _ _ _} sz ctx _.
-
-Fixpoint transformer_get_word {B}
-         {transformer : Transformer B}
-         {transformer_opt : TransformerUnitOpt transformer bool}
-         (sz : nat)
-         (b : B)
-  : option (word sz) :=
-  match sz with
-  | 0 => Some WO
-  | S sz' =>
-    match transform_pop_opt b with
-    | Some (v, b') =>
-      match transformer_get_word sz' b' with
-      | Some w => Some (WS v w)
-      | _ => None
-      end
-    | _ => None
-    end
-  end.
 
 Lemma transformer_get_encode_word' {B}
       {transformer : Transformer B}

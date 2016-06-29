@@ -97,4 +97,6 @@ Section FixList.
       rewrite IHxs, transform_id_left, (encode_list_body_characterization xs b c).
       destruct (fold_left _ _ _); reflexivity.
   Qed.
+
+
 End FixList.

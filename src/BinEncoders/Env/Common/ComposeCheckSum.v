@@ -57,6 +57,7 @@ Section Checksum.
         (encoded_A_measure_OK :
            forall a ctx ctx' b ext,
              computes_to (composeChecksum (encode1 (project a)) (encode2 a) ctx) (b, ctx')
+             -> predicate a
              -> bin_measure b = encoded_A_measure (transform b ext))
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
