@@ -10,18 +10,18 @@ Section Checksum.
   Variable B : Type. (* Type of encoded values. *)
   Variable transformer : Transformer B. (* Record of operations on encoded values. *)
 
-  Variable calculate_checksum : B -> B. (* Function to compute checksums. *)
+  Variable calculate_checksum : B -> B -> B. (* Function to compute checksums. *)
   Variable checksum_Valid : nat -> B -> Prop.  (* Property of properly checksummed encoded values. *)
   Variable checksum_Valid_dec :         (* Checksum validity should be decideable . *)
     forall n b, {checksum_Valid n b} + {~ checksum_Valid n b}.
-  Variable checksum_OK :
+  (*Variable checksum_OK :
     forall b ext, checksum_Valid (bin_measure (transform b (calculate_checksum b)))
                                  (transform (transform b (calculate_checksum b)) ext).
   Variable checksum_commute :
     forall b b', calculate_checksum (transform b b') = calculate_checksum (transform b' b).
   Variable checksum_Valid_commute :
     forall b b' ext, checksum_Valid (bin_measure (transform b b')) (transform (transform b b') ext) <->
-                     checksum_Valid (bin_measure (transform b' b)) (transform (transform b' b) ext).
+                     checksum_Valid (bin_measure (transform b' b)) (transform (transform b' b) ext). *)
   Variable cache : Cache.
 
   Open Scope comp_scope.
@@ -32,7 +32,7 @@ Section Checksum.
              (ctx : Env) :=
     `(p, ctx) <- encode1 ctx;
     `(q, ctx) <- encode2 ctx;
-      ret (transform p (transform (calculate_checksum (transform p q)) q), ctx)%comp.
+      ret (transform p (transform (calculate_checksum p q) q), ctx)%comp.
 
   Lemma composeChecksum_encode_correct
         {A'}
@@ -59,6 +59,14 @@ Section Checksum.
              computes_to (composeChecksum (encode1 (project a)) (encode2 a) ctx) (b, ctx')
              -> predicate a
              -> bin_measure b = encoded_A_measure (transform b ext))
+        (checksum_Valid_OK :
+           forall a ctx ctx' ctx'' b b' ext,
+             computes_to (encode1 (project a) ctx) (b, ctx')
+             -> computes_to (encode2 a ctx') (b', ctx'')
+             -> predicate a
+             -> checksum_Valid
+                          (bin_measure (transform (transform b (calculate_checksum b b')) b'))
+                          (transform (transform (transform b (calculate_checksum b b')) b') ext))
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
@@ -75,11 +83,11 @@ Section Checksum.
              -> predicate a
              -> computes_to (encode2 a ce') (b'', ce'')
              -> predicate_rest' a b
-             -> predicate_rest a' (transform (transform (calculate_checksum (transform b' b'')) b'') b))
+             -> predicate_rest a' (transform (transform (calculate_checksum b' b'') b'') b))
         (decodeChecksum_pf : forall b b' ext a' ctx ctx' ctxD,
             computes_to (encode1 a' ctx) (b, ctx')
             -> Equiv ctx' ctxD
-            -> decodeChecksum (transform (transform (calculate_checksum (transform b b')) b') ext) ctxD =
+            -> decodeChecksum (transform (transform (calculate_checksum b b') b') ext) ctxD =
                Some (tt, transform b' ext, ctxD))
         (decodeChecksum_pf' : forall u b b' ctx ctxD ctxD',
             Equiv ctx ctxD
@@ -110,7 +118,7 @@ Section Checksum.
              encode2 data x0 ↝ (x1, x2) ->
              Equiv x0 c1 ->
              checksum_Valid (encoded_A_measure (transform x (transform x3 (transform x1 ext)))) (transform x (transform x3 (transform x1 ext))) ->
-             x3 = calculate_checksum (transform x x1))
+             x3 = calculate_checksum x x1)
     : encode_decode_correct_f
         cache transformer
         predicate
@@ -130,7 +138,7 @@ Section Checksum.
     { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
-      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform (transform (calculate_checksum (transform b b0)) b0) ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform (transform (calculate_checksum b b0) b0) ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
       find_if_inside.
       - setoid_rewrite <- transform_assoc; rewrite H2.
         simpl; rewrite (decodeChecksum_pf _ _ _ _ _ _ _ com_pf); simpl; eauto.
@@ -139,11 +147,12 @@ Section Checksum.
           intuition; simpl in *; injections.
         eauto.
       - destruct f.
-        erewrite <- encoded_A_measure_OK, <- transform_assoc, checksum_commute; eauto.
+        erewrite <- encoded_A_measure_OK, <- transform_assoc.
         rewrite !transform_assoc.
-        rewrite checksum_Valid_commute, transform_assoc; eauto.
+        eapply checksum_Valid_OK; eauto.
         computes_to_econstructor; eauto.
         computes_to_econstructor; eauto.
+        eauto.
     }
     { intros.
       find_if_inside; try discriminate.
