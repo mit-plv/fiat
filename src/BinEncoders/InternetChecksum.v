@@ -638,6 +638,87 @@ Fixpoint checksum bytes : W16 :=
   | x :: y :: t => add_bytes_into_checksum x y (checksum t)
   end.
 
+Fixpoint make_pairs {A} (ls: list A) zero :=
+  match ls with
+  | nil => nil
+  | x :: nil => [(x, zero)]
+  | x :: y :: t => (x, y) :: (make_pairs t zero)
+  end.
+
+Definition checksum' byte_pairs : W16 :=
+  fold_right (fun p chk => add_bytes_into_checksum (fst p) (snd p) chk) (wzero _) byte_pairs.
+
+Lemma checksum_checksum' :
+  forall bytes,
+    checksum bytes = checksum' (make_pairs bytes (wzero _)).
+Proof.
+  fix IH 1.
+  destruct bytes.
+  - reflexivity.
+  - destruct bytes.
+    + reflexivity.
+    + simpl; rewrite IH; reflexivity.
+Qed.
+
+Require Import Permutation.
+Print Permutation.
+
+Lemma add_bytes_into_checksum_swap:
+  forall (chk : W16) (b11 b12 b21 b22 : word 8),
+    add_bytes_into_checksum b22 b21 (add_bytes_into_checksum b12 b11 chk) =
+    add_bytes_into_checksum b12 b11 (add_bytes_into_checksum b22 b21 chk).
+Proof.
+  unfold add_bytes_into_checksum.
+  intros; rewrite <- !OneC_plus_assoc.
+  rewrite (OneC_plus_comm (combine b11 b12)).
+  reflexivity.
+Qed.
+
+Lemma checksum'_permutation :
+  forall bs1 bs2,
+    Permutation bs1 bs2 ->
+    checksum' bs1 = checksum' bs2.
+Proof.
+  induction 1.
+  - reflexivity.
+  - simpl; rewrite IHPermutation; reflexivity.
+  - simpl. rewrite add_bytes_into_checksum_swap; reflexivity.
+  - etransitivity; eauto.
+Qed.
+
+Lemma checksum'_app :
+  forall bs1 bs2,
+    checksum' (bs1 ++ bs2) = checksum' (bs2 ++ bs1).
+Proof.
+  intros; apply checksum'_permutation, Permutation_app_comm.
+Qed.
+
+Lemma make_pairs_app {A} :
+  forall bs1,
+    (exists x, length bs1 = 2 * x)%nat ->
+    (forall bs2 z, @make_pairs A (bs1 ++ bs2) z = make_pairs bs1 z ++ make_pairs bs2 z).
+Proof.
+  fix IH 1.
+  destruct bs1; simpl.
+  - reflexivity.
+  - destruct bs1; simpl; intros Hex *; destruct Hex as [x ?].
+    + (* Absurd case *) omega.
+    + f_equal; rewrite IH.
+      * reflexivity.
+      * exists (pred x); omega.
+Qed.
+
+Lemma checksum_app :
+  forall bs1 bs2,
+    (exists x, length bs1 = 2 * x)%nat ->
+    (exists x, length bs2 = 2 * x)%nat ->
+    checksum (bs1 ++ bs2) = checksum (bs2 ++ bs1).
+Proof.
+  intros; rewrite !checksum_checksum'.
+  rewrite !make_pairs_app by assumption.
+  apply checksum'_app.
+Qed.
+
 Lemma checksum_correct :
   forall bytes,
     let chk := checksum bytes in
