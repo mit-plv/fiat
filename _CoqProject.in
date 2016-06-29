@@ -34,6 +34,7 @@ src/ADTRefinement/Refinements/DelegateMethods.v
 src/ADTRefinement/Refinements/HoneRepresentation.v
 src/ADTRefinement/Refinements/RefineHideADT.v
 src/ADTRefinement/Refinements/SimplifyRep.v
+src/BinEncoders/InternetChecksum.v
 src/BinEncoders/Env/Automation/Solver.v
 src/BinEncoders/Env/Automation/SolverOpt.v
 src/BinEncoders/Env/Automation/Solver_8_5.v
