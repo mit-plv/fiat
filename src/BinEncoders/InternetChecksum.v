@@ -100,11 +100,6 @@ Proof.
     auto using N_lt_double_lt, N.double_above.
 Qed.
 
-Ltac N_cleanup :=
-  rewrite <- ?N.add_1_l, ?N.mul_add_distr_l, ?N.mul_sub_distr_l,
-  ?N.mul_add_distr_l, <- ?N.sub_add_distr, ?N.add_assoc, ?N.mul_assoc,
-  ?N.mul_1_l, ?N.mul_1_r; change (2*2) with 4; repeat simpl (_ (N.pos _) (N.pos _)).
-
 Lemma NToWord_wordToN {sz} :
   forall (w: word sz), NToWord _ (wordToN w) = w.
 Proof.
@@ -118,13 +113,7 @@ Proof.
   induction sz.
   - reflexivity.
   - simpl; rewrite IHsz.
-    rewrite <- N.add_1_r, N.mul_sub_distr_l.
-    symmetry; apply N.add_sub_eq_r.
-    N_cleanup; ring_simplify.
-    rewrite N.sub_add.
-    + reflexivity.
-    + change 2 with (2 * 1); apply N.mul_le_mono_l.
-      apply Npow2_ge_one.
+    pose proof (Npow2_ge_one sz); lia.
 Qed.
 
 Lemma wordToN_wnot:
@@ -135,23 +124,10 @@ Proof.
   - destruct (shatter_word_S w) as (b & [ w' ? ]); subst.
     revert b; induction w'.
     + destruct b; reflexivity.
-    + intros; simpl in *; rewrite IHw'.
-      destruct b0; simpl; N_cleanup.
-      * reflexivity.
-      * set (4 * Npow2 _) as m.
-        set (if b then _ else _) as t.
-        replace (2 + 2 * t) with (1 + 2 * t + 1) by ring.
-        rewrite ?N.sub_add_distr, N.add_comm, N.sub_add; try reflexivity.
-        repeat apply N.le_add_le_sub_r.
-        destruct b;
-          unfold t, m; clear t; clear m;
-            ring_simplify;
-            pose proof (wordToN_bound w') as H;
-            rewrite <- N.le_succ_l, <- N.add_1_r in H;
-            apply (N.mul_le_mono_nonneg_l _ _ 4) in H; auto using N.le_0_l;
-              etransitivity; try apply H; ring_simplify.
-        reflexivity.
-        rewrite <- N.add_le_mono_l; intro; discriminate.
+    + intros; simpl in *;
+        rewrite IHw';
+        destruct b0; simpl; [ lia | ];
+          destruct b; pose proof (wordToN_bound w'); lia.
 Qed.
 
 Lemma wplus_wnot_1:
@@ -522,24 +498,6 @@ Proof.
     subst; reflexivity.
 Qed.
 
-(* Fixpoint wdropmsb {sz} (w: word sz) : word (pred sz) := *)
-(*   match w with *)
-(*     | WO => WO: word (pred 0) *)
-(*     | WS x O WO => WO *)
-(*     | WS x n w' => WS x (wdropmsb w') *)
-(*   end. *)
-
-(* Lemma wtail_waddmsb {sz} : *)
-(*   forall (w: word sz) b, *)
-(*     wtl (waddmsb w b) = w. *)
-(* Proof. *)
-(*   induction w; intros. *)
-(*   - reflexivity. *)
-(*   - simpl. *)
-
-(*   destruct (shatter_word_S w) as (? & [ ? ? ]); *)
-(*     subst; reflexivity. *)
-
 Fixpoint wcountones {sz} (w: word sz) : nat :=
   match w with
   | WO => 0
@@ -714,15 +672,6 @@ Proof.
   apply drop_sub; omega.
 Qed.
 
-(* Lemma zext_plus_hi_bits: *)
-(*   forall (sz : nat) (w1 w2 : word sz), *)
-(*     split2 sz sz (zext w1 sz ^+ zext w2 sz) = *)
-(*     (if (Npow2 sz <=? wordToN w1 + wordToN w2)%N *)
-(*      then NToWord sz 1%N else NToWord sz 0%N). *)
-(* Proof. *)
-(*   unfold wplus, wordBin. *)
-(* Admitted. *)
-
 Definition OneC_plus_wplus sz :=
   forall w1 w2: word sz,
     OneC_plus w1 w2 =
@@ -775,12 +724,6 @@ Ltac OneC_plus_wplus_t :=
   repeat lazymatch goal with
          | [ w: word _ |- _ ] => revert w; apply brute_force_works
          end.
-
-(* Lemma app_as_let A B : *)
-(*   forall (f: A -> B) a, *)
-(*     f a = let aa := a in f aa. *)
-(*   intros; reflexivity. *)
-(* Qed. *)
 
 Lemma brute_force8 :
   OneC_plus_wplus 8.
