@@ -73,21 +73,91 @@ Fixpoint transformer_pop_word {B}
     end
   end.
 
+Lemma transformer_pop_push_word
+      (sz' : nat)
+    : forall (w : word sz') (ext : ByteString),
+      transformer_pop_word sz' (ByteString_push_word w ext) = (w, ext).
+  Proof.
+    induction sz'; simpl; intros.
+    - rewrite (shatter_word w); eauto.
+    - rewrite (shatter_word w); simpl.
+      rewrite ByteString_transform_push_pop_opt.
+      rewrite IHsz'; eauto.
+  Qed.
+
 Fixpoint ByteString2ListOfChar (n : nat)
            (b : ByteString) : list char :=
   match n with
   | 0 => nil
+  | S (S (S (S (S (S (S (S n'))))))) =>
+    let (c, b') := transformer_pop_word 8 b in
+    cons c (ByteString2ListOfChar n' b')
   | S n' =>
     let (c, b') := transformer_pop_word 8 b in
     cons c (ByteString2ListOfChar n' b')
   end.
 
+Lemma ByteString2ListOfChar_push_char
+  : forall n c b,
+    ByteString2ListOfChar
+      (8 + n)
+      (ByteString_push_char c b) = (c :: ByteString2ListOfChar n b)%list.
+Proof.
+  Local Opaque transformer_pop_word.
+  simpl.
+  unfold ByteString_push_char.
+  pose proof transformer_pop_push_word as H'; simpl in H';
+    intros.
+  rewrite H'; f_equal.
+Qed.
+
+Lemma ByteString2ListOfChar_eq
+  : forall (b ext : ByteString),
+    padding b = 0 ->
+    ByteString2ListOfChar (bin_measure b) (transform b ext) =
+    byteString b.
+Proof.
+  simpl; intros.
+  destruct b; simpl in *; subst.
+  unfold length_ByteString; simpl padding; rewrite plus_O_n.
+  simpl Core.byteString.
+  revert front paddingOK; induction byteString; intros.
+  - reflexivity.
+  - simpl Core.byteString; simpl length.
+    rewrite Mult.mult_succ_r, NPeano.Nat.add_comm.
+    rewrite Mult.mult_comm.
+    do 8 rewrite plus_Sn_m.
+    rewrite plus_O_n.
+    symmetry.
+    rewrite <- (IHbyteString WO paddingOK) at 1.
+    unfold ByteString_transformer.
+    unfold Core.front, Core.byteString.
+    rewrite (shatter_word front).
+    simpl ByteString_push_word.
+    simpl fold_right.
+    cbv beta.
+    rewrite (ByteString2ListOfChar_push_char ((|byteString |) * 8) a).
+    f_equal.
+    rewrite Mult.mult_comm; reflexivity.
+Qed.
+
+Corollary ByteString2ListOfChar_eq'
+  : forall (b : ByteString),
+    padding b = 0 ->
+    ByteString2ListOfChar (bin_measure b) b =
+    byteString b.
+Proof.
+  intros.
+  erewrite <- ByteString2ListOfChar_eq with (ext := transform_id); auto.
+  rewrite transform_id_right; eauto.
+Qed.
+
 Definition IPChecksum (b : ByteString) : ByteString :=
-  encode_word' _ (onesComplement
-                    match padding b with
-                    | 0 => ByteString2ListOfChar (length (byteString b)) b
-                    | _ => ByteString2ListOfChar (1 + length (byteString b)) b
-                    end).
+  let b' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+                    else encode_word' _ (wzero (8 - (padding b))) in
+  transform b'
+    (encode_word' _ (onesComplement
+                    (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b')))).
 
 Definition transformer : Transformer ByteString := ByteStringTransformer.
 
@@ -111,7 +181,17 @@ Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
     DoneC).
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
-  lt (|ipv4!"Options"|) 11 /\ lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
+  lt (|ipv4!"Options"|) 11 /\
+  lt (20 + 4 * |ipv4!"Options"|) (wordToNat ipv4!"TotalLength").
+
+Variable onesComplement_commute :
+  forall b b',
+    onesComplement (b ++ b') =
+    onesComplement (b' ++ b).
+
+Variable onesComplement_onesComplement :
+  forall b,
+    onesComplement (b ++ (byteString (encode_word' 16 (onesComplement b)))) = wones 16.
 
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
@@ -123,25 +203,176 @@ Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
   decode_unused_word 16.
 
+Lemma ByteString_transformer_eq_app :
+  forall (b b' : ByteString),
+    padding b = 0
+    -> padding b' = 0
+    -> ByteString_transformer b b' =
+       {| front := WO;
+          paddingOK := Lt.lt_0_Sn _;
+          byteString := byteString b ++ byteString b' |}.
+Proof.
+  destruct b; destruct b'; intros;
+    simpl in *; subst.
+  rewrite (shatter_word front0),
+  (shatter_word front).
+  unfold ByteString_transformer; simpl.
+  rewrite ByteString_push_char_id_right; simpl; eauto.
+  f_equal; apply le_uniqueness_proof.
+Qed.
+
+Lemma ByteString2ListOfChar_Over :
+  forall (b ext : ByteString),
+    padding b = 0
+    -> ByteString2ListOfChar (bin_measure b)
+                          (transform b ext) =
+    ByteString2ListOfChar (bin_measure b) b.
+Proof.
+  intros; rewrite ByteString2ListOfChar_eq; eauto.
+  intros; rewrite ByteString2ListOfChar_eq'; eauto.
+Qed.
+
+Lemma padding_eq_length
+  : forall b,
+    padding b = (bin_measure b) - (8 * length (byteString b)).
+Proof.
+  destruct b; simpl.
+  unfold length_ByteString; simpl.
+  omega.
+Qed.
+
+Lemma padding_list_into_ByteString :
+  forall l,
+    padding (list_into_ByteString l) = NPeano.modulo (length l) 8.
+Proof.
+  induction l.
+  simpl; eauto.
+  simpl length.
+  destruct (Peano_dec.eq_nat_dec (NPeano.modulo (length l) 8) 7).
+  - rewrite NatModulo_S_Full.
+    simpl.
+    unfold ByteString_push.
+    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7).
+    simpl; eauto.
+    elimtype False.
+    rewrite IHl in n; congruence.
+    eauto.
+  - rewrite NatModulo_S_Not_Full; eauto.
+    unfold NPeano.Nat.modulo; rewrite <- IHl.
+    simpl.
+    unfold ByteString_push.
+    rewrite <- IHl in n.
+    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7);
+      simpl; eauto.
+    congruence.
+Qed.
+
+Lemma transform_padding_eq
+  : forall b b',
+    padding (transform b b') = NPeano.modulo (padding b + padding b') 8.
+Proof.
+  intros.
+  rewrite (ByteString_into_list_eq b),
+  (ByteString_into_list_eq b').
+  rewrite ByteString_transform_list_into.
+  rewrite !padding_list_into_ByteString.
+  rewrite app_length.
+  rewrite NPeano.Nat.add_mod; eauto.
+Qed.
+
+Lemma encode_word'_padding :
+  forall sz (w : word sz),
+    padding (encode_word' sz w) = NPeano.modulo sz 8.
+Proof.
+  intros; rewrite (ByteString_into_list_eq _).
+  rewrite padding_list_into_ByteString.
+  f_equal.
+  induction w; simpl; eauto.
+  unfold ByteString_push.
+  symmetry; rewrite <- IHw at 1; clear IHw.
+  unfold ByteString_into_list.
+  destruct (Peano_dec.eq_nat_dec (padding (encode_word' n w)) 7);
+    simpl; rewrite app_length; eauto.
+  assert (|wordToList (front (encode_word' n w)) | = 7).
+  destruct (encode_word' n w); simpl in *.
+  subst; reflexivity.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Lemma add_padding_OK
+  : forall b,
+    padding (transform b
+                       (if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+                       else encode_word' _ (wzero (8 - (padding b))))) = 0.
+Proof.
+  intros; rewrite transform_padding_eq.
+  find_if_inside; subst; simpl.
+  - rewrite e; simpl; eauto.
+  - pose proof (paddingOK b).
+    destruct (padding b); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    destruct (n0); simpl; eauto.
+    omega.
+Qed.
+
 Lemma IPChecksum_OK :
   forall (b ext : ByteString),
     IPChecksum_Valid (bin_measure (transform b (IPChecksum b)))
                      (transform (transform b (IPChecksum b)) ext).
 Proof.
   simpl; intros.
-Admitted.
+  unfold IPChecksum, IPChecksum_Valid.
+  pose proof transform_assoc as H'; simpl in H'; rewrite H'.
+  rewrite ByteString_transformer_eq_app.
+  rewrite ByteString2ListOfChar_Over.
+  rewrite !ByteString2ListOfChar_eq'; simpl.
+  apply onesComplement_onesComplement.
+  eapply add_padding_OK.
+  reflexivity.
+  reflexivity.
+  eapply add_padding_OK.
+  rewrite encode_word'_padding; reflexivity.
+Qed.
+
+Lemma padding_transform_commute
+  : forall b b',
+    padding (transform b b') = padding (transform b' b).
+Proof.
+  intros; rewrite !transform_padding_eq.
+  rewrite Plus.plus_comm; eauto.
+Qed.
 
 Lemma IPChecksum_commute :
   forall (b b' : ByteString),
     IPChecksum (transform b b') = IPChecksum (transform b' b).
 Proof.
   simpl; intros.
+  unfold IPChecksum.
+  pose proof (padding_transform_commute b b') as H'; simpl in H';
+    rewrite !H'.
+  f_equal.
+  rewrite !ByteString2ListOfChar_eq';
+    eauto using add_padding_OK.
+  2: rewrite <- H'; eauto using add_padding_OK.
+  simpl transform.
+
+
 Admitted.
 
 Lemma IPChecksum_Valid_commute :
   forall (b b' ext : ByteString),
     IPChecksum_Valid (bin_measure (transform b b')) (transform (transform b b') ext)
     <-> IPChecksum_Valid (bin_measure (transform b' b)) (transform (transform b' b) ext).
+Proof.
+  unfold IPChecksum_Valid; split; intros.
+  rewrite ByteString2ListOfChar_Over.
+
 Admitted.
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
@@ -151,16 +382,6 @@ Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   | Some n => 32 * wordToNat (fst n)
   | None => 0
   end.
-
-Lemma decode_IPChecksum_pf
-  : forall (b b' ext : ByteString) (ctx ctx' ctxD : ()),
-    True ->
-    decode_IPChecksum (ByteString_transformer (ByteString_transformer (IPChecksum (ByteString_transformer b b')) b') ext) ctxD = Some ((), ByteString_transformer b' ext, ctxD).
-Proof.
-  intros; pose proof transform_assoc as H'; simpl in H'; rewrite <- H'; clear H'.
-  unfold IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
-  pose proof transformer_pop_encode_word' as H'; simpl in H'; rewrite H'; simpl; eauto.
-Qed.
 
 Lemma ByteString_pop_eq_push
   : forall b b' b'',
@@ -224,6 +445,19 @@ Proof.
                                               (ByteString_push H16 (ByteString_push H17 transform_id)))))))))))))))).
   rewrite !H''; reflexivity.
 Admitted.
+
+Lemma decode_IPChecksum_pf
+  : forall (b b' ext : ByteString) (ctx ctx' ctxD : ()),
+    True ->
+    decode_IPChecksum (ByteString_transformer (ByteString_transformer (IPChecksum (ByteString_transformer b b')) b') ext) ctxD = Some ((), ByteString_transformer b' ext, ctxD).
+Proof.
+  intros; pose proof transform_assoc as H'; simpl in H'; rewrite <- H'; clear H'.
+  unfold IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
+  find_if_inside.
+  rewrite transform_id_left.
+  pose proof transformer_pop_encode_word' as H'; simpl in H'; rewrite H'; simpl; eauto.
+  admit.
+Qed.
 
 Lemma length_encode_word' sz :
   forall (w : word sz), bin_measure (encode_word' sz w) = sz.
