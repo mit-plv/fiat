@@ -180,6 +180,116 @@ Section Checksum.
     }
   Qed.
 
+  Lemma composeChecksum_compose_encode_correct
+        {A'}
+        {P  : CacheDecode -> Prop}
+        {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
+        (decodeChecksum : B -> CacheDecode -> option (unit * B * CacheDecode))
+        (P_inv_pf :
+           cache_inv_Property P (fun P =>
+                                   P_inv1 P /\ P_inv2 P
+                                   /\ (forall b ctx u b' ctx',
+                                          decodeChecksum b ctx = Some (u, b', ctx')
+                                          -> P ctx
+                                          -> P ctx')))
+        (project : A -> A')
+        (predicate : A -> Prop)
+        (predicate' : A' -> Prop)
+        (predicate_rest' : A -> B -> Prop)
+        (predicate_rest : A' -> B -> Prop)
+        (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
+        (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+        (encode3 : A -> CacheEncode -> Comp (B * CacheEncode))
+        (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
+        (decode1_pf :
+           cache_inv_Property P P_inv1
+           -> encode_decode_correct_f
+                cache transformer predicate'
+                predicate_rest
+                encode1 decode1 P)
+        (pred_pf : forall data, predicate data -> predicate' (project data))
+        (predicate_rest_impl :
+           forall a' b
+                  a ce ce' ce'' b' b'',
+             computes_to (encode1 a' ce) (b', ce')
+             -> project a = a'
+             -> predicate a
+             -> computes_to (composeChecksum (encode2 a) (encode2 a) ce') (b'', ce'')
+             -> predicate_rest' a b
+             -> predicate_rest a' (transform (transform (calculate_checksum b' b'') b'') b))
+        (decode23 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
+        (decode23_pf :
+           forall proj,
+             predicate' proj ->
+             cache_inv_Property P P_inv2 ->
+             encode_decode_correct_f
+               cache transformer
+               predicate
+               predicate_rest'
+               (fun (data : A) =>
+                  composeChecksum (compose _ (encode1 (project data)) (encode2 data) ) (encode2 data)
+               )%comp
+               (decode23 proj) P)
+    : encode_decode_correct_f
+        cache transformer
+        predicate
+        predicate_rest'
+        (fun (data : A) =>
+           composeChecksum (compose _ (encode1 (project data)) (encode2 data) ) (encode3 data)
+        )%comp
+        (fun (bin : B) (env : CacheDecode) =>
+           `(proj, rest, env') <- decode1 bin env;
+             decode23 proj rest env')
+        P.
+  Proof.
+    unfold cache_inv_Property in *; split.
+    { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+      unfold composeChecksum, compose, Bind2 in com_pf; computes_to_inv; destruct v;
+        destruct v0; destruct v1.
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform (transform (calculate_checksum b b0) b0) ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+      eapply predicate_rest_impl.
+      rewrite H2.
+        simpl; rewrite (decodeChecksum_pf _ _ _ _ _ _ _ com_pf); simpl; eauto.
+        destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H)
+                                   _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H'' com_pf');
+          intuition; simpl in *; injections.
+        eauto.
+      - destruct f.
+        erewrite <- encoded_A_measure_OK, <- transform_assoc.
+        rewrite !transform_assoc.
+        eapply checksum_Valid_OK; eauto.
+        computes_to_econstructor; eauto.
+        computes_to_econstructor; eauto.
+        eauto.
+    }
+    { intros.
+      find_if_inside; try discriminate.
+      - destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;
+          simpl in *; try discriminate.
+        eapply (proj2 (decode1_pf (proj1 P_inv_pf))) in Heqo; eauto.
+        destruct Heqo as [? [? [? [? [? [? ?] ] ] ] ] ]; subst.
+        destruct (decodeChecksum b c0) as [ [ [? ?] ? ] | ] eqn : ? ;
+          simpl in *; try discriminate.
+        eapply P_inv_pf in H2; eauto.
+        eapply (proj2 (decode2_pf a H5 (proj1 (proj2 P_inv_pf)))) in H2; eauto.
+        destruct H2 as [? ?]; destruct_ex; intuition; subst.
+        eexists; eexists; repeat split.
+        repeat computes_to_econstructor; eauto.
+        simpl; rewrite transform_assoc.
+        rewrite <- !transform_assoc.
+        eapply decodeChecksum_pf' in Heqo; eauto; intuition; destruct_ex;
+          subst.
+        simpl in *.
+        repeat f_equal.
+        eauto.
+        eassumption.
+        simpl; eassumption.
+        simpl; eapply decodeChecksum_pf' in Heqo; intuition eauto.
+    }
+  Qed.
+
+
+
   (* Corollary composeChecksum_compose_encode_correct *)
   (*       {A_fst} *)
   (*       {P  : CacheDecode -> Prop} *)
