@@ -1,6 +1,7 @@
 -R src Fiat
 -I src/Common/Tactics
 src/ADT.v
+src/ADTInduction.v
 src/ADTNotation.v
 src/ADTRefinement.v
 src/Common.v

@@ -131,7 +131,7 @@ EXAMPLES_UNMADE_VO := \
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/ADT.vo src/ADTNotation.vo src/ADTRefinement.vo src/Common.vo src/Computation/%.vo src/ADT/%.vo src/ADTNotation/%.vo src/ADTRefinement/%.vo src/Common/%.vo,$(VOFILES)))
+FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/ADT.vo src/ADTInduction.vo src/ADTNotation.vo src/ADTRefinement.vo src/Common.vo src/Computation/%.vo src/ADT/%.vo src/ADTNotation/%.vo src/ADTRefinement/%.vo src/Common/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(filter src/QueryStructure/%.vo,$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_EXAMPLES_VO := $(filter-out $(PARSERS_EXAMPLES_UNMADE_VO),$(filter src/Parsers/Refinement/Sharpened%.vo,$(VOFILES)))
