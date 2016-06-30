@@ -245,6 +245,14 @@ Proof.
   omega.
 Qed.
 
+Lemma length_list_into_ByteString 
+  : forall l, length_ByteString (list_into_ByteString l) = length l.
+Proof.
+  induction l.
+  - reflexivity.
+  - simpl; rewrite length_ByteString_push; eauto.
+Qed.
+
 Lemma padding_list_into_ByteString :
   forall l,
     padding (list_into_ByteString l) = NPeano.modulo (length l) 8.
@@ -457,17 +465,43 @@ Proof.
   omega.
 Qed.
 
-Lemma IPchecksum_Valid_OK :
+Definition IPChecksum_ByteAligned (b : ByteString) :=
+  padding b = 0 /\ exists n, length (byteString b) = 2 * n.
+
+Lemma length_ByteString_IPChecksum_ByteAligned
+  : forall b,
+    NPeano.modulo (length_ByteString b) 16 = 0
+    -> IPChecksum_ByteAligned b.
+Proof.
+  destruct b; unfold length_ByteString.
+  unfold Core.padding, Core.byteString.
+  intros; assert (padding = 0).
+  rewrite NPeano.Nat.mod_mul_r with (b := 8) (c := 2) in H by eauto.
+  apply Plus.plus_is_O in H; destruct H.
+  apply Mult.mult_is_O in H0; destruct H0.
+  congruence.
+  rewrite Mult.mult_comm, NPeano.Nat.mod_add in H by eauto.
+  destruct padding as [ | [ | [ | [ | [ | [ | [ | [ | [ ] ] ] ] ] ] ] ] ] ;
+    eauto; simpl in H; try omega.
+  unfold IPChecksum_ByteAligned; intuition eauto.
+  subst; rewrite plus_O_n in H.
+  eapply NPeano.Nat.mod_divides in H; eauto.
+  destruct H.
+  simpl.
+  exists x.
+  omega.
+Qed.  
+  
+Lemma IPchecksum_Valid_OK' :
   forall (b b' ext : ByteString),
-    padding b = 0 (* Should be able to elide this assumption. *)
-    -> padding b' = 0
-    -> (exists n, (length (byteString b) = 2 * n))
-    -> (exists n, (length (byteString b') = 2 * n))
+    IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
+    -> IPChecksum_ByteAligned b'
     -> IPChecksum_Valid
          (bin_measure (transform (transform b (IPChecksum b b')) b'))
          (transform (transform (transform b (IPChecksum b b')) b') ext).
 Proof.
   simpl; intros.
+  destruct H0; destruct H.
   unfold IPChecksum, IPChecksum_Valid.
   pose proof transform_assoc as H'; simpl in H'; rewrite H'.
   rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
@@ -490,7 +524,7 @@ Proof.
   rewrite H; find_if_inside; try congruence.
   rewrite !app_length.
   simpl; destruct_ex; exists (x0 + 1).
-  rewrite H1, even_IPChecksum; omega.
+  rewrite H2, even_IPChecksum; omega.
   reflexivity.
   find_if_inside.
   reflexivity.
@@ -687,8 +721,11 @@ Ltac calculate_length_ByteString :=
           | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H)
           | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
   end.
-  
-Lemma IPv4_Packet_encoded_measure_OK :
+
+Definition length_ByteString_ByteString_id
+  : length_ByteString ByteString_id = 0 := eq_refl.
+
+(* Lemma IPv4_Packet_encoded_measure_OK :
   forall (a : IPv4_Packet) (ctx ctx' : ()) (b ext : ByteString)
          (a_OK : IPv4_Packet_OK a),
     encode_IPv4_Packet_Spec a ctx ↝ (b, ctx')
@@ -696,14 +733,16 @@ Lemma IPv4_Packet_encoded_measure_OK :
 Proof.
   etransitivity.
   repeat calculate_length_ByteString.
-  intros; eapply length_ByteString_IPChecksum; admit.
+  intros; eapply length_ByteString_IPChecksum.
+  eapply length_ByteString_IPChecksum_ByteAligned.
+  erewrite (length_ByteString_compose _ _ _ _ _ _ _ H); 
+    repeat calculate_length_ByteString.
+  reflexivity.
   erewrite IPv4_Packet_encoded_measure_OK_1; eauto.
   unfold IPv4_Packet_Header_Len.
-  simpl transform_id; unfold ByteString_id; unfold length_ByteString.
-  simpl padding; simpl byteString.
-  simpl length.
+  simpl transform_id; rewrite length_ByteString_ByteString_id.
   omega.
-Qed. 
+Qed.  *)
 
 (* IPChecksum_Valid (IPv4_Packet_encoded_measure (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext))))
      (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext))) ->
@@ -747,13 +786,28 @@ Proof.
                                    ThenC encode_enum_Spec ProtocolTypeCodes (snd (snd (snd (snd (snd (snd (snd data')))))))
                                    DoneC))).
   simpl.
-  intros; eapply IPv4_Packet_encoded_measure_OK; eassumption.
+  instantiate (1 := IPv4_Packet_encoded_measure); clear; admit.
+  (* intros; eapply IPv4_Packet_encoded_measure_OK; eassumption. *)
   simpl.
-  intros; eapply IPchecksum_Valid_OK.
-  clear; admit.
-  clear; admit.
-  clear; admit.
-  clear; admit.
+  intros; eapply IPchecksum_Valid_OK'.
+  eapply length_ByteString_IPChecksum_ByteAligned.
+  erewrite (length_ByteString_compose _ _ _ _ _ _ _ H0); 
+    repeat calculate_length_ByteString; reflexivity.
+  eapply length_ByteString_IPChecksum_ByteAligned.
+  erewrite (length_ByteString_compose _ _ _ _ _ _ _ H1); 
+    repeat calculate_length_ByteString.
+  rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  pose proof (NPeano.Nat.mod_mul 2 16) as H'; simpl mult in H';
+    rewrite H'; eauto. rewrite plus_O_n.
+  rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  rewrite H', plus_O_n by eauto.
+  rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  pose proof (NPeano.Nat.mod_mul (2 * (|a!StringId11 |)) 16) as H''.
+  rewrite <- Mult.mult_assoc, Mult.mult_comm, <- Mult.mult_assoc in H''.
+  simpl mult in H''.
+  rewrite length_ByteString_ByteString_id.
+  rewrite <- H'' by eauto.
+  rewrite NPeano.Nat.add_mod_idemp_l; eauto.
   apply_compose.
   eapply Word_decode_correct.
   solve_data_inv.
@@ -848,8 +902,11 @@ Proof.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
   intros; eapply decode_IPChecksum_pf; eauto.
+  eapply length_ByteString_IPChecksum_ByteAligned.
+  erewrite (length_ByteString_compose _ _ _ _ _ _ _ H0); 
+    repeat calculate_length_ByteString; reflexivity.
   clear; admit.
-  intros; eapply decode_IPChecksum_pf'; eauto.
+  (* intros; eapply decode_IPChecksum_pf'; eauto.*)
   apply_compose.
   eapply Word_decode_correct.
   solve_data_inv.
@@ -917,3 +974,9 @@ Proof.
   decide equality.
   exact (@weq _).
 Defined.
+
+Definition IPv4_decoder_impl :=
+  Eval simpl in (fst (projT1 EthernetHeader_decoder)).
+
+Print IPv4_decoder_impl.
+  

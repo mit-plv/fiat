@@ -55,10 +55,13 @@ Section Checksum.
         (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
         (encoded_A_measure : B -> nat)
         (encoded_A_measure_OK :
-           forall a ctx ctx' b ext,
-             computes_to (composeChecksum (encode1 (project a)) (encode2 a) ctx) (b, ctx')
+           forall a ctx ctx' ctx'' b b' b'' ext,
+             computes_to (encode1 (project a) ctx) (b, ctx')
+             -> bin_measure b' = bin_measure (calculate_checksum b b'')
+             -> computes_to (encode2 a ctx') (b'', ctx'')
              -> predicate a
-             -> bin_measure b = encoded_A_measure (transform b ext))
+             -> bin_measure (transform b (transform b' b''))
+                             = encoded_A_measure (transform b ext))
         (checksum_Valid_OK :
            forall a ctx ctx' ctx'' b b' ext,
              computes_to (encode1 (project a) ctx) (b, ctx')
@@ -93,7 +96,12 @@ Section Checksum.
             Equiv ctx ctxD
             -> decodeChecksum b ctxD = Some (u, b', ctxD')
             -> Equiv ctx ctxD'
-               /\ exists b'', b = transform b'' b')
+               /\ exists b'',
+                b = transform b'' b'
+                /\ forall a ctx ctx' ctx'' b b',
+                  computes_to (encode1 (project a) ctx) (b, ctx')
+                  -> computes_to (encode2 a ctx') (b', ctx'')
+                  -> bin_measure b'' = bin_measure (calculate_checksum b b'))
         (decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
         (decode2_pf : forall proj,
             predicate' proj ->
@@ -104,23 +112,17 @@ Section Checksum.
                                     encode2
                                     (decode2 proj) P)
         (checksum_Valid_chk :
-           forall env env' xenv' data b ext c0 c1 x x0 x1 x2,
-                  Equiv env env'
-                  -> P env'
-                  -> Equiv x0 c0
-                  -> checksum_Valid (encoded_A_measure (transform x b)) (transform x b)
-                  -> P xenv'
-                  -> P_inv1 P
-                  -> P_inv2 P
-                  -> Equiv x2 xenv'
-                  -> predicate data
-                  -> encode_decode_correct_f cache transformer predicate' predicate_rest encode1 decode1 P
-                  -> encode1 (project data) env ↝ (x, x0)
-                  -> predicate' (project data)
-  -> decodeChecksum b c0 = Some (tt, transform x1 ext, c1)
-  -> decode2 (project data) (transform x1 ext) c1 = Some (data, ext, xenv')
-  -> encode2 data (snd (x, x0)) ↝ (x1, x2)
-  -> b = transform (calculate_checksum x x1) (transform x1 ext))
+           forall env xenv' data ext c0 c1 x x0 x1 x2 x3,
+             checksum_Valid
+               (bin_measure (transform x (transform x3 x1)))
+               (transform x (transform x3 (transform x1 ext)))
+             -> predicate data
+             -> encode1 (project data) env ↝ (x, x0)
+             -> predicate' (project data)
+             -> decodeChecksum (transform x3 (transform x1 ext)) c0 = Some (tt, transform x1 ext, c1)
+             -> decode2 (project data) (transform x1 ext) c1 = Some (data, ext, xenv')
+             -> encode2 data (snd (x, x0)) ↝ (x1, x2)
+             -> transform x (transform x3 (transform x1 ext)) = transform x (transform (calculate_checksum x x1) (transform x1 ext)))
     : encode_decode_correct_f
         cache transformer
         predicate
@@ -149,12 +151,10 @@ Section Checksum.
           intuition; simpl in *; injections.
         eauto.
       - destruct f.
-        erewrite <- encoded_A_measure_OK, <- transform_assoc.
+        rewrite <- transform_assoc.
+        erewrite <- encoded_A_measure_OK; eauto.
         rewrite !transform_assoc.
         eapply checksum_Valid_OK; eauto.
-        computes_to_econstructor; eauto.
-        computes_to_econstructor; eauto.
-        eauto.
     }
     { intros.
       find_if_inside; try discriminate.
@@ -174,13 +174,13 @@ Section Checksum.
         simpl; rewrite transform_assoc.
         rewrite <- !transform_assoc.
         simpl in *; destruct u.
-        f_equal; eauto.
+        simpl; pose proof (decodeChecksum_pf' _ _ _ x0 _ _ H6 Heqo);
+          intuition; destruct_ex; intuition; subst.
+        erewrite <- encoded_A_measure_OK in c; try eassumption;
+          try (eapply H16; eauto).
+        eapply checksum_Valid_chk; eauto.
         eauto.
-        simpl; eauto.
-        simpl; eauto.
         eauto.
-        simpl in *.
-        repeat f_equal.
         simpl; eapply decodeChecksum_pf' in Heqo; intuition eauto.
     }
   Qed.
