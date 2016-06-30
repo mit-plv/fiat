@@ -2,7 +2,7 @@ Require Import List.
 Require Import Bedrock.Word Coq.micromega.Psatz.
 
 Require Import NArith NArithRing.
-Open Scope N_scope.
+Local Open Scope N_scope.
 
 Lemma natToWordToN : (* FIXME this is a simplified copy of the same lemma in Bedrock.IL *)
   forall n m,
@@ -266,7 +266,7 @@ Proof.
 Qed.
 
 Require Import ZArith ZArithRing.
-Open Scope Z_scope.
+Local Open Scope Z_scope.
 
 Fixpoint count from n :=
   match n with
@@ -297,7 +297,7 @@ Definition normalizeZ p z :=
   let modulus := Z.of_N (Npow2 (S p) - 1) in
   (Z.modulo (z + offset) modulus) - offset.
 
-Compute (List.map (normalizeZ 3) (count (-40) 40)).
+(*Compute (List.map (normalizeZ 3) (count (-40) 40)). *)
 
 Definition ZToOneC {sz} (z: Z) : word sz :=
   match sz with
@@ -309,7 +309,7 @@ Definition ZToOneC {sz} (z: Z) : word sz :=
             end
   end.
 
-Compute (@ZToOneC 4 8).
+(* Compute (@ZToOneC 4 8). *)
 
 Lemma gt_minus_one_ge_zero :
   forall z, -1 < z <-> 0 <= z.
@@ -383,7 +383,7 @@ Definition OneC_plus {sz} (w1 w2: word sz) :=
          @ZToOneC sz (OneCToZ w1 + OneCToZ w2).
 
 Infix "^1+" := (OneC_plus) (at level 50, left associativity) : oneC_scope.
-Open Scope oneC_scope.
+Local Open Scope oneC_scope.
 
 Ltac destruct_eqdec :=
   repeat match goal with
@@ -661,7 +661,6 @@ Proof.
 Qed.
 
 Require Import Permutation.
-Print Permutation.
 
 Lemma add_bytes_into_checksum_swap:
   forall (chk : W16) (b11 b12 b21 b22 : word 8),
@@ -806,10 +805,10 @@ Ltac OneC_plus_wplus_t :=
          | [ w: word _ |- _ ] => revert w; apply brute_force_works
          end.
 
-Lemma brute_force8 :
+(*Lemma brute_force8 :
   OneC_plus_wplus 8.
 Proof.
   OneC_plus_wplus_t.
   Time vm_compute.
   reflexivity.
-Time Qed.
+Time Qed. *)
