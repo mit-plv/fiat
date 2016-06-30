@@ -61,7 +61,7 @@ Section Checksum.
              -> computes_to (encode2 a ctx') (b'', ctx'')
              -> predicate a
              -> bin_measure (transform b (transform b' b''))
-                             = encoded_A_measure (transform b ext))
+                             = encoded_A_measure (transform (transform b (transform b' b'')) ext))
         (checksum_Valid_OK :
            forall a ctx ctx' ctx'' b b' ext,
              computes_to (encode1 (project a) ctx) (b, ctx')
@@ -151,7 +151,6 @@ Section Checksum.
           intuition; simpl in *; injections.
         eauto.
       - destruct f.
-        rewrite <- transform_assoc.
         erewrite <- encoded_A_measure_OK; eauto.
         rewrite !transform_assoc.
         eapply checksum_Valid_OK; eauto.
@@ -176,9 +175,13 @@ Section Checksum.
         simpl in *; destruct u.
         simpl; pose proof (decodeChecksum_pf' _ _ _ x0 _ _ H6 Heqo);
           intuition; destruct_ex; intuition; subst.
+        rewrite !transform_assoc in c.
+        rewrite <- (transform_assoc x x3) in c.
         erewrite <- encoded_A_measure_OK in c; try eassumption;
           try (eapply H16; eauto).
         eapply checksum_Valid_chk; eauto.
+        rewrite !transform_assoc.
+        rewrite !transform_assoc in c; eauto.
         eauto.
         eauto.
         simpl; eapply decodeChecksum_pf' in Heqo; intuition eauto.
