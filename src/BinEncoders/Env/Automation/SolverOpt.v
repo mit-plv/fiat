@@ -38,7 +38,7 @@ Ltac apply_compose :=
   intros;
   match goal with
     H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_encode_correct_no_dep H); clear H
+    first [eapply (compose_encode_correct_no_dep _ H); clear H
           | eapply (compose_encode_correct H); clear H
           ]
   end.

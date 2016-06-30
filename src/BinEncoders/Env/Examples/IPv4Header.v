@@ -153,17 +153,19 @@ Proof.
 Qed.
 
 Definition IPChecksum (b b' : ByteString) : ByteString :=
-  let b' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
                     else encode_word' _ (wzero (8 - (padding b))) in
-  transform b'
+  transform b''
     (encode_word' _ (onesComplement
                     (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b')))).
 
 Definition transformer : Transformer ByteString := ByteStringTransformer.
 
+Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4!"Options"|.
+
 Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
           (encode_word_Spec (natToWord 4 4)
-    ThenC encode_nat_Spec 4 (5 + |ip4!"Options"|)
+    ThenC encode_nat_Spec 4 (IPv4_Packet_Header_Len ip4)
     ThenC encode_unused_word_Spec 8 (* TOS Field! *)
     ThenC encode_word_Spec ip4!"TotalLength"
     ThenC encode_word_Spec ip4!"ID"
@@ -186,12 +188,14 @@ Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
 
 Variable onesComplement_commute :
   forall b b',
-    onesComplement (b ++ b') =
-    onesComplement (b' ++ b).
+    (exists n, length b = 2 * n)
+    -> (exists n, length b' = 2 * n)
+    -> onesComplement (b ++ b') = onesComplement (b' ++ b).
 
 Variable onesComplement_onesComplement :
   forall b,
-    onesComplement (b ++ (byteString (encode_word' 16 (onesComplement b)))) = wones 16.
+    (exists n, length b = 2 * n)
+    -> onesComplement (b ++ (byteString (encode_word' 16 (onesComplement b)))) = wones 16.
 
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
@@ -379,6 +383,30 @@ Proof.
     eapply le_uniqueness_proof.
 Qed.
 
+Lemma transformer_pop_word_inj
+  : forall sz w w' p,
+    WordOpt.transformer_pop_word sz w = Some p
+    -> WordOpt.transformer_pop_word sz w' = Some p
+    -> w = w'.
+Proof.
+  induction sz; simpl; intros.
+  - injections; eauto.
+  - destruct (ByteString_pop w) as [ [? ?] | ] eqn : ? ;
+      destruct (ByteString_pop w') as [ [? ?] | ] eqn : ?;
+      try discriminate.
+    destruct (WordOpt.transformer_pop_word sz b0) as [ [? ?] | ] eqn : ? ;
+      destruct (WordOpt.transformer_pop_word sz b2) as [ [? ?] | ]  eqn : ? ;
+      try discriminate.
+    destruct p as [? ?].
+    injection H; injection H0; intros; subst.
+    pose proof (f_equal (@whd _) H4);
+      pose proof (f_equal (@wtl _) H4);
+      simpl in *; subst.
+    assert (b0 = b2) by eauto.
+    subst.
+    eapply ByteString_transform_pop_opt_inj; eauto.
+Qed.
+
 Lemma decode_IPChecksum_pf'
   : forall (u : ()) (b b' : ByteString),
     () -> forall ctxD ctxD' : (), True -> decode_IPChecksum b ctxD = Some (u, b', ctxD') -> True /\ (exists b'' : ByteString, b = ByteString_transformer b'' b').
@@ -386,38 +414,14 @@ Proof.
   unfold IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
   intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
     simpl in H1; try discriminate.
+  intuition.
+  destruct p; simpl in H1.
   injections.
-  intuition eauto.
-  simpl in Heqo.
-  pose proof ByteString_transform_push_step_opt as H''; simpl in H''.
-  repeat match goal with
-    H : context[ByteString_pop ?b] |- _ =>
-    let H' := fresh in
-    let b := fresh in
-    destruct (ByteString_pop b) as [ [b ?] | ] eqn : H';
-      try discriminate;
-      eapply ByteString_pop_eq_push in H';
-      rewrite H'; clear H'
-  end; intros.
-  injections.
-  simpl.
-  eexists (ByteString_push H2
-       (ByteString_push H3
-          (ByteString_push H4
-             (ByteString_push H5
-                (ByteString_push H6
-                   (ByteString_push H7
-                      (ByteString_push H8
-                         (ByteString_push H9
-                            (ByteString_push H10
-                               (ByteString_push H11
-                                  (ByteString_push H12
-                                     (ByteString_push H13
-                                        (ByteString_push H14
-                                           (ByteString_push H15
-                                              (ByteString_push H16 (ByteString_push H17 transform_id)))))))))))))))).
-  rewrite !H''; reflexivity.
-Admitted.
+  eexists (encode_word' 16 w).
+  eapply transformer_pop_word_inj; eauto.
+  pose proof transformer_pop_encode_word' as H'; simpl in H'; 
+    eapply H'.
+Qed. (* Qed takes forever here. *)
 
 Lemma decode_IPChecksum_pf
   : forall (b b' ext : ByteString) (ctx ctx' ctxD : ()),
@@ -444,107 +448,155 @@ Proof.
     rewrite H', IHsz; omega.
 Qed.
 
-Lemma IPv4_Packet_encoded_measure_OK :
+Lemma even_IPChecksum
+  : forall w, (|byteString (encode_word' 16 w) |) = 2.
+Proof.
+  intros; pose proof (length_encode_word' 16 w) as H'''; simpl in H'''.
+  unfold length_ByteString in H'''.
+  setoid_rewrite encode_word'_padding in H'''; simpl in H'''.
+  omega.
+Qed.
+
+Lemma IPchecksum_Valid_OK :
+  forall (b b' ext : ByteString),
+    padding b = 0 (* Should be able to elide this assumption. *)
+    -> padding b' = 0
+    -> (exists n, (length (byteString b) = 2 * n))
+    -> (exists n, (length (byteString b') = 2 * n))
+    -> IPChecksum_Valid
+         (bin_measure (transform (transform b (IPChecksum b b')) b'))
+         (transform (transform (transform b (IPChecksum b b')) b') ext).
+Proof.
+  simpl; intros.
+  unfold IPChecksum, IPChecksum_Valid.
+  pose proof transform_assoc as H'; simpl in H'; rewrite H'.
+  rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
+  rewrite !ByteString_transformer_eq_app; try eassumption.
+  pose proof ByteString2ListOfChar_eq' as H''; simpl in H''.
+  rewrite H''.
+  unfold byteString at 1.
+  unfold byteString at 1.
+  unfold byteString at 1.
+  rewrite onesComplement_commute; eauto.
+  rewrite app_assoc.
+  rewrite H''.
+  unfold byteString at 5.
+  rewrite onesComplement_commute with (b := byteString b); eauto.
+  rewrite H; find_if_inside; try congruence.
+  simpl; rewrite app_nil_r.
+  apply onesComplement_onesComplement.
+  destruct_ex; eexists (x + x0); rewrite app_length; rewrite H1, H2; omega.
+  reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  rewrite !app_length.
+  simpl; destruct_ex; exists (x0 + 1).
+  rewrite H1, even_IPChecksum; omega.
+  reflexivity.
+  find_if_inside.
+  reflexivity.
+  congruence.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite encode_word'_padding; reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite transform_padding_eq; rewrite H.
+  rewrite encode_word'_padding; reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite transform_padding_eq.
+  rewrite transform_padding_eq; rewrite H.
+  rewrite encode_word'_padding.
+  rewrite H0; reflexivity.
+Qed.
+
+Lemma normalize_encoder_term {A}
+  : forall (encoder encoder' : A -> CacheEncode -> Comp (_ * CacheEncode))
+           (a : A)
+           (ctx ctx' : CacheEncode)
+           (b : ByteString), 
+    encoder a ctx ↝ (b, ctx')
+    -> (forall a ctx, refineEquiv (encoder a ctx) (encoder' a ctx))
+    -> encoder' a ctx ↝ (b, ctx').
+Proof.
+  intros; eapply H0; eauto.
+Qed.
+
+Lemma length_ByteString_compose :
+  forall encode1 encode2 b (ctx ctx' : CacheEncode) n n',
+    computes_to (compose _ encode1 encode2 ctx) (b, ctx')
+    -> (forall ctx b ctx', computes_to (encode1 ctx) (b, ctx')
+                           -> length_ByteString b = n)
+    -> (forall ctx b ctx', computes_to (encode2 ctx) (b, ctx')
+                           -> length_ByteString b = n')
+    -> length_ByteString b = n + n'.
+Proof.
+  unfold compose, Bind2; intros; computes_to_inv; injections.
+  destruct v; destruct v0.
+  rewrite transform_ByteString_measure; erewrite H0, H1; eauto.
+Qed.
+
+Lemma length_ByteString_composeChecksum :
+  forall checksum encode1 encode2 b (ctx ctx' : CacheEncode) n n' n'',
+    computes_to (composeChecksum _ _ checksum encode1 encode2 ctx) (b, ctx')
+    -> (forall ctx b ctx', computes_to (encode1 ctx) (b, ctx')
+                           -> length_ByteString b = n)
+    -> (forall ctx b ctx', computes_to (encode2 ctx) (b, ctx')
+                           -> length_ByteString b = n')
+    -> (forall ctx b b' ctx' ctx'',
+           computes_to (encode1 ctx) (b, ctx')
+           -> computes_to (encode2 ctx') (b', ctx'')
+           -> length_ByteString (checksum b b') = n'')
+    -> length_ByteString b = n + n' + n''.
+Proof.
+  unfold composeChecksum, Bind2; intros; computes_to_inv; injections.
+  destruct v; destruct v0.
+  rewrite !transform_ByteString_measure; simpl.
+  erewrite H0, H2, H1; eauto; omega.
+Qed.
+
+Transparent pow2.
+Arguments pow2 : simpl never.
+
+Lemma IPv4_Packet_encoded_measure_OK_1 :
   forall (a : IPv4_Packet) (ctx ctx' : ()) (b ext : ByteString)
          (a_OK : IPv4_Packet_OK a),
     encode_IPv4_Packet_Spec a ctx ↝ (b, ctx')
-    -> length_ByteString b = IPv4_Packet_encoded_measure (ByteString_transformer b ext).
+    -> IPv4_Packet_encoded_measure (ByteString_transformer b ext)
+       = 32 * (IPv4_Packet_Header_Len a).
 Proof.
-  unfold encode_IPv4_Packet_Spec, composeChecksum, compose, Bind2; intros.
-  revert H; pose_string_ids; simpl; intros.
-  repeat apply refine_bind_bind' in H.
+  unfold encode_IPv4_Packet_Spec; intros.
   apply Bind_inv in H; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H1.
   apply Bind_inv in H1; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H2.
+  apply Return_inv in H2; injections.
+  apply Bind_inv in H0; destruct_ex; split_and.
   apply Bind_inv in H2; destruct_ex; split_and.
-  apply refine_bind_unit' in H3.
-  repeat apply refine_bind_bind' in H3.
-  apply Bind_inv in H3; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H4.
-  apply Bind_inv in H4; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H5.
-  apply Bind_inv in H5; destruct_ex; split_and.
-  apply refine_bind_unit' in H6.
-  repeat apply refine_bind_bind' in H6.
-  apply Bind_inv in H6; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H7.
-  apply Bind_inv in H7; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H8.
-  apply Bind_inv in H8; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H9.
-  apply Bind_inv in H9; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H10.
-  apply Bind_inv in H10; destruct_ex; split_and.
-  repeat apply refine_bind_bind' in H11.
-  repeat apply refine_bind_unit' in H11.
-  simpl in H11.
-  repeat apply refine_bind_bind' in H11.
-  apply Bind_inv in H11; destruct_ex; split_and.
-  computes_to_inv.
-  simpl in *.
-  injections.
-  simpl.
-  rewrite !transform_ByteString_measure.
-  unfold IPChecksum.
-  rewrite !length_encode_word'.
+  apply Return_inv in H3; injections; subst.
+  apply Return_inv in H0; injections; subst.
+  apply Bind_inv in H2; destruct_ex; split_and.
+  apply Return_inv in H0; injections; subst.
+  apply Bind_inv in H2. destruct_ex.
+  destruct H.
+  apply Return_inv in H0; injections; subst.
   unfold IPv4_Packet_encoded_measure.
-  unfold encode_word_Spec in H0.
-  computes_to_inv.
-  rewrite <- H0.
-  simpl fst.
-  pose proof transform_assoc as H'; simpl in H'.
-  rewrite <- !H'.
-  simpl fst.
   unfold decode_unused_word'.
-  pose proof transformer_pop_encode_word' as H''; simpl in H''.
+  pose proof transform_assoc as H'; simpl in H'; rewrite <- !H'.
   unfold fst.
+  rewrite <- !H'.
+  pose proof transformer_pop_encode_word' as H''; simpl in H''.
   rewrite H''.
   unfold DecodeBindOpt.
   unfold If_Opt_Then_Else.
   unfold snd.
-  unfold encode_nat_Spec, encode_word_Spec in H1.
-  computes_to_inv; rewrite <- H1.
   rewrite <- transformer_pop_word_eq_decode_word'.
   rewrite H''.
-  unfold encode_word_Spec in *.
-  computes_to_inv.
-  subst.
-  rewrite !length_encode_word'.
-  unfold encode_bool_Spec in *.
-  computes_to_inv.
-  subst.
-  let H' := fresh in
-  pose proof measure_push as H'; simpl in H'; rewrite !H'.
-Admitted.
-(*  simpl transform_id; unfold ByteString_id; simpl length_ByteString.
-  unfold length_ByteString at 1; simpl padding; simpl byteString.
-  unfold length_ByteString at 1; simpl padding; simpl byteString.
-  simpl length.
-  unfold encode_enum_Spec, encode_word_Spec in H10;
-    computes_to_inv.
-  subst.
-  rewrite !length_encode_word'.
-  unfold length_ByteString at 1; simpl padding; simpl byteString.
-  unfold length_ByteString at 2; simpl padding; simpl byteString.
-  simpl length.
-  destruct v3.
-  let H' := fresh in
-  pose proof (measure_encode_length_Spec (A := word 32)) as H';
-    eapply H' in H12'1.
-  2: clear; intros; computes_to_inv; injections;
-    apply length_encode_word'.
-  simpl bin_measure in H12'1.
-  rewrite H12'1.
+  unfold IPv4_Packet_Header_Len.
+  auto with arith.
   rewrite wordToNat_natToWord_idempotent.
-  rewrite !Mult.mult_0_r.
-  rewrite <- !plus_n_O.
-  rewrite !plus_O_n.
   omega.
   unfold IPv4_Packet_OK in a_OK.
   destruct a_OK.
-  revert H1; clear.
-  simpl.
+  revert H0; clear; simpl.
   rewrite <- BinNat.N.compare_lt_iff.
   rewrite Nnat.N2Nat.inj_compare.
   rewrite <- Znat.positive_nat_N.
@@ -554,13 +606,108 @@ Admitted.
   rewrite <- Compare_dec.nat_compare_lt.
   simpl.
   unfold BinPos.Pos.to_nat; simpl.
-  unfold StringId11.
   simpl.
   auto with arith.
-Admitted. *) (* Qed takes forever on this proof. *)
+Admitted. (* Qed takes forever. *)
 
-Transparent pow2.
-Arguments pow2 : simpl never.
+Lemma length_ByteString_ret :
+  forall b' b (ctx ctx' : CacheEncode),
+    computes_to (ret (b', ctx)) (b, ctx')
+    -> length_ByteString b = length_ByteString b'.
+Proof.
+  intros; computes_to_inv; injections; reflexivity.
+Qed.
+
+Lemma length_ByteString_unused_word
+  : forall sz (b : ByteString) (ctx ctx' : CacheEncode),
+    encode_unused_word_Spec sz ctx ↝ (b, ctx')
+    -> length_ByteString b = sz.
+Proof.
+  unfold encode_unused_word_Spec, encode_unused_word_Spec'; simpl.
+  intros; computes_to_inv; injections.
+  eapply length_encode_word'.
+Qed.
+
+Lemma length_ByteString_word
+  : forall sz (w : word sz) (b : ByteString) (ctx ctx' : CacheEncode),
+    encode_word_Spec w ctx ↝ (b, ctx')
+    -> length_ByteString b = sz.
+Proof.
+  unfold encode_word_Spec; simpl.
+  intros; computes_to_inv; injections.
+  eapply length_encode_word'.
+Qed.
+
+Lemma length_ByteString_bool
+  : forall (b' : bool) (b : ByteString) (ctx ctx' : CacheEncode),
+    encode_bool_Spec b' ctx ↝ (b, ctx')
+    -> length_ByteString b = 1.
+Proof.
+  unfold encode_bool_Spec; simpl.
+  intros; computes_to_inv; injections.
+  eapply length_ByteString_push.
+Qed.
+
+Lemma length_ByteString_encode_list {A}
+  : forall encode_A l (b : ByteString) (ctx ctx' : CacheEncode) n,
+    (forall (a : A) (b : ByteString) (ctx ctx' : CacheEncode),
+        computes_to (encode_A a ctx) (b, ctx')
+        -> length_ByteString b = n)
+    -> encode_list_Spec encode_A l ctx ↝ (b, ctx')
+    -> length_ByteString b = (length l) * n.
+Proof.
+  induction l; simpl; intros; computes_to_inv.
+  - injections; reflexivity.
+  - unfold Bind2 in H0; computes_to_inv; injections.
+    destruct v; destruct v0; simpl in *.
+    erewrite transform_ByteString_measure.
+    erewrite H; eauto.
+Qed.
+
+Lemma length_ByteString_IPChecksum 
+  : forall b b',
+    padding b = 0 
+    -> length_ByteString (IPChecksum b b') = 16.
+Proof.
+  unfold IPChecksum; simpl; intros.
+  erewrite transform_ByteString_measure.
+  rewrite H; find_if_inside; try congruence.
+  rewrite length_encode_word'; reflexivity.
+Qed.
+
+Ltac calculate_length_ByteString :=
+  intros; 
+  match goal with
+    H : computes_to _ _ |- _ => 
+    first [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ _ _ H)
+          | eapply (length_ByteString_compose _ _ _ _ _ _ _ H)
+          | eapply (length_ByteString_unused_word _ _ _ _ H)
+          | eapply (length_ByteString_bool _ _ _ _ H)
+          | eapply (length_ByteString_word _ _ _ _ _ H)
+          | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H)
+          | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
+  end.
+  
+Lemma IPv4_Packet_encoded_measure_OK :
+  forall (a : IPv4_Packet) (ctx ctx' : ()) (b ext : ByteString)
+         (a_OK : IPv4_Packet_OK a),
+    encode_IPv4_Packet_Spec a ctx ↝ (b, ctx')
+    -> length_ByteString b = IPv4_Packet_encoded_measure (ByteString_transformer b ext).
+Proof.
+  etransitivity.
+  repeat calculate_length_ByteString.
+  intros; eapply length_ByteString_IPChecksum; admit.
+  erewrite IPv4_Packet_encoded_measure_OK_1; eauto.
+  unfold IPv4_Packet_Header_Len.
+  simpl transform_id; unfold ByteString_id; unfold length_ByteString.
+  simpl padding; simpl byteString.
+  simpl length.
+  omega.
+Qed. 
+
+(* IPChecksum_Valid (IPv4_Packet_encoded_measure (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext))))
+     (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext))) ->
+   x3 = IPChecksum x x1 *)
 
 Definition EthernetHeader_decoder
   : { decodePlusCacheInv |
@@ -572,8 +719,8 @@ Definition EthernetHeader_decoder
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
   eexists (_, _); intros; eexists _; split; simpl.
-  intros.
   unfold encode_IPv4_Packet_Spec; pose_string_ids.
+  intro.
   let p := (eval unfold Domain in (fun ip4 : IPv4_Packet => (|ip4!StringId11|, (ip4!StringId, (ip4!StringId0, (ip4!StringId1,
                                                                                                                (ip4!StringId2, (ip4!StringId3, (ip4!StringId4, ip4!StringId5))))))))) in
   let p := eval simpl in p in
@@ -602,6 +749,10 @@ Proof.
   simpl.
   intros; eapply IPv4_Packet_encoded_measure_OK; eassumption.
   simpl.
+  intros; eapply IPchecksum_Valid_OK.
+  clear; admit.
+  clear; admit.
+  clear; admit.
   clear; admit.
   apply_compose.
   eapply Word_decode_correct.
@@ -697,6 +848,7 @@ Proof.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
   intros; eapply decode_IPChecksum_pf; eauto.
+  clear; admit.
   intros; eapply decode_IPChecksum_pf'; eauto.
   apply_compose.
   eapply Word_decode_correct.

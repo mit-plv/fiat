@@ -146,7 +146,7 @@ Qed.
 
 Lemma compose_encode_correct_no_dep
       {A A' B}
-      {A_eq_dec : forall a a' : A', {a = a'} + {a <> a'}}
+      (A_eq_dec : forall a a' : A', {a = a'} + {a <> a'})
       {cache : Cache}
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
