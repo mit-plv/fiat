@@ -72,7 +72,7 @@ Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
     ThenC encode_word_Spec ip4!"TTL"
     ThenC encode_enum_Spec ProtocolTypeCodes ip4!"Protocol"
     DoneC)
-    ThenChecksum IPChecksum
+    ThenChecksum IPChecksum_Valid OfSize 16
     ThenCarryOn (encode_word_Spec ip4!"SourceAddress"
     ThenC encode_word_Spec ip4!"DestAddress"
     ThenC encode_list_Spec encode_word_Spec ip4!"Options"
@@ -109,7 +109,7 @@ Proof.
   auto with arith.
 Qed.
 
-Lemma IPv4_Packet_encoded_measure_OK_1 :
+(*Lemma IPv4_Packet_encoded_measure_OK_1 :
   forall (a : IPv4_Packet) (ctx ctx' : ()) (b ext : ByteString)
          (a_OK : IPv4_Packet_OK a),
     encode_IPv4_Packet_Spec a ctx ↝ (b, ctx')
@@ -130,7 +130,7 @@ Proof.
   unfold fst.
   rewrite wordToNat_natToWord_idempotent; try reflexivity.
   eauto using IPv4_Packet_Headiner_Len_Bound.
-Qed. (* Qed takes forever. *)
+Qed. (* Qed takes forever. *) *)
 
 Definition EthernetHeader_decoder
   : { decodePlusCacheInv |

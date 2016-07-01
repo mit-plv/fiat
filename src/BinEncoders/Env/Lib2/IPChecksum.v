@@ -479,6 +479,24 @@ Proof.
   omega.
 Qed.
 
+Lemma IPChecksum_ByteAligned_length_ByteString
+  : forall b,
+    IPChecksum_ByteAligned b
+    -> NPeano.modulo (length_ByteString b) 16 = 0.
+Proof.
+  destruct b; unfold length_ByteString.
+  unfold Core.padding, Core.byteString.
+  intros; destruct H; simpl in H.
+  rewrite H, plus_O_n.
+  destruct_ex.
+  simpl Core.byteString in H0.
+  rewrite H0.
+  rewrite Mult.mult_assoc.
+  unfold mult at 2.
+  simpl plus.
+  rewrite Mult.mult_comm, NPeano.Nat.mod_mul; eauto.
+Qed.
+
 Lemma IPchecksum_Valid_OK' :
   forall (b b' ext : ByteString),
     IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
@@ -558,28 +576,25 @@ Proof.
 Qed.
 
 Lemma length_ByteString_composeChecksum :
-  forall checksum encode1 encode2 b (ctx ctx' : CacheEncode) n n' n'',
-    computes_to (composeChecksum _ _ checksum encode1 encode2 ctx) (b, ctx')
+  forall sz checksum_Valid encode1 encode2 b (ctx ctx' : CacheEncode) n n' ,
+    computes_to (composeChecksum _ _ _ sz checksum_Valid encode1 encode2 ctx) (b, ctx')
     -> (forall ctx b ctx', computes_to (encode1 ctx) (b, ctx')
                            -> length_ByteString b = n)
     -> (forall ctx b ctx', computes_to (encode2 ctx) (b, ctx')
                            -> length_ByteString b = n')
-    -> (forall ctx b b' ctx' ctx'',
-           computes_to (encode1 ctx) (b, ctx')
-           -> computes_to (encode2 ctx') (b', ctx'')
-           -> length_ByteString (checksum b b') = n'')
-    -> length_ByteString b = n + n' + n''.
+    -> length_ByteString b = n + n' + sz.
 Proof.
   unfold composeChecksum, Bind2; intros; computes_to_inv; injections.
   destruct v; destruct v0.
   rewrite !transform_ByteString_measure; simpl.
-  erewrite H0, H2, H1; eauto; omega.
+  unfold encode_checksum.
+  erewrite length_encode_word', H0, H1; eauto; omega.
 Qed.
 
 Transparent pow2.
 Arguments pow2 : simpl never.
 
-Lemma computes_to_composeChecksum_decode_unused_word
+(*Lemma computes_to_composeChecksum_decode_unused_word
   : forall sz checksum (w : word sz) ctx ctx'' rest rest' b,
     computes_to ((((encode_word_Spec w) ThenC rest')
                     ThenChecksum checksum ThenCarryOn rest) ctx) (b, ctx'')
@@ -596,7 +611,7 @@ Proof.
   rewrite <- !ByteString_transform_assoc.
   pose proof transformer_pop_encode_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
-Qed.
+Qed. *)
 
 Lemma computes_to_compose_decode_word
   : forall sz (w : word sz) (ctx ctx'' : CacheEncode)
@@ -713,23 +728,23 @@ Ltac calculate_length_ByteString :=
           | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
   end.
 
-Lemma IPChecksum_unique
+(*Lemma IPChecksum_unique
   : forall x x3 x1 ext u ctx ctx',
     IPChecksum_ByteAligned x
     -> IPChecksum_ByteAligned x1
     -> IPChecksum_Valid (length_ByteString (ByteString_transformer x (ByteString_transformer x3 x1)))
                      (ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext)))
     -> decode_IPChecksum (ByteString_transformer x3 (ByteString_transformer x1 ext)) ctx = Some (u, (ByteString_transformer x1 ext), ctx')
-    -> ByteString_transformer x (ByteString_transformer x3 (ByteString_transformer x1 ext)) =
-       ByteString_transformer x
-                              (ByteString_transformer (IPChecksum x x1) (ByteString_transformer x1 ext)).
+    -> x3 = IPChecksum x x1.
 Proof.
-Admitted.
+Admitted. *)
 
 Lemma compose_IPChecksum_encode_correct
   : forall (A : Type)
            (B := ByteString)
            (trans : Transformer B := transformer)
+           (trans_opt : TransformerUnitOpt trans bool :=
+              ByteString_TransformerUnitOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
            (checksum_Valid_dec := IPChecksum_Valid_dec)
@@ -759,23 +774,27 @@ Lemma compose_IPChecksum_encode_correct
                -> length_ByteString b = len_encode2 a)
          -> (forall a, NPeano.modulo (len_encode1 a) 16 = 0)
          -> (forall a, NPeano.modulo (len_encode2 a) 16 = 0)
-         -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) (b b' b'' ext : B),
+         -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
                 encode1 (project a) ctx ↝ (b, ctx') ->
-                bin_measure b' = bin_measure (calculate_checksum b b'') ->
                 encode2 a ctx' ↝ (b'', ctx'') ->
                 predicate a ->
-                len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform b' b'')) ext)) ->
+                len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
        forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
        (cache_inv_Property P P_inv1 ->
         encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
        (forall data : A, predicate data -> predicate' (project data)) ->
-       (forall (a' : A') (b : B) (a : A) (ce ce' ce'' : CacheEncode) (b' b'' : B),
-        encode1 a' ce ↝ (b', ce') ->
-        project a = a' ->
-        predicate a ->
-        encode2 a ce' ↝ (b'', ce'') ->
-        predicate_rest' a b ->
-        predicate_rest a' (transform (transform (calculate_checksum b' b'') b'') b)) ->
+       (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+     (b' b'' : ByteString) c,
+           encode1 a' ce ↝ (b', ce') ->
+           project a = a' ->
+           predicate a ->
+           encode2 a ce' ↝ (b'', ce'') ->
+           predicate_rest' a b ->
+           {c0 : word 16 |
+            forall ext : ByteString,
+              IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+     (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+   predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
        forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
        (forall proj : A',
         predicate' proj ->
@@ -785,7 +804,7 @@ Lemma compose_IPChecksum_encode_correct
           (decode2 proj) P) ->
        encode_decode_correct_f _ transformer predicate predicate_rest'
          (fun data : A =>
-          encode1 (project data) ThenChecksum calculate_checksum ThenCarryOn encode2 data)
+          encode1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
          (fun (bin : B) (env : CacheDecode) =>
           if checksum_Valid_dec (encoded_A_measure bin) bin
           then
@@ -798,47 +817,261 @@ Proof.
   - eassumption.
   - intros; rewrite !transform_measure.
     simpl; rewrite (H0 _ _ _ _ H9).
-    simpl; rewrite (H1 _ _ _ _ H11).
-    simpl in H10.
-    rewrite H10, length_ByteString_IPChecksum.
+    simpl; rewrite (H1 _ _ _ _ H10).
+    rewrite length_encode_word'.
     erewrite <- H4; eauto; try omega.
-
-    eapply length_ByteString_IPChecksum_ByteAligned; eauto.
-    erewrite H0; eauto.
-  - intros; eapply IPchecksum_Valid_OK'.
-    eapply length_ByteString_IPChecksum_ByteAligned; eauto.
-    erewrite H0; eauto.
-    eapply length_ByteString_IPChecksum_ByteAligned; eauto.
-    erewrite H1; eauto.
   - eassumption.
   - eassumption.
   - eassumption.
-  - intros; eapply decode_IPChecksum_pf; eauto.
-    eapply length_ByteString_IPChecksum_ByteAligned; eauto.
-    erewrite H0; eauto.
+  - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
+    decode_unused_word, decode_unused_word'.
+    rewrite <- !transform_assoc.
+    unfold B in *.
+    rewrite transformer_pop_encode_word'; simpl; eauto.
   - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
     intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     injections.
-    eexists (encode_word' 16 w).
+    eexists w.
     erewrite (transformer_pop_word_inj _ b);
-      [ | eassumption
+    [ | eauto
         | pose proof transformer_pop_encode_word' as H'; simpl in H';
           eapply H'].
-    split; intros; eauto.
-    unfold calculate_checksum.
-    rewrite length_ByteString_IPChecksum.
-    apply length_encode_word'.
-    eapply length_ByteString_IPChecksum_ByteAligned;
-      erewrite H0; eauto.
-  - eassumption.
-  - intros; erewrite IPChecksum_unique; try eassumption.
     reflexivity.
-    eapply length_ByteString_IPChecksum_ByteAligned;
-      erewrite H0; eauto.
-    eapply length_ByteString_IPChecksum_ByteAligned;
-      erewrite H1; eauto.
+  - eassumption.
+  - intros.
+    unfold IPChecksum_Valid in *.
+    rewrite ByteString2ListOfChar_Over.
+    rewrite ByteString2ListOfChar_Over in H12.
+    eauto.
+    simpl.
+    rewrite !transform_padding_eq.
+    apply H0 in H10.
+    pose proof (H2 (project data)).
+    rewrite <- H10 in H13.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
+    unfold encode_checksum.
+    rewrite encode_word'_padding.
+    reflexivity.
+    rewrite !transform_padding_eq.
+    apply H0 in H10.
+    pose proof (H2 (project data)).
+    rewrite <- H10 in H13.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
+    unfold encode_checksum.
+    rewrite encode_word'_padding.
+    reflexivity.
+Qed.
+
+(*Lemma IPchecksum_Valid_OK_dep' :
+  forall (b b' ext : ByteString),
+    IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
+    -> IPChecksum_ByteAligned b'
+    -> IPChecksum_Valid
+         (bin_measure (transform (transform b (IPChecksum b b')) b'))
+         (transform (transform (transform b (IPChecksum b b')) b') ext).
+Proof.
+  simpl; intros.
+  destruct H0; destruct H.
+  unfold IPChecksum, IPChecksum_Valid.
+  pose proof transform_assoc as H'; simpl in H'; rewrite H'.
+  rewrite ByteString2ListOfChar_Over with (ext := ext); try eassumption.
+  rewrite !ByteString_transformer_eq_app; try eassumption.
+  pose proof ByteString2ListOfChar_eq' as H''; simpl in H''.
+  rewrite H''.
+  unfold byteString at 1.
+  unfold byteString at 1.
+  unfold byteString at 1.
+  rewrite onesComplement_commute; eauto.
+  rewrite app_assoc.
+  rewrite H''.
+  unfold byteString at 5.
+  rewrite onesComplement_commute with (b := byteString b); eauto.
+  rewrite H; find_if_inside; try congruence.
+  simpl; rewrite app_nil_r.
+  apply onesComplement_onesComplement.
+  destruct_ex; eexists (x + x0); rewrite app_length; rewrite H1, H2; omega.
+  reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  rewrite !app_length.
+  simpl; destruct_ex; exists (x0 + 1).
+  rewrite H2, even_IPChecksum; omega.
+  reflexivity.
+  find_if_inside.
+  reflexivity.
+  congruence.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite encode_word'_padding; reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite transform_padding_eq; rewrite H.
+  rewrite encode_word'_padding; reflexivity.
+  rewrite H; find_if_inside; try congruence.
+  pose proof transform_id_right as H''; simpl in H''; rewrite H''; eauto.
+  rewrite transform_padding_eq.
+  rewrite transform_padding_eq; rewrite H.
+  rewrite encode_word'_padding.
+  rewrite H0; reflexivity.
+Qed. *)
+
+Lemma compose_IPChecksum_encode_correct_dep
+  : forall (A : Type)
+           (B := ByteString)
+           (trans : Transformer B := transformer)
+           (trans_opt : TransformerUnitOpt trans bool :=
+              ByteString_TransformerUnitOpt)
+           (bextra : B)
+           (bextra_len : nat)
+           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (transform bextra b'))
+           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (transform bextra b'))
+           (A' : Type)
+           (P : CacheDecode -> Prop)
+           (P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop)
+           (decodeChecksum := decode_IPChecksum),
+    cache_inv_Property P
+                       (fun P0 : CacheDecode -> Prop =>
+                          P_inv1 P0 /\
+                          P_inv2 P0 /\
+                          (forall (b : B) (ctx : CacheDecode) (u : ()) (b' : B) (ctx' : CacheDecode),
+                              decodeChecksum b ctx = Some (u, b', ctx') -> P0 ctx -> P0 ctx')) ->
+       forall (project : A -> A') (predicate : A -> Prop)
+         (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
+         (predicate_rest : A' -> B -> Prop)
+         (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
+         (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+         (encoded_A_measure : B -> nat)
+         (len_encode1 : A' -> nat)
+         (len_encode2 : A -> nat)
+         (bextra_len_eq : length_ByteString bextra = bextra_len)
+         (bextra_ByteAligned : NPeano.modulo bextra_len 16 = 0),
+                  (forall a' b ctx ctx',
+             computes_to (encode1 a' ctx) (b, ctx')
+             -> length_ByteString b = len_encode1 a')
+         -> (forall a b ctx ctx',
+               computes_to (encode2 a ctx) (b, ctx')
+               -> length_ByteString b = len_encode2 a)
+         -> (forall a, NPeano.modulo (len_encode1 a) 16 = 0)
+         -> (forall a, NPeano.modulo (len_encode2 a) 16 = 0)
+         -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
+                encode1 (project a) ctx ↝ (b, ctx') ->
+                encode2 a ctx' ↝ (b'', ctx'') ->
+                predicate a ->
+                len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
+       (cache_inv_Property P P_inv1 ->
+        encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
+       (forall data : A, predicate data -> predicate' (project data)) ->
+       (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+     (b' b'' : ByteString) c,
+           encode1 a' ce ↝ (b', ce') ->
+           project a = a' ->
+           predicate a ->
+           encode2 a ce' ↝ (b'', ce'') ->
+           predicate_rest' a b ->
+           {c0 : word 16 |
+            forall ext : ByteString,
+              checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+     (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+   predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+       forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
+       (forall proj : A',
+        predicate' proj ->
+        cache_inv_Property P P_inv2 ->
+        encode_decode_correct_f _ transformer
+          (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
+          (decode2 proj) P) ->
+       encode_decode_correct_f _ transformer predicate predicate_rest'
+         (fun data : A =>
+          encode1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
+         (fun (bin : B) (env : CacheDecode) =>
+          if checksum_Valid_dec (encoded_A_measure bin) bin
+          then
+           `(proj, rest, env') <- decode1 bin env;
+           `(_, rest', env'0) <- decodeChecksum rest env';
+           decode2 proj rest' env'0
+          else None) P.
+Proof.
+  intros.
+  eapply (@composeChecksum_encode_correct
+            A B trans _ 16 checksum_Valid
+            checksum_Valid_dec).
+  - eassumption.
+  - intros; rewrite !transform_measure.
+    simpl; rewrite (H0 _ _ _ _ H9).
+    simpl; rewrite (H1 _ _ _ _ H10).
+    erewrite <- H4.
+    2: eassumption.
+    unfold encode_checksum.
+    rewrite length_encode_word'.
+    try omega.
+    eassumption.
+    eassumption.
+  - eassumption.
+  - eassumption.
+  - eassumption. 
+  - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
+    decode_unused_word, decode_unused_word'.
+    rewrite <- !transform_assoc.
+    unfold B in *.
+    rewrite transformer_pop_encode_word'; simpl; eauto.
+  - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
+    unfold B in *.
+    intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
+      try discriminate; intuition.
+    destruct p.
+    simpl in H10.
+    injection H10; intros.
+    unfold encode_checksum.
+    eexists w.
+    erewrite (transformer_pop_word_inj _ b);
+        [ | eapply Heqo
+      | pose proof (@transformer_pop_encode_word' _ transformer ByteString_TransformerUnitOpt) as H';
+        simpl in H'; eapply H' ].
+    rewrite H12; reflexivity.
+  - eassumption.
+  - intros.
+    unfold checksum_Valid, IPChecksum_Valid in *.
+    rewrite <- bextra_len_eq in *.
+    simpl bin_measure in *; simpl transform in *.
+    rewrite <- transform_ByteString_measure in *.
+    rewrite !ByteString_transform_assoc in *.
+    rewrite ByteString2ListOfChar_Over.
+    rewrite ByteString2ListOfChar_Over in H12.
+    eauto.
+    rewrite !transform_padding_eq.
+    apply H0 in H10.
+    pose proof (H2 (project data)).
+    rewrite <- H10 in H13.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
+    unfold encode_checksum.
+    rewrite encode_word'_padding.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned
+                      _  bextra_ByteAligned)).
+    reflexivity.
+    rewrite !transform_padding_eq.
+    apply H0 in H10.
+    pose proof (H2 (project data)).
+    rewrite <- H10 in H13.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
+    unfold encode_checksum.
+    rewrite encode_word'_padding.
+    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned
+                      _  bextra_ByteAligned)).
+    reflexivity.
 Qed.
 
 Lemma plus_32_mod_16 :
