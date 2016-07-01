@@ -37,8 +37,8 @@ Proof.
   apply Npow2_gt_zero.
 Qed.
 
-Lemma wordToN_zero :
-  forall sz, wordToN (wzero sz) = 0.
+Lemma wordToN_wzero {sz} :
+  wordToN (wzero sz) = 0%N.
 Proof.
   intros; unfold wzero; rewrite natToWordToN.
   - reflexivity.
@@ -49,7 +49,7 @@ Lemma wordToN_extend sz sz' :
   forall (w: word sz), wordToN (combine w (wzero sz')) = wordToN w.
 Proof.
   intros; rewrite (wordToN_combine sz sz').
-  rewrite wordToN_zero; ring.
+  rewrite wordToN_wzero; ring.
 Qed.
 
 Lemma N_le_succ_plus_1 : forall n m : N, (n + 1 <= m)%N <-> (n < m)%N.
@@ -180,14 +180,6 @@ Proof.
   induction sz; eauto.
 Qed.
 
-Lemma wordToN_wzero {sz} :
-  wordToN (wzero sz) = 0%N.
-Proof.
-  unfold wzero; induction sz.
-  - reflexivity.
-  - simpl; rewrite IHsz; reflexivity.
-Qed.
-
 Fixpoint waddmsb {sz} (w: word sz) msb : word (S sz) :=
   match w with
   | WO => WS msb WO
@@ -248,7 +240,7 @@ Proof.
   simpl; apply wmsb_wnot'.
 Qed.
 
-Lemma wordToN_NToWord:
+Lemma wordToN_NToWord_idempotent:
   forall (sz : nat) (p : N),
     p < Npow2 sz ->
     wordToN (NToWord sz p) = p.
@@ -262,7 +254,7 @@ Lemma wordToN_posToWord :
     Npos p < Npow2 sz ->
     wordToN (posToWord sz p) = Npos p.
 Proof.
-  intros; rewrite <- (wordToN_NToWord sz (Npos p)); auto.
+  intros; rewrite <- (wordToN_NToWord_idempotent sz (Npos p)); auto.
 Qed.
 
 Require Import ZArith ZArithRing.
@@ -325,8 +317,10 @@ Hint Rewrite @gt_minus_one_ge_zero : normalizeZ.
 
 Require Import Coq.micromega.Psatz.
 
+Notation OneC_InRange p z := ((- Z.of_N (Npow2 p)) < z < Z.of_N (Npow2 p)).
+
 Lemma normalizeZ_range :
-  forall p z, (- Z.of_N (Npow2 p)) < normalizeZ p z < Z.of_N (Npow2 p).
+  forall p z, OneC_InRange p (normalizeZ p z).
 Proof.
   split;
     repeat match goal with
@@ -733,6 +727,274 @@ Proof.
          | [ H := _ |- _ ] => unfold H in *; clear H
          | _ => eauto using OneC_plus_wnot
          end.
+Qed.
+
+Lemma normalizeZ_noop :
+  forall p z, OneC_InRange p z -> normalizeZ p z = z.
+Proof.
+  intros * (? & ?).
+  unfold normalizeZ; intros;
+    repeat match goal with
+           | _ => progress rewrite ?N2Z.inj_mul, ?N2Z.inj_sub by eauto using Npow2_ge_one
+           | _ => progress (simpl (Z.of_N _); simpl (Npow2 _))
+           end; set (Z.of_N _) in *.
+  rewrite Z.mod_small by lia.
+  ring.
+Qed.
+
+Lemma WS_match_eq_refl {sz sz'} :
+  forall b (w: word sz) (w': word sz') (eql: sz = sz') (eqlS: S sz = S sz'),
+    w = match eql in _ = y return (word y -> word sz) with
+        | eq_refl => fun x: word sz => x
+        end w' ->
+    WS b w = match eqlS in _ = y return (word y -> word (S sz)) with
+             | eq_refl => fun x: word (S sz) => x
+             end (WS b w').
+Proof.
+  intros.
+  destruct eql; subst.
+  rewrite (UIP_nat _ _ eqlS eq_refl).
+  reflexivity.
+Qed.
+
+Lemma wmsb_combine {sz} :
+  forall (w : word (S sz)) b,
+  exists w' : word sz,
+    w = match eq_sym (NPeano.Nat.add_1_r sz) in (_ = y) return (word y -> word (S sz)) with
+        | eq_refl => fun w' => w'
+        end (w' +^+ WS (wmsb w b) WO).
+Proof.
+  induction sz; intros;
+    destruct (shatter_word_S w) as (b' & [ w' ? ]); subst.
+  - exists WO; pose proof (shatter_word_0 w'); subst; simpl.
+    rewrite (UIP_nat _ _ (NPeano.Nat.add_1_r 0) eq_refl); reflexivity.
+  - specialize (IHsz w' b'); destruct IHsz as (w'' & Heq).
+    simpl.
+    exists (WS b' w'').
+    change (WS b' w'' +^+ WS (wmsb w' b') WO) with (WS b' (w'' +^+ WS (wmsb w' b') WO)).
+    eapply WS_match_eq_refl.
+    rewrite Heq at 1.
+    reflexivity.
+Qed.
+
+Lemma normalizeZ_OneCToZ {sz} :
+  forall w: word (S sz), normalizeZ sz (OneCToZ w) = (OneCToZ w).
+Proof.
+  intros.
+  apply normalizeZ_noop.
+  unfold OneCToZ.
+  pose proof (Npow2_ge_one sz).
+  destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn;
+    repeat match goal with
+           | _ => lia
+           | [ H: wordToN (wnot ?w) = _, Heqb: wmsb ?w _ = _ |- _ ] =>
+             apply (f_equal negb) in Heqb; rewrite <- (wmsb_wnot' (S sz) w true) in Heqb; simpl in Heqb
+           | [ H: wmsb ?w ?b = _ |- _ ] =>
+             let w' := fresh in
+             let Heqw := fresh in
+             destruct (wmsb_combine w b) as (w' & Heqw);
+               rewrite Heqw in Heqn;
+               rewrite <- (NPeano.Nat.add_1_r sz) in *;
+               simpl in Heqn;
+               clear Heqw;
+               rewrite wordToN_combine in Heqn;
+               pose proof (wordToN_bound w');
+               simpl in Heqn; rewrite Heqb in Heqn; simpl in Heqn
+           end.
+Qed.
+
+Lemma NToWord_zero {sz} :
+  NToWord sz 0 = wzero sz.
+Proof.
+  rewrite NToWord_nat; simpl; reflexivity.
+Qed.
+
+Lemma wordToN_wzero' {sz} :
+  forall w: word sz,
+    wordToN w = 0%N ->
+    w = wzero _.
+Proof.
+  intros.
+  apply (f_equal (@NToWord sz)) in H.
+  rewrite NToWord_wordToN, NToWord_zero in H.
+  assumption.
+Qed.
+
+Lemma wordToN_NToWord :
+  forall sz w, exists k, (wordToN (NToWord sz w) = w - k * Npow2 sz /\ k * Npow2 sz <= w)%N.
+Proof.
+  intros.
+  destruct (wordToNat_natToWord sz (N.to_nat w)) as [ w' (Heq & side_condition) ].
+  exists (N.of_nat w').
+  rewrite NToWord_nat.
+  rewrite wordToN_nat.
+  split.
+  - apply N2Nat.inj.
+    rewrite Nat2N.id, N2Nat.inj_sub, N2Nat.inj_mul, Nat2N.id, Npow2_nat.
+    assumption.
+  - unfold N.le. rewrite N2Nat.inj_compare.
+    rewrite <- nat_compare_le.
+    rewrite N2Nat.inj_mul, Nat2N.id, Npow2_nat.
+    assumption.
+Qed.
+
+Lemma waddmsb_NToWord {sz} :
+  forall n,
+    (n < Npow2 sz)%N ->
+    waddmsb (NToWord sz n) false = (NToWord (S sz) n).
+Proof.
+  intros.
+  apply wordToN_inj.
+  rewrite wordToN_waddmsb; ring_simplify.
+  rewrite !wordToN_NToWord_idempotent; simpl; lia.
+Qed.
+
+Lemma wordToN_bound_wmsb_false:
+  forall (sz : nat) (w : word (S sz)) b,
+    wmsb w b = false ->
+    (wordToN w < Npow2 sz)%N.
+Proof.
+  induction sz.
+  - intros; shatter_word w; simpl in *; subst; reflexivity.
+  - intros * Heq; destruct (shatter_word_S w) as (b' & [ w' ? ]); subst; simpl in *.
+    specialize (IHsz w' b' Heq).
+    destruct b'; lia.
+Qed.
+
+Lemma ZToOneC_OneCToZ:
+  forall (sz : nat) (w : word sz),
+    w <> wzero _ ->
+    ZToOneC (OneCToZ w) = w.
+Proof.
+  unfold ZToOneC.
+  destruct sz; intros.
+  - rewrite shatter_word_0; reflexivity.
+  - rewrite normalizeZ_OneCToZ.
+    unfold OneCToZ.
+    destruct (wmsb _ _) eqn:Heqb; destruct (wordToN _) eqn:Heqn.
+    + apply wordToN_wzero' in Heqn.
+      apply wnot_inj.
+      rewrite wnot_wones_wzero.
+      auto.
+    + apply wnot_inj; rewrite wnot_involutive.
+      change (posToWord sz p) with (NToWord sz (N.pos p)).
+      rewrite <- Heqn, waddmsb_NToWord, NToWord_wordToN.
+      * reflexivity.
+      * eapply wordToN_bound_wmsb_false.
+        rewrite wmsb_wnot, Heqb; reflexivity.
+    + apply wordToN_wzero' in Heqn.
+      congruence.
+    + change (posToWord sz p) with (NToWord sz (N.pos p)).
+      rewrite <- Heqn.
+      rewrite waddmsb_NToWord, NToWord_wordToN.
+      * reflexivity.
+      * eapply wordToN_bound_wmsb_false; eassumption.
+Qed.
+
+Lemma OneC_plus_wones {sz} :
+  forall w,
+    w <> (wzero sz) ->
+    OneC_plus (wones sz) w = w.
+Proof.
+  unfold OneC_plus; intros.
+  pose proof (@wones_not_wzero sz).
+  destruct (weqdec (wones _) _), (weqdec w (wzero sz));
+    try congruence.
+  rewrite OneCToZ_wones; simpl.
+  rewrite ZToOneC_OneCToZ; auto.
+Qed.
+
+Lemma split1_wzero:
+  forall sz sz' : nat, split1 sz sz' (wzero (sz + sz')) = wzero sz.
+Proof.
+  intros; rewrite <- !wzero'_def.
+  induction sz.
+  - reflexivity.
+  - simpl; f_equal; congruence.
+Qed.
+
+Lemma split2_wzero:
+  forall sz sz' : nat, split2 sz sz' (wzero (sz + sz')) = wzero sz'.
+Proof.
+  intros; rewrite <- !wzero'_def.
+  induction sz.
+  - reflexivity.
+  - simpl; f_equal; congruence.
+Qed.
+
+Lemma wzero_combine {sz sz'} :
+  forall (w0: word sz) (w1: word sz'),
+    combine w0 w1 = wzero _ ->
+    w0 = wzero _ /\ w1 = wzero _.
+Proof.
+  intros * H.
+  pose proof (f_equal (@split1 sz sz') H).
+  pose proof (f_equal (@split2 sz sz') H).
+  rewrite split1_combine, split1_wzero in H0.
+  rewrite split2_combine, split2_wzero in H1.
+  intuition.
+Qed.
+
+Lemma OneC_plus_wones_wzero {sz} :
+  wones sz ^1+ wzero sz = wones sz.
+Proof.
+  unfold OneC_plus.
+  pose proof (@wones_not_wzero sz);
+    repeat match goal with
+           | [  |- context[weqdec ?a ?b] ] => destruct (weqdec a b)
+           end; congruence.
+Qed.
+
+Lemma combine_inj {sz sz'}:
+  forall w00 w01 w10 w11,
+    @combine sz w01 sz' w00 = combine w11 w10 ->
+    w00 = w10 /\ w01 = w11.
+Proof.
+  intros * Heq; split;
+    [ apply (f_equal (@split2 sz sz')) in Heq
+    | apply (f_equal (@split1 sz sz')) in Heq];
+    rewrite ?split1_combine, ?split2_combine in *;
+    assumption.
+Qed.
+
+Lemma add_bytes_into_checksum_inj_l:
+  forall (y00 y01 y10 y11 : word 8) chk,
+    (y00 <> wzero _ \/ y01 <> wzero _) ->
+    (y10 <> wzero _ \/ y11 <> wzero _) ->
+    add_bytes_into_checksum y00 y01 chk =
+    add_bytes_into_checksum y10 y11 chk ->
+    y00 = y10 /\ y01 = y11.
+Proof.
+  unfold add_bytes_into_checksum; intros * nonz0 nonz1 H.
+  apply (f_equal (fun x => (wnot chk) ^1+ x)) in H.
+  rewrite !(OneC_plus_assoc (wnot chk)), !(OneC_plus_comm (wnot chk)), !OneC_plus_wnot in H.
+  repeat lazymatch goal with
+         | [ H: context[wones _ ^1+ ?w] |- _ ] =>
+           let heq := fresh "heq" in
+           let hneq := fresh "hneq" in
+           destruct (weqdec w (wzero _)) as [ heq | hneq ];
+             [ rewrite heq in H; setoid_rewrite OneC_plus_wones_wzero in H |
+               setoid_rewrite (OneC_plus_wones w hneq) in H ]
+         | [ H: _ +^+ _ = wzero _ |- _ ] => apply wzero_combine in H; destruct H; subst
+         end;
+    try solve [split; reflexivity];
+    try solve [match goal with
+               | [ H: _ \/ _ |- _ ] => destruct H; try congruence
+               end].
+  apply combine_inj. eassumption.
+Qed.
+
+Lemma checksum'_somewhat_injective :
+  forall x y0 y1 z,
+    fst y0 <> wzero 8 \/ snd y0 <> wzero 8 ->
+    fst y1 <> wzero 8 \/ snd y1 <> wzero 8 ->
+    checksum' (x ++ y0 :: z) = checksum' (x ++ y1 :: z) ->
+    y0 = y1.
+Proof.
+  intros * ? ? H.
+  rewrite !(checksum'_app _ (_ :: _)), <- !app_comm_cons in H.
+  simpl in H; apply add_bytes_into_checksum_inj_l in H; try assumption.
+  destruct y0, y1, H; simpl in *; congruence.
 Qed.
 
 Lemma wplus_three {sz} :
