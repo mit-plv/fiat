@@ -355,6 +355,8 @@ Proof.
   exact (@weq _).
 Defined.
 
+(* This is the decoder function that we should extract. *)
+
 Definition IPv4_decoder_impl :=
   Eval simpl in (fst (projT1 EthernetHeader_decoder)).
 
