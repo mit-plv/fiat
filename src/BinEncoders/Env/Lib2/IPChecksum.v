@@ -320,6 +320,20 @@ Proof.
   rewrite NPeano.Nat.add_mod; eauto.
 Qed.
 
+Lemma padding_eq_mod_8
+  : forall b,
+    padding b = NPeano.modulo (length_ByteString b) 8.
+Proof.
+  intros.
+  rewrite (ByteString_into_list_eq b).
+  unfold length_ByteString.
+  rewrite !padding_list_into_ByteString.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_r; eauto.
+  rewrite (fun c => proj2 (NPeano.Nat.mod_divides (8 * _) 8 c));
+    eauto.
+  rewrite <- plus_n_O, NPeano.Nat.mod_mod; eauto.
+Qed.
+
 Lemma add_padding_OK
   : forall b,
     padding (transform b
@@ -772,8 +786,8 @@ Lemma compose_IPChecksum_encode_correct
          -> (forall a b ctx ctx',
                computes_to (encode2 a ctx) (b, ctx')
                -> length_ByteString b = len_encode2 a)
-         -> (forall a, NPeano.modulo (len_encode1 a) 16 = 0)
-         -> (forall a, NPeano.modulo (len_encode2 a) 16 = 0)
+         -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+         -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
          -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
                 encode1 (project a) ctx ↝ (b, ctx') ->
                 encode2 a ctx' ↝ (b'', ctx'') ->
@@ -850,23 +864,23 @@ Proof.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    rewrite padding_eq_mod_8, H13.
     pose proof (H3 data).
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
     unfold encode_checksum.
     rewrite encode_word'_padding.
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite padding_eq_mod_8, H14.
     reflexivity.
     rewrite !transform_padding_eq.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
+    rewrite padding_eq_mod_8, H13.
     pose proof (H3 data).
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
     unfold encode_checksum.
     rewrite encode_word'_padding.
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite padding_eq_mod_8, H14.
     reflexivity.
 Qed.
 
@@ -951,15 +965,15 @@ Lemma compose_IPChecksum_encode_correct_dep
          (len_encode1 : A' -> nat)
          (len_encode2 : A -> nat)
          (bextra_len_eq : length_ByteString bextra = bextra_len)
-         (bextra_ByteAligned : NPeano.modulo bextra_len 16 = 0),
+         (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
                   (forall a' b ctx ctx',
              computes_to (encode1 a' ctx) (b, ctx')
              -> length_ByteString b = len_encode1 a')
          -> (forall a b ctx ctx',
                computes_to (encode2 a ctx) (b, ctx')
                -> length_ByteString b = len_encode2 a)
-         -> (forall a, NPeano.modulo (len_encode1 a) 16 = 0)
-         -> (forall a, NPeano.modulo (len_encode2 a) 16 = 0)
+         -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+         -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
          -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
                 encode1 (project a) ctx ↝ (b, ctx') ->
                 encode2 a ctx' ↝ (b'', ctx'') ->
@@ -1016,7 +1030,7 @@ Proof.
     eassumption.
   - eassumption.
   - eassumption.
-  - eassumption. 
+  - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
     decode_unused_word, decode_unused_word'.
     rewrite <- !transform_assoc.
@@ -1050,58 +1064,56 @@ Proof.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
-    pose proof (H3 data).
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
     unfold encode_checksum.
     rewrite encode_word'_padding.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned
-                      _  bextra_ByteAligned)).
+    rewrite !padding_eq_mod_8.
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite H13, H14, bextra_ByteAligned.
     reflexivity.
     rewrite !transform_padding_eq.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H13)).
-    pose proof (H3 data).
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned _ H14)).
     unfold encode_checksum.
     rewrite encode_word'_padding.
-    rewrite (proj1 (length_ByteString_IPChecksum_ByteAligned
-                      _  bextra_ByteAligned)).
+    rewrite !padding_eq_mod_8.
+    pose proof (H3 data).
+    rewrite <- (H1 _ _ _ _ H11) in H14.
+    rewrite H13, H14, bextra_ByteAligned.
     reflexivity.
 Qed.
 
-Lemma plus_32_mod_16 :
-  forall n, NPeano.modulo (32 + n) 16 = NPeano.modulo n 16.
+Lemma plus_32_mod_8 :
+  forall n, NPeano.modulo (32 + n) 8 = NPeano.modulo n 8.
 Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
 Qed.
 
-Lemma mult_16_mod16 :
-  forall n n', NPeano.modulo (n' * 16 + n) 16 = NPeano.modulo n 16.
+Lemma mult_16_mod8 :
+  forall n n', NPeano.modulo (n' * 16 + n) 8 = NPeano.modulo n 8.
 Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
-  rewrite NPeano.Nat.mod_mul; eauto.
+  destruct (NPeano.Nat.mod_divides (n' * 16) 8); eauto.
+  rewrite H0; eauto.
+  eexists (2 * n'); omega.
 Qed.
 
-Lemma mult_32_mod16 :
-  forall n n', NPeano.modulo (n' * 32 + n) 16 = NPeano.modulo n 16.
+Lemma mult_32_mod8 :
+  forall n n', NPeano.modulo (n' * 32 + n) 8 = NPeano.modulo n 8.
 Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
-  pose proof (NPeano.Nat.mod_mul (2 * n') 16) as H'';
+  pose proof (NPeano.Nat.mod_mul (4 * n') 8) as H'';
     rewrite <- Mult.mult_assoc, Mult.mult_comm, <- Mult.mult_assoc in H''.
   unfold mult at 2 in H''; simpl plus in H''.
   simpl rewrite H''; eauto.
 Qed.
 
-Ltac solve_mod_16 :=
+Ltac solve_mod_8 :=
   intros; cbv beta; simpl transform_id;
     repeat first [
-             rewrite plus_32_mod_16
+             rewrite plus_32_mod_8
            | rewrite length_ByteString_ByteString_id
-           | rewrite mult_32_mod16
-           | rewrite mult_16_mod16
+           | rewrite mult_32_mod8
+           | rewrite mult_16_mod8
            | reflexivity ].
