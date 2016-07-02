@@ -177,12 +177,118 @@ Qed.
 
 Transparent transformer_pop_word.
 
-Lemma encode_word_hi_low :
+Lemma encode_word_S :
+  forall n w, encode_word' (S n ) w =
+              transform (encode_word' _ (WS (whd w) WO))
+                        (encode_word' _ (wtl w)).
+Proof.
+  intros; rewrite (shatter_word w); simpl.
+  induction n; simpl;
+    rewrite (shatter_word (wtl w)).
+  reflexivity.
+  simpl.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma encode_word_WO :
+  forall w, encode_word' 0 w = transform_id.
+Proof.
+  intros; rewrite (shatter_word w); simpl; reflexivity.
+Qed.
+
+Lemma encode_char :
+  forall n w, encode_word' (8 + n) w =
+            transform {| front := WO;
+               paddingOK := Lt.lt_0_Sn _;
+               byteString := WS (whd w)
+                             (WS (whd (wtl w))
+                             (WS (whd (wtl (wtl w)))
+                             (WS (whd (wtl (wtl (wtl w))))
+                             (WS (whd (wtl (wtl (wtl (wtl w)))))
+                             (WS (whd (wtl (wtl (wtl (wtl (wtl w))))))
+                             (WS (whd (wtl (wtl (wtl (wtl (wtl (wtl w)))))))
+                             (WS (whd (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))) WO))))))) :: nil |} (encode_word' _ (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))).
+  simpl; intros.
+  rewrite (encode_word_S (7 + n)).
+  rewrite (encode_word_S (6 + n)).
+  rewrite (encode_word_S (5 + n)).
+  rewrite (encode_word_S (4 + n)).
+  rewrite (encode_word_S (3 + n)).
+  rewrite (encode_word_S (2 + n)).
+  rewrite (encode_word_S (1 + n)).
+  rewrite (encode_word_S (n)).
+  rewrite !transform_assoc.
+  simpl; f_equal.
+  unfold ByteString_push, ByteString_id; simpl.
+  simpl.
+  unfold ByteString_transformer at 7. simpl.
+  unfold ByteString_transformer at 6. simpl.
+  unfold ByteString_transformer at 5. simpl.
+  unfold ByteString_transformer at 4. simpl.
+  unfold ByteString_transformer at 3. simpl.
+  unfold ByteString_transformer at 2. simpl.
+  unfold ByteString_transformer at 1. simpl.
+  unfold ByteString_transformer. simpl.
+  unfold ByteString_push at 7; simpl.
+  unfold ByteString_push at 6; simpl.
+  unfold ByteString_push at 5; simpl.
+  unfold ByteString_push at 4; simpl.
+  unfold ByteString_push at 3; simpl.
+  unfold ByteString_push at 2; simpl.
+  unfold ByteString_push at 1; simpl.
+  unfold ByteString_push; simpl.
+  f_equal; apply le_uniqueness_proof.
+Qed.
+
+Lemma ByteString_push_WO :
+  forall bs,
+    ByteString_push_word WO bs = bs.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma encode_word_hi_lo :
   forall w, encode_word' 16 w =
             {| front := WO;
                paddingOK := Lt.lt_0_Sn _;
-               byteString := [hi8 w; lo8 w] |}.
-Admitted.
+               byteString := [lo8 w; hi8 w] |}.
+Proof.
+  intros; rewrite (encode_char 8).
+  intros; rewrite (encode_char 0).
+  simpl.
+  unfold ByteString_transformer.
+  rewrite !ByteString_push_char_id_right.
+  rewrite encode_word_WO.
+  simpl.
+  f_equal.
+  apply le_uniqueness_proof.
+  simpl.
+  unfold hi8, lo8.
+  unfold split2.
+  unfold split1.
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))))))))))).
+  f_equal.
+  rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))))))))))).
+  f_equal.
+  rewrite encode_word_WO; reflexivity.
+  rewrite encode_word_WO; reflexivity.
+Qed.
 
 Lemma padding_list_into_ByteString :
   forall l,
@@ -239,17 +345,17 @@ Proof.
   omega.
 Qed.
 
-Lemma onesComplement_onesComplement :
+(*Lemma onesComplement_onesComplement :
   forall b,
     (exists n, length b = 2 * n)
     -> onesComplement (b ++ (byteString (encode_word' 16 (wnot (onesComplement b))))) = wones 16.
 Proof.
   intros; rewrite onesComplement_commute; eauto.
   unfold onesComplement; intros.
-  rewrite encode_word_hi_low.
+  rewrite encode_word_hi_lo.
   apply checksum_correct.
   rewrite even_IPChecksum; exists 1; reflexivity.
-Qed.
+Qed. *)
 
 Definition IPChecksum_Valid (n : nat) (b : ByteString) : Prop :=
   onesComplement (ByteString2ListOfChar n b) = wones 16.
@@ -511,7 +617,7 @@ Proof.
   rewrite Mult.mult_comm, NPeano.Nat.mod_mul; eauto.
 Qed.
 
-Lemma IPchecksum_Valid_OK' :
+(*Lemma IPchecksum_Valid_OK' :
   forall (b b' ext : ByteString),
     IPChecksum_ByteAligned b  (* Should be able to elide this assumption. *)
     -> IPChecksum_ByteAligned b'
@@ -561,7 +667,7 @@ Proof.
   rewrite transform_padding_eq; rewrite H.
   rewrite encode_word'_padding.
   rewrite H0; reflexivity.
-Qed.
+Qed. *)
 
 Lemma normalize_encoder_term {A}
   : forall (encoder encoder' : A -> CacheEncode -> Comp (_ * CacheEncode))

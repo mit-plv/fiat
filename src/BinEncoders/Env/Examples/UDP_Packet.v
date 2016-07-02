@@ -324,20 +324,3 @@ Definition UDP_Packet_decoder_impl :=
   Eval simpl in (fst (projT1 UDP_Packet_decoder')).
 
 Print UDP_Packet_decoder_impl.
-
-
-Lemma UDP_Packet_Headiner_Len_Bound
-  : forall (a : UDP_Packet) (a_OK : UDP_Packet_OK a),
-    BinNat.N.lt (BinNat.N.of_nat (UDP_Packet_Header_Len a)) (Npow2 4).
-Proof.
-  unfold IPv4_Packet_Header_Len.
-  intros; unfold IPv4_Packet_OK in a_OK.
-  destruct a_OK.
-  rewrite <- BinNat.N.compare_lt_iff.
-  rewrite Nnat.N2Nat.inj_compare.
-  rewrite Nnat.Nat2N.id.
-  rewrite <- Compare_dec.nat_compare_lt.
-  simpl.
-  unfold BinPos.Pos.to_nat; simpl.
-  auto with arith.
-Qed.
