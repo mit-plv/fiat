@@ -194,8 +194,8 @@ install-examples: T = $(EXAMPLES_VO)
 install-binencoders: T = $(BINENCODERS_VO)
 
 install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
-	$(VECHO) "MAKE -f Makefile.coq INSTALL"
-	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
+	$(SHOW)'MAKE -f Makefile.coq INSTALL'
+	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
 	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
@@ -237,8 +237,8 @@ endif
 
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
-	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
-	$(Q)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
+	$(SHOW)'COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@'
+	$(HIDE)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 
