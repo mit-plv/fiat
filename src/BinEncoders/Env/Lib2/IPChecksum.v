@@ -18,6 +18,7 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
         Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Lib2.Option
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.NoCache
         Fiat.BinEncoders.Env.Lib2.WordOpt
@@ -711,6 +712,19 @@ Proof.
   erewrite length_encode_word', H0, H1; eauto; omega.
 Qed.
 
+Lemma length_ByteString_composeIf :
+  forall encode1 encode2 b (ctx ctx' : CacheEncode) n P,
+    computes_to (composeIf _ _ _ P encode1 encode2 ctx) (b, ctx')
+    -> (forall ctx b ctx', computes_to (encode1 ctx) (b, ctx')
+                           -> length_ByteString b = n)
+    -> (forall ctx b ctx', computes_to (encode2 ctx) (b, ctx')
+                           -> length_ByteString b = n)
+    -> length_ByteString b = n.
+Proof.
+  unfold composeIf, Bind2; intros; computes_to_inv; injections.
+  destruct v; simpl in *; eauto.
+Qed.
+
 Transparent pow2.
 Arguments pow2 : simpl never.
 
@@ -833,14 +847,34 @@ Qed.
 Definition length_ByteString_ByteString_id
   : length_ByteString ByteString_id = 0 := eq_refl.
 
+Lemma length_ByteString_encode_option {A}
+  : forall encode_Some encode_None a_opt
+           (b : ByteString) (ctx ctx' : CacheEncode) n,
+    (forall (a : A) (b : ByteString) (ctx ctx' : CacheEncode),
+        computes_to (encode_Some a ctx) (b, ctx')
+        -> length_ByteString b = n)
+    -> (forall (b : ByteString) (ctx ctx' : CacheEncode),
+           computes_to (encode_None () ctx) (b, ctx')
+           -> length_ByteString b = n)
+    -> encode_option_Spec encode_Some encode_None a_opt ctx ↝ (b, ctx')
+    -> length_ByteString b = n.
+Proof.
+  destruct a_opt; simpl; intros; computes_to_inv.
+  - eapply H; eauto.
+  - eauto.
+Qed.
+
 Ltac calculate_length_ByteString :=
   intros;
   match goal with
   | H : computes_to _ _ |- _ =>
     first [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ _ _ H);
             try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+          | eapply (length_ByteString_composeIf _ _ _ _ _ _ _ H);
+            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
           | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
             try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+          | eapply (fun H' H'' => length_ByteString_encode_option _ _ _ _ _ _ _ H' H'' H)
           | eapply (length_ByteString_unused_word _ _ _ _ H)
           | eapply (length_ByteString_bool _ _ _ _ H)
           | eapply (length_ByteString_word _ _ _ _ _ H)
@@ -1196,7 +1230,7 @@ Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
 Qed.
 
-Lemma mult_16_mod8 :
+Lemma mult_16_mod_8 :
   forall n n', NPeano.modulo (n' * 16 + n) 8 = NPeano.modulo n 8.
 Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
@@ -1205,7 +1239,7 @@ Proof.
   eexists (2 * n'); omega.
 Qed.
 
-Lemma mult_32_mod8 :
+Lemma mult_32_mod_8 :
   forall n n', NPeano.modulo (n' * 32 + n) 8 = NPeano.modulo n 8.
 Proof.
   intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
@@ -1215,11 +1249,30 @@ Proof.
   simpl rewrite H''; eauto.
 Qed.
 
+Lemma plus_16_mod_8 :
+  forall n, NPeano.modulo (16 + n) 8 = NPeano.modulo n 8.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+Qed.
+
+Lemma mult_8_mod_8 :
+  forall n n', NPeano.modulo (n' * 8 + n) 8 = NPeano.modulo n 8.
+Proof.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_l; eauto.
+  rewrite NPeano.Nat.mod_mul; eauto.
+Qed.
+
+
+
 Ltac solve_mod_8 :=
   intros; cbv beta; simpl transform_id;
     repeat first [
              rewrite plus_32_mod_8
+           | rewrite plus_16_mod_8
            | rewrite length_ByteString_ByteString_id
-           | rewrite mult_32_mod8
-           | rewrite mult_16_mod8
+           | rewrite (NPeano.Nat.mod_mul _ 8 (NPeano.Nat.neq_succ_0 7))
+           | rewrite mult_32_mod_8
+           | rewrite mult_16_mod_8
+           | rewrite mult_8_mod_8
+           | rewrite <- plus_n_O
            | reflexivity ].

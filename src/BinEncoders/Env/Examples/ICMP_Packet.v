@@ -25,7 +25,8 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.NatOpt
         Fiat.BinEncoders.Env.Lib2.Vector
         Fiat.BinEncoders.Env.Lib2.EnumOpt
-        Fiat.BinEncoders.Env.Lib2.SumTypeOpt.
+        Fiat.BinEncoders.Env.Lib2.SumTypeOpt
+        Fiat.BinEncoders.Env.Lib2.IPChecksum.
 
 Require Import Bedrock.Word.
 
@@ -108,8 +109,6 @@ Definition ICMP_Message_Codes :=
 Definition ICMP_Message :=
   @Tuple <"Code" :: char, "Message" :: SumType ICMP_Message_Types>.
 
-Variable IPChecksum : nat -> ByteString -> ByteString.
-
 Definition transformer : Transformer ByteString := ByteStringTransformer.
 
 Definition encode_ICMP_Echo_Spec
@@ -145,7 +144,7 @@ Definition encode_ICMP_RouterAdvertisement_Spec
   ThenC encode_list_Spec (fun p => encode_word_Spec (fst p) ThenC encode_word_Spec (snd p)) icmp!"RoutersPlusPreferences"
   DoneC.
 
-Definition encode_ICMP_RouterSolicitation_Spec 
+Definition encode_ICMP_RouterSolicitation_Spec
            (icmp : unit) :=
   encode_word_Spec (wzero 32)
   DoneC.
@@ -179,12 +178,10 @@ Definition encode_ICMP_AddressMask_Spec
   ThenC encode_word_Spec icmp!"SubnetMask".
 
 Definition encode_ICMP_Message_Spec
-           (tcpLength : nat)
-           (* The packet length is provided by the IP header for checksum calculation.*)
            (icmp : ICMP_Message) :=
           encode_enum_Spec ICMP_Message_Codes (SumType_index ICMP_Message_Types icmp!"Message")
     ThenC encode_word_Spec (icmp!"Code")
-    ThenChecksum (IPChecksum tcpLength)
+    ThenChecksum IPChecksum_Valid OfSize 16
     ThenCarryOn
     encode_SumType_Spec ICMP_Message_Types
                         (icons encode_ICMP_Echo_Spec

@@ -98,12 +98,6 @@ Proof.
   intros; omega.
 Qed.
 
-Lemma mult_8_mod_8 :
-  forall n, NPeano.modulo (n * 8) 8 = 0.
-Proof.
-  intros; eapply NPeano.Nat.mod_mul; eauto.
-Qed.
-
 Lemma lt_minus_minus :
   forall n' n m o,
     lt m o
@@ -170,7 +164,8 @@ Proof.
   repeat calculate_length_ByteString.
   solve_mod_8.
   solve_mod_8.
-  rewrite <- plus_n_O, mult_8_mod_8; eauto.
+
+
   { (* Grossest Proof By Far. *)
     intros; simpl transform_id; rewrite length_ByteString_ByteString_id.
     instantiate (1 := UDP_Packet_encoded_measure).
