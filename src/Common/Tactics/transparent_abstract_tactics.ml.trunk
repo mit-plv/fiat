@@ -4,7 +4,7 @@ module TRANSPARENT_ABSTRACT =
     open Context
     open Termops
     open Evarutil
-    open Errors
+    open CErrors
     open Decl_kinds
     open Pfedit
     open Names
@@ -188,7 +188,7 @@ module TRANSPARENT_ABSTRACT =
               (* which is an error irrelevant to the proof system (in fact it *)
               (* means that [e] comes from [tac] failing to yield enough *)
               (* success). Hence it reraises [e]. *)
-              let (_, info) = Errors.push src in
+              let (_, info) = CErrors.push src in
               Exninfo.iraise (e, info)
           in
           (* Create a global definition for const *)
