@@ -328,7 +328,15 @@ Proof.
   omega.
 Qed.
 
-Hint Unfold modulo Nat.modulo : modulo_db.
+(* kludgy 8.4/8.5 compatibility hack *)
+Module Import Nat_NPeano.
+  Import Nat NPeano.
+  Hint Unfold modulo : modulo_db.
+End Nat_NPeano.
+Module Import NPeano_Nat.
+  Import NPeano Nat.
+  Hint Unfold modulo : modulo_db.
+End NPeano_Nat.
 
 Import Nat.
 
