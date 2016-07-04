@@ -64,14 +64,13 @@ Tactic Notation "ADT" "induction" ident(r) :=
     let H := fresh "H" in
     let H0 := fresh "H0" in
     let IHfromADT := fresh "IHfromADT" in
-    let offset :=
-        match goal with
-        | [ |- forall r : Rep _, fromADT _ r -> _ ] => 1
-        | [ |- forall r : Rep _, _ -> fromADT _ r -> _ ] => 2
-        | [ |- forall r : Rep _, _ -> _ -> fromADT _ r -> _ ] => 3
-        | [ |- forall r : Rep _, _ -> _ -> _ -> fromADT _ r -> _ ] => 4
-        end in
-    induction offset as [cidx r H|midx r r' H IHfromADT H0];
+    let induction_tac := (fun offset => induction offset as [cidx r H|midx r r' H IHfromADT H0]) in
+    match goal with
+    | [ |- forall r : Rep _, fromADT _ r -> _ ] => induction_tac 1
+    | [ |- forall r : Rep _, _ -> fromADT _ r -> _ ] => induction_tac 2
+    | [ |- forall r : Rep _, _ -> _ -> fromADT _ r -> _ ] => induction_tac 3
+    | [ |- forall r : Rep _, _ -> _ -> _ -> fromADT _ r -> _ ] => induction_tac 4
+    end;
     [ revert r H | revert r r' H H0 IHfromADT ];
     match goal with
     | [ cidx : ConstructorIndex _ |- _ ] => pattern cidx
