@@ -327,7 +327,7 @@ Proof.
   simpl.
   apply_compose.
   intros; eapply option_encode_correct.
-  exact H1.
+  eexact H1.
   eapply Word_decode_correct.
   eapply unused_word_decode_correct.
   simpl; intros; split_and.
