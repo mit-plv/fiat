@@ -167,7 +167,7 @@ Proof.
 
 
   { (* Grossest Proof By Far. *)
-    intros; simpl transform_id; rewrite length_ByteString_ByteString_id.
+    intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
     instantiate (1 := UDP_Packet_encoded_measure).
     unfold UDP_Packet_encoded_measure.
     rewrite <- !transform_assoc.
