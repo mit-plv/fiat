@@ -361,3 +361,51 @@ Definition IPv4_decoder_impl :=
   Eval simpl in (fst (projT1 EthernetHeader_decoder)).
 
 Print IPv4_decoder_impl.
+
+Definition pkt' : list char :=
+  [WO~1~0~1~0~0~0~1~0;
+   WO~0~0~0~0~0~0~0~0;
+
+   WO~0~0~0~0~0~0~0~0;
+   WO~0~0~0~0~0~0~0~0;
+
+   WO~0~0~0~0~0~0~0~0;
+   WO~0~0~0~0~0~0~0~0;
+
+   WO~0~0~0~0~0~0~0~0;
+   WO~0~0~0~0~0~0~0~0;
+
+   WO~0~1~1~0~0~1~0~0;
+   WO~1~0~0~0~0~0~0~0;
+
+   WO~0~0~0~0~0~0~0~0;
+   WO~0~0~0~0~0~0~0~0;
+
+   WO~0~0~0~0~0~0~1~1;
+   WO~0~0~0~1~0~1~0~1;
+
+   WO~0~1~1~1~1~0~1~1;
+   WO~0~1~0~1~0~0~0~0;
+
+   WO~0~0~0~0~0~0~1~1;
+   WO~0~0~0~1~0~1~0~1;
+
+   WO~0~1~1~1~1~0~1~1;
+   WO~1~0~0~0~0~0~0~0]%list.
+
+Definition pkt : list char :=
+    Eval compute in map (@natToWord 8) [69;0;0;0;0;0;0;0;38;1;87;160;192;168;222;10;192;168;222;1].
+
+Lemma zero_lt_eight : (lt 0 8)%nat.
+  Proof. omega. Qed.
+
+  Definition fiat_ipv4_decode (buffer: list char) : option (IPv4_Packet * list char) :=
+    let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
+    match IPv4_decoder_impl bs () with
+    | Some (pkt, bs, _) => Some (pkt, bs.(byteString))
+    | None => None
+    end.
+
+  Compute (fiat_ipv4_decode pkt).
+
+  Compute (InternetChecksum.checksum pkt').
