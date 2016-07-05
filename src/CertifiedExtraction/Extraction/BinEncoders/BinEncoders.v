@@ -110,7 +110,7 @@ Ltac _compile_compose :=
               intros
             end).
 
-Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db.
+(* Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db. *)
 
 Definition Counted {A} (x: A) := x.
 

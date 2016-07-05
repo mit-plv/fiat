@@ -40,11 +40,11 @@ Ltac compile_encoder_step :=
   | _ => _encode_IList_compile
   (* | _ => _compile_CallWrite *)
   | _ => _compile_Read
-  | _ => _compile_ReadConstantN
-  | _ => _compile_CallAdd16
+  (* | _ => _compile_ReadConstantN *)
+  (* | _ => _compile_CallAdd16 *)
   | _ => _compile_CallListLength
   | _ => _compile_CallAllocString
-  | _ => _compile_CallAllocOffset
+  (* | _ => _compile_CallAllocOffset *)
   | _ => _compile_compose
   | _ => _compile_step
   end.

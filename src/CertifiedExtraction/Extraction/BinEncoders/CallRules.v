@@ -198,49 +198,50 @@ Proof.
   eauto using CompileCompose.
 Qed.
 
-Definition EmptyBytableListOfBools (capacity: W): BytableListOfBools capacity :=
-  existT _ nil (exist _ 0 eq_refl).
-
-Lemma CompileCallAllocString {capacity}:
+Lemma CompileCallAllocString {real_capacity}:
   forall (vtmp vstream vcapacity : string) (tenv tenv' : Telescope ADTValue)
-    ext (env : GLabelMap.t (FuncSpec ADTValue)) Wcapacity
-    pNext pArg fAllocString,
-    vcapacity <> vstream ->
-    vstream ∉ ext ->
-    NotInTelescope vstream tenv ->
-    IL.goodSize (2 + Word.wordToNat Wcapacity * 4) ->
-    capacity = Word.wmult Wcapacity (Word.natToWord 32 4) ->
-    GLabelMap.MapsTo fAllocString (Axiomatic BytesADTSpec.New) env ->
-    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv }}
-      pNext
-    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ tenv }}
-      pArg
-    {{ [[ ` vcapacity ->> Wcapacity as _ ]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ tenv }}
-      Seq (Seq pArg (Call vstream fAllocString [vcapacity])) pNext
-    {{ [[ ` vstream ->> EmptyBytableListOfBools capacity as _]]::tenv' }} ∪ {{ ext }} // env.
+    ext (env : GLabelMap.t (FuncSpec ADTValue)) capacity,
+    let wrapper := WrapInstance (H := (@WrapListByte real_capacity)) in
+    forall pNext pArg fAllocString,
+      vcapacity <> vstream ->
+      vstream ∉ ext ->
+      NotInTelescope vstream tenv ->
+      IL.goodSize (2 + Word.wordToNat capacity * 4) ->
+      real_capacity = Word.wmult capacity (Word.natToWord 32 4) ->
+      GLabelMap.MapsTo fAllocString (Axiomatic BytesADTSpec.New) env ->
+      {{ [[ ` vstream ->> nil as _]]::tenv }}
+        pNext
+      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env ->
+      {{ tenv }}
+        pArg
+      {{ [[ ` vcapacity ->> capacity as _ ]] :: tenv }} ∪ {{ ext }} // env ->
+      {{ tenv }}
+        Seq (Seq pArg (Call vstream fAllocString [vcapacity])) pNext
+      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
+  (* Close Scope telescope_scope. *)
+  (* Set Printing Implicit. *)
   hoare; hoare; hoare.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
   facade_eauto.
   facade_eauto.
-  reflexivity.
+  congruence.
+  facade_eauto.
   facade_eauto.
 Qed.
 
-Lemma CompileCallAllocOffset:
-  forall (vtmp voffset: string) (tenv tenv' : Telescope ADTValue)
-    ext env pNext fAllocCache,
-    {{ [[ ` voffset ->> 0%N as _]]::tenv }}
-      pNext
-    {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ tenv }}
-      Seq (Call vtmp fAllocCache [voffset]) pNext
-    {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env.
-Proof.
-  hoare; hoare.
-Admitted.
+(* Lemma CompileCallAllocOffset: *)
+(*   forall (vtmp voffset: string) (tenv tenv' : Telescope ADTValue) *)
+(*     ext env pNext fAllocCache, *)
+(*     {{ [[ ` voffset ->> 0%N as _]]::tenv }} *)
+(*       pNext *)
+(*     {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env -> *)
+(*     {{ tenv }} *)
+(*       Seq (Call vtmp fAllocCache [voffset]) pNext *)
+(*     {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   hoare; hoare. *)
+(* Admitted. *)
 
 (* FIXME there should be a generic wrapper for list of SCA-injected things *)
 Lemma CompileCallListSCALength {A} {W: FacadeWrapper (Value ADTValue) (list A)}:
@@ -279,18 +280,18 @@ Ltac _compile_CallListLength :=
               | ]
             end).
 
-Lemma CompileCallAdd16 :
-  forall `{FacadeWrapper (Value av) N} (tenv : Telescope av) (n : N) vn
-    ext env,
-    {{ [[`vn ->> n as _]]::tenv }}
-      (Assign vn (Binop IL.Plus (Var vn) 16))
-    {{ [[`vn ->> (n + 16)%N as _]]::tenv }} ∪ {{ ext }} // env.
-Proof.
-Admitted.
+(* Lemma CompileCallAdd16 : *)
+(*   forall `{FacadeWrapper (Value av) N} (tenv : Telescope av) (n : N) vn *)
+(*     ext env, *)
+(*     {{ [[`vn ->> n as _]]::tenv }} *)
+(*       (Assign vn (Binop IL.Plus (Var vn) 16)) *)
+(*     {{ [[`vn ->> (n + 16)%N as _]]::tenv }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(* Admitted. *)
 
-Ltac _compile_CallAdd16 :=
-  compile_do_use_transitivity_to_handle_head_separately;
-  [ apply CompileCallAdd16 | ].
+(* Ltac _compile_CallAdd16 := *)
+(*   compile_do_use_transitivity_to_handle_head_separately; *)
+(*   [ apply CompileCallAdd16 | ]. *)
 
 Ltac _compile_CallAllocString :=
   may_alloc_head;
@@ -303,10 +304,10 @@ Ltac _compile_LoopMany vlst :=
   let vtest := gensym "test" in
   eapply (CompileLoop__many vhead vtest vlst).
 
-Ltac _compile_CallAllocOffset :=
-  may_alloc_head;
-  let vtmp := gensym "tmp" in
-  eapply (CompileCallAllocOffset vtmp).
+(* Ltac _compile_CallAllocOffset := *)
+(*   may_alloc_head; *)
+(*   let vtmp := gensym "tmp" in *)
+(*   eapply (CompileCallAllocOffset vtmp). *)
 
 (* Require Import Bedrock.Word. *)
 
@@ -351,21 +352,21 @@ Ltac _compile_Read :=
               eapply (CompileRead' k)
             end).
 
-Lemma CompileConstantN :
-  forall {av} {W: FacadeWrapper (Value av) N}
-    N (vto : string)
-    (tenv tenv': Telescope av) pNext ext env,
-    {{ [[ ` vto ->> N as _]]::tenv }}
-      pNext
-    {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ tenv }}
-      Seq (Assign vto (Const (@Word.NToWord _ N))) pNext
-    {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env.
-Proof.
-  hoare.
-  hoare.
-Admitted.
+(* Lemma CompileConstantN : *)
+(*   forall {av} {W: FacadeWrapper (Value av) N} *)
+(*     N (vto : string) *)
+(*     (tenv tenv': Telescope av) pNext ext env, *)
+(*     {{ [[ ` vto ->> N as _]]::tenv }} *)
+(*       pNext *)
+(*     {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env -> *)
+(*     {{ tenv }} *)
+(*       Seq (Assign vto (Const (@Word.NToWord _ N))) pNext *)
+(*     {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   hoare. *)
+(*   hoare. *)
+(* Admitted. *)
 
-Ltac _compile_ReadConstantN :=
-  may_alloc_head;
-  eapply CompileConstantN.
+(* Ltac _compile_ReadConstantN := *)
+(*   may_alloc_head; *)
+(*   eapply CompileConstantN. *)
