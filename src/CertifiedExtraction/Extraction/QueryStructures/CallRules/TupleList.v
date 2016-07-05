@@ -334,22 +334,10 @@ Module ADTListCompilation
     apply CompileEmpty_alt; loop_t.
     apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; loop_t.
 
-    Ltac clean_telescope tel ext ::= (* FIXME merge *)
-      let clean := fresh in
-      let type := type of tel in
-      evar (clean: type);
-      setoid_replace tel with clean using relation (@TelEq _ ext);
-      [ | decide_TelEq_instantiate ];
-      (* Fail if the simplification didn't do anything *)
-      first [ unify clean tel; fail 2 "clean_telescope didn't make progress" |
-              unfold clean; clear clean ].
-
     loop_t.
     setoid_replace (DropName vtest ([[ ret (f init a) as facc ]] :: tenvF tenv facc))
     with (tenvF tenv (f init a)) using relation (TelEq ext); simpl; loop_t.
   Qed.
-
-  (* FIXME propagate new definition of clean_telescope *)
 
   Lemma CompileLoop__many {idx}:
     forall {A}

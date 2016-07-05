@@ -306,13 +306,14 @@ Ltac decide_TelEq_instantiate :=
   repeat decide_TelEq_instantiate_step.
 
 Ltac clean_telescope tel ext :=
-  let clean := fresh in
-  let type := type of tel in
-  evar (clean: type);
-    setoid_replace tel with clean using relation (@TelEq _ ext);
-    unfold clean;
-    clear clean;
-    [ | decide_TelEq_instantiate ].
+     let clean := fresh in
+     let type := type of tel in
+     evar (clean: type);
+     setoid_replace tel with clean using relation (@TelEq _ ext);
+     [ | decide_TelEq_instantiate ];
+     (* Fail if the simplification didn't do anything *)
+     first [ unify clean tel; fail 2 "clean_telescope didn't make progress" |
+             unfold clean; clear clean ].
 
 Ltac Lifted_t :=
   repeat match goal with
