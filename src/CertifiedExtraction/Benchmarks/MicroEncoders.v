@@ -18,10 +18,10 @@ Record FourWords :=
 
 Definition FourWords_encode (t : FourWords) :=
   fst ((FixInt_encode t.(w0)
-   Then FixInt_encode t.(w1)
-   Then FixInt_encode t.(w2)
-   Then FixInt_encode t.(w3)
-   Then (fun e => (nil, e))) tt).
+   ThenC FixInt_encode t.(w1)
+   ThenC FixInt_encode t.(w2)
+   ThenC FixInt_encode t.(w3)
+   ThenC (fun e => (nil, e))) tt).
 
 Definition FourWordsAsCollectionOfVariables
   {av} vw0 vw1 vw2 vw3 t
@@ -49,10 +49,8 @@ Example FourWords_compile :
     #env       MicroEncoders_Env.
 Proof.
   unfold FourWords_encode'.
-  compile_encoder_t.
-
-  CompileCompose
-  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).  (* TODO automate *)
+  (* compile_encoder_t. *)
+  (* repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t). (* TODO automate *) *)
 Defined.
 
 Eval lazy in (extract_facade FourWords_compile).

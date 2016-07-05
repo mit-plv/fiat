@@ -56,13 +56,13 @@ Hint Rewrite @FixInt_encode_is_copy : f2f_binencoders_autorewrite_db.
 Hint Rewrite @IList_encode_bools_is_copy : f2f_binencoders_autorewrite_db.
 Hint Rewrite @FixList_is_IList : f2f_binencoders_autorewrite_db.
 Hint Rewrite app_nil_r : f2f_binencoders_autorewrite_db.
-Hint Rewrite (@IList_encode'_body_simpl DnsMap.cache) : f2f_binencoders_autorewrite_db.
+(* FXIME Hint Rewrite (@IList_encode'_body_simpl DnsMap.cache) : f2f_binencoders_autorewrite_db. *)
 Hint Unfold IList.IList_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold FixList.FixList_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold TelAppend : f2f_binencoders_autorewrite_db.
 Hint Unfold Enum.Enum_encode : f2f_binencoders_autorewrite_db.
-Hint Unfold encode_question : f2f_binencoders_autorewrite_db.
-Hint Unfold encode_resource : f2f_binencoders_autorewrite_db.
+(* FIXME Hint Unfold encode_question : f2f_binencoders_autorewrite_db. *)
+(* FIXME Hint Unfold encode_resource : f2f_binencoders_autorewrite_db. *)
 
 (* Ltac simpl_without_uncaught_exception := *)
 (*   (* Avoids an “Uncaught exception: not found” *) *)

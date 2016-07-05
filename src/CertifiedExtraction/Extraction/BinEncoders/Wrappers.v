@@ -124,8 +124,8 @@ Instance WrapListQuestions : FacadeWrapper ADTValue (list question_t). Admitted.
 Instance WrapQuestion : (FacadeWrapper ADTValue question_t). Admitted.
 Instance WrapResource : (FacadeWrapper ADTValue resource_t). Admitted.
 (* Instance WrapCache : (FacadeWrapper ADTValue DnsMap.CacheT). Admitted. *)
-Instance WrapDMapT : FacadeWrapper ADTValue DnsMap.DMapT. Admitted.
-Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted.
+(* Instance WrapDMapT : FacadeWrapper ADTValue DnsMap.DMapT. Admitted. *)
+(* Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted. *)
 
 Instance WrapN : FacadeWrapper (Value ADTValue) N. Admitted.
 

@@ -1,5 +1,5 @@
 Require Import CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
-Require Import BinEncoders.Env.Examples.Dns.
+(* Require Import BinEncoders.Env.Examples.Dns. *)
 
 Require Import
         CertifiedExtraction.Extraction.BinEncoders.BinEncoders.

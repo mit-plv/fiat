@@ -44,11 +44,7 @@ Ltac compile_encoder_step :=
   | _ => _compile_CallAdd16
   | _ => _compile_CallListLength
   | _ => _compile_CallAllocString
-  | _ => _compile_CallAllocEMap
-  | _ => _compile_CallAllocDMap
   | _ => _compile_CallAllocOffset
-  | _ => _compile_CallDeallocQuestion
-  | _ => _compile_CallDeallocResource
   | _ => _compile_compose
   | _ => _compile_step
   end.
