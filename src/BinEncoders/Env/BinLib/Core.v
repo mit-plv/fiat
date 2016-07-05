@@ -5,6 +5,7 @@ Require Import
         Coq.Numbers.Natural.Peano.NPeano
         Coq.Logic.Eqdep_dec
         Fiat.BinEncoders.Env.Common.Specs.
+Import NPeano.
 
 Set Implicit Arguments.
 

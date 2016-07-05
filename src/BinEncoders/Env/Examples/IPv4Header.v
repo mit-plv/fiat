@@ -132,6 +132,7 @@ Proof.
   eauto using IPv4_Packet_Headiner_Len_Bound.
 Qed. (* Qed takes forever. *) *)
 
+Local Arguments transform_id / .
 Definition EthernetHeader_decoder
   : { decodePlusCacheInv |
       exists P_inv,
@@ -172,7 +173,9 @@ Proof.
   solve_mod_8.
   solve_mod_8.
   { (* Grossest Proof By Far. *)
-    intros; simpl transform_id; rewrite length_ByteString_ByteString_id.
+    intros.
+    set (k := transform_id); simpl in k; subst k.
+    rewrite length_ByteString_ByteString_id.
     instantiate (1 := IPv4_Packet_encoded_measure).
     unfold IPv4_Packet_encoded_measure.
     rewrite <- !transform_assoc.
