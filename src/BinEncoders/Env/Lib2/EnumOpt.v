@@ -38,20 +38,18 @@ Section Enum.
     clear; induction 1; eauto.
   Qed.
 
-  Definition encode_enum_Spec (i : BoundedIndex ta) (ce : CacheEncode) :
+  Definition encode_enum_Spec (idx : Fin.t _) (ce : CacheEncode) :
     Comp (B * CacheEncode) :=
-    let fin := i.(indexb).(ibound)
-    in  encode_word_Spec (nth tb fin) ce.
+    encode_word_Spec (nth tb idx) ce.
 
-  Definition encode_enum_Impl (i : BoundedIndex ta) (ce : CacheEncode) :
+  Definition encode_enum_Impl (idx : Fin.t _) (ce : CacheEncode) :
     B * CacheEncode :=
-    let fin := i.(indexb).(ibound)
-    in  encode_word_Impl (nth tb fin) ce.
+    encode_word_Impl (nth tb idx) ce.
 
   Lemma refine_encode_enum :
-    forall i ce,
-      refine (encode_enum_Spec i ce)
-             (ret (encode_enum_Impl i ce)).
+    forall idx ce,
+      refine (encode_enum_Spec idx ce)
+             (ret (encode_enum_Impl idx ce)).
   Proof.
     intros; reflexivity.
   Qed.
@@ -71,14 +69,11 @@ Section Enum.
 
   Definition decode_enum (b : B)
              (cd : CacheDecode)
-    : option (BoundedIndex ta * B * CacheDecode) :=
+    : option (Fin.t _ * B * CacheDecode) :=
     `(w, b', cd') <- decode_word (sz:=sz) b cd;
-      Ifopt word_indexed w tb as i Then
-      Some ({| bindex := _;
-          indexb := {| ibound := i;
-                       boundi := eq_refl _ |} |}, b', cd')
-      Else None
-  .
+      Ifopt word_indexed w tb as idx Then
+      Some (idx, b', cd')
+      Else None.
 
   Lemma word_indexed_correct :
     forall n (i : Fin.t n) (t : t (word sz) n),
@@ -120,15 +115,12 @@ Section Enum.
     { intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
       destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
       rewrite H; simpl.
-      apply (word_indexed_correct _ (ibound (indexb c))) in tb_OK.
+      apply (word_indexed_correct _ c) in tb_OK.
       subst; simpl in *.
-      destruct (word_indexed (nth tb (ibound (indexb c))) tb);
+      destruct (word_indexed (nth tb c) tb);
         intros; simpl in *.
       + eexists; intuition eauto.
         repeat f_equal.
-        destruct c.
-        destruct indexb.
-        rewrite <- boundi.
         simpl in H; subst.
         reflexivity.
       + intuition.
@@ -146,20 +138,20 @@ Section Enum.
       repeat f_equal.
       revert Heqo0; clear.
       remember (S len) as n'; clear len Heqn'.
-      revert w tb; induction t.
+      revert w tb; induction data.
       - intros w tb; pattern n, tb;
           eapply Vector.caseS; simpl.
         intros; destruct (weqb w h) eqn: ?.
         eapply weqb_true_iff; eauto.
         destruct ( word_indexed w t); try discriminate.
       - intros w tb.
-        revert w t IHt.
+        revert w data IHdata.
         pattern n, tb; eapply Vector.rectS; simpl; intros.
-        inversion t.
+        inversion data.
         intros; destruct (weqb w a) eqn: ?.
         discriminate.
         destruct (word_indexed w v) eqn : ? ; try discriminate.
-        eapply IHt.
+        eapply IHdata.
         rewrite Heqo.
         f_equal.
         eapply Fin.FS_inj.
@@ -168,3 +160,35 @@ Section Enum.
     }
   Qed.
 End Enum.
+
+Lemma VectorIn_cons {A} {n}
+  : forall (v : Vector.t A n) a a',
+    Vector.In a' (Vector.cons _ a _ v) -> a = a' \/ Vector.In a' v.
+Proof.
+  intros; inversion H; subst; eauto.
+  apply Eqdep_dec.inj_pair2_eq_dec in H3; subst; eauto using Peano_dec.eq_nat_dec.
+Qed.
+
+Lemma forall_Vector_P {A} (P : A -> Prop) {n}
+  : forall v : Vector.t A n,
+    Vector.Forall P v
+    -> forall idx, P (Vector.nth v idx).
+Proof.
+  induction v; simpl; intros.
+  - inversion idx.
+  - revert v IHv H; pattern n, idx; apply Fin.caseS; simpl;
+      intros; inversion H; subst; eauto.
+    eapply IHv.
+    apply Eqdep_dec.inj_pair2_eq_dec in H2; subst; eauto using Peano_dec.eq_nat_dec.
+Qed.
+
+Ltac Discharge_NoDupVector :=
+  match goal with
+  |- NoDupVector _ =>
+  repeat econstructor; intro;
+  repeat match goal with
+         | H : Vector.In _ _ |- _ =>
+           first [apply VectorIn_cons in H; destruct H; try discriminate
+                 | inversion H]
+         end
+  end.

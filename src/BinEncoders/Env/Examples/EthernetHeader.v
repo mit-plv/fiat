@@ -65,83 +65,18 @@ Ltac shelve_inv :=
                      unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
   end.
 
-Definition transformer : Transformer ByteString := ByteStringTransformer.
-
-Theorem decode_list_all_correct_ComposeOpt
-  : encode_decode_correct_f
-      _ transformer
-      (fun a => True)
-      (fun _ b => b = transform_id)
-      (encode_list_Spec encode_word_Spec)
-      (fun (bin : ByteString) (env : CacheDecode) =>
-         Some (byteString bin, ByteString_id, tt))
-      (fun a => True).
-Proof.
-  split.
-  {
-    intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
-    intuition; subst.
-    generalize dependent env. generalize dependent env'.
-    generalize dependent xenv.
-    generalize dependent l'. induction l.
-    { intros.
-      simpl in *; intuition; computes_to_inv;
-        injections; simpl.
-      eexists; eauto. }
-    { intros; simpl in *.
-      unfold Bind2 in Penc; computes_to_inv; subst.
-      destruct v; destruct v0; simpl in *.
-      injections.
-      eapply IHl in Penc'; eauto.
-      destruct_ex; intuition; injections.
-      pose proof transform_assoc;
-        pose proof transform_id_right.
-      simpl in H, H0.
-      setoid_rewrite <- H.
-      setoid_rewrite H0; eexists; intuition; repeat f_equal.
-      unfold encode_word_Spec in Penc.
-      simpl in Penc.
-      admit.
-    }
-  }
-  { admit.
-  }
-Qed.
-
 Ltac solve_data_inv :=
-  first [ simpl; intros; exact I
-        | shelve_inv ].
+    first [ simpl; intros; exact I
+| shelve_inv ].
 
-Ltac finalize_decoder P_inv :=
-  (unfold encode_decode_correct_f; intuition eauto);
-  [ computes_to_inv; injections; subst; simpl;
-    match goal with
-      H : Equiv _ ?env |- _ =>
-      eexists env; intuition eauto;
-      simpl;
-      match goal with
-        |- ?f ?a ?b ?c = ?P =>
-        let P' := (eval pattern a, b, c in P) in
-        let f' := match P' with ?f a b c => f end in
-        unify f f'; reflexivity
-      end
-    end
-  | injections; eauto
-  | eexists _; eexists _;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-    try match goal with
-          |- P_inv ?data => destruct data;
-                            simpl in *; eauto
-        end
-  ].
+Definition transformer : Transformer ByteString := ByteStringTransformer.
 
 (* Start Example Derivation. *)
 
-Definition EthernetFrame :=
+Definition EthernetHeader :=
   @Tuple <"Destination" :: Vector.t char 6,
   "Source" :: Vector.t char 6,
-  "Type" :: EnumType ["ARP"; "IP"; "RARP"],
-  "Data" :: list char>.
+  "Type" :: EnumType ["ARP"; "IP"; "RARP"]>.
 
 Definition EtherTypeCodes : Vector.t (word 16) 3 :=
   [WO~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0;
@@ -149,37 +84,21 @@ Definition EtherTypeCodes : Vector.t (word 16) 3 :=
    WO~0~0~0~0~1~0~0~0~0~0~1~1~0~1~0~1
   ].
 
-Definition encode_EthernetFrame_Spec (eth : EthernetFrame) :=
+Definition encode_EthernetHeader_Spec n' (eth : EthernetHeader) :=
           encode_Vector_Spec encode_word_Spec eth!"Destination"
     ThenC (encode_Vector_Spec encode_word_Spec eth!"Source")
     ThenC Either
-          encode_nat_Spec 16 (|eth!"Data"|)
+          encode_nat_Spec 16 n'
           ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
           ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
           ThenC encode_word_Spec (WO~1~1~0~0~0~0~0~0)
           ThenC encode_word_Spec (wzero 24)
           ThenC encode_enum_Spec EtherTypeCodes eth!"Type"
-          ThenC encode_list_Spec encode_word_Spec eth!"Data"
           DoneC
        Or encode_enum_Spec EtherTypeCodes eth!"Type"
-          ThenC encode_list_Spec encode_word_Spec eth!"Data"
           DoneC.
 
-Definition ethernet_Frame_OK (e : EthernetFrame) := lt (|e!"Data"|) 1501.
-
-Lemma ethernet_Frame_OK_good_Len
-  : forall (e : EthernetFrame),
-    ethernet_Frame_OK e
-    -> lt (|e!"Data"|) (pow2 16).
-Proof.
-  unfold ethernet_Frame_OK; intro.
-  match goal with |- context [| ?e |] => remember (|e|) end.
-  clear Heqn e.
-  etransitivity; eauto.
-  rewrite <- (wordToNat_natToWord_idempotent 16 1501).
-  eapply wordToNat_bound.
-  simpl; eapply BinNat.N.ltb_lt; reflexivity.
-Qed.
+Definition ethernet_Header_OK (e : EthernetHeader) := True.
 
 Definition v1042_test (b : ByteString) : bool :=
   match transformer_get_word 16 b with
@@ -188,16 +107,16 @@ Definition v1042_test (b : ByteString) : bool :=
   end.
 
 Lemma v1042_OKT
-  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
-   ethernet_Frame_OK data ->
-   (encode_nat_Spec 16 (|data!"Data" |)
+  : forall n (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+    lt n 1501 ->
+   (encode_nat_Spec 16 n
     ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-          ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-                ThenC encode_word_Spec WO~1~1~0~0~0~0~0~0
-                      ThenC encode_word_Spec (wzero 24) ThenC encode_enum_Spec EtherTypeCodes data!"Type" ThenC encode_list_Spec encode_word_Spec data!"Data" DoneC) env
+    ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
+    ThenC encode_word_Spec WO~1~1~0~0~0~0~0~0
+    ThenC encode_word_Spec (wzero 24) ThenC encode_enum_Spec EtherTypeCodes data!"Type" DoneC) env
    ↝ (bin, xenv) -> v1042_test (transform bin ext) = true.
 Proof.
-  unfold ethernet_Frame_OK; intros.
+  intros.
   unfold compose at 1 in H0; unfold Bind2 in H0;
     computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
@@ -206,7 +125,7 @@ Proof.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
   pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
-  destruct n.
+  destruct n0.
   eapply natToWord_wlt; eauto; try reflexivity.
   etransitivity.
   unfold BinNat.N.lt; rewrite <- Nnat.Nat2N.inj_compare.
@@ -217,17 +136,15 @@ Qed.
 Hint Resolve v1042_OKT : bin_split_hints.
 
 Lemma v1042_OKE
-  : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
-    ethernet_Frame_OK data
-    -> (encode_enum_Spec EtherTypeCodes data!"Type" ThenC encode_list_Spec encode_word_Spec data!"Data" DoneC) env ↝ (bin, xenv)
+  : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
+    (encode_enum_Spec EtherTypeCodes data!"Type" DoneC) env ↝ (bin, xenv)
     -> v1042_test (transform bin ext) = false.
 Proof.
-  unfold ethernet_Frame_OK; intros.
-  unfold compose at 1 in H0; unfold Bind2 in H0;
+  intros; unfold compose at 1 in H; unfold Bind2 in H;
     computes_to_inv; destruct v; destruct v0; simpl in *;
-        injections.
-  unfold encode_enum_Spec, encode_word_Spec in H0; computes_to_inv.
-  pose proof (f_equal fst H0) as H'; unfold fst in H'; rewrite <- H'.
+      injections.
+  unfold encode_enum_Spec, encode_word_Spec in H; computes_to_inv.
+  pose proof (f_equal fst H) as H'; unfold fst in H'; rewrite <- H'.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
   pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
@@ -242,14 +159,30 @@ Qed.
 
 Hint Resolve v1042_OKE : bin_split_hints.
 
-Definition EthernetFrame_decoder
+Lemma valid_packet_len_OK_good_Len
+    : forall packet_len,
+    lt packet_len 1501 -> lt packet_len (pow2 16).
+  Proof.
+    intros.
+    etransitivity; eauto.
+    rewrite <- (wordToNat_natToWord_idempotent 16 1501).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+Qed.
+
+Definition EthernetHeader_decoder
   : { decodePlusCacheInv |
-      exists P_inv,
-      (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> encode_decode_correct_f _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
-      /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+      forall packet_len,
+        lt packet_len 1501
+        -> exists P_inv,
+          (cache_inv_Property (snd decodePlusCacheInv) P_inv
+           -> encode_decode_correct_f _ transformer ethernet_Header_OK (fun _ b => b = ByteString_id)
+                                      (encode_EthernetHeader_Spec packet_len)
+                                      (fst decodePlusCacheInv packet_len) (snd decodePlusCacheInv))
+          /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  eexists (_, _); eexists _; split; simpl.
+  eexists (_, _);
+    intros packet_len packet_len_OK; eexists _; split; simpl.
   intros.
   apply_compose.
   intro. eapply Vector_decode_correct.
@@ -264,7 +197,7 @@ Proof.
   apply_compose.
   apply_compose.
   eapply Nat_decode_correct.
-  intuition eauto using ethernet_Frame_OK_good_Len.
+  intuition eauto using valid_packet_len_OK_good_Len.
   solve_data_inv.
   apply_compose.
   eapply Word_decode_correct.
@@ -287,28 +220,11 @@ Proof.
   Discharge_NoDupVector.
   solve_data_inv.
   simpl; intros; exact I.
-  apply_compose.
-  intros; eapply decode_list_all_correct_ComposeOpt.
-  solve_data_inv.
-  simpl; intros.
-  computes_to_inv; injections.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros.
   unfold encode_decode_correct_f; intuition eauto.
-  unfold ethernet_Frame_OK in *.
-  instantiate (1 := fun p b' c => if (Peano_dec.eq_nat_dec (|p|) proj1) then
-                                    _ p b' c
-                                  else None).
-  instantiate (1 := fun p b' c =>
-                      if Compare_dec.lt_dec proj1 1501 then _ p b' c else None).
-  simpl.
-  destruct (Peano_dec.eq_nat_dec (|proj3|) proj1); try congruence.
-  destruct (Compare_dec.lt_dec proj1 1501); try congruence.
-  destruct data as [? [? [? [? [ ] ] ] ] ];
+  destruct data as [? [? [? [ ] ] ] ] ;
     unfold GetAttribute, GetAttributeRaw in *;
     simpl in *.
-  unfold ethernet_Frame_OK, GetAttribute, GetAttributeRaw in H15.
-  simpl in H15.
   computes_to_inv; injections; subst; simpl.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'.
   eexists env'; simpl; intuition eauto.
@@ -318,9 +234,8 @@ Proof.
     let f' := match P' with ?f a b c => f end in
     try unify f f'; try reflexivity
   end.
-  rewrite <- H16 in n; destruct n; eauto.
-  rewrite <- H16, <- H14 in n; destruct n; reflexivity.
-  simpl in H11; repeat find_if_inside; try discriminate.
+  simpl in H10; injections; eauto.
+  simpl in H10; repeat find_if_inside; try discriminate.
   eexists _; eexists tt;
     intuition eauto; injections; eauto using idx_ibound_eq;
       try match goal with
@@ -335,20 +250,9 @@ Proof.
   Discharge_NoDupVector.
   solve_data_inv.
   simpl; intros; exact I.
-  apply_compose.
-  intros; eapply decode_list_all_correct_ComposeOpt.
-  solve_data_inv.
-  simpl; intros.
-  computes_to_inv; injections.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros.
   unfold encode_decode_correct_f; intuition eauto.
-  unfold ethernet_Frame_OK in *.
-  instantiate (1 := fun p b' c =>
-                      if Compare_dec.lt_dec (|p|) 1501 then _ p b' c else None).
-  simpl.
-  destruct (Compare_dec.lt_dec (|proj2 |) 1501); try congruence.
-  destruct data as [? [? [? [? [ ] ] ] ] ];
+  destruct data as [? [? [? [ ] ] ] ];
     unfold GetAttribute, GetAttributeRaw in *;
     simpl in *.
   computes_to_inv; injections; subst; simpl.
@@ -360,7 +264,7 @@ Proof.
     let f' := match P' with ?f a b c => f end in
     try unify f f'; try reflexivity
   end.
-  rewrite <- H9 in n; destruct n; eauto.
+  simpl in *; injections; eauto.
   simpl in *; repeat find_if_inside; try discriminate.
   eexists _; eexists tt;
     intuition eauto; injections; eauto using idx_ibound_eq;
@@ -378,7 +282,8 @@ Proof.
   exact (@weq _).
   exact (@weq _).
   exact (@weq _).
+  exact Peano_dec.eq_nat_dec.
 Defined.
 
-Definition frame_decoder := Eval simpl in proj1_sig EthernetFrame_decoder.
+Definition frame_decoder := Eval simpl in proj1_sig EthernetHeader_decoder.
 Print frame_decoder.

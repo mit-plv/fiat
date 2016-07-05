@@ -134,7 +134,7 @@ EXTRACTION_UNMADE_VO := \
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
-FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/ADT.vo src/ADTNotation.vo src/ADTRefinement.vo src/Common.vo src/Computation/%.vo src/ADT/%.vo src/ADTNotation/%.vo src/ADTRefinement/%.vo src/Common/%.vo,$(VOFILES)))
+FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/ADT.vo src/ADTInduction.vo src/ADTNotation.vo src/ADTRefinement.vo src/Common.vo src/Computation/%.vo src/ADT/%.vo src/ADTNotation/%.vo src/ADTRefinement/%.vo src/Common/%.vo,$(VOFILES)))
 QUERYSTRUCTURES_VO := $(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(filter src/QueryStructure/%.vo,$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_EXAMPLES_VO := $(filter-out $(PARSERS_EXAMPLES_UNMADE_VO),$(filter src/Parsers/Refinement/Sharpened%.vo,$(VOFILES)))
@@ -197,8 +197,8 @@ install-examples: T = $(EXAMPLES_VO)
 install-binencoders: T = $(BINENCODERS_VO)
 
 install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
-	$(VECHO) "MAKE -f Makefile.coq INSTALL"
-	$(Q)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
+	$(SHOW)'MAKE -f Makefile.coq INSTALL'
+	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
 	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
@@ -215,6 +215,10 @@ ifneq (,$(filter 8.5%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
 else
+ifneq (,$(filter 8.6%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v86
+ML_DESCRIPTION := "Coq v8.6"
+else
 ifneq (,$(filter trunk,$(COQ_VERSION)))
 EXPECTED_EXT:=.trunk
 ML_DESCRIPTION := "Coq trunk"
@@ -223,8 +227,9 @@ ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
 EXPECTED_EXT:=.v84
 ML_DESCRIPTION := "Coq v8.4"
 else
-EXPECTED_EXT:=.v85
-ML_DESCRIPTION := "Coq v8.5"
+EXPECTED_EXT:=.trunk
+ML_DESCRIPTION := "Coq trunk"
+endif
 endif
 endif
 endif
@@ -240,8 +245,8 @@ endif
 
 
 $(WATER_TANK_EXTRACT_ML): $(filter-out $(WATER_TANK_EXTRACT_VO),$(call vo_closure,$(WATER_TANK_EXTRACT_VO))) $(WATER_TANK_EXTRACT_VO:%.vo=%.v)
-	$(VECHO) "COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@"
-	$(Q)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
+	$(SHOW)'COQC $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@'
+	$(HIDE)$(COQC) $(COQDEBUG) $(COQFLAGS) $(WATER_TANK_EXTRACT_VO:%.vo=%.v) > $@
 
 pdf: Overview/ProjectOverview.pdf Overview/library.pdf
 

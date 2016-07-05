@@ -17,7 +17,6 @@ Class TransformerUnit (bin : Type) (trans : Transformer bin) (T : Type) :=
     transform_push_pop : forall t m, transform_pop (transform_push t m) = (t, m);
     transform_push_step : forall t m n, transform (transform_push t m) n =
                                         transform_push t (transform m n) }.
-
 Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
   { T_measure : T -> nat;
     T_measure_gt_0 : forall t, 0 < T_measure t;

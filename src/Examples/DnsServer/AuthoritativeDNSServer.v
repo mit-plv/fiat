@@ -65,6 +65,13 @@ Definition encode_packet' b :=
                 QType_Ws QClass_Ws RRecordType_Ws
                 RRecordClass_Ws Opcode_Ws RCODE_Ws b cacheEmpty.
 
+Lemma MaxElementsSplit :=
+
+MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
+                             (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
+                               Where (prefix r!sNAME n)   (* prefixed with [n] to [rs] *)
+                               Return r);
+
 Definition DnsSpec : ADT DnsSig :=
   Def ADT {
     rep := QueryStructure DnsSchema,

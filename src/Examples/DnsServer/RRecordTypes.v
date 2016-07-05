@@ -10,6 +10,7 @@ Require Import
 Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.SumType
+        Fiat.Common.EnumType
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple.
@@ -40,25 +41,25 @@ Section RRecordTypes.
        "TXT" (* text strings 	[RFC1035] *)
     ].
 
-  Definition OurRRecordType := BoundedString OurRRecordTypes.
+  Definition OurRRecordType := EnumType OurRRecordTypes.
 
   (* Aliases for common resource record types. *)
-  Definition OurCNAME : OurRRecordType := ``"CNAME".
-  Definition OurA : OurRRecordType := ``"A".
-  Definition OurNS : OurRRecordType := ``"NS".
-  Definition OurMX : OurRRecordType := ``"MX".
-  Definition OurSOA : OurRRecordType := ``"SOA".
+  Definition OurCNAME : OurRRecordType := ```"CNAME".
+  Definition OurA : OurRRecordType := ```"A".
+  Definition OurNS : OurRRecordType := ```"NS".
+  Definition OurMX : OurRRecordType := ```"MX".
+  Definition OurSOA : OurRRecordType := ```"SOA".
 
   Definition beq_OurRRecordType (rr rr' : OurRRecordType) : bool :=
-    BoundedIndex_beq rr rr'.
+    fin_beq rr rr'.
 
   Definition OurRRecordType_dec (rr rr' : OurRRecordType) :=
-    BoundedIndex_eq_dec rr rr'.
+    fin_beq rr rr'.
 
   Lemma beq_OurRRecordType_sym :
     forall rr rr', beq_OurRRecordType rr rr' = beq_OurRRecordType rr' rr.
   Proof.
-    intros; eapply BoundedIndex_beq_sym.
+    intros; eapply fin_beq_sym.
   Qed.
 
   (* Enumeration of the full set of Resource Record Types. *)
@@ -114,28 +115,28 @@ Section RRecordTypes.
        "CSYNC" (* Child-To-Parent Synchronization 	[RFC7477] 		2015-01-27 *)
     ].
 
-  Definition RRecordType := BoundedString (OurRRecordTypes ++ ExtraRRecordTypes).
+  Definition RRecordType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes).
 
   (* Aliases for common resource record types. *)
-  Definition CNAME : RRecordType := ``"CNAME".
-  Definition A : RRecordType := ``"A".
-  Definition NS : RRecordType := ``"NS".
-  Definition MX : RRecordType := ``"MX".
-  Definition SOA : RRecordType := ``"SOA".
+  Definition CNAME : RRecordType := ```"CNAME".
+  Definition A : RRecordType := ```"A".
+  Definition NS : RRecordType := ```"NS".
+  Definition MX : RRecordType := ```"MX".
+  Definition SOA : RRecordType := ```"SOA".
 
   Definition RRecordType_inj (rr : OurRRecordType) : RRecordType :=
-    BoundedIndex_injR rr.
+    Fin.L _ rr.
 
   Definition beq_RRecordType (rr rr' : RRecordType) : bool :=
-    BoundedIndex_beq rr rr'.
+    fin_beq rr rr'.
 
   Definition RRecordType_dec (rr rr' : RRecordType) :=
-    BoundedIndex_eq_dec rr rr'.
+    fin_eq_dec rr rr'.
 
   Lemma beq_RRecordType_sym :
     forall rr rr', beq_RRecordType rr rr' = beq_RRecordType rr' rr.
   Proof.
-    intros; eapply BoundedIndex_beq_sym.
+    intros; eapply fin_beq_sym.
   Qed.
 
 End RRecordTypes.

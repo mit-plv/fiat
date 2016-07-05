@@ -21,13 +21,14 @@ Instance test_cache_add_nat : CacheAdd test_cache N :=
   {| addE := fun ce _ => ce;
      addD := fun cd _ => cd;
      add_correct := fun _ _ _ => id |}.
-Locate "uint".
+
 Definition encode_test (t : test_t) (ce : CacheEncode) :=
   compose btransformer (FixInt_encode (f1 t)) (
   compose btransformer (FixInt_encode (FixList_getlength (f2 t))) (
   compose btransformer (FixList_encode FixInt_encode (f2 t)) (
                        (fun e => (nil, e))))) ce.
-
+(* Commenting out until we update for new framework. *)
+(*
 Definition test_decoder
   : { decode | encode_decode_correct test_cache btransformer (fun _ => True) encode_test decode }.
 Proof.
@@ -51,4 +52,4 @@ Proof.
                                                                       pose p' as p.
   exact p.
 Defined.
-Print test_decoder'.
+Print test_decoder'. *)
