@@ -285,5 +285,5 @@ Proof.
   exact Peano_dec.eq_nat_dec.
 Defined.
 
-Definition frame_decoder := Eval simpl in projT1 EthernetHeader_decoder.
+Definition frame_decoder := Eval simpl in proj1_sig EthernetHeader_decoder.
 Print frame_decoder.
