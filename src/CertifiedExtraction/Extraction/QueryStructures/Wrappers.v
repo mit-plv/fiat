@@ -20,17 +20,12 @@ Ltac Wrapper_t :=
   abstract (intros * H; inversion H; subst; clear H; f_equal;
             eauto with inj_db).
 
-Instance QS_WrapTuple {N} : FacadeWrapper ADTValue (@RawTuple (MakeWordHeading N)).
-Proof.
-  refine {| wrap tp := Tuple (TupleToListW tp);
-            wrap_inj := _ |}; Wrapper_t.
-Defined.
-
-Instance QS_WrapTupleList {N} : FacadeWrapper ADTValue (list (@RawTuple (MakeWordHeading N))).
-Proof.
-  refine {| wrap tl := TupleList (List.map TupleToListW tl);
-            wrap_inj := _ |}; Wrapper_t.
-Defined.
+(* Disabled, since we now export it in Tuple.v *)
+(* Instance QS_WrapFiatWTuple {N} : FacadeWrapper ADTValue (FiatWTuple N). *)
+(* Proof. *)
+(*   refine {| wrap tp := WTuple (TupleToListW tp); *)
+(*             wrap_inj := _ |}; Wrapper_t. *)
+(* Defined. *)
 
 Instance QS_WrapWordList : FacadeWrapper ADTValue (list W).
 Proof.
@@ -38,26 +33,32 @@ Proof.
             wrap_inj := _ |}; Wrapper_t.
 Defined.
 
-Instance QS_WrapBedrockTuple : FacadeWrapper QsADTs.ADTValue (TuplesF.tupl).
+Instance QS_WrapFiatWTupleList {N} : FacadeWrapper ADTValue (list (FiatWTuple N)).
 Proof.
-  refine {| wrap tp := QsADTs.Tuple tp;
+  refine {| wrap tl := WTupleList (List.map TupleToListW tl);
             wrap_inj := _ |}; Wrapper_t.
 Defined.
 
-Instance QS_WrapBag0 {N} : FacadeWrapper ADTValue (FiatBag N).
+Instance QS_WrapBedrockWTuple : FacadeWrapper QsADTs.ADTValue (TuplesF.tupl).
 Proof.
-  refine {| wrap tl := Tuples0 (Word.natToWord 32 N) (IndexedEnsemble_TupleToListW tl);
+  refine {| wrap tp := WTuple tp;
             wrap_inj := _ |}; Wrapper_t.
 Defined.
 
-Instance QS_WrapBag1 {N} (M: Word.word 32) : FacadeWrapper ADTValue (FiatBag N).
+Instance QS_WrapWBagOfTuples0 {N} : FacadeWrapper ADTValue (FiatWBag N).
 Proof.
-  refine {| wrap tl := Tuples1 (Word.natToWord 32 N) M (IndexedEnsemble_TupleToListW tl);
+  refine {| wrap tl := WBagOfTuples0 (Word.natToWord 32 N) (IndexedEnsemble_TupleToListW tl);
             wrap_inj := _ |}; Wrapper_t.
 Defined.
 
-Instance QS_WrapBag2 {N} (M: Word.word 32) (M': Word.word 32) : FacadeWrapper ADTValue (FiatBag N).
+Instance QS_WrapWBagOfTuples1 {N} (M: Word.word 32) : FacadeWrapper ADTValue (FiatWBag N).
 Proof.
-  refine {| wrap tl := Tuples2 (Word.natToWord 32 N) M M' (IndexedEnsemble_TupleToListW tl);
+  refine {| wrap tl := WBagOfTuples1 (Word.natToWord 32 N) M (IndexedEnsemble_TupleToListW tl);
+            wrap_inj := _ |}; Wrapper_t.
+Defined.
+
+Instance QS_WrapWBagOfTuples2 {N} (M: Word.word 32) (M': Word.word 32) : FacadeWrapper ADTValue (FiatWBag N).
+Proof.
+  refine {| wrap tl := WBagOfTuples2 (Word.natToWord 32 N) M M' (IndexedEnsemble_TupleToListW tl);
             wrap_inj := _ |}; Wrapper_t.
 Defined.

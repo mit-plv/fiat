@@ -24,7 +24,7 @@ Lemma CompileCallAny:
       NotInTelescope var tenv ->
       {{ tenv }}
         (DFacade.Call var fpointer nil)
-      {{ [[ ` var <~~ Any as _]] :: tenv }} ∪ {{ ext }} // env.
+      {{ [[ ` var ~~> Any as _]] :: tenv }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call); facade_eauto.
 Qed.

@@ -60,7 +60,7 @@ Fixpoint NotInTelescope {av} k (tenv: Telescope av) :=
 Lemma NotInTelescope_not_eq_head:
   forall `{FacadeWrapper (Value av) A} (key : string) (val : Comp A)
     (tail : A -> Telescope av) (var : StringMap.key),
-    NotInTelescope var ([[` key <~~ val as kk]]::tail kk) ->
+    NotInTelescope var ([[` key ~~> val as kk]]::tail kk) ->
     key <> var.
 Proof.
   simpl; intros; repeat cleanup; eauto.
@@ -71,7 +71,7 @@ Lemma NotInTelescope_not_in_tail:
     (tail : A -> Telescope av) (var : StringMap.key)
     (v : A),
     val ↝ v ->
-    NotInTelescope var ([[ s <~~ val as kk]]::tail kk) ->
+    NotInTelescope var ([[ s ~~> val as kk]]::tail kk) ->
     NotInTelescope var (tail v).
 Proof.
   simpl; intros.
@@ -83,7 +83,7 @@ Ltac decide_NotInTelescope :=
                   | _ => cleanup
                   | _ => congruence
                   | [  |- NotInTelescope _ Nil ] => reflexivity
-                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => simpl
+                  | [  |- NotInTelescope ?k (Cons _ _ _) ] => unfold NotInTelescope; fold @NotInTelescope
                   end.
 
 Fixpoint DropName {A} k (t: Telescope A) :=
@@ -174,8 +174,6 @@ Inductive TelStrongEq {av} : (Telescope av) -> (Telescope av) -> Prop :=
     (forall vv, v1 ↝ vv -> TelStrongEq (t1 vv) (t2 vv)) ->
     TelStrongEq (@Cons av A k v1 t1) (@Cons av A k v2 t2).
 
-Print TelStrongEq.
-
 Ltac inversion' H :=
   inversion H; subst; clear H.
 
@@ -257,3 +255,4 @@ Proof.
   - reflexivity.
   - intros; computes_to_inv; subst; reflexivity.
 Qed.
+

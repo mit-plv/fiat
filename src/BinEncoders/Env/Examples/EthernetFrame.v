@@ -380,5 +380,5 @@ Proof.
   exact (@weq _).
 Defined.
 
-Definition frame_decoder := Eval simpl in projT1 EthernetFrame_decoder.
+Definition frame_decoder := Eval simpl in proj1_sig EthernetFrame_decoder.
 Print frame_decoder.

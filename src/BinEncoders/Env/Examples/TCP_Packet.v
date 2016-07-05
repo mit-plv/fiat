@@ -175,7 +175,7 @@ Proof.
   solve_mod_8.
   solve_mod_8.
   { (* Grossest Proof By Far. *)
-    intros; simpl transform_id; try rewrite length_ByteString_ByteString_id.
+    intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
     instantiate (1 := fun _ => (wordToNat tcpLength) * 8);
       cbv beta.
     unfold TCP_Packet_OK in H2.

@@ -31,6 +31,15 @@ Ltac may_touch H :=
   | _ => idtac
   end.
 
+
+Lemma List_cons_inj :
+  forall {A} {h1 h2} {t1 t2: list A},
+    h1 :: t1 = h2 :: t2 ->
+    h1 = h2 /\ t1 = t2.
+Proof.
+  inversion 1; intuition congruence.
+Qed.
+
 Ltac facade_cleanup_call :=
   match goal with
   | _ => progress cbv beta iota delta [add_remove_many] in *
@@ -46,7 +55,10 @@ Ltac facade_cleanup_call :=
   | [ H: List.combine ?a ?b = _, H': List.length ?a = List.length ?b |- _ ] => learn (combine_inv a b H' H)
   | [ |-  context[List.split (cons _ _)] ] => simpl
   | [ H: context[List.split (cons _ _)] |- _ ] => may_touch H; simpl in H
-  | [ H: List.cons _ _ = List.cons _ _ |- _ ] => inversion H; try subst; clear dependent H
+  | [ H: List.cons _ _ = List.cons _ _ |- _ ] =>
+    (* Not using inversion: it sometimes loops *)
+    let heads_eq := fresh in
+    destruct (List_cons_inj H) as (heads_eq & ?); inversion heads_eq; try subst; clear dependent H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   | [  |- exists _, _ ] => eexists

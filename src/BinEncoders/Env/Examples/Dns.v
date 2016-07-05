@@ -65,23 +65,23 @@ Section DnsExample.
 
   Definition FixInt_of_branch (b : CacheBranch) : {n | (n < exp2 2)%N}.
     refine (match b with
-            | Yes => existT _ 3%N _
-            | No  => existT _ 0%N _
+            | Yes => exist _ 3%N _
+            | No  => exist _ 0%N _
             end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition FixInt_of_type (t : type_t) : {n | (n < exp2 16)%N}.
     refine (match t with
-            | A     => existT _ 1%N _
-            | CNAME => existT _ 5%N _
-            | NS    => existT _ 2%N _
-            | MX    => existT _ 15%N _
+            | A     => exist _ 1%N _
+            | CNAME => exist _ 5%N _
+            | NS    => exist _ 2%N _
+            | MX    => exist _ 15%N _
             end%bencode); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   Definition FixInt_of_class (c : class_t) : {n | (n < exp2 16)%N}.
     refine (match c with
-            | IN => existT _ 1%N _
-            | CH => existT _ 3%N _
-            | HS => existT _ 4%N _
+            | IN => exist _ 1%N _
+            | CH => exist _ 3%N _
+            | HS => exist _ 4%N _
             end); abstract (rewrite <- N.compare_lt_iff; eauto).  Defined.
 
   (* Commenting out until we patch up with new notations. *)

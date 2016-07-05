@@ -4,13 +4,6 @@ Require Export Bedrock.Platform.Cito.StringMap Bedrock.Platform.Cito.StringMapFa
 
 Module Export MoreStringMapFacts := WMoreFacts_fun (StringMap.E) (StringMap).
 
-Notation "A ∉ B" := (not (StringMap.In A B)) (at level 10, no associativity).
-Notation "A ∈ B" := (StringMap.In A B) (at level 10, no associativity).
-Notation "∅" := (StringMap.empty _).
-
-Notation "[ k <-- v ] :: m" :=
-  (StringMap.add k v m) (at level 21, right associativity, arguments at next level) : map_scope.
-
 Global Open Scope map_scope.
 
 Lemma urgh : (subrelation eq (Basics.flip Basics.impl)).

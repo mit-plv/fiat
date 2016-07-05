@@ -354,7 +354,7 @@ Lemma weqb_correct {sz} :
   forall w1 w2: word sz,
     Word.weqb w1 w2 = false -> w1 <> w2.
 Proof.
-  red; intros ** Heq.
+  red; intros ??? Heq.
   rewrite <- weqb_true_iff in Heq.
   congruence.
 Qed.

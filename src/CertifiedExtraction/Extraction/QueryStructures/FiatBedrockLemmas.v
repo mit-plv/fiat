@@ -11,15 +11,15 @@ Require Import
 Require Import CertifiedExtraction.Utils.
 
 Opaque BinNat.N.of_nat.
-Lemma selN_GetAttributeRaw:
+Lemma nth_error_GetAttributeRaw:
   forall {N} (tup: @RawTuple (MakeWordHeading N)) (idx: Fin.t N),
     let n := (projT1 (Fin.to_nat idx)) in
     BinNat.N.lt (BinNat.N.of_nat n) (Word.Npow2 32) ->
     let k1 := Word.natToWord 32 n in
-    Array.selN (TupleToListW tup) (Word.wordToNat k1) =
-    match MakeWordHeading_allWords idx with
-    | eq_refl => (GetAttributeRaw tup idx)
-    end.
+    nth_error (TupleToListW tup) (Word.wordToNat k1) =
+    @Some W match MakeWordHeading_allWords idx with
+            | eq_refl => (GetAttributeRaw tup idx)
+            end.
 Proof.
   induction idx; simpl in *.
   - reflexivity.
@@ -28,7 +28,7 @@ Proof.
     intros.
     rewrite Word.wordToNat_natToWord_idempotent in *
       by auto using BinNat_lt_of_nat_S.
-    rewrite IHidx by auto using BinNat_lt_of_nat_S; reflexivity.
+    simpl; rewrite IHidx by auto using BinNat_lt_of_nat_S; reflexivity.
 Qed.
 Transparent BinNat.N.of_nat.
 
@@ -57,7 +57,7 @@ Proof.
 Qed.
 
 Lemma minFreshIndex_unique:
-  forall {table : BedrockBag} {x y : nat},
+  forall {table : BedrockWBag} {x y : nat},
     TuplesF.minFreshIndex table x ->
     TuplesF.minFreshIndex table y ->
     x = y.
@@ -85,17 +85,16 @@ Proof.
   split; intros ** H; inversion H; firstorder.
 Qed.
 
-
 Lemma Fiat_Bedrock_Filters_Equivalence:
-  forall (N : nat) (table : FiatBag N) (key : W) (x9 : list TuplesF.tupl)
+  forall (N : nat) (table : FiatWBag N) (key : W) (x9 : list TuplesF.tupl)
          (idx1: Fin.t N)
          (k1 := (Word.natToWord 32 (projT1 (Fin.to_nat idx1)))),
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
+    TuplesF.EnsembleIndexedListEquivalence (TuplesF.keepEq eq (Word.wzero _) (IndexedEnsemble_TupleToListW table) k1 key) x9 ->
     IndexedEnsembles.EnsembleIndexedListEquivalence
       (IndexedEnsembles.IndexedEnsemble_Intersection
          table
-         (fun x0 : FiatTuple N =>
+         (fun x0 : FiatWTuple N =>
             ((if Word.weq match MakeWordHeading_allWords idx1 in _ = W return W with
                           | eq_refl => GetAttributeRaw x0 idx1
                           end key then true else false) && true)%bool = true))
@@ -122,23 +121,25 @@ Proof.
            | [ H: (if ?cond then true else false) = _ |- _ ] => destruct cond; try discriminate; [idtac]
            end.
 
-  - rewrite H4.
+  - setoid_rewrite H4.
     set (IndexedEnsembles.indexedElement x0).
 
     clear H0.
 
-    unfold k1; rewrite selN_GetAttributeRaw; eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat.
-  - rewrite H3.
-    unfold k1; rewrite selN_GetAttributeRaw by eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat; simpl.
+    unfold k1.
+    rewrite nth_error_GetAttributeRaw; eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat.
+  - unfold W, k1 in *; rewrite H3.
+    unfold k1 in *; rewrite nth_error_GetAttributeRaw
+      by eauto using BinNat.N.lt_trans, BinNat_lt_Fin_to_nat; simpl.
     destruct (Word.weq _ _); (reflexivity || exfalso; eauto).
 Qed.
 
 Lemma Fiat_Bedrock_Insert:
-  forall (N : nat) (table : FiatBag N) (tuple : FiatTuple N) (x : nat),
+  forall (N : nat) (table : FiatWBag N) (tuple : FiatWTuple N) (x : nat),
     Ensembles.Same_set TuplesF.IndexedElement
                        (TuplesF.insertAt (IndexedEnsemble_TupleToListW table) x (TupleToListW tuple))
                        (IndexedEnsemble_TupleToListW
-                          (Ensembles.Add (FiatElement N) table
+                          (Ensembles.Add (FiatWElement N) table
                                          {| IndexedEnsembles.elementIndex := x; IndexedEnsembles.indexedElement := tuple |})).
 Proof.
   intros; rewrite Same_set_pointwise.

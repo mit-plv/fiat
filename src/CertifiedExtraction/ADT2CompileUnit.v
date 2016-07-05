@@ -128,7 +128,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                          {{ list2Telescope (pre ++ DecomposeRepPre) }}
                            prog
                            {{ [[meth as database]]
-                                :: [[`"ret" <-- Word.natToWord 32 0 as _]]
+                                :: [[`"ret" ->> Word.natToWord 32 0 as _]]
                                 :: (DecomposeRep database) }} ∪ {{ StringMap.empty _ }} // env
                          /\ forall r', computes_to meth r' -> P r'
 
@@ -138,7 +138,7 @@ Fixpoint LiftMethod' (av : Type) (env : Env av) {Rep} {Cod} {Dom}
                               {{ list2Telescope (pre ++ DecomposeRepPre) }}
                                 prog
                                 {{[[meth as mPair]]
-                                    :: [[`"ret" <-- snd mPair as _]]
+                                    :: [[`"ret" ->> snd mPair as _]]
                                     :: (DecomposeRep (fst mPair))}}  ∪ {{ StringMap.empty _ }} // env
                               /\ forall r' v', computes_to meth (r', v') -> P r'
              end
@@ -1013,7 +1013,7 @@ Lemma StringMap_remove_add av:
     rest ≲ tenv ∪ ext
     -> k ∉ rest
     -> StringMap.remove (elt:=Value av) k
-                        ([k <-- v ]:: rest)
+                        ([k |> v ]:: rest)
                         ≲ tenv ∪ ext.
 Proof.
   intros; eapply SameValues_Equal with (m1 := rest).
@@ -1759,8 +1759,8 @@ Lemma fold_left_add2_Eq {B C}
     let f' := (fun (acc : @StringMap.t C) (el : B)  => StringMap.add (f el) (f' el) acc) in
     ~ StringMap.In k (fold_left f' l (StringMap.empty _))
     -> StringMap.Equal
-         (fold_left f' l ([k <-- v]::st))
-         ([k <-- v]:: (fold_left f' l st)).
+         (fold_left f' l ([k |> v]::st))
+         ([k |> v]:: (fold_left f' l st)).
 Proof.
   induction l; simpl; intros.
   - reflexivity.
@@ -1777,7 +1777,7 @@ Proof.
       eexists; apply StringMap.add_1; eauto.
       destruct (string_dec (f a0) (f a)); subst; simpl.
       rewrite e; eapply IHl.
-      destruct (IHl ([f a0 <-- f' a0]::t) c).
+      destruct (IHl ([f a0 |> f' a0]::t) c).
       eexists x.
       setoid_rewrite find_mapsto_iff.
       setoid_rewrite StringMap_fold_left_Eq.
@@ -1821,7 +1821,7 @@ Lemma StringMapsTo_fold_left A C
          (f' idx)
          (fold_left
             (fun acc (el : A) =>
-               [f el <-- f' el] :: acc )
+               [f el |> f' el] :: acc )
             l st).
 Proof.
   induction l; simpl; intros.
@@ -1856,7 +1856,7 @@ Lemma NIn_StringMap_fold_left A C
          (f idx)
          (fold_left
             (fun acc (el : A) =>
-               [f el <-- f' el] :: acc )
+               [f el |> f' el] :: acc )
             l st).
 Proof.
   induction l; simpl; intros.
@@ -1898,7 +1898,7 @@ Corollary StringMapsTo_fold_left' {n} C
          (f' idx)
          (fold_left
             (fun acc (el : Fin.t n) =>
-               [f el <-- f' el] :: acc )
+               [f el |> f' el] :: acc )
             (BuildFinUpTo n) st).
 Proof.
   intros; eapply StringMapsTo_fold_left.
@@ -1916,7 +1916,7 @@ Lemma StringMapsTo_fold_left_ex A C
          v
          (fold_left
             (fun acc (el : A) =>
-               [f el <-- f' el] :: acc )
+               [f el |> f' el] :: acc )
             l (StringMap.empty _))
     -> exists idx, k = f idx /\ v = f' idx.
 Proof.
@@ -2020,11 +2020,11 @@ Lemma is_sub_domain_add
   : forall k (v : elt) (v' : elt2) m1 m2,
     ~ StringMap.In k m1
     -> ~ StringMap.In k m2
-    -> is_sub_domain ([k <-- v] :: m1) ([k <-- v'] :: m2) = is_sub_domain m1 m2.
+    -> is_sub_domain ([k |> v] :: m1) ([k |> v'] :: m2) = is_sub_domain m1 m2.
 Proof.
   intros; unfold is_sub_domain.
-  case_eq (forallb (fun k0 : M.key => M.mem (elt:=elt2) k0 ([k <-- v']::m2))
-                   (UWFacts.WFacts.keys ([k <-- v]::m1))); intros.
+  case_eq (forallb (fun k0 : M.key => M.mem (elt:=elt2) k0 ([k |> v']::m2))
+                   (UWFacts.WFacts.keys ([k |> v]::m1))); intros.
   - rewrite forallb_forall in H1.
     symmetry; apply forallb_forall; intros.
     erewrite <- add_neq_b.

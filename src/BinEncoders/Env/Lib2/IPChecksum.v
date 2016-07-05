@@ -267,7 +267,7 @@ Proof.
   simpl.
   unfold hi8, lo8.
   unfold split2.
-  unfold split1.
+  unfold split1, plus.
   f_equal.
   rewrite (shatter_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))).
   f_equal.
@@ -308,10 +308,10 @@ Proof.
     rewrite IHl in n; congruence.
     eauto.
   - rewrite NatModulo_S_Not_Full; eauto.
-    unfold NPeano.Nat.modulo; rewrite <- IHl.
+    unfold NPeano.Nat.modulo in IHl |- *; rewrite <- IHl.
     simpl.
     unfold ByteString_push.
-    rewrite <- IHl in n.
+    unfold NPeano.modulo, NPeano.Nat.modulo in IHl, n; rewrite <- IHl in n.
     destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7);
       simpl; eauto.
     congruence.
@@ -452,13 +452,10 @@ Proof.
   - rewrite e; simpl; eauto.
   - pose proof (paddingOK b).
     destruct (padding b); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
-    destruct (n0); simpl; eauto.
+    repeat match goal with
+           | [ |- context[match ?n0 with 0 => _ | _ => _ end] ]
+             => is_var n0; destruct n0; simpl; eauto; [ ]
+           end.
     omega.
 Qed.
 

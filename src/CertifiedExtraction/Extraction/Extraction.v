@@ -15,8 +15,9 @@ Ltac compile_do_use_transitivity_to_handle_head_separately :=
                        match constr:(post) with
                        | Cons ?k _ _ =>
                          match constr:(pre) with
+                         | Cons k _ _ => (apply ProgOk_Transitivity_First || apply ProgOk_Transitivity_First_defunc)
                          | context[k] => fail 1 "Head variable appears in pre-condition"
-                         | _ => apply ProgOk_Transitivity_Cons
+                         | _ => (apply ProgOk_Transitivity_Cons || apply ProgOk_Transitivity_Cons_defunc)
                          end
                        end).
 
@@ -233,18 +234,15 @@ Ltac compile_simple_inplace :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match post with
-            | Cons (NTSome ?s) (ret ?final) ?tenv' =>
+            | Cons (NTSome ?s) (ret (?op ?a' ?b)) ?tenv' =>
               match pre with
-              | context[Cons (NTSome ?s) (ret ?initial) _] =>
+              | context[Cons (NTSome ?s) (ret ?a) _] =>
+                unify a a';
+                is_word (op a b);
+                let facade_op := translate_op op in
                 move_to_front s;
-                  match constr:((initial, final)) with
-                  | (?a, ?op ?a' ?b) =>
-                    unify a a';
-                      is_word (op a b);
-                      let facade_op := translate_op op in
-                      first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
-                            | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
-                  end
+                first [ apply (CompileBinopOrTest_right_inPlace_tel facade_op)
+                      | apply (CompileBinopOrTest_right_inPlace_tel_generalized facade_op) ]
               end
             end).
 
@@ -269,18 +267,18 @@ Ltac _compile_fold :=
             let vtest := gensym "test" in
             let vhead := gensym "head" in
             match constr:((pre, post)) with
-            | ([[`?vinit <~~ ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <~~ fold_left _ ?seq ?init as _]] :: ?tenv') =>
+            | ([[`?vinit ~~> ?init as _]] :: [[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ~~> fold_left _ ?seq ?init as _]] :: ?tenv') =>
               apply (CompileLoop seq init (vtest := vtest) (vhead := vhead))
-            | ([[`?vinit <-- ?init as _]] :: [[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <-- fold_left _ ?seq ?init as _]] :: ?tenv') =>
+            | ([[`?vinit ->> ?init as _]] :: [[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ->> fold_left _ ?seq ?init as _]] :: ?tenv') =>
               apply (CompileLoop_ret seq init (vtest := vtest) (vhead := vhead))
-            | ([[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <~~ fold_left _ ?seq _ as _]] :: ?tenv') =>
+            | ([[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ~~> fold_left _ ?seq _ as _]] :: ?tenv') =>
               apply (CompileLoopAlloc (vtest := vtest) (vhead := vhead))
-            | ([[`?vseq <-- ?seq as _]] :: ?tenv, [[`?vret <-- fold_left _ ?seq _ as _]] :: ?tenv') =>
+            | ([[`?vseq ->> ?seq as _]] :: ?tenv, [[`?vret ->> fold_left _ ?seq _ as _]] :: ?tenv') =>
               apply (CompileLoopAlloc_ret (vtest := vtest) (vhead := vhead))
             end).
 
 Ltac _compile_destructor_unsafe vtmp tenv tenv' :=
-  (apply CompileDeallocSCA_discretely ||
+  (apply CompileDeallocW_discretely ||
    first [ unify tenv tenv';
            apply (CompileCallFacadeImplementationOfDestructor (vtmp := DummyArgument vtmp))
          | eapply CompileSeq;
@@ -302,7 +300,7 @@ Ltac _compile_destructor :=
                       lazymatch is_sca with
                       | true => (match post with
                                 | context[k] => fail 1
-                                | _ => apply CompileDeallocSCA_discretely
+                                | _ => apply CompileDeallocW_discretely
                                 end)
                       | false => (lazymatch v with
                                   | ret ?vv => first [ tenv_mentions_fast post vv; fail 1
@@ -318,7 +316,7 @@ Ltac _compile_mutation :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match post with
-            | [[`?s <-- ?f _ _ as _]]::?tenv =>
+            | [[`?s ->> ?f _ _ as _]]::?tenv =>
               let arg := gensym "arg" in
               let tmp := gensym "tmp" in
               let arg_type := first_arg f in
@@ -351,7 +349,7 @@ Ltac _compile_constructor :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match constr:((pre, post)) with
-            | (?tenv, [[?s <-- ?adt as _]]::?tenv') =>
+            | (?tenv, [[?s ->> ?adt as _]]::?tenv') =>
               match type of adt with
               | W => fail 1
               | _ => call_tactic_after_moving_head_binding_to_separate_goal

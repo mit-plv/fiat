@@ -31,7 +31,7 @@ Qed.
 Definition TupleToListW {N} (tuple: @RawTuple (MakeWordHeading N)) :=
   ilist2ToListW tuple.
 
-Definition IndexedElement_TupleToListW {N} (element: FiatElement N) : BedrockElement :=
+Definition IndexedElement_TupleToListW {N} (element: FiatWElement N) : BedrockWElement :=
   {| elementIndex := element.(IndexedEnsembles.elementIndex);
      indexedElement := TupleToListW element.(IndexedEnsembles.indexedElement) |}.
 
@@ -41,7 +41,7 @@ Fixpoint ListWToilist2 (l : list W) : ilist2.ilist2 (B := fun x => x) (MakeVecto
   | x :: x0 => ilist2.icons2 x (ListWToilist2 x0)
   end.
 
-Definition RelatedIndexedTupleAndListW {N} (l: BedrockElement) (tup: FiatElement N) :=
+Definition RelatedIndexedTupleAndListW {N} (l: BedrockWElement) (tup: FiatWElement N) :=
   l.(elementIndex) = tup.(IndexedEnsembles.elementIndex) /\
   l.(indexedElement) = TupleToListW tup.(IndexedEnsembles.indexedElement).
 
@@ -70,7 +70,7 @@ Qed.
 Hint Resolve map_TupleToListW_inj : inj_db.
 
 Lemma IndexedElement_TupleToListW_inj :
-  forall {N} (e1 e2: FiatElement N),
+  forall {N} (e1 e2: FiatWElement N),
     IndexedElement_TupleToListW e1 = IndexedElement_TupleToListW e2 ->
     e1 = e2.
 Proof.
@@ -78,30 +78,25 @@ Proof.
   apply TupleToListW_inj; eauto.
 Qed.
 
-
 Lemma TupleToListW_length:
-  forall (N : nat) (tuple : FiatTuple N),
-    BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    Datatypes.length (TupleToListW tuple) = Word.wordToNat (Word.natToWord 32 N).
+  forall (N : nat) (tuple : FiatWTuple N),
+    Datatypes.length (TupleToListW tuple) = N.
 Proof.
-  intros; rewrite Word.wordToNat_natToWord_idempotent by assumption.
-  clear H.
   induction N; intros.
   - destruct tuple; reflexivity.
   - simpl; f_equal; apply IHN.
 Qed.
 
 Lemma TupleToListW_length':
-  forall (N : nat) (tuple : FiatTuple N),
+  forall (N : nat) (tuple : FiatWTuple N),
     BinNat.N.lt (BinNat.N.of_nat N) (Word.Npow2 32) ->
-    Datatypes.length (TupleToListW tuple) = N.
+    Datatypes.length (TupleToListW tuple) = Word.wordToNat (Word.natToWord 32 N).
 Proof.
-  cleanup;
-  erewrite <- Word.wordToNat_natToWord_idempotent;
-  eauto using TupleToListW_length.
+  intros; rewrite Word.wordToNat_natToWord_idempotent by assumption.
+  auto using TupleToListW_length.
 Qed.
 
-Definition TupleToListW_indexed {N} (tup: FiatElement N) :=
+Definition TupleToListW_indexed {N} (tup: FiatWElement N) :=
   {| TuplesF.elementIndex := IndexedEnsembles.elementIndex tup;
      TuplesF.indexedElement := (TupleToListW (IndexedEnsembles.indexedElement tup)) |}.
 
@@ -113,7 +108,7 @@ Proof.
 Qed.
 
 Lemma TupleToListW_indexed_inj {N}:
-  forall (t1 t2: FiatElement N),
+  forall (t1 t2: FiatWElement N),
     TupleToListW_indexed t1 = TupleToListW_indexed t2 ->
     t1 = t2.
 Proof.
@@ -127,7 +122,7 @@ Qed.
 Definition ListWToTuple (l: list W) : @RawTuple (MakeWordHeading (List.length l)) :=
   ListWToilist2 l.
 
-Definition IndexedElement_ListWToTuple (element: @IndexedElement (list W)) : FiatElement (List.length (indexedElement element)) :=
+Definition IndexedElement_ListWToTuple (element: @IndexedElement (list W)) : FiatWElement (List.length (indexedElement element)) :=
   {| IndexedEnsembles.elementIndex := element.(elementIndex);
      IndexedEnsembles.indexedElement := ListWToTuple element.(indexedElement) |}.
 
@@ -165,13 +160,13 @@ Qed.
 
 Require Import Fiat.ADT.Core.
 
-Definition ListWToTuple_Truncated n l : FiatTuple n :=
-  @eq_rect nat _ (fun n => FiatTuple n)
+Definition ListWToTuple_Truncated n l : FiatWTuple n :=
+  @eq_rect nat _ (fun n => FiatWTuple n)
            (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
            n (TruncateList_length n _ _).
 
-Definition ListWToTuple_Truncated' n (l: list W) : FiatTuple n :=
-  match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatTuple n0 with
+Definition ListWToTuple_Truncated' n (l: list W) : FiatWTuple n :=
+  match (TruncateList_length n (Word.natToWord 32 0) l) in _ = n0 return FiatWTuple n0 with
   | eq_refl => (ListWToTuple (TruncateList (Word.natToWord 32 0) n l))
   end.
 

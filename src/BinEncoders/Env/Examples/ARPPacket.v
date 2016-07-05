@@ -236,5 +236,5 @@ Proof.
 Defined.
 
 Definition ARP_Packet_decoder :=
-  Eval simpl in projT1 ARPPacket_decoder.
+  Eval simpl in proj1_sig ARPPacket_decoder.
 Print ARP_Packet_decoder.
