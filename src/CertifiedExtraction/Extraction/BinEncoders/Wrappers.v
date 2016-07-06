@@ -232,17 +232,17 @@ Definition WrapNatIntoW_error (n: nat) : (if Compare_dec.le_dec n 32 then
   destruct (Compare_dec.le_dec n 32); auto using WrapNatIntoW_le32.
 Defined.
 
-Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then
-                                        FacadeWrapper (Value av) (BoundedNat n)
-                                      else True).
-  destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32.
-Defined.
+(* Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then *)
+(*                                         FacadeWrapper (Value av) (BoundedNat n) *)
+(*                                       else True). *)
+(*   destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32. *)
+(* Defined. *)
 
 Instance WrapNatIntoW8 : FacadeWrapper W (BoundedNat 8) := WrapNatIntoW_error 8.
 Instance WrapNatIntoW16 : FacadeWrapper W (BoundedNat 16) := WrapNatIntoW_error 16.
 
-Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8.
-Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16.
+(* Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8. *)
+(* Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16. *)
 
 Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat :
   forall w,

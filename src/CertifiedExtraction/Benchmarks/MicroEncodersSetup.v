@@ -95,6 +95,9 @@ Definition MicroEncoders_Env : Env ADTValue :=
   (GLabelMap.empty (FuncSpec _))
     ### ("ByteString", "New") ->> (Axiomatic BytesADTSpec.New)
     ### ("ByteString", "Push") ->> (Axiomatic BytesADTSpec.Push)
+    ### ("list[W]", "Pop") ->> (Axiomatic WordListADTSpec.Pop)
+    ### ("list[W]", "Empty") ->> (Axiomatic WordListADTSpec.Empty)
+    ### ("list[W]", "Delete") ->> (Axiomatic WordListADTSpec.Delete)
     ### ("list[W]", "Length") ->> (Axiomatic WordListADTSpec.Length).
 
 (* FIXME use these only in the microbenchmarks *)

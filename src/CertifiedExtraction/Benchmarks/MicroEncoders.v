@@ -180,18 +180,19 @@ Proof.
 Qed.
 
 Ltac _compile_decide_write8_side_condition ::=
-  repeat lazymatch goal with
-         | [ H := _ |- _ ] => unfold H in *; clear H
-         | [  |- context[List.length (byteString (?x))] ] =>
-           match x with
-           | transform_id => change (length (byteString transform_id)) with 0
-           | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
-           | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
-           | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
-           | _ => fail 3 "Unrecognized form" x
-           end
-         | _ => omega
-         end.
+  progress
+    repeat lazymatch goal with
+           | [ H := _ |- _ ] => unfold H in *; clear H
+           | [  |- context[List.length (byteString (?x))] ] =>
+             match x with
+             | transform_id => change (length (byteString transform_id)) with 0
+             | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
+             | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
+             | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
+             | _ => fail 3 "Unrecognized form" x
+             end
+           | _ => omega
+           end.
 
 Transparent encode_word_Impl.
 Lemma encode_word8_Impl_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
@@ -458,17 +459,6 @@ Proof.
   compile_encoder_step.
   compile_encoder_step.
   2: solve [compile_encoder_t].
-  Focus 2.
-  compile_encoder_step.
-  compile_encoder_step.
-
-  Close Scope telescope_scope.
-  Set Printing Implicit.
-  
-  
-  compile_encoder_step.
-  compile_encoder_step.
-  
   2: solve [compile_encoder_t].
   compile_encoder_step.
   compile_encoder_step.
@@ -488,9 +478,34 @@ Proof.
 
   rewrite encode_list_as_foldl.
   _encode_list__rewrite_as_fold.
+
+
+Ltac _encode_list__compile_loop ::=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | appcontext[fold_left (encode_list_body _) (`?lst)] =>
+              lazymatch pre with
+              | context[Cons (NTSome ?vlst) (ret lst) _] =>
+                _compile_LoopMany vlst;
+                (*  FIXME generalize this rewrite *)
+                try rewrite (TelEq_same_wrap (`lst) (lst)) by reflexivity
+              end
+            end).
+
   _encode_list__compile_loop.
 
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  
   2:compile_encoder_t.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
   compile_encoder_step.
   compile_encoder_step.
   compile_encoder_step.
@@ -505,7 +520,7 @@ Proof.
 
   compile_encoder_step.
   compile_encoder_step.
-  
+
   (* unfold encode_list_body. *)
   replace acc with ((fst acc), (snd acc)).
   compile_encoder_step.
@@ -526,63 +541,37 @@ Proof.
   compile_encoder_step.
   compile_encoder_step.
   (apply CompileDeallocSCA_discretely; try compile_encoder_t).
-  admit.
-  
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
 
-  Grab Existential Variables.
-  apply ("AAA", "BBB").
-  apply ("AAA2", "BBB2").
-  apply ("AAA3", "BBB3").
+   match goal with
+   | _ => _encode_start_compiling
+   | _ => _encode_cleanup
+   | _ => _compile_encode_do_side_conditions
+   | _ => _encode_prepare_cache
+   | _ => _encode_FixInt
+   | _ => _encode_IList_compile
+   | _ => _compile_CallWrite
+   | _ => _compile_Read
+   | _ => _compile_SameWrap
+   (* | _ => _compile_ReadConstantN *)
+   (* | _ => _compile_CallAdd16 *)
+   | _ => _compile_CallListLength
+   | _ => _compile_CallAllocString
+   (* | _ => _compile_CallAllocOffset *)
+   | _ => _compile_compose
+   | _ => _compile_step
+   end.
+
+
+
+   admit.
+   admit.
+
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
 Defined.
 
 Eval lazy in (extract_facade MixedRecord_compile).
-_compile_LoopMany vlst
-Record BitArrayAndList :=
-  { f1 : BitArray 8;
-    f2 : { l : list {n : N | (n < exp2 8)%N} | List.length l < exp2_nat 8} } .
-
-Definition BitArrayAndList_encode (t : BitArrayAndList) :=
-  fst ((IList.IList_encode Bool.Bool_encode (f1 t)
-   Then FixInt_encode (FixList_getlength (f2 t))
-   Then FixList_encode FixInt_encode (f2 t)
-   Then (fun e => (nil, e))) tt).
-
-Require Import Coq.Program.Program.
-
-Definition BitArrayAndListAsCollectionOfVariables
-  {av} vf1 vf2 ll
-  : Telescope av :=
-  [[ vf1 ->> ll.(f1) as _ ]] ::
-  [[ vf2 ->> `ll.(f2) as _ ]] :: Nil.
-
-Hint Unfold BitArrayAndList_encode : f2f_binencoders_autorewrite_db.
-Hint Unfold BitArrayAndListAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
-Hint Rewrite (@IList_encode'_body_simpl empty_cache) : f2f_binencoders_autorewrite_db.
-
-Example BitArrayAndList_compile :
-  ParametricExtraction
-    #vars      bitArrayAndList
-    #program   ret (BitArrayAndList_encode bitArrayAndList)
-    #arguments (BitArrayAndListAsCollectionOfVariables
-                  (NTSome "f1") (NTSome "f2") bitArrayAndList)
-    #env       MicroEncoders_Env.
-Proof.
-  compile_encoder_t.
-  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).  (* TODO automate *)
-  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).
-  Grab Existential Variables.
-  repeat constructor.
-  repeat constructor.
-  repeat constructor.
-Defined.
-
-Eval lazy in (extract_facade BitArrayAndList_compile).
-
