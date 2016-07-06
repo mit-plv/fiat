@@ -211,18 +211,18 @@ Qed.
 (*   hoare; hoare. *)
 (* Admitted. *)
 
-(* FIXME there should be a generic wrapper for list of SCA-injected things *)
-Lemma CompileCallListSCALength {A} {W: FacadeWrapper (Value ADTValue) (list A)}:
-  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
-    env (lst : FixList.FixList 8 A)
-    fLength tenv',
-    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
-    TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
-    {{ tenv }}
-      Call varg fLength [vlst]
-    {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env.
-Proof.
-Admitted.
+(* (* FIXME there should be a generic wrapper for list of SCA-injected things *) *)
+(* Lemma CompileCallListSCALength {A} {W: FacadeWrapper (Value ADTValue) (list A)}: *)
+(*   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue)) *)
+(*     env (lst : FixList.FixList 8 A) *)
+(*     fLength tenv', *)
+(*     GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env -> *)
+(*     TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *) *)
+(*     {{ tenv }} *)
+(*       Call varg fLength [vlst] *)
+(*     {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(* Admitted. *)
 
 Ltac _encode_FixInt :=
   match_ProgOk                  (* FIXME check when this is needed *)

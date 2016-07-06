@@ -8,8 +8,8 @@ Require Export
 
 Require Export
         Fiat.CertifiedExtraction.RemoveSkips
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.BinEncoders
-        Fiat.CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
+        Fiat.CertifiedExtraction.Benchmarks.MicrobenchmarksSetup
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.BinEncoders.
 
 Require Import
         Coq.Strings.String
@@ -21,9 +21,27 @@ Require Export
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Computation
-        Fiat.QueryStructure.Specification.Representation.Notations
-        Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple.
+        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.BinLib.Bool
+        Fiat.BinEncoders.Env.BinLib.Core
+        Fiat.BinEncoders.Env.BinLib.Enum
+        Fiat.BinEncoders.Env.BinLib.FixInt
+        Fiat.BinEncoders.Env.Common.Compose
+        Fiat.BinEncoders.Env.Common.ComposeCheckSum
+        Fiat.BinEncoders.Env.Common.ComposeIf
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.WordFacts
+        Fiat.BinEncoders.Env.Lib.FixList
+        Fiat.BinEncoders.Env.Lib.IList
+        Fiat.BinEncoders.Env.Lib2.Bool
+        Fiat.BinEncoders.Env.Lib2.EnumOpt
+        Fiat.BinEncoders.Env.Lib2.FixListOpt
+        Fiat.BinEncoders.Env.Lib2.NatOpt
+        Fiat.BinEncoders.Env.Lib2.NoCache
+        Fiat.BinEncoders.Env.Lib2.SumTypeOpt
+        Fiat.BinEncoders.Env.Lib2.Vector
+        Fiat.BinEncoders.Env.Lib2.WordOpt
+        Fiat.BinEncoders.Env.Lib2.IPChecksum.
 
 Open Scope binencoders_scope.
 
@@ -70,10 +88,16 @@ Ltac compile_encoder_t :=
 
 Global Opaque Compose.compose.
 Global Opaque Transformer.transform_id.
-Global Opaque EncodeAndPad. (* FIXME move *)
+
+Open Scope nat_scope.
 
 Definition MicroEncoders_Env : Env ADTValue :=
   (GLabelMap.empty (FuncSpec _))
     ### ("ByteString", "New") ->> (Axiomatic BytesADTSpec.New)
     ### ("ByteString", "Push") ->> (Axiomatic BytesADTSpec.Push)
     ### ("list[W]", "Length") ->> (Axiomatic WordListADTSpec.Length).
+
+(* FIXME use these only in the microbenchmarks *)
+Ltac _compile_mutation ::= fail.
+Ltac _compile_constructor ::= fail.
+Ltac _compile_destructor ::= fail.
