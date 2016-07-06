@@ -11,6 +11,38 @@ Require Export
         Fiat.CertifiedExtraction.Extraction.BinEncoders.BinEncoders
         Fiat.CertifiedExtraction.Benchmarks.MicrobenchmarksSetup.
 
+Require Import
+        Coq.Strings.String
+        Coq.Vectors.Vector.
+
+Require Export
+        Fiat.Common.SumType
+        Fiat.Common.EnumType
+        Fiat.Common.BoundedLookup
+        Fiat.Common.ilist
+        Fiat.Computation
+        Fiat.QueryStructure.Specification.Representation.Notations
+        Fiat.QueryStructure.Specification.Representation.Heading
+        Fiat.QueryStructure.Specification.Representation.Tuple
+        Fiat.BinEncoders.Env.BinLib.Core
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.WordFacts
+        Fiat.BinEncoders.Env.Common.ComposeCheckSum
+        Fiat.BinEncoders.Env.Common.ComposeIf
+        Fiat.BinEncoders.Env.Common.Compose
+        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Lib2.FixListOpt
+        Fiat.BinEncoders.Env.Lib2.NoCache
+        Fiat.BinEncoders.Env.Lib2.WordOpt
+        Fiat.BinEncoders.Env.Lib2.Bool
+        Fiat.BinEncoders.Env.Lib2.NatOpt
+        Fiat.BinEncoders.Env.Lib2.Vector
+        Fiat.BinEncoders.Env.Lib2.EnumOpt
+        Fiat.BinEncoders.Env.Lib2.SumTypeOpt
+        Fiat.BinEncoders.Env.Lib2.IPChecksum.
+
+Open Scope binencoders_scope.
+
 Unset Implicit Arguments.
 
 Ltac _encode_prepare_cache :=
@@ -26,8 +58,8 @@ Ltac _encode_start_compiling :=
   match goal with
   | |- sigT _ => eexists;
                let H := fresh in
-               intros H *; destruct H;
-               apply RemoveSkips_ProgOk
+               intros H *; destruct H
+               (* FIXME: apply RemoveSkips_ProgOk *)
   end.
 
 Ltac compile_encoder_step :=

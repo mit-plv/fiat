@@ -1,6 +1,6 @@
 Require Export Coq.NArith.NArith.
 
-Require Export Bedrock.Memory.
+Require Export Bedrock.Memory Bedrock.Word.
 Require Import
         Fiat.BinEncoders.Env.Lib.FixList
         Fiat.BinEncoders.Env.BinLib.FixInt
@@ -11,5 +11,8 @@ Require Import
 
 Unset Implicit Arguments.
 
-Notation BitArray size := { bs: list bool | List.length bs = size }.
+Open Scope nat_scope.
+
+Notation BoundedList A size := { ls: list A | List.length ls < size }.
+Notation BoundedNat size := { n: nat | (n < pow2 size)%nat }.
 Notation BoundedN size := { n: N | (n < FixInt.exp2 size)%N }.
