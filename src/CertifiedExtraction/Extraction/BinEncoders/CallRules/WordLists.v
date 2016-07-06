@@ -14,6 +14,53 @@ Unset Implicit Arguments.
 
 Require Import Bedrock.Platform.Facade.examples.QsADTs.
 
+Lemma CompileCallListSCALength {A}:
+  forall {WrpList: FacadeWrapper (Value ADTValue) (BoundedList A (pow2 8))}
+    (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (lst : BoundedList A (pow2 8))
+    fLength tenv',
+    PreconditionSet tenv' ext [[[vlst;varg]]] ->
+    (exists sk: _ -> list W,
+        (forall ls: BoundedList A (pow2 8),
+            wrap ls = ADT (WordList (sk ls))) /\
+        (forall ls: BoundedList A (pow2 8),
+            List.length (sk ls) = List.length (`ls))) ->
+    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
+    TelEq ext tenv ([[`vlst ->> lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    {{ tenv }}
+      Call varg fLength [vlst]
+    {{ [[ ` varg ->> BoundedListLength lst as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? (? & wrap_eq & length_eq) ? Heq; setoid_rewrite Heq; PreconditionSet_t;
+  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || rewrite wrap_eq in *).
+  facade_eauto.
+  facade_eauto.
+  repeat match goal with
+         | [ H: ?a = ?a |- _ ] => clear dependent H
+         | [ H: ADT (WordList (_ _)) = ADT _ |- _ ] => inversion' H
+         end; rewrite length_eq; reflexivity.
+  facade_eauto.
+  rewrite remove_remove_comm by assumption; facade_eauto.
+Qed.
+
+Lemma CompileCallListBoundedNatLength:
+  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
+    env (lst : BoundedList (BoundedNat 8) (pow2 8))
+    fLength tenv',
+    PreconditionSet tenv' ext [[[vlst;varg]]] ->
+    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
+    TelEq ext tenv ([[`vlst ->> lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
+    {{ tenv }}
+      Call varg fLength [vlst]
+    {{ [[ ` varg ->> BoundedListLength lst as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  eapply CompileCallListSCALength; eauto.
+  eexists; split.
+  - reflexivity.
+  - setoid_rewrite map_length; reflexivity.
+Qed.
+
 Lemma CompileWordListEmpty_alt:
   forall {A} {Wrp: FacadeWrapper W A}
     (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
@@ -56,23 +103,24 @@ Proof.
 Qed.
 
 Lemma CompileWordListDelete_spec:
-  forall {A} {Wrp: FacadeWrapper W A}
-    (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
-    (tenv: Telescope QsADTs.ADTValue) ext
-    (fpointer : GLabelMap.key),
-    vlst <> vtmp ->
-    vtmp ∉ ext ->
-    vlst ∉ ext ->
-    NotInTelescope vtmp tenv ->
-    NotInTelescope vlst tenv ->
-    GLabelMap.MapsTo fpointer (Axiomatic WordListADTSpec.Delete) env ->
-    {{ [[ (NTSome vlst) ->> @nil A as _]] :: tenv }}
-      (Call vtmp fpointer (vlst :: nil))
-    {{ tenv }} ∪ {{ ext }} // env.
+  forall {A} {Wrp: FacadeWrapper W A},
+    let Wrapper := WrapSCAList : FacadeWrapper (Value ADTValue) (list A) in
+    forall (vtmp vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
+      (tenv: Telescope QsADTs.ADTValue) ext
+      (fpointer : GLabelMap.key),
+      vlst <> vtmp ->
+      vtmp ∉ ext ->
+      vlst ∉ ext ->
+      NotInTelescope vtmp tenv ->
+      NotInTelescope vlst tenv ->
+      GLabelMap.MapsTo fpointer (Axiomatic WordListADTSpec.Delete) env ->
+      {{ [[ (NTSome vlst) ->> @nil A as _]] :: tenv }}
+        (Call vtmp fpointer (vlst :: nil))
+      {{ tenv }} ∪ {{ ext }} // env.
 Proof.
   intros.
   apply ProgOk_Remove_Skip_R; hoare.
-  apply generalized @CompileWordListDelete; try (compile_do_side_conditions ||  Lifted_t).
+  apply generalized @CompileWordListDelete; try (compile_do_side_conditions || Lifted_t).
   repeat match goal with
          | [ H: NotInTelescope _ _ |- _ ] => setoid_rewrite (DropName_NotInTelescope _ _ H)
          | _ => setoid_rewrite Propagate_anonymous_ret
@@ -82,46 +130,49 @@ Proof.
 Qed.
 
 Lemma CompileWordListPop :
-  forall {A} {Wrp: FacadeWrapper W A}
-    vret vlst fpointer (env: Env ADTValue) ext tenv
-    h (t: list A),
-    GLabelMap.find fpointer env = Some (Axiomatic WordListADTSpec.Pop) ->
-    Lifted_MapsTo ext tenv vlst (wrap (h :: t)) ->
-    Lifted_not_mapsto_adt ext tenv vret ->
-    vret <> vlst ->
-    vlst ∉ ext ->
-    vret ∉ ext ->
-    {{ tenv }}
-      Call vret fpointer (vlst :: nil)
-    {{ [[ `vret ->> h as _ ]] :: [[ `vlst ->> t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
+  forall {A} {Wrp: FacadeWrapper W A},
+    let Wrapper := WrapSCAList : FacadeWrapper (Value ADTValue) (list A) in
+    forall vret vlst fpointer (env: Env ADTValue) ext tenv
+      h (t: list A),
+      GLabelMap.find fpointer env = Some (Axiomatic WordListADTSpec.Pop) ->
+      Lifted_MapsTo ext tenv vlst (wrap (h :: t)) ->
+      Lifted_not_mapsto_adt ext tenv vret ->
+      vret <> vlst ->
+      vlst ∉ ext ->
+      vret ∉ ext ->
+      {{ tenv }}
+        Call vret fpointer (vlst :: nil)
+      {{ [[ `vret ->> h as _ ]] :: [[ `vlst ->> t as _ ]] :: DropName vlst (DropName vret tenv) }} ∪ {{ ext }} // env.
 Proof.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t);
     facade_eauto.
 Qed.
 
 Lemma CompileLoopBase__many :
-  forall {A B} {Wrp: FacadeWrapper W B}
-    (lst: list B) init vhead vtest vlst
-    fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv
-    (f: A -> B -> A) tenvF,
-    GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic QsADTs.WordListADTSpec.Empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.WordListADTSpec.Delete) env ->
-    (* (forall tenv a1 a2 b, tenvF tenv (a1, b) = tenvF tenv (a2, b)) -> *)
-    PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
-    (forall v, NotInTelescope vtest (tenvF tenv v)) ->
-    (forall v, NotInTelescope vhead (tenvF tenv v)) ->
-    (forall v, NotInTelescope vlst (tenvF tenv v)) ->
-    (forall v (h: B), TelEq ext ([[ ` vhead ->> h as _]]::tenvF tenv v) (tenvF ([[ ` vhead ->> h as _]]::tenv) v)) ->
-    (forall head (acc: A) (s: list B),
-        {{ tenvF ([[`vhead ->> head as _]] :: tenv) acc }}
-          facadeBody
-        {{ [[ ret (f acc head) as facc ]] :: tenvF tenv facc }} ∪
-        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
-    {{ [[`vlst ->> lst as _]] :: tenvF tenv init }}
-      (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
-    {{ tenvF tenv (fold_left f lst init) }} ∪ {{ ext }} // env.
+  forall {A B} {Wrp: FacadeWrapper W B},
+    let Wrapper := WrapSCAList : FacadeWrapper (Value ADTValue) (list B) in
+    forall (lst: list B) init vhead vtest vlst
+      fpop fempty fdealloc facadeBody env (ext: StringMap.t (Value QsADTs.ADTValue)) tenv
+      (f: A -> B -> A) tenvF,
+      GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
+      GLabelMap.MapsTo fempty (Axiomatic QsADTs.WordListADTSpec.Empty) env ->
+      GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.WordListADTSpec.Delete) env ->
+      (* (forall tenv a1 a2 b, tenvF tenv (a1, b) = tenvF tenv (a2, b)) -> *)
+      PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
+      (forall v, NotInTelescope vtest (tenvF tenv v)) ->
+      (forall v, NotInTelescope vhead (tenvF tenv v)) ->
+      (forall v, NotInTelescope vlst (tenvF tenv v)) ->
+      (forall v (h: B), TelEq ext ([[ ` vhead ->> h as _]]::tenvF tenv v) (tenvF ([[ ` vhead ->> h as _]]::tenv) v)) ->
+      (forall head (acc: A) (s: list B),
+          {{ tenvF ([[`vhead ->> head as _]] :: tenv) acc }}
+            facadeBody
+          {{ [[ ret (f acc head) as facc ]] :: tenvF tenv facc }} ∪
+          {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+      {{ [[`vlst ->> lst as _]] :: tenvF tenv init }}
+        (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil)))
+      {{ tenvF tenv (fold_left f lst init) }} ∪ {{ ext }} // env.
 Proof.
+  intros.
   Transparent DummyArgument.
   unfold DummyArgument; loop_t.
 
@@ -168,31 +219,32 @@ Proof.
 Qed.
 
 Lemma CompileLoop__many :
-  forall {A B} {Wrp: FacadeWrapper W B}
-    vhead vtest vlst (tenvF: A -> Telescope ADTValue) tenv'
-    (lst: list B) init (f: A -> B -> A) tenv0 tenv
-    env (ext: StringMap.t (Value QsADTs.ADTValue))
-    fpop fempty fdealloc facadeBody facadeConclude,
-    GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
-    GLabelMap.MapsTo fempty (Axiomatic QsADTs.WordListADTSpec.Empty) env ->
-    GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.WordListADTSpec.Delete) env ->
-    PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
-    TelEq ext tenv0 ([[`vlst ->> lst as _]] :: TelAppend (tenvF init) tenv) ->
-    (forall v, NotInTelescope vtest (TelAppend (tenvF v) tenv)) ->
-    (forall v, NotInTelescope vhead (TelAppend (tenvF v) tenv)) ->
-    (forall v, NotInTelescope vlst (TelAppend (tenvF v) tenv)) ->
-    {{ TelAppend (tenvF (fold_left f lst init)) tenv }}
-      facadeConclude
-    {{ TelAppend (tenvF (fold_left f lst init)) tenv' }}
-    ∪ {{ ext }} // env ->
-    (forall head (acc: A) (s: list B),
-        {{ TelAppend (tenvF acc) ([[`vhead ->> head as _]] :: tenv) }}
-          facadeBody
-        {{ TelAppend ([[ ret (f acc head) as facc ]] :: tenvF facc) tenv }} ∪
-        {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
-    {{ tenv0 }}
-      (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
-    {{ TelAppend ([[ ret (fold_left f lst init) as folded ]] :: tenvF folded) tenv' }} ∪ {{ ext }} // env.
+  forall {A B} {Wrp: FacadeWrapper W B},
+    let Wrapper := WrapSCAList : FacadeWrapper (Value ADTValue) (list B) in
+    forall vhead vtest vlst (tenvF: A -> Telescope ADTValue) tenv'
+      (lst: list B) init (f: A -> B -> A) tenv0 tenv
+      env (ext: StringMap.t (Value QsADTs.ADTValue))
+      fpop fempty fdealloc facadeBody facadeConclude,
+      GLabelMap.MapsTo fpop (Axiomatic QsADTs.WordListADTSpec.Pop) env ->
+      GLabelMap.MapsTo fempty (Axiomatic QsADTs.WordListADTSpec.Empty) env ->
+      GLabelMap.MapsTo fdealloc (Axiomatic QsADTs.WordListADTSpec.Delete) env ->
+      PreconditionSet tenv ext [[[vhead; vtest; vlst]]] ->
+      TelEq ext tenv0 ([[`vlst ->> lst as _]] :: TelAppend (tenvF init) tenv) ->
+      (forall v, NotInTelescope vtest (TelAppend (tenvF v) tenv)) ->
+      (forall v, NotInTelescope vhead (TelAppend (tenvF v) tenv)) ->
+      (forall v, NotInTelescope vlst (TelAppend (tenvF v) tenv)) ->
+      {{ TelAppend (tenvF (fold_left f lst init)) tenv }}
+        facadeConclude
+      {{ TelAppend (tenvF (fold_left f lst init)) tenv' }}
+      ∪ {{ ext }} // env ->
+      (forall head (acc: A) (s: list B),
+          {{ TelAppend (tenvF acc) ([[`vhead ->> head as _]] :: tenv) }}
+            facadeBody
+          {{ TelAppend ([[ ret (f acc head) as facc ]] :: tenvF facc) tenv }} ∪
+          {{ [vtest |> wrap (bool2w false)] :: [vlst |> wrap s] :: ext }} // env) ->
+      {{ tenv0 }}
+        (Seq (Seq (Fold vhead vtest vlst fpop fempty facadeBody) (Call (DummyArgument vtest) fdealloc (vlst :: nil))) facadeConclude)
+      {{ TelAppend ([[ ret (fold_left f lst init) as folded ]] :: tenvF folded) tenv' }} ∪ {{ ext }} // env.
 Proof.
   intros.
   match goal with
@@ -209,14 +261,11 @@ Ltac _compile_CallListLength :=
   match_ProgOk
     ltac:(fun _ _ post _ _ =>
             match post with
-            | [[ _ ->> FixList.FixList_getlength ?lst as _]] :: _ =>
-              let vlst := find_name_in_precondition (` lst) in
+            | [[ _ ->> BoundedListLength ?lst as _]] :: _ =>
+              let vlst := find_name_in_precondition lst in
               (* FIXME use this instead of explicit continuations in every lemma *)
               compile_do_use_transitivity_to_handle_head_separately;
-              [ eapply (CompileCallListSCALength vlst)
-              (* FIXME || eapply (CompileCallListResourceLength vlst) ||
-                          eapply (CompileCallListQuestionLength vlst) *)
-              | ]
+              [ eapply (CompileCallListBoundedNatLength vlst) | ]
             end).
 
 Ltac _compile_LoopMany vlst :=

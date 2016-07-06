@@ -32,6 +32,9 @@ Notation BoundedList A size := { ls: list A | List.length ls < size }.
 Notation BoundedNat size := { n: nat | (n < pow2 size)%nat }.
 Notation BoundedN size := { n: N | (n < FixInt.exp2 size)%N }.
 
+Definition BoundedListLength {A size} (ls : BoundedList A (pow2 size)) : BoundedNat size :=
+  exist _ (length (` ls)) (proj2_sig ls).
+
 Section Nat.
   Context {B : Type}.
   Context {cache : Cache}.
