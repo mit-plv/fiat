@@ -125,30 +125,30 @@ Proof.
 Qed.
 
 Lemma CompileCompose :
-  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
-    (vstream: NameTag av B) (stream: B) (cache: E)
-    (tenv t1 t2: Telescope av) f ext env p1 p2,
+  forall {av} E B B' (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B') (stream: B) (cache: E)
+    (tenv t1 t2: Telescope av) f (g: B -> B') ext env p1 p2,
     (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
-    {{ [[ vstream  ->>  stream as _ ]]
+    {{ [[ vstream  ->> g stream as _ ]]
          :: tenv }}
       p1
-    {{ TelAppend ([[ NTNone  ->>  enc1 cache as encoded1 ]]
-                    :: [[ vstream  ->>  Transformer.transform stream (fst encoded1) as _ ]]
+    {{ TelAppend ([[ NTNone ->> enc1 cache as encoded1 ]]
+                    :: [[ vstream ->> g (Transformer.transform stream (fst encoded1)) as _ ]]
                     :: f encoded1)
                  t1 }}
     ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
      let stream1 := Transformer.transform stream (fst encoded1) in
-     {{ TelAppend ([[ vstream  ->>  stream1 as _ ]] :: f encoded1) t1 }}
+     {{ TelAppend ([[ vstream ->> g stream1 as _ ]] :: f encoded1) t1 }}
        p2
-     {{ TelAppend ([[ NTNone  ->>  enc2 (snd encoded1) as encoded2 ]]
-                     :: [[ vstream  ->>  Transformer.transform stream1 (fst encoded2) as _ ]]
+     {{ TelAppend ([[ NTNone ->> enc2 (snd encoded1) as encoded2 ]]
+                     :: [[ vstream ->> g (Transformer.transform stream1 (fst encoded2)) as _ ]]
                      :: f encoded2) t2 }}
      ∪ {{ ext }} // env) ->
-    {{ [[ vstream  ->>  stream as _ ]] :: tenv }}
+    {{ [[ vstream ->> g stream as _ ]] :: tenv }}
       (Seq p1 p2)
-    {{ TelAppend ([[ NTNone  ->>  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
-                    :: [[ vstream  ->>  Transformer.transform stream (fst composed) as _ ]]
+    {{ TelAppend ([[ NTNone ->> @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+                    :: [[ vstream ->> g (Transformer.transform stream (fst composed)) as _ ]]
                     :: f composed) t2 }}
     ∪ {{ ext }} // env.
 Proof.
@@ -166,30 +166,30 @@ Proof.
 Qed.
 
 Lemma CompileCompose_init :
-  forall {av} E B (transformer: Transformer.Transformer B) enc1 enc2
-    (vstream: NameTag av B) (cache: E)
-    (tenv t1 t2: Telescope av) f ext env p1 p2 pAlloc,
+  forall {av} E B B' (transformer: Transformer.Transformer B) enc1 enc2
+    (vstream: NameTag av B') (cache: E)
+    (tenv t1 t2: Telescope av) f (g : B -> B') ext env p1 p2 pAlloc,
     (forall a1 a2 b, f (a1, b) = f (a2, b)) ->
     {{ tenv }}
       pAlloc
-    {{ [[ vstream  ->>  Transformer.transform_id as _ ]] :: tenv }} ∪ {{ ext }} // env ->
-    {{ [[ vstream  ->>  Transformer.transform_id as _ ]] :: tenv }}
+    {{ [[ vstream ->> g Transformer.transform_id as _ ]] :: tenv }} ∪ {{ ext }} // env ->
+    {{ [[ vstream ->> g Transformer.transform_id as _ ]] :: tenv }}
       p1
-    {{ TelAppend ([[ NTNone  ->>  enc1 cache as encoded1 ]]
-                    :: [[ vstream  ->>  Transformer.transform (Transformer.transform_id) (fst encoded1) as _ ]]
+    {{ TelAppend ([[ NTNone ->> enc1 cache as encoded1 ]]
+                    :: [[ vstream ->> g (Transformer.transform (Transformer.transform_id) (fst encoded1)) as _ ]]
                     :: f encoded1)
                  t1 }} ∪ {{ ext }} // env ->
     (let encoded1 := enc1 cache in
      let stream1 := Transformer.transform Transformer.transform_id (fst encoded1) in
-     {{ TelAppend ([[ vstream  ->>  stream1 as _ ]] :: f encoded1) t1 }}
+     {{ TelAppend ([[ vstream ->> g stream1 as _ ]] :: f encoded1) t1 }}
        p2
-     {{ TelAppend ([[ NTNone  ->>  enc2 (snd encoded1) as encoded2 ]]
-                     :: [[ vstream  ->>  Transformer.transform stream1 (fst encoded2) as _ ]]
+     {{ TelAppend ([[ NTNone ->> enc2 (snd encoded1) as encoded2 ]]
+                     :: [[ vstream ->> g (Transformer.transform stream1 (fst encoded2)) as _ ]]
                      :: f encoded2) t2 }} ∪ {{ ext }} // env) ->
     {{ tenv }}
       (Seq pAlloc (Seq p1 p2))
-    {{ TelAppend ([[ NTNone  ->>  @Compose.compose E B transformer enc1 enc2 cache as composed ]]
-                    :: [[ vstream  ->>  (fst composed) as _ ]]
+    {{ TelAppend ([[ NTNone ->> @Compose.compose E B transformer enc1 enc2 cache as composed ]]
+                    :: [[ vstream ->> g (fst composed) as _ ]]
                     :: f composed) t2 }}
     ∪ {{ ext }} // env.
 Proof.
@@ -340,7 +340,10 @@ Proof.
   destruct (not_adt_is_sca H4).
   SameValues_Facade_t.
   f_equal; auto.
-Admitted. (* Need to generalize the SameValues_Pop_Both lemma *)
+  match goal with
+  | [ H: wrap _ = wrap _ |- _ ] => rewrite H
+  end; SameValues_Facade_t.
+Qed.
 
 Ltac _compile_Read :=
   may_alloc_head;
