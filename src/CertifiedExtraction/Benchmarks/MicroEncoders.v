@@ -145,64 +145,6 @@ Eval lazy in (extract_facade FourWords_compile).
 
 Print Assumptions FourWords_compile.
 
-Definition BoundedListLength {A size} (ls : BoundedList A (pow2 size)) : BoundedNat size :=
-  exist _ (length (` ls)) (proj2_sig ls).
-
-Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B).
-Proof.
-  refine {| wrap x := map wrap x |}.
-  abstract (eauto using map_inj, wrap_inj).
-Defined.
-
-Lemma WrapBoundedList_inj_1:
-  forall (B : Type) (size : nat) (v v' : BoundedList B size), ` v = ` v' -> v = v'.
-Proof.
-  intros.
-  apply exist_irrel'.
-  - intros; apply lt_uniqueness_proof.
-  - eassumption.
-Qed.
-
-Lemma WrapBoundedList_inj {A B : Type} {size : nat} {Wrp : FacadeWrapper A (list B)}:
-  forall (v v' : BoundedList B size),
-    wrap (` v) = wrap (` v') ->
-    v = v'.
-Proof.
-  intros * H; apply wrap_inj, WrapBoundedList_inj_1 in H; assumption.
-Qed.
-
-Lemma WrapTransitive {A A' A''}
-      {WrpVal: FacadeWrapper A A'}
-      {WrpList: FacadeWrapper A' A''}
-  : FacadeWrapper A A''.
-Proof.
-  refine {| wrap a'' := wrap (wrap a'');
-            wrap_inj := _ |}.
-  abstract (intros * H; repeat apply wrap_inj in H; assumption).
-Defined.
-
-Instance WrapBoundedList {A B size} {Wrp: FacadeWrapper A (list B)} : FacadeWrapper A (BoundedList B size) :=
-  {| wrap bl := wrap (`bl);
-     wrap_inj := WrapBoundedList_inj |}.
-
-Typeclasses eauto := 10.
-
-Instance WrapWordList : FacadeWrapper ADTValue (list W).
-Proof.
-  refine {| wrap tl := WordList tl;
-            wrap_inj := _ |}; abstract (inversion 1; reflexivity).
-Defined.
-
-Instance WrapBoundedListOfBoundedNat {sl} : FacadeWrapper (Value ADTValue) (BoundedList (BoundedNat 8) sl).
-Proof.
-  eapply @WrapTransitive.
-  - apply @WrapInstance.
-    apply @WrapWordList.
-  - apply @WrapBoundedList.
-    apply @WrapList.
-    apply @WrapNatIntoW8.
-Defined.
-
 Eval compute in WrapBoundedListOfBoundedNat.
 
 
@@ -268,65 +210,6 @@ Eval compute in WrapBoundedListOfBoundedNat.
                  apply ByteString_transform_padding_0 |
                  eapply encode_word8_Impl_padding_0 |
                  eapply EncodeBoundedNat8_padding_0 ].
-
-Lemma CompileCallListSCALength {A}:
-  forall {WrpList: FacadeWrapper (Value ADTValue) (BoundedList A (pow2 8))}
-    (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
-    env (lst : BoundedList A (pow2 8))
-    fLength tenv',
-    PreconditionSet tenv' ext [[[vlst;varg]]] ->
-    (exists sk: _ -> list W,
-        (forall ls: BoundedList A (pow2 8),
-            wrap ls = ADT (WordList (sk ls))) /\
-        (forall ls: BoundedList A (pow2 8),
-            List.length (sk ls) = List.length (`ls))) ->
-    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
-    TelEq ext tenv ([[`vlst ->> lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
-    {{ tenv }}
-      Call varg fLength [vlst]
-    {{ [[ ` varg ->> BoundedListLength lst as _]]::tenv }} ∪ {{ ext }} // env.
-Proof.
-  intros * ? ? (? & wrap_eq & length_eq) ? Heq; setoid_rewrite Heq; PreconditionSet_t;
-  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t || rewrite wrap_eq in *).
-  facade_eauto.
-  facade_eauto.
-  repeat match goal with
-         | [ H: ?a = ?a |- _ ] => clear dependent H
-         | [ H: ADT (WordList (_ _)) = ADT _ |- _ ] => inversion' H
-         end; rewrite length_eq; reflexivity.
-  facade_eauto.
-  rewrite remove_remove_comm by assumption; facade_eauto.
-Qed.
-
-Lemma CompileCallListBoundedNatLength:
-  forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue))
-    env (lst : BoundedList (BoundedNat 8) (pow2 8))
-    fLength tenv',
-    PreconditionSet tenv' ext [[[vlst;varg]]] ->
-    GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env ->
-    TelEq ext tenv ([[`vlst ->> lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *)
-    {{ tenv }}
-      Call varg fLength [vlst]
-    {{ [[ ` varg ->> BoundedListLength lst as _]]::tenv }} ∪ {{ ext }} // env.
-Proof.
-  intros.
-  eapply CompileCallListSCALength; eauto.
-  eexists; split.
-  - reflexivity.
-  - setoid_rewrite map_length; reflexivity.
-Qed.
-
-
-Ltac _compile_CallListLength ::=
-  match_ProgOk
-    ltac:(fun _ _ post _ _ =>
-            match post with
-            | [[ _ ->> BoundedListLength ?lst as _]] :: _ =>
-              let vlst := find_name_in_precondition lst in
-              (* FIXME use this instead of explicit continuations in every lemma *)
-              compile_do_use_transitivity_to_handle_head_separately;
-              [ eapply (CompileCallListBoundedNatLength vlst) | ]
-            end).
 
 Lemma encode_list_post_transform_TelEq :
   forall {av} {A B B' : Type} (cache : Cache.Cache) (transformer : Transformer.Transformer B)
