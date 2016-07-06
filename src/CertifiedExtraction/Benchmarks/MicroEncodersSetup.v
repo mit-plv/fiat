@@ -69,16 +69,16 @@ Ltac compile_encoder_step :=
   match goal with
   | _ => _encode_start_compiling
   | _ => _encode_cleanup
+  | _ => _compile_encode_do_side_conditions
   | _ => _encode_prepare_cache
-  | _ => _encode_FixInt
-  | _ => _encode_IList_compile
-  (* | _ => _compile_CallWrite *)
+  | _ => _compile_encode_list
+  | _ => _compile_CallWrite
   | _ => _compile_Read
-  (* | _ => _compile_ReadConstantN *)
-  (* | _ => _compile_CallAdd16 *)
+  | _ => _compile_SameWrap
   | _ => _compile_CallListLength
   | _ => _compile_CallAllocString
-  (* | _ => _compile_CallAllocOffset *)
+  | _ => _compile_constant_SCA
+  | _ => _compile_dealloc_SCA
   | _ => _compile_compose
   | _ => _compile_step
   end.
@@ -88,8 +88,6 @@ Ltac compile_encoder_t :=
 
 Global Opaque Compose.compose.
 Global Opaque Transformer.transform_id.
-
-Open Scope nat_scope.
 
 Definition MicroEncoders_Env : Env ADTValue :=
   (GLabelMap.empty (FuncSpec _))
@@ -104,3 +102,10 @@ Definition MicroEncoders_Env : Env ADTValue :=
 Ltac _compile_mutation ::= fail.
 Ltac _compile_constructor ::= fail.
 Ltac _compile_destructor ::= fail.
+
+Notation "x 'ThenC' y" := (compose _ x y).
+Notation "x 'DoneC'"   := (x ThenC fun e => (transform_id, e)).
+
+Open Scope nat_scope.
+Open Scope list_scope.
+

@@ -12,48 +12,6 @@ Require Import
 
 Unset Implicit Arguments.
 
-(* Lemma CompileCallAllocOffset: *)
-(*   forall (vtmp voffset: string) (tenv tenv' : Telescope ADTValue) *)
-(*     ext env pNext fAllocCache, *)
-(*     {{ [[ ` voffset ->> 0%N as _]]::tenv }} *)
-(*       pNext *)
-(*     {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env -> *)
-(*     {{ tenv }} *)
-(*       Seq (Call vtmp fAllocCache [voffset]) pNext *)
-(*     {{ [[ ` voffset ->> 0%N as _]]::tenv' }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   hoare; hoare. *)
-(* Admitted. *)
-
-(* (* FIXME there should be a generic wrapper for list of SCA-injected things *) *)
-(* Lemma CompileCallListSCALength {A} {W: FacadeWrapper (Value ADTValue) (list A)}: *)
-(*   forall (vlst varg : string) (tenv : Telescope ADTValue) (ext : StringMap.t (Value ADTValue)) *)
-(*     env (lst : FixList.FixList 8 A) *)
-(*     fLength tenv', *)
-(*     GLabelMap.MapsTo fLength (Axiomatic WordListADTSpec.Length) env -> *)
-(*     TelEq ext tenv ([[`vlst ->> `lst as _]]::tenv') -> (* Experiment to require a-posteriori reordering of variables *) *)
-(*     {{ tenv }} *)
-(*       Call varg fLength [vlst] *)
-(*     {{ [[ ` varg ->> FixList.FixList_getlength lst as _]]::tenv }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(* Admitted. *)
-
-Ltac _encode_FixInt :=
-  match_ProgOk                  (* FIXME check when this is needed *)
-    ltac:(fun prog pre post ext env =>
-            match post with
-            | [[ret (FixInt.FixInt_encode _ _) as _]] :: _ =>
-              rewrite FixInt_encode_is_copy; (* FIXME make this an autorewrite *)
-              setoid_rewrite Propagate_anonymous_ret; simpl;
-              apply ProgOk_Transitivity_First
-            end).
-(* Ltac _compile_CallAllocOffset := *)
-(*   may_alloc_head; *)
-(*   let vtmp := gensym "tmp" in *)
-(*   eapply (CompileCallAllocOffset vtmp). *)
-
-(* Require Import Bedrock.Word. *)
-
 Lemma not_adt_is_sca :
   forall {A} `{FacadeWrapper (Value av) A},
     (forall (a: A), is_adt (wrap a) = false) ->
@@ -66,7 +24,7 @@ Proof.
 Qed.
 
 (* FIXME Replace this formulation with is_adt (wrap a) = false by one based on WrapSCA *)
-Lemma CompileRead':
+Lemma CompileRead':             (* FIXME move *)
   forall {A} `{FacadeWrapper (Value av) A}
     (vfrom vto : string) (a: A)
     (tenv tenv0: Telescope av) ext env,
@@ -99,21 +57,34 @@ Ltac _compile_Read :=
               eapply (CompileRead' k)
             end).
 
-(* Lemma CompileConstantN : *)
-(*   forall {av} {W: FacadeWrapper (Value av) N} *)
-(*     N (vto : string) *)
-(*     (tenv tenv': Telescope av) pNext ext env, *)
-(*     {{ [[ ` vto ->> N as _]]::tenv }} *)
-(*       pNext *)
-(*     {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env -> *)
-(*     {{ tenv }} *)
-(*       Seq (Assign vto (Const (@Word.NToWord _ N))) pNext *)
-(*     {{ [[ ` vto ->> N as _]]::tenv' }} ∪ {{ ext }} // env. *)
-(* Proof. *)
-(*   hoare. *)
-(*   hoare. *)
-(* Admitted. *)
 
-(* Ltac _compile_ReadConstantN := *)
-(*   may_alloc_head; *)
-(*   eapply CompileConstantN. *)
+Lemma CompileConstant_SCA:
+  forall {A} {Wr: FacadeWrapper W A}
+    name env (w: A) ext (tenv: Telescope _),
+    name ∉ ext ->
+    NotInTelescope name tenv ->
+    {{ tenv }}
+      (Assign name (Const (wrap w)))
+    {{ [[`name ->> w as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros.
+  rewrite (TelEq_same_wrap w (wrap (FacadeWrapper := Wr) w)) by reflexivity.
+  auto using CompileConstant.
+Qed.
+
+(* Lemma CompileConstant_SCA:      (* FIXME would it be better to assume that A wraps into W? *) *)
+(*   forall {av A} {Wr: FacadeWrapper (Value av) A} *)
+(*     name env (w: A) ext (tenv: Telescope av), *)
+(*     name ∉ ext -> *)
+(*     NotInTelescope name tenv -> *)
+(*     (forall a : A, is_adt (wrap a) = false) -> *)
+(*     {{ tenv }} *)
+(*       (Assign name (Const (match wrap w with SCA w => w | _ => Word.wzero _ end))) *)
+(*     {{ [[`name ->> w as _]]::tenv }} ∪ {{ ext }} // env. *)
+(* Proof. *)
+(*   intros * ? ? not_adt; *)
+(*     destruct (not_adt_is_sca not_adt) as (skol & Heq). *)
+(*   rewrite (Heq w) in *. *)
+(*   rewrite (TelEq_same_wrap _ (skol w)) by eauto. *)
+(*   apply CompileConstant; assumption. *)
+(* Qed. *)

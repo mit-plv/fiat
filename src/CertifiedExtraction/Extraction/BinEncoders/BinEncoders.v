@@ -30,6 +30,60 @@ Ltac _encode_IList_compile :=
   _encode_IList__rewrite_as_fold;
   [ _encode_IList__compile_loop | idtac.. ].
 
+Ltac _compile_decide_padding_0 :=
+  repeat first [ reflexivity |
+                 apply ByteString_transform_padding_0 |
+                 eapply encode_word8_Impl_padding_0 |
+                 eapply EncodeBoundedNat8_padding_0 ].
+
+(* FIXME remove coercions? *)
+Global Transparent nat_as_word.
+
+Ltac _compile_decide_AllocString_size :=
+  unfold nat_as_word;
+  match goal with
+  | [  |- natToWord ?sz ?z = ?x ^* natToWord ?sz ?y ] =>
+    let zz := (eval compute in (NPeano.div z y)) in
+    unify x (natToWord sz zz); reflexivity
+  end.
+
+Ltac _compile_decide_write8_side_condition_step :=
+  idtac;
+  lazymatch goal with
+  | [ H := _ |- _ ] => unfold H in *; clear H
+  | [  |- context[List.length (Core.byteString (?x))] ] =>
+    match x with
+    | transform_id => change (length (Core.byteString transform_id)) with 0
+    | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
+    | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
+    | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
+    | _ => fail 3 "Unrecognized form" x
+    end
+  | _ => omega
+  end.
+
+Ltac _compile_decide_write8_side_condition :=
+  progress repeat _compile_decide_write8_side_condition_step.
+
+Ltac _compile_encode_do_side_conditions :=
+  match goal with
+  | [  |- _ = _ ^* _ ] => _compile_decide_AllocString_size
+  | [  |- padding _ = 0 ] => _compile_decide_padding_0
+  | [  |- (List.length (Core.byteString (?x)) + 1 <= _)%nat ] => _compile_decide_write8_side_condition
+  end.
+
+Ltac _compile_encode_list :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | appcontext[fold_left (encode_list_body _) (`?lst)] =>
+              lazymatch pre with
+              | context[Cons (NTSome ?vlst) (ret lst) _] =>
+                _compile_LoopMany vlst;
+                try rewrite (TelEq_same_wrap (`lst) (lst)) by reflexivity
+              end
+            end).
+
 Ltac mod_first :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
@@ -50,23 +104,33 @@ Ltac keep_first :=
 Create HintDb f2f_binencoders_autorewrite_db.
 Hint Rewrite @NToWord_of_nat : f2f_binencoders_autorewrite_db.
 Hint Rewrite @NToWord_WordToN : f2f_binencoders_autorewrite_db.
-Hint Rewrite @length_of_fixed_length_list : f2f_binencoders_autorewrite_db.
-Hint Rewrite @IList.IList_encode'_as_foldl : f2f_binencoders_autorewrite_db.
-Hint Rewrite @FixInt_encode_is_copy : f2f_binencoders_autorewrite_db.
-Hint Rewrite @IList_encode_bools_is_copy : f2f_binencoders_autorewrite_db.
-Hint Rewrite @FixList_is_IList : f2f_binencoders_autorewrite_db.
+Hint Rewrite encode_byte_simplify :  f2f_binencoders_autorewrite_db.
+Hint Rewrite EncodeBoundedNat8_simplify :  f2f_binencoders_autorewrite_db.
+Hint Rewrite ByteString_transformer_eq_app : f2f_binencoders_autorewrite_db.
+Hint Resolve WrapByte_BoundedNat8ToByte_WrapNat8_compat : compile_do_side_conditions_db.
+Hint Rewrite @encode_list_as_foldl : f2f_binencoders_autorewrite_db.
 Hint Rewrite app_nil_r : f2f_binencoders_autorewrite_db.
-(* FXIME Hint Rewrite (@IList_encode'_body_simpl DnsMap.cache) : f2f_binencoders_autorewrite_db. *)
-Hint Unfold IList.IList_encode : f2f_binencoders_autorewrite_db.
-Hint Unfold FixList.FixList_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold TelAppend : f2f_binencoders_autorewrite_db.
 Hint Unfold Enum.Enum_encode : f2f_binencoders_autorewrite_db.
-(* FIXME Hint Unfold encode_question : f2f_binencoders_autorewrite_db. *)
-(* FIXME Hint Unfold encode_resource : f2f_binencoders_autorewrite_db. *)
 
 (* Ltac simpl_without_uncaught_exception := *)
 (*   (* Avoids an “Uncaught exception: not found” *) *)
 (*   set_evars; simpl; subst_evars. *)
+
+Ltac encode_list_body_simpl :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | Cons NTNone (ret (@encode_list_body _ _ ?cache ?transformer _ _ _)) _ =>
+              rewrite (encode_list_body_simpl cache transformer)
+            end).
+
+Ltac encode_list__cleanup_post_encode_list_as_fold :=
+  lazymatch goal with
+  | [  |- appcontext[fold_left (@encode_list_body _ _ ?cache ?transformer _)] ] =>
+    change_post_into_TelAppend; (* FIXME: Need either this, or a set_evars call; why? *)
+    setoid_rewrite (encode_list_post_transform_TelEq_TelAppend cache transformer)
+  end.
 
 Ltac _encode_cleanup :=
   match goal with
@@ -77,6 +141,8 @@ Ltac _encode_cleanup :=
                     apply Propagate_anonymous_ret__fast
                   end)
   | _ => progress simpl
+  | _ => encode_list_body_simpl  (* Doesn't work as a rewrite hint *)
+  | _ => encode_list__cleanup_post_encode_list_as_fold
   | _ => progress autounfold with f2f_binencoders_autorewrite_db
   | _ => progress autorewrite with f2f_binencoders_autorewrite_db
   | [  |- context[wordToNat (natToWord _ (S ?x))] ] => change (wordToNat (natToWord _ (S x))) with (S x)
@@ -111,7 +177,33 @@ Ltac _compile_compose :=
               intros
             end).
 
-(* Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db. *)
+Ltac _compile_SameWrap :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | [[ ?k ->> BoundedNat8ToByte ?w as _ ]] :: ?tail =>
+              rewrite (TelEq_same_wrap (BoundedNat8ToByte w) w)
+            end).
+
+Ltac _compile_constant_SCA :=
+  may_alloc_head;
+  apply CompileConstant_SCA.
+
+Ltac _compile_dealloc_SCA :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            let vtmp := gensym "tmp" in
+            lazymatch pre with
+            | Cons (NTSome ?k) ?v (fun _ => ?tenv) =>
+              lazymatch tenv with
+              | context[post] => (* post is a suffix of pre *)
+                match type of v with
+                | Comp ?t =>
+                  let is_sca := constr:(_ : FacadeWrapper W t) in
+                  apply CompileDeallocSCA_discretely
+                end
+              end
+            end).
 
 Definition Counted {A} (x: A) := x.
 
