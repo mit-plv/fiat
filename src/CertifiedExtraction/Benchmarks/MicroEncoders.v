@@ -148,15 +148,6 @@ Print Assumptions FourWords_compile.
 Definition BoundedListLength {A size} (ls : BoundedList A (pow2 size)) : BoundedNat size :=
   exist _ (length (` ls)) (proj2_sig ls).
 
-Lemma map_inj {A B}:
-  forall (f: A -> B),
-    (forall x y, f x = f y -> x = y) ->
-    (forall x y, (map f) x = (map f) y -> x = y).
-Proof.
-  induction x; destruct y; simpl; intros HH; try congruence.
-  inversion' HH; f_equal; eauto.
-Qed.
-
 Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B).
 Proof.
   refine {| wrap x := map wrap x |}.
@@ -671,8 +662,7 @@ Proof.
 Defined.
 
 Eval lazy in (extract_facade MixedRecord_compile).
-
-
+_compile_LoopMany vlst
 Record BitArrayAndList :=
   { f1 : BitArray 8;
     f2 : { l : list {n : N | (n < exp2 8)%N} | List.length l < exp2_nat 8} } .

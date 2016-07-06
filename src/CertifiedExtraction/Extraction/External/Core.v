@@ -89,6 +89,9 @@ Ltac apply_generalized_t compilation_lemma :=
 Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
   apply_generalized_t compilation_lemma.
 
+Ltac fiat_t :=
+  repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
+
 Ltac defunctionalize_evar :=
   match goal with
   | [  |- context[?e] ] =>

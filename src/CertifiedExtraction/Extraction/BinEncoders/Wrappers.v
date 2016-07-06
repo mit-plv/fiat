@@ -14,6 +14,34 @@ Require Import Bedrock.Word.
 
 Unset Implicit Arguments.
 
+(* FIXME move and use in more places *)
+Instance WrapSCA {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) A.
+Proof.
+  refine {| wrap x := wrap (FacadeWrapper := FacadeWrapper_SCA) (wrap x);
+            wrap_inj := _ |}; abstract (intros * H; repeat apply wrap_inj in H; assumption).
+Defined.
+
+Instance WrapWordList : FacadeWrapper (Value ADTValue) (list W).
+Proof.
+  refine {| wrap tl := ADT (WordList tl);
+            wrap_inj := _ |}; abstract (inversion 1; reflexivity).
+Defined.
+
+Lemma map_inj {A B}:
+  forall (f: A -> B),
+    (forall x y, f x = f y -> x = y) ->
+    (forall x y, (map f) x = (map f) y -> x = y).
+Proof.
+  induction x; destruct y; simpl; intros HH; try congruence.
+  inversion HH; subst; f_equal; eauto.
+Qed.
+
+Instance WrapSCAList {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) (list A).
+Proof.
+  refine {| wrap tl := wrap (FacadeWrapper := WrapWordList) (map wrap tl);
+            wrap_inj := _ |}; abstract (eauto using @wrap_inj, @map_inj).
+Defined.
+
 Lemma WrapByte_inj {av} :
   forall (v v' : byte),
     SCA av (BtoW v) = SCA av (BtoW v') -> v = v'.

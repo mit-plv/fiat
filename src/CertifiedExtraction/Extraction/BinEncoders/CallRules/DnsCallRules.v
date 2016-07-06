@@ -1,4 +1,16 @@
-Require Import Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules.
+Require Export
+        Fiat.CertifiedExtraction.Extraction.Extraction.
+
+Require Import
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.Basics
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.Wrappers
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties.
+
+Require Import
+        Coq.Program.Program
+        Coq.Lists.List.
+
+Unset Implicit Arguments.
 
 Lemma CompileCallAllocEMap:
   forall (vtmp veMap: string) (tenv tenv' : Telescope ADTValue)

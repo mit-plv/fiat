@@ -2,8 +2,7 @@ Require Export
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Basics
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Wrappers
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules.ByteString
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules.CallRules
         Fiat.CertifiedExtraction.Extraction.BinEncoders.RewriteRules.
 Unset Implicit Arguments.
 

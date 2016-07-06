@@ -35,8 +35,5 @@ Ltac side_conditions_fast :=
          | [  |- _ ∉ _ ] => decide_not_in
          end.
 
-Ltac fiat_t :=
-  repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
-
 Hint Resolve Empty_lift : call_helpers_db.
 Hint Resolve TupleToListW_length' : call_helpers_db.
