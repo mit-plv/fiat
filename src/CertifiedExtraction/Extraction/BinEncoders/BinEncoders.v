@@ -2,7 +2,7 @@ Require Export
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Basics
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Wrappers
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.CallRules.CallRules
         Fiat.CertifiedExtraction.Extraction.BinEncoders.RewriteRules.
 Unset Implicit Arguments.
 
@@ -79,6 +79,7 @@ Ltac _encode_cleanup :=
   | _ => progress simpl
   | _ => progress autounfold with f2f_binencoders_autorewrite_db
   | _ => progress autorewrite with f2f_binencoders_autorewrite_db
+  | [  |- context[wordToNat (natToWord _ (S ?x))] ] => change (wordToNat (natToWord _ (S x))) with (S x)
   end.
 
 (*  Disable the propagation of rets for this file, since we use them for structure *)
@@ -110,7 +111,7 @@ Ltac _compile_compose :=
               intros
             end).
 
-Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db.
+(* Hint Resolve WrapN16_WrapListBool16 : compile_do_side_conditions_db. *)
 
 Definition Counted {A} (x: A) := x.
 

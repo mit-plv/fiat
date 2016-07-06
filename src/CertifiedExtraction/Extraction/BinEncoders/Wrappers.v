@@ -5,12 +5,53 @@ Require Import
         Fiat.CertifiedExtraction.FacadeWrappers.
 Require Import
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Basics
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.Map8.
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties.
 Require Import
         Bedrock.Arrays.
 Require Export
         Bedrock.Platform.Facade.examples.QsADTs.
+Require Import Bedrock.Word.
+
+Unset Implicit Arguments.
+
+(* FIXME move and use in more places *)
+Instance WrapSCA {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) A.
+Proof.
+  refine {| wrap x := wrap (FacadeWrapper := FacadeWrapper_SCA) (wrap x);
+            wrap_inj := _ |}; abstract (intros * H; repeat apply wrap_inj in H; assumption).
+Defined.
+
+Instance WrapWordList : FacadeWrapper (Value ADTValue) (list W).
+Proof.
+  refine {| wrap tl := ADT (WordList tl);
+            wrap_inj := _ |}; abstract (inversion 1; reflexivity).
+Defined.
+
+Lemma map_inj {A B}:
+  forall (f: A -> B),
+    (forall x y, f x = f y -> x = y) ->
+    (forall x y, (map f) x = (map f) y -> x = y).
+Proof.
+  induction x; destruct y; simpl; intros HH; try congruence.
+  inversion HH; subst; f_equal; eauto.
+Qed.
+
+Instance WrapSCAList {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) (list A).
+Proof.
+  refine {| wrap tl := wrap (FacadeWrapper := WrapWordList) (map wrap tl);
+            wrap_inj := _ |}; abstract (eauto using @wrap_inj, @map_inj).
+Defined.
+
+Lemma WrapByte_inj {av} :
+  forall (v v' : byte),
+    SCA av (BtoW v) = SCA av (BtoW v') -> v = v'.
+Proof.
+  inversion 1; eauto using BtoW_inj.
+Qed.
+
+Instance WrapByte {av} : FacadeWrapper (Value av) byte :=
+  {| wrap b := SCA _ (BtoW b);
+     wrap_inj := WrapByte_inj |}.
 
 Definition AsciiToByte (a: Ascii.ascii) : B :=
   match a with
@@ -24,56 +65,20 @@ Proof.
   destruct a; reflexivity.
 Qed.
 
-Definition whd {n} (w: Word.word (S n)) :=
-  match w with
-    Word.WS b _ w' => b
-  end.
-
-Definition wtl {n} (w: Word.word (S n)) :=
-  match w with
-    Word.WS b _ w' => w'
-  end.
-
 Lemma whd_wtl {n} :
-  forall w: Word.word (S n), w = Word.WS (whd w) (wtl w).
+  forall w: word (S n), w = WS (whd w) (wtl w).
 Proof.
   intros.
-  refine (match w as w0 in (Word.word Sn)
-                return (match Sn as Sn' return (Word.word Sn' -> Prop) with
-                        | O => fun w0 => True
-                        | S n => fun w => w = Word.WS (whd w) (wtl w)
-                        end w0)
-          with
-          | Word.WO => I
-          | Word.WS b _ w' => _
-          end).
-  reflexivity.
-Qed.
-
-Lemma WO_singleton :
-  forall w : Word.word 0, Word.WO = w.
-Proof.
-  exact (fun w => match w as w0 in (Word.word zero)
-                     return (match zero as z return Word.word z -> Prop with
-                             | O => fun w: Word.word 0 => Word.WO = w
-                             | S n => fun w: Word.word (S n) => True
-                             end w0) with
-               | Word.WO => eq_refl
-               | Word.WS _ _ _ => I
-               end).
+  destruct (shatter_word_S w) as (b & w' & p).
+  rewrite p; reflexivity.
 Qed.
 
 Lemma ByteToAscii_AsciiToByte :
   forall b, (AsciiToByte (ByteToAscii b)) = b.
 Proof.
   intros; unfold ByteToAscii.
-  repeat match goal with
-         | [  |- context[match ?b with _ => _ end] ] => rewrite (whd_wtl b)
-         end.
-  simpl; repeat f_equal; apply WO_singleton.
+  shatter_word b; reflexivity.
 Qed.
-
-Print Assumptions ByteToAscii_AsciiToByte.
 
 Lemma AsciiToByte_inj :
   forall a1 a2,
@@ -119,77 +124,52 @@ Definition WrapString {capacity: W} : FacadeWrapper ADTValue string :=
   {| wrap x := ByteString capacity (StringToByteString x);
      wrap_inj := WrapString_inj |}.
 
-Instance WrapListResources : FacadeWrapper ADTValue (list resource_t). Admitted.
-Instance WrapListQuestions : FacadeWrapper ADTValue (list question_t). Admitted.
-Instance WrapQuestion : (FacadeWrapper ADTValue question_t). Admitted.
-Instance WrapResource : (FacadeWrapper ADTValue resource_t). Admitted.
-(* Instance WrapCache : (FacadeWrapper ADTValue DnsMap.CacheT). Admitted. *)
-(* Instance WrapDMapT : FacadeWrapper ADTValue DnsMap.DMapT. Admitted. *)
-(* Instance WrapEMapT : FacadeWrapper ADTValue DnsMap.EMapT. Admitted. *)
-
-Instance WrapN : FacadeWrapper (Value ADTValue) N. Admitted.
-
-(* Instance WrapListBool : FacadeWrapper ADTValue (list bool). Admitted. *)
-
-Unset Implicit Arguments.
-
-Require Import List.
-
-Definition BoolsToB b0 b1 b2 b3 b4 b5 b6 b7 : B :=
-  FixListBoolToWord (existT _ [b0; b1; b2; b3; b4; b5; b6; b7] eq_refl).
-
-(* capacity introduced purely for TC resolution purposes *) (* FIXME does it work? *)
-Definition BytableListOfBools (capacity: W) := { l: list bool & { p | List.length l = 8 * p } }.
-
-Lemma WrapListBoolIntoListByte_inj:
-  forall (capacity : W) (v v' : {l : list bool & {p : nat | Datatypes.length l = 8 * p} }),
-    ByteString capacity (map8 BoolsToB false (projT1 v)) = ByteString capacity (map8 BoolsToB false (projT1 v')) ->
+Lemma WrapListByte_inj {capacity} :
+  forall v v' : byteString,
+    ByteString capacity v = ByteString capacity v' ->
     v = v'.
 Proof.
-  intros; inversion H.
-  eapply map8_inj; eauto.
-  inversion 1; subst; intuition.
+  inversion 1; eauto.
 Qed.
 
-Instance WrapListBoolIntoListByte {capacity: W} : FacadeWrapper ADTValue (BytableListOfBools capacity) :=
-  {| wrap x := ByteString capacity (map8 BoolsToB false (projT1 x));
-     wrap_inj := WrapListBoolIntoListByte_inj capacity |}.
+Instance WrapListByte {capacity: W} : FacadeWrapper ADTValue byteString :=
+  {| wrap bs := ByteString capacity bs;
+     wrap_inj := WrapListByte_inj |}.
 
-Instance WrapListOfBoundedValues :
-  (* FIXME when the elements of the list inject into W, we should have a
-     canonical into lists of words. *)
-  FacadeWrapper (Value ADTValue) (list (BoundedN 8)). Admitted.
+Open Scope nat_scope.
 
-Lemma pow2_weakly_monotone : forall n m,
-    (n <= m)%nat
-    -> (Word.pow2 n <= Word.pow2 m)%nat.
+Lemma pow2_weakly_monotone : forall n m: nat,
+    (n <= m)
+    -> (pow2 n <= pow2 m).
 Proof.
-  induction 1; simpl; intuition.
+  induction 1; simpl; try change (pow2 (S m)) with (2 * pow2 m); intuition.
 Qed.
+
+Arguments pow2: simpl never.
 
 Lemma BoundedN_below_pow2__le32 {size}:
-  size <= 32 ->
+  (size <= 32) ->
   forall v : BoundedN size,
-    (lt (N.to_nat (proj1_sig v)) (Word.pow2 32)).
+    N.to_nat (proj1_sig v) < (pow2 32).
 Proof.
-  intros; eapply Lt.lt_le_trans;
-    eauto using BoundedN_below_pow2, pow2_weakly_monotone, BoundedN_below_pow2.
+  intros; destruct v; simpl; eapply Lt.lt_le_trans;
+    eauto using N_below_pow2_nat, pow2_weakly_monotone.
 Qed.
 
 Lemma WrapN_le32_inj {av} {size}:
-  size <= 32 ->
+  (size <= 32) ->
   forall v v' : BoundedN size,
-    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (Word.NToWord 32 (` v)) =
-    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (Word.NToWord 32 (` v')) ->
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (NToWord 32 (` v)) =
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (NToWord 32 (` v')) ->
     v = v'.
 Proof.
-  intros; rewrite !Word.NToWord_nat in H0.
-  apply wrap_inj, Word.natToWord_inj, N2Nat.inj in H0;
+  intros; rewrite !NToWord_nat in H0.
+  apply wrap_inj, natToWord_inj, N2Nat.inj in H0;
   eauto using exist_irrel', UipComparison.UIP, BoundedN_below_pow2__le32.
 Qed.
 
 Definition WrapN_le32 {av} (n: nat) (p: n <= 32) : FacadeWrapper (Value av) (BoundedN n) :=
-  {| wrap x := wrap (Word.NToWord 32 (` x));
+  {| wrap x := wrap (NToWord 32 (` x));
      wrap_inj := WrapN_le32_inj p |}.
 
 Definition WrapN_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then
@@ -201,102 +181,73 @@ Defined.
 Instance WrapN8 : FacadeWrapper (Value ADTValue) (BoundedN 8) := WrapN_error 8.
 Instance WrapN16 : FacadeWrapper (Value ADTValue) (BoundedN 16) := WrapN_error 16.
 
-Require Import Word.
-
-Print IL.BtoW.
-
-Definition PadWord {s1} s2 (w: Word.word s1) : Word.word ((s2 - s1) + s1) :=
-  Word.combine (Word.wzero (s2 - s1)) w.
-
-(* Lemma ExtendWord_inj : *)
-(*   forall s2 s1 w1 w2, *)
-(*     @ExtendWord s1 w1 s2 = @ExtendWord s1 w2 s2 -> *)
-(*     w1 = w2. *)
-(* Proof. *)
-(*   induction s2; simpl; intros. *)
-(*   + assumption. *)
-(*   + inversion H; auto using UipNat.inj_pair2. *)
-(* Qed. *)
-
-Lemma Word_combine_inj1 {sz1 sz2}:
-  forall w1 w2 w1' w2',
-    @Word.combine sz1 w1 sz2 w2 = @Word.combine sz1 w1' sz2 w2' ->
-    w1 = w1'.
+Lemma BoundedNat_below_pow2__le32 {size}:
+  (size <= 32) ->
+  forall v : BoundedNat size,
+    (proj1_sig v) < (pow2 32).
 Proof.
-  intros; rewrite <- (Word.split1_combine w1 w2), H, Word.split1_combine; reflexivity.
+  intros; destruct v; simpl; eapply Lt.lt_le_trans;
+    eauto using pow2_weakly_monotone.
 Qed.
 
-Lemma Word_combine_inj2 {sz1 sz2}:
-  forall w1 w2 w1' w2',
-    @Word.combine sz1 w1 sz2 w2 = @Word.combine sz1 w1' sz2 w2' ->
-    w2 = w2'.
+Theorem lt_uniqueness_proof : forall (n m : nat) (p q : n < m), p = q.
 Proof.
-  intros; rewrite <- (Word.split2_combine w1 w2), H, Word.split2_combine; reflexivity.
+  unfold lt.
+  intros; apply Core.le_uniqueness_proof.
 Qed.
 
-Lemma PadWord_inj :
-  forall s1 s2 w1 w2,
-    @PadWord s1 s2 w1 = @PadWord s1 s2 w2 ->
-    w1 = w2.
-Proof.
-  eauto using Word_combine_inj2.
-Qed.
-
-Lemma WrapListBool_le32_inj {av} {size} {W: FacadeWrapper (Value av) (Word.word (32 - size + size))}:
-  size <= 32 ->
-  forall v v' : BitArray size,
-    wrap (FacadeWrapper := W) (PadWord 32 (FixListBoolToWord v)) =
-    wrap (FacadeWrapper := W) (PadWord 32 (FixListBoolToWord v')) ->
+Lemma WrapNatIntoW_le32_inj {size}:
+  (size <= 32) ->
+  forall v v' : BoundedNat size,
+    (natToWord 32 (` v)) = (natToWord 32 (` v')) ->
     v = v'.
 Proof.
-  eauto using FixListBoolToWord_inj, PadWord_inj, wrap_inj.
+  intros; apply natToWord_inj in H0;
+    eauto using exist_irrel', lt_uniqueness_proof, BoundedNat_below_pow2__le32.
 Qed.
 
-Definition WrapListBool_le32 {av} (n: nat) (p: n <= 32) (W: FacadeWrapper (Value av) (Word.word (32 - n + n)))
-  : FacadeWrapper (Value av) (BitArray n) :=
-  {| wrap x := wrap (PadWord 32 (FixListBoolToWord x));
-     wrap_inj := WrapListBool_le32_inj p |}.
+Lemma WrapNat_le32_inj {av} {size}:
+  (size <= 32) ->
+  forall v v' : BoundedNat size,
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (natToWord 32 (` v)) =
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (natToWord 32 (` v')) ->
+    v = v'.
+Proof.
+  intros * ? * H; apply wrap_inj in H.
+  apply WrapNatIntoW_le32_inj; assumption.
+Qed.
 
-Definition WrapListBool_error {av} (n: nat) (W: FacadeWrapper (Value av) (Word.word (32 - n + n))) :
-  (if Compare_dec.le_dec n 32 then
-     FacadeWrapper (Value av) (BitArray n)
-   else True).
-  destruct (Compare_dec.le_dec n 32); auto using WrapListBool_le32.
+Definition WrapNatIntoW_le32 (n: nat) (p: n <= 32) : FacadeWrapper W (BoundedNat n) :=
+  {| wrap x := (natToWord 32 (` x));
+     wrap_inj := WrapNatIntoW_le32_inj p |}.
+
+Definition WrapNat_le32 {av} (n: nat) (p: n <= 32) : FacadeWrapper (Value av) (BoundedNat n) :=
+  {| wrap x := wrap (natToWord 32 (` x));
+     wrap_inj := WrapNat_le32_inj p |}.
+
+Definition WrapNatIntoW_error (n: nat) : (if Compare_dec.le_dec n 32 then
+                                        FacadeWrapper W (BoundedNat n)
+                                      else True).
+  destruct (Compare_dec.le_dec n 32); auto using WrapNatIntoW_le32.
 Defined.
 
-Instance WrapListBool8 : FacadeWrapper (Value ADTValue) (BitArray 8) := WrapListBool_error 8 FacadeWrapper_SCA.
-Instance WrapListBool16 : FacadeWrapper (Value ADTValue) (BitArray 16) := WrapListBool_error 16 FacadeWrapper_SCA.
+Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then
+                                        FacadeWrapper (Value av) (BoundedNat n)
+                                      else True).
+  destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32.
+Defined.
 
-Lemma le_minus_plus_cancel :
-  forall {x y}, x <= y -> y = y - x + x.
+Instance WrapNatIntoW8 : FacadeWrapper W (BoundedNat 8) := WrapNatIntoW_error 8.
+Instance WrapNatIntoW16 : FacadeWrapper W (BoundedNat 16) := WrapNatIntoW_error 16.
+
+Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8.
+Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16.
+
+Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat :
+  forall w,
+    wrap (BoundedNat8ToByte w) = wrap w.
 Proof.
-  intros; omega.
+  intros.
+  unfold wrap, WrapByte.
+  rewrite BtoW_BoundedNat8ToByte_natToWord; reflexivity.
 Qed.
-
-Lemma WrapN_WrapListBool {av} {size} (p: size <= 32):
-  forall s : BoundedN size,
-    let wrapper := match le_minus_plus_cancel p in _ = y return FacadeWrapper (Value av) (Word.word y) with
-                  | eq_refl => FacadeWrapper_SCA
-                  end in
-    wrap (FacadeWrapper := WrapN_le32 _ p) s =
-    wrap (FacadeWrapper := WrapListBool_le32 _ p wrapper) (EncodeAndPad s).
-Proof.
-  induction size; simpl; intros.
-  unfold wrap.
-Admitted.
-
-Lemma WrapN8_WrapListBool8:
-  forall s : BoundedN 8,
-    wrap (FacadeWrapper := WrapN8) s =
-    wrap (FacadeWrapper := WrapListBool8) (EncodeAndPad s).
-Proof.
-  
-Admitted.
-
-Lemma WrapN16_WrapListBool16:
-  forall s : BoundedN 16,
-    wrap (FacadeWrapper := WrapN16) s =
-    wrap (FacadeWrapper := WrapListBool16) (EncodeAndPad s).
-Proof.
-Admitted.
-

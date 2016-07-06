@@ -323,7 +323,7 @@ Proof.
   simpl.
   apply_compose.
   intros; eapply option_encode_correct.
-  exact H1.
+  eexact H1.
   eapply Word_decode_correct.
   eapply unused_word_decode_correct.
   simpl; intros; split_and.
@@ -443,7 +443,7 @@ Proof.
   destruct n; reflexivity.
   simpl in H11; repeat find_if_inside; injections; eauto;
     discriminate.
-  revert H11; find_if_inside; intros; try discriminate;
+  cbv beta in H11; revert H11; find_if_inside; intros; try discriminate;
     injections.
   eexists _; eexists tt.
   simpl in *; repeat split.

@@ -146,6 +146,31 @@ Proof.
   SameValues_Facade_t.
 Qed.
 
+Lemma ProgOk_Add_snd_under_fn_ret :
+  forall {A A' B av} (f: B -> Telescope av) (g: A -> A') (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
+    {{ tenv }}
+      p1
+      {{ [[ NTNone  ->>  cpair as pair ]]
+          :: [[ kfst  ->> g (fst pair) as p1 ]]
+          :: TelAppend (f (snd pair)) tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTNone  ->>  cpair as pair ]]
+        :: [[ kfst  ->> g (fst pair) as p1 ]]
+        :: TelAppend (f (snd pair)) tenv' }}
+      p2
+      {{ [[ NTNone  ->>  cpair as pair ]]
+          :: [[ kfst  ->> g (fst pair) as p1 ]]
+          :: TelAppend (Nil) tenv' }} ∪ {{ ext }} // env ->
+    {{ tenv }}
+      (Seq p1 p2)
+      {{ [[ kfst  ->> g (fst cpair) as p1 ]] :: tenv' }} ∪ {{ ext }} // env.
+Proof.
+  intros; eapply CompileSeq; try eassumption.
+  repeat setoid_rewrite Propagate_anonymous_ret.
+  repeat setoid_rewrite Propagate_anonymous_ret in H.
+  repeat setoid_rewrite Propagate_anonymous_ret in H0.
+  assumption.
+Qed.
+
 Lemma ProgOk_Add_snd_ret :
   forall {A B av} (f: B -> Telescope av) (kfst: NameTag av _) (cpair: A * B) tenv tenv' ext env p1 p2,
     {{ tenv }}

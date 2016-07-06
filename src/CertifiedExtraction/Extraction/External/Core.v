@@ -58,7 +58,9 @@ Ltac facade_cleanup_call :=
   | [ H: List.cons _ _ = List.cons _ _ |- _ ] =>
     (* Not using inversion: it sometimes loops *)
     let heads_eq := fresh in
-    destruct (List_cons_inj H) as (heads_eq & ?); inversion heads_eq; try subst; clear dependent H
+    destruct (List_cons_inj H) as (heads_eq & ?);
+    pose proof heads_eq;    (* Make a copy for cases where inversion goes berzerk *)
+    inversion heads_eq; try subst; clear dependent H
   | _ => GLabelMapUtils.normalize
   | _ => solve [GLabelMapUtils.decide_mapsto_maybe_instantiate]
   | [  |- exists _, _ ] => eexists
@@ -86,6 +88,9 @@ Ltac apply_generalized_t compilation_lemma :=
 
 Tactic Notation "apply" "generalized" constr(compilation_lemma) :=
   apply_generalized_t compilation_lemma.
+
+Ltac fiat_t :=
+  repeat (eapply BindComputes || apply PickComputes || apply ReturnComputes || simpl).
 
 Ltac defunctionalize_evar :=
   match goal with

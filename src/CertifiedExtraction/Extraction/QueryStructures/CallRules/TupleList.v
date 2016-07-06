@@ -1,6 +1,7 @@
 Require Import CertifiedExtraction.Extraction.QueryStructures.CallRules.Core.
 Require Import CertifiedExtraction.Extraction.External.Loops.
 Require Import CertifiedExtraction.Extraction.External.FacadeLoops.
+Require Import CertifiedExtraction.Extraction.External.Lists.
 
 Lemma map_inj {A B}:
   forall (f: A -> B),
@@ -110,60 +111,6 @@ Module ADTListCompilation
     facade_eauto.
     repeat apply DropName_remove; congruence.
   Qed.
-
-  Lemma CompileEmpty_helper {A}:
-    forall (lst : list A) (w : W),
-      Programming.propToWord (lst = @nil A) w ->
-      ret (bool2w (EqNat.beq_nat (Datatypes.length lst) 0)) ↝ w.
-  Proof.
-    unfold Programming.propToWord, IF_then_else in *.
-    destruct lst; simpl in *; destruct 1; repeat cleanup; try discriminate; fiat_t.
-  Qed.
-
-  Hint Resolve CompileEmpty_helper : call_helpers_db.
-
-  Lemma ListEmpty_helper :
-    forall {A} (seq: list A),
-      (EqNat.beq_nat (Datatypes.length seq) 0) = match seq with
-                                                 | nil => true
-                                                 | _ :: _ => false
-                                                 end.
-  Proof.
-    destruct seq; reflexivity.
-  Qed.
-
-  Lemma CompileTupleListEmpty_alt_helper {A}:
-    forall lst w,
-      Programming.propToWord (lst = @nil A) w ->
-      ret (bool2w match lst with
-                  | nil => true
-                  | _ :: _ => false
-                  end) ↝ w.
-  Proof.
-    intros * h.
-    apply CompileEmpty_helper in h.
-    rewrite <- ListEmpty_helper.
-    assumption.
-  Qed.
-
-  Hint Resolve CompileTupleListEmpty_alt_helper : call_helpers_db.
-
-  Lemma map_eq_nil_iff {A B} (f: A -> B): forall l, map f l = nil <-> l = nil.
-  Proof.
-    destruct l; simpl; split; reflexivity || discriminate.
-  Qed.
-
-  Lemma propToWord_list_empty_map:
-    forall (idx : TypeIndex) (lst : list (RealElemType idx))
-      (x : W) (f : RealElemType idx -> ElemType),
-      Programming.propToWord (map f lst = nil) x -> Programming.propToWord (lst = nil) x.
-  Proof.
-    intros.
-    unfold Programming.propToWord, IF_then_else in *.
-    setoid_rewrite (map_eq_nil_iff f lst) in H; assumption.
-  Qed.
-
-  Hint Resolve propToWord_list_empty_map : call_helpers_db.
 
   Lemma CompileEmpty {idx}:
     forall (vtest vlst : StringMap.key) (env : GLabelMap.t (FuncSpec QsADTs.ADTValue))
@@ -334,22 +281,10 @@ Module ADTListCompilation
     apply CompileEmpty_alt; loop_t.
     apply Lifted_not_In_Telescope_not_in_Ext_not_mapsto_adt; loop_t.
 
-    Ltac clean_telescope tel ext ::= (* FIXME merge *)
-      let clean := fresh in
-      let type := type of tel in
-      evar (clean: type);
-      setoid_replace tel with clean using relation (@TelEq _ ext);
-      [ | decide_TelEq_instantiate ];
-      (* Fail if the simplification didn't do anything *)
-      first [ unify clean tel; fail 2 "clean_telescope didn't make progress" |
-              unfold clean; clear clean ].
-
     loop_t.
     setoid_replace (DropName vtest ([[ ret (f init a) as facc ]] :: tenvF tenv facc))
     with (tenvF tenv (f init a)) using relation (TelEq ext); simpl; loop_t.
   Qed.
-
-  (* FIXME propagate new definition of clean_telescope *)
 
   Lemma CompileLoop__many {idx}:
     forall {A}

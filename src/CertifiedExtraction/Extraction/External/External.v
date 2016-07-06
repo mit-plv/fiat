@@ -1,5 +1,6 @@
 Require Export
         CertifiedExtraction.Extraction.External.Core
+        CertifiedExtraction.Extraction.External.Lists
         CertifiedExtraction.Extraction.External.Loops
         CertifiedExtraction.Extraction.External.FacadeLoops
         CertifiedExtraction.Extraction.External.ScalarMethods
