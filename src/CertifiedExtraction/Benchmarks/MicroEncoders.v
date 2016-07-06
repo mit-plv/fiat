@@ -214,72 +214,6 @@ Defined.
 
 Eval compute in WrapBoundedListOfBoundedNat.
 
-Record MixedRecord :=
-  { f1 : byte;
-    f2 : BoundedNat 8;
-    f3 : BoundedList (BoundedNat 8) (pow2 8) }.
-
-Definition MixedRecord_encode (mr: MixedRecord) :=
-  byteString
-    (fst (((encode_word_Impl WO~0~0~1~0~1~0~1~0)
-     ThenC (encode_word_Impl mr.(f1))
-     ThenC (EncodeBoundedNat mr.(f2))
-     ThenC (EncodeBoundedNat (BoundedListLength mr.(f3)))
-     ThenC (encode_list_Impl EncodeBoundedNat (projT1 mr.(f3)))) tt)) : list byte.
-
-Definition MixedRecordAsCollectionOfVariables
-  {av} vf1 vf2 vf3 ll : Telescope av :=
-  [[ vf1 ->> ll.(f1) as _ ]] ::
-  [[ vf2 ->> ll.(f2) as _ ]] ::
-  [[ vf3 ->> ll.(f3) as _ ]] :: Nil.
-
-Hint Unfold MixedRecord_encode : f2f_binencoders_autorewrite_db.
-Hint Unfold MixedRecordAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
-
-Example MixedRecord_compile :
-  let wrapper := @WrapListByte (natToWord _ 512) in
-  ParametricExtraction
-    #vars      mixedRecord
-    #program   ret (MixedRecord_encode mixedRecord)
-    #arguments (MixedRecordAsCollectionOfVariables
-                  (NTSome "f1") (NTSome "f2") (NTSome "f3") mixedRecord)
-    #env       MicroEncoders_Env.
-Proof.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  2:compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
 
   Lemma encode_byte_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
     forall (w: byte), (* (c: @CacheEncode cache), *)
@@ -289,22 +223,6 @@ Proof.
     unfold encode_word_Impl; intros.
     rewrite encode_char'; reflexivity.
   Qed.
-
-  rewrite encode_byte_simplify.
-
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  Focus 3.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
 
   Lemma CompileConstant_SCA:
     forall {av A} {Wr: FacadeWrapper (Value av) A}
@@ -322,33 +240,6 @@ Proof.
     rewrite (TelEq_same_wrap _ (skol w)) by eauto.
     apply CompileConstant; assumption.
   Qed.
-
-  apply CompileConstant_SCA.
-  (* compile_constant value *)
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-
-  rewrite encode_byte_simplify.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
 
   (* Add to properties *)
   Lemma encode_word8_Impl_length :
@@ -372,44 +263,6 @@ Proof.
            | _ => omega
            end.
 
-  Opaque encode_word_Impl.
-  compile_encoder_step.
-  compile_encoder_step.
-
-  Focus 3.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  2: solve [compile_encoder_t].
-  2: solve [compile_encoder_t].
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-
   Transparent encode_word_Impl.
   Lemma encode_word8_Impl_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
     forall (w: byte), (* (c: @CacheEncode cache), *)
@@ -424,58 +277,6 @@ Proof.
                  apply ByteString_transform_padding_0 |
                  eapply encode_word8_Impl_padding_0 |
                  eapply EncodeBoundedNat8_padding_0 ].
-
-  compile_encoder_step.
-
-  Focus 3.
-
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-
-  compile_encoder_step.
-  compile_encoder_step.
-  2: solve [compile_encoder_t].
-  2: solve [compile_encoder_t].
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-
-  Focus 3.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  2:compile_encoder_t.
 
 Lemma CompileCallListSCALength {A}:
   forall {WrpList: FacadeWrapper (Value ADTValue) (BoundedList A (pow2 8))}
@@ -536,21 +337,340 @@ Ltac _compile_CallListLength ::=
               [ eapply (CompileCallListBoundedNatLength vlst) | ]
             end).
 
-  compile_encoder_step.
-  3: compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  compile_encoder_step.
-  2:compile_encoder_step.
-  2:compile_encoder_step.
+Lemma encode_list_post_transform_TelEq :
+  forall {av} {A B B' : Type} (cache : Cache.Cache) (transformer : Transformer.Transformer B)
+    (A_encode : A -> Cache.CacheEncode -> B * Cache.CacheEncode)
+    (xs : list A) (base : B) (env : Cache.CacheEncode)
+    k__stream (tenv: _ -> Telescope av) ext (g: B -> B'),
+    let fold_on b :=
+        List.fold_left (encode_list_body A_encode) xs (b, env) in
+    (forall a1 a2 b, tenv (a1, b) = tenv (a2, b)) ->
+    TelEq ext
+          ([[ret (fold_on Transformer.transform_id) as folded]]
+             ::[[ k__stream ->> g (Transformer.transform base (fst folded)) as _]] :: tenv folded)
+          ([[ret (fold_on base) as folded]]
+             ::[[ k__stream ->> g (fst folded) as _]] :: tenv folded).
+Proof.
+  cbv zeta; intros * H.
+  setoid_rewrite Propagate_anonymous_ret.
+  rewrite (encode_list_body_characterization _ _ base).
+  destruct (List.fold_left _ _ _); simpl; erewrite H; reflexivity.
+Qed.
 
+Lemma encode_list_post_transform_TelEq_TelAppend :
+  forall {av} {A B B': Type} (cache : Cache.Cache) (transformer : Transformer.Transformer B)
+    (A_encode : A -> Cache.CacheEncode -> B * Cache.CacheEncode)
+    (xs : list A) (base : B) (env : Cache.CacheEncode)
+    k__stream ext (tenv: _ -> Telescope av) (g: B -> B') tenv',
+    let fold_on b :=
+        List.fold_left (encode_list_body A_encode) xs (b, env) in
+    (forall a1 a2 b, tenv (a1, b) = tenv (a2, b)) ->
+    TelEq ext
+          (TelAppend ([[ret (fold_on Transformer.transform_id) as folded]]
+                        ::[[ k__stream ->> g (Transformer.transform base (fst folded)) as _]] :: tenv folded) tenv')
+          (TelAppend ([[ret (fold_on base) as folded]]
+                        ::[[ k__stream ->> g (fst folded) as _]] :: tenv folded) tenv').
+Proof.
+  simpl; intros.
+  apply encode_list_post_transform_TelEq; intros; erewrite H; reflexivity.
+Qed.
+
+Ltac _encode_list__rewrite_as_fold :=
+  lazymatch goal with (* FIXME make this an autorewrite? *)
+  | [  |- appcontext[fold_left (@encode_list_body _ _ ?cache ?transformer _)] ] =>
+    change_post_into_TelAppend; (* FIXME: Need either this, or a set_evars call; why? *)
+    setoid_rewrite (encode_list_post_transform_TelEq_TelAppend cache transformer)
+  end.
+
+Ltac _encode_list__compile_loop :=
+  match_ProgOk
+    ltac:(fun prog pre post ext env =>
+            lazymatch post with
+            | appcontext[fold_left (encode_list_body _) (`?lst)] =>
+              lazymatch pre with
+              | context[Cons (NTSome ?vlst) (ret lst) _] =>
+                _compile_LoopMany vlst;
+                (*  FIXME generalize this rewrite *)
+                [ | rewrite (TelEq_same_wrap (`lst) (lst)) by reflexivity | .. ]
+              end
+            end).
+
+Instance WrapListOfBoundedNat: FacadeWrapper (Value ADTValue) (list (BoundedNat 8)).
+Proof.
+  eapply @WrapTransitive.
+  - apply @WrapInstance.
+    apply @WrapWordList.
+  - apply @WrapList.
+    apply @WrapNatIntoW8.
+Defined.
+
+Record MixedRecord :=
+  { f1 : byte;
+    f2 : BoundedNat 8;
+    f3 : BoundedList (BoundedNat 8) (pow2 8) }.
+
+Definition MixedRecord_encode (mr: MixedRecord) :=
+  byteString
+    (fst (((encode_word_Impl WO~0~0~1~0~1~0~1~0)
+     ThenC (encode_word_Impl mr.(f1))
+     ThenC (EncodeBoundedNat mr.(f2))
+     ThenC (EncodeBoundedNat (BoundedListLength mr.(f3)))
+     ThenC (encode_list_Impl EncodeBoundedNat (proj1_sig mr.(f3)))) tt)) : list byte.
+
+Definition MixedRecordAsCollectionOfVariables
+  {av} vf1 vf2 vf3 ll : Telescope av :=
+  [[ vf1 ->> ll.(f1) as _ ]] ::
+  [[ vf2 ->> ll.(f2) as _ ]] ::
+  [[ vf3 ->> ll.(f3) as _ ]] :: Nil.
+
+Hint Unfold MixedRecord_encode : f2f_binencoders_autorewrite_db.
+Hint Unfold MixedRecordAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
+
+Example MixedRecord_compile :
+  let wrapper := @WrapListByte (natToWord _ 512) in
+  ParametricExtraction
+    #vars      mixedRecord
+    #program   ret (MixedRecord_encode mixedRecord)
+    #arguments (MixedRecordAsCollectionOfVariables
+                  (NTSome "f1") (NTSome "f2") (NTSome "f3") mixedRecord)
+    #env       MicroEncoders_Env.
+Proof.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  2:compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  rewrite encode_byte_simplify.
+
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  Focus 3.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  apply CompileConstant_SCA.
+  (* compile_constant value *)
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  rewrite encode_byte_simplify.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  Focus 3.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  2: solve [compile_encoder_t].
+  2: solve [compile_encoder_t].
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  Focus 3.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  2: solve [compile_encoder_t].
+  2: solve [compile_encoder_t].
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  Focus 3.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  2: solve [compile_encoder_t].
+  2: solve [compile_encoder_t].
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  rewrite encode_list_as_foldl.
+  _encode_list__rewrite_as_fold.
+  _encode_list__compile_loop.
+
+  2:compile_encoder_t.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  repeat (apply CompileDeallocSCA_discretely; try compile_encoder_t).
+
+  compile_encoder_step.
+  compile_encoder_step.
+  
+  (* unfold encode_list_body. *)
+  replace acc with ((fst acc), (snd acc)).
+  compile_encoder_step.
+  destruct (snd acc).
+  setoid_rewrite EncodeBoundedNat8_simplify.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  admit.                        (* Needs invariant to know that length is < buffer *)
+  3: compile_encoder_t.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  (apply CompileDeallocSCA_discretely; try compile_encoder_t).
+  admit.
+  
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  Grab Existential Variables.
+  apply ("AAA", "BBB").
+  apply ("AAA2", "BBB2").
+  apply ("AAA3", "BBB3").
+Defined.
+
+Eval lazy in (extract_facade MixedRecord_compile).
 
 
 Record BitArrayAndList :=
