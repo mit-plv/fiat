@@ -198,38 +198,6 @@ Proof.
   eauto using CompileCompose.
 Qed.
 
-Lemma CompileCallAllocString {real_capacity}:
-  forall (vtmp vstream vcapacity : string) (tenv tenv' : Telescope ADTValue)
-    ext (env : GLabelMap.t (FuncSpec ADTValue)) capacity,
-    let wrapper := WrapInstance (H := (@WrapListByte real_capacity)) in
-    forall pNext pArg fAllocString,
-      vcapacity <> vstream ->
-      vstream ∉ ext ->
-      NotInTelescope vstream tenv ->
-      IL.goodSize (2 + Word.wordToNat capacity * 4) ->
-      real_capacity = Word.wmult capacity (Word.natToWord 32 4) ->
-      GLabelMap.MapsTo fAllocString (Axiomatic BytesADTSpec.New) env ->
-      {{ [[ ` vstream ->> nil as _]]::tenv }}
-        pNext
-      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env ->
-      {{ tenv }}
-        pArg
-      {{ [[ ` vcapacity ->> capacity as _ ]] :: tenv }} ∪ {{ ext }} // env ->
-      {{ tenv }}
-        Seq (Seq pArg (Call vstream fAllocString [vcapacity])) pNext
-      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env.
-Proof.
-  (* Close Scope telescope_scope. *)
-  (* Set Printing Implicit. *)
-  hoare; hoare; hoare.
-  repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
-  facade_eauto.
-  facade_eauto.
-  congruence.
-  facade_eauto.
-  facade_eauto.
-Qed.
-
 (* Lemma CompileCallAllocOffset: *)
 (*   forall (vtmp voffset: string) (tenv tenv' : Telescope ADTValue) *)
 (*     ext env pNext fAllocCache, *)
@@ -292,11 +260,6 @@ Ltac _compile_CallListLength :=
 (* Ltac _compile_CallAdd16 := *)
 (*   compile_do_use_transitivity_to_handle_head_separately; *)
 (*   [ apply CompileCallAdd16 | ]. *)
-
-Ltac _compile_CallAllocString :=
-  may_alloc_head;
-  let vtmp := gensym "tmp" in
-  eapply (CompileCallAllocString vtmp).
 
 Ltac _compile_LoopMany vlst :=
   change_post_into_TelAppend;

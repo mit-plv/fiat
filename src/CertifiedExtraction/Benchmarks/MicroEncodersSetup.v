@@ -23,23 +23,7 @@ Require Export
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
-        Fiat.QueryStructure.Specification.Representation.Tuple
-        Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.Common.WordFacts
-        Fiat.BinEncoders.Env.Common.ComposeCheckSum
-        Fiat.BinEncoders.Env.Common.ComposeIf
-        Fiat.BinEncoders.Env.Common.Compose
-        Fiat.BinEncoders.Env.Automation.SolverOpt
-        Fiat.BinEncoders.Env.Lib2.FixListOpt
-        Fiat.BinEncoders.Env.Lib2.NoCache
-        Fiat.BinEncoders.Env.Lib2.WordOpt
-        Fiat.BinEncoders.Env.Lib2.Bool
-        Fiat.BinEncoders.Env.Lib2.NatOpt
-        Fiat.BinEncoders.Env.Lib2.Vector
-        Fiat.BinEncoders.Env.Lib2.EnumOpt
-        Fiat.BinEncoders.Env.Lib2.SumTypeOpt
-        Fiat.BinEncoders.Env.Lib2.IPChecksum.
+        Fiat.QueryStructure.Specification.Representation.Tuple.
 
 Open Scope binencoders_scope.
 
@@ -50,8 +34,8 @@ Ltac _encode_prepare_cache :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>
             match post with
-            | Cons (NTSome _) (ret (fst (Compose.compose _ _ _ _))) _ =>
-              apply ProgOk_Add_snd_ret with (f := fun _ => Nil)
+            | Cons (NTSome _) (ret (byteString (fst (Compose.compose _ _ _ _)))) _ =>
+              apply ProgOk_Add_snd_under_fn_ret with (f := fun _ => Nil)
             end).
 
 Ltac _encode_start_compiling :=

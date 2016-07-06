@@ -396,3 +396,129 @@ Proof.
   intros; unfold IList.IList_encode'_body, Compose.compose; simpl.
   destruct acc; simpl; destruct (f _ _); reflexivity.
 Qed.
+
+
+Lemma wordToNat_inj {sz} :
+  forall (w1 w2: word sz),
+    wordToNat w1 = wordToNat w2 ->
+    w1 = w2.
+Proof.
+  intros * H.
+  apply (f_equal (@natToWord sz)) in H.
+  rewrite !natToWord_wordToNat in H.
+  assumption.
+Qed.
+
+Lemma BoundedN_BoundedNat {sz} :
+  forall x, lt x (pow2 sz) -> N.lt (N.of_nat x) (Npow2 sz).
+Proof.
+  intros.
+  apply Nomega.Nlt_in.
+  rewrite Nat2N.id, Npow2_nat.
+  assumption.
+Qed.
+
+Lemma zext_inj {sz} {sz'} :
+  forall (w w' : word sz),
+    (zext w sz') = (zext w' sz') ->
+    w = w'.
+Proof.
+  unfold zext; intros * H.
+  apply (f_equal (@Word.split1 _ _)) in H.
+  rewrite !split1_combine in H.
+  assumption.
+Qed.
+
+Lemma BtoW_inj :
+  forall (v v' : B),
+    BtoW v = BtoW v' ->
+    v = v'.
+Proof.
+  intros; eapply zext_inj; apply H.
+Qed.
+
+Lemma ByteString_transform_padding_0_left :
+  forall str1 str2,
+    padding str1 = 0 ->
+    padding (transform str1 str2) = padding str2.
+Proof.
+  intros * H; rewrite transform_padding_eq, H.
+  apply NPeano.Nat.mod_small.
+  destruct str2; assumption.
+Qed.
+
+Lemma ByteString_transform_padding_0 :
+  forall str1 str2,
+    padding str1 = 0 ->
+    padding str2 = 0 ->
+    padding (transform str1 str2) = 0.
+Proof.
+  intros * H H'; rewrite transform_padding_eq, H, H'.
+  reflexivity.
+Qed.
+
+Require Bedrock.IL.
+
+Lemma encode_char' :
+  forall w, encode_word' 8 w =
+       {| front := WO;
+          paddingOK := Lt.lt_0_Sn _;
+          byteString := w :: nil |}.
+Proof.
+  intros; change 8 with (8+0); rewrite encode_char.
+  shatter_word w; simpl; rewrite ByteString_transform_id_right.
+  reflexivity.
+Qed.
+
+Definition BoundedNat8ToByte (w: BoundedNat 8) :=
+  natToWord 8 (`w).
+
+Lemma BtoW_BoundedNat8ToByte_natToWord :
+  forall w,
+    BtoW (BoundedNat8ToByte w) = natToWord 32 (` w).
+Proof.
+  intros; apply wordToN_inj.
+  unfold BoundedNat8ToByte, BtoW, zext.
+  rewrite (InternetChecksum.wordToN_extend 8 24).
+  destruct w as (? & pr); rewrite !IL.natToWordToN.
+  - reflexivity.
+  - simpl; apply BoundedN_BoundedNat in pr;
+    etransitivity; eauto; reflexivity.
+  - apply BoundedN_BoundedNat; assumption.
+Qed.
+
+Lemma EncodeBoundedNat8_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: BoundedNat 8), (* (c: @CacheEncode cache), *)
+    EncodeBoundedNat w tt =
+    ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := (BoundedNat8ToByte w :: nil) |}, addE tt 8).
+Proof.
+  unfold EncodeBoundedNat, encode_word_Impl; intros.
+  rewrite encode_char', NToWord_of_nat.
+  reflexivity.
+Qed.
+
+Lemma EncodeBoundedNat8_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: BoundedNat 8), (* (c: @CacheEncode cache), *)
+    padding (fst (EncodeBoundedNat w tt)) = 0.
+Proof.
+  intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
+Qed.
+
+Lemma ByteString_transform_length :
+  forall str1 str2,
+    padding str1 = 0 ->
+    padding str2 = 0 ->
+    List.length (byteString (transform str1 str2)) =
+    List.length (byteString str1) + List.length (byteString str2).
+Proof.
+  unfold transform, ByteStringTransformer; intros.
+  rewrite ByteString_transformer_eq_app by assumption; simpl.
+  rewrite app_length; reflexivity.
+Qed.
+
+Lemma EncodeBoundedNat8_length :
+  forall (w: BoundedNat 8),
+    List.length (byteString (fst (EncodeBoundedNat w tt))) = 1.
+Proof.
+  intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
+Qed.

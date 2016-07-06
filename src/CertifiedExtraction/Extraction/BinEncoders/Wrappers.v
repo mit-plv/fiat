@@ -5,8 +5,7 @@ Require Import
         Fiat.CertifiedExtraction.FacadeWrappers.
 Require Import
         Fiat.CertifiedExtraction.Extraction.BinEncoders.Basics
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties
-        Fiat.CertifiedExtraction.Extraction.BinEncoders.Map8.
+        Fiat.CertifiedExtraction.Extraction.BinEncoders.Properties.
 Require Import
         Bedrock.Arrays.
 Require Export
@@ -14,6 +13,17 @@ Require Export
 Require Import Bedrock.Word.
 
 Unset Implicit Arguments.
+
+Lemma WrapByte_inj {av} :
+  forall (v v' : byte),
+    SCA av (BtoW v) = SCA av (BtoW v') -> v = v'.
+Proof.
+  inversion 1; eauto using BtoW_inj.
+Qed.
+
+Instance WrapByte {av} : FacadeWrapper (Value av) byte :=
+  {| wrap b := SCA _ (BtoW b);
+     wrap_inj := WrapByte_inj |}.
 
 Definition AsciiToByte (a: Ascii.ascii) : B :=
   match a with
@@ -104,7 +114,7 @@ Lemma pow2_weakly_monotone : forall n m: nat,
     (n <= m)
     -> (pow2 n <= pow2 m).
 Proof.
-  induction 1; simpl; intuition.
+  induction 1; simpl; try change (pow2 (S m)) with (2 * pow2 m); intuition.
 Qed.
 
 Arguments pow2: simpl never.
@@ -181,3 +191,12 @@ Defined.
 
 Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8.
 Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16.
+
+Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat :
+  forall w,
+    wrap (BoundedNat8ToByte w) = wrap w.
+Proof.
+  intros.
+  unfold wrap, WrapByte.
+  rewrite BtoW_BoundedNat8ToByte_natToWord; reflexivity.
+Qed.
