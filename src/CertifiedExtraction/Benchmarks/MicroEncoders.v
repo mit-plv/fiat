@@ -145,71 +145,68 @@ Eval lazy in (extract_facade FourWords_compile).
 
 Print Assumptions FourWords_compile.
 
-Eval compute in WrapBoundedListOfBoundedNat.
+Lemma encode_byte_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: byte), (* (c: @CacheEncode cache), *)
+    encode_word_Impl w tt =
+    ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := w :: nil |}, addE tt 8).
+Proof.
+  unfold encode_word_Impl; intros.
+  rewrite encode_char'; reflexivity.
+Qed.
 
+Lemma CompileConstant_SCA:
+  forall {av A} {Wr: FacadeWrapper (Value av) A}
+    name env (w: A) ext (tenv: Telescope av),
+    name ∉ ext ->
+    NotInTelescope name tenv ->
+    (forall a : A, is_adt (wrap a) = false) ->
+    {{ tenv }}
+      (Assign name (Const (match wrap w with SCA w => w | _ => W0 end)))
+    {{ [[`name ->> w as _]]::tenv }} ∪ {{ ext }} // env.
+Proof.
+  intros * ? ? not_adt;
+    destruct (not_adt_is_sca not_adt) as (skol & Heq).
+  rewrite (Heq w) in *.
+  rewrite (TelEq_same_wrap _ (skol w)) by eauto.
+  apply CompileConstant; assumption.
+Qed.
 
-  Lemma encode_byte_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
-    forall (w: byte), (* (c: @CacheEncode cache), *)
-      encode_word_Impl w tt =
-      ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := w :: nil |}, addE tt 8).
-  Proof.
-    unfold encode_word_Impl; intros.
-    rewrite encode_char'; reflexivity.
-  Qed.
+(* Add to properties *)
+Lemma encode_word8_Impl_length :
+  forall (w: byte),
+    List.length (byteString (fst (encode_word_Impl w tt))) = 1.
+Proof.
+  unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
+Qed.
 
-  Lemma CompileConstant_SCA:
-    forall {av A} {Wr: FacadeWrapper (Value av) A}
-      name env (w: A) ext (tenv: Telescope av),
-      name ∉ ext ->
-      NotInTelescope name tenv ->
-      (forall a : A, is_adt (wrap a) = false) ->
-      {{ tenv }}
-        (Assign name (Const (match wrap w with SCA w => w | _ => W0 end)))
-      {{ [[`name ->> w as _]]::tenv }} ∪ {{ ext }} // env.
-  Proof.
-    intros * ? ? not_adt;
-      destruct (not_adt_is_sca not_adt) as (skol & Heq).
-    rewrite (Heq w) in *.
-    rewrite (TelEq_same_wrap _ (skol w)) by eauto.
-    apply CompileConstant; assumption.
-  Qed.
+Ltac _compile_decide_write8_side_condition ::=
+  repeat lazymatch goal with
+         | [ H := _ |- _ ] => unfold H in *; clear H
+         | [  |- context[List.length (byteString (?x))] ] =>
+           match x with
+           | transform_id => change (length (byteString transform_id)) with 0
+           | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
+           | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
+           | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
+           | _ => fail 3 "Unrecognized form" x
+           end
+         | _ => omega
+         end.
 
-  (* Add to properties *)
-  Lemma encode_word8_Impl_length :
-    forall (w: byte),
-      List.length (byteString (fst (encode_word_Impl w tt))) = 1.
-  Proof.
-    unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
-  Qed.
+Transparent encode_word_Impl.
+Lemma encode_word8_Impl_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: byte), (* (c: @CacheEncode cache), *)
+    padding (fst (encode_word_Impl w tt)) = 0.
+Proof.
+  unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
+Qed.
+Opaque encode_word_Impl.
 
-  Ltac _compile_decide_write8_side_condition ::=
-    repeat lazymatch goal with
-           | [ H := _ |- _ ] => unfold H in *; clear H
-           | [  |- context[List.length (byteString (?x))] ] =>
-             match x with
-             | transform_id => change (length (byteString transform_id)) with 0
-             | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
-             | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
-             | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
-             | _ => fail 3 "Unrecognized form" x
-             end
-           | _ => omega
-           end.
-
-  Transparent encode_word_Impl.
-  Lemma encode_word8_Impl_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
-    forall (w: byte), (* (c: @CacheEncode cache), *)
-      padding (fst (encode_word_Impl w tt)) = 0.
-  Proof.
-    unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
-  Qed.
-  Opaque encode_word_Impl.
-
-  Ltac _compile_decide_padding_0 ::=
-  repeat first [ reflexivity |
-                 apply ByteString_transform_padding_0 |
-                 eapply encode_word8_Impl_padding_0 |
-                 eapply EncodeBoundedNat8_padding_0 ].
+Ltac _compile_decide_padding_0 ::=
+repeat first [ reflexivity |
+               apply ByteString_transform_padding_0 |
+               eapply encode_word8_Impl_padding_0 |
+               eapply EncodeBoundedNat8_padding_0 ].
 
 Lemma encode_list_post_transform_TelEq :
   forall {av} {A B B' : Type} (cache : Cache.Cache) (transformer : Transformer.Transformer B)
@@ -268,15 +265,6 @@ Ltac _encode_list__compile_loop :=
                 [ | rewrite (TelEq_same_wrap (`lst) (lst)) by reflexivity | .. ]
               end
             end).
-
-Instance WrapListOfBoundedNat: FacadeWrapper (Value ADTValue) (list (BoundedNat 8)).
-Proof.
-  eapply @WrapTransitive.
-  - apply @WrapInstance.
-    apply @WrapWordList.
-  - apply @WrapList.
-    apply @WrapNatIntoW8.
-Defined.
 
 Record MixedRecord :=
   { f1 : byte;
@@ -470,6 +458,17 @@ Proof.
   compile_encoder_step.
   compile_encoder_step.
   2: solve [compile_encoder_t].
+  Focus 2.
+  compile_encoder_step.
+  compile_encoder_step.
+
+  Close Scope telescope_scope.
+  Set Printing Implicit.
+  
+  
+  compile_encoder_step.
+  compile_encoder_step.
+  
   2: solve [compile_encoder_t].
   compile_encoder_step.
   compile_encoder_step.

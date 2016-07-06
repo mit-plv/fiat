@@ -253,12 +253,11 @@ Proof.
   rewrite BtoW_BoundedNat8ToByte_natToWord; reflexivity.
 Qed.
 
-
-Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B).
-Proof.
-  refine {| wrap x := map wrap x |}.
-  abstract (eauto using map_inj, wrap_inj).
-Defined.
+(* Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B). *)
+(* Proof. *)
+(*   refine {| wrap x := map wrap x |}. *)
+(*   abstract (eauto using map_inj, wrap_inj). *)
+(* Defined. *)
 
 Lemma WrapBoundedList_inj_1:
   forall (B : Type) (size : nat) (v v' : BoundedList B size), ` v = ` v' -> v = v'.
@@ -277,29 +276,38 @@ Proof.
   intros * H; apply wrap_inj, WrapBoundedList_inj_1 in H; assumption.
 Qed.
 
-Lemma WrapTransitive {A A' A''}
-      {WrpVal: FacadeWrapper A A'}
-      {WrpList: FacadeWrapper A' A''}
-  : FacadeWrapper A A''.
-Proof.
-  refine {| wrap a'' := wrap (wrap a'');
-            wrap_inj := _ |}.
-  abstract (intros * H; repeat apply wrap_inj in H; assumption).
-Defined.
-
 Instance WrapBoundedList {A B size} {Wrp: FacadeWrapper A (list B)} : FacadeWrapper A (BoundedList B size) :=
   {| wrap bl := wrap (`bl);
      wrap_inj := WrapBoundedList_inj |}.
 
-Typeclasses eauto := 10.
+(* Lemma WrapTransitive {A A' A''} *)
+(*       {WrpVal: FacadeWrapper A A'} *)
+(*       {WrpList: FacadeWrapper A' A''} *)
+(*   : FacadeWrapper A A''. *)
+(* Proof. *)
+(*   refine {| wrap a'' := wrap (wrap a''); *)
+(*             wrap_inj := _ |}. *)
+(*   abstract (intros * H; repeat apply wrap_inj in H; assumption). *)
+(* Defined. *)
 
-(* This one breaks TC resolution everywhere else *)
-Definition WrapBoundedListOfBoundedNat {sl} : FacadeWrapper (Value ADTValue) (BoundedList (BoundedNat 8) sl).
-Proof.
-  eapply @WrapTransitive.
-  - apply @WrapInstance.
-    apply @WrapWordList.
-  - apply @WrapBoundedList.
-    apply @WrapList.
-    apply @WrapNatIntoW8.
-Defined.
+(* Typeclasses eauto := 10. *)
+
+(* (* This one breaks TC resolution everywhere else *) *)
+(* Definition WrapBoundedListOfBoundedNat {sl} : FacadeWrapper (Value ADTValue) (BoundedList (BoundedNat 8) sl). *)
+(* Proof. *)
+(*   eapply @WrapTransitive. *)
+(*   - apply @WrapInstance. *)
+(*     apply @WrapWordList. *)
+(*   - apply @WrapBoundedList. *)
+(*     apply @WrapList. *)
+(*     apply @WrapNatIntoW8. *)
+(* Defined. *)
+
+(* Instance WrapListOfBoundedNat: FacadeWrapper (Value ADTValue) (list (BoundedNat 8)). *)
+(* Proof. *)
+(*   eapply @WrapTransitive. *)
+(*   - apply @WrapInstance. *)
+(*     apply @WrapWordList. *)
+(*   - apply @WrapList. *)
+(*     apply @WrapNatIntoW8. *)
+(* Defined. *)
