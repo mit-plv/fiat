@@ -107,13 +107,15 @@ Proof.
   induction 1; simpl; intuition.
 Qed.
 
+Arguments pow2: simpl never.
+
 Lemma BoundedN_below_pow2__le32 {size}:
   (size <= 32) ->
   forall v : BoundedN size,
-    (lt (N.to_nat (proj1_sig v)) (pow2 32)).
+    N.to_nat (proj1_sig v) < (pow2 32).
 Proof.
-  intros; eapply Lt.lt_le_trans;
-    eauto using BoundedN_below_pow2, pow2_weakly_monotone, BoundedN_below_pow2.
+  intros; destruct v; simpl; eapply Lt.lt_le_trans;
+    eauto using N_below_pow2_nat, pow2_weakly_monotone.
 Qed.
 
 Lemma WrapN_le32_inj {av} {size}:
@@ -140,3 +142,42 @@ Defined.
 
 Instance WrapN8 : FacadeWrapper (Value ADTValue) (BoundedN 8) := WrapN_error 8.
 Instance WrapN16 : FacadeWrapper (Value ADTValue) (BoundedN 16) := WrapN_error 16.
+
+Lemma BoundedNat_below_pow2__le32 {size}:
+  (size <= 32) ->
+  forall v : BoundedNat size,
+    (proj1_sig v) < (pow2 32).
+Proof.
+  intros; destruct v; simpl; eapply Lt.lt_le_trans;
+    eauto using pow2_weakly_monotone.
+Qed.
+
+Theorem lt_uniqueness_proof : forall (n m : nat) (p q : n < m), p = q.
+Proof.
+  unfold lt.
+  intros; apply Core.le_uniqueness_proof.
+Qed.
+
+Lemma WrapNat_le32_inj {av} {size}:
+  (size <= 32) ->
+  forall v v' : BoundedNat size,
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (natToWord 32 (` v)) =
+    wrap (FacadeWrapper := @FacadeWrapper_SCA av) (natToWord 32 (` v')) ->
+    v = v'.
+Proof.
+  intros; apply wrap_inj, natToWord_inj in H0;
+    eauto using exist_irrel', lt_uniqueness_proof, BoundedNat_below_pow2__le32.
+Qed.
+
+Definition WrapNat_le32 {av} (n: nat) (p: n <= 32) : FacadeWrapper (Value av) (BoundedNat n) :=
+  {| wrap x := wrap (natToWord 32 (` x));
+     wrap_inj := WrapNat_le32_inj p |}.
+
+Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then
+                                        FacadeWrapper (Value av) (BoundedNat n)
+                                      else True).
+  destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32.
+Defined.
+
+Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8.
+Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16.

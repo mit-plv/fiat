@@ -47,11 +47,6 @@ Fixpoint ListBoolToWord (bs: list bool) : word (List.length bs) :=
   | b :: bs0 => WS b (ListBoolToWord bs0)
   end.
 
-Definition FixListBoolToWord {size} (bs: BitArray size) : word (size) :=
-  match proj2_sig bs in _ = n with
-  | eq_refl => ListBoolToWord (proj1_sig bs)
-  end.
-
 Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,
     (forall x (pf1' pf2' : P x), pf1' = pf2')
     -> x1 = x2
@@ -108,15 +103,6 @@ Proof.
   inversion H; clear H; subst.
   apply UipNat.inj_pair2 in H2.
   f_equal; eauto.
-Qed.
-
-Lemma FixListBoolToWord_inj {size} :
-  forall (bs bs': BitArray size),
-    FixListBoolToWord bs = FixListBoolToWord bs' ->
-    bs = bs'.
-Proof.
-  destruct bs as [? p], bs' as [? p'].
-  eauto using exist_irrel, UipNat.UIP, ListBoolToWord_inj.
 Qed.
 
 Definition Word16ToWord32 (w: Word.word 16) : Word.word 32 :=
@@ -298,24 +284,6 @@ Proof.
   + etransitivity; eauto using FixInt_exp2_increasing_step.
 Qed.
 
-Lemma EncodeAndPad_ListBoolToWord {size} :
-  forall ls : BitArray size,
-    ls = EncodeAndPad (wordToN_bounded (FixListBoolToWord ls)).
-Proof.
-  intros; destruct ls as [ ls p ].
-  apply exist_irrel; eauto using UipNat.UIP.
-  generalize dependent ls.
-  induction size; destruct ls; simpl in *; try congruence.
-  + destruct p; reflexivity.
-  + injection p; intros H; destruct H; destruct p.
-    unfold n; clear n.
-    specialize (IHsize ls eq_refl).
-    rewrite IHsize at 1.
-    clear IHsize.
-    (* Opaque wordToN. *)
-    unfold EncodeAndPad1, wordToN_bounded; simpl.
-    unfold FixListBoolToWord; simpl.
-Admitted.
 
 Lemma NToWord_of_nat:
   forall (sz : nat) (n : nat),
@@ -332,9 +300,11 @@ Proof.
   apply natToWord_wordToNat.
 Qed.
 
-Lemma length_of_fixed_length_list :
-  forall {size} (ls: BitArray size),
-    List.length (proj1_sig ls) = size.
+Open Scope nat_scope.
+
+Lemma length_of_fixed_length_list {A} :
+  forall {size} (ls: BoundedList A size),
+    List.length (proj1_sig ls) < size.
 Proof.
   destruct ls; auto.
 Qed.
@@ -403,13 +373,6 @@ Proof.
   intros.
   rewrite <- FixInt_exp2_Word_pow2_nat.
   auto using Nlt_out.
-Qed.
-
-Lemma BoundedN_below_pow2 {size} :
-  forall (n: BoundedN size),
-    (N.to_nat (` n) < (Word.pow2 size))%nat.
-Proof.
-  destruct n; auto using N_below_pow2_nat.
 Qed.
 
 Lemma FixList_is_IList :
