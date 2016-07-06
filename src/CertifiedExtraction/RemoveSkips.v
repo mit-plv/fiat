@@ -108,23 +108,23 @@ Hint Extern 1 => match goal with
                 | [ H: RemoveSkips _ = _ |- _ ] => rewrite H
                 end : runsto_safe.
 
-Lemma RemoveSkips_Safe {av} :
-  forall prog pre env,
-    @Safe av env prog pre ->
-    @Safe av env (RemoveSkips prog) pre.
-Proof.
-  induction prog; RemoveSkips_helper.
-  + destruct (RemoveSkips prog1) eqn:eq1, (RemoveSkips prog2);
-      destruct_conjs; solve [eauto 10 using Equal_refl, Equal_trans, RemoveSkips_RunsTo with runsto_safe].
-  +                             (* Coinduction? *)
-Admitted.
+(* Lemma RemoveSkips_Safe {av} : *)
+(*   forall prog pre env, *)
+(*     @Safe av env prog pre -> *)
+(*     @Safe av env (RemoveSkips prog) pre. *)
+(* Proof. *)
+(*   induction prog; RemoveSkips_helper. *)
+(*   + destruct (RemoveSkips prog1) eqn:eq1, (RemoveSkips prog2); *)
+(*       destruct_conjs; solve [eauto 10 using Equal_refl, Equal_trans, RemoveSkips_RunsTo with runsto_safe]. *)
+(*   +                             (* Coinduction? *) *)
+(* Admitted. *)
 
-Lemma RemoveSkips_ProgOk {av} :
-  forall prog pre post ext env,
-    @ProgOk av ext env prog pre post ->
-    @ProgOk av ext env (RemoveSkips prog) pre post.
-Proof.
-  unfold ProgOk; split;
-    specialize (H _ H0);
-    intuition eauto using RemoveSkips_RunsTo, RemoveSkips_Safe.
-Qed.
+(* Lemma RemoveSkips_ProgOk {av} : *)
+(*   forall prog pre post ext env, *)
+(*     @ProgOk av ext env prog pre post -> *)
+(*     @ProgOk av ext env (RemoveSkips prog) pre post. *)
+(* Proof. *)
+(*   unfold ProgOk; split; *)
+(*     specialize (H _ H0); *)
+(*     intuition eauto using RemoveSkips_RunsTo, RemoveSkips_Safe. *)
+(* Qed. *)
