@@ -13,7 +13,8 @@ Ltac _compile_decide_padding_0 :=
                  apply ByteString_transform_padding_0 |
                  eapply encode_word8_Impl_padding_0 |
                  eapply EncodeBoundedNat8_padding_0 |
-                 apply fold_encode_list_body_padding_0 ].
+                 apply fold_encode_list_body_padding_0 |
+                 apply encode_list_Impl_EncodeBoundedNat_padding_0 ].
 
 (* FIXME remove coercions? *)
 Global Transparent nat_as_word.
@@ -47,6 +48,7 @@ Ltac _compile_decide_write8_side_condition_step :=
     | transform_id => change (length (Core.byteString transform_id)) with 0
     | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
     | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
+    | fst (encode_list_Impl _ _ _) => rewrite encode_list_Impl_EncodeBoundedNat_length
     | fst (fold_left (encode_list_body EncodeBoundedNat) _ _) => rewrite fold_encode_list_body_length
     | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
     | _ => fail 3 "Unrecognized form" x

@@ -351,7 +351,6 @@ Proof.
   rewrite app_length; reflexivity.
 Qed.
 
-
 Lemma EncodeBoundedNat8_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
   forall (w: BoundedNat 8) c, (* (c: @CacheEncode cache), *)
     EncodeBoundedNat w c =
@@ -363,8 +362,8 @@ Proof.
 Qed.
 
 Lemma EncodeBoundedNat8_length :
-  forall (w: BoundedNat 8),
-    List.length (byteString (fst (EncodeBoundedNat w tt))) = 1.
+  forall (w: BoundedNat 8) c,
+    List.length (byteString (fst (EncodeBoundedNat w c))) = 1.
 Proof.
   intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
 Qed.
@@ -424,6 +423,22 @@ Proof.
   - rewrite encode_char'.
     rewrite ByteString_transformer_eq_app by auto.
     simpl; rewrite IHlst by auto; reflexivity.
+Qed.
+
+Lemma encode_list_Impl_EncodeBoundedNat_length :
+  forall (lst: list (BoundedNat 8)) (c : CacheEncode),
+    List.length (byteString (fst (encode_list_Impl EncodeBoundedNat lst c))) = List.length lst.
+Proof.
+  intros; rewrite encode_list_as_foldl.
+  rewrite fold_encode_list_body_length; reflexivity.
+Qed.
+
+Lemma encode_list_Impl_EncodeBoundedNat_padding_0 :
+  forall (lst: list (BoundedNat 8)) (c : CacheEncode),
+    padding (fst (encode_list_Impl EncodeBoundedNat lst c)) = 0.
+Proof.
+  intros; rewrite encode_list_as_foldl.
+  apply fold_encode_list_body_padding_0; reflexivity.
 Qed.
 
 Lemma length_firstn {A} :

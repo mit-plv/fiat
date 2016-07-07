@@ -107,3 +107,59 @@ Defined.
 Eval lazy in (extract_facade MixedRecord_compile).
 
 Print Assumptions MixedRecord_compile.
+
+Record MixedRecord2 :=
+  { g0 : byte;
+    g1 : byte;
+    g2 : BoundedList (BoundedNat 8) (pow2 8);
+    g3 : BoundedList (BoundedNat 8) (pow2 8);
+    g4 : BoundedNat 8;
+    g5 : BoundedNat 8;
+    g6 : BoundedNat 8;
+    g7 : BoundedList (BoundedNat 8) (pow2 8) }.
+
+Definition MixedRecord2_encode (mr: MixedRecord2) :=
+  byteString
+    (fst (  (encode_word_Impl mr.(g0)
+      ThenC (encode_word_Impl mr.(g1))
+      ThenC (encode_list_Impl EncodeBoundedNat (proj1_sig mr.(g2)))
+      ThenC (encode_list_Impl EncodeBoundedNat (proj1_sig mr.(g3)))
+      ThenC (EncodeBoundedNat mr.(g4))
+      ThenC (EncodeBoundedNat mr.(g5))
+      ThenC (EncodeBoundedNat mr.(g6))
+      ThenC (EncodeBoundedNat mr.(g6))
+      ThenC (encode_list_Impl EncodeBoundedNat (proj1_sig mr.(g7)))
+      DoneC) ())).
+
+Definition MixedRecord2AsCollectionOfVariables
+  {av} vg0 vg1 vg2 vg3 vg4 vg5 vg6 vg7 mr : Telescope av :=
+  [[ vg0 ->> mr.(g0) as _]] ::
+  [[ vg1 ->> mr.(g1) as _]] ::
+  [[ vg2 ->> mr.(g2) as _]] ::
+  [[ vg3 ->> mr.(g3) as _]] ::
+  [[ vg4 ->> mr.(g4) as _]] ::
+  [[ vg5 ->> mr.(g5) as _]] ::
+  [[ vg6 ->> mr.(g6) as _]] ::
+  [[ vg7 ->> mr.(g7) as _]] ::
+  Nil.
+
+Hint Unfold MixedRecord2_encode : f2f_binencoders_autorewrite_db.
+Hint Unfold MixedRecord2AsCollectionOfVariables : f2f_binencoders_autorewrite_db.
+
+Example MixedRecord2_compile :
+  let wrapper := WrapInstance (H := @WrapListByte (natToWord _ 1024)) in
+  ParametricExtraction
+    #vars      mixedRecord2
+    #program   ret (MixedRecord2_encode mixedRecord2)
+    #arguments (MixedRecord2AsCollectionOfVariables
+                  (NTSome "g0") (NTSome "g1") (NTSome "g2")
+                  (NTSome "g3") (NTSome "g4") (NTSome "g5")
+                  (NTSome "g6") (NTSome "g7") mixedRecord2)
+    #env       MicroEncoders_Env.
+Proof.
+  Time compile_encoder_t.
+Defined.
+
+Eval lazy in (extract_facade MixedRecord2_compile).
+
+Print Assumptions MixedRecord2_compile.
