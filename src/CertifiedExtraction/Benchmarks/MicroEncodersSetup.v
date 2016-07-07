@@ -68,8 +68,8 @@ Ltac compile_encoder_step :=
   (* try _encode_show_progress; *)
   match goal with
   | _ => _encode_start_compiling
-  | _ => _encode_cleanup
   | _ => _compile_encode_do_side_conditions
+  | _ => _encode_cleanup
   | _ => _encode_prepare_cache
   | _ => _compile_encode_list
   | _ => _compile_CallWrite

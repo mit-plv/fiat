@@ -102,8 +102,6 @@ Example MixedRecord_compile :
     #env       MicroEncoders_Env.
 Proof.
   Time compile_encoder_t.
-  admit.
-  admit.
 Defined.
 
 Eval lazy in (extract_facade MixedRecord_compile).

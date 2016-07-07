@@ -399,3 +399,40 @@ Proof.
   unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
 Qed.
 
+Lemma fold_encode_list_body_length:
+  forall (lst: list (BoundedNat 8)) str (c : CacheEncode),
+    (* (forall b, List.length (byteString (fst (enc b c))) = k) -> *)
+    padding str = 0 ->
+    List.length (byteString (fst (fold_left (encode_list_body EncodeBoundedNat) lst (str, c)))) =
+    List.length (byteString str) + (length lst).
+Proof.
+  induction lst; simpl; intros.
+  - omega.
+  - rewrite encode_char'.
+    rewrite ByteString_transformer_eq_app by auto.
+    simpl; rewrite IHlst by auto; simpl.
+    rewrite app_length; simpl; omega.
+Qed.
+
+Lemma fold_encode_list_body_padding_0:
+  forall (lst: list (BoundedNat 8)) str (c : CacheEncode),
+    padding str = 0 ->
+    padding (fst (fold_left (encode_list_body EncodeBoundedNat) lst (str, c))) = 0.
+Proof.
+  induction lst; simpl; intros.
+  - assumption.
+  - rewrite encode_char'.
+    rewrite ByteString_transformer_eq_app by auto.
+    simpl; rewrite IHlst by auto; reflexivity.
+Qed.
+
+Lemma length_firstn {A} :
+  forall n (l: list A),
+    n < List.length l ->
+    List.length (firstn n l) = n.
+Proof.
+  intros; rewrite firstn_length.
+  apply Min.min_l; omega.
+Qed.
+
+

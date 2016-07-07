@@ -8,33 +8,12 @@ Unset Implicit Arguments.
 
 Require Import Coq.Lists.List.
 
-Ltac _encode_IList__rewrite_as_fold :=
-  lazymatch goal with (* FIXME make this an autorewrite? *)
-  | [  |- appcontext[fold_left (IList.IList_encode'_body ?cache ?transformer _)] ] =>
-    change_post_into_TelAppend; (* FIXME: Need either this, or a set_evars call; why? *)
-    setoid_rewrite (IList_post_transform_TelEq_TelAppend cache transformer)
-  end.
-
-Ltac _encode_IList__compile_loop :=
-  match_ProgOk
-    ltac:(fun prog pre post ext env =>
-            match post with
-            | appcontext[fold_left (IList.IList_encode'_body _ _ _) ?lst] =>
-              match pre with
-              | context[Cons (NTSome ?vlst) (ret lst) _] =>
-                _compile_LoopMany vlst
-              end
-            end).
-
-Ltac _encode_IList_compile :=
-  _encode_IList__rewrite_as_fold;
-  [ _encode_IList__compile_loop | idtac.. ].
-
 Ltac _compile_decide_padding_0 :=
   repeat first [ reflexivity |
                  apply ByteString_transform_padding_0 |
                  eapply encode_word8_Impl_padding_0 |
-                 eapply EncodeBoundedNat8_padding_0 ].
+                 eapply EncodeBoundedNat8_padding_0 |
+                 apply fold_encode_list_body_padding_0 ].
 
 (* FIXME remove coercions? *)
 Global Transparent nat_as_word.
@@ -47,19 +26,33 @@ Ltac _compile_decide_AllocString_size :=
     unify x (natToWord sz zz); reflexivity
   end.
 
+Ltac _compile_decide_write8_side_condition_step_omega :=
+  repeat match goal with
+         | [ n: { _ | _ < _ }%type |- _ ] =>
+           let neq := fresh in
+           destruct n; simpl in *
+         end;
+  change (pow2 8) with 256 in *;
+  omega.
+
+Create HintDb _compile_decide_write8_side_condition_db.
+Hint Rewrite @length_firstn : _compile_decide_write8_side_condition_db.
+
 Ltac _compile_decide_write8_side_condition_step :=
   idtac;
-  lazymatch goal with
+  match goal with
   | [ H := _ |- _ ] => unfold H in *; clear H
   | [  |- context[List.length (Core.byteString (?x))] ] =>
     match x with
     | transform_id => change (length (Core.byteString transform_id)) with 0
     | fst (EncodeBoundedNat _ _) => rewrite EncodeBoundedNat8_length
     | fst (encode_word_Impl _ _) => rewrite encode_word8_Impl_length
+    | fst (fold_left (encode_list_body EncodeBoundedNat) _ _) => rewrite fold_encode_list_body_length
     | transform _ _ => rewrite ByteString_transform_length by _compile_decide_padding_0
     | _ => fail 3 "Unrecognized form" x
     end
-  | _ => omega
+  | _ => progress autorewrite with _compile_decide_write8_side_condition_db
+  | _ => _compile_decide_write8_side_condition_step_omega
   end.
 
 Ltac _compile_decide_write8_side_condition :=
@@ -69,7 +62,7 @@ Ltac _compile_encode_do_side_conditions :=
   match goal with
   | [  |- _ = _ ^* _ ] => _compile_decide_AllocString_size
   | [  |- padding _ = 0 ] => _compile_decide_padding_0
-  | [  |- (List.length (Core.byteString (?x)) + 1 <= _)%nat ] => _compile_decide_write8_side_condition
+  | [  |- (_ <= _)%nat ] => _compile_decide_write8_side_condition
   end.
 
 Ltac _compile_encode_list :=
