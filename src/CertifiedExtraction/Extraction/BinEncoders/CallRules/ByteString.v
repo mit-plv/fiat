@@ -47,6 +47,14 @@ Ltac _compile_CallAllocString :=
   let vtmp := gensym "tmp" in
   eapply (CompileCallAllocString vtmp).
 
+Lemma IL_BtoW_BtoW :
+  forall b: byte,
+    IL.BtoW b = BtoW b.
+Proof.
+  intros; shatter_word b.
+  reflexivity.
+Qed.
+
 Lemma CompileCallWrite8_base capacity :
   let Wrp := WrapInstance (H := @WrapListByte capacity) in
   forall (vtmp varg vstream : string) (stream : list byte)
@@ -68,8 +76,8 @@ Proof.
   intros.
   repeat match goal with
          | _ => progress (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t)
-         | [  |- context[IL.BtoW] ] => replace IL.BtoW with BtoW by (clear; admit)
-         | [ H: context[IL.BtoW] |- _ ] => replace IL.BtoW with BtoW in H by (clear; admit)
+         | [  |- context[IL.BtoW ?x] ] => rewrite (IL_BtoW_BtoW x)
+         | [ H: context[IL.BtoW ?x] |- _ ] => rewrite (IL_BtoW_BtoW x) in H
          | [ H: BtoW _ = BtoW _ |- _ ] => learn (BtoW_inj _ _ H); subst
          end.
   facade_eauto.
