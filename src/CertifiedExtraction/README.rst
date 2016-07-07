@@ -1,5 +1,5 @@
-Certified extraction using correct-by-construction program synthesis
-====================================================================
+Extensible Extraction of Efficient Imperative Programs with Foreign Functions, Manually Managed Memory, and Proofs
+==================================================================================================================
 
 Getting started
 ~~~~~~~~~~~~~~~
@@ -7,7 +7,7 @@ Getting started
 Dependencies
 ------------
 
-Coq ∈ v8.4pl[2-6] (Bedrock doesn't support 8.5)
+Coq v8.4pl6
 
 Setting up
 ----------
@@ -35,13 +35,18 @@ Here is an outline of the CertifiedExtraction folder::
 
   ├── Benchmarks                       Various compilation examples
   │   ├── MicrobenchmarksAnnotated.v     Examples of small Fiat programs being compiled to Facade
-  │   ├── ProcessScheduler.v             A more ambitious example, using trees
+  │   ├── ProcessScheduler.v             The paper's core example, compiling database queries
+  │   ├── MicroEncoders.v                Another application domain, producing efficient packet serializers
   │
   ├── Extraction                       Implementation of the extraction logic
   │   │
   │   ├── External                       Calls to generically defined data structures
   │   │
-  │   ├── QueryStructures                Compiler for ICFP 2016 submission
+  │   ├── QueryStructures                Query structures
+  │   │   ├── CallRules                    Calls to Bedrock data structures
+  │   │   ├── Wrappers.v                   Injections of Fiat datatypes into Bedrock
+  │   │
+  │   ├── BinaryEncoders                 Compilers for packet serialization code
   │   │   ├── CallRules                    Calls to Bedrock data structures
   │   │   ├── Wrappers.v                   Injections of Fiat datatypes into Bedrock
   │
@@ -55,4 +60,7 @@ Diving in
 The file ./Benchmarks/MicrobenchmarksAnnotated.v contains a short introduction
 and a collection of simple compilation examples.
 
-Two preliminary examples of Binary encoders are in ./Benchmarks/MicroEncoders.v.
+The file ./Benchmarks/ProcessScheduler has the paper's main example.
+
+The file ./Benchmarks/MicroEncoders.v contains examples compilers for simple
+packets layouts, extracted into efficient Facade code.
