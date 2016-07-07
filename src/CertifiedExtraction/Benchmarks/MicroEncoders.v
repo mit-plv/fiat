@@ -105,3 +105,5 @@ Proof.
 Defined.
 
 Eval lazy in (extract_facade MixedRecord_compile).
+
+Print Assumptions MixedRecord_compile.
