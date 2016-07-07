@@ -1,6 +1,5 @@
 Require Import Benchmarks.MicroEncodersSetup.
 
-(* FIXME why isn't the require export in MicroEncodersSetup working? *)
 Require Export
         Fiat.Common.SumType
         Fiat.Common.EnumType
@@ -29,11 +28,34 @@ Require Export
         Fiat.BinEncoders.Env.Lib2.WordOpt
         Fiat.BinEncoders.Env.Lib2.IPChecksum.
 
+(** * Binary encoders
+
+    In this file we demonstrate binary encoders, serializing simple records into
+    sequences of bytes, suitable for transmission on a physical network.
+
+    In all three examples, we define a record type containing the data (a mix of
+    machine words, numbers, and sequences) and an encoding function.  This
+    function is written so as to maximize readability and ensure correctness of
+    the description.
+
+    We can then compile the examples to Facade, our C-like language, and from
+    there all the way down to assembly. The resulting programs are lightweight,
+    correct, and mirror the structure of the original programs, exploiting
+    properties of the encoding to save work and skip unnecessary
+    computations. *)
+
+(******************************************************************************)
+
+(* We start with a very simple example: four numbers packed together in a
+   record *)
+
 Record FourWords :=
   { w0 : BoundedNat 8;
     w1 : BoundedNat 8;
     w2 : BoundedNat 8;
     w3 : BoundedNat 8 }.
+
+(* The encoding function writes them out serially: *)
 
 Definition FourWords_encode (t : FourWords) :=
 byteString
@@ -42,6 +64,9 @@ byteString
    ThenC EncodeBoundedNat t.(w2)
    ThenC EncodeBoundedNat t.(w3)
   DoneC) ()))) : list byte.
+
+(* We do not want to explicitly construct the record in memory: instead, we
+   prefer to see it as a collection of stack-allocated variables: *)
 
 Definition FourWordsAsCollectionOfVariables
   {av} vw0 vw1 vw2 vw3 t
@@ -54,6 +79,8 @@ Definition FourWordsAsCollectionOfVariables
 Hint Unfold FourWords_encode : f2f_binencoders_autorewrite_db.
 Hint Unfold FourWordsAsCollectionOfVariables : f2f_binencoders_autorewrite_db.
 
+(* Finally, we can run the compiler: *)
+
 Example FourWords_compile :
   let wrapper := WrapInstance (H := (@WrapListByte (natToWord _ 512))) in
   ParametricExtraction
@@ -63,12 +90,34 @@ Example FourWords_compile :
                   (NTSome "w0") (NTSome "w1") (NTSome "w2") (NTSome "w3") fourWords)
     #env       MicroEncoders_Env.
 Proof.
-  Time compile_encoder_t.
+  Time compile_encoder_t.          (* 23s *)
 Defined.
+
+(* The resulting code is simple, efficient, and relies on a mutable array of
+   bytes to serialize the input values (in this and following examples, we omit
+   no-ops (Skip) for readability) : *)
 
 Eval lazy in (extract_facade FourWords_compile).
 
+(*   = ("tmp" <- Const (natToWord 32 128);
+        "out" <- "ByteString"."New"("tmp");
+        "arg" <- Var "w0";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "w1";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "w2";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "w3";
+        "tmp" <- "ByteString"."Push"("out", "arg");)%facade
+     : Stmt *)
+
 Print Assumptions FourWords_compile.
+
+(******************************************************************************)
+
+(******************************************************************************)
+
+(* Here is another, more complex example: *)
 
 Record MixedRecord :=
   { f1 : byte;
@@ -101,12 +150,39 @@ Example MixedRecord_compile :
                   (NTSome "f1") (NTSome "f2") (NTSome "f3") mixedRecord)
     #env       MicroEncoders_Env.
 Proof.
-  Time compile_encoder_t.
+  Time compile_encoder_t.          (* 68s *)
 Defined.
+
+(* The list enumeration has been changed to a while loop, and the the compiler
+   takes advantage of the memory representation of its inputs to save
+   computations. *)
 
 Eval lazy in (extract_facade MixedRecord_compile).
 
+(*   = ("tmp" <- Const (natToWord 32 128);
+        "out" <- "ByteString"."New"("tmp");
+        "arg" <- Const (natToWord 24 0)~0~0~1~0~1~0~1~0;
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "f1";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "f2";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- "list[W]"."Length"("f3");
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "test" <- "list[W]"."Empty"("f3");
+        While ("test" = 0)
+            "head" <- "list[W]"."Pop"("f3");
+            "arg" <- Var "head";
+            "tmp" <- "ByteString"."Push"("out", "arg");
+            "test" <- "list[W]"."Empty"("f3");
+        call "list[W]"."Delete"("f3");)%facade
+     : Stmt *)
+
 Print Assumptions MixedRecord_compile.
+
+(******************************************************************************)
+
+(* One last example: *)
 
 Record MixedRecord2 :=
   { g0 : byte;
@@ -157,9 +233,46 @@ Example MixedRecord2_compile :
                   (NTSome "g6") (NTSome "g7") mixedRecord2)
     #env       MicroEncoders_Env.
 Proof.
-  Time compile_encoder_t.
+  Time compile_encoder_t.          (* 422s *)
 Defined.
 
 Eval lazy in (extract_facade MixedRecord2_compile).
 
 Print Assumptions MixedRecord2_compile.
+
+(*   = ("tmp" <- Const (natToWord 32 256);
+        "out" <- "ByteString"."New"("tmp");
+        "arg" <- Var "g0";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "g1";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "test" <- "list[W]"."Empty"("g2");
+        While ("test" = 0)
+            "head" <- "list[W]"."Pop"("g2");
+            "arg" <- Var "head";
+            "tmp" <- "ByteString"."Push"("out", "arg");
+            "test" <- "list[W]"."Empty"("g2");
+        call "list[W]"."Delete"("g2");
+        "test" <- "list[W]"."Empty"("g3");
+        While ("test" = 0)
+            "head" <- "list[W]"."Pop"("g3");
+            "arg" <- Var "head";
+            "tmp" <- "ByteString"."Push"("out", "arg");
+            "test" <- "list[W]"."Empty"("g3");
+        call "list[W]"."Delete"("g3");
+        "arg" <- Var "g4";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "g5";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "g6";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "arg" <- Var "g6";
+        "tmp" <- "ByteString"."Push"("out", "arg");
+        "test" <- "list[W]"."Empty"("g7");
+        While ("test" = 0)
+            "head" <- "list[W]"."Pop"("g7");
+            "arg" <- Var "head";
+            "tmp" <- "ByteString"."Push"("out", "arg");
+            "test" <- "list[W]"."Empty"("g7");
+        call "list[W]"."Delete"("g7");)%facade
+     : Stmt *)
