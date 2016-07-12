@@ -22,30 +22,8 @@ Proof.
   destruct (encode1 _); simpl; destruct (encode2 _); reflexivity.
 Qed.
 
-Fixpoint addE_n {H: Cache.Cache} {C: Cache.CacheAdd H N} n (cache: @Cache.CacheEncode H) : @Cache.CacheEncode H :=
-  match n with
-  | O => cache
-  | S n => (addE_n n (Cache.addE cache 1%N))
-  end.
-
-Lemma IList_encode_bools_is_copy {H: Cache.Cache} {C: Cache.CacheAdd H N}:
-forall bits (cache: @Cache.CacheEncode H),
-  (IList.IList_encode' H Core.btransformer Bool.Bool_encode bits cache) =
-  (bits, (addE_n (List.length bits) cache)).
-Proof.
-  induction bits; simpl in *.
-  + reflexivity.
-  + intros; rewrite (IHbits (Cache.addE cache 1%N)); reflexivity.
-Qed.
-
 Require Import Coq.Lists.List.
 Require Import Bedrock.Word.
-
-Fixpoint ListBoolToWord (bs: list bool) : word (List.length bs) :=
-  match bs as l return (word (Datatypes.length l)) with
-  | nil => WO
-  | b :: bs0 => WS b (ListBoolToWord bs0)
-  end.
 
 Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,
     (forall x (pf1' pf2' : P x), pf1' = pf2')
@@ -54,132 +32,6 @@ Theorem exist_irrel : forall A (P : A -> Prop) x1 pf1 x2 pf2,
 Proof.
   intros; subst; f_equal; auto.
 Qed.
-
-Module DecidableNat.
-  Definition U := nat.
-  Definition eq_dec := Peano_dec.eq_nat_dec.
-End DecidableNat.
-
-Module UipNat := Eqdep_dec.DecidableEqDepSet(DecidableNat).
-
-Lemma WS_commute : forall n1 n2 (pf : S n1 = S n2) b w,
-    match pf in _ = n return word n with
-    | eq_refl => WS b w
-    end
-    = WS b (match NPeano.Nat.succ_inj _ _ pf in _ = n return word n with
-            | eq_refl => w
-            end).
-Proof.
-  intros.
-  pose proof (NPeano.Nat.succ_inj _ _ pf); subst.
-  rewrite (UipNat.UIP _ _ pf eq_refl).
-  rewrite (UipNat.UIP _ _ (NPeano.Nat.succ_inj _ _ eq_refl) eq_refl).
-  reflexivity.
-Qed.
-
-Lemma WS_commute' {n1 n2} :
-  forall (pf : n1 = n2) f (g: forall {n}, word n -> word (f n)) w,
-    match pf in _ = n return word (f n) with
-    | eq_refl => g w
-    end
-    = g (match pf in _ = n return word n with
-            | eq_refl => w
-            end).
-Proof.
-  destruct pf; reflexivity.
-Qed.
-
-Lemma ListBoolToWord_inj : forall n ls1 ls2 (pf1 : List.length ls1 = n) (pf2 : List.length ls2 = n),
-    match pf1 in _ = n return word n with
-    | eq_refl => ListBoolToWord ls1
-    end
-    = match pf2 in _ = n return word n with
-      | eq_refl => ListBoolToWord ls2
-      end
-    -> ls1 = ls2.
-Proof.
-  induction n; destruct ls1, ls2; simpl; intuition; try congruence.
-  repeat rewrite (WS_commute) in H.
-  inversion H; clear H; subst.
-  apply UipNat.inj_pair2 in H2.
-  f_equal; eauto.
-Qed.
-
-Definition Word16ToWord32 (w: Word.word 16) : Word.word 32 :=
-  w~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0.
-
-Lemma Word16ToWord32_inj :
-  forall w1 w2,
-    Word16ToWord32 w1 = Word16ToWord32 w2 ->
-    w1 = w2.
-Proof.
-  inversion 1; auto using UipNat.inj_pair2.
-Qed.
-
-Definition PadToLength encoded length :=
-  FixInt.pad encoded (length - Datatypes.length encoded).
-
-Lemma FixInt_pad_length :
-  forall encoded delta,
-    List.length (FixInt.pad encoded delta) = delta + List.length encoded.
-Proof.
-  induction delta; simpl; try rewrite IHdelta; reflexivity.
-Qed.
-
-Definition PadToLength_length encoded length :
-  (List.length encoded <= length)%nat ->
-  List.length (PadToLength encoded length) = length.
-Proof.
-  unfold PadToLength; rewrite FixInt_pad_length; omega.
-Qed.
-
-Lemma FixInt_encode'_length:
-  forall (size : nat) (n : BoundedN size),
-    (length (FixInt.encode' (proj1_sig n)) <= size)%nat.
-Proof.
-  destruct n; eauto using FixInt.encode'_size.
-Qed.
-
-Definition EncodeAndPad1 {size} (n: BoundedN size) : list bool :=
-  let encoded := FixInt.encode' (proj1_sig n) in
-  PadToLength encoded size.
-
-Lemma EncodeAndPad1_length {size} (n: BoundedN size) :
-  length (EncodeAndPad1 n) = size.
-Proof.
-  intros; eauto using PadToLength_length, FixInt_encode'_length.
-Qed.
-
-Definition EncodeAndPad {size} (n: BoundedN size) :
-  {xs : list bool | length xs = size} :=
-  exist _ (EncodeAndPad1 n) (EncodeAndPad1_length n).
-
-Lemma FixInt_encode_is_copy {size} {H: Cache.Cache} {C: Cache.CacheAdd H N}:
-  forall num (cache: @Cache.CacheEncode H),
-    (FixInt.FixInt_encode (size := size) num cache) =
-    (proj1_sig (EncodeAndPad num), Cache.addE cache (N.of_nat size)).
-Proof.
-  reflexivity.
-Qed.
-
-(* Lemma FixInt_encode_is_copy {size}: *)
-(*   forall num cache, *)
-(*     (FixInt.FixInt_encode (size := size) num cache) = *)
-(*     (proj1_sig (EncodeAndPad num), {| DnsMap.eMap := DnsMap.eMap cache; *)
-(*                                       DnsMap.dMap := DnsMap.dMap cache; *)
-(*                                       DnsMap.offs := DnsMap.offs cache + (N.of_nat size) |}). *)
-(* Proof. *)
-(*   destruct cache. *)
-(*   unfold FixInt.FixInt_encode. *)
-(*   reflexivity. *)
-(* Qed. *)
-
-(* Inductive ListBoolEq : (list bool) -> (list bool) -> Prop := *)
-(* | ListBoolEqLeft : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq (false :: l1) l2 *)
-(* | ListBoolEqRight : forall l1 l2, ListBoolEq l1 l2 -> ListBoolEq l1 (false :: l2) *)
-(* | ListBoolEqEq : forall l1 l2, l1 = l2 -> ListBoolEq l1 l2. *)
-
-(* Hint Constructors ListBoolEq : listBoolEq. *)
 
 Require Import Program.
 
@@ -487,23 +339,6 @@ Proof.
   - apply BoundedN_BoundedNat; assumption.
 Qed.
 
-Lemma EncodeBoundedNat8_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
-  forall (w: BoundedNat 8), (* (c: @CacheEncode cache), *)
-    EncodeBoundedNat w tt =
-    ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := (BoundedNat8ToByte w :: nil) |}, addE tt 8).
-Proof.
-  unfold EncodeBoundedNat, encode_word_Impl; intros.
-  rewrite encode_char', NToWord_of_nat.
-  reflexivity.
-Qed.
-
-Lemma EncodeBoundedNat8_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
-  forall (w: BoundedNat 8), (* (c: @CacheEncode cache), *)
-    padding (fst (EncodeBoundedNat w tt)) = 0.
-Proof.
-  intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
-Qed.
-
 Lemma ByteString_transform_length :
   forall str1 str2,
     padding str1 = 0 ->
@@ -516,9 +351,103 @@ Proof.
   rewrite app_length; reflexivity.
 Qed.
 
+Lemma EncodeBoundedNat8_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: BoundedNat 8) c, (* (c: @CacheEncode cache), *)
+    EncodeBoundedNat w c =
+    ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := (BoundedNat8ToByte w :: nil) |}, addE c 8).
+Proof.
+  unfold EncodeBoundedNat, encode_word_Impl; intros.
+  rewrite encode_char', NToWord_of_nat.
+  reflexivity.
+Qed.
+
 Lemma EncodeBoundedNat8_length :
-  forall (w: BoundedNat 8),
-    List.length (byteString (fst (EncodeBoundedNat w tt))) = 1.
+  forall (w: BoundedNat 8) c,
+    List.length (byteString (fst (EncodeBoundedNat w c))) = 1.
 Proof.
   intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
 Qed.
+
+Lemma EncodeBoundedNat8_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: BoundedNat 8) c, (* (c: @CacheEncode cache), *)
+    padding (fst (EncodeBoundedNat w c)) = 0.
+Proof.
+  intros; rewrite EncodeBoundedNat8_simplify; reflexivity.
+Qed.
+
+Lemma encode_byte_simplify : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: word 8) c, (* (c: @CacheEncode cache), *)
+    encode_word_Impl w c =
+    ({| padding := 0; front := WO; paddingOK := Lt.lt_0_Sn 7; byteString := w :: nil |}, addE c 8).
+Proof.
+  unfold encode_word_Impl; intros.
+  rewrite encode_char'; reflexivity.
+Qed.
+
+Lemma encode_word8_Impl_length :
+  forall (w: word 8) c,
+    List.length (byteString (fst (encode_word_Impl w c))) = 1.
+Proof.
+  unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
+Qed.
+
+Lemma encode_word8_Impl_padding_0 : (* {cache} {cacheAddNat : CacheAdd cache nat} : *)
+  forall (w: word 8) c, (* (c: @CacheEncode cache), *)
+    padding (fst (encode_word_Impl w c)) = 0.
+Proof.
+  unfold encode_word_Impl; intros; rewrite encode_char'; reflexivity.
+Qed.
+
+Lemma fold_encode_list_body_length:
+  forall (lst: list (BoundedNat 8)) str (c : CacheEncode),
+    (* (forall b, List.length (byteString (fst (enc b c))) = k) -> *)
+    padding str = 0 ->
+    List.length (byteString (fst (fold_left (encode_list_body EncodeBoundedNat) lst (str, c)))) =
+    List.length (byteString str) + (length lst).
+Proof.
+  induction lst; simpl; intros.
+  - omega.
+  - rewrite encode_char'.
+    rewrite ByteString_transformer_eq_app by auto.
+    simpl; rewrite IHlst by auto; simpl.
+    rewrite app_length; simpl; omega.
+Qed.
+
+Lemma fold_encode_list_body_padding_0:
+  forall (lst: list (BoundedNat 8)) str (c : CacheEncode),
+    padding str = 0 ->
+    padding (fst (fold_left (encode_list_body EncodeBoundedNat) lst (str, c))) = 0.
+Proof.
+  induction lst; simpl; intros.
+  - assumption.
+  - rewrite encode_char'.
+    rewrite ByteString_transformer_eq_app by auto.
+    simpl; rewrite IHlst by auto; reflexivity.
+Qed.
+
+Lemma encode_list_Impl_EncodeBoundedNat_length :
+  forall (lst: list (BoundedNat 8)) (c : CacheEncode),
+    List.length (byteString (fst (encode_list_Impl EncodeBoundedNat lst c))) = List.length lst.
+Proof.
+  intros; rewrite encode_list_as_foldl.
+  rewrite fold_encode_list_body_length; reflexivity.
+Qed.
+
+Lemma encode_list_Impl_EncodeBoundedNat_padding_0 :
+  forall (lst: list (BoundedNat 8)) (c : CacheEncode),
+    padding (fst (encode_list_Impl EncodeBoundedNat lst c)) = 0.
+Proof.
+  intros; rewrite encode_list_as_foldl.
+  apply fold_encode_list_body_padding_0; reflexivity.
+Qed.
+
+Lemma length_firstn {A} :
+  forall n (l: list A),
+    n < List.length l ->
+    List.length (firstn n l) = n.
+Proof.
+  intros; rewrite firstn_length.
+  apply Min.min_l; omega.
+Qed.
+
+

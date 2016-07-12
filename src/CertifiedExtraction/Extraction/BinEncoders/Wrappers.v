@@ -14,7 +14,7 @@ Require Import Bedrock.Word.
 
 Unset Implicit Arguments.
 
-(* FIXME move and use in more places *)
+(* FIXME move and use in more places, and generalize to other than ADTValue *)
 Instance WrapSCA {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) A.
 Proof.
   refine {| wrap x := wrap (FacadeWrapper := FacadeWrapper_SCA) (wrap x);
@@ -36,23 +36,17 @@ Proof.
   inversion HH; subst; f_equal; eauto.
 Qed.
 
-Instance WrapSCAList {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) (list A).
+Instance WrapSCAList {A} {Wrp: FacadeWrapper W A} : FacadeWrapper (Value ADTValue) (list A) | 1.
 Proof.
   refine {| wrap tl := wrap (FacadeWrapper := @WrapInstance _ _ WrapWordList) (map wrap tl);
             wrap_inj := _ |};
     abstract (intros * H; apply wrap_inj, map_inj in H; eauto using wrap_inj).
 Defined.
 
-Lemma WrapByte_inj {av} :
-  forall (v v' : byte),
-    SCA av (BtoW v) = SCA av (BtoW v') -> v = v'.
-Proof.
-  inversion 1; eauto using BtoW_inj.
-Qed.
-
-Instance WrapByte {av} : FacadeWrapper (Value av) byte :=
-  {| wrap b := SCA _ (BtoW b);
-     wrap_inj := WrapByte_inj |}.
+Instance WrapByteIntoW : FacadeWrapper W byte | 2 :=
+  (* Make this costly, to prefer byteStrings over lists of bytes as words *)
+  {| wrap b := BtoW b;
+     wrap_inj := BtoW_inj |}.
 
 Definition AsciiToByte (a: Ascii.ascii) : B :=
   match a with
@@ -133,7 +127,7 @@ Proof.
   inversion 1; eauto.
 Qed.
 
-Instance WrapListByte {capacity: W} : FacadeWrapper ADTValue byteString :=
+Instance WrapListByte {capacity: W} : FacadeWrapper ADTValue byteString | 0 :=
   {| wrap bs := ByteString capacity bs;
      wrap_inj := WrapListByte_inj |}.
 
@@ -232,25 +226,33 @@ Definition WrapNatIntoW_error (n: nat) : (if Compare_dec.le_dec n 32 then
   destruct (Compare_dec.le_dec n 32); auto using WrapNatIntoW_le32.
 Defined.
 
-Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then
-                                        FacadeWrapper (Value av) (BoundedNat n)
-                                      else True).
-  destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32.
-Defined.
+(* Definition WrapNat_error {av} (n: nat) : (if Compare_dec.le_dec n 32 then *)
+(*                                         FacadeWrapper (Value av) (BoundedNat n) *)
+(*                                       else True). *)
+(*   destruct (Compare_dec.le_dec n 32); auto using WrapNat_le32. *)
+(* Defined. *)
 
 Instance WrapNatIntoW8 : FacadeWrapper W (BoundedNat 8) := WrapNatIntoW_error 8.
 Instance WrapNatIntoW16 : FacadeWrapper W (BoundedNat 16) := WrapNatIntoW_error 16.
 
-Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8.
-Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16.
+(* Instance WrapNat8 : FacadeWrapper (Value ADTValue) (BoundedNat 8) := WrapNat_error 8. *)
+(* Instance WrapNat16 : FacadeWrapper (Value ADTValue) (BoundedNat 16) := WrapNat_error 16. *)
 
-Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat :
+Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat_1 :
   forall w,
-    wrap (BoundedNat8ToByte w) = wrap w.
+    (wrap (BoundedNat8ToByte w) : W) = (wrap w : W).
 Proof.
   intros.
-  unfold wrap, WrapByte.
+  unfold wrap, WrapByteIntoW.
   rewrite BtoW_BoundedNat8ToByte_natToWord; reflexivity.
+Qed.
+
+Lemma WrapByte_BoundedNat8ToByte_WrapNat8_compat:
+  forall w : BoundedNat 8,           (* Same as above, but wrapping into (Value …) instead of W  *)
+    @wrap (Value ADTValue) byte (@WrapSCA byte WrapByteIntoW) (BoundedNat8ToByte w) =
+    @wrap (Value ADTValue) (BoundedNat 8) (@WrapSCA (BoundedNat 8) WrapNatIntoW8) w.
+Proof.
+  unfold wrap, WrapSCA; intros; rewrite WrapByte_BoundedNat8ToByte_WrapNat8_compat_1; reflexivity.
 Qed.
 
 (* Instance WrapList {A B} {Wrp: FacadeWrapper A B} : FacadeWrapper (list A) (list B). *)

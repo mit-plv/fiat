@@ -15,7 +15,7 @@ Unset Implicit Arguments.
 Lemma CompileCallAllocString {real_capacity}:
   forall (vcapacity vstream : string) (tenv tenv' : Telescope ADTValue)
     ext (env : GLabelMap.t (FuncSpec ADTValue)) capacity,
-    let wrapper := WrapInstance (H := (@WrapListByte real_capacity)) in
+    let Wrp := WrapInstance (H := (@WrapListByte real_capacity)) in
     forall pNext pArg fAllocString,
       vcapacity <> vstream ->
       vstream ∉ ext ->
@@ -23,15 +23,15 @@ Lemma CompileCallAllocString {real_capacity}:
       IL.goodSize (2 + Word.wordToNat capacity * 4) ->
       real_capacity = Word.wmult capacity (Word.natToWord 32 4) ->
       GLabelMap.MapsTo fAllocString (Axiomatic BytesADTSpec.New) env ->
-      {{ [[ ` vstream ->> nil as _]]::tenv }}
+      {{ [[ NTSome (H := Wrp) vstream ->> nil as _]]::tenv }}
         pNext
-      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env ->
+      {{ [[ NTSome (H := Wrp) vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env ->
       {{ tenv }}
         pArg
       {{ [[ ` vcapacity ->> capacity as _ ]] :: tenv }} ∪ {{ ext }} // env ->
       {{ tenv }}
         Seq (Seq pArg (Call vstream fAllocString [vcapacity])) pNext
-      {{ [[ ` vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env.
+      {{ [[ NTSome (H := Wrp) vstream ->> nil as _]]::tenv' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare; hoare.
   repeat (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t).
@@ -47,13 +47,21 @@ Ltac _compile_CallAllocString :=
   let vtmp := gensym "tmp" in
   eapply (CompileCallAllocString vtmp).
 
+Lemma IL_BtoW_BtoW :
+  forall b: byte,
+    IL.BtoW b = BtoW b.
+Proof.
+  intros; shatter_word b.
+  reflexivity.
+Qed.
+
 Lemma CompileCallWrite8_base capacity :
-  let wrapper := @WrapListByte capacity in
+  let Wrp := WrapInstance (H := @WrapListByte capacity) in
   forall (vtmp varg vstream : string) (stream : list byte)
     (n : byte) fWrite8 tenv ext env,
     (List.length stream + 1 <= wordToNat capacity)%nat ->
     GLabelMap.MapsTo fWrite8 (Axiomatic BytesADTSpec.Push) env ->
-    Lifted_MapsTo ext tenv vstream (wrap stream) ->
+    Lifted_MapsTo ext tenv vstream (wrap (FacadeWrapper := Wrp) stream) ->
     Lifted_MapsTo ext tenv varg (wrap n) ->
     vtmp <> vstream ->
     vtmp ∉ ext ->
@@ -62,14 +70,14 @@ Lemma CompileCallWrite8_base capacity :
     {{ tenv }}
       Call vtmp fWrite8 (vstream :: varg :: nil)
     {{ [[ `vtmp ->> (Word.natToWord 32 0) as _ ]]
-        :: [[ `vstream ->> stream ++ n :: nil as _ ]] ::
+        :: [[ NTSome (H := Wrp) vstream ->> stream ++ n :: nil as _ ]] ::
         DropName vstream (DropName vtmp tenv) }} ∪ {{ ext }} // env.
 Proof.
   intros.
   repeat match goal with
          | _ => progress (SameValues_Facade_t_step || facade_cleanup_call || LiftPropertyToTelescope_t)
-         | [  |- context[IL.BtoW] ] => replace IL.BtoW with BtoW by (clear; admit)
-         | [ H: context[IL.BtoW] |- _ ] => replace IL.BtoW with BtoW in H by (clear; admit)
+         | [  |- context[IL.BtoW ?x] ] => rewrite (IL_BtoW_BtoW x)
+         | [ H: context[IL.BtoW ?x] |- _ ] => rewrite (IL_BtoW_BtoW x) in H
          | [ H: BtoW _ = BtoW _ |- _ ] => learn (BtoW_inj _ _ H); subst
          end.
   facade_eauto.
@@ -78,7 +86,7 @@ Proof.
 Qed.
 
 Lemma CompileCallWrite8 capacity :
-  let wrapper := @WrapListByte capacity in
+  let Wrp := WrapInstance (H := @WrapListByte capacity) in
   forall (vtmp varg vstream : string) (stream : list byte)
     (tenv tenv' tenv'': Telescope ADTValue)
     (n : byte) ext env
@@ -86,15 +94,15 @@ Lemma CompileCallWrite8 capacity :
     (List.length stream + 1 <= wordToNat capacity)%nat ->
     PreconditionSet tenv' ext [[[vtmp; vstream; varg]]] ->
     GLabelMap.MapsTo fWrite8 (Axiomatic BytesADTSpec.Push) env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
+    {{ [[ NTSome (H := Wrp) vstream ->> stream as _]]::tenv }}
       pArg
-    {{ [[ ` vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream ++ n :: nil as _]]::tenv' }}
+    {{ [[ NTSome (H := Wrp) vstream ->> stream as _]]::[[ ` varg ->> n as _]]::tenv' }} ∪ {{ ext }} // env ->
+    {{ [[ NTSome (H := Wrp) vstream ->> stream ++ n :: nil as _]]::tenv' }}
       pNext
-    {{ [[ ` vstream ->> stream ++ n :: nil as _]]::tenv'' }} ∪ {{ ext }} // env ->
-    {{ [[ ` vstream ->> stream as _]]::tenv }}
+    {{ [[ NTSome (H := Wrp) vstream ->> stream ++ n :: nil as _]]::tenv'' }} ∪ {{ ext }} // env ->
+    {{ [[ NTSome (H := Wrp) vstream ->> stream as _]]::tenv }}
       Seq pArg (Seq (Call vtmp fWrite8 [vstream; varg]) pNext)
-    {{ [[ ` vstream ->> stream ++ n :: nil as _]]::tenv'' }} ∪ {{ ext }} // env.
+    {{ [[ NTSome (H := Wrp) vstream ->> stream ++ n :: nil as _]]::tenv'' }} ∪ {{ ext }} // env.
 Proof.
   hoare; hoare; hoare.
 
