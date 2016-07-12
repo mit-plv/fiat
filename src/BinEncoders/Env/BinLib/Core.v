@@ -93,6 +93,54 @@ Definition ByteString_pop
   abstract omega.
 Defined.
 
+Fixpoint word_dequeue sz
+           (w : word (S sz))
+  : bool * word sz :=
+  match sz return word (S sz) -> bool * word sz with
+  | 0 => fun w => (whd w, WO)
+  | S sz' =>
+    fun w => let (b, w') := word_dequeue (wtl w) in
+             (b, WS (whd w) w')
+  end w.
+
+Fixpoint CharList_dequeue
+         (l : list char)
+         (b : bool)
+  : bool * (list char) :=
+  match l with
+  | nil => (b, nil)
+  | c :: l' => let (b', w') := word_dequeue c in
+               let (b'', l'') := CharList_dequeue l' b' in
+               (b'', WS b w' :: l')
+  end.
+
+Definition ByteString_dequeue
+         (bs : ByteString)
+  : option (bool * ByteString).
+  refine (match padding bs as n return
+        word n
+        -> lt n 8
+        -> _ with
+  | 0 =>
+    fun _ _ =>
+      match byteString bs with
+      | [ ] =>  None
+      | c :: l' =>
+        let (b, w') := word_dequeue c in
+        let (b', bs') := CharList_dequeue (byteString bs) b in
+        Some (b', {| front := w';
+                     byteString := bs' |})
+      end
+  | S n => fun c lt_n =>
+             let (b, w') := word_dequeue c in
+             let (b', bs') := CharList_dequeue (byteString bs) b in
+             Some (b', {| front := w';
+                          byteString := bs' |})
+  end (front bs) (paddingOK bs)).
+  abstract omega.
+  abstract omega.
+Defined.
+
 Fixpoint ByteString_push_word
            {n}
            (w : word n)
@@ -106,7 +154,7 @@ Fixpoint ByteString_push_word
 Definition ByteString_push_char (c : char) (bs : ByteString)
   := ByteString_push_word c bs.
 
-Definition ByteString_transformer
+Definition ByteString_append
            (bs bs' : ByteString)
   : ByteString :=
   let bs'' := fold_right ByteString_push_char bs' (byteString bs) in
@@ -173,18 +221,18 @@ Qed.
 
 Lemma transform_ByteString_measure
   : forall bs bs' : ByteString,
-   length_ByteString (ByteString_transformer bs bs') = length_ByteString bs + length_ByteString bs'.
+   length_ByteString (ByteString_append bs bs') = length_ByteString bs + length_ByteString bs'.
 Proof.
   destruct bs as [bs_padding bs_front ? bs_byteString]; simpl.
   induction bs_byteString.
-  - unfold ByteString_transformer, length_ByteString at 2; simpl.
+  - unfold ByteString_append, length_ByteString at 2; simpl.
     rewrite NPeano.Nat.add_0_r.
     induction bs_padding.
     + simpl; eauto.
     + simpl; intros.
       rewrite length_ByteString_push; rewrite IHbs_padding; eauto.
       omega.
-  -  unfold ByteString_transformer in *; simpl in *.
+  -  unfold ByteString_append in *; simpl in *.
      unfold length_ByteString at 2.
      unfold byteString at 1.
      intros; rewrite <- plus_assoc,
@@ -233,7 +281,7 @@ Defined.
 
 Lemma ByteString_transform_id_left
   : forall bs : ByteString,
-   ByteString_transformer ByteString_id bs = bs.
+   ByteString_append ByteString_id bs = bs.
 Proof.
   reflexivity.
 Qed.
@@ -712,6 +760,21 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
+Lemma list_into_ByteString_eq
+  : forall l,
+    l = ByteString_into_list (list_into_ByteString l).
+Proof.
+  induction l; simpl; try reflexivity.
+  rewrite IHl, <- ByteString_into_list_eq; clear IHl.
+  destruct (list_into_ByteString l).
+  unfold ByteString_push; simpl.
+  destruct (eq_nat_dec padding0 7) eqn: ?.
+  - unfold ByteString_into_list; simpl.
+    f_equal; subst.
+    shatter_word front0; reflexivity.
+  - reflexivity.
+Qed.
+
 Lemma ByteString_transform_f_equal
   : forall bs bs'
            (p_eq : padding bs' = padding bs),
@@ -780,9 +843,9 @@ Qed.
 
 Lemma ByteString_transform_id_right
   : forall bs : ByteString,
-    ByteString_transformer bs ByteString_id = bs.
+    ByteString_append bs ByteString_id = bs.
 Proof.
-  destruct bs; unfold ByteString_transformer, ByteString_id; simpl.
+  destruct bs; unfold ByteString_append, ByteString_id; simpl.
   rewrite ByteString_push_char_id_right; simpl; eauto.
   rewrite app_nil_r.
   induction front0.
@@ -801,12 +864,12 @@ Qed.
 
 Lemma ByteString_transform_list_into
   : forall l l',
-    ByteString_transformer (list_into_ByteString l) (list_into_ByteString l') = list_into_ByteString (app l l').
+    ByteString_append (list_into_ByteString l) (list_into_ByteString l') = list_into_ByteString (app l l').
 Proof.
   induction l; simpl.
-  - unfold ByteString_transformer; simpl; eauto.
+  - unfold ByteString_append; simpl; eauto.
   - intro; rewrite <- IHl; clear IHl.
-    unfold ByteString_transformer.
+    unfold ByteString_append.
     destruct (list_into_ByteString l); simpl.
     unfold ByteString_push; simpl.
     destruct (eq_nat_dec padding0 7); subst.
@@ -1027,6 +1090,18 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma list_into_ByteString_append
+  : forall b b',
+    ByteString_into_list (ByteString_append b b') = app (ByteString_into_list b)
+                                                        (ByteString_into_list b').
+Proof.
+  intros.
+  rewrite (ByteString_into_list_eq b), (ByteString_into_list_eq b').
+  rewrite ByteString_transform_list_into.
+  rewrite <- !ByteString_into_list_eq.
+  rewrite list_into_ByteString_eq; reflexivity.
+Qed.
+
 Fixpoint plus_assoc' (n : nat) {struct n}
   : forall m p : nat, n + (m + p) = n + m + p.
   refine match n return
@@ -1053,8 +1128,8 @@ Qed.
 
 Lemma ByteString_transform_assoc
   : forall l m n : ByteString,
-    ByteString_transformer l (ByteString_transformer m n) =
-    ByteString_transformer (ByteString_transformer l m) n.
+    ByteString_append l (ByteString_append m n) =
+    ByteString_append (ByteString_append l m) n.
 Proof.
   intros.
   rewrite (ByteString_into_list_eq m),
@@ -1066,7 +1141,7 @@ Proof.
 Qed.
 
 Global Instance ByteStringTransformer : Transformer ByteString :=
-  {| transform := ByteString_transformer;
+  {| transform := ByteString_append;
      bin_measure := length_ByteString;
      transform_measure := transform_ByteString_measure;
      transform_id := ByteString_id;
@@ -1101,6 +1176,58 @@ Proof.
     omega.
 Qed.
 
+Lemma ByteString_transform_list_dequeue
+  : forall b,
+    ByteString_dequeue b =
+    match hd_error (rev (ByteString_into_list b)) with
+    | Some b' => Some (b', list_into_ByteString (rev (tl (rev (ByteString_into_list b)))))
+    | None => None
+    end.
+Proof.
+  intros; rewrite (ByteString_into_list_eq b) at 1.
+  induction (ByteString_into_list b); simpl.
+  - reflexivity.
+  - unfold ByteString_dequeue in *.
+    destruct (list_into_ByteString l).
+    destruct (eq_nat_dec padding0 7); subst.
+    simpl.
+Admitted.
+
+Lemma ByteString_measure_enqueue_Some
+  : forall (b' : ByteString) (t : bool) (b : ByteString),
+    ByteString_dequeue b = Some (t, b') -> bin_measure b = bin_measure b' + 1.
+Proof.
+  destruct b.
+  rewrite ByteString_transform_list_dequeue.
+  unfold ByteString_dequeue; simpl.
+  destruct (rev (ByteString_into_list
+                   {|
+                     padding := padding0;
+                     front := front0;
+                     paddingOK := paddingOK0;
+                     byteString := byteString0 |})) eqn : H'.
+  - simpl; intros; discriminate.
+  - simpl; intros; injections.
+    apply (f_equal (@rev _)) in  H'.
+    rewrite rev_involutive in H'.
+    apply (f_equal list_into_ByteString) in H'.
+    rewrite <- ByteString_into_list_eq in H'.
+    rewrite H'.
+    simpl.
+
+    simpl in H.
+    rewrite rev_unit in H.
+    destruct padding0.
+  - destruct byteString0.
+    + intros; discriminate.
+    + intros; injections.
+      unfold length_ByteString; simpl.
+      omega.
+  - intros; destruct (word_dequeue front0); injections.
+    unfold length_ByteString; simpl.
+    omega.
+Qed.
+
 Lemma ByteString_transform_push_pop_opt
   : forall (t : bool) (m : ByteString), ByteString_pop (ByteString_push t m) = Some (t, m).
 Proof.
@@ -1115,6 +1242,26 @@ Proof.
   - simpl; repeat f_equal.
     apply le_uniqueness_proof.
 Qed.
+
+
+Lemma ByteString_dequeue_transform_opt :
+  forall t b b' b'',
+    ByteString_dequeue b = Some (t, b')
+    -> ByteString_dequeue (ByteString_append b b'') = Some (t, ByteString_append b' b'').
+Proof.
+  intros; destruct b; unfold ByteString_dequeue in *; simpl in *.
+  destruct padding0; simpl in *.
+  unfold B
+  intros; rewrite ByteString_transform_list_dequeue in *.
+  rewrite list_into_ByteString_append.
+  destruct (ByteString_into_list b) eqn: ?; simpl in *; try discriminate; injections.
+  rewrite rev_app_distr.
+  rewrite rev_append.
+  repeat f_equal.
+  rewrite <- ByteString_transform_list_into.
+  rewrite <- ByteString_into_list_eq; reflexivity.
+Qed.
+
 
 Lemma ByteString_transform_push_eq
   : forall t bs, exists pf,

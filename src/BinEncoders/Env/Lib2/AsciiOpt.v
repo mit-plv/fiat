@@ -12,7 +12,7 @@ Section Ascii.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnitOpt transformer bool}.
+  Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
   Definition encode_ascii_Spec (c : ascii) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=

@@ -13,7 +13,7 @@ Section String.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnitOpt transformer bool}.
+  Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
   Fixpoint encode_string_Spec (xs : string) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
