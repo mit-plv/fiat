@@ -93,54 +93,6 @@ Definition ByteString_pop
   abstract omega.
 Defined.
 
-Fixpoint word_dequeue sz
-           (w : word (S sz))
-  : bool * word sz :=
-  match sz return word (S sz) -> bool * word sz with
-  | 0 => fun w => (whd w, WO)
-  | S sz' =>
-    fun w => let (b, w') := word_dequeue (wtl w) in
-             (b, WS (whd w) w')
-  end w.
-
-Fixpoint CharList_dequeue
-         (l : list char)
-         (b : bool)
-  : bool * (list char) :=
-  match l with
-  | nil => (b, nil)
-  | c :: l' => let (b', w') := word_dequeue c in
-               let (b'', l'') := CharList_dequeue l' b' in
-               (b'', WS b w' :: l')
-  end.
-
-Definition ByteString_dequeue
-         (bs : ByteString)
-  : option (bool * ByteString).
-  refine (match padding bs as n return
-        word n
-        -> lt n 8
-        -> _ with
-  | 0 =>
-    fun _ _ =>
-      match byteString bs with
-      | [ ] =>  None
-      | c :: l' =>
-        let (b, w') := word_dequeue c in
-        let (b', bs') := CharList_dequeue (byteString bs) b in
-        Some (b', {| front := w';
-                     byteString := bs' |})
-      end
-  | S n => fun c lt_n =>
-             let (b, w') := word_dequeue c in
-             let (b', bs') := CharList_dequeue (byteString bs) b in
-             Some (b', {| front := w';
-                          byteString := bs' |})
-  end (front bs) (paddingOK bs)).
-  abstract omega.
-  abstract omega.
-Defined.
-
 Fixpoint ByteString_push_word
            {n}
            (w : word n)
@@ -378,8 +330,6 @@ Proof.
 Qed.
 
 Hint Unfold modulo Nat.modulo : modulo_db.
-
-Import Nat.
 
 Lemma divmod_eq' :
   forall x y q u,
@@ -1176,56 +1126,73 @@ Proof.
     omega.
 Qed.
 
-Lemma ByteString_transform_list_dequeue
+Lemma padding_list_into_ByteString :
+  forall l,
+    padding (list_into_ByteString l) = NPeano.modulo (length l) 8.
+Proof.
+  induction l.
+  simpl; eauto.
+  simpl length.
+  destruct (Peano_dec.eq_nat_dec (NPeano.modulo (length l) 8) 7).
+  - rewrite NatModulo_S_Full.
+    simpl.
+    unfold ByteString_push.
+    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7).
+    simpl; eauto.
+    elimtype False.
+    rewrite IHl in n; congruence.
+    eauto.
+  - rewrite NatModulo_S_Not_Full; eauto.
+    unfold NPeano.Nat.modulo in IHl |- *; rewrite <- IHl.
+    simpl.
+    unfold ByteString_push.
+    unfold NPeano.modulo, NPeano.Nat.modulo in IHl, n; rewrite <- IHl in n.
+    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7);
+      simpl; eauto.
+    congruence.
+Qed.
+
+Lemma list_into_ByteString_push
+  : forall a l, ByteString_push a (list_into_ByteString l) =
+                list_into_ByteString (a :: l).
+Proof.
+  reflexivity.
+Qed.
+
+Lemma ByteString_append_padding_eq
+  : forall b b',
+    padding (ByteString_append b b') = NPeano.modulo (padding b + padding b') 8.
+Proof.
+  intros.
+  rewrite (ByteString_into_list_eq b),
+  (ByteString_into_list_eq b').
+  rewrite ByteString_transform_list_into.
+  rewrite !padding_list_into_ByteString.
+  rewrite app_length.
+  rewrite NPeano.Nat.add_mod; eauto.
+Qed.
+
+Lemma padding_eq_mod_8
   : forall b,
-    ByteString_dequeue b =
-    match hd_error (rev (ByteString_into_list b)) with
-    | Some b' => Some (b', list_into_ByteString (rev (tl (rev (ByteString_into_list b)))))
-    | None => None
-    end.
+    padding b = NPeano.modulo (length_ByteString b) 8.
 Proof.
-  intros; rewrite (ByteString_into_list_eq b) at 1.
-  induction (ByteString_into_list b); simpl.
+  intros.
+  rewrite (ByteString_into_list_eq b).
+  unfold length_ByteString.
+  rewrite !padding_list_into_ByteString.
+  intros; rewrite <- NPeano.Nat.add_mod_idemp_r; eauto.
+  rewrite (fun c => proj2 (NPeano.Nat.mod_divides (8 * _) 8 c));
+    eauto.
+  rewrite <- plus_n_O, NPeano.Nat.mod_mod; eauto.
+Qed.
+
+Lemma length_list_into_ByteString
+  : forall l,
+    length_ByteString (list_into_ByteString l) = length l.
+Proof.
+  induction l; simpl.
   - reflexivity.
-  - unfold ByteString_dequeue in *.
-    destruct (list_into_ByteString l).
-    destruct (eq_nat_dec padding0 7); subst.
-    simpl.
-Admitted.
-
-Lemma ByteString_measure_enqueue_Some
-  : forall (b' : ByteString) (t : bool) (b : ByteString),
-    ByteString_dequeue b = Some (t, b') -> bin_measure b = bin_measure b' + 1.
-Proof.
-  destruct b.
-  rewrite ByteString_transform_list_dequeue.
-  unfold ByteString_dequeue; simpl.
-  destruct (rev (ByteString_into_list
-                   {|
-                     padding := padding0;
-                     front := front0;
-                     paddingOK := paddingOK0;
-                     byteString := byteString0 |})) eqn : H'.
-  - simpl; intros; discriminate.
-  - simpl; intros; injections.
-    apply (f_equal (@rev _)) in  H'.
-    rewrite rev_involutive in H'.
-    apply (f_equal list_into_ByteString) in H'.
-    rewrite <- ByteString_into_list_eq in H'.
-    rewrite H'.
-    simpl.
-
-    simpl in H.
-    rewrite rev_unit in H.
-    destruct padding0.
-  - destruct byteString0.
-    + intros; discriminate.
-    + intros; injections.
-      unfold length_ByteString; simpl.
-      omega.
-  - intros; destruct (word_dequeue front0); injections.
-    unfold length_ByteString; simpl.
-    omega.
+  - rewrite ByteString_measure_push; simpl; rewrite IHl; omega.
 Qed.
 
 Lemma ByteString_transform_push_pop_opt
@@ -1243,25 +1210,37 @@ Proof.
     apply le_uniqueness_proof.
 Qed.
 
-
-Lemma ByteString_dequeue_transform_opt :
-  forall t b b' b'',
-    ByteString_dequeue b = Some (t, b')
-    -> ByteString_dequeue (ByteString_append b b'') = Some (t, ByteString_append b' b'').
+Lemma hd_error_app {A}
+  : forall (a : A) (l l' : list A),
+    hd_error l = Some a -> hd_error (l ++ l') = Some a.
 Proof.
-  intros; destruct b; unfold ByteString_dequeue in *; simpl in *.
-  destruct padding0; simpl in *.
-  unfold B
-  intros; rewrite ByteString_transform_list_dequeue in *.
-  rewrite list_into_ByteString_append.
-  destruct (ByteString_into_list b) eqn: ?; simpl in *; try discriminate; injections.
-  rewrite rev_app_distr.
-  rewrite rev_append.
-  repeat f_equal.
-  rewrite <- ByteString_transform_list_into.
-  rewrite <- ByteString_into_list_eq; reflexivity.
+  destruct l; simpl; intros; first [ discriminate | eauto].
 Qed.
 
+Lemma list_into_ByteString_inj :
+  forall l l',
+    list_into_ByteString l = list_into_ByteString l'
+    -> l = l'.
+Proof.
+  induction l; destruct l'; simpl; intros; eauto.
+  - apply (f_equal length_ByteString) in H;
+      rewrite length_ByteString_push in H;
+      compute in H; discriminate.
+  - apply (f_equal length_ByteString) in H;
+      rewrite length_ByteString_push in H;
+      compute in H; discriminate.
+  - apply (f_equal ByteString_pop) in H;
+      rewrite !ByteString_transform_push_pop_opt in H.
+    injections; f_equal; eauto.
+Qed.
+
+Lemma rev_inj {A}
+  : forall (l l' : list A),
+    rev l = rev l' -> l = l'.
+Proof.
+  intros; apply (f_equal (@rev _)) in H; rewrite !rev_involutive in H;
+    eauto.
+Qed.
 
 Lemma ByteString_transform_push_eq
   : forall t bs, exists pf,
@@ -1352,4 +1331,537 @@ Proof.
   - abstract eauto.
 Defined.
 
-Print Assumptions ByteString_TransformerUnitOpt.
+Definition ByteString_enqueue
+         (b : bool)
+         (bs : ByteString)
+  : ByteString.
+  refine (if (eq_nat_dec (padding bs) 7) then
+            {| front := WO;
+               byteString := (byteString bs) ++ [WS b _] |}
+  else
+    {| front := WS b (front bs);
+       padding := S (padding bs);
+       byteString := byteString bs |}).
+  abstract omega.
+  { pose proof (front bs) as w; generalize dependent (padding bs).
+    intros ?? w; subst; exact w. }
+  { abstract (pose proof (paddingOK bs); omega). }
+Defined.
+
+Fixpoint word_dequeue sz
+           (w : word (S sz))
+  : bool * word sz :=
+  match sz return word (S sz) -> bool * word sz with
+  | 0 => fun w => (whd w, WO)
+  | S sz' =>
+    fun w => let (b, w') := word_dequeue (wtl w) in
+             (b, WS (whd w) w')
+  end w.
+
+Fixpoint CharList_dequeue
+         (l : list char)
+         (b : bool)
+  : bool * (list char) :=
+  match l with
+  | nil => (b, nil)
+  | c :: l' => let (b', w') := word_dequeue c in
+               let (b'', l'') := CharList_dequeue l' b' in
+               (b'', WS b w' :: l')
+  end.
+
+Definition ByteString_dequeue
+         (bs : ByteString)
+  : option (bool * ByteString).
+  refine (match padding bs as n return
+        word n
+        -> lt n 8
+        -> _ with
+  | 0 =>
+    fun _ _ =>
+      match byteString bs with
+      | [ ] =>  None
+      | c :: l' =>
+        let (b, w') := word_dequeue c in
+        let (b', bs') := CharList_dequeue (byteString bs) b in
+        Some (b', {| front := w';
+                     byteString := bs' |})
+      end
+  | S n => fun c lt_n =>
+             let (b, w') := word_dequeue c in
+             let (b', bs') := CharList_dequeue (byteString bs) b in
+             Some (b', {| front := w';
+                          byteString := bs' |})
+  end (front bs) (paddingOK bs)).
+  abstract omega.
+  abstract omega.
+Defined.
+
+Fixpoint ByteString_enqueue_word
+           {n}
+           (w : word n)
+           (bs : ByteString) :=
+  match n return word n -> ByteString with
+  | 0 => fun _ => bs
+  | S n' => fun w =>
+              (ByteString_enqueue_word (wtl w) (ByteString_enqueue (whd w) bs))
+  end w.
+
+Definition ByteString_enqueue_char (c : char) (bs : ByteString)
+  := ByteString_enqueue_word c bs.
+
+Definition ByteString_enqueue_ByteString
+           (bs bs' : ByteString)
+  : ByteString :=
+  let bs'' := fold_right ByteString_enqueue_char bs (byteString bs') in
+  ByteString_enqueue_word (front bs') bs''.
+
+Lemma app_cons_assoc {A}
+  : forall a (l l' : list A),
+    l ++ (a :: l') = (l ++ [a]) ++ l'.
+Proof.
+  intros; rewrite <- app_assoc; reflexivity.
+Qed.
+
+Definition queue_into_ByteString
+           (l : list bool)
+  : ByteString :=
+  fold_left (fun bs b => ByteString_enqueue b bs) l ByteString_id.
+
+Fixpoint wordToQueue {n}
+           (w : word n)
+  : list bool :=
+  match n return word n -> list bool with
+  | 0 => fun _ => [ ]
+  | S n' => fun w => wordToQueue (wtl w) ++ [whd w]
+  end w.
+
+Fixpoint ByteString_into_queue'
+           (chars : list char)
+           {struct chars} : list bool :=
+  match chars return list bool with
+  | [ ] => [ ]
+  | char' :: chars' =>
+    app (wordToQueue char')
+      (ByteString_into_queue' chars')
+  end.
+
+Definition ByteString_into_queue
+           (bs : ByteString)
+  : list bool :=
+  app (ByteString_into_queue' (byteString bs)) (wordToQueue (front bs)).
+
+(* Lemma enqueue_queue_into_ByteString
+  : forall b bs l,
+    fold_right ByteString_enqueue (ByteString_enqueue b bs) l
+    = ByteString_enqueue b (fold_right ByteString_enqueue bs l).
+Proof.
+  induction l; simpl; eauto.
+  rewrite IHl. *)
+
+Lemma length_ByteString_enqueue
+  : forall b bs,
+    length_ByteString (ByteString_enqueue b bs) = S (length_ByteString bs).
+Proof.
+  destruct bs; unfold ByteString_enqueue; simpl.
+  destruct (eq_nat_dec padding0 7); simpl.
+  - unfold length_ByteString; simpl.
+    rewrite app_length; simpl.
+    omega.
+  - unfold length_ByteString; simpl.
+    omega.
+Qed.
+
+Lemma length_padding_ByteString_into_queue_eq'
+  : forall l bs,
+    length_ByteString
+      (fold_left (fun (bs : ByteString) (b : bool) => ByteString_enqueue b bs)
+                 l bs) = length l + length_ByteString bs.
+Proof.
+  intros; rewrite <- fold_left_rev_right.
+  rewrite <- rev_length.
+  induction (rev l); simpl; eauto.
+  rewrite <- IHl0.
+  rewrite length_ByteString_enqueue; reflexivity.
+Qed.
+
+Lemma length_wordToQueue
+  : forall sz (w : word sz), length (wordToQueue w) = sz.
+Proof.
+  induction w; simpl; eauto.
+  rewrite app_length, IHw; simpl; omega.
+Qed.
+
+Lemma length_ByteString_into_queue'
+  : forall bs, length (ByteString_into_queue' bs) = 8 * (length bs).
+Proof.
+  induction bs; simpl; eauto.
+  rewrite IHbs.
+  simpl; omega.
+Qed.
+
+Lemma length_padding_ByteString_into_queue_eq
+  : forall bs,
+    length_ByteString bs = length_ByteString (queue_into_ByteString (ByteString_into_queue bs)).
+Proof.
+  destruct bs; unfold queue_into_ByteString, ByteString_into_queue;
+    unfold length_ByteString at 1; simpl padding; simpl byteString.
+  rewrite fold_left_app.
+  rewrite length_padding_ByteString_into_queue_eq'.
+  rewrite length_wordToQueue; f_equal.
+  rewrite <- length_ByteString_into_queue'.
+  induction (ByteString_into_queue' byteString0); simpl.
+  reflexivity.
+  rewrite length_padding_ByteString_into_queue_eq'.
+  rewrite IHl, length_padding_ByteString_into_queue_eq'.
+  unfold length_ByteString; simpl; omega.
+Qed.
+
+Lemma padding_ByteString_into_queue_eq
+  : forall bs,
+    padding bs = padding (queue_into_ByteString (ByteString_into_queue bs)).
+Proof.
+  intros; rewrite !padding_eq_mod_8.
+  rewrite <- length_padding_ByteString_into_queue_eq; reflexivity.
+Qed.
+
+Lemma ByteString_into_queue_eq
+  : forall bs,
+    bs = queue_into_ByteString (ByteString_into_queue bs).
+Proof.
+  destruct bs; unfold queue_into_ByteString, ByteString_into_queue;
+    simpl.
+  rewrite <- fold_left_rev_right, rev_app_distr, fold_right_app.
+  induction padding0.
+  - shatter_word front0.
+    rewrite <- (app_nil_l byteString0) at 1.
+    remember nil.
+    replace ByteString_id with {| padding := 0;
+                                 front := WO;
+                                 paddingOK := paddingOK0;
+                                 byteString := l |}.
+    simpl; clear Heql; revert l; induction byteString0; simpl.
+    + intros; rewrite app_nil_r; simpl; repeat f_equal.
+    + intros; rewrite !fold_right_app.
+      simpl.
+      unfold char in a; shatter_word a.
+      unfold ByteString_enqueue at 8; simpl.
+      unfold ByteString_enqueue at 7; simpl.
+      unfold ByteString_enqueue at 6; simpl.
+      unfold ByteString_enqueue at 5; simpl.
+      unfold ByteString_enqueue at 4; simpl.
+      unfold ByteString_enqueue at 3; simpl.
+      unfold ByteString_enqueue at 2; simpl.
+      rewrite app_cons_assoc.
+      rewrite IHbyteString0.
+      repeat f_equal.
+      apply le_uniqueness_proof.
+    + rewrite Heql; unfold ByteString_id; repeat f_equal.
+      apply le_uniqueness_proof.
+  - rewrite (shatter_word front0).
+    simpl.
+    rewrite rev_app_distr, fold_right_app.
+    simpl.
+    assert (lt padding0 8) by omega.
+    erewrite <- (IHpadding0 _ H).
+    unfold ByteString_enqueue; simpl.
+    destruct (eq_nat_dec padding0 7).
+    subst; omega.
+    repeat f_equal.
+    apply le_uniqueness_proof.
+Qed.
+
+Lemma ByteString_enqueue_into_list
+  : forall b (l : list bool),
+    ByteString_enqueue b (queue_into_ByteString l)
+    = queue_into_ByteString (l ++ [b]).
+Proof.
+  unfold queue_into_ByteString; intros.
+  remember ByteString_id.
+  clear Heqb0; revert b0; induction l; simpl.
+  - intros; reflexivity.
+  - simpl; intros.
+    eapply IHl.
+Qed.
+
+Fixpoint split_list_bool
+         (l : list bool)
+  : (list char) * {n : nat & word n} := 
+  match l return (list char) * {n : nat & word n} with
+  | b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: l' =>
+    let (l'', back) := split_list_bool l' in
+    (WS b7 (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))) :: l'', back)
+  | [b0; b1; b2; b3; b4; b5; b6] =>
+    ([], existT _ _ (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))))
+  | [b0; b1; b2; b3; b4; b5] =>
+    ([], existT _ _ (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO)))))))
+  | [b0; b1; b2; b3; b4] =>
+    ([], existT _ _ (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))
+  | [b0; b1; b2; b3] =>
+    ([], existT _ _ (WS b3 (WS b2 (WS b1 (WS b0 WO)))))
+  | [b0; b1; b2] =>
+    ([], existT _ _ (WS b2 (WS b1 (WS b0 WO))))
+  | [b0; b1] =>
+    ([], existT _ _ (WS b1 (WS b0 WO)))
+  | [b0] =>
+    ([], existT _ _  (WS b0 WO))
+  | _ => ([], existT _ _ WO)
+  end.
+
+Lemma queue_into_ByteString_eq_split_list_bool
+  : forall l,
+    exists paddingOK',
+    queue_into_ByteString l =
+    {|
+      front := projT2 (snd (split_list_bool l));
+      paddingOK := paddingOK';
+      byteString := fst (split_list_bool l) |}.
+Proof.
+Admitted.
+
+Lemma ByteString_dequeue_into_list
+  : forall (l : list bool),
+    ByteString_dequeue (queue_into_ByteString l)
+    = match l with
+      | b :: l' => Some (b, queue_into_ByteString l')
+      | _ => None
+      end.
+Proof.
+  unfold ByteString_dequeue.
+  intros.
+  destruct (queue_into_ByteString_eq_split_list_bool l) as [? H];
+    rewrite H; unfold padding, byteString, front, paddingOK.
+Admitted.
+
+Lemma ByteString_enqueue_ByteString_into_list
+  : forall (l' l : list bool),
+    ByteString_enqueue_ByteString (queue_into_ByteString l) (queue_into_ByteString l')
+    = queue_into_ByteString (l ++ l').
+Proof.
+  induction l'.
+  - simpl; intros; rewrite app_nil_r; reflexivity.
+  - intros; rewrite app_cons_assoc.
+    rewrite <- IHl'.
+    rewrite <- ByteString_enqueue_into_list; clear.
+    remember (queue_into_ByteString l).
+Admitted.
+
+Lemma ByteString_enqueue_ByteString_id_left
+  : forall bs, ByteString_enqueue_ByteString ByteString_id bs = bs.
+Proof.
+  intros; rewrite (ByteString_into_queue_eq bs),
+          (ByteString_into_queue_eq ByteString_id).
+  rewrite ByteString_enqueue_ByteString_into_list.
+  reflexivity.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_id_right
+  : forall bs, ByteString_enqueue_ByteString bs ByteString_id = bs.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma length_ByteString_queue_into_ByteString'
+  : forall l b,
+    length_ByteString
+      (fold_left (fun (bs : ByteString) (b : bool) => ByteString_enqueue b bs) l
+                 b) =
+    length l + length_ByteString b.
+Proof.
+  induction l; simpl; eauto.
+  intros; rewrite IHl, length_ByteString_enqueue; omega.
+Qed.
+
+Corollary length_ByteString_queue_into_ByteString
+  : forall l,
+    length_ByteString (queue_into_ByteString l) = length l.
+Proof.
+  intro; unfold queue_into_ByteString;
+    rewrite length_ByteString_queue_into_ByteString'.
+  unfold length_ByteString; simpl; omega.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_measure
+  : forall b b' : ByteString,
+    length_ByteString (ByteString_enqueue_ByteString b b') =
+    length_ByteString b + length_ByteString b'.
+Proof.
+  intros; rewrite (ByteString_into_queue_eq b), (ByteString_into_queue_eq b'), ByteString_enqueue_ByteString_into_list.
+  rewrite length_ByteString_queue_into_ByteString.
+  rewrite app_length.
+  rewrite <- !length_ByteString_queue_into_ByteString.
+  reflexivity.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_assoc
+  : forall l m n : ByteString,
+    ByteString_enqueue_ByteString l (ByteString_enqueue_ByteString m n) =
+    ByteString_enqueue_ByteString (ByteString_enqueue_ByteString l m) n.
+Proof.
+  intros; rewrite (ByteString_into_queue_eq l),
+          (ByteString_into_queue_eq m),
+          (ByteString_into_queue_eq n),
+          !ByteString_enqueue_ByteString_into_list,
+          <- app_assoc; eauto.
+Qed.
+
+Global Instance ByteStringQueueTransformer : Transformer ByteString :=
+  {| transform := ByteString_enqueue_ByteString;
+     bin_measure := length_ByteString;
+     transform_id := ByteString_id;
+     transform_measure := ByteString_enqueue_ByteString_measure;
+     transform_id_left := ByteString_enqueue_ByteString_id_left;
+     transform_id_right := ByteString_transform_id_left;
+     transform_assoc := ByteString_enqueue_ByteString_assoc
+  |}.
+
+Lemma ByteString_measure_dequeue_Some
+  : forall (b' : ByteString) (t : bool) (b : ByteString),
+    ByteString_dequeue b = Some (t, b') -> bin_measure b = bin_measure b' + 1.
+Proof.
+  intros ? ? ?; rewrite (ByteString_into_queue_eq b),
+  ByteString_dequeue_into_list.
+  destruct (ByteString_into_queue b); intros;
+    try discriminate; injections.
+  simpl.
+  rewrite !length_ByteString_queue_into_ByteString; simpl;
+    omega.
+Qed.
+
+Lemma ByteString_dequeue_transform_opt :
+  forall t b b' b'',
+    ByteString_dequeue b = Some (t, b')
+    -> ByteString_dequeue (ByteString_enqueue_ByteString b b'') = Some (t, ByteString_enqueue_ByteString b' b'').
+Proof.
+  intros ? ? ? ? ;
+    rewrite (ByteString_into_queue_eq b),
+    (ByteString_into_queue_eq b'),
+    (ByteString_into_queue_eq b'').
+  rewrite !ByteString_enqueue_ByteString_into_list.
+  rewrite !ByteString_dequeue_into_list.
+  destruct (ByteString_into_queue b) eqn : ?; intros; try discriminate;
+    injections.
+  simpl.
+  rewrite <- !ByteString_enqueue_ByteString_into_list.
+  rewrite H0; reflexivity.
+Qed.
+
+Lemma ByteString_dequeue_head_opt :
+  forall t,
+    ByteString_dequeue (ByteString_enqueue t ByteString_id) = Some (t, ByteString_id).
+Proof.
+  intros; unfold ByteString_enqueue, ByteString_id, ByteString_dequeue;
+    simpl; repeat f_equal.
+  apply le_uniqueness_proof.
+Qed.
+
+Lemma ByteString_dequeue_None :
+  ByteString_dequeue ByteString_id = None.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma split_list_bool_inj
+  : forall l l',
+    split_list_bool l = split_list_bool l'
+    -> l = l'.
+Proof.
+  intro; generalize (le_refl (length l)); remember (length l).
+  rewrite Heqn at 1; clear Heqn; revert l;
+    induction n.
+  - destruct l; simpl; intros.
+    destruct l'; simpl in *; eauto.
+    destruct l' as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ];
+      try (simpl; intros; congruence).
+    destruct (split_list_bool l); simpl; intros; discriminate.
+    inversion H.
+  - intros l H;
+      destruct l as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ] ];
+      try (simpl; intros; congruence);
+    destruct l' as [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? [ | ? ] ] ] ] ] ] ] ];
+    try (simpl; intros; first [discriminate 
+                              | congruence
+                              | injection H0; congruence
+                              | destruct (split_list_bool l); congruence]).
+    simpl; intros.
+    destruct (split_list_bool l) eqn : ? ;
+      destruct (split_list_bool l0) eqn : ? .
+    injections; repeat f_equal.
+    eapply IHn; simpl in H; try omega.
+    congruence.
+Qed.    
+  
+Lemma queue_into_ByteString_inj
+  : forall l l',
+    queue_into_ByteString l = queue_into_ByteString l'
+    -> l = l'.
+Proof.
+  intros;
+    destruct (queue_into_ByteString_eq_split_list_bool l);
+    destruct (queue_into_ByteString_eq_split_list_bool l').
+  eapply split_list_bool_inj.
+  rewrite H1, H0 in H; clear H1 H0; injection H.
+  intros; destruct (split_list_bool l);
+    destruct (split_list_bool l'); simpl in *; subst.
+  f_equal.
+  destruct s; destruct s0; simpl in *.
+  rewrite H1; reflexivity.
+Qed.
+  
+Lemma ByteString_dequeue_opt_inj :
+  forall t m b b',
+    ByteString_dequeue b = Some (t, m) ->
+    ByteString_dequeue b' = Some (t, m) ->
+    b = b'.
+Proof.
+  intros; rewrite (ByteString_into_queue_eq b),
+          (ByteString_into_queue_eq b'),
+          !ByteString_dequeue_into_list in *.
+  destruct (ByteString_into_queue b) eqn : ?;
+    destruct (ByteString_into_queue b') eqn : ?;
+    try discriminate; injections.
+  revert H0; clear; intros.
+  rewrite (queue_into_ByteString_inj l l0); eauto.
+Qed.
+
+Lemma length_ByteString_enqueue'
+  : forall (b : bool) (b' : ByteString),
+    length_ByteString (ByteString_enqueue b b') = length_ByteString b' + 1.
+Proof.
+  intros; rewrite length_ByteString_enqueue; omega.
+Qed.
+
+Lemma ByteString_enqueue_ByteString_enqueue_ByteString
+  : forall (b : bool) (b' b'' : ByteString),
+   ByteString_enqueue b (ByteString_enqueue_ByteString b' b'') =
+   ByteString_enqueue_ByteString b' (ByteString_enqueue b b'').
+Proof.
+  intros; rewrite (ByteString_into_queue_eq b'),
+          (ByteString_into_queue_eq b''),
+          !ByteString_enqueue_ByteString_into_list,
+          !ByteString_enqueue_into_list.
+  replace [b] with
+  (ByteString_into_queue (ByteString_enqueue b ByteString_id))
+    by reflexivity.
+  rewrite !ByteString_enqueue_ByteString_into_list,
+   app_assoc; reflexivity.
+Qed.
+
+Instance ByteString_QueueTransformerOpt
+  : QueueTransformerOpt ByteStringQueueTransformer bool
+  :=
+  { B_measure f := 1;
+    enqueue_opt := ByteString_enqueue;
+    dequeue_opt := ByteString_dequeue;
+    measure_enqueue := length_ByteString_enqueue';
+    measure_dequeue_Some := ByteString_measure_dequeue_Some;
+    dequeue_transform_opt := ByteString_dequeue_transform_opt;
+    enqueue_transform_opt := ByteString_enqueue_ByteString_enqueue_ByteString;
+    dequeue_head_opt := ByteString_dequeue_head_opt;
+    dequeue_None := ByteString_dequeue_None;
+    dequeue_opt_inj := ByteString_dequeue_opt_inj
+  }.
+Proof.
+  - abstract eauto.
+Defined.
+
+Print Assumptions ByteString_QueueTransformerOpt.

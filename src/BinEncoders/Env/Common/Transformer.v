@@ -50,7 +50,7 @@ Class QueueTransformerOpt (bin : Type) (trans : Transformer bin) (B : Type) :=
     measure_enqueue :
       forall b b',
         bin_measure (enqueue_opt b b') = bin_measure b' + B_measure b;
-    measure_enqueue_Some :
+    measure_dequeue_Some :
       forall b' t b,
         dequeue_opt b = Some (t, b')
         -> bin_measure b = bin_measure b' + B_measure t;
@@ -62,8 +62,8 @@ Class QueueTransformerOpt (bin : Type) (trans : Transformer bin) (B : Type) :=
       forall b b' b'',
         enqueue_opt b (transform b' b'') = transform b' (enqueue_opt b b'');
     dequeue_head_opt :
-      forall t m,
-        dequeue_opt (enqueue_opt t transform_id) = Some (t, m);
+      forall t,
+        dequeue_opt (enqueue_opt t transform_id) = Some (t, transform_id);
     dequeue_None :
         dequeue_opt transform_id = None;
     dequeue_opt_inj :

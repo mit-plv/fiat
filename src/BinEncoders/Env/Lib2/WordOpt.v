@@ -36,7 +36,7 @@ Section Word.
 
   Definition decode_word (b : B) (cd : CacheDecode) : option (word sz * B * CacheDecode) :=
     Ifopt decode_word' sz b as decoded Then Some (decoded, addD cd sz) Else None.
-  
+
   Lemma dequeue_encode_word'_enqueue_opt' :
     forall n w w' b b' ext,
       dequeue_opt w' = Some (b, b')
@@ -126,7 +126,7 @@ Section Word.
       rewrite Heqo0 in H0; simpl in *.
       apply Eqdep_dec.inj_pair2_eq_dec in H1; subst.
       pose proof (H0 (eq_refl _)).
-      eapply measure_enqueue_Some in Heqo; subst.
+      eapply measure_dequeue_Some in Heqo; subst.
       omega.
       eapply Peano_dec.eq_nat_dec.
   Qed.
@@ -150,7 +150,7 @@ Section Word.
     simpl; intros; injections; unfold lt_B.
     destruct (dequeue_opt b1) as [ [? ?] | ] eqn: ? ;
       subst; simpl in *; try discriminate.
-    apply measure_enqueue_Some in Heqo; subst.
+    apply measure_dequeue_Some in Heqo; subst.
     destruct (decode_word' sz b0) as [ [? ?] | ] eqn: ? ;
         subst; simpl in *; try discriminate.
     eapply decode_word'_le in Heqo0; injections.
