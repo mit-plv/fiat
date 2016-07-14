@@ -1403,16 +1403,16 @@ Fixpoint ByteString_enqueue_word
   match n return word n -> ByteString with
   | 0 => fun _ => bs
   | S n' => fun w =>
-              (ByteString_enqueue_word (wtl w) (ByteString_enqueue (whd w) bs))
+              (ByteString_enqueue (whd w) (ByteString_enqueue_word (wtl w) bs))
   end w.
 
-Definition ByteString_enqueue_char (c : char) (bs : ByteString)
+Definition ByteString_enqueue_char (bs : ByteString) (c : char)
   := ByteString_enqueue_word c bs.
 
 Definition ByteString_enqueue_ByteString
            (bs bs' : ByteString)
   : ByteString :=
-  let bs'' := fold_right ByteString_enqueue_char bs (byteString bs') in
+  let bs'' := fold_left ByteString_enqueue_char (byteString bs') bs in
   ByteString_enqueue_word (front bs') bs''.
 
 Lemma app_cons_assoc {A}
@@ -1742,14 +1742,6 @@ Proof.
       simpl; omega.
       simpl; omega.
 Qed.
-
-Lemma CharList_dequeue_into_list
-  : forall b (chars : list char),
-    CharList_dequeue chars b =
-    match (ByteString_into_queue' chars) with
-    | b' :: l' => (b', fst (split_list_bool (l' ++ [b])))
-    | [ ] => (b, [ ])
-    end.
 
 Lemma ByteString_dequeue_into_list
   : forall (l : list bool),
