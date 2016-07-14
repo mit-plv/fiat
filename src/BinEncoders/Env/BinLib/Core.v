@@ -1853,6 +1853,7 @@ Proof.
     + rewrite <- ByteString_enqueue_into_list.
       rewrite fold_left_app; simpl.
       rewrite <- IHl0.
+      unfold ByteString_enqueue_ByteString at 1.
       destruct (queue_into_ByteString_eq_split_list_bool l).
       destruct (queue_into_ByteString_eq_split_list_bool (rev l0)).
       admit.

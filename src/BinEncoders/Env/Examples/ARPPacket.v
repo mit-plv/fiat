@@ -6,6 +6,7 @@ Require Import
         Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
@@ -69,7 +70,7 @@ Ltac solve_data_inv :=
     first [ simpl; intros; exact I
 | shelve_inv ].
 
-Definition transformer : Transformer ByteString := ByteStringTransformer.
+Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
 (* Start Example Derivation. *)
 
@@ -131,6 +132,8 @@ Definition ARP_Packet_OK (arp : ARPPacket) :=
   /\ (|arp!"TargetHardAddress"|) = wordToNat HardSizeCodes[@arp!"HardType"]
   /\ (|arp!"TargetProtAddress"|) = wordToNat ProtSizeCodes[@arp!"ProtType"].
 
+Arguments Vector.nth : simpl never.
+
 Definition ARPPacket_decoder
   : { decodePlusCacheInv |
       exists P_inv,
@@ -140,8 +143,8 @@ Definition ARPPacket_decoder
                                   (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
+  unfold encode_ARPPacket_Spec, ARP_Packet_OK; pose_string_hyps.
   eexists (_, _); eexists _; split; simpl.
-  intros.
   apply_compose; pose_string_ids.
   eapply Enum_decode_correct.
   Discharge_NoDupVector.
@@ -168,15 +171,14 @@ Proof.
   apply_compose.
   intro; eapply FixList_decode_correct.
   revert H4; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; intros; intuition.
-  pose_string_ids.
-  rewrite H8 in H4; eauto.
+  unfold ARP_Packet_OK; fold_string_hyps.
+  intros; intuition.
+  rewrite H10 in H4; eauto.
   simpl; intros; eapply FixedList_predicate_rest_True.
   apply_compose.
   intro; eapply FixList_decode_correct.
   revert H5; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; intros; intuition.
-  pose_string_ids.
+  unfold ARP_Packet_OK; fold_string_hyps; intros; intuition.
   rewrite H9 in H5; eauto.
   simpl; intros; eapply FixedList_predicate_rest_True.
   apply_compose.
@@ -193,46 +195,30 @@ Proof.
   pose_string_ids.
   rewrite H13 in H19; eauto.
   simpl; intros; eapply FixedList_predicate_rest_True.
-  Opaque Vector.nth.
   simpl; intros.
-  unfold encode_decode_correct_f; intuition eauto.
-  instantiate
-    (1 := fun p b env => if weq (proj1) (HardSizeCodes[@proj]) then _ p b env else None).
-  destruct (weq proj1 HardSizeCodes[@proj]);
-    try congruence.
-  instantiate
-    (1 := fun p b env => if weq (proj2) (ProtSizeCodes[@proj0]) then _ p b env else None).
-  destruct (weq proj2 ProtSizeCodes[@proj0]);
-    try congruence.
-  destruct data as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
+  eapply encode_decode_correct_finish.
+  destruct a' as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ];
     simpl in *.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  simpl in H12; repeat find_if_inside; injections;
-    try discriminate; injections.
-  eassumption.
-  simpl in H12; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+  subst.
   reflexivity.
-  unfold ARP_Packet_OK, GetAttribute, GetAttributeRaw; simpl;
-    intuition eauto.
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+
+  repeat
+    first [eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
   repeat (instantiate (1 := fun _ => True)).
   unfold cache_inv_Property; intuition.
+  Grab Existential Variables.
+  eapply weq.
+  eapply weq.
+  intros; eapply Peano_dec.eq_nat_dec.
+  intros; eapply Peano_dec.eq_nat_dec.
+  intros; eapply Peano_dec.eq_nat_dec.
 Defined.
 
 Definition ARP_Packet_decoder :=
