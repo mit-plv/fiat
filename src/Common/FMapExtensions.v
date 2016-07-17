@@ -809,6 +809,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     reflexivity.
   Qed.
 
+  (** TODO FIXME: don't locally override other reflexive instances, but instead fix the other instances that get added. *)
+  Local Instance: forall {A}, Reflexive (@eq A) | 0 := _.
+
   Lemma elements_fold_eq :
     forall {TValues} (m: t TValues),
       (elements m) =
@@ -826,10 +829,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       by (f_equal; repeat (apply functional_extensionality; intros);
           rewrite <- surjective_pairing; reflexivity).
 
-    rewrite H.
-
-    setoid_rewrite fold_left_id.
-    rewrite rev_involutive; reflexivity.
+    rewrite H, fold_left_id, rev_involutive; reflexivity.
   Qed.
 
   Lemma elements_fold_perm :
@@ -852,7 +852,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
     rewrite H.
 
-    setoid_rewrite fold_left_id.
+    rewrite fold_left_id.
     apply Permutation_rev.
   Qed.
 
