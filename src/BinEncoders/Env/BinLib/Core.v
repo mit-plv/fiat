@@ -1806,22 +1806,98 @@ Qed.
 
 Lemma massage_queue_into_ByteString
   : forall n w1
-           paddingOK' paddingOK''
-           b0 b1 b2 b3 b4 b5 b6 b7 l,
+           paddingOK' paddingOK'' paddingOK'''
+           l' l,
     {|
       padding := n;
       front := w1;
       paddingOK := paddingOK';
-      byteString := WS b7 (WS b6 (WS b5 (WS b4 (WS b3 (WS b2 (WS b1 (WS b0 WO))))))) :: l |} =
-   ByteString_enqueue_ByteString (queue_into_ByteString [b0; b1; b2; b3; b4; b5; b6; b7])
-     {|
-       padding := n;
-       front := w1;
-       paddingOK := paddingOK'';
-       byteString := l |}.
+      byteString := l ++ l' |} =
+    ByteString_enqueue_ByteString
+      {|
+      padding := 0;
+      front := WO;
+      paddingOK := paddingOK''';
+      byteString := l|}
+      {|
+        padding := n;
+        front := w1;
+        paddingOK := paddingOK'';
+        byteString := l' |}.
 Proof.
-
-Admitted.
+  induction l'.
+  - simpl.
+    intros; rewrite app_nil_r.
+    unfold ByteString_enqueue_ByteString; simpl.
+    destruct n as [ | [ | [ | [ | [ | [ | [ | [ | ] ] ] ] ] ] ] ];
+      try solve [inversion paddingOK'];
+      try shatter_word w1; simpl;
+        unfold queue_into_ByteString; simpl; repeat f_equal.
+    + apply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue,
+      ByteString_enqueue; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue,
+      ByteString_enqueue; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue;
+        simpl.
+      unfold ByteString_enqueue at 3; simpl;
+        unfold ByteString_enqueue at 2; simpl;
+          unfold ByteString_enqueue at 1; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue; simpl.
+      unfold ByteString_enqueue at 4; simpl.
+        unfold ByteString_enqueue at 3; simpl;
+          unfold ByteString_enqueue at 2; simpl.
+        unfold ByteString_enqueue at 1; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue; simpl.
+      unfold ByteString_enqueue at 5; simpl;
+        unfold ByteString_enqueue at 4; simpl;
+          unfold ByteString_enqueue at 3; simpl;
+            unfold ByteString_enqueue at 2; simpl;
+              unfold ByteString_enqueue at 1; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id, ByteString_dequeue; simpl.
+      unfold ByteString_enqueue at 6; simpl;
+        unfold ByteString_enqueue at 5; simpl;
+          unfold ByteString_enqueue at 4; simpl;
+            unfold ByteString_enqueue at 3; simpl;
+              unfold ByteString_enqueue at 2; simpl;
+                unfold ByteString_enqueue at 1; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + unfold queue_into_ByteString, ByteString_id; simpl.
+      unfold ByteString_enqueue at 7; simpl;
+        unfold ByteString_enqueue at 6; simpl;
+          unfold ByteString_enqueue at 5; simpl;
+            unfold ByteString_enqueue at 4; simpl;
+              unfold ByteString_enqueue at 3; simpl;
+                unfold ByteString_enqueue at 2; simpl;
+                  unfold ByteString_enqueue at 1; simpl.
+      repeat f_equal; eapply le_uniqueness_proof.
+    + omega.
+  - intros.
+    rewrite app_cons_assoc.
+    simpl.
+    pose proof (IHl' (l ++ [a])) as e; simpl in e;
+      rewrite e; clear e IHl'.
+    unfold ByteString_enqueue_ByteString; simpl.
+    f_equal.
+    unfold ByteString_enqueue_char at 3; simpl.
+    unfold ByteString_enqueue at 7; simpl;
+        unfold ByteString_enqueue at 6; simpl;
+          unfold ByteString_enqueue at 5; simpl;
+            unfold ByteString_enqueue at 4; simpl;
+              unfold ByteString_enqueue at 3; simpl;
+                unfold ByteString_enqueue at 2; simpl;
+                  unfold ByteString_enqueue at 1; simpl.
+    unfold char in *.
+    shatter_word a.
+    simpl.
+    repeat f_equal.
+    apply le_uniqueness_proof.
+Qed.
 
 Lemma ByteString_dequeue_into_list
   : forall (l : list bool),
@@ -1936,7 +2012,16 @@ Proof.
         rewrite <- H.
         clear.
         repeat f_equal.
-        apply massage_queue_into_ByteString.
+        unfold queue_into_ByteString at 1; simpl.
+        unfold ByteString_enqueue at 7; simpl;
+        unfold ByteString_enqueue at 6; simpl;
+          unfold ByteString_enqueue at 5; simpl;
+            unfold ByteString_enqueue at 4; simpl;
+              unfold ByteString_enqueue at 3; simpl;
+                unfold ByteString_enqueue at 2; simpl;
+                  unfold ByteString_enqueue at 1; simpl.
+        erewrite <- massage_queue_into_ByteString;
+          reflexivity.
         destruct l; try discriminate; simpl.
         repeat f_equal.
         apply le_uniqueness_proof.
@@ -1965,7 +2050,16 @@ Proof.
         rewrite <- H.
         clear.
         repeat f_equal.
-        apply massage_queue_into_ByteString.
+        unfold queue_into_ByteString at 1; simpl.
+        unfold ByteString_enqueue at 7; simpl;
+        unfold ByteString_enqueue at 6; simpl;
+          unfold ByteString_enqueue at 5; simpl;
+            unfold ByteString_enqueue at 4; simpl;
+              unfold ByteString_enqueue at 3; simpl;
+                unfold ByteString_enqueue at 2; simpl;
+                  unfold ByteString_enqueue at 1; simpl.
+        erewrite <- massage_queue_into_ByteString;
+          reflexivity.
         destruct l; try discriminate; injections;
           simpl.
         unfold eq_rec_r at 2; unfold eq_sym; simpl.
@@ -1989,7 +2083,16 @@ Proof.
         rewrite <- H.
         clear.
         repeat f_equal.
-        apply massage_queue_into_ByteString.
+        unfold queue_into_ByteString at 1; simpl.
+        unfold ByteString_enqueue at 7; simpl;
+        unfold ByteString_enqueue at 6; simpl;
+          unfold ByteString_enqueue at 5; simpl;
+            unfold ByteString_enqueue at 4; simpl;
+              unfold ByteString_enqueue at 3; simpl;
+                unfold ByteString_enqueue at 2; simpl;
+                  unfold ByteString_enqueue at 1; simpl.
+        erewrite <- massage_queue_into_ByteString;
+          reflexivity.
 Qed.
 
 Lemma ByteString_enqueue_ByteString_id_left
@@ -2204,5 +2307,3 @@ Instance ByteString_QueueTransformerOpt
 Proof.
   - abstract eauto.
 Defined.
-
-Print Assumptions ByteString_QueueTransformerOpt.
