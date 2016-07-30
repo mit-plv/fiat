@@ -1,4 +1,6 @@
-Require Export Fiat.Common Fiat.Computation Fiat.ADT.ADTSig.
+Require Export Fiat.Common
+        Fiat.Computation
+        Fiat.ADT.ADTSig.
 Require Import Coq.Sets.Ensembles.
 
 Generalizable All Variables.
@@ -12,15 +14,11 @@ Record ADT (Sig : ADTSig) :=
     (** The representation type of the ADT **)
     Rep : Type;
 
-    (** Constructor implementations *)
-    Constructors :
-      forall idx : ConstructorIndex Sig,
-        constructorType Rep (ConstructorDom Sig idx);
-
     (** Method implementations *)
     Methods :
       forall idx : MethodIndex Sig,
-        methodType Rep (fst (MethodDomCod Sig idx))
+        methodType (fst (fst (MethodDomCod Sig idx)))
+                   Rep (snd (fst (MethodDomCod Sig idx)))
                    (snd (MethodDomCod Sig idx))
 
   }.

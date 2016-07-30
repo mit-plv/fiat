@@ -26,9 +26,7 @@ Section DelegateMethods.
 
   (* Signature of the ADT being delegated to. *)
   Definition delegateSig :=
-    {| ConstructorIndex := ConstructorIndex delegatorSig;
-       MethodIndex := MethodIndex delegatorSig;
-       ConstructorDom := ConstructorDom delegatorSig;
+    {| MethodIndex := MethodIndex delegatorSig;
        MethodDomCod idx :=
          (fst (MethodDomCod delegatorSig idx), delegateCod idx)
     |}.

@@ -6,18 +6,8 @@ Set Implicit Arguments.
 
 (** Definition of a fully deterministic ADT *)
 
-(** Type of a deterministic constructor. *)
-Fixpoint cConstructorType (rep : Type) (dom : list Type)
-  :=
-    match dom with
-    | nil =>
-      rep (* Freshly constructed model *)
-    | cons d dom' =>
-      d -> cConstructorType rep dom' (* Initialization arguments *)
-    end.
-
 (** Type of a deterministic method. *)
-Fixpoint cMethodType' (rep : Type)         
+Fixpoint cMethodType' (rep : Type)
          (dom : list Type)
          (cod : option Type)
   : Type :=
@@ -30,10 +20,19 @@ Fixpoint cMethodType' (rep : Type)
   | cons d dom' =>
     d -> cMethodType' rep dom' cod (* Method arguments *)
   end.
-Definition cMethodType (rep : Type)
-           (dom : list Type)
-           (cod : option Type) : Type :=
-  rep -> cMethodType' rep dom cod.
+Fixpoint cMethodType
+         (arity : nat)
+         (rep : Type)
+         (dom : list Type)
+         (cod : option Type) : Type :=
+  match arity with
+  | 0 => cMethodType' rep dom cod
+  | S arity' => rep -> cMethodType arity' rep dom cod
+  end.
+
+(** Type of a deterministic constructor. *)
+Definition cConstructorType (rep : Type) (dom : list Type)
+  := cMethodType 0 rep dom None.
 
 (** Interface of a ADT implementation *)
 Record pcADT (Sig : ADTSig)
@@ -42,34 +41,32 @@ Record pcADT (Sig : ADTSig)
        (cRep : Type)
 : Type :=
   {
-    (** Constructor implementations *)
-    pcConstructors :
-      forall idx : ConstructorIndex Sig,
-        cConstructorType cRep (ConstructorDom Sig idx);
-
     (** Method implementations *)
     pcMethods :
       forall idx : MethodIndex Sig,
-        cMethodType cRep (fst (MethodDomCod Sig idx))
-                                (snd (MethodDomCod Sig idx))
+        cMethodType
+          (fst (fst (MethodDomCod Sig idx)))
+          cRep
+          (snd (fst (MethodDomCod Sig idx)))
+          (snd (MethodDomCod Sig idx))
   }.
 
 (* Definition of of an ADT implementation *)
 Definition cADT (Sig : ADTSig) := sigT (pcADT Sig).
 Definition cRep {Sig : ADTSig} (c : cADT Sig) : Type := projT1 c.
-Definition cConstructors {Sig : ADTSig} (c : cADT Sig)
-           (idx : ConstructorIndex Sig)
-: cConstructorType (cRep c) (ConstructorDom Sig idx)
-  := pcConstructors (projT2 c) idx.
 Definition cMethods {Sig : ADTSig} (c : cADT Sig)
            (idx : MethodIndex Sig) :
-  cMethodType (cRep c) (fst (MethodDomCod Sig idx))
-              (snd (MethodDomCod Sig idx))
+  cMethodType
+    (fst (fst (MethodDomCod Sig idx)))
+    (cRep c)
+    (snd (fst (MethodDomCod Sig idx)))
+    (snd (MethodDomCod Sig idx))
   := pcMethods (projT2 c) idx.
 
 (* Lifting a deterministic ADT to computation-land. *)
 Fixpoint LiftcConstructor
-         (rep : Type) (dom : list Type)
+         (rep : Type)
+         (dom : list Type)
   : cConstructorType rep dom
     -> constructorType rep dom :=
   match dom return
@@ -100,13 +97,21 @@ Fixpoint LiftcMethod'
                      LiftcMethod' rep dom' cod (cMethod t)
   end.
 
-Definition LiftcMethod
-           (rep : Type) (dom : list Type) (cod : option Type)
-           (cMethod : cMethodType rep dom cod)
-  : methodType rep dom cod
-  := fun r => LiftcMethod' rep dom cod (cMethod r).
+Fixpoint LiftcMethod
+         (arity : nat)
+         (rep : Type)
+         (dom : list Type)
+         (cod : option Type)
+  : cMethodType arity rep dom cod
+    -> methodType arity rep dom cod
+  := match arity return
+           cMethodType arity rep dom cod
+           -> methodType arity rep dom cod with
+     | 0 => LiftcMethod' rep dom cod
+     | S arity' => fun cMethod r => LiftcMethod arity' rep dom cod (cMethod r)
+     end.
 
-Definition LiftcADT (Sig : ADTSig) (A : cADT Sig) : ADT Sig :=
+Definition LiftcADT (Sig : ADTSig)
+           (A : cADT Sig) : ADT Sig :=
   {| Rep                := cRep A;
-     Constructors idx :=  LiftcConstructor _ _ (cConstructors A idx);
-     Methods idx    := LiftcMethod (cMethods A idx) |}.
+     Methods idx    := LiftcMethod _ _ _ _ (cMethods A idx) |}.

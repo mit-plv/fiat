@@ -12,15 +12,17 @@ Proof.
   - intro; simpl; intros; subst; apply IHDom.
 Qed.
 
-Instance refineMethod_refl rep Dom Cod
-: Reflexive (@refineMethod rep rep eq Dom Cod).
+Instance refineMethod_refl arity rep Dom Cod
+: Reflexive (@refineMethod rep rep eq arity Dom Cod).
 Proof.
-  unfold refineMethod, methodType; intro; simpl; intros; subst.
-  remember (x r_n); clear.
-  induction Dom.
-  - destruct Cod; intro; simpl; intros; subst;
-    repeat computes_to_econstructor; try destruct v; eauto.
-  - intro; simpl; intros; subst; apply IHDom.
+  revert rep Dom Cod.
+  induction arity.
+  - unfold refineMethod, methodType; intro; simpl; intros; subst;
+      induction Dom; simpl.
+    + destruct Cod; intro; simpl; intros; subst;
+        repeat computes_to_econstructor; try destruct v; eauto.
+    + intro; simpl; intros; subst; apply IHDom.
+  - intros; simpl; intro; intros; subst; eapply IHarity.
 Qed.
 
 Lemma refineConstructor_trans
@@ -74,69 +76,67 @@ Proof.
     apply H0.
 Qed.
 
-Lemma refineMethod_trans rep rep' rep'' Dom Cod
+Lemma refineMethod_trans arity rep rep' rep'' Dom Cod
       AbsR AbsR'
   : forall m m' m'',
-    @refineMethod rep rep' AbsR Dom Cod m m'
-    -> @refineMethod rep' rep'' AbsR' Dom Cod m' m''
+    @refineMethod rep rep' AbsR arity Dom Cod m m'
+    -> @refineMethod rep' rep'' AbsR' arity Dom Cod m' m''
     -> refineMethod (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
-                         m m''.
+                    arity m m''.
 Proof.
-  unfold refineMethod, methodType; induction Dom.
-  - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
-    + destruct_ex; intuition.
-      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-      repeat computes_to_econstructor; eauto.
-    + destruct_ex; intuition.
-      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-  - simpl; intros.
-    destruct_ex; intuition.
-    eapply (IHDom (fun d' => m r_o d)
-                  (fun d' => m' x d)
-                  (fun d' => m'' r_n d)); eauto.
+  induction arity.
+  - unfold refineMethod, methodType; induction Dom.
+    + intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+      * destruct_ex; intuition.
+        eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+        eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+        repeat computes_to_econstructor; eauto.
+      * destruct_ex; intuition.
+        eapply H0 in Comp_v; eauto; computes_to_inv; subst.
+        eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
+    + simpl; intros.
+      destruct_ex; intuition.
+      eapply (IHDom (m d)
+                    (m' d)
+                    (m'' d)); eauto.
+  - simpl; intros; destruct_ex; intuition; eapply IHarity; eauto.
 Qed.
 
-Lemma refineMethod_eq_trans rep rep' Dom Cod
+Lemma refineMethod_eq_trans arity rep rep' Dom Cod
       AbsR
   : forall m m' m'',
-    @refineMethod rep rep' AbsR Dom Cod m m'
-    -> @refineMethod_eq rep' Dom Cod m' m''
-    -> refineMethod AbsR m m''.
+    @refineMethod rep rep' AbsR arity Dom Cod m m'
+    -> @refineMethod_eq rep' arity Dom Cod m' m''
+    -> refineMethod AbsR arity m m''.
 Proof.
-  unfold refineMethod, methodType; induction Dom.
-  - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
-    + destruct_ex; intuition.
-      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-    + destruct_ex; intuition.
-      eapply H0 in Comp_v; eauto; computes_to_inv; subst.
-      eapply H in Comp_v; eauto; computes_to_inv; subst; eauto.
-  - simpl; intros.
-    destruct_ex; intuition.
-    unfold refineMethod_eq in *.
-    eapply (IHDom (fun r_o => m r_o d)
-                  (fun r_n => m' r_n d)
-                  (fun r_n => m'' r_n d)); eauto.
-    intros; eapply H0.
+  induction arity.
+  - unfold refineMethod, methodType; induction Dom.
+    + intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+      * destruct_ex; intuition.
+      * destruct_ex; intuition.
+    + simpl; intros.
+      eapply IHDom.
+      eapply H.
+      eapply H0.
+  - simpl; intros; eauto.
 Qed.
 
-Instance refineMethod_trans' rep Dom Cod
-: Transitive (@refineMethod rep rep eq Dom Cod).
+Instance refineMethod_trans' arity rep Dom Cod
+: Transitive (@refineMethod rep rep eq arity Dom Cod).
 Proof.
-  unfold refineMethod, methodType; subst; induction Dom.
-  - intro; intros.
-    pose proof (refineMethod_trans H H0);
-      unfold refineMethod, refineMethod', refine in *; destruct Cod; intros; subst.
-    + eapply H2 in H3; eauto; computes_to_inv; subst.
-      destruct_ex; intuition; subst; eauto.
-    + eapply H2 in H3; eauto; computes_to_inv; subst.
-      destruct_ex; intuition; subst; eauto.
-  - intro; simpl; intros; subst.
-    eapply (IHDom (fun d' => x r_n d)
-                  (fun d' => y r_n d)
-                  (fun d' => z r_n d)) with (r_o := r_n); eauto.
+  induction arity.
+  - unfold refineMethod, methodType; subst; induction Dom.
+    + intro; intros.
+      pose proof (refineMethod_trans 0 _ _ _ _ _ _ _ H H0);
+        unfold refineMethod, refineMethod', refine in *; destruct Cod; intros; subst.
+       * eapply H1 in H2; eauto; computes_to_inv; subst.
+         destruct_ex; intuition; subst; eauto.
+       * eapply H1 in H2; eauto; computes_to_inv; subst.
+         destruct_ex; intuition; subst; eauto.
+    +  intro; simpl; intros; subst.
+       eapply IHDom; eauto.
+  - simpl; unfold Transitive in *; intros.
+    eapply IHarity; eauto.
 Qed.
 
 Global Instance refineADT_PreOrder Sig : PreOrderT (refineADT (Sig := Sig)).
@@ -152,7 +152,6 @@ Proof.
     econstructor 1 with
       (AbsR := fun x z => exists y, AbsR x y /\ AbsR' y z);
       simpl in *; intros.
-    + eauto using refineConstructor_trans.
     + eauto using refineMethod_trans.
 Qed.
 
@@ -196,36 +195,20 @@ Qed.
 Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (AbsR : oldRep -> newRep -> Prop)
 :
-  (@respectful_heteroT
-     (forall idx, constructorType oldRep (ConstructorDom Sig idx))
-     (forall idx, constructorType newRep (ConstructorDom Sig idx))
-     (fun oldConstrs =>
-        (forall idx,
-           methodType oldRep (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx)))
-        -> ADT Sig)
-     (fun newConstrs =>
-        (forall idx,
-           methodType newRep (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx)))
-        -> ADT Sig)
-     (fun oldConstrs newConstrs =>
-        forall mutIdx,
-          @refineConstructor oldRep newRep AbsR
-                         _
-                         (oldConstrs mutIdx)
-                         (newConstrs mutIdx))
-     (fun x y => @respectful_heteroT
-                   (forall idx, methodType oldRep _ _)
-                   (forall idx, methodType newRep _ _)
-                   (fun _ => ADT Sig)
-                   (fun _ => ADT Sig)
-                   (fun obs obs' =>
-                      forall obsIdx : MethodIndex Sig,
-                        @refineMethod oldRep newRep AbsR
-                                        (fst (MethodDomCod Sig obsIdx))
-                                        (snd (MethodDomCod Sig obsIdx))
-                                        (obs obsIdx)
-                                        (obs' obsIdx))
-                   (fun obs obs' => refineADT)))
+  @respectful_heteroT
+    (forall idx, methodType _ oldRep _ _)
+    (forall idx, methodType _ newRep _ _)
+    (fun _ => ADT Sig)
+    (fun _ => ADT Sig)
+    (fun obs obs' =>
+       forall obsIdx : MethodIndex Sig,
+         @refineMethod oldRep newRep AbsR
+                       (fst (fst (MethodDomCod Sig obsIdx)))
+                       (snd (fst (MethodDomCod Sig obsIdx)))
+                       (snd (MethodDomCod Sig obsIdx))
+                       (obs obsIdx)
+                       (obs' obsIdx))
+    (fun obs obs' => refineADT)
     (@Build_ADT Sig oldRep)
     (@Build_ADT Sig newRep).
 Proof.
@@ -242,66 +225,17 @@ Qed.
 
 (** Refining Methods is a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Method rep Sig cs
+Lemma refineADT_Build_ADT_Method rep Sig
 : forall ms ms',
     (forall idx, @refineMethod _ _ eq
-                                 (fst (MethodDomCod Sig idx))
-                                 (snd (MethodDomCod Sig idx))
-                                 (ms idx) (ms' idx))
-    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs ms').
-Proof.
-  intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
-Qed.
-
-(** Refining Constructors is also a valid ADT refinement. *)
-
-Lemma refineADT_Build_ADT_Constructors rep Sig ms
-: forall cs cs',
-    (forall idx, @refineConstructor _ _ eq
-                                (ConstructorDom Sig idx)
-                                (cs idx) (cs' idx))
-    -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms).
-Proof.
-  intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
-Qed.
-
-(** Refining observers and mutators at the same time is also a valid
-    refinement. [BD: I've come to the conclusion that smaller
-    refinement steps are better, so using the previous refinements
-    should be the preferred mode. ]*)
-
-Lemma refineADT_Build_ADT_Both rep Sig
-: forall ms ms',
-    (forall idx, @refineMethod _ _ eq
-                                 (fst (MethodDomCod Sig idx))
-                                 (snd (MethodDomCod Sig idx))
-                                 (ms idx) (ms' idx))
-    -> forall cs cs',
-         (forall idx, @refineConstructor _ _ eq
-                                     (ConstructorDom Sig idx)
-                                     (cs idx) (cs' idx))
-         -> refineADT (@Build_ADT Sig rep cs ms) (@Build_ADT Sig rep cs' ms').
+                               (fst (fst (MethodDomCod Sig idx)))
+                               (snd (fst (MethodDomCod Sig idx)))
+                               (snd (MethodDomCod Sig idx))
+                               (ms idx) (ms' idx))
+    -> refineADT (@Build_ADT Sig rep ms) (@Build_ADT Sig rep ms').
 Proof.
   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
 Qed.
 
 (* If [refineADT] lived in [Prop], we'd be able to register
-   refineADT_Build_ADT_Both as a morphism.
-
-Add Parametric Morphism Sig rep
-: (@Build_ADT Sig rep)
-    with signature
-    (fun mut mut' =>
-       forall idx, @refineConstructor _ _ eq
-                                   (ConstructorDom Sig idx)
-                                   (mut idx) (mut' idx))
-      ==> (fun obs obs' =>
-       forall idx, @refineMethod _ _ eq
-                                   (fst (MethodDomCod Sig idx))
-                                   (snd (MethodDomCod Sig idx))
-                                   (obs idx) (obs' idx))
-      ==> refineADT
-      as refineADT_Build_ADT_Both.
-Proof.
-  intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
-Qed.*)
+   refineADT_Build_ADT_Method as a morphism. *)

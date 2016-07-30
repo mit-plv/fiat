@@ -22,55 +22,64 @@ Section HoneRepresentation.
      using the old methods. *)
 
   Fixpoint absMethod'
-             (dom : list Type)
-             (cod : option Type)
-    : (oldRep -> methodType' oldRep dom cod)
-      -> newRep -> (methodType' newRep dom cod) :=
+           (dom : list Type)
+           (cod : option Type)
+    : methodType' oldRep dom cod
+      -> methodType' newRep dom cod :=
     match dom return
-          (oldRep -> methodType' oldRep dom cod)
-          -> newRep -> (methodType' newRep dom cod)
+          methodType' oldRep dom cod
+          -> methodType' newRep dom cod
     with
     | nil =>
       match cod return
-          (oldRep -> methodType' oldRep [] cod)
-          -> newRep -> (methodType' newRep [] cod)
+            methodType' oldRep [] cod
+            -> methodType' newRep [] cod
       with
       | Some cod' =>
-        fun oldMethod nr =>
-          {nr' | forall or,
-              or ≃ nr ->
-              exists or',
-                (oldMethod or) ↝ or' /\
-                fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
+        fun oldMethod =>
+          {nr' | exists or',
+                 oldMethod ↝ or' /\
+                 fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
       | None =>
-        fun oldMethod nr =>
-          {nr' | forall or,
-              or ≃ nr ->
-              exists or',
-                (oldMethod or) ↝ or' /\ or' ≃ nr'}%comp
+        fun oldMethod =>
+          {nr' | exists or',
+                 oldMethod ↝ or' /\ or' ≃ nr'}%comp
       end
-      | cons d dom' =>
-      fun oldMethod nr t =>
-        absMethod' dom' cod (fun or => oldMethod or t) nr
+    | cons d dom' =>
+      fun oldMethod t =>
+        absMethod' dom' cod (oldMethod t)
     end.
 
-  Definition absMethod
-             (dom : list Type)
-             (cod : option Type)
-             (oldMethod : methodType oldRep dom cod)
-    : methodType newRep dom cod :=
-    absMethod' dom cod oldMethod.
+  Fixpoint absMethod
+           arity
+           {dom cod}
+           {struct arity}
+    : methodType arity oldRep dom cod
+      -> methodType arity newRep dom cod.
+  Admitted.
+  (*refine (match arity return
+                  methodType arity oldRep dom cod
+                  -> methodType arity newRep dom cod
+            with
+            | 0 => absMethod' dom cod
+            | S arity' => _
+            end).
+    simpl; intros.
+    admit.
+  Defined. *)
 
   Lemma refine_absMethod
+        arity
         (dom : list Type)
         (cod : option Type)
-        (oldMethod : methodType oldRep dom cod)
-  : @refineMethod oldRep newRep AbsR _ _
+        (oldMethod : methodType arity oldRep dom cod)
+  : @refineMethod oldRep newRep AbsR arity _ _
                    oldMethod
-                   (absMethod oldMethod).
+                   (absMethod arity oldMethod).
   Proof.
     induction dom.
-    - simpl in *; unfold refineMethod, refineMethod',
+  Admitted.
+  (*- simpl in *; unfold refineMethod, refineMethod',
                   absMethod, absMethod', refine; intros;
       destruct cod; intros; computes_to_inv.
       + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
@@ -80,52 +89,19 @@ Section HoneRepresentation.
         repeat computes_to_econstructor; eauto.
     - intro; simpl; intros.
       eapply (IHdom (fun or => oldMethod or d)); eauto.
-  Qed.
+  Qed. *)
 
   Hint Resolve refine_absMethod.
-
-  (* A similar approach works for constructors. *)
-  Fixpoint absConstructor
-             {dom : list Type}
-    : constructorType oldRep dom ->
-      constructorType newRep dom :=
-    match dom return
-          constructorType oldRep dom ->
-          constructorType newRep dom
-    with
-    | nil =>
-      fun oldConstr =>
-      {nr | exists or', oldConstr ↝ or' /\
-                        or' ≃ nr }%comp
-    | cons d dom' =>
-      fun oldConstr t =>
-        @absConstructor dom' (oldConstr t)
-    end.
-
-  Lemma refine_absConstructor
-        (dom : list Type)
-        (oldConstr : constructorType oldRep dom)
-  : @refineConstructor oldRep newRep AbsR _ oldConstr
-                    (absConstructor oldConstr).
-  Proof.
-    induction dom; simpl in *.
-    - unfold refineConstructor, absConstructor, refine; intros.
-      computes_to_inv; eauto.
-    - intros; eapply IHdom.
-  Qed.
-
-  Hint Resolve refine_absConstructor.
 
   (* We can refine an ADT using the default mutator and observer
      implementations provided by [absMutatorMethod] and [absObserverMethod]. *)
   Lemma refineADT_Build_ADT_Rep_default
         Sig
-        oldConstrs oldMeths :
+        oldMeths :
     refineADT
-      (@Build_ADT Sig oldRep oldConstrs oldMeths)
+      (@Build_ADT Sig oldRep oldMeths)
       (@Build_ADT Sig newRep
-                  (fun idx => absConstructor (oldConstrs idx))
-                  (fun idx => absMethod (oldMeths idx))).
+                  (fun idx => absMethod _ (oldMeths idx))).
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
   Qed.

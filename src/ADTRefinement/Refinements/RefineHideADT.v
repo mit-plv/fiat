@@ -7,20 +7,18 @@ Require Import Fiat.Common
 
 Lemma RefineHideADT
       extSig'
-      oldConstructorIndex oldMethodIndex
-      (ConstructorMap : oldConstructorIndex -> ConstructorIndex extSig')
+      oldMethodIndex
       (MethodMap : oldMethodIndex -> MethodIndex extSig')
       oldADT
 : forall newADT newADT',
     refineADT newADT newADT'
-    -> arrow (refineADT oldADT (HideADT ConstructorMap MethodMap newADT))
-             (refineADT oldADT (HideADT ConstructorMap MethodMap newADT')).
+    -> arrow (refineADT oldADT (HideADT MethodMap newADT))
+             (refineADT oldADT (HideADT MethodMap newADT')).
 Proof.
   unfold arrow.
-  intros ? ? [AbsR ? ?] [AbsR' ? ?].
+  intros ? ? [AbsR ?] [AbsR' ?].
   destruct_head ADT.
   exists (fun r_o r_n => exists r_n', AbsR' r_o r_n' /\ AbsR r_n' r_n);
     simpl; intros.
-  - eauto using refineConstructor_trans.
-  - eauto using refineMethod_trans. 
+  - eauto using refineMethod_trans.
 Qed.

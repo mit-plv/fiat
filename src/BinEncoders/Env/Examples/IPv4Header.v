@@ -25,8 +25,164 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.NatOpt
         Fiat.BinEncoders.Env.Lib2.Vector
         Fiat.BinEncoders.Env.Lib2.EnumOpt
-        Fiat.BinEncoders.Env.Lib2.SumTypeOpt
-        Fiat.BinEncoders.Env.Lib2.IPChecksum.
+        Fiat.BinEncoders.Env.Lib2.SumTypeOpt.
+
+Definition Example_Packet :=
+  @Tuple <"TotalLength" :: word 16,
+          "ID" :: word 16,
+          "DF" :: bool, (* Don't fragment flag *)
+          "MF" :: bool, (*  Multiple fragments flag *)
+          "FragmentOffset" :: word 13 >.
+
+Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+
+Definition encode_Example_Packet_Spec (ip4 : Example_Packet)  :=
+          (encode_word_Spec (natToWord 4 4)
+    ThenC encode_word_Spec (natToWord 4 5)
+    ThenC encode_unused_word_Spec 8 (* TOS Field! *)
+    ThenC encode_word_Spec ip4!"TotalLength"
+    ThenC encode_word_Spec ip4!"ID"
+    ThenC encode_unused_word_Spec 1 (* Unused flag! *)
+    ThenC encode_bool_Spec ip4!"DF"
+    ThenC encode_bool_Spec ip4!"MF"
+    ThenC encode_word_Spec ip4!"FragmentOffset"
+    DoneC).
+
+Definition encode_Example_Packet_Impl
+  : { impl : Example_Packet -> CacheEncode -> (ByteString * CacheEncode)
+                                              & forall ex ce, refine (encode_Example_Packet_Spec ex ce) (ret (impl ex ce))}.
+Proof.
+  eexists;
+    unfold encode_Example_Packet_Spec, encode_word_Spec, compose, Bind2;
+    simpl; intros.
+  rewrite (refine_bind_unit).
+  rewrite (refine_bind_bind).
+  rewrite (refine_bind_unit).
+  rewrite !refine_bind_bind.
+  simpl.
+  unfold encode_unused_word_Spec, encode_unused_word_Spec';
+    rewrite !refine_bind_bind.
+  rewrite (@refine_pick_val _ (wzero 8)).
+  rewrite !refine_bind_unit.
+  rewrite !refine_bind_bind.
+  rewrite (@refine_pick_val _ (wzero 1)).
+  rewrite !refine_bind_unit.
+  rewrite !refine_bind_bind.
+  simpl.
+  unfold encode_bool_Spec.
+  rewrite refine_bind_unit.
+  rewrite !refine_bind_bind.
+  rewrite refine_bind_unit.
+  simpl.
+  rewrite !refine_bind_bind.
+  rewrite refine_bind_unit.
+  simpl; rewrite !refine_bind_bind.
+  rewrite refine_bind_unit.
+  rewrite refine_bind_unit; simpl.
+  rewrite refine_bind_unit; simpl.
+  repeat (rewrite refine_bind_unit; simpl).
+  higher_order_reflexivity.
+  constructor.
+  constructor.
+Defined.
+
+Definition encode_Example_Packet_Impl' :=
+  Eval simpl in (projT1 encode_Example_Packet_Impl).
+
+Definition encode_Example_Packet_Spec' (ip4 : Example_Packet)  :=
+           encode_word_Spec (natToWord 4 4)
+     ThenC encode_word_Spec (natToWord 4 5)
+     ThenC encode_unused_word_Spec 8 (* TOS Field! *)
+     ThenC encode_word_Spec ip4!"TotalLength"
+     DoneC.
+
+Print encode_Example_Packet_Spec'.
+
+Definition encode_Example_Packet_Impl''
+  : { impl : Example_Packet -> CacheEncode -> (ByteString * CacheEncode)
+                                              & forall ex ce, refine (encode_Example_Packet_Spec' ex ce) (ret (impl ex ce))}.
+Proof.
+  eexists;
+    unfold encode_Example_Packet_Spec', encode_word_Spec, compose, Bind2;
+    simpl; intros.
+  rewrite (refine_bind_unit).
+  rewrite (refine_bind_bind).
+  simpl.
+  rewrite (refine_bind_unit).
+  unfold encode_unused_word_Spec, encode_unused_word_Spec';
+    rewrite !refine_bind_bind.
+  rewrite (@refine_pick_val _ (natToWord 8 15)).
+  rewrite !refine_bind_unit.
+  simpl.
+  higher_order_reflexivity.
+  constructor.
+Defined.
+
+Definition encode_Example_Packet_Impl''' :=
+  Eval simpl in (projT1 encode_Example_Packet_Impl'').
+
+Fixpoint ByteString_enqueue_word
+           {n}
+           (w : word n)
+           (bs : ByteString) :=
+  match n return word n -> ByteString with
+  | 0 => fun _ => bs
+  | S n' => fun w =>
+              (ByteString_enqueue (whd w) (ByteString_enqueue_word (wtl w) bs))
+  end w.
+
+Definition ByteString_enqueue_char (c : char) (bs : ByteString)
+  := ByteString_enqueue_word c bs.
+
+Definition ByteString_enqueue_ByteString
+           (bs bs' : ByteString)
+  : ByteString :=
+  let bs'' := fold_right ByteString_enqueue_char bs (byteString bs') in
+  ByteString_enqueue_word (front bs') bs''.
+
+Definition test_Packet : Example_Packet :=
+  <"TotalLength" :: wones 16,
+          "ID" :: wones 16 ,
+          "DF" :: true, (* Don't fragment flag *)
+          "MF" :: true, (*  Multiple fragments flag *)
+          "FragmentOffset" :: natToWord 13 43> .
+
+Eval compute in
+    (byteString (fst (encode_Example_Packet_Impl'
+                        test_Packet
+                        ()))).
+c
+Eval compute in (natToWord 8 69).
+
+Eval compute in ((fun (e : Example_Packet) (u : ()) =>
+(   (Core.ByteString_enqueue_ByteString
+      (ByteString_enqueue false
+         (ByteString_enqueue true
+            (ByteString_enqueue false (ByteString_enqueue true ByteString_id))))
+      (Core.ByteString_enqueue_ByteString
+         (ByteString_enqueue false
+            (ByteString_enqueue false
+               (ByteString_enqueue false
+                  (ByteString_enqueue false
+                     (ByteString_enqueue true
+                        (ByteString_enqueue true
+                           (ByteString_enqueue true (ByteString_enqueue true ByteString_id))))))))
+         (Core.ByteString_enqueue_ByteString (encode_word' 16 e!"TotalLength" ByteString_id)
+                                             ByteString_id))), u)) test_Packet).
+
+
+  ByteString_enqueue_ByteString
+                   (fst (encode_nat_Impl 4 4 ()))
+                   (fst (encode_Example_Packet_Impl'''
+                         <"TotalLength" :: natToWord 16 34,
+                         "ID" :: natToWord 16 56,
+                         "DF" :: true, (* Don't fragment flag *)
+                         "MF" :: false, (*  Multiple fragments flag *)
+                         "FragmentOffset" :: natToWord 13 43> ()))).
+
+                   ).
+
+Require Import Fiat.BinEncoders.Env.Lib2.IPChecksum.
 
 Require Import Bedrock.Word.
 

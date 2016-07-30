@@ -54,10 +54,11 @@ Section addCache.
     | cons D Dom' => fun oldMethod (d : D) => addCacheToMethod' Dom' Cod (oldMethod d)
     end oldMethod.
 
-  Definition addCacheToMethod
+  (*Definition addCacheToMethod
+             arity
              {Dom : list Type}
              {Cod : option Type}
-             (oldMethod : methodType rep Dom Cod)
+             (oldMethod : methodType arity rep Dom Cod)
              (nr : cachedRep)
     : methodType' cachedRep Dom Cod :=
     addCacheToMethod' Dom Cod (oldMethod (origRep nr)).
@@ -139,7 +140,7 @@ Section addCache.
         (Dom : list Type)
         (oldConstr : constructorType rep Dom)
         (newConstr : constructorType cachedRep Dom)
-    : refineConstructor_eq _ (addCacheToConstructor oldConstr) newConstr 
+    : refineConstructor_eq _ (addCacheToConstructor oldConstr) newConstr
       -> @refineConstructor rep cachedRep cachedRep_AbsR _
                   oldConstr newConstr.
   Proof.
@@ -175,6 +176,6 @@ Section addCache.
     unfold refine; intros or v ComputesTo_v;
     computes_to_inv; subst; econstructor;
     unfold cachedRep_AbsR; simpl; intuition.
-  Qed.
+  Qed. *)
 
 End addCache.

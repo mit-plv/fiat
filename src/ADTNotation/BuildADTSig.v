@@ -3,26 +3,18 @@ Require Import Coq.Lists.List Coq.Strings.String.
 
 (* Notation for ADT Signatures. *)
 
-Record consSig :=
-  { consID : string;
-    consDom : list Type }.
-
-Arguments Build_consSig consID%string consDom%type_scope.
-Bind Scope consSig_scope with consSig.
-Delimit Scope consSig_scope with consSig.
-
 Record methSig :=
   { methID : string ;
+    methArity : nat;
     methDom : list Type ;
     methCod : option Type
   }.
 
-Arguments Build_methSig methID%string methDom%type_scope methCod%type_scope.
+Arguments Build_methSig methID%string methArity%nat methDom%type_scope methCod%type_scope.
 Bind Scope methSig_scope with methSig.
 Delimit Scope methSig_scope with methSig.
 
 (* Notation for ADT Methods. *)
-
 
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
   {| methID := id;

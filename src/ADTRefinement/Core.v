@@ -1,4 +1,6 @@
-Require Import Fiat.Common Fiat.Computation Fiat.ADT Coq.Sets.Ensembles.
+Require Import Fiat.Common
+        Fiat.Computation
+        Fiat.ADT Coq.Sets.Ensembles.
 
 Generalizable All Variables.
 Set Implicit Arguments.
@@ -123,14 +125,24 @@ Section MethodRefinement.
                         (newMethod d)
     end.
 
-  Definition refineMethod
-             {dom : list Type}
-             {cod : option Type}
-             (oldMethod : methodType oldRep dom cod)
-             (newMethod : methodType newRep dom cod)
-    := forall r_o r_n,
-      r_o ≃ r_n ->
-      @refineMethod' dom cod (oldMethod r_o) (newMethod r_n).
+  Fixpoint refineMethod
+           (arity : nat)
+           {dom : list Type}
+           {cod : option Type}
+           (oldMethod : methodType arity oldRep dom cod)
+           (newMethod : methodType arity newRep dom cod)
+    : Prop 
+    :=
+      match arity return methodType arity oldRep dom cod
+                         -> methodType arity newRep dom cod
+                         -> Prop with
+      | 0 => @refineMethod' dom cod
+      | S arity' =>
+        fun oldMethod newMethod =>
+          forall r_o r_n,
+            r_o ≃ r_n ->
+            refineMethod arity' (oldMethod r_o) (newMethod r_n)
+      end oldMethod newMethod.
 
     Fixpoint refineMethod_eq'
            {dom : list Type}
@@ -163,36 +175,40 @@ Section MethodRefinement.
                         (newMethod d)
     end.
 
-  Definition refineMethod_eq
-             {dom : list Type}
-             {cod : option Type}
-             (oldMethod : methodType oldRep dom cod)
-             (newMethod : methodType oldRep dom cod)
-    := forall r_o,
-      @refineMethod_eq' dom cod (oldMethod r_o) (newMethod r_o).
+    Fixpoint refineMethod_eq
+               (arity : nat)
+               {dom : list Type}
+               {cod : option Type}
+               (oldMethod : methodType arity oldRep dom cod)
+               (newMethod : methodType arity oldRep dom cod)
+      : Prop
+      := 
+        match arity return
+              methodType arity oldRep dom cod
+              -> methodType arity oldRep dom cod
+              -> Prop
+        with
+        | 0 => @refineMethod_eq' dom cod
+        | S arity' =>
+          fun oldMethod newMethod => 
+            forall r_o, refineMethod_eq arity' (oldMethod r_o) (newMethod r_o)
+        end oldMethod newMethod.
 
 End MethodRefinement.
 
 Record refineADT {Sig} (A B : ADT Sig) :=
   refinesADT {
       AbsR : _;
-      ADTRefinementPreservesConstructors
-      : forall idx : ConstructorIndex Sig,
-          @refineConstructor
-            (Rep A) (Rep B) AbsR
-            (ConstructorDom Sig idx)
-            (Constructors A idx)
-            (Constructors B idx);
       ADTRefinementPreservesMethods
       : forall idx : MethodIndex Sig,
           @refineMethod
             (Rep A) (Rep B) AbsR
-            (fst (MethodDomCod Sig idx))
+            (fst (fst (MethodDomCod Sig idx)))
+            (snd (fst (MethodDomCod Sig idx)))
             (snd (MethodDomCod Sig idx))
             (Methods A idx)
             (Methods B idx) }.
-(** We should always just unfold [refineMethod] and [refineConstructor]
+(** We should always just unfold [refineMethod] 
     into [refine], so that we can rewrite with lemmas about [refine]. *)
-
 
 Notation "ro ≃ rn" := (@AbsR _ _ _ _ ro rn) (at level 70).

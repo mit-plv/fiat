@@ -165,30 +165,22 @@ Definition BuildMostlySharpenedcADT
            (DelegateIDs : nat)
            (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
            (rep : (Fin.t DelegateIDs -> Type) -> Type)
-           (cConstructors :
-              forall
-                (DelegateReps : Fin.t DelegateIDs -> Type)
-                (DelegateImpls : forall idx,
-                    pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
-                cConstructorType
-                  (rep DelegateReps)
-                  (ConstructorDom Sig idx))
            (cMethods :
               forall
                 (DelegateReps : Fin.t DelegateIDs -> Type)
                 (DelegateImpls : forall idx,
                     pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
                 cMethodType
+                  (fst (fst (MethodDomCod Sig idx)))
                   (rep DelegateReps)
-                  (fst (MethodDomCod Sig idx))
+                  (snd (fst (MethodDomCod Sig idx)))
                   (snd (MethodDomCod Sig idx)))
            (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
                pcADT (DelegateSigs idx) (DelegateReps idx))
   : cADT Sig :=
   existT _ (rep DelegateReps)
-         {| pcConstructors := cConstructors DelegateReps DelegateImpls;
-            pcMethods      := cMethods DelegateReps DelegateImpls |}.
+         {| pcMethods      := cMethods DelegateReps DelegateImpls |}.
 
 (* Proof component of the ADT is Qed-ed. *)
 Definition SharpenFully {Sig}
@@ -197,22 +189,15 @@ Definition SharpenFully {Sig}
     (DelegateIDs : nat)
     (DelegateSigs : Fin.t DelegateIDs -> ADTSig)
     (rep : (Fin.t DelegateIDs -> Type) -> Type)
-    (cConstructors :
-       forall
-         (DelegateReps : Fin.t DelegateIDs -> Type)
-         (DelegateImpls : forall idx,
-             pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
-         cConstructorType
-           (rep DelegateReps)
-           (ConstructorDom Sig idx))
     (cMethods :
        forall
          (DelegateReps : Fin.t DelegateIDs -> Type)
          (DelegateImpls : forall idx,
              pcADT (DelegateSigs idx) (DelegateReps idx)) idx,
          cMethodType
+           (fst (fst (MethodDomCod Sig idx)))
            (rep DelegateReps)
-           (fst (MethodDomCod Sig idx))
+           (snd (fst (MethodDomCod Sig idx)))
            (snd (MethodDomCod Sig idx)))
     (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
     (cAbsR :
@@ -226,20 +211,6 @@ Definition SharpenFully {Sig}
                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
          Rep spec -> rep DelegateReps -> Prop),
     (forall
-        (DelegateReps : Fin.t DelegateIDs -> Type)
-        (DelegateImpls : forall idx,
-            pcADT (DelegateSigs idx) (DelegateReps idx))
-        (ValidImpls
-         : forall idx : Fin.t DelegateIDs,
-            refineADT (DelegateSpecs idx)
-                      (LiftcADT (existT _ _ (DelegateImpls idx)))),
-        forall idx : ConstructorIndex Sig,
-          @refineConstructor
-            (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
-            (ConstructorDom Sig idx)
-            (Constructors spec idx)
-            (LiftcConstructor _ _ (cConstructors DelegateReps DelegateImpls idx)))
-    -> (forall
            (DelegateReps : Fin.t DelegateIDs -> Type)
            (DelegateImpls : forall idx,
                pcADT (DelegateSigs idx) (DelegateReps idx))
@@ -250,25 +221,24 @@ Definition SharpenFully {Sig}
            forall idx,
              @refineMethod
                (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
-               (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx))
+               (fst (fst (MethodDomCod Sig idx)))
+               (snd (fst (MethodDomCod Sig idx)))
+               (snd (MethodDomCod Sig idx))
                (Methods spec idx)
-               (LiftcMethod (cMethods DelegateReps DelegateImpls idx)))
+               (LiftcMethod _ _ _ _ (cMethods DelegateReps DelegateImpls idx)))
     -> FullySharpenedUnderDelegates
          spec
          {| Sharpened_DelegateSigs := DelegateSigs;
-            Sharpened_Implementation := BuildMostlySharpenedcADT Sig DelegateSigs rep cConstructors
+            Sharpened_Implementation := BuildMostlySharpenedcADT Sig DelegateSigs rep
                                                                  cMethods;
             Sharpened_DelegateSpecs := DelegateSpecs |}.
 Proof.
-  intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec.
+  intros * cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec.
   eapply (@refinesADT Sig spec (LiftcADT (existT _ (rep DelegateReps)
-                                                 {| pcConstructors := _;
-                                                    pcMethods := _|}))
+                                                 {| pcMethods := _|}))
                       (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
-  - simpl; intros;
-    eapply (cConstructorsRefinesSpec _ _ DelegateImplRefinesSpec idx).
-  - simpl; intros.
-    eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
+  simpl; intros.
+  eapply (cMethodsRefinesSpec _ _ DelegateImplRefinesSpec); eauto.
 Qed.
 
 Fixpoint Lift_Constructor1P RepType (dom : list Type)
@@ -315,29 +285,6 @@ Proof.
   induction dom; simpl in *; eauto.
 Qed.
 
-Lemma cConstructors_AbsR {Sig} {spec : ADT Sig}
-      (impl : FullySharpened spec)
-      midx
-  :
-    @Lift_Constructor2P _ _ _
-                   (fun Cons cCons =>
-                      exists r_o',
-                        computes_to Cons (r_o')
-                        /\ AbsR (projT2 impl) r_o' cCons)
-                   (Constructors spec midx)
-                   (cConstructors (projT1 impl) midx).
-Proof.
-  simpl in *.
-  generalize  (ADTRefinementPreservesConstructors (projT2 impl) midx).
-  intro.
-  eapply Lift_Constructor2P_ind with
-  (P' := fun dom meth (cCons : cConstructorType _ dom) => refineConstructor (AbsR (projT2 impl)) meth (LiftcConstructor _ dom cCons)) ; simpl; intros; eauto.
-  - revert H0; clear -midx;  destruct (ConstructorDom Sig midx) as [|];
-    simpl; intros;
-    specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
-    eexists; split; simpl; try destruct v; simpl; eauto.
-Qed.
-
 Fixpoint Lift_Method1P RepType
          (dom : list Type)
          (cod : option Type)
@@ -356,7 +303,7 @@ Fixpoint Lift_Method1P RepType
   | d :: dom' => fun c => forall (t : d), Lift_Method1P dom' cod P P' (c t)
   end.
 
-Fixpoint Lift_Method2P RepType RepType'
+Fixpoint Lift_Method2P' RepType RepType'
          (dom : list Type)
          (cod : option Type)
          (P : forall cod,
@@ -374,7 +321,34 @@ Fixpoint Lift_Method2P RepType RepType'
            | Some cod' => fun c c' => P cod' c c'
            | None => fun c c' => P' c c'
            end
-  | d :: dom' => fun c c' => forall (t : d), Lift_Method2P dom' cod P P' (c t) (c' t)
+  | d :: dom' => fun c c' => forall (t : d), Lift_Method2P' dom' cod P P' (c t) (c' t)
+  end.
+
+Fixpoint Lift_Method2P
+         RepType RepType'
+         (AbsR : RepType -> RepType' -> Prop)
+         (arity : nat)
+         (dom : list Type)
+         (cod : option Type)
+         (P : forall cod,
+             methodType' RepType [] (Some cod)
+             -> cMethodType' RepType' [] (Some cod)
+             -> Prop)
+         (P' : methodType' RepType [] None
+               -> cMethodType' RepType' [] None
+               -> Prop)
+  : methodType arity RepType dom cod
+    -> cMethodType arity RepType' dom cod
+    -> Prop :=
+  match arity return
+        methodType arity RepType dom cod
+        -> cMethodType arity RepType' dom cod
+        -> Prop with
+  | 0 => Lift_Method2P' dom cod P P'
+  | S arity' => fun method cmethod =>
+                  forall r r',
+                    AbsR r r'
+                    -> Lift_Method2P AbsR arity' dom cod P P' (method r) (cmethod r')
   end.
 
 Fixpoint Lift_cMethodP RepType
@@ -395,7 +369,11 @@ Fixpoint Lift_cMethodP RepType
   | d :: dom' => fun c => forall (t : d), Lift_cMethodP dom' cod P P' (c t)
   end.
 
-Definition Lift_Method2P_ind RepType RepType'
+Definition Lift_Method2P_ind
+           RepType
+           RepType'
+           (AbsR : RepType -> RepType' -> Prop)
+           (arity : nat)
            (dom : list Type)
            (cod : option Type)
            (P : forall cod,
@@ -405,24 +383,37 @@ Definition Lift_Method2P_ind RepType RepType'
            (P' : methodType' RepType [] None
                  -> cMethodType' RepType' [] None
                  -> Prop)
-           (P'' : forall dom cod,
-               methodType' RepType dom cod
-               -> cMethodType' RepType' dom cod
+           (P'' : forall arity dom cod,
+               methodType arity RepType dom cod
+               -> methodType arity RepType' dom cod
                -> Prop)
-           meth cMeth
            (H : forall meth' cMeth',
-               P'' _ _ meth' cMeth'
-               -> Lift_Method2P [] cod P P' meth' cMeth')
-           (IH : forall d d' meth' cMeth',
-               (forall t, P'' d' cod (meth' t) (cMeth' t)
-                          -> Lift_Method2P d' cod P P' (meth' t) (cMeth' t))
-               -> P'' (d :: d') cod meth' cMeth'
-               -> Lift_Method2P (d :: d') cod P P' meth' cMeth')
-  : P'' _ _ meth cMeth
-    -> Lift_Method2P dom cod P P' meth cMeth.
+               P'' _ _ _ meth' (LiftcMethod 0 RepType' [] _ cMeth')
+               -> Lift_Method2P AbsR 0 [] cod P P' meth' cMeth')
+           (H_ind :
+              forall A dom cod meth' cMeth' (t : A),
+                P'' 0 (A :: dom) cod meth'
+                    (fun t : A => LiftcMethod' RepType' dom cod (cMeth' t))
+                -> P'' 0 dom cod (meth' t) (LiftcMethod' RepType' dom cod (cMeth' t)))
+           (H_ind' :
+              forall arity dom cod meth' cMeth',
+                P'' (S arity) dom cod meth'
+                    (fun r : RepType' => LiftcMethod arity RepType' dom cod (cMeth' r))
+                ->
+                forall r r',
+                  AbsR r r'
+                  -> P'' arity dom cod (meth' r)
+                         ((fun r : RepType' => LiftcMethod arity RepType' dom cod (cMeth' r)) r'))
+    (meth : methodType arity RepType dom cod)
+      cMeth
+  : P'' _ _ _ meth (LiftcMethod arity RepType' dom _ cMeth)
+    -> Lift_Method2P AbsR arity dom cod P P' meth cMeth.
 Proof.
-  induction dom; simpl in *; eauto.
-  destruct cod; eauto.
+  induction arity.
+  - clear H_ind'.
+    induction dom; simpl in *; eauto.
+    destruct cod; eauto.
+  - intros; simpl; eauto.
 Qed.
 
 Lemma cMethods_AbsR {Sig} {spec : ADT Sig}
@@ -432,7 +423,7 @@ Lemma cMethods_AbsR {Sig} {spec : ADT Sig}
       (r_n : cRep (projT1 impl))
       (Abs : AbsR (projT2 impl) r_o r_n)
   :
-    @Lift_Method2P _ _ _ _
+    @Lift_Method2P _ _ (AbsR (projT2 impl)) _ _ _
                    (fun _ Meth cMeth =>
                       exists r_o',
                         computes_to Meth (r_o', (snd cMeth))
@@ -441,19 +432,26 @@ Lemma cMethods_AbsR {Sig} {spec : ADT Sig}
                       exists r_o',
                         computes_to Meth (r_o')
                         /\ AbsR (projT2 impl) r_o' cMeth)
-                   (Methods spec midx r_o)
-                   (cMethods (projT1 impl) midx r_n).
+                   (Methods spec midx)
+                   (cMethods (projT1 impl) midx).
 Proof.
   simpl in *.
-  generalize  (ADTRefinementPreservesMethods (projT2 impl) midx _ _ Abs).
-  intro.
-  eapply Lift_Method2P_ind with
-  (P'' := fun dom cod meth (cMeth : cMethodType' _ dom cod) => refineMethod' (AbsR (projT2 impl)) meth (LiftcMethod' _ dom cod cMeth)) ; simpl; intros; eauto.
-  - revert H0; clear;  destruct (MethodDomCod Sig midx) as [? [? |] ];
-    simpl; intros;
-    specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
-    eexists; split; simpl; try destruct v; simpl; eauto.
-    simpl; eauto.
+  generalize (ADTRefinementPreservesMethods (projT2 impl) midx).
+  replace (Methods (LiftcADT (projT1 impl)) midx)
+  with (LiftcMethod _ _ _ _ (cMethods (projT1 impl) midx))
+    by reflexivity.
+  generalize (cMethods (projT1 impl) midx).
+  generalize (Methods spec midx).
+  intros; eapply Lift_Method2P_ind with
+          (P'' := refineMethod (AbsR (projT2 impl))); simpl in *; intros; eauto.
+  - revert meth' cMeth' H0; clear.
+    destruct (MethodDomCod Sig midx) as [ [? ?] [? |] ];
+      simpl; intros.
+    + specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
+        eexists; split; simpl; try destruct v; simpl; eauto.
+      simpl; eauto.
+    + specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst;
+        eexists; split; simpl; try destruct v; simpl; eauto.
 Qed.
 
 (*Definition SharpenFully {Sig}
@@ -525,7 +523,7 @@ Qed.
 (* Honing tactic for refining the observer method with the specified index.
      This version of the tactic takes the new implementation as an argument. *)
 
-Tactic Notation "hone'" "method" constr(obsIdx) "using" constr(obsBody) :=
+(*Tactic Notation "hone'" "method" constr(obsIdx) "using" constr(obsBody) :=
   let A :=
       match goal with
         |- Sharpened ?A => constr:(A) end in
@@ -546,31 +544,4 @@ Tactic Notation "hone'" "method" constr(obsIdx) "using" constr(obsBody) :=
                                                             obsBody
                                                           else
                                                             Methods' idx))
-                | idtac]; cbv beta in *; simpl in *.
-
-(* Honing tactic for refining the constructor method with the specified index.
-   This version of the tactic takes the new implementation as an argument. *)
-Tactic Notation "hone'" "constructor" constr(mutIdx) "using" constr(mutBody) :=
-  let A :=
-      match goal with
-        |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                ADT ?Sig => Sig
-              end in
-  let mutIdx_eq' := fresh in
-  let Rep' := eval simpl in (Rep A) in
-      let ConstructorIndex' := eval simpl in (ConstructorIndex ASig) in
-          let MethodIndex' := eval simpl in (MethodIndex ASig) in
-              let Constructors' := eval simpl in (Constructors A) in
-                  assert (forall idx idx' : ConstructorIndex', {idx = idx'} + {idx <> idx'})
-                as mutIdx_eq' by (decide equality);
-                eapply SharpenStep;
-                [eapply (@refineADT_Build_ADT_Constructors Rep'
-                                                           _
-                                                           _
-                                                           _
-                                                           (fun idx : ConstructorIndex ASig => if (mutIdx_eq' idx mutIdx) then
-                                                                                                 mutBody
-                                                                                               else
-                                                                                                 Constructors' idx))
-                | idtac]; cbv beta in *; simpl in *.
+                | idtac]; cbv beta in *; simpl in *. *)

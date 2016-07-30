@@ -1,14 +1,5 @@
-Require Export Fiat.Common Fiat.Computation.
-
-(** Type of a constructor. *)
-Fixpoint constructorType (rep : Type)
-         (dom : list Type) : Type :=
-  match dom with
-  | nil =>
-    Comp rep (* Freshly constructed model *)
-  | cons d dom' =>
-    d -> constructorType rep dom' (* Initialization arguments *)
-  end.
+Require Export Fiat.Common
+        Fiat.Computation.
 
 (** Type of a method. *)
 Fixpoint methodType' (rep : Type)
@@ -23,24 +14,30 @@ Fixpoint methodType' (rep : Type)
   | cons d dom' =>
     d -> methodType' rep dom' cod (* Method arguments *)
   end.
-Definition methodType (rep : Type)
+
+Fixpoint methodType
+           (arity : nat)
+           (rep : Type)
            (dom : list Type)
            (cod : option Type) : Type :=
-  rep -> methodType' rep dom cod.
+  match arity with
+  | 0 => methodType' rep dom cod
+  | S arity' => rep -> methodType arity' rep dom cod
+  end.
+
+(** Type of a constructor. *)
+Definition constructorType
+         (rep : Type)
+         (dom : list Type) : Type :=
+  methodType 0 rep dom None.
 
 (* Signatures of ADT operations *)
 Record ADTSig :=
   {
-    (** The index set of constructors *)
-    ConstructorIndex : Type;
-
     (** The index set of methods *)
     MethodIndex : Type;
 
-    (** The representation-independent domain of constructors. *)
-    ConstructorDom : ConstructorIndex -> list Type;
-
     (** The representation-independent domain and codomain of methods. *)
-    MethodDomCod : MethodIndex -> (list Type) * (option Type)
+    MethodDomCod : MethodIndex -> nat * (list Type) * (option Type)
 
   }.

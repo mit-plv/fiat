@@ -74,17 +74,14 @@ Section RepInv.
 
   Lemma refineADT_Build_ADT_RepInv
         Sig
-  : forall constr constr',
-      (forall idx, @refineConstructor _ _ repInvAbsR
-                                  (ConstructorDom Sig idx)
-                                  (constr idx) (constr' idx))
-      -> forall meth meth',
-           (forall idx, @refineMethod _ _ repInvAbsR
-                                        (fst (MethodDomCod Sig idx))
-                                        (snd (MethodDomCod Sig idx))
-                                        (meth idx) (meth' idx))
-           -> refineADT (@Build_ADT Sig rep constr meth)
-                        (@Build_ADT Sig rep constr' meth').
+    : forall meth meth',
+      (forall idx, @refineMethod _ _ repInvAbsR
+                                 (fst (fst (MethodDomCod Sig idx)))
+                                 (snd (fst (MethodDomCod Sig idx)))
+                                 (snd (MethodDomCod Sig idx))
+                                 (meth idx) (meth' idx))
+      -> refineADT (@Build_ADT Sig rep meth)
+                   (@Build_ADT Sig rep meth').
   Proof.
     intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
   Qed.
