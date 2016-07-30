@@ -580,6 +580,7 @@ src/QueryStructure/Implementation/Operations/General/QueryRefinements.v
 src/QueryStructure/Implementation/Operations/General/QueryStructureRefinements.v
 src/QueryStructure/Implementation/Operations/List/ListInsertRefinements.v
 src/QueryStructure/Implementation/Operations/List/ListQueryRefinements.v
+src/QueryStructure/Specification/Constraints/DuplicateFree.v
 src/QueryStructure/Specification/Constraints/tupleAgree.v
 src/QueryStructure/Specification/Operations/Delete.v
 src/QueryStructure/Specification/Operations/Empty.v
