@@ -351,11 +351,11 @@ def parse_args():
     rdbms_parser = subparsers.add_parser("rdbms", help="Benchmark PostgreSQL, SQLite, and MySQL.")
     rdbms_parser.set_defaults(callback=benchmark_rdbms)
 
-    bedrock_parser = subparsers.add_parser("bedrock", help="Benchmark PostgreSQL, SQLite, and MySQL.")
+    bedrock_parser = subparsers.add_parser("bedrock", help="Benchmark Bedrock.")
     bedrock_parser.add_argument("exec", help="Path to the Bedrock executable")
     bedrock_parser.set_defaults(callback=benchmark_bedrock)
 
-    plot_parser = subparsers.add_parser("plot", help="Benchmark PostgreSQL, SQLite, and MySQL.")
+    plot_parser = subparsers.add_parser("plot", help="Plot results.")
     plot_parser.set_defaults(callback=plot)
 
     args = parser.parse_args(sys.argv[1:] if len(sys.argv) >= 1 else ["plot"])

@@ -916,7 +916,7 @@ Proof.
   miniChomp_t.
 Qed.
 
-Lemma miniChomp:
+Lemma miniChomp:                (* Isn't this more or less [ProkOk_specialize_to_ret]? *)
   forall `{FacadeWrapper (Value av) A} k k' (v: Comp A) tenv tenv' ext prog env,
     (forall vv, v ↝ vv ->
            {{ [[`k ->> vv as vv]] :: (tenv vv) }} prog {{ [[k' ~~> ret vv as vv]] :: tenv' vv }} ∪ {{ ext }} // env) ->
