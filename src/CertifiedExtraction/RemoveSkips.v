@@ -14,16 +14,16 @@ Defined.
 
 Fixpoint RemoveSkips (s: Stmt) :=
   match s with
-  | DFacade.Skip => Skip
-  | DFacade.Seq x x0 => let x := RemoveSkips x in
-                       let x0 := RemoveSkips x0 in
-                       if (Is_Skip x) then x0
-                       else if (Is_Skip x0) then x
-                            else (DFacade.Seq x x0)
-  | DFacade.If x x0 x1 => DFacade.If x (RemoveSkips x0) (RemoveSkips x1)
-  | DFacade.While x x0 => DFacade.While x (RemoveSkips x0)
-  | DFacade.Call x x0 x1 => DFacade.Call x x0 x1
-  | DFacade.Assign x x0 => DFacade.Assign x x0
+  | DFacade.Skip => DFacade.Skip
+  | DFacade.Seq a b => let a := RemoveSkips a in
+                      let b := RemoveSkips b in
+                      if (Is_Skip a) then b
+                      else if (Is_Skip b) then a
+                           else (DFacade.Seq a b)
+  | DFacade.If c t f => DFacade.If c (RemoveSkips t) (RemoveSkips f)
+  | DFacade.While c b => DFacade.While c (RemoveSkips b)
+  | DFacade.Call r f args => DFacade.Call r f args
+  | DFacade.Assign x v => DFacade.Assign x v
   end.
 
 Hint Constructors RunsTo : runsto_safe.
@@ -249,4 +249,13 @@ Proof.
   - eexists; eauto.
   - eexists; intuition eauto.
     right; eexists; intuition eauto.
+Qed.
+
+Lemma ProgOk_RemoveSkips {av} :
+  forall (prog : Stmt) (pre post : Telescope av) ext env,
+    {{ pre }} prog {{ post }} ∪ {{ ext }} // env ->
+    {{ pre }} RemoveSkips prog {{ post }} ∪ {{ ext }} // env.
+Proof.
+  unfold ProgOk; intros * ok ** sv; specialize (ok _ sv);
+    intuition eauto using RemoveSkips_Safe, RemoveSkips_RunsTo.
 Qed.
