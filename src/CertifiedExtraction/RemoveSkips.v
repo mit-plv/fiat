@@ -7,16 +7,19 @@ Require Import
 
 Require Import Coq.Program.Program.
 
+Definition Is_Skip : forall p, { p = Skip } + { p <> Skip }.
+  destruct p;
+    [ left; reflexivity | right; discriminate .. ].
+Defined.
+
 Fixpoint RemoveSkips (s: Stmt) :=
   match s with
   | DFacade.Skip => Skip
   | DFacade.Seq x x0 => let x := RemoveSkips x in
                        let x0 := RemoveSkips x0 in
-                       match x, x0 with
-                       | DFacade.Skip, _ => x0
-                       | _, DFacade.Skip => x
-                       | _, _ => DFacade.Seq x x0
-                       end
+                       if (Is_Skip x) then x0
+                       else if (Is_Skip x0) then x
+                            else (DFacade.Seq x x0)
   | DFacade.If x x0 x1 => DFacade.If x (RemoveSkips x0) (RemoveSkips x1)
   | DFacade.While x x0 => DFacade.While x (RemoveSkips x0)
   | DFacade.Call x x0 x1 => DFacade.Call x x0 x1
@@ -25,11 +28,18 @@ Fixpoint RemoveSkips (s: Stmt) :=
 
 Hint Constructors RunsTo : runsto_safe.
 Hint Constructors Safe : runsto_safe.
+Hint Resolve Equal_refl : runsto_safe.
 
 Ltac RemoveSkips_helper :=
   intros; simpl in *;
   try ((eauto using Equal_refl with runsto_safe) ||
        (facade_inversion; eauto using Equal_refl with runsto_safe)).
+
+Ltac destruct_Is_Skip prog :=
+  let eq := fresh "eq" in
+  let neq := fresh "neq" in
+  destruct (Is_Skip (RemoveSkips prog)) as [ eq | neq ];
+  [ rewrite eq in * | ].
 
 Lemma RemoveSkips_RunsTo {av} :
   forall prog pre post env,
@@ -37,12 +47,13 @@ Lemma RemoveSkips_RunsTo {av} :
     @RunsTo av env prog pre post.
 Proof.
   induction prog; RemoveSkips_helper.
-  + destruct (RemoveSkips prog1), (RemoveSkips prog2);
+  + destruct_Is_Skip prog1;
+      destruct_Is_Skip prog2;
       RemoveSkips_helper.
   + remember (While e RemoveSkips prog)%facade eqn:Heq.
     induction H; try congruence; unfold loop in *;
       inversion Heq; subst; clear Heq;
-        eauto using RunsToWhileTrue, RunsToWhileFalse.
+        RemoveSkips_helper.
 Qed.
 
 Lemma RunsTo_Equal_left_fast :
@@ -91,40 +102,151 @@ Lemma RemoveSkips_RunsTo2 {av} :
     @RunsTo av env (RemoveSkips prog) pre post.
 Proof.
   induction prog; RemoveSkips_helper.
-  + destruct (RemoveSkips prog1), (RemoveSkips prog2);
+  + destruct_Is_Skip prog1;
+    destruct_Is_Skip prog2;
     try solve [RemoveSkips_helper];
     specialize (IHprog1 _ _ _ H2);
     specialize (IHprog2 _ _ _ H5);
     repeat facade_inversion;
     try match goal with
     | [ H: M.Equal _ _ |- _ ] => rewrite H in *
-    end; eauto using Equal_refl, Equal_trans with runsto_safe.
-  + dependent induction H.
-    eauto using RunsToWhileTrue, RunsToWhileFalse.
-    eauto using RunsToWhileTrue, RunsToWhileFalse.
+    end; eauto using Equal_trans with runsto_safe.
+  + dependent induction H;
+      eauto with runsto_safe.
 Qed.
 
-Hint Extern 1 => match goal with
-                | [ H: RemoveSkips _ = _ |- _ ] => rewrite H
-                end : runsto_safe.
+Lemma RemoveSkips_RunsTo_iff {av} :
+  forall prog pre post env,
+    @RunsTo av env (RemoveSkips prog) pre post <->
+    @RunsTo av env prog pre post.
+Proof.
+  intuition eauto using RemoveSkips_RunsTo, RemoveSkips_RunsTo2.
+Qed.
 
-(* Lemma RemoveSkips_Safe {av} : *)
-(*   forall prog pre env, *)
-(*     @Safe av env prog pre -> *)
-(*     @Safe av env (RemoveSkips prog) pre. *)
-(* Proof. *)
-(*   induction prog; RemoveSkips_helper. *)
-(*   + destruct (RemoveSkips prog1) eqn:eq1, (RemoveSkips prog2); *)
-(*       destruct_conjs; solve [eauto 10 using Equal_refl, Equal_trans, RemoveSkips_RunsTo with runsto_safe]. *)
-(*   +                             (* Coinduction? *) *)
-(* Admitted. *)
+Lemma RemoveSkip_left_Safe:
+  forall (av : Type) (env : Env av) (st : State av) (a b : Stmt),
+    RemoveSkips a = Skip ->
+    Safe env (Seq a b) st ->
+    Safe env b st.
+Proof.
+  intros av env st a b eq safe.
 
-(* Lemma RemoveSkips_ProgOk {av} : *)
-(*   forall prog pre post ext env, *)
-(*     @ProgOk av ext env prog pre post -> *)
-(*     @ProgOk av ext env (RemoveSkips prog) pre post. *)
-(* Proof. *)
-(*   unfold ProgOk; split; *)
-(*     specialize (H _ H0); *)
-(*     intuition eauto using RemoveSkips_RunsTo, RemoveSkips_Safe. *)
-(* Qed. *)
+  induction a; simpl in *;
+    try facade_inversion;
+    destruct_conjs;
+    try discriminate.
+
+  - eauto with runsto_safe.
+
+  - destruct_Is_Skip a1.
+    { apply H0;
+        econstructor;
+        apply RemoveSkips_RunsTo;
+        rewrite ?eq, ?eq0;
+        constructor;
+        reflexivity. }
+    { destruct_Is_Skip a2;
+        (discriminate || intuition). }
+Qed.
+
+Definition RemoveSkips_Safe_CoInd_Hyp {av env} prog pre :=
+  exists prog',
+    (RemoveSkips prog' = prog \/ prog' = prog) /\
+    @Safe av env prog' pre.
+
+Ltac inversion' H :=
+  inversion H;
+  repeat match goal with
+         | [ H := _ |- _ ] => progress (unfold H in *; clear H)
+         end;
+  subst;
+  clear H.
+
+Lemma RemoveSkips_Safe {av} :
+  forall prog pre env,
+    @Safe av env prog pre ->
+    @Safe av env (RemoveSkips prog) pre.
+Proof.
+  intros.
+
+  eapply (Safe_coind RemoveSkips_Safe_CoInd_Hyp);
+    intros; unfold RemoveSkips_Safe_CoInd_Hyp;
+    lazymatch goal with
+    | [ H: RemoveSkips_Safe_CoInd_Hyp _ _ |- _ ] =>
+      destruct H as (prog' & [ eq_rm | eq ] & safe);
+        [ | subst; inversion' safe; intuition eauto ]
+    | _ =>
+      solve [eexists; eauto]
+    end.
+
+  - induction prog'; simpl in eq_rm;
+      try discriminate.
+    + destruct_Is_Skip prog'1.
+      * pose proof (RemoveSkip_left_Safe eq safe).
+        intuition eauto using RemoveSkip_left_Safe.
+      * inversion' safe; destruct_conjs.
+        destruct_Is_Skip prog'2.
+        { intuition. }
+        { inversion' eq_rm;
+          split; eexists; eauto using RemoveSkips_RunsTo. }
+
+  (* If case *)
+  - induction prog'; simpl in eq_rm;
+      try discriminate.
+    + destruct_Is_Skip prog'1.
+      * pose proof (RemoveSkip_left_Safe eq safe).
+        intuition.
+      * inversion' safe; destruct_conjs.
+        destruct_Is_Skip prog'2.
+        { intuition. }
+        { discriminate. }
+    + inversion' eq_rm; inversion' safe; intuition eauto.
+
+  (* Loop case *)
+  - induction prog'; simpl in eq_rm;
+      try discriminate.
+    + destruct_Is_Skip prog'1.
+      * pose proof (RemoveSkip_left_Safe eq safe).
+        intuition.
+      * inversion' safe; destruct_conjs.
+        destruct_Is_Skip prog'2.
+        { intuition. }
+        { discriminate. }
+    + inversion' eq_rm; inversion' safe.
+      * left.
+        intuition eauto.
+        exists (DFacade.While cond prog');
+        intuition eauto using RemoveSkips_RunsTo.
+      * solve [eauto].
+
+  (* Assign case *)
+  - induction prog'; simpl in eq_rm;
+      try discriminate.
+    + destruct_Is_Skip prog'1.
+      * pose proof (RemoveSkip_left_Safe eq safe).
+        intuition.
+      * inversion' safe; destruct_conjs.
+        destruct_Is_Skip prog'2.
+        { intuition. }
+        { discriminate. }
+    + inversion' eq_rm; inversion' safe; intuition eauto.
+
+  (* Call case *)
+  - induction prog'; simpl in eq_rm;
+      try discriminate.
+    + destruct_Is_Skip prog'1.
+      * pose proof (RemoveSkip_left_Safe eq safe).
+        intuition.
+      * inversion' safe; destruct_conjs.
+        destruct_Is_Skip prog'2.
+        { intuition. }
+        { discriminate. }
+    + inversion' eq_rm; inversion' safe.
+      * intuition; eexists; eauto.
+      * intuition eauto.
+        eexists; split; eauto.
+        right; eexists; intuition eauto.
+  - eexists; eauto.
+  - eexists; intuition eauto.
+    right; eexists; intuition eauto.
+Qed.
