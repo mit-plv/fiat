@@ -11,7 +11,7 @@ Section Checksum.
   Variable A : Type. (* Type of data to be encoded. *)
   Variable B : Type. (* Type of encoded values. *)
   Variable transformer : Transformer B. (* Record of operations on encoded values. *)
-  Variable transformer_opt : TransformerUnitOpt transformer bool.
+  Variable transformer_opt : QueueTransformerOpt transformer bool.
 
   (*Variable calculate_checksum : B -> B -> B. (* Function to compute checksums. *) *)
 
@@ -31,7 +31,7 @@ Section Checksum.
 
   Open Scope comp_scope.
 
-  Definition encode_checksum c := encode_word' checksum_sz c.
+  Definition encode_checksum c := encode_word' checksum_sz c transform_id.
 
   Definition composeChecksum {Env}
              (encode1 : Env -> Comp (B * Env))

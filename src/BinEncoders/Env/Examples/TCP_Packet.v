@@ -55,10 +55,6 @@ Definition TCP_Packet :=
           "Options" :: list (word 32),
           "Payload" :: list char >.
 
-Variable IPChecksum : ByteString -> ByteString.
-
-Definition transformer : Transformer ByteString := ByteStringTransformer.
-
 Definition TCP_Checksum_Valid
            (srcAddr : word 32)
            (destAddr : word 32)

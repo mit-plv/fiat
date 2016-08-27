@@ -1189,6 +1189,4 @@ Time Defined.
 Time Definition ROSMasterImpl : ComputationalADT.cADT _ :=
   Eval simpl in projT1 SharpenedRosMaster.
 
-Print StringId7.
-
 Print ROSMasterImpl.

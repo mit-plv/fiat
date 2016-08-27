@@ -1,5 +1,6 @@
 Require Import
         Fiat.Computation
+        Fiat.Common.DecideableEnsembles
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Notations.
 
@@ -221,4 +222,63 @@ Proof.
     eassumption.
     eassumption.
   }
+Qed.
+
+Lemma encode_decode_correct_finish {A B}
+  : forall (cache : Cache)
+           (transformer : Transformer B)
+           (predicate : A -> Prop)
+           (rest_predicate : A -> B -> Prop)
+           (decode_inv : CacheDecode -> Prop)
+           (a : A)
+           (b : bool),
+    (forall a', predicate a' -> a' = a)
+    -> decides b (predicate a)
+    -> encode_decode_correct_f
+         cache
+         transformer
+         predicate
+         rest_predicate
+         (fun a' ctxE => ret (transform_id, ctxE))
+         (fun b' ctxD => if b then Some (a, b', ctxD) else None)
+         decode_inv.
+Proof.
+  unfold encode_decode_correct_f; split; intros.
+  - eexists env'; pose proof (H _ H2); subst; find_if_inside;
+      simpl in *; intuition eauto; computes_to_inv; injections.
+    rewrite transform_id_left; eauto.
+    eassumption.
+  - find_if_inside; injections; try discriminate;
+      simpl in *; intuition eauto.
+    eexists; eexists; intuition eauto.
+    rewrite transform_id_left; reflexivity.
+Qed.
+
+Lemma decides_and :
+  forall b b' P Q,
+    decides b P
+    -> decides b' Q
+    -> decides (andb b b') (P /\ Q).
+Proof.
+  destruct b; destruct b'; simpl in *; intuition.
+Qed.
+
+Lemma decides_assumption :
+  forall (P : Prop),
+    P -> decides true P.
+Proof. simpl in *; intuition. Qed.
+
+Lemma decides_eq_refl {A} :
+  forall (a : A), decides true (a = a).
+Proof. simpl in *; intuition. Qed.
+
+Lemma decides_dec_eq {A} :
+  forall(dec' : forall a a', {a = a'} + {a <> a'})
+        (a a' : A), decides (if (dec' a a') then true else false) (a = a').
+Proof. simpl in *; intros; destruct (dec' a a'); simpl; intuition. Qed.
+
+Lemma decides_dec_lt
+  : forall n n', decides (if (Compare_dec.lt_dec n n') then true else false) (lt n n').
+Proof.
+  intros; find_if_inside; simpl; eauto.
 Qed.

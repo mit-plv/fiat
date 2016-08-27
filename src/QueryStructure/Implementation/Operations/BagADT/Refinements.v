@@ -1370,8 +1370,30 @@ Lemma refine_BagADT_QSDelete' {ResultT}
            k' (fst r_n')).
 Proof.
   unfold refine; intros.
-Admitted.
-
+  unfold CallBagDelete, CallBagMethod in H2; simpl in H2;
+    computes_to_inv; subst; simpl in *.
+  unfold UpdateUnConstrRelationDeleteC; repeat computes_to_econstructor.
+  eapply H1; eauto.
+  unfold DelegateToBag_AbsR; intros.
+  intros; destruct (fin_eq_dec idx idx0); subst.
+  - rewrite get_update_unconstr_eq, get_update_indexed_eq.
+    destruct (H0 idx0) as
+        [l [ [ [bnd fresh_bnd] ? ]
+               [ [bnd' fresh_bnd'] ? ] ] ].
+    pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H3).
+    pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H4).
+    eexists (filter (fun a : RawTuple => negb (dec a)) l); split;
+      unfold EnsembleIndexedListEquivalence; split; eauto;
+        try solve [eexists _; eauto using UnConstrFreshIdx_Delete].
+    eapply UnIndexedEnsembleListEquivalence_Same_set; eauto.
+    split; unfold Included; intros; inversion H7; subst;
+      econstructor; eauto;
+        unfold Complement, In in *.
+    + eapply Decides_false in H9; rewrite H in H9; congruence.
+    + eapply Decides_false; rewrite <- H in H9; destruct (dec (indexedElement x));
+        congruence.
+  - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
+Qed.
 
 Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
           (ResultT : Type) :
@@ -1440,6 +1462,17 @@ Proof.
   destruct (fin_eq_dec idx idx0); subst.
   rewrite i3th_replace_Index_eq; reflexivity.
   rewrite i3th_replace_Index_neq; eauto.
+Qed.
+
+Lemma List_Query_In_Return' :
+  forall (n : nat) (ResultT : Type) (headings : Vector.t RawHeading n) (f f' : _ -> Comp (list ResultT))
+         (l : list (ilist2 (B := @RawTuple) headings)),
+    (forall tup, refine (f tup) (f' tup))
+    -> refine (List_Query_In l f)
+              (List_Query_In l f').
+Proof.
+  unfold List_Query_In.
+  intros; eapply refine_flatten_CompList_func; eauto.
 Qed.
 
 Arguments CallBagMethod : simpl never.

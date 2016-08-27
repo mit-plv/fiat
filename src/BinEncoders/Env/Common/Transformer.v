@@ -17,6 +17,7 @@ Class TransformerUnit (bin : Type) (trans : Transformer bin) (T : Type) :=
     transform_push_pop : forall t m, transform_pop (transform_push t m) = (t, m);
     transform_push_step : forall t m n, transform (transform_push t m) n =
                                         transform_push t (transform m n) }.
+
 Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
   { T_measure : T -> nat;
     T_measure_gt_0 : forall t, 0 < T_measure t;
@@ -38,6 +39,37 @@ Class TransformerUnitOpt (bin : Type) (trans : Transformer bin) (T : Type) :=
       forall t m b b',
         transform_pop_opt b = Some (t, m) ->
         transform_pop_opt b' = Some (t, m) ->
+        b = b'
+  }.
+
+Class QueueTransformerOpt (bin : Type) (trans : Transformer bin) (B : Type) :=
+  { B_measure : B -> nat;
+    B_measure_gt_0 : forall b, 0 < B_measure b;
+    enqueue_opt : B -> bin -> bin;
+    dequeue_opt : bin -> option (B * bin);
+    measure_enqueue :
+      forall b b',
+        bin_measure (enqueue_opt b b') = bin_measure b' + B_measure b;
+    measure_dequeue_Some :
+      forall b' t b,
+        dequeue_opt b = Some (t, b')
+        -> bin_measure b = bin_measure b' + B_measure t;
+    dequeue_transform_opt :
+      forall t b b' b'',
+        dequeue_opt b = Some (t, b')
+        -> dequeue_opt (transform b b'') = Some (t, transform b' b'');
+    enqueue_transform_opt :
+      forall b b' b'',
+        enqueue_opt b (transform b' b'') = transform b' (enqueue_opt b b'');
+    dequeue_head_opt :
+      forall t,
+        dequeue_opt (enqueue_opt t transform_id) = Some (t, transform_id);
+    dequeue_None :
+        dequeue_opt transform_id = None;
+    dequeue_opt_inj :
+      forall t m b b',
+        dequeue_opt b = Some (t, m) ->
+        dequeue_opt b' = Some (t, m) ->
         b = b'
   }.
 

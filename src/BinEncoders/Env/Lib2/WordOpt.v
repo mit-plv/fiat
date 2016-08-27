@@ -12,30 +12,53 @@ Section Word.
   Context {cache : Cache}.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {transformer : Transformer B}.
-  Context {transformerUnit : TransformerUnitOpt transformer bool}.
+  Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
-  Fixpoint encode_word' (s : nat) (w : word s) : B :=
+  Fixpoint encode_word' (s : nat) (w : word s) (b' : B) : B :=
     match w with
-    | WO => transform_id
-    | WS b s' w' => transform_push_opt b (@encode_word' s' w')
+    | WO => b'
+    | WS b s' w' => encode_word' s' w' (enqueue_opt b b')
     end.
 
-  Definition encode_word_Impl (w : word sz) (ce : CacheEncode) : B * CacheEncode := (encode_word' sz w, addE ce sz).
+  Definition encode_word_Impl (w : word sz) (ce : CacheEncode) : B * CacheEncode := (encode_word' sz w transform_id, addE ce sz).
 
   Definition encode_word_Spec (w : word sz) (ce : CacheEncode) : Comp (B * CacheEncode) :=
-    ret (encode_word' sz w, addE ce sz).
+    ret (encode_word' sz w transform_id, addE ce sz).
 
   Fixpoint decode_word' (s : nat) (b : B) : option (word s * B) :=
     match s with
     | O => Some (WO, b)
     | S s' =>
-      `(c, b') <- transform_pop_opt b;
+      `(c, b') <- dequeue_opt b;
       `(w, bx) <- decode_word' s' b';
        Some (WS c w, bx)
     end.
 
   Definition decode_word (b : B) (cd : CacheDecode) : option (word sz * B * CacheDecode) :=
     Ifopt decode_word' sz b as decoded Then Some (decoded, addD cd sz) Else None.
+
+  Lemma dequeue_encode_word'_enqueue_opt' :
+    forall n w w' b b' ext,
+      dequeue_opt w' = Some (b, b')
+      -> dequeue_opt (transform (encode_word' n w w') ext) =
+           Some (b, (transform (encode_word' n w b') ext)).
+  Proof.
+    induction w; simpl; intros.
+    - erewrite dequeue_transform_opt; eauto using dequeue_head_opt.
+    - eapply IHw.
+      rewrite <- (transform_id_right w'), enqueue_transform_opt.
+      erewrite (dequeue_transform_opt _ (enqueue_opt b transform_id)); eauto.
+      rewrite <- enqueue_transform_opt, transform_id_right; reflexivity.
+  Qed.
+
+  Corollary dequeue_encode_word'_enqueue_opt :
+    forall n w b ext,
+      dequeue_opt (transform (encode_word' n w (enqueue_opt b transform_id)) ext) =
+      Some (b, (transform (encode_word' n w transform_id) ext)).
+  Proof.
+    intros; eapply dequeue_encode_word'_enqueue_opt'.
+    eapply dequeue_head_opt.
+  Qed.
 
   Theorem Word_decode_correct
           {P : CacheDecode -> Prop}
@@ -52,11 +75,10 @@ Section Word.
       induction w; simpl in *.
       { eexists; split; eauto; try rewrite !transform_id_left;
         eauto using add_correct. }
-      { rewrite transform_push_step_opt.
-        rewrite transform_push_pop_opt.
-        destruct_ex; intuition.
-        destruct (decode_word' n (transform (encode_word' n w) ext)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate.
-        injections; eexists; split; eauto using add_correct.
+      { destruct_ex; intuition.
+        destruct (decode_word' n (transform (encode_word' n w transform_id) ext)) as [ [? ?] | ] eqn: ?; simpl in *; try discriminate; injections.
+        rewrite dequeue_encode_word'_enqueue_opt; simpl.
+        eexists; split; eauto using add_correct.
         rewrite Heqo; simpl; f_equal.
       }
     - intros.
@@ -71,7 +93,7 @@ Section Word.
         eauto using add_correct.
       }
       { intros; intuition.
-        destruct (transform_pop_opt bin) as [ [? ?] | ] eqn: ? ;
+        destruct (dequeue_opt bin) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_word' n b1) as [ [? ? ] | ] eqn: ? ;
           simpl in *; try discriminate.
@@ -81,9 +103,8 @@ Section Word.
         intuition; destruct_ex; intuition; subst.
         computes_to_inv; injections.
         eexists; eexists; repeat split.
-        setoid_rewrite transform_push_step_opt.
-        eapply transform_pop_opt_inj; eauto.
-        rewrite transform_push_pop_opt; reflexivity.
+        eapply dequeue_opt_inj; eauto.
+        eapply dequeue_encode_word'_enqueue_opt.
         apply add_correct; eauto.
         eapply Peano_dec.eq_nat_dec.
       }
@@ -96,7 +117,7 @@ Section Word.
     induction a; simpl.
     - intros; injections; unfold le_B; omega.
     - intros; simpl.
-      destruct (transform_pop_opt b1) as [ [? ?] | ] eqn: ? ;
+      destruct (dequeue_opt b1) as [ [? ?] | ] eqn: ? ;
         subst; simpl in *; try discriminate.
       destruct (decode_word' n b2) as [ [? ?] | ] eqn: ? ;
         subst; simpl in *; try discriminate.
@@ -105,7 +126,7 @@ Section Word.
       rewrite Heqo0 in H0; simpl in *.
       apply Eqdep_dec.inj_pair2_eq_dec in H1; subst.
       pose proof (H0 (eq_refl _)).
-      eapply measure_pop_Some in Heqo; subst.
+      eapply measure_dequeue_Some in Heqo; subst.
       omega.
       eapply Peano_dec.eq_nat_dec.
   Qed.
@@ -127,15 +148,15 @@ Section Word.
       decode_word' _ b1 = Some (a, b') -> lt_B b' b1.
   Proof.
     simpl; intros; injections; unfold lt_B.
-    destruct (transform_pop_opt b1) as [ [? ?] | ] eqn: ? ;
+    destruct (dequeue_opt b1) as [ [? ?] | ] eqn: ? ;
       subst; simpl in *; try discriminate.
-    apply measure_pop_Some in Heqo; subst.
+    apply measure_dequeue_Some in Heqo; subst.
     destruct (decode_word' sz b0) as [ [? ?] | ] eqn: ? ;
         subst; simpl in *; try discriminate.
     eapply decode_word'_le in Heqo0; injections.
     rewrite Heqo.
     unfold le_B in *.
-    pose proof (T_measure_gt_0 b).
+    pose proof (B_measure_gt_0 b).
     omega.
   Qed.
 
@@ -152,26 +173,26 @@ Section Word.
     omega.
   Qed.
 
-  Definition encode_unused_word_Spec' (sz : nat)
+  Definition encode_unused_word_Spec' (sz : nat) b
              (_ : unit) (ctx : CacheEncode) :=
     (w <- { w : word sz | True};
-       ret (encode_word' sz w, addE ctx sz))%comp.
+       ret (encode_word' sz w b, addE ctx sz))%comp.
 
   Definition encode_unused_word_Spec
              (sz : nat)
              (ctx : CacheEncode) :=
-    encode_unused_word_Spec' sz tt ctx.
+    encode_unused_word_Spec' sz transform_id tt ctx.
 
   Fixpoint transformer_get_word {B}
            {transformer : Transformer B}
-           {transformer_opt : TransformerUnitOpt transformer bool}
+           {transformer_opt : QueueTransformerOpt transformer bool}
            (sz : nat)
            (b : B)
     : option (word sz) :=
     match sz with
     | 0 => Some WO
     | S sz' =>
-      match transform_pop_opt b with
+      match dequeue_opt b with
       | Some (v, b') =>
         match transformer_get_word sz' b' with
         | Some w => Some (WS v w)
@@ -181,16 +202,16 @@ Section Word.
       end
     end.
 
-  Fixpoint transformer_pop_word
+  Fixpoint transformer_dequeue_word
          (sz : nat)
          (b : B)
   : option (word sz * B) :=
   match sz with
   | 0 => Some (WO, b)
   | S sz' =>
-    match transform_pop_opt b with
+    match dequeue_opt b with
     | Some (v, b') =>
-      match transformer_pop_word sz' b' with
+      match transformer_dequeue_word sz' b' with
       | Some (w', b'') => Some (WS v w', b'')
       | _ => None
       end
@@ -198,29 +219,29 @@ Section Word.
     end
   end.
 
-  Lemma transformer_pop_word_eq_decode_word' : 
+  Lemma transformer_dequeue_word_eq_decode_word' :
     forall (sz : nat)
            (b : B),
-      transformer_pop_word sz b = decode_word' sz b.
+      transformer_dequeue_word sz b = decode_word' sz b.
   Proof.
     induction sz0; simpl; eauto.
-  Qed.  
+  Qed.
 
-  Lemma transformer_pop_encode_word'
+  Lemma transformer_dequeue_encode_word'
         (sz' : nat)
     : forall (w : word sz') (ext : B),
-      transformer_pop_word sz' (transform (encode_word' _ w) ext) = Some (w, ext).
+      transformer_dequeue_word sz' (transform (encode_word' _ w transform_id ) ext) = Some (w, ext).
   Proof.
     induction sz'; simpl; intros.
     - rewrite (shatter_word w); eauto.
       unfold encode_word'; rewrite transform_id_left; reflexivity.
     - rewrite (shatter_word w); simpl.
-      rewrite transform_push_step_opt, transform_push_pop_opt.
+      rewrite dequeue_encode_word'_enqueue_opt.
       rewrite IHsz'; eauto.
   Qed.
 
   Definition decode_unused_word' (s : nat) (b : B) : option (unit * B) :=
-    Ifopt transformer_pop_word s b as b' Then Some (tt, snd b') Else None.
+    Ifopt transformer_dequeue_word s b as b' Then Some (tt, snd b') Else None.
 
   Definition decode_unused_word (sz' : nat)
              (b : B) (cd : CacheDecode) : option (unit * B * CacheDecode) :=
@@ -232,13 +253,13 @@ Section Word.
     :
       encode_decode_correct_f cache transformer (fun _ => True)
                               (fun _ _ => True)
-                              (encode_unused_word_Spec' sz') (decode_unused_word sz') P.
+                              (encode_unused_word_Spec' sz' transform_id) (decode_unused_word sz') P.
   Proof.
     unfold encode_decode_correct_f, encode_unused_word_Spec', decode_unused_word; split.
     - intros env env' xenv w w' ext Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold decode_unused_word'.
-      rewrite transformer_pop_encode_word'; simpl.
+      rewrite transformer_dequeue_encode_word'; simpl.
       destruct w.
       eexists; split; eauto using add_correct.
     - intros.
@@ -258,9 +279,9 @@ Section Word.
       { intros; intuition.
         unfold decode_unused_word' in Heqo.
         simpl in Heqo.
-        destruct (transform_pop_opt bin) as [ [? ?] | ] eqn: ? ;
+        destruct (dequeue_opt bin) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
-        destruct (transformer_pop_word sz' b0) as [ [? ?] | ] eqn: ? ;
+        destruct (transformer_dequeue_word sz' b0) as [ [? ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         injection Heqo; intros; subst.
         destruct (IHsz' b0).
@@ -270,9 +291,8 @@ Section Word.
         eexists; eexists; repeat split.
         repeat computes_to_econstructor; eauto.
         instantiate (1 := WS b v); simpl.
-        setoid_rewrite transform_push_step_opt.
-        eapply transform_pop_opt_inj; eauto.
-        rewrite transform_push_pop_opt; reflexivity.
+        eapply dequeue_opt_inj; eauto.
+        eapply dequeue_encode_word'_enqueue_opt.
         apply add_correct; eauto.
       }
   Qed.
@@ -283,14 +303,14 @@ Arguments encode_unused_word_Spec {_ _ _ _ _} sz ctx _.
 
 Lemma transformer_get_encode_word' {B}
       {transformer : Transformer B}
-      {transformer_opt : TransformerUnitOpt transformer bool}
+      {transformer_opt : QueueTransformerOpt transformer bool}
       (sz : nat)
   : forall (w : word sz) (ext : B),
-    transformer_get_word sz (transform (encode_word' _ w) ext) = Some w.
+    transformer_get_word sz (transform (encode_word' _ w transform_id) ext) = Some w.
 Proof.
   induction sz; simpl; intros.
   - rewrite (shatter_word w); eauto.
   - rewrite (shatter_word w); simpl.
-    rewrite transform_push_step_opt, transform_push_pop_opt.
+    rewrite dequeue_encode_word'_enqueue_opt.
     rewrite IHsz; eauto.
 Qed.

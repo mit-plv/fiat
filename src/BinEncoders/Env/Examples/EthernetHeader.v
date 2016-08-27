@@ -6,6 +6,7 @@ Require Import
         Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
+        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
@@ -69,7 +70,7 @@ Ltac solve_data_inv :=
     first [ simpl; intros; exact I
 | shelve_inv ].
 
-Definition transformer : Transformer ByteString := ByteStringTransformer.
+Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
 (* Start Example Derivation. *)
 
@@ -181,6 +182,7 @@ Definition EthernetHeader_decoder
                                       (fst decodePlusCacheInv packet_len) (snd decodePlusCacheInv))
           /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
+  unfold encode_EthernetHeader_Spec, ethernet_Header_OK; pose_string_hyps.
   eexists (_, _);
     intros packet_len packet_len_OK; eexists _; split; simpl.
   intros.
@@ -220,61 +222,39 @@ Proof.
   Discharge_NoDupVector.
   solve_data_inv.
   simpl; intros; exact I.
-  simpl; intros.
-  unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [ ] ] ] ] ;
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  simpl in H10; injections; eauto.
-  simpl in H10; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
+  simpl; intros;
+    eapply encode_decode_correct_finish.
+  destruct a' as [? [? [? [ ] ] ] ] ;
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+  subst.
   reflexivity.
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+  repeat
+    first [eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
   apply_compose.
   eapply Enum_decode_correct.
   Discharge_NoDupVector.
   solve_data_inv.
   simpl; intros; exact I.
-  simpl; intros.
-  unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [ ] ] ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  simpl in *; injections; eauto.
-  simpl in *; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
+  simpl; intros;
+    eapply encode_decode_correct_finish.
+  destruct a' as [? [? [? [ ] ] ] ] ;
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+  subst.
   reflexivity.
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros; intuition.
+  repeat
+    first [eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
   repeat (instantiate (1 := fun _ => True)).
   unfold cache_inv_Property; intuition.
   Grab Existential Variables.

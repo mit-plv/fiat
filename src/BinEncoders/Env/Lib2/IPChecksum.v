@@ -291,32 +291,6 @@ Proof.
   rewrite encode_word_WO; reflexivity.
 Qed.
 
-Lemma padding_list_into_ByteString :
-  forall l,
-    padding (list_into_ByteString l) = NPeano.modulo (length l) 8.
-Proof.
-  induction l.
-  simpl; eauto.
-  simpl length.
-  destruct (Peano_dec.eq_nat_dec (NPeano.modulo (length l) 8) 7).
-  - rewrite NatModulo_S_Full.
-    simpl.
-    unfold ByteString_push.
-    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7).
-    simpl; eauto.
-    elimtype False.
-    rewrite IHl in n; congruence.
-    eauto.
-  - rewrite NatModulo_S_Not_Full; eauto.
-    unfold NPeano.Nat.modulo in IHl |- *; rewrite <- IHl.
-    simpl.
-    unfold ByteString_push.
-    unfold NPeano.modulo, NPeano.Nat.modulo in IHl, n; rewrite <- IHl in n.
-    destruct (Peano_dec.eq_nat_dec (padding (list_into_ByteString l)) 7);
-      simpl; eauto.
-    congruence.
-Qed.
-
 Lemma encode_word'_padding :
   forall sz (w : word sz),
     padding (encode_word' sz w) = NPeano.modulo sz 8.
@@ -412,33 +386,6 @@ Proof.
   induction l.
   - reflexivity.
   - simpl; rewrite length_ByteString_push; eauto.
-Qed.
-
-Lemma transform_padding_eq
-  : forall b b',
-    padding (transform b b') = NPeano.modulo (padding b + padding b') 8.
-Proof.
-  intros.
-  rewrite (ByteString_into_list_eq b),
-  (ByteString_into_list_eq b').
-  rewrite ByteString_transform_list_into.
-  rewrite !padding_list_into_ByteString.
-  rewrite app_length.
-  rewrite NPeano.Nat.add_mod; eauto.
-Qed.
-
-Lemma padding_eq_mod_8
-  : forall b,
-    padding b = NPeano.modulo (length_ByteString b) 8.
-Proof.
-  intros.
-  rewrite (ByteString_into_list_eq b).
-  unfold length_ByteString.
-  rewrite !padding_list_into_ByteString.
-  intros; rewrite <- NPeano.Nat.add_mod_idemp_r; eauto.
-  rewrite (fun c => proj2 (NPeano.Nat.mod_divides (8 * _) 8 c));
-    eauto.
-  rewrite <- plus_n_O, NPeano.Nat.mod_mod; eauto.
 Qed.
 
 Lemma add_padding_OK

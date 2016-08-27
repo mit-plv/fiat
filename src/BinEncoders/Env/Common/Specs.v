@@ -104,7 +104,6 @@ Proof.
     repeat eexists; intuition eauto; apply H; eauto.
 Qed.
 
-
 Section DecodeWMeasure.
   Context {A : Type}. (* data type *)
   Context {B : Type}. (* bin type *)
