@@ -3,7 +3,9 @@ Require Import Coq.Lists.List
         Fiat.Common
         Fiat.Common.ilist
         Fiat.Common.BoundedLookup
-        Fiat.ADT.Core Fiat.ADT.ComputationalADT
+        Fiat.Common.Tactics.CacheStringConstant
+        Fiat.ADT.Core
+        Fiat.ADT.ComputationalADT
         Fiat.ADTRefinement.Core
         Fiat.ADTRefinement.SetoidMorphisms.
 
@@ -137,8 +139,14 @@ Qed.
 
 Ltac start_sharpening_ADT :=
   match goal with
-  | |- MostlySharpened ?spec => repeat unfold spec; eapply MostlySharpened_Start
-  | |- FullySharpened ?spec => repeat unfold spec; eapply FullySharpened_Start
+  | |- MostlySharpened ?spec =>
+    repeat unfold spec;
+    pose_string_hyps;
+    eapply MostlySharpened_Start
+  | |- FullySharpened ?spec =>
+    repeat unfold spec;
+    pose_string_hyps;
+    eapply FullySharpened_Start
   end.
 
 Tactic Notation "start" "sharpening" "ADT" := start_sharpening_ADT.

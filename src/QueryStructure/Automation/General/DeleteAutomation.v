@@ -12,6 +12,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List Coq.Logic.Funct
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Operations.Delete
         Fiat.QueryStructure.Specification.Operations.Mutate
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecks.DuplicateFree
         Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.DecideableEnsembles
@@ -129,6 +130,7 @@ Ltac implement_QSDeleteSpec :=
   [ simpl;
     repeat first
            [ rewrite decides_2_True
+           | RemoveDeleteDuplicateFreeCheck
            | RemoveDeleteFunctionalDependencyCheck]
   | simpl;
     repeat first

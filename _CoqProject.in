@@ -320,6 +320,7 @@ src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
 src/Examples/QueryStructure/ProcessScheduler.v
+src/Examples/QueryStructure/RosMaster.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/StocksFacade.v
 src/Examples/QueryStructure/Weather.v
@@ -551,6 +552,7 @@ src/QueryStructure/Implementation/ListImplementation.v
 src/QueryStructure/Implementation/Operations.v
 src/QueryStructure/Implementation/Constraints/ConstraintChecksRefinements.v
 src/QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings.v
+src/QueryStructure/Implementation/Constraints/ConstraintChecks/DuplicateFree.v
 src/QueryStructure/Implementation/DataStructures/BagADT/BagADT.v
 src/QueryStructure/Implementation/DataStructures/BagADT/BagImplementation.v
 src/QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms.v

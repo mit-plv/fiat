@@ -105,6 +105,57 @@ Ltac drop_constraints :=
     | setoid_rewrite refine_if_Then_Else_Duplicate
     | implement_DropQSConstraints_AbsR].
 
+Ltac drop_constraints_drill :=
+  subst_refine_evar;
+  first
+    [ try set_refine_evar; implement_QSInsertSpec
+    | try set_refine_evar; implement_QSDeleteSpec
+    | eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else;
+      [intro; set_refine_evar | set_refine_evar ] ].
+
+
+Ltac start_honing_QueryStructure'' :=
+    eapply SharpenStep;
+  [ match goal with
+        |- context [@BuildADT (QueryStructure ?Rep) _ _ _ _ _ _] =>
+        eapply refineADT_BuildADT_Rep_refine_All with (AbsR := @DropQSConstraints_AbsR Rep);
+          [ repeat (first [eapply refine_Constructors_nil
+                          | eapply refine_Constructors_cons;
+                            [ simpl; intros;
+                              match goal with
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
+                              end;
+                              (* Drop constraints from empty *)
+                              try apply Constructor_DropQSConstraints;
+                              cbv delta [GetAttribute] beta; simpl
+                            | ] ])
+          | repeat (first [eapply refine_Methods_nil
+                          | eapply refine_Methods_cons;
+                            [ simpl; intros;
+                              match goal with
+                              | |- refine _ (?E _ _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _ _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E _) => let H := fresh in set (H := E)
+                              | |- refine _ (?E) => let H := fresh in set (H := E)
+                              | _ => idtac
+                              end;
+                              cbv delta [GetAttribute] beta; simpl;
+                              doAny ltac:(drop_constraints)
+                                           drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing)
+                            | ]
+          ])]
+    end | ].
+
 Ltac subst_FiniteTables_AbsR :=
   match goal with
   | [ H : FiniteTables_AbsR ?r_o ?r_n
