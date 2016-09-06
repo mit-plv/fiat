@@ -30,68 +30,6 @@ Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
-  Definition fooT :=
-    forall
-      (sBOOKS := "Books")
-      (sAUTHOR := "Authors")
-      (sTITLE := "Title")
-      (sISBN := "ISBN")
-      (sORDERS := "Orders")
-      (sDATE := "Date")
-    (BookStoreSchema :=
-  Query Structure Schema
-    [ relation sBOOKS has
-              schema <sAUTHOR :: string,
-                      sTITLE :: string,
-                      sISBN :: nat>
-                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
-      relation sORDERS has
-              schema <sISBN :: nat,
-                      sDATE :: nat> ]
-    enforcing [attribute sISBN for sORDERS references sBOOKS])
-  (StringId := "Init" : string)
-    (StringId0 := "PlaceOrder" : string)
-    (StringId1 := "EqualityIndex" : string)
-    m n o mt mt'
-    (SearchTerm := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
-                  [{| KindIndexKind := StringId1; KindIndexIndex := m |};
-                  {|
-                  KindIndexKind := StringId1;
-                  KindIndexIndex := n |}] :
-            Type)
-    (SearchTerm0 := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
-                   [{|
-                    KindIndexKind := StringId1;
-                    KindIndexIndex := o |}] :
-             Type)
-    (SearchUpdateTerm := {|
-                      BagSearchTermType := SearchTerm;
-                      BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt);
-                      BagUpdateTermType := RawTuple -> RawTuple;
-                      BagApplyUpdateTerm := fun z : RawTuple -> RawTuple => z |}
-                   : SearchUpdateTerms
-                       {|
-                       NumAttr := 3;
-                       AttrList := Vector.cons Type string _ (Vector.cons Type string _ (Vector.cons Type nat _ (Vector.nil _)))|})
-    (SearchUpdateTerm0 := {|
-                       BagSearchTermType := SearchTerm0;
-                       BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt');
-                       BagUpdateTermType := RawTuple -> RawTuple;
-                       BagApplyUpdateTerm := fun z : RawTuple -> RawTuple =>
-                                             z |}
-                    : SearchUpdateTerms
-                        {|
-                        NumAttr := 2;
-                        AttrList := Vector.cons Type nat _ (Vector.cons Type nat _ (Vector.nil _)) |})
-    (Index := icons3 SearchUpdateTerm (icons3 SearchUpdateTerm0 inil3)
-        : ilist3 (qschemaSchemas BookStoreSchema))
-    (foo1 : constructorType (IndexedQueryStructure BookStoreSchema Index)
-                            (consDom (Constructor "Init" : rep)%consSig)),
-   refineConstructor (dom := []) (@DelegateToBag_AbsR _ _)
-     (or' <- empty;
-      ret (DropQSConstraints or')) (foo1).
-
-
   Import Vectors.VectorDef.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
