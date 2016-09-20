@@ -21,8 +21,8 @@ Lemma beq_OurRRecordType_dec :
   forall rr rr', ?[OurRRecordType_dec rr rr'] = beq_OurRRecordType rr rr'.
 Proof.
   intros; find_if_inside; subst.
-  symmetry; apply (BoundedIndex_beq_refl rr').
-  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+  symmetry; apply (fin_beq_refl rr').
+  symmetry; eapply fin_beq_neq_dec; eauto.
 Qed.
 
 (* Instances used in DecideableEnsemble. *)
@@ -34,8 +34,8 @@ Lemma beq_RRecordType_dec :
   forall rr rr', ?[RRecordType_dec rr rr'] = beq_RRecordType rr rr'.
 Proof.
   intros; find_if_inside; subst.
-  symmetry; apply (BoundedIndex_beq_refl rr').
-  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+  symmetry; apply (fin_beq_refl rr').
+  symmetry; eapply fin_beq_neq_dec; eauto.
 Qed.
 
 (* Instances used in DecideableEnsemble. *)
@@ -49,8 +49,8 @@ Lemma beq_QType_dec :
   forall a b, ?[QType_dec a b] = beq_QType a b.
 Proof.
   intros; find_if_inside; subst.
-  eauto using BoundedIndex_beq_refl.
-  symmetry; eapply BoundedIndex_beq_neq_dec; eauto.
+  eauto using fin_beq_refl.
+  symmetry; eapply fin_beq_neq_dec; eauto.
 Qed.
 
 (* Instances used in DecideableEnsemble. *)

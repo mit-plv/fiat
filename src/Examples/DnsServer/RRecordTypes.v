@@ -54,7 +54,7 @@ Section RRecordTypes.
     fin_beq rr rr'.
 
   Definition OurRRecordType_dec (rr rr' : OurRRecordType) :=
-    fin_beq rr rr'.
+    fin_eq_dec rr rr'.
 
   Lemma beq_OurRRecordType_sym :
     forall rr rr', beq_OurRRecordType rr rr' = beq_OurRRecordType rr' rr.
