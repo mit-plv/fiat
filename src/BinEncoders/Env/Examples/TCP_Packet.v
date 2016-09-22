@@ -167,7 +167,9 @@ Proof.
               ThenC encode_bool_Spec (fst (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data')))))))))))))
               ThenC encode_bool_Spec (fst (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data'))))))))))))))
               ThenC encode_word_Spec (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data')))))))))))))) DoneC))).
-  simpl transform; rewrite !transform_ByteString_measure, !length_encode_word';
+    simpl transform; unfold encode_word;
+    rewrite !ByteString_enqueue_ByteString_measure,
+    !length_encode_word';
     reflexivity.
   reflexivity.
   repeat calculate_length_ByteString.
