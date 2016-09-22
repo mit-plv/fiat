@@ -38,59 +38,87 @@ Open Scope Tuple_scope.
 Definition onesComplement (chars : list char) : word 16 :=
   InternetChecksum.checksum chars.
 
-Fixpoint transformer_pop_word {B}
+Fixpoint append_bit {sz} (b : bool) (w : word sz) : word (S sz) :=
+  match sz return word sz -> word (S sz) with
+  | 0 => fun _ => WS b WO
+  | S n' => fun w => WS (whd w) (append_bit b (wtl w))
+  end w.
+
+Fixpoint transformer_dequeue_word {B}
          {transformer : Transformer B}
-         {transformer_opt : TransformerUnitOpt transformer bool}
+         {transformer_opt : QueueTransformerOpt transformer bool}
          (sz : nat)
          (b : B)
   : (word sz * B) :=
   match sz with
   | 0 => (WO, b)
   | S sz' =>
-    match transform_pop_opt b with
+    match dequeue_opt b with
     | Some (v, b') =>
-      let (w', b'') := transformer_pop_word sz' b' in
-      (WS v w', b'')
+      let (w', b'') := transformer_dequeue_word sz' b' in
+      (append_bit v w', b'')
     | _ => (wzero (S sz'), b)
     end
   end.
 
-Lemma transformer_pop_push_word
-      (sz' : nat)
-    : forall (w : word sz') (ext : ByteString),
-      transformer_pop_word sz' (ByteString_push_word w ext) = (w, ext).
+Lemma transformer_dequeue_enqueue_word
+    : forall (w : word (0 + 1 * 8)) (ext : ByteString) OK,
+      transformer_dequeue_word _ (ByteString_enqueue_ByteString (word_into_ByteString OK w) ext) = (w, ext).
   Proof.
-    induction sz'; simpl; intros.
-    - rewrite (shatter_word w); eauto.
-    - rewrite (shatter_word w); simpl.
-      rewrite ByteString_transform_push_pop_opt.
-      rewrite IHsz'; eauto.
+    simpl; intros; shatter_word w.
+      unfold word_into_ByteString; simpl.
+      do 8 match goal with
+        |- context [ByteString_dequeue (ByteString_enqueue_ByteString ?z _)] =>
+        let H := fresh in
+        destruct (ByteString_dequeue z) as [ [? ?] | ] eqn:H;
+          unfold ByteString_dequeue in H; simpl in H;
+            [ erewrite ByteString_dequeue_transform_opt; try eassumption;
+              injections | discriminate ];
+            match goal with
+              |- context [ {| padding := _;
+                              front := _;
+                              paddingOK := ?H;
+                              byteString := _ |} ] =>
+              generalize H; intros; simpl
+            end
+      end.
+      repeat f_equal.
+      rewrite <- ByteString_enqueue_ByteString_id_left.
+      unfold ByteString_id; repeat f_equal.
+      apply le_uniqueness_proof.
   Qed.
-
+  
 Fixpoint ByteString2ListOfChar (n : nat)
            (b : ByteString) : list char :=
   match n with
   | 0 => nil
   | S (S (S (S (S (S (S (S n'))))))) =>
-    let (c, b') := transformer_pop_word 8 b in
+    let (c, b') := transformer_dequeue_word 8 b in
     cons c (ByteString2ListOfChar n' b')
   | S n' =>
-    let (c, b') := transformer_pop_word 8 b in
+    let (c, b') := transformer_dequeue_word 8 b in
     cons c (ByteString2ListOfChar n' b')
   end.
 
 Lemma ByteString2ListOfChar_push_char
-  : forall n c b,
+  : forall n c b PaddingOK,
     ByteString2ListOfChar
       (8 + n)
-      (ByteString_push_char c b) = (c :: ByteString2ListOfChar n b)%list.
+      (ByteString_enqueue_ByteString {| front := WO;
+                                        paddingOK := PaddingOK;
+                                        byteString := [c] |}
+                                        b) = (c :: (ByteString2ListOfChar n b))%list.
 Proof.
-  Local Opaque transformer_pop_word.
+  Local Opaque transformer_dequeue_word.
+  intros.
   simpl.
-  unfold ByteString_push_char.
-  pose proof transformer_pop_push_word as H'; simpl in H';
-    intros.
-  rewrite H'; f_equal.
+  replace {| padding := 0; front := WO; paddingOK := PaddingOK; byteString := [c] |} with (word_into_ByteString ByteString_id_subproof (c : word (0 + 1 * 8))).
+  rewrite transformer_dequeue_enqueue_word.
+  reflexivity.
+  unfold char in c; shatter_word c.
+  unfold word_into_ByteString; simpl.
+  f_equal.
+  apply le_uniqueness_proof.
 Qed.
 
 Lemma ByteString2ListOfChar_eq
@@ -112,15 +140,20 @@ Proof.
     rewrite plus_O_n.
     symmetry.
     rewrite <- (IHbyteString WO paddingOK) at 1.
-    unfold ByteString_transformer.
-    unfold Core.front, Core.byteString.
-    rewrite (shatter_word front).
-    simpl ByteString_push_word.
-    simpl fold_right.
-    cbv beta.
-    rewrite (ByteString2ListOfChar_push_char ((|byteString |) * 8) a).
+    replace (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := a :: byteString |} ext)
+    with
+(ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := [a] |} (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := byteString |} ext) ).
+    pose proof ByteString2ListOfChar_push_char as H'.
+    simpl plus in H'.
+    shatter_word front.
+    rewrite H'.
     f_equal.
-    rewrite Mult.mult_comm; reflexivity.
+    f_equal.
+    omega.
+    rewrite ByteString_enqueue_ByteString_assoc.
+    f_equal.
+    shatter_word front.
+    erewrite <- massage_queue_into_ByteString; reflexivity.
 Qed.
 
 Corollary ByteString2ListOfChar_eq'
@@ -131,17 +164,10 @@ Corollary ByteString2ListOfChar_eq'
 Proof.
   intros.
   erewrite <- ByteString2ListOfChar_eq with (ext := transform_id); auto.
-  rewrite transform_id_right; eauto.
 Qed.
 
-Definition IPChecksum (b b' : ByteString) : ByteString :=
-  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
-                    else encode_word' _ (wzero (8 - (padding b))) in
-  transform b''
-    (encode_word' _ (wnot (onesComplement
-                             (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b'))))).
-
-Definition transformer : Transformer ByteString := ByteStringTransformer.
+Definition transformer : Transformer ByteString :=
+  ByteStringQueueTransformer.
 
 Lemma onesComplement_commute :
   forall b b',
@@ -153,17 +179,42 @@ Proof.
   eapply checksum_app; eauto.
 Qed.
 
+Definition encode_word {sz} (w : word sz) : ByteString :=
+  encode_word' sz w ByteString_id.
+
 Lemma length_encode_word' sz :
-  forall (w : word sz), bin_measure (encode_word' sz w) = sz.
+  forall (w : word sz) (b : ByteString),
+    bin_measure (encode_word' _ w b) = sz + bin_measure b.
 Proof.
   induction sz; intros;
     rewrite (shatter_word w); simpl.
-  - pose proof (transform_measure transform_id transform_id) as H';
-      rewrite transform_id_left in H'.
-    simpl bin_measure in H'; simpl transform_id in H'; omega.
-  - pose proof measure_push as H'; simpl in H'.
-    rewrite H', IHsz; omega.
+  - reflexivity.
+  - pose proof measure_enqueue as H'; simpl in H'.
+    unfold encode_word in *; simpl in *.
+    rewrite IHsz, H'; omega.
 Qed.
+
+Lemma length_ByteString_id :
+  length_ByteString ByteString_id = 0.
+Proof.
+  reflexivity.
+Qed.
+
+Corollary length_encode_word {sz} :
+  forall (w : word sz),
+    bin_measure (encode_word w) = sz.
+Proof.
+  unfold encode_word.
+  intros; rewrite length_encode_word'.
+  simpl; rewrite length_ByteString_id; omega.
+Qed.
+
+Definition IPChecksum (b b' : ByteString) : ByteString :=
+  let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
+                    else encode_word (wzero (8 - (padding b))) in
+  transform b''
+    (encode_word (wnot (onesComplement
+                             (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b'))))).
 
 Lemma length_ByteString_IPChecksum
   : forall b b',
@@ -171,17 +222,16 @@ Lemma length_ByteString_IPChecksum
     -> length_ByteString (IPChecksum b b') = 16.
 Proof.
   unfold IPChecksum; simpl; intros.
-  erewrite transform_ByteString_measure.
+  erewrite ByteString_enqueue_ByteString_measure.
   rewrite H; find_if_inside; try congruence.
-  rewrite length_encode_word'; reflexivity.
+  rewrite length_encode_word.
+  rewrite length_ByteString_id; reflexivity.
 Qed.
 
-Transparent transformer_pop_word.
-
-Lemma encode_word_S :
-  forall n w, encode_word' (S n ) w =
-              transform (encode_word' _ (WS (whd w) WO))
-                        (encode_word' _ (wtl w)).
+(*Lemma encode_word_S :
+  forall n w, encode_word (sz := S n) w =
+              transform (encode_word (WS (whd w) WO))
+                        (encode_word (wtl w)).
 Proof.
   intros; rewrite (shatter_word w); simpl.
   induction n; simpl;
@@ -189,17 +239,22 @@ Proof.
   reflexivity.
   simpl.
   rewrite IHn.
-  reflexivity.
+  unfold encode_word; simpl.
+  rewrite ByteString_enqueue_ByteString_assoc,
+  <- !ByteString_enqueue_ByteString_enqueue_ByteString.
+
+
+  unfold ByteString_enqueue_ByteString at 1; simpl.
 Qed.
 
 Lemma encode_word_WO :
   forall w, encode_word' 0 w = transform_id.
 Proof.
   intros; rewrite (shatter_word w); simpl; reflexivity.
-Qed.
+Qed. *)
 
-Lemma encode_char :
-  forall n w, encode_word' (8 + n) w =
+(*Lemma encode_char :
+  forall n w, encode_word (sz := 8 + n) w =
             transform {| front := WO;
                paddingOK := Lt.lt_0_Sn _;
                byteString := WS (whd w)
@@ -209,7 +264,8 @@ Lemma encode_char :
                              (WS (whd (wtl (wtl (wtl (wtl w)))))
                              (WS (whd (wtl (wtl (wtl (wtl (wtl w))))))
                              (WS (whd (wtl (wtl (wtl (wtl (wtl (wtl w)))))))
-                             (WS (whd (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))) WO))))))) :: nil |} (encode_word' _ (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))).
+                             (WS (whd (wtl (wtl (wtl (wtl (wtl (wtl (wtl w)))))))) WO))))))) :: nil |} (encode_word (wtl (wtl (wtl (wtl (wtl (wtl (wtl (wtl w))))))))).
+Proof.
   simpl; intros.
   rewrite (encode_word_S (7 + n)).
   rewrite (encode_word_S (6 + n)).
@@ -247,18 +303,20 @@ Lemma ByteString_push_WO :
     ByteString_push_word WO bs = bs.
 Proof.
   reflexivity.
-Qed.
+Qed. *)
 
-Lemma encode_word_hi_lo :
-  forall w, encode_word' 16 w =
+(*Lemma encode_word_hi_lo :
+  forall w : word 16, encode_word w =
             {| front := WO;
                paddingOK := Lt.lt_0_Sn _;
                byteString := [lo8 w; hi8 w] |}.
 Proof.
+Admitted.
   intros; rewrite (encode_char 8).
   intros; rewrite (encode_char 0).
   simpl.
-  unfold ByteString_transformer.
+  unfold ByteString_enqueue_ByteString.
+  simpl.
   rewrite !ByteString_push_char_id_right.
   rewrite encode_word_WO.
   simpl.
@@ -289,36 +347,38 @@ Proof.
   f_equal.
   rewrite encode_word_WO; reflexivity.
   rewrite encode_word_WO; reflexivity.
+Qed. *)
+
+Lemma length_ByteString_into_list_measure :
+  forall b,
+    | ByteString_into_list b | = bin_measure b.
+Proof.
+  simpl.
+  intros; rewrite <- length_list_into_ByteString; f_equal.
+  rewrite <- ByteString_into_list_eq; reflexivity.
 Qed.
 
 Lemma encode_word'_padding :
   forall sz (w : word sz),
-    padding (encode_word' sz w) = NPeano.modulo sz 8.
+    padding (encode_word' _ w transform_id) = NPeano.modulo sz 8.
 Proof.
   intros; rewrite (ByteString_into_list_eq _).
   rewrite padding_list_into_ByteString.
   f_equal.
-  induction w; simpl; eauto.
-  unfold ByteString_push.
-  symmetry; rewrite <- IHw at 1; clear IHw.
-  unfold ByteString_into_list.
-  destruct (Peano_dec.eq_nat_dec (padding (encode_word' n w)) 7);
-    simpl; rewrite app_length; eauto.
-  assert (|wordToList (front (encode_word' n w)) | = 7).
-  destruct (encode_word' n w); simpl in *.
-  subst; reflexivity.
-  rewrite H.
-  reflexivity.
+  rewrite length_ByteString_into_list_measure.
+  simpl.
+  rewrite length_encode_word'; simpl; rewrite length_ByteString_id.
+  omega.
 Qed.
 
-Lemma even_IPChecksum
-  : forall w, (|byteString (encode_word' 16 w) |) = 2.
+(*Lemma even_IPChecksum
+  : forall w : word 16, (|byteString (encode_word w) |) = 2.
 Proof.
   intros; pose proof (length_encode_word' 16 w) as H'''; simpl in H'''.
   unfold length_ByteString in H'''.
   setoid_rewrite encode_word'_padding in H'''; simpl in H'''.
   omega.
-Qed.
+Qed. *)
 
 (*Lemma onesComplement_onesComplement :
   forall b,
@@ -342,30 +402,23 @@ Definition decode_IPChecksum
   : ByteString -> CacheDecode -> option (() * ByteString * CacheDecode) :=
   decode_unused_word 16.
 
-Lemma ByteString_transformer_eq_app :
+(*Lemma ByteString_transformer_eq_app :
   forall (b b' : ByteString),
     padding b = 0
     -> padding b' = 0
-    -> ByteString_transformer b b' =
+    -> ByteString_enqueue_ByteString b b' =
        {| front := WO;
           paddingOK := Lt.lt_0_Sn _;
           byteString := byteString b ++ byteString b' |}.
 Proof.
-  destruct b; destruct b'; intros;
-    simpl in *; subst.
-  rewrite (shatter_word front0),
-  (shatter_word front).
-  unfold ByteString_transformer; simpl.
-  rewrite ByteString_push_char_id_right; simpl; eauto.
-  f_equal; apply le_uniqueness_proof.
-Qed.
+Admitted. *)
 
 Lemma ByteString2ListOfChar_Over :
   forall (b ext : ByteString),
     padding b = 0
     -> ByteString2ListOfChar (bin_measure b)
                           (transform b ext) =
-    ByteString2ListOfChar (bin_measure b) b.
+       ByteString2ListOfChar (bin_measure b) b.
 Proof.
   intros; rewrite ByteString2ListOfChar_eq; eauto.
   intros; rewrite ByteString2ListOfChar_eq'; eauto.
@@ -388,13 +441,14 @@ Proof.
   - simpl; rewrite length_ByteString_push; eauto.
 Qed.
 
-Lemma add_padding_OK
+(*Lemma add_padding_OK
   : forall b,
     padding (transform b
                        (if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
-                       else encode_word' _ (wzero (8 - (padding b))))) = 0.
+                       else encode_word (wzero (8 - (padding b))))) = 0.
 Proof.
-  intros; rewrite transform_padding_eq.
+Admitted. *)
+(*  intros; rewrite transform_padding_eq.
   find_if_inside; subst; simpl.
   - rewrite e; simpl; eauto.
   - pose proof (paddingOK b).
@@ -404,7 +458,7 @@ Proof.
              => is_var n0; destruct n0; simpl; eauto; [ ]
            end.
     omega.
-Qed.
+Qed. *)
 
 (* Lemma IPChecksum_OK : *)
 (*   forall (b ext : ByteString), *)
@@ -425,13 +479,14 @@ Qed.
 (*   rewrite encode_word'_padding; reflexivity. *)
 (* Qed. *)
 
-Lemma padding_transform_commute
+(*Lemma padding_transform_commute
   : forall b b',
     padding (transform b b') = padding (transform b' b).
 Proof.
-  intros; rewrite !transform_padding_eq.
+Admitted. *)
+(*  intros; rewrite !transform_padding_eq.
   rewrite Plus.plus_comm; eauto.
-Qed.
+Qed. *)
 
 Definition IPv4_Packet_encoded_measure (ipv4_b : ByteString)
   : nat :=
@@ -464,19 +519,19 @@ Proof.
     eapply le_uniqueness_proof.
 Qed.
 
-Lemma transformer_pop_word_inj
+Lemma transformer_dequeue_word_inj
   : forall sz w w' p,
-    WordOpt.transformer_pop_word sz w = Some p
-    -> WordOpt.transformer_pop_word sz w' = Some p
+    WordOpt.transformer_dequeue_word sz w = Some p
+    -> WordOpt.transformer_dequeue_word sz w' = Some p
     -> w = w'.
 Proof.
   induction sz; simpl; intros.
   - injections; eauto.
-  - destruct (ByteString_pop w) as [ [? ?] | ] eqn : ? ;
-      destruct (ByteString_pop w') as [ [? ?] | ] eqn : ?;
+  - destruct (ByteString_dequeue w) as [ [? ?] | ] eqn : ? ;
+      destruct (ByteString_dequeue w') as [ [? ?] | ] eqn : ?;
       try discriminate.
-    destruct (WordOpt.transformer_pop_word sz b0) as [ [? ?] | ] eqn : ? ;
-      destruct (WordOpt.transformer_pop_word sz b2) as [ [? ?] | ]  eqn : ? ;
+    destruct (WordOpt.transformer_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
+      destruct (WordOpt.transformer_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
       try discriminate.
     destruct p as [? ?].
     injection H; injection H0; intros; subst.
@@ -485,10 +540,10 @@ Proof.
       simpl in *; subst.
     assert (b0 = b2) by eauto.
     subst.
-    eapply ByteString_transform_pop_opt_inj; eauto.
+    eapply ByteString_dequeue_opt_inj; eauto.
 Qed.
 
-Lemma decode_IPChecksum_pf'
+(*Lemma decode_IPChecksum_pf'
   : forall (u : ()) (b b' : ByteString),
     () -> forall ctxD ctxD' : (), True -> decode_IPChecksum b ctxD = Some (u, b', ctxD') -> True /\ (exists b'' : ByteString, b = ByteString_transformer b'' b').
 Proof.
@@ -515,7 +570,7 @@ Proof.
   rewrite transform_id_left.
   pose proof transformer_pop_encode_word' as H'; simpl in H'; rewrite H'; simpl; eauto.
   congruence.
-Qed.
+Qed. *)
 
 Definition IPChecksum_ByteAligned (b : ByteString) :=
   padding b = 0 /\ exists n, length (byteString b) = 2 * n.
@@ -637,7 +692,7 @@ Lemma length_ByteString_compose :
 Proof.
   unfold compose, Bind2; intros; computes_to_inv; injections.
   destruct v; destruct v0.
-  rewrite transform_ByteString_measure; erewrite H0, H1; eauto.
+  rewrite ByteString_enqueue_ByteString_measure; erewrite H0, H1; eauto.
 Qed.
 
 Lemma length_ByteString_composeChecksum :
@@ -651,9 +706,10 @@ Lemma length_ByteString_composeChecksum :
 Proof.
   unfold composeChecksum, Bind2; intros; computes_to_inv; injections.
   destruct v; destruct v0.
-  rewrite !transform_ByteString_measure; simpl.
+  rewrite !ByteString_enqueue_ByteString_measure; simpl.
   unfold encode_checksum.
-  erewrite length_encode_word', H0, H1; eauto; omega.
+  erewrite length_encode_word'; simpl; rewrite length_ByteString_id.
+  erewrite H0, H1; eauto; omega.
 Qed.
 
 Lemma length_ByteString_composeIf :
@@ -691,7 +747,7 @@ Proof.
     intros; rewrite H''; reflexivity.
 Qed. *)
 
-Lemma computes_to_compose_decode_word
+(*Lemma computes_to_compose_decode_word
   : forall sz (w : word sz) (ctx ctx'' : CacheEncode)
            (rest : CacheEncode -> Comp (ByteString * CacheEncode))
            (b : ByteString),
@@ -708,9 +764,9 @@ Proof.
   rewrite <- !ByteString_transform_assoc.
   pose proof transformer_pop_encode_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
-Qed.
+Qed. *)
 
-Lemma computes_to_compose_decode_unused_word
+(*Lemma computes_to_compose_decode_unused_word
   : forall sz (w : word sz) (ctx ctx'' : CacheEncode)
            (rest : CacheEncode -> Comp (ByteString * CacheEncode))
            (b : ByteString),
@@ -727,7 +783,7 @@ Proof.
   rewrite <- !ByteString_transform_assoc.
   pose proof transformer_pop_encode_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
-Qed.
+Qed. *)
 
 Arguments mult : simpl never.
 Arguments decode_word' : simpl never.
@@ -740,7 +796,7 @@ Proof.
   intros; computes_to_inv; injections; reflexivity.
 Qed.
 
-Lemma length_ByteString_unused_word
+(*Lemma length_ByteString_unused_word
   : forall sz (b : ByteString) (ctx ctx' : CacheEncode),
     encode_unused_word_Spec sz ctx ↝ (b, ctx')
     -> length_ByteString b = sz.
@@ -748,9 +804,9 @@ Proof.
   unfold encode_unused_word_Spec, encode_unused_word_Spec'; simpl.
   intros; computes_to_inv; injections.
   eapply length_encode_word'.
-Qed.
+Qed. *)
 
-Lemma length_ByteString_word
+(* Lemma length_ByteString_word
   : forall sz (w : word sz) (b : ByteString) (ctx ctx' : CacheEncode),
     encode_word_Spec w ctx ↝ (b, ctx')
     -> length_ByteString b = sz.
@@ -758,7 +814,7 @@ Proof.
   unfold encode_word_Spec; simpl.
   intros; computes_to_inv; injections.
   eapply length_encode_word'.
-Qed.
+Qed. *)
 
 Lemma length_ByteString_bool
   : forall (b' : bool) (b : ByteString) (ctx ctx' : CacheEncode),
@@ -770,7 +826,7 @@ Proof.
   eapply length_ByteString_push.
 Qed.
 
-Lemma length_ByteString_encode_list {A}
+(* Lemma length_ByteString_encode_list {A}
   : forall encode_A l (b : ByteString) (ctx ctx' : CacheEncode) n,
     (forall (a : A) (b : ByteString) (ctx ctx' : CacheEncode),
         computes_to (encode_A a ctx) (b, ctx')
@@ -786,7 +842,56 @@ Proof.
     erewrite H; eauto.
     rewrite Mult.mult_succ_l.
     erewrite <- IHl; eauto with arith.
+Qed. *)
+
+Lemma ByteString_enqueue_padding_eq
+  : forall a b,
+    padding (ByteString_enqueue a b) =
+    NPeano.modulo (S (padding b)) 8.
+Proof.
+  intros; rewrite !padding_eq_mod_8, length_ByteString_enqueue.
+  rewrite (NPeano.Nat.add_mod_idemp_r 1 _ 8); auto.
 Qed.
+
+Lemma queue_into_ByteString_padding_eq 
+  : forall l,
+    padding (queue_into_ByteString l) = NPeano.modulo (length l) 8.
+Proof.
+  intro; replace (length l) with (length l + bin_measure ByteString_id) 
+    by (simpl; rewrite length_ByteString_id; omega).
+  unfold queue_into_ByteString; generalize ByteString_id.
+  induction l; intros; simpl fold_left.
+  - apply padding_eq_mod_8.
+  - simpl fold_left.
+    rewrite IHl.
+    rewrite length_ByteString_enqueue.
+    f_equal; simpl; omega.
+Qed.
+    
+Lemma ByteString_enqueue_ByteString_padding_eq
+  : forall b b',
+    padding (ByteString_enqueue_ByteString b b') = NPeano.modulo (padding b + padding b') 8.
+Proof.
+  intros.
+  rewrite (ByteString_into_queue_eq b),
+  (ByteString_into_queue_eq b').
+  rewrite ByteString_enqueue_ByteString_into_list.
+  rewrite queue_into_ByteString_app.
+  generalize (queue_into_ByteString (ByteString_into_queue b)).
+  induction (ByteString_into_queue b'); intros; simpl fold_left.
+  - change (padding (queue_into_ByteString nil)) with 0.
+    rewrite <- plus_n_O.
+    rewrite (ByteString_into_list_eq b0).
+    rewrite padding_list_into_ByteString.
+    rewrite NPeano.Nat.mod_mod; auto.
+  - rewrite IHl.
+    rewrite ByteString_enqueue_padding_eq.
+    rewrite !queue_into_ByteString_padding_eq.
+    simpl length.
+    rewrite <- NPeano.Nat.add_mod; auto.
+    rewrite NPeano.Nat.add_mod_idemp_r; auto.
+    f_equal; omega.
+Qed.    
 
 Definition length_ByteString_ByteString_id
   : length_ByteString ByteString_id = 0 := eq_refl.
@@ -808,24 +913,6 @@ Proof.
   - eauto.
 Qed.
 
-Ltac calculate_length_ByteString :=
-  intros;
-  match goal with
-  | H : computes_to _ _ |- _ =>
-    first [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
-          | eapply (length_ByteString_composeIf _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
-          | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
-            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
-          | eapply (fun H' H'' => length_ByteString_encode_option _ _ _ _ _ _ _ H' H'' H)
-          | eapply (length_ByteString_unused_word _ _ _ _ H)
-          | eapply (length_ByteString_bool _ _ _ _ H)
-          | eapply (length_ByteString_word _ _ _ _ _ H)
-          | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H)
-          | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
-  end.
-
 (*Lemma IPChecksum_unique
   : forall x x3 x1 ext u ctx ctx',
     IPChecksum_ByteAligned x
@@ -841,8 +928,8 @@ Lemma compose_IPChecksum_encode_correct
   : forall (A : Type)
            (B := ByteString)
            (trans : Transformer B := transformer)
-           (trans_opt : TransformerUnitOpt trans bool :=
-              ByteString_TransformerUnitOpt)
+           (trans_opt : QueueTransformerOpt trans bool :=
+              ByteString_QueueTransformerOpt)
            (calculate_checksum := IPChecksum)
            (checksum_Valid := IPChecksum_Valid)
            (checksum_Valid_dec := IPChecksum_Valid_dec)
@@ -916,8 +1003,10 @@ Proof.
   - intros; rewrite !transform_measure.
     simpl; rewrite (H0 _ _ _ _ H9).
     simpl; rewrite (H1 _ _ _ _ H10).
-    rewrite length_encode_word'.
     erewrite <- H4; eauto; try omega.
+    unfold encode_checksum.
+    rewrite length_encode_word'.
+    simpl; omega.
   - eassumption.
   - eassumption.
   - eassumption.
@@ -925,48 +1014,54 @@ Proof.
     decode_unused_word, decode_unused_word'.
     rewrite <- !transform_assoc.
     unfold B in *.
-    rewrite transformer_pop_encode_word'; simpl; eauto.
+    unfold encode_checksum.
+    rewrite transformer_dequeue_encode_word'; simpl; eauto.
   - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
-    intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
+    intros; destruct (WordOpt.transformer_dequeue_word 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     injections.
     eexists w.
-    erewrite (transformer_pop_word_inj _ b);
+    simpl.
+    unfold encode_checksum.
+    erewrite (transformer_dequeue_word_inj _ b);
     [ | eauto
-        | pose proof transformer_pop_encode_word' as H'; simpl in H';
+        | pose proof transformer_dequeue_encode_word' as H'; simpl in H';
           eapply H'].
     reflexivity.
   - eassumption.
   - intros.
     unfold IPChecksum_Valid in *.
-    rewrite ByteString2ListOfChar_Over.
-    rewrite ByteString2ListOfChar_Over in H12.
-    eauto.
     simpl.
-    rewrite !transform_padding_eq.
-    apply H0 in H10.
-    pose proof (H2 (project data)).
-    rewrite <- H10 in H13.
-    rewrite padding_eq_mod_8, H13.
-    pose proof (H3 data).
-    unfold encode_checksum.
-    rewrite encode_word'_padding.
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite padding_eq_mod_8, H14.
-    reflexivity.
-    rewrite !transform_padding_eq.
-    apply H0 in H10.
-    pose proof (H2 (project data)).
-    rewrite <- H10 in H13.
-    rewrite padding_eq_mod_8, H13.
-    pose proof (H3 data).
-    unfold encode_checksum.
-    rewrite encode_word'_padding.
-    rewrite <- (H1 _ _ _ _ H11) in H14.
-    rewrite padding_eq_mod_8, H14.
-    reflexivity.
+    rewrite ByteString2ListOfChar_Over.
+    * rewrite ByteString2ListOfChar_Over in H12.
+      eauto.
+      simpl.
+      apply H0 in H10.
+      pose proof (H2 (project data)).
+      rewrite <- H10 in H13.
+      rewrite !ByteString_enqueue_ByteString_padding_eq.
+      rewrite padding_eq_mod_8, H13.
+      pose proof (H3 data).
+      unfold encode_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H11) in H14.
+      rewrite padding_eq_mod_8, H14.
+      reflexivity.
+    * rewrite !ByteString_enqueue_ByteString_padding_eq.
+      apply H0 in H10.
+      pose proof (H2 (project data)).
+      rewrite <- H10 in H13.
+      rewrite padding_eq_mod_8, H13.
+      pose proof (H3 data).
+      unfold encode_checksum.
+      rewrite encode_word'_padding.
+      rewrite <- (H1 _ _ _ _ H11) in H14.
+      rewrite padding_eq_mod_8, H14.
+      reflexivity.
 Qed.
+
+Print Assumptions compose_IPChecksum_encode_correct.
 
 (*Lemma IPchecksum_Valid_OK_dep' :
   forall (b b' ext : ByteString),
@@ -1024,8 +1119,8 @@ Lemma compose_IPChecksum_encode_correct_dep
   : forall (A : Type)
            (B := ByteString)
            (trans : Transformer B := transformer)
-           (trans_opt : TransformerUnitOpt trans bool :=
-              ByteString_TransformerUnitOpt)
+           (trans_opt : QueueTransformerOpt trans bool :=
+              ByteString_QueueTransformerOpt)
            (bextra : B)
            (bextra_len : nat)
            (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (transform bextra b'))
@@ -1109,7 +1204,7 @@ Proof.
     2: eassumption.
     unfold encode_checksum.
     rewrite length_encode_word'.
-    try omega.
+    simpl; omega.
     eassumption.
     eassumption.
   - eassumption.
@@ -1119,19 +1214,20 @@ Proof.
     decode_unused_word, decode_unused_word'.
     rewrite <- !transform_assoc.
     unfold B in *.
-    rewrite transformer_pop_encode_word'; simpl; eauto.
+    unfold encode_checksum.
+    rewrite transformer_dequeue_encode_word'; simpl; eauto.
   - unfold decodeChecksum, IPChecksum, decode_IPChecksum, decode_unused_word, decode_unused_word'.
     unfold B in *.
-    intros; destruct (WordOpt.transformer_pop_word 16 b) eqn : ? ;
+    intros; destruct (WordOpt.transformer_dequeue_word 16 b) eqn : ? ;
       try discriminate; intuition.
     destruct p.
     simpl in H10.
     injection H10; intros.
     unfold encode_checksum.
     eexists w.
-    erewrite (transformer_pop_word_inj _ b);
+    erewrite (transformer_dequeue_word_inj _ b);
         [ | eapply Heqo
-      | pose proof (@transformer_pop_encode_word' _ transformer ByteString_TransformerUnitOpt) as H';
+      | pose proof (@transformer_dequeue_encode_word' _ transformer _) as H';
         simpl in H'; eapply H' ].
     rewrite H12; reflexivity.
   - eassumption.
@@ -1140,11 +1236,19 @@ Proof.
     rewrite <- bextra_len_eq in *.
     simpl bin_measure in *; simpl transform in *.
     rewrite <- transform_ByteString_measure in *.
-    rewrite !ByteString_transform_assoc in *.
+    replace
+      (length_ByteString
+         (ByteString_append bextra
+                            (ByteString_enqueue_ByteString x (ByteString_enqueue_ByteString (encode_checksum B trans trans_opt 16 c) x1))))
+    with
+    (length_ByteString
+           (ByteString_enqueue_ByteString bextra
+              (ByteString_enqueue_ByteString x (ByteString_enqueue_ByteString (encode_checksum B trans trans_opt 16 c) x1)))) in *.
+    rewrite !ByteString_enqueue_ByteString_assoc in *.
     rewrite ByteString2ListOfChar_Over.
     rewrite ByteString2ListOfChar_Over in H12.
     eauto.
-    rewrite !transform_padding_eq.
+    rewrite !ByteString_enqueue_ByteString_padding_eq.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
@@ -1155,7 +1259,7 @@ Proof.
     rewrite <- (H1 _ _ _ _ H11) in H14.
     rewrite H13, H14, bextra_ByteAligned.
     reflexivity.
-    rewrite !transform_padding_eq.
+    rewrite !ByteString_enqueue_ByteString_padding_eq.
     apply H0 in H10.
     pose proof (H2 (project data)).
     rewrite <- H10 in H13.
@@ -1166,7 +1270,33 @@ Proof.
     rewrite <- (H1 _ _ _ _ H11) in H14.
     rewrite H13, H14, bextra_ByteAligned.
     reflexivity.
+    rewrite !ByteString_enqueue_ByteString_measure.
+    unfold ByteString_append.
+    rewrite length_ByteString_push_word.
+    rewrite length_ByteString_append.
+    unfold length_ByteString at 1.
+    rewrite !ByteString_enqueue_ByteString_measure.
+    omega.
 Qed.
+
+Ltac calculate_length_ByteString :=
+  intros;
+  match goal with
+  | H : computes_to _ _ |- _ =>
+    first [ eapply (length_ByteString_composeChecksum _ _ _ _ _ _ _ _ _ H);
+            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+          | eapply (length_ByteString_composeIf _ _ _ _ _ _ _ H);
+            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+          | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
+            try (simpl transform_id; rewrite length_ByteString_ByteString_id)
+          | eapply (fun H' H'' => length_ByteString_encode_option _ _ _ _ _ _ _ H' H'' H)
+          (*| eapply (length_ByteString_unused_word _ _ _ _ H) *)
+          | eapply (length_ByteString_bool _ _ _ _ H)
+          (* | eapply (length_ByteString_word _ _ _ _ _ H) *)
+          (* | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H) *)
+          | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
+  end.
+
 
 Lemma plus_32_mod_8 :
   forall n, NPeano.modulo (32 + n) 8 = NPeano.modulo n 8.

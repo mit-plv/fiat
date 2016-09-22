@@ -48,11 +48,11 @@ Definition UDP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (transform (transform (encode_word' 32 srcAddr)
-                (transform (encode_word' 32 destAddr)
-                (transform (encode_word' 8 (wzero 8))
-                (transform (encode_word' 8 (natToWord 8 17))
-                           (encode_word' 16 udpLength)))))
+                (transform (transform (encode_word srcAddr)
+                (transform (encode_word destAddr)
+                (transform (encode_word (wzero 8))
+                (transform (encode_word (natToWord 8 17))
+                           (encode_word udpLength)))))
                 b).
 
 Definition encode_UDP_Packet_Spec
