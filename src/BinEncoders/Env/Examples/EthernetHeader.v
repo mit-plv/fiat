@@ -66,9 +66,10 @@ Ltac shelve_inv :=
                      unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
   end.
 
-Ltac solve_data_inv :=
-    first [ simpl; intros; exact I
-| shelve_inv ].
+Ltac solve_data_inv data_inv_hints :=
+  first [ simpl; intros; exact I
+        | solve [intuition eauto using data_inv_hints]
+        | shelve_inv ].
 
 Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
@@ -171,6 +172,45 @@ Lemma valid_packet_len_OK_good_Len
     simpl; eapply BinNat.N.ltb_lt; reflexivity.
 Qed.
 
+Ltac start_synthesizing_decoder :=
+  (* Unfold encoder specification and the data and packet invariants *)
+  repeat
+    match goal with
+      |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv ?encodeSpec] =>
+      first [unfold dataInv
+            | unfold restInv
+            | unfold encodeSpec ]
+    | |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv (?encodeSpec _)] =>
+      first [unfold dataInv
+            | unfold restInv
+            | unfold encodeSpec ]
+    end;
+  
+  (* Memoize any string constants *)
+  pose_string_hyps;
+  (* Initialize the various goals with evars *)
+  eexists (_, _), _; split; simpl.
+
+Ltac decode_step :=
+  match goal with
+  | |- _ => apply_compose
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_Vector_Spec _) _ _] =>
+    intros; eapply Vector_decode_correct
+  | H : cache_inv_Property _ _
+    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    intros; revert H; eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
+    eapply Nat_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
+    eapply Enum_decode_correct
+  | |- NoDupVector _ => Discharge_NoDupVector
+  | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
+    intros; apply Vector_predicate_rest_True
+  | _ => solve [solve_data_inv valid_packet_len_OK_good_Len]
+  end.
+
 Definition EthernetHeader_decoder
   : { decodePlusCacheInv |
       forall packet_len,
@@ -182,46 +222,8 @@ Definition EthernetHeader_decoder
                                       (fst decodePlusCacheInv packet_len) (snd decodePlusCacheInv))
           /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  unfold encode_EthernetHeader_Spec, ethernet_Header_OK; pose_string_hyps.
-  eexists (_, _);
-    intros packet_len packet_len_OK; eexists _; split; simpl.
-  intros.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H0; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  apply_compose.
-  eapply Nat_decode_correct.
-  intuition eauto using valid_packet_len_OK_good_Len.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
+  start_synthesizing_decoder.
+  repeat decode_step.
   simpl; intros;
     eapply encode_decode_correct_finish.
   destruct a' as [? [? [? [ ] ] ] ] ;
@@ -236,11 +238,7 @@ Proof.
           | eapply decides_assumption; eassumption
           | apply decides_eq_refl
           | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
+  repeat decode_step.
   simpl; intros;
     eapply encode_decode_correct_finish.
   destruct a' as [? [? [? [ ] ] ] ] ;
