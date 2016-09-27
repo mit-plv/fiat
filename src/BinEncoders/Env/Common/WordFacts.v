@@ -1,4 +1,5 @@
 Require Export Bedrock.Word.
+Require Import Fiat.Common.DecideableEnsembles.
 
 Lemma wordToNat_lt sz
   : forall w w' : word sz,
@@ -25,3 +26,6 @@ Proof.
   unfold BinNat.N.lt; rewrite <- Nnat.Nat2N.inj_compare.
   eapply Compare_dec.nat_compare_lt; eassumption.
 Qed.
+
+Instance Query_eq_word {n} : Query_eq (Word.word n) :=
+  {| A_eq_dec := @Word.weq n |}.
