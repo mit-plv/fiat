@@ -146,3 +146,8 @@ Proof.
 Qed.
 
 Global Existing Instance eq_Reflexive.
+
+Lemma Equivalence_flip {A R} (H : @Equivalence A R) : Equivalence (flip R).
+Proof. split; exact _. Qed.
+
+Hint Extern 0 (Equivalence (flip _)) => apply Equivalence_flip : typeclass_instances.
