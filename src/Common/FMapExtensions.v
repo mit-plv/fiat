@@ -7,6 +7,7 @@ Require Import Coq.FSets.FMapFacts
         Fiat.Common.SetEqProperties
         Fiat.Common.List.ListFacts
         Fiat.Common.LogicFacts.
+Require Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
 
@@ -396,7 +397,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       intuition eauto.
   Qed.
 
-  Require Import Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
+  Import Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),
