@@ -508,10 +508,10 @@ Section recursive_descent_parser.
                      _ _ c); intro; subst A' B'; simpl @sumbool_rect
       | [ |- ?e = match ?ls with nil => _ | _ => _ end ]
         => is_evar e; refine (_ : match ls with nil => _ | _ => _ end = _)
-      | [ |- match ?ls with nil => ?A | x::xs => @?B x xs end = match ?ls with nil => ?A' | x::xs => @?B' x xs end ]
+      | [ |- match ?ls with nil => ?A | x::xs => @?B x xs end = match ?ls with nil => ?A' | x'::xs' => @?B' x' xs' end ]
         => refine (match ls
                          as ls'
-                         return match ls' with nil => A | x::xs => B x xs end = match ls' with nil => A' | x::xs => B' x xs end
+                         return match ls' with nil => A | x::xs => B x xs end = match ls' with nil => A' | x'::xs' => B' x' xs' end
                    with
                      | nil => _
                      | _ => _
