@@ -303,28 +303,28 @@ Local Ltac refine_refineEquiv_t A :=
   reflexivity.
 
 Global Instance refine_refineEquiv000_Proper {A}
-  : Proper (refineEquiv ==> refineEquiv ==> impl) (@refine A) | 10.
+  : Proper (refineEquiv ==> refineEquiv ==> impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv001_Proper {A}
-  : Proper (refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 10.
+  : Proper (refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv010_Proper {A}
-  : Proper (refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 10.
+  : Proper (refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv011_Proper {A}
-  : Proper (refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 10.
+  : Proper (refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv100_Proper {A}
-  : Proper (flip refineEquiv ==> refineEquiv ==> impl) (@refine A) | 10.
+  : Proper (flip refineEquiv ==> refineEquiv ==> impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv101_Proper {A}
-  : Proper (flip refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 10.
+  : Proper (flip refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv110_Proper {A}
-  : Proper (flip refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 10.
+  : Proper (flip refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 Global Instance refine_refineEquiv111_Proper {A}
-  : Proper (flip refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 10.
+  : Proper (flip refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 5.
 Proof. refine_refineEquiv_t A. Qed.
 
 Global Instance Bind_eq_Proper {A B}
