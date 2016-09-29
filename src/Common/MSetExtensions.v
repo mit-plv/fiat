@@ -24,23 +24,25 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     setoid_rewrite <- equal_iff; exact _.
   Qed.
 
-  Tactic Notation "setoid_rewrite_in_all" open_constr(lem) :=
+  Tactic Notation "setoid_rewrite_in_all" "guarded" tactic3(guard_tac) open_constr(lem) :=
     idtac;
     match goal with
-    | _ => rewrite !lem
-    | [ H : _ |- _ ] => rewrite !lem in H
-    | _ => setoid_rewrite lem
-    | [ H : _ |- _ ] => setoid_rewrite lem in H
+    | [ |- ?G ] => guard_tac G; rewrite !lem
+    | [ H : ?T |- _ ] => guard_tac T; rewrite !lem in H
+    | [ |- ?G ] => guard_tac G; setoid_rewrite lem
+    | [ H : ?T |- _ ] => guard_tac T; setoid_rewrite lem in H
     end.
+  Tactic Notation "setoid_rewrite_in_all" open_constr(lem) := setoid_rewrite_in_all guarded(fun T => idtac) lem.
 
-  Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) :=
+  Tactic Notation "setoid_rewrite_in_all" "guarded" tactic3(guard_tac) "<-" open_constr(lem) :=
     idtac;
     match goal with
-    | _ => rewrite <- !lem
-    | [ H : _ |- _ ] => rewrite <- !lem in H
-    | _ => setoid_rewrite <- lem
-    | [ H : _ |- _ ] => setoid_rewrite <- lem in H
+    | [ |- ?G ] => guard_tac G; rewrite <- !lem
+    | [ H : ?T |- _ ] => guard_tac T; rewrite <- !lem in H
+    | [ |- ?G ] => guard_tac G; setoid_rewrite <- lem
+    | [ H : ?T |- _ ] => guard_tac T; setoid_rewrite <- lem in H
     end.
+  Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) := setoid_rewrite_in_all guarded(fun T => idtac) <- lem.
 
   Ltac eq_bools_to_is_trues :=
     idtac;
@@ -75,11 +77,28 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     end.
 
   Ltac to_caps_step :=
-    first [ setoid_rewrite_in_all subset_spec
-          | setoid_rewrite_in_all equal_spec
-          | setoid_rewrite_in_all <- not_true_iff_false
-          | setoid_rewrite_in_all negb_true_iff
-          | setoid_rewrite_in_all mem_spec
+    first [ setoid_rewrite_in_all guarded(fun T => match T with
+                                                | context[subset _ _ = true] => idtac
+                                                | context[is_true (subset _ _)] => idtac
+                                                end)
+                                  subset_spec
+          | setoid_rewrite_in_all guarded(fun T => match T with
+                                                | context[equal _ _ = true] => idtac
+                                                | context[is_true (equal _ _)] => idtac
+                                                end)
+                                  equal_spec
+          | setoid_rewrite_in_all guarded(fun T => match T with context[_ = false] => idtac end)
+                                  <- not_true_iff_false
+          | setoid_rewrite_in_all guarded(fun T => match T with
+                                                | context[negb _ = true] => idtac
+                                                | context[is_true (negb _)] => idtac
+                                                end)
+                                  negb_true_iff
+          | setoid_rewrite_in_all guarded(fun T => match T with
+                                                | context[mem _ _ = true] => idtac
+                                                | context[is_true (mem _ _)] => idtac
+                                                end)
+                                  mem_spec
           | progress fold_is_true
           | progress eq_bools_to_is_trues
           | progress eq_bools_to_is_trues_in_all ].
