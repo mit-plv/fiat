@@ -130,6 +130,9 @@ Global Instance and_flip_impl_Proper
   : Proper (Basics.flip Basics.impl ==> Basics.flip Basics.impl ==> Basics.flip Basics.impl) and | 10.
 Proof. lazy; tauto. Qed.
 
+Hint Extern 0 (Proper (_ ==> Basics.impl --> _) and) => apply and_flip_impl_Proper : typeclass_instances.
+Hint Extern 0 (Proper (Basics.impl --> _ ==> _) and) => apply and_flip_impl_Proper : typeclass_instances.
+
 Global Instance eq_eq_impl_impl_Proper
   : Proper (eq ==> eq ==> Basics.impl) Basics.impl | 1
   := _.
