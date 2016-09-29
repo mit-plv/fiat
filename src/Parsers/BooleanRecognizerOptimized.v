@@ -764,7 +764,7 @@ Section recursive_descent_parser.
     end).
 
   Local Arguments Compare_dec.leb !_ !_.
-  Local Arguments to_nonterminal / .
+  Local Arguments to_nonterminal / _ _ _.
 
   Local Instance good_nth_proper {A}
   : Proper (eq ==> _ ==> _ ==> eq) (nth (A:=A))

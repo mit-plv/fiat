@@ -319,13 +319,13 @@ Proof.
   apply F_ext; intros; destruct_prods; eauto.
 Qed.
 
-Local Arguments flatten_forall / .
-Local Arguments flattenT / .
-Local Arguments flatten_forall_eq / .
-Local Arguments flatten_forall_eq_relation / .
-Local Arguments flatten_forall_eq_with_assumption / .
-Local Arguments flatten_forall_eq_relation_with_assumption / .
-Local Arguments flatten_append_forall / .
+Local Arguments flatten_forall / _ _.
+Local Arguments flattenT / _ _.
+Local Arguments flatten_forall_eq / _ _ _ _.
+Local Arguments flatten_forall_eq_relation / _ _ _ _.
+Local Arguments flatten_forall_eq_with_assumption / _ _ _ _ _.
+Local Arguments flatten_forall_eq_relation_with_assumption / _ _ _ _ _.
+Local Arguments flatten_append_forall / _ _ _ _.
 
 Local Notation type_of x := ((fun T (y : T) => T) _ x).
 

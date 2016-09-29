@@ -353,7 +353,7 @@ Section IndexedImpl.
          | invalid => ret dummy
          end.
 
-    Global Arguments ret_cases_to_comp / .
+    Global Arguments ret_cases_to_comp / _ _.
 
     Definition expanded_fallback_list'_body
       := (fun p
@@ -384,7 +384,7 @@ Section IndexedImpl.
                    (ret dummy));
           ret (s, ls))%comp.
 
-    Global Arguments expanded_fallback_list' / .
+    Global Arguments expanded_fallback_list' / _.
   End expanded_fallback_list'.
 
 
@@ -422,9 +422,9 @@ Section IndexedImpl.
   Definition expanded_fallback_list_alt
     := expanded_fallback_list' (fun str offset len idx p _ _ => split_list_is_complete_alt str offset len idx p).
 
-  Global Arguments expanded_fallback_list / .
-  Global Arguments expanded_fallback_list_alt / .
-  Global Arguments expanded_fallback_list_case / .
+  Global Arguments expanded_fallback_list / _ _ _ _ _ _.
+  Global Arguments expanded_fallback_list_alt / _ _ _ _ _ _.
+  Global Arguments expanded_fallback_list_case / _ _ _ _ _ _.
 
   Lemma expanded_fallback_list'_ext''
         (P1 P2 : String -> nat -> nat -> production_carrierT -> production _ -> production_carrierT -> production _ -> list nat -> Prop)

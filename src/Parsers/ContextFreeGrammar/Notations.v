@@ -50,7 +50,7 @@ Coercion rproduction_of_string (s : string) : rproduction Ascii.ascii
        | _ => (RNonTerminal s)::nil
      end.
 
-Global Arguments rproduction_of_string / .
+Global Arguments rproduction_of_string / _.
 
 (** juxtaposition of productions should yield concatenation *)
 Definition magic_juxta_append_rproduction {Char} (p ps : rproduction Char) : rproduction Char
@@ -69,12 +69,12 @@ Coercion char_to_test_eq (c : Ascii.ascii) : RCharExpr Ascii.ascii
 Coercion rproduction_of_RCharExpr {Char} (c : RCharExpr Char) : rproduction Char
   := (RTerminal c :: nil)%list.
 
-Global Arguments char_to_test_eq / .
-Global Arguments rproduction_of_RCharExpr / .
-Global Arguments rproduction_of_string / .
-Global Arguments magic_juxta_append_rproduction / .
-Global Arguments rproductions_of_rproduction / .
-Global Arguments magic_juxta_append_rproductions / .
+Global Arguments char_to_test_eq / _.
+Global Arguments rproduction_of_RCharExpr / _ _.
+Global Arguments rproduction_of_string / _.
+Global Arguments magic_juxta_append_rproduction / _ _ _.
+Global Arguments rproductions_of_rproduction / _ _.
+Global Arguments magic_juxta_append_rproductions / _ _ _.
 
 (** ** Notations *)
 
