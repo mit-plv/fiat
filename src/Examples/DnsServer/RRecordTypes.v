@@ -147,9 +147,9 @@ Section RData.
   (* types, such as words, strings and domain names. We only define *)
   (* types here for non-obsolete record types from RFC 1035. *)
 
-  (* A label is a list of ascii characters (string) *)
+  (* A label is a non-empty list of ascii characters (string) *)
   Definition Label := string.
-  Definition ValidLabel label := index 0 "." label = None.
+  Definition ValidLabel label := index 0 "." label = None /\ lt 0 (String.length label).
 
   (* A domain name is a sequence of labels separated by '.' *)
   Definition DomainName : Type := Label.

@@ -39,9 +39,6 @@ Section DnsPacket.
   Variable cacheGetDNPointer : CacheGet cache string pointerT.
   Variable cachePeekDNPointer : CachePeek cache pointerT.
 
-  Definition transformer : Transformer bin := btransformer.
-  Variable transformerUnit : TransformerUnitOpt transformer bool.
-
   Variable QType_Ws : t (word 16) 66.
   Variable QType_Ws_OK : NoDupVector QType_Ws.
   Variable QClass_Ws : t (word 16) 4.
@@ -85,7 +82,7 @@ Section DnsPacket.
 
   Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
        encode_characterString_Spec hinfo!"CPU"
-  ThenC encode_characterString_Spec hinfo!"OS" (* Should be character string!*)
+  ThenC encode_characterString_Spec hinfo!"OS"
   DoneC.
 
   Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
@@ -137,14 +134,16 @@ Section DnsPacket.
   ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
   DoneC.
 
+    Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
+
   Ltac normalize_compose :=
     eapply encode_decode_correct_refineEquiv;
     [ intros ? ?; symmetry;
-      repeat first [ etransitivity; [apply refineEquiv_compose_compose | ]
-                   | etransitivity; [apply refineEquiv_compose_Done | ]
-                   | apply refineEquiv_under_compose ];
+      repeat first [ etransitivity; [apply refineEquiv_compose_compose with (transformer := transformer)| ]
+                   | etransitivity; [apply refineEquiv_compose_Done with (transformer := transformer) | ]
+                   | apply refineEquiv_under_compose with (transformer := transformer) ];
       intros; higher_order_reflexivity
-        | ].
+    | ].
 
   Lemma firstn_app {A}
     : forall (l1 l2 : list A),
@@ -252,16 +251,16 @@ Section DnsPacket.
     rewrite (shatter_word_0 x0); reflexivity.
   Qed.
 
-  Ltac apply_compose :=
+  (*Ltac apply_compose :=
     intros;
     match goal with
       H : cache_inv_Property ?P ?P_inv |- _ =>
       first [eapply (compose_encode_correct_no_dep H); clear H
             | eapply (compose_encode_correct H); clear H
             ]
-    end.
+    end. *)
 
-  (*Theorem characterString_decode_correct
+  (* Theorem characterString_decode_correct
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall (b : nat) cd, P cd -> P (addD cd b)))
     : encode_decode_correct_f cache transformer (fun ls => lt (String.length ls) (pow2 8))
@@ -285,7 +284,8 @@ Section DnsPacket.
     unfold cache_inv_Property in *; eauto.
   Qed.
 *)
-  Ltac makeEvar T k :=
+
+  (*Ltac makeEvar T k :=
     let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
 
   Ltac shelve_inv :=
@@ -322,21 +322,126 @@ Section DnsPacket.
                    _ _ _
                    (encode_list_Spec _) _ _ =>
               eapply FixList_decode_correct end
-          | apply_compose ].
+          | apply_compose ]. *) *)
 
-  Require Import Fiat.Common.IterateBoundedIndex.
+  Require Import Fiat.Common.IterateBoundedIndex
+          Fiat.Common.Tactics.CacheStringConstant.
+
+  Lemma lt_1_pow2_16
+    : lt 1 (pow2 16).
+  Proof.
+    intros.
+    rewrite <- (wordToNat_natToWord_idempotent 16 1).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+Qed.
+
+  Hint Resolve lt_1_pow2_16 : data_inv_hints.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
   Definition packet_decoder
+             pred
     : { decodePlusCacheInv |
-        exists P_inv pred,
+        exists P_inv,
         (cache_inv_Property (snd decodePlusCacheInv) P_inv
-        -> encode_decode_correct_f cache _ pred encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+        -> encode_decode_correct_f _ transformer pred (fun _ _ => True) encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
   Proof.
-    eexists (_, _); eexists _; eexists _; split; simpl.
-    intros; normalize_compose.
+    start_synthesizing_decoder.
+    pose_string_ids.
+    intros; eapply encode_decode_correct_refineEquiv;
+      [intros ? ?; symmetry;
+       repeat first [ etransitivity; [apply refineEquiv_compose_compose with (transformer := transformer)| ]
+                    | etransitivity; [apply refineEquiv_compose_Done with (transformer := transformer) | ]
+                    | apply refineEquiv_under_compose with (transformer := transformer) ];
+       intros; higher_order_reflexivity
+      | pose_string_ids ].
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    admit. (* Need constraint on the number of answers. *)
+    decode_step.
+    decode_step.
+    decode_step.
+    admit. (* Need constraint on the number of authority responses. *)
+    decode_step.
+    decode_step.
+    decode_step.
+    admit. (* Need constraint on the number of additional responses. *)
+    decode_step.
+    decode_step.
+    intros.
+    eapply DomainName_decode_correct.
+    apply H12.
+    assert False as whatevs by (clear; admit); destruct whatevs.
+    admit. (* Need constraint on the validity of domainNames in question*)
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+
+
+
+
+
+
     build_decoder.
     build_decoder.
     solve_data_inv.

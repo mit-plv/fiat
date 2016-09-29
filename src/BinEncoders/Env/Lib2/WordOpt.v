@@ -132,8 +132,8 @@ Section Word.
   Qed.
 
   Lemma decode_word_le
-    : forall (cd : CacheDecode) (a : word sz)
-             (b' b1 : B) (cd' : CacheDecode),
+    : forall (b1 : B) (cd : CacheDecode) (a : word sz)
+             (b' : B) (cd' : CacheDecode),
       decode_word b1 cd = Some (a, b', cd') -> le_B b' b1.
   Proof.
     unfold decode_word.
@@ -161,8 +161,8 @@ Section Word.
   Qed.
 
   Lemma decode_word_lt
-    : forall (cd : CacheDecode) (a : word (S sz))
-             (b' b1 : B) (cd' : CacheDecode),
+    : forall (b' : B) (cd : CacheDecode) (a : word (S sz))
+             (b1 : B) (cd' : CacheDecode),
       Ifopt decode_word' _ b' as decoded Then Some (decoded, addD cd (S sz)) Else None = Some (a, b1, cd') -> lt_B b1 b'.
   Proof.
     intros; destruct (decode_word' (S sz) b') as [ [? ?] | ] eqn: ? ;

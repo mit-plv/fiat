@@ -78,6 +78,35 @@ Section Specifications.
       match a_opt with (a, bin') => k a bin' end
     Else None.
 
+  Lemma DecodeBindOpt2_inv
+        {C D E}
+        (a_opt : option (A * B * D))
+        (a : C * E * D)
+        (k : A -> B -> D -> option (C * E * D))
+    : DecodeBindOpt2 a_opt k = Some a ->
+      exists a' b' d',
+        a_opt = Some (a', b', d')
+        /\ Some a = k a' b' d'.
+  Proof.
+    unfold DecodeBindOpt2; destruct a_opt as [ [ [a' b'] d'] | ];
+      simpl; intros; first [discriminate | injections ].
+    eexists _, _, _; intuition eauto.
+  Qed.
+
+  Lemma DecodeBindOpt_inv
+        {C}
+        (a_opt : option (A * B))
+        (a : C * B)
+        (k : A -> B -> option (C * B))
+    : DecodeBindOpt a_opt k = Some a ->
+      exists a' b',
+        a_opt = Some (a', b')
+        /\ Some a = k a' b'.
+  Proof.
+    unfold DecodeBindOpt; destruct a_opt as [ [a' b'] | ];
+      simpl; intros; first [discriminate | injections ].
+    eexists _, _; intuition eauto.
+  Qed.
 
 End Specifications.
 

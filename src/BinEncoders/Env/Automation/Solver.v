@@ -152,7 +152,7 @@ Ltac synthesize_cache_invariant :=
 
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
-    start_synthesizing_decoder;
+  start_synthesizing_decoder;
     [ repeat decode_step
     | cbv beta; synthesize_cache_invariant ].
 
