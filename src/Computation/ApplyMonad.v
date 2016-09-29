@@ -51,28 +51,31 @@ Section monad.
 End monad.
 
 Ltac simplify_with_applied_monad_laws :=
-  progress repeat first [ apply refine_bind_unit_helper
-                        | apply refine_unit_bind_helper
-                        | apply refine_bind_bind_helper
-                        | eapply refine_under_bind_helper; [ let H := fresh in
-                                                             intros ? H;
-                                                               simplify_with_applied_monad_laws;
-                                                               exact H
-                                                           | let H := fresh in
-                                                             intros ? ? H;
-                                                               simplify_with_applied_monad_laws;
-                                                               exact H
-                                                           | ]
-                        | eapply refine_under_bind_helper_1; [ let H := fresh in
-                                                               intros ? H;
-                                                                 simplify_with_applied_monad_laws;
-                                                                 exact H
-                                                             | ]
-                        | eapply refine_under_bind_helper_2; [ let H := fresh in
-                                                               intros ? ? H;
-                                                                 simplify_with_applied_monad_laws;
-                                                                 exact H
-                                                             | ] ].
+  progress repeat first [ simple apply refine_bind_unit_helper
+                        | simple apply refine_unit_bind_helper
+                        | simple apply refine_bind_bind_helper
+                        | simple eapply refine_under_bind_helper;
+                          [ let H := fresh in
+                            intros ? H;
+                            simplify_with_applied_monad_laws;
+                            exact H
+                          | let H := fresh in
+                            intros ? ? H;
+                            simplify_with_applied_monad_laws;
+                            exact H
+                          | ]
+                        | simple eapply refine_under_bind_helper_1;
+                          [ let H := fresh in
+                            intros ? H;
+                            simplify_with_applied_monad_laws;
+                            exact H
+                          | ]
+                        | simple eapply refine_under_bind_helper_2;
+                          [ let H := fresh in
+                            intros ? ? H;
+                            simplify_with_applied_monad_laws;
+                            exact H
+                          | ] ].
 
 Tactic Notation "simplify" "with" "monad" "laws" :=
   simplify_with_applied_monad_laws.
