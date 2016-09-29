@@ -1037,29 +1037,28 @@ Section IndexedImpl.
              | _ => unfold rdp_list_production_carrier_valid in *; congruence
            end.
 
-    { abstract fin2. }
-    { abstract fin2. }
-    { abstract fin2. }
-    { abstract (
-          repeat match goal with
-                 | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
-                 | _ => progress subst
-                 | _ => erewrite <- has_only_terminals_length by eassumption
-                 | [ H : context[List.length _] |- _ ]
-                   => erewrite <- has_only_terminals_length in H by eassumption
-                 | _ => progress safe_setoid_subst_beq_r
-                 | _ => progress destruct_head or; try solve [ fin2 ]; []
-                 | [ H : ?x = ?y |- _ ] => is_var y; subst y
-                 | [ H : ?x = ?y |- _ ] => is_var x; subst x
-                 | _ => rewrite Min.min_r by omega
-                 | _ => progress fin2
-                 | [ H : ?x = ?x |- _ ] => clear H
-                 end;
-          repeat match goal with
-                 | [ H : _ = _ :> nat |- _ ] => revert H
-                 | [ H : _ <= _ |- _ ] => revert H
-                 end;
-          clear -HSLP; intros;
+    { fin2. }
+    { fin2. }
+    { fin2. }
+    { repeat match goal with
+             | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
+             | _ => progress subst
+             | _ => erewrite <- has_only_terminals_length by eassumption
+             | [ H : context[List.length _] |- _ ]
+               => erewrite <- has_only_terminals_length in H by eassumption
+             | _ => progress safe_setoid_subst_beq_r
+             | _ => progress destruct_head or; try solve [ fin2 ]; []
+             | [ H : ?x = ?y |- _ ] => is_var y; subst y
+             | [ H : ?x = ?y |- _ ] => is_var x; subst x
+             | _ => rewrite Min.min_r by omega
+             | _ => progress fin2
+             | [ H : ?x = ?x |- _ ] => clear H
+             end;
+        repeat match goal with
+               | [ H : _ = _ :> nat |- _ ] => revert H
+               | [ H : _ <= _ |- _ ] => revert H
+               end;
+        clear -HSLP; intros;
           rewrite !drop_length, !substring_length, Min.min_r, Nat.add_sub by omega;
           repeat match goal with
                  | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
@@ -1078,68 +1077,59 @@ Section IndexedImpl.
                  | _ => rewrite Min.min_r by omega
                  | _ => rewrite Min.min_l by omega
                  | _ => reflexivity
-                 end
-        ). }
-    {  abstract (
-          repeat match goal with
-                   | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
-                   | _ => progress subst
-                   | [ H : collapse_length_result ?e = Some _ |- _ ]
-                     => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
-                   | _ => intro
-                   | [ H : length_of_any ?G ?nt = _,
-                           p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
-                 end;
-          fin2
-        ). }
-    { abstract (
-          repeat match goal with
-                   | _ => progress fin_common
-                   | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
-                     => specialize (H _ _ H')
-                   | [ H : length ?x = _, H' : context[length ?x] |- _ ]
-                     => rewrite H in H'
-                   | _ => progress specialize_by assumption
-                   | _ => progress specialize_by ltac:(left; reflexivity)
-                   | _ => progress specialize_by ltac:(right; assumption)
-                   | [ H : context[length (substring _ 0 _)] |- _ ]
-                     => rewrite substring_length in H
-                   | _ => solve [ eauto with nocore ]
-                   | _ => progress safe_setoid_subst_beq_r
-                   | _ => progress specialize_by ltac:(exact eq_refl)
-                   | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
-                 end
-         ). }
-    { abstract (
-          repeat match goal with
-                   | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
-                   | _ => progress subst
-                   | [ H : collapse_length_result ?e = Some _ |- _ ]
-                     => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
-                   | _ => intro
-                   | [ H : length_of_any ?G ?nt = _,
-                           p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-                     => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
-                 end;
-          fin2
-        ). }
-    { abstract (
-          repeat match goal with
-                   | _ => progress fin_common
-                   | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
-                     => specialize (H _ _ H')
-                   | [ H : length ?x = _, H' : context[length ?x] |- _ ]
-                     => rewrite H in H'
-                   | _ => progress specialize_by assumption
-                   | _ => progress specialize_by ltac:(left; reflexivity)
-                   | _ => progress specialize_by ltac:(right; assumption)
-                   | _ => solve [ eauto with nocore ]
-                   | _ => progress safe_setoid_subst_beq_r
-                   | _ => progress specialize_by ltac:(exact eq_refl)
-                   | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
-                 end
-        ). }
+                 end. }
+    { repeat match goal with
+             | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
+             | _ => progress subst
+             | [ H : collapse_length_result ?e = Some _ |- _ ]
+               => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
+             | _ => intro
+             | [ H : length_of_any ?G ?nt = _,
+                     p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
+               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+             end;
+        fin2. }
+    { repeat match goal with
+             | _ => progress fin_common
+             | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
+               => specialize (H _ _ H')
+             | [ H : length ?x = _, H' : context[length ?x] |- _ ]
+               => rewrite H in H'
+             | _ => progress specialize_by assumption
+             | _ => progress specialize_by ltac:(left; reflexivity)
+             | _ => progress specialize_by ltac:(right; assumption)
+             | [ H : context[length (substring _ 0 _)] |- _ ]
+               => rewrite substring_length in H
+             | _ => solve [ eauto with nocore ]
+             | _ => progress safe_setoid_subst_beq_r
+             | _ => progress specialize_by ltac:(exact eq_refl)
+             | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
+             end. }
+    { repeat match goal with
+             | [ H : parse_of_production _ _ (_::_) |- _ ] => (inversion H; clear H)
+             | _ => progress subst
+             | [ H : collapse_length_result ?e = Some _ |- _ ]
+               => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
+             | _ => intro
+             | [ H : length_of_any ?G ?nt = _,
+                     p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
+               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+             end;
+        fin2. }
+    { repeat match goal with
+             | _ => progress fin_common
+             | [ H : forall x y, ?z = x::y -> _, H' : ?x = _::_ |- _ ]
+               => specialize (H _ _ H')
+             | [ H : length ?x = _, H' : context[length ?x] |- _ ]
+               => rewrite H in H'
+             | _ => progress specialize_by assumption
+             | _ => progress specialize_by ltac:(left; reflexivity)
+             | _ => progress specialize_by ltac:(right; assumption)
+             | _ => solve [ eauto with nocore ]
+             | _ => progress safe_setoid_subst_beq_r
+             | _ => progress specialize_by ltac:(exact eq_refl)
+             | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
+             end. }
   Qed.
 End IndexedImpl.
 
