@@ -1,4 +1,4 @@
-Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Program.Basics.
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Classes.RelationClasses Coq.Program.Basics.
 
 Global Instance arrow2_1_Proper {A B RA RB X Y}
        {H0 : Proper (RA ==> RB ==> flip impl) (fun (a : A) (b : B) => X a b)}
@@ -43,7 +43,7 @@ Proof.
   unfold Proper, impl, flip, respectful in *; eauto with nocore.
 Defined.
 Global Instance flip_impl_reflexive {A} {f}
-: Reflexive (fun x y : A => flip impl (f x) (f y)).
+: Reflexive (fun x y : A => flip impl (f x) (f y)) | 1.
 Proof.
   repeat intro; assumption.
 Defined.
@@ -144,3 +144,10 @@ Proof.
   split; intros H'' x';
     first [ rewrite H' | rewrite <- H' ]; auto.
 Qed.
+
+Global Existing Instance eq_Reflexive.
+
+Lemma Equivalence_flip {A R} (H : @Equivalence A R) : Equivalence (flip R).
+Proof. split; exact _. Qed.
+
+Hint Extern 0 (Equivalence (flip _)) => apply Equivalence_flip : typeclass_instances.

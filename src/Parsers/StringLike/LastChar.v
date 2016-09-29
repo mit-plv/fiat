@@ -86,7 +86,7 @@ Section for_last_char.
   Proof.
     unfold for_last_char;
       repeat match goal with
-             | [ |- (forall x, _) -> (forall x, _) ]
+             | [ |- (forall x, _) -> (forall y, _) ]
                => let x' := fresh in
                   let H := fresh in
                   intros H x'; specialize (H x'); revert H

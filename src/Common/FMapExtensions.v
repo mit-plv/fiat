@@ -7,6 +7,7 @@ Require Import Coq.FSets.FMapFacts
         Fiat.Common.SetEqProperties
         Fiat.Common.List.ListFacts
         Fiat.Common.LogicFacts.
+Require Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
 
@@ -396,7 +397,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       intuition eauto.
   Qed.
 
-  Require Import Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
+  Import Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
   Lemma InA_mapsto_add {Value} :
     forall bag' kv k' (v' : Value),
@@ -1497,62 +1498,96 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              elt elt' elt'' f H m m' x
     := @BasicFacts.map2_1bis elt elt' elt'' m m' x f H.
 
-  Tactic Notation "setoid_rewrite_in_all" open_constr(lem) :=
-    idtac;
-    match goal with
-    | _ => rewrite !lem
-    | [ H : _ |- _ ] => rewrite !lem in H
-    | _ => setoid_rewrite lem
-    | [ H : _ |- _ ] => setoid_rewrite lem in H
-    end.
+  Definition lift_brelation {A} (R : A -> A -> bool) (default : A) : t A -> t A -> bool
+    := fun m1 m2
+       => fold
+            (fun _ => andb)
+            (map2
+               (fun x1 x2
+                => match x1, x2 with
+                   | Some x1, Some x2 => Some (R x1 x2)
+                   | Some x, None => Some (R x default)
+                   | None, Some x => Some (R default x)
+                   | None, None => None
+                   end)
+               m1 m2)
+            true.
 
-  Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) :=
+  Tactic Notation "setoid_rewrite_in_all" "guarded" tactic3(guard_tac) open_constr(lem) :=
     idtac;
     match goal with
-    | _ => rewrite <- !lem
-    | [ H : _ |- _ ] => rewrite <- !lem in H
-    | _ => setoid_rewrite <- lem
-    | [ H : _ |- _ ] => setoid_rewrite <- lem in H
+    | [ |- ?G ] => guard_tac G; rewrite !lem
+    | [ H : ?T |- _ ] => guard_tac T; rewrite !lem in H
+    | [ |- ?G ] => guard_tac G; setoid_rewrite lem
+    | [ H : ?T |- _ ] => guard_tac T; setoid_rewrite lem in H
     end.
+  Tactic Notation "setoid_rewrite_in_all" open_constr(lem) := setoid_rewrite_in_all guarded(fun T => idtac) lem.
+
+  Tactic Notation "setoid_rewrite_in_all" "guarded" tactic3(guard_tac) "<-" open_constr(lem) :=
+    idtac;
+    match goal with
+    | [ |- ?G ] => guard_tac G; rewrite <- !lem
+    | [ H : ?T |- _ ] => guard_tac T; rewrite <- !lem in H
+    | [ |- ?G ] => guard_tac G; setoid_rewrite <- lem
+    | [ H : ?T |- _ ] => guard_tac T; setoid_rewrite <- lem in H
+    end.
+  Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) := setoid_rewrite_in_all guarded(fun T => idtac) <- lem.
 
   Ltac FMap_convert_step should_convert_from_to :=
     idtac;
-    first [ setoid_rewrite_in_all <- in_rev
-          | setoid_rewrite_in_all fold_right_andb_false
+    first [ progress cbv beta delta [lift_brelation] in *
+          | setoid_rewrite_in_all guarded(fun T => match T with context[List.In _ (rev _)] => idtac end)
+                                  <- in_rev
+          | setoid_rewrite_in_all guarded(fun T => match T with context[fold_right andb false _] => idtac end)
+                                  fold_right_andb_false
           | should_convert_from_to (@find) (@MapsTo);
-            setoid_rewrite_in_all <- find_mapsto_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[find _ _ = Some _] => idtac end)
+                                  <- find_mapsto_iff
           | should_convert_from_to (@MapsTo) (@find);
-            setoid_rewrite_in_all find_mapsto_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[MapsTo _ _ _] => idtac end)
+                                  find_mapsto_iff
           | should_convert_from_to (@InA) (@MapsTo);
-            setoid_rewrite_in_all <- elements_mapsto_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[InA (eq_key_elt (elt:=_)) (_, _) (elements _)] => idtac end)
+                                  <- elements_mapsto_iff
           | should_convert_from_to (@MapsTo) (@InA);
-            setoid_rewrite_in_all elements_mapsto_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[MapsTo (fst _) (snd _) _] => idtac end)
+                                  elements_mapsto_iff'
           | should_convert_from_to (@InA) (@MapsTo);
-            setoid_rewrite_in_all <- elements_mapsto_iff'
+            setoid_rewrite_in_all guarded(fun T => match T with context[InA (eq_key_elt (elt:=_)) _ (elements _)] => idtac end)
+                                  <- elements_mapsto_iff'
           | should_convert_from_to (@MapsTo) (@InA);
-            setoid_rewrite_in_all elements_mapsto_iff'
+            setoid_rewrite_in_all guarded(fun T => match T with context[MapsTo _ _ _] => idtac end)
+                                  elements_mapsto_iff
           | should_convert_from_to (@find) (@add);
-            setoid_rewrite_in_all add_o
+            setoid_rewrite_in_all guarded(fun T => match T with context[find _ (add _ _ _)] => idtac end)
+                                  add_o
           | should_convert_from_to (@add) (@find);
-            setoid_rewrite_in_all <- add_o
+            setoid_rewrite_in_all guarded(fun T => match T with context[if F.eq_dec _ _ then Some _ else find _ _] => idtac end)
+                                  <- add_o
           | should_convert_from_to (@find) (@map2);
-            setoid_rewrite_in_all (@map2_1bis_for_rewrite _ _ _ _ eq_refl)
+            setoid_rewrite_in_all guarded(fun T => match T with context[find _ (map2 _ _ _)] => idtac end)
+                                  (@map2_1bis_for_rewrite _ _ _ _ eq_refl)
           | should_convert_from_to (@find) (@map2);
-            setoid_rewrite_in_all map2_1bis_for_rewrite; [ | (reflexivity || assumption).. ]
-          | should_convert_from_to (@find) (@map2);
-            setoid_rewrite_in_all map2_1bis; [ | (reflexivity || assumption).. ]
+            setoid_rewrite_in_all guarded(fun T => match T with context[find _ (map2 _ _ _)] => idtac end)
+                                  map2_1bis_for_rewrite; [ | (reflexivity || assumption).. ]
           | should_convert_from_to (@find) (@In);
-            setoid_rewrite_in_all <- not_find_in_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[find _ _ = None] => idtac end)
+                                  <- not_find_in_iff
           | should_convert_from_to (@In) (@find);
-            setoid_rewrite_in_all not_find_in_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[~In _ _] => idtac end)
+                                  not_find_in_iff
           | should_convert_from_to (@InA) (@In);
-            setoid_rewrite_in_all <- elements_in_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[exists e, InA (eq_key_elt (elt:=_)) (_, _) (elements _)] => idtac end)
+                                  <- elements_in_iff
           | should_convert_from_to (@In) (@InA);
-            setoid_rewrite_in_all elements_in_iff
+            setoid_rewrite_in_all guarded(fun T => match T with context[In _ _] => idtac end)
+                                  elements_in_iff
           | should_convert_from_to (@fold) (@fold_left);
-            setoid_rewrite_in_all fold_1
+            setoid_rewrite_in_all guarded(fun T => match T with context[fold _ _ _] => idtac end)
+                                  fold_1
           | should_convert_from_to (@fold_left) (@fold);
-            setoid_rewrite_in_all <- fold_1
+            setoid_rewrite_in_all guarded(fun T => match T with context[fold_left _ (elements _) _] => idtac end)
+                                  <- fold_1
           | should_convert_from_to (@fold_left) (@fold_right);
             match goal with
             | [ |- appcontext[fold_left (fun a b => @?f b && a)%bool] ]
@@ -1561,14 +1596,22 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
               => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev in H
             end
           | should_convert_from_to (@fold_right) (@List.In);
-            setoid_rewrite_in_all fold_right_andb_map_in_iff
+              setoid_rewrite_in_all guarded(fun T => match T with
+                                                  | context[fold_right andb true (List.map _ _) = true] => idtac
+                                                  | context[is_true (fold_right andb true (List.map _ _))] => idtac
+                                                  end)
+                                  fold_right_andb_map_in_iff
           | should_convert_from_to (@List.In) (@InA);
-            setoid_rewrite_in_all forall_in_eq_key_elt_snd
+            setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x _ -> _] => idtac end)
+                                  forall_in_eq_key_elt_snd
           | should_convert_from_to (@List.In) (@InA);
-            setoid_rewrite_in_all (@forall_in_eq_key_elt_snd _ _ (fun k => _ k _))
+            setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x _ -> _] => idtac end)
+                                  (@forall_in_eq_key_elt_snd _ _ (fun k => _ k _))
           | should_convert_from_to false true;
-            setoid_rewrite_in_all <- not_true_iff_false
-          | setoid_rewrite_in_all empty_o
+            setoid_rewrite_in_all guarded(fun T => match T with context[_ = false] => idtac end)
+                                  <- not_true_iff_false
+          | setoid_rewrite_in_all guarded(fun T => match T with context[find _ (empty _)] => idtac end)
+                                  empty_o
           | match goal with H : _ |- _ => revert H end;
             FMap_convert_step should_convert_from_to;
             intros ].
@@ -1755,21 +1798,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     rewrite <- M.cardinal_1.
     apply cardinal_Empty; assumption.
   Qed.
-
-  Definition lift_brelation {A} (R : A -> A -> bool) (default : A) : t A -> t A -> bool
-    := fun m1 m2
-       => fold
-            (fun _ => andb)
-            (map2
-               (fun x1 x2
-                => match x1, x2 with
-                   | Some x1, Some x2 => Some (R x1 x2)
-                   | Some x, None => Some (R x default)
-                   | None, Some x => Some (R default x)
-                   | None, None => None
-                   end)
-               m1 m2)
-            true.
 
   Lemma fold_andb_true v
     : fold (fun _ => andb) v true <-> forall k, find k v <> Some false.
@@ -2073,6 +2101,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              | _ => congruence
              end.
   Qed.
+
+  Global Existing Instance eq_Reflexive. (* make [Reflexive _] resolve to [eq_Reflexive] *)
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.

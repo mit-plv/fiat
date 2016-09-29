@@ -106,7 +106,7 @@ Section correctness.
     | _ => rewrite Bool.orb_false_r
     | [ |- is_true (beq_nat _ _) ] => apply beq_nat_true_iff
     | [ H : beq_nat _ _ = true |- _ ] => apply beq_nat_true_iff in H
-    | [ H : forall P, (forall str, P str -> @?P' str) -> forall str, P str -> @?Q' str |- _ ]
+    | [ H : forall P, (forall str, P str -> @?P' str) -> forall str', P str' -> @?Q' str' |- _ ]
       => specialize (H P' (fun str pf => pf))
     | [ H : forall str, length str = ?n -> length str = ?n' |- _ ]
       => let H' := fresh in

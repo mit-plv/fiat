@@ -10,11 +10,11 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Common.FMapExtensionsWf.
 Require Import Fiat.Common.
 Require Import Fiat.Common.OptionFacts.
+Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
+Require Import Fiat.Common.SetoidInstances. (* must come after the above for instance priority *)
 
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
-
-Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
 
 Section grammar_fixedpoint.
   Context {Char : Type}.
@@ -121,11 +121,11 @@ Section grammar_fixedpoint.
     end.
   Local Ltac fold_andb_t := repeat fold_andb_t_step.
 
-  Global Instance aggregate_state_eq_Reflexive : Reflexive aggregate_state_eq := _.
-  Global Instance aggregate_state_eq_Symmetric : Symmetric aggregate_state_eq := _.
-  Global Instance aggregate_state_eq_Transitive : Transitive aggregate_state_eq := _.
-  Global Instance aggregate_state_le_Reflexive : Reflexive aggregate_state_le := _.
-  Global Instance aggregate_state_le_Transitive : Transitive aggregate_state_le := _.
+  Global Instance aggregate_state_eq_Reflexive : Reflexive aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_eq_Symmetric : Symmetric aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_eq_Transitive : Transitive aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_le_Reflexive : Reflexive aggregate_state_le | 1 := _.
+  Global Instance aggregate_state_le_Transitive : Transitive aggregate_state_le | 1 := _.
   Global Instance aggregate_state_eq_Proper_Equal
     : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_eq | 100
     := _.
@@ -136,10 +136,10 @@ Section grammar_fixedpoint.
     : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_lt | 100
     := _.
   Global Instance aggregate_state_le_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_le
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_le | 1
     := _.
   Global Instance aggregate_state_lt_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_lt
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_lt | 1
     := _.
 
   Definition aggregate_state_lub_f : option (state gdata) -> option (state gdata) -> option (state gdata)
@@ -249,20 +249,20 @@ Section grammar_fixedpoint.
   Defined.
 
   Global Instance aggregate_state_lub_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> aggregate_state_eq) aggregate_state_lub.
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> aggregate_state_eq) aggregate_state_lub | 1.
   Proof.
     unfold aggregate_state_eq, aggregate_state_lub, aggregate_state_lub_f.
     refine PositiveMapExtensions.map2_defaulted_Proper_lift_brelation.
   Qed.
 
   Global Instance from_aggregate_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> state_beq) from_aggregate_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) from_aggregate_state | 1.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, from_aggregate_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
 
   Global Instance aggregate_step_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step.
+    : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step | 1.
   Proof.
     intros x y H.
     assert (H' : pointwise_relation _ state_beq (from_aggregate_state x) (from_aggregate_state y)) by (intro; setoid_rewrite H; reflexivity).
@@ -290,7 +290,7 @@ Section grammar_fixedpoint.
   Qed.
 
   Global Instance lookup_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> state_beq) lookup_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) lookup_state | 1.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, lookup_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
