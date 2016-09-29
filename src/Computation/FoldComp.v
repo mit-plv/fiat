@@ -37,11 +37,11 @@ Proof.
   revert z.
   revert ls.
   induction ls; intros; simpl; trivial.
-    reflexivity.
-  f_equiv.
-    apply H; trivial.
-  unfold pointwise_relation in *; intros.
-  apply IHls.
+  { reflexivity. }
+  { apply refineEquiv_bind.
+    { apply H; trivial. }
+    { unfold pointwise_relation in *; intros.
+      apply IHls. } }
 Qed.
 
 Add Parametric Morphism A B : (@foldComp A B)
