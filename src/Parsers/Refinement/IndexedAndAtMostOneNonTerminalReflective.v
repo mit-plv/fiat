@@ -741,8 +741,8 @@ Section IndexedImpl.
 
   Local Ltac do_Iterate_Ensemble_BoundedIndex_equiv :=
     eapply Iterate_Ensemble_BoundedIndex_equiv;
-    cbv beta iota zeta delta [Iterate_Ensemble_BoundedIndex Constructors Methods Iterate_Ensemble_BoundedIndex' string_spec BuildADT getConsDef getMethDef ith icons inil Vector.caseS Vector_caseS' ilist_hd ilist_tl ilist.prim_fst ilist.prim_snd consBody methBody ConstructorDom Rep string_rep DecADTSig BuildADTSig consDom Vector.nth MethodDomCod methDom methCod refineConstructor refineMethod refineMethod'];
-    simpl @fst; simpl @snd;
+    repeat (cbv [Iterate_Ensemble_BoundedIndex Constructors Methods Iterate_Ensemble_BoundedIndex' string_spec BuildADT getConsDef getMethDef ith icons inil Vector.caseS Vector_caseS' ilist_hd ilist_tl ilist.prim_fst ilist.prim_snd consBody methBody ConstructorDom Rep string_rep DecADTSig BuildADTSig consDom Vector.nth MethodDomCod methDom methCod refineConstructor refineMethod refineMethod' ConstructorIndex string_spec'];
+            simpl @fst; simpl @snd);
     repeat match goal with
              | [ |- prim_and _ _ ] => split
            end;
