@@ -136,9 +136,12 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
 
   Ltac push_In_step :=
     first [ progress unfold Equal in *
-          | setoid_rewrite_in_all union_spec
-          | setoid_rewrite_in_all inter_spec
-          | setoid_rewrite_in_all filter_spec; [ | let H := fresh in intros ?? H; hnf in H; substs; reflexivity.. ] ].
+          | setoid_rewrite_in_all guarded(fun T => match T with context[In _ (union _ _)] => idtac end)
+                                  union_spec
+          | setoid_rewrite_in_all guarded(fun T => match T with context[In _ (inter _ _)] => idtac end)
+                                  inter_spec
+          | setoid_rewrite_in_all guarded(fun T => match T with context[In _ (filter _ _)] => idtac end)
+                                  filter_spec; [ | let H := fresh in intros ?? H; hnf in H; substs; reflexivity.. ] ].
 
   Ltac push_In := repeat push_In_step.
 
@@ -243,7 +246,8 @@ Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
     end.
   Ltac cardinal_to_list := repeat cardinal_to_list_step.
   Ltac in_to_elements :=
-    repeat setoid_rewrite_in_all BasicFacts.elements_iff;
+    repeat (setoid_rewrite_in_all guarded(fun T => match T with context[In _ _] => idtac end)
+                                  BasicFacts.elements_iff);
     repeat match goal with
            | [ H : elements ?v = _ |- _ ]
              => rewrite !H
