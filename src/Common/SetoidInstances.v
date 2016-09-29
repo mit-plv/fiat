@@ -169,11 +169,9 @@ Ltac solve_Proper_eqs :=
   idtac;
   lazymatch goal with
   | [ |- Proper _ _ ] => apply @reflexive_proper; solve_Proper_eqs
-  | [ |- Reflexive eq ] => apply eq_Reflexive
-  | [ |- Reflexive (eq ==> _)%signature ]
-    => apply @reflexive_eq_dom_reflexive
-  | [ |- Reflexive (?e ==> _)%signature ]
-    => apply @reflexive_eq_dom_reflexive
+  | [ |- Reflexive (_ ==> _)%signature ]
+    => apply @reflexive_eq_dom_reflexive; solve_Proper_eqs
+  | [ |- Reflexive _ ] => apply eq_Reflexive
   end.
 Ltac is_evar_or_eq e :=
   first [ is_evar e

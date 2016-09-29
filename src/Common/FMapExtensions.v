@@ -2101,6 +2101,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              | _ => congruence
              end.
   Qed.
+
+  Global Existing Instance eq_Reflexive. (* make [Reflexive _] resolve to [eq_Reflexive] *)
 End FMapExtensions_fun.
 
 Module FMapExtensions (M: WS) := FMapExtensions_fun M.E M.
