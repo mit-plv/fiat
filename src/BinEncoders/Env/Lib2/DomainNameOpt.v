@@ -73,7 +73,7 @@ Section DomainName.
               `(ptr2b, env') <- encode_word_Spec (snd position) env';
               ret (transform ptr1b ptr2b, env'))
              Else (`(label, domain') <- { labeldomain' |
-                                          domain = (fst labeldomain') ++ (snd labeldomain')
+                                          (domain = (fst labeldomain') ++ String "." (snd labeldomain') \/ labeldomain' = (domain, ""))
                                           /\ ValidLabel (fst labeldomain')
                                           /\ (forall label' post',
                                                  domain = label' ++ post'
@@ -85,7 +85,7 @@ Section DomainName.
                      ret (transform (transform lenb labelb) domainb, addE env' (domain, peekE env)))
              Else
              (`(label, domain') <- { labeldomain' |
-                                          domain = (fst labeldomain') ++ (snd labeldomain')
+                                     (domain = (fst labeldomain') ++ String "." (snd labeldomain') \/ labeldomain' = (domain, ""))
                                           /\ ValidLabel (fst labeldomain')
                                           /\ (forall label' post',
                                                  domain = label' ++ post'
@@ -141,19 +141,50 @@ Section DomainName.
   Lemma ValidDomainName_app
     : forall label subdomain,
       ValidLabel label ->
-      ValidDomainName (label ++ subdomain)
+      ValidDomainName (label ++ (String "." subdomain))
       -> ValidDomainName subdomain.
   Proof.
+    unfold ValidDomainName; split; intros.
+    - eapply H0; try eassumption.
+      rewrite H1.
+      change (String "." (pre ++ label0 ++ post)%string) with
+      ((String "." pre) ++ label0 ++ post)%string.
+      rewrite append_assoc.
+      reflexivity.
+    - destruct H0; subst.
+      destruct (H2 (label ++ String "." pre)%string post) as [? [? [? ?] ] ].
+      rewrite <- !append_assoc; f_equal.
+      repeat split; eauto.
+      intro; apply H5; subst.
+      eexists; simpl; eauto.
+      intro; apply H5; subst.
+      destruct_ex; subst.
+      eexists (label ++ String "." x)%string; simpl; eauto.
+      rewrite <- !append_assoc; eauto.
+  Qed.
+
+  Lemma ValidDomainName_app'
+    : forall label subdomain,
+      ValidLabel label
+      -> ValidDomainName subdomain
+      -> ValidDomainName (label ++ (String "." subdomain)).
+  Proof.
     unfold ValidDomainName; intros.
-    eapply H0; try eassumption.
-    rewrite H1.
-    rewrite append_assoc.
-    reflexivity.
+  Admitted.
+
+  Lemma ValidDomainName_Empty
+    : ValidDomainName "".
+  Proof.
+    unfold ValidDomainName; split; intros.
+    - destruct pre; try discriminate.
+      destruct label; try discriminate.
+      simpl; omega.
+    - destruct pre; try discriminate.
   Qed.
 
   Lemma chomp_label_length
     : forall n label subdomain,
-      (String.length (label ++ subdomain) <= S n)%nat
+      (String.length (label ++ (String "." subdomain)) <= S n)%nat
       -> ValidLabel label
       -> (String.length subdomain <= n)%nat.
   Proof.
@@ -182,8 +213,13 @@ Section DomainName.
               | right n =>
              (`(label, b3, env') <- Decode_w_Measure_lt (decode_string (wordToNat labelheader))
                (proj1_sig b1) env' (decode_string_lt _ (n_eq_0_lt _ n));
-              `(domain, b4, e3) <- rec (proj1_sig b3) (lt_B_trans _ _ _) env';
-              Some (label ++ domain, b4, addD e3 (label ++ domain, peekD cd))) end)
+              Ifopt (index 0 "." label) as _ Then None
+              Else (`(domain, b4, e3) <- rec (proj1_sig b3) (lt_B_trans _ _ _) env';
+              If (string_dec domain "") Then
+                 Some (label, b4, addD e3 (label, peekD cd))
+                 Else Some (label ++ (String "." domain), b4,
+                            addD e3 (label ++ (String "." domain), peekD cd))
+             )) end)
          Else None))%string b env);
     try exact decode_word_le;
       try exact decode_word_lt.
@@ -207,15 +243,18 @@ Section DomainName.
                | in_left => Some (""%string, ` b1, env')
                | right n =>
                    `(label, b3, env'0) <- Decode_w_Measure_lt
-                                            (decode_string (wordToNat labelheader)) 
+                                            (decode_string (wordToNat labelheader))
                                             (` b1) env'
-                                            (decode_string_lt 
+                                            (decode_string_lt
                                                (wordToNat labelheader)
                                                (n_eq_0_lt labelheader n));
+                    Ifopt (index 0 "." label) as _ Then None
+                    Else (
                    `(domain, b4, e3) <- f (` b3) (lt_B_trans x b1 b3) env'0;
-                   Some
-                     ((label ++ domain)%string, b4,
-                     addD e3 ((label ++ domain)%string, peekD cd))
+                   If (string_dec domain "") Then
+                      Some (label, b4, addD e3 (label, peekD cd))
+                   Else Some (label ++ (String "." domain), b4,
+                            addD e3 (label ++ (String "." domain), peekD cd)))%string
                end Else None)) =
    (fun cd : CacheDecode =>
     `(labelheader, b1, env') <- Decode_w_Measure_le decode_word x cd decode_word_le;
@@ -231,15 +270,18 @@ Section DomainName.
                | in_left => Some (""%string, ` b1, env')
                | right n =>
                    `(label, b3, env'0) <- Decode_w_Measure_lt
-                                            (decode_string (wordToNat labelheader)) 
+                                            (decode_string (wordToNat labelheader))
                                             (` b1) env'
-                                            (decode_string_lt 
+                                            (decode_string_lt
                                                (wordToNat labelheader)
                                                (n_eq_0_lt labelheader n));
-                   `(domain, b4, e3) <- g (` b3) (lt_B_trans x b1 b3) env'0;
-                   Some
-                     ((label ++ domain)%string, b4,
-                     addD e3 ((label ++ domain)%string, peekD cd))
+                     Ifopt (index 0 "." label) as _ Then None
+                     Else (
+                     `(domain, b4, e3) <- g (` b3) (lt_B_trans x b1 b3) env'0;
+                       If (string_dec domain "") Then
+                          Some (label, b4, addD e3 (label, peekD cd))
+                       Else Some (label ++ (String "." domain), b4,
+                                  addD e3 (label ++ (String "." domain), peekD cd)))%string
                end Else None)).
   Proof.
     intros; apply functional_extensionality; intros.
@@ -249,113 +291,183 @@ Section DomainName.
     destruct (wlt_dec x1 WO~0~1~0~0~0~0~0~0); simpl.
     destruct (weq x1 (wzero 8)).
     reflexivity.
-    repeat (f_equal; apply functional_extensionality; intros);
-      rewrite H; reflexivity.
+    repeat (f_equal; apply functional_extensionality; intros).
+    destruct (index 0 "." x4); simpl; eauto.
+    rewrite H; reflexivity.
     reflexivity.
   Qed.
-  
+
   Lemma encode_body_monotone
     : forall rec rec' : funType [DomainName; CacheEncode] (B * CacheEncode),
-   refineFun rec rec' ->
-   refineFun (fDom := [DomainName; CacheEncode])
-     (fun (domain : DomainName) (env0 : CacheEncode) =>
-      If string_dec domain "" Then encode_ascii_Spec terminal_char env0
-      Else (Ifopt getE env0 domain as position
-            Then b <- {_ : bool | True};
-                 If b
-                 Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
-                      `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
-                      ret (transform ptr1b ptr2b, env'0)
-                 Else (`(label, domain') <- {labeldomain' :
-                                            string * string |
-                                            domain =
-                                            (fst labeldomain' ++ snd labeldomain')%string /\
-                                            ValidLabel (fst labeldomain') /\
-                                            (forall label' post' : string,
-                                             domain = (label' ++ post')%string ->
-                                             ValidLabel label' ->
-                                             (String.length label' <=
-                                              String.length (fst labeldomain'))%nat)};
-                       `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                       `(labelb, env'0) <- encode_string_Spec label env';
-                       `(domainb, env'1) <- rec domain' env'0;
-                       ret
-                         (transform (transform lenb labelb) domainb,
-                         addE env'1 (domain, peekE env0)))
-            Else (`(label, domain') <- {labeldomain' :
-                                       string * string |
-                                       domain = (fst labeldomain' ++ snd labeldomain')%string /\
-                                       ValidLabel (fst labeldomain') /\
-                                       (forall label' post' : string,
-                                        domain = (label' ++ post')%string ->
-                                        ValidLabel label' ->
-                                        (String.length label' <=
-                                         String.length (fst labeldomain'))%nat)};
-                  `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                  `(labelb, env'0) <- encode_string_Spec label env';
-                  `(domainb, env'1) <- rec domain' env'0;
-                  ret
-                    (transform (transform lenb labelb) domainb,
-                    addE env'1 (domain, peekE env0)))))
-     (fun (domain : DomainName) (env0 : CacheEncode) =>
-      If string_dec domain "" Then encode_ascii_Spec terminal_char env0
-      Else (Ifopt getE env0 domain as position
-            Then b <- {_ : bool | True};
-                 If b
-                 Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
-                      `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
-                      ret (transform ptr1b ptr2b, env'0)
-                 Else (`(label, domain') <- {labeldomain' :
-                                            string * string |
-                                            domain =
-                                            (fst labeldomain' ++ snd labeldomain')%string /\
-                                            ValidLabel (fst labeldomain') /\
-                                            (forall label' post' : string,
-                                             domain = (label' ++ post')%string ->
-                                             ValidLabel label' ->
-                                             (String.length label' <=
-                                              String.length (fst labeldomain'))%nat)};
-                       `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                       `(labelb, env'0) <- encode_string_Spec label env';
-                       `(domainb, env'1) <- rec' domain' env'0;
-                       ret
-                         (transform (transform lenb labelb) domainb,
-                         addE env'1 (domain, peekE env0)))
-            Else (`(label, domain') <- {labeldomain' :
-                                       string * string |
-                                       domain = (fst labeldomain' ++ snd labeldomain')%string /\
-                                       ValidLabel (fst labeldomain') /\
-                                       (forall label' post' : string,
-                                        domain = (label' ++ post')%string ->
-                                        ValidLabel label' ->
-                                        (String.length label' <=
-                                         String.length (fst labeldomain'))%nat)};
-                  `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                  `(labelb, env'0) <- encode_string_Spec label env';
-                  `(domainb, env'1) <- rec' domain' env'0;
-                  ret
-                    (transform (transform lenb labelb) domainb,
-                    addE env'1 (domain, peekE env0))))).
+ refineFun rec rec' ->
+ refineFun (fDom := [DomainName; CacheEncode])
+   (fun (domain : DomainName) (env0 : CacheEncode) =>
+    If string_dec domain "" Then encode_ascii_Spec terminal_char env0
+    Else (Ifopt getE env0 domain as position
+          Then b <- {_ : bool | True};
+               If b
+               Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
+                    `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
+                    ret (transform ptr1b ptr2b, env'0)
+               Else (`(label, domain') <- {labeldomain' :
+                                          string * string |
+                                          (domain =
+                                           (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                           labeldomain' = (domain, ""%string)) /\
+                                          ValidLabel (fst labeldomain') /\
+                                          (forall label' post' : string,
+                                           domain = (label' ++ post')%string ->
+                                           ValidLabel label' ->
+                                           (String.length label' <=
+                                            String.length (fst labeldomain'))%nat)};
+                     `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
+                     `(labelb, env'0) <- encode_string_Spec label env';
+                     `(domainb, env'1) <- rec domain' env'0;
+                     ret
+                       (transform (transform lenb labelb) domainb,
+                       addE env'1 (domain, peekE env0)))
+          Else (`(label, domain') <- {labeldomain' :
+                                        string * string |
+                                      (domain =
+                                           (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                           labeldomain' = (domain, ""%string)) /\
+                                     ValidLabel (fst labeldomain') /\
+                                     (forall label' post' : string,
+                                      domain = (label' ++ post')%string ->
+                                      ValidLabel label' ->
+                                      (String.length label' <= String.length (fst labeldomain'))%nat)};
+                `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
+                `(labelb, env'0) <- encode_string_Spec label env';
+                `(domainb, env'1) <- rec domain' env'0;
+                ret
+                  (transform (transform lenb labelb) domainb, addE env'1 (domain, peekE env0)))))
+   (fun (domain : DomainName) (env0 : CacheEncode) =>
+    If string_dec domain "" Then encode_ascii_Spec terminal_char env0
+    Else (Ifopt getE env0 domain as position
+          Then b <- {_ : bool | True};
+               If b
+               Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
+                    `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
+                    ret (transform ptr1b ptr2b, env'0)
+               Else (`(label, domain') <- {labeldomain' :
+                                          string * string |
+                                           (domain =
+                                           (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                           labeldomain' = (domain, ""%string)) /\
+                                          ValidLabel (fst labeldomain') /\
+                                          (forall label' post' : string,
+                                           domain = (label' ++ post')%string ->
+                                           ValidLabel label' ->
+                                           (String.length label' <=
+                                            String.length (fst labeldomain'))%nat)};
+                     `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
+                     `(labelb, env'0) <- encode_string_Spec label env';
+                     `(domainb, env'1) <- rec' domain' env'0;
+                     ret
+                       (transform (transform lenb labelb) domainb,
+                       addE env'1 (domain, peekE env0)))
+          Else (`(label, domain') <- {labeldomain' :
+                                        string * string |
+                                      (domain =
+                                           (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                           labeldomain' = (domain, ""%string)) /\
+                                        ValidLabel (fst labeldomain') /\
+                                     (forall label' post' : string,
+                                      domain = (label' ++ post')%string ->
+                                      ValidLabel label' ->
+                                      (String.length label' <= String.length (fst labeldomain'))%nat)};
+                `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
+                `(labelb, env'0) <- encode_string_Spec label env';
+                `(domainb, env'1) <- rec' domain' env'0;
+                ret
+                  (transform (transform lenb labelb) domainb, addE env'1 (domain, peekE env0))))).
   Proof.
     simpl; intros; unfold Bind2.
     apply General.refine_if; intros; rewrite H0; simpl.
     reflexivity.
     apply SetoidMorphisms.refine_If_Opt_Then_Else_Proper.
     * intro; f_equiv; intro.
-      apply General.refine_if; intros H5; rewrite H5; simpl;
-        unfold Bind2; f_equiv; intro.
-      setoid_rewrite H; reflexivity.
+      apply General.refine_if; intros H5; rewrite H5; simpl.
+      reflexivity.
+      unfold Bind2; f_equiv; eauto.
+      intro; setoid_rewrite H; reflexivity.
     * f_equiv; intro.
       unfold Bind2; f_equiv; intro.
       setoid_rewrite H; reflexivity.
   Qed.
 
+  Lemma Decode_w_Measure_le_eq'
+    : forall (A B : Type) (cache : Cache) (transformer : Transformer B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_le A_decode b cd A_decode_le = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_le; intros.
+    revert pf H.
+    generalize (A_decode_le b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
+  Qed.
+
+  Lemma Decode_w_Measure_lt_eq'
+    : forall (A B : Type) (cache : Cache) (transformer : Transformer B)
+             (A_decode : B -> CacheDecode -> option (A * B * CacheDecode))
+             (b : B) (cd : CacheDecode)
+             (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+                 A_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0)
+             (a' : A) (b' : B) (cd' : CacheDecode)
+             pf,
+      Decode_w_Measure_lt A_decode b cd A_decode_lt = Some (a', pf, cd')
+      -> A_decode b cd = Some (a', `pf , cd').
+  Proof.
+    unfold Decode_w_Measure_lt; intros.
+    revert pf H.
+    generalize (A_decode_lt b cd).
+    destruct (A_decode b cd) as [ [ [? ?] ?] | ]; simpl; intros;
+      try discriminate.
+    injections; reflexivity.
+  Qed.
+
+  Lemma append_EmptyString_r :
+    forall l, l = ("" ++ l ++ "")%string.
+  Proof.
+    simpl.
+    induction l; simpl; eauto.
+    f_equal; eauto.
+  Qed.
+
+  Lemma NonEmpty_String_wordToNat
+    : forall n s w,
+      String.length s = wordToNat w
+      -> w <> wzero n
+      -> s <> ""%string.
+  Proof.
+    unfold not; intros; apply H0; subst.
+    generalize (f_equal (natToWord n) H);
+      rewrite natToWord_wordToNat; simpl; eauto.
+  Qed.
+
+  Lemma ValidLabel_split_char :
+    forall s label subdomain subdomain',
+      (s ++ String "." subdomain)%string = (label ++ subdomain')%string
+      -> ValidLabel label
+      -> le (String.length label) (String.length s).
+  Proof.
+  Admitted.
+
   (* Commenting out until I can patch up proof. *)
   Theorem DomainName_decode_correct
-          {P : CacheDecode -> Prop}
-          (P_OK : cache_inv_Property P (fun P => forall (b : nat) cd, P cd -> P (addD cd b)))
-          (Get_P_OK
-           : cache_inv_Property P
+          (P_OK : forall (b : nat) (cd : CacheDecode),
+              cache_inv cd
+              -> cache_inv (addD cd b))
+          (Get_cache_inv_OK
+           : cache_inv_Property cache_inv
                                 (fun P => forall ce l p1 p2,
                                      (@getE _ DomainName _ _ ce l = Some (p1, p2)
                                       -> wlt (natToWord 8 191) p1)))
@@ -364,7 +476,7 @@ Section DomainName.
       cache transformer
       (fun domain => ValidDomainName domain)
       (fun _ _ => True)
-      encode_DomainName_Spec decode_DomainName P.
+      encode_DomainName_Spec decode_DomainName cache_inv.
   Proof.
     unfold encode_decode_correct_f; split.
     { intros env xenv xenv' l l' ext Eeq Valid_data
@@ -458,7 +570,7 @@ Section DomainName.
                       unfold DomainName, pointerT in *; rewrite GetPtr.
                     destruct l; try congruence.
                     reflexivity.
-                  * apply Get_P_OK in GetPtr; contradiction.
+                  * apply Get_cache_inv_OK in GetPtr; contradiction.
                 + intros; apply functional_extensionality; intros.
                   repeat (f_equal; apply functional_extensionality; intros).
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x1); simpl.
@@ -475,8 +587,9 @@ Section DomainName.
                 destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
                   destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
                     simpl in *; injections.
+                generalize l_eq; intros [l_eq' | l_eq'].
                 destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
-                pose proof (Valid_data ""%string label1 label2 (eq_refl _) label1_OK).
+                pose proof ((proj1 Valid_data) ""%string label1 _ l_eq' label1_OK).
                 simpl; omega.
                 destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
                 eapply IHn in Penc''''.
@@ -498,7 +611,7 @@ Section DomainName.
                   simpl in H4.
                   destruct (H4 _ _ _ (eq_refl _)).
                   rewrite <- !transform_assoc, H0; simpl; clear H0.
-                  pose proof (Valid_data ""%string label1 label2 (eq_refl _) label1_OK) as w';
+                  pose proof ((proj1 Valid_data) ""%string label1 _ (eq_refl _) label1_OK) as w';
                     rewrite H8 in w'.
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
                     try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
@@ -513,7 +626,13 @@ Section DomainName.
                     end.
                     simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
                     destruct (H0 _ _ _ (eq_refl _)).
-                    rewrite H5; simpl; rewrite H2; reflexivity.
+                    rewrite H5; simpl; rewrite H2.
+                    destruct label1_OK as [H6' _]; rewrite H6';
+                      simpl.
+                    destruct (string_dec label2 ""); simpl;
+                      try reflexivity.
+                    generalize (proj2 Valid_data label1 label2 (eq_refl _)); intros;
+                    rewrite e in H6; intuition.
                   * destruct n2.
                     rewrite <- natToWord_wordToNat;
                       rewrite <- (natToWord_wordToNat x).
@@ -527,205 +646,458 @@ Section DomainName.
                     simpl. unfold BinPos.Pos.to_nat; simpl.
                     omega.
                     simpl; omega.
-                + erewrite peek_correct.
+                + erewrite peek_correct, l_eq'.
                   apply add_correct; eauto.
                   eauto.
-                + eauto using ValidDomainName_app.
-                + eauto using chomp_label_length.
+                + subst; eauto using ValidDomainName_app.
+                + subst; eauto using chomp_label_length.
                 + eassumption.
+                + injections.
+                  destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
+                  pose proof (proj1 Valid_data ""%string l ""%string (append_EmptyString_r _) label1_OK).
+                simpl; omega.
+                destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
+                eapply IHn in Penc''''.
+                destruct Penc'''' as [xenv7 [? ?] ].
+                eexists; split.
+                rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
+                  * match goal with
+                      |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
+                      pose proof (Decode_w_Measure_le_eq x y z m)
+                    end.
+                    simpl in H4;
+                      unfold decode_word at 1 in H4.
+                    rewrite <- !transform_assoc in H4.
+                    unfold decode_nat in H0.
+                    apply DecodeBindOpt2_inv in H0;
+                      destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+                    unfold decode_word in H0.
+                    destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+                    simpl in H4.
+                    destruct (H4 _ _ _ (eq_refl _)).
+                    rewrite <- !transform_assoc, H0; simpl; clear H0.
+                    pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
+                    rewrite H8 in w'.
+                  destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
+                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                  destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
+                  destruct (weq x (wzero 8)).
+                    subst; simpl in H8.
+                    destruct l; simpl in H8; try discriminate.
+                    unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
+                    match goal with
+                      |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
+                      pose proof (Decode_w_Measure_lt_eq x y z m)
+                    end.
+                    simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
+                    destruct (H0 _ _ _ (eq_refl _)).
+                    rewrite H5; simpl; rewrite H2.
+                    destruct label1_OK as [H6' _]; rewrite H6';
+                      simpl.
+                    reflexivity.
+                    unfold not in n2.
+                    assert (WO~0~1~0~0~0~0~0~0 < x \/ WO~0~1~0~0~0~0~0~0 = x)
+                    by (destruct (weq WO~0~1~0~0~0~0~0~0 x); eauto using le_neq_lt).
+                    destruct H0; eauto.
+                    generalize (WordFacts.wordToNat_lt H0); simpl; omega.
+                    generalize (f_equal (@wordToNat 8) H0); simpl; omega.
+                  * erewrite peek_correct.
+                    apply add_correct; eauto.
+                    eauto.
+                  * unfold ValidDomainName; split; intros.
+                    destruct pre; simpl in *; try discriminate.
+                    destruct label; simpl in *; try discriminate.
+                    omega.
+                    destruct pre; simpl in *; try discriminate.
+                  * simpl; omega.
+                  * eassumption.
             }
             { (* No pointer available *)
               unfold Bind2 in Penc; computes_to_inv.
               destruct Penc as [l_eq [label1_OK label1_OK'] ].
               destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
-                destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
-                  simpl in *; injections.
-              destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc') as [xenv4 [? xenv_eqv] ].
-              pose proof (Valid_data ""%string label1 label2 (eq_refl _) label1_OK).
-              simpl; omega.
-              destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc'') as [xenv6 [? xenv6_eqv] ]; eauto.
-              eapply IHn in Penc'''.
-              destruct Penc''' as [xenv7 [? ?] ].
-              eexists; split.
-              rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
-              + match goal with
-                  |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
-                  pose proof (Decode_w_Measure_le_eq x y z m)
-                end.
-                simpl in H4;
-                  unfold decode_word at 1 in H4.
-                rewrite <- !transform_assoc in H4.
-                unfold decode_nat in H0.
-                apply DecodeBindOpt2_inv in H0;
-                  destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
-                unfold decode_word in H0.
-                destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
-                simpl in H4.
-                destruct (H4 _ _ _ (eq_refl _)).
-                rewrite <- !transform_assoc, H0; simpl; clear H0.
-                pose proof (Valid_data ""%string label1 label2 (eq_refl _) label1_OK) as w';
-                  rewrite H8 in w'.
-                destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                  try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
-                destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
-                * destruct (weq x (wzero 8)).
-                  subst; simpl in H8.
-                  destruct label1; simpl in H8; try discriminate.
-                  unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
-                  match goal with
-                    |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
-                    pose proof (Decode_w_Measure_lt_eq x y z m)
+                  destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
+                    simpl in *; injections.
+                generalize l_eq; intros [l_eq' | l_eq'].
+                destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc') as [xenv4 [? xenv_eqv] ].
+                pose proof (proj1 Valid_data ""%string label1 _ l_eq' label1_OK).
+                simpl; omega.
+                destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc'') as [xenv6 [? xenv6_eqv] ]; eauto.
+                eapply IHn in Penc'''.
+                destruct Penc''' as [xenv7 [? ?] ].
+                eexists; split.
+                rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
+                + match goal with
+                    |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
+                    pose proof (Decode_w_Measure_le_eq x y z m)
                   end.
-                  simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
-                  destruct (H0 _ _ _ (eq_refl _)).
-                  rewrite H5; simpl; rewrite H2; reflexivity.
-                * destruct n2.
-                  rewrite <- natToWord_wordToNat;
-                    rewrite <- (natToWord_wordToNat x).
-                  apply WordFacts.natToWord_wlt.
-                  simpl.
-                  apply Nomega.Nlt_in.
-                  rewrite Nnat.Nat2N.id; etransitivity; eauto.
-                  simpl. unfold BinPos.Pos.to_nat; simpl.
-                  omega.
-                  apply Nomega.Nlt_in.
-                  simpl. unfold BinPos.Pos.to_nat; simpl.
-                  omega.
-                  simpl; omega.
-              + erewrite peek_correct.
-                apply add_correct; eauto.
-                eauto.
-              + eauto using ValidDomainName_app.
-              + eauto using chomp_label_length.
-              + eassumption.
+                  simpl in H4;
+                    unfold decode_word at 1 in H4.
+                  rewrite <- !transform_assoc in H4.
+                  unfold decode_nat in H0.
+                  apply DecodeBindOpt2_inv in H0;
+                    destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+                  unfold decode_word in H0.
+                  destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+                  simpl in H4.
+                  destruct (H4 _ _ _ (eq_refl _)).
+                  rewrite <- !transform_assoc, H0; simpl; clear H0.
+                  pose proof (proj1 Valid_data ""%string label1 _ (eq_refl _) label1_OK) as w';
+                    rewrite H8 in w'.
+                  destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
+                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                  destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
+                  * destruct (weq x (wzero 8)).
+                    subst; simpl in H8.
+                    destruct label1; simpl in H8; try discriminate.
+                    unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
+                    match goal with
+                      |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
+                      pose proof (Decode_w_Measure_lt_eq x y z m)
+                    end.
+                    simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
+                    destruct (H0 _ _ _ (eq_refl _)).
+                    rewrite H5; simpl; rewrite H2.
+                    destruct label1_OK as [H6' _]; rewrite H6';
+                      simpl.
+                    destruct (string_dec label2 ""); simpl;
+                      try reflexivity.
+                    generalize (proj2 Valid_data label1 label2 (eq_refl _)); intros;
+                    rewrite e in H6; intuition.
+                  * destruct n2.
+                    rewrite <- natToWord_wordToNat;
+                      rewrite <- (natToWord_wordToNat x).
+                    apply WordFacts.natToWord_wlt.
+                    simpl.
+                    apply Nomega.Nlt_in.
+                    rewrite Nnat.Nat2N.id; etransitivity; eauto.
+                    simpl. unfold BinPos.Pos.to_nat; simpl.
+                    omega.
+                    apply Nomega.Nlt_in.
+                    simpl. unfold BinPos.Pos.to_nat; simpl.
+                    omega.
+                    simpl; omega.
+                + erewrite peek_correct, l_eq'.
+                  apply add_correct; eauto.
+                  eauto.
+                + subst; eauto using ValidDomainName_app.
+                + subst; eauto using chomp_label_length.
+                + eassumption.
+                + injections.
+                  destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc') as [xenv4 [? xenv_eqv] ].
+                  pose proof (proj1 Valid_data ""%string l ""%string (append_EmptyString_r _) label1_OK).
+                simpl; omega.
+                destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc'') as [xenv6 [? xenv6_eqv] ]; eauto.
+                eapply IHn in Penc'''.
+                destruct Penc''' as [xenv7 [? ?] ].
+                eexists; split.
+                rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
+                  * match goal with
+                      |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
+                      pose proof (Decode_w_Measure_le_eq x y z m)
+                    end.
+                    simpl in H4;
+                      unfold decode_word at 1 in H4.
+                    rewrite <- !transform_assoc in H4.
+                    unfold decode_nat in H0.
+                    apply DecodeBindOpt2_inv in H0;
+                      destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+                    unfold decode_word in H0.
+                    destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+                    simpl in H4.
+                    destruct (H4 _ _ _ (eq_refl _)).
+                    rewrite <- !transform_assoc, H0; simpl; clear H0.
+                    pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
+                    rewrite H8 in w'.
+                  destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
+                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                  destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
+                  destruct (weq x (wzero 8)).
+                    subst; simpl in H8.
+                    destruct l; simpl in H8; try discriminate.
+                    unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
+                    match goal with
+                      |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
+                      pose proof (Decode_w_Measure_lt_eq x y z m)
+                    end.
+                    simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
+                    destruct (H0 _ _ _ (eq_refl _)).
+                    rewrite H5; simpl; rewrite H2.
+                    destruct label1_OK as [H6' _]; rewrite H6';
+                      simpl.
+                    reflexivity.
+                    assert (WO~0~1~0~0~0~0~0~0 < x \/ WO~0~1~0~0~0~0~0~0 = x)
+                      by (destruct (weq WO~0~1~0~0~0~0~0~0 x); eauto using le_neq_lt).
+                    destruct H0; eauto.
+                    generalize (WordFacts.wordToNat_lt H0); simpl; omega.
+                    generalize (f_equal (@wordToNat 8) H0); simpl; omega.
+                  * erewrite peek_correct.
+                    apply add_correct; eauto.
+                    eauto.
+                  * unfold ValidDomainName; split; intros.
+                    destruct pre; simpl in *; try discriminate.
+                    destruct label; simpl in *; try discriminate.
+                    omega.
+                    destruct pre; simpl in *; try discriminate.
+                  * simpl; omega.
+                  * eassumption.
             }
         }
       }
     }
-    unfold decode_DomainName, encode_DomainName_Spec; 
+    {
+      unfold decode_DomainName, encode_DomainName_Spec;
       intros env env' xenv' data bin;
       revert env env' xenv' data.
       eapply (@well_founded_induction _ _ well_founded_lt_b) with
       (a := bin); intros.
       rewrite Coq.Init.Wf.Fix_eq in H2; auto using decode_body_monotone; simpl.
-
-      
-      (*{ unfold decode_list_step, encode_list_step_Spec.
-      intros env env' xenv' data bin;
-        revert env env' xenv' data.
-      eapply (@well_founded_induction _ _ well_founded_lt_b) with
-      (a := bin); intros.
-      rewrite Coq.Init.Wf.Fix_eq in H2; simpl.
-      destruct (X_decode x env')
-        as [ [ [ [ | ] ?] ?] | ] eqn: Heqo; simpl in *;
-        first [eapply (Decode_w_Measure_le_eq' _ _ _ X_decode_le) in Heqo;
-               rewrite Heqo in H2; simpl in H2; discriminate
-              | let H' := fresh in
-                destruct (Decode_w_Measure_le_eq _ _ _ X_decode_le Heqo) as [? H'];
-                rewrite H' in H2; simpl in *; clear H'].
-      - destruct (P_decode b c)
-          as [ [ [ ? ?] ?] | ] eqn: Heqo'; simpl in *;
-          first [eapply (Decode_w_Measure_le_eq' _ _ _ P_decode_le) in Heqo';
-               rewrite Heqo' in H2; simpl in H2; discriminate
-              | let H' := fresh in
-                destruct (Decode_w_Measure_le_eq _ _ _ P_decode_le Heqo') as [? H'];
-                rewrite H' in H2; simpl in *; clear H'].
-        destruct (getD env' p) eqn: ?; simpl in *; try discriminate.
-        injections.
-        destruct l; try discriminate; injections.
-        eapply (proj2 X_decode_pf) in Heqo; destruct Heqo;
-          destruct_ex; intuition eauto; subst;
-            eapply (proj2 P_decode_pf) in Heqo'; destruct Heqo';
-              destruct_ex; intuition eauto; subst.
-        rewrite (proj2 (get_correct _ _ _ _ H0) Heqo0).
-        eexists; eexists; intuition eauto.
+      apply DecodeBindOpt2_inv in H2;
+        destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
+      destruct (wlt_dec (natToWord 8 191) x0); simpl in H3.
+      - (* The decoded word was a pointer. *)
+        symmetry in H3; apply DecodeBindOpt2_inv in H3;
+          destruct H3 as [? [? [? [? ?] ] ] ]; injections; subst.
+        destruct (getD env' (x0, x3)) eqn:getD_eq ; try discriminate.
+        destruct s; try discriminate; injections.
+        eapply Decode_w_Measure_le_eq' in H2.
+        eapply Decode_w_Measure_le_eq' in H3.
+        destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+            [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ].
+        destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ xenv_eqv H4 H3) as
+            [? [b'' [xenv' [enc_x0' [x_eq' [_ xenv_eqv'] ] ] ] ] ].
+        split; eauto; eexists _, _; split; eauto.
+        apply (unroll_LeastFixedPoint'
+                 (fDom := [DomainName; CacheEncode])
+                 (fCod := (B * CacheEncode)%type));
+          auto using encode_body_monotone.
+        eapply get_correct in getD_eq.
+        rewrite getD_eq; simpl.
         computes_to_econstructor.
         apply (@PickComputes _ _ true); eauto.
-        simpl.
-        destruct (P_predicate_dec p).
-        repeat computes_to_econstructor; eauto.
-        intuition.
-        simpl; rewrite transform_assoc; reflexivity.
-        pose proof (cacheGet_OK _ _ _ H1 Heqo0 _ H6); intuition.
-        pose proof (cacheGet_OK _ _ _ H1 Heqo0 _ H6); intuition.
-      - destruct (A_decode b c)
-          as [ [ [ ? ?] ?] | ] eqn: Heqo'; simpl in *;
-          first [eapply (Decode_w_Measure_lt_eq' _ _ _ A_decode_lt) in Heqo';
-                 rewrite Heqo' in H2; simpl in H1; discriminate
-                | let H' := fresh in
-                  destruct (Decode_w_Measure_lt_eq _ _ _ A_decode_lt Heqo') as [? H'];
-                  rewrite H' in H2; simpl in *; clear H'].
-        eapply (proj2 X_decode_pf) in Heqo; eauto;
-          destruct Heqo; destruct_ex;
-            eauto; subst;
-              eapply (proj2 A_decode_pf) in Heqo'; eauto;
-                destruct Heqo'; destruct_ex;
-                  eauto; subst; split_and; eauto.
-        destruct (A_halt_dec a); simpl in *.
-        + injections; simpl.
-          intuition.
-          eexists; eexists; intuition.
-          computes_to_econstructor; eauto.
-          computes_to_econstructor; eauto.
-          unfold le_B in x0.
-          simpl; rewrite transform_assoc; reflexivity.
-          eauto.
-        + match type of H2 with
-            context [Fix well_founded_lt_b ?P ?f ?b ?c] =>
-            destruct (Fix well_founded_lt_b P f b c)
-              as [ [ [ ? ?] ?] | ] eqn: ?; simpl in *; try discriminate
-          end.
-          simpl in H2; injections.
-          split.
-          * eapply cacheAdd_OK.
-            eapply H12 in Heqo; eauto.
-            unfold le_B, lt_B in *; omega.
-            simpl; intros; intuition subst; eauto.
-            eapply H14 in Heqo; eauto; destruct_ex; intuition.
-            eapply H16; eauto.
-            unfold le_B, lt_B in *; omega.
-            eapply H14 in Heqo; eauto; destruct_ex; intuition.
-            eapply H16; eauto.
-            unfold le_B, lt_B in *; omega.
-          * destruct (getE env (a :: l)) eqn : ? .
-            eapply H14 in Heqo; eauto; destruct_ex; intuition.
-            eexists; eexists; intuition eauto.
-            computes_to_econstructor.
-            apply (@PickComputes _ _ false); eauto.
-            simpl.
-            computes_to_econstructor; eauto.
-            computes_to_econstructor; eauto.
-            computes_to_econstructor; eauto.
-            subst; rewrite !transform_assoc; reflexivity.
-            simpl in *; intuition subst; eauto.
-            eapply H6; eauto.
-            simpl in *; intuition subst; eauto.
-            eapply H6; eauto.
-            simpl.
-            erewrite peek_correct; eauto.
-            eapply add_correct; eauto.
-            unfold le_B, lt_B in *; omega.
-            eapply H14 in Heqo; eauto; destruct_ex; intuition.
-            eexists; eexists; intuition eauto.
-            computes_to_econstructor; eauto.
-            computes_to_econstructor; eauto.
-            computes_to_econstructor; eauto.
-            subst; rewrite !transform_assoc; reflexivity.
-            simpl in *; intuition subst; eauto.
-            eapply H6; eauto.
-            simpl in *; intuition subst; eauto.
-            eapply H6; eauto.
-            simpl.
-            erewrite peek_correct; eauto.
-            eapply add_correct; eauto.
-            unfold lt_B, le_B in *; rewrite !transform_measure.
-            rewrite transform_measure in x1.
-            omega.
-      - intros; apply functional_extensionality; intros.
-        repeat (f_equal; repeat (apply functional_extensionality; intros)).
-        Grab Existential Variables.
+        simpl; computes_to_econstructor; eauto.
+        simpl; computes_to_econstructor; eauto.
         eauto.
+        intuition eauto.
+        rewrite x_eq' in x_eq.
+        simpl in *; rewrite <- transform_assoc; assumption.
+        eapply cacheGet_OK; [ | eassumption ].
+        assumption.
+        assumption.
+        assumption.
+      - (* The decoded word was a length octet. *)
+        destruct (wlt_dec x0 WO~0~1~0~0~0~0~0~0); try discriminate;
+          simpl in H3.
+        destruct (weq x0 (wzero 8)); simpl in H3.
+        + (* This is the terminal character. *)
+          injections.
+          eapply Decode_w_Measure_le_eq' in H2.
+          destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+              [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ]; split; eauto.
+          eexists _, _; split; eauto.
+          apply (unroll_LeastFixedPoint'
+                   (fDom := [DomainName; CacheEncode])
+                   (fCod := (B * CacheEncode)%type));
+            auto using encode_body_monotone.
+          simpl.
+          econstructor.
+          unfold encode_word_Spec in enc_x0; computes_to_inv;
+            injection enc_x0; intros.
+          rewrite <- H5 in x_eq.
+          rewrite H4.
+          repeat split; auto using ValidDomainName_Empty.
+          intros; destruct pre; destruct label; try discriminate.
+          simpl; omega.
+          intros; destruct pre; try discriminate.
+          intros; destruct pre; try discriminate.
+          intros; destruct pre; try discriminate.
+          intros; destruct pre; try discriminate.
+          auto.
+        + symmetry in H3; apply DecodeBindOpt2_inv in H3;
+            destruct H3 as [? [? [? [? ?] ] ] ]; injections; subst.
+          destruct (index 0 "." x3) as [? | ] eqn:x3_OK; simpl in H4; try discriminate.
+          symmetry in H4; apply DecodeBindOpt2_inv in H4;
+            destruct H4 as [? [? [? [? ?] ] ] ]; injections; subst.
+          apply Decode_w_Measure_le_eq' in H2.
+          apply Decode_w_Measure_lt_eq' in H3.
+          destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+              [? [b' [xenv [enc_x0 [x_eq [? xenv_eqv] ] ] ] ] ]; eauto.
+          destruct (fun H  => proj2 (String_decode_correct
+                                       (P := cache_inv)
+                                       P_OK (wordToNat x0))
+                                    _ _ _ _ _ _ xenv_eqv H H3) as
+              [? [b'' [xenv'' [enc_x0' [x_eq' [? xenv_eqv'] ] ] ] ] ]; eauto.
+          eapply H in H4; eauto.
+          intuition.
+          destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
+          destruct (string_dec x6 ""); simpl in *;
+            injections.
+          { injection H5; intros; rewrite H14.
+            eapply cacheAdd_OK; eauto.
+            split.
+            unfold ValidDomainName; split; intros.
+            rewrite H17 in H9; generalize H9.
+            rewrite !length_append; intros.
+            generalize w.
+            assert (le (String.length label) (wordToNat x0)) by omega.
+            intros; etransitivity; eauto.
+            eapply WordFacts.wordToNat_lt in w0; simpl in w0; omega.
+            rewrite H17 in x3_OK.
+            apply (index_correct3 _ (String.length pre)) in x3_OK.
+            elimtype False;
+              generalize x3_OK; clear.
+            { induction pre; simpl.
+              - unfold substring; destruct post; simpl; congruence.
+              - destruct pre; simpl.
+                unfold substring; destruct post; simpl; congruence.
+                auto.
+            }
+            congruence.
+            destruct x3; simpl.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            omega.
+            destruct x3; simpl.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            omega.
+          }
+          { injection H5; intros; rewrite H14.
+            eapply cacheAdd_OK; eauto.
+            split.
+            eapply ValidDomainName_app'; eauto.
+            unfold ValidLabel; split; eauto.
+            destruct x3; simpl; try omega.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            destruct x3; simpl; omega.
+          }
+          destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
+          eexists _, _; split; eauto.
+          apply (unroll_LeastFixedPoint'
+                   (fDom := [DomainName; CacheEncode])
+                   (fCod := (B * CacheEncode)%type));
+            auto using encode_body_monotone.
+          destruct (string_dec (x3 ++ x6) ""); simpl.
+          destruct x3; simpl in e; try discriminate.
+          elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+          destruct (string_dec x6 ""); simpl in *;
+            injections.
+          { injection H5; intros; try subst data.
+            destruct (string_dec x3 ""); simpl.
+            subst x3; subst x6; simpl in *; congruence.
+            destruct (@getE _ DomainName _ _ env x3)
+              as [ [ptr1 ptr2] | ] eqn:GetPtr; simpl.
+            - computes_to_econstructor.
+              apply (@PickComputes _ _ false); eauto.
+              simpl.
+              computes_to_econstructor.
+              apply (@PickComputes _ _ (x3, x6)); simpl; intuition eauto.
+              subst x6; eauto.
+              unfold ValidLabel.
+              split.
+              eauto.
+              destruct x3; simpl.
+              elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+              omega.
+              rewrite H16, length_append; omega.
+              computes_to_econstructor; simpl.
+              unfold encode_nat_Spec;
+                rewrite H9, natToWord_wordToNat; eauto.
+              computes_to_econstructor; simpl; eauto.
+              computes_to_econstructor; simpl; eauto.
+            - simpl; computes_to_econstructor.
+              apply (@PickComputes _ _ (x3, x6)); simpl; intuition eauto.
+              subst x6; eauto.
+              unfold ValidLabel.
+              split; eauto.
+              destruct x3; simpl.
+              elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+              omega.
+              rewrite H16, length_append; omega.
+              computes_to_econstructor; simpl.
+              unfold encode_nat_Spec;
+                rewrite H9, natToWord_wordToNat; eauto.
+              computes_to_econstructor; simpl; eauto.
+              computes_to_econstructor; simpl; eauto.
+          }
+          { injection H5; intros; try subst data.
+            destruct x3; simpl.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            destruct (@getE _ DomainName _ _ env (String a (x3 ++ String "." x6))%string)
+              as [ [ptr1 ptr2] | ] eqn:GetPtr; simpl.
+            - computes_to_econstructor.
+              apply (@PickComputes _ _ false); eauto.
+              simpl.
+              computes_to_econstructor.
+              apply (@PickComputes _ _ (String a x3, x6)); simpl; intuition eauto.
+              unfold ValidLabel.
+              split.
+              eauto.
+              simpl; omega.
+              eapply (ValidLabel_split_char (String a x3)); simpl; eauto.
+              computes_to_econstructor; simpl.
+              unfold encode_nat_Spec.
+              simpl in H9; rewrite H9, natToWord_wordToNat; eauto.
+              computes_to_econstructor; simpl; eauto.
+              computes_to_econstructor; simpl; eauto.
+            - simpl; computes_to_econstructor.
+              apply (@PickComputes _ _ (String a x3, x6)); simpl; intuition eauto.
+              unfold ValidLabel.
+              split; eauto.
+              simpl; omega.
+              eapply (ValidLabel_split_char (String a x3)); simpl; eauto.
+              computes_to_econstructor; simpl.
+              unfold encode_nat_Spec;
+                simpl in H9; rewrite H9, natToWord_wordToNat; eauto.
+              computes_to_econstructor; simpl; eauto.
+              computes_to_econstructor; simpl; eauto.
+          }
+          simpl.
+          destruct x1; simpl in *; rewrite x_eq, x_eq', H11;
+            intuition eauto.
+          rewrite !transform_assoc; auto.
+          destruct (string_dec x6 ""); injection H5; intros; subst x7;
+            reflexivity.
+          destruct (string_dec x6 ""); simpl in *; injection H5; intros; subst data.
+          unfold ValidDomainName; split; intros.
+          rewrite H16 in H9; generalize H9.
+          rewrite !length_append; intros.
+          generalize w.
+          assert (le (String.length label) (wordToNat x0)) by omega.
+          intros; etransitivity; eauto.
+          eapply WordFacts.wordToNat_lt in w0; simpl in w0; omega.
+          rewrite H16 in x3_OK.
+            apply (index_correct3 _ (String.length pre)) in x3_OK.
+            elimtype False;
+              generalize x3_OK; clear.
+            { induction pre; simpl.
+              - unfold substring; destruct post; simpl; congruence.
+              - destruct pre; simpl.
+                unfold substring; destruct post; simpl; congruence.
+                auto.
+            }
+            congruence.
+            destruct x3; simpl.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            omega.
+            eapply ValidDomainName_app'; eauto.
+            unfold ValidLabel; split; eauto.
+            destruct x3; simpl; try omega.
+            elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            destruct (string_dec x6 ""); simpl in *; injection H5; intros;
+              subst xenv'; subst data.
+            erewrite peek_correct.
+            apply add_correct.
+            eauto.
+            eauto.
+            erewrite peek_correct.
+            apply add_correct.
+            eauto.
+            eauto.
+            apply lt_B_trans; eauto.
+            assumption.
+            assumption.
     }
-  Qed. *)
-  Admitted.
+  Qed.
+
+  Print Assumptions DomainName_decode_correct.
+
 End DomainName.

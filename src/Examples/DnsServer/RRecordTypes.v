@@ -159,7 +159,13 @@ Section RData.
   Definition ValidDomainName s :=
     (forall pre label post, s = pre ++ label ++ post
                             -> ValidLabel label
-                            -> String.length label <= 63)%string%nat.
+                            -> String.length label <= 63)%string%nat
+    /\ (forall pre post,
+           s = pre ++ "." ++ post
+           -> post <> EmptyString
+              /\ pre <> EmptyString
+              /\ (~ exists s', post = String "." s')
+              /\ (~ exists s', pre = s' ++ ".")).
 
   Definition beq_name (a b : DomainName) : bool :=
     if (string_dec a b) then true else false.
