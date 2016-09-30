@@ -12,21 +12,41 @@ Global Coercion is_true : bool >-> Sortclass.
 Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
 Coercion bool_of_sum {A B} (b : sum A B) : bool := if b then true else false.
 
-Lemma bool_of_sum_distr_match {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
+Lemma bool_of_sum_distr_match_eta {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
 : bool_of_sum (match x with inl k => inl (c k) | inr k => inr (d k) end) = bool_of_sum x.
 Proof. destruct x; reflexivity. Qed.
-Lemma bool_of_sum_distr_match_sumbool {A B C D} (x : sumbool A B) (c : A -> C) (d : B -> D)
+Lemma bool_of_sum_distr_match_sumbool_eta {A B C D} (x : sumbool A B) (c : A -> C) (d : B -> D)
 : bool_of_sum (match x with left k => inl (c k) | right k => inr (d k) end) = bool_of_sumbool x.
 Proof. destruct x; reflexivity. Qed.
-Lemma bool_of_sumbool_distr_match_sum {A B} {C D : Prop} (x : sum A B) (c : A -> C) (d : B -> D)
+Lemma bool_of_sumbool_distr_match_sum_eta {A B} {C D : Prop} (x : sum A B) (c : A -> C) (d : B -> D)
 : bool_of_sumbool (match x with inl k => left (c k) | inr k => right (d k) end) = bool_of_sum x.
 Proof. destruct x; reflexivity. Qed.
-Lemma bool_of_sumbool_distr_match {A B} {C D : Prop} (x : sumbool A B) (c : A -> C) (d : B -> D)
+Lemma bool_of_sumbool_distr_match_eta {A B} {C D : Prop} (x : sumbool A B) (c : A -> C) (d : B -> D)
 : bool_of_sumbool (match x with left k => left (c k) | right k => right (d k) end) = bool_of_sumbool x.
 Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sum_dep {A B C D} (l : forall a : A, C (inl a)) (r : forall b : B, C (inr b))
+      (f : forall (x : sum A B), C x -> D x)
+      (x : sum A B)
+  : f x match x with inl a => l a | inr b => r b end
+    = match x with inl a => f _ (l a) | inr b => f _ (r b) end.
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sumbool_dep {A B : Prop} {C D} (l : forall a : A, C (left a)) (r : forall b : B, C (right b))
+      (f : forall (x : sumbool A B), C x -> D x)
+      (x : sumbool A B)
+  : f x match x with left a => l a | right b => r b end
+    = match x with left a => f _ (l a) | right b => f _ (r b) end.
+Proof. destruct x; reflexivity. Qed.
+Definition bool_of_sum_distr_match {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
+  := @distr_match_sum_dep A B (fun _ => sum C D) (fun _ => bool) c d (fun _ => bool_of_sum) x.
+Definition bool_of_sum_distr_match_sumbool {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
+  := @distr_match_sumbool_dep A B (fun _ => sum C D) (fun _ => bool) c d (fun _ => bool_of_sum) x.
+Definition bool_of_sumbool_distr_match_sum {A B C D} x (c : _ -> sumbool _ _) (d : _ -> sumbool _ _) : _ = _
+  := @distr_match_sum_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
+Definition bool_of_sumbool_distr_match {A B C D} x (c : _ -> sumbool _ _) (d : _ -> sumbool _ _) : _ = _
+  := @distr_match_sumbool_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
 
-Hint Rewrite @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool : push_bool_of_sum.
-Hint Rewrite @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum : push_bool_of_sumbool.
+Hint Rewrite @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool : push_bool_of_sum.
+Hint Rewrite @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum : push_bool_of_sumbool.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
