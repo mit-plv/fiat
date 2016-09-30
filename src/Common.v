@@ -36,6 +36,20 @@ Lemma distr_match_sumbool_dep {A B : Prop} {C D} (l : forall a : A, C (left a)) 
   : f x match x with left a => l a | right b => r b end
     = match x with left a => f _ (l a) | right b => f _ (r b) end.
 Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sum_fun_dep {Y A B C D} (l : forall (y : Y) (a : A), C y (inl a))
+      (r : forall (y : Y) (b : B), C y (inr b))
+      (f : forall (y : Y) (x : sum A B), C y x -> D y x)
+      (x : sum A B)
+  : (fun y => f y x match x with inl a => l y a | inr b => r y b end)
+    = (fun y => match x with inl a => f y _ (l y a) | inr b => f y _ (r y b) end).
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sumbool_fun_dep {Y} {A B : Prop} {C D} (l : forall (y : Y) (a : A), C y (left a))
+      (r : forall (y : Y) (b : B), C y (right b))
+      (f : forall (y : Y) (x : sumbool A B), C y x -> D y x)
+      (x : sumbool A B)
+  : (fun y => f y x match x with left a => l y a | right b => r y b end)
+    = (fun y => match x with left a => f y _ (l y a) | right b => f y _ (r y b) end).
+Proof. destruct x; reflexivity. Qed.
 Definition bool_of_sum_distr_match {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
   := @distr_match_sum_dep A B (fun _ => sum C D) (fun _ => bool) c d (fun _ => bool_of_sum) x.
 Definition bool_of_sum_distr_match_sumbool {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
@@ -44,9 +58,27 @@ Definition bool_of_sumbool_distr_match_sum {A B C D} x (c : _ -> sumbool _ _) (d
   := @distr_match_sum_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
 Definition bool_of_sumbool_distr_match {A B C D} x (c : _ -> sumbool _ _) (d : _ -> sumbool _ _) : _ = _
   := @distr_match_sumbool_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
+Definition bool_of_sum_distr_match_fun {Y} {A B C D} x (c : _ -> _ -> sum _ _) (d : _ -> _ -> sum _ _) : _ = _
+  := @distr_match_sum_fun_dep Y A B (fun _ _ => sum C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sum) x.
+Definition bool_of_sum_distr_match_sumbool_fun {Y} {A B C D} x (c : _ -> _ -> sum _ _) (d : _ -> _ -> sum _ _) : _ = _
+  := @distr_match_sumbool_fun_dep Y A B (fun _ _ => sum C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sum) x.
+Definition bool_of_sumbool_distr_match_sum_fun {Y} {A B C D} x (c : _ -> _ -> sumbool _ _) (d : _ -> _ -> sumbool _ _) : _ = _
+  := @distr_match_sum_fun_dep Y A B (fun _ _ => sumbool C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sumbool) x.
+Definition bool_of_sumbool_distr_match_fun {Y} {A B C D} x (c : _ -> _ -> sumbool _ _) (d : _ -> _ -> sumbool _ _) : _ = _
+  := @distr_match_sumbool_fun_dep Y A B (fun _ _ => sumbool C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sumbool) x.
+Definition bool_of_sum_inl {A B} x : @bool_of_sum A B (inl x) = true := eq_refl.
+Definition bool_of_sum_inr {A B} x : @bool_of_sum A B (inr x) = false := eq_refl.
+Definition bool_of_sumbool_left {A B} x : @bool_of_sumbool A B (left x) = true := eq_refl.
+Definition bool_of_sumbool_right {A B} x : @bool_of_sumbool A B (right x) = false := eq_refl.
+Definition bool_of_sum_eta {A B} (x : sum A B) : (if x then true else false) = bool_of_sum x := eq_refl.
+Definition bool_of_sumbool_eta {A B} (x : sumbool A B) : (if x then true else false) = bool_of_sumbool x := eq_refl.
+Definition bool_of_sum_orb_true_l {A B} (x : sum A B) b
+  : (match x with inl _ => true | inr _ => b end)
+    = orb (bool_of_sum x) b.
+Proof. destruct x, b; reflexivity. Qed.
 
-Hint Rewrite @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool : push_bool_of_sum.
-Hint Rewrite @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum : push_bool_of_sumbool.
+Hint Rewrite @bool_of_sum_inl @bool_of_sum_inr @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool @bool_of_sum_distr_match_fun @bool_of_sum_distr_match_sumbool_fun @bool_of_sum_eta @bool_of_sum_orb_true_l : push_bool_of_sum.
+Hint Rewrite @bool_of_sumbool_left @bool_of_sumbool_right @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum @bool_of_sumbool_distr_match_fun @bool_of_sumbool_distr_match_sum_fun @bool_of_sumbool_eta : push_bool_of_sumbool.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
