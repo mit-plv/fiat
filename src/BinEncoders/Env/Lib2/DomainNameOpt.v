@@ -163,14 +163,171 @@ Section DomainName.
       rewrite <- !append_assoc; eauto.
   Qed.
 
+  Lemma ValidLabel_OK_split
+    : forall label subdomain subdomain',
+      (label ++ String "." subdomain = label ++ "." ++ subdomain')%string
+      -> subdomain = subdomain'.
+  Proof.
+    induction label; simpl; intros; try congruence.
+    injection H; intros; eauto.
+  Qed.
+
+    Lemma index_correct'
+    : forall s a n,
+      index 0 (String a EmptyString) s = Some n
+      -> exists s' s'',
+        (s = s' ++ (String a EmptyString) ++ s''
+         /\ String.length s' = n)%string
+        /\ index 0 (String a EmptyString) s' = None.
+  Proof.
+    induction s; simpl; intros; try discriminate.
+    destruct (ascii_dec a0 a).
+    - destruct s; simpl in H; injections.
+      eexists ""%string, ""%string; split; eauto.
+      eexists ""%string, _; split; simpl; eauto.
+    - destruct (index 0 (String a0 EmptyString) s) eqn: ?;
+        injections; try discriminate.
+      apply IHs in Heqo; destruct_ex; intuition; subst.
+      eexists (String a _), _; simpl; split; eauto.
+      destruct (ascii_dec a0 a); try congruence.
+      rewrite H1; reflexivity.
+  Qed.
+
+  Lemma split_char_inj
+    : forall s s' t t',
+      (s ++ String "." s' = t ++ String "." t')%string
+      -> index 0 "." s = None
+      -> index 0 "." t = None
+      -> s = t /\ s' = t'.
+  Proof.
+    induction s.
+    - destruct t.
+      + simpl; intros; injections; intuition eauto.
+      + intros; simpl in H; injection H; intros; subst.
+        simpl in H1.
+        destruct t; simpl in H1; discriminate.
+    - intros; destruct t.
+      + simpl in H; injection H; intros; subst.
+        simpl in H0; destruct s; simpl in H0; discriminate.
+      + simpl in H; injection H; intros; subst.
+        simpl in *; repeat find_if_inside; try discriminate.
+        destruct (index 0 "." s) eqn: ?;
+          destruct (index 0 "." t) eqn : ?; try discriminate.
+        apply IHs in H2; eauto.
+        intuition.
+        congruence.
+  Qed.
+
+  Lemma index_app :
+    forall s s' t,
+      index 0 (String t EmptyString) s = None
+      -> index 0 (String t EmptyString) s' = None
+      -> index 0 (String t EmptyString) (s ++ s')%string = None.
+  Proof.
+    induction s; simpl; eauto; intros.
+    destruct (ascii_dec t a); subst.
+    destruct s; simpl in H; try discriminate.
+    destruct (index 0 (String t ""%string) s) eqn: ?; try discriminate.
+    rewrite IHs; eauto.
+  Qed.
+
   Lemma ValidDomainName_app'
-    : forall label subdomain,
+    : forall label subdomain (subdomainOK : subdomain <> EmptyString),
       ValidLabel label
+      -> lt (String.length label) 64
       -> ValidDomainName subdomain
       -> ValidDomainName (label ++ (String "." subdomain)).
   Proof.
     unfold ValidDomainName; intros.
-  Admitted.
+    split; [ intros ? ? ? label_eq [? ?] | ].
+    - assert ((exists pre', pre' ++ label0 ++ post = subdomain) \/
+              exists post', label = (pre ++ label0 ++ post'))%string.
+      { destruct (index 0 "." pre) eqn:pre_eq.
+        - apply index_correct' in pre_eq;
+            destruct pre_eq as [s [s' [ [pre_eq s_len] s_OK ] ] ];
+            subst.
+          rewrite <- append_assoc in label_eq.
+          simpl in label_eq.
+          destruct H; eapply split_char_inj in label_eq; intuition.
+          subst; eauto.
+        - destruct (index 0 "." post) eqn:post_eq.
+          apply index_correct' in post_eq;
+            destruct post_eq as [t [t' [ [post_eq t_len] t_OK ] ] ];
+            subst.
+          rewrite append_assoc in label_eq.
+          rewrite append_assoc in label_eq.
+          destruct H; eapply split_char_inj in label_eq; intuition;
+            subst.
+          rewrite <- !append_assoc; eauto.
+          eauto using index_app.
+          assert (index 0 "." (label ++ String "." subdomain)%string = None)
+            by (rewrite label_eq; eauto using index_app).
+          eapply index_correct3 with (m := String.length label) in H4;
+            try omega; try congruence.
+          destruct label.
+          elimtype False; destruct H; simpl in H5; omega.
+          elimtype False; apply H4; clear.
+          induction label; simpl.
+          + destruct subdomain; simpl; reflexivity.
+          + apply IHlabel.
+      }
+      destruct H4 as [ [pre' subdomain_eq] | [post' label_eq'] ].
+      subst; eapply H1; unfold ValidLabel; eauto.
+      subst.
+      rewrite !length_append in H0; omega.
+    - intros.
+      assert ((label = pre) \/
+              exists mid, pre = label ++ String "." mid)%string.
+      { destruct (index 0 "." pre) eqn:pre_eq.
+        - apply index_correct' in pre_eq;
+            destruct pre_eq as [s [s' [ [pre_eq s_len] s_OK ] ] ];
+            subst.
+          rewrite <- append_assoc in H2.
+          simpl in H2.
+          destruct H; eapply split_char_inj in H2; intuition.
+          subst; simpl; eauto.
+        - destruct (index 0 "." post) eqn:post_eq.
+          apply index_correct' in post_eq;
+            destruct post_eq as [t [t' [ [post_eq t_len] t_OK ] ] ];
+            subst.
+          destruct H; eapply split_char_inj in H2; intuition;
+            subst.
+          destruct H.
+          simpl in H2; eapply split_char_inj in H2; intuition eauto.
+      }
+      destruct H3; subst.
+      + apply ValidLabel_OK_split in H2; subst; repeat split; auto.
+        * destruct pre; try congruence.
+          destruct H; simpl in *; omega.
+        * intro; destruct H2; subst.
+          destruct (proj2 H1 EmptyString x eq_refl);
+            intuition.
+        * intros [s' pre_eq]; subst.
+          unfold ValidLabel in H; intuition.
+          apply (index_correct3 _ (String.length s')) in H1.
+          apply H1; simpl.
+          clear; induction s'; simpl; eauto.
+          congruence.
+          omega.
+      + destruct H3; subst.
+        rewrite <- append_assoc in H2; simpl in H2.
+        eapply (ValidLabel_OK_split label _ (x ++ String "." post)) in H2;
+          subst; eauto.
+        pose proof (proj2 H1 _ _ H2); repeat split;
+          try solve [intuition].
+        * destruct label; simpl; congruence.
+        * intros [s' s'_eq].
+          apply (proj2 (proj2 (proj2 H3))).
+          generalize (proj1 (proj2 H3)).
+          generalize s' x s'_eq; clear.
+          induction label; simpl.
+          induction s'; simpl; intros.
+          destruct x; eauto; congruence.
+          injection s'_eq; intros; eauto.
+          destruct s'; simpl; intros.
+          destruct label; discriminate.
+          injection s'_eq; intro; eauto.
+  Qed.
 
   Lemma ValidDomainName_Empty
     : ValidDomainName "".
@@ -459,7 +616,59 @@ Section DomainName.
       -> ValidLabel label
       -> le (String.length label) (String.length s).
   Proof.
-  Admitted.
+    intros.
+    destruct (index 0 "." s) eqn:pre_eq.
+    apply index_correct' in pre_eq;
+      destruct pre_eq as [s' [s'' [ [s_eq s'_len]  s'_OK] ] ];
+      subst.
+    destruct (index 0 "." subdomain') eqn:subdomain_eq.
+    apply index_correct' in subdomain_eq;
+      destruct subdomain_eq as [t' [t'' [ [t_eq t'_len]  t'_OK] ] ];
+      subst.
+    assert (label ++ t' = s')%string.
+    rewrite <- !append_assoc in H; simpl in H.
+    pose proof (split_char_inj s' (s'' ++ String "." subdomain) (label ++ t') t'').
+    rewrite <- !append_assoc in H1; simpl in H1.
+    destruct H0.
+    apply H1 in H; eauto using index_app.
+    destruct H; subst; eauto.
+    apply (f_equal String.length) in H1;
+      rewrite !length_append in *|-*; simpl in *.
+    omega.
+    assert (index 0 "." ((s' ++ "." ++ s'') ++ String "." subdomain)%string = None) by (rewrite H; destruct H0; apply index_app; eauto).
+    destruct s'. simpl in H1.
+    destruct s''; try solve [simpl in H1; discriminate].
+    eapply index_correct3 with (m := S (String.length s')) in H1;
+      try omega; try congruence.
+    elimtype False; apply H1; clear.
+    induction s'; simpl.
+    destruct s''; simpl; reflexivity.
+    assumption.
+    destruct (index 0 "." subdomain') eqn:subdomain_eq.
+    apply index_correct' in subdomain_eq;
+      destruct subdomain_eq as [t' [t'' [ [t_eq t'_len]  t'_OK] ] ];
+      subst.
+    assert (label ++ t' = s)%string.
+    simpl in H.
+    pose proof (split_char_inj s subdomain (label ++ t') t'').
+    rewrite <- !append_assoc in H1; simpl in H1.
+    destruct H0.
+    apply H1 in H; eauto using index_app.
+    destruct H; subst; eauto.
+    apply (f_equal String.length) in H1;
+      rewrite !length_append in *|-*; simpl in *.
+    omega.
+    assert (index 0 "." (s ++ String "." subdomain)%string = None)
+      by (rewrite H; destruct H0; apply index_app; eauto).
+    destruct s. simpl in H1.
+    destruct subdomain; try solve [simpl in H1; discriminate].
+    eapply index_correct3 with (m := S (String.length s)) in H1;
+      try omega; try congruence.
+    elimtype False; apply H1; clear.
+    induction s; simpl.
+    destruct subdomain; simpl; reflexivity.
+    assumption.
+  Qed.
 
   (* Commenting out until I can patch up proof. *)
   Theorem DomainName_decode_correct
@@ -967,6 +1176,7 @@ Section DomainName.
             unfold ValidLabel; split; eauto.
             destruct x3; simpl; try omega.
             elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            eapply WordFacts.wordToNat_lt in w; simpl in w; omega.
             destruct x3; simpl; omega.
           }
           destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
@@ -1082,6 +1292,7 @@ Section DomainName.
             unfold ValidLabel; split; eauto.
             destruct x3; simpl; try omega.
             elimtype False; eapply NonEmpty_String_wordToNat; eauto.
+            eapply WordFacts.wordToNat_lt in w; simpl in w; omega.
             destruct (string_dec x6 ""); simpl in *; injection H5; intros;
               subst xenv'; subst data.
             erewrite peek_correct.
