@@ -25,6 +25,9 @@ Lemma bool_of_sumbool_distr_match {A B} {C D : Prop} (x : sumbool A B) (c : A ->
 : bool_of_sumbool (match x with left k => left (c k) | right k => right (d k) end) = bool_of_sumbool x.
 Proof. destruct x; reflexivity. Qed.
 
+Hint Rewrite bool_of_sum_distr_match bool_of_sum_distr_match_sumbool : push_bool_of_sum.
+Hint Rewrite bool_of_sumbool_distr_match bool_of_sumbool_distr_match_sum : push_bool_of_sumbool.
+
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
   try (first [ tac | fail 2 tac "does not succeed" ]; fail 0 tac "succeeds"; [](* test for [t] solved all goals *)).
