@@ -14,9 +14,16 @@ Coercion bool_of_sum {A B} (b : sum A B) : bool := if b then true else false.
 
 Lemma bool_of_sum_distr_match {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
 : bool_of_sum (match x with inl k => inl (c k) | inr k => inr (d k) end) = bool_of_sum x.
-Proof.
-  destruct x; reflexivity.
-Qed.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sum_distr_match_sumbool {A B C D} (x : sumbool A B) (c : A -> C) (d : B -> D)
+: bool_of_sum (match x with left k => inl (c k) | right k => inr (d k) end) = bool_of_sumbool x.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sumbool_distr_match {A B} {C D : Prop} (x : sum A B) (c : A -> C) (d : B -> D)
+: bool_of_sumbool (match x with inl k => left (c k) | inr k => right (d k) end) = bool_of_sum x.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sumbool_distr_match_sumbool {A B} {C D : Prop} (x : sumbool A B) (c : A -> C) (d : B -> D)
+: bool_of_sumbool (match x with left k => left (c k) | right k => right (d k) end) = bool_of_sumbool x.
+Proof. destruct x; reflexivity. Qed.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
