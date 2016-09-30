@@ -458,6 +458,7 @@ Section cfg.
         = parse_of_production__of__minimal_parse_of_production p.
       Proof.
         induction p; simpl; try reflexivity.
+        fold @parse_of_item__of__minimal_parse_of_item in *.
         rewrite IHp, parse_of_contract_minimal_parse_of_item_lt.
         reflexivity.
       Qed.
@@ -632,6 +633,7 @@ Section cfg.
               => solve [ destruct H ]
             | _ => progress simpl
             | _ => progress subst
+            | _ => progress fold @parse_of_item__of__minimal_parse_of_item in *
             | _ => progress rewrite ?parse_of_contract_minimal_parse_of_item_lt, ?parse_of_contract_minimal_parse_of_production_lt, ?parse_of_contract_minimal_parse_of_lt
             | [ |- context G[size_of_parse_production (ParseProductionCons ?s ?n ?a ?b)] ]
               => let G' := context G[S (size_of_parse_item a + size_of_parse_production b)] in

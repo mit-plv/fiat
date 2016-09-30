@@ -327,7 +327,7 @@ Section String.
   Proof.
     revert str n; induction m; intros.
     { rewrite <- get_drop; reflexivity. }
-    { rewrite !get_S, !drop_drop, IHm.
+    { rewrite !get_S at 1; rewrite !drop_drop, IHm; simpl.
       repeat (f_equal; []).
       omega. }
   Qed.

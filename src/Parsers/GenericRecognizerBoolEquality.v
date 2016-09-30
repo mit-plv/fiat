@@ -159,7 +159,7 @@ Section eq.
                         (nt : nonterminal_carrierT),
                   parse_nt_T_to_bool (gendata := gendata) (parse_nonterminal p pf valid offset len pf' nt)
                   = parse_nt_T_to_bool (gendata := gendata') (parse_nonterminal' p pf valid offset len pf' nt)).
-
+      Local Unset Keyed Unification.
       Lemma parse_nonterminal_step_eq
             (valid : nonterminals_listT)
             (offset : nat)
