@@ -10,7 +10,7 @@ Require Import Fiat.Parsers.Grammars.JSComment.
 
 Local Arguments Equality.ascii_beq !_ !_.
 Local Arguments Equality.string_beq !_ !_.
-Local Arguments list_to_productions / .
+Local Arguments list_to_productions / _ _ _ _.
 Local Arguments ascii_of_nat !_ / .
 Local Arguments ascii_of_pos !_ / .
 
@@ -20,7 +20,7 @@ Local Notation TAB := (ascii_of_nat 9).
 Local Notation SPACE := " "%char.
 
 Local Coercion test_string_of_ascii (ch : ascii) := String.String ch EmptyString.
-Global Arguments test_string_of_ascii / .
+Global Arguments test_string_of_ascii / _.
 
 Local Notation newline := (String.String LF EmptyString).
 

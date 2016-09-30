@@ -57,7 +57,7 @@ Record pregrammar' (Char : Type) :=
     : NoDupR string_beq pregrammar_nonterminals
   }.
 
-Global Arguments pregrammar_nonterminals / .
+Global Arguments pregrammar_nonterminals / _ _.
 Global Arguments Lookup_idx {_} !_ !_  / .
 Global Arguments Lookup_string {_} !_ !_ / .
 

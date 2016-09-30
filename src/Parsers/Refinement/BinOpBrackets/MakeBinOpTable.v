@@ -616,11 +616,11 @@ Section for_string.
          str.
 
   Section no_fold.
-    Local Arguments fold / .
-    Local Arguments fold' / .
-    Local Arguments list_of_next_bin_ops'_opt0 / .
-    Local Arguments list_of_next_bin_ops'_step_opt / .
-    Local Arguments list_of_next_bin_ops'_step'_opt / .
+    Local Arguments fold / _ _ _ _ _ _ _.
+    Local Arguments fold' / _ _ _ _ _ _ _ _.
+    Local Arguments list_of_next_bin_ops'_opt0 / _.
+    Local Arguments list_of_next_bin_ops'_step_opt / _ _.
+    Local Arguments list_of_next_bin_ops'_step'_opt / _ _.
     Definition list_of_next_bin_ops'_opt (str : String)
     : option (list (option nat)) * list (option nat)
       := Eval simpl in list_of_next_bin_ops'_opt0 str.
@@ -734,7 +734,7 @@ Section no_records.
              get := get;
              bool_eq := bool_eq }.
 
-      Local Arguments list_of_next_bin_ops'_opt / .
+      Local Arguments list_of_next_bin_ops'_opt / _ _ _ _.
       Definition list_of_next_bin_ops'_opt_nor' (str : String)
       : option (list (option nat)) * list (option nat)
         := Eval simpl in list_of_next_bin_ops'_opt (str : @StringLike.String _ temp_hslm).
