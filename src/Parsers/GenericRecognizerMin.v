@@ -65,6 +65,19 @@ Local Ltac subst_bool_eq_proof :=
       => assert (H = H') by apply UIP_bool; subst
   end.
 
+Local Ltac generalize_eq_le_proof :=
+  idtac;
+  repeat match goal with
+         | [ |- context[?e] ]
+           => not is_var e;
+              not is_evar e;
+              match type of e with
+              | _ <= _ => idtac
+              | ?x = _ :> nat => not constr_eq e (eq_refl x)
+              end;
+              generalize e; intro
+         end.
+
 Local Ltac prove_nonterminals_t' :=
   idtac;
   match goal with
@@ -182,7 +195,7 @@ Section recursive_descent_parser.
 
       Local Hint Resolve beq_nat_true : generic_parser_correctness.
 
-      Local Ltac eq_t' :=
+      Local Ltac eq_t'_old :=
         first [ progress subst_le_proof
               | progress subst_nat_eq_proof
               | progress subst_bool_eq_proof
@@ -343,6 +356,34 @@ Section recursive_descent_parser.
                 | [ H : ?T, H' : ~?T |- _ ] => specialize (H' H)
                 | [ H : False |- _ ] => destruct H
                 end ].
+
+      Local Ltac eq_t' :=
+        first [ progress subst_le_proof
+              | progress subst_nat_eq_proof
+              | progress subst_bool_eq_proof
+              | solve [ eauto with generic_parser_correctness nocore ]
+              | rewrite sub_twice, Min.min_r by assumption
+              | rewrite !@min_max_sub
+              | rewrite Nat.sub_max_distr_l
+              | rewrite <- Nat.sub_add_distr
+              | rewrite (proj2 (Nat.ltb_lt _ _)) by assumption
+              | progress autorewrite with push_bool_of_sum push_bool_of_sumbool bool_congr
+              | rewrite fold_left_orb_true
+              | rewrite bool_of_sum_dec_prod
+              | progress simpl
+              | progress break_match_step ltac:(fun _ => idtac)
+              | discriminate
+              | congruence
+              | idtac;
+                match goal with
+                | [ H : ?x = true |- context[?x] ] => rewrite H
+                | [ H : ?x = false |- context[?x] ] => rewrite H
+                | [ H : (_ <? _)%nat = true |- _ ]
+                  => apply Nat.ltb_lt in H
+                | [ H : ?T, H' : ~?T |- _ ] => specialize (H' H)
+                | [ H : False |- _ ] => destruct H
+                end
+              | progress generalize_eq_le_proof ].
 
       Local Ltac eq_t := expand_once; repeat eq_t'.
 
@@ -1232,9 +1273,13 @@ Section recursive_descent_parser.
                    (Hvalid : production_carrier_valid prod_idx)
         : parse_production_is_correct (substring offset (len0 - len0_minus_len) str) prod_idx (parse_production'_for splits Hsplits offset len0_minus_len Hlen Hreachable Hvalid) (GenericRecognizer.parse_production'_for (len0 := len0) str parse_nonterminal' splits offset len0_minus_len prod_idx).
         Proof.
-          eq_t; eq_list_rect; repeat eq_t'; [].
+          Local Opaque parse_production'_helper dec_In dec_prod.
+          expand_once; repeat eq_t'_old; eq_list_rect; [ repeat eq_t' | repeat eq_t'_old ].
+          Local Transparent parse_production'_helper.
           expand_onceL; repeat eq_t'; [].
+          Local Transparent dec_In.
           expand_onceL; eq_list_rect_fold_right_orb; repeat eq_t'; [].
+          Local Transparent dec_prod.
           apply ret_orb_production_is_correct; repeat eq_t'; [].
           eapply ret_production_cons_is_correct; repeat eq_t'.
         Qed.
@@ -1682,20 +1727,18 @@ Section recursive_descent_parser.
                 (@parse_nonterminal_step valid Hvalid_len offset len Hlen pf nt)
                 (GenericRecognizer.parse_nonterminal_step str parse_nonterminal' valid offset pf' nt).
           Proof.
-            eq_t.
+            expand_once; repeat eq_t'_old.
+            Local Opaque parse_productions'.
             destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [Hvalid'|Hvalid']; simpl;
-              repeat eq_t'.
+              generalize_eq_le_proof;
+              repeat eq_t'_old.
             { apply ret_nt_is_correct; try assumption; [].
               replace len with (len - (len - len)) at 1 by omega.
               eapply parse_productions'_correct;
                 repeat eq_t'. }
             { apply ret_nt_is_correct; try assumption; [].
               replace len with (len0 - (len0 - len)) at 1 by omega.
-              match goal with
-              | [ |- context[?x <? ?y] ]
-                => destruct (x <? y) eqn:?
-              end;
-                repeat eq_t'. }
+              repeat eq_t'. }
           Qed.
         End step.
 
@@ -1819,6 +1862,7 @@ Section recursive_descent_parser.
             erewrite <- take_long at 1 by reflexivity.
             rewrite drop_length, <- minus_n_O.
             expand_once.
+            Local Opaque parse_nonterminal_or_abort.
             destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [H|H];
               repeat eq_t'.
             { eapply (parse_nonterminal_or_abort_correct (_, _)); assumption. }
@@ -1844,6 +1888,7 @@ Section recursive_descent_parser.
               destruct (minus_n_O (length str)); reflexivity.
           Qed.
 
+          Local Opaque parse_nonterminal'_substring.
           Lemma parse_nonterminal'_correct
                 (nt : nonterminal_carrierT)
           : parse_nt_is_correct
@@ -1854,9 +1899,9 @@ Section recursive_descent_parser.
             R_etransitivity_eq.
             { eapply parse_nonterminal'_substring_correct. }
             { unfold parse_nonterminal'.
-              symmetry.
-              repeat eq_t'. }
+              repeat eq_t'; reflexivity. }
           Qed.
+          Local Transparent parse_nonterminal'_substring.
 
           Definition parse_nonterminal
                      (nt : String.string)
@@ -1897,6 +1942,7 @@ Section recursive_descent_parser.
                 ). }
           Defined.
 
+          Local Opaque parse_nonterminal'.
           Lemma parse_nonterminal_correct
                 (nt : String.string)
           : parse_nt_is_correct
@@ -1908,15 +1954,19 @@ Section recursive_descent_parser.
             repeat eq_t'.
             eapply parse_nonterminal'_correct.
           Qed.
+          Local Transparent parse_nonterminal'.
 
           Lemma parse_nonterminal_invalid_none
                 nt (H : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt) = false)
             : @parse_nonterminal nt = false :> bool.
           Proof.
+            Local Opaque parse_nonterminal'.
             unfold parse_nonterminal; repeat eq_t'.
+            Local Transparent parse_nonterminal'. Local Opaque parse_nonterminal'_substring.
             unfold parse_nonterminal'; repeat eq_t'.
+            Local Transparent parse_nonterminal'_substring. Local Opaque parse_nonterminal_or_abort.
             unfold parse_nonterminal'_substring; repeat eq_t'.
-            congruence.
+            Local Transparent parse_nonterminal_or_abort.
           Qed.
 
           Lemma parse_nonterminal_invalid_none'
@@ -1937,7 +1987,9 @@ Section recursive_descent_parser.
               (GenericRecognizer.parse_nonterminal str (to_nonterminal nt)).
           Proof.
             expand_once.
+            Local Opaque parse_nonterminal'.
             repeat eq_t'.
+            Local Transparent parse_nonterminal'.
             destruct (Utils.dec (is_valid_nonterminal initial_nonterminals_data nt)) as [H|H].
             { rewrite of_to_nonterminal by assumption.
               apply parse_nonterminal'_correct. }
@@ -1951,12 +2003,16 @@ Section recursive_descent_parser.
                 simpl.
                 rewrite H', Bool.andb_false_r; simpl.
                 edestruct lt_dec; try omega; simpl.
+                Local Opaque parse_nonterminal'.
                 repeat eq_t'.
+                Local Transparent parse_nonterminal'.
                 R_etransitivity_eq; [ eapply ret_nt_invalid_is_correct | ].
                 symmetry.
+                Local Opaque parse_nonterminal'_substring.
                 unfold parse_nonterminal'; repeat eq_t'.
+                Local Transparent parse_nonterminal'_substring. Local Opaque parse_nonterminal_or_abort.
                 unfold parse_nonterminal'_substring; repeat eq_t'.
-                congruence. } }
+                Local Transparent parse_nonterminal_or_abort. } }
           Qed.
         End wf.
       End nonterminals.
