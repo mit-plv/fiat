@@ -8,6 +8,7 @@ Delimit Scope typecode_scope with typecode.
 Delimit Scope term_scope with term.
 Delimit Scope termargs_scope with termargs.
 Local Set Boolean Equality Schemes.
+Local Set Decidable Equality Schemes.
 Inductive SimpleTypeCode : Set :=
 | cnat
 | cbool
@@ -24,6 +25,7 @@ Module Export TypeCodeCoercions.
   Global Coercion csimple : SimpleTypeCode >-> TypeCode.
 End TypeCodeCoercions.
 Local Unset Boolean Equality Schemes.
+Local Unset Decidable Equality Schemes.
 
 Bind Scope typecode_scope with TypeCode.
 Bind Scope typecode_scope with SimpleTypeCode.

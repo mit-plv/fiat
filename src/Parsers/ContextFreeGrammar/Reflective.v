@@ -64,6 +64,21 @@ Scheme Minimality for ritem Sort Type.
 Scheme Minimality for ritem Sort Set.
 Scheme Minimality for ritem Sort Prop.
 
+Scheme Equality for RCharExpr.
+Scheme Equality for ritem.
+Global Instance RCharExpr_BoolDecR {Char} {Char_beq : BoolDecR Char} : BoolDecR (@RCharExpr Char)
+  := RCharExpr_beq Char_beq.
+Global Instance RCharExpr_BoolDec_bl {Char} {Char_beq : BoolDecR Char} {Char_bl : BoolDec_bl eq} : BoolDec_bl (@eq (@RCharExpr Char))
+  := internal_RCharExpr_dec_bl Char_beq Char_bl.
+Global Instance RCharExpr_BoolDec_lb {Char} {Char_beq : BoolDecR Char} {Char_lb : BoolDec_lb eq} : BoolDec_lb (@eq (@RCharExpr Char))
+  := internal_RCharExpr_dec_lb Char_beq Char_lb.
+Global Instance ritem_BoolDecR {Char} {Char_beq : BoolDecR Char} : BoolDecR (@ritem Char)
+  := ritem_beq Char_beq.
+Global Instance ritem_BoolDec_bl {Char} {Char_beq : BoolDecR Char} {Char_bl : BoolDec_bl eq} : BoolDec_bl (@eq (@ritem Char))
+  := internal_ritem_dec_bl Char_beq Char_bl.
+Global Instance ritem_BoolDec_lb {Char} {Char_beq : BoolDecR Char} {Char_lb : BoolDec_lb eq} : BoolDec_lb (@eq (@ritem Char))
+  := internal_ritem_dec_lb Char_beq Char_lb.
+
 Global Arguments RCharExpr : clear implicits.
 Global Arguments ritem : clear implicits.
 Global Arguments rproduction : clear implicits.
