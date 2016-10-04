@@ -734,8 +734,13 @@ Section DomainName.
           apply terminal_char_eq in H5; rewrite H5.
           reflexivity.
         + auto.
+        + unfold Frame.monotonic_function; simpl.
+          intros; eapply encode_body_monotone; assumption.
       }
-      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc; auto using encode_body_monotone.
+      { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc;
+        try solve [unfold Frame.monotonic_function; simpl;
+                   intros; eapply encode_body_monotone; assumption];
+        auto using encode_body_monotone.
         { destruct (string_dec l ""); simpl in Penc.
           (* Base case for domain name. *)
           - destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
