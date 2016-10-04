@@ -132,6 +132,9 @@ Section BoolFacts.
   Lemma uneta_bool {b : bool} : (if b then true else false) = b.
   Proof. destruct b; reflexivity. Qed.
 
+  Lemma uneta_bool_rect_nodep {b : bool} : bool_rect_nodep bool true false b = b.
+  Proof. destruct b; reflexivity. Qed.
+
   Lemma bool_rect_flatten {b t f}
     : bool_rect (fun _ : bool => bool) t f b
       = ((b && t) || (negb b && f))%bool.

@@ -795,7 +795,7 @@ Lemma List_Query_In_Return
 Proof.
   unfold List_Query_In; induction l; simpl; eauto.
   - reflexivity.
-  - setoid_rewrite IHl; simplify with monad laws.
+  - setoid_rewrite IHl; unfold Query_Return; simplify with monad laws.
     reflexivity.
 Qed.
 

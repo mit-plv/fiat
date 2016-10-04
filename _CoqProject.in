@@ -206,6 +206,8 @@ src/Common/Monad.v
 src/Common/NatFacts.v
 src/Common/Notations.v
 src/Common/OptionFacts.v
+src/Common/PointedProp.v
+src/Common/Prod.v
 src/Common/ReservedNotations.v
 src/Common/SetEq.v
 src/Common/SetEqProperties.v
@@ -520,7 +522,9 @@ src/Parsers/Reflective/Semantics.v
 src/Parsers/Reflective/SemanticsOptimized.v
 src/Parsers/Reflective/Syntactify.v
 src/Parsers/Reflective/Syntax.v
+src/Parsers/Reflective/SyntaxEquality.v
 src/Parsers/Reflective/SyntaxEquivalence.v
+src/Parsers/Reflective/SyntaxEquivalenceReflective.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v

@@ -1043,6 +1043,7 @@ Section recursive_descent_parser.
       | _ => progress fin_step_opt
     end.
 
+  Local Unset Keyed Unification.
   Definition parse_nonterminal_opt'1
              (str : String)
              (nt : String.string)

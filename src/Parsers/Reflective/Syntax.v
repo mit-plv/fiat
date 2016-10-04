@@ -8,6 +8,7 @@ Delimit Scope typecode_scope with typecode.
 Delimit Scope term_scope with term.
 Delimit Scope termargs_scope with termargs.
 Local Set Boolean Equality Schemes.
+Local Set Decidable Equality Schemes.
 Inductive SimpleTypeCode : Set :=
 | cnat
 | cbool
@@ -24,6 +25,7 @@ Module Export TypeCodeCoercions.
   Global Coercion csimple : SimpleTypeCode >-> TypeCode.
 End TypeCodeCoercions.
 Local Unset Boolean Equality Schemes.
+Local Unset Decidable Equality Schemes.
 
 Bind Scope typecode_scope with TypeCode.
 Bind Scope typecode_scope with SimpleTypeCode.
@@ -33,6 +35,65 @@ Arguments cprod (_ _)%typecode.
 
 Infix "-->" := carrow : typecode_scope.
 Infix "*" := cprod : typecode_scope.
+
+Definition f_equal2_transparent {A1 A2 B} (f : A1 -> A2 -> B) {x1 y1 : A1} {x2 y2 : A2} (H : x1 = y1) : x2 = y2 -> f x1 x2 = f y1 y2
+  := match H in (_ = y) return (x2 = y2 -> f x1 x2 = f y y2) with
+     | eq_refl => fun H0 : x2 = y2 => match H0 in (_ = y) return (f x1 x2 = f x1 y) with
+                                      | eq_refl => eq_refl
+                                      end
+     end.
+
+Fixpoint SimpleTypeCode_eq_semidec_transparent (T1 T2 : SimpleTypeCode) : option (T1 = T2)
+  := match T1, T2 return option (T1 = T2) with
+     | cnat, cnat => Some eq_refl
+     | cbool, cbool => Some eq_refl
+     | cstring, cstring => Some eq_refl
+     | cascii, cascii => Some eq_refl
+     | critem_ascii, critem_ascii => Some eq_refl
+     | crchar_expr_ascii, crchar_expr_ascii => Some eq_refl
+     | clist T, clist T'
+       => match SimpleTypeCode_eq_semidec_transparent T T' with
+          | Some p => Some (f_equal clist p)
+          | None => None
+          end
+     | cprod A B, cprod A' B'
+       => match SimpleTypeCode_eq_semidec_transparent A A', SimpleTypeCode_eq_semidec_transparent B B' with
+          | Some p, Some q => Some (f_equal2_transparent cprod p q)
+          | _, _ => None
+          end
+     | _, _ => None
+     end.
+Fixpoint TypeCode_eq_semidec_transparent (T1 T2 : TypeCode) : option (T1 = T2)
+  := match T1, T2 return option (T1 = T2) with
+     | csimple T, csimple T' => option_map (f_equal csimple) (SimpleTypeCode_eq_semidec_transparent T T')
+     | csimple _, _ => None
+     | carrow A B, carrow A' B'
+       => match TypeCode_eq_semidec_transparent A A', TypeCode_eq_semidec_transparent B B' with
+          | Some p, Some q => Some (f_equal2_transparent carrow p q)
+          | _, _ => None
+          end
+     | carrow _ _, _ => None
+     end.
+
+Local Ltac t_is_dec :=
+  repeat match goal with
+         | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
+         | _ => progress subst
+         | _ => progress simpl in *
+         | _ => congruence
+         | [ H : forall x, _ = None -> _, H' : _ = None |- _ ]
+           => specialize (H _ H')
+         | _ => progress unfold option_map
+         | [ H : csimple _ = csimple _ |- _ ] => inversion H; clear H
+         | _ => intro
+         | _ => solve [ intuition eauto ]
+         end.
+
+Lemma SimpleTypeCode_eq_semidec_is_dec : forall {T1 T2}, SimpleTypeCode_eq_semidec_transparent T1 T2 = None -> T1 <> T2.
+Proof. induction T1, T2; t_is_dec. Qed.
+
+Lemma TypeCode_eq_semidec_is_dec : forall {T1 T2}, TypeCode_eq_semidec_transparent T1 T2 = None -> T1 <> T2.
+Proof. pose proof (@SimpleTypeCode_eq_semidec_is_dec); induction T1, T2; t_is_dec. Qed.
 
 Fixpoint range_of (T : TypeCode) : SimpleTypeCode
   := match T with

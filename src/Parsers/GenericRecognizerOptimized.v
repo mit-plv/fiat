@@ -213,6 +213,7 @@ Section recursive_descent_parser.
     reflexivity.
   Defined.
 
+  Local Unset Keyed Unification.
   Definition parse_nonterminal_opt'1
              (str : String)
              (nt : String.string)

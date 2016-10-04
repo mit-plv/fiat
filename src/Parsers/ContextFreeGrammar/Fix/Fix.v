@@ -393,7 +393,8 @@ Section grammar_fixedpoint.
         repeat match goal with
                | [ H : ?x = true |- _ ] => change (is_true x) in H
                end.
-      { rewrite <- pre_Fix_grammar_helper_fixed by assumption.
+      { fold @pre_Fix_grammar_helper in *.
+        rewrite <- pre_Fix_grammar_helper_fixed by assumption.
         assumption. }
       { match goal with
         | [ H : is_true (aggregate_state_eq ?x ?y), H' : context[?x] |- _ ]
