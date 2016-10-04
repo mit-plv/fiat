@@ -581,9 +581,7 @@ Module LeastFixedPointFun.
         {fDom : list Type}
         {fCod : Type}
         (fDef : funType fDom fCod -> funType fDom fCod)
-        (fDef_monotone : forall rec rec',
-            refineFun rec rec'
-            -> refineFun (fDef rec) (fDef rec'))
+        (fDef_monotone : monotonic_function fDef)
     : refineFun (LeastFixedPoint fDef) (fDef (LeastFixedPoint fDef)).
   Proof.
     eapply (Is_GreatestFixedPoint fDef fDef_monotone).

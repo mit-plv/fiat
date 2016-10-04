@@ -43,17 +43,21 @@ Section DomainName.
   Context {cacheGet : CacheGet cache string pointerT}.
   Context {cachePeek : CachePeek cache pointerT}.
 
-  Variable cacheGet_OK :
-    forall env p domain,
-      cache_inv env
-      -> getD env p = Some domain
-      -> ValidDomainName domain /\ (String.length domain > 0)%nat .
+  (* Variable cacheGet_OK :
+    cache_inv_Property
+      cache_inv
+      (fun P => forall env p domain,
+           cache_inv env
+           -> getD env p = Some domain
+           -> ValidDomainName domain /\ (String.length domain > 0)%nat).
 
   Variable cacheAdd_OK :
-    forall env p domain,
+    cache_inv_Property
+      cache_inv
+      (fun P => forall env p domain,
       cache_inv env
       -> (ValidDomainName domain /\ String.length domain > 0)%nat
-        -> cache_inv (addD env (domain, p)).
+        -> cache_inv (addD env (domain, p))). *)
   Open Scope comp_scope.
 
   Import FixComp.LeastFixedPointFun.
@@ -672,14 +676,24 @@ Section DomainName.
 
   (* Commenting out until I can patch up proof. *)
   Theorem DomainName_decode_correct
-          (P_OK : forall (b : nat) (cd : CacheDecode),
-              cache_inv cd
-              -> cache_inv (addD cd b))
-          (Get_cache_inv_OK
-           : cache_inv_Property cache_inv
-                                (fun P => forall ce l p1 p2,
+          (P_OK :
+             cache_inv_Property
+               cache_inv
+               (fun P =>
+                  (forall env p domain,
+                    cache_inv env
+                    -> getD env p = Some domain
+                    -> ValidDomainName domain /\ (String.length domain > 0)%nat)
+                  /\ (forall env p domain,
+                         cache_inv env
+                         -> (ValidDomainName domain /\ String.length domain > 0)%nat
+                         -> cache_inv (addD env (domain, p)))
+                  /\ (forall (b : nat) (cd : CacheDecode),
+                    cache_inv cd
+                    -> cache_inv (addD cd b))
+                  /\ (forall ce l p1 p2,
                                      (@getE _ DomainName _ _ ce l = Some (p1, p2)
-                                      -> wlt (natToWord 8 191) p1)))
+                                      -> wlt (natToWord 8 191) p1))))
     :
     encode_decode_correct_f
       cache transformer
@@ -704,7 +718,7 @@ Section DomainName.
       induction n; intros; simpl in *.
       destruct l; simpl in *; try omega.
       { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc; auto using encode_body_monotone; simpl in Penc.
-         destruct (proj1 (Ascii_decode_correct P_OK)
+         destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
                         _ _ _ _ _ ext0 Eeq I I Penc) as [? [? ?] ].
         apply DecodeBindOpt2_inv in H0;
           destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
@@ -724,7 +738,7 @@ Section DomainName.
       { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc; auto using encode_body_monotone.
         { destruct (string_dec l ""); simpl in Penc.
           (* Base case for domain name. *)
-          - destruct (proj1 (Ascii_decode_correct P_OK)
+          - destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
                             _ _ _ _ _ ext0 Eeq I I Penc) as [? [? ?] ].
             apply DecodeBindOpt2_inv in H0;
               destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
@@ -779,7 +793,7 @@ Section DomainName.
                       unfold DomainName, pointerT in *; rewrite GetPtr.
                     destruct l; try congruence.
                     reflexivity.
-                  * apply Get_cache_inv_OK in GetPtr; contradiction.
+                  * apply P_OK in GetPtr; contradiction.
                 + intros; apply functional_extensionality; intros.
                   repeat (f_equal; apply functional_extensionality; intros).
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x1); simpl.
@@ -1071,15 +1085,19 @@ Section DomainName.
         destruct s; try discriminate; injections.
         eapply Decode_w_Measure_le_eq' in H2.
         eapply Decode_w_Measure_le_eq' in H3.
-        destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+        destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
             [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ].
-        destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ xenv_eqv H4 H3) as
+        destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK))))
+                        _ _ _ _ _ _ xenv_eqv H4 H3) as
             [? [b'' [xenv' [enc_x0' [x_eq' [_ xenv_eqv'] ] ] ] ] ].
         split; eauto; eexists _, _; split; eauto.
         apply (unroll_LeastFixedPoint'
                  (fDom := [DomainName; CacheEncode])
                  (fCod := (B * CacheEncode)%type));
+          unfold Frame.monotonic_function; simpl;
           auto using encode_body_monotone.
+        intros; eapply encode_body_monotone.
+        simpl; auto.
         eapply get_correct in getD_eq.
         rewrite getD_eq; simpl.
         computes_to_econstructor.
@@ -1090,7 +1108,7 @@ Section DomainName.
         intuition eauto.
         rewrite x_eq' in x_eq.
         simpl in *; rewrite <- transform_assoc; assumption.
-        eapply cacheGet_OK; [ | eassumption ].
+        eapply P_OK; [ | eassumption ].
         assumption.
         assumption.
         assumption.
@@ -1101,13 +1119,15 @@ Section DomainName.
         + (* This is the terminal character. *)
           injections.
           eapply Decode_w_Measure_le_eq' in H2.
-          destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+          destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
               [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ]; split; eauto.
           eexists _, _; split; eauto.
           apply (unroll_LeastFixedPoint'
                    (fDom := [DomainName; CacheEncode])
                    (fCod := (B * CacheEncode)%type));
             auto using encode_body_monotone.
+          unfold Frame.monotonic_function; simpl;
+            intros; eapply encode_body_monotone; assumption.
           simpl.
           econstructor.
           unfold encode_word_Spec in enc_x0; computes_to_inv;
@@ -1129,11 +1149,12 @@ Section DomainName.
             destruct H4 as [? [? [? [? ?] ] ] ]; injections; subst.
           apply Decode_w_Measure_le_eq' in H2.
           apply Decode_w_Measure_lt_eq' in H3.
-          destruct (proj2 (Word_decode_correct P_OK) _ _ _ _ _ _ H0 H1 H2) as
+          destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
               [? [b' [xenv [enc_x0 [x_eq [? xenv_eqv] ] ] ] ] ]; eauto.
           destruct (fun H  => proj2 (String_decode_correct
                                        (P := cache_inv)
-                                       P_OK (wordToNat x0))
+                                       (proj1 (proj2 (proj2 P_OK)))
+                                       (wordToNat x0))
                                     _ _ _ _ _ _ xenv_eqv H H3) as
               [? [b'' [xenv'' [enc_x0' [x_eq' [? xenv_eqv'] ] ] ] ] ]; eauto.
           eapply H in H4; eauto.
@@ -1142,7 +1163,7 @@ Section DomainName.
           destruct (string_dec x6 ""); simpl in *;
             injections.
           { injection H5; intros; rewrite H14.
-            eapply cacheAdd_OK; eauto.
+            eapply P_OK; eauto.
             split.
             unfold ValidDomainName; split; intros.
             rewrite H17 in H9; generalize H9.
@@ -1170,7 +1191,7 @@ Section DomainName.
             omega.
           }
           { injection H5; intros; rewrite H14.
-            eapply cacheAdd_OK; eauto.
+            eapply P_OK; eauto.
             split.
             eapply ValidDomainName_app'; eauto.
             unfold ValidLabel; split; eauto.
@@ -1185,6 +1206,9 @@ Section DomainName.
                    (fDom := [DomainName; CacheEncode])
                    (fCod := (B * CacheEncode)%type));
             auto using encode_body_monotone.
+          unfold Frame.monotonic_function; simpl;
+            intros; eapply encode_body_monotone; assumption.
+          simpl.
           destruct (string_dec (x3 ++ x6) ""); simpl.
           destruct x3; simpl in e; try discriminate.
           elimtype False; eapply NonEmpty_String_wordToNat; eauto.
