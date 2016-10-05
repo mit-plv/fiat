@@ -55,8 +55,9 @@ Section DnsPacket.
   (* Resource Record <character-string>s are a byte, *)
   (* followed by that many characters. *)
   Definition encode_characterString_Spec (s : string) :=
-    encode_nat_Spec 8 (String.length s)
-    ThenC encode_string_Spec s.
+        encode_nat_Spec 8 (String.length s)
+  ThenC encode_string_Spec s
+  DoneC.
 
   Definition encode_question_Spec (q : question) :=
        encode_DomainName_Spec q!"qname"
@@ -324,6 +325,12 @@ Section DnsPacket.
               eapply FixList_decode_correct end
           | apply_compose ]. *) *)
 
+  Lemma decides_True' {A}
+    : forall a, decides true ((fun _ : A => True) a).
+  Proof.
+    simpl; intros; exact I.
+  Qed.
+
   Require Import Fiat.Common.IterateBoundedIndex
           Fiat.Common.Tactics.CacheStringConstant.
 
@@ -337,10 +344,89 @@ Section DnsPacket.
 Qed.
 
   Hint Resolve lt_1_pow2_16 : data_inv_hints.
+  Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
-  Definition packet_decoder
+Ltac decide_data_invariant :=
+  (* Show that the invariant on the data is decideable. Most *)
+  (* of the clauses in this predicate are obviously true by *)
+  (* construction, but there may be some that need to be checked *)
+  (* by a decision procedure*)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros; intuition;
+    repeat first [ progress subst
+             | match goal with
+                 |- decides ?A (?B ?C)  =>
+                 let T := type of C in
+                 unify B (fun _ : T => True);
+                 apply (@decides_True' T C)
+               end
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_and
+          | eapply decides_assumption; eassumption
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+
+Ltac decode_step :=
+  (* Processes the goal by either: *)
+  match goal with
+  (* A) decomposing one of the parser combinators, *)
+  | |- _ => apply_compose
+  (* B) applying one of the rules for a base type  *)
+  | H : cache_inv_Property _ _
+    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    intros; revert H; eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
+    eapply Nat_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec _) _ _] => intros; apply FixList_decode_correct
+
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
+    eapply Enum_decode_correct
+  | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
+    eapply DomainName_decode_correct
+  (* C) Discharging a side condition of one of the base rules *)
+  | |- NoDupVector _ => Discharge_NoDupVector
+  | _ => solve [solve_data_inv]
+  (* D) Solving the goal once all the byte string has been parsed *)
+  | _ =>  solve [simpl; intros;
+                 eapply encode_decode_correct_finish;
+                 [ build_fully_determined_type
+                 | decide_data_invariant ] ]
+  end.
+
+Lemma validDomainName_proj1_OK
+  : forall domain,
+    ValidDomainName domain
+    -> decides true
+               (forall pre label post : string,
+                   domain = (pre ++ label ++ post)%string ->
+                   ValidLabel label -> (String.length label <= 63)%nat).
+Proof.
+  simpl; intros; eapply H; eauto.
+Qed.
+
+Lemma validDomainName_proj2_OK
+  : forall domain,
+    ValidDomainName domain
+    ->
+    decides true
+   (forall pre post : string,
+    domain = (pre ++ "." ++ post)%string ->
+    post <> ""%string /\
+    pre <> ""%string /\
+    ~ (exists s' : string, post = String "." s') /\
+    ~ (exists s' : string, pre = (s' ++ ".")%string)).
+Proof.
+  simpl; intros; apply H; eauto.
+Qed.
+
+Hint Resolve validDomainName_proj1_OK : decide_data_invariant_db.
+Hint Resolve validDomainName_proj2_OK : decide_data_invariant_db.
+
+Definition packet_decoder
              pred
     : { decodePlusCacheInv |
         exists P_inv,
@@ -401,29 +487,28 @@ Qed.
     decode_step.
     decode_step.
     decode_step.
-    decode_step.
-    admit. (* Need constraint on the number of answers. *)
+    simpl.
+    admit. (* Need constraint on the number of answers: *)
+    (* ((|data!StringId8 |) < pow2 16) *)
     decode_step.
     decode_step.
     decode_step.
     admit. (* Need constraint on the number of authority responses. *)
+    (* ((|data!StringId8 |) < pow2 16) *)
     decode_step.
     decode_step.
     decode_step.
     admit. (* Need constraint on the number of additional responses. *)
-    decode_step.
-    decode_step.
-    intros.
-    eapply DomainName_decode_correct.
-    apply H12.
-    assert False as whatevs by (clear; admit); destruct whatevs.
-    admit. (* Need constraint on the validity of domainNames in question*)
+    (* ((|data!StringId10 |) < pow2 16) *)
     decode_step.
     decode_step.
     decode_step.
+    simpl.
+    (* Need constraint on the validity of domainNames in question*)
+    (* ValidDomainName (data!"question")!"qname" *)
+    admit.
     decode_step.
-    decode_step.
-    decode_step.
+    apply_compose.
     decode_step.
     decode_step.
     decode_step.
@@ -435,79 +520,27 @@ Qed.
     decode_step.
     decode_step.
     decode_step.
+    decode_step. (* intros; eapply FixList_decode_correct. *)
     decode_step.
-
-
-
-
-
-
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    cbv beta; transitivity (wordToNat (natToWord 16 2));
-      [simpl; omega | eapply wordToNat_bound].
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    build_decoder.
-    solve_data_inv.
-    build_decoder.
-    eapply SumType_decode_correct.
-    instantiate (2 := (icons _
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply SumType_decode_correct with
+    (encoders := (icons _
            (icons _
               (icons _
                  (icons _
@@ -515,9 +548,17 @@ Qed.
                        (icons _
                           (icons _
                              (icons _
-                                    (icons _ (icons _ inil))))))))))).
-    instantiate (13 := @Iterate_Dep_Type_equiv' 10 _
-                                               (icons _
+                                    (icons _ (icons _ inil)))))))))))
+      (decoders := (icons _
+           (icons _
+              (icons _
+                 (icons _
+                    (icons _
+                       (icons _
+                          (icons _
+                             (icons _
+                                    (icons _ (icons _ inil)))))))))))
+      (invariants := icons _
            (icons _
               (icons _
                  (icons _
@@ -526,10 +567,7 @@ Qed.
                           (icons _
                              (icons _
                                     (icons _ (icons _ inil))))))))))
-
-                ).
-    instantiate (12 := @Iterate_Dep_Type_equiv' 10 _
-                                               (icons _
+      (invariants_rest := icons _
            (icons _
               (icons _
                  (icons _
@@ -538,13 +576,248 @@ Qed.
                           (icons _
                              (icons _
                                     (icons _ (icons _ inil))))))))))
-
-                ).
+      (cache_invariants := Vector.cons _ _ _
+           (Vector.cons _ _ _
+              (Vector.cons _ _ _
+                 (Vector.cons _ _ _
+                    (Vector.cons _ _ _
+                       (Vector.cons _ _ _
+                          (Vector.cons _ _ _
+                             (Vector.cons _ _ _
+                                    (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _))))))))))).
     intro; pattern idx.
     eapply Iterate_Ensemble_equiv' with (idx := idx); simpl.
     apply Build_prim_and.
-    build_decoder.
+    repeat decode_step.
     apply Build_prim_and.
+    repeat decode_step.
+    apply Build_prim_and.
+    repeat decode_step.
+    apply Build_prim_and.
+    repeat decode_step.
+    (* Another constraint on data  intros; clear; admit. *)
+    apply Build_prim_and.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    repeat decode_step.
+    apply Build_prim_and.
+    repeat decode_step.
+    apply Build_prim_and.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply String_decode_correct.
+    decode_step.
+    decode_step.
+    intros; eapply encode_decode_correct_finish.
+    build_fully_determined_type.
+    decide_data_invariant.
+    decode_step.
+    intros; instantiate (1 := fun _ _ => True).
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply String_decode_correct.
+    decode_step.
+    decode_step.
+    intros; eapply encode_decode_correct_finish.
+    build_fully_determined_type.
+    decide_data_invariant.
+    decode_step.
+    intros; instantiate (1 := fun _ _ => True).
+    decode_step.
+    decode_step.
+    apply Build_prim_and.
+    repeat decode_step.
+    apply Build_prim_and.
+    repeat decode_step.
+    apply Build_prim_and.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply String_decode_correct.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    repeat instantiate (1 := fun _ _ => True).
+    intros; clear; admit.
+    decode_step.
+    split; intros.
+    intuition.
+    rewrite !app_length.
+    rewrite H20, H21, H22.
+    reflexivity.
+    intuition; intros.
+    Focus 2.
+    Show Existentials.
+
+
+    intros; simpl.
+    4: decode_step.
+    2: decode_step.
+
+    simpl.
+
+
+
+
+
+    repeat decode_step.
+
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply String_decode_correct.
+    decode_step.
+    decode_step.
+    intros; eapply encode_decode_correct_finish.
+    build_fully_determined_type.
+    decide_data_invariant.
+    decode_step.
+    intros; instantiate (1 := fun _ _ => True).
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
+    eapply String_decode_correct.
+    decode_step.
+    decode_step.
+    intros; eapply encode_decode_correct_finish.
+    build_fully_determined_type.
+    decide_data_invariant.
+    decode_step.
+    intros; instantiate (1 := fun _ _ => True).
+    decode_step.
+    decode_step.
+
+
+    intros; instantiate (1 := fun _ _ => True).
+
+    solve_data_inv.
+let H' := fresh in
+  let data := fresh in
+  intros data H';
+  repeat destruct H';
+  match goal with
+  | H : ?P data |- ?P_inv' =>
+    is_evar P;
+    let P_inv' := (eval pattern data in P_inv') in
+    let P_inv := match P_inv' with ?P_inv data => P_inv end in
+    let new_P_T := type of P in
+    makeEvar new_P_T
+             ltac:(fun new_P =>
+                     unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
+  end.
+
+    shelve_inv.
+
+    build_fully_determined_type.
+    unfold GetAttribute, GetAttributeRaw in *;
+      simpl in *; intros; intuition.
+    subst.
+    repeat
+        first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+    first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+        first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+                first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+        first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+        first [ eapply decides_and
+          | eapply decides_assumption; eassumption
+          | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+        eapply decides_eq_refl.
+        eapply decides_eq_refl.
+        eapply decides_eq_refl.
+    eapply decides_and
+    decode_step.
+
+
+    apply Build_prim_and.
+    repeat decode_step.
+
+
+  (* Processes the goal by either: *)
+  match goal with
+  (* A) decomposing one of the parser combinators, *)
+  | |- _ => apply_compose
+  (* B) applying one of the rules for a base type  *)
+  | H : cache_inv_Property _ _
+    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    intros; revert H; eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    eapply Word_decode_correct
+  | |- appcontext [encode_list_Spec] =>
+    intros; eapply FixList_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
+    eapply Nat_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
+    eapply Enum_decode_correct
+  (* C) Discharging a side condition of one of the base rules *)
+  | |- NoDupVector _ => Discharge_NoDupVector
+    intros; apply Vector_predicate_rest_True
+  | _ => solve [solve_data_inv]
+  (* D) Solving the goal once all the byte string has been parsed *)
+  | _ =>  solve [simpl; intros;
+                 eapply encode_decode_correct_finish;
+                 [ build_fully_determined_type
+                 | decide_data_invariant ] ]
+  end.
+
+    decode_step.
+
+
+    apply Build_prim_and.
+    repeat decode_step.
+
+
+
+
     build_decoder.
     apply Build_prim_and.
     build_decoder.

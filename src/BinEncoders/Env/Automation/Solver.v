@@ -62,10 +62,12 @@ Ltac shelve_inv :=
                      unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
   end.
 
+Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
+
 (* Solves data invariants using the data_inv_hints database *)
 Ltac solve_data_inv :=
   first [ simpl; intros; exact I
-        | solve [intuition eauto with data_inv_hints]
+        | solve [simpl; intuition eauto with data_inv_hints]
         | shelve_inv ].
 
 Ltac start_synthesizing_decoder :=
@@ -110,9 +112,11 @@ Ltac decide_data_invariant :=
   unfold GetAttribute, GetAttributeRaw in *;
   simpl in *; intros; intuition;
   repeat
-    first [eapply decides_and
-          | eapply decides_assumption; eassumption
+    first [ progress subst
           | apply decides_eq_refl
+          | solve [eauto with decide_data_invariant_db]
+          | eapply decides_and
+          | eapply decides_assumption; eassumption
           | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
 
 Ltac decode_step :=

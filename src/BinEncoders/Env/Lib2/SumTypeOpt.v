@@ -71,7 +71,7 @@ Section SumType.
     intros; subst; intuition.
   Qed.
 
-  Theorem SumType_decode_correct {m}
+  Theorem SumType_decode_correct' {m}
           {P}
           (types : Vector.t Type m)
           (encoders : ilist (B := fun T => T -> CacheEncode ->
@@ -124,6 +124,37 @@ Section SumType.
         eapply SumType_proj_inj; eauto.
     }
   Qed.
+
+  Theorem SumType_decode_correct {m}
+          {P}
+          (types : Vector.t Type m)
+          (encoders : ilist (B := fun T => T -> CacheEncode ->
+                                           Comp (B * CacheEncode)) types)
+          (decoders : ilist (B := fun T => B -> CacheDecode -> option (T * B * CacheDecode)) types)
+          (invariants : ilist (B := fun T => Ensemble T) types)
+          (invariants_rest : ilist (B := fun T => T -> B -> Prop) types)
+          (cache_invariants : Vector.t (Ensemble (CacheDecode -> Prop)) m)
+          (encoders_decoders_correct : forall idx,
+              cache_inv_Property P (Vector.nth cache_invariants idx)
+              -> encode_decode_correct_f
+                cache transformer
+                (ith invariants idx)
+                (ith invariants_rest idx)
+                (ith encoders idx)
+                (ith decoders idx)
+                P)
+          idx
+    :
+      cache_inv_Property P (fun P => forall idx, Vector.nth cache_invariants idx P)
+      -> encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
+                                 (fun st b => (ith invariants_rest) _ (SumType_proj _ st) b)
+                          (encode_SumType_Spec types encoders)
+                          (decode_SumType types decoders idx)
+                          P.
+  Proof.
+    intros; eapply SumType_decode_correct'; eauto.
+  Qed.
+
 End SumType.
 
 Arguments SumType : simpl never.
