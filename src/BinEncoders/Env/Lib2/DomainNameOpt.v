@@ -1,7 +1,8 @@
 Require Import
         Bedrock.Word
         Coq.Strings.Ascii
-        Coq.Strings.String.
+        Coq.Strings.String
+        Coq.Logic.Eqdep_dec.
 
 Require Import
         Fiat.Computation.Core
@@ -24,7 +25,7 @@ Section DomainName.
 
   (* The terminal character for domain names is the byte of all zeros. *)
   Definition terminal_char : ascii := zero.
-  Definition pointerT := (word 8 * word 8)%type.
+  Definition pointerT := ({w : word 8 | wlt (natToWord 8 191) w} * word 8)%type.
 
   Lemma terminal_char_eq :
     forall x0, terminal_char = ascii_of_N (wordToN x0)
@@ -73,7 +74,7 @@ Section DomainName.
     (Ifopt (getE env domain) as position Then
         b <- {b : bool | True};
           If b Then (* Nondeterministically pick whether to use a cached value. *)
-             (`(ptr1b, env') <- encode_word_Spec (fst position) env;
+             (`(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env;
               `(ptr2b, env') <- encode_word_Spec (snd position) env';
               ret (transform ptr1b ptr2b, env'))
              Else (`(label, domain') <- { labeldomain' |
@@ -361,14 +362,14 @@ Section DomainName.
            (fun _ => CacheDecode -> option (DomainName * B * CacheDecode))
       (fun b rec cd =>
          `(labelheader, b1, env') <- Decode_w_Measure_le (decode_word (sz := 8)) b cd _;
-           If (wlt_dec (natToWord 8 191) labelheader) (* It's a pointer! *)
-           Then (`(ps, b2, env') <- Decode_w_Measure_le (decode_word (sz := 8)) (proj1_sig b1) env' decode_word_le;
-               match getD cd (labelheader, ps) with
+           match (wlt_dec (natToWord 8 191) labelheader) with (* It's a pointer! *)
+           | left l  => (`(ps, b2, env') <- Decode_w_Measure_le (decode_word (sz := 8)) (proj1_sig b1) env' decode_word_le;
+               match getD cd (exist _ _ l, ps) with
                  | Some EmptyString => None (* bogus *)
                  | Some domain => Some (domain, proj1_sig b2, env')
                  | None => None (* bogus *)
                  end)
-           Else (If (wlt_dec labelheader (natToWord 8 64)) Then (* It's a length octet *)
+           | right r => (If (wlt_dec labelheader (natToWord 8 64)) Then (* It's a length octet *)
          (match (weq labelheader (wzero 8)) with (* It's the terminal character. *)
               | left _ => Some (EmptyString, proj1_sig b1, env')
               | right n =>
@@ -381,7 +382,7 @@ Section DomainName.
                  Else Some (label ++ (String "." domain), b4,
                             addD e3 (label ++ (String "." domain), peekD cd))
              )) end)
-         Else None))%string b env);
+         Else None) end)%string b env);
     try exact decode_word_le;
       try exact decode_word_lt.
   Defined.
@@ -392,14 +393,14 @@ Section DomainName.
    (forall (y : B) (p : lt_B y x), f y p = g y p) ->
    (fun cd : CacheDecode =>
     `(labelheader, b1, env') <- Decode_w_Measure_le decode_word x cd decode_word_le;
-    If wlt_dec WO~1~0~1~1~1~1~1~1 labelheader
-    Then `(ps, b2, env'0) <- Decode_w_Measure_le decode_word (` b1) env' decode_word_le;
-         match getD cd (labelheader, ps) with
+    match wlt_dec WO~1~0~1~1~1~1~1~1 labelheader with
+    | left l => `(ps, b2, env'0) <- Decode_w_Measure_le decode_word (` b1) env' decode_word_le;
+         match getD cd (exist _ labelheader l, ps) with
          | Some ""%string => None
          | Some (String _ _ as domain) => Some (domain, ` b2, env'0)
          | None => None
          end
-    Else (If wlt_dec labelheader WO~0~1~0~0~0~0~0~0
+    | right r => (If wlt_dec labelheader WO~0~1~0~0~0~0~0~0
           Then match weq labelheader (wzero 8) with
                | in_left => Some (""%string, ` b1, env')
                | right n =>
@@ -416,17 +417,17 @@ Section DomainName.
                       Some (label, b4, addD e3 (label, peekD cd))
                    Else Some (label ++ (String "." domain), b4,
                             addD e3 (label ++ (String "." domain), peekD cd)))%string
-               end Else None)) =
+               end Else None) end) =
    (fun cd : CacheDecode =>
-    `(labelheader, b1, env') <- Decode_w_Measure_le decode_word x cd decode_word_le;
-    If wlt_dec WO~1~0~1~1~1~1~1~1 labelheader
-    Then `(ps, b2, env'0) <- Decode_w_Measure_le decode_word (` b1) env' decode_word_le;
-         match getD cd (labelheader, ps) with
+      `(labelheader, b1, env') <- Decode_w_Measure_le decode_word x cd decode_word_le;
+        match wlt_dec WO~1~0~1~1~1~1~1~1 labelheader with
+        | left l => `(ps, b2, env'0) <- Decode_w_Measure_le decode_word (` b1) env' decode_word_le;
+         match getD cd (exist _ _ l, ps) with
          | Some ""%string => None
          | Some (String _ _ as domain) => Some (domain, ` b2, env'0)
          | None => None
          end
-    Else (If wlt_dec labelheader WO~0~1~0~0~0~0~0~0
+        | right _ => (If wlt_dec labelheader WO~0~1~0~0~0~0~0~0
           Then match weq labelheader (wzero 8) with
                | in_left => Some (""%string, ` b1, env')
                | right n =>
@@ -443,7 +444,7 @@ Section DomainName.
                           Some (label, b4, addD e3 (label, peekD cd))
                        Else Some (label ++ (String "." domain), b4,
                                   addD e3 (label ++ (String "." domain), peekD cd)))%string
-               end Else None)).
+               end Else None) end).
   Proof.
     intros; apply functional_extensionality; intros.
     repeat (f_equal; apply functional_extensionality; intros).
@@ -467,7 +468,7 @@ Section DomainName.
     Else (Ifopt getE env0 domain as position
           Then b <- {_ : bool | True};
                If b
-               Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
+               Then `(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env0;
                     `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
                     ret (transform ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
@@ -507,7 +508,7 @@ Section DomainName.
     Else (Ifopt getE env0 domain as position
           Then b <- {_ : bool | True};
                If b
-               Then `(ptr1b, env') <- encode_word_Spec (fst position) env0;
+               Then `(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env0;
                     `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
                     ret (transform ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
@@ -674,26 +675,33 @@ Section DomainName.
     assumption.
   Qed.
 
-  (* Commenting out until I can patch up proof. *)
+  Lemma ptr_eq : forall (p p' : {w : word 8 | wlt (natToWord 8 191) w}),
+      proj1_sig p = proj1_sig p' -> p = p'.
+  Proof.
+    intros [p p_pf] [p' p'_pf]; simpl; intros; subst.
+    f_equal.
+    unfold wlt, BinNat.N.lt in *.
+    apply UIP_dec.
+    decide equality.
+  Qed.
+
   Theorem DomainName_decode_correct
           (P_OK :
              cache_inv_Property
                cache_inv
                (fun P =>
-                  (forall env p domain,
+                  (forall env (p : pointerT) domain,
                     P env
                     -> getD env p = Some domain
                     -> ValidDomainName domain /\ (String.length domain > 0)%nat)
                   /\ (forall env p domain,
                          P env
+
                          -> (ValidDomainName domain /\ String.length domain > 0)%nat
                          -> P (addD env (domain, p)))
                   /\ (forall (b : nat) (cd : CacheDecode),
                     P cd
-                    -> P (addD cd b))
-                  /\ (forall ce l p1 p2,
-                                     (@getE _ DomainName _ _ ce l = Some (p1, p2)
-                                      -> wlt (natToWord 8 191) p1))))
+                    -> P (addD cd b))))
     :
     encode_decode_correct_f
       cache transformer
@@ -718,7 +726,7 @@ Section DomainName.
       induction n; intros; simpl in *.
       destruct l; simpl in *; try omega.
       { apply (unroll_LeastFixedPoint (fDom := [DomainName; CacheEncode]) (fCod := (B * CacheEncode))) in Penc; auto using encode_body_monotone; simpl in Penc.
-         destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
+         destruct (proj1 (Ascii_decode_correct (proj2 (proj2 P_OK)))
                         _ _ _ _ _ ext0 Eeq I I Penc) as [? [? ?] ].
         apply DecodeBindOpt2_inv in H0;
           destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
@@ -743,7 +751,7 @@ Section DomainName.
         auto using encode_body_monotone.
         { destruct (string_dec l ""); simpl in Penc.
           (* Base case for domain name. *)
-          - destruct (proj1 (Ascii_decode_correct (proj1 (proj2 (proj2 P_OK))))
+          - destruct (proj1 (Ascii_decode_correct (proj2 (proj2 P_OK)))
                             _ _ _ _ _ ext0 Eeq I I Penc) as [? [? ?] ].
             apply DecodeBindOpt2_inv in H0;
               destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
@@ -782,7 +790,7 @@ Section DomainName.
                     simpl in H0;
                     destruct (H0 _ _ _ (eq_refl _)) as [? H']; clear H0.
                   rewrite <- transform_assoc, H'; simpl.
-                  destruct (wlt_dec WO~1~0~1~1~1~1~1~1 ptr1); simpl.
+                  destruct (wlt_dec WO~1~0~1~1~1~1~1~1 (proj1_sig ptr1)); simpl.
                   * match goal with
                       |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
                       pose proof (Decode_w_Measure_le_eq x y z m)
@@ -794,11 +802,17 @@ Section DomainName.
                       simpl in H0;
                       destruct (H0 _ _ _ (eq_refl _)) as [? H'']; clear H0;
                         rewrite H''; clear H''; simpl.
-                    eapply get_correct in GetPtr; eauto;
-                      unfold DomainName, pointerT in *; rewrite GetPtr.
+                    rewrite <- (ptr_eq ptr1 (exist _ _ w)).
+                    replace (getD xenv (ptr1, ptr2)) with (Some l).
                     destruct l; try congruence.
                     reflexivity.
-                  * apply P_OK in GetPtr; contradiction.
+                    eapply get_correct in GetPtr; eauto;
+                      unfold DomainName, pointerT in *;
+                      simpl; reflexivity.
+                    reflexivity.
+                  * destruct ptr1 as [ptr1 ptr1_OK].
+                    simpl in *.
+                    elimtype False; apply n1; eauto.
                 + intros; apply functional_extensionality; intros.
                   repeat (f_equal; apply functional_extensionality; intros).
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x1); simpl.
@@ -842,7 +856,8 @@ Section DomainName.
                   pose proof ((proj1 Valid_data) ""%string label1 _ (eq_refl _) label1_OK) as w';
                     rewrite H8 in w'.
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                    try (elimtype False;
+                         apply WordFacts.wordToNat_lt in w; simpl in w; omega).
                   destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
                   * destruct (weq x (wzero 8)).
                     subst; simpl in H8.
@@ -907,7 +922,7 @@ Section DomainName.
                     pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
                     rewrite H8 in w'.
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                    try (elimtype False; apply WordFacts.wordToNat_lt in w; simpl in w; omega).
                   destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
                   destruct (weq x (wzero 8)).
                     subst; simpl in H8.
@@ -973,7 +988,8 @@ Section DomainName.
                   pose proof (proj1 Valid_data ""%string label1 _ (eq_refl _) label1_OK) as w';
                     rewrite H8 in w'.
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                    try (elimtype False;
+                         apply WordFacts.wordToNat_lt in w; simpl in w; omega).
                   destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
                   * destruct (weq x (wzero 8)).
                     subst; simpl in H8.
@@ -1038,7 +1054,8 @@ Section DomainName.
                     pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
                     rewrite H8 in w'.
                   destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                    try (apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+                    try (elimtype False;
+                         apply WordFacts.wordToNat_lt in w; simpl in w; omega).
                   destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
                   destruct (weq x (wzero 8)).
                     subst; simpl in H8.
@@ -1086,13 +1103,16 @@ Section DomainName.
       - (* The decoded word was a pointer. *)
         symmetry in H3; apply DecodeBindOpt2_inv in H3;
           destruct H3 as [? [? [? [? ?] ] ] ]; injections; subst.
-        destruct (getD env' (x0, x3)) eqn:getD_eq ; try discriminate.
+        match type of H4 with
+        | context [getD ?env' ?w] => destruct (getD env' w) eqn:getD_eq;
+                                       try discriminate
+        end.
         destruct s; try discriminate; injections.
         eapply Decode_w_Measure_le_eq' in H2.
         eapply Decode_w_Measure_le_eq' in H3.
-        destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
+        destruct (proj2 (Word_decode_correct (proj2 (proj2 P_OK))) _ _ _ _ _ _ H0 H1 H2) as
             [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ].
-        destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK))))
+        destruct (proj2 (Word_decode_correct (proj2 (proj2 P_OK)))
                         _ _ _ _ _ _ xenv_eqv H4 H3) as
             [? [b'' [xenv' [enc_x0' [x_eq' [_ xenv_eqv'] ] ] ] ] ].
         split; eauto; eexists _, _; split; eauto.
@@ -1124,7 +1144,7 @@ Section DomainName.
         + (* This is the terminal character. *)
           injections.
           eapply Decode_w_Measure_le_eq' in H2.
-          destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
+          destruct (proj2 (Word_decode_correct (proj2 (proj2 P_OK))) _ _ _ _ _ _ H0 H1 H2) as
               [? [b' [xenv [enc_x0 [x_eq [_ xenv_eqv] ] ] ] ] ]; split; eauto.
           eexists _, _; split; eauto.
           apply (unroll_LeastFixedPoint'
@@ -1154,11 +1174,11 @@ Section DomainName.
             destruct H4 as [? [? [? [? ?] ] ] ]; injections; subst.
           apply Decode_w_Measure_le_eq' in H2.
           apply Decode_w_Measure_lt_eq' in H3.
-          destruct (proj2 (Word_decode_correct (proj1 (proj2 (proj2 P_OK)))) _ _ _ _ _ _ H0 H1 H2) as
+          destruct (proj2 (Word_decode_correct (proj2 (proj2 P_OK))) _ _ _ _ _ _ H0 H1 H2) as
               [? [b' [xenv [enc_x0 [x_eq [? xenv_eqv] ] ] ] ] ]; eauto.
           destruct (fun H  => proj2 (String_decode_correct
                                        (P := cache_inv)
-                                       (proj1 (proj2 (proj2 P_OK)))
+                                       (proj2 (proj2 P_OK))
                                        (wordToNat x0))
                                     _ _ _ _ _ _ xenv_eqv H H3) as
               [? [b'' [xenv'' [enc_x0' [x_eq' [? xenv_eqv'] ] ] ] ] ]; eauto.
