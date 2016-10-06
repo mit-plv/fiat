@@ -115,7 +115,7 @@ Section RRecordTypes.
        "CSYNC" (* Child-To-Parent Synchronization 	[RFC7477] 		2015-01-27 *)
     ].
 
-  Definition RRecordType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes).
+  Definition RRecordType := EnumType (OurRRecordTypes) (* ++ ExtraRRecordTypes*).
 
   (* Aliases for common resource record types. *)
   Definition CNAME : RRecordType := ```"CNAME".

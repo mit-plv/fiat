@@ -154,11 +154,24 @@ Ltac synthesize_cache_invariant :=
   solve [repeat (instantiate (1 := fun _ => True));
          unfold cache_inv_Property; intuition].
 
+Ltac normalize_compose transformer :=
+  (* Perform algebraic simplification of the encoder specification. *)
+  intros; eapply encode_decode_correct_refineEquiv;
+  [intros ? ?; symmetry;
+   repeat first [ etransitivity; [apply refineEquiv_compose_compose with (transformer := transformer)| ]
+                | etransitivity; [apply refineEquiv_compose_Done with (transformer := transformer) | ]
+                | apply refineEquiv_under_compose with (transformer := transformer) ];
+   intros; higher_order_reflexivity
+  | pose_string_ids ].
+
+
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
     [ repeat decode_step
     | cbv beta; synthesize_cache_invariant ].
+
+
 
 
 (* Older tactics follow, leaving in for now for backwards compatibility. *)

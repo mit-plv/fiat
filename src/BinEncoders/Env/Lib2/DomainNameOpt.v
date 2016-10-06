@@ -681,16 +681,16 @@ Section DomainName.
                cache_inv
                (fun P =>
                   (forall env p domain,
-                    cache_inv env
+                    P env
                     -> getD env p = Some domain
                     -> ValidDomainName domain /\ (String.length domain > 0)%nat)
                   /\ (forall env p domain,
-                         cache_inv env
+                         P env
                          -> (ValidDomainName domain /\ String.length domain > 0)%nat
-                         -> cache_inv (addD env (domain, p)))
+                         -> P (addD env (domain, p)))
                   /\ (forall (b : nat) (cd : CacheDecode),
-                    cache_inv cd
-                    -> cache_inv (addD cd b))
+                    P cd
+                    -> P (addD cd b))
                   /\ (forall ce l p1 p2,
                                      (@getE _ DomainName _ _ ce l = Some (p1, p2)
                                       -> wlt (natToWord 8 191) p1))))

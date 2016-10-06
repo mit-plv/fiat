@@ -179,9 +179,8 @@ Section Word.
        ret (encode_word' sz w b, addE ctx sz))%comp.
 
   Definition encode_unused_word_Spec
-             (sz : nat)
-             (ctx : CacheEncode) :=
-    encode_unused_word_Spec' sz transform_id tt ctx.
+             (sz : nat) :=
+    encode_unused_word_Spec' sz transform_id tt.
 
   Fixpoint transformer_get_word {B}
            {transformer : Transformer B}
