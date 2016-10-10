@@ -1082,7 +1082,7 @@ Lemma flatten_CompList_Return {A}
            (ret l).
 Proof.
   induction l; simpl; eauto; f_equiv.
-  setoid_rewrite IHl; simplify with monad laws; reflexivity.
+  setoid_rewrite IHl; unfold Query_Return; simplify with monad laws; reflexivity.
 Qed.
 
 Definition FiniteTables_AbsR
@@ -1344,7 +1344,7 @@ Lemma refine_Count_if {A} :
            (ret (if b then 1 else 0)).
 Proof.
   intros; rewrite refine_Count.
-  destruct b; simplify with monad laws; reflexivity.
+  destruct b; unfold Query_Return; simplify with monad laws; reflexivity.
 Qed.
 
 Add Parametric Morphism
