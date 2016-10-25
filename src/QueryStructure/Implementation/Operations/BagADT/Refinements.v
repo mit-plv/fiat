@@ -486,7 +486,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
     induction l1.
-    - simplify with monad laws; reflexivity.
+    - simpl; simplify with monad laws; reflexivity.
     - Local Transparent CallBagMethod.
       simpl.
         setoid_rewrite refineEquiv_bind_bind.
@@ -531,7 +531,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
     induction l1.
-    - simplify with monad laws; reflexivity.
+    - simpl; simplify with monad laws; reflexivity.
     - Local Transparent CallBagMethod.
       unfold CallBagMethod.
       simpl.
@@ -923,7 +923,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros; destruct (H idx) as [l [l_eqv l_eqv'] ].
     Local Transparent CallBagMethod.
-    eexists l; unfold CallBagMethod; simpl; simplify with monad laws.
+    eexists l; unfold CallBagEnumerate, CallBagMethod; simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst; eauto.
   Qed.
 
