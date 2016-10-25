@@ -339,7 +339,7 @@ Proof.
     eapply (Lookup_Iterate_Dep_Type); simpl.
     econstructor.
   - destruct H' as [idx' [Index' Index_eq] ]; subst.
-    simpl; simplify with monad laws.
+    simpl; unfold CallBagConstructor; simpl; simplify with monad laws.
     pose proof (IHqschemaSchemas
                   Index'
                   (fun idx => DelegateReps (Fin.FS idx))
@@ -349,7 +349,7 @@ Proof.
     unfold refine; intros;  computes_to_inv; subst.
     computes_to_econstructor; eauto.
     computes_to_econstructor.
-    intros.
+    intro idx.
     pose proof (@refine_BagImplConstructor
                   _ _  _ DelegateReps DelegateImpls ValidImpls idx BagEmpty).
     revert qschemaSchemas IHqschemaSchemas DelegateReps idx' Index' DelegateImpls ValidImpls
