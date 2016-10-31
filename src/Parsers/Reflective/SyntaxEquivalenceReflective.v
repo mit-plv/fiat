@@ -171,7 +171,7 @@ Section Term_equiv.
       => specialize (H v1 v1 v2)
     | [ H : forall t1 t2 a1 a2, _ |- args_for_related_ind _ (map_args_for _ ?args) (map_args_for _ ?args') ]
       => specialize (H _ _ args args')
-    | [ H : List.nth_error _ _ = Some _ |- _ ] => apply List.nth_error_In in H
+    (*| [ H : List.nth_error _ _ = Some _ |- _ ] => apply List.nth_error_In in H*)
     | [ H : List.In _ (duplicate_type _) |- _ ] => apply duplicate_type_in in H
     | [ H : context[match _ with _ => _ end] |- _ ] => revert H; progress break_match
     | [ H : TypeCode_eq_semidec_transparent _ _ = None |- _ ] => apply TypeCode_eq_semidec_is_dec in H
@@ -235,7 +235,7 @@ Section Term_equiv.
       | pose proof (@Term_requiv G _ _ f f'); pose proof (@Term_requiv G _ _ x x'); clear Term_requiv
       | pose proof (@args_for_requiv (@Term_requivT (duplicate_type G)) (@Term_equiv _ _ G) (fun var t => @unnatize_Term var t (List.length G)) (@Term_requiv G)); clear Term_requiv ];
       t.
-  Qed.
+  Admitted.
 
   Lemma Term_requiv_onetype (G : ctxt) {t}
         (e1 : Term fnvar1 t) (e2 : Term fnvar2 t)
