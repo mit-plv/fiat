@@ -16,7 +16,7 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeCheckSum
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
-        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Lib2.Bool
         Fiat.BinEncoders.Env.Lib2.Option
         Fiat.BinEncoders.Env.Lib2.FixListOpt
@@ -116,9 +116,9 @@ Definition TCP_Packet_decoder'
                                     (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  eexists (_, _); intros; eexists _; split; simpl.
+  start_synthesizing_decoder.
+  normalize_compose transformer.
   unfold encode_TCP_Packet_Spec; pose_string_ids.
-  intro.
   let p := (eval unfold Domain in
                (fun tcp : TCP_Packet =>
                   (tcp!StringId,
@@ -192,142 +192,101 @@ Proof.
     rewrite H, H0.
     omega.
   }
-  unfold encode_unused_word_Spec.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Nat_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply unused_word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  unfold encode_decode_correct_f; intuition eauto.
-  simpl in *.
-  instantiate
-    (1 := fun p b env => if Compare_dec.le_lt_dec proj3 (pow2 4) then
-                           _ p b env else None).
-  simpl in *.
-  instantiate
-    (1 := fun p b env => if Compare_dec.lt_dec proj3 5 then
-                           None else _ p b env).
-  simpl in *.
-  assert (a3 = proj3 - 5) by
-      (rewrite <- H32; simpl; auto with arith).
-  destruct (Compare_dec.le_lt_dec proj3 (pow2 4)).
-  destruct (Compare_dec.lt_dec proj3 5).
-  elimtype False; omega.
-  rewrite H21; clear H21; clear H32.
-  computes_to_inv; injections; subst; simpl.
-  eexists env'; simpl; intuition eauto.
-  rewrite ByteString_transform_id_left.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  omega.
-  simpl in H19.
-  repeat find_if_inside; try discriminate.
-  simpl in H19; injections; eauto.
-  simpl.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  repeat find_if_inside; simpl in *; try discriminate;
-    injections.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step. (* intros; eapply bool_decode_correct. *)
+
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  intros; eapply encode_decode_correct_finish.
+
+  let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  (* need to clean this up as well *)
+  assert (proj3 - 5 = n) as H' by omega; rewrite <- H'; clear H' H30.
+  subst.
   reflexivity.
-  instantiate (1 := fun _ => True); eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  omega.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto; omega.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto; omega.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
+
+  decide_data_invariant.
+
   unfold TCP_Packet_OK; clear; intros ? H'; repeat split.
   simpl; destruct H'.
   revert H; unfold pow2; simpl; clear.
   unfold StringId13; intros; omega.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
-  simpl.
-  apply_compose.
-  intros; eapply option_encode_correct.
-  eexact H1.
-  eapply Word_decode_correct.
-  eapply unused_word_decode_correct.
+
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
   simpl; intros; split_and.
   instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
   repeat match goal with
@@ -341,17 +300,17 @@ Proof.
   end.
   discriminate.
   destruct a'; intros; exact I.
-  apply_compose.
-  intro H'; eapply FixList_decode_correct.
-  eapply Word_decode_correct.
-  eapply H'.
+
+  decode_step.
+  decode_step.
+  decode_step.
+
   simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj))))).
   intuition; subst; simpl; auto with arith.
-  simpl; intros; eauto using FixedList_predicate_rest_True.
-  apply_compose.
-  intro H'; eapply FixList_decode_correct.
-  eapply Word_decode_correct.
-  eapply H'.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
   simpl in *; intros.
   unfold TCP_Packet_OK in H3.
   do 4 destruct H3.
@@ -369,118 +328,66 @@ Proof.
   assert (n0 = n2) by (subst; reflexivity).
   rewrite H, H0.
   omega.
-  simpl; intros; eauto using FixedList_predicate_rest_True.
-  simpl in *.
-  unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [? [? [? [? [? [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ] ] ] ] ] ] ] ] ].
-  simpl in H14.
-  unfold GetAttribute, GetAttributeRaw in H17;
-    simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  let H' := fresh in
-  pose proof (f_equal fst H17) as H'; simpl in H';
-    apply (f_equal snd) in H17; simpl in H17.
-  unfold GetAttribute, GetAttributeRaw in H14, H15, H16;
-    simpl in H14, H15, H16.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  unfold TCP_Packet_OK, GetAttribute, GetAttributeRaw in H10.
-  instantiate (1 := fun p b env =>
-                      if (Peano_dec.eq_nat_dec (wordToNat tcpLength)
-                                               (20 + 4 * (fst (snd (snd (snd (snd proj))))) + (|p|) )) then _ p b env else None).
-  eexists env'; intuition eauto.
-  Arguments plus : simpl never.
-  simpl in H13.
-  rewrite H13.
-  rewrite H1.
-  match goal with
-    |- match ?b with _ => _ end = _ => destruct b
-  end.
-  destruct prim_snd.
-  eauto.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  destruct n; reflexivity.
-  simpl in H11; repeat find_if_inside; injections; eauto;
-    discriminate.
-  cbv beta in H11; revert H11; find_if_inside; intros; try discriminate;
-    injections.
-  eexists _; eexists tt.
-  simpl in *; repeat split.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  reflexivity.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  rewrite <- H1 in H4.
-  revert H4; clear; auto with arith.
-  repeat match goal with
-           |- context [ @length ?A ?n] => remember (@length A n)
-         end.
-  unfold pow2; simpl; intros; omega.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  rewrite <- H1 in e.
-  apply e.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  rewrite H1.
-  revert H0; clear.
-  destruct proj as [? [? [? [? [? [? [? [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ] ] ] ] ] ] ] ].
-  simpl.
-  destruct b2; simpl; intros; find_if_inside;
-    try discriminate; try reflexivity.
-  congruence.
-  simpl.
-  destruct b2; simpl; intros; find_if_inside;
-    try discriminate; try reflexivity.
-  congruence.
-  repeat (instantiate (1 := fun _ => True)).
-  unfold cache_inv_Property; intuition.
-  Grab Existential Variables.
-  left; destruct a; destruct a'; reflexivity.
-Defined.
+  decode_step.
 
-Definition TCP_Packet_decoder_impl :=
+  intros; eapply encode_decode_correct_finish.
+
+    let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+    simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  rename H14 into H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  let H' := fresh in
+  pose proof (f_equal fst H17) as H'; simpl in H';
+    apply (f_equal snd) in H17; simpl in H17.
+  subst; reflexivity.
+  decide_data_invariant.
+  synthesize_cache_invariant.
+Time Defined.
+
+(*Definition TCP_Packet_decoder_impl :=
   Eval simpl in (fst (projT1 TCP_Packet_decoder')).
 
-Print TCP_Packet_decoder_impl.
+Print TCP_Packet_decoder_impl. *)

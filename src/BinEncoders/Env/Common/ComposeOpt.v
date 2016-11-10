@@ -283,9 +283,13 @@ Lemma decides_eq_refl {A} :
 Proof. simpl in *; intuition. Qed.
 
 Lemma decides_dec_eq {A} :
-  forall(dec' : forall a a', {a = a'} + {a <> a'})
-        (a a' : A), decides (if (dec' a a') then true else false) (a = a').
-Proof. simpl in *; intros; destruct (dec' a a'); simpl; intuition. Qed.
+  forall (A_eqb : A -> A -> bool)
+         (A_eqb_sound : forall a a', a = a' <-> A_eqb a a' = true)
+        (a a' : A), decides (A_eqb a a') (a = a').
+Proof.
+  simpl in *; intros; pose proof (A_eqb_sound a a');
+    destruct (A_eqb a a'); simpl; intuition.
+Qed.
 
 Lemma decides_dec_lt
   : forall n n', decides (if (Compare_dec.lt_dec n n') then true else false) (lt n n').

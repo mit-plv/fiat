@@ -53,7 +53,7 @@ Section DnsPacket.
       getD env p = Some domain
       -> ValidDomainName domain
          /\ (String.length domain > 0)%nat.
-  
+
   Lemma cacheIndependent_add
     : forall (b : nat) (cd : CacheDecode),
       GoodCache cd -> GoodCache (addD cd b).
@@ -73,7 +73,7 @@ Section DnsPacket.
     unfold GoodCache; intros.
     rewrite IndependentCaches in *; eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_3
     : forall cd p (b : nat) domain,
       GoodCache cd
@@ -83,7 +83,7 @@ Section DnsPacket.
     unfold GoodCache; intros.
     rewrite IndependentCaches in *; eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_4
     : forall cd p (b : nat) domain,
       GoodCache cd
@@ -93,7 +93,7 @@ Section DnsPacket.
     unfold GoodCache; intros.
     rewrite IndependentCaches in *; eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_5
     : forall cd p domain,
       GoodCache cd
@@ -103,7 +103,7 @@ Section DnsPacket.
     unfold GoodCache; intros.
     eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_6
     : forall cd p domain,
       GoodCache cd
@@ -113,7 +113,7 @@ Section DnsPacket.
     unfold GoodCache; intros.
     eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_7
     : forall cd p domain,
       GoodCache cd
@@ -138,7 +138,7 @@ Section DnsPacket.
     right; unfold not; intros; apply n.
     congruence.
   Qed.
-    
+
   Lemma cacheIndependent_add_8
     : forall cd p p0 domain domain',
       GoodCache cd
@@ -156,7 +156,7 @@ Section DnsPacket.
     - rewrite GetCacheAdd_2 in H1 by eauto.
       eapply H; eauto.
   Qed.
-  
+
   Lemma cacheIndependent_add_9
       : forall cd p p0 domain domain',
         GoodCache cd
@@ -186,7 +186,7 @@ Section DnsPacket.
       destruct H0; apply H1.
     - rewrite GetCacheAdd_2 in H1 by eauto.
       eapply H; eauto.
-  Qed.    
+  Qed.
 
   Variable QType_Ws : t (word 16) 17.
   Variable QType_Ws_OK : NoDupVector QType_Ws.
@@ -408,7 +408,7 @@ Section DnsPacket.
     omega.
   Qed.
 
-  Lemma word_eq_self 
+  Lemma word_eq_self
     : forall (w : word 1),
       decides true (WS (whd w) WO = w).
   Proof.
@@ -506,29 +506,35 @@ Qed.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
-Ltac decide_data_invariant :=
-  (* Show that the invariant on the data is decideable. Most *)
-  (* of the clauses in this predicate are obviously true by *)
-  (* construction, but there may be some that need to be checked *)
-  (* by a decision procedure*)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros; intuition;
-    repeat first [ progress subst
-             | match goal with
-                 |- decides ?A (?B ?C)  =>
-                 let T := type of C in
-                 unify B (fun _ : T => True);
-                 apply (@decides_True' T C)
-               end
-          | apply decides_eq_refl
-          | solve [eauto with decide_data_invariant_db]
-          | eapply decides_and
-          | eapply decides_assumption; eassumption
-          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
+Ltac ilist_of_evar B As k :=
+  match As with
+  | VectorDef.nil _ => k (@inil _ B)
+  | VectorDef.cons _ ?a _ ?As' =>
+    makeEvar (B a)
+             ltac:(fun b =>
+                     ilist_of_evar
+                       B As'
+                       ltac:(fun Bs' => k (icons (l := As') b Bs')))
+  end.
+
+Ltac Vector_of_evar n T k :=
+  match n with
+  | 0 => k (@Vector.nil T)
+  | S ?n' => Vector_of_evar
+               n' T
+               ltac:(fun l =>
+                       makeEvar
+                         T
+                         ltac:(fun a => k (@Vector.cons T a n' l)))
+  end.
 
 Ltac decode_step :=
   (* Processes the goal by either: *)
   match goal with
+  | |- appcontext [encode_decode_correct_f _ _ _ _ ?H _ _] =>
+    progress unfold H
+  | |- appcontext [encode_unused_word_Spec] =>
+      unfold encode_unused_word_Spec
   (* A) decomposing one of the parser combinators, *)
   | |- _ => apply_compose
   (* B) applying one of the rules for a base type  *)
@@ -547,9 +553,73 @@ Ltac decode_step :=
     eapply Enum_decode_correct
   | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
     eapply DomainName_decode_correct
-  (* C) Discharging a side condition of one of the base rules *)
+  | |- appcontext[encode_decode_correct_f _ _ _ _ encode_string_Spec _ _ ] =>
+    eapply String_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_SumType_Spec (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
+    let cache_inv_H := fresh in
+    intros cache_inv_H;
+      first
+        [let types' := (eval unfold types in types) in
+         ilist_of_evar
+           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+           types'
+           ltac:(fun encoders' =>
+         ilist_of_evar
+           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
+           types'
+           ltac:(fun decoders' =>
+         ilist_of_evar
+           (fun T : Type => Ensembles.Ensemble T)
+           types'
+           ltac:(fun invariants' =>
+         ilist_of_evar
+            (fun T : Type => T -> B -> Prop)
+           types'
+           ltac:(fun invariants_rest' =>
+         Vector_of_evar
+           n
+           (Ensembles.Ensemble (CacheDecode -> Prop))
+         ltac:(fun cache_invariants' =>
+                       eapply (SumType_decode_correct (m := n) types) with
+                   (encoders := encoders')
+                     (decoders := decoders')
+                     (invariants := invariants')
+                     (invariants_rest := invariants_rest')
+                     (cache_invariants :=  cache_invariants')
+                )))))
+        |          ilist_of_evar
+           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+           types
+           ltac:(fun encoders' =>
+         ilist_of_evar
+           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
+           types
+           ltac:(fun decoders' =>
+         ilist_of_evar
+           (fun T : Type => Ensembles.Ensemble T)
+           types
+           ltac:(fun invariants' =>
+          ilist_of_evar
+            (fun T : Type => T -> B -> Prop)
+           types
+           ltac:(fun invariants_rest' =>
+         Vector_of_evar
+           n
+           (Ensembles.Ensemble (CacheDecode -> Prop))
+           ltac:(fun cache_invariants' =>
+                       eapply (SumType_decode_correct (m := n) types) with
+                   (encoders := encoders')
+                     (decoders := decoders')
+                     (invariants := invariants')
+                     (invariants_rest := invariants_rest')
+                     (cache_invariants :=  cache_invariants'))))))
+        ];
+      [ simpl; repeat (apply Build_prim_and; intros); try exact I
+      | apply cache_inv_H ]
+        (* C) Discharging a side condition of one of the base rules *)
   | |- NoDupVector _ => Discharge_NoDupVector
   | _ => solve [solve_data_inv]
+  | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
   (* D) Solving the goal once all the byte string has been parsed *)
   | _ =>  solve [simpl; intros;
                  eapply encode_decode_correct_finish;
@@ -614,7 +684,7 @@ Qed.
       length l = n + (m + o)
       -> decides true ((|firstn o (skipn (n + m) l) |) = o).
   Proof.
-    setoid_rewrite plus_assoc'. 
+    setoid_rewrite plus_assoc'.
     apply length_firstn_skipn_app'.
   Qed.
 
@@ -623,10 +693,10 @@ Qed.
       length l = n + (m + o)
       -> decides true ((|firstn n l |) = n).
   Proof.
-    setoid_rewrite plus_assoc'. 
+    setoid_rewrite plus_assoc'.
     apply length_firstn_skipn_app''.
   Qed.
-  
+
   Hint Resolve whd_word_1_refl' : decide_data_invariant_db.
   Hint Resolve decides_length_firstn_skipn_app'' : decide_data_invariant_db.
   Hint Resolve decides_length_firstn_skipn_app' : decide_data_invariant_db.
@@ -639,9 +709,6 @@ Qed.
   Hint Resolve decides_firstn_self : decide_data_invariant_db.
   Hint Resolve decides_skipn_app : decide_data_invariant_db.
   Hint Resolve decides_firstn_skipn_app : decide_data_invariant_db.
-  
-  Instance : DecideableEnsembles.Query_eq () :=
-  {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.
 
 Definition resourceRecord_OK (rr : resourceRecord) :=
 SumType_index
@@ -776,7 +843,6 @@ Definition packet_decoder
     decode_step.
     decode_step.
     decode_step.
-    intros; instantiate (1 := fun _ _ => True).
     decode_step.
     decode_step.
     decode_step.
@@ -790,77 +856,6 @@ Definition packet_decoder
     decode_step.
     decode_step.
     decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    eapply SumType_decode_correct with
-    (idx := proj12)
-    (encoders := (icons _
-           (icons _
-              (icons _
-                 (icons _
-                    (icons _
-                       (icons _
-                          (icons _
-                             (icons _
-                                    (icons _ (icons _ inil)))))))))))
-      (decoders := (icons _
-           (icons _
-              (icons _
-                 (icons _
-                    (icons _
-                       (icons _
-                          (icons _
-                             (icons _
-                                    (icons _ (icons _ inil)))))))))))
-      (invariants := icons _
-           (icons _
-              (icons _
-                 (icons _
-                    (icons _
-                       (icons _
-                          (icons _
-                             (icons _
-                                    (icons _ (icons _ inil))))))))))
-      (invariants_rest := icons _
-           (icons _
-              (icons _
-                 (icons _
-                    (icons _
-                       (icons _
-                          (icons _
-                             (icons _
-                                    (icons _ (icons _ inil))))))))))
-      (cache_invariants := Vector.cons _ _ _
-           (Vector.cons _ _ _
-              (Vector.cons _ _ _
-                 (Vector.cons _ _ _
-                    (Vector.cons _ _ _
-                       (Vector.cons _ _ _
-                          (Vector.cons _ _ _
-                             (Vector.cons _ _ _
-                                    (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _))))))))))).
-    intro; pattern idx.
-    eapply Iterate_Ensemble_equiv' with (idx := idx); simpl.
-    apply Build_prim_and.
-    unfold encode_A_Spec, encode_unused_word_Spec.
-    repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_NS_Spec, encode_unused_word_Spec.
-    repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_CNAME_Spec, encode_unused_word_Spec.
-    repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_SOA_RDATA_Spec, encode_unused_word_Spec.
-    repeat decode_step.
-    apply Build_prim_and.
     decode_step.
     decode_step.
     decode_step.
@@ -878,97 +873,27 @@ Definition packet_decoder
     repeat decode_step.
     repeat decode_step.
     repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_PTR_Spec, encode_unused_word_Spec.
     repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_HINFO_RDATA_Spec, encode_unused_word_Spec.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    eapply String_decode_correct.
-    decode_step.
-    decode_step.
-    intros; eapply encode_decode_correct_finish.
-    build_fully_determined_type.
-    decide_data_invariant.
-    decode_step.
-    intros; instantiate (1 := fun _ _ => True).
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    eapply String_decode_correct.
-    decode_step.
-    decode_step.
-    intros; eapply encode_decode_correct_finish.
-    build_fully_determined_type.
-    decide_data_invariant.
-    decode_step.
-    intros; instantiate (1 := fun _ _ => True).
-    decode_step.
-    decode_step.
-    apply Build_prim_and.
-    unfold encode_MINFO_RDATA_Spec, encode_unused_word_Spec.
     repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_MX_RDATA_Spec, encode_unused_word_Spec.
     repeat decode_step.
-    apply Build_prim_and.
-    unfold encode_TXT_Spec, encode_unused_word_Spec.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    eapply String_decode_correct.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    (* Need an invariant on the resource records in response. *)
-    intros; clear.
-    simpl.
-    repeat instantiate (1 := fun _ _ => True).
-    simpl; eauto.
-    decode_step.
-    decode_step.
-    intros.
-    destruct H17 as [ [ [ [ [? ?] ? ] ? ] ? ] ?].
-    subst proj12.
-    pattern data.
-    apply H17.
-
-    repeat instantiate (1 := fun _ _ => True).
-    intros.
+    repeat decode_step.
+    repeat decode_step.
+    repeat decode_step.
+    (* Inferring the data invariant on the resource record. *)
+    intros ? H'; destruct H' as [ [ [ [ [? ?] ?] ? ] ?] ? ].
+    instantiate (1 := proj12).
+    rewrite <- H20. apply H17.
+    intros; repeat instantiate (1 := fun _ _ => True).
     let a'' := fresh in
     rename a' into a'';
       repeat destruct a'' as [ ? | a''] ; auto.
+    simpl; intros.
     decode_step.
-    split; intros.
-    intuition.
-    rewrite !app_length.
-    rewrite H16, H17, H18.
-    reflexivity.
     intuition; intros.
-    apply H31; eauto.
-    apply H31; eauto.
-    apply H31; eauto.
+    intuition; rewrite !app_length; rewrite H16, H17, H18; reflexivity.
+    apply (Logic.proj1 (H30 x H29)).
+    apply (Logic.proj2 (H30 x H29)).
+    apply H30; eauto.
     decode_step.
     simpl; intros;
       eapply encode_decode_correct_finish.
@@ -1007,87 +932,12 @@ Definition packet_decoder
       eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
       try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
       try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ].
-    instantiate (1 := fun _ => True); exact I.
-    intro; pattern idx.
-    eapply Iterate_Ensemble_equiv' with (idx := idx); simpl.
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ].
-    instantiate (1 := fun _ => True); exact I.
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
       try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
       try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ].
-    instantiate (1 := fun _ => True); exact I.
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ].
-    instantiate (1 := fun _ => True); exact I.
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    apply Build_prim_and.
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
-    exact I.
-    try solve [instantiate (1 := fun _ => True); exact I].
-    try solve [instantiate (1 := fun _ => True); exact I].
   Defined.
 
   Print Assumptions packet_decoder.
-  
+
   Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
 
   Print packetDecoderImpl.

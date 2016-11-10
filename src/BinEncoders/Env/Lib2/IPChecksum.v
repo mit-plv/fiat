@@ -87,7 +87,7 @@ Lemma transformer_dequeue_enqueue_word
       unfold ByteString_id; repeat f_equal.
       apply le_uniqueness_proof.
   Qed.
-  
+
 Fixpoint ByteString2ListOfChar (n : nat)
            (b : ByteString) : list char :=
   match n with
@@ -191,7 +191,9 @@ Proof.
   - reflexivity.
   - pose proof measure_enqueue as H'; simpl in H'.
     unfold encode_word in *; simpl in *.
-    rewrite IHsz, H'; omega.
+    rewrite length_ByteString_enqueue.
+    erewrite <- IHsz.
+    reflexivity.
 Qed.
 
 Lemma length_ByteString_id :
@@ -519,6 +521,35 @@ Proof.
     eapply le_uniqueness_proof.
 Qed.
 
+Lemma SW_word_inj {sz}
+  : forall b b' w w',
+    SW_word b w = SW_word (sz := sz) b' w'
+    -> b = b'.
+Proof.
+  induction w; intros; simpl in *.
+  - shatter_word w'; simpl in *; injections; auto.
+  - destruct (shatter_word_S w') as (?, (?, ?)); subst;
+      simpl in *.
+    injection H; intros; subst.
+    eapply Eqdep_dec.inj_pair2_eq_dec in H0;
+      eauto using Peano_dec.eq_nat_dec.
+Qed.
+
+Lemma SW_word_inj' {sz}
+  : forall b b' w w',
+    SW_word b w = SW_word (sz := sz) b' w'
+    -> w = w'.
+Proof.
+  induction w; intros; simpl in *.
+  - shatter_word w'; simpl in *; injections; auto.
+  - destruct (shatter_word_S w') as (?, (?, ?)); subst;
+      simpl in *.
+    injection H; intros; subst.
+    eapply Eqdep_dec.inj_pair2_eq_dec in H0;
+      eauto using Peano_dec.eq_nat_dec.
+    f_equal; eauto.
+Qed.
+
 Lemma transformer_dequeue_word_inj
   : forall sz w w' p,
     WordOpt.transformer_dequeue_word sz w = Some p
@@ -530,17 +561,16 @@ Proof.
   - destruct (ByteString_dequeue w) as [ [? ?] | ] eqn : ? ;
       destruct (ByteString_dequeue w') as [ [? ?] | ] eqn : ?;
       try discriminate.
+    simpl in *.
     destruct (WordOpt.transformer_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
       destruct (WordOpt.transformer_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
       try discriminate.
     destruct p as [? ?].
     injection H; injection H0; intros; subst.
-    pose proof (f_equal (@whd _) H4);
-      pose proof (f_equal (@wtl _) H4);
-      simpl in *; subst.
-    assert (b0 = b2) by eauto.
-    subst.
     eapply ByteString_dequeue_opt_inj; eauto.
+    apply SW_word_inj in H4; simpl in *; injections.
+    apply SW_word_inj' in H1; subst.
+    replace b0 with b2; eauto.
 Qed.
 
 (*Lemma decode_IPChecksum_pf'
@@ -731,11 +761,11 @@ Arguments pow2 : simpl never.
 (*Lemma computes_to_composeChecksum_decode_unused_word
   : forall sz checksum (w : word sz) ctx ctx'' rest rest' b,
     computes_to ((((encode_word_Spec w) ThenC rest')
-                    ThenChecksum checksum ThenCarryOn rest) ctx) (b, ctx'')
+                    ThenChecksum checksum OfSize sz ThenCarryOn rest) ctx) (b, ctx'')
     -> exists b' b'' ctx' ctx''' ,
       computes_to (rest' ctx') (b', ctx''')
       /\ computes_to (rest ctx''') (b'', ctx'')
-      /\ forall ext, decode_unused_word' sz (transform b ext) = Some ((), transform (transform b' (transform (checksum (transform (encode_word' _ w) b') b'') b'')) ext).
+      /\ forall ext, decode_unused_word' sz (transform b ext) = Some ((), transform (transform b' (transform (checksum sz (transform (encode_word' _ w) b') b'') b'')) ext).
 Proof.
   unfold composeChecksum, compose, Bind2, encode_word_Spec; intros; computes_to_inv; injections.
   destruct v0; destruct v2; simpl in *; do 4 eexists;
@@ -747,7 +777,7 @@ Proof.
     intros; rewrite H''; reflexivity.
 Qed. *)
 
-(*Lemma computes_to_compose_decode_word
+Lemma computes_to_compose_decode_word
   : forall sz (w : word sz) (ctx ctx'' : CacheEncode)
            (rest : CacheEncode -> Comp (ByteString * CacheEncode))
            (b : ByteString),
@@ -760,13 +790,13 @@ Proof.
   unfold composeChecksum, compose, Bind2, encode_word_Spec; intros; computes_to_inv; injections.
   destruct v0; simpl in *; do 2 eexists;
     repeat split; eauto.
-  intros; rewrite <- transformer_pop_word_eq_decode_word'.
-  rewrite <- !ByteString_transform_assoc.
-  pose proof transformer_pop_encode_word' as H''; simpl in H'';
+  intros; rewrite <- transformer_dequeue_word_eq_decode_word'.
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  pose proof transformer_dequeue_encode_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
-Qed. *)
+Qed.
 
-(*Lemma computes_to_compose_decode_unused_word
+Lemma computes_to_compose_decode_unused_word
   : forall sz (w : word sz) (ctx ctx'' : CacheEncode)
            (rest : CacheEncode -> Comp (ByteString * CacheEncode))
            (b : ByteString),
@@ -780,10 +810,10 @@ Proof.
   destruct v0; simpl in *; do 2 eexists;
     repeat split; eauto.
   unfold decode_unused_word'; intros.
-  rewrite <- !ByteString_transform_assoc.
-  pose proof transformer_pop_encode_word' as H''; simpl in H'';
+  rewrite <- !ByteString_enqueue_ByteString_assoc.
+  pose proof transformer_dequeue_encode_word' as H''; simpl in H'';
     intros; rewrite H''; reflexivity.
-Qed. *)
+Qed.
 
 Arguments mult : simpl never.
 Arguments decode_word' : simpl never.
@@ -796,25 +826,28 @@ Proof.
   intros; computes_to_inv; injections; reflexivity.
 Qed.
 
-(*Lemma length_ByteString_unused_word
+Lemma length_ByteString_unused_word
   : forall sz (b : ByteString) (ctx ctx' : CacheEncode),
     encode_unused_word_Spec sz ctx ↝ (b, ctx')
     -> length_ByteString b = sz.
 Proof.
   unfold encode_unused_word_Spec, encode_unused_word_Spec'; simpl.
   intros; computes_to_inv; injections.
-  eapply length_encode_word'.
-Qed. *)
+  rewrite length_encode_word'; simpl.
+  rewrite length_ByteString_id.
+  omega.
+Qed.
 
-(* Lemma length_ByteString_word
+Lemma length_ByteString_word
   : forall sz (w : word sz) (b : ByteString) (ctx ctx' : CacheEncode),
     encode_word_Spec w ctx ↝ (b, ctx')
     -> length_ByteString b = sz.
 Proof.
   unfold encode_word_Spec; simpl.
   intros; computes_to_inv; injections.
-  eapply length_encode_word'.
-Qed. *)
+  rewrite length_encode_word'.
+  simpl; rewrite length_ByteString_id; omega.
+Qed.
 
 Lemma length_ByteString_bool
   : forall (b' : bool) (b : ByteString) (ctx ctx' : CacheEncode),
@@ -823,10 +856,10 @@ Lemma length_ByteString_bool
 Proof.
   unfold encode_bool_Spec; simpl.
   intros; computes_to_inv; injections.
-  eapply length_ByteString_push.
+  eapply length_ByteString_enqueue.
 Qed.
 
-(* Lemma length_ByteString_encode_list {A}
+Lemma length_ByteString_encode_list {A}
   : forall encode_A l (b : ByteString) (ctx ctx' : CacheEncode) n,
     (forall (a : A) (b : ByteString) (ctx ctx' : CacheEncode),
         computes_to (encode_A a ctx) (b, ctx')
@@ -838,11 +871,11 @@ Proof.
   - injections; reflexivity.
   - unfold Bind2 in H0; computes_to_inv; injections.
     destruct v; destruct v0; simpl in *.
-    erewrite transform_ByteString_measure.
+    erewrite ByteString_enqueue_ByteString_measure.
     erewrite H; eauto.
     rewrite Mult.mult_succ_l.
     erewrite <- IHl; eauto with arith.
-Qed. *)
+Qed.
 
 Lemma ByteString_enqueue_padding_eq
   : forall a b,
@@ -853,11 +886,11 @@ Proof.
   rewrite (NPeano.Nat.add_mod_idemp_r 1 _ 8); auto.
 Qed.
 
-Lemma queue_into_ByteString_padding_eq 
+Lemma queue_into_ByteString_padding_eq
   : forall l,
     padding (queue_into_ByteString l) = NPeano.modulo (length l) 8.
 Proof.
-  intro; replace (length l) with (length l + bin_measure ByteString_id) 
+  intro; replace (length l) with (length l + bin_measure ByteString_id)
     by (simpl; rewrite length_ByteString_id; omega).
   unfold queue_into_ByteString; generalize ByteString_id.
   induction l; intros; simpl fold_left.
@@ -867,7 +900,7 @@ Proof.
     rewrite length_ByteString_enqueue.
     f_equal; simpl; omega.
 Qed.
-    
+
 Lemma ByteString_enqueue_ByteString_padding_eq
   : forall b b',
     padding (ByteString_enqueue_ByteString b b') = NPeano.modulo (padding b + padding b') 8.
@@ -891,7 +924,7 @@ Proof.
     rewrite <- NPeano.Nat.add_mod; auto.
     rewrite NPeano.Nat.add_mod_idemp_r; auto.
     f_equal; omega.
-Qed.    
+Qed.
 
 Definition length_ByteString_ByteString_id
   : length_ByteString ByteString_id = 0 := eq_refl.
@@ -1290,10 +1323,10 @@ Ltac calculate_length_ByteString :=
           | eapply (length_ByteString_compose _ _ _ _ _ _ _ H);
             try (simpl transform_id; rewrite length_ByteString_ByteString_id)
           | eapply (fun H' H'' => length_ByteString_encode_option _ _ _ _ _ _ _ H' H'' H)
-          (*| eapply (length_ByteString_unused_word _ _ _ _ H) *)
+          | eapply (length_ByteString_unused_word _ _ _ _ H)
           | eapply (length_ByteString_bool _ _ _ _ H)
-          (* | eapply (length_ByteString_word _ _ _ _ _ H) *)
-          (* | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H) *)
+          | eapply (length_ByteString_word _ _ _ _ _ H)
+          | eapply (fun H' => length_ByteString_encode_list _ _ _ _ _ _ H' H)
           | eapply (length_ByteString_ret _ _ _ _ H) ]; clear H
   end.
 

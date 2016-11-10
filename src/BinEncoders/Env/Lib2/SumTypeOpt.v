@@ -134,7 +134,8 @@ Section SumType.
           (invariants : ilist (B := fun T => Ensemble T) types)
           (invariants_rest : ilist (B := fun T => T -> B -> Prop) types)
           (cache_invariants : Vector.t (Ensemble (CacheDecode -> Prop)) m)
-          (encoders_decoders_correct : forall idx,
+          (encoders_decoders_correct :
+             Iterate_Ensemble_BoundedIndex (fun idx =>
               cache_inv_Property P (Vector.nth cache_invariants idx)
               -> encode_decode_correct_f
                 cache transformer
@@ -142,10 +143,10 @@ Section SumType.
                 (ith invariants_rest idx)
                 (ith encoders idx)
                 (ith decoders idx)
-                P)
+                P))
           idx
     :
-      cache_inv_Property P (fun P => forall idx, Vector.nth cache_invariants idx P)
+      cache_inv_Property P (fun P => Iterate_Ensemble_BoundedIndex (fun idx => Vector.nth cache_invariants idx P))
       -> encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
                                  (fun st b => (ith invariants_rest) _ (SumType_proj _ st) b)
                           (encode_SumType_Spec types encoders)
@@ -153,6 +154,10 @@ Section SumType.
                           P.
   Proof.
     intros; eapply SumType_decode_correct'; eauto.
+    intros.
+    eapply Iterate_Ensemble_BoundedIndex_equiv in encoders_decoders_correct; eauto.
+    unfold cache_inv_Property in *; intros;
+      eapply Iterate_Ensemble_BoundedIndex_equiv in H; eauto.
   Qed.
 
 End SumType.

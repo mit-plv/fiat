@@ -143,82 +143,13 @@ Definition ARPPacket_decoder
                                   (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  unfold encode_ARPPacket_Spec, ARP_Packet_OK; pose_string_hyps.
-  eexists (_, _); eexists _; split; simpl.
-  apply_compose; pose_string_ids.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  intro; eapply FixList_decode_correct.
-  revert H4; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; fold_string_hyps.
-  intros; intuition.
-  rewrite H10 in H4; eauto.
-  simpl; intros; eapply FixedList_predicate_rest_True.
-  apply_compose.
-  intro; eapply FixList_decode_correct.
-  revert H5; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; fold_string_hyps; intros; intuition.
-  rewrite H9 in H5; eauto.
-  simpl; intros; eapply FixedList_predicate_rest_True.
-  apply_compose.
-  intro; eapply FixList_decode_correct.
-  revert H6; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; intros; intuition.
-  pose_string_ids.
-  rewrite H12 in H15; eauto.
-  simpl; intros; eapply FixedList_predicate_rest_True.
-  apply_compose.
-  intro; eapply FixList_decode_correct.
-  revert H7; eapply Word_decode_correct.
-  unfold ARP_Packet_OK; intros; intuition.
-  pose_string_ids.
-  rewrite H13 in H19; eauto.
-  simpl; intros; eapply FixedList_predicate_rest_True.
-  simpl; intros.
-  eapply encode_decode_correct_finish.
-  destruct a' as [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ];
-    simpl in *.
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-  subst.
-  reflexivity.
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-
-  repeat
-    first [eapply decides_and
-          | eapply decides_assumption; eassumption
-          | apply decides_eq_refl
-          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
-  repeat (instantiate (1 := fun _ => True)).
-  unfold cache_inv_Property; intuition.
-  Grab Existential Variables.
-  eapply weq.
-  eapply weq.
-  intros; eapply Peano_dec.eq_nat_dec.
-  intros; eapply Peano_dec.eq_nat_dec.
-  intros; eapply Peano_dec.eq_nat_dec.
+  start_synthesizing_decoder.
+  repeat decode_step.
+  intros; simpl; intuition; subst; assumption.
+  intros; simpl; intuition; subst; try assumption.
+  intros; simpl; intuition; subst; assumption.
+  intros; simpl; intuition; subst; assumption.
+  synthesize_cache_invariant.
 Defined.
 
 Definition ARP_Packet_decoder :=

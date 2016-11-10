@@ -17,7 +17,7 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeCheckSum
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
-        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.NoCache
         Fiat.BinEncoders.Env.Lib2.WordOpt
@@ -54,8 +54,6 @@ Definition ProtocolTypeCodes : Vector.t char 3 :=
    WO~0~0~0~0~0~1~1~0;
    WO~0~0~0~1~0~0~0~1
   ].
-
-Definition transformer : Transformer ByteString := ByteStringTransformer.
 
 Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4!"Options"|.
 
@@ -145,7 +143,7 @@ Proof.
   eexists (_, _); intros; eexists _; split; simpl.
   unfold encode_IPv4_Packet_Spec; pose_string_ids.
   intro.
-  let p := (eval unfold Domain in (fun ip4 : IPv4_Packet => (|ip4!StringId11|, (ip4!StringId, (ip4!StringId0, (ip4!StringId1,
+  Time let p := (eval unfold Domain in (fun ip4 : IPv4_Packet => (|ip4!StringId11|, (ip4!StringId, (ip4!StringId0, (ip4!StringId1,
                                                                                                                (ip4!StringId2, (ip4!StringId3, (ip4!StringId4, ip4!StringId5))))))))) in
   let p := eval simpl in p in
       eapply (@compose_IPChecksum_encode_correct
@@ -198,124 +196,104 @@ Proof.
     assert (n = n0) by (rewrite Heqn, Heqn0; f_equal).
     rewrite H.
     omega. }
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Nat_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  unfold encode_unused_word_Spec.
-  apply_compose.
-  eapply unused_word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply unused_word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply bool_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  solve_data_inv.
-  unfold encode_decode_correct_f; intuition eauto.
-  instantiate
-    (1 := fun p b env => if Compare_dec.le_lt_dec proj 4 then None else _ p b env).
-  simpl in *.
-  rewrite <- H24; simpl.
-  assert (a = proj - 5) by
-      (rewrite <- H24; simpl; auto with arith).
-  instantiate
-    (1 := fun p b env => if Compare_dec.le_lt_dec (wordToNat proj0) (4 * proj) then None else _ p b env).
-  rewrite H24; clear H24.
-  revert H16.
-  instantiate (2 := fun data : nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))) => lt (20 + 4 * (fst data)) (wordToNat (fst (snd data)))).
-  rewrite H13, H23.
-  simpl; intros.
-  assert (~ le (wordToNat proj0) (4 * proj)) by omega.
-  destruct (Compare_dec.le_lt_dec (wordToNat proj0) (4 * proj)).
-  intuition.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  instantiate (1 := fun proj6 ext env' => Some (proj - 5, (proj0, (proj1, (proj2, (proj3, (proj4, (proj5, proj6)))))), ext, env')).
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  intros; eapply encode_decode_correct_finish.
+  let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  (* need to clean this up as well *)
+  assert (proj - 5 = n) as H' by omega; rewrite <- H'; clear H' H22.
+  subst.
   reflexivity.
-  find_if_inside; try discriminate.
-  find_if_inside; try discriminate.
-  simpl in H14; injections; eauto.
-  simpl in H14; repeat find_if_inside; try discriminate.
-  injections.
-  simpl.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  reflexivity.
-  omega.
-  omega.
-  omega.
+  decide_data_invariant.
   unfold IPv4_Packet_OK; clear; intros ? H'; destruct H' as [? ?]; repeat split.
-  simpl.
-  eassumption.
   simpl.
   revert H; unfold StringId11; unfold pow2, mult; simpl; auto with arith.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  intro; eapply FixList_decode_correct.
-  revert H3; eapply Word_decode_correct.
-  simpl in *; split.
-  intuition eauto.
-  eapply (f_equal fst H8).
-  intros; eauto.
-  simpl; intros; eauto using FixedList_predicate_rest_True.
-  simpl; intros;
-    unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [? [? [? [? [? [? [? [ ] ] ] ] ] ] ] ] ] ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
+
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+
+  simpl.
+  instantiate (1 := fst proj); intuition.
+  rewrite <- H7; reflexivity.
+
+  decode_step.
+
+  intros; eapply encode_decode_correct_finish.
+  let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  rename H12 into H14.
   pose proof (f_equal fst H14).
   pose proof (f_equal (fun z => fst (snd z)) H14).
   pose proof (f_equal (fun z => fst (snd (snd z))) H14).
+  simpl in *.
   pose proof (f_equal (fun z => fst (snd (snd (snd z)))) H14).
+  simpl in *.
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd z))))) H14).
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd z)))))) H14).
   pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd (snd z))))))) H14).
@@ -323,39 +301,10 @@ Proof.
   pose proof (f_equal (fun z => snd (snd (snd (snd (snd (snd (snd z))))))) H14).
   simpl in *.
   clear H14.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  simpl in *.
-  simpl in H8; injections; eauto.
-  simpl in H8; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt.
-  injections; simpl in *; repeat split.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
+  subst.
   reflexivity.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  rewrite H5; eauto.
-  intuition.
-  simpl in *.
-  unfold pow2 in H9; simpl in H9; auto with arith.
-  omega.
-  unfold GetAttribute, GetAttributeRaw.
-  simpl.
-  rewrite H5.
-  omega.
-  destruct proj as [? [? [? [? [? [? [? ?] ] ] ] ] ] ].
-  simpl.
-  unfold GetAttribute, GetAttributeRaw; simpl in *.
-  repeat f_equal.
-  eauto.
-  simpl.
-  repeat (instantiate (1 := fun _ => True)).
-  unfold cache_inv_Property; intuition.
-  Grab Existential Variables.
-  decide equality.
-  decide equality.
-  exact (@weq _).
+  decide_data_invariant.
+  synthesize_cache_invariant.
 Defined.
 
 (* This is the decoder function that we should extract. *)
@@ -399,8 +348,20 @@ Definition pkt' : list char :=
 Definition pkt : list char :=
     Eval compute in map (@natToWord 8) [69;0;0;0;0;0;0;0;38;1;87;160;192;168;222;10;192;168;222;1].
 
+Definition address : list char :=
+  Eval compute in map (@natToWord 8) [172;16;254;1].
+
+Print address.
 Lemma zero_lt_eight : (lt 0 8)%nat.
   Proof. omega. Qed.
+
+  Definition blah
+    := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := address |}.
+
+  Compute (ByteString_enqueue_ByteString (encode_word WO~0~1~0~0)
+                                         (encode_word WO~0~1~0~1)).
+  Compute (decode_word (sz := 8) blah ()).
+  Compute (wordToNat WO~1~0~1~0~1~1~0~0).
 
   Definition fiat_ipv4_decode (buffer: list char) : option (IPv4_Packet * list char) :=
     let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
@@ -411,4 +372,4 @@ Lemma zero_lt_eight : (lt 0 8)%nat.
 
   Compute (fiat_ipv4_decode pkt).
 
-  Compute (InternetChecksum.checksum pkt').
+  Compute (InternetChecksum.checksum pkt).

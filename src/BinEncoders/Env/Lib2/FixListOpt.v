@@ -26,8 +26,8 @@ Section FixList.
     match xs with
     | nil => ret (transform_id, ce)
     | x :: xs' => `(b1, env1) <- A_encode_Spec x ce;
-                    `(b2, env2) <- encode_list_Spec xs' env1;
-                    ret (transform b1 b2, env2)
+                  `(b2, env2) <- encode_list_Spec xs' env1;
+                  ret (transform b1 b2, env2)
     end%comp.
 
   Fixpoint encode_list_Impl

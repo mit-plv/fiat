@@ -16,7 +16,7 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeCheckSum
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
-        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.NoCache
         Fiat.BinEncoders.Env.Lib2.WordOpt
@@ -136,9 +136,9 @@ Definition UDP_Packet_decoder'
                                     (snd decodePlusCacheInv))
         /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  eexists (_, _); intros; eexists _; split; simpl.
+  start_synthesizing_decoder.
+  normalize_compose transformer.
   unfold encode_UDP_Packet_Spec; pose_string_ids.
-  intro.
   let p := (eval unfold Domain in (fun udp : UDP_Packet => (udp!StringId, (udp!StringId0, |udp!StringId1|)))) in
   let p := eval simpl in p in
       eapply (@compose_IPChecksum_encode_correct_dep
@@ -164,8 +164,6 @@ Proof.
   repeat calculate_length_ByteString.
   solve_mod_8.
   solve_mod_8.
-
-
   { (* Grossest Proof By Far. *)
     intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
     instantiate (1 := UDP_Packet_encoded_measure).
@@ -209,110 +207,74 @@ Proof.
     rewrite Npow2_nat.
     omega.
   }
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  apply_compose.
-  eapply Nat_decode_correct.
-  solve_data_inv.
-  solve_data_inv.
-  unfold encode_decode_correct_f; intuition eauto.
-  simpl in *.
-  instantiate
-    (1 := fun p b env => if Compare_dec.le_lt_dec p (pow2 16) then
-                           _ p b env else None).
-  simpl in *.
-  instantiate
-    (1 := fun p b env => if Compare_dec.lt_dec p 8 then
-                           None else _ p b env).
-  simpl in *.
-  assert (b0 = proj1 - 8) by
-      (rewrite <- H9; simpl; auto with arith).
-  destruct (Compare_dec.le_lt_dec proj1 (pow2 16)).
-  destruct (Compare_dec.lt_dec proj1 8).
-  elimtype False; omega.
-  rewrite H8; clear H8; clear H9.
-  computes_to_inv; injections; subst; simpl.
-  eexists env'; simpl; intuition eauto.
-  rewrite ByteString_transform_id_left.
-  match goal with
-    |- ?f ?a ?b ?c = ?P =>
-    let P' := (eval pattern a, b, c in P) in
-    let f' := match P' with ?f a b c => f end in
-    try unify f f'; try reflexivity
-  end.
-  omega.
-  simpl in H6.
-  repeat find_if_inside; try discriminate.
-  simpl in H6; injections; eauto.
-  simpl.
-  eexists _; eexists tt;
-    intuition eauto; injections; eauto using idx_ibound_eq;
-      try match goal with
-            |-  ?data => destruct data;
-                           simpl in *; eauto
-          end.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  repeat find_if_inside; simpl in *; try discriminate;
-    injections.
-  reflexivity.
-  instantiate (1 := fun _ => True); eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  eapply (lt_minus_plus_idem _ 8); eauto using lt_8_2_16.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto.
-  repeat find_if_inside; try discriminate; injections; eauto; omega.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+
+  intros; eapply encode_decode_correct_finish.
+  (* Automation needs updating here. *)
+  let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  assert (H4 = proj1 - 8) as H' by omega; rewrite H' in *; clear H'.
+  (* Substitute any inferred equalities *) clear H7. subst.
+  (* And unify with original object *) reflexivity.
+  (* This needs to be baked into decide_data_invariant *)
+  decide_data_invariant.
+  (* instantiate (1 := true); simpl.
+  eapply (lt_minus_plus_idem proj1 8); auto.
+  apply lt_8_2_16. *)
   unfold UDP_Packet_OK; clear; intros ? H'; repeat split.
+
   simpl; eapply lt_minus_plus with (m := 8); eauto.
   instantiate (1 := fun _ _ => True);
     simpl; intros; exact I.
-  apply_compose.
-  intro H'; eapply FixList_decode_correct.
-  eapply Word_decode_correct.
-  eapply H'.
+  decode_step.
+  decode_step.
+  decode_step.
+  (* curried data nonesense *)
   simpl; intros; instantiate (1 := snd (snd proj)).
   intuition; subst; simpl; auto with arith.
-  destruct proj as [? [? ?] ]; simpl; injections.
-  simpl; intros; eauto using FixedList_predicate_rest_True.
+  decode_step.
   intros.
-  unfold encode_decode_correct_f; intuition eauto.
-  destruct data as [? [? [? [ ] ] ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
-  pose proof (f_equal fst H9).
-  pose proof (f_equal (fun z => fst (snd z)) H9).
-  pose proof (f_equal (fun z => snd (snd z)) H9).
-  simpl in *.
-  clear H9.
-  computes_to_inv; injections; subst; simpl.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  eexists env'; simpl; intuition eauto.
-  simpl in *.
-  simpl in H5; injections; eauto.
-  simpl in H5; repeat find_if_inside; try discriminate.
-  eexists _; eexists tt.
-  injections; simpl in *; repeat split.
-  destruct env; computes_to_econstructor.
-  pose proof transform_id_left as H'; simpl in H'; rewrite H'.
-  reflexivity.
-  unfold UDP_Packet_OK.
+  intros; eapply encode_decode_correct_finish.
+
+  let a' := fresh in
+  intros a'; repeat destruct a' as [? a'].
+    (* Show that it is determined by the constraints (equalities) *)
+    (* inferred during parsing. *)
+  unfold GetAttribute, GetAttributeRaw in *;
+  simpl in *; intros;
+    (* Decompose data predicate *) intuition.
+  (* More currying problems. *)
+  generalize (f_equal fst H8);
+    generalize (f_equal snd H8); intros.
+  generalize (f_equal fst H1);
+    generalize (f_equal snd H1); intros; simpl in *.
+  clear H8 H1.
+  subst.
+
+  (* And unify with original object *) reflexivity.
+  decide_data_invariant.
+  (* unfold UDP_Packet_OK.
   unfold GetAttribute, GetAttributeRaw; simpl.
-  split_and.
-  simpl in *.
+  instantiate (1 := true).
   eapply lt_minus_minus; eauto using lt_8_2_16.
-  rewrite <- H5; simpl; rewrite <- Minus.minus_n_O; reflexivity.
-  destruct proj as [? [? ? ] ];
-    unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *.
-  split_and; repeat f_equal; eauto.
-  repeat (instantiate (1 := fun _ => True)).
-  unfold cache_inv_Property; intuition.
+  rewrite <- H0; simpl; rewrite <- Minus.minus_n_O; reflexivity. *)
+  synthesize_cache_invariant.
 Defined.
 
 Definition UDP_Packet_decoder_impl :=
