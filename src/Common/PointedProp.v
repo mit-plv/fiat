@@ -81,10 +81,10 @@ Arguments impl_option_pointed_Prop (_ _)%option_pointed_prop.
 
 Infix "/\" := and_pointed_Prop : pointed_prop_scope.
 Infix "\/" := or_pointed_Prop : pointed_prop_scope.
-Infix "->" := impl_pointed_Prop : pointed_prop_scope.
+(*Infix "->" := impl_pointed_Prop : pointed_prop_scope.*)
 Infix "/\" := and_option_pointed_Prop : option_pointed_prop_scope.
 Infix "\/" := or_option_pointed_Prop : option_pointed_prop_scope.
-Infix "->" := impl_option_pointed_Prop : option_pointed_prop_scope.
+(*Infix "->" := impl_option_pointed_Prop : option_pointed_prop_scope.*)
 Notation "~ P" := (not_option_pointed_Prop P) : option_pointed_prop_scope.
 
 Ltac inversion_pointed_Prop_step :=

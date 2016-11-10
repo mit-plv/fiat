@@ -72,10 +72,10 @@ Instance optionT : MonadTransformerOps (fun M => M ∘ option) | 2
                       bind A B x f := _ |};
        lift M H A x := bind x (fun a => ret (Some a)) }.
 Proof.
-  { exact (bind x (fun a => match a with
-                              | None => ret None
-                              | Some a' => f a'
-                            end)). }
+  { exact (bind (M:=M) x (fun a => match a with
+                                   | None => ret None
+                                   | Some a' => f a'
+                                   end)). }
 Defined.
 
 Local Ltac t_option :=
