@@ -879,6 +879,7 @@ Definition packet_decoder
     repeat decode_step.
     repeat decode_step.
     repeat decode_step.
+
     (* Inferring the data invariant on the resource record. *)
     intros ? H'; destruct H' as [ [ [ [ [? ?] ?] ? ] ?] ? ].
     instantiate (1 := proj12).

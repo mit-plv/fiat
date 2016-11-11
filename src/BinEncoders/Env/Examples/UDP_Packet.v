@@ -126,6 +126,7 @@ Qed.
 Opaque pow2.
 
 Definition UDP_Packet_decoder'
+           srcAddr destAddr udpLength
   : { decodePlusCacheInv |
       forall srcAddr destAddr udpLength,
       exists P_inv,
@@ -138,6 +139,21 @@ Definition UDP_Packet_decoder'
 Proof.
   start_synthesizing_decoder.
   normalize_compose transformer.
+  eapply compose_IPChecksum_encode_correct_dep';
+    [ apply H
+    | repeat resolve_Checksum
+    | cbv beta; unfold Domain; simpl;
+      simpl transform; unfold encode_word;
+      rewrite !ByteString_enqueue_ByteString_measure,
+      !length_encode_word';
+      reflexivity
+    | reflexivity
+    | repeat calculate_length_ByteString
+    | repeat calculate_length_ByteString
+    | solve_mod_8
+    | solve_mod_8
+    | .. ]; cbv beta; unfold Domain; simpl.
+
   unfold encode_UDP_Packet_Spec; pose_string_ids.
   let p := (eval unfold Domain in (fun udp : UDP_Packet => (udp!StringId, (udp!StringId0, |udp!StringId1|)))) in
   let p := eval simpl in p in

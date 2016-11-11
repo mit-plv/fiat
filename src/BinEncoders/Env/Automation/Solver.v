@@ -68,55 +68,88 @@ Ltac shelve_inv :=
 
 Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
+Lemma decompose_pair_eq {A B}
+  : forall (ab ab' : A * B),
+    ab = ab' -> fst ab = fst ab' /\ snd ab = snd ab'.
+Proof. intros; split; congruence. Qed.
+
 (* Solves data invariants using the data_inv_hints database *)
 Ltac solve_data_inv :=
   first [ simpl; intros; exact I
-        | solve [simpl; intuition eauto with data_inv_hints]
+        | solve [simpl;
+                 intuition eauto with data_inv_hints;
+                 repeat
+                   match goal with
+                   | H : _ = _ |- _ =>
+                     first [apply decompose_pair_eq in H;
+                            let H1 := fresh in
+                            let H2 := fresh in
+                            destruct H as [H1 H2];
+                            simpl in H1;
+                            simpl in H2
+                           | rewrite H in * ]
+                   end;
+                 eauto with data_inv_hints]
         | shelve_inv ].
 
 Ltac start_synthesizing_decoder :=
-  (* Unfold encoder specification and the data and packet invariants *)
-  repeat
-    match goal with
-      |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv ?encodeSpec] =>
-      first [unfold dataInv
-            | unfold restInv
-            | unfold encodeSpec ]
-    | |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv (?encodeSpec _)] =>
-      first [unfold dataInv
-            | unfold restInv
-            | unfold encodeSpec ]
-    end;
+  match goal with
+  | |- CorrectDecoderFor ?Invariant ?Spec =>
+    try unfold Spec; try unfold Invariant
+  | |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv ?encodeSpec] =>
+    first [unfold dataInv
+          | unfold restInv
+          | unfold encodeSpec ]
+  | |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv (?encodeSpec _)] =>
+    first [unfold dataInv
+          | unfold restInv
+          | unfold encodeSpec ]
+  end;
 
   (* Memoize any string constants *)
   pose_string_hyps;
-  (* Initialize the various goals with evars *)
-  eexists (_, _), _; split; simpl.
+  eapply Start_CorrectDecoderFor; simpl.
 
 Ltac build_fully_determined_type :=
   (* Build the parsed object by showing it can be built *)
   (* from previously parsed terms and that and that the *)
   (* byte string was a valid encoding of this object. *)
-  (* Start by destructing the encoded object  *)
+  (* Start by doing some simplification and *)
+  (* destructing the encoded object  *)
+  unfold Domain, GetAttribute, GetAttributeRaw in *;
+  simpl in *;
   let a' := fresh in
   intros a'; repeat destruct a' as [? a'];
   (* Show that it is determined by the constraints (equalities) *)
   (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
+  unfold Domain, GetAttribute, GetAttributeRaw in *;
   simpl in *; intros;
   (* Decompose data predicate *) intuition;
-  (* Substitute any inferred equalities *) subst;
+  (* Substitute any inferred equalities; decomposing *)
+  (* any product types that might have been built up *)
+  (* along the way *)
+  repeat
+    match goal with
+    | H : _ = _ |- _ =>
+      first [apply decompose_pair_eq in H;
+             let H1 := fresh in
+             let H2 := fresh in
+             destruct H as [H1 H2];
+             simpl in H1;
+             simpl in H2
+            | rewrite H in * ]
+    end;
   (* And unify with original object *) reflexivity.
 
-  Lemma decides_True' {A}
-    : forall a, decides true ((fun _ : A => True) a).
-  Proof.
-    simpl; intros; exact I.
-  Qed.
+Lemma decides_True' {A}
+  : forall a, decides true ((fun _ : A => True) a).
+Proof.
+  simpl; intros; exact I.
+Qed.
 
 Definition pair_eq_dec {A B}
-      (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
-      (B_eq_dec : forall a a' : B, {a = a'} + {a <> a'})
+           (A_eq_dec : forall a a' : A, {a = a'} + {a <> a'})
+           (B_eq_dec : forall a a' : B, {a = a'} + {a <> a'})
   : forall a a' : A * B, {a = a'} + {a <> a'}.
 Proof.
   refine (fun a a' => match A_eq_dec (fst a) (fst a'), B_eq_dec (snd a) (snd a') with
@@ -167,6 +200,14 @@ Proof.
     destruct b; destruct b'; simpl; congruence.
 Qed.
 
+Lemma decides_unit_eq :
+  forall (b b' : unit),
+    decides true (b = b').
+Proof.
+  unfold decides, If_Then_Else; intros;
+    destruct b; destruct b'; simpl; congruence.
+Qed.
+
 Lemma decides_EnumType_eq {A} {n} {tags} :
   forall (b b' : @EnumType n A tags),
     decides (fin_beq b b') (b = b').
@@ -185,24 +226,25 @@ Ltac decide_data_invariant :=
   (* by a decision procedure*)
   unfold GetAttribute, GetAttributeRaw in *;
   simpl in *; intros; intuition;
-    repeat first [ progress subst
-             | match goal with
-                 |- decides ?A (?B ?C)  =>
-                 let T := type of C in
-                 unify B (fun _ : T => True);
-                 apply (@decides_True' T C)
-               end
-          | apply decides_eq_refl
-          | solve [eauto with decide_data_invariant_db]
-          | eapply decides_and
-          | eapply decides_assumption; eassumption
-          | apply decides_dec_lt
-          | eapply decides_word_eq
-          | eapply decides_nat_eq
-          | eapply decides_pair_eq
-          | eapply decides_bool_eq
-          | eapply decides_EnumType_eq
-          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq, pair_eq_dec ].
+  repeat first [ progress subst
+               | match goal with
+                   |- decides ?A (?B ?C)  =>
+                   let T := type of C in
+                   unify B (fun _ : T => True);
+                   apply (@decides_True' T C)
+                 end
+               | apply decides_eq_refl
+               | solve [eauto with decide_data_invariant_db]
+               | eapply decides_and
+               | eapply decides_assumption; eassumption
+               | apply decides_dec_lt
+               | eapply decides_unit_eq
+               | eapply decides_word_eq
+               | eapply decides_nat_eq
+               | eapply decides_pair_eq
+               | eapply decides_bool_eq
+               | eapply decides_EnumType_eq
+               | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq, pair_eq_dec ].
 
 Ltac ilist_of_evar B As k :=
   match As with
@@ -232,7 +274,7 @@ Ltac decode_step :=
   | |- appcontext [encode_decode_correct_f _ _ _ _ ?H _ _] =>
     progress unfold H
   | |- appcontext [encode_unused_word_Spec] =>
-      unfold encode_unused_word_Spec
+    unfold encode_unused_word_Spec
   (* A) decomposing one of the parser combinators, *)
   | |- _ => apply_compose
   (* B) applying one of the rules for a base type  *)
@@ -259,7 +301,7 @@ Ltac decode_step :=
     intros; eapply option_encode_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
-        end | .. ]
+      end | .. ]
 
   | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
     eapply Enum_decode_correct
@@ -269,65 +311,65 @@ Ltac decode_step :=
   | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_SumType_Spec (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
     let cache_inv_H := fresh in
     intros cache_inv_H;
-      first
-        [let types' := (eval unfold types in types) in
-         ilist_of_evar
-           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
-           types'
-           ltac:(fun encoders' =>
-         ilist_of_evar
-           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-           types'
-           ltac:(fun decoders' =>
-         ilist_of_evar
-           (fun T : Type => Ensembles.Ensemble T)
-           types'
-           ltac:(fun invariants' =>
-         ilist_of_evar
-            (fun T : Type => T -> B -> Prop)
-           types'
-           ltac:(fun invariants_rest' =>
-         Vector_of_evar
-           n
-           (Ensembles.Ensemble (CacheDecode -> Prop))
-         ltac:(fun cache_invariants' =>
-                       eapply (SumType_decode_correct (m := n) types) with
-                   (encoders := encoders')
-                     (decoders := decoders')
-                     (invariants := invariants')
-                     (invariants_rest := invariants_rest')
-                     (cache_invariants :=  cache_invariants')
-                )))))
-        |          ilist_of_evar
-           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
-           types
-           ltac:(fun encoders' =>
-         ilist_of_evar
-           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-           types
-           ltac:(fun decoders' =>
-         ilist_of_evar
-           (fun T : Type => Ensembles.Ensemble T)
-           types
-           ltac:(fun invariants' =>
-          ilist_of_evar
-            (fun T : Type => T -> B -> Prop)
-           types
-           ltac:(fun invariants_rest' =>
-         Vector_of_evar
-           n
-           (Ensembles.Ensemble (CacheDecode -> Prop))
-           ltac:(fun cache_invariants' =>
-                       eapply (SumType_decode_correct (m := n) types) with
-                   (encoders := encoders')
-                     (decoders := decoders')
-                     (invariants := invariants')
-                     (invariants_rest := invariants_rest')
-                     (cache_invariants :=  cache_invariants'))))))
-        ];
-      [ simpl; repeat (apply Build_prim_and; intros); try exact I
-      | apply cache_inv_H ]
-        (* C) Discharging a side condition of one of the base rules *)
+    first
+      [let types' := (eval unfold types in types) in
+       ilist_of_evar
+         (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+         types'
+         ltac:(fun encoders' =>
+                 ilist_of_evar
+                   (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
+                   types'
+                   ltac:(fun decoders' =>
+                           ilist_of_evar
+                             (fun T : Type => Ensembles.Ensemble T)
+                             types'
+                             ltac:(fun invariants' =>
+                                     ilist_of_evar
+                                       (fun T : Type => T -> B -> Prop)
+                                       types'
+                                       ltac:(fun invariants_rest' =>
+                                               Vector_of_evar
+                                                 n
+                                                 (Ensembles.Ensemble (CacheDecode -> Prop))
+                                                 ltac:(fun cache_invariants' =>
+                                                         eapply (SumType_decode_correct (m := n) types) with
+                                                         (encoders := encoders')
+                                                           (decoders := decoders')
+                                                           (invariants := invariants')
+                                                           (invariants_rest := invariants_rest')
+                                                           (cache_invariants :=  cache_invariants')
+              )))))
+      |          ilist_of_evar
+                   (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
+                   types
+                   ltac:(fun encoders' =>
+                           ilist_of_evar
+                             (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
+                             types
+                             ltac:(fun decoders' =>
+                                     ilist_of_evar
+                                       (fun T : Type => Ensembles.Ensemble T)
+                                       types
+                                       ltac:(fun invariants' =>
+                                               ilist_of_evar
+                                                 (fun T : Type => T -> B -> Prop)
+                                                 types
+                                                 ltac:(fun invariants_rest' =>
+                                                         Vector_of_evar
+                                                           n
+                                                           (Ensembles.Ensemble (CacheDecode -> Prop))
+                                                           ltac:(fun cache_invariants' =>
+                                                                   eapply (SumType_decode_correct (m := n) types) with
+                                                                   (encoders := encoders')
+                                                                     (decoders := decoders')
+                                                                     (invariants := invariants')
+                                                                     (invariants_rest := invariants_rest')
+                                                                     (cache_invariants :=  cache_invariants'))))))
+      ];
+    [ simpl; repeat (apply Build_prim_and; intros); try exact I
+    | apply cache_inv_H ]
+  (* C) Discharging a side condition of one of the base rules *)
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
     intros; apply Vector_predicate_rest_True
@@ -356,12 +398,65 @@ Ltac normalize_compose transformer :=
    intros; higher_order_reflexivity
   | pose_string_ids ].
 
+Lemma optimize_under_if {A B}
+  : forall (a a' : A) (f : {a = a'} + {a <> a'}) (t t' e e' : B),
+    t = t'
+    -> e = e'
+    -> (if f then t else e) = if f then t' else e.
+Proof.
+  destruct f; congruence.
+Qed.
+
+Lemma optimize_under_if_bool {B}
+  : forall (c : bool) (t t' e e' : B),
+    t = t'
+    -> e = e'
+    -> (if c then t else e) = if c then t' else e.
+Proof.
+  destruct c; congruence.
+Qed.
+
+Lemma optimize_if_bind2 {A A' B C C'}
+  : forall (a a' : C')
+           (f : {a = a'} + {a <> a'})
+           (t e : option (A * B * C))
+           (k : A -> B -> C -> option (A' * B * C)),
+    (`(a, b, env) <- (if f then t else e); k a b env) =
+    if f then `(a, b, env) <- t; k a b env else `(a, b, env) <- e; k a b env.
+Proof.
+  destruct f; congruence.
+Qed.
+
+Lemma optimize_if_bind2_bool {A A' B C}
+  : forall (c : bool)
+           (t e : option (A * B * C))
+           (k : A -> B -> C -> option (A' * B * C)),
+    (`(a, b, env) <- (if c then t else e); k a b env) =
+    if c then `(a, b, env) <- t; k a b env else `(a, b, env) <- e; k a b env.
+Proof.
+  destruct c; congruence.
+Qed.
+
+Ltac optimize_decoder_impl :=
+  (* Perform algebraic simplification of the decoder implementation. *)
+  simpl; intros;
+  repeat (try rewrite !DecodeBindOpt2_assoc;
+          try rewrite !Bool.andb_true_r;
+          try rewrite !Bool.andb_true_l;
+          try rewrite !optimize_if_bind2;
+          try rewrite !optimize_if_bind2_bool;
+          first [
+              apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros]);
+  higher_order_reflexivity.
 
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-    [ repeat decode_step
-    | cbv beta; synthesize_cache_invariant ].
+  [ repeat decode_step
+  | cbv beta; synthesize_cache_invariant
+  | cbv beta; optimize_decoder_impl].
 
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.
@@ -376,9 +471,9 @@ Ltac enum_part eq_dec :=
   | |- ?func ?arg = ?res =>
     let func_t := type of func in
     let h := fresh in
-      evar (h:func_t);
-      unify (fun n => if eq_dec _ n arg then res else h n) func;
-      reflexivity
+    evar (h:func_t);
+    unify (fun n => if eq_dec _ n arg then res else h n) func;
+    reflexivity
   end.
 
 Ltac enum_finish :=
@@ -392,7 +487,7 @@ Ltac enum_finish :=
 
 Ltac idtac' :=
   match goal with
-    | |- _ => idtac (* I actually need this idtac for some unknown reason *)
+  | |- _ => idtac (* I actually need this idtac for some unknown reason *)
   end.
 
 Definition FixInt_eq_dec (size : nat) (n m : {n | (N.lt n (exp2 size))%N }) : {n = m} + {~ n = m}.
@@ -408,11 +503,11 @@ Ltac solve_enum :=
 
 Ltac solve_done :=
   intros ? ? ? ? data ? ? ? ?;
-    instantiate (1:=fun _ b e => (_, b, e));
-    intros; destruct data; simpl in *; repeat match goal with
-                   | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
-                   | H : _ /\ _ |- _ => inversion H; subst; clear H
-                   end; intuition eauto; fail 0.
+         instantiate (1:=fun _ b e => (_, b, e));
+  intros; destruct data; simpl in *; repeat match goal with
+                                            | H : (_, _) = (_, _) |- _ => inversion H; subst; clear H
+                                            | H : _ /\ _ |- _ => inversion H; subst; clear H
+                                            end; intuition eauto; fail 0.
 
 Ltac solve_predicate :=
   unfold SteppingList_predicate, IList_predicate, FixList_predicate;

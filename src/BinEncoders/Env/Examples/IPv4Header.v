@@ -107,76 +107,50 @@ Proof.
   auto with arith.
 Qed.
 
-(*Lemma IPv4_Packet_encoded_measure_OK_1 :
-  forall (a : IPv4_Packet) (ctx ctx' : ()) (b ext : ByteString)
-         (a_OK : IPv4_Packet_OK a),
-    encode_IPv4_Packet_Spec a ctx ↝ (b, ctx')
-    -> IPv4_Packet_encoded_measure (ByteString_transformer b ext)
-       = 32 * (IPv4_Packet_Header_Len a).
+Lemma IPv4_Packet_Header_Len_eq
+  : forall data len,
+    IPv4_Packet_Header_Len data = len
+    -> ((|data!"Options" |) = len - 5).
 Proof.
-  unfold encode_IPv4_Packet_Spec; intros.
-  unfold IPv4_Packet_encoded_measure;
-  eapply computes_to_composeChecksum_decode_unused_word in H;
-    let H' := fresh in
-    destruct H as [? [? [? [? [? [? H'] ] ] ] ] ];
-      rewrite H'; simpl.
-  rewrite <- !ByteString_transform_assoc.
-  intros.
-  eapply computes_to_compose_decode_word in H;
-    let H' := fresh in
-    destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold fst.
-  rewrite wordToNat_natToWord_idempotent; try reflexivity.
-  eauto using IPv4_Packet_Headiner_Len_Bound.
-Qed. (* Qed takes forever. *) *)
+  unfold IPv4_Packet_Header_Len; intros.
+  apply Minus.plus_minus.
+  rewrite H; reflexivity.
+Qed.
+
+Hint Resolve IPv4_Packet_Header_Len_eq : data_inv_hints.
+
 
 Local Arguments transform_id / .
+Local Arguments NPeano.modulo : simpl never.
+
 Definition EthernetHeader_decoder
-  : { decodePlusCacheInv |
-      exists P_inv,
-        (cache_inv_Property (snd decodePlusCacheInv) P_inv
-         -> encode_decode_correct_f _ transformer IPv4_Packet_OK (fun _ _ => True)
-                                    encode_IPv4_Packet_Spec
-                                    (fst decodePlusCacheInv) (snd decodePlusCacheInv))
-        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+  : CorrectDecoderFor IPv4_Packet_OK encode_IPv4_Packet_Spec.
 Proof.
-  eexists (_, _); intros; eexists _; split; simpl.
-  unfold encode_IPv4_Packet_Spec; pose_string_ids.
-  intro.
-  Time let p := (eval unfold Domain in (fun ip4 : IPv4_Packet => (|ip4!StringId11|, (ip4!StringId, (ip4!StringId0, (ip4!StringId1,
-                                                                                                               (ip4!StringId2, (ip4!StringId3, (ip4!StringId4, ip4!StringId5))))))))) in
-  let p := eval simpl in p in
-      eapply (@compose_IPChecksum_encode_correct
-                IPv4_Packet
-                (nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))))
-                _ _ _ H
-                p
-                IPv4_Packet_OK
-                _ _ _
-                (fun data' : nat * (word 16 * (word 16 * (bool * (bool * (word 13 * (char * EnumType ["ICMP"; "TCP"; "UDP"])))))) =>
-                   (encode_word_Spec (natToWord 4 4)
-                                   ThenC encode_nat_Spec 4 (5 + fst data')
-                                   ThenC encode_unused_word_Spec 8 (* TOS Field! *)
-                                   ThenC encode_word_Spec (fst (snd data'))
-                                   ThenC encode_word_Spec (fst (snd (snd data')))
-                                   ThenC encode_unused_word_Spec 1
-                                   ThenC encode_bool_Spec (fst (snd (snd (snd data'))))
-                                   ThenC encode_bool_Spec (fst (snd (snd (snd (snd data')))))
-                                   ThenC encode_word_Spec (fst (snd (snd (snd (snd (snd data'))))))
-                                   ThenC encode_word_Spec (fst (snd (snd (snd (snd (snd (snd data')))))))
-                                   ThenC encode_enum_Spec ProtocolTypeCodes (snd (snd (snd (snd (snd (snd (snd data')))))))
-                                   DoneC))).
-  repeat calculate_length_ByteString.
-  repeat calculate_length_ByteString.
-  solve_mod_8.
-  solve_mod_8.
+  start_synthesizing_decoder.
+  intro H; eapply compose_IPChecksum_encode_correct';
+    [apply H
+    | repeat resolve_Checksum
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | solve_mod_8
+    | solve_mod_8
+    |
+    | repeat (decode_step; unfold Domain; simpl)
+    |
+    | instantiate (1 := fun _ _ => True);
+      simpl; intros; exact I | repeat (decode_step; unfold Domain; simpl) ];
+    cbv beta;
+    unfold Domain; simpl.
   { (* Grossest Proof By Far. *)
     intros.
     set (k := transform_id); simpl in k; subst k.
     rewrite length_ByteString_ByteString_id.
     instantiate (1 := IPv4_Packet_encoded_measure).
     unfold IPv4_Packet_encoded_measure.
-    rewrite <- !transform_assoc.
+    pose proof transform_assoc as H'; simpl in H';
+    rewrite <- !H'.
     eapply computes_to_compose_decode_unused_word in H0;
       let H' := fresh in
       destruct H0 as [? [? [? H'] ] ]; rewrite H'.
@@ -187,7 +161,7 @@ Proof.
     unfold fst.
     rewrite wordToNat_natToWord_idempotent; try reflexivity;
       eauto using IPv4_Packet_Headiner_Len_Bound.
-    rewrite !Plus.plus_assoc.
+    unfold IPv4_Packet_Header_Len.
     rewrite Mult.mult_plus_distr_l.
     clear.
     repeat match goal with
@@ -196,115 +170,18 @@ Proof.
     assert (n = n0) by (rewrite Heqn, Heqn0; f_equal).
     rewrite H.
     omega. }
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  intros; eapply encode_decode_correct_finish.
-  let a' := fresh in
-  intros a'; repeat destruct a' as [? a'].
-    (* Show that it is determined by the constraints (equalities) *)
-    (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros;
-    (* Decompose data predicate *) intuition.
-  (* need to clean this up as well *)
-  assert (proj - 5 = n) as H' by omega; rewrite <- H'; clear H' H22.
-  subst.
-  reflexivity.
-  decide_data_invariant.
+
+  simpl.
   unfold IPv4_Packet_OK; clear; intros ? H'; destruct H' as [? ?]; repeat split.
   simpl.
+  unfold IPv4_Packet_Header_Len.
   revert H; unfold StringId11; unfold pow2, mult; simpl; auto with arith.
-  instantiate (1 := fun _ _ => True);
-    simpl; intros; exact I.
 
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-
-  simpl.
-  instantiate (1 := fst proj); intuition.
-  rewrite <- H7; reflexivity.
-
-  decode_step.
-
-  intros; eapply encode_decode_correct_finish.
-  let a' := fresh in
-  intros a'; repeat destruct a' as [? a'].
-    (* Show that it is determined by the constraints (equalities) *)
-    (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros;
-    (* Decompose data predicate *) intuition.
-  rename H12 into H14.
-  pose proof (f_equal fst H14).
-  pose proof (f_equal (fun z => fst (snd z)) H14).
-  pose proof (f_equal (fun z => fst (snd (snd z))) H14).
-  simpl in *.
-  pose proof (f_equal (fun z => fst (snd (snd (snd z)))) H14).
-  simpl in *.
-  pose proof (f_equal (fun z => fst (snd (snd (snd (snd z))))) H14).
-  pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd z)))))) H14).
-  pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd (snd z))))))) H14).
-  pose proof (f_equal (fun z => fst (snd (snd (snd (snd (snd (snd z))))))) H14).
-  pose proof (f_equal (fun z => snd (snd (snd (snd (snd (snd (snd z))))))) H14).
-  simpl in *.
-  clear H14.
-  subst.
-  reflexivity.
-  decide_data_invariant.
+  repeat (decode_step; unfold Domain; simpl).
   synthesize_cache_invariant.
+
+  repeat optimize_decoder_impl.
+
 Defined.
 
 (* This is the decoder function that we should extract. *)
@@ -346,7 +223,10 @@ Definition pkt' : list char :=
    WO~1~0~0~0~0~0~0~0]%list.
 
 Definition pkt : list char :=
-    Eval compute in map (@natToWord 8) [69;0;0;0;0;0;0;0;38;1;87;160;192;168;222;10;192;168;222;1].
+    Eval compute in map (@natToWord 8) [69;0;100;0;0;0;0;0;38;1;243;159;192;168;222;10;192;168;222;1;0;0;0;0].
+
+
+  Compute (InternetChecksum.checksum pkt).
 
 Definition address : list char :=
   Eval compute in map (@natToWord 8) [172;16;254;1].
@@ -366,10 +246,13 @@ Lemma zero_lt_eight : (lt 0 8)%nat.
   Definition fiat_ipv4_decode (buffer: list char) : option (IPv4_Packet * list char) :=
     let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
     match IPv4_decoder_impl bs () with
-    | Some (pkt, bs, _) => Some (pkt, bs.(byteString))
+    | Some (pkt', bs, _) => Some (pkt', bs.(byteString))
     | None => None
     end.
 
+  (* Decoder works on hand-written packet copied from tutorial, so
+   it's got that going for it. (well, except that the total length
+   field in the example was ill-formed :p) *)
   Compute (fiat_ipv4_decode pkt).
 
   Compute (InternetChecksum.checksum pkt).

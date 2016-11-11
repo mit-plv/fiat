@@ -62,34 +62,34 @@ Fixpoint transformer_dequeue_word {B}
   end.
 
 Lemma transformer_dequeue_enqueue_word
-    : forall (w : word (0 + 1 * 8)) (ext : ByteString) OK,
-      transformer_dequeue_word _ (ByteString_enqueue_ByteString (word_into_ByteString OK w) ext) = (w, ext).
-  Proof.
-    simpl; intros; shatter_word w.
-      unfold word_into_ByteString; simpl.
-      do 8 match goal with
-        |- context [ByteString_dequeue (ByteString_enqueue_ByteString ?z _)] =>
-        let H := fresh in
-        destruct (ByteString_dequeue z) as [ [? ?] | ] eqn:H;
-          unfold ByteString_dequeue in H; simpl in H;
-            [ erewrite ByteString_dequeue_transform_opt; try eassumption;
-              injections | discriminate ];
-            match goal with
-              |- context [ {| padding := _;
-                              front := _;
-                              paddingOK := ?H;
-                              byteString := _ |} ] =>
-              generalize H; intros; simpl
-            end
-      end.
-      repeat f_equal.
-      rewrite <- ByteString_enqueue_ByteString_id_left.
-      unfold ByteString_id; repeat f_equal.
-      apply le_uniqueness_proof.
-  Qed.
+  : forall (w : word (0 + 1 * 8)) (ext : ByteString) OK,
+    transformer_dequeue_word _ (ByteString_enqueue_ByteString (word_into_ByteString OK w) ext) = (w, ext).
+Proof.
+  simpl; intros; shatter_word w.
+  unfold word_into_ByteString; simpl.
+  do 8 match goal with
+         |- context [ByteString_dequeue (ByteString_enqueue_ByteString ?z _)] =>
+         let H := fresh in
+         destruct (ByteString_dequeue z) as [ [? ?] | ] eqn:H;
+           unfold ByteString_dequeue in H; simpl in H;
+             [ erewrite ByteString_dequeue_transform_opt; try eassumption;
+               injections | discriminate ];
+             match goal with
+               |- context [ {| padding := _;
+                               front := _;
+                               paddingOK := ?H;
+                               byteString := _ |} ] =>
+               generalize H; intros; simpl
+             end
+       end.
+  repeat f_equal.
+  rewrite <- ByteString_enqueue_ByteString_id_left.
+  unfold ByteString_id; repeat f_equal.
+  apply le_uniqueness_proof.
+Qed.
 
 Fixpoint ByteString2ListOfChar (n : nat)
-           (b : ByteString) : list char :=
+         (b : ByteString) : list char :=
   match n with
   | 0 => nil
   | S (S (S (S (S (S (S (S n'))))))) =>
@@ -107,7 +107,7 @@ Lemma ByteString2ListOfChar_push_char
       (ByteString_enqueue_ByteString {| front := WO;
                                         paddingOK := PaddingOK;
                                         byteString := [c] |}
-                                        b) = (c :: (ByteString2ListOfChar n b))%list.
+                                     b) = (c :: (ByteString2ListOfChar n b))%list.
 Proof.
   Local Opaque transformer_dequeue_word.
   intros.
@@ -142,7 +142,7 @@ Proof.
     rewrite <- (IHbyteString WO paddingOK) at 1.
     replace (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := a :: byteString |} ext)
     with
-(ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := [a] |} (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := byteString |} ext) ).
+    (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := [a] |} (ByteString_enqueue_ByteString {| padding := 0; front := front; paddingOK := paddingOK; byteString := byteString |} ext) ).
     pose proof ByteString2ListOfChar_push_char as H'.
     simpl plus in H'.
     shatter_word front.
@@ -213,10 +213,10 @@ Qed.
 
 Definition IPChecksum (b b' : ByteString) : ByteString :=
   let b'' := if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
-                    else encode_word (wzero (8 - (padding b))) in
+             else encode_word (wzero (8 - (padding b))) in
   transform b''
-    (encode_word (wnot (onesComplement
-                             (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b'))))).
+            (encode_word (wnot (onesComplement
+                                  (ByteString2ListOfChar (bin_measure (transform b b')) (transform b b'))))).
 
 Lemma length_ByteString_IPChecksum
   : forall b b',
@@ -353,7 +353,7 @@ Qed. *)
 
 Lemma length_ByteString_into_list_measure :
   forall b,
-    | ByteString_into_list b | = bin_measure b.
+| ByteString_into_list b | = bin_measure b.
 Proof.
   simpl.
   intros; rewrite <- length_list_into_ByteString; f_equal.
@@ -419,7 +419,7 @@ Lemma ByteString2ListOfChar_Over :
   forall (b ext : ByteString),
     padding b = 0
     -> ByteString2ListOfChar (bin_measure b)
-                          (transform b ext) =
+                             (transform b ext) =
        ByteString2ListOfChar (bin_measure b) b.
 Proof.
   intros; rewrite ByteString2ListOfChar_eq; eauto.
@@ -560,7 +560,7 @@ Proof.
   - injections; eauto.
   - destruct (ByteString_dequeue w) as [ [? ?] | ] eqn : ? ;
       destruct (ByteString_dequeue w') as [ [? ?] | ] eqn : ?;
-      try discriminate.
+                                                              try discriminate.
     simpl in *.
     destruct (WordOpt.transformer_dequeue_word sz b0) as [ [? ?] | ] eqn : ? ;
       destruct (WordOpt.transformer_dequeue_word sz b2) as [ [? ?] | ]  eqn : ? ;
@@ -976,60 +976,60 @@ Lemma compose_IPChecksum_encode_correct
                           P_inv2 P0 /\
                           (forall (b : B) (ctx : CacheDecode) (u : ()) (b' : B) (ctx' : CacheDecode),
                               decodeChecksum b ctx = Some (u, b', ctx') -> P0 ctx -> P0 ctx')) ->
-       forall (project : A -> A') (predicate : A -> Prop)
-         (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
-         (predicate_rest : A' -> B -> Prop)
-         (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-         (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
-         (encoded_A_measure : B -> nat)
-         (len_encode1 : A' -> nat)
-         (len_encode2 : A -> nat),
-         (forall a' b ctx ctx',
-             computes_to (encode1 a' ctx) (b, ctx')
-             -> length_ByteString b = len_encode1 a')
-         -> (forall a b ctx ctx',
-               computes_to (encode2 a ctx) (b, ctx')
-               -> length_ByteString b = len_encode2 a)
-         -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
-         -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
-         -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
-                encode1 (project a) ctx ↝ (b, ctx') ->
-                encode2 a ctx' ↝ (b'', ctx'') ->
-                predicate a ->
-                len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
-       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
-       (cache_inv_Property P P_inv1 ->
-        encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
-       (forall data : A, predicate data -> predicate' (project data)) ->
-       (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
-     (b' b'' : ByteString) c,
-           encode1 a' ce ↝ (b', ce') ->
-           project a = a' ->
-           predicate a ->
-           encode2 a ce' ↝ (b'', ce'') ->
-           predicate_rest' a b ->
-           {c0 : word 16 |
-            forall ext : ByteString,
-              IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-     (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-   predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
-       forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
-       (forall proj : A',
-        predicate' proj ->
-        cache_inv_Property P P_inv2 ->
-        encode_decode_correct_f _ transformer
-          (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
-          (decode2 proj) P) ->
-       encode_decode_correct_f _ transformer predicate predicate_rest'
-         (fun data : A =>
-          encode1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
-         (fun (bin : B) (env : CacheDecode) =>
-          if checksum_Valid_dec (encoded_A_measure bin) bin
-          then
-           `(proj, rest, env') <- decode1 bin env;
-           `(_, rest', env'0) <- decodeChecksum rest env';
-           decode2 proj rest' env'0
-          else None) P.
+    forall (project : A -> A') (predicate : A -> Prop)
+           (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
+           (predicate_rest : A' -> B -> Prop)
+           (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
+           (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encoded_A_measure : B -> nat)
+           (len_encode1 : A' -> nat)
+           (len_encode2 : A -> nat),
+      (forall a' b ctx ctx',
+          computes_to (encode1 a' ctx) (b, ctx')
+          -> length_ByteString b = len_encode1 a')
+      -> (forall a b ctx ctx',
+             computes_to (encode2 a ctx) (b, ctx')
+             -> length_ByteString b = len_encode2 a)
+      -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
+      -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
+             encode1 (project a) ctx ↝ (b, ctx') ->
+             encode2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+      forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
+        (cache_inv_Property P P_inv1 ->
+         encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
+        (forall data : A, predicate data -> predicate' (project data)) ->
+        (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+                (b' b'' : ByteString) c,
+            encode1 a' ce ↝ (b', ce') ->
+            project a = a' ->
+            predicate a ->
+            encode2 a ce' ↝ (b'', ce'') ->
+            predicate_rest' a b ->
+            {c0 : word 16 |
+             forall ext : ByteString,
+               IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+                                (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+        forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
+          (forall proj : A',
+              predicate' proj ->
+              cache_inv_Property P P_inv2 ->
+              encode_decode_correct_f _ transformer
+                                      (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
+                                      (decode2 proj) P) ->
+          encode_decode_correct_f _ transformer predicate predicate_rest'
+                                  (fun data : A =>
+                                     encode1 (project data) ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
+                                  (fun (bin : B) (env : CacheDecode) =>
+                                     if checksum_Valid_dec (encoded_A_measure bin) bin
+                                     then
+                                       `(proj, rest, env') <- decode1 bin env;
+                                         `(_, rest', env'0) <- decodeChecksum rest env';
+                                         decode2 proj rest' env'0
+                                     else None) P.
 Proof.
   intros; eapply composeChecksum_encode_correct.
   - eassumption.
@@ -1044,7 +1044,7 @@ Proof.
   - eassumption.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
-    decode_unused_word, decode_unused_word'.
+            decode_unused_word, decode_unused_word'.
     rewrite <- !transform_assoc.
     unfold B in *.
     unfold encode_checksum.
@@ -1058,7 +1058,7 @@ Proof.
     simpl.
     unfold encode_checksum.
     erewrite (transformer_dequeue_word_inj _ b);
-    [ | eauto
+      [ | eauto
         | pose proof transformer_dequeue_encode_word' as H'; simpl in H';
           eapply H'].
     reflexivity.
@@ -1092,6 +1092,112 @@ Proof.
       rewrite <- (H1 _ _ _ _ H11) in H14.
       rewrite padding_eq_mod_8, H14.
       reflexivity.
+Qed.
+
+(* A (hopefully) more convenient IP_Checksum lemma *)
+Lemma compose_IPChecksum_encode_correct'
+  : forall (A : Type)
+           (B := ByteString)
+           (trans : Transformer B := transformer)
+           (trans_opt : QueueTransformerOpt trans bool :=
+              ByteString_QueueTransformerOpt)
+           (calculate_checksum := IPChecksum)
+           (checksum_Valid := IPChecksum_Valid)
+           (checksum_Valid_dec := IPChecksum_Valid_dec)
+           (A' : Type)
+           (P : CacheDecode -> Prop)
+           (P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop)
+           (decodeChecksum := decode_IPChecksum),
+    cache_inv_Property P
+                       (fun P0 : CacheDecode -> Prop =>
+                          P_inv1 P0 /\
+                          P_inv2 P0 /\
+                          (forall (b : B) (ctx : CacheDecode) (u : ()) (b' : B) (ctx' : CacheDecode),
+                              decodeChecksum b ctx = Some (u, b', ctx') -> P0 ctx -> P0 ctx')) ->
+    forall (project : A -> A') (predicate : A -> Prop)
+           (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
+           (predicate_rest : A' -> B -> Prop)
+           (encode1 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encode1' : A' -> CacheEncode -> Comp (B * CacheEncode))
+           (refine_encode1 : forall a ctx,
+               refineEquiv (encode1 a ctx) (encode1' (project a) ctx))
+           (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encoded_A_measure : B -> nat)
+           (len_encode1 : A' -> nat)
+           (len_encode2 : A -> nat),
+      (forall a' b ctx ctx',
+          computes_to (encode1' a' ctx) (b, ctx')
+          -> length_ByteString b = len_encode1 a')
+      -> (forall a b ctx ctx',
+             computes_to (encode2 a ctx) (b, ctx')
+             -> length_ByteString b = len_encode2 a)
+      -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
+      -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
+             encode1' (project a) ctx ↝ (b, ctx') ->
+             encode2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+      forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
+        (cache_inv_Property P P_inv1 ->
+         encode_decode_correct_f _ transformer predicate' predicate_rest encode1' decode1 P) ->
+        (forall data : A, predicate data -> predicate' (project data)) ->
+        (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+                (b' b'' : ByteString) c,
+            encode1' a' ce ↝ (b', ce') ->
+            project a = a' ->
+            predicate a ->
+            encode2 a ce' ↝ (b'', ce'') ->
+            predicate_rest' a b ->
+            {c0 : word 16 |
+             forall ext : ByteString,
+               IPChecksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+                                (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+        forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
+          (forall proj : A',
+              predicate' proj ->
+              cache_inv_Property P P_inv2 ->
+              encode_decode_correct_f _ transformer
+                                      (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
+                                      (decode2 proj) P) ->
+          encode_decode_correct_f _ transformer predicate predicate_rest'
+                                  (fun data : A =>
+                                     encode1 data ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn encode2 data)
+                                  (fun (bin : B) (env : CacheDecode) =>
+                                     if checksum_Valid_dec (encoded_A_measure bin) bin
+                                     then
+                                       `(proj, rest, env') <- decode1 bin env;
+                                         `(_, rest', env'0) <- decodeChecksum rest env';
+                                         decode2 proj rest' env'0
+                                     else None) P.
+Proof.
+  intros.
+  generalize refine_encode1
+             (@compose_IPChecksum_encode_correct
+                A A' P P_inv1 P_inv2 H project predicate
+                predicate' predicate_rest' predicate_rest encode1'
+                encode2 encoded_A_measure len_encode1
+                len_encode2 H0 H1 H2 H3 H4 decode1 H5
+                H6 H7 decode2 H8); clear;
+    unfold encode_decode_correct_f; intuition.
+  - eapply H0; eauto.
+    unfold composeChecksum in *.
+    unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    apply refine_encode1; eauto.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    rewrite <- H4'''; computes_to_econstructor.
+  - eapply H1; eauto.
+  - destruct (H1 _ _ _ _ _ _ H H2 H3); destruct_ex;
+      eexists _, _; intuition eauto.
+    unfold composeChecksum in *.
+    unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    apply refine_encode1; eauto.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    instantiate (1 := x0); rewrite <- H6''';
+      computes_to_econstructor.
 Qed.
 
 Print Assumptions compose_IPChecksum_encode_correct.
@@ -1168,62 +1274,62 @@ Lemma compose_IPChecksum_encode_correct_dep
                           P_inv2 P0 /\
                           (forall (b : B) (ctx : CacheDecode) (u : ()) (b' : B) (ctx' : CacheDecode),
                               decodeChecksum b ctx = Some (u, b', ctx') -> P0 ctx -> P0 ctx')) ->
-       forall (project : A -> A') (predicate : A -> Prop)
-         (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
-         (predicate_rest : A' -> B -> Prop)
-         (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
-         (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
-         (encoded_A_measure : B -> nat)
-         (len_encode1 : A' -> nat)
-         (len_encode2 : A -> nat)
-         (bextra_len_eq : length_ByteString bextra = bextra_len)
-         (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
-                  (forall a' b ctx ctx',
-             computes_to (encode1 a' ctx) (b, ctx')
-             -> length_ByteString b = len_encode1 a')
-         -> (forall a b ctx ctx',
-               computes_to (encode2 a ctx) (b, ctx')
-               -> length_ByteString b = len_encode2 a)
-         -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
-         -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
-         -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
-                encode1 (project a) ctx ↝ (b, ctx') ->
-                encode2 a ctx' ↝ (b'', ctx'') ->
-                predicate a ->
-                len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
-       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
-       (cache_inv_Property P P_inv1 ->
-        encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
-       (forall data : A, predicate data -> predicate' (project data)) ->
-       (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
-     (b' b'' : ByteString) c,
-           encode1 a' ce ↝ (b', ce') ->
-           project a = a' ->
-           predicate a ->
-           encode2 a ce' ↝ (b'', ce'') ->
-           predicate_rest' a b ->
-           {c0 : word 16 |
-            forall ext : ByteString,
-              checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
-     (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
-   predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
-       forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
-       (forall proj : A',
-        predicate' proj ->
-        cache_inv_Property P P_inv2 ->
-        encode_decode_correct_f _ transformer
-          (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
-          (decode2 proj) P) ->
-       encode_decode_correct_f _ transformer predicate predicate_rest'
-         (fun data : A =>
-          encode1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
-         (fun (bin : B) (env : CacheDecode) =>
-          if checksum_Valid_dec (encoded_A_measure bin) bin
-          then
-           `(proj, rest, env') <- decode1 bin env;
-           `(_, rest', env'0) <- decodeChecksum rest env';
-           decode2 proj rest' env'0
-          else None) P.
+    forall (project : A -> A') (predicate : A -> Prop)
+           (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
+           (predicate_rest : A' -> B -> Prop)
+           (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
+           (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encoded_A_measure : B -> nat)
+           (len_encode1 : A' -> nat)
+           (len_encode2 : A -> nat)
+           (bextra_len_eq : length_ByteString bextra = bextra_len)
+           (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
+      (forall a' b ctx ctx',
+          computes_to (encode1 a' ctx) (b, ctx')
+          -> length_ByteString b = len_encode1 a')
+      -> (forall a b ctx ctx',
+             computes_to (encode2 a ctx) (b, ctx')
+             -> length_ByteString b = len_encode2 a)
+      -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
+      -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
+             encode1 (project a) ctx ↝ (b, ctx') ->
+             encode2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+      forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
+        (cache_inv_Property P P_inv1 ->
+         encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
+        (forall data : A, predicate data -> predicate' (project data)) ->
+        (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+                (b' b'' : ByteString) c,
+            encode1 a' ce ↝ (b', ce') ->
+            project a = a' ->
+            predicate a ->
+            encode2 a ce' ↝ (b'', ce'') ->
+            predicate_rest' a b ->
+            {c0 : word 16 |
+             forall ext : ByteString,
+               checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+                              (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+        forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
+          (forall proj : A',
+              predicate' proj ->
+              cache_inv_Property P P_inv2 ->
+              encode_decode_correct_f _ transformer
+                                      (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
+                                      (decode2 proj) P) ->
+          encode_decode_correct_f _ transformer predicate predicate_rest'
+                                  (fun data : A =>
+                                     encode1 (project data) ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
+                                  (fun (bin : B) (env : CacheDecode) =>
+                                     if checksum_Valid_dec (encoded_A_measure bin) bin
+                                     then
+                                       `(proj, rest, env') <- decode1 bin env;
+                                         `(_, rest', env'0) <- decodeChecksum rest env';
+                                         decode2 proj rest' env'0
+                                     else None) P.
 Proof.
   intros.
   eapply (@composeChecksum_encode_correct
@@ -1244,7 +1350,7 @@ Proof.
   - eassumption.
   - eassumption.
   - intros; unfold decodeChecksum, IPChecksum, decode_IPChecksum,
-    decode_unused_word, decode_unused_word'.
+            decode_unused_word, decode_unused_word'.
     rewrite <- !transform_assoc.
     unfold B in *.
     unfold encode_checksum.
@@ -1259,9 +1365,9 @@ Proof.
     unfold encode_checksum.
     eexists w.
     erewrite (transformer_dequeue_word_inj _ b);
-        [ | eapply Heqo
-      | pose proof (@transformer_dequeue_encode_word' _ transformer _) as H';
-        simpl in H'; eapply H' ].
+      [ | eapply Heqo
+        | pose proof (@transformer_dequeue_encode_word' _ transformer _) as H';
+          simpl in H'; eapply H' ].
     rewrite H12; reflexivity.
   - eassumption.
   - intros.
@@ -1275,8 +1381,8 @@ Proof.
                             (ByteString_enqueue_ByteString x (ByteString_enqueue_ByteString (encode_checksum B trans trans_opt 16 c) x1))))
     with
     (length_ByteString
-           (ByteString_enqueue_ByteString bextra
-              (ByteString_enqueue_ByteString x (ByteString_enqueue_ByteString (encode_checksum B trans trans_opt 16 c) x1)))) in *.
+       (ByteString_enqueue_ByteString bextra
+                                      (ByteString_enqueue_ByteString x (ByteString_enqueue_ByteString (encode_checksum B trans trans_opt 16 c) x1)))) in *.
     rewrite !ByteString_enqueue_ByteString_assoc in *.
     rewrite ByteString2ListOfChar_Over.
     rewrite ByteString2ListOfChar_Over in H12.
@@ -1310,6 +1416,115 @@ Proof.
     unfold length_ByteString at 1.
     rewrite !ByteString_enqueue_ByteString_measure.
     omega.
+Qed.
+
+Lemma compose_IPChecksum_encode_correct_dep'
+  : forall (A : Type)
+           (B := ByteString)
+           (trans : Transformer B := transformer)
+           (trans_opt : QueueTransformerOpt trans bool :=
+              ByteString_QueueTransformerOpt)
+           (bextra : B)
+           (bextra_len : nat)
+           (checksum_Valid := fun n b' => IPChecksum_Valid (bextra_len + n) (transform bextra b'))
+           (checksum_Valid_dec := fun n b' => IPChecksum_Valid_dec (bextra_len + n) (transform bextra b'))
+           (A' : Type)
+           (P : CacheDecode -> Prop)
+           (P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop)
+           (decodeChecksum := decode_IPChecksum),
+    cache_inv_Property P
+                       (fun P0 : CacheDecode -> Prop =>
+                          P_inv1 P0 /\
+                          P_inv2 P0 /\
+                          (forall (b : B) (ctx : CacheDecode) (u : ()) (b' : B) (ctx' : CacheDecode),
+                              decodeChecksum b ctx = Some (u, b', ctx') -> P0 ctx -> P0 ctx')) ->
+    forall (project : A -> A') (predicate : A -> Prop)
+           (predicate' : A' -> Prop) (predicate_rest' : A -> B -> Prop)
+           (predicate_rest : A' -> B -> Prop)
+           (encode1 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encode1' : A' -> CacheEncode -> Comp (B * CacheEncode))
+           (refine_encode1 : forall a ctx,
+               refineEquiv (encode1 a ctx) (encode1' (project a) ctx))
+           (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
+           (encoded_A_measure : B -> nat)
+           (len_encode1 : A' -> nat)
+           (len_encode2 : A -> nat)
+           (bextra_len_eq : length_ByteString bextra = bextra_len)
+           (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
+      (forall a' b ctx ctx',
+          computes_to (encode1' a' ctx) (b, ctx')
+          -> length_ByteString b = len_encode1 a')
+      -> (forall a b ctx ctx',
+             computes_to (encode2 a ctx) (b, ctx')
+             -> length_ByteString b = len_encode2 a)
+      -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
+      -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
+      -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
+             encode1' (project a) ctx ↝ (b, ctx') ->
+             encode2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+      forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
+        (cache_inv_Property P P_inv1 ->
+         encode_decode_correct_f _ transformer predicate' predicate_rest encode1' decode1 P) ->
+        (forall data : A, predicate data -> predicate' (project data)) ->
+        (forall (a' : A') (b : ByteString) (a : A) (ce ce' ce'' : CacheEncode)
+                (b' b'' : ByteString) c,
+            encode1' a' ce ↝ (b', ce') ->
+            project a = a' ->
+            predicate a ->
+            encode2 a ce' ↝ (b'', ce'') ->
+            predicate_rest' a b ->
+            {c0 : word 16 |
+             forall ext : ByteString,
+               checksum_Valid (bin_measure (transform b' (transform (encode_checksum _ _ _ _ c0) b'')))
+                              (transform (transform b' (transform (encode_checksum _ _ _ _ c0) b'')) ext)} ↝ c ->
+            predicate_rest a' (transform (transform (encode_checksum _ _ _ _ c) b'') b)) ->
+        forall decode2 : A' -> B -> CacheDecode -> option (A * B * CacheDecode),
+          (forall proj : A',
+              predicate' proj ->
+              cache_inv_Property P P_inv2 ->
+              encode_decode_correct_f _ transformer
+                                      (fun data : A => predicate data /\ project data = proj) predicate_rest' encode2
+                                      (decode2 proj) P) ->
+          encode_decode_correct_f _ transformer predicate predicate_rest'
+                                  (fun data : A =>
+                                     encode1 data ThenChecksum checksum_Valid OfSize 16 ThenCarryOn encode2 data)
+                                  (fun (bin : B) (env : CacheDecode) =>
+                                     if checksum_Valid_dec (encoded_A_measure bin) bin
+                                     then
+                                       `(proj, rest, env') <- decode1 bin env;
+                                         `(_, rest', env'0) <- decodeChecksum rest env';
+                                         decode2 proj rest' env'0
+                                     else None) P.
+Proof.
+  intros.
+  generalize refine_encode1
+             (@compose_IPChecksum_encode_correct_dep
+                A bextra bextra_len A' P P_inv1 P_inv2 H project predicate
+                predicate' predicate_rest' predicate_rest encode1'
+                encode2 encoded_A_measure len_encode1
+                len_encode2 bextra_len_eq bextra_ByteAligned
+                H0 H1 H2 H3 H4 decode1 H5
+                H6 H7 decode2 H8); clear;
+    unfold encode_decode_correct_f; intuition.
+  - eapply H0; eauto.
+    unfold composeChecksum in *.
+    unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    apply refine_encode1; eauto.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    rewrite <- H4'''; computes_to_econstructor.
+  - eapply H1; eauto.
+  - destruct (H1 _ _ _ _ _ _ H H2 H3); destruct_ex;
+      eexists _, _; intuition eauto.
+    unfold composeChecksum in *.
+    unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
+    apply refine_encode1; eauto.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    instantiate (1 := x0); rewrite <- H6''';
+      computes_to_econstructor.
 Qed.
 
 Ltac calculate_length_ByteString :=
@@ -1373,13 +1588,105 @@ Qed.
 
 Ltac solve_mod_8 :=
   intros; cbv beta; simpl transform_id;
-    repeat first [
-             rewrite plus_32_mod_8
-           | rewrite plus_16_mod_8
-           | rewrite length_ByteString_ByteString_id
-           | rewrite (NPeano.Nat.mod_mul _ 8 (NPeano.Nat.neq_succ_0 7))
-           | rewrite mult_32_mod_8
-           | rewrite mult_16_mod_8
-           | rewrite mult_8_mod_8
-           | rewrite <- plus_n_O
-           | reflexivity ].
+  repeat first [
+           rewrite plus_32_mod_8
+         | rewrite plus_16_mod_8
+         | rewrite length_ByteString_ByteString_id
+         | rewrite (NPeano.Nat.mod_mul _ 8 (NPeano.Nat.neq_succ_0 7))
+         | rewrite mult_32_mod_8
+         | rewrite mult_16_mod_8
+         | rewrite mult_8_mod_8
+         | rewrite <- plus_n_O
+         | reflexivity ].
+
+Lemma refineEquiv_ThenC_no_dep {B Env}
+      {transformer : Transformer B}
+  : forall (encode1 : Env -> Comp (B * Env))
+           {A}
+           (encode2 : A -> Env -> Comp (B * Env))
+           {A'}
+           (f : A -> A')
+           (encode2' encode' : A' -> Env -> Comp (B * Env))
+           (H : forall a env, refineEquiv (encode2 a env) (encode2' (f a) env))
+           (H : forall a' env, encode' a' env = (fun a' => encode1 ThenC (encode2' a')) a' env)
+           (a : A)
+           (env : Env),
+
+    refineEquiv ((encode1 ThenC (encode2 a)) env)
+                (encode' (f a) env).
+Proof.
+  intros; unfold compose, Bind2; intros.
+  setoid_rewrite H0.
+  setoid_rewrite H; reflexivity.
+Qed.
+
+Lemma refineEquiv_ThenC {A B Env}
+      {transformer : Transformer B}
+  : forall (encode1 : A -> Env -> Comp (B * Env))
+           (encode2 : A -> Env -> Comp (B * Env))
+           {A' A''}
+           (f : A -> A')
+           (f' : A -> A'')
+           (encode1' : A' -> Env -> Comp (B * Env))
+           (encode2' : A'' -> Env -> Comp (B * Env))
+           (encode' : (A' * A'') -> Env -> Comp (B * Env))
+           (H1 : forall a env,
+               refineEquiv (encode1 a env) (encode1' (f a) env))
+           (H2 : forall a env,
+               refineEquiv (encode2 a env) (encode2' (f' a) env))
+           (H' : forall aa' env,
+               encode' aa' env
+               = (encode1' (fst aa') ThenC (encode2' (snd aa'))) env)
+           (a : A)
+           (env : Env),
+    refineEquiv ((encode1 a ThenC encode2 a) env)
+                (encode' ((fun a => (f a, f' a)) a) env).
+Proof.
+  intros; unfold compose, Bind2; intros;
+    setoid_rewrite H';
+    setoid_rewrite H1; setoid_rewrite H2; reflexivity.
+Qed.
+
+Lemma refineEquiv_DoneC {A Env}
+  : forall (a : A) (env : Env),
+    refineEquiv (ret (ByteString_id, env))
+                ((fun _ e => ret (ByteString_id, e))
+                   ((fun _ => tt) a) env).
+Proof.
+  simpl; intros; higher_order_reflexivity.
+Qed.
+
+Ltac resolve_Checksum :=
+  let a := fresh in
+  let ctx := fresh in
+  intros a ctx;
+  match goal with
+  | |- refineEquiv ((?encode1 ThenC ?encode2) ?ctx) ?z =>
+    let encode2' := (eval pattern a in encode2) in
+    match encode2' with
+    | ?encode2'' a =>
+      eapply (@refineEquiv_ThenC_no_dep _ _ _ encode1 _ encode2'');
+      [ clear | higher_order_reflexivity ]
+    end; cbv beta; clear
+  | |- refineEquiv ((?encode1 ThenC ?encode2) ?ctx) ?z =>
+    let encode1' := (eval pattern a in encode1) in
+    let encode2' := (eval pattern a in encode2) in
+    match encode1' with
+    | ?encode1'' a =>
+      match encode2' with
+      | ?encode2'' a =>
+        eapply (@refineEquiv_ThenC _ _ _ _ encode1'' encode2'');
+        [unfold GetAttribute, GetAttributeRaw; simpl;
+         try (intros; higher_order_reflexivity)
+        | cbv beta; clear
+        | higher_order_reflexivity]
+      end
+    end; cbv beta; clear
+  | |- refineEquiv (ret (ByteString_id, ctx))
+                   (?f (?proj a) ctx) =>
+    let T := match type of a with ?A => A end in
+    let T' := match type of ctx with ?A => A end in
+    unify f (fun (_ : unit) (e : T') => ret (ByteString_id, e));
+    unify proj (fun _ : T => tt);
+    eapply (@refineEquiv_DoneC T T' a)
+  end.
