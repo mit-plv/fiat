@@ -45,9 +45,9 @@ Section EthernetPacketDecoder.
     "Type" :: EnumType ["ARP"; "IP"; "RARP"]>.
 
   Definition EtherTypeCodes : Vector.t (word 16) 3 :=
-    [WO~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0;
-       WO~0~0~0~0~1~0~0~0~0~0~0~0~0~1~1~0;
-       WO~0~0~0~0~1~0~0~0~0~0~1~1~0~1~0~1
+    [WO~0~0~0~0~1~0~0~0~0~0~0~0~0~1~1~0;
+     WO~0~0~0~0~1~0~0~0~0~0~0~0~0~0~0~0;
+     WO~0~0~0~0~1~0~0~0~0~0~1~1~0~1~0~1
     ].
 
   Variable packet_len : nat. (* The length of the ethernet packet, *)
