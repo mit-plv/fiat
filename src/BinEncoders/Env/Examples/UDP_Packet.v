@@ -34,6 +34,15 @@ Open Scope Tuple_scope.
 
 (* Start Example Derivation. *)
 
+Section UDP_Decoder.
+
+  (* These values are provided by the IP header for checksum calculation.*)
+  Variable srcAddr : word 32.
+  Variable destAddr : word 32.
+  Variable udpLength : word 16.
+
+
+
 Definition UDP_Packet :=
   @Tuple <"SourcePort" :: word 16,
           "DestPort" :: word 16,
@@ -54,10 +63,6 @@ Definition UDP_Checksum_Valid
                 b).
 
 Definition encode_UDP_Packet_Spec
-           (srcAddr : word 32)
-           (destAddr : word 32)
-           (udpLength : word 16)
-           (* These values are provided by the IP header for checksum calculation.*)
            (udp : UDP_Packet) :=
           (encode_word_Spec (udp!"SourcePort")
     ThenC encode_word_Spec (udp!"DestPort")
@@ -66,7 +71,7 @@ Definition encode_UDP_Packet_Spec
     ThenCarryOn (encode_list_Spec encode_word_Spec udp!"Payload" DoneC).
 
 Definition UDP_Packet_OK (udp : UDP_Packet) :=
-  lt (|udp!"Payload"|) (pow2 16 - 8).
+lt (|udp!"Payload"|) (pow2 16 - 8).
 
 Definition UDP_Packet_encoded_measure (udp_b : ByteString)
   : nat :=
@@ -126,55 +131,18 @@ Qed.
 Opaque pow2.
 
 Definition UDP_Packet_decoder'
-           srcAddr destAddr udpLength
-  : { decodePlusCacheInv |
-      forall srcAddr destAddr udpLength,
-      exists P_inv,
-        (cache_inv_Property (snd decodePlusCacheInv) P_inv
-         -> encode_decode_correct_f _ transformer UDP_Packet_OK (fun _ _ => True)
-                                    (encode_UDP_Packet_Spec srcAddr destAddr udpLength)
-                                    ((fst decodePlusCacheInv) srcAddr destAddr udpLength)
-                                    (snd decodePlusCacheInv))
-        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+  : CorrectDecoderFor UDP_Packet_OK encode_UDP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
   normalize_compose transformer.
-  eapply compose_IPChecksum_encode_correct_dep';
-    [ apply H
-    | repeat resolve_Checksum
-    | cbv beta; unfold Domain; simpl;
+  eapply compose_IPChecksum_encode_correct_dep'.
+  apply H.
+  repeat resolve_Checksum.
+  cbv beta; unfold Domain; simpl;
       simpl transform; unfold encode_word;
       rewrite !ByteString_enqueue_ByteString_measure,
       !length_encode_word';
-      reflexivity
-    | reflexivity
-    | repeat calculate_length_ByteString
-    | repeat calculate_length_ByteString
-    | solve_mod_8
-    | solve_mod_8
-    | .. ]; cbv beta; unfold Domain; simpl.
-
-  unfold encode_UDP_Packet_Spec; pose_string_ids.
-  let p := (eval unfold Domain in (fun udp : UDP_Packet => (udp!StringId, (udp!StringId0, |udp!StringId1|)))) in
-  let p := eval simpl in p in
-      eapply (@compose_IPChecksum_encode_correct_dep
-                UDP_Packet
-                _
-                _
-                (word 16 * (word 16 * nat))
-                _ _ _ H
-                p
-                UDP_Packet_OK
-                _ _ _
-                (fun data' : word 16 * (word 16 * nat) =>
-                   (encode_word_Spec (fst data')
-              ThenC encode_word_Spec (fst (snd data'))
-              ThenC encode_nat_Spec 16 (8 + (snd (snd data')))
-              DoneC))).
-  simpl transform; unfold encode_word;
-    rewrite !ByteString_enqueue_ByteString_measure,
-    !length_encode_word';
-    reflexivity.
+      reflexivity.
   reflexivity.
   repeat calculate_length_ByteString.
   repeat calculate_length_ByteString.
@@ -204,18 +172,20 @@ Proof.
     unfold StringId, StringId0, StringId1; clear.
     repeat match goal with
       |- context [ @length ?A (GetAttribute ?z ?l)] => remember (@length A (GetAttribute z l))
+           end.
+    repeat match goal with
+      |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
     end.
-    assert (n = n0) by (rewrite Heqn, Heqn0; f_equal).
-    rewrite <- H.
+    unfold GetAttribute, GetAttributeRaw in Heqn; simpl in Heqn.
+    assert (n = n0).
+    rewrite Heqn, Heqn0; reflexivity.
+    rewrite H.
     omega.
     revert H2; clear; unfold UDP_Packet_OK; intros.
-    revert H2;
-      repeat match goal with
-               |- context [ @length ?A (GetAttribute ?z ?l)] => remember (@length A (GetAttribute z l))
-             end.
-    assert (n = n0) by (rewrite Heqn, Heqn0; f_equal).
-    rewrite <- H.
-    intros; auto with arith.
+    unfold GetAttribute, GetAttributeRaw in H2; simpl in H2.
+    match goal with
+      |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
+    end.
     rewrite <- BinNat.N.compare_lt_iff.
     rewrite Nnat.N2Nat.inj_compare.
     rewrite Nnat.Nat2N.id.
@@ -235,24 +205,9 @@ Proof.
   decode_step.
   decode_step.
   decode_step.
-
   intros; eapply encode_decode_correct_finish.
-  (* Automation needs updating here. *)
-  let a' := fresh in
-  intros a'; repeat destruct a' as [? a'].
-    (* Show that it is determined by the constraints (equalities) *)
-    (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros;
-    (* Decompose data predicate *) intuition.
-  assert (H4 = proj1 - 8) as H' by omega; rewrite H' in *; clear H'.
-  (* Substitute any inferred equalities *) clear H7. subst.
-  (* And unify with original object *) reflexivity.
-  (* This needs to be baked into decide_data_invariant *)
+  build_fully_determined_type.
   decide_data_invariant.
-  (* instantiate (1 := true); simpl.
-  eapply (lt_minus_plus_idem proj1 8); auto.
-  apply lt_8_2_16. *)
   unfold UDP_Packet_OK; clear; intros ? H'; repeat split.
 
   simpl; eapply lt_minus_plus with (m := 8); eauto.
@@ -261,39 +216,34 @@ Proof.
   decode_step.
   decode_step.
   decode_step.
-  (* curried data nonesense *)
-  simpl; intros; instantiate (1 := snd (snd proj)).
-  intuition; subst; simpl; auto with arith.
+
+  simpl; intros; intuition.
+  unfold GetAttribute, GetAttributeRaw in *; simpl.
+  repeat
+    match goal with
+    | H : _ = _ |- _ =>
+      first [apply decompose_pair_eq in H;
+             let H1 := fresh in
+             let H2 := fresh in
+             destruct H as [H1 H2];
+             simpl in H1;
+             simpl in H2
+            | rewrite H in * ]
+    end; subst.
+  instantiate (1 := fst (snd (snd proj)) - 8);
+    rewrite <- H4.
+  auto with arith.
+
   decode_step.
-  intros.
-  intros; eapply encode_decode_correct_finish.
-
-  let a' := fresh in
-  intros a'; repeat destruct a' as [? a'].
-    (* Show that it is determined by the constraints (equalities) *)
-    (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros;
-    (* Decompose data predicate *) intuition.
-  (* More currying problems. *)
-  generalize (f_equal fst H8);
-    generalize (f_equal snd H8); intros.
-  generalize (f_equal fst H1);
-    generalize (f_equal snd H1); intros; simpl in *.
-  clear H8 H1.
-  subst.
-
-  (* And unify with original object *) reflexivity.
-  decide_data_invariant.
-  (* unfold UDP_Packet_OK.
-  unfold GetAttribute, GetAttributeRaw; simpl.
-  instantiate (1 := true).
-  eapply lt_minus_minus; eauto using lt_8_2_16.
-  rewrite <- H0; simpl; rewrite <- Minus.minus_n_O; reflexivity. *)
+  decode_step.
   synthesize_cache_invariant.
+  repeat optimize_decoder_impl.
+
 Defined.
 
 Definition UDP_Packet_decoder_impl :=
   Eval simpl in (fst (projT1 UDP_Packet_decoder')).
+
+End UDP_Decoder.
 
 Print UDP_Packet_decoder_impl.

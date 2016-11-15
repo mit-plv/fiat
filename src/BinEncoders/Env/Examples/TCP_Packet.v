@@ -113,22 +113,22 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
     start_synthesizing_decoder.
     normalize_compose transformer.
     eapply compose_IPChecksum_encode_correct_dep';
-      [ apply H
-      | repeat resolve_Checksum
-        | cbv beta; unfold Domain; simpl;
-            simpl transform; unfold encode_word;
-              rewrite !ByteString_enqueue_ByteString_measure,
-              !length_encode_word';
-              reflexivity
-        | cbv beta; unfold Domain; simpl; reflexivity
-        | cbv beta; unfold Domain; simpl;
-            repeat calculate_length_ByteString
-        | cbv beta; unfold Domain; simpl;
-            repeat calculate_length_ByteString
-        | cbv beta; unfold Domain; simpl;
-            solve_mod_8
-        | solve_mod_8
-        | .. ].
+    [ apply H
+    | repeat resolve_Checksum
+    | cbv beta; unfold Domain; simpl;
+      simpl transform; unfold encode_word;
+      rewrite !ByteString_enqueue_ByteString_measure,
+      !length_encode_word';
+      reflexivity
+    | cbv beta; unfold Domain; simpl; reflexivity
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      solve_mod_8
+    | solve_mod_8
+    | .. ].
     { (* Grossest Proof By Far. *)
       unfold Domain; simpl.
       intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
@@ -229,12 +229,21 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
     decode_step.
     decode_step.
     decode_step.
-    simpl; intros; split_and.
+    simpl in *. intros; split_and.
+    repeat
+      match goal with
+      | H : _ = _ |- _ =>
+        first [apply decompose_pair_eq in H;
+               let H1 := fresh in
+               let H2 := fresh in
+               destruct H as [H1 H2];
+               simpl in H1;
+               simpl in H2
+              | rewrite H in * ]
+      end; subst.
+    idtac.
     instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
-    repeat match goal with
-             H : prod _ _ |- _ => destruct H
-           end.
-    simpl in *; injections.
+    rewrite <- H13.
     match goal with
       |- context [decides (negb match ?b with _ => _ end) (?b' = None) ] =>
       assert (b = b') as H' by reflexivity; rewrite H'; destruct b';
@@ -247,10 +256,24 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
     decode_step.
     decode_step.
 
-    simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj))))).
+    simpl in *. intros; split_and.
+    repeat
+      match goal with
+      | H : _ = _ |- _ =>
+        first [apply decompose_pair_eq in H;
+               let H1 := fresh in
+               let H2 := fresh in
+               destruct H as [H1 H2];
+               simpl in H1;
+               simpl in H2
+              | rewrite H in * ]
+      end; subst.
+
+    simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj)))) - 5).
     intuition; subst; simpl; auto with arith.
+    rewrite <- H12.
     simpl in *.
-    clear; admit.
+    auto with arith.
 
     decode_step.
     decode_step.
@@ -260,24 +283,25 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
     unfold TCP_Packet_OK in H3.
     do 4 destruct H3.
     split; eauto.
-    instantiate (1 := (wordToNat tcpLength) - 20 - (4 * fst (snd (snd (snd (snd proj)))))).
+    instantiate (1 := (wordToNat tcpLength) - 20 - (4 * (fst (snd (snd (snd (snd proj)))) - 5))).
     rewrite <- H6.
     rewrite H7.
     unfold snd, fst.
     fold StringId14; fold StringId13.
     clear.
+    unfold GetAttribute, GetAttributeRaw in *; simpl in *.
     repeat match goal with
-             |- context [ @length ?A (@GetAttribute ?heading ?z ?l)] => remember (@length A (@GetAttribute heading z l))
+             |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
            end.
     assert (n = n1) by (subst; reflexivity).
     rewrite H.
-    clear; admit.
+    omega.
 
     decode_step.
-
     intros; eapply encode_decode_correct_finish.
     build_fully_determined_type.
     decide_data_invariant.
+
     synthesize_cache_invariant.
     optimize_decoder_impl.
 
@@ -285,5 +309,7 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
 
   Definition TCP_Packet_decoder_impl :=
     Eval simpl in (fst (projT1 TCP_Packet_decoder')).
+
+End TCPPacketDecoder.
 
 Print TCP_Packet_decoder_impl.

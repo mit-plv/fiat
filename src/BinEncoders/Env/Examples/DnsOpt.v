@@ -764,11 +764,7 @@ Definition DNS_Packet_OK (data : packet) :=
 
 
 Definition packet_decoder
-    : { decodePlusCacheInv |
-        exists P_inv,
-        (cache_inv_Property (snd decodePlusCacheInv) P_inv
-        -> encode_decode_correct_f _ transformer DNS_Packet_OK (fun _ _ => True) encode_packet_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
-        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+  : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
   Proof.
     start_synthesizing_decoder.
     normalize_compose transformer.
@@ -935,12 +931,13 @@ Definition packet_decoder
       try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
       try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
       try solve [instantiate (1 := fun _ => True); exact I].
-  Defined.
 
-  Print Assumptions packet_decoder.
+    repeat optimize_decoder_impl.
+
+  Defined.
 
   Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
 
-  Print packetDecoderImpl.
-
 End DnsPacket.
+
+Print packetDecoderImpl.

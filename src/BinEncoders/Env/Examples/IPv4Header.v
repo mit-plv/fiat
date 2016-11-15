@@ -238,11 +238,6 @@ Lemma zero_lt_eight : (lt 0 8)%nat.
   Definition blah
     := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := address |}.
 
-  Compute (ByteString_enqueue_ByteString (encode_word WO~0~1~0~0)
-                                         (encode_word WO~0~1~0~1)).
-  Compute (decode_word (sz := 8) blah ()).
-  Compute (wordToNat WO~1~0~1~0~1~1~0~0).
-
   Definition fiat_ipv4_decode (buffer: list char) : option (IPv4_Packet * list char) :=
     let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
     match IPv4_decoder_impl bs () with

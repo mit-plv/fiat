@@ -68,7 +68,7 @@ Definition HardSizeCodes : Vector.t char 3 :=
   ].
 
 Definition ProtSizeCodes : Vector.t char 2 :=
-  [WO~0~0~0~0~0~1~1~0;
+  [WO~0~0~0~0~0~1~0~0;
    WO~0~0~0~1~0~0~0~0 ].
 
 Definition OperationCodes : Vector.t (word 16) 4 :=
@@ -107,3 +107,22 @@ Defined.
 Definition ARP_Packet_decoder :=
   Eval simpl in proj1_sig ARPPacket_decoder.
 Print ARP_Packet_decoder.
+
+Lemma zero_lt_eight : (lt 0 8)%nat.
+  Proof. omega. Qed.
+
+Definition MakeDecoder {A}
+           (impl: ByteString -> unit -> option (A * ByteString * unit))
+           (buffer: list char) : option (A * list char) :=
+  let bs := {| padding := 0; front := WO; paddingOK := zero_lt_eight; byteString := buffer |} in
+  match impl bs () with
+  | Some (pkt, bs, _) => Some (pkt, bs.(byteString))
+  | None => None
+  end.
+
+   Definition fiat_arpv4_decode := MakeDecoder (fst ARP_Packet_decoder).
+
+   Definition arp_sample :=
+     map (@natToWord 8) ([0; 1; 8; 0; 6; 4; 0; 1; 2; 80; 0; 0; 0; 2; 10; 0; 0; 100; 173; 173; 173; 173; 173; 173; 10; 0; 0; 100]).
+
+   Compute (fiat_arpv4_decode arp_sample).
