@@ -172,10 +172,10 @@ Proof.
     unfold GetAttribute, GetAttributeRaw in H0; simpl in H0.
     revert H0; clear; unfold StringId13; intros; omega.
 
-  - decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
+  - decode_step idtac.
+    decode_step idtac.
+    decode_step idtac.
+    decode_step idtac.
 
     simpl in *. intros; split_and; decompose_pair_hyp.
     instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
@@ -188,19 +188,19 @@ Proof.
     discriminate.
     destruct a'; intros; exact I.
 
-    decode_step.
-    decode_step.
-    decode_step.
+    decode_step idtac.
+    decode_step idtac.
+    decode_step idtac.
 
     simpl in *. intros; split_and. decompose_pair_hyp.
     simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj)))) - 5).
     intuition; subst; simpl; auto with arith.
     rewrite <- H12; simpl in *; auto with arith.
 
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
+    decode_step idtac.
+    decode_step idtac.
+    decode_step idtac.
+    decode_step idtac.
 
     simpl in *; intros.
     do 4 destruct H3.
@@ -216,8 +216,8 @@ Proof.
     assert (n = n1) by (subst; reflexivity).
     rewrite H8; clear; omega.
 
-    decode_step.
-    decode_step.
+    decode_step idtac.
+    decode_step idtac.
 
   - synthesize_cache_invariant.
   - optimize_decoder_impl.

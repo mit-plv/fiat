@@ -80,51 +80,7 @@ Definition UDP_Packet_encoded_measure (udp_b : ByteString)
   | None => 0
   end.
 
-(*Lemma if_computes_to_len {P}
-  : forall (b : {P} + {~P}) b' encodeT encodeE n n' ctx ctx',
-    (forall b ctx ctx', encodeT ctx ↝ (b, ctx') -> length_ByteString b = n)
-    -> (forall b (ctx ctx' : CacheEncode), encodeE ctx ↝ (b, ctx') -> length_ByteString b = n')
-    -> (if b then encodeT else encodeE) ctx ↝ (b', ctx')
-    -> length_ByteString b' = if b then n else n'.
-Proof.
-  intros; find_if_inside; eauto.
-Qed. *)
-
 Arguments NPeano.modulo : simpl never.
-
-Lemma lt_minus_plus :
-  forall n m o,
-    lt n (o - m) -> lt (m + n) o.
-Proof.
-  intros; omega.
-Qed.
-
-Lemma lt_minus_minus :
-  forall n' n m o,
-    lt m o
-    -> n' = n - m
-    -> lt n o -> lt n' (o - m).
-Proof.
-  intros; omega.
-Qed.
-
-Lemma lt_8_2_16 : lt 8 (pow2 16).
-Proof.
-  rewrite <- Npow2_nat.
-  rewrite Compare_dec.nat_compare_lt.
-  rewrite <- (Nnat.Nat2N.id 8) at 1.
-  rewrite <- Nnat.N2Nat.inj_compare.
-  reflexivity.
-Qed.
-
-Lemma lt_minus_plus_idem :
-  forall n m o,
-    lt m o
-    -> lt n o
-    -> lt (m + (n - m)) o.
-Proof.
-  intros; omega.
-Qed.
 
 Opaque pow2.
 
@@ -179,16 +135,16 @@ Proof.
   unfold UDP_Packet_OK; clear; intros ? H'; simpl; intuition eauto using lt_minus_plus.
   eapply lt_minus_plus with (m := 8); eauto.
 
-  decode_step.
-  decode_step.
-  decode_step.
+  decode_step idtac.
+  decode_step idtac.
+  decode_step idtac.
   simpl; intros; intuition.
   decompose_pair_hyp.
   instantiate (1 := fst (snd (snd proj)) - 8);
     rewrite <- H4.
   auto with arith.
-  decode_step.
-  decode_step.
+  decode_step idtac.
+  decode_step idtac.
 
   synthesize_cache_invariant.
   repeat optimize_decoder_impl.

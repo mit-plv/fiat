@@ -66,8 +66,6 @@ Ltac shelve_inv :=
                      unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
   end.
 
-Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
-
 Lemma decompose_pair_eq {A B}
   : forall (ab ab' : A * B),
     ab = ab' -> fst ab = fst ab' /\ snd ab = snd ab'.
@@ -89,6 +87,7 @@ Ltac decompose_pair_hyp :=
 (* Solves data invariants using the data_inv_hints database *)
 Ltac solve_data_inv :=
   first [ simpl; intros; exact I
+        | solve [intuition eauto with data_inv_hints]
         | solve [simpl;
                  intuition eauto with data_inv_hints;
                  repeat
@@ -123,7 +122,7 @@ Ltac start_synthesizing_decoder :=
   pose_string_hyps;
   eapply Start_CorrectDecoderFor; simpl.
 
-Ltac build_fully_determined_type :=
+Ltac build_fully_determined_type cleanup_tac :=
   (* Build the parsed object by showing it can be built *)
   (* from previously parsed terms and that and that the *)
   (* byte string was a valid encoding of this object. *)
@@ -151,7 +150,7 @@ Ltac build_fully_determined_type :=
              simpl in H1;
              simpl in H2
             | rewrite H in * ]
-    end;
+    end; cleanup_tac;
   (* And unify with original object *) reflexivity.
 
 Lemma decides_True' {A}
@@ -232,6 +231,173 @@ Proof.
       try rewrite fin_beq_neq_dec in H'; eauto.
 Qed.
 
+  Lemma firstn_app {A}
+    : forall (l1 l2 : list A),
+      firstn (|l1 |) (l1 ++ l2) = l1.
+  Proof.
+    induction l1; intros; simpl; eauto.
+    f_equal; eauto.
+  Qed.
+
+  Lemma decides_firstn_app {A}
+    : forall (l1 l2 : list A),
+      decides true (firstn (|l1 |) (l1 ++ l2) = l1).
+  Proof.
+    apply firstn_app.
+  Qed.
+
+  Lemma firstn_self {A}
+    : forall (l1 : list A),
+      firstn (|l1 |) l1 = l1.
+  Proof.
+    induction l1; intros; simpl; eauto.
+    f_equal; eauto.
+  Qed.
+
+  Lemma decides_firstn_self {A}
+    : forall (l1 : list A),
+      decides true (firstn (|l1 |) l1 = l1).
+  Proof.
+    intros; apply firstn_self.
+  Qed.
+
+  Lemma skipn_app {A}
+    : forall (l1 l2 : list A),
+      skipn (|l1|) (l1 ++ l2) = l2.
+  Proof.
+    induction l1; intros; simpl; eauto.
+  Qed.
+
+  Lemma decides_skipn_app {A}
+    : forall (l1 l2 : list A),
+      decides true (skipn (|l1|) (l1 ++ l2) = l2).
+  Proof.
+    apply skipn_app.
+  Qed.
+
+  Lemma firstn_skipn_app {A}
+    : forall (l1 l2 l3 : list A),
+      firstn (|l3|) (skipn (|l1| + |l2|) (l1 ++ l2 ++ l3)) = l3.
+  Proof.
+    simpl; intros.
+    rewrite <- app_length, List.app_assoc, skipn_app.
+    apply firstn_self.
+  Qed.
+
+  Lemma decides_firstn_skipn_app {A}
+    : forall (l1 l2 l3 : list A),
+      decides true (firstn (|l3|) (skipn (|l1| + |l2|) (l1 ++ l2 ++ l3)) = l3).
+  Proof.
+    intros; apply firstn_skipn_app.
+  Qed.
+
+  Lemma firstn_skipn_self' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (firstn n l ++ firstn m (skipn n l) ++ firstn o (skipn (n + m) l))%list =
+      l.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    destruct l; simpl; eauto.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma firstn_skipn_self'' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      ->
+      decides true ((firstn n l ++ firstn m (skipn n l) ++ firstn o (skipn (n + m) l))%list =
+                    l).
+  Proof.
+    intros; eapply firstn_skipn_self'.
+    omega.
+  Qed.
+
+  Lemma word_eq_self
+    : forall (w : word 1),
+      decides true (WS (whd w) WO = w).
+  Proof.
+    simpl; intros; shatter_word w; reflexivity.
+  Qed.
+
+  Lemma firstn_skipn_self {A}
+      : forall (n m o : nat) (l l1 l2 l3 : list A),
+      (l1 ++ l2 ++ l3)%list = l ->
+      (|l1|) = n ->
+      (|l2|) = m ->
+      (|l3|) = o ->
+      l1 = firstn n l
+      /\ l2 = firstn m (skipn n l)
+      /\ l3 = firstn o (skipn (n + m) l).
+  Proof.
+    intros; subst; intuition;
+    eauto using firstn_skipn_app, skipn_app, firstn_app.
+    rewrite skipn_app; symmetry; apply firstn_app.
+  Qed.
+
+  Lemma length_firstn_skipn_app {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn m (skipn n l) |) = m.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma length_firstn_skipn_app' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn o (skipn (n + m) l) |) = o.
+  Proof.
+    induction n; simpl.
+    induction m; simpl; eauto.
+    induction o; simpl.
+    destruct l; simpl; eauto.
+    destruct l; simpl; eauto.
+    destruct l; simpl; eauto.
+    intros; discriminate.
+    intros; f_equal; eauto.
+    destruct l; simpl.
+    intros; discriminate.
+    intros; f_equal; eauto.
+  Qed.
+
+  Lemma length_firstn_skipn_app'' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + m + o
+      -> (|firstn n l |) = n.
+  Proof.
+    induction n; destruct l; simpl; intros;
+      try discriminate; eauto.
+  Qed.
+
+  Lemma whd_word_1_refl :
+    forall (b : word 1),
+      WS (whd b) WO = b.
+  Proof.
+    intros; destruct (shatter_word_S b) as [? [? ?] ]; subst.
+    rewrite (shatter_word_0 x0); reflexivity.
+  Qed.
+
 Ltac decide_data_invariant :=
   (* Show that the invariant on the data is decideable. Most *)
   (* of the clauses in this predicate are obviously true by *)
@@ -281,7 +447,7 @@ Ltac Vector_of_evar n T k :=
                          ltac:(fun a => k (@Vector.cons T a n' l)))
   end.
 
-Ltac decode_step :=
+Ltac decode_step cleanup_tac :=
   (* Processes the goal by either: *)
   match goal with
   | |- appcontext [encode_decode_correct_f _ _ _ _ ?H _ _] =>
@@ -292,7 +458,7 @@ Ltac decode_step :=
                                         (fun _ _ => ret _) _ _] =>
     solve [simpl; intros;
            eapply encode_decode_correct_finish;
-           [ build_fully_determined_type
+           [ build_fully_determined_type cleanup_tac
            | decide_data_invariant ] ]
 
   | |- appcontext [encode_unused_word_Spec] =>
@@ -395,6 +561,10 @@ Ltac decode_step :=
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
     intros; apply Vector_predicate_rest_True
+  | |- context[fun st b' => ith _ (SumType.SumType_index _ st) (SumType.SumType_proj _ st) b'] =>
+    let a'' := fresh in
+    intro a''; intros; repeat instantiate (1 := fun _ _ => True);
+    repeat destruct a'' as [ ? | a''] ; auto
   | _ => solve [solve_data_inv]
   | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
 
@@ -455,6 +625,73 @@ Proof.
   destruct c; congruence.
 Qed.
 
+Lemma firstn_lt_decides {A}:
+  forall m n (l : list A),
+    (lt m n)%nat
+    -> decides true (lt (|firstn m l |) n)%nat.
+Proof.
+  simpl; intros; rewrite firstn_length.
+  eapply NPeano.Nat.min_lt_iff; eauto.
+Qed.
+
+  Lemma whd_word_1_refl' :
+    forall (b : word 1),
+      decides true (WS (whd b) WO = b).
+  Proof.
+    intros; destruct (shatter_word_S b) as [? [? ?] ]; subst.
+    rewrite (shatter_word_0 x0); reflexivity.
+  Qed.
+
+  Lemma decides_length_firstn_skipn_app {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + (m + o)
+      -> decides true ((|firstn m (skipn n l) |) = m).
+  Proof.
+    setoid_rewrite plus_assoc'.
+    eapply length_firstn_skipn_app.
+  Qed.
+
+  Lemma decides_length_firstn_skipn_app' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + (m + o)
+      -> decides true ((|firstn o (skipn (n + m) l) |) = o).
+  Proof.
+    setoid_rewrite plus_assoc'.
+    apply length_firstn_skipn_app'.
+  Qed.
+
+  Lemma decides_length_firstn_skipn_app'' {A}
+    : forall (n m o : nat) (l : list A),
+      length l = n + (m + o)
+      -> decides true ((|firstn n l |) = n).
+  Proof.
+    setoid_rewrite plus_assoc'.
+    apply length_firstn_skipn_app''.
+  Qed.
+
+  Lemma lt_1_pow2_16
+    : lt 1 (pow2 16).
+  Proof.
+    intros.
+    rewrite <- (wordToNat_natToWord_idempotent 16 1).
+    eapply wordToNat_bound.
+    simpl; eapply BinNat.N.ltb_lt; reflexivity.
+Qed.
+
+  Hint Resolve lt_1_pow2_16 : data_inv_hints.
+  Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
+
+  Hint Resolve whd_word_1_refl' : decide_data_invariant_db.
+  Hint Resolve decides_length_firstn_skipn_app'' : decide_data_invariant_db.
+  Hint Resolve decides_length_firstn_skipn_app' : decide_data_invariant_db.
+  Hint Resolve decides_length_firstn_skipn_app : decide_data_invariant_db.
+  Hint Resolve firstn_lt_decides : decide_data_invariant_db.
+  Hint Resolve firstn_skipn_self'' : decide_data_invariant_db.
+  Hint Resolve decides_firstn_app : decide_data_invariant_db.
+  Hint Resolve decides_firstn_self : decide_data_invariant_db.
+  Hint Resolve decides_skipn_app : decide_data_invariant_db.
+  Hint Resolve decides_firstn_skipn_app : decide_data_invariant_db.
+
 Ltac optimize_decoder_impl :=
   (* Perform algebraic simplification of the decoder implementation. *)
   simpl; intros;
@@ -472,9 +709,22 @@ Ltac optimize_decoder_impl :=
 Ltac synthesize_decoder :=
   (* Combines tactics into one-liner. *)
   start_synthesizing_decoder;
-  [ repeat decode_step
+  [ repeat (decode_step idtac)
   | cbv beta; synthesize_cache_invariant
   | cbv beta; optimize_decoder_impl].
+
+
+Ltac synthesize_decoder_ext
+     transformer
+     decode_step'
+     determineHooks
+     synthesize_cache_invariant' :=
+  (* Combines tactics into one-liner. *)
+  start_synthesizing_decoder;
+  [ normalize_compose transformer;
+    repeat first [decode_step' idtac | decode_step determineHooks]
+  | cbv beta; synthesize_cache_invariant' idtac
+  | cbv beta; optimize_decoder_impl ].
 
 Global Instance : DecideableEnsembles.Query_eq () :=
   {| A_eq_dec a a' := match a, a' with (), () => left (eq_refl _) end |}.

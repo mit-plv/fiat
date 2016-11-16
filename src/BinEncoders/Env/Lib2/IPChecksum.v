@@ -1575,6 +1575,40 @@ Proof.
   eexists (2 * n'); omega.
 Qed.
 
+Lemma lt_minus_plus :
+  forall n m o,
+    lt n (o - m) -> lt (m + n) o.
+Proof.
+  intros; omega.
+Qed.
+
+Lemma lt_minus_minus :
+  forall n' n m o,
+    lt m o
+    -> n' = n - m
+    -> lt n o -> lt n' (o - m).
+Proof.
+  intros; omega.
+Qed.
+
+Lemma lt_8_2_16 : lt 8 (pow2 16).
+Proof.
+  rewrite <- Npow2_nat.
+  rewrite Compare_dec.nat_compare_lt.
+  rewrite <- (Nnat.Nat2N.id 8) at 1.
+  rewrite <- Nnat.N2Nat.inj_compare.
+  reflexivity.
+Qed.
+
+Lemma lt_minus_plus_idem :
+  forall n m o,
+    lt m o
+    -> lt n o
+    -> lt (m + (n - m)) o.
+Proof.
+  intros; omega.
+Qed.
+
 Lemma mult_32_mod_8 :
   forall n n', NPeano.modulo (n' * 32 + n) 8 = NPeano.modulo n 8.
 Proof.
@@ -1670,6 +1704,8 @@ Proof.
   simpl; intros; higher_order_reflexivity.
 Qed.
 
+
+
 Ltac resolve_Checksum :=
   let a := fresh in
   let ctx := fresh in
@@ -1722,11 +1758,11 @@ Ltac apply_IPChecksum Len_OK :=
     | solve_mod_8
     | solve_mod_8
     | apply Len_OK
-    | repeat (decode_step; unfold Domain; simpl)
+    | repeat (decode_step idtac; unfold Domain; simpl)
     |
     | instantiate (1 := fun _ _ => True);
       simpl; intros; exact I
-    | repeat (decode_step; unfold Domain; simpl) ];
+    | repeat (decode_step idtac; unfold Domain; simpl) ];
     cbv beta;
     unfold Domain; simpl
   end.
@@ -1755,7 +1791,7 @@ Ltac apply_IPChecksum_dep Len_OK :=
       solve_mod_8
     | solve_mod_8
     | apply Len_OK
-    | repeat decode_step
+    | repeat decode_step idtac
     |
     | instantiate (1 := fun _ _ => True);
       simpl; intros; exact I

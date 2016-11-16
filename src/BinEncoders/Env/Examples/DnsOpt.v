@@ -22,7 +22,9 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.EnumOpt
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.SumTypeOpt
-        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
+        Fiat.BinEncoders.Env.Lib2.DomainNameOpt
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant.
 
 Require Import
         Bedrock.Word.
@@ -158,11 +160,11 @@ Section DnsPacket.
   Qed.
 
   Lemma cacheIndependent_add_9
-      : forall cd p p0 domain domain',
-        GoodCache cd
-        -> ValidDomainName domain' /\ (String.length domain' > 0)%nat
-        -> getD (addD cd (domain', p0)) p = Some domain
-        -> ValidDomainName domain.
+    : forall cd p p0 domain domain',
+      GoodCache cd
+      -> ValidDomainName domain' /\ (String.length domain' > 0)%nat
+      -> getD (addD cd (domain', p0)) p = Some domain
+      -> ValidDomainName domain.
   Proof.
     unfold GoodCache; intros.
     destruct (ptr_eq_dec p p0); subst.
@@ -188,6 +190,21 @@ Section DnsPacket.
       eapply H; eauto.
   Qed.
 
+  Ltac solve_GoodCache_inv foo :=
+    lazymatch goal with
+      |- cache_inv_Property ?Z _ =>
+      unify Z GoodCache;
+      unfold cache_inv_Property; repeat split;
+      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
+      try match goal with
+            H : _ = _ |- _ =>
+            try solve [ eapply cacheIndependent_add_3 in H; intuition eauto ];
+            try solve [ eapply cacheIndependent_add_9 in H; intuition eauto ];
+            try solve [ eapply cacheIndependent_add_5 in H; intuition eauto ]
+          end;
+      try solve [instantiate (1 := fun _ => True); exact I]
+    end.
+
   Variable QType_Ws : t (word 16) 17.
   Variable QType_Ws_OK : NoDupVector QType_Ws.
   Variable QClass_Ws : t (word 16) 4.
@@ -201,739 +218,307 @@ Section DnsPacket.
   Variable RCODE_Ws : t (word 4) 12.
   Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
 
-  (* Resource Record <character-string>s are a byte, *)
-  (* followed by that many characters. *)
-  Definition encode_characterString_Spec (s : string) :=
-        encode_nat_Spec 8 (String.length s)
-  ThenC encode_string_Spec s
-  DoneC.
-
-  Definition encode_question_Spec (q : question) :=
-       encode_DomainName_Spec q!"qname"
-  ThenC encode_enum_Spec QType_Ws q!"qtype"
-  ThenC encode_enum_Spec QClass_Ws q!"qclass"
-  DoneC.
-
-  Definition encode_TXT_Spec (s : string) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-  ThenC encode_characterString_Spec s
-  DoneC.
-
-  Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-  ThenC encode_DomainName_Spec soa!"sourcehost"
-  ThenC encode_DomainName_Spec soa!"contact_email"
-  ThenC encode_word_Spec soa!"serial"
-  ThenC encode_word_Spec soa!"refresh"
-  ThenC encode_word_Spec soa!"retry"
-  ThenC encode_word_Spec soa!"expire"
-  ThenC encode_word_Spec soa!"minTTL"
-  DoneC.
-
-  Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
-        encode_nat_Spec 16 (length (wks!"Bit-Map"))
-  ThenC encode_word_Spec wks!"Address"
-  ThenC encode_word_Spec wks!"Protocol"
-  ThenC (encode_list_Spec encode_word_Spec wks!"Bit-Map")
-  DoneC.
-
-  Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
-       encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-  ThenC encode_characterString_Spec hinfo!"CPU"
-  ThenC encode_characterString_Spec hinfo!"OS"
-  DoneC.
-
-  Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
-       encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-  ThenC encode_word_Spec mx!"Preference"
-  ThenC encode_DomainName_Spec mx!"Exchange"
-  DoneC.
-
-  Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
-       encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-  ThenC encode_DomainName_Spec minfo!"rMailBx"
-  ThenC encode_DomainName_Spec minfo!"eMailBx"
-  DoneC.
-
-  Definition encode_A_Spec (a : Memory.W) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-    ThenC encode_word_Spec a
-    DoneC.
-
-  Definition encode_NS_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-    ThenC encode_DomainName_Spec domain
-    DoneC.
-
-  Definition encode_CNAME_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-    ThenC encode_DomainName_Spec domain
-    DoneC.
-
-    Definition encode_PTR_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-    ThenC encode_DomainName_Spec domain
-    DoneC.
-
-  Definition encode_rdata_Spec :=
-  encode_SumType_Spec ResourceRecordTypeTypes
-  (icons encode_A_Spec (* A; host address 	[RFC1035] *)
-  (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
-  (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
-  (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
-  (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
-  (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
-  (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
-  (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
-  (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
-  (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
-
-  Definition encode_resource_Spec(r : resourceRecord) :=
-       encode_DomainName_Spec r!sNAME
-  ThenC encode_enum_Spec RRecordType_Ws r!sTYPE
-  ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
-  ThenC encode_word_Spec r!sTTL
-  ThenC encode_rdata_Spec r!sRDATA
-  DoneC.
-
-  Definition encode_packet_Spec (p : packet) :=
-       encode_word_Spec p!"id"
-  ThenC encode_word_Spec (WS p!"QR" WO)
-  ThenC encode_enum_Spec Opcode_Ws p!"Opcode"
-  ThenC encode_word_Spec (WS p!"AA" WO)
-  ThenC encode_word_Spec (WS p!"TC" WO)
-  ThenC encode_word_Spec (WS p!"RD" WO)
-  ThenC encode_word_Spec (WS p!"RA" WO)
-  ThenC encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-  ThenC encode_enum_Spec RCODE_Ws p!"RCODE"
-  ThenC encode_nat_Spec 16 1 (* length of question field *)
-  ThenC encode_nat_Spec 16 (|p!"answers"|)
-  ThenC encode_nat_Spec 16 (|p!"authority"|)
-  ThenC encode_nat_Spec 16 (|p!"additional"|)
-  ThenC encode_question_Spec p!"question"
-  ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
-  DoneC.
-
-    Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
-
-  Lemma firstn_app {A}
-    : forall (l1 l2 : list A),
-      firstn (|l1 |) (l1 ++ l2) = l1.
-  Proof.
-    induction l1; intros; simpl; eauto.
-    f_equal; eauto.
-  Qed.
-
-  Lemma decides_firstn_app {A}
-    : forall (l1 l2 : list A),
-      decides true (firstn (|l1 |) (l1 ++ l2) = l1).
-  Proof.
-    apply firstn_app.
-  Qed.
-
-  Lemma firstn_self {A}
-    : forall (l1 : list A),
-      firstn (|l1 |) l1 = l1.
-  Proof.
-    induction l1; intros; simpl; eauto.
-    f_equal; eauto.
-  Qed.
-
-  Lemma decides_firstn_self {A}
-    : forall (l1 : list A),
-      decides true (firstn (|l1 |) l1 = l1).
-  Proof.
-    intros; apply firstn_self.
-  Qed.
-
-  Lemma skipn_app {A}
-    : forall (l1 l2 : list A),
-      skipn (|l1|) (l1 ++ l2) = l2.
-  Proof.
-    induction l1; intros; simpl; eauto.
-  Qed.
-
-  Lemma decides_skipn_app {A}
-    : forall (l1 l2 : list A),
-      decides true (skipn (|l1|) (l1 ++ l2) = l2).
-  Proof.
-    apply skipn_app.
-  Qed.
-
-  Lemma firstn_skipn_app {A}
-    : forall (l1 l2 l3 : list A),
-      firstn (|l3|) (skipn (|l1| + |l2|) (l1 ++ l2 ++ l3)) = l3.
-  Proof.
-    simpl; intros.
-    rewrite <- app_length, List.app_assoc, skipn_app.
-    apply firstn_self.
-  Qed.
-
-  Lemma decides_firstn_skipn_app {A}
-    : forall (l1 l2 l3 : list A),
-      decides true (firstn (|l3|) (skipn (|l1| + |l2|) (l1 ++ l2 ++ l3)) = l3).
-  Proof.
-    intros; apply firstn_skipn_app.
-  Qed.
-
-  Lemma firstn_skipn_self' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + m + o
-      -> (firstn n l ++ firstn m (skipn n l) ++ firstn o (skipn (n + m) l))%list =
-      l.
-  Proof.
-    induction n; simpl.
-    induction m; simpl; eauto.
-    induction o; simpl.
-    destruct l; simpl; eauto.
-    intros; discriminate.
-    destruct l; simpl; eauto.
-    intros; f_equal; eauto.
-    destruct l; simpl.
-    intros; discriminate.
-    intros; f_equal; eauto.
-    destruct l; simpl.
-    intros; discriminate.
-    intros; f_equal; eauto.
-  Qed.
-
-  Lemma firstn_skipn_self'' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + (m + o)
-      ->
-      decides true ((firstn n l ++ firstn m (skipn n l) ++ firstn o (skipn (n + m) l))%list =
-                    l).
-  Proof.
-    intros; eapply firstn_skipn_self'.
-    omega.
-  Qed.
-
-  Lemma word_eq_self
-    : forall (w : word 1),
-      decides true (WS (whd w) WO = w).
-  Proof.
-    simpl; intros; shatter_word w; reflexivity.
-  Qed.
-
-  Lemma firstn_skipn_self {A}
-      : forall (n m o : nat) (l l1 l2 l3 : list A),
-      (l1 ++ l2 ++ l3)%list = l ->
-      (|l1|) = n ->
-      (|l2|) = m ->
-      (|l3|) = o ->
-      l1 = firstn n l
-      /\ l2 = firstn m (skipn n l)
-      /\ l3 = firstn o (skipn (n + m) l).
-  Proof.
-    intros; subst; intuition;
-    eauto using firstn_skipn_app, skipn_app, firstn_app.
-    rewrite skipn_app; symmetry; apply firstn_app.
-  Qed.
-
-  Lemma length_firstn_skipn_app {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + m + o
-      -> (|firstn m (skipn n l) |) = m.
-  Proof.
-    induction n; simpl.
-    induction m; simpl; eauto.
-    induction o; simpl.
-    destruct l; simpl; eauto.
-    intros; discriminate.
-    destruct l; simpl; eauto.
-    intros; discriminate.
-    intros; f_equal; eauto.
-    destruct l; simpl.
-    intros; discriminate.
-    intros; f_equal; eauto.
-  Qed.
-
-  Lemma length_firstn_skipn_app' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + m + o
-      -> (|firstn o (skipn (n + m) l) |) = o.
-  Proof.
-    induction n; simpl.
-    induction m; simpl; eauto.
-    induction o; simpl.
-    destruct l; simpl; eauto.
-    destruct l; simpl; eauto.
-    destruct l; simpl; eauto.
-    intros; discriminate.
-    intros; f_equal; eauto.
-    destruct l; simpl.
-    intros; discriminate.
-    intros; f_equal; eauto.
-  Qed.
-
-  Lemma length_firstn_skipn_app'' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + m + o
-      -> (|firstn n l |) = n.
-  Proof.
-    induction n; destruct l; simpl; intros;
-      try discriminate; eauto.
-  Qed.
-
-  Lemma whd_word_1_refl :
-    forall (b : word 1),
-      WS (whd b) WO = b.
-  Proof.
-    intros; destruct (shatter_word_S b) as [? [? ?] ]; subst.
-    rewrite (shatter_word_0 x0); reflexivity.
-  Qed.
-
-  Lemma decides_True' {A}
-    : forall a, decides true ((fun _ : A => True) a).
-  Proof.
-    simpl; intros; exact I.
-  Qed.
-
-  Require Import Fiat.Common.IterateBoundedIndex
-          Fiat.Common.Tactics.CacheStringConstant.
-
-  Lemma lt_1_pow2_16
-    : lt 1 (pow2 16).
-  Proof.
-    intros.
-    rewrite <- (wordToNat_natToWord_idempotent 16 1).
-    eapply wordToNat_bound.
-    simpl; eapply BinNat.N.ltb_lt; reflexivity.
-Qed.
-
-  Hint Resolve lt_1_pow2_16 : data_inv_hints.
-  Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
+  Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
   Opaque pow2. (* Don't want to be evaluating this. *)
 
-Ltac ilist_of_evar B As k :=
-  match As with
-  | VectorDef.nil _ => k (@inil _ B)
-  | VectorDef.cons _ ?a _ ?As' =>
-    makeEvar (B a)
-             ltac:(fun b =>
-                     ilist_of_evar
-                       B As'
-                       ltac:(fun Bs' => k (icons (l := As') b Bs')))
-  end.
-
-Ltac Vector_of_evar n T k :=
-  match n with
-  | 0 => k (@Vector.nil T)
-  | S ?n' => Vector_of_evar
-               n' T
-               ltac:(fun l =>
-                       makeEvar
-                         T
-                         ltac:(fun a => k (@Vector.cons T a n' l)))
-  end.
-
-Ltac decode_step :=
-  (* Processes the goal by either: *)
-  match goal with
-  | |- appcontext [encode_decode_correct_f _ _ _ _ ?H _ _] =>
-    progress unfold H
-  | |- appcontext [encode_unused_word_Spec] =>
-      unfold encode_unused_word_Spec
-  (* A) decomposing one of the parser combinators, *)
-  | |- _ => apply_compose
-  (* B) applying one of the rules for a base type  *)
-  | H : cache_inv_Property _ _
-    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
-    intros; revert H; eapply Word_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_unused_word_Spec' _ _) _ _] =>
-    apply unused_word_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
-    eapply Word_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
-    eapply Nat_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec _) _ _] => intros; apply FixList_decode_correct
-
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
-    eapply Enum_decode_correct
-  | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
-    eapply DomainName_decode_correct
-  | |- appcontext[encode_decode_correct_f _ _ _ _ encode_string_Spec _ _ ] =>
-    eapply String_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_SumType_Spec (B := ?B) (cache := ?cache) (m := ?n) ?types _) _ _] =>
-    let cache_inv_H := fresh in
-    intros cache_inv_H;
-      first
-        [let types' := (eval unfold types in types) in
-         ilist_of_evar
-           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
-           types'
-           ltac:(fun encoders' =>
-         ilist_of_evar
-           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-           types'
-           ltac:(fun decoders' =>
-         ilist_of_evar
-           (fun T : Type => Ensembles.Ensemble T)
-           types'
-           ltac:(fun invariants' =>
-         ilist_of_evar
-            (fun T : Type => T -> B -> Prop)
-           types'
-           ltac:(fun invariants_rest' =>
-         Vector_of_evar
-           n
-           (Ensembles.Ensemble (CacheDecode -> Prop))
-         ltac:(fun cache_invariants' =>
-                       eapply (SumType_decode_correct (m := n) types) with
-                   (encoders := encoders')
-                     (decoders := decoders')
-                     (invariants := invariants')
-                     (invariants_rest := invariants_rest')
-                     (cache_invariants :=  cache_invariants')
-                )))))
-        |          ilist_of_evar
-           (fun T : Type => T -> @CacheEncode cache -> Comp (B * @CacheEncode cache))
-           types
-           ltac:(fun encoders' =>
-         ilist_of_evar
-           (fun T : Type => B -> @CacheDecode cache -> option (T * B * @CacheDecode cache))
-           types
-           ltac:(fun decoders' =>
-         ilist_of_evar
-           (fun T : Type => Ensembles.Ensemble T)
-           types
-           ltac:(fun invariants' =>
-          ilist_of_evar
-            (fun T : Type => T -> B -> Prop)
-           types
-           ltac:(fun invariants_rest' =>
-         Vector_of_evar
-           n
-           (Ensembles.Ensemble (CacheDecode -> Prop))
-           ltac:(fun cache_invariants' =>
-                       eapply (SumType_decode_correct (m := n) types) with
-                   (encoders := encoders')
-                     (decoders := decoders')
-                     (invariants := invariants')
-                     (invariants_rest := invariants_rest')
-                     (cache_invariants :=  cache_invariants'))))))
-        ];
-      [ simpl; repeat (apply Build_prim_and; intros); try exact I
-      | apply cache_inv_H ]
-        (* C) Discharging a side condition of one of the base rules *)
-  | |- NoDupVector _ => Discharge_NoDupVector
-  | _ => solve [solve_data_inv]
-  | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
-  (* D) Solving the goal once all the byte string has been parsed *)
-  | _ =>  solve [simpl; intros;
-                 eapply encode_decode_correct_finish;
-                 [ build_fully_determined_type
-                 | decide_data_invariant ] ]
-  end.
-
-Lemma validDomainName_proj1_OK
-  : forall domain,
-    ValidDomainName domain
-    -> decides true
-               (forall pre label post : string,
-                   domain = (pre ++ label ++ post)%string ->
-                   ValidLabel label -> (String.length label <= 63)%nat).
-Proof.
-  simpl; intros; eapply H; eauto.
-Qed.
-
-Lemma validDomainName_proj2_OK
-  : forall domain,
-    ValidDomainName domain
-    ->
-    decides true
-   (forall pre post : string,
-    domain = (pre ++ "." ++ post)%string ->
-    post <> ""%string /\
-    pre <> ""%string /\
-    ~ (exists s' : string, post = String "." s') /\
-    ~ (exists s' : string, pre = (s' ++ ".")%string)).
-Proof.
-  simpl; intros; apply H; eauto.
-Qed.
-
-Lemma firstn_lt_decides {A}:
-  forall m n (l : list A),
-    (lt m n)%nat
-    -> decides true (lt (|firstn m l |) n)%nat.
-Proof.
-  simpl; intros; rewrite firstn_length.
-  eapply NPeano.Nat.min_lt_iff; eauto.
-Qed.
-
-  Lemma whd_word_1_refl' :
-    forall (b : word 1),
-      decides true (WS (whd b) WO = b).
+  Lemma validDomainName_proj1_OK
+    : forall domain,
+      ValidDomainName domain
+      -> decides true
+                 (forall pre label post : string,
+                     domain = (pre ++ label ++ post)%string ->
+                     ValidLabel label -> (String.length label <= 63)%nat).
   Proof.
-    intros; destruct (shatter_word_S b) as [? [? ?] ]; subst.
-    rewrite (shatter_word_0 x0); reflexivity.
+    simpl; intros; eapply H; eauto.
   Qed.
 
-  Lemma decides_length_firstn_skipn_app {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + (m + o)
-      -> decides true ((|firstn m (skipn n l) |) = m).
+  Lemma validDomainName_proj2_OK
+    : forall domain,
+      ValidDomainName domain
+      ->
+      decides true
+              (forall pre post : string,
+                  domain = (pre ++ "." ++ post)%string ->
+                  post <> ""%string /\
+                  pre <> ""%string /\
+                  ~ (exists s' : string, post = String "." s') /\
+                  ~ (exists s' : string, pre = (s' ++ ".")%string)).
   Proof.
-    setoid_rewrite plus_assoc'.
-    eapply length_firstn_skipn_app.
+    simpl; intros; apply H; eauto.
   Qed.
 
-  Lemma decides_length_firstn_skipn_app' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + (m + o)
-      -> decides true ((|firstn o (skipn (n + m) l) |) = o).
-  Proof.
-    setoid_rewrite plus_assoc'.
-    apply length_firstn_skipn_app'.
-  Qed.
-
-  Lemma decides_length_firstn_skipn_app'' {A}
-    : forall (n m o : nat) (l : list A),
-      length l = n + (m + o)
-      -> decides true ((|firstn n l |) = n).
-  Proof.
-    setoid_rewrite plus_assoc'.
-    apply length_firstn_skipn_app''.
-  Qed.
-
-  Hint Resolve whd_word_1_refl' : decide_data_invariant_db.
-  Hint Resolve decides_length_firstn_skipn_app'' : decide_data_invariant_db.
-  Hint Resolve decides_length_firstn_skipn_app' : decide_data_invariant_db.
-  Hint Resolve decides_length_firstn_skipn_app : decide_data_invariant_db.
   Hint Resolve validDomainName_proj1_OK : decide_data_invariant_db.
   Hint Resolve validDomainName_proj2_OK : decide_data_invariant_db.
-  Hint Resolve firstn_lt_decides : decide_data_invariant_db.
-  Hint Resolve firstn_skipn_self'' : decide_data_invariant_db.
-  Hint Resolve decides_firstn_app : decide_data_invariant_db.
-  Hint Resolve decides_firstn_self : decide_data_invariant_db.
-  Hint Resolve decides_skipn_app : decide_data_invariant_db.
-  Hint Resolve decides_firstn_skipn_app : decide_data_invariant_db.
+  Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
-Definition resourceRecord_OK (rr : resourceRecord) :=
-SumType_index
-     ((Memory.W : Type)
-      :: DomainName
+  Definition resourceRecord_OK (rr : resourceRecord) :=
+    SumType_index
+      ((Memory.W : Type)
          :: DomainName
+         :: DomainName
+         :: SOA_RDATA
+         :: WKS_RDATA :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
+      rr!sRDATA = rr!sTYPE /\
+    ith
+      (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
+             (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                    (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                           (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
+                                                               (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost")
+                                  (icons (B := fun T => T -> Prop) (fun a : WKS_RDATA => True /\ (lt (|a!"Bit-Map" |)  (pow2 16)))
+                                         (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                                                (icons (B := fun T => T -> Prop) (fun a : HINFO_RDATA =>
+                                                                                    (True /\ True /\ (lt (String.length a!"OS") (pow2 8))) /\
+                                                                                    True /\ (lt (String.length a!"CPU") (pow2 8)))
+                                                       (icons (B := fun T => T -> Prop) (fun a : MINFO_RDATA =>
+                                                                                           (True /\ ValidDomainName a!"eMailBx") /\
+                                                                                           ValidDomainName a!"rMailBx")
+                                                              (icons (B := fun T => T -> Prop) (fun a : MX_RDATA => True /\ ValidDomainName a!"Exchange")
+                                                                     (icons (B := fun T => T -> Prop) (fun a : string =>
+                                                                                                         True /\ True /\ (lt (String.length a) (pow2 8))) inil))))))))))
+      (SumType_index
+         ((Memory.W : Type)
+            :: DomainName
+            :: DomainName
             :: SOA_RDATA
-               :: WKS_RDATA :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
-     rr!sRDATA = rr!sTYPE /\
-   ith
-     (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
-     (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-     (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-     (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
-               (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost")
-     (icons (B := fun T => T -> Prop) (fun a : WKS_RDATA => True /\ (lt (|a!"Bit-Map" |)  (pow2 16)))
-     (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-     (icons (B := fun T => T -> Prop) (fun a : HINFO_RDATA =>
-               (True /\ True /\ (lt (String.length a!"OS") (pow2 8))) /\
-               True /\ (lt (String.length a!"CPU") (pow2 8)))
-     (icons (B := fun T => T -> Prop) (fun a : MINFO_RDATA =>
-               (True /\ ValidDomainName a!"eMailBx") /\
-               ValidDomainName a!"rMailBx")
-     (icons (B := fun T => T -> Prop) (fun a : MX_RDATA => True /\ ValidDomainName a!"Exchange")
-     (icons (B := fun T => T -> Prop) (fun a : string =>
-               True /\ True /\ (lt (String.length a) (pow2 8))) inil))))))))))
-     (SumType_index
-        ((Memory.W : Type)
-         :: DomainName
+            :: WKS_RDATA
+            :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
+         rr!sRDATA)
+      (SumType_proj
+         ((Memory.W : Type)
             :: DomainName
-               :: SOA_RDATA
-                  :: WKS_RDATA
-                     :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
-        rr!sRDATA)
-     (SumType_proj
-        ((Memory.W : Type)
-         :: DomainName
             :: DomainName
-               :: SOA_RDATA
-                  :: WKS_RDATA
-                     :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
-        rr!sRDATA)
-/\ ValidDomainName rr!sNAME.
+            :: SOA_RDATA
+            :: WKS_RDATA
+            :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
+         rr!sRDATA)
+    /\ ValidDomainName rr!sNAME.
 
-Definition DNS_Packet_OK (data : packet) :=
-  lt (|data!"answers" |) (pow2 16)
-  /\ lt (|data!"authority" |) (pow2 16)
-  /\ lt (|data!"additional" |) (pow2 16)
-  /\ ValidDomainName (data!"question")!"qname"
-  /\ forall (rr : resourceRecord),
-      In rr (data!"answers" ++ data!"additional" ++ data!"authority")
-      -> resourceRecord_OK rr.
-
-
-Definition packet_decoder
-  : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
+  Lemma resourceRecordOK_1
+    : forall data : resourceRecord,
+      resourceRecord_OK data -> (fun domain : string => ValidDomainName domain) data!sNAME.
   Proof.
-    start_synthesizing_decoder.
-    normalize_compose transformer.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
-    repeat decode_step.
+    unfold resourceRecord_OK; intuition eauto.
+  Qed.
+  Hint Resolve resourceRecordOK_1 : data_inv_hints.
 
-    (* Inferring the data invariant on the resource record. *)
-    intros ? H'; destruct H' as [ [ [ [ [? ?] ?] ? ] ?] ? ].
-    instantiate (1 := proj12).
-    rewrite <- H20. apply H17.
-    intros; repeat instantiate (1 := fun _ _ => True).
-    let a'' := fresh in
-    rename a' into a'';
-      repeat destruct a'' as [ ? | a''] ; auto.
-    simpl; intros.
-    decode_step.
-    intuition; intros.
-    intuition; rewrite !app_length; rewrite H16, H17, H18; reflexivity.
-    apply (Logic.proj1 (H30 x H29)).
-    apply (Logic.proj2 (H30 x H29)).
-    apply H30; eauto.
-    decode_step.
-    simpl; intros;
-      eapply encode_decode_correct_finish.
-    let a' := fresh in
-  intros a'; repeat destruct a' as [? a'];
-  (* Show that it is determined by the constraints (equalities) *)
-  (* inferred during parsing. *)
-  unfold GetAttribute, GetAttributeRaw in *;
-  simpl in *; intros;
-  (* Decompose data predicate *) intuition.
-    eapply firstn_skipn_self in H19; try eassumption.
-    intuition.
-    clear H21 H22 H23.
-  (* Substitute any inferred equalities *)
-    repeat match goal with
-             H : WS _ WO = _ |- _ =>
-             apply (f_equal (@whd 0)) in H;
-               simpl in H; rewrite H in *; clear H
-           end.
-    let a' := fresh in
-    rename prim_fst7 into a'; repeat destruct a' as [? a'];
-      simpl in *.
+  Lemma resourceRecordOK_2
+    : forall data idx,
+      data!sTYPE = idx ->
+      resourceRecord_OK data -> SumType_index ResourceRecordTypeTypes data!sRDATA = idx.
+    unfold resourceRecord_OK; intuition eauto.
     subst.
-    (* And unify with original object *) reflexivity.
-    decide_data_invariant.
-    instantiate (1 := true).
+    apply H1.
+  Qed.
+
+  Hint Resolve resourceRecordOK_2 : data_inv_hints.
+
+  Lemma resourceRecordOK_3
+    : forall rr : resourceRecord,
+      resourceRecord_OK rr ->
+      ith
+        (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
+               (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                      (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                             (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
+                                                                 (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost")
+                                    (icons (B := fun T => T -> Prop) (fun a : WKS_RDATA => True /\ (lt (|a!"Bit-Map" |)  (pow2 16)))
+                                           (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                                                  (icons (B := fun T => T -> Prop) (fun a : HINFO_RDATA =>
+                                                                                      (True /\ True /\ (lt (String.length a!"OS") (pow2 8))) /\
+                                                                                      True /\ (lt (String.length a!"CPU") (pow2 8)))
+                                                         (icons (B := fun T => T -> Prop) (fun a : MINFO_RDATA =>
+                                                                                             (True /\ ValidDomainName a!"eMailBx") /\
+                                                                                             ValidDomainName a!"rMailBx")
+                                                                (icons (B := fun T => T -> Prop) (fun a : MX_RDATA => True /\ ValidDomainName a!"Exchange")
+                                                                       (icons (B := fun T => T -> Prop) (fun a : string =>
+                                                                                                           True /\ True /\ (lt (String.length a) (pow2 8))) inil))))))))))
+        (SumType_index ResourceRecordTypeTypes rr!sRDATA)
+        (SumType_proj ResourceRecordTypeTypes rr!sRDATA).
+    intros ? H; apply H.
+  Qed.
+  Hint Resolve resourceRecordOK_3 : data_inv_hints.
+
+  Lemma length_app_3 {A}
+    : forall n1 n2 n3 (l1 l2 l3 : list A),
+      length l1 = n1
+      -> length l2 = n2
+      -> length l3 = n3
+      -> length (l1 ++ l2 ++ l3) = n1 + n2 + n3.
+  Proof.
+    intros; rewrite !app_length; subst; omega.
+  Qed.
+  Hint Resolve length_app_3 : data_inv_hints .
+
+  Definition DNS_Packet_OK (data : packet) :=
+    lt (|data!"answers" |) (pow2 16)
+    /\ lt (|data!"authority" |) (pow2 16)
+    /\ lt (|data!"additional" |) (pow2 16)
+    /\ ValidDomainName (data!"question")!"qname"
+    /\ forall (rr : resourceRecord),
+        In rr (data!"answers" ++ data!"additional" ++ data!"authority")
+        -> resourceRecord_OK rr.
+
+  Ltac decompose_parsed_data :=
+    repeat match goal with
+           | H : (?x ++ ?y ++ ?z)%list = _ |- _ =>
+             eapply firstn_skipn_self in H; try eassumption;
+             destruct H as [? [? ?] ]
+           | H : WS _ WO = _ |- _ =>
+             apply (f_equal (@whd 0)) in H;
+             simpl in H; rewrite H in *; clear H
+           | H : length _ = _ |- _ => clear H
+           end;
+    subst.
+
+  Lemma decides_resourceRecord_OK
+    : forall l n m o,
+      length l = n + m + o
+      -> (forall x : resourceRecord, In x l -> resourceRecord_OK x)
+      -> decides true
+                 (forall rr : resourceRecord,
+                     In rr
+                        (firstn n l ++
+                                firstn m (skipn n l) ++ firstn o (skipn (n + m) l)) ->
+                     resourceRecord_OK rr).
+  Proof.
     simpl; intros.
-    rewrite firstn_skipn_self' in H13.
-    apply H17 in H13.
-    unfold resourceRecord_OK; simpl.
-    intuition eauto.
-    omega.
+    rewrite firstn_skipn_self' in H1; eauto.
+  Qed.
 
-    instantiate (17 := GoodCache).
-    unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
-      try solve [ eapply cacheIndependent_add_3 in H1; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_9 in H2; intuition eauto ];
-      try solve [ eapply cacheIndependent_add_5 in H1; intuition eauto ];
-      try solve [instantiate (1 := fun _ => True); exact I].
+  Hint Resolve decides_resourceRecord_OK : decide_data_invariant_db .
 
-    repeat optimize_decoder_impl.
+  (* Resource Record <character-string>s are a byte, *)
+  (* followed by that many characters. *)
+  Definition encode_characterString_Spec (s : string) :=
+    encode_nat_Spec 8 (String.length s)
+                    ThenC encode_string_Spec s
+                    DoneC.
 
+  Definition encode_question_Spec (q : question) :=
+    encode_DomainName_Spec q!"qname"
+                           ThenC encode_enum_Spec QType_Ws q!"qtype"
+                           ThenC encode_enum_Spec QClass_Ws q!"qclass"
+                           DoneC.
+
+
+  Definition encode_TXT_Spec (s : string) :=
+    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+                            ThenC encode_characterString_Spec s
+                            DoneC.
+
+  Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
+    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+                            ThenC encode_DomainName_Spec soa!"sourcehost"
+                            ThenC encode_DomainName_Spec soa!"contact_email"
+                            ThenC encode_word_Spec soa!"serial"
+                            ThenC encode_word_Spec soa!"refresh"
+                            ThenC encode_word_Spec soa!"retry"
+                            ThenC encode_word_Spec soa!"expire"
+                            ThenC encode_word_Spec soa!"minTTL"
+                            DoneC.
+
+  Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
+    encode_nat_Spec 16 (length (wks!"Bit-Map"))
+                    ThenC encode_word_Spec wks!"Address"
+                    ThenC encode_word_Spec wks!"Protocol"
+                    ThenC (encode_list_Spec encode_word_Spec wks!"Bit-Map")
+                    DoneC.
+
+  Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
+    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+                            ThenC encode_characterString_Spec hinfo!"CPU"
+                            ThenC encode_characterString_Spec hinfo!"OS"
+                            DoneC.
+
+  Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
+    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+                            ThenC encode_word_Spec mx!"Preference"
+                            ThenC encode_DomainName_Spec mx!"Exchange"
+                            DoneC.
+
+  Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
+    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+                            ThenC encode_DomainName_Spec minfo!"rMailBx"
+                            ThenC encode_DomainName_Spec minfo!"eMailBx"
+                            DoneC.
+
+  Definition encode_A_Spec (a : Memory.W) :=
+    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
+                            ThenC encode_word_Spec a
+                            DoneC.
+
+  Definition encode_NS_Spec (domain : DomainName) :=
+    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
+                            ThenC encode_DomainName_Spec domain
+                            DoneC.
+
+  Definition encode_CNAME_Spec (domain : DomainName) :=
+    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
+                            ThenC encode_DomainName_Spec domain
+                            DoneC.
+
+  Definition encode_PTR_Spec (domain : DomainName) :=
+    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
+                            ThenC encode_DomainName_Spec domain
+                            DoneC.
+
+  Definition encode_rdata_Spec :=
+    encode_SumType_Spec ResourceRecordTypeTypes
+                        (icons encode_A_Spec (* A; host address 	[RFC1035] *)
+                               (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
+                                      (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
+                                             (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
+                                                    (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
+                                                           (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
+                                                                  (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
+                                                                         (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
+                                                                                (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
+                                                                                       (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
+
+  Definition encode_resource_Spec(r : resourceRecord) :=
+    encode_DomainName_Spec r!sNAME
+                           ThenC encode_enum_Spec RRecordType_Ws r!sTYPE
+                           ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
+                           ThenC encode_word_Spec r!sTTL
+                           ThenC encode_rdata_Spec r!sRDATA
+                           DoneC.
+
+  Definition encode_packet_Spec (p : packet) :=
+    encode_word_Spec p!"id"
+                     ThenC encode_word_Spec (WS p!"QR" WO)
+                     ThenC encode_enum_Spec Opcode_Ws p!"Opcode"
+                     ThenC encode_word_Spec (WS p!"AA" WO)
+                     ThenC encode_word_Spec (WS p!"TC" WO)
+                     ThenC encode_word_Spec (WS p!"RD" WO)
+                     ThenC encode_word_Spec (WS p!"RA" WO)
+                     ThenC encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
+                     ThenC encode_enum_Spec RCODE_Ws p!"RCODE"
+                     ThenC encode_nat_Spec 16 1 (* length of question field *)
+                     ThenC encode_nat_Spec 16 (|p!"answers"|)
+                     ThenC encode_nat_Spec 16 (|p!"authority"|)
+                     ThenC encode_nat_Spec 16 (|p!"additional"|)
+                     ThenC encode_question_Spec p!"question"
+                     ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+                     DoneC.
+
+  Ltac decode_DNS_rules g :=
+    (* Processes the goal by either: *)
+    lazymatch goal with
+    | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
+      eapply DomainName_decode_correct
+    | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec encode_resource_Spec) _ _] =>
+      intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
+    end.
+
+  Definition packet_decoder
+    : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
+  Proof.
+    synthesize_decoder_ext transformer
+                           decode_DNS_rules
+                           decompose_parsed_data
+                           solve_GoodCache_inv.
   Defined.
 
   Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
