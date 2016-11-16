@@ -17,7 +17,7 @@ Require Import
         Fiat.BinEncoders.Env.Common.ComposeCheckSum
         Fiat.BinEncoders.Env.Common.ComposeIf
         Fiat.BinEncoders.Env.Common.ComposeOpt
-        Fiat.BinEncoders.Env.Automation.SolverOpt
+        Fiat.BinEncoders.Env.Automation.Solver
         Fiat.BinEncoders.Env.Lib2.Option
         Fiat.BinEncoders.Env.Lib2.FixListOpt
         Fiat.BinEncoders.Env.Lib2.NoCache
@@ -982,10 +982,10 @@ Lemma compose_IPChecksum_encode_correct
            (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
            (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
            (encoded_A_measure : B -> nat)
-           (len_encode1 : A' -> nat)
+           (len_encode1 : A -> nat)
            (len_encode2 : A -> nat),
       (forall a' b ctx ctx',
-          computes_to (encode1 a' ctx) (b, ctx')
+          computes_to (encode1 (project a') ctx) (b, ctx')
           -> length_ByteString b = len_encode1 a')
       -> (forall a b ctx ctx',
              computes_to (encode2 a ctx) (b, ctx')
@@ -996,7 +996,7 @@ Lemma compose_IPChecksum_encode_correct
              encode1 (project a) ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
          encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
@@ -1071,7 +1071,7 @@ Proof.
       eauto.
       simpl.
       apply H0 in H10.
-      pose proof (H2 (project data)).
+      pose proof (H2 data).
       rewrite <- H10 in H13.
       rewrite !ByteString_enqueue_ByteString_padding_eq.
       rewrite padding_eq_mod_8, H13.
@@ -1083,7 +1083,7 @@ Proof.
       reflexivity.
     * rewrite !ByteString_enqueue_ByteString_padding_eq.
       apply H0 in H10.
-      pose proof (H2 (project data)).
+      pose proof (H2 data).
       rewrite <- H10 in H13.
       rewrite padding_eq_mod_8, H13.
       pose proof (H3 data).
@@ -1123,10 +1123,10 @@ Lemma compose_IPChecksum_encode_correct'
                refineEquiv (encode1 a ctx) (encode1' (project a) ctx))
            (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
            (encoded_A_measure : B -> nat)
-           (len_encode1 : A' -> nat)
+           (len_encode1 : A -> nat)
            (len_encode2 : A -> nat),
       (forall a' b ctx ctx',
-          computes_to (encode1' a' ctx) (b, ctx')
+          computes_to (encode1 a' ctx) (b, ctx')
           -> length_ByteString b = len_encode1 a')
       -> (forall a b ctx ctx',
              computes_to (encode2 a ctx) (b, ctx')
@@ -1134,10 +1134,10 @@ Lemma compose_IPChecksum_encode_correct'
       -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
       -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
       -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
-             encode1' (project a) ctx ↝ (b, ctx') ->
+             encode1 a ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
          encode_decode_correct_f _ transformer predicate' predicate_rest encode1' decode1 P) ->
@@ -1173,34 +1173,37 @@ Lemma compose_IPChecksum_encode_correct'
                                      else None) P.
 Proof.
   intros.
-  generalize refine_encode1
-             (@compose_IPChecksum_encode_correct
+  assert (forall a' b ctx ctx',
+             computes_to (encode1' (project a') ctx) (b, ctx')
+             -> length_ByteString b = len_encode1 a') as H0'
+      by (intros; eapply H0; eauto; apply refine_encode1; eauto).
+  destruct (fun H4 => @compose_IPChecksum_encode_correct
                 A A' P P_inv1 P_inv2 H project predicate
                 predicate' predicate_rest' predicate_rest encode1'
                 encode2 encoded_A_measure len_encode1
-                len_encode2 H0 H1 H2 H3 H4 decode1 H5
-                H6 H7 decode2 H8); clear;
-    unfold encode_decode_correct_f; intuition.
-  - eapply H0; eauto.
+                len_encode2 H0' H1 H2 H3 H4 decode1 H5
+                H6 H7 decode2 H8); [ | ].
+  intros; eapply H4; eauto.
+  apply refine_encode1; eauto.
+  unfold encode_decode_correct_f; intuition.
+  - eapply H9; eauto.
     unfold composeChecksum in *.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
     apply refine_encode1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.
-    rewrite <- H4'''; computes_to_econstructor.
-  - eapply H1; eauto.
-  - destruct (H1 _ _ _ _ _ _ H H2 H3); destruct_ex;
+    rewrite <- H15'''; computes_to_econstructor.
+  - eapply H10; eauto.
+  - destruct (H10 _ _ _ _ _ _ H11 H13 H14); destruct_ex;
       eexists _, _; intuition eauto.
     unfold composeChecksum in *.
     unfold Bind2 in *; computes_to_inv; computes_to_econstructor.
     apply refine_encode1; eauto.
     computes_to_econstructor; eauto.
     computes_to_econstructor; eauto.
-    instantiate (1 := x0); rewrite <- H6''';
+    instantiate (1 := x0); rewrite <- H17''';
       computes_to_econstructor.
 Qed.
-
-Print Assumptions compose_IPChecksum_encode_correct.
 
 (*Lemma IPchecksum_Valid_OK_dep' :
   forall (b b' ext : ByteString),
@@ -1280,12 +1283,12 @@ Lemma compose_IPChecksum_encode_correct_dep
            (encode1 : A' -> CacheEncode -> Comp (B * CacheEncode))
            (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
            (encoded_A_measure : B -> nat)
-           (len_encode1 : A' -> nat)
+           (len_encode1 : A -> nat)
            (len_encode2 : A -> nat)
            (bextra_len_eq : length_ByteString bextra = bextra_len)
            (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
       (forall a' b ctx ctx',
-          computes_to (encode1 a' ctx) (b, ctx')
+          computes_to (encode1 (project a') ctx) (b, ctx')
           -> length_ByteString b = len_encode1 a')
       -> (forall a b ctx ctx',
              computes_to (encode2 a ctx) (b, ctx')
@@ -1296,7 +1299,7 @@ Lemma compose_IPChecksum_encode_correct_dep
              encode1 (project a) ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
          encode_decode_correct_f _ transformer predicate' predicate_rest encode1 decode1 P) ->
@@ -1389,7 +1392,7 @@ Proof.
     eauto.
     rewrite !ByteString_enqueue_ByteString_padding_eq.
     apply H0 in H10.
-    pose proof (H2 (project data)).
+    pose proof (H2 data).
     rewrite <- H10 in H13.
     unfold encode_checksum.
     rewrite encode_word'_padding.
@@ -1400,7 +1403,7 @@ Proof.
     reflexivity.
     rewrite !ByteString_enqueue_ByteString_padding_eq.
     apply H0 in H10.
-    pose proof (H2 (project data)).
+    pose proof (H2 data).
     rewrite <- H10 in H13.
     unfold encode_checksum.
     rewrite encode_word'_padding.
@@ -1447,12 +1450,12 @@ Lemma compose_IPChecksum_encode_correct_dep'
                refineEquiv (encode1 a ctx) (encode1' (project a) ctx))
            (encode2 : A -> CacheEncode -> Comp (B * CacheEncode))
            (encoded_A_measure : B -> nat)
-           (len_encode1 : A' -> nat)
+           (len_encode1 : A -> nat)
            (len_encode2 : A -> nat)
            (bextra_len_eq : length_ByteString bextra = bextra_len)
            (bextra_ByteAligned : NPeano.modulo bextra_len 8 = 0),
       (forall a' b ctx ctx',
-          computes_to (encode1' a' ctx) (b, ctx')
+          computes_to (encode1 a' ctx) (b, ctx')
           -> length_ByteString b = len_encode1 a')
       -> (forall a b ctx ctx',
              computes_to (encode2 a ctx) (b, ctx')
@@ -1460,10 +1463,10 @@ Lemma compose_IPChecksum_encode_correct_dep'
       -> (forall a, NPeano.modulo (len_encode1 a) 8 = 0)
       -> (forall a, NPeano.modulo (len_encode2 a) 8 = 0)
       -> (forall (a : A) (ctx ctx' ctx'' : CacheEncode) c (b b'' ext : B),
-             encode1' (project a) ctx ↝ (b, ctx') ->
+             encode1 a ctx ↝ (b, ctx') ->
              encode2 a ctx' ↝ (b'', ctx'') ->
              predicate a ->
-             len_encode1 (project a) + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
+             len_encode1 a + len_encode2 a + 16 = encoded_A_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext)) ->
       forall decode1 : B -> CacheDecode -> option (A' * B * CacheDecode),
         (cache_inv_Property P P_inv1 ->
          encode_decode_correct_f _ transformer predicate' predicate_rest encode1' decode1 P) ->
@@ -1499,13 +1502,24 @@ Lemma compose_IPChecksum_encode_correct_dep'
                                      else None) P.
 Proof.
   intros.
+  assert (forall (a : A) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : B),
+             encode1' (project a) ctx ↝ (b, ctx') ->
+             encode2 a ctx' ↝ (b'', ctx'') ->
+             predicate a ->
+             len_encode1 a + len_encode2 a + 16 =
+             encoded_A_measure (transform (transform b (transform (encode_checksum B trans trans_opt 16 c) b'')) ext)) as H4'
+      by (intros; eapply H4; eauto; eapply refine_encode1; eauto).
+    assert (forall a' b ctx ctx',
+             computes_to (encode1' (project a') ctx) (b, ctx')
+             -> length_ByteString b = len_encode1 a') as H0'
+      by (intros; eapply H0; eauto; apply refine_encode1; eauto).
   generalize refine_encode1
              (@compose_IPChecksum_encode_correct_dep
                 A bextra bextra_len A' P P_inv1 P_inv2 H project predicate
                 predicate' predicate_rest' predicate_rest encode1'
                 encode2 encoded_A_measure len_encode1
                 len_encode2 bextra_len_eq bextra_ByteAligned
-                H0 H1 H2 H3 H4 decode1 H5
+                H0' H1 H2 H3 H4' decode1 H5
                 H6 H7 decode2 H8); clear;
     unfold encode_decode_correct_f; intuition.
   - eapply H0; eauto.
@@ -1689,4 +1703,61 @@ Ltac resolve_Checksum :=
     unify f (fun (_ : unit) (e : T') => ret (ByteString_id, e));
     unify proj (fun _ : T => tt);
     eapply (@refineEquiv_DoneC T T' a)
+  end.
+
+Ltac apply_IPChecksum Len_OK :=
+  match goal with
+    H : cache_inv_Property _ _
+    |- context[
+           encode_decode_correct_f _ _ _ _
+                                   (fun data c =>
+                                      (_ ThenChecksum IPChecksum_Valid OfSize 16 ThenCarryOn _) c) _ _] =>
+    eapply compose_IPChecksum_encode_correct';
+    [apply H
+    | repeat resolve_Checksum
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | solve_mod_8
+    | solve_mod_8
+    | apply Len_OK
+    | repeat (decode_step; unfold Domain; simpl)
+    |
+    | instantiate (1 := fun _ _ => True);
+      simpl; intros; exact I
+    | repeat (decode_step; unfold Domain; simpl) ];
+    cbv beta;
+    unfold Domain; simpl
+  end.
+
+Ltac apply_IPChecksum_dep Len_OK :=
+  match goal with
+    H : cache_inv_Property _ _
+    |- context[
+           encode_decode_correct_f _ _ _ _
+                                   (fun data c =>
+                                      (_ ThenChecksum _ OfSize 16 ThenCarryOn _) c) _ _] =>
+    eapply compose_IPChecksum_encode_correct_dep';
+    [ apply H
+    | repeat resolve_Checksum
+    | cbv beta; unfold Domain; simpl;
+      simpl transform; unfold encode_word;
+      rewrite !ByteString_enqueue_ByteString_measure,
+      !length_encode_word';
+      reflexivity
+    | cbv beta; unfold Domain; simpl; reflexivity
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      repeat calculate_length_ByteString
+    | cbv beta; unfold Domain; simpl;
+      solve_mod_8
+    | solve_mod_8
+    | apply Len_OK
+    | repeat decode_step
+    |
+    | instantiate (1 := fun _ _ => True);
+      simpl; intros; exact I
+    |  ]
   end.

@@ -73,6 +73,19 @@ Lemma decompose_pair_eq {A B}
     ab = ab' -> fst ab = fst ab' /\ snd ab = snd ab'.
 Proof. intros; split; congruence. Qed.
 
+Ltac decompose_pair_hyp :=
+  repeat
+    match goal with
+    | H : _ = _ |- _ =>
+      first [apply decompose_pair_eq in H;
+             let H1 := fresh in
+             let H2 := fresh in
+             destruct H as [H1 H2];
+             simpl in H1;
+             simpl in H2
+            | rewrite H in * ]
+    end; subst.
+
 (* Solves data invariants using the data_inv_hints database *)
 Ltac solve_data_inv :=
   first [ simpl; intros; exact I
@@ -273,6 +286,15 @@ Ltac decode_step :=
   match goal with
   | |- appcontext [encode_decode_correct_f _ _ _ _ ?H _ _] =>
     progress unfold H
+
+  (* D) Solving the goal once all the byte string has been parsed *)
+  | |- context [encode_decode_correct_f _ _ _ _
+                                        (fun _ _ => ret _) _ _] =>
+    solve [simpl; intros;
+           eapply encode_decode_correct_finish;
+           [ build_fully_determined_type
+           | decide_data_invariant ] ]
+
   | |- appcontext [encode_unused_word_Spec] =>
     unfold encode_unused_word_Spec
   (* A) decomposing one of the parser combinators, *)
@@ -375,11 +397,7 @@ Ltac decode_step :=
     intros; apply Vector_predicate_rest_True
   | _ => solve [solve_data_inv]
   | _ => solve [intros; instantiate (1 := fun _ _ => True); exact I]
-  (* D) Solving the goal once all the byte string has been parsed *)
-  | _ =>  solve [simpl; intros;
-                 eapply encode_decode_correct_finish;
-                 [ build_fully_determined_type
-                 | decide_data_invariant ] ]
+
   end.
 
 Ltac synthesize_cache_invariant :=

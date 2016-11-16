@@ -41,8 +41,6 @@ Section UDP_Decoder.
   Variable destAddr : word 32.
   Variable udpLength : word 16.
 
-
-
 Definition UDP_Packet :=
   @Tuple <"SourcePort" :: word 16,
           "DestPort" :: word 16,
@@ -130,119 +128,75 @@ Qed.
 
 Opaque pow2.
 
-Definition UDP_Packet_decoder'
+Lemma UDP_Packet_Header_Len_OK
+  : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
+    (encode_word_Spec (a!"SourcePort")
+                      ThenC encode_word_Spec (a!"DestPort")
+                      ThenC encode_nat_Spec 16 (8 + |a!"Payload"|) DoneC) ctx ↝
+                                                                            (b, ctx') ->
+    (encode_list_Spec encode_word_Spec a!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
+    (lt (|a!"Payload"|) (pow2 16 - 8))%nat ->
+    (fun _ : UDP_Packet => 16 + (16 + (16 + length_ByteString ByteString_id))) a +
+    (fun a0 : UDP_Packet => (|a0!"Payload" |) * 8 + length_ByteString ByteString_id) a + 16 =
+    UDP_Packet_encoded_measure
+      (transform (transform b (transform (encode_checksum ByteString transformer ByteString_QueueTransformerOpt 16 c) b'')) ext).
+Proof.
+  unfold UDP_Packet_encoded_measure.
+  intros; rewrite <- !transform_assoc.
+  simpl in H0.
+  eapply computes_to_compose_decode_unused_word in H;
+    let H' := fresh in
+    destruct H as [? [? [? H'] ] ]; rewrite H'.
+  unfold DecodeBindOpt, If_Opt_Then_Else.
+  eapply computes_to_compose_decode_unused_word in H;
+    let H' := fresh in
+    destruct H as [? [? [? H'] ] ]; rewrite H'.
+  unfold DecodeBindOpt, If_Opt_Then_Else.
+  eapply computes_to_compose_decode_word in H;
+    let H' := fresh in
+    destruct H as [? [? [? H'] ] ]; rewrite H'.
+  unfold fst.
+  rewrite wordToNat_natToWord_idempotent; try reflexivity.
+  rewrite !Plus.plus_assoc.
+  clear.
+  rewrite length_ByteString_id.
+  omega.
+  rewrite <- BinNat.N.compare_lt_iff.
+  rewrite Nnat.N2Nat.inj_compare.
+  rewrite Nnat.Nat2N.id.
+  rewrite <- Compare_dec.nat_compare_lt.
+  rewrite Npow2_nat.
+  omega.
+Qed.
+
+Definition UDP_Packet_decoder
   : CorrectDecoderFor UDP_Packet_OK encode_UDP_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
   normalize_compose transformer.
-  eapply compose_IPChecksum_encode_correct_dep'.
-  apply H.
-  repeat resolve_Checksum.
-  cbv beta; unfold Domain; simpl;
-      simpl transform; unfold encode_word;
-      rewrite !ByteString_enqueue_ByteString_measure,
-      !length_encode_word';
-      reflexivity.
-  reflexivity.
-  repeat calculate_length_ByteString.
-  repeat calculate_length_ByteString.
-  solve_mod_8.
-  solve_mod_8.
-  { (* Grossest Proof By Far. *)
-    intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
-    instantiate (1 := UDP_Packet_encoded_measure).
-    unfold UDP_Packet_encoded_measure.
-    rewrite <- !transform_assoc.
-    simpl in H0.
-    eapply computes_to_compose_decode_unused_word in H0;
-      let H' := fresh in
-      destruct H0 as [? [? [? H'] ] ]; rewrite H'.
-    unfold DecodeBindOpt, If_Opt_Then_Else.
-    eapply computes_to_compose_decode_unused_word in H0;
-      let H' := fresh in
-      destruct H0 as [? [? [? H'] ] ]; rewrite H'.
-    unfold DecodeBindOpt, If_Opt_Then_Else.
-    eapply computes_to_compose_decode_word in H0;
-      let H' := fresh in
-      destruct H0 as [? [? [? H'] ] ]; rewrite H'.
-    unfold fst.
-    rewrite wordToNat_natToWord_idempotent; try reflexivity.
-    rewrite !Plus.plus_assoc.
-    clear.
-    unfold StringId, StringId0, StringId1; clear.
-    repeat match goal with
-      |- context [ @length ?A (GetAttribute ?z ?l)] => remember (@length A (GetAttribute z l))
-           end.
-    repeat match goal with
-      |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
-    end.
-    unfold GetAttribute, GetAttributeRaw in Heqn; simpl in Heqn.
-    assert (n = n0).
-    rewrite Heqn, Heqn0; reflexivity.
-    rewrite H.
-    omega.
-    revert H2; clear; unfold UDP_Packet_OK; intros.
-    unfold GetAttribute, GetAttributeRaw in H2; simpl in H2.
-    match goal with
-      |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
-    end.
-    rewrite <- BinNat.N.compare_lt_iff.
-    rewrite Nnat.N2Nat.inj_compare.
-    rewrite Nnat.Nat2N.id.
-    rewrite <- Compare_dec.nat_compare_lt.
-    rewrite Npow2_nat.
-    omega.
-  }
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  decode_step.
-  intros; eapply encode_decode_correct_finish.
-  build_fully_determined_type.
-  decide_data_invariant.
-  unfold UDP_Packet_OK; clear; intros ? H'; repeat split.
+  apply_IPChecksum_dep UDP_Packet_Header_Len_OK.
 
-  simpl; eapply lt_minus_plus with (m := 8); eauto.
-  instantiate (1 := fun _ _ => True);
-    simpl; intros; exact I.
-  decode_step.
-  decode_step.
-  decode_step.
+  unfold UDP_Packet_OK; clear; intros ? H'; simpl; intuition eauto using lt_minus_plus.
+  eapply lt_minus_plus with (m := 8); eauto.
 
+  decode_step.
+  decode_step.
+  decode_step.
   simpl; intros; intuition.
-  unfold GetAttribute, GetAttributeRaw in *; simpl.
-  repeat
-    match goal with
-    | H : _ = _ |- _ =>
-      first [apply decompose_pair_eq in H;
-             let H1 := fresh in
-             let H2 := fresh in
-             destruct H as [H1 H2];
-             simpl in H1;
-             simpl in H2
-            | rewrite H in * ]
-    end; subst.
+  decompose_pair_hyp.
   instantiate (1 := fst (snd (snd proj)) - 8);
     rewrite <- H4.
   auto with arith.
+  decode_step.
+  decode_step.
 
-  decode_step.
-  decode_step.
   synthesize_cache_invariant.
   repeat optimize_decoder_impl.
 
 Defined.
 
 Definition UDP_Packet_decoder_impl :=
-  Eval simpl in (fst (projT1 UDP_Packet_decoder')).
+  Eval simpl in (fst (projT1 UDP_Packet_decoder)).
 
 End UDP_Decoder.
 

@@ -107,141 +107,77 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
 
   Local Arguments NPeano.modulo : simpl never.
 
-  Definition TCP_Packet_decoder'
-    : CorrectDecoderFor TCP_Packet_OK encode_TCP_Packet_Spec.
-  Proof.
-    start_synthesizing_decoder.
-    normalize_compose transformer.
-    eapply compose_IPChecksum_encode_correct_dep';
-    [ apply H
-    | repeat resolve_Checksum
-    | cbv beta; unfold Domain; simpl;
-      simpl transform; unfold encode_word;
-      rewrite !ByteString_enqueue_ByteString_measure,
-      !length_encode_word';
-      reflexivity
-    | cbv beta; unfold Domain; simpl; reflexivity
-    | cbv beta; unfold Domain; simpl;
-      repeat calculate_length_ByteString
-    | cbv beta; unfold Domain; simpl;
-      repeat calculate_length_ByteString
-    | cbv beta; unfold Domain; simpl;
-      solve_mod_8
-    | solve_mod_8
-    | .. ].
-    { (* Grossest Proof By Far. *)
-      unfold Domain; simpl.
-      intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
-      instantiate (1 := fun _ => (wordToNat tcpLength) * 8);
-        cbv beta.
-      unfold TCP_Packet_OK in H2.
-      rewrite (proj2 H2).
-      unfold StringId13, StringId14.
-      clear.
-      repeat match goal with
-               |- context [ @length ?A (@GetAttribute ?heading ?z ?l)] => remember (@length A (@GetAttribute heading z l))
-             end.
-      assert (n0 = n1) by (subst; reflexivity).
-      rewrite H.
-      omega.
-    }
-    unfold Domain; simpl.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step. (* intros; eapply bool_decode_correct. *)
+  Definition TCP_Length :=
+    (fun _ : ByteString => (wordToNat tcpLength) * 8).
 
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
+  Lemma TCP_Packet_Header_Len_OK
+    : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
+      (      encode_word_Spec (tcp!"SourcePort")
+          ThenC encode_word_Spec (tcp!"DestPort")
+          ThenC encode_word_Spec (tcp!"SeqNumber")
+          ThenC encode_word_Spec (tcp!"AckNumber")
+          ThenC encode_nat_Spec 4 (5 + |tcp!"Options"|)
+          ThenC encode_unused_word_Spec 3 (* These bits are reserved for future use. *)
+          ThenC encode_bool_Spec tcp!"NS"
+          ThenC encode_bool_Spec tcp!"CWR"
+          ThenC encode_bool_Spec tcp!"ECE"
+          ThenC encode_bool_Spec (match tcp!"UrgentPointer" with
+                                  | Some _ => true
+                                  | _ => false
+                                  end)
+          ThenC encode_bool_Spec tcp!"ACK"
+          ThenC encode_bool_Spec tcp!"PSH"
+          ThenC encode_bool_Spec tcp!"RST"
+          ThenC encode_bool_Spec tcp!"SYN"
+          ThenC encode_bool_Spec tcp!"FIN"
+          ThenC encode_word_Spec tcp!"WindowSize" DoneC) ctx ↝ (b, ctx') ->
+      (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 ByteString_id) tcp!"UrgentPointer"
+       ThenC encode_list_Spec encode_word_Spec tcp!"Options"
+       ThenC encode_list_Spec encode_word_Spec tcp!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
+      (lt (|tcp!"Options"|) 11
+       /\ wordToNat tcpLength = 20 (* length of packet header *)
+                                + (4 * |tcp!"Options"|) (* length of option field *)
+                                + (|tcp!"Payload"|)) ->
+      (fun _ : TCP_Packet =>
+    16 +
+    (16 + (32 + (32 + (4 + (3 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (16 + length_ByteString ByteString_id))))))))))))))))
+     tcp +
+   (fun a0 : TCP_Packet =>
+    16 + ((|a0!"Options"|) * 32 + ((|a0!"Payload" |) * 8 + length_ByteString ByteString_id))) tcp + 16 =
+    (TCP_Length
+       (transform (transform b (transform (encode_checksum ByteString transformer ByteString_QueueTransformerOpt 16 c) b'')) ext)).
+Proof.
+  intros.
+  intros; change transform_id with ByteString_id; rewrite length_ByteString_ByteString_id.
+  unfold TCP_Length; rewrite (proj2 H1).
+  match goal with
+    |- context [ @length ?A ?l] => remember (@length A l)
+  end.
+  match goal with
+    |- context [ @length ?A ?l] => remember (@length A l)
+  end.
+  omega.
+Qed.
 
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
+Definition TCP_Packet_decoder'
+  : CorrectDecoderFor TCP_Packet_OK encode_TCP_Packet_Spec.
+Proof.
+  start_synthesizing_decoder.
+  normalize_compose transformer.
+  apply_IPChecksum_dep TCP_Packet_Header_Len_OK.
 
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-
-    unfold TCP_Packet_OK; intros ? H'; repeat split.
+  - unfold TCP_Packet_OK; intros ? H'; repeat split.
     simpl; destruct H'.
     unfold pow2; simpl in *.
     unfold GetAttribute, GetAttributeRaw in H0; simpl in H0.
     revert H0; clear; unfold StringId13; intros; omega.
 
-    instantiate (1 := fun _ _ => True);
-      simpl; intros; exact I.
+  - decode_step.
+    decode_step.
+    decode_step.
+    decode_step.
 
-    decode_step.
-    decode_step.
-    decode_step.
-    decode_step.
-    simpl in *. intros; split_and.
-    repeat
-      match goal with
-      | H : _ = _ |- _ =>
-        first [apply decompose_pair_eq in H;
-               let H1 := fresh in
-               let H2 := fresh in
-               destruct H as [H1 H2];
-               simpl in H1;
-               simpl in H2
-              | rewrite H in * ]
-      end; subst.
-    idtac.
+    simpl in *. intros; split_and; decompose_pair_hyp.
     instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
     rewrite <- H13.
     match goal with
@@ -256,54 +192,35 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
     decode_step.
     decode_step.
 
-    simpl in *. intros; split_and.
-    repeat
-      match goal with
-      | H : _ = _ |- _ =>
-        first [apply decompose_pair_eq in H;
-               let H1 := fresh in
-               let H2 := fresh in
-               destruct H as [H1 H2];
-               simpl in H1;
-               simpl in H2
-              | rewrite H in * ]
-      end; subst.
-
+    simpl in *. intros; split_and. decompose_pair_hyp.
     simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj)))) - 5).
     intuition; subst; simpl; auto with arith.
-    rewrite <- H12.
-    simpl in *.
-    auto with arith.
+    rewrite <- H12; simpl in *; auto with arith.
 
     decode_step.
     decode_step.
     decode_step.
     decode_step.
+
     simpl in *; intros.
-    unfold TCP_Packet_OK in H3.
     do 4 destruct H3.
     split; eauto.
     instantiate (1 := (wordToNat tcpLength) - 20 - (4 * (fst (snd (snd (snd (snd proj)))) - 5))).
     rewrite <- H6.
     rewrite H7.
     unfold snd, fst.
-    fold StringId14; fold StringId13.
-    clear.
     unfold GetAttribute, GetAttributeRaw in *; simpl in *.
     repeat match goal with
              |- context [ @length ?A (prim_fst ?l)] => remember (@length A (prim_fst l))
            end.
     assert (n = n1) by (subst; reflexivity).
-    rewrite H.
-    omega.
+    rewrite H8; clear; omega.
 
     decode_step.
-    intros; eapply encode_decode_correct_finish.
-    build_fully_determined_type.
-    decide_data_invariant.
+    decode_step.
 
-    synthesize_cache_invariant.
-    optimize_decoder_impl.
+  - synthesize_cache_invariant.
+  - optimize_decoder_impl.
 
     Time Defined.
 
