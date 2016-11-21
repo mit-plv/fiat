@@ -5,19 +5,6 @@ Require Import Coq.Lists.List.
 
 Import ListNotations.
 
-(** Support for inducting over ADTs *)
-
-Fixpoint fromConstructor
-         {rep : Type}
-         {dom : list Type}
-         (const : constructorType rep dom)
-         (r : rep) : Prop :=
-  match dom return constructorType rep dom -> rep -> Prop with
-  | [ ] => fun const r => computes_to const r
-  | D :: dom' => fun const r =>
-                   exists (d : D), fromConstructor (const d) r
-  end const r.
-
 Fixpoint fromMethod' {rep : Type} {dom : list Type} :
   forall {cod : option Type}, methodType' rep dom cod -> rep -> Prop :=
   match dom return
@@ -33,18 +20,25 @@ Fixpoint fromMethod' {rep : Type} {dom : list Type} :
     fun cod meth r => exists d, fromMethod' (meth d) r
   end.
 
+Definition fromConstructor
+           {rep : Type}
+           {dom : list Type}
+           (meth : constructorType rep dom)
+  : rep -> Prop :=
+  fromMethod' (meth).
+
 Definition fromMethod
            {rep : Type}
            {dom : list Type}
            {cod : option Type}
-           (meth : methodType rep dom cod)
+           (meth : methodType 1 rep dom cod)
            (r : rep) : rep -> Prop :=
   fromMethod' (meth r).
 
 Inductive fromADT {sig} (adt : ADT sig) : Rep adt -> Prop :=
   | fromADTConstructor :
-      forall (cidx : ConstructorIndex sig) (r : Rep adt),
-        fromConstructor (Constructors adt cidx) r
+      forall (cidx : MethodIndex sig) (r : Rep adt),
+        fromConstructor (Methods adt cidx) r
         -> fromADT adt r
   | fromADTMethod :
       forall (midx : MethodIndex sig) (r r' : Rep adt),

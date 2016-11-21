@@ -5,24 +5,17 @@ Require Import Fiat.Common
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
 
-Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
+Theorem refineADT_BuildADT_Rep n methSigs oldRep newRep
       (AbsR : oldRep -> newRep -> Prop)
 : @respectful_heteroT _ _ _ _
-      (fun oldCons newCons =>
-         forall consIdx,
-           @refineConstructor oldRep newRep AbsR
-                          _
-                          (getConsDef oldCons consIdx)
-                          (getConsDef newCons consIdx))
-      (fun x y => @respectful_heteroT _ _ _ _
                     (fun oldMeth newMeth =>
                        forall methIdx,
-                         @refineMethod oldRep newRep AbsR _ _
+                         @refineMethod oldRep newRep AbsR _ _ _
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
-                    (fun m m' => refineADT))
-     (@BuildADT oldRep n n' consSigs methSigs)
-     (@BuildADT newRep n n' consSigs methSigs).
+                    (fun m m' => refineADT)
+                    (@BuildADT oldRep n methSigs)
+                    (@BuildADT newRep n methSigs).
  Proof.
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?A ?B => constr:(A) end in
@@ -32,17 +25,13 @@ Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
  Qed.
 
 Lemma refineADT_BuildADT_Both
-      rep n n' consigs methSigs
-: forall oldCons newCons,
-    (forall consIdx, @refineConstructor _ _ eq _
-                                   (getConsDef oldCons consIdx)
-                                   (getConsDef newCons consIdx))
-    -> forall oldMeth newMeth,
-         (forall methIdx, @refineMethod _ _ eq _ _
-                                         (getMethDef oldMeth methIdx)
-                                         (getMethDef newMeth methIdx))
-         -> refineADT (@BuildADT n n' rep consigs methSigs oldCons oldMeth)
-                      (@BuildADT n n' rep consigs methSigs newCons newMeth).
+      rep n methSigs
+: forall oldMeth newMeth,
+         (forall methIdx, @refineMethod _ _ eq _ _ _
+                                        (getMethDef oldMeth methIdx)
+                                        (getMethDef newMeth methIdx))
+         -> refineADT (@BuildADT n rep methSigs oldMeth)
+                      (@BuildADT n rep methSigs newMeth).
 Proof.
   intros; eapply refineADT_BuildADT_Rep; eauto; reflexivity.
 Qed.

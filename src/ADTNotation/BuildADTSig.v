@@ -18,6 +18,7 @@ Delimit Scope methSig_scope with methSig.
 
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
   {| methID := id;
+     methArity := 1;
      methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) ..;
      methCod := None |}
     (id at level 0, dom1 at level 0,
@@ -26,6 +27,7 @@ Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
 
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
   {| methID := id;
+     methArity := 1;
      methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) ..;
      methCod := Some (cod%type : Type) |}
     (id at level 0, cod at level 0, dom1 at level 0,
@@ -34,6 +36,7 @@ Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
 
 Notation "'Method' id : 'rep' '*' 'rep' " :=
   {| methID := id;
+     methArity := 1;
      methDom := (@nil Type);
      methCod := None |}
     (id at level 0, at level 93)
@@ -41,6 +44,7 @@ Notation "'Method' id : 'rep' '*' 'rep' " :=
 
 Notation "'Method' id : 'rep' '->' 'rep' '*' cod " :=
   {| methID := id;
+     methArity := 1;
      methDom := @nil Type ;
      methCod := Some (cod%type : Type) |}
     (id at level 0, cod at level 0, at level 93)
@@ -48,16 +52,20 @@ Notation "'Method' id : 'rep' '->' 'rep' '*' cod " :=
 
 
 Notation "'Constructor' id ':' 'rep'" :=
-  {| consID := id;
-     consDom := @nil Type |}
+  {| methID := id;
+     methArity := 0;
+     methDom := @nil Type;
+     methCod := None;
+  |}
     (id at level 0, at level 93)
-  : consSig_scope.
+  : methSig_scope.
 
 Notation "'Constructor' id ':' dom1 '*' .. '*' domn '->' 'rep'" :=
-  {| consID := id;
-     consDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) .. |}
+  {| methID := id;
+     methArity := 0;
+     methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) .. |}
     (id at level 0, dom1 at level 0, domn at level 0, at level 93)
-  : consSig_scope.
+  : methSig_scope.
 
 (* [BuildADTSig] constructs an ADT signature from a list of
    constructor signatures and a list of method signatures.
@@ -65,28 +73,20 @@ Notation "'Constructor' id ':' dom1 '*' .. '*' domn '->' 'rep'" :=
 
 Record DecoratedADTSig :=
   { DecADTSig :> ADTSig;
-    NumConstructors : nat;
     NumMethods : nat;
-    ConstructorNames : Vector.t string NumConstructors;
     MethodNames : Vector.t string NumMethods }.
 
 Definition BuildADTSig
-           {n n'}
-           (consSigs : Vector.t consSig n)
-           (methSigs : Vector.t methSig n')
+           {n}
+           (methSigs : Vector.t methSig n)
 : DecoratedADTSig :=
   {| DecADTSig :=
-       {| ConstructorIndex := Fin.t n;
-          MethodIndex := Fin.t n';
-          ConstructorDom idx :=
-            consDom (Vector.nth consSigs idx);
+       {| MethodIndex := Fin.t n;
           MethodDomCod idx :=
             let domcod := (Vector.nth methSigs idx)
-            in (methDom domcod, methCod domcod)
+            in (methArity domcod, methDom domcod, methCod domcod)
        |};
-     NumConstructors := n;
-     NumMethods := n';
-     ConstructorNames := Vector.map consID consSigs;
+     NumMethods := n;
      MethodNames := Vector.map methID methSigs |}.
 
 Bind Scope ADTSig_scope with ADTSig.
@@ -99,10 +99,8 @@ Import Vectors.VectorDef.VectorNotations.
 
 Delimit Scope vector_scope with vector.
 
-Notation "'ADTsignature' { cons1 , meth1 , .. , methn }" :=
-  (BuildADTSig (cons1%consSig :: [])%vector
-              (meth1%methSig :: .. (methn%methSig :: []) ..))%vector
+Notation "'ADTsignature' { meth1 , .. , methn }" :=
+  (BuildADTSig (meth1%methSig :: .. (methn%methSig :: []) ..))%vector
     (at level 0,
-     cons1 at level 93,
      meth1 at level 93, methn at level 93,
-     format "'ADTsignature'  { '[v' '//' cons1 , '//' meth1 , '//' .. , '//' methn '//'  ']' }") : ADTSig_scope.
+     format "'ADTsignature'  { '[v' '//' meth1 , '//' .. , '//' methn '//'  ']' }") : ADTSig_scope.
