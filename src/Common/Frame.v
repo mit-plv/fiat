@@ -57,7 +57,7 @@ Module PreO.
       ; le_trans : forall x y z, le x y -> le y z -> le x z
     }.
 
-  Arguments t {A} le, A le.
+  Arguments t {A} le.
 
   Local Instance PreOrder_I `{tle : t A leA} : PreOrder leA.
   Proof.
@@ -272,7 +272,7 @@ Module PreO.
 
 End PreO.
 
-Arguments PreO.max {A} {le} _ _ _, A le _ _ _.
+Arguments PreO.max {A} {le} _ _ _.
 
 (** Partial orders: We take a preorder, but also have an equality relation [eq]
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
@@ -283,7 +283,7 @@ Module PO.
       ; le_antisym : forall x y, le x y -> le y x -> eq x y
     }.
 
-  Arguments t {A} le eq, A le eq.
+  Arguments t {A} le eq.
 
   Section Morph.
     Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
