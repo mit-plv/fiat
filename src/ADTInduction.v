@@ -20,13 +20,6 @@ Fixpoint fromMethod' {rep : Type} {dom : list Type} :
     fun cod meth r => exists d, fromMethod' (meth d) r
   end.
 
-Definition fromConstructor
-           {rep : Type}
-           {dom : list Type}
-           (meth : constructorType rep dom)
-  : rep -> Prop :=
-  fromMethod' (meth).
-
 Definition fromMethod
            {rep : Type}
            {dom : list Type}
