@@ -22,7 +22,7 @@ Section addCache.
      implementation (computation?) for the methods of an ADT with
      using the old methods. *)
 
-  Definition addCacheToConsDef
+  (*Definition addCacheToConsDef
              (Sig : consSig)
              (oldCons : @consDef rep Sig)
     : @consDef (@cachedRep rep cacheType) Sig :=
@@ -55,7 +55,7 @@ Section addCache.
       apply refine_addCacheToConstructor.
     - simpl Methods; rewrite <- ith_imap.
       apply refine_addCacheToMethod.
-  Qed. 
+  Qed.  *)
 
 End addCache.
 

@@ -20,23 +20,25 @@ Fixpoint fromMethod' {rep : Type} {dom : list Type} :
     fun cod meth r => exists d, fromMethod' (meth d) r
   end.
 
-Definition fromMethod
+Fixpoint fromMethod
+           {arity : nat}
            {rep : Type}
            {dom : list Type}
            {cod : option Type}
-           (meth : methodType 1 rep dom cod)
-           (r : rep) : rep -> Prop :=
-  fromMethod' (meth r).
+           (meth : methodType arity rep dom cod)
+  : rep -> Prop :=
+  match arity return
+        methodType arity rep dom cod
+        -> rep -> Prop with
+  | 0 => fun meth' => fromMethod' meth'
+  | S n' => fun meth' r => exists r', fromMethod (meth' r') r
+  end meth.
 
 Inductive fromADT {sig} (adt : ADT sig) : Rep adt -> Prop :=
-  | fromADTConstructor :
-      forall (cidx : MethodIndex sig) (r : Rep adt),
-        fromConstructor (Methods adt cidx) r
-        -> fromADT adt r
   | fromADTMethod :
       forall (midx : MethodIndex sig) (r r' : Rep adt),
         fromADT adt r
-        -> fromMethod (Methods adt midx) r r'
+        -> fromMethod (Methods adt midx) r'
         -> fromADT adt r'.
 
 Require Import Fiat.Common.IterateBoundedIndex.
@@ -60,7 +62,6 @@ Tactic Notation "ADT" "induction" ident(r) :=
     end;
     [ revert r H | revert r r' H H0 IHfromADT ];
     match goal with
-    | [ cidx : ConstructorIndex _ |- _ ] => pattern cidx
     | [ midx : MethodIndex _      |- _ ] => pattern midx
     end;
     apply Iterate_Ensemble_equiv';
@@ -78,21 +79,17 @@ Tactic Notation "ADT" "induction" ident(r) :=
     subst;
     eauto;
     match goal with
-    | [ cidx : ConstructorIndex _ |- _ ] => clear cidx
     | [ midx : MethodIndex _      |- _ ] => clear midx
     end
   end.
 
 Lemma ADT_ind {sig} (adt : ADT sig) :
   forall (P : Ensemble (Rep adt))
-         (PC : forall cidx r, fromConstructor (Constructors adt cidx) r -> P r)
-         (PM : forall midx r r', fromMethod' (Methods adt midx r) r' -> P r'),
+         (PM : forall midx r', fromMethod (Methods adt midx) r' -> P r'),
          forall r : Rep adt, fromADT adt r -> P r.
 Proof.
   intros.
   induction H.
-    eapply PC.
-    exact H.
   eapply PM.
   exact H0.
 Qed.

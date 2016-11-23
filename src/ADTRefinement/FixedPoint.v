@@ -119,7 +119,7 @@ Proof.
   red; intros; eapply length_wf'; eauto.
 Qed.
 
-Definition funType_to_methodType
+(* Definition funType_to_methodType
            {rep : Type} {dom : list Type} {cod : Type} :
   funType (rep :: dom) (rep * cod) -> methodType rep dom (Some cod).
 Proof.
@@ -156,7 +156,7 @@ Proof.
     extensionality x; simpl.
   reflexivity.
   exact (IHdom (fun r => f r x)).
-Qed.
+Qed. *)
 
 Import EqNotations.
 

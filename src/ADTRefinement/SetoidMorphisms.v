@@ -121,6 +121,27 @@ Proof.
   - simpl; intros; eauto.
 Qed.
 
+Lemma refineMethod_eq_trans' arity rep rep' Dom Cod
+      AbsR
+  : forall m m' m'',
+    @refineMethod_eq rep arity Dom Cod m m'
+    -> @refineMethod rep rep' AbsR arity Dom Cod m' m''
+    -> refineMethod AbsR arity m m''.
+Proof.
+  induction arity.
+  - unfold refineMethod, methodType; induction Dom.
+    + intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
+      * apply H0 in Comp_v; computes_to_inv; subst;
+          repeat computes_to_econstructor; eauto.
+      * apply H0 in Comp_v; computes_to_inv; subst;
+          repeat computes_to_econstructor; eauto.
+    + simpl; intros.
+      eapply IHDom.
+      eapply H.
+      eapply H0.
+  - simpl; intros; eauto.
+Qed.
+
 Instance refineMethod_trans' arity rep Dom Cod
 : Transitive (@refineMethod rep rep eq arity Dom Cod).
 Proof.

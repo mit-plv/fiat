@@ -39,12 +39,6 @@ Ltac abstractADTImpl adt k :=
        end) in
   let impl_rep := (eval simpl in (projT1 impl)) in
 
-  let impl_constructors := (eval simpl in (ComputationalADT.pcConstructors (projT2 impl))) in
-  let impl_constructors' :=
-      (lazymatch impl_constructors with
-       | fun idx => cConsBody (ith ?constructors' idx) => constructors'
-       end) in
-
   let impl_methods := (eval simpl in (ComputationalADT.pcMethods (projT2 impl))) in
   let impl_methods' :=
       (lazymatch impl_methods with
@@ -58,20 +52,18 @@ Ltac abstractADTImpl adt k :=
   let ADTImplConstructors := fresh "ADTImplMethod" in
   cache_ilist_elements ADTImplMethod impl_methods'
                        ltac:(fun impl_method_defs =>
-                               cache_ilist_elements ADTImplConstructors impl_constructors'
-                                                    ltac:(fun impl_constructor_defs =>
-                                                            cache_term impl_sig as ADTImplSig
+                               cache_term impl_sig as ADTImplSig
                                                                                      run (fun impl_sig_def =>
                                                                                             cache_term impl_rep as ADTImplRep
                                                                                                                      run (fun impl_rep_def =>
                                                                                                                             cache_term (@ComputationalADT.Build_pcADT impl_sig_def impl_rep_def
-                                                                                                                                                                      (fun idx => cConsBody (ith impl_constructor_defs idx))
+                                                                                                                                                                      
                                                                                                                                                                       (fun idx => cMethBody (ith impl_method_defs idx)))
                                                                                                                             as ADTImplMethods
                                                                                                                                  run (fun impl_methods_def =>
                                                                                                                                         let impl' := constr:(
                                                                                                                                                        (existT (ComputationalADT.pcADT impl_sig_def) impl_rep_def impl_methods_def : ComputationalADT.cADT impl_sig_def)) in
-                                                                                                                                        k impl'))))).
+                                                                                                                                        k impl')))).
 
 (* [AbstractADT] uses [abstractADTImpl] to build a [Definition] of a [FullySharpenedADT] *)
 (* with an abstracted [refineADT] proof term. This should prevent client code from *)
