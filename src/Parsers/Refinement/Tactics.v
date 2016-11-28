@@ -1,3 +1,4 @@
+Require Export Coq.NArith.BinNat.
 Require Export Fiat.ADTRefinement.
 Require Export Fiat.ADTNotation.BuildADT.
 Require Export Fiat.ADTRefinement.GeneralBuildADTRefinements.
@@ -145,7 +146,7 @@ Ltac simplify_parser_splitter' :=
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
-        | progress simpl @ContextFreeGrammar.Reflective.opt.nat_of_ascii
+        | progress simpl @ContextFreeGrammar.Reflective.opt.N_of_ascii
         | progress simplify with monad laws
         (*| progress unguard
         | progress change (orb false) with (fun x : bool => x); cbv beta
