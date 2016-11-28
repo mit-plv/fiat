@@ -59,6 +59,7 @@ src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v
 src/BinEncoders/Env/Examples/EthernetFrame.v
 src/BinEncoders/Env/Examples/EthernetHeader.v
+src/BinEncoders/Env/Examples/Fiat4Mirage.v
 src/BinEncoders/Env/Examples/ICMP_Packet.v
 src/BinEncoders/Env/Examples/IPv4Header.v
 src/BinEncoders/Env/Examples/TCP_Packet.v
