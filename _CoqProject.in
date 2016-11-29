@@ -253,6 +253,7 @@ src/Common/List/PermutationFacts.v
 src/Common/List/UpperBound.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/HintDbExtra.v
+src/Common/Tactics/SplitInContext.v
 src/Common/Tactics/TransparentAbstract.v
 src/Common/Telescope/Core.v
 src/Common/Telescope/Equality.v
