@@ -32,10 +32,10 @@ Definition all_possible_ascii : PositiveSet.t
   := Eval compute in all_possible_ascii'.
 
 Definition pos_of_ascii (x : Ascii.ascii) : BinNums.positive
-  := BinPos.Pos.of_nat match Ascii.nat_of_ascii x with
-                       | 0 => (S (Ascii.nat_of_ascii (Ascii.Ascii true true true true true true true true)))
-                       | x' => x'
-                       end.
+  := match Ascii.N_of_ascii x with
+     | BinNums.N0 => BinNat.N.succ_pos (Ascii.N_of_ascii (Ascii.Ascii true true true true true true true true))
+     | BinNums.Npos x => x
+     end.
 
 Lemma ascii_of_pos_of_ascii x : Ascii.ascii_of_pos (pos_of_ascii x) = x.
 Proof.
