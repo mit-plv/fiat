@@ -2,8 +2,6 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
-(*Require Import Fiat.Parsers.ContextFreeGrammar.Fix.AsciiLattice.
-Require Import Fiat.Parsers.ContextFreeGrammar.Fix.ProdAbstractInterpretationDefinitions.*)
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretation.
 
 Module DataflowInput.
