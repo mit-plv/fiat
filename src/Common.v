@@ -2027,3 +2027,16 @@ Ltac break_match_hyps_when_head_step T :=
                    constr_eq T T').
 Ltac break_match_when_head T := repeat break_match_when_head_step T.
 Ltac break_match_hyps_when_head T := repeat break_match_hyps_when_head_step T.
+
+Ltac uneta_fun :=
+  repeat match goal with
+         | [ |- appcontext[fun ch : ?T => ?f ch] ]
+           => progress change (fun ch : T => f ch) with f
+         end.
+Ltac uneta_fun_in_hyps :=
+  repeat match goal with
+         | [ H : appcontext[fun ch : ?T => ?f ch] |- _ ]
+           => progress change (fun ch : T => f ch) with f in H
+         | [ H := appcontext[fun ch : ?T => ?f ch] |- _ ]
+           => progress change (fun ch : T => f ch) with f in (value of H)
+         end.
