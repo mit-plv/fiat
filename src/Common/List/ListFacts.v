@@ -2291,4 +2291,10 @@ Section ListFacts.
     hnf.
     erewrite <- remove_length_eq_S; [ reflexivity | .. ]; try eassumption.
   Qed.
+
+  Lemma in_map_rev A B (f : A -> B) x ls
+    : List.In x (List.map f (List.rev ls)) <-> List.In x (List.map f ls).
+  Proof.
+    rewrite map_rev, <- in_rev; reflexivity.
+  Qed.
 End ListFacts.
