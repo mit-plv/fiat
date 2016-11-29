@@ -212,6 +212,7 @@ src/Common/Prod.v
 src/Common/ReservedNotations.v
 src/Common/SetEq.v
 src/Common/SetEqProperties.v
+src/Common/SetoidClassInstances.v
 src/Common/SetoidInstances.v
 src/Common/Sigma.v
 src/Common/StringBound.v
