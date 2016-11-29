@@ -33,13 +33,34 @@ Definition all_possible_ascii : PositiveSet.t
 
 Definition pos_of_ascii (x : Ascii.ascii) : BinNums.positive
   := match Ascii.N_of_ascii x with
-     | BinNums.N0 => BinNat.N.succ_pos (Ascii.N_of_ascii (Ascii.Ascii true true true true true true true true))
+     | BinNums.N0 => max_ascii
      | BinNums.Npos x => x
      end.
 
 Lemma ascii_of_pos_of_ascii x : Ascii.ascii_of_pos (pos_of_ascii x) = x.
 Proof.
   destruct x; destruct_head bool; vm_compute; reflexivity.
+Qed.
+
+Lemma ascii_mem v
+      (H : MSetPositive.PositiveSet.cardinal v = 1)
+      ch'
+      (H' : MSetPositive.PositiveSet.choose v = Some ch')
+      (Hch' : pos_of_ascii (Ascii.ascii_of_pos ch') = ch')
+      ch''
+      (Hch'' : Ascii.ascii_of_pos ch' = ch'')
+      ch
+  : MSetPositive.PositiveSet.mem (pos_of_ascii ch) v = Equality.ascii_beq ch'' ch.
+Proof.
+  apply MSetPositive.PositiveSet.choose_spec1 in H'.
+  destruct (Equality.ascii_beq ch'' ch) eqn:Hch; subst ch''.
+  { apply Equality.ascii_bl in Hch; instantiate; subst ch.
+    AsciiLattice.PositiveSetExtensions.BasicDec.fsetdec. }
+  { AsciiLattice.PositiveSetExtensions.to_caps.
+    intro; apply Hch; clear Hch.
+    apply Equality.ascii_beq_true_iff.
+    rewrite <- ascii_of_pos_of_ascii; apply f_equal.
+    eapply AsciiLattice.PositiveSetExtensions.cardinal_one_In_same; eassumption. }
 Qed.
 
 Lemma In_all ch
