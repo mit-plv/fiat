@@ -2298,11 +2298,10 @@ Section ListFacts.
     rewrite map_rev, <- in_rev; reflexivity.
   Qed.
 
-  Lemma fold_right_push_iff (g : Prop -> Prop -> Prop)
-        {g_Proper : forall x, Proper (iff ==> iff) (g x)}
-        {A} (f : A -> A -> A)
+  Lemma fold_right_push_iff {A} (f : A -> A -> A) (g : Prop -> Prop -> Prop)
         (Q : A -> Prop) (x : A) xs
         (Hfg : forall x y, Q (f x y) <-> g (Q x) (Q y))
+        (g_Proper : forall x, Proper (iff ==> iff) (g x))
     : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
   Proof.
     induction xs; [ reflexivity | ].
@@ -2310,11 +2309,10 @@ Section ListFacts.
     rewrite Hfg, IHxs; reflexivity.
   Qed.
 
-  Lemma fold_right_push_iff' (g : Prop -> Prop -> Prop)
-        {g_Proper : Proper (iff ==> iff ==> iff) g}
-        {A} (f : A -> A -> A)
+  Lemma fold_right_push_iff' {A} (f : A -> A -> A) (g : Prop -> Prop -> Prop)
         (Q : A -> Prop) (x : A) xs
         (Hfg : forall x y, Q (f x y) <-> g (Q x) (Q y))
+        {g_Proper : Proper (iff ==> iff ==> iff) g}
     : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
   Proof.
     apply fold_right_push_iff; try assumption.
