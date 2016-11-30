@@ -1,6 +1,6 @@
 open Hint_db_extra_tactics
 open Stdarg
-open Constrarg
+open Tacarg
 
 DECLARE PLUGIN "hint_db_extra_plugin"
 
