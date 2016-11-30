@@ -2318,4 +2318,10 @@ Section ListFacts.
     apply fold_right_push_iff; try assumption.
     exact _.
   Qed.
+
+  Lemma forall_In_map {A B} {P : B -> Prop} (f : A -> B) ls
+    : (forall x, List.In x (List.map f ls) -> P x) <-> (forall x, List.In x ls -> P (f x)).
+  Proof.
+    induction ls as [|?? IHls]; simpl; intuition (subst; auto).
+  Qed.
 End ListFacts.
