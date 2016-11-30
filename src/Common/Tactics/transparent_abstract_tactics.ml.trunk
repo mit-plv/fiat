@@ -60,7 +60,7 @@ module TRANSPARENT_ABSTRACT =
       Proofview.Goal.nf_enter { enter = begin
                 fun gl ->
           let sigma = Proofview.Goal.sigma gl in
-          let current_sign = Global.named_context()
+          let current_sign = Global.named_context_val()
           and global_sign = Proofview.Goal.hyps gl in
           let sigma = Sigma.to_evar_map sigma in
           let evdref = ref sigma in
@@ -69,8 +69,8 @@ module TRANSPARENT_ABSTRACT =
             List.fold_right
               (fun d (s1,s2) ->
                let id = get_id d in
-               if mem_named_context id current_sign &&
-                    interpretable_as_section_decl evdref (Context.Named.lookup id current_sign) d
+               if mem_named_context_val id current_sign &&
+                    interpretable_as_section_decl evdref (lookup_named_val id current_sign) d
                then (s1,push_named_context_val d s2)
                else (Context.Named.add d s1,s2))
               global_sign (Context.Named.empty,empty_named_context_val) in
@@ -145,7 +145,7 @@ module TRANSPARENT_ABSTRACT =
       Proofview.Goal.nf_enter { enter = begin
           fun gl ->
           let sigma = Proofview.Goal.sigma gl in
-          let current_sign = Global.named_context()
+          let current_sign = Global.named_context_val()
           and global_sign = Proofview.Goal.hyps gl in
           let sigma = Sigma.to_evar_map sigma in
           let evdref = ref sigma in
@@ -154,8 +154,8 @@ module TRANSPARENT_ABSTRACT =
             List.fold_right
               (fun d (s1,s2) ->
                let id = get_id d in
-               if mem_named_context id current_sign &&
-                    interpretable_as_section_decl evdref (Context.Named.lookup id current_sign) d
+               if mem_named_context_val id current_sign &&
+                    interpretable_as_section_decl evdref (lookup_named_val id current_sign) d
                then (s1,push_named_context_val d s2)
                else (Context.Named.add d s1,s2))
               global_sign (Context.Named.empty,empty_named_context_val) in
