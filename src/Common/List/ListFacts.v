@@ -2297,4 +2297,27 @@ Section ListFacts.
   Proof.
     rewrite map_rev, <- in_rev; reflexivity.
   Qed.
+
+  Lemma fold_right_push_iff (g : Prop -> Prop -> Prop)
+        {g_Proper : forall x, Proper (iff ==> iff) (g x)}
+        {A} (f : A -> A -> A)
+        (Q : A -> Prop) (x : A) xs
+        (Hfg : forall x y, g (Q x) (Q y) <-> Q (f x y))
+    : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
+  Proof.
+    induction xs; [ reflexivity | ].
+    simpl.
+    rewrite <- Hfg, IHxs; reflexivity.
+  Qed.
+
+  Lemma fold_right_push_iff' (g : Prop -> Prop -> Prop)
+        {g_Proper : Proper (iff ==> iff ==> iff) g}
+        {A} (f : A -> A -> A)
+        (Q : A -> Prop) (x : A) xs
+        (Hfg : forall x y, g (Q x) (Q y) <-> Q (f x y))
+    : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
+  Proof.
+    apply fold_right_push_iff; try assumption.
+    exact _.
+  Qed.
 End ListFacts.
