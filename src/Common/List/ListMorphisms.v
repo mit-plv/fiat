@@ -468,3 +468,10 @@ Proof.
     try rewrite H0, H1;
     try assumption.
 Qed.
+
+Global Instance Proper_fold_right_Prop_iff
+  : Proper ((iff ==> iff ==> iff) ==> iff ==> eq ==> iff) (fold_right (B:=Prop)) | 5.
+Proof.
+  unfold respectful; intros ?? H0 ?? H1 xs ys ?; subst ys.
+  induction xs; [ assumption | simpl; rewrite H0 by (eassumption || reflexivity); reflexivity ].
+Qed.
