@@ -2241,7 +2241,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     : lift_brelation R default m1 m2 = false
       <-> (exists x, InA (@eq_key_elt _) x elms /\ snd x = false).
   Proof.
-    FMap_convert.
+    unfold lift_brelation; FMap_convert.
     setoid_rewrite InA_alt.
     subst elms.
     let ls := match goal with |- context[elements ?m] => constr:(elements m) end in
