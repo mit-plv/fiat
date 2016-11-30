@@ -199,6 +199,23 @@ Record grammar_fixedpoint_data :=
     step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state);
     step_constraints_ext : Proper (pointwise_relation _ state_beq ==> eq ==> state_beq ==> state_beq) step_constraints }.
 
+Record grammar_fixedpoint_data_relation (x y : grammar_fixedpoint_data) :=
+  { state_relation :> @state _ x -> @state _ y -> Prop;
+    top_state_related : state_relation ⊤ ⊤;
+    state_relation_Proper : Proper (state_beq ==> state_beq ==> iff) state_relation;
+    step_constraints_monotonic
+    : ((respectful_hetero
+          _ _ _ _
+          (fun f f' => forall x, state_relation (f x) (f' x))
+          (fun _ _ => respectful_hetero
+                        _ _ _ _
+                        eq
+                        (fun _ _ => respectful_hetero
+                                      _ _ _ _
+                                      state_relation
+                                      (fun _ _ => state_relation))))
+         (@step_constraints x) (@step_constraints y)) }.
+
 Global Existing Instance lattice_data.
 Global Existing Instance step_constraints_ext.
 Global Existing Instance state_lt_Transitive.
@@ -208,6 +225,7 @@ Global Existing Instance state_lt_Proper.
 Global Existing Instance prestate_lt_Proper.
 Global Existing Instance least_upper_bound_Proper.
 Global Existing Instance preleast_upper_bound_Proper.
+Global Existing Instance state_relation_Proper.
 
 Global Arguments state_lt_Transitive {_ _} [_ _ _] _ _.
 Global Arguments state_le _ _ !_ !_ / .
