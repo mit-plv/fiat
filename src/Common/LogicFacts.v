@@ -217,6 +217,11 @@ Section LogicFacts.
   Proof.
     intuition; destruct_all (ex P); auto.
   Qed.
+
+  Lemma pull_forall_iff {A} (P Q : A -> Prop)
+    : (forall x : A, (P x <-> Q x))
+      -> ((forall x : A, P x) <-> (forall x : A, Q x)).
+  Proof. firstorder eauto. Qed.
 End LogicFacts.
 
 Create HintDb logic discriminated.
