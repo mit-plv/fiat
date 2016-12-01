@@ -544,6 +544,16 @@ Section grammar_fixedpoint.
         rewrite (proj2 (find_pre_Fix_grammar _)) in Hvalid; congruence. }
     Qed.
 
+    Lemma find_pre_Fix_grammar_to_lookup_state' nt
+      : PositiveMap.find nt (pre_Fix_grammar initial_nonterminals_data)
+        = if is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal nt)
+          then Some (lookup_state (pre_Fix_grammar initial_nonterminals_data) (positive_to_nonterminal nt))
+          else None.
+    Proof.
+      rewrite <- find_pre_Fix_grammar_to_lookup_state, positive_to_nonterminal_to_positive.
+      reflexivity.
+    Qed.
+
     Lemma lookup_state_invalid_pre_Fix_grammar (nt : default_nonterminal_carrierT)
           (Hinvalid : is_valid_nonterminal initial_nonterminals_data nt = false)
       : lookup_state (pre_Fix_grammar initial_nonterminals_data) nt = default_value.
