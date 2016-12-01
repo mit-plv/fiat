@@ -439,20 +439,13 @@ Section grammar_fixedpoint.
           unfold aggregate_step in *.
           edestruct H'; eassumption. } }
     Qed.
-  End with_initial.
 
-  Section with_grammar.
-    Context (G : pregrammar' Char).
-
-    Let predata := @rdp_list_predata _ G.
-    Local Existing Instance predata.
-
-    Lemma find_aggregate_state_max_spec k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
+    Lemma find_aggregate_state_max_rdp_spec k v
+      : PositiveMap.find k aggregate_state_max = Some v
+        <-> (v = ⊥ /\ rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
     Proof.
       unfold aggregate_state_max in *.
-      generalize dependent (@initial_nonterminals_data _ _); intros ls.
+      generalize dependent initial_nonterminals_data; intros ls.
       induction ls as [|x xs IHxs].
       { simpl in *.
         autorewrite with aggregate_step_db in *.
@@ -473,12 +466,24 @@ Section grammar_fixedpoint.
     Qed.
 
     Lemma find_aggregate_state_max k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        -> PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some ⊥.
+      : PositiveMap.find k aggregate_state_max = Some v
+        -> PositiveMap.find k aggregate_state_max = Some ⊥.
     Proof.
-      setoid_rewrite find_aggregate_state_max_spec.
+      setoid_rewrite find_aggregate_state_max_rdp_spec.
       tauto.
     Qed.
+  End with_initial.
+
+  Section with_grammar.
+    Context (G : pregrammar' Char).
+
+    Let predata := @rdp_list_predata _ G.
+    Local Existing Instance predata.
+
+    Definition find_aggregate_state_max_spec k v
+      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
+        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k))
+      := find_aggregate_state_max_rdp_spec initial_nonterminals_data k v.
 
     Hint Rewrite find_aggregate_state_max_spec : aggregate_step_db.
 
