@@ -472,6 +472,20 @@ Section grammar_fixedpoint.
       setoid_rewrite find_aggregate_state_max_rdp_spec.
       tauto.
     Qed.
+
+    Lemma find_aggregate_state_max_exact k
+      : PositiveMap.find k aggregate_state_max
+        = if rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)
+          then Some ⊥
+          else None.
+    Proof.
+      pose proof (find_aggregate_state_max_rdp_spec k) as H;
+        unfold is_true in *; split_iff; break_match.
+      { intuition eauto. }
+      { edestruct PositiveMap.find; [ | reflexivity ].
+        specialize_all_ways; specialize_by ltac:(exact eq_refl).
+        intuition congruence. }
+    Qed.
   End with_initial.
 
   Section with_grammar.
