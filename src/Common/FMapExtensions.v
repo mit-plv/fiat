@@ -2100,6 +2100,22 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     Proof.
       t; setoid_subst_rel (@Equal A); reflexivity.
     Qed.
+
+    Global Instance lift_relation_gen_hetero_Proper_Proper_subrelation
+           {R1 R2 : A -> A -> P}
+           (R1' := fun x y => Q (R1 x y))
+           (R2' := fun x y => Q (R2 x y))
+           {R1_Reflexive : Reflexive R1'}
+           {R2_Reflexive : Reflexive R2'}
+           {R1_subrelation : subrelation R1' R'}
+           {R2_subrelation : subrelation R2' R'}
+           {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
+      : Proper (lift R1 ==> lift R2 ==> iff) (lift R) | 2.
+    Proof.
+      t; compute in * |- ; split_and; break_match;
+        first [ reflexivity
+              | split; trivial; eauto with nocore ]. (* eauto is slow :/ *)
+    Qed.
   End rel.
 
   Global Instance lift_relation_hetero_Reflexive {A R} {HR : @Reflexive A R} {default}
