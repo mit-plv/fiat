@@ -2077,12 +2077,14 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
             (Hand : forall x y, Q (and x y) <-> Q x /\ Q y).
 
     Local Notation R' := (fun x y => Q (R x y)).
-    Local Notation liftR := (fun x y => Q (@lift_relation_gen_hetero A A P and True' R default default x y)).
+    Local Notation lift R := (fun x y => Q (@lift_relation_gen_hetero A A P and True' R default default x y)).
+    Local Notation liftR := (lift R).
 
     Local Ltac t :=
       repeat ((rewrite lift_relation_gen_hetero_iff by auto) || intro);
       repeat match goal with
              | [ H : forall k : key, _, k' : key |- _ ] => specialize (H k')
+             | [ |- (forall _, _) <-> (forall _, _) ] => apply pull_forall_iff; intro
              end;
       try solve [ break_match; break_match_hyps; eauto ].
 
@@ -2096,9 +2098,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     Global Instance lift_relation_gen_hetero_Proper_Equal
       : Proper (@Equal A ==> @Equal A ==> iff) liftR | 2.
     Proof.
-      t.
-      split; intros H'' k; specialize (H'' k);
-        setoid_subst_rel (@Equal A); assumption.
+      t; setoid_subst_rel (@Equal A); reflexivity.
     Qed.
   End rel.
 
