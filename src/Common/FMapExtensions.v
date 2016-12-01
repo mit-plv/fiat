@@ -2071,14 +2071,12 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
 
   Section rel.
-    Context {A P} {Q : P -> Prop} {R : A -> A -> P} {and True'}
+    Context {A P} {Q : P -> Prop} {and True'}
             {default : A}
             (HTrue' : Q True')
             (Hand : forall x y, Q (and x y) <-> Q x /\ Q y).
 
-    Local Notation R' := (fun x y => Q (R x y)).
     Local Notation lift R := (fun x y => Q (@lift_relation_gen_hetero A A P and True' R default default x y)).
-    Local Notation liftR := (lift R).
 
     Local Ltac t :=
       repeat ((rewrite lift_relation_gen_hetero_iff by auto) || intro);
@@ -2088,35 +2086,91 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              end;
       try solve [ break_match; break_match_hyps; eauto ].
 
-    Global Instance lift_relation_gen_hetero_Reflexive {HR : @Reflexive A R'} : Reflexive liftR | 5.
-    Proof. t. Qed.
-    Global Instance lift_relation_gen_hetero_Symmetric {HR : @Symmetric A R'} : Symmetric liftR | 5.
-    Proof. t. Qed.
-    Global Instance lift_relation_gen_hetero_Transitive {HR : @Transitive A R'} : Transitive liftR | 5.
-    Proof. t. Qed.
+    Section with_R.
+      Context {R : A -> A -> P}.
+      Local Notation R' := (fun x y => Q (R x y)).
+      Local Notation liftR := (lift R).
 
-    Global Instance lift_relation_gen_hetero_Proper_Equal
-      : Proper (@Equal A ==> @Equal A ==> iff) liftR | 2.
-    Proof.
-      t; setoid_subst_rel (@Equal A); reflexivity.
-    Qed.
+      Global Instance lift_relation_gen_hetero_Reflexive {HR : @Reflexive A R'} : Reflexive liftR | 5.
+      Proof. t. Qed.
+      Global Instance lift_relation_gen_hetero_Symmetric {HR : @Symmetric A R'} : Symmetric liftR | 5.
+      Proof. t. Qed.
+      Global Instance lift_relation_gen_hetero_Transitive {HR : @Transitive A R'} : Transitive liftR | 5.
+      Proof. t. Qed.
 
-    Global Instance lift_relation_gen_hetero_Proper_Proper_subrelation
-           {R1 R2 : A -> A -> P}
-           (R1' := fun x y => Q (R1 x y))
-           (R2' := fun x y => Q (R2 x y))
-           {R1_Reflexive : Reflexive R1'}
-           {R2_Reflexive : Reflexive R2'}
-           {R1_subrelation : subrelation R1' R'}
-           {R2_subrelation : subrelation R2' R'}
-           {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
-      : Proper (lift R1 ==> lift R2 ==> iff) (lift R) | 2.
+      Global Instance lift_relation_gen_hetero_Proper_Equal
+        : Proper (@Equal A ==> @Equal A ==> iff) liftR | 2.
+      Proof.
+        t; setoid_subst_rel (@Equal A); reflexivity.
+      Qed.
+
+      Global Instance lift_relation_gen_hetero_homo_Proper_Proper_subrelation
+             {R1 R2 : A -> A -> P}
+             (R1' := fun x y => Q (R1 x y))
+             (R2' := fun x y => Q (R2 x y))
+             {R1_Reflexive : Reflexive R1'}
+             {R2_Reflexive : Reflexive R2'}
+             {R1_subrelation : subrelation R1' R'}
+             {R2_subrelation : subrelation R2' R'}
+             {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
+        : Proper (lift R1 ==> lift R2 ==> iff) (lift R) | 2.
+      Proof.
+        t; compute in * |- ; split_and; break_match; split; eauto. (* eauto is slow :/ *)
+      Qed.
+
+      Global Instance lift_relation_gen_hetero_Proper_Proper
+             {R_Reflexive : Reflexive R'}
+             {R_Proper : Proper (R' ==> R' ==> iff) R'}
+        : Proper (liftR ==> liftR ==> iff) liftR | 2 := _.
+
+      Global Instance lift_relation_gen_hetero_Equivalence
+             {R_Equiv : @Equivalence A R'} : Equivalence liftR | 2.
+      Proof.
+        split; exact _.
+      Qed.
+    End with_R.
+
+    Global Instance lift_relation_gen_hetero_Antisymmetric
+           {R RE : A -> A -> P}
+           (R' := fun x y => Q (R x y))
+           (RE' := fun x y => Q (RE x y))
+           {RE_Equivalence : @Equivalence A RE'}
+           {AS : Antisymmetric A RE' R'}
+    : Antisymmetric _ (lift RE) (lift R) | 2.
     Proof.
-      t; compute in * |- ; split_and; break_match;
-        first [ reflexivity
-              | split; trivial; eauto with nocore ]. (* eauto is slow :/ *)
+      t; compute in *; break_match; eauto.
     Qed.
   End rel.
+
+  Section rel1.
+    Global Instance lift_relation_gen_hetero_Proper_Proper_subrelation
+           {A B P} {Q : P -> Prop} {R : A -> B -> P} {and True'}
+           {defaultA : A} {defaultB : B}
+           (HTrue' : Q True')
+           (Hand : forall x y, Q (and x y) <-> Q x /\ Q y)
+           (Rdefault : Q (R defaultA defaultB))
+           {R1 : A -> A -> P}
+           {R2 : B -> B -> P}
+           (R1' := fun x y => Q (R1 x y))
+           (R2' := fun x y => Q (R2 x y))
+           (R' := fun x y => Q (R x y))
+           {R1_Reflexive : Reflexive R1'}
+           {R2_Reflexive : Reflexive R2'}
+           {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
+    : Proper ((fun x y => Q (@lift_relation_gen_hetero A A P and True' R1 defaultA defaultA x y))
+                ==> (fun x y => Q (@lift_relation_gen_hetero B B P and True' R2 defaultB defaultB x y))
+                ==> iff)
+             (fun x y => Q (@lift_relation_gen_hetero A B P and True' R defaultA defaultB x y)) | 2.
+    Proof.
+      repeat ((rewrite lift_relation_gen_hetero_iff by auto) || intro).
+      repeat match goal with
+             | [ H : forall k : key, _, k' : key |- _ ] => specialize (H k')
+             | [ |- (forall _, _) <-> (forall _, _) ] => apply pull_forall_iff; intro
+             end.
+      try solve [ break_match; break_match_hyps; eauto ].
+      compute in * |- ; split_and; break_match; split; eauto.
+    Qed.
+  End rel1.
 
   Global Instance lift_relation_hetero_Reflexive {A R} {HR : @Reflexive A R} {default}
     : Reflexive (lift_relation_hetero R default default) | 5
@@ -2192,27 +2246,123 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Global Instance lift_brelation_Proper_Equal {A R default}
     : Proper (@Equal A ==> @Equal A ==> eq) (@lift_brelation A R default) | 2 := _.
 
+  Global Instance lift_relation_hetero_Proper_Proper_subrelation
+         {A B}
+         {R1 : A -> A -> Prop} {R2 : B -> B -> Prop}
+         {R : A -> B -> Prop}
+         {defaultA defaultB}
+         (Rdefault : R defaultA defaultB)
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_relation_hetero R1 defaultA defaultA)
+                ==> (lift_relation_hetero R2 defaultB defaultB)
+                ==> iff)
+             (lift_relation_hetero R defaultA defaultB) | 2
+    := lift_relation_gen_hetero_Proper_Proper_subrelation
+         (Q:=fun x => x) I (fun x y => reflexivity _) Rdefault.
+  Global Instance lift_relation_hetero_homo_Proper_Proper_subrelation
+         {A} {R1 R2 R : A -> A -> Prop}
+         {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_relation_hetero R1 default default)
+                ==> (lift_relation_hetero R2 default default)
+                ==> iff)
+             (lift_relation_hetero R default default) | 2
+    := lift_relation_gen_hetero_homo_Proper_Proper_subrelation
+         (Q:=fun x => x) I (fun x y => reflexivity _).
+
   Global Instance lift_relation_Proper_Proper_subrelation {A} {R1 R2 R : A -> A -> Prop} {default}
          {R1_Reflexive : Reflexive R1}
          {R2_Reflexive : Reflexive R2}
          {R1_subrelation : subrelation R1 R}
          {R2_subrelation : subrelation R2 R}
          {R_Proper : Proper (R1 ==> R2 ==> iff) R}
-    : Proper (lift_relation R1 default ==> lift_relation R2 default ==> iff) (lift_relation R default) | 2.
+    : Proper (lift_relation R1 default ==> lift_relation R2 default ==> iff) (lift_relation R default) | 2
+    := _.
+
+    Global Instance lift_brelation_hetero_Proper_Proper_subrelation_iff
+         {A B}
+         {R1 : A -> A -> bool} {R2 : B -> B -> bool}
+         {R : A -> B -> bool}
+         {defaultA defaultB}
+         (Rdefault : R defaultA defaultB)
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_brelation_hetero R1 defaultA defaultA)
+                ==> (lift_brelation_hetero R2 defaultB defaultB)
+                ==> iff)
+             (lift_brelation_hetero R defaultA defaultB) | 2
+    := lift_relation_gen_hetero_Proper_Proper_subrelation
+         (Q:=is_true) (reflexivity _) andb_true_iff Rdefault.
+  Global Instance lift_brelation_hetero_homo_Proper_Proper_subrelation_iff
+         {A} {R1 R2 R : A -> A -> bool}
+         {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_brelation_hetero R1 default default)
+                ==> (lift_brelation_hetero R2 default default)
+                ==> iff)
+             (lift_brelation_hetero R default default) | 2
+    := lift_relation_gen_hetero_homo_Proper_Proper_subrelation
+         (Q:=is_true) (reflexivity _) andb_true_iff.
+
+  Global Instance lift_brelation_Proper_Proper_subrelation_iff {A} {R1 R2 R : A -> A -> bool} {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> iff) (lift_brelation R default) | 2
+    := _.
+
+  Global Instance lift_brelation_hetero_Proper_Proper_subrelation
+         {A B}
+         {R1 : A -> A -> bool} {R2 : B -> B -> bool}
+         {R : A -> B -> bool}
+         {defaultA defaultB}
+         (Rdefault : R defaultA defaultB)
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R_Proper : Proper (R1 ==> R2 ==> eq) R}
+    : Proper ((lift_brelation_hetero R1 defaultA defaultA)
+                ==> (lift_brelation_hetero R2 defaultB defaultB)
+                ==> eq)
+             (lift_brelation_hetero R defaultA defaultB) | 2.
   Proof.
-    intros a b H a' b' H'.
-    FMap_convert_to_find.
-    split; intros H'' k; specialize (H k); specialize (H' k); specialize (H'' k);
-      unfold Proper, respectful, Reflexive, Symmetric, Transitive, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      repeat match goal with
-             | [ |- false = true ] => exfalso
-             | [ |- true <> true ] => exfalso
-             | [ H : ~_ |- False ] => apply H; clear H
-             | _ => progress intros
-             | _ => progress split_iff
-             | _ => progress break_match_hyps
-             | _ => solve [ eauto ]
-             end.
+    assert (R_Proper' : Proper (R1 ==> R2 ==> iff) R)
+      by (intros ?? H ?? H'; rewrite H, H'; reflexivity).
+    pose proof (@lift_brelation_hetero_Proper_Proper_subrelation_iff A B R1 R2 R defaultA defaultB Rdefault _ _ _) as H.
+    repeat (let x := fresh in intro x; specialize (H x)); cbv beta in *.
+    clear -H; do 2 edestruct lift_brelation_hetero; compute in H; intuition congruence.
+  Qed.
+
+  Global Instance lift_brelation_hetero_homo_Proper_Proper_subrelation
+         {A} {R1 R2 R : A -> A -> bool}
+         {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> eq) R}
+    : Proper ((lift_brelation_hetero R1 default default)
+                ==> (lift_brelation_hetero R2 default default)
+                ==> eq)
+             (lift_brelation_hetero R default default) | 2.
+  Proof.
+    assert (R_Proper' : Proper (R1 ==> R2 ==> iff) R)
+      by (intros ?? H ?? H'; rewrite H, H'; reflexivity).
+    pose proof (@lift_brelation_hetero_homo_Proper_Proper_subrelation_iff A R1 R2 R default _ _ _ _ _) as H.
+    repeat (let x := fresh in intro x; specialize (H x)); cbv beta in *.
+    clear -H; do 2 edestruct lift_brelation_hetero; compute in H; intuition congruence.
   Qed.
 
   Global Instance lift_brelation_Proper_Proper_subrelation {A} {R1 R2 R : A -> A -> bool} {default}
@@ -2221,95 +2371,99 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
          {R1_subrelation : subrelation R1 R}
          {R2_subrelation : subrelation R2 R}
          {R_Proper : Proper (R1 ==> R2 ==> eq) R}
-    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2.
-  Proof.
-    intros a b H a' b' H'.
-    destruct (lift_brelation R default a a') eqn:Ha;
-    destruct (lift_brelation R default b b') eqn:Hb;
-    unfold lift_brelation in *;
-    try reflexivity;
-    FMap_convert_to_find;
-    repeat match goal with
-           | [ |- false = true ] => exfalso
-           | [ |- true <> true ] => exfalso
-           | [ H : ~_ |- False ] => apply H; clear H
-           | _ => progress intros
-           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
-           end;
-      specialize (fun x y H z w => R_Proper x y H z w);
-      unfold Reflexive, Symmetric, Transitive, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      instance_t.
-  Qed.
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2
+    := _.
+
+  Global Instance lift_relation_hetero_Proper_Proper {A} {R : A -> A -> Prop} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> iff) R}
+    : Proper (lift_relation_hetero R default default ==> lift_relation_hetero R default default ==> iff) (lift_relation_hetero R default default) | 2
+    := _.
 
   Global Instance lift_relation_Proper_Proper {A} {R : A -> A -> Prop} {default}
          {R_Reflexive : Reflexive R}
          {R_Proper : Proper (R ==> R ==> iff) R}
-    : Proper (lift_relation R default ==> lift_relation R default ==> iff) (lift_relation R default) | 2.
-  Proof.
-    apply lift_relation_Proper_Proper_subrelation.
-  Qed.
+    : Proper (lift_relation R default ==> lift_relation R default ==> iff) (lift_relation R default) | 2
+    := _.
+
+  Global Instance lift_brelation_hetero_Proper_Proper_iff {A} {R : A -> A -> bool} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> iff) R}
+    : Proper (lift_brelation_hetero R default default ==> lift_brelation_hetero R default default ==> iff) (lift_brelation_hetero R default default) | 2
+    := _.
+
+  Global Instance lift_brelation_Proper_Proper_iff {A} {R : A -> A -> bool} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> iff) R}
+    : Proper (lift_brelation R default ==> lift_brelation R default ==> iff) (lift_brelation R default) | 2
+    := _.
 
   Global Instance lift_brelation_Proper_Proper {A} {R : A -> A -> bool} {default}
          {R_Reflexive : Reflexive R}
          {R_Proper : Proper (R ==> R ==> eq) R}
-    : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2.
-  Proof.
-    apply lift_brelation_Proper_Proper_subrelation.
-  Qed.
+    : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2
+    := _.
+
+  Global Instance lift_relation_hetero_Equivalence
+         {A} {R : A -> A -> Prop}
+         {R_Equiv : @Equivalence A R}
+         {default}
+    : Equivalence (lift_relation_hetero R default default) | 2
+    := lift_relation_gen_hetero_Equivalence
+         (Q:=fun x => x) I (fun x y => reflexivity _).
 
   Global Instance lift_relation_Equivalence
          {A} {R : A -> A -> Prop}
          {R_Equiv : @Equivalence A R}
          {default}
-    : Equivalence (lift_relation R default).
-  Proof.
-    split; exact _.
-  Qed.
+    : Equivalence (lift_relation R default) | 2 := _.
 
+  Global Instance lift_brelation_hetero_Equivalence
+         {A} {R : A -> A -> bool}
+         {R_Equiv : @Equivalence A R}
+         {default}
+    : Equivalence (lift_brelation_hetero R default default) | 2
+    := lift_relation_gen_hetero_Equivalence
+         (Q:=is_true) (reflexivity _) andb_true_iff.
   Global Instance lift_brelation_Equivalence
          {A} {R : A -> A -> bool}
          {R_Equiv : @Equivalence A R}
          {default}
-    : Equivalence (lift_brelation R default).
-  Proof.
-    split; exact _.
-  Qed.
+    : Equivalence (lift_brelation R default) | 2 := _.
+
+  Global Instance lift_relation_hetero_Antisymmetric
+         {A} {R RE : A -> A -> Prop}
+         {RE_Equivalence : @Equivalence A RE}
+         {AS : Antisymmetric A RE R}
+         {default}
+    : Antisymmetric _ (lift_relation_hetero RE default default) (lift_relation_hetero R default default) | 2
+    := lift_relation_gen_hetero_Antisymmetric
+         (Q:=fun x => x) I (fun x y => reflexivity _).
 
   Global Instance lift_relation_Antisymmetric
          {A} {R RE : A -> A -> Prop}
          {RE_Equivalence : @Equivalence A RE}
          {AS : Antisymmetric A RE R}
          {default}
-    : Antisymmetric _ (lift_relation RE default) (lift_relation R default).
-  Proof.
-    intros a b H H'.
-    FMap_convert_to_find.
-    repeat match goal with
-           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
-           end.
-    destruct RE_Equivalence.
-    do 2 edestruct find;
-      unfold Reflexive, Symmetric, Transitive, Antisymmetric, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      instance_t; eauto.
-  Qed.
+    : Antisymmetric _ (lift_relation RE default) (lift_relation R default) | 2
+    := _.
+
+  Global Instance lift_brelation_hetero_Antisymmetric
+         {A} {R RE : A -> A -> bool}
+         {RE_Equivalence : @Equivalence A RE}
+         {AS : Antisymmetric A RE R}
+         {default}
+    : Antisymmetric _ (lift_brelation_hetero RE default default) (lift_brelation_hetero R default default) | 2
+    := lift_relation_gen_hetero_Antisymmetric
+         (Q:=is_true) (reflexivity _) andb_true_iff.
 
   Global Instance lift_brelation_Antisymmetric
          {A} {R RE : A -> A -> bool}
          {RE_Equivalence : @Equivalence A RE}
          {AS : Antisymmetric A RE R}
          {default}
-    : Antisymmetric _ (lift_brelation RE default) (lift_brelation R default).
-  Proof.
-    intros a b H H'.
-    FMap_convert_to_find.
-    repeat match goal with
-           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
-           end.
-    destruct RE_Equivalence.
-    do 2 edestruct find;
-      unfold Reflexive, Symmetric, Transitive, Antisymmetric, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      instance_t.
-  Qed.
+    : Antisymmetric _ (lift_brelation RE default) (lift_brelation R default) | 2
+    := _.
 
   (** TODO: merge with FindWithDefault *)
   Definition find_default {elt} (default : elt) (k : key) (m : t elt) : elt
