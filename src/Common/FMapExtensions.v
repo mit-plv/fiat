@@ -2143,6 +2143,66 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   End rel.
 
   Section rel1.
+    Global Instance lift_relation_gen_hetero_Proper_Proper_subrelation_gen
+           {A B P1 P2 P} {Q1 : P1 -> Prop} {Q2 : P2 -> Prop} {Q : P -> Prop}
+           {R : A -> B -> P} {and1 True'1 and2 True'2 and True'}
+           {defaultA : A} {defaultB : B}
+           (HTrue'1 : Q1 True'1)
+           (Hand1 : forall x y, Q1 (and1 x y) <-> Q1 x /\ Q1 y)
+           (HTrue'2 : Q2 True'2)
+           (Hand2 : forall x y, Q2 (and2 x y) <-> Q2 x /\ Q2 y)
+           (HTrue' : Q True')
+           (Hand : forall x y, Q (and x y) <-> Q x /\ Q y)
+           (Rdefault : Q (R defaultA defaultB))
+           {R1 : A -> A -> P1}
+           {R2 : B -> B -> P2}
+           (R1' := fun x y => Q1 (R1 x y))
+           (R2' := fun x y => Q2 (R2 x y))
+           (R' := fun x y => Q (R x y))
+           {R1_Reflexive : Reflexive R1'}
+           {R2_Reflexive : Reflexive R2'}
+           {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
+    : Proper ((fun x y => Q1 (@lift_relation_gen_hetero A A P1 and1 True'1 R1 defaultA defaultA x y))
+                ==> (fun x y => Q2 (@lift_relation_gen_hetero B B P2 and2 True'2 R2 defaultB defaultB x y))
+                ==> iff)
+             (fun x y => Q (@lift_relation_gen_hetero A B P and True' R defaultA defaultB x y)) | 2.
+    Proof.
+      repeat ((rewrite lift_relation_gen_hetero_iff by auto) || intro).
+      repeat match goal with
+             | [ H : forall k : key, _, k' : key |- _ ] => specialize (H k')
+             | [ |- (forall _, _) <-> (forall _, _) ] => apply pull_forall_iff; intro
+             end.
+      compute in * |- ; split_and; break_match; split; eauto.
+    Qed.
+
+    Global Instance lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen
+           {A P1 P2 P} {Q1 : P1 -> Prop} {Q2 : P2 -> Prop} {Q : P -> Prop}
+           {R : A -> A -> P} {and1 True'1 and2 True'2 and True'}
+           {default : A}
+           (HTrue'1 : Q1 True'1)
+           (Hand1 : forall x y, Q1 (and1 x y) <-> Q1 x /\ Q1 y)
+           (HTrue'2 : Q2 True'2)
+           (Hand2 : forall x y, Q2 (and2 x y) <-> Q2 x /\ Q2 y)
+           (HTrue' : Q True')
+           (Hand : forall x y, Q (and x y) <-> Q x /\ Q y)
+           {R1 : A -> A -> P1}
+           {R2 : A -> A -> P2}
+           (R1' := fun x y => Q1 (R1 x y))
+           (R2' := fun x y => Q2 (R2 x y))
+           (R' := fun x y => Q (R x y))
+           {R1_Reflexive : Reflexive R1'}
+           {R2_Reflexive : Reflexive R2'}
+           {R1_subrelation : subrelation R1' R'}
+           {R2_subrelation : subrelation R2' R'}
+           {R_Proper : Proper (R1' ==> R2' ==> iff) R'}
+      : Proper ((fun x y => Q1 (@lift_relation_gen_hetero A A P1 and1 True'1 R1 default default x y))
+                ==> (fun x y => Q2 (@lift_relation_gen_hetero A A P2 and2 True'2 R2 default default x y))
+                ==> iff)
+               (fun x y => Q (@lift_relation_gen_hetero A A P and True' R default default x y)) | 2.
+    Proof.
+      apply lift_relation_gen_hetero_Proper_Proper_subrelation_gen; auto; apply R1_subrelation; reflexivity.
+    Qed.
+
     Global Instance lift_relation_gen_hetero_Proper_Proper_subrelation
            {A B P} {Q : P -> Prop} {R : A -> B -> P} {and True'}
            {defaultA : A} {defaultB : B}
@@ -2160,16 +2220,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     : Proper ((fun x y => Q (@lift_relation_gen_hetero A A P and True' R1 defaultA defaultA x y))
                 ==> (fun x y => Q (@lift_relation_gen_hetero B B P and True' R2 defaultB defaultB x y))
                 ==> iff)
-             (fun x y => Q (@lift_relation_gen_hetero A B P and True' R defaultA defaultB x y)) | 2.
-    Proof.
-      repeat ((rewrite lift_relation_gen_hetero_iff by auto) || intro).
-      repeat match goal with
-             | [ H : forall k : key, _, k' : key |- _ ] => specialize (H k')
-             | [ |- (forall _, _) <-> (forall _, _) ] => apply pull_forall_iff; intro
-             end.
-      try solve [ break_match; break_match_hyps; eauto ].
-      compute in * |- ; split_and; break_match; split; eauto.
-    Qed.
+             (fun x y => Q (@lift_relation_gen_hetero A B P and True' R defaultA defaultB x y)) | 2
+      := lift_relation_gen_hetero_Proper_Proper_subrelation_gen
+           HTrue' Hand HTrue' Hand HTrue' Hand Rdefault.
   End rel1.
 
   Global Instance lift_relation_hetero_Reflexive {A R} {HR : @Reflexive A R} {default}
@@ -2374,6 +2427,49 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2
     := _.
 
+  Global Instance lift_relation_hetero_Proper_Proper_lift_brelation_subrelation
+         {A B}
+         {R1 : A -> A -> bool} {R2 : B -> B -> bool}
+         {R : A -> B -> Prop}
+         {defaultA defaultB}
+         (Rdefault : R defaultA defaultB)
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_brelation_hetero R1 defaultA defaultA)
+                ==> (lift_brelation_hetero R2 defaultB defaultB)
+                ==> iff)
+             (lift_relation_hetero R defaultA defaultB) | 2
+    := lift_relation_gen_hetero_Proper_Proper_subrelation_gen
+         (Q1:=is_true) (Q2:=is_true) (Q:=fun x => x)
+         (reflexivity _) andb_true_iff (reflexivity _) andb_true_iff
+         I (fun x y => reflexivity _) Rdefault.
+  Global Instance lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation
+         {A} {R1 R2 : A -> A -> bool} {R : A -> A -> Prop}
+         {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper ((lift_brelation_hetero R1 default default)
+                ==> (lift_brelation_hetero R2 default default)
+                ==> iff)
+             (lift_relation_hetero R default default) | 2
+    := lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen
+         (Q1:=is_true) (Q2:=is_true) (Q:=fun x => x)
+         (reflexivity _) andb_true_iff (reflexivity _) andb_true_iff
+         I (fun x y => reflexivity _).
+
+  Global Instance lift_relation_Proper_Proper_lift_brelation_subrelation {A} {R1 R2 : A -> A -> bool} {R : A -> A -> Prop} {default}
+         {R1_Reflexive : Reflexive R1}
+         {R2_Reflexive : Reflexive R2}
+         {R1_subrelation : subrelation R1 R}
+         {R2_subrelation : subrelation R2 R}
+         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> iff) (lift_relation R default) | 2
+    := _.
+
   Global Instance lift_relation_hetero_Proper_Proper {A} {R : A -> A -> Prop} {default}
          {R_Reflexive : Reflexive R}
          {R_Proper : Proper (R ==> R ==> iff) R}
@@ -2402,6 +2498,18 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
          {R_Reflexive : Reflexive R}
          {R_Proper : Proper (R ==> R ==> eq) R}
     : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2
+    := _.
+
+  Global Instance lift_relation_hetero_Proper_Proper_lift_brelation {A} {R : A -> A -> bool} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> iff) R}
+    : Proper (lift_brelation_hetero R default default ==> lift_brelation_hetero R default default ==> iff) (lift_relation_hetero R default default) | 2
+    := _.
+
+  Global Instance lift_relation_Proper_Proper_lift_brelation {A} {R : A -> A -> bool} {default}
+         {R_Reflexive : Reflexive R}
+         {R_Proper : Proper (R ==> R ==> iff) R}
+    : Proper (lift_brelation R default ==> lift_brelation R default ==> iff) (lift_relation R default) | 2
     := _.
 
   Global Instance lift_relation_hetero_Equivalence

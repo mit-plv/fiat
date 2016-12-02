@@ -45,6 +45,24 @@ Section grammar_fixedpoint.
     Let predata := @rdp_list_predata _ G.
     Local Existing Instance predata.
 
+    Global Instance lift_relation_hetero_Proper_aggregate_state_beq
+      : Proper (PositiveMapExtensions.lift_eqb state_beq ⊤ ==> PositiveMapExtensions.lift_eqb state_beq ⊤ ==> iff)
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤).
+    Proof.
+      unfold PositiveMapExtensions.lift_eqb.
+      Locate PositiveMapExtensions.
+
+  Proper
+    ((fun x x0 : aggregate_state gdata0 => PositiveMapExtensions.lift_eqb state_beq ⊤ x x0) ==>
+     (fun x x0 : aggregate_state gdata1 => PositiveMapExtensions.lift_eqb state_beq ⊤ x x0) ==>
+     iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)
+
+    Global Instance lift_relation_hetero_Proper_aggregate_state_eq
+      : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> iff)
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤).
+    Proof.
+      unfold aggregate_state_eq.
+
     Lemma related_pre_Fix_grammar
           (HRtop : R ⊤ ⊤)
           (HRbot : R ⊥ ⊥)
@@ -86,14 +104,15 @@ Section grammar_fixedpoint.
       { specialize (fun y Hy => IH y Hy st).
         rewrite Init.Wf.Fix_eq in IH by (intros; edestruct dec; trivial).
         edestruct dec; [ | congruence ].
-        intro Hfind; apply IH; auto using step_lt.
+        intro Hfind; apply IH; clear IH; auto using step_lt.
+
         unfold aggregate_state_eq in *.
         unfold PositiveMapExtensions.lift_eqb in *.
         admit. }
       { admit. }
         (*pose (_ : Proper (PositiveMapExtensions.lift_brelation state_beq ⊤ ==> _ ==> iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)).
         Print aggregate_state_eq.*)
-      { intro Hfind; apply IH; auto using step_lt.
+      { intro Hfind; apply IH; clear IH; auto using step_lt.
         pose proof Hfind as Hfind'.
         rewrite PositiveMapExtensions.lift_relation_hetero_iff in Hfind |- *.
         intro k'; specialize (Hfind k').
