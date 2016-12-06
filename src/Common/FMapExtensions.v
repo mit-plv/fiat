@@ -2773,60 +2773,114 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2
     := _.
 
-  Global Instance lift_relation_hetero_Proper_Proper_lift_brelation_subrelation
-         {A B}
-         {R1 : A -> A -> bool} {R2 : B -> B -> bool}
-         {R : A -> B -> Prop}
-         {defaultA defaultB}
-         (Rdefault : R defaultA defaultB)
-         {R1_Reflexive : Reflexive R1}
-         {R2_Reflexive : Reflexive R2}
-         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
-    : Proper ((lift_brelation_hetero R1 defaultA defaultA)
-                ==> (lift_brelation_hetero R2 defaultB defaultB)
-                ==> iff)
-             (lift_relation_hetero R defaultA defaultB) | 2
-    := lift_relation_gen_hetero_Proper_Proper_subrelation_gen
-         (Q1:=is_true) (Q2:=is_true) (Q:=fun x => x)
+  Section lift_relation_hetero_Proper_Proper_lift_brelation_subrelation.
+    Context {A B}
+            {R1 : A -> A -> bool} {R2 : B -> B -> bool}
+            {R : A -> B -> Prop}
+            {defaultA defaultB}
+            (Rdefault : R defaultA defaultB)
+            {R1_Reflexive : Reflexive R1}
+            {R2_Reflexive : Reflexive R2}.
+
+    Local Notation lift_relation_hetero_Proper_Proper_lift_brelation_subrelationT iffR
+      := (Proper ((lift_brelation_hetero R1 defaultA defaultA)
+                    ==> (lift_brelation_hetero R2 defaultB defaultB)
+                    ==> iffR)
+                 (lift_relation_hetero R defaultA defaultB)).
+    Local Notation inst lem :=
+      (@lem
+         _ _ _
+         is_true is_true (fun x => x)
+         _ _ _ _ _ _
          (reflexivity _) andb_true_iff (reflexivity _) andb_true_iff
-         I (fun x y => reflexivity _) Rdefault.
-  Global Instance lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation
-         {A} {R1 R2 : A -> A -> bool} {R : A -> A -> Prop}
-         {default}
-         {R1_Reflexive : Reflexive R1}
-         {R2_Reflexive : Reflexive R2}
-         {R1_subrelation : subrelation R1 R}
-         {R2_subrelation : subrelation R2 R}
-         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
-    : Proper ((lift_brelation_hetero R1 default default)
-                ==> (lift_brelation_hetero R2 default default)
-                ==> iff)
-             (lift_relation_hetero R default default) | 2
-    := lift_relation_gen_hetero_homo_Proper_Proper_subrelation_gen
-         (Q1:=is_true) (Q2:=is_true) (Q:=fun x => x)
-         (reflexivity _) andb_true_iff (reflexivity _) andb_true_iff
-         I (fun x y => reflexivity _).
+         I (fun x y => reflexivity _) _ _ _ _ _ Rdefault _ _ _ _ _).
 
-  Global Instance lift_relation_Proper_Proper_lift_brelation_subrelation {A} {R1 R2 : A -> A -> bool} {R : A -> A -> Prop} {default}
-         {R1_Reflexive : Reflexive R1}
-         {R2_Reflexive : Reflexive R2}
-         {R1_subrelation : subrelation R1 R}
-         {R2_subrelation : subrelation R2 R}
-         {R_Proper : Proper (R1 ==> R2 ==> iff) R}
-    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> iff) (lift_relation R default) | 2
-    := _.
+    Global Instance lift_relation_hetero_Proper_Proper_lift_brelation_subrelation
+           {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+      : lift_relation_hetero_Proper_Proper_lift_brelation_subrelationT iff | 2
+      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen).
+    Global Instance lift_relation_hetero_Proper_Proper_lift_brelation_subrelation_impl
+           {R_Proper : Proper (R1 ==> R2 ==> impl) R}
+      : lift_relation_hetero_Proper_Proper_lift_brelation_subrelationT impl | 2
+      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_impl).
+    Global Instance lift_relation_hetero_Proper_Proper_lift_brelation_subrelation_flip_impl
+           {R_Proper : Proper (R1 ==> R2 ==> flip impl) R}
+      : lift_relation_hetero_Proper_Proper_lift_brelation_subrelationT (flip impl) | 2
+      := inst (@lift_relation_gen_hetero_Proper_Proper_subrelation_gen_flip_impl).
+  End lift_relation_hetero_Proper_Proper_lift_brelation_subrelation.
+  Section lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation.
+    Context {A} {R1 R2 : A -> A -> bool} {R : A -> A -> Prop}
+            {default : A}
+            {R1_Reflexive : Reflexive R1}
+            {R2_Reflexive : Reflexive R2}
+            {R1_subrelation : subrelation R1 R}
+            {R2_subrelation : subrelation R2 R}.
 
-  Global Instance lift_relation_hetero_Proper_Proper {A} {R : A -> A -> Prop} {default}
-         {R_Reflexive : Reflexive R}
-         {R_Proper : Proper (R ==> R ==> iff) R}
-    : Proper (lift_relation_hetero R default default ==> lift_relation_hetero R default default ==> iff) (lift_relation_hetero R default default) | 2
-    := _.
+    Local Notation lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelationT iffR
+      := (Proper ((lift_brelation_hetero R1 default default)
+                    ==> (lift_brelation_hetero R2 default default)
+                    ==> iffR)
+                 (lift_relation_hetero R default default)).
+    Local Notation lift_relation_Proper_Proper_lift_brelation_subrelationT iffR
+      := (Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> iffR)
+                 (lift_relation R default)).
+    Global Instance lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation
+           {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+      : lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelationT iff | 2
+      := _.
+    Global Instance lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation_impl
+           {R_Proper : Proper (R1 ==> R2 ==> impl) R}
+      : lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelationT impl | 2
+      := _.
+    Global Instance lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation_flip_impl
+           {R_Proper : Proper (R1 ==> R2 ==> flip impl) R}
+      : lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelationT (flip impl) | 2
+      := _.
 
-  Global Instance lift_relation_Proper_Proper {A} {R : A -> A -> Prop} {default}
-         {R_Reflexive : Reflexive R}
-         {R_Proper : Proper (R ==> R ==> iff) R}
-    : Proper (lift_relation R default ==> lift_relation R default ==> iff) (lift_relation R default) | 2
-    := _.
+    Global Instance lift_relation_Proper_Proper_lift_brelation_subrelation
+           {R_Proper : Proper (R1 ==> R2 ==> iff) R}
+      : lift_relation_Proper_Proper_lift_brelation_subrelationT iff | 2 := _.
+    Global Instance lift_relation_Proper_Proper_lift_brelation_subrelation_impl
+           {R_Proper : Proper (R1 ==> R2 ==> impl) R}
+      : lift_relation_Proper_Proper_lift_brelation_subrelationT impl | 2 := _.
+    Global Instance lift_relation_Proper_Proper_lift_brelation_subrelation_flip_impl
+           {R_Proper : Proper (R1 ==> R2 ==> flip impl) R}
+      : lift_relation_Proper_Proper_lift_brelation_subrelationT (flip impl) | 2 := _.
+  End lift_relation_hetero_homo_Proper_Proper_lift_brelation_subrelation.
+
+  Section lift_relation_hetero_Proper_Proper.
+    Context {A} {R : A -> A -> Prop} {default : A}
+         {R_Reflexive : Reflexive R}.
+
+    Local Notation lift_relation_hetero_Proper_ProperT iffR
+      := (Proper ((lift_relation_hetero R default default)
+                    ==> (lift_relation_hetero R default default)
+                    ==> iffR)
+                 (lift_relation_hetero R default default)).
+    Local Notation lift_relation_Proper_ProperT iffR
+      := (Proper ((lift_relation R default)
+                    ==> (lift_relation R default)
+                    ==> iffR)
+                 (lift_relation R default)).
+    Global Instance lift_relation_hetero_Proper_Proper
+           {R_Proper : Proper (R ==> R ==> iff) R}
+      : lift_relation_hetero_Proper_ProperT iff | 2 := _.
+    Global Instance lift_relation_hetero_Proper_Proper_impl
+           {R_Proper : Proper (R ==> R ==> impl) R}
+      : lift_relation_hetero_Proper_ProperT impl | 2 := _.
+    Global Instance lift_relation_hetero_Proper_Proper_flip_impl
+           {R_Proper : Proper (R ==> R ==> flip impl) R}
+      : lift_relation_hetero_Proper_ProperT (flip impl) | 2 := _.
+    Global Instance lift_relation_Proper_Proper
+           {R_Proper : Proper (R ==> R ==> iff) R}
+      : lift_relation_Proper_ProperT iff | 2 := _.
+    Global Instance lift_relation_Proper_Proper_impl
+           {R_Proper : Proper (R ==> R ==> impl) R}
+      : lift_relation_Proper_ProperT impl | 2 := _.
+    Global Instance lift_relation_Proper_Proper_flip_impl
+           {R_Proper : Proper (R ==> R ==> flip impl) R}
+      : lift_relation_Proper_ProperT (flip impl) | 2 := _.
+  End lift_relation_hetero_Proper_Proper.
 
   Global Instance lift_brelation_hetero_Proper_Proper_iff {A} {R : A -> A -> bool} {default}
          {R_Reflexive : Reflexive R}
