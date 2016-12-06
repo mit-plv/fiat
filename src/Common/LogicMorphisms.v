@@ -59,3 +59,30 @@ Global Instance or_iff_iff_impl_Proper : Proper (iff ==> iff ==> impl) or | 2.
 Proof. lazy; tauto. Qed.
 Global Instance and_iff_iff_impl_Proper : Proper (iff ==> iff ==> impl) and | 2.
 Proof. lazy; tauto. Qed.
+
+Class pull_forall_able (iffR : Prop -> Prop -> Prop)
+  := pull_forall_iffR : forall A P Q, (forall x : A, iffR (P x) (Q x)) -> iffR (forall x, P x) (forall x, Q x).
+Global Instance pull_forall_able_iff : pull_forall_able iff.
+Proof. compute; firstorder. Qed.
+Global Instance pull_forall_able_impl : pull_forall_able impl.
+Proof. compute; firstorder. Qed.
+Global Instance pull_forall_able_flip_impl : pull_forall_able (flip impl).
+Proof. compute; firstorder. Qed.
+
+Global Instance iff_Proper_iff_iff_flip_impl : Proper (iff ==> iff ==> flip impl) iff | 2.
+Proof. compute; firstorder. Qed.
+Global Instance iff_Proper_iff_iff_impl : Proper (iff ==> iff ==> impl) iff | 2.
+Proof. compute; firstorder. Qed.
+Global Instance iff_Proper_iff_iff_iff : Proper (iff ==> iff ==> iff) iff | 2 := _.
+
+Global Instance impl_Proper_iff_iff_flip_impl : Proper (iff ==> iff ==> flip impl) impl | 2.
+Proof. compute; firstorder. Qed.
+Global Instance impl_Proper_iff_iff_impl : Proper (iff ==> iff ==> impl) impl | 2.
+Proof. compute; firstorder. Qed.
+Global Instance impl_Proper_iff_iff_iff : Proper (iff ==> iff ==> iff) impl | 2 := _.
+
+Global Instance flip_impl_Proper_iff_iff_flip_impl : Proper (iff ==> iff ==> flip impl) (flip impl) | 2.
+Proof. compute; firstorder. Qed.
+Global Instance flip_impl_Proper_iff_iff_impl : Proper (iff ==> iff ==> impl) (flip impl) | 2.
+Proof. compute; firstorder. Qed.
+Global Instance flip_impl_Proper_iff_iff_iff : Proper (iff ==> iff ==> iff) (flip impl) | 2 := _.
