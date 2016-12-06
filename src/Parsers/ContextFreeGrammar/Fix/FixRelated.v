@@ -45,23 +45,35 @@ Section grammar_fixedpoint.
     Let predata := @rdp_list_predata _ G.
     Local Existing Instance predata.
 
+
     Global Instance lift_relation_hetero_Proper_aggregate_state_beq
       : Proper (PositiveMapExtensions.lift_eqb state_beq ⊤ ==> PositiveMapExtensions.lift_eqb state_beq ⊤ ==> iff)
-               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤).
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
     Proof.
-      unfold PositiveMapExtensions.lift_eqb.
-      Locate PositiveMapExtensions.
+      apply PositiveMapExtensions.lift_relation_hetero_Proper_Proper_lift_brelation_subrelation; try exact _.
+      apply top_state_related.
+    Qed.
 
-  Proper
-    ((fun x x0 : aggregate_state gdata0 => PositiveMapExtensions.lift_eqb state_beq ⊤ x x0) ==>
-     (fun x x0 : aggregate_state gdata1 => PositiveMapExtensions.lift_eqb state_beq ⊤ x x0) ==>
-     iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)
+    (*Global Instance lift_relation_hetero_Proper_aggregate_state_beq_flip_impl
+      : Proper (PositiveMapExtensions.lift_eqb state_beq ⊤ ==> PositiveMapExtensions.lift_eqb state_beq ⊤ ==> flip impl)
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
+    Proof.
+
+      apply PositiveMapExtensions.lift_relation_hetero_Proper_Proper_lift_brelation_subrelation; try exact _.
+      apply top_state_related.
+    Qed.*)
 
     Global Instance lift_relation_hetero_Proper_aggregate_state_eq
       : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> iff)
-               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤).
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2
+      := _.
+
+    (*Global Instance lift_relation_hetero_Proper_aggregate_state_eq_flip_impl
+      : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> flip impl)
+               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
     Proof.
-      unfold aggregate_state_eq.
+
+      := _.*)
 
     Lemma related_pre_Fix_grammar
           (HRtop : R ⊤ ⊤)
@@ -108,6 +120,14 @@ Section grammar_fixedpoint.
 
         unfold aggregate_state_eq in *.
         unfold PositiveMapExtensions.lift_eqb in *.
+        match goal with
+        | [ H : PositiveMapExtensions.lift_brelation state_beq ⊤ ?x ?y = true |- PositiveMapExtensions.lift_relation_hetero _ _ _ ?x _ ]
+          => change (is_true (PositiveMapExtensions.lift_brelation state_beq ⊤ x y)) in H
+        end.
+        (*Typeclasses eauto := debug.
+        try timeout 2 rewrite e.
+        setoid_rewrite e.
+        setoid_rewrite e1.*)
         admit. }
       { admit. }
         (*pose (_ : Proper (PositiveMapExtensions.lift_brelation state_beq ⊤ ==> _ ==> iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)).
