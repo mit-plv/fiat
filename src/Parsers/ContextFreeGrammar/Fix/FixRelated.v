@@ -75,37 +75,56 @@ Section grammar_fixedpoint.
       pose proof (related_aggregate_state_max initial_nonterminals_data HRbot) as H.
       unfold aggregate_state_relation in *.
       rewrite PositiveMapExtensions.lift_relation_hetero_iff in *.
-      pose proof (@find_pre_Fix_grammar _ gdata0 G) as H0.
+      (*pose proof (@find_pre_Fix_grammar _ gdata0 G) as H0.
       pose proof (@find_pre_Fix_grammar _ gdata1 G) as H1.
       pose proof (fun nt => transitivity (symmetry (H0 nt)) (H1 nt)) as H01; clear H0 H1.
       setoid_rewrite find_pre_Fix_grammar_to_lookup_state' in H01.
-      progress repeat setoid_rewrite nonterminal_to_positive_to_nonterminal in H01.
+      progress repeat setoid_rewrite nonterminal_to_positive_to_nonterminal in H01.*)
       intro k.
       rewrite !find_pre_Fix_grammar_to_lookup_state' in *.
       fold predata.
       destruct (@is_valid_nonterminal _ predata (@initial_nonterminals_data _ predata) (positive_to_nonterminal k)) eqn:Hv; [ | exact I ].
       unfold pre_Fix_grammar, pre_Fix_grammar_helper in *.
-      fold predata in H01 |- *.
+      fold predata.
+      (*fold predata in H01 |- *.*)
+      assert (Hfind : forall k, PositiveMap.find k (aggregate_state_max gdata0 initial_nonterminals_data) = None
+                                <-> PositiveMap.find k (aggregate_state_max gdata1 initial_nonterminals_data) = None).
+      { intro; rewrite !find_aggregate_state_max_exact.
+        break_match; split; congruence. }
       generalize dependent (aggregate_state_max gdata0 initial_nonterminals_data).
       generalize dependent (aggregate_state_max gdata1 initial_nonterminals_data).
-      intro a; induction (aggregate_state_lt_wf a) as [st' ? IH].
+      intro a; induction (aggregate_state_lt_wf a) as [st' Hacc IH].
       intro st.
-      intros H' H01; revert H'.
+      intros H' Hfind; revert H'.
       rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
       set (FIX := Fix) at 1.
       rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
       subst FIX.
+      assert (Hfind_all
+              : forall k, (PositiveMap.find k st = None <-> PositiveMap.find k (aggregate_step st') = None)
+                          /\ (PositiveMap.find k (aggregate_step st) = None <-> PositiveMap.find k st' = None)
+                          /\ (PositiveMap.find k (aggregate_step st) = None <-> PositiveMap.find k (aggregate_step st') = None)
+                          /\ (PositiveMap.find k (aggregate_step (aggregate_step st)) = None <-> PositiveMap.find k st' = None)
+                          /\ (PositiveMap.find k (aggregate_step (aggregate_step st)) = None <-> PositiveMap.find k (aggregate_step st') = None)).
+      { let k := fresh in
+        intro k; specialize (Hfind k).
+        rewrite !find_aggregate_step; unfold option_map; break_match; intuition congruence. }
+      assert (forall k, PositiveMap.find k st = None <-> PositiveMap.find k (aggregate_step st') = None) by apply Hfind_all.
+      assert (forall k, PositiveMap.find k (aggregate_step st) = None <-> PositiveMap.find k st' = None) by apply Hfind_all.
+      assert (forall k, PositiveMap.find k (aggregate_step st) = None <-> PositiveMap.find k (aggregate_step st') = None) by apply Hfind_all.
+      assert (forall k, PositiveMap.find k (aggregate_step (aggregate_step st)) = None <-> PositiveMap.find k st' = None) by apply Hfind_all.
+      assert (forall k, PositiveMap.find k (aggregate_step (aggregate_step st)) = None <-> PositiveMap.find k (aggregate_step st') = None) by apply Hfind_all.
       do 2 edestruct dec.
       { rewrite PositiveMapExtensions.lift_relation_hetero_iff.
         unfold lookup_state, PositiveMapExtensions.find_default.
-        intro Hfind.
+        intro Hfind'.
         let k := match goal with |- context[PositiveMap.find ?k _] => k end in
-        specialize (Hfind k).
+        specialize (Hfind' k).
         do 2 edestruct PositiveMap.find; simpl; assumption. }
       { specialize (fun y Hy => IH y Hy st).
         rewrite Init.Wf.Fix_eq in IH by (intros; edestruct dec; trivial).
         edestruct dec; [ | congruence ].
-        intro Hfind; apply IH; clear IH; auto using step_lt.
+        intro Hfind'; apply IH; clear IH; auto using step_lt; [].
 
         unfold aggregate_state_eq in *.
         unfold PositiveMapExtensions.lift_eqb in *.
@@ -117,46 +136,104 @@ Section grammar_fixedpoint.
 
         rewrite PositiveMapExtensions.lift_relation_hetero_iff.
         unfold lookup_state, PositiveMapExtensions.find_default.
-        intro k'; rewrite !find_aggregate_step.
-        specialize (H01 (positive_to_nonterminal k')).
-        rewrite Init.Wf.Fix_eq in H01 at 1 by (intros; edestruct dec; trivial).
-        set (FIX := Fix) in H01 at 1.
-        rewrite Init.Wf.Fix_eq in H01 at 1 by (clear; intros; edestruct dec; trivial).
-        subst FIX.
+        intro k'; specialize (Hfind k'); rewrite !find_aggregate_step.
 
         unfold option_map; break_innermost_match; auto;
+          try solve [ intuition congruence ]; [].
+        repeat match goal with
+               | [ |- context[?s ⊔ step_constraints ?data ?lookup ?k ?s] ]
+                 => is_var s;
+                      replace s with (lookup k)
+                      by (unfold lookup_state, PositiveMapExtensions.find_default, option_rect;
+                          rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
+               end.
+        auto. }
+      { clear IH Hfind_all Hacc.
+        intro Hrel.
+        assert (Hrel' : PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤ (aggregate_step st) st').
+        { unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb in *.
+          match goal with
+          | [ H : PositiveMapExtensions.lift_brelation state_beq ⊤ ?x ?y = true |- PositiveMapExtensions.lift_relation_hetero _ _ _ _ ?x ]
+            => change (is_true (PositiveMapExtensions.lift_brelation state_beq ⊤ x y)) in H;
+                 rewrite H
+          end.
+          pose proof Hrel as Hrel'.
+          rewrite PositiveMapExtensions.lift_relation_hetero_iff in Hrel' |- *.
+          unfold lookup_state, PositiveMapExtensions.find_default.
+          intro k'; pose proof (Hrel' k'); rewrite !find_aggregate_step.
+
+          unfold option_map; break_innermost_match; auto;
+            try solve [ intuition congruence ]; [].
           repeat match goal with
                  | [ |- context[?s ⊔ step_constraints ?data ?lookup ?k ?s] ]
                    => is_var s;
                         replace s with (lookup k)
                         by (unfold lookup_state, PositiveMapExtensions.find_default, option_rect;
                             rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
-                 end;
-          auto; admit.
-(*
-        revert H01.
-        break_match.
+                 end.
+          auto. }
 
-        intro; break_match; trivial.
+        revert dependent st'.
+        generalize dependent (aggregate_step st); intros a _.
+        intros; clear dependent st; revert dependent st'.
+        induction (aggregate_state_lt_wf a) as [st Hacc IH].
+        intro st'.
+        intros.
+        rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
 
-        do 2 edestruct PositiveMap.find; simpl; auto. }
-
-
-        unfold aggregate_step.
-
-        rewrite e.
-        (*Typeclasses eauto := debug.
-        try timeout 2 rewrite e.
-        setoid_rewrite e.
-        setoid_rewrite e1.*)
-        admit.*) }
-      { admit. }
-        (*pose (_ : Proper (PositiveMapExtensions.lift_brelation state_beq ⊤ ==> _ ==> iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)).
-        Print aggregate_state_eq.*)
-      { intro Hfind; apply IH; clear IH; auto using step_lt.
-        pose proof Hfind as Hfind'.
-        rewrite PositiveMapExtensions.lift_relation_hetero_iff in Hfind |- *.
-        intro k'; specialize (Hfind k').
+        edestruct dec.
+        { unfold lookup_state, PositiveMapExtensions.find_default.
+          rewrite positive_to_nonterminal_to_positive.
+          lazymatch goal with
+          | [ H : PositiveMapExtensions.lift_relation_hetero _ _ _ _ _ |- _ ]
+            => revert H
+          end.
+          rewrite PositiveMapExtensions.lift_relation_hetero_iff.
+          intro Hrel.
+          repeat match goal with
+                 | [ H : forall k : PositiveMap.key, _ |- context[PositiveMap.find ?k' _] ]
+                   => specialize (H k')
+                 end.
+          unfold state in *.
+          unfold option_map, option_rect; break_match; auto;
+            intuition congruence. }
+        { specialize (fun y Hy => IH y Hy st').
+          specialize (IH (aggregate_step st)).
+          apply IH; clear IH; auto using step_lt;
+            [ let k := fresh in
+              intro k;
+              repeat match goal with
+                     | [ H : forall k' : PositiveMap.key, _ |- _ ] => specialize (H k)
+                     end;
+              rewrite !find_aggregate_step; unfold option_map; break_innermost_match;
+              intuition congruence..
+            | ].
+          { unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, state in *.
+            lazymatch goal with
+            | [ H : PositiveMapExtensions.lift_brelation state_beq ⊤ ?x ?y = true |- PositiveMapExtensions.lift_relation_hetero _ _ _ _ ?x ]
+              => change (is_true (PositiveMapExtensions.lift_brelation state_beq ⊤ x y)) in H;
+                   rewrite H
+            end.
+            lazymatch goal with
+            | [ H : PositiveMapExtensions.lift_relation_hetero _ _ _ _ _ |- _ ]
+              => generalize H
+            end.
+            rewrite !PositiveMapExtensions.lift_relation_hetero_iff.
+            let k := fresh in intros Hrel k; specialize (Hrel k); revert Hrel.
+            rewrite !find_aggregate_step; unfold option_map, state;
+              break_innermost_match; auto.
+            repeat match goal with
+                   | [ |- context[?s ⊔ step_constraints ?data ?lookup ?k ?s] ]
+                     => is_var s;
+                          replace s with (lookup k)
+                          by (unfold lookup_state, PositiveMapExtensions.find_default, option_rect;
+                              rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
+                   end.
+            auto. } } }
+      { intro Hfind'; apply IH; clear IH; auto using step_lt; [].
+        pose proof Hfind' as Hfind''.
+        rewrite PositiveMapExtensions.lift_relation_hetero_iff in Hfind' |- *.
+        intro k'; specialize (Hfind' k').
         rewrite !find_aggregate_step.
         unfold option_map; break_innermost_match; auto.
         repeat match goal with
@@ -167,7 +244,7 @@ Section grammar_fixedpoint.
                           rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
                end.
         auto. }
-    Abort. (*
+    Qed. (*
 
   Local Notation default_value := ⊤ (only parsing).
 
