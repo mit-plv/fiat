@@ -45,35 +45,18 @@ Section grammar_fixedpoint.
     Let predata := @rdp_list_predata _ G.
     Local Existing Instance predata.
 
-
-    Global Instance lift_relation_hetero_Proper_aggregate_state_beq
-      : Proper (PositiveMapExtensions.lift_eqb state_beq ⊤ ==> PositiveMapExtensions.lift_eqb state_beq ⊤ ==> iff)
-               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
-    Proof.
-      apply PositiveMapExtensions.lift_relation_hetero_Proper_Proper_lift_brelation_subrelation; try exact _.
-      apply top_state_related.
-    Qed.
-
-    (*Global Instance lift_relation_hetero_Proper_aggregate_state_beq_flip_impl
+    Global Instance lift_relation_hetero_Proper_aggregate_state_beq_flip_impl
       : Proper (PositiveMapExtensions.lift_eqb state_beq ⊤ ==> PositiveMapExtensions.lift_eqb state_beq ⊤ ==> flip impl)
                (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
     Proof.
-
-      apply PositiveMapExtensions.lift_relation_hetero_Proper_Proper_lift_brelation_subrelation; try exact _.
+      apply PositiveMapExtensions.lift_relation_hetero_Proper_Proper_lift_brelation_subrelation_flip_impl; try exact _.
       apply top_state_related.
-    Qed.*)
+    Qed.
 
-    Global Instance lift_relation_hetero_Proper_aggregate_state_eq
-      : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> iff)
+    Global Instance lift_relation_hetero_Proper_aggregate_state_eq_flip_impl
+      : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> flip impl)
                (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2
       := _.
-
-    (*Global Instance lift_relation_hetero_Proper_aggregate_state_eq_flip_impl
-      : Proper (aggregate_state_eq (gdata:=_) ==> aggregate_state_eq (gdata:=_) ==> flip impl)
-               (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2.
-    Proof.
-
-      := _.*)
 
     Lemma related_pre_Fix_grammar
           (HRtop : R ⊤ ⊤)
@@ -92,16 +75,22 @@ Section grammar_fixedpoint.
       pose proof (related_aggregate_state_max initial_nonterminals_data HRbot) as H.
       unfold aggregate_state_relation in *.
       rewrite PositiveMapExtensions.lift_relation_hetero_iff in *.
+      pose proof (@find_pre_Fix_grammar _ gdata0 G) as H0.
+      pose proof (@find_pre_Fix_grammar _ gdata1 G) as H1.
+      pose proof (fun nt => transitivity (symmetry (H0 nt)) (H1 nt)) as H01; clear H0 H1.
+      setoid_rewrite find_pre_Fix_grammar_to_lookup_state' in H01.
+      progress repeat setoid_rewrite nonterminal_to_positive_to_nonterminal in H01.
       intro k.
       rewrite !find_pre_Fix_grammar_to_lookup_state' in *.
       fold predata.
       destruct (@is_valid_nonterminal _ predata (@initial_nonterminals_data _ predata) (positive_to_nonterminal k)) eqn:Hv; [ | exact I ].
-      unfold pre_Fix_grammar, pre_Fix_grammar_helper.
-      fold predata.
+      unfold pre_Fix_grammar, pre_Fix_grammar_helper in *.
+      fold predata in H01 |- *.
       generalize dependent (aggregate_state_max gdata0 initial_nonterminals_data).
       generalize dependent (aggregate_state_max gdata1 initial_nonterminals_data).
       intro a; induction (aggregate_state_lt_wf a) as [st' ? IH].
       intro st.
+      intros H' H01; revert H'.
       rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
       set (FIX := Fix) at 1.
       rewrite Init.Wf.Fix_eq at 1 by (intros; edestruct dec; trivial).
@@ -122,13 +111,45 @@ Section grammar_fixedpoint.
         unfold PositiveMapExtensions.lift_eqb in *.
         match goal with
         | [ H : PositiveMapExtensions.lift_brelation state_beq ⊤ ?x ?y = true |- PositiveMapExtensions.lift_relation_hetero _ _ _ ?x _ ]
-          => change (is_true (PositiveMapExtensions.lift_brelation state_beq ⊤ x y)) in H
+          => change (is_true (PositiveMapExtensions.lift_brelation state_beq ⊤ x y)) in H;
+               rewrite H
         end.
+
+        rewrite PositiveMapExtensions.lift_relation_hetero_iff.
+        unfold lookup_state, PositiveMapExtensions.find_default.
+        intro k'; rewrite !find_aggregate_step.
+        specialize (H01 (positive_to_nonterminal k')).
+        rewrite Init.Wf.Fix_eq in H01 at 1 by (intros; edestruct dec; trivial).
+        set (FIX := Fix) in H01 at 1.
+        rewrite Init.Wf.Fix_eq in H01 at 1 by (clear; intros; edestruct dec; trivial).
+        subst FIX.
+
+        unfold option_map; break_innermost_match; auto;
+          repeat match goal with
+                 | [ |- context[?s ⊔ step_constraints ?data ?lookup ?k ?s] ]
+                   => is_var s;
+                        replace s with (lookup k)
+                        by (unfold lookup_state, PositiveMapExtensions.find_default, option_rect;
+                            rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
+                 end;
+          auto; admit.
+(*
+        revert H01.
+        break_match.
+
+        intro; break_match; trivial.
+
+        do 2 edestruct PositiveMap.find; simpl; auto. }
+
+
+        unfold aggregate_step.
+
+        rewrite e.
         (*Typeclasses eauto := debug.
         try timeout 2 rewrite e.
         setoid_rewrite e.
         setoid_rewrite e1.*)
-        admit. }
+        admit.*) }
       { admit. }
         (*pose (_ : Proper (PositiveMapExtensions.lift_brelation state_beq ⊤ ==> _ ==> iff) (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤)).
         Print aggregate_state_eq.*)

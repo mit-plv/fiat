@@ -2,6 +2,7 @@ Require Import Coq.PArith.BinPos Coq.PArith.Pnat.
 Require Import Coq.Arith.Arith.
 Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Import Fiat.Common.Tactics.SplitInContext.
 Require Import Fiat.Common.Notations.
 
 Set Implicit Arguments.
@@ -274,3 +275,19 @@ Lemma lattice_for_rect_pull {A B C} f t c b v
   : f (@lattice_for_rect A (fun _ => B) t c b v)
     = @lattice_for_rect A (fun _ => C) (f t) (fun x => f (c x)) (f b) v.
 Proof. destruct v; reflexivity. Qed.
+
+
+Global Instance state_relation_Proper_impl
+       {x y} (R : grammar_fixedpoint_data_relation x y)
+  : Proper (state_beq ==> state_beq ==> Basics.impl) R | 2.
+Proof.
+  pose proof (state_relation_Proper R) as H.
+  unfold Proper, respectful in *; split_iff; eauto.
+Qed.
+Global Instance state_relation_Proper_flip_impl
+       {x y} (R : grammar_fixedpoint_data_relation x y)
+  : Proper (state_beq ==> state_beq ==> Basics.flip Basics.impl) R | 2.
+Proof.
+  pose proof (state_relation_Proper R) as H.
+  unfold Proper, respectful in *; split_iff; eauto.
+Qed.
