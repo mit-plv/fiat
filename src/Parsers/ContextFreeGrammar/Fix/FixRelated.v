@@ -19,7 +19,7 @@ Local Open Scope grammar_fixedpoint_scope.
 Section grammar_fixedpoint.
   Context {Char : Type}.
   Context {gdata0 gdata1 : grammar_fixedpoint_data}
-          (R : grammar_fixedpoint_data_relation gdata0 gdata1).
+          (R : grammar_fixedpoint_lattice_data_relation gdata0 gdata1).
 
   Definition aggregate_state_relation
     : aggregate_state gdata0 -> aggregate_state gdata1 -> Prop

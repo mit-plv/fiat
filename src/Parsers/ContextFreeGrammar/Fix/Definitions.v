@@ -200,22 +200,11 @@ Record grammar_fixedpoint_data :=
     step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state);
     step_constraints_ext : Proper (pointwise_relation _ state_beq ==> eq ==> state_beq ==> state_beq) step_constraints }.
 
-Record grammar_fixedpoint_data_relation (x y : grammar_fixedpoint_data) :=
+Record grammar_fixedpoint_lattice_data_relation
+       {xT yT} (x : grammar_fixedpoint_lattice_data xT) (y : grammar_fixedpoint_lattice_data yT) :=
   { state_relation :> @state _ x -> @state _ y -> Prop;
     top_state_related : state_relation ⊤ ⊤;
-    state_relation_Proper : Proper (state_beq ==> state_beq ==> iff) state_relation;
-    step_constraints_monotonic
-    : ((respectful_hetero
-          _ _ _ _
-          (fun f f' => forall x, state_relation (f x) (f' x))
-          (fun _ _ => respectful_hetero
-                        _ _ _ _
-                        eq
-                        (fun _ _ => respectful_hetero
-                                      _ _ _ _
-                                      state_relation
-                                      (fun _ _ => state_relation))))
-         (@step_constraints x) (@step_constraints y)) }.
+    state_relation_Proper : Proper (state_beq ==> state_beq ==> iff) state_relation }.
 
 Global Existing Instance lattice_data.
 Global Existing Instance step_constraints_ext.
@@ -278,14 +267,14 @@ Proof. destruct v; reflexivity. Qed.
 
 
 Global Instance state_relation_Proper_impl
-       {x y} (R : grammar_fixedpoint_data_relation x y)
+       {xT yT x y} (R : @grammar_fixedpoint_lattice_data_relation xT yT x y)
   : Proper (state_beq ==> state_beq ==> Basics.impl) R | 2.
 Proof.
   pose proof (state_relation_Proper R) as H.
   unfold Proper, respectful in *; split_iff; eauto.
 Qed.
 Global Instance state_relation_Proper_flip_impl
-       {x y} (R : grammar_fixedpoint_data_relation x y)
+       {xT yT x y} (R : @grammar_fixedpoint_lattice_data_relation xT yT x y)
   : Proper (state_beq ==> state_beq ==> Basics.flip Basics.impl) R | 2.
 Proof.
   pose proof (state_relation_Proper R) as H.
