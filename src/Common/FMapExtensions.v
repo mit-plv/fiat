@@ -2071,29 +2071,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Global Hint Extern 1 (Proper _ (@map2 ?A ?B ?C ?f))
   => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
 
-  Local Ltac convert_impl_subrelation :=
-    lazymatch goal with
-    | [ |- impl _ _ ] => apply iff_impl_subrelation
-    | [ |- flip impl _ _ ] => apply iff_flip_impl_subrelation
-    | _ => let x := fresh in intro x; convert_impl_subrelation; revert x
-    end.
-  Local Ltac change_signature s :=
-    lazymatch s with
-    | impl => iff
-    | flip impl => iff
-    | (?R ==> ?s)%signature
-      => let s' := change_signature s in
-         constr:((R ==> s')%signature)
-    end.
-  Local Ltac by_impl_subrelation :=
-    lazymatch goal with
-    | [ |- Proper ?s ?R ]
-      => let s' := change_signature s in
-         cut (Proper s' R);
-         [ let H := fresh in intro H; convert_impl_subrelation; exact H
-         | try exact _ ]
-    end.
-
   Section rel.
     Context {P} {Q : P -> Prop} {and True'}
             (HTrue' : Q True')
