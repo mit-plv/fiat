@@ -475,3 +475,21 @@ Proof.
   unfold respectful; intros ?? H0 ?? H1 xs ys ?; subst ys.
   induction xs; [ assumption | simpl; rewrite H0 by (eassumption || reflexivity); reflexivity ].
 Qed.
+
+Global Instance fold_right_Proper_rel {A B R}
+  : Proper (pointwise_relation _ (R ==> R) ==> R ==> eq ==> R) (@List.fold_right A B) | 10.
+Proof.
+  intros f g H a b H0 ls y ?; subst y.
+  induction ls as [|x xs IHxs]; [ exact H0 | ].
+  simpl; apply H, IHxs.
+Qed.
+
+Global Instance fold_right_Proper_rel_eqlistA {A B RA RB}
+  : Proper ((RB ==> RA ==> RA) ==> RA ==> SetoidList.eqlistA RB ==> RA) (@List.fold_right A B) | 10.
+Proof.
+  intros f g H a b H0 ls.
+  induction ls as [|x xs IHxs]; intros [|y ys] Hls;
+    inversion Hls; subst; simpl;
+      [ assumption
+      | apply H, IHxs; assumption ].
+Qed.
