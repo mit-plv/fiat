@@ -4,6 +4,9 @@ Require Import Coq.omega.Omega Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
 Require Export Fiat.Common.Tactics.SplitInContext.
+Require Export Fiat.Common.Tactics.Combinators.
+Require Export Fiat.Common.Tactics.FreeIn.
+Require Export Fiat.Common.Tactics.SetoidSubst.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
@@ -80,13 +83,6 @@ Proof. destruct x, b; reflexivity. Qed.
 
 Hint Rewrite @bool_of_sum_inl @bool_of_sum_inr @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool @bool_of_sum_distr_match_fun @bool_of_sum_distr_match_sumbool_fun @bool_of_sum_eta @bool_of_sum_orb_true_l : push_bool_of_sum.
 Hint Rewrite @bool_of_sumbool_left @bool_of_sumbool_right @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum @bool_of_sumbool_distr_match_fun @bool_of_sumbool_distr_match_sum_fun @bool_of_sumbool_eta : push_bool_of_sumbool.
-
-(** Test if a tactic succeeds, but always roll-back the results *)
-Tactic Notation "test" tactic3(tac) :=
-  try (first [ tac | fail 2 tac "does not succeed" ]; fail 0 tac "succeeds"; [](* test for [t] solved all goals *)).
-
-(** [not tac] is equivalent to [fail tac "succeeds"] if [tac] succeeds, and is equivalent to [idtac] if [tac] fails *)
-Tactic Notation "not" tactic3(tac) := try ((test tac); fail 1 tac "succeeds").
 
 (** Runs [abstract] after clearing the environment, solving the goal
     with the tactic associated with [cls <goal type>].  In 8.5, we
@@ -1539,63 +1535,6 @@ Fixpoint Forall_tails_impl {T} (P P' : list T -> Type) (ls : list T) {struct ls}
        | nil => fun H H' => H H'
        | x::xs => fun H H' => (fst H (fst H'), @Forall_tails_impl T P P' xs (snd H) (snd H'))
      end.
-
-Ltac free_in x y :=
-  idtac;
-  match y with
-  | appcontext[x] => fail 1 x "appears in" y
-  | _ => idtac
-  end.
-
-Ltac setoid_subst'' R x :=
-  is_var x;
-  match goal with
-  | [ H : R x ?y |- _ ]
-    => free_in x y;
-      rewrite ?H;
-      repeat setoid_rewrite H;
-      repeat match goal with
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite H in H'
-             end;
-      clear H;
-      clear x
-  | [ H : R ?y x |- _ ]
-    => free_in x y;
-      rewrite <- ?H;
-      repeat setoid_rewrite <- H;
-      repeat match goal with
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite <- H in H'
-             end;
-      clear H;
-      clear x
-  end.
-
-Ltac setoid_subst' x :=
-  is_var x;
-  match goal with
-  | [ H : ?R x _ |- _ ] => setoid_subst'' R x
-  | [ H : ?R _ x |- _ ] => setoid_subst'' R x
-  end.
-
-Ltac setoid_subst_rel' R :=
-  idtac;
-  match goal with
-  | [ H : R ?x _ |- _ ] => setoid_subst'' R x
-  | [ H : R _ ?x |- _ ] => setoid_subst'' R x
-  end.
-
-Ltac setoid_subst_rel R := repeat setoid_subst_rel' R.
-
-Ltac setoid_subst_all :=
-  repeat match goal with
-         | [ H : ?R ?x ?y |- _ ] => is_var x; setoid_subst'' R x
-         | [ H : ?R ?x ?y |- _ ] => is_var y; setoid_subst'' R y
-         end.
-
-Tactic Notation "setoid_subst" constr(x) := setoid_subst' x.
-Tactic Notation "setoid_subst" := setoid_subst_all.
 
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
   : x - (y - z) = (x - y) + z.

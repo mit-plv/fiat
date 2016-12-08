@@ -254,7 +254,10 @@ src/Common/List/Operations.v
 src/Common/List/PermutationFacts.v
 src/Common/List/UpperBound.v
 src/Common/Tactics/CacheStringConstant.v
+src/Common/Tactics/Combinators.v
+src/Common/Tactics/FreeIn.v
 src/Common/Tactics/HintDbExtra.v
+src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SplitInContext.v
 src/Common/Tactics/TransparentAbstract.v
 src/Common/Telescope/Core.v
@@ -436,6 +439,7 @@ src/Parsers/ContextFreeGrammar/Fix/Inject.v
 src/Parsers/ContextFreeGrammar/Fix/Interface.v
 src/Parsers/ContextFreeGrammar/Fix/PreInterface.v
 src/Parsers/ContextFreeGrammar/Fix/Prod.v
+src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretation.v
 src/Parsers/ContextFreeGrammar/Fix/ProdAbstractInterpretationDefinitions.v
 src/Parsers/ContextFreeGrammar/Fix/Properties.v
 src/Parsers/Grammars/ABStar.v
