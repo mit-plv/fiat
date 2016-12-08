@@ -104,7 +104,7 @@ Section general_fold.
   Qed.
 
   Global Instance fold_production'_Proper
-    : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_production' | 20
+    : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_production' | 2
     := _.
 
   Global Instance: Params (@fold_production') 5.
