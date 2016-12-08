@@ -459,6 +459,8 @@ Section correctness_lemmas.
     | _ => assumption
     | _ => tauto
     | [ |- ?R ?x ?x ] => reflexivity
+    | [ |- context[fold_production' _ (lookup_state fgd_fold_grammar) _] ]
+      => setoid_rewrite fgd_fold_grammar_correct
     | _ => rewrite fgd_fold_grammar_correct
     | [ p : parse_of_item _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _) in p
@@ -561,7 +563,7 @@ Section correctness_lemmas.
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_production G ps)).
   Proof.
     unfold all_possible_characters_of_production; correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
+    eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
     correct_t.
   Qed.
 
@@ -590,8 +592,6 @@ Section correctness_lemmas.
     correct_t.
   Qed.
 End correctness_lemmas.
-
-Set Printing Implicit.
 
 Ltac make_all_possible_data G :=
   let v := constr:(@fold_grammar _ _ _ all_possible_terminals_aidata G) in

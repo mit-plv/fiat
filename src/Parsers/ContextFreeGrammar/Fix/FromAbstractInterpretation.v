@@ -193,7 +193,7 @@ Class fold_grammar_data {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
       {aidata : AbstractInterpretation}
       (G : pregrammar' Char) :=
   { fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G);
-    fgd_fold_grammar_correct : forall nt, lookup_state fgd_fold_grammar nt = lookup_state (fold_grammar G) nt }.
+    fgd_fold_grammar_correct : pointwise_relation _ eq (lookup_state fgd_fold_grammar) (lookup_state (fold_grammar G)) }.
 Coercion fgd_fold_grammar : fold_grammar_data >-> aggregate_state.
 
 Definition Build_fold_grammar_data' {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
