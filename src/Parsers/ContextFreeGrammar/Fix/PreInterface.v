@@ -27,7 +27,7 @@ Module DataflowOutput.
             (v : t d G).
 
     Definition t_data := Eval hnf in @fgd_fold_grammar _ _ _ _ _ v.
-    Definition t_correct : t_data = fold_grammar G
+    Definition t_correct : Morphisms.pointwise_relation _ eq (lookup_state t_data) (lookup_state (fold_grammar G))
       := fgd_fold_grammar_correct.
   End output_data.
   Coercion t_data : t >-> aggregate_state.
