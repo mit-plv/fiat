@@ -1,11 +1,12 @@
 Require Export Coq.FSets.FMapInterface.
 Require Import Fiat.Common.Wf.
 Require Export Fiat.Common.FMapExtensions.
+Require Export Fiat.Common.FMapExtensions.LiftRelationInstances.
 Require Import Fiat.Common.
 
 Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
-  Module BasicExtensions := FMapExtensions_fun E M.
-  Include BasicExtensions.
+  Module LiftRelationInstancesExtensions := FMapExtensionsLiftRelationInstances_fun E M.
+  Include LiftRelationInstancesExtensions.
 
   Section rel.
     Context {A} (eqb leb : A -> A -> bool).

@@ -191,7 +191,6 @@ src/Common/EnumType.v
 src/Common/Enumerable.v
 src/Common/Equality.v
 src/Common/FMapExtensions.v
-src/Common/FMapExtensionsWf.v
 src/Common/FixedPoints.v
 src/Common/Frame.v
 src/Common/Gensym.v
@@ -246,6 +245,8 @@ src/Common/Enumerable/BoolProp.v
 src/Common/Enumerable/ReflectiveForall.v
 src/Common/Enumerable/ReflectiveForallAggregate.v
 src/Common/Enumerable/ReflectiveForallStaged.v
+src/Common/FMapExtensions/LiftRelationInstances.v
+src/Common/FMapExtensions/Wf.v
 src/Common/List/FlattenList.v
 src/Common/List/ListFacts.v
 src/Common/List/ListMorphisms.v

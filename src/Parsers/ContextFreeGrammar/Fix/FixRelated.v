@@ -8,7 +8,7 @@ Require Import Fiat.Parsers.BaseTypes.
 Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Fix.
-Require Import Fiat.Common.FMapExtensionsWf.
+Require Import Fiat.Common.FMapExtensions.Wf.
 Require Import Fiat.Common.
 Require Import Fiat.Common.OptionFacts.
 Require Import Fiat.Common.SetoidInstances.
