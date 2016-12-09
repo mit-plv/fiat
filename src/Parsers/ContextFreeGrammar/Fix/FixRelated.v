@@ -58,7 +58,7 @@ Section grammar_fixedpoint.
                (PositiveMapExtensions.lift_relation_hetero R ⊤ ⊤) | 2
       := _.
 
-    Lemma related_pre_Fix_grammar
+    Lemma related_pre_Fix_grammar_gen
           (HRtop : R ⊤ ⊤)
           (HRbot : R ⊥ ⊥)
           (HRtopR : forall x y, R x ⊤ -> R (x ⊔ y) ⊤)
@@ -244,7 +244,40 @@ Section grammar_fixedpoint.
                           rewrite positive_to_nonterminal_to_positive; rewrite_hyp; reflexivity)
                end.
         auto. }
-    Qed. (*
+    Qed.
+
+    Lemma related_pre_Fix_grammar
+          (HRtop : R ⊤ ⊤)
+          (HRbot : R ⊥ ⊥)
+          (HRtopR : forall x y, R x ⊤ -> R (x ⊔ y) ⊤)
+          (HRtopL : forall x y, R ⊤ x -> R ⊤ (x ⊔ y))
+          (HRlub : forall x y, R x y -> forall x' y', R x' y' -> R (x ⊔ x') (y ⊔ y'))
+          (step_constraints_Proper
+           : forall f g,
+              (forall k, R (f k) (g k))
+              -> forall k st st',
+                R st st'
+                -> R (step_constraints gdata0 f k st) (step_constraints gdata1 g k st'))
+          (R_Proper : Proper (state_beq ==> state_beq ==> iff) R)
+      : aggregate_state_relation
+          (pre_Fix_grammar gdata0 initial_nonterminals_data)
+          (pre_Fix_grammar gdata1 initial_nonterminals_data).
+    Proof.
+      apply related_pre_Fix_grammar_gen; try assumption.
+      { intros ?? k H.
+        unfold aggregate_state_relation, lookup_state, PositiveMapExtensions.find_default in *.
+        rewrite PositiveMapExtensions.lift_relation_hetero_iff in H.
+        unfold option_rect, state in *; simpl in *.
+        apply HRlub; [ | apply step_constraints_Proper ];
+          repeat match goal with
+                 | _ => intro
+                 | [ H : forall k : PositiveMap.key, _ |- context[PositiveMap.find ?k _] ]
+                   => specialize (H k)
+                 | _ => assumption
+                 | _ => progress break_innermost_match
+                 end. }
+    Qed.
+(*
 
   Local Notation default_value := ⊤ (only parsing).
 
