@@ -501,7 +501,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         (fun D =>
                            forall idx,
                              ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx))
-                        (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
+                        (fun Sig => ComputationalADT.cMethodType (methArity Sig) Rep (methDom Sig) (methCod Sig))
         methSigs
         ltac:(fun cMeths =>
                 eapply (@Notation_Friendly_SharpenFully
