@@ -9,6 +9,7 @@ Require Export Fiat.Common.Tactics.FreeIn.
 Require Export Fiat.Common.Tactics.SetoidSubst.
 Require Export Fiat.Common.Tactics.BreakMatch.
 Require Export Fiat.Common.Tactics.Head.
+Require Export Fiat.Common.Tactics.FoldIsTrue.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
@@ -1811,15 +1812,6 @@ Ltac replace_with_vm_compute_in c H :=
   let c' := (eval vm_compute in c) in
   (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
   replace c with c' in H by (clear; vm_cast_no_check (eq_refl c')).
-
-(* These tactics do [change (?x = true) with (is_true x) in *], but get around anomalies in older versions of 8.4 *)
-Ltac fold_is_true' x :=
-  change (x = true) with (is_true x) in *.
-Ltac fold_is_true :=
-  repeat match goal with
-         | [ H : context[?x = true] |- _ ] => fold_is_true' x
-         | [ |- context[?x = true] ] => fold_is_true' x
-         end.
 
 (** Get access to an abstracted, non-re-typechecked version of a vm-computed lemma *)
 Class eq_refl_vm_cast T := by_vm_cast : T.
