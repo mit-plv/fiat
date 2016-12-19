@@ -9,6 +9,23 @@ Scheme Induction for Acc Sort Set.
 Scheme Induction for Acc Sort Type.
 
 Section wf.
+  Section wrap_wf.
+    Context {A R} (Rwf : @well_founded A R).
+
+    Definition lt_wf_idx_step
+               (lt_wf_idx : nat -> well_founded R)
+               (n : nat)
+      : well_founded R.
+    Proof.
+      destruct n.
+      { clear -Rwf; apply Rwf. }
+      { constructor; intros; apply lt_wf_idx; assumption. }
+    Defined.
+
+    Fixpoint lt_wf_idx (n : nat) : well_founded R
+      := lt_wf_idx_step (@lt_wf_idx) n.
+  End wrap_wf.
+
   Global Instance well_founded_subrelation {A}
     : Proper (flip subrelation ==> impl) (@well_founded A).
   Proof.
