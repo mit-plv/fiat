@@ -253,9 +253,11 @@ src/Common/List/ListMorphisms.v
 src/Common/List/Operations.v
 src/Common/List/PermutationFacts.v
 src/Common/List/UpperBound.v
+src/Common/Tactics/BreakMatch.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/Combinators.v
 src/Common/Tactics/FreeIn.v
+src/Common/Tactics/Head.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SplitInContext.v
