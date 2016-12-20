@@ -42,7 +42,9 @@ Section wf.
             (Rwf : well_founded R) (Rwf' : well_founded R')
             (F : forall x, (forall y, R y x -> P y) -> P x)
             (F' : forall x, (forall y, R' y x -> P' y) -> P' x)
-            (HF : forall a a' (r : RA a a') f f'
+            (HF : forall a a' (r : RA a a')
+                         (f := (fun (y : A) (_ : R y a) => Fix Rwf P F y))
+                         (f' := (fun (y' : A') (_ : R' y' a') => Fix Rwf' P' F' y'))
                          (Hf : forall y y' (ry : RA y y') (r : R y a) (r' : R' y' a'),
                              RP _ _ ry (f y r) (f' y' r')),
                 RP a a' r (F a f) (F' a' f'))
