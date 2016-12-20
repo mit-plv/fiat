@@ -26,6 +26,45 @@ Section wf.
       := lt_wf_idx_step (@lt_wf_idx) n.
   End wrap_wf.
 
+  Section rel_hetero.
+    Local Notation "R ==> S"
+      := (@respectful_hetero _ _ _ _ R (fun _ _ => S))
+         : signature_scope.
+    Local Notation Proper S R
+      := (S%signature R R) (only parsing).
+
+    Context {A A'}
+            (RA : A -> A' -> Prop)
+            (P : A -> Type) (P' : A' -> Type)
+            (RP : forall a a', RA a a' -> P a -> P' a' -> Prop)
+            {R : relation A} {R' : relation A'}
+            (HR : (RA ==> RA ==> Basics.impl)%signature R R')
+            (Rwf : well_founded R) (Rwf' : well_founded R')
+            (F : forall x, (forall y, R y x -> P y) -> P x)
+            (F' : forall x, (forall y, R' y x -> P' y) -> P' x)
+            (HF : forall a a' (r : RA a a') f f'
+                         (Hf : forall y y' (ry : RA y y') (r : R y a) (r' : R' y' a'),
+                             RP _ _ ry (f y r) (f' y' r')),
+                RP a a' r (F a f) (F' a' f'))
+            (F_ext : forall x f g,
+                (forall y p, f y p = g y p) -> F x f = F x g)
+            (F'_ext : forall x f g,
+                (forall y p, f y p = g y p) -> F' x f = F' x g).
+
+    Lemma Fix_Proper_hetero
+          {a a'}
+          (Ha : RA a a')
+      : @RP a a' Ha (Fix Rwf P F a) (Fix Rwf' P'  F' a').
+    Proof.
+      revert a' Ha.
+      induction (Rwf a) as [a Hlt IHwf].
+      intros a' Ha.
+      rewrite (Fix_eq Rwf), (Fix_eq Rwf') by assumption.
+      apply HF; intros.
+      apply IHwf; assumption.
+    Qed.
+  End rel_hetero.
+
   Global Instance well_founded_subrelation {A}
     : Proper (flip subrelation ==> impl) (@well_founded A).
   Proof.
