@@ -374,17 +374,32 @@ Tactic Notation "finish" "sharpening" constr(delegatees):=
                           ])
              end ].
 
+Ltac destruct_pair a :=
+  match type of a with
+  | prod _ _ =>
+    rewrite <- (surjective_pairing a)
+  | _ => idtac
+  end.
+
 Tactic Notation "finish" "honing" :=
   match goal with
-  | |- ?R _ (?H _ _ _ _ _) =>
+  | |- ?R _ (?H ?a ?b ?c ?d ?e) =>
+    destruct_pair a; destruct_pair b; destruct_pair c;
+    destruct_pair d; destruct_pair e;
+    try subst H;  higher_order_reflexivity
+  | |- ?R _ (?H ?a ?b ?c ?d) =>
+    destruct_pair a; destruct_pair b; destruct_pair c;
+    destruct_pair d;
     try subst H; higher_order_reflexivity
-  | |- ?R _ (?H _ _ _ _ ) =>
+  | |- ?R _ (?H ?a ?b ?c ) =>
+    destruct_pair a; destruct_pair b; destruct_pair c;
+    try subst H;
+    higher_order_reflexivity
+  | |- ?R _ (?H ?a ?b) =>
+    destruct_pair a; destruct_pair b;
     try subst H; higher_order_reflexivity
-  | |- ?R _ (?H _ _ _ ) =>
-    try subst H; higher_order_reflexivity
-  | |- ?R _ (?H _ _) =>
-    try subst H; higher_order_reflexivity
-  | |- ?R _ (?H _ ) =>
+  | |- ?R _ (?H ?a ) =>
+    destruct_pair a;
     try subst H; higher_order_reflexivity
   | |- ?R _ (?H ) =>
     try subst H; higher_order_reflexivity
@@ -588,3 +603,13 @@ Lemma refineIfret {A} :
 Proof.
   destruct cond; reflexivity.
 Qed.
+
+Ltac refine_under :=
+  subst_refine_evar;
+  first
+    [ eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else_trans;
+      [set_refine_evar; unfold pointwise_relation; intros | set_refine_evar ] ].
