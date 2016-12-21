@@ -7,6 +7,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
 Require Import Fiat.Common.Tactics.SetoidSubst.
+Require Import Fiat.Common.Tactics.IsClosed.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Common.UIP.
 
 Local Open Scope list_scope.
@@ -1081,6 +1082,6 @@ Ltac simpl_string_like_step :=
   | _ => progress setoid_subst_rel (@beq _ _ _)
   | _ => progress pose_string_like_for_lengths
   | [ H : forall str, length str = ?n -> ?T, H' : length ?str' = ?n |- _ ]
-    => specialize (H str' H')
+    => is_closed T; specialize (H str' H')
   end.
 Ltac simpl_string_like := repeat simpl_string_like_step.
