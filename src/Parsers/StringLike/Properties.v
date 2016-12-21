@@ -1090,6 +1090,9 @@ Ltac simpl_string_like_no_setoid_step :=
     => is_closed T; specialize (H H')
   | [ H : False |- _ ] => solve [ induction H | case H ]
   | [ H : forall str, length str = ?n |- _ ] => apply not_all_lengths in H
+  | [ H : @length ?Char ?HSLM ?str = @length ?Char ?HSLM ?str' |- _ ]
+    => first [ generalize dependent (@length Char HSLM str'); intros; subst; clear str'
+             | generalize dependent (@length Char HSLM str); intros; subst; clear str ]
   | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
   | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
   end.
