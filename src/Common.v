@@ -11,6 +11,9 @@ Require Export Fiat.Common.Tactics.BreakMatch.
 Require Export Fiat.Common.Tactics.Head.
 Require Export Fiat.Common.Tactics.FoldIsTrue.
 Require Export Fiat.Common.Tactics.SpecializeBy.
+Require Export Fiat.Common.Tactics.DestructHyps.
+Require Export Fiat.Common.Tactics.DestructSig.
+Require Export Fiat.Common.Tactics.DestructHead.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
@@ -183,96 +186,6 @@ Ltac simpl_transitivity :=
   try solve [ match goal with
               | [ _ : ?Rel ?a ?b, _ : ?Rel ?b ?c |- ?Rel ?a ?c ] => transitivity b; assumption
               end ].
-
-(** given a [matcher] that succeeds on some hypotheses and fails on
-    others, destruct any matching hypotheses, and then execute [tac]
-    after each [destruct].
-
-    The [tac] part exists so that you can, e.g., [simpl in *], to
-    speed things up. *)
-Ltac do_one_match_then matcher do_tac tac :=
-  idtac;
-  match goal with
-  | [ H : ?T |- _ ]
-    => matcher T; do_tac H;
-       try match type of H with
-           | T => clear H
-           end;
-       tac
-  end.
-
-Ltac do_all_matches_then matcher do_tac tac :=
-  repeat do_one_match_then matcher do_tac tac.
-
-Ltac destruct_all_matches_then matcher tac :=
-  do_all_matches_then matcher ltac:(fun H => destruct H) tac.
-Ltac destruct_one_match_then matcher tac :=
-  do_one_match_then matcher ltac:(fun H => destruct H) tac.
-
-Ltac inversion_all_matches_then matcher tac :=
-  do_all_matches_then matcher ltac:(fun H => inversion H; subst) tac.
-Ltac inversion_one_match_then matcher tac :=
-  do_one_match_then matcher ltac:(fun H => inversion H; subst) tac.
-
-Ltac destruct_all_matches matcher :=
-  destruct_all_matches_then matcher ltac:( simpl in * ).
-Ltac destruct_one_match matcher := destruct_one_match_then matcher ltac:( simpl in * ).
-Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
-
-Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:( simpl in * ).
-Ltac inversion_one_match matcher := inversion_one_match_then matcher ltac:( simpl in * ).
-Ltac inversion_all_matches' matcher := inversion_all_matches_then matcher idtac.
-
-(* matches anything whose type has a [T] in it *)
-Ltac destruct_type_matcher T HT :=
-  match HT with
-  | context[T] => idtac
-  end.
-Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
-Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
-
-Ltac destruct_head_matcher T HT :=
-  match head HT with
-  | T => idtac
-  end.
-Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
-Ltac destruct_one_head T := destruct_one_match ltac:(destruct_head_matcher T).
-Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
-
-Ltac inversion_head T := inversion_all_matches ltac:(destruct_head_matcher T).
-Ltac inversion_one_head T := inversion_one_match ltac:(destruct_head_matcher T).
-Ltac inversion_head' T := inversion_all_matches' ltac:(destruct_head_matcher T).
-
-
-Ltac head_hnf_matcher T HT :=
-  match head_hnf HT with
-  | T => idtac
-  end.
-Ltac destruct_head_hnf T := destruct_all_matches ltac:(head_hnf_matcher T).
-Ltac destruct_one_head_hnf T := destruct_one_match ltac:(head_hnf_matcher T).
-Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(head_hnf_matcher T).
-
-Ltac inversion_head_hnf T := inversion_all_matches ltac:(head_hnf_matcher T).
-Ltac inversion_one_head_hnf T := inversion_one_match ltac:(head_hnf_matcher T).
-Ltac inversion_head_hnf' T := inversion_all_matches' ltac:(head_hnf_matcher T).
-
-Ltac destruct_sig_matcher HT :=
-  match eval hnf in HT with
-  | ex _ => idtac
-  | ex2 _ _ => idtac
-  | sig _ => idtac
-  | sig2 _ _ => idtac
-  | sigT _ => idtac
-  | sigT2 _ _ => idtac
-  | and _ _ => idtac
-  | prod _ _ => idtac
-  end.
-Ltac destruct_sig := destruct_all_matches destruct_sig_matcher.
-Ltac destruct_sig' := destruct_all_matches' destruct_sig_matcher.
-
-Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
-                                                             destruct_sig_matcher HT || destruct_sig_matcher HT
-                                                          ).
 
 (** if progress can be made by [exists _], but it doesn't matter what
     fills in the [_], assume that something exists, and leave the two

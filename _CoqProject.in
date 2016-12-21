@@ -256,6 +256,9 @@ src/Common/List/UpperBound.v
 src/Common/Tactics/BreakMatch.v
 src/Common/Tactics/CacheStringConstant.v
 src/Common/Tactics/Combinators.v
+src/Common/Tactics/DestructHead.v
+src/Common/Tactics/DestructHyps.v
+src/Common/Tactics/DestructSig.v
 src/Common/Tactics/FoldIsTrue.v
 src/Common/Tactics/FreeIn.v
 src/Common/Tactics/Head.v
