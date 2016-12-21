@@ -1066,7 +1066,11 @@ End Iso.
 Ltac pose_string_like_for_lengths :=
   match goal with
   | [ H : context[length _ = ?n] |- _ ]
-    => lazymatch goal with
+    => lazymatch n with
+       | length _ => fail
+       | _ => idtac
+       end;
+       lazymatch goal with
        | [ H' : length _ = n |- _ ] => fail
        | _ => destruct (strings_nontrivial n)
        end
