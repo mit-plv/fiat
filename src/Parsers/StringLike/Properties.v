@@ -1070,6 +1070,12 @@ Ltac pose_string_like_for_lengths :=
        | [ H' : length _ = n |- _ ] => fail
        | _ => destruct (strings_nontrivial n)
        end
+  | [ H : @String ?Char ?HSLM -> ?T |- _ ]
+    => is_closed T;
+       lazymatch goal with
+       | [ s : @String Char HSLM |- _ ] => fail
+       | _ => destruct (@strings_nontrivial Char HSLM _ _ 0)
+       end
   end.
 
 Ltac simpl_string_like_no_setoid_step :=
@@ -1080,6 +1086,8 @@ Ltac simpl_string_like_no_setoid_step :=
   | _ => progress pose_string_like_for_lengths
   | [ H : forall str, length str = ?n -> ?T, H' : length ?str' = ?n |- _ ]
     => is_closed T; specialize (H str' H')
+  | [ H : String -> ?T, H' : String |- _ ]
+    => is_closed T; specialize (H H')
   | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
   | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
   end.
