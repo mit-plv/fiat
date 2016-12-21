@@ -1069,6 +1069,6 @@ Ltac simpl_string_like_step :=
   | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
   | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
   | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-  | _ => progress setoid_subst_rel beq
+  | _ => progress setoid_subst_rel (@beq _ _ _)
   end.
 Ltac simpl_string_like := repeat simpl_string_like_step.
