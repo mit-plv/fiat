@@ -6,6 +6,7 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
+Require Import Fiat.Common.Tactics.SetoidSubst.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Common.UIP.
 
 Local Open Scope list_scope.
@@ -1060,3 +1061,14 @@ Section Iso.
     reflexivity.
   Qed.
 End Iso.
+
+Ltac simpl_string_like_step :=
+  match goal with
+  | [ H : length ?str = _, H' : context[length ?str] |- _ ] => rewrite H in H'
+  | [ H : length ?str = _ |- context[length ?str] ] => rewrite H
+  | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
+  | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
+  | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+  | _ => progress setoid_subst_rel beq
+  end.
+Ltac simpl_string_like := repeat simpl_string_like_step.
