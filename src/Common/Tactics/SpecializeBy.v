@@ -1,8 +1,32 @@
-(** try to specialize all non-dependent hypotheses using [tac] *)
+Ltac transparent_specialize_one H arg :=
+  first [ let test := eval unfold H in H in idtac;
+          let H' := fresh in rename H into H'; pose (H' arg) as H; subst H'
+         | specialize (H arg) ].
+
+(** try to specialize all non-dependent hypotheses using [tac], maintaining transparency *)
 Ltac specialize_by' tac :=
   idtac;
   match goal with
-  | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by tac; specialize (H H'); clear H'
+  | [ H : ?A -> ?B |- _ ] =>
+    match type of A with
+      Prop =>
+      let H' := fresh in
+      assert (H' : A) by tac;
+      transparent_specialize_one H H';
+      try clear H' (* if [H] was transparent, [H'] will remain *)
+    end
   end.
 
 Ltac specialize_by tac := repeat specialize_by' tac.
+
+(** [specialize_by auto] should not mean [specialize_by ltac:( auto
+    with * )]!!!!!!! (see
+    https://coq.inria.fr/bugs/show_bug.cgi?id=4966) We fix this design
+    flaw. *)
+Tactic Notation "specialize_by" tactic3(tac) := specialize_by tac.
+
+(** A marginally faster version of [specialize_by assumption] *)
+Ltac specialize_by_assumption :=
+  repeat match goal with
+         | [ H : ?T, H' : (?T -> ?U)%type |- _ ] => specialize (H' H)
+         end.
