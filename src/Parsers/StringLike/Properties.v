@@ -1062,6 +1062,15 @@ Section Iso.
   Qed.
 End Iso.
 
+Ltac pose_string_like_for_lengths :=
+  match goal with
+  | [ H : context[length _ = ?n] |- _ ]
+    => lazymatch goal with
+       | [ H' : length _ = n |- _ ] => fail
+       | _ => destruct (strings_nontrivial n)
+       end
+  end.
+
 Ltac simpl_string_like_step :=
   match goal with
   | [ H : length ?str = _, H' : context[length ?str] |- _ ] => rewrite H in H'
@@ -1070,5 +1079,8 @@ Ltac simpl_string_like_step :=
   | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
   | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
   | _ => progress setoid_subst_rel (@beq _ _ _)
+  | _ => progress pose_string_like_for_lengths
+  | [ H : forall str, length str = ?n -> ?T, H' : length ?str' = ?n |- _ ]
+    => specialize (H str' H')
   end.
 Ltac simpl_string_like := repeat simpl_string_like_step.
