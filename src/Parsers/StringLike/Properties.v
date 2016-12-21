@@ -1072,16 +1072,19 @@ Ltac pose_string_like_for_lengths :=
        end
   end.
 
-Ltac simpl_string_like_step :=
+Ltac simpl_string_like_no_setoid_step :=
   match goal with
   | [ H : length ?str = _, H' : context[length ?str] |- _ ] => rewrite H in H'
   | [ H : length ?str = _ |- context[length ?str] ] => rewrite H
   | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
   | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
   | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-  | _ => progress setoid_subst_rel (@beq _ _ _)
   | _ => progress pose_string_like_for_lengths
   | [ H : forall str, length str = ?n -> ?T, H' : length ?str' = ?n |- _ ]
     => is_closed T; specialize (H str' H')
   end.
+Ltac simpl_string_like_step :=
+  first [ progress simpl_string_like_no_setoid_step
+        | progress setoid_subst_rel (@beq _ _ _) ].
+Ltac simpl_string_like_no_setoid := repeat simpl_string_like_no_setoid_step.
 Ltac simpl_string_like := repeat simpl_string_like_step.
