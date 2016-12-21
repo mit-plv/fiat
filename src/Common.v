@@ -10,6 +10,7 @@ Require Export Fiat.Common.Tactics.SetoidSubst.
 Require Export Fiat.Common.Tactics.BreakMatch.
 Require Export Fiat.Common.Tactics.Head.
 Require Export Fiat.Common.Tactics.FoldIsTrue.
+Require Export Fiat.Common.Tactics.SpecializeBy.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
@@ -317,15 +318,6 @@ Ltac specialize_all_ways :=
   repeat match goal with
          | [ x : ?T, H : _ |- _ ] => unique pose proof (H x)
          end.
-
-(** try to specialize all non-dependent hypotheses using [tac] *)
-Ltac specialize_by' tac :=
-  idtac;
-  match goal with
-  | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by tac; specialize (H H'); clear H'
-  end.
-
-Ltac specialize_by tac := repeat specialize_by' tac.
 
 Ltac apply_in_hyp lem :=
   match goal with
