@@ -44,7 +44,3 @@ Ltac destruct_type_matcher T HT :=
   end.
 Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
 Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
-
-Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
-                                                             destruct_sig_matcher HT || destruct_sig_matcher HT
-                                                          ).
