@@ -4,15 +4,15 @@ Ltac transparent_specialize_one H arg :=
          | specialize (H arg) ].
 
 (** try to specialize all non-dependent hypotheses using [tac], maintaining transparency *)
-Ltac guarded_specialize_by' tac guard :=
+Ltac guarded_specialize_by' tac guard_tac :=
   idtac;
   match goal with
-  | [ H : ?A -> ?B |- _ ] =>
-    guard H;
-    let H' := fresh in
-    assert (H' : A) by tac;
-    transparent_specialize_one H H';
-    try clear H' (* if [H] was transparent, [H'] will remain *)
+  | [ H : ?A -> ?B |- _ ]
+    => guard_tac H;
+       let H' := fresh in
+       assert (H' : A) by tac;
+       transparent_specialize_one H H';
+       try clear H' (* if [H] was transparent, [H'] will remain *)
   end.
 Ltac specialize_by' tac := guarded_specialize_by' tac ltac:(fun _ => idtac).
 
