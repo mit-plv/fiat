@@ -2333,4 +2333,29 @@ Section ListFacts.
     setoid_rewrite in_map_iff.
     firstorder (subst; eauto).
   Qed.
+
+  Lemma NoDupA_map_iff {A B} eqv (f : A -> B) ls
+    : NoDupA eqv (List.map f ls) <-> NoDupA (fun x y => eqv (f x) (f y)) ls.
+  Proof.
+    remember (List.map f ls) as fls eqn:Heq.
+    split; intro H; first [ revert ls Heq | subst fls ]; induction H using NoDupA_ind; simpl;
+      repeat match goal with
+             | _ => intro
+             | [ H : nil = List.map _ ?ls |- _ ]
+               => is_var ls; destruct ls
+             | [ H : cons _ _ = List.map _ ?ls |- _ ]
+               => is_var ls; destruct ls
+             | _ => progress simpl in *
+             | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
+             | _ => progress subst
+             | _ => congruence
+             | [ H : context[InA (fun x y => ?eqv (?f x) (?f y)) _ _] |- _ ]
+               => erewrite <- (@InA_map_iff _ _ f eqv) in H by reflexivity
+             | [ |- context[InA (fun x y => ?eqv (?f x) (?f y)) _ _] ]
+               => erewrite <- (@InA_map_iff _ _ f eqv) by reflexivity
+             | _ => apply NoDupA_nil
+             | _ => apply NoDupA_cons
+             | _ => solve [ eauto ]
+             end.
+  Qed.
 End ListFacts.
