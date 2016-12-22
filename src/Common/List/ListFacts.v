@@ -2324,4 +2324,13 @@ Section ListFacts.
   Proof.
     induction ls as [|?? IHls]; simpl; intuition (subst; auto).
   Qed.
+
+  Lemma InA_map_iff {A B} (f : A -> B) eqv x ls a
+    : f a = x -> InA eqv x (List.map f ls) <-> InA (fun a b => eqv (f a) (f b)) a ls.
+  Proof.
+    intro; subst.
+    rewrite !InA_alt.
+    setoid_rewrite in_map_iff.
+    firstorder (subst; eauto).
+  Qed.
 End ListFacts.
