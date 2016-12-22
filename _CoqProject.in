@@ -418,6 +418,8 @@ src/Parsers/SplitterFromParserADT.v
 src/Parsers/StringLike.v
 src/Parsers/WellFoundedParse.v
 src/Parsers/WellFoundedParseProperties.v
+src/Parsers/AbstractInterpretation/NonTerminalMap.v
+src/Parsers/AbstractInterpretation/NonTerminalMapWf.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
