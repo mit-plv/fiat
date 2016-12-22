@@ -1268,7 +1268,7 @@ Section ListFacts.
         try (exfalso; clear -H''; abstract congruence);
         simpl in *.
       destruct_head prod.
-      specialize_by ltac:(repeat first [ assumption | constructor ]).
+      specialize_by (repeat first [ assumption | constructor ]).
       repeat first [ assumption | constructor ].
       apply (f_equal (hd x)) in H''.
       apply (f_equal (hd x)) in H'.
@@ -1846,7 +1846,7 @@ Section ListFacts.
                | _ => progress subst
                | _ => progress split_and
                | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
-               | _ => progress specialize_by ltac:(exact eq_refl)
+               | _ => progress specialize_by (exact eq_refl)
                | _ => congruence
                | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
                  => pose proof (H _ (or_introl eq_refl)); subst a
@@ -1872,7 +1872,7 @@ Section ListFacts.
                | [ |- ?x::_ = ?x::_ ] => apply f_equal
                | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
                | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
-                 => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
+                 => progress specialize_by (apply (ListFacts.uniquize_In _ beq);
                                                  rewrite Heq; first [ left; reflexivity
                                                                     | right; assumption ])
                | _ => progress destruct_head False
@@ -2203,7 +2203,7 @@ Section ListFacts.
              => apply H in H'
            | [ H0 : ?R ?x ?y, H1 : ?R ?y ?z, H2 : ?R ?z ?x -> False |- _ ]
              => exfalso; apply H2; symmetry; etransitivity; eassumption
-           | _ => progress specialize_by ltac:(constructor; assumption)
+           | _ => progress specialize_by (constructor; assumption)
            | _ => progress split_iff
            | _ => progress split_and
            | [ HE : Equivalence ?R, H : InA ?R ?x ?ls -> False, H' : InA ?R ?y ?ls, H'' : ?R ?x ?y |- _ ]

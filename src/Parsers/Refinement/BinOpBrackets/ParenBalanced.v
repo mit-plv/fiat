@@ -160,7 +160,7 @@ Section specific.
         destruct level1, level2; simpl; intros; congruence. }
       { intros str Hlen ???.
         specialize (IHlen (drop 1 str)).
-        specialize_by ltac:(rewrite drop_length; omega).
+        specialize_by (rewrite drop_length; omega).
         specialize (IHlen (pred n)).
         destruct n as [|n].
         { clear IHlen.
@@ -350,7 +350,7 @@ Section specific.
         destruct level1, level2; simpl; intros; congruence. }
       { intros str Hlen ???.
         specialize (IHlen (drop 1 str)).
-        specialize_by ltac:(rewrite drop_length; omega).
+        specialize_by (rewrite drop_length; omega).
         specialize (IHlen (pred n)).
         destruct n as [|n].
         { clear IHlen.

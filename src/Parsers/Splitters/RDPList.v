@@ -106,7 +106,7 @@ Section recursive_descent_parser_list.
             H' : In ?nt ?ls
             |- _ ]
         => exfalso; specialize (H nt)
-      | _ => progress specialize_by ltac:(apply uniquize_In_refl; first [ apply string_lb; reflexivity | apply @string_bl | assumption ])
+      | _ => progress specialize_by (apply uniquize_In_refl; first [ apply string_lb; reflexivity | apply @string_bl | assumption ])
     end.
 
   Local Ltac t := repeat t'.

@@ -337,7 +337,7 @@ Proof.
   { specialize (IHn (drop 1 str)).
     rewrite !drop_drop, !take_drop, !Nat.add_1_r in IHn.
     specialize_by assumption.
-    specialize_by ltac:(apply for_last_char__add_drop; assumption).
+    specialize_by (apply for_last_char__add_drop; assumption).
     rewrite find_after_last_char_such_that_drop; simpl.
     destruct (get 0 str) eqn:Hg0.
     { destruct (find_after_last_char_such_that (drop 1 str) P) eqn:Hf.

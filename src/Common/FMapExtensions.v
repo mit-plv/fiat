@@ -1893,7 +1893,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
            | _ => solve [ trivial ]
            | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
            | _ => progress specialize_by assumption
-           | _ => progress specialize_by ltac:(exact eq_refl)
+           | _ => progress specialize_by (exact eq_refl)
            | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
            | [ H : Some _ = Some _ -> _ |- _ ] => specialize (fun H' => H (f_equal (@Some _) H'))
            | [ H : forall x, Some ?v = Some x -> _ |- _ ] => specialize (H _ eq_refl)
@@ -1905,7 +1905,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     repeat match goal with
            | _ => congruence
            | _ => progress specialize_by assumption
-           | _ => progress specialize_by ltac:(exact eq_refl)
+           | _ => progress specialize_by (exact eq_refl)
            | _ => solve [ trivial ]
            | [ H : forall x, ?R x ?y = ?v -> _, H' : ?R ?x' ?y = ?v |- _ ]
              => unique pose proof (H _ H')

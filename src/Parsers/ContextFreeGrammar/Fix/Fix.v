@@ -483,7 +483,7 @@ Section grammar_fixedpoint.
         unfold is_true in *; split_iff; break_match.
       { intuition eauto. }
       { edestruct PositiveMap.find; [ | reflexivity ].
-        specialize_all_ways; specialize_by ltac:(exact eq_refl).
+        specialize_all_ways; specialize_by (exact eq_refl).
         intuition congruence. }
     Qed.
   End with_initial.

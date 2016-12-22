@@ -682,7 +682,7 @@ Section tower.
     { destruct (proj x); simpl; intros;
       apply IHxs; clear IHxs; try intros ?? H';
       apply H;
-      edestruct test; specialize_by ltac:(exact eq_refl); simpl;
+      edestruct test; specialize_by (exact eq_refl); simpl;
       try setoid_rewrite_hyp'; reflexivity. }
   Qed.
 
@@ -750,7 +750,7 @@ Section tower.
              | _ => apply make_tower_const; reflexivity
              | _ => apply make_tower_no_unif_const; first [ reflexivity | assumption ]
              | _ => progress intros
-             | _ => progress specialize_by ltac:(exact eq_refl)
+             | _ => progress specialize_by (exact eq_refl)
              | _ => progress specialize_by assumption
              | _ => solve [ eauto with nocore ]
              end. }

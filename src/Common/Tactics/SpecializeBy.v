@@ -18,7 +18,7 @@ Ltac specialize_by' tac := guarded_specialize_by' tac ltac:(fun _ => idtac).
 
 Ltac specialize_by tac := repeat specialize_by' tac.
 
-(** [specialize_by auto] should not mean [specialize_by ltac:( auto
+(** [specialize_by auto] should not mean [specialize_by ( auto
     with * )]!!!!!!! (see
     https://coq.inria.fr/bugs/show_bug.cgi?id=4966) We fix this design
     flaw. *)

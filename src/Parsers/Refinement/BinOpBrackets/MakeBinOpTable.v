@@ -452,7 +452,7 @@ pb = pb' '+' 0
       rewrite compute_next_bin_op'_nil, list_of_next_bin_ops'_nil by (rewrite ?drop_length; omega).
       destruct offset; reflexivity. }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       setoid_rewrite drop_drop in IHlen.
       t_eq.
       rewrite list_of_next_bin_ops'_recr.
@@ -502,7 +502,7 @@ pb = pb' '+' 0
       { congruence. }
       { apply index_not_points_to_binop_nil; omega. } }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       setoid_rewrite drop_drop in IHlen; t_eq.
       destruct offset as [|offset];
         [
@@ -647,7 +647,7 @@ Section for_string.
     induction len; intros str H'.
     { rewrite !fold_nil by assumption; reflexivity. }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       rewrite !(fold_recr _ _ str).
       destruct (get 0 str) eqn:H''.
       { unfold list_of_next_bin_ops'_step_opt at 1.
