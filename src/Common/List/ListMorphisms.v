@@ -469,6 +469,40 @@ Proof.
     try assumption.
 Qed.
 
+Global Instance InA_Proper_iff_iff {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> iff) (@SetoidList.InA A) | 5.
+Proof.
+  unfold pointwise_relation.
+  intros eqA eqA' HeqA a a' ? ls ls' ?; subst a' ls'; split;
+    split_iff;
+    induction ls as [|x xs IHxs];
+    intro H'; inversion H'; intuition eauto.
+Qed.
+
+Global Instance InA_Proper_iff_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> impl) (@SetoidList.InA A) | 5.
+Proof. repeat intro; eapply InA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+Global Instance InA_Proper_iff_flip_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> flip impl) (@SetoidList.InA A) | 5.
+Proof. repeat intro; eapply InA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+
+Global Instance NoDupA_Proper_iff_iff {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> iff) (@SetoidList.NoDupA A) | 5.
+Proof.
+  intros eqA eqA' HeqA ls ls' ?; subst ls'; split;
+    induction ls as [|x xs IHxs];
+    intro H'; inversion H'; clear H'; subst; constructor;
+      try solve [ auto
+                | setoid_rewrite <- HeqA; auto
+                | setoid_rewrite HeqA; auto ].
+Qed.
+Global Instance NoDupA_Proper_iff_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> impl) (@SetoidList.NoDupA A) | 5.
+Proof. repeat intro; eapply NoDupA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+Global Instance NoDupA_Proper_iff_flip_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> flip impl) (@SetoidList.NoDupA A) | 5.
+Proof. repeat intro; eapply NoDupA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+
 Global Instance Proper_fold_right_Prop_iff
   : Proper ((iff ==> iff ==> iff) ==> iff ==> eq ==> iff) (fold_right (B:=Prop)) | 5.
 Proof.
