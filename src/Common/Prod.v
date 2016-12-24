@@ -54,6 +54,10 @@ Section prod.
     split; [ intro; subst; split; reflexivity | apply path_prod_uncurried ].
   Defined.
 
+  Definition prod_and_iff {A B : Prop}
+    : A /\ B <-> (A * B).
+  Proof. split; intros [? ?]; split; assumption. Defined.
+
   (** *** Eta-expansion of [@eq (prod _ _)] *)
   Definition path_prod_eta {A B} {u v : @prod A B} (p : u = v)
     : p = path_prod_uncurried u v (fst_path p, snd_path p).
