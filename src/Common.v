@@ -123,16 +123,27 @@ Ltac atomic x :=
    most useful for proofs of a proposition *)
 Tactic Notation "unique" "pose" "proof" constr(defn) :=
   let T := type of defn in
-  match goal with
-  | [ H : T |- _ ] => fail 1
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
   | _ => pose proof defn
   end.
 
 (** [pose defn], but only if that hypothesis doesn't exist *)
 Tactic Notation "unique" "pose" constr(defn) :=
-  match goal with
-  | [ H := defn |- _ ] => fail 1
+  lazymatch goal with
+  | [ H := defn |- _ ] => fail
   | _ => pose defn
+  end.
+
+Tactic Notation "unique" "assert" "(" ident(H) ":" constr(T) ")" :=
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
+  | _ => assert (H : T)
+  end.
+Tactic Notation "unique" "assert" "(" ident(H) ":" constr(T) ")" "by" tactic3(tac) :=
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
+  | _ => assert (H : T) by tac
   end.
 
 (** check's if the given hypothesis has a body, i.e., if [clearbody]
