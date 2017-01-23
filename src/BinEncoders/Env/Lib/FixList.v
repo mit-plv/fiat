@@ -94,13 +94,18 @@ Section FixListEncoder.
     specialize (IHlen b c). destruct (FixList_decode' len b c) as [[? ?] ?]. simpl. f_equal. eauto.
   Qed.
 
-  Lemma exp2_nat_nonzero :
-    forall size, exp2_nat size <> O.
+  Lemma exp2_nat_gt_zero :
+    forall s, exp2_nat s > O.
   Proof.
-    assert (forall size, exp2_nat size > O) as lt_pf.
-    intro s. unfold exp2_nat. unfold exp2. rewrite Znat.positive_N_nat.
-    destruct (Pnat.Pos2Nat.is_succ (exp2' s)). rewrite H. omega.
-    intro s. specialize (lt_pf s). omega.
+    unfold exp2_nat, exp2; intros.
+    destruct (Pnat.Pos2Nat.is_succ (exp2' s)).
+    rewrite Znat.positive_N_nat; omega.
+  Qed.
+
+  Lemma exp2_nat_nonzero :
+    forall s, exp2_nat s <> O.
+  Proof.
+    intros; pose proof (exp2_nat_gt_zero s); omega.
   Qed.
 
   Definition FixList_decode (len : nat) (b : bin) (env' : CacheDecode) : FixList * bin * CacheDecode.
