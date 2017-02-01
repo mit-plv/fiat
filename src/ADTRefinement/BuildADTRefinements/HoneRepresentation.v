@@ -47,7 +47,6 @@ Section HoneRepresentation.
       apply refine_absMethod.
   Qed.
 
-
   Inductive refine_Methods :
     forall {n'} {methSigs : Vector.t methSig n'},
       ilist (B := @methDef oldRep) methSigs

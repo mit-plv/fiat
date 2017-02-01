@@ -25,6 +25,7 @@ src/ADTRefinement/GeneralBuildADTTactics.v
 src/ADTRefinement/GeneralRefinements.v
 src/ADTRefinement/Refinements.v
 src/ADTRefinement/SetoidMorphisms.v
+src/ADTRefinement/StatefulADTRefinement.v
 src/ADTRefinement/BuildADTRefinements/AddCache.v
 src/ADTRefinement/BuildADTRefinements/HoneRepresentation.v
 src/ADTRefinement/BuildADTRefinements/RefineAllMethods.v
