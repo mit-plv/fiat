@@ -41,6 +41,26 @@ Section QTypes.
      "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ].
 
+  Definition QType_Ws : t (word 16) 17 :=
+    Eval simpl in Vector.map (natToWord 16)
+                             [1; (* "A" *)
+                                2; (* "NS" *)
+                                5; (* "CNAME" *)
+                                6; (* "SOA"*)
+                                11; (* "WKS" *)
+                                12; (* "PTR" *)
+                                13; (* "HINFO" *)
+                                14; (* "MINFO" *)
+                                15; (* "MX" *)
+                                16; (* "TXT" *)
+                                249; (*"TKEY" *)
+                                250; (*"TSIG" *)
+                                251; (*"IXFR" *)
+                                252; (*"AXFR" *)
+                                253;(*"MAILB" *)
+                                254;(*"MAILA" *)
+                                255 (* "STAR" *)].
+
   Definition QType := EnumType ((OurRRecordTypes(* ++ ExtraRRecordTypes) *) ++ QTypes)).
 
   Definition QType_inj (rr : RRecordType) : QType :=
@@ -73,6 +93,12 @@ Section RRecordClass.
         "Hesiod" (* (HS) 	[Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.] *)
     ].
 
+  Definition RRecordClass_Ws : t (word 16) 3 :=
+    Eval simpl in Vector.map (natToWord 16)
+                             [1; (* "IN" *)
+                                3; (* "CH" *)
+                                4 (* "Hesiod" *)].
+  
   Definition RRecordClass := EnumType RRecordClasses.
 
   Definition beq_RRecordClass (a b : RRecordClass) : bool
@@ -84,6 +110,11 @@ Section RRecordClass.
   (* DNS Packet Question Classes *)
   Definition QClass := EnumType (RRecordClasses ++ ["Any"]).
 
+  Definition QClass_Ws : t (word 16) 4 :=
+    Eval simpl in Vector.append
+                    RRecordClass_Ws
+                    [natToWord 16 255 (* "Any"*)].  
+  
   Definition QClass_inj (qclass : RRecordClass) : QClass :=
     Fin.L _ qclass.
 
@@ -97,7 +128,7 @@ End RRecordClass.
 
 Section ResponseCode.
 
-  Definition ResponseCodes :=
+    Definition ResponseCodes :=
     ["NoError";  (* No Error [RFC1035] *)
        "FormErr";  (* Format Error [RFC1035] *)
        "ServFail"; (* Server Failure [RFC1035] *)
@@ -112,6 +143,22 @@ Section ResponseCode.
        "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
     ].
 
+  Definition RCODE_Ws : t (word 4) 12 :=
+    Eval simpl in Vector.map (natToWord 4)
+    [0;  (* No Error [RFC1035] *)
+     1;  (* Format Error [RFC1035] *)
+     2; (* Server Failure [RFC1035] *)
+     3; (* Non-Existent  Domain 	[RFC1035] *)
+     4;   (* Not Implemented [RFC1035] *)
+     5;  (* Query Refused [RFC1035] *)
+     6; (* Name Exists when it should not [RFC2136][RFC6672] *)
+     7;  (* RR Set Exists when it should not 	[RFC2136] *)
+     8;  (* RR Set that should exist does not 	[RFC2136] *)
+     9;  (* Server Not Authoritative for zone 	[RFC2136] *)
+     9;  (* Not Authorized [RFC2845] *)
+     10 	 (* Name not  contained in zone 	[RFC2136] *)
+    ].
+  
   Definition ResponseCode := EnumType ResponseCodes.
 
   Definition beq_ResponseCode (a b : ResponseCode) : bool
@@ -132,6 +179,13 @@ Section OpCode.
 
   Definition OpCode := EnumType OpCodes.
 
+  Definition Opcode_Ws : t (word 4) 4 :=
+    Eval simpl in Vector.map (natToWord 4)
+                             [0;    (* RFC1035] *)
+                              1; (* Inverse Query  OBSOLETE) [RFC3425] *)
+                              2; (* [RFC1035] *)
+                              4  (* [RFC1996] [RFC2136] *)].
+ 
   Definition beq_OpCode (a b : OpCode) : bool
     := fin_beq a b.
 

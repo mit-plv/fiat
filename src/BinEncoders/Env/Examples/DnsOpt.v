@@ -205,19 +205,6 @@ Section DnsPacket.
       try solve [instantiate (1 := fun _ => True); exact I]
     end.
 
-  Variable QType_Ws : t (word 16) 17.
-  Variable QType_Ws_OK : NoDupVector QType_Ws.
-  Variable QClass_Ws : t (word 16) 4.
-  Variable QClass_Ws_OK : NoDupVector QClass_Ws.
-  Variable RRecordType_Ws : t (word 16) 10.
-  Variable RRecordType_Ws_OK : NoDupVector  RRecordType_Ws.
-  Variable RRecordClass_Ws : t (word 16) 3.
-  Variable RRecordClass_Ws_OK : NoDupVector  RRecordClass_Ws.
-  Variable Opcode_Ws : t (word 4) 4.
-  Variable Opcode_Ws_OK : NoDupVector  Opcode_Ws.
-  Variable RCODE_Ws : t (word 4) 12.
-  Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
-
   Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
   Opaque pow2. (* Don't want to be evaluating this. *)

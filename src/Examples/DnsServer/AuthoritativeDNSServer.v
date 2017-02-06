@@ -18,39 +18,46 @@ Require Import
         Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
-Require Import Fiat.Examples.DnsServer.Packet
-        Fiat.Examples.DnsServer.DnsLemmas
-        Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.AuthoritativeDNSSchema
-        Fiat.BinEncoders.Env.Examples.Dns.
-
 Require Import
         Bedrock.Word
         Fiat.BinEncoders.Env.Common.Specs.
 
+Require Import Fiat.Examples.DnsServer.Packet
+        Fiat.Examples.DnsServer.DnsLemmas
+        Fiat.Examples.DnsServer.DnsAutomation
+        Fiat.Examples.DnsServer.AuthoritativeDNSSchema
+        Fiat.BinEncoders.Env.Examples.DnsOpt.
+
 Section BinaryDns.
 
-  Definition bin := list bool.
-
+  Require Import  Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
   Variable cache : Cache.
   Variable cacheAddNat : CacheAdd cache nat.
-  Variable cacheEmpty : CacheEncode.
+  Variable cacheAddDNPointer : CacheAdd cache (string * pointerT).
+  Variable cacheGetDNPointer : CacheGet cache string pointerT.
+  Variable cachePeekDNPointer : CachePeek cache pointerT.
+  Variable IndependentCaches :
+    forall env p (b : nat),
+      getD (addD env b) p = getD env p.
+  Variable GetCacheAdd_1 :
+    forall env (p : pointerT) (domain : string),
+      getD (addD env (domain, p)) p = Some domain.
+  Variable GetCacheAdd_2 :
+    forall env (p p' : pointerT) (domain : string),
+      p <> p' -> getD (addD env (domain, p')) p = getD env p.
 
-  Variable transformer : Transformer bin.
-  Variable transformerUnit : TransformerUnit transformer bool.
-
-  Definition encoder x := (x -> CacheEncode -> bin * CacheEncode).
-  Definition  decoder x := (bin -> CacheDecode -> x * bin * CacheDecode).
-  Variable encode_enum :
-    forall (sz : nat) (A B : Type) (ta : t A sz) (tb : t B sz),
-      encoder B -> encoder (BoundedIndex ta).
-
-  Variable QType_Ws : Vector.t (word 16) 66.
+  Variable QType_Ws : t (word 16) 17.
+  Variable QType_Ws_OK : NoDupVector QType_Ws.
   Variable QClass_Ws : t (word 16) 4.
-  Variable RRecordType_Ws : t (word 16) 59.
+  Variable QClass_Ws_OK : NoDupVector QClass_Ws.
+  Variable RRecordType_Ws : t (word 16) 10.
+  Variable RRecordType_Ws_OK : NoDupVector  RRecordType_Ws.
   Variable RRecordClass_Ws : t (word 16) 3.
+  Variable RRecordClass_Ws_OK : NoDupVector  RRecordClass_Ws.
   Variable Opcode_Ws : t (word 4) 4.
+  Variable Opcode_Ws_OK : NoDupVector  Opcode_Ws.
   Variable RCODE_Ws : t (word 4) 12.
+  Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
 
   Variable recurseDepth : nat.
 
@@ -58,20 +65,8 @@ Definition DnsSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
       Method "AddData" : rep * resourceRecord -> rep * bool,
-      Method "Process" : rep * bin -> rep * bin
+      Method "Process" : rep * ByteString -> rep * ByteString
     }.
-
-Definition encode_packet' b :=
-  @encode_packet bin cache cacheAddNat transformer transformerUnit
-                QType_Ws QClass_Ws RRecordType_Ws
-                RRecordClass_Ws Opcode_Ws RCODE_Ws b cacheEmpty.
-
-Lemma MaxElementsSplit :=
-
-MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
-                             (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
-                               Where (prefix r!sNAME n)   (* prefixed with [n] to [rs] *)
-                               Return r);
 
 Definition DnsSpec : ADT DnsSig :=
   Def ADT {
@@ -85,7 +80,7 @@ Definition DnsSpec : ADT DnsSig :=
     Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
       Insert t into this!sRRecords,
 
-    Def Method1 "Process" (this : rep) (b : bin) : rep * bin :=
+    Def Method1 "Process" (this : rep) (b : ByteString) : rep * ByteString :=
         p <- {p | fst (encode_packet' p) = b};
         Repeat recurseDepth initializing n with p!"question"!"qname"
                defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
