@@ -26,11 +26,11 @@ Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema
-        Fiat.BinEncoders.Env.Examples.DnsOpt.
+        Fiat.BinEncoders.Env.Examples.DnsOpt
+        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
 
 Section BinaryDns.
 
-  Require Import  Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
   Variable cache : Cache.
   Variable cacheAddNat : CacheAdd cache nat.
   Variable cacheAddDNPointer : CacheAdd cache (string * pointerT).
@@ -45,19 +45,6 @@ Section BinaryDns.
   Variable GetCacheAdd_2 :
     forall env (p p' : pointerT) (domain : string),
       p <> p' -> getD (addD env (domain, p')) p = getD env p.
-
-  Variable QType_Ws : t (word 16) 17.
-  Variable QType_Ws_OK : NoDupVector QType_Ws.
-  Variable QClass_Ws : t (word 16) 4.
-  Variable QClass_Ws_OK : NoDupVector QClass_Ws.
-  Variable RRecordType_Ws : t (word 16) 10.
-  Variable RRecordType_Ws_OK : NoDupVector  RRecordType_Ws.
-  Variable RRecordClass_Ws : t (word 16) 3.
-  Variable RRecordClass_Ws_OK : NoDupVector  RRecordClass_Ws.
-  Variable Opcode_Ws : t (word 4) 4.
-  Variable Opcode_Ws_OK : NoDupVector  Opcode_Ws.
-  Variable RCODE_Ws : t (word 4) 12.
-  Variable RCODE_Ws_OK : NoDupVector  RCODE_Ws.
 
   Variable recurseDepth : nat.
 

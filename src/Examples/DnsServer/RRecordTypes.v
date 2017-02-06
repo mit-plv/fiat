@@ -236,4 +236,18 @@ Section RData.
   (* The RDATA field is a variant type built from these building blocks. *)
   Definition RDataType := SumType ResourceRecordTypeTypes.
 
+  Definition RRecordType_Ws : t (word 16) 10 :=
+    Eval simpl in Vector.map (natToWord 16)
+                             [1; (* "A" *)
+                                2; (* "NS" *)
+                                5; (* "CNAME" *)
+                                6; (* "SOA"*)
+                                11; (* "WKS" *)
+                                12; (* "PTR" *)
+                                13; (* "HINFO" *)
+                                14; (* "MINFO" *)
+                                15; (* "MX" *)
+                                16]. (* "TXT" *)
+
+
 End RData.

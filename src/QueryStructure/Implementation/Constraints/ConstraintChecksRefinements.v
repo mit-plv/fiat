@@ -809,6 +809,40 @@ Proof.
     [ rewrite dec_decides_P in eqdec | rewrite Decides_false in eqdec ]; intuition.
 Qed.
 
+Lemma refine_constraint_check_into_QueryResultComp :
+  forall heading R P' P
+         (P_dec : DecideableEnsemble P),
+    Same_set _ (fun tup => P (indexedElement tup)) P'
+    -> refine
+         (Pick (fun (b : bool) =>
+                  decides b
+                          (exists tup2: @IndexedRawTuple heading,
+                              (R tup2 /\ P' tup2))))
+         (Bind
+            (Count (For (QueryResultComp R (fun tup => Where (P tup) Return tup))))
+            (fun count => ret (negb (beq_nat count 0)))).
+Proof.
+  Local Transparent Count.
+  unfold refine, Count, UnConstrQuery_In;
+    intros * excl * P_iff_P' pick_comp ** .
+  computes_to_inv; subst.
+
+  computes_to_constructor.
+
+  destruct (Datatypes.length v0) eqn:eq_length;
+    destruct v0 as [ | head tail ]; simpl in *; try discriminate; simpl.
+
+  pose proof (For_computes_to_nil _ R H).
+  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
+  unfold not; intros; eapply H0; eauto; apply P_iff_P'; eauto.
+
+  apply For_computes_to_In with (x := head) in H; try solve [intuition].
+  destruct H as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
+  eexists; split; eauto; apply P_iff_P'; eauto.
+
+  apply decidable_excl; assumption.
+Qed.
+
 Lemma refine_constraint_check_into_query' :
   forall {schm tbl} (c : UnConstrQueryStructure schm) P' P
          (P_dec : DecideableEnsemble P),
@@ -822,25 +856,8 @@ Lemma refine_constraint_check_into_query' :
             (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
             (fun count => ret (negb (beq_nat count 0)))).
 Proof.
-  Local Transparent Count.
-  unfold refine, Count, UnConstrQuery_In;
-    intros * excl * P_iff_P' pick_comp ** .
-  computes_to_inv; subst.
-
-  computes_to_constructor.
-
-  destruct (Datatypes.length v0) eqn:eq_length;
-    destruct v0 as [ | head tail ]; simpl in *; try discriminate; simpl.
-
-  pose proof (For_computes_to_nil _ (GetUnConstrRelation c tbl) H).
-  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
-  unfold not; intros; eapply H0; eauto; apply P_iff_P'; eauto.
-
-  apply For_computes_to_In with (x := head) in H; try solve [intuition].
-  destruct H as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
-  eexists; split; eauto; apply P_iff_P'; eauto.
-
-  apply decidable_excl; assumption.
+  intros; rewrite refine_constraint_check_into_QueryResultComp; eauto.
+  reflexivity.
 Qed.
 
 Corollary refine_constraint_check_into_query :
@@ -855,7 +872,6 @@ Corollary refine_constraint_check_into_query :
          (Count (For (UnConstrQuery_In c tbl (fun tup => Where (P tup) Return tup))))
          (fun count => ret (negb (beq_nat count 0)))).
 Proof.
-
   intros.
   setoid_rewrite refine_constraint_check_into_query'; eauto.
   reflexivity.

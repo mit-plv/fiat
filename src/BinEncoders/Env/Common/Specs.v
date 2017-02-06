@@ -309,11 +309,14 @@ Definition CorrectDecoderFor {A B} {cache : Cache}
 
 Lemma Start_CorrectDecoderFor
       {A B} {cache : Cache}
-      {transformer : Transformer B} Invariant FormatSpec
+      {transformer : Transformer B}
+      Invariant
+      FormatSpec
       (decoder decoder_opt : B -> CacheDecode -> option (A * B * CacheDecode))
       (cache_inv : CacheDecode -> Prop)
       (P_inv : (CacheDecode -> Prop) -> Prop)
-      (decoder_OK : cache_inv_Property cache_inv P_inv
+      (decoder_OK :
+         cache_inv_Property cache_inv P_inv
          -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
                                     FormatSpec decoder cache_inv)
       (cache_inv_OK : cache_inv_Property cache_inv P_inv)
@@ -327,3 +330,55 @@ Proof.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
 Defined.
+
+(* Shorthand for nondeterministically decoding a value. *)
+Definition Pick_Decoder_For
+      {A B} {cache : Cache}
+      {transformer : Transformer B}
+      Invariant
+      FormatSpec
+      (b : B)
+      (ce : CacheEncode)
+  := {a : option A |
+            forall a' : A,
+              a = Some a' <->
+              (exists b1 b2 (ce' : CacheEncode),
+                  computes_to (FormatSpec a' ce) (b1, ce')
+                  /\ b = transform b1 b2
+                  /\ Invariant a')}%comp.
+
+Lemma refine_Pick_Decoder_For
+      {A B} {cache : Cache}
+      {transformer : Transformer B} {Invariant}
+      {FormatSpec}
+      (decoderImpl : @CorrectDecoderFor A B cache transformer Invariant FormatSpec)
+  : forall b ce cd,
+    Equiv ce cd
+    -> snd (projT1 decoderImpl) cd
+    -> refine (Pick_Decoder_For Invariant FormatSpec b ce)
+           (ret match fst (projT1 decoderImpl) b cd
+                           with
+                           | Some (a, _, _) => Some a
+                           | None => None
+                           end).
+Proof.
+  intros.
+  pose proof (projT2 (decoderImpl)).
+  cbv beta in H1.
+  destruct_ex; intuition.
+  destruct H1.
+  intros v Comp_v; computes_to_inv; subst;
+    apply PickComputes; intros.
+  split; intros.
+  - destruct (fst (projT1 decoderImpl) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
+    injections.
+    eapply H2 in Heqo; eauto.
+    destruct Heqo as [? [? [? [? ?] ] ] ].
+    intuition.
+    subst.
+    eexists _, _, _ ; split; eauto.
+  - destruct_ex; intuition; subst.
+    eapply H1 in H5; eauto.
+    destruct_ex; intuition.
+    rewrite H5; reflexivity.
+Qed.

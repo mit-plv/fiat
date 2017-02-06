@@ -42,7 +42,7 @@ Ltac BuildEarlyFindPrefixIndex
                               else false
                             | None => true
                             end (matcher (snd search_term) tup))
-      | right _ => k_fail heading indices kind index k
+      | right _ => k_fail heading indices kind index matcher k
       end.
 
 
