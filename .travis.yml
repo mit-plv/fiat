@@ -5,6 +5,8 @@ sudo: required
 matrix:
   include:
     - dist: trusty
+      env: COQ_VERSION="8.6"    TARGETS="parsers" COQ_PACKAGE="coq-8.6 libcoq-ocaml-8.6 ocaml camlp5"       PPA="ppa:jgross-h/many-coq-versions"
+    - dist: trusty
       env: COQ_VERSION="8.5pl2" TARGETS="parsers" COQ_PACKAGE="coq-8.5pl2 libcoq-ocaml-8.5pl2 ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
     - dist: trusty
       env: COQ_VERSION="8.5pl1" TARGETS="parsers" COQ_PACKAGE="coq-8.5pl1 ocaml camlp5"                     PPA="ppa:jgross-h/many-coq-versions"
