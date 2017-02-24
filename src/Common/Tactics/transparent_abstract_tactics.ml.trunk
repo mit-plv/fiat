@@ -10,6 +10,7 @@ module TRANSPARENT_ABSTRACT =
     open Names
     open Nameops
     open Tacticals.New
+    open Ltac_plugin
     open Tacmach.New
     open Proofview.Notations
     open Safe_typing
