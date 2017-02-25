@@ -1,4 +1,5 @@
 Require Import
+        Coq.Bool.Bool
         Fiat.Common.DecideableEnsembles
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.EnumType
@@ -31,8 +32,7 @@ Require Import
         Fiat.BinEncoders.Env.BinLib.Bool
         Fiat.BinEncoders.Env.BinLib.Enum
         Fiat.BinEncoders.Env.Lib.FixList
-        Fiat.BinEncoders.Env.Lib.IList
-        Fiat.BinEncoders.Env.Lib.SteppingCacheList.
+        Fiat.BinEncoders.Env.Lib.IList.
 
 Ltac apply_compose :=
   intros;
@@ -778,7 +778,7 @@ Ltac solve_done :=
                                             end; intuition eauto; fail 0.
 
 Ltac solve_predicate :=
-  unfold SteppingList_predicate, IList_predicate, FixList_predicate;
+  unfold IList_predicate, FixList_predicate;
   intuition eauto; instantiate (1:=fun _ => True); solve_predicate.
 
 Ltac eauto_typeclass :=
@@ -788,7 +788,7 @@ Ltac eauto_typeclass :=
   | |- context [ FixInt_encode ] => eapply FixInt_encode_correct
   | |- context [ FixList_encode _ ] => eapply FixList_encode_correct
   | |- context [ IList_encode _ ] => eapply IList_encode_correct
-  | |- context [ SteppingList_encode _ _ _ ] => eapply SteppingList_encode_correct
+  (*| |- context [ SteppingList_encode _ _ _ ] => eapply SteppingList_encode_correct *)
   end; eauto.
 
 Ltac solve_decoder :=

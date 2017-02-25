@@ -1,7 +1,8 @@
 Require Import Coq.Vectors.Vector
         Coq.Strings.Ascii
         Coq.Bool.Bool
-        Coq.Lists.List.
+        Coq.Lists.List
+        Coq.Arith.Div2.
 
 Require Import
         Fiat.Common.Tactics.CacheStringConstant
@@ -22,7 +23,6 @@ Require Import
         Bedrock.Word
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Examples.DnsOpt
         Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
 
 Require Import Fiat.Examples.DnsServer.Packet
@@ -33,17 +33,129 @@ Require Import Fiat.Examples.DnsServer.Packet
 Section BinaryDns.
 
   (* This "unresponsive" variant of an authoritative DNS Server responds*)
-  (* by simply flipping the response bit in the packet without adding any *)
+   (* by simply flipping the response bit in the packet without adding any *)
   (* records. It is intended as an initial example for Bedrock compilation. *)
 
-  Variable cache : Cache.
-  Variable cacheEncode_empty : CacheEncode.
-  Variable cacheDecode_empty : CacheDecode.
-  Variable empty_Equiv : Equiv cacheEncode_empty cacheDecode_empty.
-  Variable cacheAddNat : CacheAdd cache nat.
-  Variable cacheAddDNPointer : CacheAdd cache (string * pointerT).
-  Variable cacheGetDNPointer : CacheGet cache string pointerT.
-  Variable cachePeekDNPointer : CachePeek cache pointerT.
+  Definition association_list K V := list (K * V).
+
+  Fixpoint association_list_find_first {K V}
+           {K_eq : Query_eq K}
+           (l : association_list K V)
+           (k : K) : option V :=
+    match l with
+    | (k', v) :: l' => if A_eq_dec k k' then Some v else association_list_find_first l' k
+    | _ => None
+    end.
+
+  Fixpoint association_list_find_all {K V}
+           {K_eq : Query_eq K}
+           (l : association_list K V)
+           (k : K) : list V :=
+    match l with
+    | (k', v) :: l' => if A_eq_dec k k' then v :: association_list_find_all l' k
+                       else association_list_find_all l' k
+    | _ => nil
+    end.
+
+  Fixpoint association_list_add {K V}
+           {K_eq : Query_eq K}
+           (l : association_list K V)
+           (k : K) (v : V) : list (K * V)  :=
+    (k, v) :: l.
+
+  Instance dns_list_cache : Cache :=
+    {| CacheEncode := nat * association_list string pointerT;
+       CacheDecode := nat * association_list pointerT string;
+       Equiv ce cd := fst ce = fst cd /\
+                      (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
+    |}%type.
+
+  Definition list_CacheEncode_empty : CacheEncode := (0, nil).
+  Definition list_CacheDecode_empty : CacheDecode := (0, nil).
+
+  Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
+  Proof.
+    simpl; intuition; simpl; econstructor.
+  Qed.
+
+  Instance cacheAddNat : CacheAdd _ nat :=
+    {| addE ce n := (fst ce + n , snd ce);
+       addD cd n := (fst cd + n, snd cd) |}.
+  Proof.
+    simpl; intuition eauto.
+  Defined.
+
+  Lemma ptr_eq_dec :
+    forall (p p' : pointerT),
+      {p = p'} + {p <> p'}.
+  Proof.
+    decide equality.
+    apply weq.
+    destruct a; destruct s; simpl in *.
+    destruct (weq x x0); subst.
+    left; apply ptr_eq; reflexivity.
+    right; unfold not; intros; apply n.
+    congruence.
+  Qed.
+  
+  Instance : Query_eq pointerT :=
+    {| A_eq_dec := ptr_eq_dec |}.
+
+  Lemma natToWord_lt_combine
+    : forall higher_bits : word 6,
+      wlt (natToWord 8 191)  (combine higher_bits WO~1~1).
+  Proof.
+    intros.
+    shatter_word higher_bits.
+    rewrite <- (natToWord_wordToNat (combine _ _)).
+    apply WordFacts.natToWord_wlt.
+    - apply Nomega.Nlt_in; simpl; unfold Pos.to_nat; simpl; omega.
+    - destruct x; destruct x0; destruct x1; destruct x2; destruct x3; destruct x4; simpl;
+        apply Nomega.Nlt_in; simpl; unfold Pos.to_nat; simpl; omega.
+    - destruct x; destruct x0; destruct x1; destruct x2; destruct x3; destruct x4; simpl;
+        omega.
+  Qed.
+
+  Definition nat_to_pointerT (n : nat) : pointerT.
+    refine (let oct_offset := wtl (wtl (wtl (natToWord 17 n))) in  (* convert bit offset to octet offset. *)
+            let lower_bits := split1 8 6 oct_offset in
+            let higher_bits := split2 8 6 oct_offset in (exist _ (combine higher_bits (WS true (WS true WO))) _, lower_bits)).
+    apply natToWord_lt_combine.
+  Qed.
+
+  Instance cachePeekDNPointer : CachePeek _ pointerT :=
+    {| peekE ce := nat_to_pointerT (fst ce);
+       peekD cd := nat_to_pointerT (fst cd) |}.
+  Proof.
+    abstract (simpl; intros; intuition; subst).
+  Qed.
+
+  Instance cacheAddDNPointer : CacheAdd _ (string * pointerT) :=
+    {| addE ce sp := (fst ce, association_list_add (snd ce) (fst sp) (snd sp));
+       addD cd sp := (fst cd, association_list_add (snd cd) (snd sp) (fst sp)) |}.
+  Proof.
+    simpl; intuition eauto; simpl in *; subst; eauto.
+  Qed.
+
+  Instance cacheGetDNPointer : CacheGet _ string pointerT :=
+    {| getE ce p := association_list_find_all (snd ce) p;
+       getD ce p := association_list_find_first (snd ce) p|}.
+  Proof.
+    simpl.
+    intros [? ?] [? ?] ? ?; simpl; intuition eauto; subst.
+    - subst; induction a0; simpl in *; try congruence.
+      destruct a; simpl in *; find_if_inside; subst.
+      + find_if_inside; subst; simpl; eauto.
+      + find_if_inside; subst; simpl; eauto; congruence.
+    - subst; induction a0; simpl in *; intuition.
+      destruct a; simpl in *; find_if_inside. 
+      + find_if_inside; subst; simpl; eauto; try congruence.
+        apply IHa0 in H.
+      + find_if_inside; subst; simpl; eauto; try congruence.
+        simpl in H; intuition eauto.
+        congruence.
+  Qed.
+
   Variable IndependentCaches :
     forall env p (b : nat),
       getD (addD env b) p = getD env p.
@@ -56,6 +168,8 @@ Section BinaryDns.
   Variable GoodCacheDecode :
     GoodCache cache cacheGetDNPointer cacheDecode_empty.
 
+
+Require Import Fiat.BinEncoders.Env.Examples.DnsOpt.
 
 Definition DnsSig : ADTSig :=
   ADTsignature {
