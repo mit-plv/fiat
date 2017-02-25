@@ -1,5 +1,6 @@
 open Transparent_abstract_tactics
 open Stdarg
+open Ltac_plugin
 open Tacarg
 
     (*
