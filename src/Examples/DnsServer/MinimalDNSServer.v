@@ -97,7 +97,7 @@ Section BinaryDns.
     right; unfold not; intros; apply n.
     congruence.
   Qed.
-  
+
   Instance : Query_eq pointerT :=
     {| A_eq_dec := ptr_eq_dec |}.
 
@@ -148,7 +148,7 @@ Section BinaryDns.
       + find_if_inside; subst; simpl; eauto.
       + find_if_inside; subst; simpl; eauto; congruence.
     - subst; induction a0; simpl in *; intuition.
-      destruct a; simpl in *; find_if_inside. 
+      destruct a; simpl in *; find_if_inside.
       + find_if_inside; subst; simpl; eauto; try congruence.
         apply IHa0 in H.
       + find_if_inside; subst; simpl; eauto; try congruence.
@@ -167,7 +167,6 @@ Section BinaryDns.
       p <> p' -> getD (addD env (domain, p')) p = getD env p.
   Variable GoodCacheDecode :
     GoodCache cache cacheGetDNPointer cacheDecode_empty.
-
 
 Require Import Fiat.BinEncoders.Env.Examples.DnsOpt.
 
