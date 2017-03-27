@@ -27,7 +27,7 @@ Section DomainName.
   Definition terminal_char : ascii := zero.
   Definition pointerT := (sig (wlt (natToWord 8 191)) * word 8)%type.
   Definition pointerT2Nat (p : pointerT) : nat :=
-    (wordToNat (projT1 (fst p)) * 256) + wordToNat (snd p).
+    ((wordToNat (proj1_sig (fst p)) - 192) * 256) + wordToNat (snd p).
 
   Lemma Nat2pointerT_pf :
     forall n,
@@ -62,12 +62,12 @@ Section DomainName.
     destruct p as [[upper_p upper_p_OK] lower_p].
     unfold pointerT2Nat; simpl.
     unfold Nat2pointerT; f_equal.
-    assert ((natToWord 8 (NPeano.modulo (NPeano.div (wordToNat upper_p * 256 + wordToNat lower_p) 256) 64 + 192)) = upper_p).
+    assert ((natToWord 8 (NPeano.modulo (NPeano.div ((wordToNat upper_p - 192) * 256 + wordToNat lower_p) 256) 64 + 192)) = upper_p).
     - rewrite NPeano.Nat.div_add_l; auto with arith.
       rewrite NPeano.Nat.div_small, NPeano.Nat.add_0_r.
       rewrite NPeano.Nat.mod_eq by omega.
-      replace (64 * NPeano.div (wordToNat upper_p) 64) with 192.
-      rewrite NPeano.Nat.sub_add.
+      replace (64 * NPeano.div (wordToNat upper_p - 192) 64) with 0.
+      rewrite <- Minus.minus_n_O, NPeano.Nat.sub_add.
       apply natToWord_wordToNat.
       apply WordFacts.wordToNat_lt in upper_p_OK; eauto.
       rewrite div_eq by omega.
@@ -78,7 +78,7 @@ Section DomainName.
                 destruct x3; destruct x4; destruct x5; destruct x6; simpl;
                 intro; try omega).
       apply wordToNat_bound.
-    - generalize (Nat2pointerT_pf (wordToNat upper_p * 256 + wordToNat lower_p));
+    - generalize (Nat2pointerT_pf ((wordToNat upper_p - 192) * 256 + wordToNat lower_p));
         rewrite H; intros.
       f_equal.
       apply UIP_dec.
@@ -88,6 +88,39 @@ Section DomainName.
       rewrite NPeano.Nat.div_small by apply wordToNat_bound.
       simpl mult; rewrite <- Minus.minus_n_O.
       apply natToWord_wordToNat.
+  Qed.
+
+  Lemma pointerT2Nat_Nat2pointerT :
+    forall n,
+      (n < pow2 14)%nat
+      -> pointerT2Nat (Nat2pointerT n) = n.
+  Proof.
+    intros.
+    unfold Nat2pointerT.
+    unfold pointerT2Nat, fst, snd, proj1_sig.
+    rewrite (NPeano.Nat.div_mod n 256) at 3 by omega.
+    rewrite Mult.mult_comm.
+    f_equal.
+    - f_equal.
+      rewrite wordToNat_natToWord_idempotent.
+      rewrite NPeano.Nat.add_sub.
+      rewrite NPeano.Nat.mod_eq by omega.
+      replace (NPeano.div (NPeano.div n 256) 64) with 0.
+      omega.
+      rewrite NPeano.Nat.div_div by omega.
+      replace (256 * 64) with (pow2 14) by reflexivity.
+      symmetry; apply NPeano.Nat.div_small; auto.
+      replace (Npow2 8) with (BinNat.N.of_nat 256) by reflexivity.
+      eapply Nomega.Nlt_in.
+      rewrite !Nnat.Nat2N.id.
+      assert (64 <> 0) by omega.
+      pose proof (NPeano.Nat.mod_upper_bound (NPeano.div n 256) _ H0).
+      omega.
+    - rewrite wordToNat_natToWord_idempotent; auto.
+      replace (Npow2 8) with (BinNat.N.of_nat 256) by reflexivity.
+      eapply Nomega.Nlt_in.
+      rewrite !Nnat.Nat2N.id.
+      apply NPeano.Nat.mod_upper_bound; omega.
   Qed.
 
   Lemma terminal_char_eq :
@@ -744,8 +777,15 @@ Section DomainName.
     forall env n m,
       peekD env = Some m
       -> (n + (pointerT2Nat m) < pow2 14)%nat
-      -> exists p', peekD (addD env n) = Some p'
-                    /\ pointerT2Nat p' = n + (pointerT2Nat m).
+      -> exists p',
+          peekD (addD env (n * 8)) = Some p'
+          /\ pointerT2Nat p' = n + (pointerT2Nat m).
+  Variable boundPeekSome :
+    forall env n m m',
+      peekD env = Some m
+      -> peekD (addD env (n * 8)) = Some m'
+      -> (n + (pointerT2Nat m) < pow2 14)%nat.
+
   Variable addPeekNone :
     forall env n,
       peekD env = None
@@ -754,8 +794,7 @@ Section DomainName.
     forall env n m,
       peekD env = Some m
       -> ~ (n + (pointerT2Nat m) < pow2 14)%nat
-      -> peekD (addD env n) = None.
-
+      -> peekD (addD env (n * 8)) = None.
   Variable addZeroPeek :
     forall xenv,
       peekD xenv = peekD (addD xenv 0).
@@ -800,16 +839,19 @@ Section DomainName.
   Lemma addPeek :
     forall env n m,
       peekD env = Some m
-      -> peekD (addD env n) = Some (Nat2pointerT (n + (pointerT2Nat m)))
-         \/ peekD (addD env n) = None.
+      -> (peekD (addD env (n * 8)) = Some (Nat2pointerT (n + (pointerT2Nat m)))
+          /\ n + (pointerT2Nat m) < pow2 14)%nat
+         \/ peekD (addD env (n * 8)) = None.
   Proof.
     intros;
       destruct (Compare_dec.lt_dec (n + pointerT2Nat m) (pow2 14)).
-    - left; eapply addPeekSome in H; eauto.
-      destruct H as [p' [H' H''] ].
-      rewrite H', <- H''.
-      f_equal.
-      rewrite Nat2pointerT_pointerT2Nat; reflexivity.
+    - left; pose proof (addPeekSome _ n _ H) as H'; eauto.
+      destruct H' as [p' [H' H''] ]; eauto.
+      split.
+      * rewrite H', <- H''.
+        f_equal.
+        rewrite Nat2pointerT_pointerT2Nat; reflexivity.
+      * eapply boundPeekSome; eauto.
     - right; eapply addPeekNone' in H; eauto.
   Qed.
 
@@ -828,7 +870,7 @@ Section DomainName.
   Lemma decode_string_peek_distinct
     : forall n xenv xenv' b b' l,
       decode_string n b xenv = Some (l, b', xenv')
-      -> peekD xenv' = peekD (addD xenv (8 * n)).
+      -> peekD xenv' = peekD (addD xenv (n * 8)).
   Proof.
     induction n; simpl; intros.
     - injections; eauto.
@@ -842,11 +884,11 @@ Section DomainName.
       eapply decode_word_peek_distinct in H; eauto.
       eapply IHn in Heqo; eauto; rewrite Heqo.
       destruct (peekD xenv) eqn: peekD_eq.
-      + destruct (Compare_dec.lt_dec (8 + (8 * n) + pointerT2Nat p) (pow2 14)).
-        * destruct (addPeekSome _ 8 _ peekD_eq) as [p' [? ?] ]; try omega.
-          rewrite H0 in H.
-          destruct (addPeekSome _ (8 * n) _ H) as [p'' [? ?] ]; try omega.
-          destruct (addPeekSome _ (8 * (S n)) _ peekD_eq) as [p''' [? ?] ]; try omega.
+      + destruct (Compare_dec.lt_dec (1 + n + pointerT2Nat p) (pow2 14)).
+        * destruct (addPeekSome _ 1 _ peekD_eq) as [p' [? ?] ]; try omega.
+          simpl in H0; rewrite H0 in H.
+          destruct (addPeekSome _ n _ H) as [p'' [? ?] ]; try omega.
+          destruct (addPeekSome _ (S n) _ peekD_eq) as [p''' [? ?] ]; try omega.
           simpl in H4; rewrite H4.
           rewrite H1 in H3.
           simpl in H2; rewrite H2.
@@ -855,19 +897,21 @@ Section DomainName.
           rewrite <- (Nat2pointerT_pointerT2Nat p''), H3.
           f_equal.
           omega.
-        * destruct (Compare_dec.lt_dec (8 + pointerT2Nat p) (pow2 14)).
-          { destruct (addPeekSome _ 8 _ peekD_eq) as [p' [? ?] ]; try omega.
-            erewrite !addPeekNone'; eauto.
-            omega.
-            rewrite H0 in H; eauto.
+        * destruct (Compare_dec.lt_dec (1 + pointerT2Nat p) (pow2 14)).
+          { destruct (addPeekSome _ 1 _ peekD_eq) as [p' [? ?] ];
+              try omega.
+            pose proof (addPeekNone' xenv (S n)) as H'; simpl in H'; erewrite H';
+              eauto; clear H'.
+            simpl in H0; rewrite H0 in H; eauto.
+            eapply addPeekNone'; eauto.
             rewrite H1.
-            omega.
+            simpl; omega.
           }
           { rewrite addPeekNone; auto.
-            erewrite !addPeekNone'; eauto.
-            omega.
+            pose proof (addPeekNone' xenv (S n)) as H'; simpl in H'; erewrite H';
+              eauto; clear H'.
             rewrite H.
-            eapply addPeekNone'; eauto.
+            eapply (addPeekNone' _ 1); eauto.
           }
       + rewrite !addPeekNone; auto.
         rewrite H.
@@ -1065,8 +1109,8 @@ Section DomainName.
             destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
               destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
                 simpl in *; injections.
-            generalize l_eq; intros [l_eq' | l_eq'].
-            destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
+            destruct l_eq as [l_eq' | l_eq'].
+            - destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
             pose proof ((proj1 Valid_data) ""%string label1 _ l_eq' label1_OK).
             unfold pow2; omega.
             destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length label1)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
@@ -1138,8 +1182,23 @@ Section DomainName.
               eapply decode_word_add_ptr_OK in H0; eauto.
               eapply decode_string_add_ptr_OK in H1; eauto.
               assert (forall p', peekD xenv6 = Some p'
-                                 -> (pointerT2Nat p < pointerT2Nat p')%nat) as P3
-                  by (clear; admit).
+                                 -> (pointerT2Nat p < pointerT2Nat p')%nat) as P3.
+              { clear H0 H1.
+                intros.
+                apply (addPeek _ 1) in peekD_eq;
+                  destruct peekD_eq as [ [peekD_eq peekD_bnd] | peekD_eq];
+                  simpl in peekD_eq; rewrite peekD_eq in P.
+                eapply (addPeek _ (String.length label1)) in P;
+                  destruct P as [ [P P_bnd] | P];
+                  rewrite P in P';
+                  rewrite P' in H0; try discriminate.
+                injection H0; intro H4; rewrite <- H4.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                omega.
+                rewrite addPeekNone in P' by auto.
+                congruence.
+              }
               unfold add_ptr_OK in *; simpl in *; revert addPeekSome addPeekNone addPeekNone' getDistinct IndependentCaches H2 H1 P P' P3; generalize xenv env p peekD_eq ; clear.
               generalize (transform b3 ext0); intros b xenv env p peekD_eq.
               revert label2 xenv6 xenv7 ext0 x1.
@@ -1207,125 +1266,168 @@ Section DomainName.
                 rewrite getDistinct; eauto.
                 intro; subst; generalize (P3 _ (eq_refl _)); omega.
                 intros.
-                destruct (peekD xenv6) eqn: foo; simpl; eauto.
-                admit.
-                admit.
+                destruct (peekD xenv6) eqn: peekD_eq; simpl; eauto.
+                pose proof (P3 _ (eq_refl _)).
+                eapply (addPeek _ 1) in peekD_eq;
+                  destruct peekD_eq as [ [peekD_eq peekD_bnd] | peekD_eq];
+                  simpl in peekD_eq; rewrite peekD_eq in P''.
+                apply (addPeek _ (wordToNat x0)) in P'';
+                  destruct P'' as [ [P'' P''_bnd] | P''];
+                  rewrite P'' in P'''; rewrite P''' in H3;
+                    try discriminate.
+                injection H3; intro H'; rewrite <- H'.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                omega.
+                rewrite addPeekNone in P''' by auto;
+                  rewrite P''' in H3; congruence.
+                rewrite P''' in H3.
+                rewrite addPeekNone in H3; try discriminate.
+                rewrite P'', addPeekNone; eauto.
                 destruct (peekD xenv6) eqn: ?; simpl; eauto.
                 rewrite getDistinct; eauto.
                 intro; subst; generalize (P3 _ (eq_refl _)); omega.
                 intros.
-                destruct (peekD xenv6) eqn: foo; simpl; eauto.
-                admit.
-                admit.
+                destruct (peekD xenv6) eqn: peekD_eq; simpl; eauto.
+                pose proof (P3 _ (eq_refl _)).
+                eapply (addPeek _ 1) in peekD_eq;
+                  destruct peekD_eq as [ [peekD_eq peekD_bnd] | peekD_eq];
+                  simpl in peekD_eq; rewrite peekD_eq in P''.
+                apply (addPeek _ (wordToNat x0)) in P'';
+                  destruct P'' as [ [P'' P''_bnd] | P''];
+                  rewrite P'' in P'''; rewrite P''' in H3;
+                    try discriminate.
+                injection H3; intro H'; rewrite <- H'.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                rewrite pointerT2Nat_Nat2pointerT by auto.
+                omega.
+                rewrite addPeekNone in P''' by auto;
+                  rewrite P''' in H3; congruence.
+                rewrite P''' in H3.
+                rewrite addPeekNone in H3; try discriminate.
+                rewrite P'', addPeekNone; eauto.
               * simpl; intuition eauto.
               * eauto.
             + subst; eauto using ValidDomainName_app.
             + subst; eauto using chomp_label_length.
             + eassumption.
-            + injections.
+            - injections.
               destruct (fun H => proj1 (Nat_decode_correct (P := fun _ => True) 8 (fun _ _ _ => I)) _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H I Penc'') as [xenv4 [? xenv_eqv] ].
               pose proof (proj1 Valid_data ""%string l ""%string (append_EmptyString_r _) label1_OK).
               unfold pow2; simpl; omega.
               destruct (fun H => proj1 (String_decode_correct (P := fun _ => True) (fun _ _ _ => I) (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H I Penc''') as [xenv6 [? xenv6_eqv] ]; eauto.
+              simpl in Penc''''.
               eapply IHn in Penc''''.
               destruct Penc'''' as [xenv7 [? ?] ].
               eexists; split.
               rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
-              * match goal with
-                  |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
-                  pose proof (Decode_w_Measure_le_eq x y z m)
-                end.
-                simpl in H4;
-                  unfold decode_word at 1 in H4.
-                rewrite <- !transform_assoc in H4.
-                unfold decode_nat in H0.
+              match goal with
+                |- context [Decode_w_Measure_le ?x ?y ?z ?m] =>
+                pose proof (Decode_w_Measure_le_eq x y z m)
+              end.
+              simpl in H4;
+                unfold decode_word at 1 in H4.
+              rewrite <- !transform_assoc in H4.
+              unfold decode_nat in H0.
+              apply DecodeBindOpt2_inv in H0;
+                destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+              unfold decode_word in H0.
+              destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
+              simpl in H4.
+              destruct (H4 _ _ _ (eq_refl _)).
+              rewrite <- !transform_assoc, H0; simpl; clear H0.
+              pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
+                rewrite H8 in w'.
+              destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
+                try (elimtype False; apply WordFacts.wordToNat_lt in w; simpl in w; omega).
+              destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
+              destruct (weq x (wzero 8)).
+              subst; simpl in H8.
+              destruct l; simpl in H8; try discriminate.
+              unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
+              match goal with
+                |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
+                pose proof (Decode_w_Measure_lt_eq x y z m)
+              end.
+
+              simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
+              destruct (H0 _ _ _ (eq_refl _)).
+              rewrite H5; simpl; rewrite H2.
+              destruct label1_OK as [H6' _]; rewrite H6';
+                simpl.
+              reflexivity.
+              unfold not in n2.
+              assert (WO~0~1~0~0~0~0~0~0 < x \/ WO~0~1~0~0~0~0~0~0 = x)
+                by (destruct (weq WO~0~1~0~0~0~0~0~0 x); eauto using le_neq_lt).
+              destruct H0; eauto.
+              generalize (WordFacts.wordToNat_lt H0); simpl; omega.
+              generalize (f_equal (@wordToNat 8) H0); simpl; omega.
+              split. erewrite peek_correct; eauto.
+              destruct (peekD xenv) eqn: ?; simpl; intuition eauto.
+              apply add_correct_G; intuition eauto.
+              { unfold decode_nat in H0.
                 apply DecodeBindOpt2_inv in H0;
                   destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
-                unfold decode_word in H0.
-                destruct (decode_word' 8 (transform b' (transform b'' (transform b3 ext0)))); simpl in H0; try discriminate; injections.
-                simpl in H4.
-                destruct (H4 _ _ _ (eq_refl _)).
-                rewrite <- !transform_assoc, H0; simpl; clear H0.
-                pose proof (proj1 Valid_data ""%string l _ (append_EmptyString_r _) label1_OK) as w';
-                  rewrite H8 in w'.
-                destruct (wlt_dec WO~1~0~1~1~1~1~1~1 x); simpl;
-                  try (elimtype False; apply WordFacts.wordToNat_lt in w; simpl in w; omega).
-                destruct (wlt_dec x WO~0~1~0~0~0~0~0~0); simpl.
-                destruct (weq x (wzero 8)).
-                subst; simpl in H8.
-                destruct l; simpl in H8; try discriminate.
-                unfold ValidLabel in label1_OK; simpl in label1_OK; omega.
-                match goal with
-                  |- context [Decode_w_Measure_lt ?x ?y ?z ?m] =>
-                  pose proof (Decode_w_Measure_lt_eq x y z m)
-                end.
-                simpl in H0; rewrite H8 in H1; rewrite H1 in H0.
-                destruct (H0 _ _ _ (eq_refl _)).
-                rewrite H5; simpl; rewrite H2.
-                destruct label1_OK as [H6' _]; rewrite H6';
-                  simpl.
-                reflexivity.
-                unfold not in n2.
-                assert (WO~0~1~0~0~0~0~0~0 < x \/ WO~0~1~0~0~0~0~0~0 = x)
-                  by (destruct (weq WO~0~1~0~0~0~0~0~0 x); eauto using le_neq_lt).
-                destruct H0; eauto.
-                generalize (WordFacts.wordToNat_lt H0); simpl; omega.
-                generalize (f_equal (@wordToNat 8) H0); simpl; omega.
-              * clear l_eq.
-                split. erewrite peek_correct; eauto.
-                destruct (peekD xenv) eqn: ?; simpl; intuition eauto.
-                apply add_correct_G; intuition eauto.
-                { unfold decode_nat in H0.
-                  apply DecodeBindOpt2_inv in H0;
-                    destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
-                  eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H0; eauto.
-                  eapply decode_string_add_ptr_OK with (env := env)  in H1; eauto.
-                  unfold add_ptr_OK in *; simpl in *; revert getDistinct IndependentCaches H2 H1.
-                  remember ""%string as s'; rewrite Heqs'; rewrite <- Heqs' at 1.
-                  generalize env; clear.
-                  generalize (transform b3 ext0) ; intro.
-                  revert xenv6 xenv7 ext0 s'.
-                  eapply (@well_founded_induction _ _ well_founded_lt_b) with
-                  (a := b); intros.
-                  rewrite Coq.Init.Wf.Fix_eq in H2; auto using decode_body_monotone; simpl.
-                  apply DecodeBindOpt2_inv in H2;
+                eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H0; eauto.
+                eapply decode_string_add_ptr_OK with (env := env)  in H1; eauto.
+                unfold add_ptr_OK in *; simpl in *; revert getDistinct IndependentCaches H2 H1.
+                (*remember ""%string as s'; rewrite Heqs'; rewrite <- Heqs' at 1. *)
+                generalize env; clear.
+                generalize (transform b3 ext0) ; intro.
+                revert xenv6 xenv7 ext0 .
+                eapply (@well_founded_induction _ _ well_founded_lt_b) with
+                (a := b); intros.
+                rewrite Coq.Init.Wf.Fix_eq in H2; auto using decode_body_monotone; simpl.
+                apply DecodeBindOpt2_inv in H2;
+                  destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
+                destruct (wlt_dec  WO~1~0~1~1~1~1~1~1 x0); simpl in H2.
+                * (* The decoded word was a pointer. *)
+                  symmetry in H2; apply DecodeBindOpt2_inv in H2;
                     destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
-                  destruct (wlt_dec  WO~1~0~1~1~1~1~1~1 x0); simpl in H2.
-                  * (* The decoded word was a pointer. *)
-                    symmetry in H4; apply DecodeBindOpt2_inv in H4;
-                      destruct H4 as [? [? [? [? ?] ] ] ]; injections; subst.
-                    match type of H5 with
-                    | context [getD ?env' ?w] => destruct (getD env' w) eqn:getD_eq;
-                                                   try discriminate
+                  match type of H3 with
+                  | context [getD ?env' ?w] => destruct (getD env' w) eqn:getD_eq;
+                                                 try discriminate
                     end.
-                    destruct s; try discriminate; injections.
-                    eapply Decode_w_Measure_le_eq' in H2; eauto.
-                    eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H2; eauto.
-                    eapply Decode_w_Measure_le_eq' in H4; eauto.
-                    eapply decode_word_add_ptr_OK with (env := env) in H4; eauto.
-                  * destruct (wlt_dec x0 WO~0~1~0~0~0~0~0~0); simpl in H4; try discriminate.
-                    destruct (weq x0 (wzero 8)); simpl in H4.
-                    injections.
-                    eapply Decode_w_Measure_le_eq' in H2; eauto.
-                    eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H2; eauto.
-                    eapply Decode_w_Measure_le_eq' in H2; eauto.
-                    (*eapply decode_word_add_ptr_OK in H2; eauto. *)
-                    symmetry in H4; apply DecodeBindOpt2_inv in H4;
-                      destruct H4 as [? [? [? [? ?] ] ] ]; injections; subst.
-                    destruct (index 0 "." x3); simpl in H5; try discriminate.
-                    match type of H5 with
-                    | context [Fix well_founded_lt_b ?H' ?H0' ?H1' ?H2' ] =>
-                      destruct (Fix well_founded_lt_b H' H0' H1' H2') as [ [ [? ?] ?] | ] eqn:rec; simpl in H5;
-                        try discriminate
-                    end.
-                    eapply Decode_w_Measure_lt_eq' in H4; eauto.
-                    (*eapply decode_string_add_ptr_OK in H4; eauto. *)
-                    destruct (string_dec d ""); simpl in H5; injections;
-                      eapply H in rec; eauto using lt_B_trans.
-                    admit. (* rewrite H0; eauto. *)
-                    clear H2 H4; admit.
-                    admit. (* rewrite H0; eauto. *)
-                    clear H2 H4; admit.
+                  destruct s; try discriminate; injections.
+                * destruct (wlt_dec x0 WO~0~1~0~0~0~0~0~0); simpl in H2; try discriminate.
+                  destruct (weq x0 (wzero 8)); simpl in H2.
+                  injections.
+                  eapply Decode_w_Measure_le_eq' in H0; eauto.
+                  eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H0; eauto.
+                  eapply Decode_w_Measure_le_eq' in H0; eauto.
+                  (*eapply decode_word_add_ptr_OK in H2; eauto. *)
+                  symmetry in H2; apply DecodeBindOpt2_inv in H2;
+                    destruct H2 as [? [? [? [? ?] ] ] ]; injections; subst.
+                  destruct (index 0 "." x3); simpl in H3; try discriminate.
+                  match type of H3 with
+                  | context [Fix well_founded_lt_b ?H' ?H0' ?H1' ?H2' ] =>
+                    destruct (Fix well_founded_lt_b H' H0' H1' H2') as [ [ [? ?] ?] | ] eqn:rec; simpl in H3;
+                      try discriminate
+                  end.
+                  eapply Decode_w_Measure_lt_eq' in H2; eauto.
+                  (*eapply decode_string_add_ptr_OK in H4; eauto. *)
+                  destruct (string_dec d ""); simpl in H3; injections.
+                  elimtype False.
+                  { apply n0.
+                    assert (wordToNat x0 = 0).
+                    { generalize H2; clear.
+                      destruct (wordToNat x0); simpl; auto.
+                      intros.
+                      apply DecodeBindOpt2_inv in H2; destruct_ex;
+                        intuition;
+                        symmetry in H1;
+                        apply DecodeBindOpt2_inv in H1; destruct_ex;
+                          intuition.
+                      congruence.
+                    }
+                    pose proof (f_equal (natToWord 8) H3).
+                    rewrite natToWord_wordToNat in H4;
+                      rewrite H4.
+                    reflexivity.
+                  }
+                  elimtype False.
+                  generalize H6; clear; induction x3;
+                    simpl; try congruence.
                 }
                 eauto.
               * unfold ValidDomainName; split; intros.
