@@ -37,8 +37,8 @@ Section Ascii.
   Proof.
     unfold decode_ascii; split.
     {
-      intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
-      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
+      intros env env' xenv c c' ext env_OK Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
       rewrite H; simpl.
       eexists; intuition eauto.
       repeat f_equal.

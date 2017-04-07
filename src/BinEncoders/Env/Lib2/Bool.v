@@ -28,10 +28,10 @@ Section Bool.
                               encode_bool_Spec decode_bool P.
   Proof.
     unfold encode_decode_correct_f, encode_bool_Spec, decode_bool; split.
-    - intros env env' xenv w w' ext Eeq _ _ Penc.
+    - intros env env' xenv w w' ext ? Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold If_Opt_Then_Else.
-      erewrite dequeue_transform_opt; 
+      erewrite dequeue_transform_opt;
       try apply dequeue_head_opt.
       rewrite transform_id_left.
       injections; eexists; split; eauto using add_correct.

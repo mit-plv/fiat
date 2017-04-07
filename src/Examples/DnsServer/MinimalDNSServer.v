@@ -64,42 +64,45 @@ Section BinaryDns.
     (k, v) :: l.
 
   Instance dns_list_cache : Cache :=
-    {| CacheEncode := nat * association_list string pointerT;
-       CacheDecode := nat * association_list pointerT string;
-       Equiv ce cd := fst ce = fst cd /\
-                      (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
+    {| CacheEncode := option {n | lt (NPeano.div n 8) (pow2 14)} * association_list string pointerT;
+       CacheDecode := option {n | lt (NPeano.div n 8) (pow2 14)} * association_list pointerT string;
+       Equiv ce cd := fst ce = fst cd
+                      /\ (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
+                      /\ NoDup (map fst (snd cd))
     |}%type.
 
-  Definition list_CacheEncode_empty : CacheEncode := (0, nil).
-  Definition list_CacheDecode_empty : CacheDecode := (0, nil).
+  Definition list_CacheEncode_empty : CacheEncode := (Some 0, nil).
+  Definition list_CacheDecode_empty : CacheDecode := (Some 0, nil).
 
   Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
   Proof.
     simpl; intuition; simpl; econstructor.
   Qed.
 
+  Local Opaque pow2.
+
   Instance cacheAddNat : CacheAdd _ nat :=
-    {| addE ce n := (fst ce + n , snd ce);
-       addD cd n := (fst cd + n, snd cd) |}.
+    {| addE ce n := (Ifopt (fst ce) as m Then
+                                         let n' := m + n in
+                     if Compare_dec.lt_dec (NPeano.div n' 8) (pow2 14)
+                     then Some n'
+                     else None
+                            Else None, snd ce);
+       addD cd n := (Ifopt (fst cd) as m Then
+                                         let n' := m + n in
+                     if Compare_dec.lt_dec (NPeano.div n' 8) (pow2 14)
+                     then Some n'
+                     else None
+                            Else None, snd cd) |}.
   Proof.
-    simpl; intuition eauto.
+    simpl; intuition eauto; destruct a; destruct a0;
+      simpl in *; eauto; try congruence.
+    injections.
+    find_if_inside; eauto.
   Defined.
 
-  Lemma ptr_eq_dec :
-    forall (p p' : pointerT),
-      {p = p'} + {p <> p'}.
-  Proof.
-    decide equality.
-    apply weq.
-    destruct a; destruct s; simpl in *.
-    destruct (weq x x0); subst.
-    left; apply ptr_eq; reflexivity.
-    right; unfold not; intros; apply n.
-    congruence.
-  Qed.
-
   Instance : Query_eq pointerT :=
-    {| A_eq_dec := ptr_eq_dec |}.
+    {| A_eq_dec := pointerT_eq_dec |}.
 
   Lemma natToWord_lt_combine
     : forall higher_bits : word 6,
@@ -116,45 +119,240 @@ Section BinaryDns.
         omega.
   Qed.
 
-  Definition nat_to_pointerT (n : nat) : pointerT.
-    refine (let oct_offset := wtl (wtl (wtl (natToWord 17 n))) in  (* convert bit offset to octet offset. *)
-            let lower_bits := split1 8 6 oct_offset in
-            let higher_bits := split2 8 6 oct_offset in (exist _ (combine higher_bits (WS true (WS true WO))) _, lower_bits)).
-    apply natToWord_lt_combine.
-  Qed.
-
-  Instance cachePeekDNPointer : CachePeek _ pointerT :=
-    {| peekE ce := nat_to_pointerT (fst ce);
-       peekD cd := nat_to_pointerT (fst cd) |}.
+  Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
+    {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (NPeano.div m 8)) Else None;
+       peekD cd := Ifopt (fst cd) as m Then Some (Nat2pointerT (NPeano.div m 8)) Else None |}.
   Proof.
-    abstract (simpl; intros; intuition; subst).
-  Qed.
+    abstract (simpl; intros; intuition; rewrite H0; auto).
+  Defined.
 
-  Instance cacheAddDNPointer : CacheAdd _ (string * pointerT) :=
-    {| addE ce sp := (fst ce, association_list_add (snd ce) (fst sp) (snd sp));
-       addD cd sp := (fst cd, association_list_add (snd cd) (snd sp) (fst sp)) |}.
+  Lemma cacheGetDNPointer_pf
+    : forall (ce : CacheEncode) (cd : CacheDecode)
+             (p : string) (q : pointerT),
+      Equiv ce cd ->
+      (association_list_find_first (snd cd) q = Some p <-> List.In q (association_list_find_all (snd ce) p)).
   Proof.
-    simpl; intuition eauto; simpl in *; subst; eauto.
+    intros [? ?] [? ?] ? ?; simpl; intuition eauto; subst.
+    - subst; induction a0; simpl in *; try congruence.
+      destruct a; simpl in *; find_if_inside; subst.
+      + inversion H2; subst; intros.
+        find_if_inside; subst; simpl; eauto.
+      + inversion H2; subst; intros.
+        find_if_inside; subst; simpl; eauto; congruence.
+    - subst; induction a0; simpl in *; intuition.
+      destruct a; simpl in *; find_if_inside.
+      + inversion H2; subst; intros.
+        find_if_inside; subst; simpl; eauto; try congruence.
+        apply IHa0 in H1; eauto.
+        elimtype False; apply H3; revert H1; clear.
+        induction a0; simpl; intros; try congruence.
+        destruct a; find_if_inside; injections; auto.
+      + inversion H2; subst; intros.
+        find_if_inside; subst; simpl; eauto; try congruence.
+        simpl in H1; intuition eauto; subst.
+        congruence.
   Qed.
 
   Instance cacheGetDNPointer : CacheGet _ string pointerT :=
     {| getE ce p := association_list_find_all (snd ce) p;
-       getD ce p := association_list_find_first (snd ce) p|}.
+       getD ce p := association_list_find_first (snd ce) p;
+       get_correct := cacheGetDNPointer_pf |}.
+
+  Lemma cacheAddDNPointer_pf
+    : forall (ce : CacheEncode) (cd : CacheDecode) (t : string * pointerT),
+   Equiv ce cd ->
+   add_ptr_OK t ce cd ->
+   Equiv (fst ce, association_list_add (snd ce) (fst t) (snd t))
+     (fst cd, association_list_add (snd cd) (snd t) (fst t)).
   Proof.
-    simpl.
-    intros [? ?] [? ?] ? ?; simpl; intuition eauto; subst.
-    - subst; induction a0; simpl in *; try congruence.
-      destruct a; simpl in *; find_if_inside; subst.
-      + find_if_inside; subst; simpl; eauto.
-      + find_if_inside; subst; simpl; eauto; congruence.
-    - subst; induction a0; simpl in *; intuition.
-      destruct a; simpl in *; find_if_inside.
-      + find_if_inside; subst; simpl; eauto; try congruence.
-        apply IHa0 in H.
-      + find_if_inside; subst; simpl; eauto; try congruence.
-        simpl in H; intuition eauto.
-        congruence.
+    simpl; intuition eauto; simpl in *; subst; eauto.
+    unfold add_ptr_OK in *.
+    destruct t; simpl in *; simpl; econstructor; eauto.
+    clear H3; induction b0; simpl.
+    - intuition.
+    - simpl in H0; destruct a; find_if_inside;
+        try discriminate.
+      intuition.
   Qed.
+
+  Instance cacheAddDNPointer
+    : CacheAdd_Guarded _ add_ptr_OK :=
+    {| addE_G ce sp := (fst ce, association_list_add (snd ce) (fst sp) (snd sp));
+       addD_G cd sp := (fst cd, association_list_add (snd cd) (snd sp) (fst sp));
+       add_correct_G := cacheAddDNPointer_pf
+    |}.
+
+  Lemma IndependentCaches :
+    forall env p (b : nat),
+      getD (addD env b) p = getD env p.
+  Proof.
+    simpl; intros; eauto.
+  Qed.
+
+  Lemma IndependentCaches' :
+    forall env p (b : nat),
+      getE (addE env b) p = getE env p.
+  Proof.
+    simpl; intros; eauto.
+  Qed.
+
+  Lemma getDistinct :
+    forall env l p p',
+      p <> p'
+      -> getD (addD_G env (l, p)) p' = getD env p'.
+  Proof.
+    simpl; intros; eauto.
+    find_if_inside; try congruence.
+  Qed.
+
+  Lemma getDistinct' :
+    forall env l p p' l',
+      List.In p (getE (addE_G env (l', p')) l)
+      -> p = p' \/ List.In p (getE env l).
+  Proof.
+    simpl in *; intros; intuition eauto.
+    find_if_inside; simpl in *; intuition eauto.
+  Qed.
+
+  Arguments NPeano.div : simpl never.
+
+  Lemma mult_pow2 :
+    forall m n,
+      pow2 m * pow2 n = pow2 (m + n).
+  Proof.
+    Local Transparent pow2.
+    induction m; simpl; intros.
+    - omega.
+    - rewrite <- IHm.
+      rewrite <- !plus_n_O.
+      rewrite mult_plus_distr_r; omega.
+  Qed.
+
+  Corollary mult_pow2_8 : forall n,
+      8 * (pow2 n) = pow2 (3 + n).
+  Proof.
+    intros; rewrite <- mult_pow2.
+    reflexivity.
+  Qed.
+
+  Local Opaque pow2.
+
+  Lemma pow2_div
+    : forall m n,
+      lt (m + n * 8) (pow2 17)
+      -> lt (NPeano.div m 8) (pow2 14).
+  Proof.
+    intros.
+    eapply (NPeano.Nat.mul_lt_mono_pos_l 8); try omega.
+    rewrite mult_pow2_8.
+    eapply le_lt_trans.
+    apply NPeano.Nat.mul_div_le; try omega.
+    simpl.
+    omega.
+  Qed.
+
+  Lemma addPeekNone :
+    forall env n,
+      peekD env = None
+      -> peekD (addD env n) = None.
+  Proof.
+    simpl; intros.
+    destruct (fst env); simpl in *; congruence.
+  Qed.
+
+    Lemma addPeekSome :
+    forall env n m,
+      peekD env = Some m
+      -> lt 0 n
+      -> lt (n + (pointerT2Nat m)) (pow2 14)
+      -> exists p',
+          peekD (addD env (n * 8)) = Some p'
+          /\ pointerT2Nat p' = n + (pointerT2Nat m).
+  Proof.
+    simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside.
+    - rewrite pointerT2Nat_Nat2pointerT in *;
+        try (eapply pow2_div; eassumption).
+      eexists; split; try reflexivity.
+      rewrite NPeano.Nat.div_add; try omega.
+      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
+      rewrite NPeano.Nat.div_add in l; omega.
+      rewrite NPeano.Nat.div_add in l; omega.
+      rewrite NPeano.Nat.div_add in l; omega.
+    - elimtype False; apply n1.
+      rewrite NPeano.Nat.div_add by omega.
+      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
+      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
+
+
+      eapply (mult_lt_compat_l _ _ 8) in H1; try omega.
+      rewrite mult_plus_distr_l in H1.
+      rewrite (mult_pow2_8 14) in H1.
+      destruct n; try omega.
+      simpl plus at -1 in H1.
+      rewrite pointerT2Nat_Nat2pointerT in *.
+      rewrite mult_succ_r in H1.
+      rewrite div_eq in H1 by omega.
+      assert (lt (NPeano.modulo n0 8) 8).
+      apply (NPeano.mod_bound_pos n0 8); try omega.
+
+      assert
+
+
+
+      try (eapply pow2_div; eassumption).
+        try omega.
+
+
+  Lemma addZeroPeek :
+    forall xenv,
+      peekD xenv = peekD (addD xenv 0).
+  Proof.
+    simpl; intros.
+    destruct (fst xenv); simpl; eauto.
+    find_if_inside; simpl in *.
+  Admitted.
+
+  Variable addPeekNone' :
+    forall env n m,
+      peekD env = Some m
+      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)
+      -> peekD (addD env (n * 8)) = None.
+
+
+
+    Variable boundPeekSome :
+    forall env n m m',
+      peekD env = Some m
+      -> peekD (addD env (n * 8)) = Some m'
+      -> (n + (pointerT2Nat m) < pow2 14)%nat.
+
+    Variable addPeekESome :
+    forall env n m,
+      peekE env = Some m
+      -> (n + (pointerT2Nat m) < pow2 14)%nat
+      -> exists p',
+          peekE (addE env (n * 8)) = Some p'
+          /\ pointerT2Nat p' = n + (pointerT2Nat m).
+    Variable boundPeekESome :
+    forall env n m m',
+      peekE env = Some m
+      -> peekE (addE env (n * 8)) = Some m'
+      -> (n + (pointerT2Nat m) < pow2 14)%nat.
+    Variable addPeekENone :
+      forall env n,
+        peekE env = None
+        -> peekE (addE env n) = None.
+    Variable addPeekENone' :
+      forall env n m,
+        peekE env = Some m
+        -> ~ (n + (pointerT2Nat m) < pow2 14)%nat
+        -> peekE (addE env (n * 8)) = None.
+  Variable addZeroPeekE :
+    forall xenv,
+      peekE xenv = peekE (addE xenv 0).
 
   Variable IndependentCaches :
     forall env p (b : nat),

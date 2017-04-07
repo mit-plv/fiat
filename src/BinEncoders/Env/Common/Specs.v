@@ -34,14 +34,15 @@ Section Specifications.
              (encode : A -> CacheEncode -> Comp (B * CacheEncode))
              (decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (decode_inv : CacheDecode -> Prop) :=
-    (forall env env' xenv data bin ext,
-      Equiv env env' ->
-      predicate data ->
-      rest_predicate data ext ->
-      encode data env ↝ (bin, xenv) ->
-      exists xenv',
-        decode (transform bin ext) env' = Some (data, ext, xenv')
-        /\ Equiv xenv xenv') /\
+    (forall env env' xenv data bin ext
+            (env_OK : decode_inv env'),
+        Equiv env env' ->
+        predicate data ->
+        rest_predicate data ext ->
+        encode data env ↝ (bin, xenv) ->
+        exists xenv',
+          decode (transform bin ext) env' = Some (data, ext, xenv')
+          /\ Equiv xenv xenv' /\ decode_inv xenv') /\
     (forall env env' xenv' data bin ext,
         Equiv env env'
         -> decode_inv env'
@@ -325,7 +326,7 @@ Lemma Start_CorrectDecoderFor
 Proof.
   exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
   unfold encode_decode_correct_f in *; intuition; intros.
-  - destruct (H1 _ _ _ _ _ ext H0 H3 H4 H5).
+  - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
     rewrite decoder_opt_OK in H6; eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.

@@ -112,8 +112,8 @@ Section Enum.
     : encode_decode_correct_f cache transformer (fun _ => True) (fun _ _ => True) encode_enum_Spec decode_enum P.
   Proof.
     split; unfold encode_enum_Spec, decode_enum.
-    { intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
-      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
+    { intros env env' xenv c c' ext ? Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? ?] ].
       rewrite H; simpl.
       apply (word_indexed_correct _ c) in tb_OK.
       subst; simpl in *.

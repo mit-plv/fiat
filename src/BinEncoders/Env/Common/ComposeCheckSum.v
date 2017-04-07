@@ -165,17 +165,17 @@ Section Checksum.
         P.
   Proof.
     unfold cache_inv_Property in *; split.
-    { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+    { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
       unfold composeChecksum, Bind2 in com_pf; computes_to_inv; destruct v;
         destruct v0.
       simpl in *.
-      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform (transform (encode_checksum v1) b0) ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform (transform (encode_checksum v1) b0) ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
       find_if_inside.
       - setoid_rewrite <- transform_assoc; rewrite H2.
         simpl.
         simpl; rewrite (decodeChecksum_pf _ _ _ _ _ _ _ _ _ _ _ com_pf (eq_refl _) pred_pm com_pf' pred_pm_rest); simpl; eauto.
         destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H)
-                                   _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H'' com_pf');
+                                   _ _ _ _ _ ext H5 H1 (conj pred_pm (eq_refl _)) H'' com_pf');
           intuition; simpl in *; injections.
         eauto.
       - destruct f.

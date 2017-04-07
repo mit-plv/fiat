@@ -184,7 +184,7 @@ Section Word.
                               encode_word_Spec decode_word P.
   Proof.
     unfold encode_decode_correct_f, encode_word_Spec, decode_word; split.
-    - intros env env' xenv w w' ext Eeq _ _ Penc.
+    - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
       computes_to_inv; injections.
       generalize dependent sz.
       intros; rewrite decode_encode_word'; simpl.
@@ -316,7 +316,7 @@ Section Word.
                               (encode_unused_word_Spec' sz' transform_id) (decode_unused_word sz') P.
   Proof.
     unfold encode_decode_correct_f, encode_unused_word_Spec', decode_unused_word; split.
-    - intros env env' xenv w w' ext Eeq _ _ Penc.
+    - intros env env' xenv w w' ext env_OK Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold decode_unused_word'.
       rewrite transformer_dequeue_encode_word'; simpl.
