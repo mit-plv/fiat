@@ -64,15 +64,15 @@ Section BinaryDns.
     (k, v) :: l.
 
   Instance dns_list_cache : Cache :=
-    {| CacheEncode := option {n | lt (NPeano.div n 8) (pow2 14)} * association_list string pointerT;
-       CacheDecode := option {n | lt (NPeano.div n 8) (pow2 14)} * association_list pointerT string;
+    {| CacheEncode := option (word 17) * association_list string pointerT;
+       CacheDecode := option (word 17) * association_list pointerT string;
        Equiv ce cd := fst ce = fst cd
                       /\ (snd ce) = (map (fun ps => match ps with (p, s) => (s, p) end) (snd cd))
                       /\ NoDup (map fst (snd cd))
     |}%type.
 
-  Definition list_CacheEncode_empty : CacheEncode := (Some 0, nil).
-  Definition list_CacheDecode_empty : CacheDecode := (Some 0, nil).
+  Definition list_CacheEncode_empty : CacheEncode := (Some (wzero _), nil).
+  Definition list_CacheDecode_empty : CacheDecode := (Some (wzero _), nil).
 
   Lemma list_cache_empty_Equiv : Equiv list_CacheEncode_empty list_CacheDecode_empty.
   Proof.
@@ -80,18 +80,22 @@ Section BinaryDns.
   Qed.
 
   Local Opaque pow2.
+  Arguments natToWord : simpl never.
+  Arguments wordToNat : simpl never.
+
+  (* pointerT2Nat (Nat2pointerT (NPeano.div (wordToNat w) 8)) *)
 
   Instance cacheAddNat : CacheAdd _ nat :=
     {| addE ce n := (Ifopt (fst ce) as m Then
-                                         let n' := m + n in
-                     if Compare_dec.lt_dec (NPeano.div n' 8) (pow2 14)
-                     then Some n'
+                                         let n' := (wordToNat m) + n in
+                     if Compare_dec.lt_dec n' (pow2 17)
+                     then Some (natToWord _ n')
                      else None
                             Else None, snd ce);
        addD cd n := (Ifopt (fst cd) as m Then
-                                         let n' := m + n in
-                     if Compare_dec.lt_dec (NPeano.div n' 8) (pow2 14)
-                     then Some n'
+                                         let n' := (wordToNat m) + n in
+                     if Compare_dec.lt_dec n' (pow2 17)
+                     then Some (natToWord _ n')
                      else None
                             Else None, snd cd) |}.
   Proof.
@@ -104,7 +108,7 @@ Section BinaryDns.
   Instance : Query_eq pointerT :=
     {| A_eq_dec := pointerT_eq_dec |}.
 
-  Lemma natToWord_lt_combine
+  (*Lemma natToWord_lt_combine
     : forall higher_bits : word 6,
       wlt (natToWord 8 191)  (combine higher_bits WO~1~1).
   Proof.
@@ -117,11 +121,13 @@ Section BinaryDns.
         apply Nomega.Nlt_in; simpl; unfold Pos.to_nat; simpl; omega.
     - destruct x; destruct x0; destruct x1; destruct x2; destruct x3; destruct x4; simpl;
         omega.
-  Qed.
+  Qed. *)
 
   Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
-    {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (NPeano.div m 8)) Else None;
-       peekD cd := Ifopt (fst cd) as m Then Some (Nat2pointerT (NPeano.div m 8)) Else None |}.
+    {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None;
+       peekD cd := Ifopt (fst cd) as m Then Some
+                                       (Nat2pointerT (wordToNat (wtl (wtl (wtl m)))))
+                                       Else None |}.
   Proof.
     abstract (simpl; intros; intuition; rewrite H0; auto).
   Defined.
@@ -260,10 +266,97 @@ Section BinaryDns.
     destruct (fst env); simpl in *; congruence.
   Qed.
 
-    Lemma addPeekSome :
+  Lemma wtl_div
+    : forall n (w : word (S (S (S n)))),
+      wordToNat (wtl (wtl (wtl w))) = NPeano.div (wordToNat w) 8.
+  Proof.
+    intros.
+    pose proof (shatter_word_S w); destruct_ex; subst.
+    pose proof (shatter_word_S x0); destruct_ex; subst.
+    pose proof (shatter_word_S x2); destruct_ex; subst.
+    simpl wtl.
+    rewrite <- (NPeano.Nat.div_div _ 2 4) by omega.
+    rewrite <- (NPeano.Nat.div_div _ 2 2) by omega.
+    rewrite <- !NPeano.Nat.div2_div.
+    rewrite !div2_WS.
+    reflexivity.
+  Qed.
+
+  Lemma mult_lt_compat_l'
+    : forall (m n p : nat),
+      lt 0 p
+      -> lt (p * n)  (p * m)
+      -> lt n m.
+  Proof.
+    induction m; simpl; intros; try omega.
+    rewrite (mult_comm p 0) in H0; simpl in *; try omega.
+    destruct p; try (elimtype False; auto with arith; omega).
+    inversion H0.
+    rewrite (mult_comm p (S m)) in H0.
+    simpl in H0.
+    destruct n; try omega.
+    rewrite (mult_comm p (S n)) in H0; simpl in H0.
+    apply plus_lt_reg_l in H0.
+    rewrite <- NPeano.Nat.succ_lt_mono.
+    eapply (IHm n p); try eassumption; try omega.
+    rewrite mult_comm.
+    rewrite (mult_comm p m); auto.
+  Qed.
+
+  Lemma mult_lt_compat_l''
+    : forall (p m k n : nat),
+      lt 0 p
+      -> lt n m
+      -> lt k p
+      -> lt ((p * n) + k) (p * m).
+  Proof.
+    induction p; intros; try omega.
+    simpl.
+    inversion H; subst; simpl.
+    inversion H1; subst; omega.
+    destruct k; simpl.
+    - rewrite <- plus_n_O.
+      eapply (mult_lt_compat_l n m (S p)); auto.
+    - assert (lt (p * n + k) (p * m)) by
+          (apply IHp; try omega).
+      omega.
+  Qed.
+
+  Lemma addPeekNone' :
     forall env n m,
       peekD env = Some m
-      -> lt 0 n
+      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)
+      -> peekD (addD env (n * 8)) = None.
+  Proof.
+    simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside; try reflexivity.
+    unfold If_Opt_Then_Else.
+    rewrite !wtl_div in *.
+    elimtype False; apply H0.
+    rewrite pointerT2Nat_Nat2pointerT in *;
+      try (eapply pow2_div; eassumption).
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    destruct n; try omega.
+    elimtype False; apply H0.
+    simpl.
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    - eapply le_lt_trans.
+      apply OrdersEx.Nat_as_OT.mul_div_le; omega.
+      simpl in l.
+      rewrite mult_pow2_8; simpl; omega.
+    - rewrite mult_plus_distr_l.
+      assert (8 <> 0) by omega.
+      pose proof (OrdersEx.Nat_as_OT.mul_div_le (wordToNat w) 8 H).
+      apply le_lt_trans with (8 * S n + (wordToNat w)).
+      omega.
+      rewrite mult_pow2_8; simpl; omega.
+  Qed.
+
+  Lemma addPeekSome :
+    forall env n m,
+      peekD env = Some m
       -> lt (n + (pointerT2Nat m)) (pow2 14)
       -> exists p',
           peekD (addD env (n * 8)) = Some p'
@@ -273,38 +366,34 @@ Section BinaryDns.
     destruct (fst env); simpl in *; try discriminate.
     injections.
     find_if_inside.
-    - rewrite pointerT2Nat_Nat2pointerT in *;
+    - rewrite !wtl_div in *.
+      rewrite pointerT2Nat_Nat2pointerT in *;
         try (eapply pow2_div; eassumption).
+      unfold If_Opt_Then_Else.
       eexists; split; try reflexivity.
+      rewrite wtl_div.
+      rewrite wordToNat_natToWord_idempotent.
+      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
       rewrite NPeano.Nat.div_add; try omega.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite NPeano.Nat.div_add in l; omega.
-      rewrite NPeano.Nat.div_add in l; omega.
-      rewrite NPeano.Nat.div_add in l; omega.
-    - elimtype False; apply n1.
-      rewrite NPeano.Nat.div_add by omega.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
-
-
-      eapply (mult_lt_compat_l _ _ 8) in H1; try omega.
-      rewrite mult_plus_distr_l in H1.
-      rewrite (mult_pow2_8 14) in H1.
-      destruct n; try omega.
-      simpl plus at -1 in H1.
+      rewrite NPeano.Nat.div_add; try omega.
+      apply Nomega.Nlt_in.
+      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
+    - elimtype False; apply n0.
+      rewrite !wtl_div in *.
       rewrite pointerT2Nat_Nat2pointerT in *.
-      rewrite mult_succ_r in H1.
-      rewrite div_eq in H1 by omega.
-      assert (lt (NPeano.modulo n0 8) 8).
-      apply (NPeano.mod_bound_pos n0 8); try omega.
-
-      assert
-
-
-
-      try (eapply pow2_div; eassumption).
-        try omega.
-
+      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
+      pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
+      replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
+      with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
+        by omega.
+      eapply mult_lt_compat_l''; try omega.
+      apply NPeano.Nat.mod_upper_bound; omega.
+      eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply OrdersEx.Nat_as_OT.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl.
+      apply wordToNat_bound.
+  Qed.
 
   Lemma addZeroPeek :
     forall xenv,
@@ -312,59 +401,160 @@ Section BinaryDns.
   Proof.
     simpl; intros.
     destruct (fst xenv); simpl; eauto.
-    find_if_inside; simpl in *.
-  Admitted.
+    find_if_inside; unfold If_Opt_Then_Else.
+    rewrite <- plus_n_O, natToWord_wordToNat; auto.
+    elimtype False; apply n.
+    rewrite <- plus_n_O.
+    apply wordToNat_bound.
+  Qed.
 
-  Variable addPeekNone' :
-    forall env n m,
-      peekD env = Some m
-      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)
-      -> peekD (addD env (n * 8)) = None.
+  Local Opaque wordToNat.
+  Local Opaque natToWord.
 
-
-
-    Variable boundPeekSome :
+  Lemma boundPeekSome :
     forall env n m m',
       peekD env = Some m
       -> peekD (addD env (n * 8)) = Some m'
-      -> (n + (pointerT2Nat m) < pow2 14)%nat.
+      -> lt (n + (pointerT2Nat m)) (pow2 14).
+  Proof.
+    simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside; unfold If_Opt_Then_Else in *; try congruence.
+    injections.
+    rewrite !wtl_div in *.
+    rewrite pointerT2Nat_Nat2pointerT in *;
+      try (eapply pow2_div; eassumption).
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    - rewrite mult_plus_distr_l.
+      assert (8 <> 0) by omega.
+      pose proof (OrdersEx.Nat_as_OT.mul_div_le (wordToNat w) 8 H).
+      apply le_lt_trans with (8 * n + (wordToNat w)).
+      omega.
+      rewrite mult_pow2_8.
+      simpl plus at -1.
+      omega.
+  Qed.
 
-    Variable addPeekESome :
+  Lemma addPeekESome :
     forall env n m,
       peekE env = Some m
-      -> (n + (pointerT2Nat m) < pow2 14)%nat
+      -> lt (n + (pointerT2Nat m)) (pow2 14)%nat
       -> exists p',
           peekE (addE env (n * 8)) = Some p'
           /\ pointerT2Nat p' = n + (pointerT2Nat m).
-    Variable boundPeekESome :
+  Proof.
+        simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside.
+    - rewrite !wtl_div in *.
+      rewrite pointerT2Nat_Nat2pointerT in *;
+        try (eapply pow2_div; eassumption).
+      unfold If_Opt_Then_Else.
+      eexists; split; try reflexivity.
+      rewrite wtl_div.
+      rewrite wordToNat_natToWord_idempotent.
+      rewrite pointerT2Nat_Nat2pointerT in *; try omega.
+      rewrite NPeano.Nat.div_add; try omega.
+      rewrite NPeano.Nat.div_add; try omega.
+      apply Nomega.Nlt_in.
+      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
+    - elimtype False; apply n0.
+      rewrite !wtl_div in *.
+      rewrite pointerT2Nat_Nat2pointerT in *.
+      rewrite (NPeano.div_mod (wordToNat w) 8); try omega.
+      pose proof (mult_pow2_8 14) as H'; simpl plus in H'; rewrite <- H'.
+      replace (8 * NPeano.div (wordToNat w) 8 + NPeano.modulo (wordToNat w) 8 + n * 8)
+      with (8 * (NPeano.div (wordToNat w) 8 + n) + NPeano.modulo (wordToNat w) 8)
+        by omega.
+      eapply mult_lt_compat_l''; try omega.
+      apply NPeano.Nat.mod_upper_bound; omega.
+      eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply OrdersEx.Nat_as_OT.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl.
+      apply wordToNat_bound.
+  Qed.
+
+  Lemma boundPeekESome :
     forall env n m m',
       peekE env = Some m
       -> peekE (addE env (n * 8)) = Some m'
-      -> (n + (pointerT2Nat m) < pow2 14)%nat.
-    Variable addPeekENone :
+      -> lt (n + (pointerT2Nat m)) (pow2 14).
+  Proof.
+    simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside; unfold If_Opt_Then_Else in *; try congruence.
+    injections.
+    rewrite !wtl_div in *.
+    rewrite pointerT2Nat_Nat2pointerT in *;
+      try (eapply pow2_div; eassumption).
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    - rewrite mult_plus_distr_l.
+      assert (8 <> 0) by omega.
+      pose proof (OrdersEx.Nat_as_OT.mul_div_le (wordToNat w) 8 H).
+      apply le_lt_trans with (8 * n + (wordToNat w)).
+      omega.
+      rewrite mult_pow2_8.
+      simpl plus at -1.
+      omega.
+  Qed.
+  
+  Lemma addPeekENone :
       forall env n,
         peekE env = None
         -> peekE (addE env n) = None.
-    Variable addPeekENone' :
-      forall env n m,
-        peekE env = Some m
-        -> ~ (n + (pointerT2Nat m) < pow2 14)%nat
-        -> peekE (addE env (n * 8)) = None.
-  Variable addZeroPeekE :
+  Proof.
+    simpl; intros.
+    destruct (fst env); simpl in *; congruence.
+  Qed.
+  
+  Lemma addPeekENone' :
+    forall env n m,
+      peekE env = Some m
+      -> ~ lt (n + (pointerT2Nat m)) (pow2 14)%nat
+      -> peekE (addE env (n * 8)) = None.
+  Proof.
+    simpl; intros; subst.
+    destruct (fst env); simpl in *; try discriminate.
+    injections.
+    find_if_inside; try reflexivity.
+    unfold If_Opt_Then_Else.
+    rewrite !wtl_div in *.
+    elimtype False; apply H0.
+    rewrite pointerT2Nat_Nat2pointerT in *;
+      try (eapply pow2_div; eassumption).
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    destruct n; try omega.
+    elimtype False; apply H0.
+    simpl.
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    - eapply le_lt_trans.
+      apply OrdersEx.Nat_as_OT.mul_div_le; omega.
+      simpl in l.
+      rewrite mult_pow2_8; simpl; omega.
+    - rewrite mult_plus_distr_l.
+      assert (8 <> 0) by omega.
+      pose proof (OrdersEx.Nat_as_OT.mul_div_le (wordToNat w) 8 H).
+      apply le_lt_trans with (8 * S n + (wordToNat w)).
+      omega.
+      rewrite mult_pow2_8; simpl; omega.
+  Qed.
+
+  Lemma addZeroPeekE :
     forall xenv,
       peekE xenv = peekE (addE xenv 0).
-
-  Variable IndependentCaches :
-    forall env p (b : nat),
-      getD (addD env b) p = getD env p.
-  Variable GetCacheAdd_1 :
-    forall env (p : pointerT) (domain : string),
-      getD (addD env (domain, p)) p = Some domain.
-  Variable GetCacheAdd_2 :
-    forall env (p p' : pointerT) (domain : string),
-      p <> p' -> getD (addD env (domain, p')) p = getD env p.
-  Variable GoodCacheDecode :
-    GoodCache cache cacheGetDNPointer cacheDecode_empty.
+  Proof.
+    simpl; intros.
+    destruct (fst xenv); simpl; eauto.
+    find_if_inside; unfold If_Opt_Then_Else.
+    rewrite <- plus_n_O, natToWord_wordToNat; auto.
+    elimtype False; apply n.
+    rewrite <- plus_n_O.
+    apply wordToNat_bound.
+  Qed.
 
 Require Import Fiat.BinEncoders.Env.Examples.DnsOpt.
 
