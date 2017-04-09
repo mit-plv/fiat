@@ -778,6 +778,9 @@ Section DomainName.
   Variable IndependentCaches' :
     forall env p (b : nat),
       getE (addE env b) p = getE env p.
+  Variable IndependentCaches''' :
+    forall env b,
+      peekE (addE_G env b) = peekE env.
 
   Variable getDistinct :
     forall env l p p',
@@ -994,6 +997,87 @@ Section DomainName.
     reflexivity.
   Qed.
 
+  Lemma PeekCacheFixpoint_Overflow
+    : forall
+      (n : nat)
+      (x6 : DomainName)
+      (xenv'' : CacheEncode)
+      (bin' : B)
+      (xenv0 : CacheEncode)
+      (x9 : string)
+      (p0 : pointerT),
+      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+          In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
+      (String.length x6 <= n)%nat ->
+      LeastFixedPoint
+        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+             (domain : DomainName) (env : CacheEncode) =>
+           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+              Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
+                        forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
+                          position = Some p -> In p (getE env domain)};
+            Ifopt position as position0
+                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
+            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+            ret (transform ptr1b ptr2b, env'0)
+                Else (`(label, domain') <- {labeldomain' :
+                                              string * string |
+                                            (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                             labeldomain' = (domain, ""%string)) /\
+                                            ValidLabel (fst labeldomain') /\
+                                            (forall label' post' : string,
+                                                domain = (label' ++ post')%string ->
+                                                ValidLabel label' ->
+                                                (String.length label' <= String.length (fst labeldomain'))%nat)};
+                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
+                        `(labelb, env'0) <- encode_string_Spec label env';
+                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        ret
+                          (transform (transform lenb labelb) domainb,
+                           Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
+        ↝ (bin', xenv0) ->
+      peekE xenv'' = None
+      -> peekE xenv0 = None.
+  Proof.
+    induction n; intros;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
+                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      simpl in H2.
+    - destruct x6; simpl in *.
+      simpl in H2; computes_to_inv.
+      unfold encode_ascii_Spec, encode_word_Spec in H2;
+        computes_to_inv; subst; simpl in *; injections.
+      eapply addPeekENone; eauto.
+      elimtype False; omega.
+    - destruct x6; simpl in *.
+      + simpl in H2; computes_to_inv.
+        unfold encode_ascii_Spec, encode_word_Spec in H2;
+          computes_to_inv; subst; simpl in *; injections.
+        eapply addPeekENone; eauto.
+      + simpl in H2; computes_to_inv. 
+        destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
+        * unfold encode_word_Spec in *;
+            computes_to_inv; subst; simpl in *; injections.
+          eapply addPeekENone; eauto.          
+        * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
+            destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
+              simpl in *; injections.
+          generalize H2'' H2'''.
+          apply encode_nat_peekE in H2'';
+            subst.
+          apply encode_string_peekE in H2'''; subst; intros.
+          rewrite H3; simpl.
+          eapply addPeekENone in H3; rewrite H3 in H2''.
+          eapply addPeekENone in H2''; rewrite H2'' in H2'''.
+          eapply IHn in H2''''; eauto.
+          destruct H2' as [ [? | ?] [? ?] ].
+          generalize (f_equal String.length H4); simpl;
+            rewrite !length_append; simpl; omega.
+          injection H4; intros; subst.
+          simpl; omega.
+  Qed.
+
   Lemma InCacheFixpoint_Overflow
     : forall
       (n : nat)
@@ -1079,7 +1163,115 @@ Section DomainName.
           injection H5; intros; subst.
           simpl; omega.
   Qed.
+
   
+
+  Lemma PeekCacheFixpoint
+    : forall
+      (n : nat)
+      (x6 : DomainName)
+      (xenv'' : CacheEncode)
+      (bin' : B)
+      (xenv0 : CacheEncode)
+      (x9 : string)
+      (p' p : pointerT),
+      (forall (env : CacheEncode) (p : string) (b : nat), getE (addE env b) p = getE env p) ->
+      (forall (env : CacheEncode) (l : string) (p p' : pointerT) (l' : string),
+          In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
+      (String.length x6 <= n)%nat ->
+      LeastFixedPoint
+        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+             (domain : DomainName) (env : CacheEncode) =>
+           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+              Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
+                        forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
+                          position = Some p -> In p (getE env domain)};
+            Ifopt position as position0
+                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
+            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+            ret (transform ptr1b ptr2b, env'0)
+                Else (`(label, domain') <- {labeldomain' :
+                                              string * string |
+                                            (domain = (fst labeldomain' ++ String "." (snd labeldomain'))%string \/
+                                             labeldomain' = (domain, ""%string)) /\
+                                            ValidLabel (fst labeldomain') /\
+                                            (forall label' post' : string,
+                                                domain = (label' ++ post')%string ->
+                                                ValidLabel label' ->
+                                                (String.length label' <= String.length (fst labeldomain'))%nat)};
+                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
+                        `(labelb, env'0) <- encode_string_Spec label env';
+                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        ret
+                          (transform (transform lenb labelb) domainb,
+                           Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
+        ↝ (bin', xenv0) ->
+      peekE xenv'' = Some p ->
+      peekE xenv0 = Some p' ->
+      (pointerT2Nat p <= pointerT2Nat p')%nat.
+  Proof.
+    induction n; intros;
+      apply (@unroll_LeastFixedPoint [DomainName; CacheEncode]
+                                     (B * CacheEncode)%type _ encode_body_monotone) in H2;
+      simpl in H2.
+    - destruct x6; simpl in *.
+      simpl in H2; computes_to_inv.
+      unfold encode_ascii_Spec, encode_word_Spec in H2;
+        computes_to_inv; subst; simpl in *; injections.
+      apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
+        simpl in *; rewrite H2 in H4; try discriminate.
+      injections.
+      rewrite pointerT2Nat_Nat2pointerT; eauto.
+      elimtype False; omega.
+    - destruct x6; simpl in *.
+      + simpl in H2; computes_to_inv.
+        unfold encode_ascii_Spec, encode_word_Spec in H2;
+          computes_to_inv; subst; simpl in *; injections.
+        apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
+          simpl in *; rewrite H2 in H4; try discriminate.
+        injections.
+        rewrite pointerT2Nat_Nat2pointerT; eauto.
+      + simpl in H2; computes_to_inv. 
+        destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
+        * unfold encode_word_Spec in *;
+            computes_to_inv; subst; simpl in *; injections.
+          apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
+            simpl in *.
+          apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
+            simpl in *; rewrite H3 in H4; try discriminate.
+          injections.
+          rewrite pointerT2Nat_Nat2pointerT; eauto.
+          rewrite pointerT2Nat_Nat2pointerT; eauto.
+          apply (addPeekENone _ 8) in H3; rewrite H3 in H4; discriminate.           
+        * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
+            destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
+              simpl in *; injections.
+          destruct H2' as [ ? [? ?] ].
+          destruct (peekE xenv'') eqn: ?; simpl in *; eauto;
+            try discriminate; injections.
+          apply encode_nat_peekE in H2''.
+          apply encode_string_peekE in H2'''.
+          apply (addPeekE _ 1) in Heqy; destruct Heqy as [ [? ?] | ? ];
+            simpl in H3; rewrite H3 in H2''; try discriminate; injections.
+          eapply (addPeekE) in H2''; destruct H2'' as [ [? ?] | ? ];
+            simpl in H9; rewrite H9 in H2'''; try discriminate; injections.
+          etransitivity.
+          2: eapply IHn in H2''''; eauto.
+          rewrite pointerT2Nat_Nat2pointerT; eauto.
+          rewrite pointerT2Nat_Nat2pointerT; eauto.
+          omega.
+          intuition.
+          generalize (f_equal String.length H11); simpl;
+            rewrite !length_append; simpl; omega.
+          injections; simpl; omega.
+          rewrite IndependentCaches''' in H4; auto.
+          eapply PeekCacheFixpoint_Overflow in H2''''; eauto.
+          rewrite IndependentCaches''', H2'''' in H4; discriminate.
+          eapply addPeekENone in H2''; rewrite H2'' in H2'''.
+          eapply PeekCacheFixpoint_Overflow in H2''''; eauto.
+          rewrite IndependentCaches''', H2'''' in H4; discriminate.
+  Qed.
+    
   Lemma InCacheFixpoint
     : forall
       (n : nat)
@@ -1180,7 +1372,7 @@ Section DomainName.
             rewrite !length_append; simpl; omega.
           injections; simpl; omega.
           congruence.
-          split; intros; try congruence.
+          split; intros. try congruence.
           generalize H2'' H2'''.
           apply encode_nat_peekE in H2''; subst.
           apply encode_string_peekE in H2'''; subst; intros.
@@ -1257,6 +1449,8 @@ Section DomainName.
                          P env
                          -> (ValidDomainName domain /\ String.length domain > 0)%nat
                          -> getD env p = None
+                         -> (forall p', peekD env = Some p'
+                                        -> lt (pointerT2Nat p) (pointerT2Nat p'))
                          -> P (addD_G env (domain, p)))
                   /\ (forall (b : nat) (cd : CacheDecode),
                     P cd
@@ -1293,6 +1487,8 @@ Section DomainName.
                          P env
                          -> (ValidDomainName domain /\ String.length domain > 0)%nat
                          -> getD env p = None
+                         -> (forall p', peekD env = Some p'
+                                        -> lt (pointerT2Nat p) (pointerT2Nat p'))
                          -> P (addD_G env (domain, p)))
                   /\ (forall (b : nat) (cd : CacheDecode),
                     P cd
@@ -1482,6 +1678,10 @@ Section DomainName.
             pose proof (fun a b c d e =>
                           InCacheFixpoint (String.length label2) _ _ _ _ a b c d e Penc'''')
                  as xenv'0_OK.
+            pose proof (fun n p z q m o n' => PeekCacheFixpoint n _ _ _ _ p z q m o n' Penc'''')
+              as p_bnd.
+            pose proof (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o Penc'''')
+              as p_bnd'.
             eapply IHn in Penc''''.
             destruct Penc'''' as [xenv7 [? [? xenv7_OK] ] ].
             eexists; split.
@@ -1705,6 +1905,32 @@ Section DomainName.
                 congruence.
                 rewrite addPeekENone in H12. congruence.
                 simpl in H14; rewrite H14 in H11; auto.
+                apply DecodeBindOpt2_inv in H0;
+                  destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+                eapply decode_word_peek_distinct in H0.
+                eapply decode_string_peek_distinct in H1.
+                eapply (addPeek _ 1) in Heqy;
+                  destruct Heqy as [ [peekD_eq peekD_bnd] | peekD_eq];
+                  simpl in peekD_eq; rewrite peekD_eq in H0.
+                apply (addPeek _ (String.length label1)) in H0;
+                  destruct H0 as [ [P'' P''_bnd] | P''];
+                  rewrite P'' in H1. 
+                apply Lt.lt_le_trans with
+                  (m := pointerT2Nat (Nat2pointerT (String.length label1 + (S (pointerT2Nat p))))).
+                  rewrite pointerT2Nat_Nat2pointerT; try omega.
+                  rewrite pointerT2Nat_Nat2pointerT in P''_bnd; try omega.
+                  eapply  p_bnd; eauto.
+                  erewrite peek_correct; eauto.
+                  rewrite H1, pointerT2Nat_Nat2pointerT; eauto.
+                  erewrite peek_correct; eauto.
+                  erewrite <- peek_correct in H8; eauto.
+                  erewrite p_bnd' in H8; eauto.
+                  discriminate.
+                  erewrite peek_correct; eauto.
+                  erewrite <- peek_correct in H8 by eauto.
+                  erewrite p_bnd' in H8; eauto; try discriminate.
+                  erewrite peek_correct by eassumption.
+                  rewrite H1; eauto.
             + subst; eauto using ValidDomainName_app.
             + subst; eauto using chomp_label_length.
             + destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
@@ -1722,6 +1948,10 @@ Section DomainName.
               pose proof (fun a b c d e =>
                             InCacheFixpoint (String.length "") _ _ _ _ a b c d e Penc'''')
                 as xenv'0_OK.
+              pose proof (fun n p z q m o n' => PeekCacheFixpoint n _ _ _ _ p z q m o n' Penc'''')
+              as p_bnd.
+            pose proof (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o Penc'''')
+              as p_bnd'.
               eapply IHn in Penc''''.
               destruct Penc'''' as [xenv7 [? [? xenv7_OK] ] ].
               eexists; split.
@@ -1865,6 +2095,32 @@ Section DomainName.
                 congruence.
                 rewrite addPeekENone in H8. congruence.
                 simpl in H10; rewrite H10 in H7; auto.
+                apply DecodeBindOpt2_inv in H0;
+                  destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
+                eapply decode_word_peek_distinct in H0.
+                eapply decode_string_peek_distinct in H1.
+                eapply (addPeek _ 1) in Heqy;
+                  destruct Heqy as [ [peekD_eq peekD_bnd] | peekD_eq];
+                  simpl in peekD_eq; rewrite peekD_eq in H0.
+                apply (addPeek _ (String.length l)) in H0;
+                  destruct H0 as [ [P'' P''_bnd] | P''];
+                  rewrite P'' in H1. 
+                apply Lt.lt_le_trans with
+                  (m := pointerT2Nat (Nat2pointerT (String.length l + (S (pointerT2Nat p))))).
+                rewrite pointerT2Nat_Nat2pointerT; try omega.
+                rewrite pointerT2Nat_Nat2pointerT in P''_bnd; try omega.
+                eapply  p_bnd; eauto.
+                erewrite peek_correct; eauto.
+                rewrite H1, pointerT2Nat_Nat2pointerT; eauto.
+                erewrite peek_correct; eauto.
+                erewrite <- peek_correct in H4; eauto.
+                erewrite p_bnd' in H4; eauto.
+                discriminate.
+                erewrite peek_correct; eauto.
+                erewrite <- peek_correct in H4 by eauto.
+                erewrite p_bnd' in H4; eauto; try discriminate.
+                erewrite peek_correct by eassumption.
+                rewrite H1; eauto.
               }
               * unfold ValidDomainName; split; intros.
                 destruct pre; simpl in *; try discriminate.
@@ -2045,6 +2301,35 @@ Section DomainName.
             rewrite <- H3 in H2.
             erewrite <- peek_correct in H2; eauto.
             intuition.
+            intros.
+            eapply decode_word_peek_distinct in H2.
+            eapply decode_string_peek_distinct in H3.
+            eapply (addPeek _ 1) in Heqy;
+              destruct Heqy as [ [peekD_eq peekD_bnd] | peekD_eq];
+              simpl in peekD_eq; rewrite peekD_eq in H2.
+            apply (addPeek _ (wordToNat x0 )) in H2;
+              destruct H2 as [ [P'' P''_bnd] | P''];
+              rewrite P'' in H3. 
+            apply Lt.lt_le_trans with
+            (m := pointerT2Nat (Nat2pointerT (wordToNat x0 + (S (pointerT2Nat p))))).
+            rewrite pointerT2Nat_Nat2pointerT; try omega.
+            rewrite pointerT2Nat_Nat2pointerT in P''_bnd; try omega.
+            pose proof (fun n p z q m o n' => PeekCacheFixpoint n _ _ _ _ p z q m o n' H4)
+              as p_bnd.
+            eapply p_bnd; eauto.
+            erewrite peek_correct; eauto.
+            rewrite H3, pointerT2Nat_Nat2pointerT; eauto.
+            erewrite peek_correct; eauto.
+            erewrite <- peek_correct in H17; eauto.
+            pose proof (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o H4)
+              as p_bnd'.
+            erewrite p_bnd' in H17; eauto.
+            discriminate.
+            erewrite peek_correct; eauto.
+            erewrite <- peek_correct in H17 by eauto.
+            erewrite (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o H4) in H17; eauto; try discriminate.
+            erewrite peek_correct by eassumption.
+            rewrite H3; eauto.
           }
           { injection H5; intros; rewrite H14.
             destruct (peekD env') eqn: ?; simpl in *; eauto.
@@ -2093,6 +2378,35 @@ Section DomainName.
             rewrite <- H3 in H2.
             erewrite <- peek_correct in H2; eauto.
             intuition.
+            intros.
+            eapply decode_word_peek_distinct in H2.
+            eapply decode_string_peek_distinct in H3.
+            eapply (addPeek _ 1) in Heqy;
+              destruct Heqy as [ [peekD_eq peekD_bnd] | peekD_eq];
+              simpl in peekD_eq; rewrite peekD_eq in H2.
+            apply (addPeek _ (wordToNat x0 )) in H2;
+              destruct H2 as [ [P'' P''_bnd] | P''];
+              rewrite P'' in H3. 
+            apply Lt.lt_le_trans with
+            (m := pointerT2Nat (Nat2pointerT (wordToNat x0 + (S (pointerT2Nat p))))).
+            rewrite pointerT2Nat_Nat2pointerT; try omega.
+            rewrite pointerT2Nat_Nat2pointerT in P''_bnd; try omega.
+            pose proof (fun n p z q m o n' => PeekCacheFixpoint n _ _ _ _ p z q m o n' H4)
+              as p_bnd.
+            eapply p_bnd; eauto.
+            erewrite peek_correct; eauto.
+            rewrite H3, pointerT2Nat_Nat2pointerT; eauto.
+            erewrite peek_correct; eauto.
+            erewrite <- peek_correct in H17; eauto.
+            pose proof (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o H4)
+              as p_bnd'.
+            erewrite p_bnd' in H17; eauto.
+            discriminate.
+            erewrite peek_correct; eauto.
+            erewrite <- peek_correct in H17 by eauto.
+            erewrite (fun n p z q m o => PeekCacheFixpoint_Overflow n _ _ _ _ p z q m o H4) in H17; eauto; try discriminate.
+            erewrite peek_correct by eassumption.
+            rewrite H3; eauto.
           }
           destruct H11 as [bin' [xenv0 [? [? [? ? ] ] ] ] ].
           eexists _, _; split; eauto.

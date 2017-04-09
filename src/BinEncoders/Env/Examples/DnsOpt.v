@@ -189,6 +189,13 @@ Section DnsPacket.
     simpl; intros; eauto.
   Qed.
 
+  Lemma IndependentCaches''' :
+    forall env b,
+      peekE (addE_G env b) = peekE env.
+  Proof.
+    simpl; intros; eauto.
+  Qed.
+
   Lemma getDistinct :
     forall env l p p',
       p <> p'
@@ -549,14 +556,48 @@ Section DnsPacket.
     forall domain p,
       getD env p = Some domain
       -> ValidDomainName domain
-         /\ (String.length domain > 0)%nat.
+         /\ (String.length domain > 0)%nat
+         /\ (getD env p = Some domain
+             -> forall p' : pointerT, peekD env = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p')).
 
   Lemma cacheIndependent_add
     : forall (b : nat) (cd : CacheDecode),
       GoodCache cd -> GoodCache (addD cd b).
   Proof.
     unfold GoodCache; intros.
-    rewrite IndependentCaches in *; eauto.
+    rewrite IndependentCaches in *;
+      eapply H in H0; intuition eauto.
+    simpl in *.
+    destruct (fst cd); simpl in *; try discriminate.
+    find_if_inside; simpl in *; try discriminate.
+    injections.
+    pose proof (H4 _ (eq_refl _)).
+    eapply lt_le_trans; eauto.
+    rewrite !pointerT2Nat_Nat2pointerT in *;
+      rewrite !wtl_div in *.
+    rewrite wordToNat_natToWord_idempotent.
+    apply NPeano.Nat.div_le_mono; omega.
+    apply Nomega.Nlt_in.
+    rewrite Nnat.Nat2N.id, Npow2_nat; auto.
+    eapply (mult_lt_compat_l' _ _ 8); try omega.
+    + eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite wordToNat_natToWord_idempotent.
+      rewrite mult_pow2_8; simpl; omega.
+      apply Nomega.Nlt_in.
+      rewrite Nnat.Nat2N.id, Npow2_nat; auto.
+    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl; omega.
+    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl; omega.
+    + eapply (mult_lt_compat_l' _ _ 8); try omega.
+      eapply le_lt_trans.
+      apply NPeano.Nat.mul_div_le; omega.
+      rewrite mult_pow2_8; simpl; omega.
   Qed.
 
   Lemma cacheIndependent_add_2
@@ -678,12 +719,67 @@ Section DnsPacket.
     - eapply H; eauto.
   Qed.
 
-  Ltac solve_GoodCache_inv foo :=
+  Lemma cacheIndependent_add_11
+    : forall (b : nat)
+             (cd : CacheDecode)
+             (domain : string)
+             (p : pointerT),
+      GoodCache cd
+      -> getD (addD cd b) p = Some domain ->
+      forall p' : pointerT, peekD (addD cd b) = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p').
+  Proof.
+    intros.
+    eapply (cacheIndependent_add b) in H.
+    eapply H; eauto.
+  Qed.
+
+  Lemma cacheIndependent_add_12
+      : forall (p : pointerT) (cd : CacheDecode) (domain : string),
+        GoodCache cd ->
+        getD cd p = Some domain
+        -> forall p' : pointerT,
+            peekD cd = Some p'
+            -> lt (pointerT2Nat p) (pointerT2Nat p').
+    Proof.
+      unfold GoodCache; simpl; intros; intuition eauto.
+      eapply H; eauto.
+    Qed.
+
+    Lemma cacheIndependent_add_13
+      : forall  (env : CacheDecode)
+                (p : pointerT)
+                (domain : string)
+                (H : GoodCache env)
+                (H0 : ValidDomainName domain /\ (String.length domain > 0)%nat)
+                (H1 : getD env p = None)
+                (H2 : forall p' : pointerT, peekD env = Some p' -> lt (pointerT2Nat p) (pointerT2Nat p'))
+                (domain0 : string)
+                (p0 : pointerT)
+                (H3 : getD (addD_G env (domain, p)) p0 = Some domain0)
+                (p' : pointerT),
+        peekD (addD_G env (domain, p)) = Some p'
+        -> lt (pointerT2Nat p0) (pointerT2Nat p').
+    Proof.
+      simpl; intros.
+      destruct (fst env) eqn: ?; simpl in *; try discriminate.
+      find_if_inside; subst.
+      - injections.
+        apply (H2 _ (eq_refl _)).
+      - injections.
+        pose proof (H2 _ (eq_refl _)).
+        unfold GoodCache in *; intuition.
+        eapply H; simpl.
+        eassumption.
+        eassumption.
+        rewrite Heqo; simpl; reflexivity.
+    Qed.
+
+    Ltac solve_GoodCache_inv foo :=
     lazymatch goal with
       |- cache_inv_Property ?Z _ =>
       unify Z GoodCache;
       unfold cache_inv_Property; repeat split;
-      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10;
+      eauto using cacheIndependent_add, cacheIndependent_add_2, cacheIndependent_add_4, cacheIndependent_add_6, cacheIndependent_add_7, cacheIndependent_add_8, cacheIndependent_add_10, cacheIndependent_add_11, cacheIndependent_add_12, cacheIndependent_add_13;
       try match goal with
             H : _ = _ |- _ =>
             try solve [ eapply cacheIndependent_add_3 in H; intuition eauto ];
@@ -978,11 +1074,18 @@ Section DnsPacket.
                      ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
+  Print Implicit DomainName_decode_correct.
+
   Ltac decode_DNS_rules g :=
     (* Processes the goal by either: *)
     lazymatch goal with
     | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
-      eapply DomainName_decode_correct
+      eapply (DomainName_decode_correct
+                IndependentCaches IndependentCaches' IndependentCaches'''
+                getDistinct getDistinct' addPeekSome
+                boundPeekSome addPeekNone addPeekNone'
+                addZeroPeek addPeekESome boundPeekESome
+                addPeekENone addPeekENone' addZeroPeekE)
     | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec encode_resource_Spec) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
@@ -1000,4 +1103,5 @@ Section DnsPacket.
 
 End DnsPacket.
 
+Print Assumptions packetDecoderImpl.
 Print packetDecoderImpl.
