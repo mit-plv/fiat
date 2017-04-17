@@ -41,6 +41,17 @@ Class Query_eq (A : Type) :=
 
 Infix "==" := (A_eq_dec) (at level 1).
 
+Instance Query_eq_nat : Query_eq nat :=
+  {| A_eq_dec := eq_nat_dec |}.
+
+Instance Query_eq_bool : Query_eq bool :=
+  {| A_eq_dec := bool_dec |}.
+
+Instance Query_eq_list {A}
+         (_ : Query_eq A)
+  : Query_eq (list A) :=
+  {| A_eq_dec := List.list_eq_dec A_eq_dec |}.
+
 Instance DecideableEnsemble_NEqDec
          {A B : Type}
          {b_eq_dec : Query_eq B}

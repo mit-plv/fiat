@@ -106,8 +106,8 @@ Definition interp_RLiteralTerm {T} (t : RLiteralTerm T) : interp_TypeCode T
           end
      end.
 
-Definition interp_Term {T} (t : Term interp_TypeCode T) : interp_TypeCode T
-  := interp_Term_gen (@interp_RLiteralTerm) t.
+Definition interp_Term : forall {T} (t : Term interp_TypeCode T), interp_TypeCode T
+  := @interp_Term_gen (@interp_RLiteralTerm).
 
 (* Section equality.
   Context {M : Type -> Type}.

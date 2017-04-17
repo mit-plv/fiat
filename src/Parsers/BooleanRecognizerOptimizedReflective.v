@@ -1,4 +1,3 @@
-
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.BaseTypes.
@@ -65,123 +64,6 @@ Section correctness.
           (fun n => split_string_for_production n str)
           pnt).
 
-  Local Ltac step_interp_Term_fold :=
-    unfold interp_Term, interp_Term_gen; fold @interp_Term_gen;
-    unfold interp_Term_gen_step;
-    change (@interp_Term_gen (@interp_RLiteralTerm)) with (@interp_Term);
-    fold @interp_TypeCode.
-
-  Local Ltac fin_proper' :=
-    idtac;
-    instantiate;
-    match goal with
-    | [ |- ?x = ?x ] => reflexivity
-    | _ => progress cbv beta iota
-    | [ |- Proper_relation_for _ _ _ ] => unfold Proper_relation_for at 1
-    | _ => intro
-    | _ => progress subst
-    | _ => progress unfold Proper in *
-    | [ H : ?R ?f ?g |- ?f ?x = ?g ?x ]
-      => apply H
-    | _ => progress unfold map_args_for
-    | _ => progress unfold args_for_related
-    | [ |- ?LHS = ahd ?e ]
-      => is_evar e; refine (_ : LHS = ahd (an_arg _ _)); fin_proper'
-    | [ |- ?LHS = atl ?e ]
-      => is_evar e; refine (_ : LHS = atl (an_arg _ _)); fin_proper'
-    | [ |- ?LHS = ?f (atl ?e) ]
-      => is_evar e; refine (_ : LHS = f (atl (an_arg _ _))); fin_proper'
-    | [ |- ?LHS = ?a (?b (atl ?e)) ]
-      => is_evar e; refine (_ : LHS = a (b (atl (an_arg _ _)))); fin_proper'
-    | [ |- ?LHS = ?a (?b (?c (atl ?e))) ]
-      => is_evar e; refine (_ : LHS = a (b (c (atl (an_arg _ _))))); fin_proper'
-    | [ |- ?LHS = ?a (?b (?c (?d (atl ?e)))) ]
-      => is_evar e; refine (_ : LHS = a (b (c (d (atl (an_arg _ _)))))); fin_proper'
-    | [ |- noargs = _ ] => reflexivity
-    | [ |- appcontext G[ahd (an_arg ?x ?y)] ]
-      => let G' := context G[x] in
-         change G'
-    | [ |- appcontext G[atl (an_arg ?x ?y)] ]
-      => let G' := context G[y] in
-         change G'
-    | [ |- _ /\ _ ] => split
-    end.
-  Local Ltac fin_proper := repeat fin_proper'.
-
-  Local Ltac head_app x :=
-    match x with
-    | RApp ?x' _ => head_app x'
-    | _ => x
-    end.
-  Local Ltac handle_var :=
-    repeat lazymatch goal with
-           | [ |- ?LHS = _ ]
-             => lazymatch LHS with
-                | appcontext[interp_Term ?x]
-                  => match head_app x with
-                     | RVar _ => step_interp_Term_fold
-                     end
-                end
-           end;
-    lazymatch goal with
-    | [ |- ?LHS = ?RHS ]
-      => let x := head LHS in
-         let y := head RHS in
-         match goal with
-         | [ H : ?R x y |- _ ]
-           => first [ apply H
-                    | etransitivity; [ apply H | instantiate; f_equal ] ]
-         end
-    end.
-
-  Local Ltac reified_eq' :=
-    idtac;
-    match goal with
-    | _ => reflexivity
-    | [ |- appcontext G[@list_rect ?A (fun _ => ?T)] ]
-      => let G' := context G[@Operations.List.list_rect_nodep A T] in change G'
-    | [ |- appcontext G[@Operations.List.list_caset ?A (fun _ => ?T)] ]
-      => let G' := context G[@Operations.List.list_caset_nodep A T] in change G'
-    | [ |- context G[if ?b then ?t else ?f] ]
-      => let G' := context G[@bool_rect_nodep _ t f b] in change G'
-    | [ |- interp_Term (RLambda _) _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- interp_Term (RLambda _) _ _ _ _ _ _ _ _ _ = _ ] => step_interp_Term_fold
-    | [ |- ?LHS = _ ]
-      => let test := head LHS in
-         constr_eq test (@interp_Term);
-         lazymatch LHS with
-         | appcontext[interp_Term ?x]
-           => match head_app x with
-              | RVar _ => idtac
-              end
-         end;
-         handle_var; fin_proper
-    | [ |- @apply_args_for ?T (interp_RLiteralTerm ?f) ?args = _ ]
-      => etransitivity;
-         [ apply (@apply_args_for_Proper T);
-           [ first [ reflexivity
-                   | lazymatch goal with
-                     | [ |- appcontext[interp_RLiteralTerm ?f] ]
-                       => apply (@RLiteralTerm_Proper _ f)
-                     end ]
-           | fin_proper.. ]
-         | instantiate; simpl @apply_args_for; reflexivity ]
-    | [ |- interp_Term (RLiteralApp ?f ?args) = _ ]
-      => step_interp_Term_fold
-    | [ |- context[Syntactify.syntactify_rproductions _ _] ]
-      => rewrite <- interp_Term_syntactify_rproductions
-    | _ => instantiate; progress fin_proper
-    end.
-
-  Local Ltac reified_eq := reified_eq'; try reified_eq.
-
   Lemma parse_nonterminal_reified_opt_interp_precorrect
     : rinterp_parse (parse_nonterminal_reified G nt _)
       = proj1_sig (parse_nonterminal_preopt Hvalid str nt).
@@ -201,41 +83,9 @@ Section correctness.
       rewrite !List.map_length, !List.map_map; simpl.
       reflexivity. }
     Unfocus.
-    refine (Wf2.Fix2_5_Proper_eq _ _ _ _ _ _ _ _ _ _).
-    repeat intro.
-    unfold step_option_rec.
-    lazymatch goal with
-    | [ |- option_rect (fun _ : option (interp_TypeCode ?T) => _) _ _ ?x = option_rect _ _ _ ?y ]
-        => idtac;
-             let x0 := fresh "x" in
-           let y0 := fresh "y" in
-           destruct x as [x0|] eqn:?, y as [y0|] eqn:?;
-             [ let p := fresh "P" in
-               cut ((Proper_relation_for T)%signature x0 y0); [ intro p | ]
-             | exfalso
-             | exfalso
-             | reflexivity ]
-    end;
-      [
-      |
-      | edestruct Compare_dec.lt_dec;
-        simpl @is_valid_nonterminal in *; unfold rdp_list_is_valid_nonterminal in *;
-        [ | edestruct dec ];
-        simpl in *;
-        congruence.. ].
-    { unfold option_rect.
-      reified_eq. }
-    { unfold forall_relation, pointwise_relation in *.
-      edestruct Compare_dec.lt_dec;
-      simpl @is_valid_nonterminal in *; unfold rdp_list_is_valid_nonterminal in *;
-      [ | edestruct dec ];
-      simpl in *; try congruence;
-      repeat match goal with
-             | _ => progress subst
-             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
-             end.
-      { repeat intro; subst; eauto with nocore. }
-      { repeat intro; subst; eauto with nocore. } }
+    unfold interp_Term; simpl; fold @interp_Term;
+      rewrite <- !interp_Term_syntactify_rproductions;
+      reflexivity.
   Qed.
 
   Lemma parse_nonterminal_reified_opt_interp_correct

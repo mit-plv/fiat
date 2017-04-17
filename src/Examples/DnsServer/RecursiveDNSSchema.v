@@ -131,7 +131,7 @@ Definition CachedQueryTypes :=
   BoundedString (OurRRecordTypes ++ ExtraRRecordTypes).
 
 Definition CachedQueryTypes_inj (rr : CachedQueryTypes) : QType :=
-  BoundedIndex_injR rr.
+  EnumType.BoundedIndex_inj_EnumType (BoundedIndex_injR rr).
 
 Coercion CachedQueryTypes_inj : CachedQueryTypes >-> QType.
 Coercion rRecord2CachedValue : resourceRecord >-> CachedValue.

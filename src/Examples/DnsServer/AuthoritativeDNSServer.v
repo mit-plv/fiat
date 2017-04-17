@@ -22,7 +22,8 @@ Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema
-        Fiat.BinEncoders.Env.Examples.Dns2.
+        Fiat.BinEncoders.Env.Examples.Dns.
+
 Require Import
         Bedrock.Word
         Fiat.BinEncoders.Env.Common.Specs.

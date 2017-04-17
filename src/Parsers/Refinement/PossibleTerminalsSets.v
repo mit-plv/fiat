@@ -113,7 +113,7 @@ Section with_empty.
       edestruct collapse_might_be_empty;
       clear;
       abstract (
-          repeat intro;
+          repeat intro; simpl in *;
           PositiveSetExtensions.to_caps;
           PositiveSetExtensions.simplify_sets; reflexivity
         ).

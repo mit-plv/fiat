@@ -41,7 +41,7 @@ Section QTypes.
      "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ].
 
-  Definition QType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
+  Definition QType := EnumType ((OurRRecordTypes(* ++ ExtraRRecordTypes) *) ++ QTypes)).
 
   Definition QType_inj (rr : RRecordType) : QType :=
     Fin.L _ rr.

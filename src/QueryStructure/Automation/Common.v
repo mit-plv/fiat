@@ -1,9 +1,12 @@
 Require Import
         Coq.Strings.String
+        Fiat.Common
         Fiat.Common.StringBound
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.Tactics.HintDbExtra
         Fiat.Common.Tactics.TransparentAbstract
+        Fiat.Computation.Refinements.General
+        Fiat.Computation.SetoidMorphisms
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Schema
         Fiat.QueryStructure.Specification.Representation.QueryStructureSchema
@@ -261,3 +264,13 @@ Ltac CombineIndexTactics IndexPackage1 IndexPackage2 f :=
                         ltac:(CombineCase8 createLastTerm_dep1 createLastTerm_dep2)
                          ltac:(CombineCase6 BuildEarlyBag1 BuildEarlyBag2)
                          ltac:(CombineCase5 BuildLastBag1 BuildLastBag2))).
+
+Ltac rewrite_drill :=
+  subst_refine_evar;
+  first
+    [ eapply refine_under_bind_both;
+      [set_refine_evar | intros; set_refine_evar ]
+    | eapply refine_If_Then_Else;
+      [set_refine_evar | set_refine_evar ]
+    | eapply refine_If_Opt_Then_Else_trans;
+      [set_refine_evar | set_refine_evar ] ].

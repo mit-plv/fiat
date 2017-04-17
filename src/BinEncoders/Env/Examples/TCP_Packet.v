@@ -62,11 +62,11 @@ Definition TCP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (transform (transform (encode_word' 32 srcAddr)
-                (transform (encode_word' 32 destAddr)
-                (transform (encode_word' 8 (wzero 8))
-                (transform (encode_word' 8 (natToWord 8 6))
-                           (encode_word' 16 tcpLength)))))
+                (transform (transform (encode_word srcAddr)
+                (transform (encode_word destAddr)
+                (transform (encode_word (wzero 8))
+                (transform (encode_word (natToWord 8 6))
+                           (encode_word tcpLength)))))
                 b).
 
 Definition encode_TCP_Packet_Spec
@@ -95,7 +95,7 @@ Definition encode_TCP_Packet_Spec
     ThenC encode_bool_Spec tcp!"FIN"
     ThenC encode_word_Spec tcp!"WindowSize" DoneC)
     ThenChecksum (TCP_Checksum_Valid srcAddr destAddr tcpLength) OfSize 16
-    ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16) tcp!"UrgentPointer"
+    ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 ByteString_id) tcp!"UrgentPointer"
     ThenC encode_list_Spec encode_word_Spec tcp!"Options"
     ThenC encode_list_Spec encode_word_Spec tcp!"Payload" DoneC).
 
@@ -167,7 +167,9 @@ Proof.
               ThenC encode_bool_Spec (fst (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data')))))))))))))
               ThenC encode_bool_Spec (fst (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data'))))))))))))))
               ThenC encode_word_Spec (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd (snd data')))))))))))))) DoneC))).
-  simpl transform; rewrite !transform_ByteString_measure, !length_encode_word';
+    simpl transform; unfold encode_word;
+    rewrite !ByteString_enqueue_ByteString_measure,
+    !length_encode_word';
     reflexivity.
   reflexivity.
   repeat calculate_length_ByteString.

@@ -93,4 +93,14 @@ Section Ascii.
     injections; eauto.
   Qed.
 
+  Lemma ascii_decode_le :
+    forall (b : B) (cd : CacheDecode) (a : ascii) (b' : B) (cd' : CacheDecode),
+      decode_ascii b cd = Some (a, b', cd') -> le_B b' b.
+  Proof.
+    unfold decode_ascii, DecodeBindOpt2; intros.
+    destruct (decode_word b cd) as [ [ [? ? ] ?] | ] eqn: decode_b; simpl in H;
+      try discriminate; injections.
+    eauto using decode_word_le.
+  Qed.
+
 End Ascii.

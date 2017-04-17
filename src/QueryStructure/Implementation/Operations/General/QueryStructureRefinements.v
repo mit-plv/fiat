@@ -53,14 +53,15 @@ Lemma refine_For_In_Empty  :
            (ret []).
 Proof.
   intros; rewrite refine_For.
-  simplify with monad laws.
+  unfold UnConstrQuery_In, QueryResultComp; simplify with monad laws.
   unfold In, DropQSConstraints, GetUnConstrRelation in *.
   rewrite <- ith_imap2.
   unfold QSEmptySpec; simpl rawRels.
   rewrite Build_EmptyRelation_IsEmpty; simpl.
   rewrite refine_pick_val with
   (A := list RawTuple) (a := []).
-  - simplify with monad laws.
+  - unfold FlattenCompList.flatten_CompList; simplify with monad laws.
+    simpl; simplify with monad laws.
     rewrite refine_pick_val with
     (A := list ResultT) (a := []); reflexivity.
   - eexists []; simpl; unfold In; intuition econstructor.

@@ -415,7 +415,7 @@ Time Eval lazy in (extract_facade micro_fold_flatten_rev).
         __)%facade
      : Stm *)
 
-(* To use ‘any’, we must teach the compiler about it: *)
+(* To use ‘Any’, we must teach the compiler about it: *)
 Ltac _compile_any :=
   match_ProgOk
     ltac:(fun prog pre post ext env =>

@@ -558,6 +558,33 @@ Module LeastFixedPointFun.
     : funType fDom fCod :=
     (cl_sup (postfixed_point fDef)).
 
+  (* [unroll_LeastFixedPoint] is for unrolling one layer of *)
+  (* recursion in an assumption about the result of a Fixpoint *)
+  (* computation. *)
+
+  Lemma unroll_LeastFixedPoint
+        {fDom : list Type}
+        {fCod : Type}
+        (fDef : funType fDom fCod -> funType fDom fCod)
+        (fDef_monotone : monotonic_function fDef)
+    : refineFun (fDef (LeastFixedPoint fDef)) (LeastFixedPoint fDef).
+  Proof.
+    eapply (Is_GreatestFixedPoint fDef fDef_monotone).
+  Qed.
+
+  (* [unroll_LeastFixedPoint'] is for unrolling one layer of *)
+  (* recursion in the conclusion about a Fixpoint computation. *)
+
+  Lemma unroll_LeastFixedPoint'
+        {fDom : list Type}
+        {fCod : Type}
+        (fDef : funType fDom fCod -> funType fDom fCod)
+        (fDef_monotone : monotonic_function fDef)
+    : refineFun (LeastFixedPoint fDef) (fDef (LeastFixedPoint fDef)).
+  Proof.
+    eapply (Is_GreatestFixedPoint fDef fDef_monotone).
+  Qed.
+
   Lemma refine_LeastFixedPoint
         {fDom : list Type}
         {fCod : Type}

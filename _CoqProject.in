@@ -207,6 +207,8 @@ src/Common/Monad.v
 src/Common/NatFacts.v
 src/Common/Notations.v
 src/Common/OptionFacts.v
+src/Common/PointedProp.v
+src/Common/Prod.v
 src/Common/ReservedNotations.v
 src/Common/SetEq.v
 src/Common/SetEqProperties.v
@@ -321,6 +323,7 @@ src/Examples/QueryStructure/PhotoalbumExtraction.v
 src/Examples/QueryStructure/PhotoalbumUnOpt.v
 src/Examples/QueryStructure/PhotoalbumUnOptimizedExtraction.v
 src/Examples/QueryStructure/ProcessScheduler.v
+src/Examples/QueryStructure/RosMaster.v
 src/Examples/QueryStructure/Stocks.v
 src/Examples/QueryStructure/StocksFacade.v
 src/Examples/QueryStructure/Weather.v
@@ -520,7 +523,9 @@ src/Parsers/Reflective/Semantics.v
 src/Parsers/Reflective/SemanticsOptimized.v
 src/Parsers/Reflective/Syntactify.v
 src/Parsers/Reflective/Syntax.v
+src/Parsers/Reflective/SyntaxEquality.v
 src/Parsers/Reflective/SyntaxEquivalence.v
+src/Parsers/Reflective/SyntaxEquivalenceReflective.v
 src/Parsers/Splitters/BruteForce.v
 src/Parsers/Splitters/RDPList.v
 src/Parsers/StringLike/Core.v
@@ -552,6 +557,7 @@ src/QueryStructure/Implementation/ListImplementation.v
 src/QueryStructure/Implementation/Operations.v
 src/QueryStructure/Implementation/Constraints/ConstraintChecksRefinements.v
 src/QueryStructure/Implementation/Constraints/ConstraintChecksUnfoldings.v
+src/QueryStructure/Implementation/Constraints/ConstraintChecks/DuplicateFree.v
 src/QueryStructure/Implementation/DataStructures/BagADT/BagADT.v
 src/QueryStructure/Implementation/DataStructures/BagADT/BagImplementation.v
 src/QueryStructure/Implementation/DataStructures/BagADT/IndexSearchTerms.v
@@ -581,6 +587,7 @@ src/QueryStructure/Implementation/Operations/General/QueryRefinements.v
 src/QueryStructure/Implementation/Operations/General/QueryStructureRefinements.v
 src/QueryStructure/Implementation/Operations/List/ListInsertRefinements.v
 src/QueryStructure/Implementation/Operations/List/ListQueryRefinements.v
+src/QueryStructure/Specification/Constraints/DuplicateFree.v
 src/QueryStructure/Specification/Constraints/tupleAgree.v
 src/QueryStructure/Specification/Operations/Delete.v
 src/QueryStructure/Specification/Operations/Empty.v

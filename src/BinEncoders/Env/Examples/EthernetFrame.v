@@ -80,8 +80,9 @@ Theorem decode_list_all_correct_ComposeOpt
 Proof.
 Admitted.
 
-Ltac solve_data_inv :=
+Ltac solve_data_inv data_inv_hints :=
   first [ simpl; intros; exact I
+        | solve [intuition eauto using data_inv_hints]
         | shelve_inv ].
 
 Ltac finalize_decoder P_inv :=
@@ -214,6 +215,40 @@ Qed.
 
 Hint Resolve v1042_OKE : bin_split_hints.
 
+Ltac start_synthesizing_decoder :=
+  (* Unfold encoder specification and the data and packet invariants *)
+  repeat
+    match goal with
+      |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv ?encodeSpec] =>
+      first [unfold dataInv
+            | unfold restInv
+            | unfold encodeSpec ]
+    end;
+  (* Memoize any string constants *)
+  pose_string_hyps;
+  (* Initialize the various goals with evars *)
+  eexists (_, _), _; split; simpl.
+
+Ltac decode_step :=
+  match goal with
+  | |- _ => apply_compose
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_Vector_Spec _) _ _] =>
+    intros; eapply Vector_decode_correct
+  | H : cache_inv_Property _ _
+    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    intros; revert H; eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    eapply Word_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
+    eapply Nat_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
+    eapply Enum_decode_correct
+  | |- NoDupVector _ => Discharge_NoDupVector
+  | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
+    intros; apply Vector_predicate_rest_True
+  | _ => solve [solve_data_inv ethernet_Frame_OK_good_Len]
+  end.
+
 Definition EthernetFrame_decoder
   : { decodePlusCacheInv |
       exists P_inv,
@@ -221,47 +256,44 @@ Definition EthernetFrame_decoder
        -> encode_decode_correct_f _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  unfold encode_EthernetFrame_Spec, ethernet_Frame_OK; pose_string_hyps.
-
-  eexists (_, _); eexists _; split; simpl.
-  intros.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H0; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  apply_compose.
-  eapply Nat_decode_correct.
-  intuition eauto using ethernet_Frame_OK_good_Len.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
+  start_synthesizing_decoder.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
+  decode_step.
   intros; eapply decode_list_all_correct_ComposeOpt.
   solve_data_inv.
   simpl; intros.

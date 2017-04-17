@@ -12,11 +12,73 @@ Global Coercion is_true : bool >-> Sortclass.
 Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
 Coercion bool_of_sum {A B} (b : sum A B) : bool := if b then true else false.
 
-Lemma bool_of_sum_distr_match {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
+Lemma bool_of_sum_distr_match_eta {A B C D} (x : sum A B) (c : A -> C) (d : B -> D)
 : bool_of_sum (match x with inl k => inl (c k) | inr k => inr (d k) end) = bool_of_sum x.
-Proof.
-  destruct x; reflexivity.
-Qed.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sum_distr_match_sumbool_eta {A B C D} (x : sumbool A B) (c : A -> C) (d : B -> D)
+: bool_of_sum (match x with left k => inl (c k) | right k => inr (d k) end) = bool_of_sumbool x.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sumbool_distr_match_sum_eta {A B} {C D : Prop} (x : sum A B) (c : A -> C) (d : B -> D)
+: bool_of_sumbool (match x with inl k => left (c k) | inr k => right (d k) end) = bool_of_sum x.
+Proof. destruct x; reflexivity. Qed.
+Lemma bool_of_sumbool_distr_match_eta {A B} {C D : Prop} (x : sumbool A B) (c : A -> C) (d : B -> D)
+: bool_of_sumbool (match x with left k => left (c k) | right k => right (d k) end) = bool_of_sumbool x.
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sum_dep {A B C D} (l : forall a : A, C (inl a)) (r : forall b : B, C (inr b))
+      (f : forall (x : sum A B), C x -> D x)
+      (x : sum A B)
+  : f x match x with inl a => l a | inr b => r b end
+    = match x with inl a => f _ (l a) | inr b => f _ (r b) end.
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sumbool_dep {A B : Prop} {C D} (l : forall a : A, C (left a)) (r : forall b : B, C (right b))
+      (f : forall (x : sumbool A B), C x -> D x)
+      (x : sumbool A B)
+  : f x match x with left a => l a | right b => r b end
+    = match x with left a => f _ (l a) | right b => f _ (r b) end.
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sum_fun_dep {Y A B C D} (l : forall (y : Y) (a : A), C y (inl a))
+      (r : forall (y : Y) (b : B), C y (inr b))
+      (f : forall (y : Y) (x : sum A B), C y x -> D y x)
+      (x : sum A B)
+  : (fun y => f y x match x with inl a => l y a | inr b => r y b end)
+    = (fun y => match x with inl a => f y _ (l y a) | inr b => f y _ (r y b) end).
+Proof. destruct x; reflexivity. Qed.
+Lemma distr_match_sumbool_fun_dep {Y} {A B : Prop} {C D} (l : forall (y : Y) (a : A), C y (left a))
+      (r : forall (y : Y) (b : B), C y (right b))
+      (f : forall (y : Y) (x : sumbool A B), C y x -> D y x)
+      (x : sumbool A B)
+  : (fun y => f y x match x with left a => l y a | right b => r y b end)
+    = (fun y => match x with left a => f y _ (l y a) | right b => f y _ (r y b) end).
+Proof. destruct x; reflexivity. Qed.
+Definition bool_of_sum_distr_match {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
+  := @distr_match_sum_dep A B (fun _ => sum C D) (fun _ => bool) c d (fun _ => bool_of_sum) x.
+Definition bool_of_sum_distr_match_sumbool {A B C D} x (c : _ -> sum _ _) (d : _ -> sum _ _) : _ = _
+  := @distr_match_sumbool_dep A B (fun _ => sum C D) (fun _ => bool) c d (fun _ => bool_of_sum) x.
+Definition bool_of_sumbool_distr_match_sum {A B C D} x (c : _ -> sumbool _ _) (d : _ -> sumbool _ _) : _ = _
+  := @distr_match_sum_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
+Definition bool_of_sumbool_distr_match {A B C D} x (c : _ -> sumbool _ _) (d : _ -> sumbool _ _) : _ = _
+  := @distr_match_sumbool_dep A B (fun _ => sumbool C D) (fun _ => bool) c d (fun _ => bool_of_sumbool) x.
+Definition bool_of_sum_distr_match_fun {Y} {A B C D} x (c : _ -> _ -> sum _ _) (d : _ -> _ -> sum _ _) : _ = _
+  := @distr_match_sum_fun_dep Y A B (fun _ _ => sum C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sum) x.
+Definition bool_of_sum_distr_match_sumbool_fun {Y} {A B C D} x (c : _ -> _ -> sum _ _) (d : _ -> _ -> sum _ _) : _ = _
+  := @distr_match_sumbool_fun_dep Y A B (fun _ _ => sum C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sum) x.
+Definition bool_of_sumbool_distr_match_sum_fun {Y} {A B C D} x (c : _ -> _ -> sumbool _ _) (d : _ -> _ -> sumbool _ _) : _ = _
+  := @distr_match_sum_fun_dep Y A B (fun _ _ => sumbool C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sumbool) x.
+Definition bool_of_sumbool_distr_match_fun {Y} {A B C D} x (c : _ -> _ -> sumbool _ _) (d : _ -> _ -> sumbool _ _) : _ = _
+  := @distr_match_sumbool_fun_dep Y A B (fun _ _ => sumbool C D) (fun _ _ => bool) c d (fun _ _ => bool_of_sumbool) x.
+Definition bool_of_sum_inl {A B} x : @bool_of_sum A B (inl x) = true := eq_refl.
+Definition bool_of_sum_inr {A B} x : @bool_of_sum A B (inr x) = false := eq_refl.
+Definition bool_of_sumbool_left {A B} x : @bool_of_sumbool A B (left x) = true := eq_refl.
+Definition bool_of_sumbool_right {A B} x : @bool_of_sumbool A B (right x) = false := eq_refl.
+Definition bool_of_sum_eta {A B} (x : sum A B) : (if x then true else false) = bool_of_sum x := eq_refl.
+Definition bool_of_sumbool_eta {A B} (x : sumbool A B) : (if x then true else false) = bool_of_sumbool x := eq_refl.
+Definition bool_of_sum_orb_true_l {A B} (x : sum A B) b
+  : (match x with inl _ => true | inr _ => b end)
+    = orb (bool_of_sum x) b.
+Proof. destruct x, b; reflexivity. Qed.
+
+Hint Rewrite @bool_of_sum_inl @bool_of_sum_inr @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool @bool_of_sum_distr_match_fun @bool_of_sum_distr_match_sumbool_fun @bool_of_sum_eta @bool_of_sum_orb_true_l : push_bool_of_sum.
+Hint Rewrite @bool_of_sumbool_left @bool_of_sumbool_right @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum @bool_of_sumbool_distr_match_fun @bool_of_sumbool_distr_match_sum_fun @bool_of_sumbool_eta : push_bool_of_sumbool.
 
 (** Test if a tactic succeeds, but always roll-back the results *)
 Tactic Notation "test" tactic3(tac) :=
@@ -1857,3 +1919,111 @@ Class eq_refl_vm_cast_l {T} (x y : T) := by_vm_cast_l : x = y.
 Global Hint Extern 0 (@eq_refl_vm_cast_l ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T x)) : typeclass_instances.
 Class eq_refl_vm_cast_r {T} (x y : T) := by_vm_cast_r : x = y.
 Global Hint Extern 0 (@eq_refl_vm_cast_r ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T y)) : typeclass_instances.
+
+(** destruct discriminees of [match]es in the goal *)
+(* Prioritize breaking apart things in the context, then things which
+   don't need equations, then simple matches (which can be displayed
+   as [if]s), and finally matches in general. *)
+Ltac set_match_refl v' only_when :=
+  lazymatch goal with
+  | [ |- context G[match ?e with _ => _ end eq_refl] ]
+    => only_when e;
+       let T := fresh in
+       evar (T : Type); evar (v' : T);
+       subst T;
+       let vv := (eval cbv delta [v'] in v') in
+       let G' := context G[vv] in
+       let G''' := context G[v'] in
+       lazymatch goal with |- ?G'' => unify G' G'' end;
+       change G'''
+  end.
+Ltac set_match_refl_hyp v' only_when :=
+  lazymatch goal with
+  | [ H : context G[match ?e with _ => _ end eq_refl] |- _ ]
+    => only_when e;
+       let T := fresh in
+       evar (T : Type); evar (v' : T);
+       subst T;
+       let vv := (eval cbv delta [v'] in v') in
+       let G' := context G[vv] in
+       let G''' := context G[v'] in
+       let G'' := type of H in
+       unify G' G'';
+       change G''' in H
+  end.
+Ltac destruct_by_existing_equation match_refl_hyp :=
+  let v := (eval cbv delta [match_refl_hyp] in match_refl_hyp) in
+  lazymatch v with
+  | match ?e with _ => _ end (@eq_refl ?T ?e)
+    => let H := fresh in
+       let e' := fresh in
+       pose e as e';
+       change e with e' in (value of match_refl_hyp) at 1;
+       first [ pose (@eq_refl T e : e = e') as H;
+               change (@eq_refl T e) with H in (value of match_refl_hyp);
+               clearbody H e'
+             | pose (@eq_refl T e : e' = e) as H;
+               change (@eq_refl T e) with H in (value of match_refl_hyp);
+               clearbody H e' ];
+       destruct e'; subst match_refl_hyp
+  end.
+Ltac destruct_rewrite_sumbool e :=
+  let H := fresh in
+  destruct e as [H|H];
+  try lazymatch type of H with
+      | ?LHS = ?RHS
+        => rewrite ?H; rewrite ?H in *;
+           repeat match goal with
+                  | [ |- context G[LHS] ]
+                    => let LHS' := fresh in
+                       pose LHS as LHS';
+                       let G' := context G[LHS'] in
+                       change G';
+                       replace LHS' with RHS by (subst LHS'; symmetry; apply H);
+                       subst LHS'
+                  end
+      end.
+Ltac break_match_step only_when :=
+  match goal with
+  | [ |- appcontext[match ?e with _ => _ end] ]
+    => only_when e; is_var e; destruct e
+  | [ |- appcontext[match ?e with _ => _ end] ]
+    => only_when e;
+       match type of e with
+       | sumbool _ _ => destruct_rewrite_sumbool e
+       end
+  | [ |- appcontext[if ?e then _ else _] ]
+    => only_when e; destruct e eqn:?
+  | [ |- appcontext[match ?e with _ => _ end] ]
+    => only_when e; destruct e eqn:?
+  | _ => let v := fresh in set_match_refl v only_when; destruct_by_existing_equation v
+  end.
+Ltac break_match_hyps_step only_when :=
+  match goal with
+  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+    => only_when e; is_var e; destruct e
+  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+    => only_when e;
+       match type of e with
+       | sumbool _ _ => destruct_rewrite_sumbool e
+       end
+  | [ H : appcontext[if ?e then _ else _] |- _ ]
+    => only_when e; destruct e eqn:?
+  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
+    => only_when e; destruct e eqn:?
+  | _ => let v := fresh in set_match_refl_hyp v only_when; destruct_by_existing_equation v
+  end.
+Ltac break_match := repeat break_match_step ltac:(fun _ => idtac).
+Ltac break_match_hyps := repeat break_match_hyps_step ltac:(fun _ => idtac).
+Ltac break_match_when_head_step T :=
+  break_match_step
+    ltac:(fun e => let T' := type of e in
+                   let T' := head T' in
+                   constr_eq T T').
+Ltac break_match_hyps_when_head_step T :=
+  break_match_hyps_step
+    ltac:(fun e => let T' := type of e in
+                   let T' := head T' in
+                   constr_eq T T').
+Ltac break_match_when_head T := repeat break_match_when_head_step T.
+Ltac break_match_hyps_when_head T := repeat break_match_hyps_when_head_step T.

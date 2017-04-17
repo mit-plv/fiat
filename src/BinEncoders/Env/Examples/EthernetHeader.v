@@ -34,42 +34,6 @@ Open Scope Tuple_scope.
 Opaque pow2. (* Don't want to be evaluating this. *)
 Opaque natToWord. (* Or this. *)
 
-Ltac apply_compose :=
-  intros;
-  match goal with
-    H : cache_inv_Property ?P ?P_inv |- _ =>
-    first [eapply (compose_encode_correct_no_dep _ H); clear H
-          | eapply (compose_encode_correct H); clear H
-          | eapply (composeIf_encode_correct H); clear H;
-            [ |
-              | solve [intros; intuition (eauto with bin_split_hints) ]
-              | solve [intros; intuition (eauto with bin_split_hints) ] ]
-          ]
-  end.
-
-Ltac makeEvar T k :=
-  let x := fresh in evar (x : T); let y := eval unfold x in x in clear x; k y.
-
-Ltac shelve_inv :=
-  let H' := fresh in
-  let data := fresh in
-  intros data H';
-  repeat destruct H';
-  match goal with
-  | H : ?P data |- ?P_inv' =>
-    is_evar P;
-    let P_inv' := (eval pattern data in P_inv') in
-    let P_inv := match P_inv' with ?P_inv data => P_inv end in
-    let new_P_T := type of P in
-    makeEvar new_P_T
-             ltac:(fun new_P =>
-                     unify P (fun data => new_P data /\ P_inv data)); apply (Logic.proj2 H)
-  end.
-
-Ltac solve_data_inv :=
-    first [ simpl; intros; exact I
-| shelve_inv ].
-
 Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
 (* Start Example Derivation. *)
@@ -171,6 +135,8 @@ Lemma valid_packet_len_OK_good_Len
     simpl; eapply BinNat.N.ltb_lt; reflexivity.
 Qed.
 
+  Hint Resolve valid_packet_len_OK_good_Len : data_inv_hints.
+
 Definition EthernetHeader_decoder
   : { decodePlusCacheInv |
       forall packet_len,
@@ -182,87 +148,7 @@ Definition EthernetHeader_decoder
                                       (fst decodePlusCacheInv packet_len) (snd decodePlusCacheInv))
           /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
-  unfold encode_EthernetHeader_Spec, ethernet_Header_OK; pose_string_hyps.
-  eexists (_, _);
-    intros packet_len packet_len_OK; eexists _; split; simpl.
-  intros.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  intro. eapply Vector_decode_correct.
-  revert H0; eapply Word_decode_correct.
-  solve_data_inv.
-  intros; apply Vector_predicate_rest_True.
-  apply_compose.
-  apply_compose.
-  eapply Nat_decode_correct.
-  intuition eauto using valid_packet_len_OK_good_Len.
-  solve_data_inv.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Word_decode_correct.
-  solve_data_inv.
-  simpl; intros; exact I.
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  simpl; intros;
-    eapply encode_decode_correct_finish.
-  destruct a' as [? [? [? [ ] ] ] ] ;
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-  subst.
-  reflexivity.
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-  repeat
-    first [eapply decides_and
-          | eapply decides_assumption; eassumption
-          | apply decides_eq_refl
-          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
-  apply_compose.
-  eapply Enum_decode_correct.
-  Discharge_NoDupVector.
-  solve_data_inv.
-  simpl; intros; exact I.
-  simpl; intros;
-    eapply encode_decode_correct_finish.
-  destruct a' as [? [? [? [ ] ] ] ] ;
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-  subst.
-  reflexivity.
-  unfold GetAttribute, GetAttributeRaw in *;
-    simpl in *; intros; intuition.
-  repeat
-    first [eapply decides_and
-          | eapply decides_assumption; eassumption
-          | apply decides_eq_refl
-          | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq ].
-  repeat (instantiate (1 := fun _ => True)).
-  unfold cache_inv_Property; intuition.
-  Grab Existential Variables.
-  exact (@weq _).
-  exact (@weq _).
-  exact (@weq _).
-  exact (@weq _).
-  exact Peano_dec.eq_nat_dec.
+  synthesize_decoder.
 Defined.
 
 Definition frame_decoder := Eval simpl in proj1_sig EthernetHeader_decoder.

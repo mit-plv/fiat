@@ -18,12 +18,12 @@ Section cfg.
           {rdata' : @parser_removal_dataT' _ G predata}
           {pdata : paren_balanced_hiding_dataT Char}.
 
-  Local Arguments pbh'_production / .
-  Local Arguments minimal_pbh'_production / .
-  Local Arguments pbh'_productions / .
-  Local Arguments minimal_pbh'_productions / .
-  Local Arguments eq_rect_r / .
-  Local Arguments eq_rect / .
+  Local Arguments pbh'_production / _ _ _ _ _ _ _ _.
+  Local Arguments minimal_pbh'_production / _ _ _ _ _ _ _ _.
+  Local Arguments pbh'_productions / _ _ _ _ _ _ _.
+  Local Arguments minimal_pbh'_productions / _ _ _ _ _ _ _.
+  Local Arguments eq_rect_r / _ _ _ _ _ _.
+  Local Arguments eq_rect / _ _ _ _ _ _.
 
   Section expand.
     Context (transform1 transform2 : nonterminals_listT -> nonterminal_carrierT -> nonterminals_listT).

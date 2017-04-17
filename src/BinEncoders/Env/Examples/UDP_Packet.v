@@ -39,8 +39,6 @@ Definition UDP_Packet :=
           "DestPort" :: word 16,
           "Payload" :: list char >.
 
-Definition transformer : Transformer ByteString := ByteStringTransformer.
-
 Definition UDP_Checksum_Valid
            (srcAddr : word 32)
            (destAddr : word 32)
@@ -48,11 +46,11 @@ Definition UDP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (transform (transform (encode_word' 32 srcAddr)
-                (transform (encode_word' 32 destAddr)
-                (transform (encode_word' 8 (wzero 8))
-                (transform (encode_word' 8 (natToWord 8 17))
-                           (encode_word' 16 udpLength)))))
+                (transform (transform (encode_word srcAddr)
+                (transform (encode_word destAddr)
+                (transform (encode_word (wzero 8))
+                (transform (encode_word (natToWord 8 17))
+                           (encode_word udpLength)))))
                 b).
 
 Definition encode_UDP_Packet_Spec
@@ -157,7 +155,9 @@ Proof.
               ThenC encode_word_Spec (fst (snd data'))
               ThenC encode_nat_Spec 16 (8 + (snd (snd data')))
               DoneC))).
-  simpl transform; rewrite !transform_ByteString_measure, !length_encode_word';
+  simpl transform; unfold encode_word;
+    rewrite !ByteString_enqueue_ByteString_measure,
+    !length_encode_word';
     reflexivity.
   reflexivity.
   repeat calculate_length_ByteString.

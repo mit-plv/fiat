@@ -145,9 +145,19 @@ Proof.
   }
 Qed.
 
+(* For decoding fixed fields that do no depend on the object *)
+(* being encoded, e.g. version numbers in an IP packet. This *)
+(* allows us to avoid polluting the data invariant with  *)
+(* extraneous clauses. *)
+
+(* SUGGESTION: If we're using a deterministic encoder, we *)
+(* could compare the binary values of the field instead of *)
+(* decoding and comparing. *)
+
 Lemma compose_encode_correct_no_dep
       {A A' B}
-      (A_eq_dec : forall a a' : A', {a = a'} + {a <> a'})
+      (* Need decideable equality on the type of the fixed field. *)
+      (A'_eq_dec : Query_eq A')
       {cache : Cache}
       {P  : CacheDecode -> Prop}
       {P_inv1 P_inv2 : (CacheDecode -> Prop) -> Prop}
