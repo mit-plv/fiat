@@ -179,7 +179,9 @@ Proof.
 
     simpl in *. intros; split_and; decompose_pair_hyp.
     instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
-    rewrite <- H13.
+    
+    first [ rewrite <- H12
+          | rewrite <- H13 ].
     match goal with
       |- context [decides (negb match ?b with _ => _ end) (?b' = None) ] =>
       assert (b = b') as H' by reflexivity; rewrite H'; destruct b';
@@ -195,7 +197,8 @@ Proof.
     simpl in *. intros; split_and. decompose_pair_hyp.
     simpl; intros; instantiate (1 := fst (snd (snd (snd (snd proj)))) - 5).
     intuition; subst; simpl; auto with arith.
-    rewrite <- H12; simpl in *; auto with arith.
+    first [ rewrite <- H12
+          | rewrite <- H11]; simpl in *; auto with arith.
 
     decode_step idtac.
     decode_step idtac.
@@ -206,7 +209,8 @@ Proof.
     do 4 destruct H3.
     split; eauto.
     instantiate (1 := (wordToNat tcpLength) - 20 - (4 * (fst (snd (snd (snd (snd proj)))) - 5))).
-    rewrite <- H6.
+    first [ rewrite <- H6
+          | rewrite <- H5].
     rewrite H7.
     unfold snd, fst.
     unfold GetAttribute, GetAttributeRaw in *; simpl in *.

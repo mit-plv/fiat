@@ -146,8 +146,8 @@ Section DnsPacket.
         congruence.
   Qed.
 
-  Instance cacheGetDNPointer : CacheGet _ string pointerT :=
-    {| getE ce p := association_list_find_all (snd ce) p;
+  Instance cacheGetDNPointer : CacheGet dns_list_cache string pointerT :=
+    {| getE ce p := @association_list_find_all string _ _ (snd ce) p;
        getD ce p := association_list_find_first (snd ce) p;
        get_correct := cacheGetDNPointer_pf |}.
 
@@ -1074,8 +1074,6 @@ Section DnsPacket.
                      ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
-  Print Implicit DomainName_decode_correct.
-
   Ltac decode_DNS_rules g :=
     (* Processes the goal by either: *)
     lazymatch goal with
@@ -1103,5 +1101,4 @@ Section DnsPacket.
 
 End DnsPacket.
 
-Print Assumptions packetDecoderImpl.
 Print packetDecoderImpl.

@@ -51,7 +51,7 @@ Section SteppingListCacheEncoder.
     (forall x, B_predicate x) /\
     (forall x, C_predicate x).
 
-  Fixpoint SteppingList_encode' (l : list A) (ce : CacheEncode) : bin * CacheEncode :=
+  (*Fixpoint SteppingList_encode' (l : list A) (ce : CacheEncode) : bin * CacheEncode :=
     match l with
     | nil => let (b1, e1) := C_encode No ce in
              let (b2, e2) := A_encode A_halt e1 in
@@ -199,7 +199,7 @@ Section SteppingListCacheEncoder.
       specialize (IHl _ _ _ _ H4 Heqp1 fuel'  H5 H6).
       destruct (SteppingList_decode' fuel' (transform b1 ext) c2) as [ [? ?] ?].
       simpl in IHl. simpl. intuition. subst. erewrite peek_correct. eapply add_correct. eauto. eauto. subst. eauto. }
-  Qed.
+  Qed. *)
 End SteppingListCacheEncoder.
 
-Arguments SteppingList_encode {_ _ _ _ _ _ _ _ _ _} _ _ _ _ _.
+(*Arguments SteppingList_encode {_ _ _ _ _ _ _ _ _ _} _ _ _ _ _. *)

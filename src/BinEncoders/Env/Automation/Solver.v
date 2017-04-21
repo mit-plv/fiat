@@ -1,7 +1,6 @@
 Require Import
         Coq.Bool.Bool
         Fiat.Common.DecideableEnsembles
-        Fiat.Common.Tactics.CacheStringConstant
         Fiat.Common.EnumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
@@ -220,6 +219,14 @@ Proof.
     destruct b; destruct b'; simpl; congruence.
 Qed.
 
+Lemma decides_Fin_eq {n} :
+  forall (b b' : Fin.t n),
+    decides (fin_eq_dec b b') (b = b').
+Proof.
+  unfold decides, If_Then_Else; intros;
+    destruct (fin_eq_dec b b'); simpl; congruence.
+Qed.
+
 Lemma decides_EnumType_eq {A} {n} {tags} :
   forall (b b' : @EnumType n A tags),
     decides (fin_beq b b') (b = b').
@@ -422,6 +429,7 @@ Ltac decide_data_invariant :=
                | eapply decides_nat_eq
                | eapply decides_pair_eq
                | eapply decides_bool_eq
+               | eapply decides_Fin_eq
                | eapply decides_EnumType_eq
                | eapply decides_dec_eq; auto using Peano_dec.eq_nat_dec, weq, pair_eq_dec ].
 
@@ -485,14 +493,17 @@ Ltac decode_step cleanup_tac :=
   | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_bool_Spec) _ _] =>
     apply bool_decode_correct
 
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_bool_Spec) _ _] =>
+    eapply bool_decode_correct
+
   | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_option_Spec _ _) _ _] =>
     intros; eapply option_encode_correct;
     [ match goal with
         H : cache_inv_Property _ _ |- _ => eexact H
       end | .. ]
 
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
-    eapply Enum_decode_correct
+  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec ?tb) _ _] =>
+    eapply (@Enum_decode_correct _ _ _ _ _ _ _ tb)
 
   | |- appcontext[encode_decode_correct_f _ _ _ _ encode_string_Spec _ _ ] =>
     eapply String_decode_correct

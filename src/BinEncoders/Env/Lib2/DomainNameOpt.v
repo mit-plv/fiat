@@ -90,7 +90,7 @@ Section DomainName.
       apply natToWord_wordToNat.
   Qed.
 
-  Lemma pointerT_eq_dec 
+  Lemma pointerT_eq_dec
     : forall p p' : pointerT, {p = p'} + {p <> p'}.
   Proof.
     intros.
@@ -100,7 +100,7 @@ Section DomainName.
     right; intro; apply n.
     rewrite !Nat2pointerT_pointerT2Nat in H; congruence.
   Qed.
-    
+
   Lemma pointerT2Nat_Nat2pointerT :
     forall n,
       (n < pow2 14)%nat
@@ -421,9 +421,8 @@ Section DomainName.
           omega.
       + destruct H3; subst.
         rewrite <- append_assoc in H2; simpl in H2.
-        eapply (ValidLabel_OK_split label _ (x ++ String "." post)) in H2;
-          subst; eauto.
-        pose proof (proj2 H1 _ _ H2); repeat split;
+        eapply (ValidLabel_OK_split label _ (x ++ String "." post)) in H2.
+        pose proof (proj2 H1 _ _ H2); subst; eauto; repeat split;
           try solve [intuition].
         * destruct label; simpl; congruence.
         * intros [s' s'_eq].
@@ -815,7 +814,7 @@ Section DomainName.
   Variable addZeroPeek :
     forall xenv,
       peekD xenv = peekD (addD xenv 0).
-        
+
     Variable addPeekESome :
     forall env n m,
       peekE env = Some m
@@ -840,7 +839,7 @@ Section DomainName.
   Variable addZeroPeekE :
     forall xenv,
       peekE xenv = peekE (addE xenv 0).
-    
+
   Arguments pow2 : simpl never.
 
   Lemma decode_word_add_ptr_OK
@@ -975,7 +974,7 @@ Section DomainName.
         subst.
         rewrite pointerT2Nat_Nat2pointerT; auto.
         omega.
-      + destruct (addPeekE _ 1 _ Heqy) as [ [? ?] | ?]. 
+      + destruct (addPeekE _ 1 _ Heqy) as [ [? ?] | ?].
         * destruct (addPeekE _ (String.length l) _ H0) as [ [? ?] | ?].
           destruct (addPeekESome _ (S (String.length l)) _ Heqy) as [? [? ?] ].
           rewrite pointerT2Nat_Nat2pointerT in H2, H3; try omega.
@@ -984,7 +983,7 @@ Section DomainName.
         * eapply addPeekENone in H0; simpl in *; rewrite H, H0; auto.
     - rewrite !addPeekENone; auto.
   Qed.
-  
+
   Lemma decode_word_peek_distinct
     : forall sz xenv xenv' b b' x,
       decode_word (sz := sz) b xenv = Some (x, b', xenv')
@@ -1055,11 +1054,11 @@ Section DomainName.
         unfold encode_ascii_Spec, encode_word_Spec in H2;
           computes_to_inv; subst; simpl in *; injections.
         eapply addPeekENone; eauto.
-      + simpl in H2; computes_to_inv. 
+      + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
         * unfold encode_word_Spec in *;
             computes_to_inv; subst; simpl in *; injections.
-          eapply addPeekENone; eauto.          
+          eapply addPeekENone; eauto.
         * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
             destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
               simpl in *; injections.
@@ -1137,7 +1136,7 @@ Section DomainName.
         unfold encode_ascii_Spec, encode_word_Spec in H2;
           computes_to_inv; subst; simpl in *; injections.
         rewrite H in H4; intuition.
-      + simpl in H2; computes_to_inv. 
+      + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
         * unfold encode_word_Spec in *;
             computes_to_inv; subst; simpl in *; injections.
@@ -1164,7 +1163,7 @@ Section DomainName.
           simpl; omega.
   Qed.
 
-  
+
 
   Lemma PeekCacheFixpoint
     : forall
@@ -1231,7 +1230,7 @@ Section DomainName.
           simpl in *; rewrite H2 in H4; try discriminate.
         injections.
         rewrite pointerT2Nat_Nat2pointerT; eauto.
-      + simpl in H2; computes_to_inv. 
+      + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
         * unfold encode_word_Spec in *;
             computes_to_inv; subst; simpl in *; injections.
@@ -1242,7 +1241,7 @@ Section DomainName.
           injections.
           rewrite pointerT2Nat_Nat2pointerT; eauto.
           rewrite pointerT2Nat_Nat2pointerT; eauto.
-          apply (addPeekENone _ 8) in H3; rewrite H3 in H4; discriminate.           
+          apply (addPeekENone _ 8) in H3; rewrite H3 in H4; discriminate.
         * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
             destruct v1 as [b'' xenv'''']; destruct v2 as [b3 xenv5];
               simpl in *; injections.
@@ -1271,7 +1270,7 @@ Section DomainName.
           eapply PeekCacheFixpoint_Overflow in H2''''; eauto.
           rewrite IndependentCaches''', H2'''' in H4; discriminate.
   Qed.
-    
+
   Lemma InCacheFixpoint
     : forall
       (n : nat)
@@ -1312,7 +1311,7 @@ Section DomainName.
                           (transform (transform lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
         ↝ (bin', xenv0) ->
-      In p0 (getE xenv0 x9) ->      
+      In p0 (getE xenv0 x9) ->
       (forall p',
           ~ In p0 (getE xenv'' x9) ->
           peekE xenv'' = Some p'
@@ -1334,7 +1333,7 @@ Section DomainName.
         unfold encode_ascii_Spec, encode_word_Spec in H2;
           computes_to_inv; subst; simpl in *; injections.
         rewrite H in H3; intuition.
-      + simpl in H2; computes_to_inv. 
+      + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
         * unfold encode_word_Spec in *;
             computes_to_inv; subst; simpl in *; injections.
@@ -1768,7 +1767,9 @@ Section DomainName.
                 rewrite addPeekNone in P' by auto.
                 congruence.
               }
-              unfold add_ptr_OK in *; simpl in *; revert addPeekSome addPeekNone addPeekNone' getDistinct IndependentCaches H2 H1 P P' P3; generalize xenv env p peekD_eq ; clear.
+              unfold add_ptr_OK in *; simpl in *;
+                revert addPeekSome addPeekNone addZeroPeek addPeekNone' getDistinct IndependentCaches
+                       boundPeekSome H2 H1 P P' P3; generalize xenv env p peekD_eq ; clear.
               generalize (transform b3 ext0); intros b xenv env p peekD_eq.
               revert label2 xenv6 xenv7 ext0 x1.
               generalize env xenv (String.length label1); clear.
@@ -1825,7 +1826,7 @@ Section DomainName.
                 pose proof (decode_word_peek_distinct _ _ _ _ _ _ H0) as P''.
                 pose proof (decode_string_peek_distinct _ _ _ _ _ _ H2) as P'''.
                 assert (getD x6 p = None) by
-                    (revert H0 H2 H1 env; clear; intros;
+                    (revert IndependentCaches H0 H2 H1 env; clear; intros;
                      eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H0; eauto;
                      eapply decode_string_add_ptr_OK with (env := env) in H2; eauto).
                 simpl in P'''.
@@ -1914,7 +1915,7 @@ Section DomainName.
                   simpl in peekD_eq; rewrite peekD_eq in H0.
                 apply (addPeek _ (String.length label1)) in H0;
                   destruct H0 as [ [P'' P''_bnd] | P''];
-                  rewrite P'' in H1. 
+                  rewrite P'' in H1.
                 apply Lt.lt_le_trans with
                   (m := pointerT2Nat (Nat2pointerT (String.length label1 + (S (pointerT2Nat p))))).
                   rewrite pointerT2Nat_Nat2pointerT; try omega.
@@ -1935,7 +1936,7 @@ Section DomainName.
             + subst; eauto using chomp_label_length.
             + destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
               unfold cache_inv_Property in *; intuition.
-              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length label1)) _ _ _ _ _ (transform b3 ext0) (proj1 xenv_eqv) H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto. 
+              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length label1)) _ _ _ _ _ (transform b3 ext0) (proj1 xenv_eqv) H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
               unfold cache_inv_Property in *; intuition.
             + intuition.
             - injections.
@@ -2104,7 +2105,7 @@ Section DomainName.
                   simpl in peekD_eq; rewrite peekD_eq in H0.
                 apply (addPeek _ (String.length l)) in H0;
                   destruct H0 as [ [P'' P''_bnd] | P''];
-                  rewrite P'' in H1. 
+                  rewrite P'' in H1.
                 apply Lt.lt_le_trans with
                   (m := pointerT2Nat (Nat2pointerT (String.length l + (S (pointerT2Nat p))))).
                 rewrite pointerT2Nat_Nat2pointerT; try omega.
@@ -2130,7 +2131,7 @@ Section DomainName.
               * simpl; omega.
               * destruct (fun H H' => proj2 (Nat_decode_correct (P := cache_inv) 8 H') _ _ _ _ _ (transform b'' (transform b3 ext0)) Eeq H H0) as [xenv'' [? xenv''_eqv] ]; eauto.
               unfold cache_inv_Property in *; intuition.
-              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto. 
+              destruct (fun H H' => proj2 (String_decode_correct (P := cache_inv) H' (String.length l)) _ _ _ _ _ (transform b3 ext0) xenv_eqv H H1) as [xenv10 [? xenv10_eqv] ]; intuition eauto.
               unfold cache_inv_Property in *; intuition.
               * intuition.
           }
@@ -2309,7 +2310,7 @@ Section DomainName.
               simpl in peekD_eq; rewrite peekD_eq in H2.
             apply (addPeek _ (wordToNat x0 )) in H2;
               destruct H2 as [ [P'' P''_bnd] | P''];
-              rewrite P'' in H3. 
+              rewrite P'' in H3.
             apply Lt.lt_le_trans with
             (m := pointerT2Nat (Nat2pointerT (wordToNat x0 + (S (pointerT2Nat p))))).
             rewrite pointerT2Nat_Nat2pointerT; try omega.
@@ -2386,7 +2387,7 @@ Section DomainName.
               simpl in peekD_eq; rewrite peekD_eq in H2.
             apply (addPeek _ (wordToNat x0 )) in H2;
               destruct H2 as [ [P'' P''_bnd] | P''];
-              rewrite P'' in H3. 
+              rewrite P'' in H3.
             apply Lt.lt_le_trans with
             (m := pointerT2Nat (Nat2pointerT (wordToNat x0 + (S (pointerT2Nat p))))).
             rewrite pointerT2Nat_Nat2pointerT; try omega.
@@ -2508,7 +2509,7 @@ Section DomainName.
           eapply InCacheFixpoint in H4; eauto; intuition.
           destruct (fun H => in_dec H p (getE xenv'' s)).
           apply pointerT_eq_dec .
-          rewrite <- get_correct in i by eauto.          
+          rewrite <- get_correct in i by eauto.
           eapply (cache_inv_add_ptr_OK P_OK) in Heqy ; eauto.
           eapply decode_word_add_ptr_OK with (env := env) (env' := env) in H2; eauto.
           eapply decode_string_add_ptr_OK with (env := env) in H3; eauto.
@@ -2585,7 +2586,5 @@ Section DomainName.
     assumption.
     econstructor.
   Qed.
-          
-  Print Assumptions DomainName_decode_correct.
 
 End DomainName.

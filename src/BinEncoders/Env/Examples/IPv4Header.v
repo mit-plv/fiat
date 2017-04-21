@@ -170,17 +170,17 @@ Definition EthernetHeader_decoder
   : CorrectDecoderFor IPv4_Packet_OK encode_IPv4_Packet_Spec.
 Proof.
   start_synthesizing_decoder.
+
   normalize_compose transformer.
+
   apply_IPChecksum IPv4_Packet_Header_Len_OK.
-  
-  simpl; unfold IPv4_Packet_OK; clear; intros ? H'; destruct H' as [? ?]; repeat split.
+
+  simpl; unfold IPv4_Packet_OK; clear. intros ? H'; destruct H' as [? ?]; repeat split.
   simpl; unfold IPv4_Packet_Header_Len.
   revert H; unfold StringId11; unfold pow2, mult; simpl; auto with arith.
 
-  repeat (decode_step; unfold Domain; simpl).
   synthesize_cache_invariant.
-
-  repeat optimize_decoder_impl.
+  higher_order_reflexivity.
 
 Defined.
 
