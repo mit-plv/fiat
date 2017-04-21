@@ -75,6 +75,7 @@ Section grammar_fixedpoint.
       pose proof (related_aggregate_state_max initial_nonterminals_data HRbot) as H.
       unfold aggregate_state_relation in *.
       rewrite PositiveMapExtensions.lift_relation_hetero_iff in *.
+      rewrite <- ?PositiveMapExtensions.lift_relation_hetero_iff in H. (* undo power of econstr *)
       (*pose proof (@find_pre_Fix_grammar _ gdata0 G) as H0.
       pose proof (@find_pre_Fix_grammar _ gdata1 G) as H1.
       pose proof (fun nt => transitivity (symmetry (H0 nt)) (H1 nt)) as H01; clear H0 H1.

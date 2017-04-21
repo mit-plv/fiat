@@ -200,7 +200,7 @@ Section ilist_imap.
     : ilist As -> ilist As :=
     match As return ilist As -> ilist As with
     | [] => fun il => inil
-    | a :: As' => fun il => icons (f (ilist_hd il)) (imap As' (ilist_tl il))
+    | a :: As' => fun il => icons (@f a (ilist_hd il)) (imap As' (ilist_tl il))
     end.
 
   (* [imap] behaves as expected with the [ith_default] lookup
@@ -244,7 +244,7 @@ Section ilist_replace.
     : ilist As :=
     match n in Fin.t m return
           forall (As : Vector.t A m),
-            ilist As
+            @ilist _ B _ As
             -> B (Vector.nth As n)
             -> ilist As with
     | Fin.F1 k =>
