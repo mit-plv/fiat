@@ -131,6 +131,13 @@ EXAMPLES_UNMADE_VO := \
 EXTRACTION_UNMADE_VO := \
 	src/CertifiedExtraction/Benchmarks/DNS.vo \
 
+BINENCODERS_UNMADE_VO := \
+	src/BinEncoders/Env/Examples/EthernetFrame.vo \
+	src/BinEncoders/Env/Examples/Dns.vo \
+	src/BinEncoders/Env/Examples/DnsMap.vo \
+	src/BinEncoders/Env/Examples/Toy.vo \
+	src/BinEncoders/Env/Examples/Toy2.vo
+
 WATER_TANK_EXTRACT_VO := src/Examples/Ics/WaterTankExtract.vo
 WATER_TANK_EXTRACT_ML := src/Examples/Ics/WaterTank.ml
 
@@ -148,7 +155,7 @@ TUTORIAL_VO := src/Examples/Tutorial/Tutorial.vo src/Examples/Tutorial/NotInList
 HACMSDEMO_VO := src/Examples/HACMSDemo/DuplicateFree.vo src/Examples/HACMSDemo/HACMSDemo.vo src/Examples/HACMSDemo/WheelSensor.vo src/Examples/HACMSDemo/WheelSensorEncoder.vo src/Examples/HACMSDemo/WheelSensorDecoder.vo src/Examples/HACMSDemo/WheelSensorExtraction.vo
 FIAT4MONITORS_VO := $(filter-out $(FIAT4MONITORS_UNMADE_VO), $(filter src/Fiat4Monitors/%.vo,$(VOFILES)))
 EXAMPLES_VO := $(filter-out $(EXAMPLES_UNMADE_VO) $(ICS_VO) $(TUTORIAL_VO) $(DNS_VO) $(FACADE_TEST_VO),$(filter src/Examples/%.vo,$(VOFILES)))
-BINENCODERS_VO := $(filter src/BinEncoders/%.vo,$(VOFILES))
+BINENCODERS_VO := $(filter-out $(BINENCODERS_UNMADE_VO), $(filter src/BinEncoders/%.vo,$(VOFILES)))
 FIAT_VO := $(FIAT_CORE_VO) $(QUERYSTRUCTURES_VO) $(PARSERS_VO)
 TACTICS_TARGETS := $(filter src/Common/Tactics/%,$(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)))
 

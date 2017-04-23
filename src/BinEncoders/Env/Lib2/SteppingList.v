@@ -33,7 +33,7 @@ Section SteppingList.
   Variable cacheGet : CacheGet cache (list A) P.
   Variable cachePeek : CachePeek cache P.
 
-  Fixpoint encode_list_step (l : list A) (ce : CacheEncode) : B * CacheEncode :=
+  (*Fixpoint encode_list_step (l : list A) (ce : CacheEncode) : B * CacheEncode :=
     match l with
     | nil => let (b1, e1) := X_encode false ce in
              let (b2, e2) := A_encode A_halt e1 in
@@ -168,5 +168,5 @@ Section SteppingList.
           intuition eauto.
           erewrite peek_correct; eauto.
           eapply add_correct; eauto. } } }
-  Qed.
+  Qed. *)
 End SteppingList.

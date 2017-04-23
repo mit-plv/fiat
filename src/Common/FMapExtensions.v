@@ -6,7 +6,9 @@ Require Import Coq.FSets.FMapFacts
         Fiat.Common.SetEq
         Fiat.Common.SetEqProperties
         Fiat.Common.List.ListFacts
-        Fiat.Common.LogicFacts.
+        Fiat.Common.List.ListMorphisms
+        Fiat.Common.LogicFacts
+        Fiat.Common.SetoidClassInstances.
 Require Coq.Sorting.Permutation Fiat.Common.List.PermutationFacts.
 
 Unset Implicit Arguments.
@@ -809,6 +811,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     reflexivity.
   Qed.
 
+  (** TODO FIXME: don't locally override other reflexive instances, but instead fix the other instances that get added. *)
+  Local Instance: forall {A}, Reflexive (@eq A) | 0 := _.
+
   Lemma elements_fold_eq :
     forall {TValues} (m: t TValues),
       (elements m) =
@@ -826,10 +831,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       by (f_equal; repeat (apply functional_extensionality; intros);
           rewrite <- surjective_pairing; reflexivity).
 
-    rewrite H.
-
-    setoid_rewrite fold_left_id.
-    rewrite rev_involutive; reflexivity.
+    rewrite H, fold_left_id, rev_involutive; reflexivity.
   Qed.
 
   Lemma elements_fold_perm :
@@ -852,7 +854,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
 
     rewrite H.
 
-    setoid_rewrite fold_left_id.
+    rewrite fold_left_id.
     apply Permutation_rev.
   Qed.
 
@@ -1377,7 +1379,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       eqA (fold f m1 init) (fold f m1 init').
   Proof.
     intros.
-    rewrite fold_Equal; eauto; try reflexivity.
+    rewrite (@fold_Equal _ _ eqA); eauto; try reflexivity; [].
     rewrite !fold_1.
     generalize H1 H2 init init' H; clear.
     induction (elements m1); simpl; intros; eauto.
@@ -1487,6 +1489,18 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       assumption. }
   Qed.
 
+  Lemma forall_in_map_snd_eq_key_elt {A} ls (P : _ -> Prop)
+    : (forall x : A, List.In x (List.map (@snd _ _) ls) -> P x)
+      <-> (forall x : key * A, InA (@eq_key_elt A) x ls -> P (snd x)).
+  Proof.
+    rewrite <- forall_in_eq_key_elt_snd.
+    setoid_rewrite in_map_iff.
+    setoid_rewrite ex_eq_snd_and.
+    setoid_rewrite ex_ind_iff.
+    split; intro H; [ intros [k x]; specialize (H x k) | intros x k; specialize (H (k, x)) ];
+      assumption.
+  Qed.
+
   Lemma elements_mapsto_iff'
     : forall (elt : Type) (m : t elt) (xe : key * elt),
     MapsTo (fst xe) (snd xe) m <-> InA (eq_key_elt (elt:=elt)) xe (elements m).
@@ -1498,20 +1512,33 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              elt elt' elt'' f H m m' x
     := @BasicFacts.map2_1bis elt elt' elt'' m m' x f H.
 
-  Definition lift_brelation {A} (R : A -> A -> bool) (default : A) : t A -> t A -> bool
+  Definition lift_relation_gen_hetero {A B P}
+             (and : P -> P -> P) (True : P)
+             (R : A -> B -> P) (defaultA : A) (defaultB : B)
+    : t A -> t B -> P
     := fun m1 m2
        => fold
-            (fun _ => andb)
+            (fun _ => and)
             (map2
                (fun x1 x2
                 => match x1, x2 with
                    | Some x1, Some x2 => Some (R x1 x2)
-                   | Some x, None => Some (R x default)
-                   | None, Some x => Some (R default x)
+                   | Some x, None => Some (R x defaultB)
+                   | None, Some x => Some (R defaultA x)
                    | None, None => None
                    end)
                m1 m2)
-            true.
+            True.
+
+  Definition lift_relation_hetero {A B} := @lift_relation_gen_hetero A B Prop and True.
+
+  Definition lift_relation {A} (R : A -> A -> Prop) (default : A) : t A -> t A -> Prop
+    := lift_relation_hetero R default default.
+
+  Definition lift_brelation_hetero {A B} := @lift_relation_gen_hetero A B bool andb true.
+
+  Definition lift_brelation {A} (R : A -> A -> bool) (default : A) : t A -> t A -> bool
+    := lift_brelation_hetero R default default.
 
   Tactic Notation "setoid_rewrite_in_all" "guarded" tactic3(guard_tac) open_constr(lem) :=
     idtac;
@@ -1533,11 +1560,14 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     end.
   Tactic Notation "setoid_rewrite_in_all" "<-" open_constr(lem) := setoid_rewrite_in_all guarded(fun T => idtac) <- lem.
 
+  Ltac FMap_convert_step_extra_internal should_convert_from_to := fail.
+
   Ltac FMap_convert_step should_convert_from_to :=
     idtac;
-    first [ progress cbv beta delta [lift_brelation] in *
-          | setoid_rewrite_in_all guarded(fun T => match T with context[List.In _ (rev _)] => idtac end)
+    first [ setoid_rewrite_in_all guarded(fun T => match T with context[List.In _ (rev _)] => idtac end)
                                   <- in_rev
+          | setoid_rewrite_in_all guarded(fun T => match T with context[List.In _ (List.map _ (rev _))] => idtac end)
+                                  in_map_rev
           | setoid_rewrite_in_all guarded(fun T => match T with context[fold_right andb false _] => idtac end)
                                   fold_right_andb_false
           | should_convert_from_to (@find) (@MapsTo);
@@ -1590,8 +1620,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
                                   <- fold_1
           | should_convert_from_to (@fold_left) (@fold_right);
             match goal with
-            | [ |- appcontext[fold_left (fun a b => @?f b && a)%bool] ]
-              => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => andb b a) f), <- fold_left_rev_right, <- map_rev
+            | [ |- appcontext[fold_left (fun a b => ?g (@?f b) a)] ]
+              => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev
             | [ H : appcontext[fold_left (fun a b => ?g (@?f b) a)] |- _ ]
               => rewrite (@ListFacts.fold_map _ _ _ _ (fun a b => g b a) f), <- fold_left_rev_right, <- map_rev in H
             end
@@ -1601,17 +1631,29 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
                                                   | context[is_true (fold_right andb true (List.map _ _))] => idtac
                                                   end)
                                   fold_right_andb_map_in_iff
+          | should_convert_from_to (@fold_right) (@List.In);
+              setoid_rewrite_in_all guarded(fun T => match T with
+                                                  | context[fold_right and True _] => idtac
+                                                  end)
+                                  fold_right_and_True
           | should_convert_from_to (@List.In) (@InA);
             setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x _ -> _] => idtac end)
                                   forall_in_eq_key_elt_snd
           | should_convert_from_to (@List.In) (@InA);
             setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x _ -> _] => idtac end)
                                   (@forall_in_eq_key_elt_snd _ _ (fun k => _ k _))
+          | should_convert_from_to (@List.In) (@InA);
+            setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x (List.map _ _) -> _] => idtac end)
+                                  forall_in_map_snd_eq_key_elt
+          | should_convert_from_to (@List.In) (@InA);
+            setoid_rewrite_in_all guarded(fun T => match T with context[forall x, List.In x (List.map _ _) -> _] => idtac end)
+                                  (@forall_in_map_snd_eq_key_elt _ _ (fun k => _ k _))
           | should_convert_from_to false true;
             setoid_rewrite_in_all guarded(fun T => match T with context[_ = false] => idtac end)
                                   <- not_true_iff_false
           | setoid_rewrite_in_all guarded(fun T => match T with context[find _ (empty _)] => idtac end)
                                   empty_o
+          | progress FMap_convert_step_extra_internal should_convert_from_to
           | match goal with H : _ |- _ => revert H end;
             FMap_convert_step should_convert_from_to;
             intros ].
@@ -1628,6 +1670,11 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
          | @add => idtac
          | @In => idtac
          | @map2 => idtac
+         | @lift_relation_gen_hetero => idtac
+         | @lift_relation_hetero => idtac
+         | @lift_brelation_hetero => idtac
+         | @lift_relation => idtac
+         | @lift_brelation => idtac
          end
     | @MapsTo
       => match to with
@@ -1656,6 +1703,12 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     | @map2
       => match to with
          | @find => idtac
+         end
+    | @lift_brelation
+      => match to with
+         | @lift_relation_gen_hetero => idtac
+         | @lift_relation_hetero => idtac
+         | @lift_relation => idtac
          end
     | false
       => match to with
@@ -1699,6 +1752,26 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     | @fold_right
       => match to with
          | @List.In => idtac
+         end
+    | @lift_relation_gen_hetero
+      => match to with
+         | @find => idtac
+         end
+    | @lift_relation_hetero
+      => match to with
+         | @find => idtac
+         end
+    | @lift_brelation_hetero
+      => match to with
+         | @find => idtac
+         end
+    | @lift_relation
+      => match to with
+         | @find => idtac
+         end
+    | @lift_brelation
+      => match to with
+         | @find => idtac
          end
     | false
       => match to with
@@ -1770,9 +1843,9 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       generalize (elements_3w v);
       induction (elements v) as [|x xs IHxs]; clear v.
     { simpl; intros; invlist InA. }
-    { intros; invlist InA; invlist NoDupA; simpl in *;
-      FMap_convert_to_find;
-      edestruct F.eq_dec; setoid_subst_E_eq; simpl in *; intuition (subst; setoid_subst_E_eq; eauto using (@reflexivity _ E.eq)).
+    { intros; invlist InA; invlist NoDupA; simpl in *; specialize_by assumption;
+        FMap_convert_to_find;
+        edestruct F.eq_dec; setoid_subst_E_eq; simpl in *; intuition (subst; setoid_subst_E_eq; eauto using (@reflexivity _ E.eq)).
       { exfalso; eauto using (@reflexivity _ E.eq). }
       { exfalso; destruct_head prod; eauto using InA_eqke_eqk. } }
     { simpl; intros; invlist InA.
@@ -1817,11 +1890,14 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
            | _ => progress destruct_head bool
            | _ => progress simpl in *
            | _ => progress subst
+           | _ => solve [ trivial ]
            | [ H : context[match ?e with _ => _ end] |- _ ] => destruct e eqn:?
            | _ => progress specialize_by assumption
-           | _ => progress specialize_by ltac:(exact eq_refl)
+           | _ => progress specialize_by (exact eq_refl)
            | [ H : Some _ = Some _ |- _ ] => inversion H; clear H
            | [ H : Some _ = Some _ -> _ |- _ ] => specialize (fun H' => H (f_equal (@Some _) H'))
+           | [ H : forall x, Some ?v = Some x -> _ |- _ ] => specialize (H _ eq_refl)
+           | [ H : forall x, Some x = Some ?v -> _ |- _ ] => specialize (H _ eq_refl)
            | [ H : ?x = false -> false = true |- _ ]
              => destruct x eqn:?; [ clear H | specialize (H eq_refl); congruence ]
            | _ => progress unfold is_true in *
@@ -1829,7 +1905,8 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     repeat match goal with
            | _ => congruence
            | _ => progress specialize_by assumption
-           | _ => progress specialize_by ltac:(exact eq_refl)
+           | _ => progress specialize_by (exact eq_refl)
+           | _ => solve [ trivial ]
            | [ H : forall x, ?R x ?y = ?v -> _, H' : ?R ?x' ?y = ?v |- _ ]
              => unique pose proof (H _ H')
            | [ H : forall y, ?R ?x y = ?v -> _, H' : ?R ?x ?y' = ?v |- _ ]
@@ -1842,18 +1919,142 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
              => unique pose proof (H x')
            end.
 
-  Lemma lift_brelation_iff {A} (R : A -> A -> bool) (default : A) (m1 m2 : t A)
-    : lift_brelation R default m1 m2 <-> forall k, match find k m1, find k m2 return bool with
-                                                   | Some x1, Some x2 => R x1 x2
-                                                   | Some x, None => R x default
-                                                   | None, Some x => R default x
-                                                   | None, None => true
-                                                   end.
+  Lemma lift_relation_gen_hetero_iff {A B P} and True' (Q : P -> Prop) R defaultA defaultB (m1 : t A) (m2 : t B)
+        (QTrue_or_key : Q True' \/ exists k, find k m1 = None /\ find k m2 = None)
+        (Qand : forall x y, Q (and x y) <-> Q x /\ Q y)
+    : Q (lift_relation_gen_hetero and True' R defaultA defaultB m1 m2)
+      <-> forall k, Q (match find k m1, find k m2 with
+                       | Some x1, Some x2 => R x1 x2
+                       | Some x, None => R x defaultB
+                       | None, Some x => R defaultA x
+                       | None, None => True'
+                       end).
   Proof.
+    unfold lift_relation_gen_hetero.
     FMap_convert_to_find.
-    split; intro H; [ intro k; specialize (H (k, false)) | intros [k v]; specialize (H k) ];
+    rewrite fold_right_push_iff, fold_right_and_iff by (eassumption || exact _).
+    FMap_convert_to_find.
+    rewrite (forall_In_map Q); FMap_convert_to_find.
+    split;
+      [ intros [H QTrue'] k; specialize (fun P => H (k, P))
+      | intro H; split;
+        [ intros [k ?]; specialize (H k)
+        | destruct QTrue_or_key as [?| [k [? ?] ] ]; [ | specialize (H k) ] ] ];
+      simpl in *;
+      break_match;
+      repeat intuition (congruence || eauto || destruct_head' ex);
       instance_t.
   Qed.
+
+  Definition lift_relation_hetero_iff {A B} R defaultA defaultB (m1 : t A) (m2 : t B)
+    : lift_relation_hetero R defaultA defaultB m1 m2
+      <-> forall k, match find k m1, find k m2 with
+                    | Some x1, Some x2 => R x1 x2
+                    | Some x, None => R x defaultB
+                    | None, Some x => R defaultA x
+                    | None, None => True
+                    end
+    := lift_relation_gen_hetero_iff and True (fun x => x) R defaultA defaultB m1 m2
+                                    (or_introl I) (fun x y => reflexivity _).
+
+  Definition lift_brelation_hetero_iff {A B} R defaultA defaultB (m1 : t A) (m2 : t B)
+    : lift_brelation_hetero R defaultA defaultB m1 m2
+      <-> forall k, match find k m1, find k m2 return bool with
+                    | Some x1, Some x2 => R x1 x2
+                    | Some x, None => R x defaultB
+                    | None, Some x => R defaultA x
+                    | None, None => true
+                    end
+    := lift_relation_gen_hetero_iff andb true is_true R defaultA defaultB m1 m2
+                                    (or_introl (reflexivity _)) andb_true_iff.
+
+  Definition lift_relation_iff {A} R (default : A) := lift_relation_hetero_iff R default default.
+  Definition lift_brelation_iff {A} R (default : A) := lift_brelation_hetero_iff R default default.
+
+  Lemma lift_relation_gen_hetero_impl
+        {A B P1 P2 and1 and2 True1 True2 R1 R2}
+        {Q1 : _ -> Prop}
+        {Q2 : _ -> Prop}
+        {defaultA defaultB x y}
+        (HTrue1 : Q1 True1)
+        (HTrue2 : Q2 True2)
+        (Hand1 : forall x y, Q1 (and1 x y) <-> Q1 x /\ Q1 y)
+        (Hand2 : forall x y, Q2 (and2 x y) <-> Q2 x /\ Q2 y)
+        (HR : forall x y, Q1 (R1 x y) -> Q2 (R2 x y))
+    : Q1 (@lift_relation_gen_hetero A B P1 and1 True1 R1 defaultA defaultB x y)
+      -> Q2 (@lift_relation_gen_hetero A B P2 and2 True2 R2 defaultA defaultB x y).
+  Proof.
+    erewrite !lift_relation_gen_hetero_iff by tauto.
+    intros H k; specialize (H k); break_match; auto.
+  Qed.
+
+  Lemma lift_relation_gen_hetero_iff2
+        {A B P1 P2 and1 and2 True1 True2 R1 R2}
+        {Q1 : _ -> Prop}
+        {Q2 : _ -> Prop}
+        {defaultA defaultB x y}
+        (HTrue1 : Q1 True1)
+        (HTrue2 : Q2 True2)
+        (Hand1 : forall x y, Q1 (and1 x y) <-> Q1 x /\ Q1 y)
+        (Hand2 : forall x y, Q2 (and2 x y) <-> Q2 x /\ Q2 y)
+        (HR : forall x y, Q1 (R1 x y) <-> Q2 (R2 x y))
+    : Q1 (@lift_relation_gen_hetero A B P1 and1 True1 R1 defaultA defaultB x y)
+      <-> Q2 (@lift_relation_gen_hetero A B P2 and2 True2 R2 defaultA defaultB x y).
+  Proof.
+    split; apply lift_relation_gen_hetero_impl; firstorder.
+  Qed.
+
+  Lemma lift_brelation_hetero_true
+        {A B R defaultA defaultB x y}
+    : @lift_brelation_hetero A B R defaultA defaultB x y
+      <-> @lift_relation_hetero A B R defaultA defaultB x y.
+  Proof.
+    unfold lift_brelation_hetero, lift_relation_hetero.
+    apply (lift_relation_gen_hetero_iff2 (Q1 := is_true) (Q2 := fun x => x));
+      try tauto; try reflexivity; apply andb_true_iff.
+  Qed.
+
+  Definition lift_brelation_true {A R default x y}
+    : @lift_brelation A R default x y <-> @lift_relation A R default x y
+    := lift_brelation_hetero_true.
+
+  Ltac FMap_convert_step_extra_internal should_convert_from_to ::=
+    first [ should_convert_from_to (@lift_relation) (@lift_brelation);
+            setoid_rewrite_in_all guarded(fun T => match T with
+                                                   | context[lift_relation (fun x y => _ = true) _ _ _] => idtac
+                                                   | context[lift_relation (fun x y => is_true _) _ _ _] => idtac
+                                                   end)
+                                  <- lift_brelation_true
+          | should_convert_from_to (@lift_relation_hetero) (@lift_brelation_hetero);
+            setoid_rewrite_in_all guarded(fun T => match T with
+                                                   | context[lift_relation_hetero (fun x y => _ = true) _ _ _ _] => idtac
+                                                   | context[lift_relation_hetero (fun x y => is_true _) _ _ _ _] => idtac
+                                                   end)
+                                  <- lift_brelation_hetero_true
+          | should_convert_from_to (@lift_brelation) (@lift_relation);
+            setoid_rewrite_in_all guarded(fun T => match T with
+                                                   | context[is_true (lift_brelation _ _ _ _)] => idtac
+                                                   | context[lift_brelation _ _ _ _ = true] => idtac
+                                                   end)
+                                  lift_brelation_true
+          | should_convert_from_to (@lift_brelation_hetero) (@lift_relation_hetero);
+            setoid_rewrite_in_all guarded(fun T => match T with
+                                                   | context[is_true (lift_brelation_hetero _ _ _ _ _)] => idtac
+                                                   | context[lift_brelation_hetero _ _ _ _ _ = true] => idtac
+                                                   end)
+                                  lift_brelation_hetero_true
+          | should_convert_from_to (@lift_relation) (@find);
+            setoid_rewrite_in_all guarded(fun T => match T with context[lift_relation _ _ _ _] => idtac end)
+                                  lift_relation_iff
+          | should_convert_from_to (@lift_brelation) (@find);
+            setoid_rewrite_in_all guarded(fun T => match T with context[lift_brelation _ _ _ _] => idtac end)
+                                  lift_brelation_iff
+          | should_convert_from_to (@lift_relation_hetero) (@find);
+            setoid_rewrite_in_all guarded(fun T => match T with context[lift_relation_hetero _ _ _ _ _] => idtac end)
+                                  lift_relation_hetero_iff
+          | should_convert_from_to (@lift_brelation_hetero) (@find);
+            setoid_rewrite_in_all guarded(fun T => match T with context[lift_brelation_hetero _ _ _ _ _] => idtac end)
+                                  lift_brelation_hetero_iff ].
 
   Global Instance map2_Proper_Equal {A B C} f (Hf : f None None = None)
     : Proper (Equal ==> Equal ==> Equal) (@map2 A B C f).
@@ -1869,31 +2070,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
   Global Hint Extern 1 (Proper _ (@map2 ?A ?B ?C ?f))
   => refine (@map2_Proper_Equal A B C f eq_refl) : typeclass_instances.
 
-  Global Instance lift_brelation_Reflexive {A} {R : A -> A -> bool} {HR : @Reflexive A R} {default}
-    : Reflexive (lift_brelation R default).
-  Proof. intro; FMap_convert_to_find; edestruct find; congruence. Qed.
-
-
-  Global Instance lift_brelation_Symmetric {A} {R : A -> A -> bool} {HR : @Symmetric A R} {default}
-    : Symmetric (lift_brelation R default).
-  Proof.
-    intro; FMap_convert_to_find.
-    repeat match goal with
-           | [ H : forall x : ?T, _, x' : ?T |- _ ] => specialize (H x')
-           end.
-    hnf in HR; instance_t.
-  Qed.
-
-  Global Instance lift_brelation_Transitive {A} {R : A -> A -> bool} {HR : @Transitive A R} {default}
-    : Transitive (lift_brelation R default).
-  Proof.
-    intro; FMap_convert_to_find.
-    repeat match goal with
-           | [ H : forall x : ?T, _, x' : ?T |- _ ] => specialize (H x')
-           end.
-    hnf in HR; instance_t.
-  Qed.
-
   Global Instance fold_andb_true_Proper_Equal
     : Proper (@Equal _ ==> eq ==> eq) (fold (fun _ => andb)).
   Proof.
@@ -1904,79 +2080,6 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
       FMap_convert_to_find;
       setoid_subst_rel (@Equal bool);
       try tauto.
-  Qed.
-
-  Global Instance lift_brelation_Proper_Equal {A R default}
-    : Proper (@Equal A ==> @Equal A ==> eq) (@lift_brelation A R default) | 2.
-  Proof.
-    intros a b H a' b' H'.
-    destruct (lift_brelation R default a a') eqn:Ha;
-    destruct (lift_brelation R default b b') eqn:Hb;
-    unfold lift_brelation in *;
-    try reflexivity;
-    setoid_subst_rel (@Equal A);
-    congruence.
-  Qed.
-
-  Global Instance lift_brelation_Proper_Proper_subrelation {A} {R1 R2 R : A -> A -> bool} {default}
-         {R1_Reflexive : Reflexive R1}
-         {R2_Reflexive : Reflexive R2}
-         {R1_subrelation : subrelation R1 R}
-         {R2_subrelation : subrelation R2 R}
-         {R_Proper : Proper (R1 ==> R2 ==> eq) R}
-    : Proper (lift_brelation R1 default ==> lift_brelation R2 default ==> eq) (lift_brelation R default) | 2.
-  Proof.
-    intros a b H a' b' H'.
-    destruct (lift_brelation R default a a') eqn:Ha;
-    destruct (lift_brelation R default b b') eqn:Hb;
-    unfold lift_brelation in *;
-    try reflexivity;
-    FMap_convert_to_find;
-    repeat match goal with
-           | [ |- false = true ] => exfalso
-           | [ |- true <> true ] => exfalso
-           | [ H : ~_ |- False ] => apply H; clear H
-           | _ => progress intros
-           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
-           end;
-      specialize (fun x y H z w => R_Proper x y H z w);
-      unfold Reflexive, Symmetric, Transitive, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      instance_t.
-  Qed.
-
-  Global Instance lift_brelation_Proper_Proper {A} {R : A -> A -> bool} {default}
-         {R_Reflexive : Reflexive R}
-         {R_Proper : Proper (R ==> R ==> eq) R}
-    : Proper (lift_brelation R default ==> lift_brelation R default ==> eq) (lift_brelation R default) | 2.
-  Proof.
-    apply lift_brelation_Proper_Proper_subrelation.
-  Qed.
-
-  Global Instance lift_brelation_Equivalence
-         {A} {R : A -> A -> bool}
-         {R_Equiv : @Equivalence A R}
-         {default}
-    : Equivalence (lift_brelation R default).
-  Proof.
-    split; exact _.
-  Qed.
-
-  Global Instance lift_brelation_Antisymmetric
-         {A} {R RE : A -> A -> bool}
-         {RE_Equivalence : @Equivalence A RE}
-         {AS : Antisymmetric A RE R}
-         {default}
-    : Antisymmetric _ (lift_brelation RE default) (lift_brelation R default).
-  Proof.
-    intros a b H H'.
-    FMap_convert_to_find.
-    repeat match goal with
-           | [ H : forall x : ?T, _, H' : ?T |- _ ] => specialize (H H')
-           end.
-    destruct RE_Equivalence.
-    do 2 edestruct find;
-      unfold Reflexive, Symmetric, Transitive, Antisymmetric, subrelation, predicate_implication, pointwise_lifting, impl in *;
-      instance_t.
   Qed.
 
   (** TODO: merge with FindWithDefault *)
@@ -2056,7 +2159,7 @@ Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E).
     : lift_brelation R default m1 m2 = false
       <-> (exists x, InA (@eq_key_elt _) x elms /\ snd x = false).
   Proof.
-    FMap_convert.
+    unfold lift_brelation, lift_brelation_hetero, lift_relation_gen_hetero; FMap_convert.
     setoid_rewrite InA_alt.
     subst elms.
     let ls := match goal with |- context[elements ?m] => constr:(elements m) end in

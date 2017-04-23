@@ -96,7 +96,7 @@ Section implementation.
           pose proof (fun H => expand_minimal_parse_of_production (str' := drop len (substring offset len str)) (or_introl (reflexivity _)) (reflexivity _) (or_introl (reflexivity _)) H pits) as pits'; clear pits.
           set (s := substring offset len str) in *.
           specialize_by
-            ltac:(first [ rewrite ?take_long, ?drop_long
+                 (first [ rewrite ?take_long, ?drop_long
                           by first [ subst s; reflexivity
                                    | subst s; rewrite substring_length_no_min by assumption; omega ];
                           reflexivity

@@ -66,7 +66,7 @@ Lemma composeIf_encode_correct
       ) P.
 Proof.
   unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold composeIf, Bind2 in com_pf; computes_to_inv; destruct v;
       simpl in com_pf'; computes_to_inv.
     - erewrite ICompb_OKT; eauto.
@@ -189,30 +189,30 @@ Lemma composeIf'_encode_correct
       ) P.
 Proof.
   unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold composeIf', Bind2 in com_pf; computes_to_inv; destruct v;
       simpl in com_pf'; computes_to_inv; destruct v; destruct v0;
         simpl in com_pf'', com_pf'''.
     - injections.
-      destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) H com_pf'); intuition; simpl in *; injections.
+      destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm (pred_pf _ pred_pm) H com_pf'); intuition; simpl in *; injections.
       eapply predicate_rest_implT; repeat eexists; intuition eauto.
       destruct (fun H' => proj1 (decodeT_pf (projectT data) (ICombT_OK data) (pred_pf _ pred_pm)
                                             H)
-                                _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H' com_pf'');
+                                _ _ _ _ _ ext H5 H1 (conj pred_pm (eq_refl _)) H' com_pf'');
         intuition; simpl in *; injections.
       setoid_rewrite <- transform_assoc; rewrite H2.
       intuition; simpl in *; injections.
-      rewrite ICombT_OK, H6; simpl; eauto.
+      rewrite ICombT_OK, H7; simpl; eauto.
     - injections.
-      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf' _ pred_pm) H' com_pf'); intuition; simpl in *; injections.
+      destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm (pred_pf' _ pred_pm) H' com_pf'); intuition; simpl in *; injections.
       eapply predicate_rest_implE; intuition; repeat eexists; intuition eauto.
       destruct (fun H' => proj1 (decodeE_pf (projectE data) (ICombE_OK data) (pred_pf' _ pred_pm)
                                             H4)
-                                _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H' com_pf'');
+                                _ _ _ _ _ ext H5 H1 (conj pred_pm (eq_refl _)) H' com_pf'');
         intuition; simpl in *; injections.
       setoid_rewrite <- transform_assoc; rewrite H2.
       intuition; simpl in *; injections.
-      rewrite ICombE_OK, H6; simpl; eauto.
+      rewrite ICombE_OK, H7; simpl; eauto.
   }
   { intros.
     destruct (decode1 bin env') as [ [ [? ?] ? ] | ] eqn : ? ;

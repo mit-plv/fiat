@@ -105,7 +105,7 @@ Local Open Scope string_scope.
 Global Open Scope grammar_scope.
 Global Open Scope string_scope.
 
-Notation code_in_range ch_low ch_high := (rand (rcode_ge_than (opt.nat_of_ascii ch_low)) (rcode_le_than (opt.nat_of_ascii ch_high))).
+Notation code_in_range ch_low ch_high := (rand (rcode_ge_than (opt.N_of_ascii ch_low)) (rcode_le_than (opt.N_of_ascii ch_high))).
 
 Notation "'[0-9]'" := (RTerminal (code_in_range "0" "9")) : item_scope.
 Notation "'[0-9]'" := (([0-9]%item::nil) : rproduction Ascii.ascii) : production_scope.
@@ -117,9 +117,9 @@ Notation "'[a-z]'" := (RTerminal (code_in_range "a" "z")) : item_scope.
 Notation "'[a-z]'" := (([a-z]%item::nil) : rproduction Ascii.ascii) : production_scope.
 Notation "'[a-z]'" := ([a-z]%production) : productions_scope.
 
-Local Notation LF := (ascii_of_nat 10).
-Local Notation CR := (ascii_of_nat 13).
-Local Notation TAB := (ascii_of_nat 9).
+Local Notation LF := (ascii_of_N 10).
+Local Notation CR := (ascii_of_N 13).
+Local Notation TAB := (ascii_of_N 9).
 Local Notation SPACE := " "%char.
 
 (** Notation for whitespace: space, tab, line feed, carriage return *)
@@ -145,9 +145,10 @@ Notation "'[1-9]'" := ([1-9]%production) : productions_scope.
 Global Arguments Equality.ascii_beq !_ !_.
 Global Arguments Equality.string_beq !_ !_.
 Global Arguments ascii_of_nat !_ / .
+Global Arguments ascii_of_N !_ / .
 Global Arguments ascii_of_pos !_ / .
 
-Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irnat_of ascii_interp_RCharExpr_data].
+Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data].
 
 Create HintDb parser_sharpen_db discriminated.
-Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irnat_of ascii_interp_RCharExpr_data : parser_sharpen_db.
+Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data : parser_sharpen_db.

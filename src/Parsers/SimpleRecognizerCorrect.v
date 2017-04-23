@@ -49,7 +49,7 @@ Section convenience.
       => specialize (H _ eq_refl)
     | _ => progress unfold not in *
     | _ => progress specialize_by assumption
-    | _ => progress specialize_by ltac:(exact eq_refl)
+    | _ => progress specialize_by (exact eq_refl)
     | _ => progress specialize_by congruence
     | _ => tauto
     | _ => congruence

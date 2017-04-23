@@ -76,7 +76,7 @@ Section Option.
       ) P.
 Proof.
   unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold encode_option_Spec in com_pf; computes_to_inv;
       destruct data;
       find_if_inside; unfold predicate in *; simpl in *;

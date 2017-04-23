@@ -32,14 +32,35 @@ Definition all_possible_ascii : PositiveSet.t
   := Eval compute in all_possible_ascii'.
 
 Definition pos_of_ascii (x : Ascii.ascii) : BinNums.positive
-  := BinPos.Pos.of_nat match Ascii.nat_of_ascii x with
-                       | 0 => (S (Ascii.nat_of_ascii (Ascii.Ascii true true true true true true true true)))
-                       | x' => x'
-                       end.
+  := match Ascii.N_of_ascii x with
+     | BinNums.N0 => max_ascii
+     | BinNums.Npos x => x
+     end.
 
 Lemma ascii_of_pos_of_ascii x : Ascii.ascii_of_pos (pos_of_ascii x) = x.
 Proof.
   destruct x; destruct_head bool; vm_compute; reflexivity.
+Qed.
+
+Lemma ascii_mem v
+      (H : MSetPositive.PositiveSet.cardinal v = 1)
+      ch'
+      (H' : MSetPositive.PositiveSet.choose v = Some ch')
+      (Hch' : pos_of_ascii (Ascii.ascii_of_pos ch') = ch')
+      ch''
+      (Hch'' : Ascii.ascii_of_pos ch' = ch'')
+      ch
+  : MSetPositive.PositiveSet.mem (pos_of_ascii ch) v = Equality.ascii_beq ch'' ch.
+Proof.
+  apply MSetPositive.PositiveSet.choose_spec1 in H'.
+  destruct (Equality.ascii_beq ch'' ch) eqn:Hch; subst ch''.
+  { apply Equality.ascii_bl in Hch; instantiate; subst ch.
+    AsciiLattice.PositiveSetExtensions.BasicDec.fsetdec. }
+  { AsciiLattice.PositiveSetExtensions.to_caps.
+    intro; apply Hch; clear Hch.
+    apply Equality.ascii_beq_true_iff.
+    rewrite <- ascii_of_pos_of_ascii; apply f_equal.
+    eapply AsciiLattice.PositiveSetExtensions.cardinal_one_In_same; eassumption. }
 Qed.
 
 Lemma In_all ch
@@ -438,6 +459,8 @@ Section correctness_lemmas.
     | _ => assumption
     | _ => tauto
     | [ |- ?R ?x ?x ] => reflexivity
+    | [ |- context[fold_production' _ (lookup_state fgd_fold_grammar) _] ]
+      => setoid_rewrite fgd_fold_grammar_correct
     | _ => rewrite fgd_fold_grammar_correct
     | [ p : parse_of_item _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _) in p
@@ -540,7 +563,7 @@ Section correctness_lemmas.
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_production G ps)).
   Proof.
     unfold all_possible_characters_of_production; correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
+    eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
     correct_t.
   Qed.
 
@@ -569,8 +592,6 @@ Section correctness_lemmas.
     correct_t.
   Qed.
 End correctness_lemmas.
-
-Set Printing Implicit.
 
 Ltac make_all_possible_data G :=
   let v := constr:(@fold_grammar _ _ _ all_possible_terminals_aidata G) in

@@ -8,6 +8,7 @@ Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.Ascii.
 Require Export Coq.extraction.ExtrOcamlBasic.
 Require Export Coq.extraction.ExtrOcamlNatInt.
+Require Export Coq.extraction.ExtrOcamlZInt.
 Require Export Coq.extraction.ExtrOcamlString.
 Require Export Coq.extraction.ExtrOcamlIntConv.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
@@ -15,6 +16,7 @@ Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Import ExtrOcamlPrimitives.Ocaml.
 
 Extract Inlined Constant Compare_dec.lt_dec => "(<)".
+Extract Inlined Constant BinNat.N.ltb => "(<)".
 Extract Inlined Constant Sumbool.sumbool_of_bool => "(fun x -> x)".
 Extract Inlined Constant Equality.ascii_beq => "(=)".
 Extract Inlined Constant ascii_eq_dec => "(=)".
@@ -25,8 +27,8 @@ Extract Constant minus => "fun (n : int) (m : int) -> let v = n - m in if v < 0 
 Extract Constant pred => "fun (n : int) -> if n < 1 then 0 else n - 1".
 Extract Constant max => "fun (n : int) (m : int) -> if n >= m then n else m".
 Extract Constant min => "fun (n : int) (m : int) -> if n <= m then n else m".
-Extract Inlined Constant Ascii.nat_of_ascii => "Char.code".
-Extract Inlined Constant ContextFreeGrammar.Reflective.opt.nat_of_ascii => "Char.code".
+Extract Inlined Constant Ascii.N_of_ascii => "Char.code".
+Extract Inlined Constant ContextFreeGrammar.Reflective.opt.N_of_ascii => "Char.code".
 
 Global Arguments string_dec : simpl never.
 Global Arguments Equality.string_beq : simpl never.

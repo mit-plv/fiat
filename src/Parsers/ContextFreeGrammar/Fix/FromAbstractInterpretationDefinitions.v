@@ -6,6 +6,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
+Require Import Fiat.Common.List.ListMorphisms.
 
 Set Implicit Arguments.
 Local Coercion is_true : bool >-> Sortclass.
@@ -68,6 +69,17 @@ Section general_fold.
        | NonTerminal nt => fold_nt (@of_nonterminal _ (@rdp_list_predata _ G) nt)
        end.
 
+  Global Instance fold_item'_ProperR {R}
+         {R_Reflexive : Reflexive R}
+    : Proper (pointwise_relation _ R ==> eq ==> R) fold_item' | 20.
+  Proof.
+    intros ?? H [?|?] ??; subst; simpl; [ reflexivity | apply H ].
+  Qed.
+
+  Global Instance fold_item'_Proper
+    : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_item' | 20
+    := _.
+
   Definition fold_production'
              (fold_nt : default_nonterminal_carrierT -> state)
              (its : production Char)
@@ -78,6 +90,25 @@ Section general_fold.
             (fold_item' fold_nt)
             its).
 
+  Global Instance fold_production'_ProperR {R}
+         {R_Reflexive : Reflexive R}
+         {combine_production_ProperR : Proper (R ==> R ==> R) combine_production}
+    : Proper (pointwise_relation _ R ==> eq ==> R) fold_production' | 20.
+  Proof.
+    unfold fold_production'.
+    repeat intro.
+    apply (_ : Proper (_ ==> _ ==> SetoidList.eqlistA R ==> _) (@List.fold_right _ _));
+      trivial.
+    subst; apply map_eqlistA_Proper; try reflexivity.
+    repeat intro; apply fold_item'_ProperR; trivial.
+  Qed.
+
+  Global Instance fold_production'_Proper
+    : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_production' | 2
+    := _.
+
+  Global Instance: Params (@fold_production') 5.
+
   Definition fold_productions'
              (fold_nt : default_nonterminal_carrierT -> state)
              (its : productions Char)
@@ -87,6 +118,24 @@ Section general_fold.
          (List.map
             (fold_production' fold_nt)
             its).
+
+  Global Instance fold_productions'_ProperR {R}
+         {R_Reflexive : Reflexive R}
+         {least_upper_bound_ProperR : Proper (R ==> R ==> R) least_upper_bound}
+         {combine_production_ProperR : Proper (R ==> R ==> R) combine_production}
+    : Proper (pointwise_relation _ R ==> eq ==> R) fold_productions' | 20.
+  Proof.
+    unfold fold_production'.
+    repeat intro.
+    apply (_ : Proper (_ ==> _ ==> SetoidList.eqlistA R ==> _) (@List.fold_right _ _));
+      trivial.
+    subst; apply map_eqlistA_Proper; try reflexivity.
+    repeat intro; apply fold_production'_ProperR; trivial.
+  Qed.
+
+  Global Instance fold_productions'_Proper_eq
+    : Proper (pointwise_relation _ eq ==> eq ==> eq) fold_productions' | 20
+    := _.
 
   Definition fold_constraints
              (fold_nt : default_nonterminal_carrierT -> state)

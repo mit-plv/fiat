@@ -7,7 +7,7 @@ Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
 Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
-Require Import Fiat.Common.FMapExtensionsWf.
+Require Import Fiat.Common.FMapExtensions.Wf.
 Require Import Fiat.Common.
 Require Import Fiat.Common.OptionFacts.
 Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
@@ -439,20 +439,13 @@ Section grammar_fixedpoint.
           unfold aggregate_step in *.
           edestruct H'; eassumption. } }
     Qed.
-  End with_initial.
 
-  Section with_grammar.
-    Context (G : pregrammar' Char).
-
-    Let predata := @rdp_list_predata _ G.
-    Local Existing Instance predata.
-
-    Lemma find_aggregate_state_max_spec k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
+    Lemma find_aggregate_state_max_rdp_spec k v
+      : PositiveMap.find k aggregate_state_max = Some v
+        <-> (v = ⊥ /\ rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
     Proof.
       unfold aggregate_state_max in *.
-      generalize dependent (@initial_nonterminals_data _ _); intros ls.
+      generalize dependent initial_nonterminals_data; intros ls.
       induction ls as [|x xs IHxs].
       { simpl in *.
         autorewrite with aggregate_step_db in *.
@@ -473,12 +466,38 @@ Section grammar_fixedpoint.
     Qed.
 
     Lemma find_aggregate_state_max k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        -> PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some ⊥.
+      : PositiveMap.find k aggregate_state_max = Some v
+        -> PositiveMap.find k aggregate_state_max = Some ⊥.
     Proof.
-      setoid_rewrite find_aggregate_state_max_spec.
+      setoid_rewrite find_aggregate_state_max_rdp_spec.
       tauto.
     Qed.
+
+    Lemma find_aggregate_state_max_exact k
+      : PositiveMap.find k aggregate_state_max
+        = if rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)
+          then Some ⊥
+          else None.
+    Proof.
+      pose proof (find_aggregate_state_max_rdp_spec k) as H;
+        unfold is_true in *; split_iff; break_match.
+      { intuition eauto. }
+      { edestruct PositiveMap.find; [ | reflexivity ].
+        specialize_all_ways; specialize_by (exact eq_refl).
+        intuition congruence. }
+    Qed.
+  End with_initial.
+
+  Section with_grammar.
+    Context (G : pregrammar' Char).
+
+    Let predata := @rdp_list_predata _ G.
+    Local Existing Instance predata.
+
+    Definition find_aggregate_state_max_spec k v
+      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
+        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k))
+      := find_aggregate_state_max_rdp_spec initial_nonterminals_data k v.
 
     Hint Rewrite find_aggregate_state_max_spec : aggregate_step_db.
 
@@ -542,6 +561,16 @@ Section grammar_fixedpoint.
           [ reflexivity | congruence ]. }
       { destruct (PositiveMap.find (nonterminal_to_positive nt) (pre_Fix_grammar (@initial_nonterminals_data _ predata))) eqn:H; [ | reflexivity ].
         rewrite (proj2 (find_pre_Fix_grammar _)) in Hvalid; congruence. }
+    Qed.
+
+    Lemma find_pre_Fix_grammar_to_lookup_state' nt
+      : PositiveMap.find nt (pre_Fix_grammar initial_nonterminals_data)
+        = if is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal nt)
+          then Some (lookup_state (pre_Fix_grammar initial_nonterminals_data) (positive_to_nonterminal nt))
+          else None.
+    Proof.
+      rewrite <- find_pre_Fix_grammar_to_lookup_state, positive_to_nonterminal_to_positive.
+      reflexivity.
     Qed.
 
     Lemma lookup_state_invalid_pre_Fix_grammar (nt : default_nonterminal_carrierT)

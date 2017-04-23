@@ -6,6 +6,8 @@ Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Le.
+Require Import Fiat.Common.Tactics.SetoidSubst.
+Require Import Fiat.Common.Tactics.IsClosed.
 Require Import Fiat.Parsers.StringLike.Core Fiat.Common.UIP.
 
 Local Open Scope list_scope.
@@ -1060,3 +1062,46 @@ Section Iso.
     reflexivity.
   Qed.
 End Iso.
+
+Ltac pose_string_like_for_lengths :=
+  match goal with
+  | [ H : context[length _ = ?n] |- _ ]
+    => lazymatch n with
+       | length _ => fail
+       | _ => idtac
+       end;
+       lazymatch goal with
+       | [ H' : length _ = n |- _ ] => fail
+       | _ => destruct (strings_nontrivial n)
+       end
+  | [ H : @String ?Char ?HSLM -> ?T |- _ ]
+    => is_closed T;
+       lazymatch goal with
+       | [ s : @String Char HSLM |- _ ] => fail
+       | _ => destruct (@strings_nontrivial Char HSLM _ _ 0)
+       end
+  end.
+
+Ltac simpl_string_like_no_setoid_step :=
+  match goal with
+  | [ H : length ?str = _, H' : context[length ?str] |- _ ] => rewrite H in H'
+  | [ H : length ?str = _ |- context[length ?str] ] => rewrite H
+  | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
+  | _ => progress pose_string_like_for_lengths
+  | [ H : forall str, length str = ?n -> ?T, H' : length ?str' = ?n |- _ ]
+    => is_closed T; specialize (H str' H')
+  | [ H : String -> ?T, H' : String |- _ ]
+    => is_closed T; specialize (H H')
+  | [ H : False |- _ ] => solve [ induction H | case H ]
+  | [ H : forall str, length str = ?n |- _ ] => apply not_all_lengths in H
+  | [ H : @length ?Char ?HSLM ?str = @length ?Char ?HSLM ?str' |- _ ]
+    => first [ generalize dependent (@length Char HSLM str'); intros; subst; clear str'
+             | generalize dependent (@length Char HSLM str); intros; subst; clear str ]
+  | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l in H
+  | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l, ?Nat.sub_0_l
+  end.
+Ltac simpl_string_like_step :=
+  first [ progress simpl_string_like_no_setoid_step
+        | progress setoid_subst_rel (@beq _ _ _) ].
+Ltac simpl_string_like_no_setoid := repeat simpl_string_like_no_setoid_step.
+Ltac simpl_string_like := repeat simpl_string_like_step.

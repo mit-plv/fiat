@@ -3,6 +3,17 @@ Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
+Require Export Fiat.Common.Tactics.SplitInContext.
+Require Export Fiat.Common.Tactics.Combinators.
+Require Export Fiat.Common.Tactics.FreeIn.
+Require Export Fiat.Common.Tactics.SetoidSubst.
+Require Export Fiat.Common.Tactics.BreakMatch.
+Require Export Fiat.Common.Tactics.Head.
+Require Export Fiat.Common.Tactics.FoldIsTrue.
+Require Export Fiat.Common.Tactics.SpecializeBy.
+Require Export Fiat.Common.Tactics.DestructHyps.
+Require Export Fiat.Common.Tactics.DestructSig.
+Require Export Fiat.Common.Tactics.DestructHead.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
@@ -80,13 +91,6 @@ Proof. destruct x, b; reflexivity. Qed.
 Hint Rewrite @bool_of_sum_inl @bool_of_sum_inr @bool_of_sum_distr_match_eta @bool_of_sum_distr_match_sumbool_eta @bool_of_sum_distr_match @bool_of_sum_distr_match_sumbool @bool_of_sum_distr_match_fun @bool_of_sum_distr_match_sumbool_fun @bool_of_sum_eta @bool_of_sum_orb_true_l : push_bool_of_sum.
 Hint Rewrite @bool_of_sumbool_left @bool_of_sumbool_right @bool_of_sumbool_distr_match_eta @bool_of_sumbool_distr_match_sum_eta @bool_of_sumbool_distr_match @bool_of_sumbool_distr_match_sum @bool_of_sumbool_distr_match_fun @bool_of_sumbool_distr_match_sum_fun @bool_of_sumbool_eta : push_bool_of_sumbool.
 
-(** Test if a tactic succeeds, but always roll-back the results *)
-Tactic Notation "test" tactic3(tac) :=
-  try (first [ tac | fail 2 tac "does not succeed" ]; fail 0 tac "succeeds"; [](* test for [t] solved all goals *)).
-
-(** [not tac] is equivalent to [fail tac "succeeds"] if [tac] succeeds, and is equivalent to [idtac] if [tac] fails *)
-Tactic Notation "not" tactic3(tac) := try ((test tac); fail 1 tac "succeeds").
-
 (** Runs [abstract] after clearing the environment, solving the goal
     with the tactic associated with [cls <goal type>].  In 8.5, we
     could pass a tactic instead. *)
@@ -119,16 +123,27 @@ Ltac atomic x :=
    most useful for proofs of a proposition *)
 Tactic Notation "unique" "pose" "proof" constr(defn) :=
   let T := type of defn in
-  match goal with
-  | [ H : T |- _ ] => fail 1
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
   | _ => pose proof defn
   end.
 
 (** [pose defn], but only if that hypothesis doesn't exist *)
 Tactic Notation "unique" "pose" constr(defn) :=
-  match goal with
-  | [ H := defn |- _ ] => fail 1
+  lazymatch goal with
+  | [ H := defn |- _ ] => fail
   | _ => pose defn
+  end.
+
+Tactic Notation "unique" "assert" "(" ident(H) ":" constr(T) ")" :=
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
+  | _ => assert (H : T)
+  end.
+Tactic Notation "unique" "assert" "(" ident(H) ":" constr(T) ")" "by" tactic3(tac) :=
+  lazymatch goal with
+  | [ H : T |- _ ] => fail
+  | _ => assert (H : T) by tac
   end.
 
 (** check's if the given hypothesis has a body, i.e., if [clearbody]
@@ -144,15 +159,6 @@ Tactic Notation "etransitivity_rev" open_constr(v)
          => refine ((fun q p => @transitivity _ R _ LHS v RHS p q) _ _)
      end.
 Tactic Notation "etansitivity_rev" := etransitivity_rev _.
-
-(** find the head of the given expression *)
-Ltac head expr :=
-  match expr with
-  | ?f _ => head f
-  | _ => expr
-  end.
-
-Ltac head_hnf expr := let expr' := eval hnf in expr in head expr'.
 
 (** call [tac H], but first [simpl]ify [H].
     This tactic leaves behind the simplified hypothesis. *)
@@ -191,96 +197,6 @@ Ltac simpl_transitivity :=
   try solve [ match goal with
               | [ _ : ?Rel ?a ?b, _ : ?Rel ?b ?c |- ?Rel ?a ?c ] => transitivity b; assumption
               end ].
-
-(** given a [matcher] that succeeds on some hypotheses and fails on
-    others, destruct any matching hypotheses, and then execute [tac]
-    after each [destruct].
-
-    The [tac] part exists so that you can, e.g., [simpl in *], to
-    speed things up. *)
-Ltac do_one_match_then matcher do_tac tac :=
-  idtac;
-  match goal with
-  | [ H : ?T |- _ ]
-    => matcher T; do_tac H;
-       try match type of H with
-           | T => clear H
-           end;
-       tac
-  end.
-
-Ltac do_all_matches_then matcher do_tac tac :=
-  repeat do_one_match_then matcher do_tac tac.
-
-Ltac destruct_all_matches_then matcher tac :=
-  do_all_matches_then matcher ltac:(fun H => destruct H) tac.
-Ltac destruct_one_match_then matcher tac :=
-  do_one_match_then matcher ltac:(fun H => destruct H) tac.
-
-Ltac inversion_all_matches_then matcher tac :=
-  do_all_matches_then matcher ltac:(fun H => inversion H; subst) tac.
-Ltac inversion_one_match_then matcher tac :=
-  do_one_match_then matcher ltac:(fun H => inversion H; subst) tac.
-
-Ltac destruct_all_matches matcher :=
-  destruct_all_matches_then matcher ltac:( simpl in * ).
-Ltac destruct_one_match matcher := destruct_one_match_then matcher ltac:( simpl in * ).
-Ltac destruct_all_matches' matcher := destruct_all_matches_then matcher idtac.
-
-Ltac inversion_all_matches matcher := inversion_all_matches_then matcher ltac:( simpl in * ).
-Ltac inversion_one_match matcher := inversion_one_match_then matcher ltac:( simpl in * ).
-Ltac inversion_all_matches' matcher := inversion_all_matches_then matcher idtac.
-
-(* matches anything whose type has a [T] in it *)
-Ltac destruct_type_matcher T HT :=
-  match HT with
-  | context[T] => idtac
-  end.
-Ltac destruct_type T := destruct_all_matches ltac:(destruct_type_matcher T).
-Ltac destruct_type' T := destruct_all_matches' ltac:(destruct_type_matcher T).
-
-Ltac destruct_head_matcher T HT :=
-  match head HT with
-  | T => idtac
-  end.
-Ltac destruct_head T := destruct_all_matches ltac:(destruct_head_matcher T).
-Ltac destruct_one_head T := destruct_one_match ltac:(destruct_head_matcher T).
-Ltac destruct_head' T := destruct_all_matches' ltac:(destruct_head_matcher T).
-
-Ltac inversion_head T := inversion_all_matches ltac:(destruct_head_matcher T).
-Ltac inversion_one_head T := inversion_one_match ltac:(destruct_head_matcher T).
-Ltac inversion_head' T := inversion_all_matches' ltac:(destruct_head_matcher T).
-
-
-Ltac head_hnf_matcher T HT :=
-  match head_hnf HT with
-  | T => idtac
-  end.
-Ltac destruct_head_hnf T := destruct_all_matches ltac:(head_hnf_matcher T).
-Ltac destruct_one_head_hnf T := destruct_one_match ltac:(head_hnf_matcher T).
-Ltac destruct_head_hnf' T := destruct_all_matches' ltac:(head_hnf_matcher T).
-
-Ltac inversion_head_hnf T := inversion_all_matches ltac:(head_hnf_matcher T).
-Ltac inversion_one_head_hnf T := inversion_one_match ltac:(head_hnf_matcher T).
-Ltac inversion_head_hnf' T := inversion_all_matches' ltac:(head_hnf_matcher T).
-
-Ltac destruct_sig_matcher HT :=
-  match eval hnf in HT with
-  | ex _ => idtac
-  | ex2 _ _ => idtac
-  | sig _ => idtac
-  | sig2 _ _ => idtac
-  | sigT _ => idtac
-  | sigT2 _ _ => idtac
-  | and _ _ => idtac
-  | prod _ _ => idtac
-  end.
-Ltac destruct_sig := destruct_all_matches destruct_sig_matcher.
-Ltac destruct_sig' := destruct_all_matches' destruct_sig_matcher.
-
-Ltac destruct_all_hypotheses := destruct_all_matches ltac:(fun HT =>
-                                                             destruct_sig_matcher HT || destruct_sig_matcher HT
-                                                          ).
 
 (** if progress can be made by [exists _], but it doesn't matter what
     fills in the [_], assume that something exists, and leave the two
@@ -327,15 +243,6 @@ Ltac specialize_all_ways :=
          | [ x : ?T, H : _ |- _ ] => unique pose proof (H x)
          end.
 
-(** try to specialize all non-dependent hypotheses using [tac] *)
-Ltac specialize_by' tac :=
-  idtac;
-  match goal with
-  | [ H : ?A -> ?B |- _ ] => let H' := fresh in assert (H' : A) by tac; specialize (H H'); clear H'
-  end.
-
-Ltac specialize_by tac := repeat specialize_by' tac.
-
 Ltac apply_in_hyp lem :=
   match goal with
   | [ H : _ |- _ ] => apply lem in H
@@ -360,28 +267,6 @@ Ltac apply_in_hyp_no_cbv_match lem :=
       | _ => idtac
       end
   end.
-
-(* Coq's build in tactics don't work so well with things like [iff]
-   so split them up into multiple hypotheses *)
-Ltac split_in_context_by ident funl funr tac :=
-  repeat match goal with
-         | [ H : context p [ident] |- _ ] =>
-           let H0 := context p[funl] in let H0' := eval simpl in H0 in assert H0' by (tac H);
-                                          let H1 := context p[funr] in let H1' := eval simpl in H1 in assert H1' by (tac H);
-                                                                         clear H
-         end.
-Ltac split_in_context ident funl funr :=
-  split_in_context_by ident funl funr ltac:(fun H => apply H).
-
-Ltac split_iff := split_in_context iff (fun a b : Prop => a -> b) (fun a b : Prop => b -> a).
-
-Ltac split_and' :=
-  repeat match goal with
-         | [ H : ?a /\ ?b |- _ ] => let H0 := fresh in let H1 := fresh in
-                                                       assert (H0 := fst H); assert (H1 := snd H); clear H
-         end.
-Ltac split_and := split_and'; split_in_context and (fun a b : Type => a) (fun a b : Type => b).
-
 
 Ltac destruct_sum_in_match' :=
   match goal with
@@ -1561,63 +1446,6 @@ Fixpoint Forall_tails_impl {T} (P P' : list T -> Type) (ls : list T) {struct ls}
        | x::xs => fun H H' => (fst H (fst H'), @Forall_tails_impl T P P' xs (snd H) (snd H'))
      end.
 
-Ltac free_in x y :=
-  idtac;
-  match y with
-  | appcontext[x] => fail 1 x "appears in" y
-  | _ => idtac
-  end.
-
-Ltac setoid_subst'' R x :=
-  is_var x;
-  match goal with
-  | [ H : R x ?y |- _ ]
-    => free_in x y;
-      rewrite ?H;
-      repeat setoid_rewrite H;
-      repeat match goal with
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite H in H'
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite H in H'
-             end;
-      clear H;
-      clear x
-  | [ H : R ?y x |- _ ]
-    => free_in x y;
-      rewrite <- ?H;
-      repeat setoid_rewrite <- H;
-      repeat match goal with
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; rewrite <- H in H'
-             | [ H' : appcontext[x] |- _ ] => not constr_eq H' H; setoid_rewrite <- H in H'
-             end;
-      clear H;
-      clear x
-  end.
-
-Ltac setoid_subst' x :=
-  is_var x;
-  match goal with
-  | [ H : ?R x _ |- _ ] => setoid_subst'' R x
-  | [ H : ?R _ x |- _ ] => setoid_subst'' R x
-  end.
-
-Ltac setoid_subst_rel' R :=
-  idtac;
-  match goal with
-  | [ H : R ?x _ |- _ ] => setoid_subst'' R x
-  | [ H : R _ ?x |- _ ] => setoid_subst'' R x
-  end.
-
-Ltac setoid_subst_rel R := repeat setoid_subst_rel' R.
-
-Ltac setoid_subst_all :=
-  repeat match goal with
-         | [ H : ?R ?x ?y |- _ ] => is_var x; setoid_subst'' R x
-         | [ H : ?R ?x ?y |- _ ] => is_var y; setoid_subst'' R y
-         end.
-
-Tactic Notation "setoid_subst" constr(x) := setoid_subst' x.
-Tactic Notation "setoid_subst" := setoid_subst_all.
-
 Lemma sub_plus {x y z} (H0 : z <= y) (H1 : y <= x)
   : x - (y - z) = (x - y) + z.
 Proof. omega. Qed.
@@ -1901,15 +1729,6 @@ Ltac replace_with_vm_compute_in c H :=
   (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
   replace c with c' in H by (clear; vm_cast_no_check (eq_refl c')).
 
-(* These tactics do [change (?x = true) with (is_true x) in *], but get around anomalies in older versions of 8.4 *)
-Ltac fold_is_true' x :=
-  change (x = true) with (is_true x) in *.
-Ltac fold_is_true :=
-  repeat match goal with
-         | [ H : context[?x = true] |- _ ] => fold_is_true' x
-         | [ |- context[?x = true] ] => fold_is_true' x
-         end.
-
 (** Get access to an abstracted, non-re-typechecked version of a vm-computed lemma *)
 Class eq_refl_vm_cast T := by_vm_cast : T.
 Global Hint Extern 0 (eq_refl_vm_cast _) => clear; abstract (vm_compute; reflexivity) : typeclass_instances.
@@ -1920,110 +1739,15 @@ Global Hint Extern 0 (@eq_refl_vm_cast_l ?T ?x ?y) => clear; abstract (vm_cast_n
 Class eq_refl_vm_cast_r {T} (x y : T) := by_vm_cast_r : x = y.
 Global Hint Extern 0 (@eq_refl_vm_cast_r ?T ?x ?y) => clear; abstract (vm_cast_no_check (@eq_refl T y)) : typeclass_instances.
 
-(** destruct discriminees of [match]es in the goal *)
-(* Prioritize breaking apart things in the context, then things which
-   don't need equations, then simple matches (which can be displayed
-   as [if]s), and finally matches in general. *)
-Ltac set_match_refl v' only_when :=
-  lazymatch goal with
-  | [ |- context G[match ?e with _ => _ end eq_refl] ]
-    => only_when e;
-       let T := fresh in
-       evar (T : Type); evar (v' : T);
-       subst T;
-       let vv := (eval cbv delta [v'] in v') in
-       let G' := context G[vv] in
-       let G''' := context G[v'] in
-       lazymatch goal with |- ?G'' => unify G' G'' end;
-       change G'''
-  end.
-Ltac set_match_refl_hyp v' only_when :=
-  lazymatch goal with
-  | [ H : context G[match ?e with _ => _ end eq_refl] |- _ ]
-    => only_when e;
-       let T := fresh in
-       evar (T : Type); evar (v' : T);
-       subst T;
-       let vv := (eval cbv delta [v'] in v') in
-       let G' := context G[vv] in
-       let G''' := context G[v'] in
-       let G'' := type of H in
-       unify G' G'';
-       change G''' in H
-  end.
-Ltac destruct_by_existing_equation match_refl_hyp :=
-  let v := (eval cbv delta [match_refl_hyp] in match_refl_hyp) in
-  lazymatch v with
-  | match ?e with _ => _ end (@eq_refl ?T ?e)
-    => let H := fresh in
-       let e' := fresh in
-       pose e as e';
-       change e with e' in (value of match_refl_hyp) at 1;
-       first [ pose (@eq_refl T e : e = e') as H;
-               change (@eq_refl T e) with H in (value of match_refl_hyp);
-               clearbody H e'
-             | pose (@eq_refl T e : e' = e) as H;
-               change (@eq_refl T e) with H in (value of match_refl_hyp);
-               clearbody H e' ];
-       destruct e'; subst match_refl_hyp
-  end.
-Ltac destruct_rewrite_sumbool e :=
-  let H := fresh in
-  destruct e as [H|H];
-  try lazymatch type of H with
-      | ?LHS = ?RHS
-        => rewrite ?H; rewrite ?H in *;
-           repeat match goal with
-                  | [ |- context G[LHS] ]
-                    => let LHS' := fresh in
-                       pose LHS as LHS';
-                       let G' := context G[LHS'] in
-                       change G';
-                       replace LHS' with RHS by (subst LHS'; symmetry; apply H);
-                       subst LHS'
-                  end
-      end.
-Ltac break_match_step only_when :=
-  match goal with
-  | [ |- appcontext[match ?e with _ => _ end] ]
-    => only_when e; is_var e; destruct e
-  | [ |- appcontext[match ?e with _ => _ end] ]
-    => only_when e;
-       match type of e with
-       | sumbool _ _ => destruct_rewrite_sumbool e
-       end
-  | [ |- appcontext[if ?e then _ else _] ]
-    => only_when e; destruct e eqn:?
-  | [ |- appcontext[match ?e with _ => _ end] ]
-    => only_when e; destruct e eqn:?
-  | _ => let v := fresh in set_match_refl v only_when; destruct_by_existing_equation v
-  end.
-Ltac break_match_hyps_step only_when :=
-  match goal with
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
-    => only_when e; is_var e; destruct e
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
-    => only_when e;
-       match type of e with
-       | sumbool _ _ => destruct_rewrite_sumbool e
-       end
-  | [ H : appcontext[if ?e then _ else _] |- _ ]
-    => only_when e; destruct e eqn:?
-  | [ H : appcontext[match ?e with _ => _ end] |- _ ]
-    => only_when e; destruct e eqn:?
-  | _ => let v := fresh in set_match_refl_hyp v only_when; destruct_by_existing_equation v
-  end.
-Ltac break_match := repeat break_match_step ltac:(fun _ => idtac).
-Ltac break_match_hyps := repeat break_match_hyps_step ltac:(fun _ => idtac).
-Ltac break_match_when_head_step T :=
-  break_match_step
-    ltac:(fun e => let T' := type of e in
-                   let T' := head T' in
-                   constr_eq T T').
-Ltac break_match_hyps_when_head_step T :=
-  break_match_hyps_step
-    ltac:(fun e => let T' := type of e in
-                   let T' := head T' in
-                   constr_eq T T').
-Ltac break_match_when_head T := repeat break_match_when_head_step T.
-Ltac break_match_hyps_when_head T := repeat break_match_hyps_when_head_step T.
+Ltac uneta_fun :=
+  repeat match goal with
+         | [ |- appcontext[fun ch : ?T => ?f ch] ]
+           => progress change (fun ch : T => f ch) with f
+         end.
+Ltac uneta_fun_in_hyps :=
+  repeat match goal with
+         | [ H : appcontext[fun ch : ?T => ?f ch] |- _ ]
+           => progress change (fun ch : T => f ch) with f in H
+         | [ H := appcontext[fun ch : ?T => ?f ch] |- _ ]
+           => progress change (fun ch : T => f ch) with f in (value of H)
+         end.

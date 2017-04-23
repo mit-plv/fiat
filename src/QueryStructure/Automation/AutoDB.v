@@ -476,6 +476,19 @@ Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
       assert (List.In (@Build_KindIndex SC EqualityIndex fd) indexed_attrs) as H
           by (clear; subst_all; simpl; intuition eauto); clear H;
       k ((@Build_KindIndex SC EqualityIndex fd), X) (fun _ : @RawTuple SC => true)
+    | forall a, {?X = GetAttribute _ ?fd} + {_} =>
+      let H := fresh in
+      let fd' := (eval simpl in (ibound (indexb fd))) in
+      assert (List.In (@Build_KindIndex SC EqualityIndex fd') indexed_attrs) as H
+          by (clear; subst_all; simpl; intuition eauto); clear H;
+      k ((@Build_KindIndex SC EqualityIndex fd'), X) (fun _ : @RawTuple SC => true)
+    | forall a, {GetAttribute _ ?fd = ?X} + {_} =>
+      let H := fresh in
+      let fd' := (eval simpl in (ibound (indexb fd))) in
+      assert (List.In (@Build_KindIndex SC EqualityIndex fd') indexed_attrs) as H
+          by (clear; subst_all; simpl; intuition eauto); clear H;
+      k ((@Build_KindIndex SC EqualityIndex fd'), X) (fun _ : @RawTuple SC => true)
+
 
     | _ => ClauseMatch SC F indexed_attrs f k
 

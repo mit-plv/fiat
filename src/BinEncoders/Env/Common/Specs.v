@@ -34,14 +34,15 @@ Section Specifications.
              (encode : A -> CacheEncode -> Comp (B * CacheEncode))
              (decode : B -> CacheDecode -> option (A * B * CacheDecode))
              (decode_inv : CacheDecode -> Prop) :=
-    (forall env env' xenv data bin ext,
-      Equiv env env' ->
-      predicate data ->
-      rest_predicate data ext ->
-      encode data env ↝ (bin, xenv) ->
-      exists xenv',
-        decode (transform bin ext) env' = Some (data, ext, xenv')
-        /\ Equiv xenv xenv') /\
+    (forall env env' xenv data bin ext
+            (env_OK : decode_inv env'),
+        Equiv env env' ->
+        predicate data ->
+        rest_predicate data ext ->
+        encode data env ↝ (bin, xenv) ->
+        exists xenv',
+          decode (transform bin ext) env' = Some (data, ext, xenv')
+          /\ Equiv xenv xenv' /\ decode_inv xenv') /\
     (forall env env' xenv' data bin ext,
         Equiv env env'
         -> decode_inv env'
@@ -109,6 +110,25 @@ Section Specifications.
   Qed.
 
 End Specifications.
+
+Lemma DecodeBindOpt2_assoc {A B C D E F G} :
+  forall (a_opt : option (A * B * D))
+         (f : A -> B -> D -> option (C * E * D))
+         (g : C -> E -> D -> option (F * G * D)),
+    DecodeBindOpt2 (DecodeBindOpt2 a_opt f) g =
+    DecodeBindOpt2 a_opt (fun a b c => DecodeBindOpt2 (f a b c) g).
+Proof.
+  destruct a_opt as [ [ [? ?] ?] | ]; simpl; intros; eauto.
+Qed.
+
+Lemma DecodeBindOpt2_under_bind {A B C D E} :
+  forall (a_opt : option (A * B * D))
+         (f f' : A -> B -> D -> option (C * E * D)),
+         (forall a b d, f a b d = f' a b d)
+         -> DecodeBindOpt2 a_opt f = DecodeBindOpt2 a_opt f'.
+Proof.
+  destruct a_opt as [ [ [? ?] ?] | ]; simpl; intros; eauto.
+Qed.
 
 Add Parametric Morphism
     A B
@@ -276,3 +296,90 @@ Notation "`( a , b ) <- c ; k" :=
 
 Open Scope binencoders_scope.
 Global Unset Implicit Arguments.
+
+Definition CorrectDecoderFor {A B} {cache : Cache}
+           {transformer : Transformer B} Invariant FormatSpec :=
+{ decodePlusCacheInv |
+      exists P_inv,
+        (cache_inv_Property (snd decodePlusCacheInv) P_inv
+         -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+                                    FormatSpec
+                                    (fst decodePlusCacheInv)
+                                    (snd decodePlusCacheInv))
+        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+
+Lemma Start_CorrectDecoderFor
+      {A B} {cache : Cache}
+      {transformer : Transformer B}
+      Invariant
+      FormatSpec
+      (decoder decoder_opt : B -> CacheDecode -> option (A * B * CacheDecode))
+      (cache_inv : CacheDecode -> Prop)
+      (P_inv : (CacheDecode -> Prop) -> Prop)
+      (decoder_OK :
+         cache_inv_Property cache_inv P_inv
+         -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+                                    FormatSpec decoder cache_inv)
+      (cache_inv_OK : cache_inv_Property cache_inv P_inv)
+      (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
+  : @CorrectDecoderFor A B cache transformer Invariant FormatSpec.
+Proof.
+  exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
+  unfold encode_decode_correct_f in *; intuition; intros.
+  - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
+    rewrite decoder_opt_OK in H6; eauto.
+  - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
+  - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.
+Defined.
+
+(* Shorthand for nondeterministically decoding a value. *)
+Definition Pick_Decoder_For
+      {A B} {cache : Cache}
+      {transformer : Transformer B}
+      Invariant
+      FormatSpec
+      (b : B)
+      (ce : CacheEncode)
+  := {a : option A |
+            forall a' : A,
+              a = Some a' <->
+              (exists b1 b2 (ce' : CacheEncode),
+                  computes_to (FormatSpec a' ce) (b1, ce')
+                  /\ b = transform b1 b2
+                  /\ Invariant a')}%comp.
+
+Lemma refine_Pick_Decoder_For
+      {A B} {cache : Cache}
+      {transformer : Transformer B} {Invariant}
+      {FormatSpec}
+      (decoderImpl : @CorrectDecoderFor A B cache transformer Invariant FormatSpec)
+  : forall b ce cd,
+    Equiv ce cd
+    -> snd (projT1 decoderImpl) cd
+    -> refine (Pick_Decoder_For Invariant FormatSpec b ce)
+           (ret match fst (projT1 decoderImpl) b cd
+                           with
+                           | Some (a, _, _) => Some a
+                           | None => None
+                           end).
+Proof.
+  intros.
+  pose proof (projT2 (decoderImpl)).
+  cbv beta in H1.
+  destruct_ex; intuition.
+  destruct H1.
+  intros v Comp_v; computes_to_inv; subst;
+    apply PickComputes; intros.
+  split; intros.
+  - destruct (fst (projT1 decoderImpl) b cd) as [ [ [? ?] ?] | ] eqn: ?; try discriminate.
+    injections.
+    eapply H2 in Heqo; eauto.
+    destruct Heqo as [? [? [? [? ?] ] ] ].
+    intuition.
+    subst.
+    eexists _, _, _ ; split; eauto.
+  - destruct_ex; intuition; subst.
+    eapply H1 in H5; eauto.
+    destruct_ex; intuition.
+    rewrite H5; reflexivity.
+Qed.

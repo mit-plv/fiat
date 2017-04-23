@@ -451,7 +451,7 @@ Section IndexedImpl.
                  => apply refine_under_bind_both; [ | reflexivity ]
                | [ |- refine { a : _ | _ } { b : _ | _ } ]
                  => apply refine_pick_pick
-               | _ => progress specialize_by ltac:(exact eq_refl)
+               | _ => progress specialize_by (exact eq_refl)
                | _ => solve [ eauto with nocore ]
                | [ H : rdp_list_to_production idx = ?x |- context[?x] ]
                  => rewrite <- H
@@ -1096,13 +1096,13 @@ Section IndexedImpl.
              | [ H : length ?x = _, H' : context[length ?x] |- _ ]
                => rewrite H in H'
              | _ => progress specialize_by assumption
-             | _ => progress specialize_by ltac:(left; reflexivity)
-             | _ => progress specialize_by ltac:(right; assumption)
+             | _ => progress specialize_by (left; reflexivity)
+             | _ => progress specialize_by (right; assumption)
              | [ H : context[length (substring _ 0 _)] |- _ ]
                => rewrite substring_length in H
              | _ => solve [ eauto with nocore ]
              | _ => progress safe_setoid_subst_beq_r
-             | _ => progress specialize_by ltac:(exact eq_refl)
+             | _ => progress specialize_by (exact eq_refl)
              | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
              end. }
     { repeat match goal with
@@ -1123,11 +1123,11 @@ Section IndexedImpl.
              | [ H : length ?x = _, H' : context[length ?x] |- _ ]
                => rewrite H in H'
              | _ => progress specialize_by assumption
-             | _ => progress specialize_by ltac:(left; reflexivity)
-             | _ => progress specialize_by ltac:(right; assumption)
+             | _ => progress specialize_by (left; reflexivity)
+             | _ => progress specialize_by (right; assumption)
              | _ => solve [ eauto with nocore ]
              | _ => progress safe_setoid_subst_beq_r
-             | _ => progress specialize_by ltac:(exact eq_refl)
+             | _ => progress specialize_by (exact eq_refl)
              | [ H : ?x = ?y |- _ ] => is_var y; progress subst y
              end. }
   Qed.

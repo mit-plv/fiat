@@ -22,15 +22,15 @@ Require Import Coq.Strings.String
         Fiat.QueryStructure.Implementation.Operations.General.QueryRefinements
         Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
         Fiat.QueryStructure.Implementation.Operations.General.DeleteRefinements.
- (* Add Update *)
+(* Add Update *)
 
 Lemma Constructor_DropQSConstraints {MySchema} {Dom}
-: forall oldConstructor (d : Dom),
+  : forall oldConstructor (d : Dom),
     refine
       (or' <- oldConstructor d;
-       {nr' |
+         {nr' |
           DropQSConstraints_AbsR (qsSchema := MySchema) or' nr'})
-        (or' <- oldConstructor d;
+      (or' <- oldConstructor d;
          ret (DropQSConstraints or')).
 Proof.
   unfold refine; intros; computes_to_inv.
@@ -48,8 +48,8 @@ Qed.
 Lemma refine_For_In_Empty  :
   forall ResultT MySchema R bod,
     refine (Query_For (@UnConstrQuery_In ResultT _
-                                   (DropQSConstraints (QSEmptySpec MySchema))
-                                   R bod))
+                                         (DropQSConstraints (QSEmptySpec MySchema))
+                                         R bod))
            (ret []).
 Proof.
   intros; rewrite refine_For.
@@ -68,18 +68,18 @@ Proof.
 Qed.
 
 Lemma Ensemble_List_Equivalence_Insert {A}
-: forall (a : @IndexedElement A) (Ens : @IndexedEnsemble A),
+  : forall (a : @IndexedElement A) (Ens : @IndexedEnsemble A),
     ~ In _ (fun idx => exists a', In _ Ens a' /\ elementIndex a' = elementIndex a) a ->
     refine {l |
             UnIndexedEnsembleListEquivalence (EnsembleInsert a Ens) l}
            (l <- { l |
                    UnIndexedEnsembleListEquivalence Ens l};
-            ret ((indexedElement a) :: l) ).
+              ret ((indexedElement a) :: l) ).
 Proof.
   unfold UnIndexedEnsembleListEquivalence, refine, In,
   EnsembleInsert; intros.
-   computes_to_inv; subst; computes_to_econstructor.
-   destruct_ex; simpl; intuition.
+  computes_to_inv; subst; computes_to_econstructor.
+  destruct_ex; simpl; intuition.
   exists (a :: x).
   intuition; subst; simpl; eauto.
   right; eapply H0; eauto.
@@ -93,7 +93,7 @@ Proof.
 Qed.
 
 Lemma refine_For_In_Insert
-: forall ResultT MySchema R or a tup bod,
+  : forall ResultT MySchema R or a tup bod,
     (forall tup, GetUnConstrRelation or R tup -> RawTupleIndex tup <> a)
     -> refine (Query_For
                  (@UnConstrQuery_In
@@ -105,10 +105,10 @@ Lemma refine_For_In_Insert
                                        (GetUnConstrRelation or R)))
                     R bod))
               (newResults <- bod tup;
-               origResults <- (Query_For
-                                 (@UnConstrQuery_In
-                                    ResultT MySchema or R bod));
-               {l | Permutation.Permutation (newResults ++ origResults) l}).
+                 origResults <- (Query_For
+                                   (@UnConstrQuery_In
+                                      ResultT MySchema or R bod));
+                 {l | Permutation.Permutation (newResults ++ origResults) l}).
 Proof.
   intros; rewrite refine_For.
   unfold UnConstrQuery_In,
@@ -129,12 +129,44 @@ Proof.
     eapply H; eauto.
 Qed.
 
-  Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
-    forall x,
-      Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
-      Ensembles.In _ new_contents x.
-  Proof.
-    unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
-    intros. rewrite ith_replace2_Index_eq;
+Lemma get_update_unconstr_iff {db_schema qs table new_contents} :
+  forall x,
+    Ensembles.In _ (GetUnConstrRelation (@UpdateUnConstrRelation db_schema qs table new_contents) table) x <->
+    Ensembles.In _ new_contents x.
+Proof.
+  unfold GetUnConstrRelation, UpdateUnConstrRelation, EnsembleInsert.
+  intros. rewrite ith_replace2_Index_eq;
             reflexivity.
-  Qed.
+Qed.
+
+Lemma DropQSConstraints_AbsR_SatisfiesTupleConstraints
+  : forall {qs_schema} r_o r_n,
+    @DropQSConstraints_AbsR qs_schema r_o r_n
+    -> forall idx tup tup',
+      elementIndex tup <> elementIndex tup'
+      -> GetUnConstrRelation r_n idx tup
+      -> GetUnConstrRelation r_n idx tup'
+      -> SatisfiesTupleConstraints idx (indexedElement tup) (indexedElement tup').
+Proof.
+  intros. rewrite <- H in *.
+  unfold SatisfiesTupleConstraints, GetNRelSchema,
+  GetUnConstrRelation, DropQSConstraints in *.
+  generalize (rawTupleconstr (ith2 (rawRels r_o) idx)).
+  rewrite <- ith_imap2 in *.
+  destruct (tupleConstraints (Vector.nth (qschemaSchemas qs_schema) idx)); eauto.
+Qed.
+
+Lemma DropQSConstraints_AbsR_SatisfiesAttribute
+  : forall {qs_schema} r_o r_n,
+    @DropQSConstraints_AbsR qs_schema r_o r_n
+    -> forall idx tup,
+      GetUnConstrRelation r_n idx tup
+      -> SatisfiesAttributeConstraints idx (indexedElement tup).
+Proof.
+  intros. rewrite <- H in *.
+  unfold SatisfiesAttributeConstraints, GetNRelSchema,
+  GetUnConstrRelation, DropQSConstraints in *.
+  generalize (rawAttrconstr (ith2 (rawRels r_o) idx)).
+  rewrite <- ith_imap2 in *.
+  destruct (attrConstraints (Vector.nth (qschemaSchemas qs_schema) idx)); eauto.
+Qed.

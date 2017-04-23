@@ -68,6 +68,7 @@ Proof.
   intuition.
 Qed.
 
+(** TODO FIXME: These instances take priority when they should not! *)
 Add Parametric Relation (A: Type) : (list A) (@SetEq A)
     reflexivity proved by SetEq_Reflexive
     symmetry proved by SetEq_Symmetric

@@ -1,5 +1,7 @@
 open Transparent_abstract_tactics
-open Constrarg
+open Stdarg
+open Ltac_plugin
+open Tacarg
 
     (*
 

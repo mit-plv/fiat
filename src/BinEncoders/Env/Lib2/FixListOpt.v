@@ -26,8 +26,8 @@ Section FixList.
     match xs with
     | nil => ret (transform_id, ce)
     | x :: xs' => `(b1, env1) <- A_encode_Spec x ce;
-                    `(b2, env2) <- encode_list_Spec xs' env1;
-                    ret (transform b1 b2, env2)
+                  `(b2, env2) <- encode_list_Spec xs' env1;
+                  ret (transform b1 b2, env2)
     end%comp.
 
   Fixpoint encode_list_Impl
@@ -73,7 +73,7 @@ Section FixList.
   Proof.
     split.
     {
-      intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
+      intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
       intuition; subst.
       revert H0.
       generalize dependent env. generalize dependent env'.
@@ -88,12 +88,12 @@ Section FixList.
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) Eeq H H' Penc) as [ ? [? ?] ].
+        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
         intuition; destruct_ex.
         eapply H1; eauto.
         setoid_rewrite <- transform_assoc; setoid_rewrite H1;
           simpl.
-        destruct (IHl (proj2 Ppred_rest) b0 xenv x c); intuition eauto.
+        destruct (IHl (proj2 Ppred_rest) b0 xenv x xenv_OK c); intuition eauto.
         setoid_rewrite H6; simpl.
         eexists; intuition.
       }

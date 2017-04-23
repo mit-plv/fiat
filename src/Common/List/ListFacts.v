@@ -1268,7 +1268,7 @@ Section ListFacts.
         try (exfalso; clear -H''; abstract congruence);
         simpl in *.
       destruct_head prod.
-      specialize_by ltac:(repeat first [ assumption | constructor ]).
+      specialize_by (repeat first [ assumption | constructor ]).
       repeat first [ assumption | constructor ].
       apply (f_equal (hd x)) in H''.
       apply (f_equal (hd x)) in H'.
@@ -1846,7 +1846,7 @@ Section ListFacts.
                | _ => progress subst
                | _ => progress split_and
                | [ H : _::_ = _::_ |- _ ] => inversion H; clear H
-               | _ => progress specialize_by ltac:(exact eq_refl)
+               | _ => progress specialize_by (exact eq_refl)
                | _ => congruence
                | [ H : forall y, ?a = y \/ _ -> _ = y |- _ ]
                  => pose proof (H _ (or_introl eq_refl)); subst a
@@ -1872,7 +1872,7 @@ Section ListFacts.
                | [ |- ?x::_ = ?x::_ ] => apply f_equal
                | [ H : ?x::_ = ?x::_ -> _ |- _ ] => specialize (fun H' => H (f_equal (cons x) H'))
                | [ Heq : uniquize ?beq ?ls = _::_, H' : In ?x ?ls -> _ |- _ ]
-                 => progress specialize_by ltac:(apply (ListFacts.uniquize_In _ beq);
+                 => progress specialize_by (apply (ListFacts.uniquize_In _ beq);
                                                  rewrite Heq; first [ left; reflexivity
                                                                     | right; assumption ])
                | _ => progress destruct_head False
@@ -2203,7 +2203,7 @@ Section ListFacts.
              => apply H in H'
            | [ H0 : ?R ?x ?y, H1 : ?R ?y ?z, H2 : ?R ?z ?x -> False |- _ ]
              => exfalso; apply H2; symmetry; etransitivity; eassumption
-           | _ => progress specialize_by ltac:(constructor; assumption)
+           | _ => progress specialize_by (constructor; assumption)
            | _ => progress split_iff
            | _ => progress split_and
            | [ HE : Equivalence ?R, H : InA ?R ?x ?ls -> False, H' : InA ?R ?y ?ls, H'' : ?R ?x ?y |- _ ]
@@ -2290,5 +2290,72 @@ Section ListFacts.
   Proof.
     hnf.
     erewrite <- remove_length_eq_S; [ reflexivity | .. ]; try eassumption.
+  Qed.
+
+  Lemma in_map_rev A B (f : A -> B) x ls
+    : List.In x (List.map f (List.rev ls)) <-> List.In x (List.map f ls).
+  Proof.
+    rewrite map_rev, <- in_rev; reflexivity.
+  Qed.
+
+  Lemma fold_right_push_iff {A} (f : A -> A -> A) (g : Prop -> Prop -> Prop)
+        (Q : A -> Prop) (x : A) xs
+        (Hfg : forall x y, Q (f x y) <-> g (Q x) (Q y))
+        (g_Proper : forall x, Proper (iff ==> iff) (g x))
+    : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
+  Proof.
+    induction xs; [ reflexivity | ].
+    simpl.
+    rewrite Hfg, IHxs; reflexivity.
+  Qed.
+
+  Lemma fold_right_push_iff' {A} (f : A -> A -> A) (g : Prop -> Prop -> Prop)
+        (Q : A -> Prop) (x : A) xs
+        (Hfg : forall x y, Q (f x y) <-> g (Q x) (Q y))
+        {g_Proper : Proper (iff ==> iff ==> iff) g}
+    : Q (fold_right f x xs) <-> fold_right g (Q x) (List.map Q xs).
+  Proof.
+    apply fold_right_push_iff; try assumption.
+    exact _.
+  Qed.
+
+  Lemma forall_In_map {A B} {P : B -> Prop} (f : A -> B) ls
+    : (forall x, List.In x (List.map f ls) -> P x) <-> (forall x, List.In x ls -> P (f x)).
+  Proof.
+    induction ls as [|?? IHls]; simpl; intuition (subst; auto).
+  Qed.
+
+  Lemma InA_map_iff {A B} (f : A -> B) eqv x ls a
+    : f a = x -> (InA eqv x (List.map f ls) <-> InA (fun a b => eqv (f a) (f b)) a ls).
+  Proof.
+    intro; subst.
+    rewrite !InA_alt.
+    setoid_rewrite in_map_iff.
+    firstorder (subst; eauto).
+  Qed.
+
+  Lemma NoDupA_map_iff {A B} eqv (f : A -> B) ls
+    : NoDupA eqv (List.map f ls) <-> NoDupA (fun x y => eqv (f x) (f y)) ls.
+  Proof.
+    remember (List.map f ls) as fls eqn:Heq.
+    split; intro H; first [ revert ls Heq | subst fls ]; induction H using NoDupA_ind; simpl;
+      repeat match goal with
+             | _ => intro
+             | [ H : nil = List.map _ ?ls |- _ ]
+               => is_var ls; destruct ls
+             | [ H : cons _ _ = List.map _ ?ls |- _ ]
+               => is_var ls; destruct ls
+             | _ => progress simpl in *
+             | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
+             | _ => progress subst
+             | _ => congruence
+             | [ H : context[InA (fun x y => ?eqv (?f x) (?f y)) _ _] |- _ ]
+               => erewrite <- (@InA_map_iff _ _ f eqv) in H by reflexivity
+             | [ |- context[InA (fun x y => ?eqv (?f x) (?f y)) _ _] ]
+               => erewrite <- (@InA_map_iff _ _ f eqv) by reflexivity
+             | _ => apply NoDupA_nil
+             | _ => apply NoDupA_cons
+             | _ => solve [ eauto ]
+             end.
   Qed.
 End ListFacts.

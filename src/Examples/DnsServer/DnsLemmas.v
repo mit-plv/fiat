@@ -145,6 +145,12 @@ Qed.
 (* implement the DNS record constraint check as code that counts the number of occurrences of
 the constraint being broken (refines the boolean x1 in AddData) *)
 
+Instance Query_eq_DomainName :
+  Query_eq DomainName.
+unfold DomainName, Label;
+  auto with typeclass_instances.
+Qed.
+
 Lemma refine_count_constraint_broken :
   forall (n : resourceRecord) (r : UnConstrQueryStructure DnsSchema),
     refine {b |
@@ -185,7 +191,7 @@ Proof.
                                      | eauto]
                              |
                              assert (DecideableEnsemble P') as H2;
-                             [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                             [ simpl; auto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
                              | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
   remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
     [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
@@ -234,18 +240,18 @@ Proof.
     + simpl; intros; computes_to_inv; subst; reflexivity.
     + simpl; intros; computes_to_inv; subst; apply IHv0 in H'0'; clear IHv0.
       destruct (@dec _ P' P'_dec a) eqn: dec_a; unfold Query_Where in *; destruct H'0.
-      * pose proof dec_a as dec_a'; apply dec_decides_P in dec_a.
+      * pose proof dec_a as dec_a'; rewrite dec_decides_P in dec_a.
         repeat computes_to_inv; repeat computes_to_econstructor.
         intuition eauto. eauto.
         apply eq_ret_compute; destruct (@dec _ P P_dec a) eqn: dec__a.
-        apply dec_decides_P in dec__a; apply H in dec__a;
+        rewrite dec_decides_P in dec__a; apply H in dec__a;
           computes_to_inv; subst; simpl; rewrite dec_a'; reflexivity.
         apply Decides_false in dec__a; apply H0 in dec__a; subst; reflexivity.
       * pose proof dec_a as dec_a'; apply Decides_false in dec_a.
         repeat computes_to_inv; repeat computes_to_econstructor.
         intuition eauto. eauto.
         apply eq_ret_compute; destruct (@dec _ P P_dec a) eqn: dec__a.
-        apply dec_decides_P in dec__a; apply H in dec__a;
+        rewrite dec_decides_P in dec__a; apply H in dec__a;
           computes_to_inv; subst; simpl; rewrite dec_a'; reflexivity.
         apply Decides_false in dec__a; apply H0 in dec__a; subst; reflexivity.
   - refine pick val _; auto; subst.
@@ -353,11 +359,11 @@ Proof.
                                      | eauto]
                              |
                              assert (DecideableEnsemble P') as H2;
-                             [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
+                             [ simpl (* Discharge DecideableEnsemble w/ intances. *)
                              | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-(* apply @DecideableEnsemble_And.  apply DecideableEnsemble_EqDec.
-  apply Query_eq_list. apply DecideableEnsemble_EqDec. apply Query_eq_RRecordType.
-  Print Instances DecideableEnsemble. *)
+  apply @DecideableEnsemble_And.  apply DecideableEnsemble_EqDec.
+  auto with typeclass_instances.
+  apply DecideableEnsemble_EqDec. apply Query_eq_RRecordType.
  simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
 Qed.
@@ -526,7 +532,6 @@ Proof.
   eapply H; intros.
   destruct H1; intuition.
 Qed.
-
 
 Opaque Query_For.
 
@@ -779,8 +784,7 @@ this is because x is a list of tuples that all came from r *)
   assert (List.In t' x).
   { eapply Permutation_in. apply H7. auto. }
   simpl in H5.
-
-  eapply refine_Intersection_Where in H5; eauto with typeclass_instances.
+  eapply refine_Intersection_Where in H5.
   unfold QueryResultComp in H5; computes_to_inv.
   destruct H5 as [x' [Equiv [Equiv' Equiv''] ] ].
   rewrite <- Equiv in *.
@@ -816,3 +820,75 @@ this is because x is a list of tuples that all came from r *)
   apply Equiv' in H15; destruct H15;  apply H15.
   apply DecideableEnsemble_bool.
 Qed.
+
+Lemma refine_beq_RRecordType_dec :
+  forall rr : resourceRecord,
+    refine {b | decides b (rr!sTYPE = CNAME)}
+           (ret (beq_RRecordType rr!sTYPE CNAME)).
+Proof.
+  intros; rewrite <- beq_RRecordType_dec.
+  intros; refine pick val _.
+  finish honing.
+  find_if_inside; simpl; eauto.
+Qed.
+
+Lemma refine_noDup_CNAME_check :
+  forall (rr : resourceRecord)
+         (R : @IndexedEnsemble resourceRecord),
+  (forall tup tup' : IndexedElement,
+          elementIndex tup <> elementIndex tup' ->
+          R tup ->
+          R tup' ->
+          (indexedElement tup)!sNAME = (indexedElement tup')!sNAME
+          -> (indexedElement tup)!sTYPE <> CNAME)
+  -> refine {b |
+            decides b
+                    (forall tup',
+                        R tup' ->
+                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
+           (If (beq_RRecordType rr!sTYPE CNAME)
+               Then count <- Count
+               For
+               (QueryResultComp R
+                                (fun tup => Where (rr!sNAME = tup!sNAME)
+                                                  Return tup )%QueryImpl);
+                  ret (beq_nat count 0) Else ret true).
+Proof.
+  intros.
+    intros; setoid_rewrite refine_pick_decides at 1;
+    [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
+    setoid_rewrite refine_beq_RRecordType_dec; simplify with monad laws.
+    apply refine_If_Then_Else; eauto.
+    setoid_rewrite refine_constraint_check_into_QueryResultComp with (P := fun tup => rr!sNAME = tup!sNAME).
+    rewrite refineEquiv_bind_bind.
+    f_equiv.
+    unfold pointwise_relation; intros; simplify with monad laws;
+      rewrite <- negb_involutive_reverse; reflexivity.
+    auto with typeclass_instances.
+    intuition.
+    reflexivity.
+Qed.
+
+Corollary refine_noDup_CNAME_check_dns :
+  forall (rr : resourceRecord) r_o r_n,
+    @DropQSConstraints_AbsR DnsSchema r_o r_n
+  -> refine {b |
+            decides b
+                    (forall tup',
+                        (GetUnConstrRelation r_n Fin.F1) tup' ->
+                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
+           (If (beq_RRecordType rr!sTYPE CNAME)
+               Then count <- Count
+               For
+               (UnConstrQuery_In r_n Fin.F1
+                                (fun tup => Where (rr!sNAME = tup!sNAME)
+                                                  Return tup )%QueryImpl);
+                  ret (beq_nat count 0) Else ret true).
+Proof.
+  intros; eapply refine_noDup_CNAME_check.
+  intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
+Qed.
+
+Instance ADomainName_eq : Query_eq DomainName := Astring_eq.
+Instance ARRecordType_eq : Query_eq RRecordType :=
+  {| A_eq_dec := fin_eq_dec |}.

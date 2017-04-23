@@ -120,14 +120,14 @@ Lemma compose_encode_correct
           decode2 proj rest env') P.
 Proof.
   unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
-    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
+    destruct (fun H' => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm (pred_pf _ pred_pm) H' com_pf); intuition; simpl in *; injections; eauto.
     setoid_rewrite <- transform_assoc; rewrite H2.
     simpl.
     destruct (fun H'' => proj1 (decode2_pf (project data) (pred_pf _ pred_pm) H1)
-                               _ _ _ _ _ ext H3 (conj pred_pm (eq_refl _)) H'' com_pf');
+                               _ _ _ _ _ ext H4 H (conj pred_pm (eq_refl _)) H'' com_pf');
       intuition; simpl in *; injections.
     eauto. }
   { intros.
@@ -205,17 +205,17 @@ Lemma compose_encode_correct_no_dep
           (if A_eq_dec a a' then decode2 rest env' else None)) P.
 Proof.
   unfold cache_inv_Property in *; split.
-  { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
+  { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
     unfold compose, Bind2 in com_pf; computes_to_inv; destruct v;
       destruct v0.
-    destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_pm predicate_a' H com_pf); intuition; simpl in *; injections.
+    destruct (fun H => proj1 (decode1_pf (proj1 P_inv_pf)) _ _ _ _ _ (transform b0 ext) env_OK env_pm predicate_a' H com_pf); intuition; simpl in *; injections.
     eapply predicate_rest_impl; eauto.
     setoid_rewrite <- transform_assoc; rewrite H2.
     simpl.
     destruct (A_eq_dec a' a'); try congruence.
     subst.
-    destruct (fun H => proj1 H5 (*decode2_pf _ (conj (eq_refl _) predicate_a') H1*)
-                    _ _ _ _ _ ext H3 pred_pm H com_pf');
+    destruct (fun H => proj1 H6 (*decode2_pf _ (conj (eq_refl _) predicate_a') H1*)
+                    _ _ _ _ _ ext H4 H pred_pm pred_pm_rest com_pf');
       intuition; simpl in *; injections.
     eauto. }
   { intros.
@@ -283,9 +283,13 @@ Lemma decides_eq_refl {A} :
 Proof. simpl in *; intuition. Qed.
 
 Lemma decides_dec_eq {A} :
-  forall(dec' : forall a a', {a = a'} + {a <> a'})
-        (a a' : A), decides (if (dec' a a') then true else false) (a = a').
-Proof. simpl in *; intros; destruct (dec' a a'); simpl; intuition. Qed.
+  forall (A_eqb : A -> A -> bool)
+         (A_eqb_sound : forall a a', a = a' <-> A_eqb a a' = true)
+        (a a' : A), decides (A_eqb a a') (a = a').
+Proof.
+  simpl in *; intros; pose proof (A_eqb_sound a a');
+    destruct (A_eqb a a'); simpl; intuition.
+Qed.
 
 Lemma decides_dec_lt
   : forall n n', decides (if (Compare_dec.lt_dec n n') then true else false) (lt n n').
