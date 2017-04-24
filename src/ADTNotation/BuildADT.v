@@ -129,7 +129,7 @@ Notation "'Def' 'Constructor' id x1 .. xn : 'rep' := bod" :=
 
 Notation "'Def' 'Constructor' id : 'rep' := bod" :=
   (Build_methDef
-     _ {| methID := id; methArity := 0; methDom := []; methDom := None |} bod%comp)
+     _ {| methID := id; methArity := 0; methDom := []; methCod := None |} bod%comp)
     (no associativity, at level 94, id at level 0,
      format "'Def'  'Constructor'  id :  'rep'  :=  '/' '[  '   bod ']' " ) :
     methDef_scope.
