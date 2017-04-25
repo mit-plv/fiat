@@ -15,36 +15,22 @@ Require Import
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
         Fiat.QueryStructure.Automation.IndexSelection
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms
+        Fiat.QueryStructure.Automation.SearchTerms.FindStringPrefixSearchTerms
         Fiat.QueryStructure.Automation.QSImplementation.
 
 Require Import
         Bedrock.Word
-        Fiat.BinEncoders.Env.Common.Specs.
+        Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.BinLib.Core
+        Fiat.BinEncoders.Env.Examples.DnsOpt
+        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
 
 Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.AuthoritativeDNSSchema
-        Fiat.BinEncoders.Env.Examples.DnsOpt
-        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
+        Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
 
 Section BinaryDns.
-
-  Variable cache : Cache.
-  Variable cacheAddNat : CacheAdd cache nat.
-  Variable cacheAddDNPointer : CacheAdd cache (string * pointerT).
-  Variable cacheGetDNPointer : CacheGet cache string pointerT.
-  Variable cachePeekDNPointer : CachePeek cache pointerT.
-  Variable IndependentCaches :
-    forall env p (b : nat),
-      getD (addD env b) p = getD env p.
-  Variable GetCacheAdd_1 :
-    forall env (p : pointerT) (domain : string),
-      getD (addD env (domain, p)) p = Some domain.
-  Variable GetCacheAdd_2 :
-    forall env (p p' : pointerT) (domain : string),
-      p <> p' -> getD (addD env (domain, p')) p = getD env p.
 
   Variable recurseDepth : nat.
 
@@ -52,7 +38,7 @@ Definition DnsSig : ADTSig :=
   ADTsignature {
       Constructor "Init" : rep,
       Method "AddData" : rep * resourceRecord -> rep * bool,
-      Method "Process" : rep * ByteString -> rep * ByteString
+      Method "Process" : rep * ByteString -> rep * (option ByteString)
     }.
 
 Definition DnsSpec : ADT DnsSig :=
@@ -67,9 +53,10 @@ Definition DnsSpec : ADT DnsSig :=
     Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
       Insert t into this!sRRecords,
 
-    Def Method1 "Process" (this : rep) (b : ByteString) : rep * ByteString :=
-        p <- {p | fst (encode_packet' p) = b};
-        Repeat recurseDepth initializing n with p!"question"!"qname"
+    Def Method1 "Process" (this : rep) (b : ByteString) : rep * (option ByteString) :=
+        p' <- Pick_Decoder_For DNS_Packet_OK encode_packet_Spec b list_CacheEncode_empty;
+       Ifopt p' as p Then
+        p' <- Repeat recurseDepth initializing n with p!"question"!"qname"
                defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
         {{ results <- MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
                              (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
@@ -100,7 +87,11 @@ Definition DnsSpec : ADT DnsSig :=
                                  Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
                                  Return rRec;
                  ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
-          }} >>= fun p => ret (this, fst (encode_packet' p))}.
+        }};
+       b' <- encode_packet_Spec p' list_CacheEncode_empty;
+       ret (this, Some (fst b'))
+           Else ret (this, None)
+           }.
 
 Lemma DropQSConstraints_AbsR_SatisfiesTupleConstraints
   : forall {qs_schema} r_o r_n,
@@ -207,7 +198,7 @@ Proof.
     setoid_rewrite refine_beq_RRecordType_dec; simplify with monad laws.
     apply refine_If_Then_Else; eauto.
     setoid_rewrite refine_constraint_check_into_query'' with (P := fun tup => rr!sNAME = tup!sNAME);
-      eauto with typeclass_instances.
+    auto with typeclass_instances.
     rewrite refineEquiv_bind_bind.
     f_equiv.
     unfold pointwise_relation; intros; simplify with monad laws;
@@ -233,7 +224,7 @@ Corollary refine_noDup_CNAME_check_dns :
                   ret (beq_nat count 0) Else ret true).
 Proof.
   intros; eapply refine_noDup_CNAME_check.
-  intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
+  intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints _ _ H Fin.F1); eauto.
 Qed.
 
 Theorem DnsManual :
@@ -260,29 +251,60 @@ Proof.
         simpl; finish honing.
   }
   { (* Process *)
-    simplify with monad laws.
-    doOne drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    doOne drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-    doOne drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     eapply refineFueledFix.
     - finish honing.
     - intros.
-      doOne drop_constraints
-          master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-      doOne drop_constraints
-            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doAny ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
       setoid_rewrite H2.
-      finish honing.
-    - doOne drop_constraints
-            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-      doOne drop_constraints
-            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
-      doOne drop_constraints
-            master_rewrite_drill ltac:(repeat subst_refine_evar; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doAny ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    - Local Opaque encode_packet_Spec.
+      doAny ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    - doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
   }
+  make_simple_indexes ({|prim_fst := [(EqualityIndex, @Fin.F1 4);
+                                      (EqualityIndex, Fin.FS (Fin.FS (Fin.FS (@Fin.F1 1))))
+                                     ];
+                         prim_snd := () |} : prim_prod (list (string * Fin.t 5)) ())
+  ltac:(CombineCase6 BuildEarlyFindPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
+         ltac:(CombineCase5 BuildLastFindPrefixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+  Set Printing All.
+
   simpl.
   (* All constraints dropped. *)
     progress doOne srewrite_each_all drills_each_all finish_each_all.
