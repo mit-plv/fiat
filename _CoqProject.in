@@ -305,6 +305,7 @@ src/Examples/DnsServer/DecomposeEnumField.v
 src/Examples/DnsServer/DecomposeSumField.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
+src/Examples/DnsServer/MinimalDNSServer.v
 src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
