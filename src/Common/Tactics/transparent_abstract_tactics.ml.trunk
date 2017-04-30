@@ -133,15 +133,14 @@ module TRANSPARENT_ABSTRACT =
           (** bendy: Seems okay for new constant to be local, but may have unintended **)
           (** consequences if abstracted terms should be accessed outside the proof. **)
           let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
-          pf_constr_of_global (Globnames.ConstRef cst) begin fun df ->
           (* Build a private constant for the new constant *)
           let eff = private_con_of_con (Global.safe_env ()) cst in
           (* Add that constant to the private constants *)
           let effs = add_private eff
                                  Entries.(snd (Future.force constr.const_entry_body)) in
             Proofview.tclEFFECTS effs <*>
+            pf_constr_of_global (Globnames.ConstRef cst) >>= fun df ->
             ltac_apply tacK (Tacinterp.Value.of_constr df)
-          end
         end }
 
     (* Solve the goal [gk] by tactic [tak] and save the constructed term as *)
@@ -209,7 +208,6 @@ module TRANSPARENT_ABSTRACT =
           (** consequences if abstracted terms should be accessed outside the proof. **)
           let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
           (* Tactic Monad *)
-          pf_constr_of_global (Globnames.ConstRef cst) begin fun df ->
           (* Universe Variable stuff? *)
           let evd = Evd.set_universe_context evd ectx in
           (* Build a private constant for the new constant *)
@@ -223,10 +221,10 @@ module TRANSPARENT_ABSTRACT =
           let solve =
             Proofview.Unsafe.tclEVARS evd <*>
               Proofview.tclEFFECTS effs <*>
+              pf_constr_of_global (Globnames.ConstRef cst) >>= fun df ->
               Tactics.exact_no_check (EConstr.applist (df, args))
           in
           if not safe then Proofview.mark_as_unsafe <*> solve else solve
-          end
         end }
 
     (* Default identifier *)
