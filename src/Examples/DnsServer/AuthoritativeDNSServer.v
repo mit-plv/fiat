@@ -26,6 +26,7 @@ Require Import
         Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
 
 Require Import Fiat.Examples.DnsServer.Packet
+        Fiat.Examples.DnsServer.DecomposeEnumField
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
@@ -227,6 +228,14 @@ Proof.
   intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints _ _ H Fin.F1); eauto.
 Qed.
 
+Ltac implement_insert'' :=
+  implement_insert' ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+         ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+         ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm)
+         ltac:(CombineCase7 StringPrefixIndexUse_dep EqIndexUse_dep)
+         ltac:(CombineCase11 createEarlyStringPrefixTerm_dep createEarlyEqualityTerm_dep)
+         ltac:(CombineCase8 createLastStringPrefixTerm_dep createLastEqualityTerm_dep).
+
 Theorem DnsManual :
   FullySharpened DnsSpec.
 Proof.
@@ -297,13 +306,466 @@ Proof.
       doOne ltac:(drop_constraints)
                    drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
   }
-  make_simple_indexes ({|prim_fst := [(EqualityIndex, @Fin.F1 4);
-                                      (EqualityIndex, Fin.FS (Fin.FS (Fin.FS (@Fin.F1 1))))
-                                     ];
+
+  hone representation using (@DecomposeRawQueryStructureSchema_AbsR _ DnsSchema Fin.F1 (Fin.FS (Fin.FS (Fin.FS (Fin.F1)))) id
+             id).
+  { simplify with monad laws.
+    refine pick val _.
+    2: apply DecomposeRawQueryStructureSchema_empty_AbsR.
+    finish honing.
+  }
+  { 
+    simplify with monad laws.
+    drop_constraints_drill.
+    Focus 2.
+    drop_constraints_drill.
+    drop_constraints_drill.
+    setoid_rewrite refine_Iterate_Equiv_QueryResultComp; try eassumption.
+    (* simpl; unfold Tuple_DecomposeRawQueryStructure_inj; simpl. *)
+    finish honing.
+    finish honing.
+    drop_constraints_drill.
+    setoid_rewrite refine_Iterate_Equiv_QueryResultComp; try eassumption.
+    finish honing.
+    rewrite !refine_if_If.
+    rewrite !refine_If_Then_Else_Bind.
+    drop_constraints_drill.
+    drop_constraints_drill.
+    simplify with monad laws.
+    unfold UpdateUnConstrRelationInsertC.
+    drop_constraints_drill.
+    
+    
+    (Fin.FS (Fin.FS (Fin.FS (Fin.FS (Fin.F1)))))
+  ).
+  Print DnsSchema.
+  hone representation using (@DecomposeRawQueryStructureSchema_AbsR _ DnsSchema (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
+
+
+  make_simple_indexes ({|prim_fst := [(FindStringPrefixIndex, @Fin.F1 4)];
                          prim_snd := () |} : prim_prod (list (string * Fin.t 5)) ())
-  ltac:(CombineCase6 BuildEarlyFindPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
-         ltac:(CombineCase5 BuildLastFindPrefixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex)).
-  Set Printing All.
+  ltac:(CombineCase6 BuildEarlyFindStringPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
+         ltac:(CombineCase5 BuildLastStringFindPrefixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex)).
+  { (* Constructor *)
+    plan ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+         ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+         ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm)
+         ltac:(CombineCase7 StringPrefixIndexUse_dep EqIndexUse_dep)
+         ltac:(CombineCase11 createEarlyStringPrefixTerm_dep createEarlyEqualityTerm_dep)
+         ltac:(CombineCase8 createLastStringPrefixTerm_dep createLastEqualityTerm_dep).
+  }
+  { (* Add Data *)
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doAny implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doAny implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doAny implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+  }
+  doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    eapply refineFueledFix.
+    finish honing.
+    intros.
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    implement_insert''.
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doAny implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+
+        doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    rewrite H2.
+
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+
+        doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    Focused_refine_TopMost_Query.
+    set_refine_evar.
+    etransitivity.
+    match goal with
+      | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+     |- refine (UnConstrQuery_In (ResultT := ?resultT) ?r_o ?idx ?f) _ ] =>
+    etransitivity;
+      [ let H' := eval simpl in (refine_Filtered_Query_In_Enumerate H (idx := idx) f) in
+            apply H'
+      | apply refine_under_bind; intros]
+    end.
+    match goal with
+    | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+       |- refine (List_Query_In ?b (fun b : ?QueryT => Where (@?P b) (@?resultComp b))) _ ] =>
+      etransitivity;
+        [ let H' := eval simpl in (@refine_List_Query_In_Where QueryT _ b P resultComp) in
+              pose proof H' | ]
+    end.
+    simpl in H10.
+    Check (H10 _). P_dec : DecideableEnsemble
+                    (fun
+                       tup : ilist2
+                               [{| NumAttr := 5; AttrList := [DomainName; timeT; RRecordClass; RRecordType; RDataType] |}]%NamedSchema =>
+                     List.In (GetAttributeRaw (ilist2_hd tup) Fin.F1)
+                       (map (fun r : NS_Record => GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS (Fin.FS Fin.F1))))) a5))
+
+
+    etransitivity.
+    let H' := eval simpl in (refine_Filtered_Query_In_Enumerate H (idx := idx) f) in
+        apply H'
+      | apply refine_under_bind; intros; implement_In_opt' ]
+
+    implement_In_opt.
+    repeat progress distribute_filters_to_joins.
+    (* Step 3: Convert filter function on topmost [Join_Filtered_Comp_Lists] to an
+               equivalent search term matching function.  *)
+    implement_filters_with_find k k_dep
+  |
+  ]; pose_string_hyps; pose_heading_hyps.
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+
+        doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+
+        doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+    doOne implement_insert''
+          ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+                set_evars) ltac:(finish honing).
+
+
+
+  { (* Add Data. *)
+  plan EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+       EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+
 
   simpl.
   (* All constraints dropped. *)

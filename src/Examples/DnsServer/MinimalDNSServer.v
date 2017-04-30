@@ -30,8 +30,6 @@ Require Import Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
 
-Section BinaryDns.
-
   (* This "unresponsive" variant of an authoritative DNS Server responds*)
    (* by simply flipping the response bit in the packet without adding any *)
   (* records. It is intended as an initial example for Bedrock compilation. *)

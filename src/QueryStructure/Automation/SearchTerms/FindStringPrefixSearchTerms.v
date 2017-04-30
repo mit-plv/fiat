@@ -1,4 +1,5 @@
 Require Import
+        Coq.Bool.Bool
         Fiat.QueryStructure.Specification.Representation.QueryStructureNotations
         Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
         Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms
@@ -10,6 +11,16 @@ Require Import
 (* Instances for building indexes with make simple indexes. *)
 (* Every Kind of index is keyed on an inductive type with a single constructor*)
 Definition FindStringPrefixIndex : string := "FindStringPrefixIndex".
+
+Instance DecideablePrefix_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix s (f s'))) :=
+  {dec s' := ?[bool_dec (prefix s (f s')) true]}.
+intros; find_if_inside; intuition.
+Defined.
+
+Instance DecideablePrefix_sym_f {A} {f s}: DecideableEnsemble (fun s' : A => is_true (prefix (f s') s)) :=
+  {dec s' := ?[bool_dec (prefix (f s') s) true]}.
+intros; find_if_inside; intuition.
+Defined.
 
 Ltac BuildLastFindStringPrefixIndex
      heading indices kind index k k_fail :=
@@ -42,7 +53,7 @@ Ltac BuildEarlyFindStringPrefixIndex
       end.
 
 
-Instance ExpressionAttributeCounterIsPrefixL
+Instance ExpressionAttributeCounterIsStringPrefixL
          {qsSchema : RawQueryStructureSchema}
          {a a' : string}
          (RidxL : Fin.t _)
@@ -52,14 +63,14 @@ Instance ExpressionAttributeCounterIsPrefixL
                                 (@InsertOccurenceOfAny _ _ RidxL ("FindStringPrefixIndex", BAidxL)
                                                        (InitOccurences _)) | 0 := { }.
 
-Ltac IsPrefixExpressionAttributeCounter k :=
+Ltac IsStringPrefixExpressionAttributeCounter k :=
   psearch_combine
-    ltac:(eapply @ExpressionAttributeCounterIsPrefixL; intros) k.
+    ltac:(eapply @ExpressionAttributeCounterIsStringPrefixL; intros) k.
 
-Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
+Ltac StringPrefixIndexUse SC F indexed_attrs f k k_fail :=
   match type of f with
   (* FindPrefix Search Terms *)
-  | forall a, {is_true (prefix (GetAttributeRaw _ ?fd) ?X)} + {_} =>
+  | forall a, {prefix (GetAttributeRaw _ ?fd) ?X = true} + {_} =>
     let H := fresh in
     assert (List.In (@Build_KindIndex SC FindStringPrefixIndex fd) indexed_attrs) as H
         by (clear; simpl; intuition eauto); clear H;
@@ -68,9 +79,9 @@ Ltac PrefixIndexUse SC F indexed_attrs f k k_fail :=
   end.
 
 (* FindPrefix Search Terms *)
-Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
+Ltac StringPrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
   match type of f with
-  | forall a b, {is_true (prefix (GetAttributeRaw _ ?fd) (@?X a))} + {_} =>
+  | forall a b, {prefix (GetAttributeRaw _ ?fd) (@?X a) = true} + {_} =>
     let H := fresh in
     assert (List.In (@Build_KindIndex SC FindStringPrefixIndex fd) indexed_attrs) as H
         by (clear; simpl; intuition eauto); clear H;
@@ -84,7 +95,7 @@ Ltac PrefixIndexUse_dep SC F indexed_attrs visited_attrs f T k k_fail :=
   | _ => k_fail SC F indexed_attrs visited_attrs f T k
   end.
 
-Ltac createLastPrefixTerm f fds tail fs kind s k k_fail :=
+Ltac createLastStringPrefixTerm f fds tail fs kind s k k_fail :=
   let is_equality := eval compute in (string_dec kind "FindStringPrefixIndex") in
       match is_equality with
       | left _ =>
@@ -95,7 +106,7 @@ Ltac createLastPrefixTerm f fds tail fs kind s k k_fail :=
       | _ => k_fail f fds tail fs kind s k
       end.
 
-Ltac createLastPrefixTerm_dep dom f fds tail fs kind s k k_fail :=
+Ltac createLastStringPrefixTerm_dep dom f fds tail fs kind s k k_fail :=
   let is_equality := eval compute in (string_dec kind "FindStringPrefixIndex") in
       match is_equality with
       | left _ =>
@@ -106,7 +117,7 @@ Ltac createLastPrefixTerm_dep dom f fds tail fs kind s k k_fail :=
       | _ => k_fail dom f fds tail fs kind s k
       end.
 
-Ltac createEarlyPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
+Ltac createEarlyStringPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
   let is_equality := eval compute in (string_dec kind "FindStringPrefixIndex") in
       match is_equality with
       | left _ =>
@@ -117,7 +128,7 @@ Ltac createEarlyPrefixTerm f fds tail fs kind EarlyIndex LastIndex rest s k k_fa
       | _ => k_fail f fds tail fs kind EarlyIndex LastIndex rest s k
       end.
 
-Ltac createEarlyPrefixTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
+Ltac createEarlyStringPrefixTerm_dep dom f fds tail fs kind EarlyIndex LastIndex rest s k k_fail :=
   let is_equality := eval compute in (string_dec kind "FindStringPrefixIndex") in
       match is_equality with
       | left _ =>
@@ -209,10 +220,10 @@ Ltac BuildEarlyTrieBag heading AttrList AttrKind AttrIndex subtree k k_fail :=
       | right _ => k_fail heading AttrList AttrKind AttrIndex subtree k
       end.
 
-Ltac PrefixIndexTactics f :=
+Ltac StringPrefixIndexTactics f :=
   PackageIndexTactics
-    IsPrefixExpressionAttributeCounter
+    IsStringPrefixExpressionAttributeCounter
     BuildEarlyFindStringPrefixIndex BuildLastFindStringPrefixIndex
-    PrefixIndexUse createEarlyPrefixTerm createLastPrefixTerm
-    PrefixIndexUse_dep createEarlyPrefixTerm_dep createLastPrefixTerm_dep
+    StringPrefixIndexUse createEarlyStringPrefixTerm createLastStringPrefixTerm
+    StringPrefixIndexUse_dep createEarlyStringPrefixTerm_dep createLastStringPrefixTerm_dep
     BuildEarlyTrieBag BuildLastTrieBag f.

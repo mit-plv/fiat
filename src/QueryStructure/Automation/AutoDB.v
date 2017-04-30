@@ -403,8 +403,16 @@ Ltac fields storage :=
   | let src := ?X in _ => X
   end.
 
+Lemma bool_dec_simpl : forall b,
+    ?[bool_dec b true] = b.
+Proof.
+  intros; find_if_inside; destruct b; congruence.
+Qed.
+
 Ltac prove_extensional_eq :=
   clear;
+  try rewrite !bool_dec_simpl;
+  try rewrite !andb_true_r;
   unfold ExtensionalEq;
   repeat find_if_inside; first [ solve [intuition] | solve [exfalso; intuition] | idtac ].
 
@@ -462,6 +470,7 @@ Ltac makeTerm fs SC fds tail EarlyIndex LastIndex k :=
    [SC]). *)
 
 Ltac findGoodTerm SC F indexed_attrs ClauseMatch k :=
+  (* F needs to have the shape fun a => ?[f a] for the recursive ClauseMatch to fire.*)
   match F with
   | fun a => ?[@?f a] =>
     match type of f with

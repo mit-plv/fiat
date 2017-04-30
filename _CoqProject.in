@@ -305,6 +305,7 @@ src/Examples/DnsServer/DecomposeEnumField.v
 src/Examples/DnsServer/DecomposeSumField.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
+src/Examples/DnsServer/MinimalDNSServer.v
 src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
@@ -570,6 +571,7 @@ src/QueryStructure/Automation/General/InsertAutomation.v
 src/QueryStructure/Automation/General/QueryAutomation.v
 src/QueryStructure/Automation/General/QueryStructureAutomation.v
 src/QueryStructure/Automation/SearchTerms/FindPrefixSearchTerms.v
+src/QueryStructure/Automation/SearchTerms/FindStringPrefixSearchTerms.v
 src/QueryStructure/Automation/SearchTerms/InclusionSearchTerms.v
 src/QueryStructure/Automation/SearchTerms/RangeSearchTerms.v
 src/QueryStructure/Implementation/BagImplementation.v
