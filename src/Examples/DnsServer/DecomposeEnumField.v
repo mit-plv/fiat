@@ -389,6 +389,7 @@ Section DecomposeEnumField.
                                                         indexedElement :=
                                                           Tuple_DecomposeRawQueryStructure_proj _ _ a_proj
                                                                                                 (indexedElement tup) |} (GetUnConstrRelation (snd r_n) (a_proj (GetAttributeRaw (indexedElement tup) attrIdx))))).
+  Proof.
     repeat split; simpl; intros.
     - destruct (fin_eq_dec schemaIdx Ridx); subst;
         unfold GetUnConstrRelation, UpdateUnConstrRelation.
@@ -501,6 +502,85 @@ Section DecomposeEnumField.
         * apply H.
       + rewrite ith_replace2_Index_neq by eauto.
         apply H.
+  Qed.
+
+  Corollary DecomposeRawQueryStructureSchema_UpdateUnConstrRelationInsertC_eq
+             {m : nat}
+             {qs_schema : QueryStructureSchema}
+             {ResultT}
+    : forall (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             a_proj
+             el
+             r_o
+             r_n
+             (k : UnConstrQueryStructure qs_schema -> Comp ResultT)
+             (k' : _ -> Comp ResultT),
+      DecomposeRawQueryStructureSchema_AbsR (qs_schema := qs_schema)
+                                            (m := m)
+                                            schemaIdx attrIdx a_proj el
+                                            r_o r_n
+      ->
+      forall freshIdx tup,
+        UnConstrFreshIdx (GetUnConstrRelation (fst r_n) schemaIdx) freshIdx
+        -> (forall r_o' r_n',
+               DecomposeRawQueryStructureSchema_AbsR
+                 schemaIdx attrIdx a_proj el r_o' r_n'
+               -> refine (k r_o') (k' r_n'))
+        ->
+        refine (r_o' <- UpdateUnConstrRelationInsertC r_o schemaIdx {| elementIndex := freshIdx; indexedElement := tup |};
+                  k r_o')
+               (r_n' <- UpdateUnConstrRelationInsertC (fst r_n) schemaIdx {| elementIndex := freshIdx; indexedElement := tup |};
+                  r_n'' <- UpdateUnConstrRelationInsertC (snd r_n)
+                        (a_proj (GetAttributeRaw tup attrIdx))
+                        {| elementIndex := freshIdx;
+                           indexedElement :=
+                             Tuple_DecomposeRawQueryStructure_proj _ _ a_proj tup |} ;
+                  k' (r_n', r_n'')).
+  Proof.
+    Local Transparent UpdateUnConstrRelationInsertC.
+    unfold UpdateUnConstrRelationInsertC; intros.
+    repeat rewrite refineEquiv_bind_unit.
+    rewrite H1.
+    reflexivity.
+    simpl; eapply DecomposeRawQueryStructureSchema_Insert_AbsR_eq; eauto.
+  Qed.
+
+  Corollary DecomposeRawQueryStructureSchema_UpdateUnConstrRelationInsertC_neq
+            {m : nat}
+            {qs_schema : QueryStructureSchema}
+            {ResultT}
+    : forall (schemaIdx : Fin.t _)
+             (attrIdx : Fin.t _)
+             a_proj
+             el
+             r_o
+             r_n
+             (k : UnConstrQueryStructure qs_schema -> Comp ResultT)
+             (k' : _ -> Comp ResultT),
+      DecomposeRawQueryStructureSchema_AbsR (qs_schema := qs_schema)
+                                            (m := m)
+                                            schemaIdx attrIdx a_proj el
+                                            r_o r_n
+      ->
+      forall Ridx freshIdx tup,
+        Ridx <> schemaIdx
+        -> UnConstrFreshIdx (GetUnConstrRelation (fst r_n) Ridx) freshIdx
+        -> (forall r_o' r_n',
+               DecomposeRawQueryStructureSchema_AbsR
+                 schemaIdx attrIdx a_proj el r_o' r_n'
+               -> refine (k r_o') (k' r_n'))
+        ->
+        refine (r_o' <- UpdateUnConstrRelationInsertC r_o Ridx {| elementIndex := freshIdx; indexedElement := tup |};
+                  k r_o')
+               (r_n' <- UpdateUnConstrRelationInsertC (fst r_n) Ridx {| elementIndex := freshIdx; indexedElement := tup |};
+                  k' (r_n', snd r_n)).
+  Proof.
+    unfold UpdateUnConstrRelationInsertC; intros.
+    repeat rewrite refineEquiv_bind_unit.
+    rewrite H2.
+    reflexivity.
+    simpl; eapply DecomposeRawQueryStructureSchema_Insert_AbsR_neq; eauto.
   Qed.
 
   Lemma UnConstrFreshIdx_Same_Set_Equiv {ElementType} :
@@ -1015,7 +1095,7 @@ Section DecomposeEnumField.
       apply IHm; eauto.
   Qed.
 
-  Lemma refine_Iterate_Equiv_QueryResultComp_body_Where_eq
+  Lemma refine_Iterate_Equiv_QueryResultComp_body_Where_And_eq
         m
         {ResultT : Type}
         (heading : RawHeading)
@@ -1028,7 +1108,7 @@ Section DecomposeEnumField.
         (FiniteEnsembles : forall idx, FiniteEnsemble (Ensembles idx))
         (body : @RawTuple heading -> Comp (list ResultT))
         idx
-        P,
+        P Q,
       (forall idx',
           idx <> idx'
           -> forall tup,
@@ -1040,10 +1120,11 @@ Section DecomposeEnumField.
       -> refine
            (Iterate_Equiv_QueryResultComp_body
               heading headings Ensembles inj_Tuple
-              (fun tup => Where (P tup)
+              (fun tup => Where (P tup /\ Q tup)
                                 (body tup)))
            (QueryResultComp (Ensembles idx)
-                            (fun tup => (body (inj_Tuple idx tup)))).
+                            (fun tup => Where (Q (inj_Tuple _ tup))
+                                              (body (inj_Tuple idx tup)))).
   Proof.
       induction m; simpl; intros.
       - intros; inversion idx.
@@ -1052,19 +1133,19 @@ Section DecomposeEnumField.
           * apply refine_under_bind_both; intros.
             apply refine_under_bind; intros.
             eapply refine_flatten_CompList_func'.
-            intros; apply refine_Query_Where_True_Cond.
+            intros; rewrite (refine_Query_Where_Cond (Q := Q (inj_Tuple _ v))).
+            finish honing.
             intros; computes_to_inv; unfold UnIndexedEnsembleListEquivalence in H1;
               destruct_ex; intuition; subst.
             apply in_map_iff in H2; destruct_ex; intuition; subst.
-            apply H1 in H4; apply H0 in H4; intuition.
+            apply H1 in H6; apply H0 in H6; intuition.
             rewrite e.
             rewrite refine_Iterate_Equiv_QueryResultComp_body_Where_False.
             simplify with monad laws;
               rewrite app_nil_r; finish honing.
             intuition eauto.
-            intros; apply H.
-            rewrite e; intro; discriminate.
-            eassumption.
+            unfold not; intros; eapply H; intuition eauto.
+            rewrite e in H4; discriminate.
           * simplify with monad laws.
             unfold UnConstrQuery_In, QueryResultComp.
             rewrite e.
@@ -1082,7 +1163,7 @@ Section DecomposeEnumField.
             eapply (H (Fin.FS idx')); eauto.
             intro; apply H1; apply Fin.FS_inj; eauto.
           * unfold not; intros.
-            eapply H; eauto.
+            eapply H; intuition eauto.
           * apply FiniteEnsembles.
   Qed.
 
@@ -1099,18 +1180,52 @@ Section DecomposeEnumField.
         {ResultT : Type}
         (body : @RawTuple _ -> Comp (list ResultT))
         idx
+        Q
     : refine (UnConstrQuery_In r_o schemaIdx
-                               (fun tup => Where (a_proj (GetAttributeRaw tup attrIdx) = a_proj idx)
+                               (fun tup => Where (a_proj (GetAttributeRaw tup attrIdx) = a_proj idx
+                                                  /\ Q tup)
                                                  (body tup)))
-             (UnConstrQuery_In (snd r_n) (a_proj idx) (fun tup => body
-                                                                    (Tuple_DecomposeRawQueryStructure_inj _ _ (el (a_proj idx)) _ tup))).
+             (UnConstrQuery_In (snd r_n) (a_proj idx) (fun tup =>
+                                                         Where (Q (Tuple_DecomposeRawQueryStructure_inj _ _ (el (a_proj idx)) _ tup))
+                                                               (body
+                                                               (Tuple_DecomposeRawQueryStructure_inj _ _ (el (a_proj idx)) _ tup)))).
   Proof.
     rewrite (@refine_Iterate_Equiv_QueryResultComp m); eauto.
-    apply refine_Iterate_Equiv_QueryResultComp_body_Where_eq with
+    apply refine_Iterate_Equiv_QueryResultComp_body_Where_And_eq with
     (idx := a_proj idx); eauto.
     - intros; apply r_o_r_n_AbsR.
     - intros; apply r_o_r_n_AbsR in H0; rewrite H0; congruence.
     - intros; apply r_o_r_n_AbsR; eauto.
+  Qed.
+
+    Corollary refine_QueryIn_Where_True
+        {m : nat}
+        {qs_schema : RawQueryStructureSchema}
+        (schemaIdx : Fin.t _)
+        (attrIdx : Fin.t _)
+        a_proj
+        el
+        (r_o : UnConstrQueryStructure qs_schema)
+        (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema m qs_schema schemaIdx attrIdx))
+        (r_o_r_n_AbsR : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a_proj el r_o r_n)
+        {ResultT : Type}
+        (body : @RawTuple _ -> Comp (list ResultT))
+        idx
+    : refine (UnConstrQuery_In r_o schemaIdx
+                               (fun tup => Where (a_proj (GetAttributeRaw tup attrIdx) = a_proj idx)
+                                                 (body tup)))
+             (UnConstrQuery_In (snd r_n) (a_proj idx) (fun tup =>
+                                                         body
+                                                           (Tuple_DecomposeRawQueryStructure_inj _ _ (el (a_proj idx)) _ tup))).
+  Proof.
+    etransitivity.
+    apply refine_UnConstrQuery_In; intro.
+    apply refine_Query_Where_Cond with
+    (Q := (a_proj (GetAttributeRaw a attrIdx) = a_proj idx) /\ True);
+      intuition.
+    setoid_rewrite refine_QueryIn_Where; eauto.
+    apply refine_UnConstrQuery_In; intro.
+    apply refine_Query_Where_True_Cond; eauto.
   Qed.
 
   Arguments DecomposeRawQueryStructureSchema : simpl never.

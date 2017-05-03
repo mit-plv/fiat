@@ -72,7 +72,7 @@ Section ListComprehension.
 End ListComprehension.
 
 Notation "⟦ x 'in' xs | P ⟧" :=
-  (FilteredList xs (fun x => P)) : comp_scope.
+  (build_FilteredList xs (fun x => P)) : comp_scope.
 
 Section UpperBound.
 
@@ -139,7 +139,6 @@ Corollary refine_find_UpperBound {A}
            (ret (find_UpperBound f ns)).
 Proof.
   intros.
-  setoid_rewrite refine_ListComprehension_filtered_list.
   setoid_rewrite refine_filtered_list with (P_dec := DecideableEnsembleUpperBound f ns).
   reflexivity.
 Qed.

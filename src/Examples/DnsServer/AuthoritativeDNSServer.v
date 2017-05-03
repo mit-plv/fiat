@@ -35,8 +35,8 @@ Section BinaryDns.
 
   Variable recurseDepth : nat.
 
-Definition DnsSig : ADTSig :=
-  ADTsignature {
+  Definition DnsSig : ADTSig :=
+    ADTsignature {
       Constructor "Init" : rep,
       Method "AddData" : rep * resourceRecord -> rep * bool,
       Method "Process" : rep * ByteString -> rep * (option ByteString)
@@ -228,6 +228,126 @@ Proof.
   intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints _ _ H Fin.F1); eauto.
 Qed.
 
+Lemma is_empty_app {A} :
+  forall (l l' : list A),
+    is_empty (l ++ l') = andb (is_empty l) (is_empty l').
+Proof.
+  induction l; simpl; eauto.
+Qed.
+
+Lemma flatten_CompList_Prop {A}
+  : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As As' : list A),
+    FlattenCompList.flatten_CompList (map (fun a : A => Where (P a)
+                                                              Return a ) As) ↝ As'
+    -> forall a, List.In a As' -> P a.
+Proof.
+  induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+  unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+  destruct (dec a) eqn: ?.
+  - rewrite dec_decides_P in Heqb.
+    pose proof (H1 Heqb); computes_to_inv;
+      subst; simpl in *; subst; intuition eauto.
+    subst; eauto.
+  - apply Decides_false in Heqb; apply H2 in Heqb; subst; simpl in *;
+      eauto.
+Qed.
+
+Lemma flatten_CompList_Subset {A}
+  : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As As' : list A),
+    FlattenCompList.flatten_CompList (map (fun a : A => Where (P a)
+                                                              Return a ) As) ↝ As'
+    -> forall a, List.In a As' -> List.In a As.
+Proof.
+  induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+  unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+  destruct (dec a) eqn: ?.
+  - rewrite dec_decides_P in Heqb.
+    pose proof (H1 Heqb); computes_to_inv;
+      subst; simpl in *; subst; intuition eauto.
+  - apply Decides_false in Heqb; apply H2 in Heqb; subst; simpl in *;
+      eauto.
+Qed.
+
+Lemma refine_MaxElements {A B}
+      {eqB : Query_eq B }
+  : forall (op : B -> B -> Prop)
+           (op_refl : forall b, op b b)
+           (op_dec : forall b b', {op b b'} + {~op b b'})
+           (bound : B)
+           (As : @IndexedEnsemble A)
+           (f : A -> B),
+    refine (MaxElements (fun a a' => op (f a) (f a'))
+                        (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                           FlattenCompList.flatten_CompList (map (fun a => Where (op (f a) bound)
+                                                                                 Return a) As')))
+           (As' <- (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                      FlattenCompList.flatten_CompList (map (fun a => Where ((f a) = bound)
+                                                                            Return a) As'));
+              If negb (is_empty As') Then ret As' Else
+                 (MaxElements (fun a a' => op (f a) (f a'))
+                              (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                                 FlattenCompList.flatten_CompList (map (fun a => Where (op (f a) bound /\ (f a) <> bound)
+                                                                                       Return a) As')))).
+Proof.
+  unfold MaxElements; intros; simplify with monad laws.
+  setoid_rewrite refineEquiv_bind_bind.
+  unfold refine; intros.
+  computes_to_inv.
+  destruct (is_empty v1) eqn: v1_eq; simpl in *; computes_to_inv; subst.
+  - computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    assert (forall a', List.In a' v3 -> f a' <> bound).
+    { intros; eapply Permutation_in in H0;
+        eauto using (Permutation_UnIndexedEnsembleListEquivalence' H'' H).
+      clear H.
+      generalize dependent v1; generalize dependent v0; clear;
+        induction v0; simpl; intros; intuition;
+          computes_to_inv; subst.
+      + unfold Query_Where, Query_Return in H'; computes_to_inv; subst.
+        intuition; computes_to_inv; subst.
+        simpl in v1_eq; discriminate.
+      + eapply H0; eauto.
+        rewrite is_empty_app, andb_true_iff in v1_eq.
+        intuition.
+    }
+    generalize v2 H'''0 H0; clear; induction v3; simpl; intros;
+      computes_to_inv; subst; intuition eauto.
+    computes_to_econstructor.
+    eapply refine_Query_Where_Cond in H'''0; eauto.
+    intuition eauto.
+    computes_to_econstructor.
+    eapply IHv3; eauto.
+    eauto.
+  - computes_to_econstructor; eauto.
+    assert (exists v',
+               computes_to
+                 (FlattenCompList.flatten_CompList (map (fun a : A => Where (op (f a) bound)
+                                                                         Return a ) v0)) v').
+    { admit. }
+    destruct_ex; computes_to_econstructor; eauto.
+    clear H.
+    generalize dependent v; generalize dependent x.
+    induction v0; simpl.
+    + intros; computes_to_inv; subst; simpl; eauto.
+    + intros; computes_to_inv; subst; simpl; eauto.
+      unfold Query_Where, Query_Return in H0, H'; computes_to_inv; subst.
+      intuition; computes_to_inv; subst.
+      destruct (A_eq_dec (f a) bound); subst.
+      * specialize (H0 (eq_refl _)); computes_to_inv; subst.
+        specialize (H (op_refl _)); computes_to_inv; subst.
+        unfold UpperBound; simpl.
+Admitted.
+
+Lemma Query_Where_And_Sym {ResultT}
+  : forall (P Q : Prop)
+           (body : Comp (list ResultT)),
+    refine (Query_Where (P /\ Q) body)
+           (Query_Where (Q /\ P) body).
+Proof.
+  intros; rewrite refine_Query_Where_Cond;
+    try reflexivity; intuition.
+Qed.
+
 Ltac implement_insert'' :=
   implement_insert' ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
@@ -314,10 +434,11 @@ Proof.
     2: apply DecomposeRawQueryStructureSchema_empty_AbsR.
     finish honing.
   }
-  { 
+  {
     simplify with monad laws.
     drop_constraints_drill.
-    Focus 2.
+    rewrite (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0);
+      finish honing.
     drop_constraints_drill.
     drop_constraints_drill.
     setoid_rewrite refine_Iterate_Equiv_QueryResultComp; try eassumption.
@@ -325,17 +446,38 @@ Proof.
     finish honing.
     finish honing.
     drop_constraints_drill.
-    setoid_rewrite refine_Iterate_Equiv_QueryResultComp; try eassumption.
+    setoid_rewrite Query_Where_And_Sym.
+    setoid_rewrite (refine_QueryIn_Where H0).
+    simpl.
+    unfold Tuple_DecomposeRawQueryStructure_inj; simpl.
+    unfold GetAttribute, GetAttributeRaw at 2; simpl.
+    unfold ilist2_hd; simpl.
     finish honing.
     rewrite !refine_if_If.
     rewrite !refine_If_Then_Else_Bind.
     drop_constraints_drill.
     drop_constraints_drill.
     simplify with monad laws.
-    unfold UpdateUnConstrRelationInsertC.
+    apply (DecomposeRawQueryStructureSchema_UpdateUnConstrRelationInsertC_eq _ _ H0).
+    clear; admit.
+    intros.
+    refine pick val _; try eassumption.
+    simplify with monad laws; simpl; finish honing.
+    simplify with monad laws; refine pick val _; try eassumption.
+    simplify with monad laws; simpl; finish honing.
+    simplify with monad laws; refine pick val _; try eassumption.
+    simplify with monad laws; simpl; finish honing.
+  }
+  { simplify with monad laws.
     drop_constraints_drill.
-    
-    
+    finish honing.
+    drop_constraints_drill.
+    drop_constraints_drill.
+    drop_constraints_drill.
+    eapply refineFueledFix.
+    finish honing.
+    intros.
+    simplify with monad laws.
     (Fin.FS (Fin.FS (Fin.FS (Fin.FS (Fin.F1)))))
   ).
   Print DnsSchema.
