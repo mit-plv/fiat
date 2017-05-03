@@ -82,7 +82,7 @@ Section UpperBound.
   Definition UpperBound
              (rs : list A)
              (r : A) :=
-    forall r' : A, List.In r' rs -> op r r'.
+    forall r' : A, List.In r' rs -> op r' r.
 
   Definition SingletonSet (P : Ensemble A) :=
     {b' | forall b : A, b' = Some b <-> P b}.
@@ -124,7 +124,7 @@ End UpperBound.
 Instance DecideableEnsembleUpperBound {A}
          (f : A -> nat)
          (ns : list A)
-  : DecideableEnsemble (UpperBound (fun a a' => f a >= f a') ns) :=
+  : DecideableEnsemble (UpperBound (fun a a' => f a <= f a') ns) :=
   {| dec n := NPeano.Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
 Proof.
   unfold UpperBound, ge; intros; rewrite NPeano.Nat.leb_le; intuition.
@@ -135,7 +135,7 @@ Defined.
 
 Corollary refine_find_UpperBound {A}
   : forall (f : A -> nat) ns,
-    refine (⟦ n in ns | UpperBound (fun a a' => f a >= f a') ns n ⟧)
+    refine (⟦ n in ns | UpperBound (fun a a' => f a <= f a') ns n ⟧)
            (ret (find_UpperBound f ns)).
 Proof.
   intros.

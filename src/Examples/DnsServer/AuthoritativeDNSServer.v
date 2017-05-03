@@ -268,11 +268,76 @@ Proof.
       eauto.
 Qed.
 
+Lemma flatten_CompList_nil {A}
+  : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As : list A),
+    FlattenCompList.flatten_CompList
+      (map (fun a : A => Where (P a)
+                               Return a ) As) ↝ nil
+    -> forall a, List.In a As -> ~ P a.
+Proof.
+    induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+    unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+    destruct (dec a) eqn: ?.
+    - rewrite dec_decides_P in Heqb.
+      apply H0 in Heqb; computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+      discriminate.
+    - subst; apply H0 in H1; computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+      discriminate.
+    - eapply IHAs; eauto.
+      apply app_eq_nil in H''; intuition; subst; eauto.
+Qed.
+
+Lemma refine_ListComprehension {A}
+  : forall (As : list A)
+           (P Q : A -> Prop),
+    (forall a, P a <-> Q a)
+    -> refine (⟦element in As | P element ⟧)
+              (⟦element in As | Q element ⟧).
+Proof.
+  induction As; simpl; intros; eauto.
+  - reflexivity.
+  - rewrite IHAs; eauto.
+    f_equiv; intro.
+    intros ? ?.
+    computes_to_inv; destruct v0; simpl in *.
+    + apply (@BindComputes _ _ _ _ true); eauto.
+      computes_to_econstructor; simpl; eauto.
+      apply H; assumption.
+    + apply (@BindComputes _ _ _ _ false); eauto.
+    computes_to_econstructor;
+      simpl; unfold UpperBound; intros.
+    intro; apply H0.
+    apply H; eassumption.
+Qed.
+
+Lemma refine_FindUpperBound {A B}
+  : forall (op : B -> B -> Prop)
+           (op_trans : forall b b' b'', op b b' -> op b' b'' -> op b b'')
+           (bound : B)
+           (As As' : list A)
+           (f : A -> B),
+    (forall a, List.In a As' -> op (f a) bound)
+    -> (exists a, List.In a As' /\ f a = bound)
+    -> refine (⟦element in As | UpperBound (fun a a' => op (f a) (f a')) As' element ⟧)
+              (⟦element in As | op bound (f element) ⟧).
+Proof.
+  intros.
+  unfold UpperBound.
+  apply refine_ListComprehension.
+  split; intros.
+  - destruct_ex; intuition eauto; subst; eauto.
+  - eapply op_trans; eauto.
+Qed.
+
 Lemma refine_MaxElements {A B}
       {eqB : Query_eq B }
   : forall (op : B -> B -> Prop)
            (op_refl : forall b, op b b)
-           (op_dec : forall b b', {op b b'} + {~op b b'})
+           (op_trans : forall b b' b'', op b b' -> op b' b'' -> op b b'')
+           (op_dec : forall b, DecideableEnsemble (fun b' => op b' b))
+           (op_irrefl : forall b b', op b b' -> op b' b -> b = b')
            (bound : B)
            (As : @IndexedEnsemble A)
            (f : A -> B),
@@ -323,20 +388,99 @@ Proof.
                computes_to
                  (FlattenCompList.flatten_CompList (map (fun a : A => Where (op (f a) bound)
                                                                          Return a ) v0)) v').
-    { admit. }
+    {
+      revert op_dec; clear; induction v0; simpl; intros; eauto.
+      destruct IHv0; eauto.
+      destruct (dec (DecideableEnsemble := op_dec bound) (f a)) eqn:?.
+      rewrite dec_decides_P in Heqb.
+      eexists; computes_to_econstructor.
+      computes_to_econstructor; split; intros.
+      computes_to_econstructor.
+      intuition.
+      computes_to_econstructor; eauto.
+      eexists; computes_to_econstructor.
+      computes_to_econstructor; split; intros.
+      apply Decides_false in Heqb.
+      intuition.
+      reflexivity.
+      computes_to_econstructor; eauto.
+    }
     destruct_ex; computes_to_econstructor; eauto.
-    clear H.
-    generalize dependent v; generalize dependent x.
+    eapply (refine_FindUpperBound _ op_trans bound); eauto.
+    intros.
+    eapply flatten_CompList_Prop in H0; eauto.
+    refine {| dec a := dec (f a) |}.
+    intros; rewrite dec_decides_P; reflexivity.
+    generalize dependent v; generalize dependent x; clear H.
     induction v0; simpl.
-    + intros; computes_to_inv; subst; simpl; eauto.
+    + intros; computes_to_inv; subst; simpl in *; discriminate.
     + intros; computes_to_inv; subst; simpl; eauto.
       unfold Query_Where, Query_Return in H0, H'; computes_to_inv; subst.
       intuition; computes_to_inv; subst.
       destruct (A_eq_dec (f a) bound); subst.
       * specialize (H0 (eq_refl _)); computes_to_inv; subst.
         specialize (H (op_refl _)); computes_to_inv; subst.
-        unfold UpperBound; simpl.
-Admitted.
+        eexists; simpl; intuition eauto.
+      * apply H2 in n; subst.
+        simpl in v1_eq.
+        destruct (IHv0 _ H0' _ H'' v1_eq); intuition.
+        eexists; split; eauto.
+        apply in_or_app; right; eauto.
+    + generalize dependent v; generalize dependent x; clear H.
+      induction v0; simpl.
+      * intros; computes_to_inv; subst; simpl in *; discriminate.
+      * intros; computes_to_inv; subst; simpl; eauto.
+        unfold Query_Where, Query_Return in H0, H'; computes_to_inv; subst.
+        intuition; computes_to_inv; subst.
+        destruct (dec (DecideableEnsemble := op_dec bound) (f a)) eqn:?.
+        rewrite dec_decides_P in Heqb; pose proof (H Heqb).
+        computes_to_inv; subst; simpl.
+        destruct (A_eq_dec (f a) bound); subst.
+        pose proof (H0 (eq_refl _)); computes_to_inv; subst.
+        destruct (is_empty v2) eqn: ?.
+        apply (@BindComputes _ _ _ _ [ ]); eauto.
+        { revert eqB op_dec op_irrefl Heqb0 H0' H''; clear; revert v4 v2; induction v0;
+            simpl; intros; computes_to_inv; subst; simpl.
+          computes_to_econstructor.
+          unfold Query_Where, Query_Return in H0', H''; computes_to_inv; subst.
+          intuition; computes_to_inv; subst.
+          destruct (dec (DecideableEnsemble := op_dec (f a)) (f a0)) eqn: ?.
+          - rewrite dec_decides_P in Heqb; pose proof (H Heqb).
+            computes_to_inv; subst.
+            simpl.
+            destruct (A_eq_dec (f a0) (f a)).
+            + apply H1 in e; computes_to_inv; subst.
+              simpl in *; discriminate.
+            + pose proof (H2 n); subst; simpl in *.
+              computes_to_econstructor; eauto.
+              apply (@BindComputes _ _ _ _ false); eauto.
+              computes_to_econstructor; simpl.
+              intuition.
+          - apply Decides_false in Heqb.
+            pose proof (H0 Heqb); subst; simpl.
+            destruct (A_eq_dec (f a0) (f a)); subst.
+            intuition; computes_to_inv; subst.
+            simpl in Heqb0; discriminate.
+            apply H2 in n; subst; eauto.
+        }
+        apply (@BindComputes _ _ _ _ true); eauto.
+        destruct v2; simpl in *; try discriminate.
+        computes_to_econstructor.
+        computes_to_econstructor.
+        eauto.
+        apply (@BindComputes _ _ _ _ true); eauto.
+        pose proof (H2 n); subst; simpl.
+        simpl in v1_eq.
+        computes_to_econstructor; eauto.
+        apply (@BindComputes _ _ _ _ false); eauto.
+        computes_to_econstructor; simpl.
+        intro; eapply n; eauto.
+        apply Decides_false in Heqb.
+        pose proof (H1 Heqb); subst; simpl.
+        destruct (A_eq_dec (f a) bound); subst.
+        intuition.
+        apply H2 in n; subst; eauto.
+Qed.
 
 Lemma Query_Where_And_Sym {ResultT}
   : forall (P Q : Prop)
