@@ -824,13 +824,6 @@ Section DnsPacket.
   Hint Resolve FixedList_predicate_rest_True : data_inv_hints.
 
   Definition resourceRecord_OK (rr : resourceRecord) :=
-    SumType_index
-      ((Memory.W : Type)
-         :: DomainName
-         :: DomainName
-         :: SOA_RDATA
-         :: WKS_RDATA :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
-      rr!sRDATA = rr!sTYPE /\
     ith
       (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
              (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
@@ -873,17 +866,6 @@ Section DnsPacket.
     unfold resourceRecord_OK; intuition eauto.
   Qed.
   Hint Resolve resourceRecordOK_1 : data_inv_hints.
-
-  Lemma resourceRecordOK_2
-    : forall data idx,
-      data!sTYPE = idx ->
-      resourceRecord_OK data -> SumType_index ResourceRecordTypeTypes data!sRDATA = idx.
-    unfold resourceRecord_OK; intuition eauto.
-    subst.
-    apply H1.
-  Qed.
-
-  Hint Resolve resourceRecordOK_2 : data_inv_hints.
 
   Lemma resourceRecordOK_3
     : forall rr : resourceRecord,
@@ -1038,19 +1020,19 @@ Section DnsPacket.
   Definition encode_rdata_Spec :=
     encode_SumType_Spec ResourceRecordTypeTypes
                         (icons encode_A_Spec (* A; host address 	[RFC1035] *)
-                               (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
-                                      (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
-                                             (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
-                                                    (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
-                                                           (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
-                                                                  (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
-                                                                         (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
-                                                                                (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
-                                                                                       (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
+                        (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
+                        (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
+                        (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
+                        (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
+                        (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)
+                        (icons encode_HINFO_RDATA_Spec (* HINFO host information 	[RFC1035] *)
+                        (icons (encode_MINFO_RDATA_Spec) (* MINFO mailbox or mail list information 	[RFC1035] *)
+                        (icons encode_MX_RDATA_Spec  (* MX  mail exchange 	[RFC1035] *)
+                        (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
 
   Definition encode_resource_Spec(r : resourceRecord) :=
     encode_DomainName_Spec r!sNAME
-                           ThenC encode_enum_Spec RRecordType_Ws r!sTYPE
+                           ThenC encode_enum_Spec RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
                            ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
                            ThenC encode_word_Spec r!sTTL
                            ThenC encode_rdata_Spec r!sRDATA

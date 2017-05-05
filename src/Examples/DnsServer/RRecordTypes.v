@@ -250,4 +250,7 @@ Section RData.
                                 16]. (* "TXT" *)
 
 
+  Definition RDataTypeToRRecordType (r : RDataType) : RRecordType := 
+    SumType_index _ r.
+    
 End RData.

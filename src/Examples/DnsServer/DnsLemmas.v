@@ -78,12 +78,12 @@ it's independent of the other records *)
 
 Lemma refine_not_CNAME__independent :
   forall (n : resourceRecord) (R : @IndexedEnsemble resourceRecord),
-    n!sTYPE <> CNAME
+    RDataTypeToRRecordType (n!sRDATA) <> CNAME
     -> refine {b |
                decides b
                        (forall tup' : IndexedTuple,
                            R tup' ->
-                           n!sNAME= (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+                           n!sNAME= (indexedElement tup')!sNAME -> RDataTypeToRRecordType (n!sRDATA) <> CNAME)}
 
               (ret true).
 Proof.
@@ -95,12 +95,12 @@ Qed.
 an existential (exists a record with the same name), and return the opposite *)
 Lemma refine_is_CNAME__forall_to_exists :
   forall (n : resourceRecord) (R : @IndexedEnsemble resourceRecord),
-    n!sTYPE = CNAME
+    RDataTypeToRRecordType (n!sRDATA) = CNAME
     -> refine {b |
                decides b
                        (forall tup' : IndexedTuple,
                            R tup' ->
-                           n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
+                           n!sNAME = (indexedElement tup')!sNAME -> RDataTypeToRRecordType (n!sRDATA) <> CNAME)}
               (b <- {b |
                      decides b
                              (exists tup' : IndexedTuple,
@@ -125,13 +125,13 @@ Lemma refine_forall_to_exists :
                     (forall tup' : IndexedTuple,
                         R tup' ->
                         (indexedElement tup')!sNAME = n!sNAME
-                        -> (indexedElement tup')!sTYPE <> CNAME)}
+                        -> RDataTypeToRRecordType (indexedElement tup')!sRDATA <> CNAME)}
            (b <- {b |
                   decides b
                           (exists tup' : IndexedTuple,
                               R tup' /\
                               n!sNAME = (indexedElement tup')!sNAME
-                              /\ (indexedElement tup')!sTYPE = CNAME)};
+                              /\ RDataTypeToRRecordType (indexedElement tup')!sRDATA = CNAME)};
               ret (negb b)).
 Proof.                          (* same proof as refine_is_CNAME__forall_to_exists *)
   repeat match goal with
@@ -157,8 +157,8 @@ Lemma refine_count_constraint_broken :
             decides b
                     (forall tup' : @IndexedRawTuple (GetHeading DnsSchema sRRecords),
                         (r!sRRecords)%QueryImpl tup' ->
-                        n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
+                        n!sNAME = (indexedElement tup')!sNAME -> RDataTypeToRRecordType (n!sRDATA) <> CNAME)}
+           (If (beq_RRecordType (RDataTypeToRRecordType (n!sRDATA)) CNAME)
                Then count <- Count
                For (tup in r!sRRecords)
                (Where (n!sNAME = tup!sNAME)
@@ -193,8 +193,8 @@ Proof.
                              assert (DecideableEnsemble P') as H2;
                              [ simpl; auto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
                              | setoid_rewrite (@refine_constraint_check_into_query' qs_schema (ibound (indexb tbl)) qs P P' H2 H1); clear H2 H1 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-    [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
+  remember ((n!sRDATA)); refine pick val (beq_RRecordType (RDataTypeToRRecordType d) CNAME); subst;
+    [ | case_eq (beq_RRecordType (RDataTypeToRRecordType (n!sRDATA)) CNAME); intros;
         rewrite <- beq_RRecordType_dec in H; find_if_inside;
         unfold not; simpl in *; try congruence ].
   intros; simplify with monad laws; simpl.
@@ -272,8 +272,8 @@ Lemma refine_count_constraint_broken :
             decides b
                     (forall tup' : @IndexedTuple (GetHeading DnsSchema sRRecords),
                        (r!sRRecords)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> n!sTYPE <> CNAME)}
-           (If (beq_RRecordType n!sTYPE CNAME)
+                       n!sNAME = (indexedElement tup')!sNAME -> RDataTypeToRRecordType (n!sRDATA) <> CNAME)}
+           (If (beq_RRecordType RDataTypeToRRecordType (n!sRDATA) CNAME)
                Then count <- Count
                For (UnConstrQuery_In r ``(sRRecords)
                                      (fun tup : Tuple =>
@@ -304,8 +304,8 @@ Proof.
                      assert (DecideableEnsemble P') as H2;
                        [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
                        | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-  remember n!sTYPE; refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType n!sTYPE CNAME); intros;
+  remember RDataTypeToRRecordType (n!sRDATA); refine pick val (beq_RRecordType d CNAME); subst;
+  [ | case_eq (beq_RRecordType RDataTypeToRRecordType (n!sRDATA) CNAME); intros;
       rewrite <- beq_RRecordType_dec in H; find_if_inside;
       unfold not; simpl in *; try congruence ].
   simplify with monad laws.
@@ -329,13 +329,13 @@ Lemma refine_count_constraint_broken' :
                     (forall tup' : @IndexedTuple (GetHeading DnsSchema sRRecords),
                         (GetUnConstrRelation r bCOLLECTIONS) tup' ->
                         (indexedElement tup')!sNAME = n!sNAME (* switched *)
-                        -> (indexedElement tup')!sTYPE <> CNAME)} (* indexedElement tup', not n *)
+                        -> RDataTypeToRRecordType (indexedElement tup')!sRDATA <> CNAME)} (* indexedElement tup', not n *)
            (* missing the If/Then statement *)
            (count <- Count
                   For (UnConstrQuery_In r bCOLLECTIONS
                                         (fun tup : Tuple =>
                                            Where (n!sNAME = tup!sNAME
-                                                  /\ tup!sTYPE = CNAME ) (* extra /\ condition *)
+                                                  /\ RDataTypeToRRecordType tup!sRDATA = CNAME ) (* extra /\ condition *)
                                                  Return tup ));
               ret (beq_nat count 0)).
 Proof.
@@ -462,7 +462,7 @@ Lemma refine_check_one_longest_prefix_CNAME
                -> nth_error ns n  = Some t
                -> nth_error ns n' = Some t'
                -> get_name t      = get_name t'
-               -> t!sTYPE <> CNAME),
+               -> RDataTypeToRRecordType (t!sRDATA) <> CNAME),
     (* forall HH? *)
 
     (* as before, the name (list string) of every record in the list is a prefix
@@ -476,12 +476,12 @@ Lemma refine_check_one_longest_prefix_CNAME
             forall b : Tuple,
               b' = Some b <->
               List.In b (find_UpperBound name_length ns) /\
-              b!sTYPE = CNAME /\ n <> CNAME}
+              RDataTypeToRRecordType (b!sRDATA) = CNAME /\ n <> CNAME}
            (* refines to just checking the condition (with booleans) on the first longest prefix
                 using all_longest_prefixes_same *)
            (ret match (find_UpperBound name_length ns) with
                 | nil => None
-                | n' :: _ => if CNAME == (n'!sTYPE)
+                | n' :: _ => if CNAME == (RDataTypeToRRecordType (n'!sRDATA))
                              then if n == CNAME
                                   then None
                                   else Some n'
@@ -602,7 +602,7 @@ Lemma tuples_in_relation_satisfy_constraint_specific :
       nth_error a n0 = Some t -> (* this isn't right? *)
       nth_error a n' = Some t' ->
       get_name t = get_name t' ->
-      t!sTYPE <> CNAME.
+      RDataTypeToRRecordType t!sRDATA <> CNAME.
 Proof.
   intros. inversion H. inv H4.
 
@@ -823,8 +823,8 @@ Qed.
 
 Lemma refine_beq_RRecordType_dec :
   forall rr : resourceRecord,
-    refine {b | decides b (rr!sTYPE = CNAME)}
-           (ret (beq_RRecordType rr!sTYPE CNAME)).
+    refine {b | decides b (RDataTypeToRRecordType rr!sRDATA = CNAME)}
+           (ret (beq_RRecordType (RDataTypeToRRecordType rr!sRDATA) CNAME)).
 Proof.
   intros; rewrite <- beq_RRecordType_dec.
   intros; refine pick val _.
@@ -840,13 +840,13 @@ Lemma refine_noDup_CNAME_check :
           R tup ->
           R tup' ->
           (indexedElement tup)!sNAME = (indexedElement tup')!sNAME
-          -> (indexedElement tup)!sTYPE <> CNAME)
+          -> RDataTypeToRRecordType (indexedElement tup)!sRDATA <> CNAME)
   -> refine {b |
             decides b
                     (forall tup',
                         R tup' ->
-                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
-           (If (beq_RRecordType rr!sTYPE CNAME)
+                        rr!sNAME = (indexedElement tup')!sNAME -> RDataTypeToRRecordType rr!sRDATA <> CNAME)}
+           (If (beq_RRecordType (RDataTypeToRRecordType rr!sRDATA) CNAME)
                Then count <- Count
                For
                (QueryResultComp R
@@ -876,8 +876,8 @@ Corollary refine_noDup_CNAME_check_dns :
             decides b
                     (forall tup',
                         (GetUnConstrRelation r_n Fin.F1) tup' ->
-                        rr!sNAME = (indexedElement tup')!sNAME -> rr!sTYPE <> CNAME)}
-           (If (beq_RRecordType rr!sTYPE CNAME)
+                        rr!sNAME = (indexedElement tup')!sNAME -> (RDataTypeToRRecordType rr!sRDATA) <> CNAME)}
+           (If (beq_RRecordType (RDataTypeToRRecordType rr!sRDATA) CNAME)
                Then count <- Count
                For
                (UnConstrQuery_In r_n Fin.F1
@@ -892,3 +892,258 @@ Qed.
 Instance ADomainName_eq : Query_eq DomainName := Astring_eq.
 Instance ARRecordType_eq : Query_eq RRecordType :=
   {| A_eq_dec := fin_eq_dec |}.
+
+Lemma refine_MaxElements {A B}
+      {eqB : Query_eq B }
+  : forall (op : B -> B -> Prop)
+           (op_refl : forall b, op b b)
+           (op_trans : forall b b' b'', op b b' -> op b' b'' -> op b b'')
+           (op_dec : forall b, DecideableEnsemble (fun b' => op b' b))
+           (op_irrefl : forall b b', op b b' -> op b' b -> b = b')
+           (bound : B)
+           (As : @IndexedEnsemble A)
+           (f : A -> B),
+    refine (MaxElements (fun a a' => op (f a) (f a'))
+                        (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                           FlattenCompList.flatten_CompList (map (fun a => Where (op (f a) bound)
+                                                                                 Return a) As')))
+           (As' <- (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                      FlattenCompList.flatten_CompList (map (fun a => Where ((f a) = bound)
+                                                                            Return a) As'));
+              If negb (is_empty As') Then ret As' Else
+                 (MaxElements (fun a a' => op (f a) (f a'))
+                              (As' <- {As' : list A | UnIndexedEnsembleListEquivalence As As'};
+                                 FlattenCompList.flatten_CompList (map (fun a => Where (op (f a) bound /\ (f a) <> bound)
+                                                                                       Return a) As')))).
+Proof.
+  unfold MaxElements; intros; simplify with monad laws.
+  setoid_rewrite refineEquiv_bind_bind.
+  unfold refine; intros.
+  computes_to_inv.
+  destruct (is_empty v1) eqn: v1_eq; simpl in *; computes_to_inv; subst.
+  - computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    assert (forall a', List.In a' v3 -> f a' <> bound).
+    { intros; eapply Permutation_in in H0;
+        eauto using (Permutation_UnIndexedEnsembleListEquivalence' H'' H).
+      clear H.
+      generalize dependent v1; generalize dependent v0; clear;
+        induction v0; simpl; intros; intuition;
+          computes_to_inv; subst.
+      + unfold Query_Where, Query_Return in H'; computes_to_inv; subst.
+        intuition; computes_to_inv; subst.
+        simpl in v1_eq; discriminate.
+      + eapply H0; eauto.
+        rewrite is_empty_app, andb_true_iff in v1_eq.
+        intuition.
+    }
+    generalize v2 H'''0 H0; clear; induction v3; simpl; intros;
+      computes_to_inv; subst; intuition eauto.
+    computes_to_econstructor.
+    eapply refine_Query_Where_Cond in H'''0; eauto.
+    intuition eauto.
+    computes_to_econstructor.
+    eapply IHv3; eauto.
+    eauto.
+  - computes_to_econstructor; eauto.
+    assert (exists v',
+               computes_to
+                 (FlattenCompList.flatten_CompList (map (fun a : A => Where (op (f a) bound)
+                                                                         Return a ) v0)) v').
+    {
+      revert op_dec; clear; induction v0; simpl; intros; eauto.
+      destruct IHv0; eauto.
+      destruct (dec (DecideableEnsemble := op_dec bound) (f a)) eqn:?.
+      rewrite dec_decides_P in Heqb.
+      eexists; computes_to_econstructor.
+      computes_to_econstructor; split; intros.
+      computes_to_econstructor.
+      intuition.
+      computes_to_econstructor; eauto.
+      eexists; computes_to_econstructor.
+      computes_to_econstructor; split; intros.
+      apply Decides_false in Heqb.
+      intuition.
+      reflexivity.
+      computes_to_econstructor; eauto.
+    }
+    destruct_ex; computes_to_econstructor; eauto.
+    eapply (@refine_FindUpperBound _ _ _ op_trans bound); eauto.
+    intros.
+    eapply flatten_CompList_Prop in H0; eauto.
+    refine {| dec a := dec (f a) |}.
+    intros; rewrite dec_decides_P; reflexivity.
+    generalize dependent v; generalize dependent x; clear H.
+    induction v0; simpl.
+    + intros; computes_to_inv; subst; simpl in *; discriminate.
+    + intros; computes_to_inv; subst; simpl; eauto.
+      unfold Query_Where, Query_Return in H0, H'; computes_to_inv; subst.
+      intuition; computes_to_inv; subst.
+      destruct (A_eq_dec (f a) bound); subst.
+      * specialize (H0 (eq_refl _)); computes_to_inv; subst.
+        specialize (H (op_refl _)); computes_to_inv; subst.
+        eexists; simpl; intuition eauto.
+      * apply H2 in n; subst.
+        simpl in v1_eq.
+        destruct (IHv0 _ H0' _ H'' v1_eq); intuition.
+        eexists; split; eauto.
+        apply in_or_app; right; eauto.
+    + generalize dependent v; generalize dependent x; clear H.
+      induction v0; simpl.
+      * intros; computes_to_inv; subst; simpl in *; discriminate.
+      * intros; computes_to_inv; subst; simpl; eauto.
+        unfold Query_Where, Query_Return in H0, H'; computes_to_inv; subst.
+        intuition; computes_to_inv; subst.
+        destruct (dec (DecideableEnsemble := op_dec bound) (f a)) eqn:?.
+        rewrite dec_decides_P in Heqb; pose proof (H Heqb).
+        computes_to_inv; subst; simpl.
+        destruct (A_eq_dec (f a) bound); subst.
+        pose proof (H0 (eq_refl _)); computes_to_inv; subst.
+        destruct (is_empty v2) eqn: ?.
+        apply (@BindComputes _ _ _ _ [ ]); eauto.
+        { revert eqB op_dec op_irrefl Heqb0 H0' H''; clear; revert v4 v2; induction v0;
+            simpl; intros; computes_to_inv; subst; simpl.
+          computes_to_econstructor.
+          unfold Query_Where, Query_Return in H0', H''; computes_to_inv; subst.
+          intuition; computes_to_inv; subst.
+          destruct (dec (DecideableEnsemble := op_dec (f a)) (f a0)) eqn: ?.
+          - rewrite dec_decides_P in Heqb; pose proof (H Heqb).
+            computes_to_inv; subst.
+            simpl.
+            destruct (A_eq_dec (f a0) (f a)).
+            + apply H1 in e; computes_to_inv; subst.
+              simpl in *; discriminate.
+            + pose proof (H2 n); subst; simpl in *.
+              computes_to_econstructor; eauto.
+              apply (@BindComputes _ _ _ _ false); eauto.
+              computes_to_econstructor; simpl.
+              intuition.
+          - apply Decides_false in Heqb.
+            pose proof (H0 Heqb); subst; simpl.
+            destruct (A_eq_dec (f a0) (f a)); subst.
+            intuition; computes_to_inv; subst.
+            simpl in Heqb0; discriminate.
+            apply H2 in n; subst; eauto.
+        }
+        apply (@BindComputes _ _ _ _ true); eauto.
+        destruct v2; simpl in *; try discriminate.
+        computes_to_econstructor.
+        computes_to_econstructor.
+        eauto.
+        apply (@BindComputes _ _ _ _ true); eauto.
+        pose proof (H2 n); subst; simpl.
+        simpl in v1_eq.
+        computes_to_econstructor; eauto.
+        apply (@BindComputes _ _ _ _ false); eauto.
+        computes_to_econstructor; simpl.
+        intro; eapply n; eauto.
+        apply Decides_false in Heqb.
+        pose proof (H1 Heqb); subst; simpl.
+        destruct (A_eq_dec (f a) bound); subst.
+        intuition.
+        apply H2 in n; subst; eauto.
+Qed.
+
+Lemma refine_under_bind_both_ambivalent {A B}
+  : forall (c c' : Comp A)
+           (x y : A -> Comp B),
+    (forall (a' : A),
+        c' ↝ a' ->
+        exists a,
+          c ↝ a /\
+          refine (x a) (y a'))
+    -> refine (a <- c;
+                 x a)
+              (a <- c';
+                 y a).
+Proof.
+  unfold refine; intros; computes_to_inv.
+  apply H in H0; destruct_ex; intuition.
+  computes_to_econstructor; eauto.
+Qed.
+
+Local Transparent Query_For.
+
+Lemma refine_MaxElements_For {A}
+  : forall (op : A -> A -> Prop) ens,
+    refine (MaxElements op For ens)
+        (MaxElements op ens).
+Proof.
+  unfold MaxElements; intros.
+  rewrite refine_For.
+  simplify with monad laws.
+  f_equiv; intro.
+  refine pick val a; eauto.
+  simplify with monad laws; reflexivity.
+Qed.
+
+Lemma MaxElementsUnConstrQuery_In {qs_schema}
+  : forall idx f bound (r_o : QueryStructure qs_schema),
+    refine (MaxElements (fun r r' : RawTuple => prefix (f r) (f r'))
+                        For (Query_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound)
+                                                                         Return r )))
+           (results' <- For (Query_In r_o idx (fun r : RawTuple => Where (f r = bound)
+                                                                         Return r ));
+              If negb (is_empty results') Then ret results' Else
+                 (MaxElements (fun r r' => prefix (f r) (f r'))
+                              For (Query_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound
+                                                                                /\ (f r) <> bound)
+                                                                         Return r )))
+).
+Proof.
+  intros.
+  pose proof (fun H H' H'' H''' =>
+                @refine_MaxElements _ _ _ prefix H H' H'' H''' bound (GetRelation r_o idx) f).
+(* simplify with monad laws.
+  Local Transparent Query_For.
+  Local Transparent Query_In.
+  Local Transparent QueryResultComp.
+  unfold Query_For, Query_In, QueryResultComp.
+  rewrite !refineEquiv_bind_bind.
+  intros ? ?.
+  computes_to_inv.
+  computes_to_econstructor; eauto.
+  computes_to_econstructor; eauto.
+  assert (is_empty v0 = is_empty a0).
+  { revert H; clear; generalize a0; induction v0; simpl; intros.
+    symmetry in H; rewrite (Permutation_nil H); reflexivity.
+    destruct a1; simpl; try reflexivity.
+    pose proof (Permutation_nil H); discriminate.
+  }
+  rewrite <- H0.
+  destruct (is_empty v0) eqn: ?; simpl in *.
+  unfold MaxElements in *; computes_to_inv.
+  apply refineEquiv_bind_bind.
+  computes_to_econstructor; eauto.
+  computes_to_econstructor; eauto.
+  Focus 2.
+
+
+
+
+  rewrite H.
+  unfold MaxElements in *.
+  unfold Query_For.
+  simplify with monad laws.
+
+  f_equiv; intro.
+  setoid_rewrite H.
+
+  Local Opaque QueryResultComp. *)
+Admitted.
+
+Lemma refine_If_Then_Else_true {C}
+  : forall i (t e : Comp C),
+    i = true
+    -> refine (If i Then t Else e) t.
+Proof.
+  intros; subst; simpl; reflexivity.
+Qed.
+
+Lemma refine_If_Then_Else_false {C}
+  : forall i (t e : Comp C),
+    i = false
+    -> refine (If i Then t Else e) e.
+Proof.
+  intros; subst; simpl; reflexivity.
+Qed.
