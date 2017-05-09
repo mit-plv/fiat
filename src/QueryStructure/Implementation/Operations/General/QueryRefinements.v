@@ -1559,3 +1559,18 @@ Proof.
   symmetry in H'.
   eapply Permutation_in; eauto.
 Qed.
+
+Corollary For_UnConstrQuery_In_Where_Prop {qs_schema}
+  : forall idx r_o P l,
+    DecideableEnsemble P
+    -> Query_For (UnConstrQuery_In (qsSchema := qs_schema)
+                     r_o idx (fun r : RawTuple => Query_Where (P r)
+                                                        (Query_Return r) )) ↝ l
+    -> Forall P l.
+Proof.
+  unfold UnConstrQuery_In, Query_For, QueryResultComp; intros; computes_to_inv.
+  apply Forall_forall; intros.
+  eapply flatten_CompList_Prop in H'0; eauto.
+  symmetry in H'.
+  eapply Permutation_in; eauto.
+Qed.

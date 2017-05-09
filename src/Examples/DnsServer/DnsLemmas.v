@@ -1078,22 +1078,22 @@ Proof.
 Qed.
 
 Lemma MaxElementsUnConstrQuery_In {qs_schema}
-  : forall idx f bound (r_o : QueryStructure qs_schema),
+  : forall idx f bound (r_o : UnConstrQueryStructure qs_schema),
     refine (MaxElements (fun r r' : RawTuple => prefix (f r) (f r'))
-                        For (Query_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound)
+                        For (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound)
                                                                          Return r )))
-           (results' <- For (Query_In r_o idx (fun r : RawTuple => Where (f r = bound)
+           (results' <- For (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (f r = bound)
                                                                          Return r ));
               If negb (is_empty results') Then ret results' Else
                  (MaxElements (fun r r' => prefix (f r) (f r'))
-                              For (Query_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound
+                              For (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (prefix (f r) bound
                                                                                 /\ (f r) <> bound)
                                                                          Return r )))
 ).
 Proof.
   intros.
   pose proof (fun H H' H'' H''' =>
-                @refine_MaxElements _ _ _ prefix H H' H'' H''' bound (GetRelation r_o idx) f).
+                @refine_MaxElements _ _ _ prefix H H' H'' H''' bound (GetUnConstrRelation r_o idx) f).
 (* simplify with monad laws.
   Local Transparent Query_For.
   Local Transparent Query_In.

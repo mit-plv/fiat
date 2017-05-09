@@ -146,4 +146,3 @@ Proof.
 
 Time Definition DNSImpl := Eval simpl in (projT1 DnsManual).
 Print DNSImpl.
-v

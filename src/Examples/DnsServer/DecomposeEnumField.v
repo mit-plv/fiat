@@ -1010,6 +1010,19 @@ Section DecomposeEnumField.
       apply IHm; eauto.
   Qed.
 
+  Lemma refine_flatten_CompList_func' :
+    forall (A B : Type) (l : list A) (f f' : A -> Comp (list B)),
+      (forall v, List.In v l -> refine (f v) (f' v))
+      -> refine (FlattenCompList.flatten_CompList (map f l)) (FlattenCompList.flatten_CompList (map f' l)).
+  Proof.
+    induction l; simpl; intros.
+    - reflexivity.
+    - rewrite H by eauto.
+      f_equiv; intro.
+      rewrite IHl by eauto.
+      reflexivity.
+  Qed.
+
   Lemma refine_Iterate_Equiv_QueryResultComp_body_Where_And_eq
         m
         {ResultT : Type}
