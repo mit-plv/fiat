@@ -32,7 +32,7 @@ module WITH_DB =
     let open Proofview.Notations in
     (* [dbs] : list of hint databases *)
     (* [tacK] : tactic to run on a hint *)
-    Proofview.Goal.nf_enter { enter = begin
+    Proofview.Goal.nf_enter begin
 	fun gl ->
 	let syms = ref [] in
 	let _ =
@@ -61,14 +61,14 @@ module WITH_DB =
 			      | _ -> tac))
 	     tac hints)
 	  (tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
-      end }
+      end
 
   let add_resolve_to_db lem db =
     let open Proofview.Notations in
-    Proofview.Goal.nf_enter { enter = begin
+    Proofview.Goal.nf_enter begin
 	fun gl ->
 	let _ = Hints.add_hints true db (Hints.HintsResolveEntry [({ Vernacexpr.hint_priority = Some 1 ; Vernacexpr.hint_pattern = None },false,true,Hints.PathAny,lem)]) in
 	tclIDTAC
-      end }
+      end
 
 end

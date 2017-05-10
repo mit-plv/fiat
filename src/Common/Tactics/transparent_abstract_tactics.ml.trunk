@@ -15,7 +15,6 @@ module TRANSPARENT_ABSTRACT =
     open Proofview.Notations
     open Safe_typing
     open Proof_global
-    open Sigma.Notations
     (* Copied from tactics.ml *)
     let interpretable_as_section_decl evdref d1 d2 =
       let open Context.Named.Declaration in
@@ -72,12 +71,11 @@ module TRANSPARENT_ABSTRACT =
       let open Proofview.Notations in
       let open Context.Named.Declaration in
       (* Apply to each goal, normalizing evars in each first. *)
-      Proofview.Goal.nf_enter { enter = begin
+      Proofview.Goal.nf_enter begin
                 fun gl ->
           let sigma = Proofview.Goal.sigma gl in
           let current_sign = Global.named_context_val()
           and global_sign = Proofview.Goal.hyps gl in
-          let sigma = Sigma.to_evar_map sigma in
           let evdref = ref sigma in
           (* Identify which hypotheses are local and which are section variables. *)
           let sign,secsign =
@@ -141,7 +139,7 @@ module TRANSPARENT_ABSTRACT =
             Proofview.tclEFFECTS effs <*>
             pf_constr_of_global (Globnames.ConstRef cst) >>= fun df ->
             ltac_apply tacK (Tacinterp.Value.of_constr df)
-        end }
+        end
 
     (* Default identifier *)
     let anon_id = Id.of_string "anonymous"
