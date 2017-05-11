@@ -143,107 +143,10 @@ module TRANSPARENT_ABSTRACT =
             ltac_apply tacK (Tacinterp.Value.of_constr df)
         end }
 
-    (* Solve the goal [gk] by tactic [tak] and save the constructed term as *)
-    (* a transparent definition with identifier [id], using [lcl] to decide *)
-    (* if the definition is local.  *)
-    let transparent_abstract_by_tac id tac gk lcl =
-      let open Tacticals.New in
-      let open Tacmach.New in
-      let open Proofview.Notations in
-      let open Context.Named.Declaration in
-      (* Apply to each goal, normalizing evars in each first. *)
-      Proofview.Goal.nf_enter { enter = begin
-          fun gl ->
-          let sigma = Proofview.Goal.sigma gl in
-          let current_sign = Global.named_context_val()
-          and global_sign = Proofview.Goal.hyps gl in
-          let sigma = Sigma.to_evar_map sigma in
-          let evdref = ref sigma in
-          (* Identify which hypotheses are local and which are section variables. *)
-          let sign,secsign =
-            List.fold_right
-              (fun d (s1,s2) ->
-               let id = get_id d in
-               if mem_named_context_val id current_sign &&
-                    interpretable_as_section_decl evdref (EConstr.lookup_named_val id current_sign) d
-               then (s1,EConstr.push_named_context_val d s2)
-               else (Context.Named.add d s1,s2))
-              global_sign (Context.Named.empty,empty_named_context_val) in
-          (* Build the identifier for the new term *)
-          let id = Namegen.next_global_ident_away id (pf_ids_of_hyps gl) in
-          (* Construct the type of the term by abstracting over the *)
-          (* local hypotheses and definitions. *)
-          let concl = it_mkNamedProd_or_LetIn (Proofview.Goal.concl gl) sign in
-          (* Make sure there are no uninstantiated evars in the type of the target. *)
-          let concl =
-            try flush_and_check_evars !evdref concl
-            with Uninstantiated_evar _ ->
-              error "\"abstract\" cannot handle existentials." in
-          (* Normalize evars in the goal, for reasons unknown *)
-          let evd, ctx, concl =
-            (* FIXME: should be done only if the tactic succeeds *)
-            let evd, nf = nf_evars_and_universes !evdref in
-            let ctx = Evd.universe_context_set evd in
-            evd, ctx, EConstr.of_constr (nf concl)
-          in
-          (* This is the tactic script that should solve the goal. *)
-          let solve_tac = tclCOMPLETE (tclTHEN (tclDO (List.length sign) Tactics.intro) tac) in
-          (* Get the universe context associated with the evar map [evd] *)
-          let ectx = Evd.evar_universe_context evd in
-          let (const, safe, ectx) =
-            (* Actually build the constant using [solve_tac] *)
-            try Pfedit.build_constant_by_tactic ~goal_kind:gk id ectx secsign concl solve_tac
-            with Logic_monad.TacticFailure e as src ->
-              (* if the tactic [tac] fails, it reports a [TacticFailure e], *)
-              (* which is an error irrelevant to the proof system (in fact it *)
-              (* means that [e] comes from [tac] failing to yield enough *)
-              (* success). Hence it reraises [e]. *)
-              let (_, info) = CErrors.push src in
-              Exninfo.iraise (e, info)
-          in
-          (* Create a global definition for const *)
-          let cd = Entries.DefinitionEntry const in
-           let decl = (cd, IsDefinition Definition) in
-          (** bendy: Seems okay for new constant to be local, but may have unintended **)
-          (** consequences if abstracted terms should be accessed outside the proof. **)
-          let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest ~local:lcl id decl in
-          (* Tactic Monad *)
-          (* Universe Variable stuff? *)
-          let evd = Evd.set_universe_context evd ectx in
-          (* Build a private constant for the new constant *)
-          let eff = private_con_of_con (Global.safe_env ()) cst in
-          (* Add that constant to the private constants *)
-          let effs = add_private eff
-                                 Entries.(snd (Future.force const.const_entry_body)) in
-          (* Get the local arguments to apply the new constant to. *)
-          let args = List.rev (Context.Named.to_instance EConstr.mkVar sign) in
-          (* Use the definition built above to solve the goal. *)
-          let solve =
-            Proofview.Unsafe.tclEVARS evd <*>
-              Proofview.tclEFFECTS effs <*>
-              pf_constr_of_global (Globnames.ConstRef cst) >>= fun df ->
-              Tactics.exact_no_check (EConstr.applist (df, args))
-          in
-          if not safe then Proofview.mark_as_unsafe <*> solve else solve
-        end }
-
     (* Default identifier *)
     let anon_id = Id.of_string "anonymous"
 
-    let tclTRABSTRACT name_op tac =
-      (* What's the right default goal kind?*)
-      let default_gk = (Global, false, Proof Theorem) in
-      let s, gk = match name_op with
-        | Some s ->
-           (try let _, gk, _ = current_proof_statement () in s, gk
-            with NoCurrentProof -> s, default_gk)
-        | None   ->
-           let name, gk =
-             try let name, gk, _ = current_proof_statement () in name, gk
-             with NoCurrentProof -> anon_id, default_gk in
-           add_suffix name "_term", gk
-      in
-      transparent_abstract_by_tac s tac gk false
+    let tclTRABSTRACT name_op tac = Tactics.tclABSTRACT ~opaque:false name_op tac
 
     let tclABSTRACTTERM name_op term tacK =
       (* What's the right default goal kind?*)
@@ -260,9 +163,3 @@ module TRANSPARENT_ABSTRACT =
       in
       transparent_abstract_term s term tacK gk false
   end
-
-    (*let tclABSTRACT2 name_op tac gl =
-    let s = match name_op with
-      | Some s -> s
-      | None   -> Nameops.add_suffix (Pfedit.get_current_proof_name ()) "_term"
-    in *)
