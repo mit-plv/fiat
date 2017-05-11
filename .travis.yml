@@ -20,4 +20,4 @@ before_install:
   - sudo apt-get update -q
   - sudo apt-get install $COQ_PACKAGE -y
 
-script: COQPATH="$(pwd)/$COQPRIME" ./etc/coq-scripts/timing/make-pretty-timed.sh -j2 && make TIMED=1 -j2
+script: ./etc/coq-scripts/timing/make-pretty-timed.sh -j2 && make TIMED=1 -j2
