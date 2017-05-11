@@ -10,8 +10,14 @@ matrix:
       env: COQ_VERSION="8.5pl3" TARGETS="parsers" COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
     - dist: trusty
       env: COQ_VERSION="8.5"    TARGETS="parsers" COQ_PACKAGE="coq-8.5 libcoq-8.5-ocaml libcoq-8.5-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
-#    - dist: precise
-#      env: COQ_VERSION="8.4pl6" TARGETS="parsers" COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6 ocaml camlp5"                        PPA="ppa:jgross-h/many-coq-versions-ocaml-3-temp-while-over-quota-2"
+    - dist: trusty
+      env: COQ_VERSION="8.6"    TARGETS="fiat-core" COQ_PACKAGE="coq-8.6 libcoq-8.6-ocaml libcoq-8.6-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
+    - dist: trusty
+      env: COQ_VERSION="8.5pl3" TARGETS="fiat-core" COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
+    - dist: trusty
+      env: COQ_VERSION="8.5"    TARGETS="fiat-core" COQ_PACKAGE="coq-8.5 libcoq-8.5-ocaml libcoq-8.5-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
+    - dist: precise
+      env: COQ_VERSION="8.4pl6" TARGETS="fiat-core" COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6 libcoq-ocaml-dev-8.4pl6 ocaml camlp5"                        PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
 #    - dist: trusty
 #      env: COQ_VERSION="8.4"    TARGETS="parsers" COQ_PACKAGE="coq ocaml camlp5"                                                   PPA=""
 
@@ -20,4 +26,4 @@ before_install:
   - sudo apt-get update -q
   - sudo apt-get install $COQ_PACKAGE -y
 
-script: ./etc/coq-scripts/timing/make-pretty-timed.sh -j2 && make TIMED=1 -j2
+script: ./etc/coq-scripts/timing/make-pretty-timed.sh -j2 $TARGETS && make TIMED=1 -j2 $TARGETS
