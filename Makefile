@@ -78,7 +78,8 @@ test-parsers-profile-graph: src/Parsers/Refinement/ExtractSharpenedABStar.vo
 CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
 	src/Common/i2list.vo \
-	src/Common/ilist2_pair.vo
+	src/Common/ilist2_pair.vo \
+	src/Common/FMapExtensions/LiftRelationInstances.vo
 
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/IndexedBags.vo \
