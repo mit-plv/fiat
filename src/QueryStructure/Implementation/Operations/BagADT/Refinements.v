@@ -190,9 +190,12 @@ Section BagsQueryStructureRefinements.
     symmetry in H1.
     eapply NoDup_Permutation_rewrite; eauto.
     rewrite map_map.
-    repeat setoid_rewrite map_app in Comp_v'';
-      repeat setoid_rewrite map_map in Comp_v''; simpl in *;
-      rewrite app_nil_r in Comp_v''; eauto.
+    first [ rewrite !map_app, !map_map, !app_nil_r in Comp_v'';
+            simpl in *; rewrite map_map in Comp_v''; eauto
+          | repeat setoid_rewrite map_app in Comp_v'';
+            repeat setoid_rewrite map_map in Comp_v''; simpl in *;
+            rewrite app_nil_r in Comp_v''; eauto
+          ].
   Qed.
 
   Local Opaque IndexedQueryStructure.
@@ -899,14 +902,33 @@ Section BagsQueryStructureRefinements.
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     match goal with
-      |- refine (l' <- Join_Comp_Lists ?l ?c; (@?f l')) _ =>
-      setoid_rewrite (Join_Comp_Lists_apply_f l c) with (c' := fun l => List_Query_In l _)
+      |- refine (l' <- @Join_Comp_Lists ?n ?A ?f ?As ?a ?l ?c ; _) _ =>
+      pose proof (fun B C => @Join_Comp_Lists_apply_f n A B C f As a l c) as H'';
+        setoid_rewrite H''
     end.
     setoid_rewrite refineEquiv_unit_bind.
-    rewrite filter_and_join_ilist2_hd_dep with
+    etransitivity.
+    Focus 2.
+    unfold List_Query_In.
+    etransitivity.
+    Focus 2.
+    apply refine_under_bind.
+    intros.
+    set_evars.
+    rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
+                                            (x := filter filter_rest a).
+    unfold H1; finish honing.
+    simpl.
+    rewrite <- refine_bind_bind.
+    rewrite <- filter_and_join_ilist2_hd_dep with
     (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
-                                          (search_pattern tup))).
-    simplify with monad laws; f_equiv.
+                                          (search_pattern tup)))
+    (filter_rest0 := filter_rest).
+    finish honing.
+    simplify with monad laws.
+    rewrite refineEquiv_bind_bind.
+    setoid_rewrite refineEquiv_bind_unit.
+    f_equiv.
   Qed.
 
   Lemma realizeable_Enumerate
