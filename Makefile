@@ -79,7 +79,8 @@ CORE_UNMADE_VO := \
 	src/Common/ilist2.vo \
 	src/Common/i2list.vo \
 	src/Common/ilist2_pair.vo \
-	src/Common/FMapExtensions/LiftRelationInstances.vo
+	src/Common/FMapExtensions/LiftRelationInstances.vo \
+	src/Common/FMapExtensions/Wf.vo
 
 QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/IndexedBags.vo \
