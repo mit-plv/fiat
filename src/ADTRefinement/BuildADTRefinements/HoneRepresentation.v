@@ -290,6 +290,20 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') "with" "defau
   [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
    compute [imap absConsDef absMethDef]; simpl ].
 
+Ltac set_rhs_head_evar :=
+  match goal with
+  |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+  |  |- refine _ ?E => is_evar E; let H := fresh in fast_set (H := E)
+  | _ => idtac
+  end.
+
 (* Honing Tactics for working on a single constructor at a time*)
 Tactic Notation "hone" "constructor" constr(consIdx) :=
   let A :=
@@ -327,18 +341,7 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
                               _
              ));
     [ intros; simpl in *;
-      match goal with
-      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ ?E => is_evar E; let H := fresh in fast_set (H := E)
-      | _ => idtac
-      end;
+      set_rhs_head_evar;
       match goal with
         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
                      (?H ?d) =>
