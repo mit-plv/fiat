@@ -395,18 +395,7 @@ Arguments DecADTSig : simpl never.
                                _
                               ));
     [ simpl refineMethod; intros; simpl in *;
-      match goal with
-      |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-      |  |- refine _ ?E => is_evar E; let H := fresh in fast_set (H := E)
-      | _ => idtac
-      end;
+      set_rhs_head_evar;
       match goal with
         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
                      (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)
