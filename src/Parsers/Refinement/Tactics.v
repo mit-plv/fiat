@@ -199,7 +199,7 @@ Ltac splitter_start :=
     set (e := ev);
     lazymatch goal with
     | [ |- context[opt2.fold_right _ _ ?ls] ]
-      => replace_with_vm_compute ls
+      => replace_with_vm_compute_by_set ls
     end;
     apply_splitter_tower_lemma
   | ];
