@@ -290,7 +290,7 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') "with" "defau
   [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
    compute [imap absConsDef absMethDef]; simpl ].
 
-Ltac set_rhs_head_evar () :=
+Ltac set_rhs_head_evar _ :=
   let H := fresh in
   let G := match goal with |- ?G => G end in
   match G with
