@@ -290,17 +290,28 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') "with" "defau
   [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
    compute [imap absConsDef absMethDef]; simpl ].
 
-Ltac set_rhs_head_evar :=
-  match goal with
-  |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-  |  |- refine _ ?E => is_evar E; let H := fresh in fast_set (H := E)
+Ltac set_rhs_head_evar () :=
+  let H := fresh in
+  let G := match goal with |- ?G => G end in
+  match G with
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f ?g ?h )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f g h))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f ?g )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f g))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e))
+  | refine ?lhs (?E ?a ?b ?c ?d )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d))
+  | refine ?lhs (?E ?a ?b ?c )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c))
+  | refine ?lhs (?E ?a ?b )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b))
+  | refine ?lhs (?E ?a)
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a))
+  | refine ?lhs ?E
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs H)
   | _ => idtac
   end.
 
@@ -341,7 +352,7 @@ Tactic Notation "hone" "constructor" constr(consIdx) :=
                               _
              ));
     [ intros; simpl in *;
-      set_rhs_head_evar;
+      set_rhs_head_evar ();
       match goal with
         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
                      (?H ?d) =>
@@ -395,7 +406,7 @@ Arguments DecADTSig : simpl never.
                                _
                               ));
     [ simpl refineMethod; intros; simpl in *;
-      set_rhs_head_evar;
+      set_rhs_head_evar ();
       match goal with
         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
                      (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)
