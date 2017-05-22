@@ -3,6 +3,7 @@ Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Parsers.ContextFreeGrammar.ReflectiveOpt.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Gensym.
@@ -179,3 +180,26 @@ Section grammar.
     exact _.
   Defined.
 End grammar.
+
+Section pregrammar.
+  Context {Char} {G : pregrammar Char}.
+
+  Local Notation valid_nonterminals := (List.map fst (pregrammar_productions G)).
+  Lemma eq_valid_nonterminals_pregrammar_rnonterminals
+    : valid_nonterminals = pregrammar_rnonterminals G.
+  Proof.
+    simpl; rewrite map_map; reflexivity.
+  Qed.
+
+  Let pregrammar_iidata : opt.interp_ritem_data :=
+    {| opt.irnonterminal_names := pregrammar_rnonterminals G;
+       opt.irinvalid_nonterminal := Gensym.gensym (pregrammar_rnonterminals G) |}.
+
+  Lemma eq_default_to_nonterminal_interp_nonterminal nt
+    : default_to_nonterminal (G:=G) nt = opt.interp_nonterminal (iidata:=pregrammar_iidata) nt.
+  Proof.
+    unfold default_to_nonterminal, some_invalid_nonterminal; simpl.
+    rewrite !map_map; simpl.
+    reflexivity.
+  Qed.
+End pregrammar.
