@@ -430,6 +430,8 @@ src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/Reflective.v
 src/Parsers/ContextFreeGrammar/ReflectiveLemmas.v
+src/Parsers/ContextFreeGrammar/ReflectiveOpt.v
+src/Parsers/ContextFreeGrammar/ReflectiveOptLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectness.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessMorphisms.v
