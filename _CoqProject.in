@@ -423,8 +423,6 @@ src/Parsers/AbstractInterpretation/NonTerminalMap.v
 src/Parsers/AbstractInterpretation/NonTerminalMapWf.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
-src/Parsers/ContextFreeGrammar/CoreOpt.v
-src/Parsers/ContextFreeGrammar/CoreOptLemmas.v
 src/Parsers/ContextFreeGrammar/Equality.v
 src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
@@ -432,8 +430,6 @@ src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/Reflective.v
 src/Parsers/ContextFreeGrammar/ReflectiveLemmas.v
-src/Parsers/ContextFreeGrammar/ReflectiveOpt.v
-src/Parsers/ContextFreeGrammar/ReflectiveOptLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectness.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessLemmas.v
 src/Parsers/ContextFreeGrammar/SimpleCorrectnessMorphisms.v
