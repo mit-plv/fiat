@@ -49,7 +49,7 @@ Module opt.
          | Reflective.RNonTerminal nt => RNonTerminal (compile_nonterminal nt)
          end.
     Definition interp_nonterminal nt
-      := List.nth_default irinvalid_nonterminal irnonterminal_names nt.
+      := List.nth nt irnonterminal_names irinvalid_nonterminal.
     Definition interp_ritem (expr : opt.ritem Char) : Reflective.ritem Char
       := match expr with
          | RTerminal ch => Reflective.RTerminal ch

@@ -28,7 +28,7 @@ Module opt.
     Proof.
       unfold opt.compile_nonterminal, opt.interp_nonterminal.
       destruct iidata; simpl in *.
-      rewrite List.nth_default_eq.
+      rewrite ?List.nth_default_eq.
       revert dependent irnonterminal_names.
       induction nt as [|nt IHnt], irnonterminal_names;
         try solve [ reflexivity
