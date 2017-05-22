@@ -60,6 +60,13 @@ Section grammar.
   : default_nonterminal_carrierT -> String.string
     := fun nt => List.nth nt valid_nonterminals some_invalid_nonterminal.
 
+  Definition default_of_nonterminal
+  : String.string -> default_nonterminal_carrierT
+    := fun nt => List.first_index_default
+                   (string_beq nt)
+                   (List.length valid_nonterminals)
+                   valid_nonterminals.
+
   Lemma default_find_to_nonterminal idx
   : List.first_index_error
       (string_beq (default_to_nonterminal idx))
@@ -196,6 +203,14 @@ Section pregrammar.
        opt.irinvalid_nonterminal := Gensym.gensym (pregrammar_rnonterminals G) |}.
 
   Lemma eq_default_to_nonterminal_interp_nonterminal nt
+    : default_to_nonterminal (G:=G) nt = opt.interp_nonterminal (iidata:=pregrammar_iidata) nt.
+  Proof.
+    unfold default_to_nonterminal, some_invalid_nonterminal; simpl.
+    rewrite !map_map; simpl.
+    reflexivity.
+  Qed.
+
+  Lemma eq_default_of_nonterminal_interp_nonterminal nt
     : default_to_nonterminal (G:=G) nt = opt.interp_nonterminal (iidata:=pregrammar_iidata) nt.
   Proof.
     unfold default_to_nonterminal, some_invalid_nonterminal; simpl.
