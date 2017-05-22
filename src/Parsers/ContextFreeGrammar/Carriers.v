@@ -211,9 +211,9 @@ Section pregrammar.
   Qed.
 
   Lemma eq_default_of_nonterminal_compile_nonterminal nt
-    : default_to_nonterminal (G:=G) nt = opt.interp_nonterminal (iidata:=pregrammar_iidata) nt.
+    : default_of_nonterminal (G:=G) nt = opt.compile_nonterminal (iidata:=pregrammar_iidata) nt.
   Proof.
-    unfold default_to_nonterminal, some_invalid_nonterminal; simpl.
+    unfold default_of_nonterminal, some_invalid_nonterminal; simpl.
     rewrite !map_map; simpl.
     reflexivity.
   Qed.
