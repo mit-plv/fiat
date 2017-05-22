@@ -270,11 +270,6 @@ Ltac pose_disjoint_rev_search_for lem :=
               end in
   pose proof lem' as lem;
   clear H'.
-Ltac replace_with_native_compute_in c H :=
-  let c' := (eval native_compute in c) in
-  (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
-  replace c with c' in H by (clear; native_cast_no_check (eq_refl c')).
-
 Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
   idtac;
   let G := (lazymatch goal with
@@ -295,7 +290,7 @@ Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
                 | context[DisjointLemmas.actual_possible_last_terminals ?ls]
                   => constr:(DisjointLemmas.actual_possible_last_terminals ls)
                 end in
-       replace_with_native_compute_in x lem';
+       replace_with_vm_compute_in x lem';
        unfold Equality.list_bin in lem';
        change (orb false) with (fun bv : bool => bv) in lem';
        cbv beta in lem';

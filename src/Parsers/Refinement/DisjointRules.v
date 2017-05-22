@@ -314,11 +314,6 @@ Ltac solve_disjoint_side_conditions :=
     => vm_compute; try reflexivity
   end.
 
-Ltac replace_with_native_compute_in c H :=
-  let c' := (eval native_compute in c) in
-  (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
-  replace c with c' in H by (clear; native_cast_no_check (eq_refl c')).
-
 Ltac pose_disjoint_search_for lem :=
   idtac;
   let G := match goal with |- appcontext[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
@@ -353,7 +348,7 @@ Ltac rewrite_once_disjoint_search_for_specialize lem lem' :=
                 | context[DisjointLemmas.actual_possible_first_terminals ?ls]
                   => constr:(DisjointLemmas.actual_possible_first_terminals ls)
                 end in
-       replace_with_native_compute_in x lem';
+       replace_with_vm_compute_in x lem';
        unfold Equality.list_bin in lem';
        change (orb false) with (fun bv : bool => bv) in lem';
        cbv beta in lem';
