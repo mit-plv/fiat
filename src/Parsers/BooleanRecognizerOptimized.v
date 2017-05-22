@@ -1329,6 +1329,7 @@ Section recursive_descent_parser.
                      | idtac;
                        match goal with
                        | [ |- appcontext[@rdp_list_of_nonterminal] ] => fail 1
+                       | [ |- appcontext[@Carriers.default_of_nonterminal] ] => fail 1
                        | [ |- appcontext[@Carriers.default_production_tl] ] => fail 1
                        | _ => reflexivity
                        end
@@ -1337,7 +1338,7 @@ Section recursive_descent_parser.
                      | apply (f_equal2 andb)
                      | apply (f_equal2 (@cons _))
                      | t_refine_item_match ];
-        first [ progress unfold rdp_list_of_nonterminal, Valid_nonterminals, grammar_of_pregrammar, pregrammar_nonterminals; simpl;
+        first [ progress unfold rdp_list_of_nonterminal, default_of_nonterminal, Valid_nonterminals, grammar_of_pregrammar, pregrammar_nonterminals; simpl;
                 rewrite !map_length;
                 reflexivity
               | idtac;
@@ -1970,7 +1971,7 @@ Section recursive_descent_parser.
     evar (b' : bool).
     sigL_transitivity b'; subst b'.
     Focus 2.
-    { progress unfold rdp_list_of_nonterminal; simpl.
+    { progress unfold rdp_list_of_nonterminal, default_of_nonterminal; simpl.
       unfold pregrammar_nonterminals; simpl.
       match goal with
         | [ |- _ = ?f ?x ]
