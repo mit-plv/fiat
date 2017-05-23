@@ -634,9 +634,13 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
             | _ => c'
             end in
   change c with c' in H;
-  first [ setoid_rewrite H
-        | let T := type of H in
-          fail 1 "Unexpeected failure to setoid_rewrite with" T ];
+  lazymatch goal with
+  | [ |- refine { splits : list nat | _ } _ ]
+    => refine H
+  | _ => first [ setoid_rewrite H
+               | let T := type of H in
+                 fail 1 "Unexpected failure to setoid_rewrite with" T ]
+  end;
   clear H.
 Ltac refine_binop_table :=
   idtac;

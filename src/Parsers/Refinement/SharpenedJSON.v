@@ -61,9 +61,9 @@ total time:      1.250s
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_rev_search_for. }
     { Time refine_disjoint_search_for. }
-    { Time refine_binop_table; reflexivity. }
+    { Time refine_binop_table. }
     { Time refine_disjoint_search_for. }
-    { Time refine_binop_table; reflexivity. }
+    { Time refine_binop_table. }
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_rev_search_for. }
@@ -74,9 +74,9 @@ total time:      1.250s
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_search_for. }
-    { Time refine_binop_table; reflexivity. }
+    { Time refine_binop_table. }
     { Time refine_disjoint_search_for. }
-    { Time refine_binop_table; reflexivity. }
+    { Time refine_binop_table. }
     { Time refine_disjoint_search_for. }
     { Time refine_disjoint_search_for. }
     { simplify parser splitter.
