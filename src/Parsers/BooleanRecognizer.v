@@ -29,7 +29,7 @@ Section recursive_descent_parser.
          ret_production_nil_false := false;
          ret_orb_productions := orb;
          ret_orb_productions_base := false;
-         ret_nt b := b;
+         ret_nt nt b := b;
          ret_nt_invalid := false }.
 
   Definition parse_item'

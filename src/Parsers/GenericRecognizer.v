@@ -143,7 +143,8 @@ Section recursive_descent_parser.
                   => let len0' := if len <? len0
                                   then len
                                   else len0 in
-                     ret_nt (parse_productions'
+                     ret_nt (to_nonterminal nt)
+                            (parse_productions'
                                (len0 := len0')
                                parse_nonterminal
                                offset

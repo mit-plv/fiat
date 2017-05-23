@@ -61,7 +61,7 @@ Section recursive_descent_parser.
          ret_production_nil_false := None;
          ret_orb_productions := option_simple_parse_of_orb;
          ret_orb_productions_base := None;
-         ret_nt b := b;
+         ret_nt nt b := b;
          ret_nt_invalid := None }.
 
   Definition parse_item'
