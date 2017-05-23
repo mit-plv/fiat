@@ -84,18 +84,12 @@ Section maybe_empty.
          combine_productions := orb;
          on_nonterminal nt v := v }.
 
-  Definition maybe_empty_of_gen : pregrammar' Char -> preopt.pregrammar' Char -> String.string -> bool
-    := @fold_nt _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_productions_gen : pregrammar' Char -> preopt.pregrammar' Char -> productions Char -> bool
-    := @fold_productions _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_production_gen : pregrammar' Char -> preopt.pregrammar' Char -> production Char -> bool
-    := @fold_production _ _ maybe_empty_fold_data.
   Definition maybe_empty_of : pregrammar' Char -> String.string -> bool
-    := fun G => maybe_empty_of_gen G (preopt.compile_pregrammar' G).
+    := @fold_nt _ _ maybe_empty_fold_data.
   Definition maybe_empty_of_productions : pregrammar' Char -> productions Char -> bool
-    := fun G => maybe_empty_of_productions_gen G (preopt.compile_pregrammar' G).
+    := @fold_productions _ _ maybe_empty_fold_data.
   Definition maybe_empty_of_production : pregrammar' Char -> production Char -> bool
-    := fun G => maybe_empty_of_production_gen G (preopt.compile_pregrammar' G).
+    := @fold_production _ _ maybe_empty_fold_data.
 End maybe_empty.
 
 Section all_possible.
@@ -111,132 +105,94 @@ Section all_possible.
          combine_productions := @app _;
          on_nonterminal nt v := v }.
 
-  Definition possible_terminals_of_gen : pregrammar' Char -> preopt.pregrammar' Char -> String.string -> possible_terminals
-    := @fold_nt _ _ all_possible_fold_data.
-  Definition possible_terminals_of_productions_gen : pregrammar' Char -> preopt.pregrammar' Char -> productions Char -> possible_terminals
-    := @fold_productions _ _ all_possible_fold_data.
-  Definition possible_terminals_of_production_gen : pregrammar' Char -> preopt.pregrammar' Char -> production Char -> possible_terminals
-    := @fold_production _ _ all_possible_fold_data.
   Definition possible_terminals_of : pregrammar' Char -> String.string -> possible_terminals
-    := fun G => possible_terminals_of_gen G (preopt.compile_pregrammar' G).
+    := @fold_nt _ _ all_possible_fold_data.
   Definition possible_terminals_of_productions : pregrammar' Char -> productions Char -> possible_terminals
-    := fun G => possible_terminals_of_productions_gen G (preopt.compile_pregrammar' G).
+    := @fold_productions _ _ all_possible_fold_data.
   Definition possible_terminals_of_production : pregrammar' Char -> production Char -> possible_terminals
-    := fun G => possible_terminals_of_production_gen G (preopt.compile_pregrammar' G).
+    := @fold_production _ _ all_possible_fold_data.
 End all_possible.
 
 Section only_first.
-  Section gen.
-    Context (G_orig : pregrammar' Ascii.ascii)
-            (G : preopt.pregrammar' Ascii.ascii)
-            {HSLM : StringLikeMin Ascii.ascii}
-            {HSL : StringLike Ascii.ascii}
-            {HSI : StringIso Ascii.ascii}.
+  Context (G : pregrammar' Ascii.ascii)
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}.
 
-    Record possible_first_terminals :=
-      { actual_possible_first_terminals :> list Ascii.ascii;
-        might_be_empty : bool }.
+  Record possible_first_terminals :=
+    { actual_possible_first_terminals :> list Ascii.ascii;
+      might_be_empty : bool }.
 
-    Local Instance only_first_fold_data (predata := @rdp_list_predata _ G_orig) : fold_grammar_data Ascii.ascii possible_first_terminals
-      := { on_terminal P
-           := {| actual_possible_first_terminals := filter P (Enumerable.enumerate Ascii.ascii);
-                 might_be_empty := false |};
-           on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := maybe_empty_of_gen G_orig G nt |};
-           on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
-           on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
-           combine_production first_of_first first_of_rest
-           := {| actual_possible_first_terminals
-                 := (actual_possible_first_terminals first_of_first)
-                      ++ (if might_be_empty first_of_first
-                          then actual_possible_first_terminals first_of_rest
-                          else []);
-                 might_be_empty
-                 := (might_be_empty first_of_first && might_be_empty first_of_rest)%bool |};
-           combine_productions first_of_first first_of_rest
-           := {| actual_possible_first_terminals
-                 := (actual_possible_first_terminals first_of_first)
-                      ++ (actual_possible_first_terminals first_of_rest);
-                 might_be_empty
-                 := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |};
-           on_nonterminal nt v := v }.
+  Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
+    := { on_terminal P
+         := {| actual_possible_first_terminals := filter P (Enumerable.enumerate Ascii.ascii);
+               might_be_empty := false |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := maybe_empty_of G nt |};
+         on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
+         on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
+         combine_production first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (if might_be_empty first_of_first
+                        then actual_possible_first_terminals first_of_rest
+                        else []);
+               might_be_empty
+               := (might_be_empty first_of_first && might_be_empty first_of_rest)%bool |};
+         combine_productions first_of_first first_of_rest
+         := {| actual_possible_first_terminals
+               := (actual_possible_first_terminals first_of_first)
+                    ++ (actual_possible_first_terminals first_of_rest);
+               might_be_empty
+               := (might_be_empty first_of_first || might_be_empty first_of_rest)%bool |};
+         on_nonterminal nt v := v }.
 
-    Definition possible_first_terminals_of_gen : String.string -> possible_first_terminals
-      := @fold_nt _ _ only_first_fold_data G_orig G.
-    Definition possible_first_terminals_of_productions_gen : productions Ascii.ascii -> possible_first_terminals
-      := @fold_productions _ _ only_first_fold_data G_orig G.
-    Definition possible_first_terminals_of_production_gen : production Ascii.ascii -> possible_first_terminals
-      := @fold_production _ _ only_first_fold_data G_orig G.
-  End gen.
-  Section compiled.
-    Context (G : pregrammar' Ascii.ascii)
-            {HSLM : StringLikeMin Ascii.ascii}
-            {HSL : StringLike Ascii.ascii}
-            {HSI : StringIso Ascii.ascii}.
-
-    Definition possible_first_terminals_of : String.string -> possible_first_terminals
-      := possible_first_terminals_of_gen G (preopt.compile_pregrammar' G).
-    Definition possible_first_terminals_of_productions : productions Ascii.ascii -> possible_first_terminals
-      := possible_first_terminals_of_productions_gen G (preopt.compile_pregrammar' G).
-    Definition possible_first_terminals_of_production : production Ascii.ascii -> possible_first_terminals
-      := possible_first_terminals_of_production_gen G (preopt.compile_pregrammar' G).
-  End compiled.
+  Definition possible_first_terminals_of : String.string -> possible_first_terminals
+    := @fold_nt _ _ only_first_fold_data G.
+  Definition possible_first_terminals_of_productions : productions Ascii.ascii -> possible_first_terminals
+    := @fold_productions _ _ only_first_fold_data G.
+  Definition possible_first_terminals_of_production : production Ascii.ascii -> possible_first_terminals
+    := @fold_production _ _ only_first_fold_data G.
 End only_first.
 
 Section only_last.
-  Section gen.
-    Context (G_orig : pregrammar' Ascii.ascii)
-            (G : preopt.pregrammar' Ascii.ascii)
-            {HSLM : StringLikeMin Ascii.ascii}
-            {HSL : StringLike Ascii.ascii}
-            {HSI : StringIso Ascii.ascii}.
+  Context (G : pregrammar' Ascii.ascii)
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}.
 
-    Record possible_last_terminals :=
-      { actual_possible_last_terminals :> list Ascii.ascii;
-        might_be_empty' : bool }.
+  Record possible_last_terminals :=
+    { actual_possible_last_terminals :> list Ascii.ascii;
+      might_be_empty' : bool }.
 
-    Local Instance only_last_fold_data (predata := @rdp_list_predata _ G_orig) : fold_grammar_data Ascii.ascii possible_last_terminals
-      := { on_terminal P
-           := {| actual_possible_last_terminals := filter P (Enumerable.enumerate Ascii.ascii);
-                 might_be_empty' := false |};
-           on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := maybe_empty_of_gen G_orig G nt |};
-           on_nil_production := {| actual_possible_last_terminals := nil ; might_be_empty' := true |};
-           on_nil_productions := {| actual_possible_last_terminals := nil ; might_be_empty' := false |};
-           combine_production last_of_first last_of_rest
-           := {| actual_possible_last_terminals
-                 := (actual_possible_last_terminals last_of_rest)
-                      ++ (if might_be_empty' last_of_rest
-                          then actual_possible_last_terminals last_of_first
-                          else []);
-                 might_be_empty'
-                 := (might_be_empty' last_of_first && might_be_empty' last_of_rest)%bool |};
-           combine_productions last_of_first last_of_rest
-           := {| actual_possible_last_terminals
-                 := (actual_possible_last_terminals last_of_first)
-                      ++ (actual_possible_last_terminals last_of_rest);
-                 might_be_empty'
-                 := (might_be_empty' last_of_first || might_be_empty' last_of_rest)%bool |};
-           on_nonterminal nt v := v }.
+  Local Instance only_last_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_last_terminals
+    := { on_terminal P
+         := {| actual_possible_last_terminals := filter P (Enumerable.enumerate Ascii.ascii);
+               might_be_empty' := false |};
+         on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := maybe_empty_of G nt |};
+         on_nil_production := {| actual_possible_last_terminals := nil ; might_be_empty' := true |};
+         on_nil_productions := {| actual_possible_last_terminals := nil ; might_be_empty' := false |};
+         combine_production last_of_first last_of_rest
+         := {| actual_possible_last_terminals
+               := (actual_possible_last_terminals last_of_rest)
+                    ++ (if might_be_empty' last_of_rest
+                        then actual_possible_last_terminals last_of_first
+                        else []);
+               might_be_empty'
+               := (might_be_empty' last_of_first && might_be_empty' last_of_rest)%bool |};
+         combine_productions last_of_first last_of_rest
+         := {| actual_possible_last_terminals
+               := (actual_possible_last_terminals last_of_first)
+                    ++ (actual_possible_last_terminals last_of_rest);
+               might_be_empty'
+               := (might_be_empty' last_of_first || might_be_empty' last_of_rest)%bool |};
+         on_nonterminal nt v := v }.
 
-    Definition possible_last_terminals_of_gen : String.string -> possible_last_terminals
-      := @fold_nt _ _ only_last_fold_data G_orig G.
-    Definition possible_last_terminals_of_productions_gen : productions Ascii.ascii -> possible_last_terminals
-      := @fold_productions _ _ only_last_fold_data G_orig G.
-    Definition possible_last_terminals_of_production_gen : production Ascii.ascii -> possible_last_terminals
-      := @fold_production _ _ only_last_fold_data G_orig G.
-  End gen.
-  Section compiled.
-    Context (G : pregrammar' Ascii.ascii)
-            {HSLM : StringLikeMin Ascii.ascii}
-            {HSL : StringLike Ascii.ascii}
-            {HSI : StringIso Ascii.ascii}.
-
-    Definition possible_last_terminals_of : String.string -> possible_last_terminals
-      := possible_last_terminals_of_gen G (preopt.compile_pregrammar' G).
-    Definition possible_last_terminals_of_productions : productions Ascii.ascii -> possible_last_terminals
-      := possible_last_terminals_of_productions_gen G (preopt.compile_pregrammar' G).
-    Definition possible_last_terminals_of_production : production Ascii.ascii -> possible_last_terminals
-      := possible_last_terminals_of_production_gen G (preopt.compile_pregrammar' G).
-  End compiled.
+  Definition possible_last_terminals_of : String.string -> possible_last_terminals
+    := @fold_nt _ _ only_last_fold_data G.
+  Definition possible_last_terminals_of_productions : productions Ascii.ascii -> possible_last_terminals
+    := @fold_productions _ _ only_last_fold_data G.
+  Definition possible_last_terminals_of_production : production Ascii.ascii -> possible_last_terminals
+    := @fold_production _ _ only_last_fold_data G.
 End only_last.
 
 Section maybe_empty_correctness.
@@ -327,7 +283,7 @@ Section maybe_empty_correctness.
         nt
     : maybe_empty_of G nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
   Proof.
-    csimpl rewrite (fold_nt_correct (G_orig := G) eq_refl nt).
+    csimpl rewrite (fold_nt_correct (G := G) nt).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__iff__maybe_empty_item; reflexivity.
   Qed.
 
@@ -336,7 +292,7 @@ Section maybe_empty_correctness.
         pat
     : maybe_empty_of_production G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
   Proof.
-    csimpl rewrite (fold_production_correct (G_orig := G) eq_refl pat).
+    csimpl rewrite (fold_production_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__iff__maybe_empty_production; reflexivity.
   Qed.
 
@@ -345,9 +301,53 @@ Section maybe_empty_correctness.
         pat
     : maybe_empty_of_productions G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
   Proof.
-    csimpl rewrite (fold_productions_correct (G_orig := G) eq_refl pat).
+    csimpl rewrite (fold_productions_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_productions__iff__maybe_empty_productions; reflexivity.
   Qed.
+
+  (*Lemma maybe_empty_correct (G : pregrammar' Char)
+        (Hvalid : grammar_rvalid G)
+        (predata := @rdp_list_predata _ G)
+        nt
+        (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
+    : maybe_empty_of G nt = true <-> forall str, parse_of_item G str (NonTerminal nt) -> length str = 0.
+  Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
+    let f := constr:(fold_nt_correct (G := G) nt) in
+    simpl rewrite f.
+    pose @MaybeEmpty.OfParse.parse_empty_from_maybe_empty_parse_of_item.
+    pose @MaybeEmpty.OfParse.parse_empty_minimal_maybe_empty_parse_of_item.
+    simpl in p.
+    apply (f ch).
+    pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_item p (Forall_parse_of_item_valid Hvalid' k p)) as H.
+    specialize (H His_valid).
+    revert H.
+    setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item (reflexivity _)).
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    let f := constr:(fold_nt_correct (G := G) nt) in
+    apply (f ch).
+  Qed.
+
+  Lemma maybe_empty_production_correct (G : pregrammar' Char)
+        (Hvalid : grammar_rvalid G)
+        (predata := @rdp_list_predata _ G)
+        (str : String) pat
+        (His_valid : production_valid pat)
+        (p : parse_of_production G str pat)
+  : forall_chars__char_in str (maybe_empty_production G pat).
+  Proof.
+    pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
+    unfold possible_terminals_of.
+    pose proof (fun k => All.ReachableParse.forall_chars_reachable_from_parse_of_production p (Forall_parse_of_production_valid Hvalid' k p)) as H.
+    specialize (H His_valid).
+    revert H.
+    setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production (reflexivity _)).
+    apply forall_chars__impl__forall_chars__char_in.
+    intro ch.
+    let f := constr:(fold_production_correct (G := G) pat) in
+    apply (f ch).
+  Qed.*)
 End maybe_empty_correctness.
 
 Section all_possible_correctness.
@@ -443,7 +443,7 @@ Section all_possible_correctness.
     setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_item__iff__reachable_from_item (reflexivity _)).
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
-    let f := constr:(fold_nt_correct (G_orig := G) eq_refl nt) in
+    let f := constr:(fold_nt_correct (G := G) nt) in
     apply (f ch).
   Qed.
 
@@ -463,20 +463,10 @@ Section all_possible_correctness.
     setoid_rewrite (All.MinimalReachableOfReachable.minimal_reachable_from_production__iff__reachable_from_production (reflexivity _)).
     apply forall_chars__impl__forall_chars__char_in.
     intro ch.
-    let f := constr:(fold_production_correct (G_orig := G) eq_refl pat) in
+    let f := constr:(fold_production_correct (G := G) pat) in
     apply (f ch).
   Qed.
 End all_possible_correctness.
-
-Local Ltac fold_gen_with Char G :=
-  change (@maybe_empty_of_gen Char G (preopt.compile_pregrammar' G)) with (@maybe_empty_of Char G);
-  change (@maybe_empty_of_productions_gen Char G (preopt.compile_pregrammar' G)) with (@maybe_empty_of_productions Char G);
-  change (@maybe_empty_of_production_gen Char G (preopt.compile_pregrammar' G)) with (@maybe_empty_of_production Char G).
-Local Ltac fold_gen :=
-  repeat match goal with
-         | [ G : pregrammar' ?Char |- _ ]
-           => progress fold_gen_with Char G
-         end.
 
 Section only_first_correctness.
   Context (G : pregrammar' Ascii.ascii)
@@ -509,7 +499,6 @@ Section only_first_correctness.
       | [ Hvalid : is_true (grammar_rvalid _) |- grammar_valid _ ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
-      | _ => progress fold_gen
       | [ |- context[maybe_empty_of _ _] ]
         => setoid_rewrite maybe_empty_of_correct
       | [ |- context[maybe_empty_of_production _ _] ]
@@ -621,7 +610,7 @@ Section only_first_correctness.
   Local Instance only_first_cdata
         (rdata := rdp_list_rdata' (G := G))
         (cdata := brute_force_cdata G)
-  : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G (preopt.compile_pregrammar' G)) G
+  : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G) G
     := { fgccd := only_first_ccdata }.
   Proof.
     { abstract t. }
@@ -647,7 +636,7 @@ Section only_first_correctness.
     intro H; specialize (H (Forall_parse_of_production_valid Hvalid' His_valid p)); revert H.
     apply for_first_char__impl__first_char_in.
     intro ch.
-    apply (fold_production_correct (FGCD := only_first_cdata) eq_refl pat); reflexivity.
+    apply (fold_production_correct (FGCD := only_first_cdata) pat); reflexivity.
   Qed.
 
   Lemma possible_first_terminals_of_production_empty_correct
@@ -659,7 +648,7 @@ Section only_first_correctness.
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
-    apply (fold_production_correct (FGCD := only_first_cdata) eq_refl pat).
+    apply (fold_production_correct (FGCD := only_first_cdata) pat).
     { repeat constructor. }
     { reflexivity. }
     { constructor.
@@ -701,7 +690,6 @@ Section only_last_correctness.
       | [ Hvalid : is_true (grammar_rvalid _) |- grammar_valid _ ] => apply grammar_rvalid_correct; assumption
       | _ => rewrite in_app_iff
       | _ => progress simpl in *
-      | _ => progress fold_gen
       | [ |- context[maybe_empty_of _ _] ]
         => setoid_rewrite maybe_empty_of_correct
       | [ |- context[maybe_empty_of_production _ _] ]
@@ -818,7 +806,7 @@ Section only_last_correctness.
   Local Instance only_last_cdata
         (rdata := rdp_list_rdata' (G := G))
         (cdata := brute_force_cdata G)
-  : @fold_grammar_correctness_data Ascii.ascii possible_last_terminals (only_last_fold_data G (preopt.compile_pregrammar' G)) G
+  : @fold_grammar_correctness_data Ascii.ascii possible_last_terminals (only_last_fold_data G) G
     := { fgccd := only_last_ccdata }.
   Proof.
     { abstract t. }
@@ -844,7 +832,7 @@ Section only_last_correctness.
     intro H; specialize (H (Forall_parse_of_item_valid Hvalid' (His_valid : item_valid (NonTerminal nt)) p)); revert H.
     apply for_last_char__impl__last_char_in.
     intro ch.
-    apply (fold_nt_correct (FGCD := only_last_cdata) eq_refl nt); reflexivity.
+    apply (fold_nt_correct (FGCD := only_last_cdata) nt); reflexivity.
   Qed.
 
   Lemma possible_last_terminals_of_empty_correct
@@ -856,7 +844,7 @@ Section only_last_correctness.
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
-    apply (fold_nt_correct (FGCD := only_last_cdata) eq_refl nt).
+    apply (fold_nt_correct (FGCD := only_last_cdata) nt).
     { repeat constructor. }
     { reflexivity. }
     { constructor.

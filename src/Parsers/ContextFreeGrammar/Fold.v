@@ -12,77 +12,6 @@ Require Import Fiat.Common.Equality.
 
 Set Implicit Arguments.
 
-Module preopt.
-  Section syntax.
-    Context {Char : Type}.
-
-    Inductive item :=
-    | Terminal (_ : Char -> bool)
-    | NonTerminal (nt : String.string) (_ : nat).
-
-    Definition production := list item.
-    Definition productions := list production.
-
-    Record pregrammar' :=
-      { pregrammar_productions : list (String.string * productions);
-        pregrammar_nonterminals := map fst pregrammar_productions;
-        pregrammar_compiled_productions := map snd pregrammar_productions;
-        invalid_nonterminal := Gensym.gensym pregrammar_nonterminals;
-        Lookup_idx := fun n : nat => nth n (map snd pregrammar_productions) [];
-        Lookup_string := list_to_productions [] pregrammar_productions;
-        nonterminals_unique : NoDupR string_beq pregrammar_nonterminals }.
-  End syntax.
-
-  Global Arguments item : clear implicits.
-  Global Arguments production : clear implicits.
-  Global Arguments productions : clear implicits.
-  Global Arguments pregrammar' : clear implicits.
-
-  Section semantics.
-    Context {Char : Type}.
-
-    Class compile_item_data :=
-      { ononterminal_names : list String.string;
-        oinvalid_nonterminal : String.string }.
-
-    Section with_cidata.
-      Context {cidata : compile_item_data}.
-      Definition compile_nonterminal nt
-        := List.first_index_default (string_beq nt) (List.length ononterminal_names) ononterminal_names.
-      Definition compile_item (expr : Core.item Char) : item Char
-        := match expr with
-           | Core.Terminal ch => Terminal ch
-           | Core.NonTerminal nt => NonTerminal nt (compile_nonterminal nt)
-           end.
-
-      Definition compile_production (expr : Core.production Char) : production Char
-        := List.map compile_item expr.
-
-      Definition compile_productions (expr : Core.productions Char) : productions Char
-        := List.map compile_production expr.
-    End with_cidata.
-
-    Section with_pregrammar.
-      Context (G : PreNotations.pregrammar' Char).
-
-      Local Instance cidata_of_pregrammar' : compile_item_data
-        := { ononterminal_names := PreNotations.pregrammar_nonterminals G;
-             oinvalid_nonterminal := PreNotations.invalid_nonterminal G }.
-
-      Definition compile_pregrammar' : pregrammar' Char.
-      Proof.
-        refine {| pregrammar_productions := List.map (fun xy => (fst xy, @compile_productions cidata_of_pregrammar' (snd xy)))
-                                                     (PreNotations.pregrammar_productions G) |}.
-        abstract (rewrite map_map; exact (PreNotations.nonterminals_unique G)).
-      Defined.
-    End with_pregrammar.
-  End semantics.
-
-  Global Arguments compile_item_data : clear implicits.
-End preopt.
-
-Global Hint Immediate preopt.cidata_of_pregrammar' : typeclass_instances.
-
 Module opt.
   Section syntax.
     Context {T : Type}.
@@ -103,20 +32,36 @@ Module opt.
     Context {Char : Type} {T : Type}.
 
     Class compile_item_data :=
-      { on_terminal : (Char -> bool) -> T }.
+      { on_terminal : (Char -> bool) -> T;
+        nonterminal_names : list String.string;
+        invalid_nonterminal : String.string }.
 
     Context {cidata : compile_item_data}.
-    Definition compile_item (expr : preopt.item Char) : opt.item T
+    Definition compile_nonterminal nt
+      := List.first_index_default (string_beq nt) (List.length nonterminal_names) nonterminal_names.
+    Definition compile_item (expr : Core.item Char) : opt.item T
       := match expr with
-         | preopt.Terminal ch => Terminal (on_terminal ch)
-         | preopt.NonTerminal nt nt_idx => NonTerminal nt nt_idx
+         | Core.Terminal ch => Terminal (on_terminal ch)
+         | Core.NonTerminal nt => NonTerminal nt (compile_nonterminal nt)
          end.
+    (*Definition interp_nonterminal nt
+      := List.nth nt inonterminal_names iinvalid_nonterminal.
+    Definition interp_item (expr : opt.item Char) : Core.item Char
+      := match expr with
+         | Terminal ch => Core.Terminal ch
+         | NonTerminal nt
+           => Core.NonTerminal (interp_nonterminal nt)
+         end.*)
 
-    Definition compile_production (expr : preopt.production Char) : opt.production T
+    Definition compile_production (expr : Core.production Char) : opt.production T
       := List.map compile_item expr.
+    (*Definition interp_production (expr : opt.production Char) : Core.production Char
+      := List.map interp_item expr.*)
 
-    Definition compile_productions (expr : preopt.productions Char) : opt.productions T
+    Definition compile_productions (expr : Core.productions Char) : opt.productions T
       := List.map compile_production expr.
+    (*Definition interp_productions (expr : opt.productions Char) : Core.productions Char
+      := List.map interp_production expr.*)
   End semantics.
 
   Global Arguments compile_item_data : clear implicits.
@@ -133,28 +78,25 @@ Section general_fold.
       combine_production : T -> T -> T;
       on_nil_productions : T;
       combine_productions : T -> T -> T }.
-  Context `{fold_grammar_data}
-          (G_orig : pregrammar' Char)
-          (G : preopt.pregrammar' Char)
-          (HG : preopt.compile_pregrammar' G_orig = G).
+  Context `{fold_grammar_data} (G : pregrammar' Char).
 
   Global Instance compile_item_data_of_fold_grammar_data : opt.compile_item_data Char T
-    := {| opt.on_terminal := on_terminal |}.
+    := {| opt.on_terminal := on_terminal;
+          opt.nonterminal_names := pregrammar_nonterminals G;
+          opt.invalid_nonterminal := Gensym.gensym (pregrammar_nonterminals G) |}.
 
   Section with_compiled_productions.
     Context (compiled_productions : list (opt.productions T))
-            (Hcompiled_productions : List.map opt.compile_productions (preopt.pregrammar_compiled_productions G)
-                                     = compiled_productions).
+            (Hcompiled_productions : List.map opt.compile_productions (List.map snd (pregrammar_productions G)) = compiled_productions).
 
     Definition opt_Lookup_idx (n : nat) : opt.productions T
       := List.nth n compiled_productions nil.
     Lemma eq_opt_Lookup_idx n
-      : opt_Lookup_idx n = opt.compile_productions (preopt.compile_productions (Lookup_idx G_orig n)).
+      : opt_Lookup_idx n = opt.compile_productions (Lookup_idx G n).
     Proof.
-      unfold opt_Lookup_idx, Lookup_idx, preopt.pregrammar_compiled_productions, preopt.pregrammar_productions, preopt.compile_pregrammar' in *; subst compiled_productions G.
-      rewrite (map_map _ snd); simpl @snd; rewrite <- (map_map snd).
-      change nil with (opt.compile_productions (preopt.compile_productions nil)) at 1.
-      rewrite !map_nth.
+      unfold opt_Lookup_idx, Lookup_idx; subst compiled_productions.
+      change nil with (opt.compile_productions nil) at 1.
+      rewrite map_nth.
       reflexivity.
     Qed.
 
@@ -197,7 +139,7 @@ Section general_fold.
     Qed.
 
     Definition fold_nt_step
-               (predata := @rdp_list_predata _ G_orig)
+               (predata := @rdp_list_predata _ G)
                (valid0_len : nat)
                (fold_nt : forall valid_len : nat,
                    nonterminals_listT
@@ -238,23 +180,23 @@ Section general_fold.
   End with_compiled_productions.
 
   Definition compiled_productions : list (opt.productions T)
-    := List.map opt.compile_productions (preopt.pregrammar_compiled_productions G).
+    := List.map opt.compile_productions (List.map snd (pregrammar_productions G)).
 
   Definition fold_cnt : String.string -> default_nonterminal_carrierT -> T
-    := let predata := @rdp_list_predata _ G_orig in
+    := let predata := @rdp_list_predata _ G in
        @fold_cnt' compiled_productions (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
   Definition fold_nt' initial (valid0 : nonterminals_listT) (nt : String.string) : T
-    := @fold_cnt' compiled_productions initial valid0 nt (preopt.compile_nonterminal nt).
+    := @fold_cnt' compiled_productions initial valid0 nt (opt.compile_nonterminal nt).
 
   Definition fold_nt : String.string -> T
-    := let predata := @rdp_list_predata _ G_orig in
+    := let predata := @rdp_list_predata _ G in
        @fold_nt' (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
 
   Definition fold_production (pat : production Char) : T
-    := @fold_production' (@fold_cnt) (opt.compile_production (preopt.compile_production pat)).
+    := @fold_production' (@fold_cnt) (opt.compile_production pat).
 
   Definition fold_productions (pats : productions Char) : T
-    := @fold_productions' (@fold_cnt) (opt.compile_productions (preopt.compile_productions pats)).
+    := @fold_productions' (@fold_cnt) (opt.compile_productions pats).
 End general_fold.
 Global Hint Immediate compile_item_data_of_fold_grammar_data : typeclass_instances.
 
@@ -263,11 +205,9 @@ Global Arguments fold_grammar_data : clear implicits.
 Section fold_correctness.
   Context {Char : Type} {T : Type}.
   Context {FGD : fold_grammar_data Char T}
-          (G_orig : pregrammar' Char)
-          (G : preopt.pregrammar' Char)
-          (HG : preopt.compile_pregrammar' G_orig = G).
+          (G : pregrammar' Char).
 
-  Let predata := @rdp_list_predata _ G_orig.
+  Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
   Class fold_grammar_correctness_computational_data :=
@@ -279,7 +219,7 @@ Section fold_correctness.
       Pnt_lift : forall valid0 nt value,
                    sub_nonterminals_listT valid0 initial_nonterminals_data
                    -> is_valid_nonterminal valid0 (of_nonterminal nt)
-                   -> Ppats (remove_nonterminal valid0 (of_nonterminal nt)) (G_orig nt) value
+                   -> Ppats (remove_nonterminal valid0 (of_nonterminal nt)) (G nt) value
                    -> Pnt valid0 nt value;
       Pnt_redundant : forall valid0 nt,
                         sub_nonterminals_listT valid0 initial_nonterminals_data
@@ -313,7 +253,7 @@ Section fold_correctness.
         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
         (IHf : forall nt nt_idx, of_nonterminal nt = nt_idx -> Pnt valid0 nt (f nt nt_idx))
         pat
-  : Ppat valid0 pat (fold_production' f (opt.compile_production (preopt.compile_production pat))).
+  : Ppat valid0 pat (fold_production' f (opt.compile_production pat)).
   Proof.
     unfold fold_production'.
     induction pat; simpl.
@@ -329,7 +269,7 @@ Section fold_correctness.
         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
         (IHf : forall nt nt_idx, of_nonterminal nt = nt_idx -> Pnt valid0 nt (f nt nt_idx))
         pats
-  : Ppats valid0 pats (fold_productions' f (opt.compile_productions (preopt.compile_productions pats))).
+  : Ppats valid0 pats (fold_productions' f (opt.compile_productions pats)).
   Proof.
     unfold fold_productions'.
     induction pats as [ | x xs IHxs ]; intros.
@@ -381,8 +321,8 @@ Section fold_correctness.
         | [ |- context[if ?e then _ else _] ] => destruct e eqn:Hvalid
       end.
       { apply Pnt_lift; [ subst; assumption.. | ].
-        rewrite (eq_opt_Lookup_idx HG), <- list_to_productions_to_nonterminal by reflexivity.
-        change (Lookup_string G_orig) with (Lookup G_orig); subst.
+        rewrite (eq_opt_Lookup_idx G), <- list_to_productions_to_nonterminal by reflexivity.
+        change (Lookup_string G) with (Lookup G); subst.
         change default_to_nonterminal with to_nonterminal.
         rewrite to_of_nonterminal
           by (apply initial_nonterminals_correct, Hsub; assumption).
@@ -399,7 +339,7 @@ Section fold_correctness.
   Lemma fold_cnt_correct
         nt nt_idx
         (Hnt : of_nonterminal nt = nt_idx)
-  : Pnt initial_nonterminals_data nt (fold_cnt G_orig G nt nt_idx).
+  : Pnt initial_nonterminals_data nt (fold_cnt G nt nt_idx).
   Proof.
     unfold fold_cnt.
     apply fold_cnt'_correct; subst; reflexivity.
@@ -410,14 +350,14 @@ Section fold_correctness.
         (valid0_len : nat)
         (Hlen : nonterminals_length valid0 <= valid0_len)
         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
-    : forall nt, Pnt valid0 nt (fold_nt' G valid0_len valid0 nt).
+    : forall nt, Pnt valid0 nt (fold_nt' valid0_len valid0 nt).
   Proof.
     intro nt; apply fold_cnt'_correct; auto.
   Qed.
 
   Lemma fold_nt_correct
         nt
-  : Pnt initial_nonterminals_data nt (fold_nt G_orig G nt).
+  : Pnt initial_nonterminals_data nt (fold_nt G nt).
   Proof.
     unfold fold_nt.
     apply fold_nt'_correct;
@@ -426,7 +366,7 @@ Section fold_correctness.
 
   Lemma fold_production_correct
         pat
-  : Ppat initial_nonterminals_data pat (fold_production G_orig G pat).
+  : Ppat initial_nonterminals_data pat (fold_production G pat).
   Proof.
     unfold fold_production.
     apply fold_production'_correct, fold_cnt_correct.
@@ -435,7 +375,7 @@ Section fold_correctness.
 
   Lemma fold_productions_correct
         pats
-  : Ppats initial_nonterminals_data pats (fold_productions G_orig G pats).
+  : Ppats initial_nonterminals_data pats (fold_productions G pats).
   Proof.
     unfold fold_productions.
     apply fold_productions'_correct, fold_cnt_correct.
