@@ -375,6 +375,7 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Parsers/ActionEvaluator.v
 src/Parsers/BaseTypes.v
 src/Parsers/BaseTypesLemmas.v
 src/Parsers/BooleanRecognizer.v
