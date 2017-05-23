@@ -53,32 +53,32 @@ total time:      1.250s
    └─cbv beta iota zeta delta [make_towe   3.8%   3.8%       1    0.047s
 *)
     (*Start Profiling.*)
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_rev_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_rev_search_for. }
+    { Time refine_disjoint_search_for. }
     { Time refine_binop_table; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_disjoint_search_for. }
     { Time refine_binop_table; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_rev_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_rev_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
     { Time refine_binop_table; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_disjoint_search_for. }
     { Time refine_binop_table; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
-    { Time rewrite_disjoint_search_for; reflexivity. }
+    { Time refine_disjoint_search_for. }
+    { Time refine_disjoint_search_for. }
     { simplify parser splitter.
       (*Show Profile.*)
       (*
