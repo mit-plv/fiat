@@ -44,24 +44,12 @@ Module opt.
          | Core.Terminal ch => Terminal (on_terminal ch)
          | Core.NonTerminal nt => NonTerminal nt (compile_nonterminal nt)
          end.
-    (*Definition interp_nonterminal nt
-      := List.nth nt inonterminal_names iinvalid_nonterminal.
-    Definition interp_item (expr : opt.item Char) : Core.item Char
-      := match expr with
-         | Terminal ch => Core.Terminal ch
-         | NonTerminal nt
-           => Core.NonTerminal (interp_nonterminal nt)
-         end.*)
 
     Definition compile_production (expr : Core.production Char) : opt.production T
       := List.map compile_item expr.
-    (*Definition interp_production (expr : opt.production Char) : Core.production Char
-      := List.map interp_item expr.*)
 
     Definition compile_productions (expr : Core.productions Char) : opt.productions T
       := List.map compile_production expr.
-    (*Definition interp_productions (expr : opt.productions Char) : Core.productions Char
-      := List.map interp_production expr.*)
   End semantics.
 
   Global Arguments compile_item_data : clear implicits.
@@ -177,26 +165,26 @@ Section general_fold.
 
     Fixpoint fold_cnt' initial : nonterminals_listT -> String.string -> default_nonterminal_carrierT -> T
       := @fold_nt_step initial (@fold_cnt').
+
+    Definition fold_cnt : String.string -> default_nonterminal_carrierT -> T
+      := let predata := @rdp_list_predata _ G in
+         @fold_cnt' (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
+    Definition fold_nt' initial (valid0 : nonterminals_listT) (nt : String.string) : T
+      := @fold_cnt' initial valid0 nt (opt.compile_nonterminal nt).
+
+    Definition fold_nt : String.string -> T
+      := let predata := @rdp_list_predata _ G in
+         @fold_nt' (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
+
+    Definition fold_production (pat : production Char) : T
+      := @fold_production' (@fold_cnt) (opt.compile_production pat).
+
+    Definition fold_productions (pats : productions Char) : T
+      := @fold_productions' (@fold_cnt) (opt.compile_productions pats).
   End with_compiled_productions.
 
   Definition compiled_productions : list (opt.productions T)
     := List.map opt.compile_productions (List.map snd (pregrammar_productions G)).
-
-  Definition fold_cnt : String.string -> default_nonterminal_carrierT -> T
-    := let predata := @rdp_list_predata _ G in
-       @fold_cnt' compiled_productions (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
-  Definition fold_nt' initial (valid0 : nonterminals_listT) (nt : String.string) : T
-    := @fold_cnt' compiled_productions initial valid0 nt (opt.compile_nonterminal nt).
-
-  Definition fold_nt : String.string -> T
-    := let predata := @rdp_list_predata _ G in
-       @fold_nt' (nonterminals_length initial_nonterminals_data) initial_nonterminals_data.
-
-  Definition fold_production (pat : production Char) : T
-    := @fold_production' (@fold_cnt) (opt.compile_production pat).
-
-  Definition fold_productions (pats : productions Char) : T
-    := @fold_productions' (@fold_cnt) (opt.compile_productions pats).
 End general_fold.
 Global Hint Immediate compile_item_data_of_fold_grammar_data : typeclass_instances.
 
@@ -339,7 +327,7 @@ Section fold_correctness.
   Lemma fold_cnt_correct
         nt nt_idx
         (Hnt : of_nonterminal nt = nt_idx)
-  : Pnt initial_nonterminals_data nt (fold_cnt G nt nt_idx).
+  : Pnt initial_nonterminals_data nt (fold_cnt G (compiled_productions G) nt nt_idx).
   Proof.
     unfold fold_cnt.
     apply fold_cnt'_correct; subst; reflexivity.
@@ -350,14 +338,14 @@ Section fold_correctness.
         (valid0_len : nat)
         (Hlen : nonterminals_length valid0 <= valid0_len)
         (Hsub : sub_nonterminals_listT valid0 initial_nonterminals_data)
-    : forall nt, Pnt valid0 nt (fold_nt' valid0_len valid0 nt).
+    : forall nt, Pnt valid0 nt (fold_nt' (compiled_productions G) valid0_len valid0 nt).
   Proof.
     intro nt; apply fold_cnt'_correct; auto.
   Qed.
 
   Lemma fold_nt_correct
         nt
-  : Pnt initial_nonterminals_data nt (fold_nt G nt).
+  : Pnt initial_nonterminals_data nt (fold_nt G (compiled_productions G) nt).
   Proof.
     unfold fold_nt.
     apply fold_nt'_correct;
@@ -366,7 +354,7 @@ Section fold_correctness.
 
   Lemma fold_production_correct
         pat
-  : Ppat initial_nonterminals_data pat (fold_production G pat).
+  : Ppat initial_nonterminals_data pat (fold_production G (compiled_productions G) pat).
   Proof.
     unfold fold_production.
     apply fold_production'_correct, fold_cnt_correct.
@@ -375,7 +363,7 @@ Section fold_correctness.
 
   Lemma fold_productions_correct
         pats
-  : Ppats initial_nonterminals_data pats (fold_productions G pats).
+  : Ppats initial_nonterminals_data pats (fold_productions G (compiled_productions G) pats).
   Proof.
     unfold fold_productions.
     apply fold_productions'_correct, fold_cnt_correct.

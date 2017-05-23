@@ -502,7 +502,9 @@ src/Parsers/Reachable/ParenBalancedHiding/Core.v
 src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
+src/Parsers/Refinement/DisjointLemmasEarlyDeclarations.v
 src/Parsers/Refinement/DisjointRules.v
+src/Parsers/Refinement/DisjointRulesCommon.v
 src/Parsers/Refinement/DisjointRulesRev.v
 src/Parsers/Refinement/EmptyLemmas.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
