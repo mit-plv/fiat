@@ -538,6 +538,38 @@ Local Ltac presimpl_after_refine_binop_table :=
              [ | solve [ clear; lazy; reflexivity ] ];
       presimpl_after_refine_binop_table.
 >>> *)
+Definition Let_In {A B} (v : A) (f : A -> B) := let y := v in f y.
+Definition app_to_opt_let_in {A B} v f
+  : f v = @Let_In A B v f
+  := eq_refl.
+Definition cut_app_to_opt_let_in {A} v f
+  : @Let_In A Prop v f -> f v
+  := fun x => x.
+Ltac cut_app_to_opt_let_in _ :=
+  lazymatch goal with
+  | [ |- @Let_In ?A Prop ?v ?f -> ?f ?v ]
+    => clear; (*abstract*) exact_no_check (@cut_app_to_opt_let_in A v f)
+  end.
+Ltac abstract_exact_id _ :=
+  match goal with
+  | [ |- ?A -> ?B ]
+    => clear; (*abstract*) exact (fun x : A => x)
+  end.
+Ltac solve_match_list_by_lazy_then_esplit _ :=
+  clear;
+  match goal with
+    |- match ?e with nil => ?N | cons a b => ?P end
+    => let f := uconstr:(fun e' => match e' with nil => N | cons a b => P end) in
+       let lem := constr:(cut_app_to_opt_let_in e f) in
+       change (f e);
+       cut (Let_In e f);
+       [
+              | let e' := (eval lazy in e) in
+                cut (Let_In e' f);
+                [
+                  | compute; repeat esplit ] ];
+       [ cut_app_to_opt_let_in () | abstract_exact_id () ]
+  end.
 Ltac setoid_rewrite_refine_binop_table_idx args :=
   idtac;
   let lem := constr:(@refine_binop_table_idx _ _ _) in
@@ -575,7 +607,7 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
   let lem := constr:(lem ch) in
   let H0 := fresh in
   let T0 := match type of lem with ?T0 -> _ => T0 end in
-  first [ assert (H0 : T0) by (clear; lazy; repeat esplit)
+  first [ assert (H0 : T0) by solve_match_list_by_lazy_then_esplit ()
         | fail 1 "Could not find a single binary operation to solve" T0 ];
   subst chE;
   let lem := constr:(lem H0) in
