@@ -139,13 +139,13 @@ Ltac apply_splitter_tower_lemma :=
   intros.
 
 Ltac simplify_parser_splitter' :=
-  do_disjoint_precomputations ();
   first [ idtac;
           match goal with
           | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
                         ?v ]
             => apply (@simplify_monad_laws_first_step _ _ _ c f v)
           end;
+          do_disjoint_precomputations ();
           apply_splitter_tower_lemma
         | progress autounfold with parser_sharpen_db;
           cbv beta iota zeta;
