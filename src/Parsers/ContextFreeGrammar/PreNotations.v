@@ -55,7 +55,8 @@ Section with_actions.
             end -> action_of_rproduction pat'
        end.
 
-  Definition rproductions_with_actions := list { pat : rproduction Char & action_of_rproduction pat }.
+  Definition rproduction_with_action := { pat : rproduction Char & action_of_rproduction pat }.
+  Definition rproductions_with_actions := list rproduction_with_action.
 
   Record pregrammar_with_actions :=
     {
