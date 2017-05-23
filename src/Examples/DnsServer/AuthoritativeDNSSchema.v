@@ -23,7 +23,18 @@ Definition DnsSchema :=
   Query Structure Schema
         [ relation sRRecords has
                    schema resourceRecordHeading
-          where (fun t t' => t!sNAME = t'!sNAME -> RDataTypeToRRecordType (t!sRDATA) <> CNAME) ]
-        (* constraint on every pair of tuples: if a domain name is an alias, the CNAME record *)
-        (* is the only resource record in the table. *)
+          where (fun t t' =>
+                   (* Constraints on every pair of tuples: *)
+                   (t!sNAME = t'!sNAME
+                    -> RDataTypeToRRecordType (t!sRDATA) <> CNAME)
+                   (* if a domain name is an alias, the CNAME record *)
+                   (* is the only resource record in the table. *)
+                   /\ (RDataTypeToRRecordType t!sRDATA = NS
+                       -> RDataTypeToRRecordType t'!sRDATA <> NS
+                       -> prefix (t!sNAME) (t'!sNAME)
+                       -> t!sNAME = t'!sNAME)
+        (* If the server delegates authority for a zone via a NS record *)
+        (* Then any other (non-NS) records about that subzone have to be *)
+        (* glue records, i.e. have the same label as the NS record.  *)
+        )]
         enforcing [ ].

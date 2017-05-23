@@ -825,9 +825,9 @@ Section DnsPacket.
 
   Definition resourceRecord_OK (rr : resourceRecord) :=
     ith
+      (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
       (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
              (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-                    (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
                            (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
                                                                (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost")
                                   (icons (B := fun T => T -> Prop) (fun a : WKS_RDATA => True /\ (lt (|a!"Bit-Map" |)  (pow2 16)))
@@ -842,16 +842,16 @@ Section DnsPacket.
                                                                      (icons (B := fun T => T -> Prop) (fun a : string =>
                                                                                                          True /\ True /\ (lt (String.length a) (pow2 8))) inil))))))))))
       (SumType_index
-         ((Memory.W : Type)
-            :: DomainName
+         (DomainName
+            :: (Memory.W : Type)
             :: DomainName
             :: SOA_RDATA
             :: WKS_RDATA
             :: DomainName :: HINFO_RDATA :: MINFO_RDATA :: MX_RDATA :: [string : Type])
          rr!sRDATA)
       (SumType_proj
-         ((Memory.W : Type)
-            :: DomainName
+         (DomainName
+            :: (Memory.W : Type)
             :: DomainName
             :: SOA_RDATA
             :: WKS_RDATA
@@ -871,8 +871,8 @@ Section DnsPacket.
     : forall rr : resourceRecord,
       resourceRecord_OK rr ->
       ith
-        (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
-               (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+        (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+               (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
                       (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
                              (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
                                                                  (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost")
@@ -1019,9 +1019,9 @@ Section DnsPacket.
 
   Definition encode_rdata_Spec :=
     encode_SumType_Spec ResourceRecordTypeTypes
+                        (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
                         (icons encode_A_Spec (* A; host address 	[RFC1035] *)
                         (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
-                        (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
                         (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *)
                         (icons encode_WKS_RDATA_Spec (* WKS  well known service description 	[RFC1035] *)
                         (icons (encode_PTR_Spec) (* PTR domain name pointer 	[RFC1035] *)

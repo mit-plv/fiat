@@ -1458,8 +1458,6 @@ Section DecomposeEnumField.
     apply refine_Query_Where_True_Cond; eauto.
   Qed.
 
-  Definition
-
   Arguments DecomposeRawQueryStructureSchema : simpl never.
   Arguments DecomposeRawQueryStructureSchema_AbsR : simpl never.
   Arguments inj_SumType : simpl never.
