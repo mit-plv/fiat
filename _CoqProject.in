@@ -264,6 +264,7 @@ src/Common/Tactics/FreeIn.v
 src/Common/Tactics/Head.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/IsClosed.v
+src/Common/Tactics/PrintContext.v
 src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SpecializeBy.v
 src/Common/Tactics/SplitInContext.v
