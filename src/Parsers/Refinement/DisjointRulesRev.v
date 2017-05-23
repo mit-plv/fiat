@@ -265,7 +265,7 @@ Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
                 | context[DisjointLemmas.actual_possible_last_terminals ?ls]
                   => constr:(DisjointLemmas.actual_possible_last_terminals ls)
                 end in
-       replace_with_native_compute_in x lem';
+       replace_with_vm_compute_in x lem';
        unfold Equality.list_bin in lem';
        change (orb false) with (fun bv : bool => bv) in lem';
        cbv beta in lem';
