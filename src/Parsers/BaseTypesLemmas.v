@@ -134,4 +134,21 @@ Section recursive_descent_parser.
     rewrite nonterminal_to_production_correct by (apply initial_nonterminals_correct'; assumption).
     reflexivity.
   Qed.
+
+  Lemma is_valid_nonterminal_of_to_nonterminal valids nt
+    : sub_nonterminals_listT valids initial_nonterminals_data
+      -> is_valid_nonterminal valids (of_nonterminal (to_nonterminal nt)) = is_valid_nonterminal valids nt.
+  Proof.
+    intro Hvalid.
+    match goal with
+    | [ |- ?lhs = ?rhs ] => destruct lhs eqn:?, rhs eqn:?; first [ reflexivity | exfalso ]
+    end;
+      repeat match goal with
+             | [ H : is_valid_nonterminal _ _ = _ |- False ]
+               => rewrite of_to_nonterminal in H
+             | _ => congruence
+             | _ => apply Hvalid; assumption
+             | _ => rewrite initial_nonterminals_correct', <- initial_nonterminals_correct; apply Hvalid; assumption
+             end.
+  Qed.
 End recursive_descent_parser.

@@ -41,7 +41,7 @@ Ltac t_reduce_fix :=
          | [ |- andb _ _ = andb _ _ ] => apply f_equal2
          | [ |- andbr _ _ = andbr _ _ ] => apply f_equal2
          | [ |- orb _ _ = orb _ _ ] => apply f_equal2
-         | [ |- ret_nt _ = ret_nt _ ] => apply f_equal
+         | [ |- ret_nt _ _ = ret_nt _ _ ] => apply f_equal
          | [ |- ret_NonTerminal_true _ _ = ret_NonTerminal_true _ _ ] => apply f_equal
          | [ |- ret_production_cons _ _ = ret_production_cons _ _ ] => apply f_equal2
          | [ |- match ?it with Terminal _ => _ | _ => _ end = match ?it with _ => _ end ] => is_var it; destruct it
@@ -338,9 +338,9 @@ Ltac step_opt' :=
        intro c; simpl @ritem_rect; subst e1 e2
   | [ |- _ = match ?x with true => true | false => false end ]
     => transitivity x; [ | destruct x; reflexivity ]
-  | [ |- _ = ret_nt _ ]
-    => refine (_ : ret_nt _ = _);
-       refine (f_equal ret_nt _)
+  | [ |- _ = ret_nt _ _ ]
+    => refine (_ : ret_nt _ _ = _);
+       refine (f_equal (ret_nt _) _)
   | [ |- _ = ret_NonTerminal_true ?x _ ]
     => refine (_ : ret_NonTerminal_true x _ = _);
        refine (f_equal (ret_NonTerminal_true x) _)

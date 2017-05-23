@@ -59,6 +59,13 @@ Section grammar.
   : default_nonterminal_carrierT -> String.string
     := fun nt => List.nth nt valid_nonterminals some_invalid_nonterminal.
 
+  Definition default_of_nonterminal
+  : String.string -> default_nonterminal_carrierT
+    := fun nt => List.first_index_default
+                   (string_beq nt)
+                   (List.length valid_nonterminals)
+                   valid_nonterminals.
+
   Lemma default_find_to_nonterminal idx
   : List.first_index_error
       (string_beq (default_to_nonterminal idx))

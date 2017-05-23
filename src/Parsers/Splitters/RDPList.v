@@ -42,10 +42,7 @@ Section recursive_descent_parser_list.
 
   Definition rdp_list_of_nonterminal
   : String.string -> rdp_list_nonterminal_carrierT
-    := fun nt => first_index_default
-                   (string_beq nt)
-                   (List.length valid_nonterminals)
-                   valid_nonterminals.
+    := default_of_nonterminal (G := G).
   Definition rdp_list_to_nonterminal
   : rdp_list_nonterminal_carrierT -> String.string
     := default_to_nonterminal (G := G).
@@ -126,7 +123,7 @@ Section recursive_descent_parser_list.
       is_true (rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data (rdp_list_of_nonterminal nt)) <-> List.In nt (Valid_nonterminals G).
   Proof.
     fix_list_bin_eq.
-    unfold rdp_list_is_valid_nonterminal, rdp_list_of_nonterminal, rdp_list_initial_nonterminals_data.
+    unfold rdp_list_is_valid_nonterminal, rdp_list_of_nonterminal, rdp_list_initial_nonterminals_data, default_of_nonterminal.
     intro nt.
     rewrite first_index_default_first_index_error.
     destruct (first_index_error (string_beq nt) valid_nonterminals) eqn:H'; t.
@@ -150,7 +147,7 @@ Section recursive_descent_parser_list.
       List.In nt (Valid_nonterminals G)
       -> rdp_list_to_nonterminal (rdp_list_of_nonterminal nt) = nt.
   Proof.
-    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, default_to_nonterminal.
+    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, default_to_nonterminal, default_of_nonterminal.
     intro nt.
     rewrite first_index_default_first_index_error.
     destruct (first_index_error (string_beq nt) valid_nonterminals) eqn:H';
@@ -165,7 +162,7 @@ Section recursive_descent_parser_list.
     pose proof (nonterminals_unique G) as HNoDup.
     hnf in HNoDup.
     simpl in *.
-    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, rdp_list_is_valid_nonterminal, rdp_list_initial_nonterminals_data, default_to_nonterminal.
+    unfold rdp_list_to_nonterminal, rdp_list_of_nonterminal, rdp_list_is_valid_nonterminal, rdp_list_initial_nonterminals_data, default_to_nonterminal, default_of_nonterminal.
     intros nt H.
     apply (list_in_bl (@beq_nat_true)), in_up_to_iff in H.
     revert nt H.

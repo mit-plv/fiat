@@ -79,23 +79,25 @@ Ltac start_honing :=
   end; *)
   lazymatch goal with
   | [ |- context[opt2.fold_right _ _ ?ls] ]
-    => replace_with_vm_compute ls
+    => replace_with_vm_compute_by_set ls
   end(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
-  := (lazymatch goal with
-     | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing_ri repInv | | ])
-     | _ => start_honing_ri repInv
+  := (idtac;
+      lazymatch goal with
+      | [ |- FullySharpened _ ]
+        => (eapply FullySharpened_Start; [ start_honing_ri repInv | | ])
+      | _ => start_honing_ri repInv
       end).
 
 Tactic Notation "start" "honing" "parser" "using" "indexed" "representation"
-  := (lazymatch goal with
-     | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing | | ])
-     | _ => start_honing
+  := (idtac;
+      lazymatch goal with
+      | [ |- FullySharpened _ ]
+        => (eapply FullySharpened_Start; [ start_honing | | ])
+      | _ => start_honing
       end).
 
 Tactic Notation "finish" "honing" "parser" "method"
@@ -184,6 +186,7 @@ Tactic Notation "simplify" "parser" "splitter" :=
   repeat simplify_parser_splitter'.
 
 Ltac splitter_start :=
+  idtac;
   let lem := match goal with
              | [ |- FullySharpened (@string_spec _ ?G _ ?HSLM ?HSL) ]
                => constr:(@FirstStep_splits G HSLM HSL)
@@ -199,7 +202,7 @@ Ltac splitter_start :=
     set (e := ev);
     lazymatch goal with
     | [ |- context[opt2.fold_right _ _ ?ls] ]
-      => replace_with_vm_compute ls
+      => replace_with_vm_compute_by_set ls
     end;
     apply_splitter_tower_lemma
   | ];

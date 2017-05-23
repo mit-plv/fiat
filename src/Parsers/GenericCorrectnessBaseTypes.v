@@ -114,7 +114,7 @@ Section correctness.
       : forall str nt b v,
           is_valid_nonterminal initial_nonterminals_data nt = true
           -> parse_productions_is_correct str (nonterminal_to_production nt) b v
-          -> parse_nt_is_correct str nt b (ret_nt v);
+          -> parse_nt_is_correct str nt b (ret_nt (to_nonterminal nt) v);
       ret_nt_invalid_is_correct
       : forall str nt,
           parse_nt_is_correct str nt false ret_nt_invalid

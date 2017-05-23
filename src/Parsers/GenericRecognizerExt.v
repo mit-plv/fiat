@@ -60,7 +60,7 @@ Section recursive_descent_parser.
     | _ => progress autorewrite with boolr_ext_db
     | _ => progress simpl option_rect
     | [ H : cons _ _ = cons _ _ |- _ ] => inversion H; clear H
-    | [ |- ret_nt _ = ret_nt _ ] => apply f_equal
+    | [ |- ret_nt _ _ = ret_nt _ _ ] => apply f_equal
     end.
 
   Local Ltac t_ext tac := repeat (t_ext' || tac).

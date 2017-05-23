@@ -3,6 +3,7 @@ Require Import Coq.Strings.String Coq.Lists.List.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Export Fiat.Parsers.ContextFreeGrammar.Reflective.
 Require Export Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Common.Notations.
 
 Export Coq.Strings.Ascii.
 Export Coq.Strings.String.
@@ -15,16 +16,24 @@ Delimit Scope item_scope with item.
 Bind Scope item_scope with item.
 Bind Scope item_scope with ritem.
 Delimit Scope production_scope with production.
+Delimit Scope production_with_action_scope with production_with_action.
 Delimit Scope prod_assignment_scope with prod_assignment.
+Delimit Scope prod_with_action_assignment_scope with prod_with_action_assignment.
 Bind Scope production_scope with production.
 Bind Scope production_scope with rproduction.
+Bind Scope production_with_action_scope with rproduction_with_action.
 Delimit Scope productions_scope with productions.
-Delimit Scope productions_assignment_scope with prods_assignment.
+Delimit Scope productions_assignment_scope with productions_assignment.
+Delimit Scope productions_with_actions_scope with productions_with_actions.
+Delimit Scope productions_with_actions_assignment_scope with productions_with_actions_assignment.
+Bind Scope productions_with_action_scope with rproductions_with_actions.
 Bind Scope productions_scope with productions.
 Bind Scope productions_scope with rproductions.
 Delimit Scope grammar_scope with grammar.
+Delimit Scope grammar_with_actions_scope with grammar_with_actions.
 Bind Scope grammar_scope with pregrammar.
 Bind Scope grammar_scope with grammar.
+Bind Scope grammar_with_actions_scope with pregrammar_with_actions.
 
 Module opt'.
   Definition map {A B} := Eval compute in @List.map A B.
@@ -57,10 +66,18 @@ Definition magic_juxta_append_rproduction {Char} (p ps : rproduction Char) : rpr
   := Eval compute in p ++ ps.
 Coercion magic_juxta_append_rproduction : rproduction >-> Funclass.
 
+Definition combine_rproduction_with_action {T Char} (pat : rproduction Char) (act : action_of_rproduction T pat)
+  : rproduction_with_action Char T
+  := existT _ pat act.
+
 Coercion rproductions_of_rproduction {Char} (p : rproduction Char) : rproductions Char
+  := p::nil.
+Coercion rproductions_with_action_of_rproduction_with_action {Char T} (p : rproduction_with_action Char T) : rproductions_with_actions Char T
   := p::nil.
 
 Definition magic_juxta_append_rproductions {Char} (p ps : rproductions Char) : rproductions Char
+  := Eval compute in p ++ ps.
+Definition magic_juxta_append_rproductions_with_actions {Char T} (p ps : rproductions_with_actions Char T) : rproductions_with_actions Char T
   := Eval compute in p ++ ps.
 
 Coercion char_to_test_eq (c : Ascii.ascii) : RCharExpr Ascii.ascii
@@ -74,7 +91,9 @@ Global Arguments rproduction_of_RCharExpr / _ _.
 Global Arguments rproduction_of_string / _.
 Global Arguments magic_juxta_append_rproduction / _ _ _.
 Global Arguments rproductions_of_rproduction / _ _.
+Global Arguments rproductions_with_action_of_rproduction_with_action / _ _ _.
 Global Arguments magic_juxta_append_rproductions / _ _ _.
+Global Arguments magic_juxta_append_rproductions_with_actions / _ _ _ _.
 
 (** ** Notations *)
 
@@ -87,6 +106,9 @@ Notation "p || p'" := ((p || p')%char : rproduction Ascii.ascii) : production_sc
 Notation "p && p'" := (rand p%char p'%char) : char_scope.
 Notation "p && p'" := ((p && p')%char : rproduction Ascii.ascii) : production_scope.
 Notation "p || p'" := (magic_juxta_append_rproductions p%productions p'%productions) : productions_scope.
+Notation "p || p'" := (magic_juxta_append_rproductions_with_actions p%productions_with_actions p'%productions_with_actions) : productions_with_actions_scope.
+Notation "p <{< act >}>" := (combine_rproduction_with_action p%production act) : production_with_action_scope.
+Notation "p <{< act >}>" := (combine_rproduction_with_action p%production act) : productions_with_actions_scope.
 
 (** Negation of terminals.  There's not yet support for inverting the
     sense of productions. *)
@@ -96,10 +118,15 @@ Notation "~ p" := ((~p)%char : rproduction Ascii.ascii) : productions_scope.
 Notation "¬ p" := ((~p)%productions) (at level 75, right associativity) : productions_scope.
 
 Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions Ascii.ascii)%productions) (at level 100) : prod_assignment_scope.
+Notation "n0 ::== r0" := ((n0 : string)%string, (r0 : rproductions_with_actions Ascii.ascii _)%productions_with_actions) (at level 100) : prod_with_action_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
   (list_to_productions nil (cons x%prod_assignment .. (cons y%prod_assignment nil) .. )) : productions_assignment_scope.
 Notation "[[[ x ;; .. ;; y ]]]" :=
+  (list_to_productions nil (cons x%prod_with_action_assignment .. (cons y%prod_with_action_assignment nil) .. )) : productions_with_actions_assignment_scope.
+Notation "[[[ x ;; .. ;; y ]]]" :=
   ({| pregrammar_rproductions := (cons x%prod_assignment .. (cons y%prod_assignment nil) .. ) |}) : grammar_scope.
+Notation "[[[ x ;; .. ;; y ]]]" :=
+  ({| pregrammar_arproductions := (cons x%prod_with_action_assignment .. (cons y%prod_with_action_assignment nil) .. ) |}) : grammar_with_actions_scope.
 
 Local Open Scope string_scope.
 Global Open Scope grammar_scope.
@@ -148,7 +175,10 @@ Global Arguments ascii_of_nat !_ / .
 Global Arguments ascii_of_N !_ / .
 Global Arguments ascii_of_pos !_ / .
 
-Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data].
+Definition parseAscii_as_nat (v : ascii) : nat
+  := Nat.modulo (1 + nat_of_ascii v - nat_of_ascii "1"%char) 10.
+
+Declare Reduction grammar_red := cbv beta iota zeta delta [ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data parseAscii_as_nat magic_juxta_append_rproductions_with_actions combine_rproduction_with_action].
 
 Create HintDb parser_sharpen_db discriminated.
-Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data : parser_sharpen_db.
+Hint Unfold ascii_of_pos rproduction_of_string magic_juxta_append_rproduction magic_juxta_append_rproductions rproductions_of_rproduction list_to_productions char_to_test_eq rproduction_of_RCharExpr ascii_of_nat ascii_of_pos ascii_of_N BinNat.N.of_nat shift BinPos.Pos.of_succ_nat BinPos.Pos.succ one zero opt'.map opt'.list_of_string opt'.pred opt'.length opt'.substring interp_RCharExpr interp_ritem interp_rproduction interp_rproductions irbeq irN_of ascii_interp_RCharExpr_data parseAscii_as_nat magic_juxta_append_rproductions_with_actions combine_rproduction_with_action : parser_sharpen_db.

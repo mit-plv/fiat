@@ -34,7 +34,7 @@ Proof.
   let p := constr:(fun HSLM => @parse_nonterminal_prereified0 HSLM G) in
   let p := (eval cbv [parse_nonterminal_prereified0] in p) in
   let p := match p with fun A B C => ?f => f end in
-  let p := (eval cbv [rdp_list_of_nonterminal grammar_of_pregrammar pregrammar'_of_pregrammar pregrammar_nonterminals pregrammar_productions] in (p nt)) in
+  let p := (eval cbv [rdp_list_of_nonterminal Carriers.default_of_nonterminal grammar_of_pregrammar pregrammar'_of_pregrammar pregrammar_nonterminals pregrammar_productions] in (p nt)) in
   exact p.
 Defined.
 
@@ -78,7 +78,7 @@ Section correctness.
       => replace x with y
     end.
     Focus 2.
-    { unfold rdp_list_of_nonterminal.
+    { unfold rdp_list_of_nonterminal, Carriers.default_of_nonterminal.
       cbv [pregrammar_productions pregrammar'_of_pregrammar].
       rewrite !List.map_length, !List.map_map; simpl.
       reflexivity. }

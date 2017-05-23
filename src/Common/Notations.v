@@ -14,3 +14,4 @@ Reserved Infix "<?" (at level 70).
 Reserved Infix "?=" (at level 70).
 Reserved Notation "'⊤'".
 Reserved Notation "'⊥'".
+Reserved Notation "p <{< act >}>" (at level 30).
