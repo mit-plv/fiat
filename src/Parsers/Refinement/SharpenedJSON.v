@@ -8,15 +8,15 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 Require Import Fiat.Parsers.StringLike.String.
 
 Section IndexedImpl.
-  (*Context {HSLM : StringLikeMin Ascii.ascii}
+  Context {HSLM : StringLikeMin Ascii.ascii}
           {HSL : StringLike Ascii.ascii}
           {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSEP : StringEqProperties Ascii.ascii}
-          {HSIP : StringIsoProperties Ascii.ascii}.*)
+          {HSIP : StringIsoProperties Ascii.ascii}.
 
   Lemma ComputationalSplitter'
-  : FullySharpened (string_spec json'_grammar string_stringlike).
+  : FullySharpened (string_spec json'_grammar HSL).
   Proof.
     (*Start Profiling.*)
     Time splitter_start.
@@ -119,7 +119,7 @@ total time:    106.375s
   Time Defined. (* 85 seconds *)
 
   Lemma ComputationalSplitter
-  : FullySharpened (string_spec json'_grammar string_stringlike).
+  : FullySharpened (string_spec json'_grammar HSL).
   Proof.
     (*Start Profiling.*)
     Time make_simplified_splitter ComputationalSplitter'. (* 19 s *)
@@ -136,18 +136,18 @@ Require Export Fiat.Parsers.StringLike.OcamlString.
 Definition json_parser (str : Coq.Strings.String.string) : bool.
 Proof.
   (*Start Profiling.*)
-  Time make_parser (@ComputationalSplitter(* _ String.string_stringlike _ _*)). (* 75 seconds *)
+  Time make_parser (@ComputationalSplitter _ String.string_stringlike _ _). (* 75 seconds *)
   (*Show Profile.*)
 Time Defined.
 
-(*Definition json_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
+Definition json_parser_ocaml (str : Ocaml.Ocaml.string) : bool.
 Proof.
   Time make_parser (@ComputationalSplitter _ Ocaml.string_stringlike _ _). (* 0.82 s *)
-Defined.*)
+Defined.
 
-Print json_parser(*_ocaml*).
+Print json_parser_ocaml.
 
-Recursive Extraction json_parser(*_ocaml*).
+Recursive Extraction json_parser_ocaml.
 (*
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
