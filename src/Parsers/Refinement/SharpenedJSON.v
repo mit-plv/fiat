@@ -147,7 +147,7 @@ Defined.*)
 
 Print json_parser(*_ocaml*).
 
-Recursive Extraction json_parser(*_ocaml*).
+(*Recursive Extraction json_parser(*_ocaml*).*)
 (*
 Definition main_json := premain json_parser.
 Definition main_json_ocaml := premain_ocaml json_parser_ocaml.
