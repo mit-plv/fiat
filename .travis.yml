@@ -5,15 +5,23 @@ sudo: required
 matrix:
   include:
     - dist: trusty
+      env: COQ_VERSION="trunk"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-trunk-daily"
+    - dist: trusty
+      env: COQ_VERSION="v8.6"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.6-daily"
+    - dist: trusty
+      env: COQ_VERSION="v8.5"   TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.5-daily"
+    - dist: trusty
       env: COQ_VERSION="8.6"    TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq-8.6 libcoq-8.6-ocaml libcoq-8.6-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
     - dist: trusty
-      env: COQ_VERSION="8.5pl3" TARGETS="fiat-core querystructures parsers" FLAGS=""          COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
-    - dist: trusty
-      env: COQ_VERSION="8.5"    TARGETS="parsers"                           FLAGS=""          COQ_PACKAGE="coq-8.5 libcoq-8.5-ocaml libcoq-8.5-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
+      env: COQ_VERSION="8.5pl3" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.5pl3 libcoq-8.5pl3-ocaml libcoq-8.5pl3-ocaml-dev ocaml camlp5" PPA="ppa:jgross-h/many-coq-versions"
     - dist: trusty
       env: COQ_VERSION="8.5"    TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.5 libcoq-8.5-ocaml libcoq-8.5-ocaml-dev ocaml camlp5"          PPA="ppa:jgross-h/many-coq-versions"
     - dist: precise
       env: COQ_VERSION="8.4pl6" TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq-8.4pl6 libcoq-ocaml-8.4pl6 libcoq-ocaml-dev-8.4pl6 ocaml camlp5"                        PPA="ppa:jgross-h/many-coq-versions-ocaml-3"
+  allow_failures:
+    - env: COQ_VERSION="trunk"  TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-trunk-daily"
+    - env: COQ_VERSION="v8.6"   TARGETS="fiat-core parsers"                 FLAGS="PROFILE=1" COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.6-daily"
+    - env: COQ_VERSION="v8.5"   TARGETS="fiat-core querystructures"         FLAGS=""          COQ_PACKAGE="coq libcoq-ocaml-dev ocaml camlp5"                                   PPA="ppa:jgross-h/coq-8.5-daily"
 
 before_install:
   - if [ ! -z "$PPA" ]; then sudo add-apt-repository "$PPA" -y; fi
