@@ -31,32 +31,33 @@ Section IndexedImpl.
     {
       Reset Ltac Profile.
       Time simplify parser splitter.
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_rev_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_rev_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time refine_binop_table; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
-      { Time rewrite_disjoint_search_for; reflexivity. }
+      Show Ltac Profile.
+      { Time refine_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_rev_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time refine_binop_table. }
+      { Time rewrite_disjoint_search_for. }
+      { Time refine_binop_table. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_rev_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
+      { Time refine_binop_table. }
+      { Time rewrite_disjoint_search_for. }
+      { Time refine_binop_table. }
+      { Time rewrite_disjoint_search_for. }
+      { Time rewrite_disjoint_search_for. }
 
       simplify parser splitter.
       Show Ltac Profile.

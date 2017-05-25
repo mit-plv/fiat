@@ -7,6 +7,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.
 Require Import Fiat.Parsers.Reachable.ParenBalancedHiding.Core.
+Require Import Fiat.Parsers.Refinement.DisjointRulesCommon.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
@@ -22,6 +23,7 @@ Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
+Export DisjointLemmas.Exports.
 
 Local Open Scope string_like_scope.
 
@@ -81,8 +83,11 @@ Section refine_rules.
           {HSI : StringIso Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}.
   Context {G : pregrammar' Ascii.ascii}
           (Hvalid : grammar_rvalid G)
-          {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}
-	  {pf : match (possible_first_terminals_of_production G its).(actual_possible_first_terminals) return Prop with
+          (search_data : disjoint_search_data G)
+          {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}.
+  Local Notation possible_first_terminals_of_production :=
+    (possible_first_terminals_of_production G compiled_productions_maybe_empty_of compiled_productions_possible_first_terminals).
+  Context {pf : match (possible_first_terminals_of_production its).(actual_possible_first_terminals) return Prop with
                   | nil => False
                   | ls => fold_right and True (map (eq ch) ls)
                 end}
@@ -188,7 +193,7 @@ Section refine_rules.
 
       assert (take 1 (drop idx' (substring n m str)) ~= [ch]).
       {
-        destruct ((possible_first_terminals_of_production G its).(actual_possible_first_terminals)) eqn:terminals.
+        destruct ((possible_first_terminals_of_production its).(actual_possible_first_terminals)) eqn:terminals.
         {
           simpl in *.
           tauto.
@@ -202,6 +207,7 @@ Section refine_rules.
           apply FirstChar.first_char_in_exists in H_first_char.
           {
             destruct H_first_char as [ch0 [take_equals in_list] ].
+            subst_disjoint_search_data.
             rewrite terminals in in_list.
             clear terminals.
             set (ls := (a :: l)) in *.
@@ -532,79 +538,117 @@ Local Ltac presimpl_after_refine_binop_table :=
              [ | solve [ clear; lazy; reflexivity ] ];
       presimpl_after_refine_binop_table.
 >>> *)
+Definition Let_In {A B} (v : A) (f : A -> B) := let y := v in f y.
+Definition app_to_opt_let_in {A B} v f
+  : f v = @Let_In A B v f
+  := eq_refl.
+Definition cut_app_to_opt_let_in {A} v f
+  : @Let_In A Prop v f -> f v
+  := fun x => x.
+Ltac cut_app_to_opt_let_in _ :=
+  lazymatch goal with
+  | [ |- @Let_In ?A Prop ?v ?f -> ?f ?v ]
+    => clear; (*abstract*) exact_no_check (@cut_app_to_opt_let_in A v f)
+  end.
+Ltac abstract_exact_id _ :=
+  match goal with
+  | [ |- ?A -> ?B ]
+    => clear; (*abstract*) exact (fun x : A => x)
+  end.
+Ltac solve_match_list_by_lazy_then_esplit _ :=
+  clear;
+  match goal with
+    |- match ?e with nil => ?N | cons a b => ?P end
+    => let f := uconstr:(fun e' => match e' with nil => N | cons a b => P end) in
+       let lem := constr:(cut_app_to_opt_let_in e f) in
+       change (f e);
+       cut (Let_In e f);
+       [
+              | let e' := (eval lazy in e) in
+                cut (Let_In e' f);
+                [
+                  | compute; repeat esplit ] ];
+       [ cut_app_to_opt_let_in () | abstract_exact_id () ]
+  end.
 Ltac setoid_rewrite_refine_binop_table_idx args :=
-        idtac;
-        let lem := constr:(@refine_binop_table_idx _ _ _) in
-        let G := match args with ParserInterface.split_list_is_complete_idx
-                                   ?G ?str ?offset ?len ?idx => G end in
-        let str := match args with ParserInterface.split_list_is_complete_idx
-                                     ?G ?str ?offset ?len ?idx => str end in
-        let offset := match args with ParserInterface.split_list_is_complete_idx
-                                        ?G ?str ?offset ?len ?idx => offset end in
-        let len := match args with ParserInterface.split_list_is_complete_idx
-                                     ?G ?str ?offset ?len ?idx => len end in
-        let idx := match args with ParserInterface.split_list_is_complete_idx
-                                     ?G ?str ?offset ?len ?idx => idx end in
-        let ps := (eval hnf in (Carriers.default_to_production (G := G) idx)) in
-        match ps with
-          | nil => fail 1 "The index" idx "maps to the empty production," "which is not valid for the binop-brackets rule"
-          | _ => idtac
-        end;
-          let p := match ps with ?p::_ => p end in
-          let p := (eval hnf in p) in
-          match p with
-            | NonTerminal _ => idtac
-            | _ => fail 1 "The index" idx "maps to a production starting with" p "which is not a nonterminal; the index must begin with a nonterminal to apply the binop-brackets rule"
-          end;
-            let nt := match p with NonTerminal ?nt => nt end in
-            let its := (eval simpl in (List.tl ps)) in
-            let lem := constr:(fun its' H' ch H0 H1 => lem G eq_refl str offset len nt ch its' H0 H1 idx H') in
-            let lem := constr:(lem its eq_refl) in
-            let chT := match type of lem with forall ch : ?chT, _ => chT end in
-            let chE := fresh "ch" in
-            evar (chE : chT);
-              let ch := (eval unfold chE in chE) in
-              let lem := constr:(lem ch) in
-              let H0 := fresh in
-              let T0 := match type of lem with ?T0 -> _ => T0 end in
-              first [ assert (H0 : T0) by (clear; lazy; repeat esplit)
-                    | fail 1 "Could not find a single binary operation to solve" T0 ];
-                subst chE;
-                let lem := constr:(lem H0) in
-                let H := fresh in
-                pose proof lem as H; clear H0;
-                unfold correct_open_close in H;
-                let c := match type of H with
-                           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
-                             => constr:(@possible_valid_open_closes G nt ch)
-                         end in
-                replace_with_vm_compute_in c H;
-                  first [ specialize (H eq_refl)
-                        | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
-                  let c := match type of H with
-                             | context[@default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]
-                               => constr:(@default_list_of_next_bin_ops_opt_data HSLM HSL data)
-                           end in
-                  let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
-                  let c' := match c' with
-                              | appcontext[@StringLike.get _ ?HSLM ?HSL]
-                                => let HSLM' := head HSLM in
-                                   let HSL' := head HSL in
-                                   (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')
-                              | _ => c'
-                            end in
-                  change c with c' in H;
-                    first [ setoid_rewrite H
-                          | let T := type of H in
-                            fail 1 "Unexpeected failure to setoid_rewrite with" T ];
-                    clear H.
+  idtac;
+  let lem := constr:(@refine_binop_table_idx _ _ _) in
+  let G := match args with ParserInterface.split_list_is_complete_idx
+                             ?G ?str ?offset ?len ?idx => G end in
+  let str := match args with ParserInterface.split_list_is_complete_idx
+                               ?G ?str ?offset ?len ?idx => str end in
+  let offset := match args with ParserInterface.split_list_is_complete_idx
+                                  ?G ?str ?offset ?len ?idx => offset end in
+  let len := match args with ParserInterface.split_list_is_complete_idx
+                               ?G ?str ?offset ?len ?idx => len end in
+  let idx := match args with ParserInterface.split_list_is_complete_idx
+                               ?G ?str ?offset ?len ?idx => idx end in
+  let ps := (eval hnf in (Carriers.default_to_production (G := G) idx)) in
+  match ps with
+  | nil => fail 1 "The index" idx "maps to the empty production," "which is not valid for the binop-brackets rule"
+  | _ => idtac
+  end;
+  let p := match ps with ?p::_ => p end in
+  let p := (eval hnf in p) in
+  match p with
+  | NonTerminal _ => idtac
+  | _ => fail 1 "The index" idx "maps to a production starting with" p "which is not a nonterminal; the index must begin with a nonterminal to apply the binop-brackets rule"
+  end;
+  let nt := match p with NonTerminal ?nt => nt end in
+  let its := (eval simpl in (List.tl ps)) in
+  let Hvalid := get_hyp_of_shape (is_true (grammar_rvalid G)) in
+  let search_data := get_hyp_of_shape (disjoint_search_data G) in
+  let lem := constr:(fun its' H' ch H0 H1 => lem G Hvalid search_data str offset len nt ch its' H0 H1 idx H') in
+  let lem := constr:(lem its eq_refl) in
+  let chT := match type of lem with forall ch : ?chT, _ => chT end in
+  let chE := fresh "ch" in
+  evar (chE : chT);
+  let ch := (eval unfold chE in chE) in
+  let lem := constr:(lem ch) in
+  let H0 := fresh in
+  let T0 := match type of lem with ?T0 -> _ => T0 end in
+  first [ assert (H0 : T0) by solve_match_list_by_lazy_then_esplit ()
+        | fail 1 "Could not find a single binary operation to solve" T0 ];
+  subst chE;
+  let lem := constr:(lem H0) in
+  let H := fresh in
+  pose proof lem as H; clear H0;
+  unfold correct_open_close in H;
+  let c := match type of H with
+           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
+             => constr:(@possible_valid_open_closes G nt ch)
+           end in
+  replace_with_vm_compute_in c H;
+  first [ specialize (H eq_refl)
+        | fail 1 "Could not find a set of good brackets for the binary operation" ch ];
+  let c := match type of H with
+           | context[@default_list_of_next_bin_ops_opt_data ?HSLM ?HSL ?data]
+             => constr:(@default_list_of_next_bin_ops_opt_data HSLM HSL data)
+           end in
+  let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
+  let c' := match c' with
+            | appcontext[@StringLike.get _ ?HSLM ?HSL]
+              => let HSLM' := head HSLM in
+                 let HSL' := head HSL in
+                 (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')
+            | _ => c'
+            end in
+  change c with c' in H;
+  lazymatch goal with
+  | [ |- refine { splits : list nat | _ } _ ]
+    => refine H
+  | _ => first [ setoid_rewrite H
+               | let T := type of H in
+                 fail 1 "Unexpected failure to setoid_rewrite with" T ]
+  end;
+  clear H.
 Ltac refine_binop_table :=
   idtac;
   match goal with
-    | [ |- context[{ splits : list nat
-                   | ParserInterface.split_list_is_complete_idx
-                       ?G ?str ?offset ?len ?idx splits }%comp] ]
-      => setoid_rewrite_refine_binop_table_idx
-           (ParserInterface.split_list_is_complete_idx
-              G str offset len idx)
+  | [ |- context[{ splits : list nat
+                 | ParserInterface.split_list_is_complete_idx
+                     ?G ?str ?offset ?len ?idx splits }%comp] ]
+    => setoid_rewrite_refine_binop_table_idx
+         (ParserInterface.split_list_is_complete_idx
+            G str offset len idx)
   end.

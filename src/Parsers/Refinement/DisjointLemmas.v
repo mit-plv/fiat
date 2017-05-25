@@ -33,6 +33,7 @@ Require Import Fiat.Parsers.BaseTypesLemmas.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidProperties.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
+Require Import Fiat.Parsers.Refinement.DisjointLemmasEarlyDeclarations.
 Require Import Fiat.Common.BoolFacts.
 Require Fiat.Parsers.Reachable.All.MinimalReachable.
 Require Fiat.Parsers.Reachable.All.MinimalReachableOfReachable.
@@ -84,11 +85,11 @@ Section maybe_empty.
          combine_productions := orb;
          on_nonterminal nt v := v }.
 
-  Definition maybe_empty_of : pregrammar' Char -> String.string -> bool
+  Definition maybe_empty_of : pregrammar' Char -> list (opt.productions _) -> String.string -> bool
     := @fold_nt _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_productions : pregrammar' Char -> productions Char -> bool
+  Definition maybe_empty_of_productions : pregrammar' Char -> list (opt.productions _) -> productions Char -> bool
     := @fold_productions _ _ maybe_empty_fold_data.
-  Definition maybe_empty_of_production : pregrammar' Char -> production Char -> bool
+  Definition maybe_empty_of_production : pregrammar' Char -> list (opt.productions _) -> production Char -> bool
     := @fold_production _ _ maybe_empty_fold_data.
 End maybe_empty.
 
@@ -105,29 +106,31 @@ Section all_possible.
          combine_productions := @app _;
          on_nonterminal nt v := v }.
 
-  Definition possible_terminals_of : pregrammar' Char -> String.string -> possible_terminals
+  Definition possible_terminals_of : pregrammar' Char -> list (opt.productions _) -> String.string -> possible_terminals
     := @fold_nt _ _ all_possible_fold_data.
-  Definition possible_terminals_of_productions : pregrammar' Char -> productions Char -> possible_terminals
+  Definition possible_terminals_of_productions : pregrammar' Char -> list (opt.productions _) -> productions Char -> possible_terminals
     := @fold_productions _ _ all_possible_fold_data.
-  Definition possible_terminals_of_production : pregrammar' Char -> production Char -> possible_terminals
+  Definition possible_terminals_of_production : pregrammar' Char -> list (opt.productions _) -> production Char -> possible_terminals
     := @fold_production _ _ all_possible_fold_data.
 End all_possible.
 
 Section only_first.
-  Context (G : pregrammar' Ascii.ascii)
-          {HSLM : StringLikeMin Ascii.ascii}
-          {HSL : StringLike Ascii.ascii}
-          {HSI : StringIso Ascii.ascii}.
-
   Record possible_first_terminals :=
     { actual_possible_first_terminals :> list Ascii.ascii;
       might_be_empty : bool }.
+
+  Context (G : pregrammar' Ascii.ascii)
+          (compiled_productions_maybe_empty_of : list (opt.productions bool))
+          (compiled_productions_possible_first_terminals : list (opt.productions possible_first_terminals))
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}.
 
   Local Instance only_first_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_first_terminals
     := { on_terminal P
          := {| actual_possible_first_terminals := filter P (Enumerable.enumerate Ascii.ascii);
                might_be_empty := false |};
-         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := maybe_empty_of G nt |};
+         on_redundant_nonterminal nt := {| actual_possible_first_terminals := nil ; might_be_empty := maybe_empty_of G compiled_productions_maybe_empty_of nt |};
          on_nil_production := {| actual_possible_first_terminals := nil ; might_be_empty := true |};
          on_nil_productions := {| actual_possible_first_terminals := nil ; might_be_empty := false |};
          combine_production first_of_first first_of_rest
@@ -147,28 +150,30 @@ Section only_first.
          on_nonterminal nt v := v }.
 
   Definition possible_first_terminals_of : String.string -> possible_first_terminals
-    := @fold_nt _ _ only_first_fold_data G.
+    := @fold_nt _ _ only_first_fold_data G compiled_productions_possible_first_terminals.
   Definition possible_first_terminals_of_productions : productions Ascii.ascii -> possible_first_terminals
-    := @fold_productions _ _ only_first_fold_data G.
+    := @fold_productions _ _ only_first_fold_data G compiled_productions_possible_first_terminals.
   Definition possible_first_terminals_of_production : production Ascii.ascii -> possible_first_terminals
-    := @fold_production _ _ only_first_fold_data G.
+    := @fold_production _ _ only_first_fold_data G compiled_productions_possible_first_terminals.
 End only_first.
 
 Section only_last.
-  Context (G : pregrammar' Ascii.ascii)
-          {HSLM : StringLikeMin Ascii.ascii}
-          {HSL : StringLike Ascii.ascii}
-          {HSI : StringIso Ascii.ascii}.
-
   Record possible_last_terminals :=
     { actual_possible_last_terminals :> list Ascii.ascii;
       might_be_empty' : bool }.
+
+  Context (G : pregrammar' Ascii.ascii)
+          (compiled_productions_maybe_empty_of : list (opt.productions bool))
+          (compiled_productions_possible_last_terminals : list (opt.productions possible_last_terminals))
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}.
 
   Local Instance only_last_fold_data (predata := @rdp_list_predata _ G) : fold_grammar_data Ascii.ascii possible_last_terminals
     := { on_terminal P
          := {| actual_possible_last_terminals := filter P (Enumerable.enumerate Ascii.ascii);
                might_be_empty' := false |};
-         on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := maybe_empty_of G nt |};
+         on_redundant_nonterminal nt := {| actual_possible_last_terminals := nil ; might_be_empty' := maybe_empty_of G compiled_productions_maybe_empty_of nt |};
          on_nil_production := {| actual_possible_last_terminals := nil ; might_be_empty' := true |};
          on_nil_productions := {| actual_possible_last_terminals := nil ; might_be_empty' := false |};
          combine_production last_of_first last_of_rest
@@ -188,11 +193,11 @@ Section only_last.
          on_nonterminal nt v := v }.
 
   Definition possible_last_terminals_of : String.string -> possible_last_terminals
-    := @fold_nt _ _ only_last_fold_data G.
+    := @fold_nt _ _ only_last_fold_data G compiled_productions_possible_last_terminals.
   Definition possible_last_terminals_of_productions : productions Ascii.ascii -> possible_last_terminals
-    := @fold_productions _ _ only_last_fold_data G.
+    := @fold_productions _ _ only_last_fold_data G compiled_productions_possible_last_terminals.
   Definition possible_last_terminals_of_production : production Ascii.ascii -> possible_last_terminals
-    := @fold_production _ _ only_last_fold_data G.
+    := @fold_production _ _ only_last_fold_data G compiled_productions_possible_last_terminals.
 End only_last.
 
 Section maybe_empty_correctness.
@@ -281,7 +286,7 @@ Section maybe_empty_correctness.
   Lemma maybe_empty_of_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         nt
-    : maybe_empty_of G nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
+    : maybe_empty_of G (compiled_productions G) nt = true <-> inhabited (MaybeEmpty.Core.maybe_empty_item G initial_nonterminals_data (NonTerminal nt)).
   Proof.
     csimpl rewrite (fold_nt_correct (G := G) nt).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_item__iff__maybe_empty_item; reflexivity.
@@ -290,7 +295,7 @@ Section maybe_empty_correctness.
   Lemma maybe_empty_of_production_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         pat
-    : maybe_empty_of_production G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
+    : maybe_empty_of_production G (compiled_productions G) pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_production G initial_nonterminals_data pat).
   Proof.
     csimpl rewrite (fold_production_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_production__iff__maybe_empty_production; reflexivity.
@@ -299,7 +304,7 @@ Section maybe_empty_correctness.
   Lemma maybe_empty_of_productions_correct (G : pregrammar' Char)
         (predata := @rdp_list_predata _ G)
         pat
-    : maybe_empty_of_productions G pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
+    : maybe_empty_of_productions G (compiled_productions G) pat = true <-> inhabited (MaybeEmpty.Core.maybe_empty_productions G initial_nonterminals_data pat).
   Proof.
     csimpl rewrite (fold_productions_correct (G := G) pat).
     simpl rewrite MaybeEmpty.MinimalOfCore.minimal_maybe_empty_productions__iff__maybe_empty_productions; reflexivity.
@@ -433,7 +438,7 @@ Section all_possible_correctness.
         (str : String) nt
         (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
         (p : parse_of_item G str (NonTerminal nt))
-  : forall_chars__char_in str (possible_terminals_of G nt).
+  : forall_chars__char_in str (possible_terminals_of G (compiled_productions G) nt).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of.
@@ -453,7 +458,7 @@ Section all_possible_correctness.
         (str : String) pat
         (His_valid : production_valid pat)
         (p : parse_of_production G str pat)
-  : forall_chars__char_in str (possible_terminals_of_production G pat).
+  : forall_chars__char_in str (possible_terminals_of_production G (compiled_productions G) pat).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of.
@@ -607,10 +612,12 @@ Section only_first_correctness.
 
   Local Opaque enumerable_ascii.
 
+  Local Existing Instance maybe_empty_fold_data.
+
   Local Instance only_first_cdata
         (rdata := rdp_list_rdata' (G := G))
         (cdata := brute_force_cdata G)
-  : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G) G
+  : @fold_grammar_correctness_data Ascii.ascii possible_first_terminals (only_first_fold_data G (compiled_productions G)) G
     := { fgccd := only_first_ccdata }.
   Proof.
     { abstract t. }
@@ -622,12 +629,14 @@ Section only_first_correctness.
     { abstract t. }
   Defined.
 
+  Local Hint Resolve (only_first_fold_data G (compiled_productions G)) : typeclass_instances.
+
   Lemma possible_first_terminals_of_production_correct
         (predata := @rdp_list_predata _ G)
         (str : String) pat
         (p : parse_of_production G str pat)
         (His_valid : production_valid pat)
-  : first_char_in str (possible_first_terminals_of_production G pat).
+  : first_char_in str (possible_first_terminals_of_production G (compiled_productions G) (compiled_productions G) pat).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
@@ -644,7 +653,7 @@ Section only_first_correctness.
         (str : String) (Hlen : length str = 0) pat
         (p : parse_of_production G str pat)
         (His_valid : production_valid pat)
-  : might_be_empty (possible_first_terminals_of_production G pat).
+  : might_be_empty (possible_first_terminals_of_production G (compiled_productions G) (compiled_productions G) pat).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
@@ -803,10 +812,12 @@ Section only_last_correctness.
 
   Local Opaque enumerable_ascii.
 
+  Local Existing Instance maybe_empty_fold_data.
+
   Local Instance only_last_cdata
         (rdata := rdp_list_rdata' (G := G))
         (cdata := brute_force_cdata G)
-  : @fold_grammar_correctness_data Ascii.ascii possible_last_terminals (only_last_fold_data G) G
+  : @fold_grammar_correctness_data Ascii.ascii possible_last_terminals (only_last_fold_data G (compiled_productions G)) G
     := { fgccd := only_last_ccdata }.
   Proof.
     { abstract t. }
@@ -818,12 +829,14 @@ Section only_last_correctness.
     { abstract t. }
   Defined.
 
+  Local Hint Resolve (only_last_fold_data G (compiled_productions G)) : typeclass_instances.
+
   Lemma possible_last_terminals_of_correct
         (predata := @rdp_list_predata _ G)
         (str : String) nt
         (p : parse_of_item G str (NonTerminal nt))
         (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
-  : last_char_in str (possible_last_terminals_of G nt).
+  : last_char_in str (possible_last_terminals_of G (compiled_productions G) (compiled_productions G) nt).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of.
@@ -840,7 +853,7 @@ Section only_last_correctness.
         (str : String) (Hlen : length str = 0) nt
         (p : parse_of_item G str (NonTerminal nt))
         (His_valid : is_valid_nonterminal initial_nonterminals_data (of_nonterminal nt))
-  : might_be_empty' (possible_last_terminals_of G nt).
+  : might_be_empty' (possible_last_terminals_of G (compiled_productions G) (compiled_productions G) nt).
   Proof.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     unfold possible_terminals_of_production.
@@ -859,28 +872,87 @@ Local Open Scope string_like_scope.
 
 Local Arguments string_beq : simpl never.
 
+Section declare_search_data.
+  Context {G : pregrammar' Ascii.ascii}.
+  Local Existing Instance maybe_empty_fold_data.
+  Local Hint Resolve (only_last_fold_data G (compiled_productions G)) : typeclass_instances.
+  Local Hint Resolve (only_first_fold_data G (compiled_productions G)) : typeclass_instances.
+  Local Existing Instance all_possible_fold_data.
+
+  Class disjoint_search_data :=
+    { compiled_productions_maybe_empty_of : list (opt.productions bool);
+      compiled_productions_possible_first_terminals : list (opt.productions possible_first_terminals);
+      compiled_productions_possible_last_terminals : list (opt.productions possible_last_terminals);
+      compiled_productions_possible_terminals : list (opt.productions possible_terminals);
+      maybe_empty_of_good : compiled_productions_maybe_empty_of = compiled_productions G;
+      possible_first_terminals_good : compiled_productions_possible_first_terminals = compiled_productions G;
+      possible_last_terminals_good : compiled_productions_possible_last_terminals = compiled_productions G;
+      possible_terminals_good : compiled_productions_possible_terminals = compiled_productions G; }.
+End declare_search_data.
+Global Arguments disjoint_search_data : clear implicits.
+
+Ltac solve_disjoint_search_data :=
+  lazymatch goal with
+  | [ |- disjoint_search_data ?G ]
+    => first [ is_var G; fail 1 "solve_disjoint_search_data does not work on var grammars such as" G
+             | idtac ]
+  end;
+  esplit;
+  lazymatch goal with
+  | [ |- ?e = ?rhs ]
+    => let rhs' := (eval native_compute in rhs) in
+       unify e rhs';
+       native_cast_no_check (eq_refl rhs)
+  end.
+Ltac subst_disjoint_search_data :=
+  repeat first [ rewrite !maybe_empty_of_good in *
+               | rewrite !possible_first_terminals_good in *
+               | rewrite !possible_last_terminals_good in *
+               | rewrite !possible_terminals_good in *
+               | match goal with
+                 | [ H : _ |- _ ]
+                   => first [ rewrite !maybe_empty_of_good in H
+                            | rewrite !possible_first_terminals_good in H
+                            | rewrite !possible_last_terminals_good in H
+                            | rewrite !possible_terminals_good in H ]
+                 end ].
+
+Hint Extern 1 (disjoint_search_data _) => solve_disjoint_search_data : typeclass_instances.
+
+
+
 Section search_forward.
-  Lemma terminals_disjoint_search_for_not' {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Context {G : pregrammar' Ascii.ascii}
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}
+          {HSIP : StringIsoProperties Ascii.ascii}
+          (search_data : disjoint_search_data G)
+          (Hvalid : grammar_rvalid G).
+
+  Local Notation possible_terminals_of := (possible_terminals_of G compiled_productions_possible_terminals).
+  Local Notation possible_first_terminals_of_production :=
+    (possible_first_terminals_of_production G compiled_productions_maybe_empty_of compiled_productions_possible_first_terminals).
+
+  Lemma terminals_disjoint_search_for_not'
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq
+                               (possible_terminals_of nt)
+                               (possible_first_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-  : forall_chars__char_in (take n str) (possible_terminals_of G nt)
-    /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
+  : forall_chars__char_in (take n str) (possible_terminals_of nt)
+    /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production its))
         \/ (for_first_char
               (drop n str)
-              (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt)))
+              (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of nt)))
             /\ n < length str)).
   Proof.
+    subst_disjoint_search_data.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
     pose proof HinV as HinV';
@@ -913,27 +985,22 @@ Section search_forward.
       find_production_valid. }
   Qed.
 
-  Lemma terminals_disjoint_search_for_not {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_search_for_not
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_terminals_of nt) (possible_first_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : is_first_char_such_that
-        (might_be_empty (possible_first_terminals_of_production G its))
+        (might_be_empty (possible_first_terminals_of_production its))
         str
         n
-        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of G nt))).
+        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of nt))).
   Proof.
-    pose proof (terminals_disjoint_search_for_not' Hvalid _ H_disjoint pit pits H_reachable) as H.
+    pose proof (terminals_disjoint_search_for_not' _ H_disjoint pit pits H_reachable) as H.
+    subst_disjoint_search_data.
     split;
       [ destruct H as [H0 H1]
       | destruct H as [H0 [[H1 H2] | H1]]; solve [ left; eauto | right; eauto ] ].
@@ -945,28 +1012,23 @@ Section search_forward.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
   Qed.
 
-  Lemma terminals_disjoint_search_for' {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_search_for'
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_terminals_of nt) (possible_first_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : forall_chars (take n str)
-                   (fun ch => negb (list_bin ascii_beq ch (possible_first_terminals_of_production G its)))
-      /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production G its))
+                   (fun ch => negb (list_bin ascii_beq ch (possible_first_terminals_of_production its)))
+      /\ ((length str <= n /\ might_be_empty (possible_first_terminals_of_production its))
           \/ (first_char_in
                 (drop n str)
-                (possible_first_terminals_of_production G its)
+                (possible_first_terminals_of_production its)
               /\ n < length str)).
   Proof.
+    subst_disjoint_search_data.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
     pose proof HinV as HinV';
@@ -996,27 +1058,22 @@ Section search_forward.
         find_production_valid. } }
   Qed.
 
-  Lemma terminals_disjoint_search_for {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_search_for
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_terminals_of G nt) (possible_first_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_terminals_of nt) (possible_first_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : is_first_char_such_that
-        (might_be_empty (possible_first_terminals_of_production G its))
+        (might_be_empty (possible_first_terminals_of_production its))
         str
         n
-        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production G its)).
+        (fun ch => list_bin ascii_beq ch (possible_first_terminals_of_production its)).
   Proof.
-    pose proof (terminals_disjoint_search_for' Hvalid _ H_disjoint pit pits H_reachable) as H.
+    pose proof (terminals_disjoint_search_for' _ H_disjoint pit pits H_reachable) as H.
+    subst_disjoint_search_data.
     split;
       [ destruct H as [H0 H1]
       | destruct H as [H0 [[H1 H2] | [H1 ?]]]; [ right | left; split ]; eauto ].
@@ -1034,27 +1091,36 @@ Section search_forward.
 End search_forward.
 
 Section search_backward.
-  Lemma terminals_disjoint_rev_search_for_not' {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Context {G : pregrammar' Ascii.ascii}
+          {HSLM : StringLikeMin Ascii.ascii}
+          {HSL : StringLike Ascii.ascii}
+          {HSI : StringIso Ascii.ascii}
+          {HSLP : StringLikeProperties Ascii.ascii}
+          {HSIP : StringIsoProperties Ascii.ascii}
+          (search_data : disjoint_search_data G)
+          (Hvalid : grammar_rvalid G).
+
+  Local Notation possible_terminals_of_production :=
+    (possible_terminals_of_production G compiled_productions_possible_terminals).
+  Local Notation possible_last_terminals_of :=
+    (possible_last_terminals_of G compiled_productions_maybe_empty_of compiled_productions_possible_last_terminals).
+
+  Lemma terminals_disjoint_rev_search_for_not'
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of G nt) (possible_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of nt) (possible_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
-  : forall_chars__char_in (drop n str) (possible_terminals_of_production G its)
-    /\ ((n = 0 /\ might_be_empty' (possible_last_terminals_of G nt))
+  : forall_chars__char_in (drop n str) (possible_terminals_of_production its)
+    /\ ((n = 0 /\ might_be_empty' (possible_last_terminals_of nt))
         \/ (for_last_char
               (take n str)
-              (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production G its)))
+              (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production its)))
             /\ n > 0)).
   Proof.
+    subst_disjoint_search_data.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
     pose proof HinV as HinV';
@@ -1084,27 +1150,22 @@ Section search_backward.
       find_production_valid. }
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for_not {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_rev_search_for_not
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of G nt) (possible_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of nt) (possible_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : is_after_last_char_such_that
-        (*(might_be_empty' (possible_last_terminals_of G nt))*)
+        (*(might_be_empty' (possible_last_terminals_of nt))*)
         str
         n
-        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production G its))).
+        (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production its))).
   Proof.
-    pose proof (terminals_disjoint_rev_search_for_not' Hvalid _ H_disjoint pit pits H_reachable) as H.
+    pose proof (terminals_disjoint_rev_search_for_not' _ H_disjoint pit pits H_reachable) as H.
+    subst_disjoint_search_data.
     split;
       [ destruct H as [H0 H1]
       | destruct H as [H0 [[H1 H2] | H1]];
@@ -1121,28 +1182,23 @@ Section search_backward.
     apply list_in_lb; [ apply (@ascii_lb) | ]; assumption.
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for' {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_rev_search_for'
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of G nt) (possible_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of nt) (possible_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : forall_chars (drop n str)
-                   (fun ch => negb (list_bin ascii_beq ch (possible_last_terminals_of G nt)))
-      /\ ((n = 0 /\ might_be_empty' (possible_last_terminals_of G nt))
+                   (fun ch => negb (list_bin ascii_beq ch (possible_last_terminals_of nt)))
+      /\ ((n = 0 /\ might_be_empty' (possible_last_terminals_of nt))
           \/ (last_char_in
                 (take n str)
-                (possible_last_terminals_of G nt)
+                (possible_last_terminals_of nt)
               /\ n > 0)).
   Proof.
+    subst_disjoint_search_data.
     pose proof Hvalid as Hvalid'; apply grammar_rvalid_correct in Hvalid'.
     destruct H_reachable as [ nt' [ prefix [ HinV HinL ] ] ].
     pose proof HinV as HinV';
@@ -1169,27 +1225,22 @@ Section search_backward.
         find_production_valid. } }
   Qed.
 
-  Lemma terminals_disjoint_rev_search_for {G : pregrammar' Ascii.ascii}
-        {HSLM : StringLikeMin Ascii.ascii}
-        {HSL : StringLike Ascii.ascii}
-        {HSI : StringIso Ascii.ascii}
-        {HSLP : StringLikeProperties Ascii.ascii}
-        {HSIP : StringIsoProperties Ascii.ascii}
-        (Hvalid : grammar_rvalid G)
+  Lemma terminals_disjoint_rev_search_for
         (str : @String Ascii.ascii HSLM)
         {nt its}
-        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of G nt) (possible_terminals_of_production G its))
+        (H_disjoint : disjoint ascii_beq (possible_last_terminals_of nt) (possible_terminals_of_production its))
         {n}
         (pit : parse_of_item G (StringLike.take n str) (NonTerminal nt))
         (pits : parse_of_production G (StringLike.drop n str) its)
         (H_reachable : production_is_reachable G (NonTerminal nt :: its))
     : is_after_last_char_such_that
-        (*(might_be_empty' (possible_last_terminals_of G nt))*)
+        (*(might_be_empty' (possible_last_terminals_of nt))*)
         str
         n
-        (fun ch => list_bin ascii_beq ch (possible_last_terminals_of G nt)).
+        (fun ch => list_bin ascii_beq ch (possible_last_terminals_of nt)).
   Proof.
-    pose proof (terminals_disjoint_rev_search_for' Hvalid _ H_disjoint pit pits H_reachable) as H.
+    pose proof (terminals_disjoint_rev_search_for' _ H_disjoint pit pits H_reachable) as H.
+    subst_disjoint_search_data.
     split;
       [ destruct H as [H0 H1]
       | destruct H as [H0 [[H1 H2] | [H1 ?]]];
@@ -1209,3 +1260,37 @@ Section search_backward.
       apply list_in_lb; [ apply (@ascii_lb) | ]; assumption. }
   Qed.
 End search_backward.
+
+Ltac get_grammar :=
+  lazymatch goal with
+  | [ |- context[ParserInterface.split_list_is_complete_idx ?G] ] => G
+  end.
+
+Ltac pose_rvalid_for G :=
+  lazymatch goal with
+  | [ H : is_true (grammar_rvalid G) |- _ ] => idtac
+  | _ => let Hvalid := fresh "Hvalid" in
+         assert (Hvalid : is_true (grammar_rvalid G))
+           by (vm_compute; reflexivity)
+  end.
+Ltac pose_rvalid := let G := get_grammar in pose_rvalid_for G.
+
+Ltac pose_disjoint_search_data_for G :=
+  lazymatch goal with
+  | [ H := _ : disjoint_search_data G |- _ ] => idtac
+  | _ => let Hdisjoint_data := fresh "Hdisjoint_data" in
+         let val := lazymatch constr:(_ : disjoint_search_data G) with ?e => e end in
+         pose val as Hdisjoint_data
+  end.
+Ltac pose_disjoint_search_data := let G := get_grammar in pose_disjoint_search_data_for G.
+
+Module Export Exports.
+  Export DisjointLemmasEarlyDeclarations.
+  (** hide the arguments to Build_disjoint_search_data *)
+  Notation precomputed_search_data := {| compiled_productions_maybe_empty_of := _ |}.
+
+  Ltac do_disjoint_precomputations _ ::=
+    let G := get_grammar in
+    pose_rvalid_for G;
+    pose_disjoint_search_data_for G.
+End Exports.

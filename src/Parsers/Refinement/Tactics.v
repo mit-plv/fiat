@@ -14,6 +14,7 @@ Require Export Fiat.Parsers.StringLike.String.
 
 Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.PrettyNotations.
 
+Require Import Fiat.Parsers.Refinement.DisjointLemmasEarlyDeclarations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
@@ -80,7 +81,8 @@ Ltac start_honing :=
   lazymatch goal with
   | [ |- context[opt2.fold_right _ _ ?ls] ]
     => replace_with_vm_compute_by_set ls
-  end(*;
+  end;
+  do_disjoint_precomputations ()(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
 
@@ -143,6 +145,7 @@ Ltac simplify_parser_splitter' :=
                         ?v ]
             => apply (@simplify_monad_laws_first_step _ _ _ c f v)
           end;
+          do_disjoint_precomputations ();
           apply_splitter_tower_lemma
         | progress autounfold with parser_sharpen_db;
           cbv beta iota zeta;
@@ -204,6 +207,7 @@ Ltac splitter_start :=
     | [ |- context[opt2.fold_right _ _ ?ls] ]
       => replace_with_vm_compute_by_set ls
     end;
+    do_disjoint_precomputations ();
     apply_splitter_tower_lemma
   | ];
   instantiate; cbv beta.

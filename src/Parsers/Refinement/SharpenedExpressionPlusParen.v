@@ -75,7 +75,7 @@ total time:      0.531s
  │└induction H -------------------------   2.9%   2.9%       1    0.016s
  └─pose proof lem as H -----------------   2.9%   2.9%       1    0.016s
  *)
-      reflexivity. }
+    }
     { finish honing parser method. }
 
     finish_Sharpening_SplitterADT.

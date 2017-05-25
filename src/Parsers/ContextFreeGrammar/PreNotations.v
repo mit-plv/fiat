@@ -45,16 +45,20 @@ Global Existing Instance pregrammar_idata.
 Section with_actions.
   Context (Char T : Type).
 
+  Definition action_of_ritem (it : ritem Char) : Type
+    := match it with
+       | RTerminal _ => Char
+       | RNonTerminal _ => T
+       end.
+
   Fixpoint action_of_rproduction (pat : rproduction Char) : Type
     := match pat with
        | nil => T
        | cons it pat'
-         => match it with
-            | RTerminal _ => Char
-            | RNonTerminal _ => T
-            end -> action_of_rproduction pat'
+         => action_of_ritem it -> action_of_rproduction pat'
        end.
 
+  Definition ritem_with_action := { it : ritem Char & action_of_ritem it }.
   Definition rproduction_with_action := { pat : rproduction Char & action_of_rproduction pat }.
   Definition rproductions_with_actions := list rproduction_with_action.
 
