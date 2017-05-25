@@ -218,19 +218,59 @@ Lemma UnConstrQuery_In_Where_Map {resultT}:
                                                                            Return r);
               ret (map f results)).
 Proof.
-Admitted.
+  Local Transparent QueryResultComp.
+  intros; unfold UnConstrQuery_In, QueryResultComp.
+  rewrite refineEquiv_bind_bind; f_equiv; intro.
+  induction a; simpl; autorewrite with monad laws.
+  - reflexivity.
+  - setoid_rewrite IHa.
+    autorewrite with monad laws.
+    unfold Query_Where, Query_Return; f_equiv.
+    intros ? ?.
+    apply Bind_inv in H; destruct_ex; intuition.
+    refine pick val (map f x).
+    computes_to_inv; subst.
+    rewrite map_app; computes_to_econstructor; intuition eauto.
+    computes_to_inv; intuition eauto;
+    computes_to_inv; subst; eauto.
+Qed.
 
 Lemma Map_UnConstrQuery_In_Where {resultT}:
   forall (qs_schema : RawQueryStructureSchema) (idx : Fin.t (numRawQSschemaSchemas qs_schema))
          (r_o : UnConstrQueryStructure qs_schema) (P : Ensemble RawTuple)
-         (f : _ -> resultT),
+         (f : _ -> resultT) (P_dec : DecideableEnsemble P),
     refine (results <- UnConstrQuery_In r_o idx (fun r : RawTuple => Where (P r)
                                                                            Return r);
               ret (map f results))
            (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (P r)
                                                                 Return (f r))).
 Proof.
-Admitted.
+  intros; unfold UnConstrQuery_In, QueryResultComp.
+  rewrite refineEquiv_bind_bind; f_equiv; intro.
+  induction a; simpl; autorewrite with monad laws.
+  - reflexivity.
+  - setoid_rewrite <- IHa.
+    autorewrite with monad laws.
+    unfold Query_Where, Query_Return; f_equiv.
+    intros ? ?.
+    apply Bind_inv in H; destruct_ex; intuition.
+    refine pick val (if dec a then [a] else nil).
+    + destruct (dec a) eqn: Heq_a.
+      * rewrite dec_decides_P in Heq_a.
+        computes_to_inv; subst.
+        setoid_rewrite map_app; computes_to_econstructor; intuition eauto.
+        computes_to_econstructor; eauto.
+        computes_to_inv; subst; computes_to_econstructor.
+      * computes_to_inv; subst.
+        setoid_rewrite map_app; computes_to_econstructor; intuition eauto.
+        rewrite Decides_false in Heq_a; apply H2 in Heq_a; subst.
+        computes_to_econstructor; eauto.
+    + destruct (dec a) eqn: Heq_a.
+      * rewrite dec_decides_P in Heq_a; intuition.
+      * rewrite Decides_false in Heq_a; intuition.
+Qed.
+
+Local Opaque QueryResultComp.
 
 Lemma refine_under_bind_both_ambivalent {A A' B}
   : forall (c : Comp A)
@@ -254,7 +294,9 @@ Qed.
 
 Corollary refine_Count_map :
   forall (qs_schema : RawQueryStructureSchema) (idx : Fin.t (numRawQSschemaSchemas qs_schema))
-         (r_o : UnConstrQueryStructure qs_schema) (P : Ensemble RawTuple),
+         (r_o : UnConstrQueryStructure qs_schema)
+         (P : Ensemble RawTuple)
+         (P_dec : DecideableEnsemble P),
     refine (Count For (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (P r)
                                                                            Return r)))
            (Count For (UnConstrQuery_In r_o idx (fun r : RawTuple => Where (P r)
@@ -275,6 +317,7 @@ Proof.
   apply Permutation_length in H0.
   rewrite H0.
   rewrite map_length; reflexivity.
+  assumption.
   Local Opaque Count.
   Local Opaque Query_For.
 Qed.
@@ -330,7 +373,10 @@ Proof.
   setoid_rewrite negb_involutive.
   apply refine_If_Then_Else; try reflexivity.
   intros.
-  rewrite (@refine_Count_map DnsSchema Fin.F1); reflexivity.
+  rewrite (@refine_Count_map DnsSchema Fin.F1).
+  reflexivity.
+  apply DecideableEnsemble_EqDec.
+  eauto with typeclass_instances.
 Qed.
 
 Hint Resolve refine_count_constraint_broken.
@@ -388,66 +434,6 @@ Proof.
     apply List.ListMorphisms.filter_permutation_morphism; [ reflexivity | assumption ].
 Qed.
 
-(* uses refine_forall_to_exists; refines x2 in AddData
-very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
-
-(* implement the DNS record constraint check as code that counts the number of occurrences of
-the constraint being broken (refines the boolean x1 in AddData) *)
-(* TODO [autorewrite with monad laws] breaks in this file *)
-
-(*
-Lemma refine_count_constraint_broken :
-  forall (n : resourceRecord) (r : UnConstrQueryStructure DnsSchema),
-    refine {b |
-            decides b
-                    (forall tup' : @IndexedTuple (GetHeading DnsSchema sRRecords),
-                       (r!sRRecords)%QueryImpl tup' ->
-                       n!sNAME = (indexedElement tup')!sNAME -> RDataTypeToRRecordType (n!sRDATA) <> CNAME)}
-           (If (beq_RRecordType RDataTypeToRRecordType (n!sRDATA) CNAME)
-               Then count <- Count
-               For (UnConstrQuery_In r ``(sRRecords)
-                                     (fun tup : Tuple =>
-                                        Where (n!sNAME = tup!sNAME)
-                                              Return tup ));
-            ret (beq_nat count 0) Else ret true).
-Proof.
-  intros; setoid_rewrite refine_pick_decides at 1;
-  [ | apply refine_is_CNAME__forall_to_exists | apply refine_not_CNAME__independent ].
-  (* refine existence check into query. *)
-  match goal with
-      |- context[{b | decides b
-                              (exists tup : @IndexedTuple ?heading,
-                                 (@GetUnConstrRelation ?qs_schema ?qs ?tbl tup /\ @?P tup))}]
-      =>
-      let H1 := fresh in
-      let H2 := fresh in
-      makeEvar (Ensemble (@Tuple heading))
-               ltac:(fun P' => assert (Same_set (@IndexedTuple heading) (fun t => P' (indexedElement t)) P) as H1;
-                     [unfold Same_set, Included, Ensembles.In;
-                       split; [intros x H; pattern (indexedElement x);
-                               match goal with
-                                   |- ?P'' (indexedElement x) => unify P' P'';
-                                     simpl; eauto
-                               end
-                              | eauto]
-                     |
-                     assert (DecideableEnsemble P') as H2;
-                       [ simpl; eauto with typeclass_instances (* Discharge DecideableEnsemble w/ intances. *)
-                       | setoid_rewrite (@refine_constraint_check_into_query' qs_schema tbl qs P P' H2 H1); clear H1 H2 ] ]) end.
-  remember RDataTypeToRRecordType (n!sRDATA); refine pick val (beq_RRecordType d CNAME); subst;
-  [ | case_eq (beq_RRecordType RDataTypeToRRecordType (n!sRDATA) CNAME); intros;
-      rewrite <- beq_RRecordType_dec in H; find_if_inside;
-      unfold not; simpl in *; try congruence ].
-  simplify with monad laws.
-  autorewrite with monad laws.
-  setoid_rewrite negb_involutive.
-  reflexivity.
-Qed.
- *)
-
-(* uses refine_forall_to_exists; refines x2 in AddData
-very similar to refine_count_constraint_broken; comments below are relative to refine_count_constraint_broken *)
-
 Definition bCOLLECTIONS : Fin.t _ :=
   ibound (indexb (@Build_BoundedIndex string (numQSschemaSchemas DnsSchema)
                                       (QSschemaNames DnsSchema) sRRecords _)).
@@ -497,6 +483,7 @@ Proof.
   simplify with monad laws.
   setoid_rewrite negb_involutive; f_equiv.
   apply refine_Count_map.
+  apply DecideableEnsemble_And.
 Qed.
 
 (* clear_nested_if, using filter_nil_is_nil, clear the nested if/then in honing AddData *)
@@ -928,7 +915,9 @@ Corollary refine_noDup_CNAME_check_dns :
                  ret (beq_nat count 0) Else ret true).
 Proof.
   intros; rewrite refine_noDup_CNAME_check.
-  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n); reflexivity.
+  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n).
+  reflexivity.
+  auto with typeclass_instances.
   intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
 Qed.
 
@@ -1028,7 +1017,9 @@ Corollary refine_no_usurp_authority_check_dns :
                  ret (beq_nat count 0) Else ret true).
 Proof.
   intros; rewrite refine_no_usurp_authority_check.
-  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n); reflexivity.
+  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n).
+  reflexivity.
+  apply DecideableEnsemble_And.
   intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
 Qed.
 
@@ -1123,7 +1114,9 @@ Corollary refine_no_usurp_authority_check'_dns :
                   ret (beq_nat count 0))).
 Proof.
   intros; rewrite refine_no_usurp_authority_check'.
-  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n); reflexivity.
+  setoid_rewrite (@refine_Count_map DnsSchema Fin.F1 r_n).
+  reflexivity.
+  apply DecideableEnsemble_And.
   intros; eapply (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
 Qed.
 
@@ -1291,22 +1284,202 @@ Proof.
         apply H2 in n; subst; eauto.
 Qed.
 
+Lemma Permutation_filtered_List {A}
+  : forall l l' P,
+    Permutation (A := A) l l' ->
+    forall l'', 
+    computes_to (⟦x in l | P x ⟧) l'' ->
+    exists l''',
+      computes_to (⟦x in l' | P x ⟧) l'''
+      /\ Permutation l'' l'''.
+Proof.
+  intros ? ? ? H; induction H; simpl; intros; computes_to_inv.
+  - subst; eauto.
+  - apply IHPermutation in H0; destruct_ex; intuition.
+    eexists (if v0 then x :: x0 else x0); split.
+    repeat computes_to_econstructor; eauto.
+    destruct v0; computes_to_inv; subst; eauto.
+    destruct v0; computes_to_inv; subst; eauto.
+  - eexists (if v0 && v2 then _ :: _ :: _ else
+               if v0 then _ :: _ else
+                 if v2 then _ :: _ else _
+            ); split.
+    repeat setoid_rewrite refine_bind_bind.
+    computes_to_econstructor; eauto.
+    computes_to_econstructor; eauto.
+    destruct v0; destruct v2; simpl;
+      repeat computes_to_econstructor; simpl; eauto.
+    simpl; eauto.
+    simpl; eauto.
+    simpl; eauto.
+    destruct v0; destruct v2; simpl in *; 
+      computes_to_inv; subst; eauto.
+    constructor 3; subst.
+    subst; eauto.
+  - apply IHPermutation1 in H1; destruct_ex; intuition.
+    apply IHPermutation2 in H2; destruct_ex; intuition.
+    eexists; split; eauto.
+    rewrite H3; assumption.
+Qed.
 
-Local Transparent Query_For.
+Lemma UpperBound_Permutation {A} 
+  : forall op l l',
+    Permutation l l'
+    -> forall (a : A),
+      UpperBound op l a
+      -> UpperBound op l' a.
+Proof.
+  unfold UpperBound;
+    intros ? ? ? H; induction H; simpl; intros; intuition.
+Qed.
+
+Lemma build_FilteredList_app {A}
+  : forall l l' l'' P,
+    (⟦element in l | P element ⟧) ↝ (l' ++ l'')
+    -> exists k' k'' : list A ,
+      l = k' ++ k'' /\
+      (⟦element in k' | P element ⟧) ↝ l'
+      /\ (⟦element in k'' | P element ⟧) ↝ l''.
+Proof.
+  induction l; simpl; intros; computes_to_inv; subst.
+  - eexists nil, nil; simpl; intuition eauto.
+    destruct l'; destruct l''; simpl in H; try discriminate; simpl; eauto.
+    destruct l'; destruct l''; simpl in H; try discriminate; simpl; eauto.
+  - destruct v0; simpl in *; computes_to_inv; subst.
+    + destruct l'; simpl in *; subst.
+      eexists nil, _; intuition eauto; simpl.
+      computes_to_econstructor; eauto.
+      computes_to_econstructor; eauto.
+      refine pick val true; simpl; eauto.
+      apply refine_bind_unit; eauto.
+      injections.
+      apply IHl in H; destruct_ex; subst; intuition;
+        computes_to_inv; subst.
+      eexists (a0 :: x), _; intuition eauto; simpl.
+      computes_to_econstructor; eauto.
+      refine pick val true; simpl; eauto.
+      apply refine_bind_unit; eauto.
+    + apply IHl in H; destruct_ex; subst; intuition;
+        computes_to_inv; subst.
+      eexists (a :: x), _; intuition eauto; simpl.
+      computes_to_econstructor; eauto.
+      refine pick val false; simpl; eauto.
+      apply refine_bind_unit; eauto.
+Qed.
+
+Lemma app_build_FilteredList {A}
+  : forall (l' l'' k' k'' : list A) P,
+    (⟦element in l' | P element ⟧) ↝ k'
+    -> (⟦element in l'' | P element ⟧) ↝ k''
+    -> (⟦element in l' ++ l'' | P element ⟧) ↝ (k' ++ k'').
+Proof.
+  induction l'; simpl; intros; computes_to_inv; subst.
+  - eauto.
+  - computes_to_inv; subst;
+        computes_to_econstructor; eauto.
+    refine pick val v0; simpl; eauto.
+    apply refine_bind_unit; eauto.
+    destruct v0; simpl in *; computes_to_inv;
+      subst; simpl; eauto.
+Qed.  
 
 Lemma refine_MaxElements_For {A}
   : forall (op : A -> A -> Prop) ens,
     refine (MaxElements op For ens)
-           (MaxElements op ens).
+           (l <- MaxElements op ens; {l' | Permutation l l'}).
 Proof.
   unfold MaxElements; intros.
   rewrite refine_For.
-  simplify with monad laws.
+  autorewrite with monad laws.
   f_equiv; intro.
-  refine pick val a; eauto.
-  simplify with monad laws; reflexivity.
+  etransitivity.
+  apply refine_under_bind; intros.
+  eapply refine_ListComprehension_Equiv.
+  computes_to_inv; subst.
+  split; intros.
+  symmetry in H; eapply UpperBound_Permutation; eauto.
+  simpl in H0; eapply UpperBound_Permutation; eauto.
+  simpl.
+  remember a.
+  setoid_rewrite Heql at 1;
+    rewrite Heql at 1; clear Heql.
+  intros ? ?; computes_to_inv; subst.
+  revert l v v0 H H'; induction a; simpl; intros; 
+    computes_to_inv; subst.
+  - repeat computes_to_econstructor; eauto.
+    apply Permutation_nil in H'; subst; simpl; eauto.
+  - destruct v2; simpl in *; computes_to_inv; subst.
+    + pose proof (PermutationFacts.PermutationConsSplit _ _ _ H'); destruct_ex; subst.
+      eapply (IHa _ (x ++ x0)) in H.
+      computes_to_inv.
+      apply build_FilteredList_app in H'1; destruct_ex; intuition; subst.
+      refine pick val (x1 ++ (a :: x2)).
+      apply refine_bind_unit.
+      apply app_build_FilteredList; eauto.
+      simpl.
+      computes_to_econstructor; eauto.
+      refine pick val true.
+      computes_to_econstructor; simpl; eauto.
+      simpl; eauto.
+      simpl; eauto.
+      rewrite H, Permutation_middle; reflexivity.
+      rewrite <- Permutation_middle in H'.
+      eapply Permutation_cons_inv; eauto.
+    + eapply IHa in H'; eauto.
+      computes_to_inv.
+      refine pick val (a :: v1); eauto.
+      computes_to_econstructor.
+      computes_to_econstructor.
+      simpl; computes_to_econstructor; eauto.
+      refine pick val false; simpl; eauto.
+      repeat computes_to_econstructor.
 Qed.
 
+Lemma refine_MaxElements' A op
+  : forall (ca ca' : Comp (list A)),
+    refine ca ca'
+    -> refine (MaxElements op ca) (MaxElements op ca').
+Proof.
+  simpl; intros.
+  Local Transparent MaxElements.
+  unfold MaxElements, refine; simpl in *; intros.
+  rewrite H; assumption.
+  Local Opaque MaxElements.
+Qed.
+
+Lemma prefix_refl
+  : forall b : string, prefix b b.
+Proof.
+  induction b; simpl; eauto.
+  rewrite Equality.ascii_dec_refl; eauto.
+Qed.
+
+Lemma prefix_trans
+  : forall b b' b'' : string, prefix b b' -> prefix b' b'' -> prefix b b''.
+Proof.
+  induction b; simpl; auto.
+  - destruct b''; simpl; eauto.
+  - induction b'; simpl; intros; intuition eauto.
+    unfold is_true in H; discriminate.
+    find_if_inside; subst.
+    destruct b''; simpl in *.
+    + unfold is_true in *; discriminate.
+    + find_if_inside; subst; eauto.
+    + unfold is_true in *; discriminate.
+Qed.
+
+Lemma prefix_antisym
+  : forall b b' : string, prefix b b' -> prefix b' b -> b = b'.
+Proof.
+  induction b; simpl; intros;
+    destruct b'; try reflexivity;
+      unfold is_true in *; try discriminate.
+  find_if_inside; subst;
+    unfold is_true in *; try discriminate.
+  f_equal.
+  simpl in H; rewrite Equality.ascii_dec_refl in H; eauto.
+Qed.
+  
 Lemma MaxElementsUnConstrQuery_In {qs_schema}
   : forall idx f bound (r_o : UnConstrQueryStructure qs_schema),
     refine (MaxElements (fun r r' : RawTuple => prefix (f r) (f r'))
@@ -1324,44 +1497,393 @@ Proof.
   intros.
   pose proof (fun H H' H'' H''' =>
                 @refine_MaxElements _ _ _ prefix H H' H'' H''' bound (GetUnConstrRelation r_o idx) f).
-(* simplify with monad laws.
+  Local Transparent MaxElements.
   Local Transparent Query_For.
-  Local Transparent Query_In.
+  Local Transparent UnConstrQuery_In.
   Local Transparent QueryResultComp.
-  unfold Query_For, Query_In, QueryResultComp.
-  rewrite !refineEquiv_bind_bind.
-  intros ? ?.
-  computes_to_inv.
-  computes_to_econstructor; eauto.
-  computes_to_econstructor; eauto.
-  assert (is_empty v0 = is_empty a0).
-  { revert H; clear; generalize a0; induction v0; simpl; intros.
-    symmetry in H; rewrite (Permutation_nil H); reflexivity.
-    destruct a1; simpl; try reflexivity.
-    pose proof (Permutation_nil H); discriminate.
-  }
-  rewrite <- H0.
-  destruct (is_empty v0) eqn: ?; simpl in *.
-  unfold MaxElements in *; computes_to_inv.
-  apply refineEquiv_bind_bind.
-  computes_to_econstructor; eauto.
-  computes_to_econstructor; eauto.
-  Focus 2.
-
-
-
-
+  rewrite refine_MaxElements_For.
   rewrite H.
-  unfold MaxElements in *.
-  unfold Query_For.
   simplify with monad laws.
-
+  unfold Query_For, UnConstrQuery_In, QueryResultComp.
+  rewrite !refineEquiv_bind_bind.
   f_equiv; intro.
-  setoid_rewrite H.
+  f_equiv; intro.
+  intros ? ?; computes_to_inv.
+  destruct a0.
+  - apply Permutation_nil in H0; subst; simpl in *.
+    unfold MaxElements in *.
+    computes_to_inv; subst.
+    symmetry in H0''0.
+    pose proof (Permutation_filtered_List _ H0''0 _  H0'');
+      destruct_ex; intuition.
+    repeat computes_to_econstructor.
+    eassumption.
+    eassumption.
+    eapply refine_ListComprehension_Equiv; eauto.
+    split; intros; eauto using UpperBound_Permutation.
+    symmetry in H0''0; eauto using UpperBound_Permutation.
+    rewrite H2; reflexivity.
+  - destruct v0; simpl in *.
+    + symmetry in H0; apply Permutation_nil in H0; discriminate.
+    + computes_to_inv; subst; computes_to_econstructor; eauto.
+  - apply prefix_refl .
+  - apply prefix_trans.
+  - intro; apply DecideableEnsemble_bool. 
+  - apply prefix_antisym.
+Qed.
 
-  Local Opaque QueryResultComp. *)
-Admitted.
+Lemma Permutation_flatten_CompList {A B}
+  : forall (l l' : list A) (f : A -> Comp (list B)),
+    Permutation l l'
+    -> forall x, 
+      FlattenCompList.flatten_CompList (map f l) ↝ x
+      -> exists x',
+        FlattenCompList.flatten_CompList (map f l') ↝ x'
+        /\ Permutation x x'.
+Proof.
+  intros ? ? ? H; induction H; simpl; intros; computes_to_inv; subst; eauto.
+  - eapply IHPermutation in H0'; destruct_ex; intuition eauto.
+    eexists; split.
+    computes_to_econstructor; eauto.
+    rewrite H3; reflexivity.
+  - eexists; split.
+    computes_to_econstructor; eauto.
+    rewrite List.app_assoc.
+    rewrite Permutation_app with (l := v ++ v1) (m := v2) (m' := v2).
+    2: rewrite Permutation_app_comm; reflexivity.
+    rewrite List.app_assoc; reflexivity.
+    reflexivity.
+  - apply IHPermutation1 in H1.
+    destruct_ex; intuition eauto.
+    apply IHPermutation2 in H2; eauto.
+    destruct_ex; intuition eauto.
+    eexists; split; eauto.
+    rewrite H3; eauto.
+Qed.
 
+(*Lemma Permutation_flatten_CompList' {A B}
+  : forall (f : A -> Comp (list B)) (l l' : list B),
+    Permutation l l'
+    -> forall x,
+        FlattenCompList.flatten_CompList (map (Where  x) ↝ l
+        -> exists x',
+          Permutation x x'
+          /\ FlattenCompList.flatten_CompList (map f x') ↝ l'.
+Proof.
+
+Lemma Permutation_flatten_CompList' {A B}
+  : forall (f : A -> Comp (list B)) (l l' : list B),
+    (forall a v, computes_to (f a) v -> exists b, v = [b] \/ v = [ ])
+    -> Permutation l l'
+    -> forall x,
+        FlattenCompList.flatten_CompList (map f x) ↝ l
+        -> exists x',
+          Permutation x x'
+          /\ FlattenCompList.flatten_CompList (map f x') ↝ l'.
+Proof.
+  intros ? ? ? ? H; induction H; simpl; intros.
+  - destruct x; simpl in *; computes_to_inv.
+    eexists; split; simpl; eauto.
+    simpl; eauto.
+    apply app_eq_nil in H''; intuition subst.
+    exists (a :: x); simpl; intuition eauto.
+  - destruct x0; simpl in *; computes_to_inv.
+    + discriminate.
+    + pose proof (H0 _ _ H1); destruct_ex; intuition; subst; simpl in *.
+      injections.
+      apply IHPermutation in H1';
+        destruct_ex; intuition.
+      eexists (a :: x1); rewrite H3; intuition eauto.
+      simpl; computes_to_econstructor; eauto.
+      subst.
+      
+      
+    induction x; simpl; intros; computes_to_inv; subst.
+
+
+Lemma Permutation_flatten_CompList' {A B}
+  : forall x (f : A -> Comp (list B)) (l l' : list B),
+    (forall a v, computes_to (f a) v -> exists b, v = [b] \/ v = [ ])
+    -> Permutation l l'
+      -> FlattenCompList.flatten_CompList (map f x) ↝ l
+      -> exists x',
+        Permutation x x'
+        /\ FlattenCompList.flatten_CompList (map f x') ↝ l'.
+Proof.
+
+  
+  induction x; simpl; intros; computes_to_inv; subst.
+  - apply Permutation_nil in H0; subst;
+      eexists nil; simpl; intuition eauto.
+  - pose proof (H _ _ H1); destruct_ex; intuition; subst.
+    Focus 2.
+    simpl in *.
+    eexists (a :: x); split; eauto.
+    simpl; computes_to_econstructor; eauto.
+    computes
+    simpl; eauto.
+    eapply IHx in H1'; eauto.
+    destruct_ex; intuition eauto.
+    pose proof (H _ _ H1); destruct_ex; intuition; subst.
+    Focus 2.
+    simpl in *.
+    eexists (a :: x0); split; eauto.
+    simpl; repeat computes_to_econstructor; eauto.
+    simpl.
+    + simpl in H0.
+      pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
+        destruct_ex; intuition; subst; eauto.
+      cut (Permutation v0 (x2 ++ x3)); clear H0.
+      revert H H3 x1 H1 v0 x2 x3 H4; clear; intros ? ? ? ?; induction H3; intros; 
+        simpl in H4; computes_to_inv; subst.
+      * eapply Permutation_nil in H0; subst.
+        apply app_eq_nil in H0; intuition subst.
+        eexists; split; cbv beta; simpl; eauto.
+        simpl; eauto.
+      * pose proof (H _ _ H4); destruct_ex; intuition; subst.
+        simpl in H0.
+        pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
+          destruct_ex; intuition; subst; eauto.
+        rewrite H2 in H0.
+        eapply (IHPermutation _ x4 x5) in H4'; destruct_ex; intuition.
+        
+        
+        apply IHPermutation in H0; destruct_ex; intuition.
+
+
+        apply 
+        exists 
+        rewrite perm_swap in H0.
+        pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
+          destruct_ex; intuition; subst; eauto.
+        
+        
+        eapply IHPermutation in H4'.
+       
+        
+        induction H3 .
+        assert (exists x' x'' v' v'',
+                 x0 = x' ++ x'' 
+                 /\ FlattenCompList.flatten_CompList (map f x') ↝ v'
+                 /\ FlattenCompList.flatten_CompList (map f x'') ↝ v''
+                 /\ v0 = v' ++ v'').
+      { admit. }
+      destruct_ex; intuition; subst.
+      pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
+        destruct_ex; intuition; subst; eauto.
+      exists (x2 ++ (a :: x3)); split.
+      rewrite H3.
+      apply Permutation_middle.
+      rewrite map_app.
+      apply FlattenCompList.flatten_CompList_app.
+      
+      exists (a :: x0).
+      simpl; rewrite H3; intuition.
+      repeat computes_to_econstructor; eauto.
+      
+      
+Admitted. *)
+
+Lemma refine_flatten_CompList_filter {A}
+  : forall v l P Q
+           (P_dec : DecideableEnsemble P)
+           (Q_dec : DecideableEnsemble Q), 
+FlattenCompList.flatten_CompList (map (fun r : A => Where (Q r /\ P r)
+                                                                 Return r ) v) ↝ l
+-> exists l',
+      FlattenCompList.flatten_CompList (map (fun r : A => Where (P r)
+                                                                Return r ) v) ↝ l'
+    /\ l = filter (dec (DecideableEnsemble := Q_dec)) l'.
+Proof.
+  induction v; simpl; intros; computes_to_inv; subst; eauto.
+  unfold Query_Where, Query_Return in H; computes_to_inv; intuition eauto.
+  unfold Query_Where at 1, Query_Return at 1.
+  eapply IHv in H'; destruct_ex; intuition; subst.
+  exists (if dec (DecideableEnsemble := P_dec) a then a :: x else x).
+  split.
+  - destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?.
+    + rewrite dec_decides_P in Heqb.
+      repeat computes_to_econstructor; intuition eauto.
+    + apply Decides_false in Heqb.
+      repeat computes_to_econstructor; intuition eauto.
+  - destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?. 
+    + rewrite dec_decides_P in Heqb.
+      simpl.
+      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?. 
+      * rewrite dec_decides_P in Heqb0.
+        intuition eauto.
+        computes_to_inv; subst; simpl; eauto.
+      * apply Decides_false in Heqb0.
+        intuition eauto.
+        subst; simpl; eauto.
+    + apply Decides_false in Heqb.
+      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?. 
+      * rewrite dec_decides_P in Heqb0.
+        intuition eauto.
+        computes_to_inv; subst; simpl; eauto.
+      * apply Decides_false in Heqb0.
+        intuition eauto.
+        subst; simpl; eauto.
+Qed.
+
+Lemma flatten_Complist_app {A}
+  : forall (l : list (Comp (list A))) l' l'',
+    (forall a v, List.In a l -> computes_to a v -> (exists a', v = [a']) \/ v = nil)
+    -> FlattenCompList.flatten_CompList l ↝ l' ++ l''
+    -> exists l3 l4,
+      FlattenCompList.flatten_CompList l3 ↝ l'
+      /\ FlattenCompList.flatten_CompList l4 ↝ l''
+      /\ l = l3 ++ l4.
+Proof.
+  induction l; simpl; intros; computes_to_inv; subst.
+  - symmetry in H0; eapply app_eq_nil in H0; intuition; subst.
+    eexists nil, nil; simpl; intuition eauto.
+  - destruct (fun G => H _ _ G H0); destruct_ex; intuition; subst.
+    + simpl in H0''; destruct l'; simpl in H0''; subst.
+      eexists nil, (a :: l); simpl; intuition eauto.
+      injections.
+      apply IHl in H0'; destruct_ex; intuition eauto; subst.
+      eexists (_ :: _), _; simpl; intuition eauto.
+    + simpl in H0''; subst.
+      apply IHl in H0'; destruct_ex; intuition eauto; subst.
+      eexists (_ :: _), _; simpl; intuition eauto.
+Qed.
+      
+Lemma refine_Split_Where {heading}
+  : forall (R : Ensemble (@IndexedRawTuple heading)) P Q
+           (P_dec : DecideableEnsemble P)
+           (Q_dec : DecideableEnsemble Q), 
+    refine (QueryResultComp R (fun r : RawTuple => Where (P r) Return r ))
+           (results <- QueryResultComp R (fun r : RawTuple => Where (Q r /\ P r) Return r );
+              results' <- QueryResultComp R (fun r : RawTuple => Where (~Q r /\ P r) Return r );
+              {results'' | Permutation (results ++ results') results''}).
+Proof.                       
+  unfold QueryResultComp; intros. autorewrite with monad laws.
+  intros ? ?; computes_to_inv.
+  eapply refine_flatten_CompList_filter in H'; eauto.
+  eapply refine_flatten_CompList_filter in H'''; eauto.
+  destruct_ex; intuition eauto; subst.
+  apply Permutation_flatten_CompList with (l' := v2) in H2;
+  destruct_ex; intuition.
+  assert (exists v',
+             Permutation v' v2
+             /\ FlattenCompList.flatten_CompList (map (fun r : RawTuple => Where (P r)
+                                                                                 Return r ) v') ↝ v).
+  { generalize dependent x1.
+    revert P_dec.
+    generalize dependent x; clear.
+    revert v x0.
+    induction v2; simpl; intros; computes_to_inv; subst.
+    - eexists nil; simpl.
+      symmetry in H3; apply Permutation_nil in H3; subst; simpl in *.
+      apply Permutation_nil in H''''; subst; split; eauto.
+    - unfold Query_Where, Query_Return in H1, H2; computes_to_inv; intuition.
+      destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?.
+      + rewrite dec_decides_P in Heqb.
+        pose proof (H Heqb); pose proof (H1 Heqb); computes_to_inv; subst.
+        symmetry in H3.
+        pose proof (PermutationFacts.PermutationConsSplit _ _ _ H3);
+          destruct_ex; intuition; subst; eauto.
+        simpl in H''''.
+        rewrite filter_app in H''''; simpl in H''''.
+        destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?; simpl in H''''.
+        * rewrite dec_decides_P in Heqb0; simpl in *.
+          assert (exists v' v'', v = v' ++ a :: v'').
+          { rewrite <- Permutation_middle in H''''.
+            simpl in H''''.
+            apply PermutationFacts.PermutationConsSplit in H''''.
+            eauto.
+          }
+          destruct_ex; subst.
+          eapply (IHv2 (x0 ++ x2)) in H2'.
+          2: apply H1'.
+          3: eassumption.
+          destruct_ex; intuition eauto.
+          eapply flatten_Complist_app in H6; destruct_ex.
+          intuition.
+          symmetry in H8; apply app_map_inv in H8; destruct_ex; intuition.
+          subst.
+          eexists (x6 ++ (a :: x7)); intuition.
+          rewrite <- H2.
+          rewrite <- Permutation_cons_app; reflexivity.
+          rewrite map_app.
+          eapply FlattenCompList.flatten_CompList_app; simpl; eauto.
+          repeat computes_to_econstructor; eauto.
+          revert P_dec; clear; induction x3; simpl; intros; intuition.
+          unfold Query_Where, Query_Return in H1; subst; computes_to_inv;
+            intuition.
+          destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?.
+          rewrite dec_decides_P in Heqb; apply H1 in Heqb; computes_to_inv; subst; eauto.
+          apply Decides_false in Heqb.
+          pose proof (H2 Heqb); subst; eauto.
+          eauto.
+          apply Permutation_cons_inv with (a := a).
+          rewrite Permutation_middle with (l1 := x0), <- H''''.
+          rewrite <- Permutation_middle with (l1 := filter dec x); simpl.
+          econstructor.
+          rewrite <- filter_app.
+          reflexivity.
+          apply Permutation_cons_inv with (a := a); eauto.
+          rewrite H3.
+          apply Permutation_middle. 
+        * assert (exists v' v'', v = v' ++ a :: v'').
+          { rewrite <- Permutation_middle in H''''.
+            simpl in H''''.
+            apply PermutationFacts.PermutationConsSplit in H''''.
+            eauto.
+          }
+          destruct_ex; subst.
+          eapply (IHv2 (x0 ++ x2)) in H2'.
+          2: apply H1'.
+          3: eassumption.
+          destruct_ex; intuition eauto.
+          eapply flatten_Complist_app in H6; destruct_ex.
+          intuition.
+          symmetry in H8; apply app_map_inv in H8; destruct_ex; intuition.
+          subst.
+          eexists (x6 ++ (a :: x7)); intuition.
+          rewrite <- H2.
+          rewrite <- Permutation_cons_app; reflexivity.
+          rewrite map_app.
+          eapply FlattenCompList.flatten_CompList_app; simpl; eauto.
+          repeat computes_to_econstructor; eauto.
+          revert P_dec; clear; induction x3; simpl; intros; intuition.
+          unfold Query_Where, Query_Return in H1; subst; computes_to_inv;
+            intuition.
+          destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?.
+          rewrite dec_decides_P in Heqb; apply H1 in Heqb; computes_to_inv; eauto.
+          apply Decides_false in Heqb; apply H2 in Heqb; eauto.
+          eauto.
+          apply Permutation_cons_inv with (a := a).
+          rewrite Permutation_middle with (l1 := x0), <- H''''.
+          rewrite <- Permutation_middle; simpl.
+          econstructor.
+          rewrite <- filter_app.
+          reflexivity.
+          apply Permutation_cons_inv with (a := a); eauto.
+          rewrite H3.
+          apply Permutation_middle. 
+      + apply Decides_false in Heqb.
+        pose proof (H0 Heqb); pose proof (H4 Heqb); computes_to_inv; subst.
+        simpl in *; eapply IHv2 in H2'.
+        2: apply H1'.
+        destruct_ex; intuition.
+        exists (a :: x); split; eauto.
+        simpl.
+        repeat computes_to_econstructor; intuition.
+        apply H6.
+        simpl; computes_to_econstructor.
+        eassumption.
+        eassumption.
+        eassumption.
+  }
+  destruct_ex; intuition.
+  computes_to_econstructor; try eassumption.
+  computes_to_econstructor.
+  eapply Permutation_UnIndexedEnsembleListEquivalence; try symmetry; eauto.
+  eapply Permutation_UnIndexedEnsembleListEquivalence'; eauto.  
+Qed.
+  
 Lemma refine_Process_Query
   : forall (r_o : QueryStructure DnsSchema)
            (r_n : UnConstrQueryStructure DnsSchema)
@@ -1387,17 +1909,37 @@ Proof.
   unfold refine; intros.
   computes_to_inv.
   destruct v0; simpl in *; eauto.
-  - admit.
+  - unfold Query_For in *.
+    computes_to_inv.
+    computes_to_econstructor.
+    eapply refine_Split_Where with
+    (R := (GetUnConstrRelation r_n Fin.F1))
+      (P := fun r : resourceRecord => GetAttributeRaw r Fin.F1 = bound).
+    auto with typeclass_instances.
+    2: computes_to_econstructor; try apply H0.
+    2: computes_to_econstructor; try apply H0'.
+    auto with typeclass_instances.
+    computes_to_econstructor; eauto.
+    symmetry in H0'0; apply Permutation_nil in H0'0; subst.
+    simpl; computes_to_econstructor; eauto.
   - computes_to_inv; subst.
     Local Transparent Query_For.
     Local Transparent QueryResultComp.
     unfold UnConstrQuery_In, Query_For, QueryResultComp in *; computes_to_inv.
     apply refineEquiv_bind_bind.
+    pose proof (DropQSConstraints_AbsR_SatisfiesTupleConstraints H Fin.F1); eauto.
+    (*pose (@SatisfiesTupleConstraints DnsSchema Fin.F1 ); simpl in P.
     computes_to_econstructor; eauto; clear H0.
-    revert v v0 H0'0 H0'.
+    assert (v0 = nil) by admit; subst.
+    apply PermutationFacts.permutation_singleton in H0'; subst.
+    destruct (flatten_CompList_Prop _ _ _  H0'0 r); simpl; intuition.
+    generalize r H0 H1; clear.
     induction v1; simpl in *; intros.
     + computes_to_inv; subst.
-      apply Permutation_nil in H0'; discriminate.
+      apply Permutation_nil in H0'; subst.
+      discriminate.
+      (* apply app_eq_nil in H0'; intuition; subst.
+      repeat computes_to_econstructor; eauto. *)
     + unfold Query_Where at 1, Query_Return at 1 in H0'0.
       computes_to_inv; subst.
       intuition.
@@ -1415,12 +1957,20 @@ Proof.
         destruct ((RDataTypeToRRecordType (GetAttributeRaw a (Fin.FS (Fin.FS (Fin.FS Fin.F1))))) == CNAME).
         { apply H2 in e0; eauto.
           computes_to_inv; subst.
-Admitted.
-
-(*       apply refineEquiv_bind_bind. *)
-(*       computes_to_econstructor. *)
-
-(*       setoid_rewrite refine_Query_Where_False_Cond. *)
+          apply refineEquiv_bind_bind.
+          pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0');
+            destruct_ex; intuition; subst; eauto; subst.
+          
+          eapply (IHv1 x _ x0) in H0'0'; computes_to_inv.
+          computes_to_econstructor.
+          eassumption.
+          apply refine_bind_unit.
+          computes_to_econstructor.
+          rewrite H0'0''.
+          revert H0; clear.
+          grever 
+          induction  *)
+Admitted.          
 (*       rewrite refine_QueryResultComp_body_Where_False      . *)
 
 
@@ -1846,18 +2396,6 @@ Proof.
     injection H0; intros; subst.
     reflexivity.
   - right; apply IHns_results'; intuition eauto.
-Qed.
-
-Lemma refine_MaxElements' A op
-  : forall (ca ca' : Comp (list A)),
-    refine ca ca'
-    -> refine (MaxElements op ca) (MaxElements op ca').
-Proof.
-  simpl; intros.
-  Local Transparent MaxElements.
-  unfold MaxElements, refine; simpl in *; intros.
-  rewrite H; assumption.
-  Local Opaque MaxElements.
 Qed.
 
 Opaque Query_For.
