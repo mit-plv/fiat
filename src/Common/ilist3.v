@@ -187,7 +187,7 @@ Section ilist3_imap.
   Variable f : forall a, B a -> B' a. (* The function to map over the Vector.t. *)
 
   Fixpoint imap3 {n} (As : Vector.t A n)
-    : ilist3 As -> ilist3 As :=
+    : ilist3 (B:=B) As -> ilist3 (B:=B') As :=
     match As return ilist3 As -> ilist3 As with
     | [] => fun il => inil3
     | a :: As' => fun il => icons3 (f (ilist3_hd il)) (imap3 As' (ilist3_tl il))
@@ -231,7 +231,7 @@ Section ilist3_replace.
              (n : Fin.t m)
              (new_b : B (Vector.nth As n))
              {struct n}
-    : ilist3 As :=
+    : ilist3 (B:=B) As :=
     match n in Fin.t m return
           forall (As : Vector.t A m),
             ilist3 As
