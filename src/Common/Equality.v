@@ -643,6 +643,18 @@ Section In.
   Lemma list_inA_lb {A eq_A} {a ls}
   : SetoidList.InA (fun x y : A => is_true (eq_A y x)) a ls -> list_bin eq_A a ls = true.
   Proof. induction ls; t. Qed.
+
+  Lemma list_in_bl_false {A eq_A} (A_lb : forall x y : A, x = x -> eq_A x y = true) {a ls}
+  : list_bin eq_A a ls = false -> ~List.In a ls.
+  Proof.
+    intros H H'; eapply list_in_lb in H'; [ | eauto ]; congruence.
+  Qed.
+
+  Lemma list_inA_bl_false {A eq_A} {a ls}
+  : list_bin eq_A a ls = false -> ~SetoidList.InA (fun x y : A => eq_A y x) a ls.
+  Proof.
+    intros H H'; apply list_inA_lb in H'; congruence.
+  Qed.
 End In.
 
 Lemma option_rect_ext {A P} Ps Ps' Pn Pn' x
