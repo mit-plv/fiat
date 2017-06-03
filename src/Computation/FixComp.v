@@ -1,5 +1,6 @@
 Require Import
         Coq.Sets.Ensembles
+        Coq.omega.Omega
         Coq.Classes.Morphisms
         Coq.Classes.SetoidTactics
         Fiat.Computation

@@ -3,6 +3,7 @@ Require Import Coq.Setoids.Setoid Coq.Program.Program Coq.Program.Wf Coq.Arith.W
 Require Import Coq.Lists.SetoidList.
 
 Set Implicit Arguments.
+Set Asymmetric Patterns.
 
 Scheme Induction for Acc Sort Prop.
 Scheme Induction for Acc Sort Set.

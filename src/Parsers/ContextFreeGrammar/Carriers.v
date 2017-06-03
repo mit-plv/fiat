@@ -1,3 +1,4 @@
+Require Import Coq.omega.Omega.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.List.Operations.

@@ -1,4 +1,5 @@
 Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.

@@ -1,3 +1,4 @@
+Require Import Coq.omega.Omega.
 Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.Reflective.Syntax Fiat.Parsers.Reflective.Semantics.
 Require Import Fiat.Parsers.Reflective.PartialUnfold.

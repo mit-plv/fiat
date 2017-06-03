@@ -1,5 +1,6 @@
 (*Reference implementation of a splitter and parser based on that splitter *)
 Require Import Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.

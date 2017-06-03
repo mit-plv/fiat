@@ -2,6 +2,7 @@ Require Import Coq.Lists.List
         Coq.Strings.String
         Coq.Arith.Arith.
 Require Coq.Vectors.Vector.
+Global Set Asymmetric Patterns.
 
 (* Typeclasses for ensuring that a string is included
    in a list (i.e. a set of method names). This allows

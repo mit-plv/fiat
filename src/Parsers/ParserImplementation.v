@@ -1,4 +1,5 @@
 (** * Implementation of simply-typed interface of the parser *)
+Require Import Coq.omega.Omega.
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.

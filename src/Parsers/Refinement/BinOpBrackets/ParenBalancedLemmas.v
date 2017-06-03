@@ -1,3 +1,4 @@
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Reachable.ParenBalanced.Core.

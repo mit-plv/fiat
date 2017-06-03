@@ -1,5 +1,6 @@
 (** * A general [fold] over grammars *)
 Require Import Coq.Lists.List.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.

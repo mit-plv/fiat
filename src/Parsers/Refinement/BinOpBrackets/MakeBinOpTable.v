@@ -1,5 +1,6 @@
 (** * Build a table for the next binop at a given level *)
 Require Import Coq.Lists.List.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.

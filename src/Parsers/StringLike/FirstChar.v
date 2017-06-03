@@ -1,5 +1,6 @@
 (** * Mapping predicates over [StringLike] things *)
 
+Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
