@@ -18,6 +18,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Global Set Implicit Arguments.
 Global Generalizable All Variables.
+Global Set Asymmetric Patterns.
 
 Global Coercion is_true : bool >-> Sortclass.
 Coercion bool_of_sumbool {A B} (x : {A} + {B}) : bool := if x then true else false.
