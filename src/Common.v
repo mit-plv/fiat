@@ -3,6 +3,7 @@ Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Coq.omega.Omega Coq.Lists.SetoidList.
 Require Export Coq.Setoids.Setoid Coq.Classes.RelationClasses
         Coq.Program.Program Coq.Classes.Morphisms.
+Require Import Coq.funind.FunInd.
 Require Export Fiat.Common.Tactics.SplitInContext.
 Require Export Fiat.Common.Tactics.Combinators.
 Require Export Fiat.Common.Tactics.FreeIn.
