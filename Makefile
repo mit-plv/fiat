@@ -1,4 +1,3 @@
-COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
 .PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-all finitesets dns compiler facade-test ics fiat4monitors examples binencoders \
@@ -34,24 +33,18 @@ else
 submodule-update::
 endif
 
-etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early: submodule-update
+etc/coq-scripts/Makefile.coq.common: submodule-update
 	@ touch "$@"
 endif
 
-FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early submodule-update
+FAST_TARGETS += clean-doc etc/coq-scripts etc/coq-scripts/Makefile.coq.common submodule-update
 SUPER_FAST_TARGETS += submodule-update
 
-Makefile.coq: etc/coq-scripts/Makefile.coq.common etc/coq-scripts/compatibility/Makefile.coq.compat_84_85 etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
+Makefile.coq: etc/coq-scripts/Makefile.coq.common
 
 STRICT_COQDEP ?= 1
 
-ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/Tactics/hint_db_extra_plugin.ml4 src/Common/Tactics/transparent_abstract_plugin.ml4 src/Common/Tactics/transparent_abstract_tactics.ml
-
--include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85-early
-
 -include etc/coq-scripts/Makefile.coq.common
-
--include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
 
 .DEFAULT_GOAL := fiat
 
@@ -210,16 +203,10 @@ install-fiat install-fiat-core install-querystructures install-parsers install-p
 	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
 $(UPDATE_COQPROJECT_TARGET):
-	(echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" | grep -v '^$(COMPATIBILITY_FILE)$$' | $(SORT_COQPROJECT); (echo '$(COMPATIBILITY_FILE)'; git ls-files "*.ml4" | $(SORT_COQPROJECT); (echo '$(ML_COMPATIBILITY_FILES)' | tr ' ' '\n'; echo 'src/Common/Tactics/transparent_abstract_plugin.mllib'; echo 'src/Common/Tactics/hint_db_extra_plugin.mllib') | $(SORT_COQPROJECT))) > _CoqProject.in
+	(echo '-arg "-require Coq.Compat.AdmitAxiom"'; echo '-R src Fiat'; echo '-I src/Common/Tactics'; git ls-files "*.v" "src/Common/Tactics/*.mllib" "src/Common/Tactics/*.ml" "src/Common/Tactics/*.mli" "src/Common/Tactics/*.ml4" | $(SORT_COQPROJECT)) > _CoqProject
 
 ifeq ($(IS_FAST),0)
-# >= 8.5 if it exists
-NOT_EXISTS_LOC_DUMMY_LOC := $(call test_exists_ml_function,Loc.dummy_loc)
 
-ifneq (,$(filter 8.4%,$(COQ_VERSION))) # 8.4 - this is a kludge to get around the fact that reinstalling 8.4 doesn't remove the 8.5 files, like universes.cmo
-EXPECTED_EXT:=.v84
-ML_DESCRIPTION := "Coq v8.4"
-else
 ifneq (,$(filter 8.5%,$(COQ_VERSION)))
 EXPECTED_EXT:=.v85
 ML_DESCRIPTION := "Coq v8.5"
@@ -229,21 +216,9 @@ EXPECTED_EXT:=.v86
 ML_DESCRIPTION := "Coq v8.6"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 else
-ifneq (,$(filter trunk,$(COQ_VERSION)))
 EXPECTED_EXT:=.trunk
 ML_DESCRIPTION := "Coq trunk"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-else
-ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
-EXPECTED_EXT:=.v84
-ML_DESCRIPTION := "Coq v8.4"
-else
-EXPECTED_EXT:=.trunk
-ML_DESCRIPTION := "Coq trunk"
-OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
-endif
-endif
-endif
 endif
 endif
 

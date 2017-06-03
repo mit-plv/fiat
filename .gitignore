@@ -32,7 +32,6 @@ ocamlprof.dump
 web
 /ADT-Synthesis-Submitted.tiff
 /Makefile.coq
-/_CoqProject
 /all.pdf
 /classifier.ml
 /classifier.mli
@@ -50,12 +49,7 @@ web
 /src/Bellmania
 /src/Makefile.coq
 /src/Overview
-/src/Common/Coq__8_4__8_5__Compat.v
 /src/Common/Tactics/Makefile
-/src/Common/Tactics/hint_db_extra_plugin.ml4
-/src/Common/Tactics/hint_db_extra_tactics.ml
-/src/Common/Tactics/transparent_abstract_plugin.ml4
-/src/Common/Tactics/transparent_abstract_tactics.ml
 /src/Computation/State.v
 /src/Examples/*coq*
 /src/Examples/SearchTest.v

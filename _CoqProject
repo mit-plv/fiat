@@ -1,3 +1,4 @@
+-arg "-require Coq.Compat.AdmitAxiom"
 -R src Fiat
 -I src/Common/Tactics
 src/ADT.v
@@ -276,6 +277,12 @@ src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SpecializeBy.v
 src/Common/Tactics/SplitInContext.v
 src/Common/Tactics/TransparentAbstract.v
+src/Common/Tactics/hint_db_extra_plugin.ml4
+src/Common/Tactics/hint_db_extra_plugin.mllib
+src/Common/Tactics/hint_db_extra_tactics.ml
+src/Common/Tactics/transparent_abstract_plugin.ml4
+src/Common/Tactics/transparent_abstract_plugin.mllib
+src/Common/Tactics/transparent_abstract_tactics.ml
 src/Common/Telescope/Core.v
 src/Common/Telescope/Equality.v
 src/Common/Telescope/Instances.v
@@ -651,10 +658,3 @@ src/QueryStructure/Specification/Representation/TupleADT2.v
 src/QueryStructure/Specification/SearchTerms/InRange.v
 src/QueryStructure/Specification/SearchTerms/ListInclusion.v
 src/QueryStructure/Specification/SearchTerms/ListPrefix.v
-src/Common/Coq__8_4__8_5__Compat.v
-src/Common/Tactics/hint_db_extra_plugin.ml4
-src/Common/Tactics/hint_db_extra_plugin.mllib
-src/Common/Tactics/hint_db_extra_tactics.ml
-src/Common/Tactics/transparent_abstract_plugin.ml4
-src/Common/Tactics/transparent_abstract_plugin.mllib
-src/Common/Tactics/transparent_abstract_tactics.ml
