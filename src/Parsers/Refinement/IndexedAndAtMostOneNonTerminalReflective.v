@@ -34,7 +34,6 @@ Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.Enumerable.ReflectiveForall.
 Require Import Fiat.Common.Enumerable.ReflectiveForallStaged.
-Require Import Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
 

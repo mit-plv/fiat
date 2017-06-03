@@ -104,7 +104,7 @@ Section recursive_descent_parser.
   Lemma remove_nonterminal_noninc' {ls nt}
   : nonterminals_length (remove_nonterminal ls nt) <= nonterminals_length ls.
   Proof.
-    apply NPeano.Nat.nlt_ge.
+    apply Nat.nlt_ge.
     apply remove_nonterminal_noninc.
   Qed.
 
