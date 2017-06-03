@@ -29,12 +29,12 @@ End parser.
 
 Ltac do_reify_has_parse has_parse cont :=
   idtac;
-  let Char := match has_parse with appcontext[@char_at_matches_interp ?Char ?HSLM] => Char end in
-  let HSLM := match has_parse with appcontext[@char_at_matches_interp Char ?HSLM] => HSLM end in
-  let idata := match has_parse with appcontext[@char_at_matches_interp Char HSLM ?idata] => idata end in
-  let predata := match has_parse with appcontext[@split_string_for_production Char HSLM ?predata ?splitdata] => predata end in
-  let splitdata := match has_parse with appcontext[@split_string_for_production Char HSLM predata ?splitdata] => splitdata end in
-  let str := match has_parse with appcontext[@char_at_matches_interp Char HSLM idata _ ?str] => str end in
+  let Char := match has_parse with context[@char_at_matches_interp ?Char ?HSLM] => Char end in
+  let HSLM := match has_parse with context[@char_at_matches_interp Char ?HSLM] => HSLM end in
+  let idata := match has_parse with context[@char_at_matches_interp Char HSLM ?idata] => idata end in
+  let predata := match has_parse with context[@split_string_for_production Char HSLM ?predata ?splitdata] => predata end in
+  let splitdata := match has_parse with context[@split_string_for_production Char HSLM predata ?splitdata] => splitdata end in
+  let str := match has_parse with context[@char_at_matches_interp Char HSLM idata _ ?str] => str end in
   let hp := fresh "hp" in
   pose has_parse as hp;
   progress change (@char_at_matches_interp Char HSLM idata)

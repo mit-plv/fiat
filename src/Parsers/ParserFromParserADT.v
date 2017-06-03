@@ -94,13 +94,13 @@ Section parser.
         split;
         unfold flip, length, take, drop, is_char, adt_based_splitter, string_type, adt_based_StringLikeMin, adt_based_StringLike, string_type_min, proj1_sig, String;
         (lazymatch goal with
-        | [ |- appcontext[mis_char] ]
+        | [ |- context[mis_char] ]
           => ((intros ????); erewrite mis_char_eq; intros; eassumption)
-        | [ |- appcontext[mlength] ]
+        | [ |- context[mlength] ]
           => ((intros ???); erewrite mlength_eq; intros; eassumption)
-        | [ |- appcontext[mtake] ]
+        | [ |- context[mtake] ]
           => (intros; refine (mtake_R _ _); assumption)
-        | [ |- appcontext[mdrop] ]
+        | [ |- context[mdrop] ]
           => (intros; refine (mdrop_R _ _); assumption)
          end)
       ).
@@ -174,7 +174,7 @@ Hint Extern 0 (change_snd _) => change @snd with @Common.opt.snd; match goal wit
 Local Ltac do_change_snd h impl :=
   idtac;
   let term := match goal with
-                | [ |- appcontext[h ?x ?y impl] ]
+                | [ |- context[h ?x ?y impl] ]
                   => constr:(h x y impl)
               end in
   let v := (eval cbv beta iota zeta delta [h BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep] in term) in

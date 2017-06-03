@@ -315,7 +315,7 @@ Section recursive_descent_parser_list.
     exists (rdp_list_to_nonterminal (fst idx)).
     unfold rdp_list_to_production, default_to_production in *; simpl in *.
     match goal with
-      | [ |- appcontext[In (_ ++ Operations.List.drop ?n ?ls)%list _] ]
+      | [ |- context[In (_ ++ Operations.List.drop ?n ?ls)%list _] ]
         => exists (Operations.List.take n ls)
     end.
     rewrite app_take_drop.
@@ -412,7 +412,7 @@ Section recursive_descent_parser_list.
              | _ => exfalso; congruence
              | _ => reflexivity
              | _ => assumption
-             | [ |- appcontext[if ?E then _ else _] ] => destruct E
+             | [ |- context[if ?E then _ else _] ] => destruct E
              | _ => intro
              | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
              | [ H : _ /\ _ |- _ ] => destruct H
@@ -447,8 +447,8 @@ Section recursive_descent_parser_list.
              | [ H : (?T /\ _) -> False, H' : ?T |- _ ] => specialize (fun y => H (conj H' y))
              | [ H : _ \/ _ |- _ ] => destruct H
              | [ |- _ <-> _ ] => split
-             | [ H : appcontext[match ?E with left _ => _ | right _ => _ end] |- _ ] => destruct E
-             | [ |- appcontext[match ?E with left _ => _ | right _ => _ end] ] => destruct E
+             | [ H : context[match ?E with left _ => _ | right _ => _ end] |- _ ] => destruct E
+             | [ |- context[match ?E with left _ => _ | right _ => _ end] ] => destruct E
              | [ H : _ |- _ ] => rewrite Bool.negb_involutive in H
              | [ H : string_beq _ _ = true |- _ ] => apply string_bl in H
              | [ H : context[string_beq ?x ?x] |- _ ] => rewrite (string_lb (eq_refl x)) in H

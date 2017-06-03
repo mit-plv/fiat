@@ -99,7 +99,7 @@ Ltac handle_eval_parse :=
             simpl;
             lazymatch goal with
             | [ |- context[Equality.list_in_lb (@Equality.string_lb) ?Hin] ]
-              => let f := match goal with |- appcontext[?f Hin] => f end in
+              => let f := match goal with |- context[?f Hin] => f end in
                  generalize (f Hin); clear Hin; intro Hin;
                  simpl in Hin;
                  let HinT := fresh "HinT" in

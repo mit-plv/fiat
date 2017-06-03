@@ -55,8 +55,8 @@ Section grammar_fixedpoint.
                    | eq_refl => eq_rect _ (P nt) (Pinit _ pf) _
                    end (eq_sym (lookup_state_aggregate_state_max gdata G nt))) as Pinit'.
     unfold pre_Fix_grammar, pre_Fix_grammar_helper.
-    let Rwf := lazymatch goal with |- appcontext[Fix ?Rwf _ _ ?v] => Rwf end in
-    let v := lazymatch goal with |- appcontext[Fix Rwf _ _ ?v] => v end in
+    let Rwf := lazymatch goal with |- context[Fix ?Rwf _ _ ?v] => Rwf end in
+    let v := lazymatch goal with |- context[Fix Rwf _ _ ?v] => v end in
     pose proof (fun nt => IH nt (lookup_state v)) as IHv;
       specialize (fun nt pf => IHv nt pf (Pinit' _ pf));
       induction (Rwf v) as [a Ha IHa].
@@ -145,8 +145,8 @@ Section grammar_fixedpoint.
                    | false => fun pf => eq_rect _ (P nt) (Ptop _ pf) _
                    end eq_refl (eq_sym (lookup_state_aggregate_state_max gdata G nt))) as Pinit'.
     unfold pre_Fix_grammar, pre_Fix_grammar_helper.
-    let Rwf := lazymatch goal with |- appcontext[Fix ?Rwf _ _ ?v] => Rwf end in
-    let v := lazymatch goal with |- appcontext[Fix Rwf _ _ ?v] => v end in
+    let Rwf := lazymatch goal with |- context[Fix ?Rwf _ _ ?v] => Rwf end in
+    let v := lazymatch goal with |- context[Fix Rwf _ _ ?v] => v end in
     pose proof (fun nt => IH nt (lookup_state v)) as IHv;
       specialize (fun nt => IHv nt Htop Pinit');
       induction (Rwf v) as [a Ha IHa].

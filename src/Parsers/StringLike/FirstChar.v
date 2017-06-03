@@ -109,7 +109,7 @@ Section for_first_char.
                | [ H : _ |- _ ] => rewrite drop_length in H
                | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => erewrite singleton_unique; eassumption
-               | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+               | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
              end. }
     { match goal with
         | [ H : _ |- _ ] => apply H

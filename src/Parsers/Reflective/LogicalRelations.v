@@ -171,7 +171,7 @@ Local Ltac meaning_tac_helper' :=
   | [ H : forall a b (c : a = _), _ |- _ ] => specialize (fun b => H _ b eq_refl)
   | [ H : forall a b c (d : b = _), _ |- _ ] => specialize (fun a c => H a _ c eq_refl)
   | [ H : forall x y, _ = _ |- _ ] => setoid_rewrite <- H
-  | [ |- appcontext[Common.apply_n ?n ?f ?x] ]
+  | [ |- context[Common.apply_n ?n ?f ?x] ]
     => clear;
        let IH := fresh "IH" in
        generalize x; induction n as [|? IH]; simpl;

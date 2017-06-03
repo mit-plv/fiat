@@ -54,8 +54,8 @@ Section recursive_descent_parser.
     | [ |- andb ?x _ = andb ?x _ ] => apply f_equal
     | [ |- andb _ ?x = andb _ ?x ] => apply f_equal2
     | _ => progress autounfold with boolr_ext_db
-    | [ |- appcontext[match ?e with _ => _ end] ] => is_var e; destruct e
-    | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+    | [ |- context[match ?e with _ => _ end] ] => is_var e; destruct e
+    | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
     | [ H : _ |- _ ] => rewrite H
     | _ => progress autorewrite with boolr_ext_db
     | _ => progress simpl option_rect

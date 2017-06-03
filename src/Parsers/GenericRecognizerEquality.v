@@ -107,7 +107,7 @@ Section transfer.
     unfold parse_nonterminal_step.
     unfold sumbool_rect; simpl.
     repeat match goal with
-             | [ |- appcontext[match ?e with _ => _ end] ]
+             | [ |- context[match ?e with _ => _ end] ]
                => destruct e eqn:?
              | _ => solve [ erewrite parse_productions_proj; try reflexivity; cbv beta; trivial ]
              | _ => reflexivity
@@ -124,7 +124,7 @@ Section transfer.
     unfold parse_nonterminal_or_abort.
     revert valid offset len pf nt.
     match goal with
-      | [ |- appcontext[Fix ?wf _ _ ?a] ]
+      | [ |- context[Fix ?wf _ _ ?a] ]
         => induction (wf a); intros
     end.
     rewrite !Fix5_eq by (intros; apply parse_nonterminal_step_ext; trivial).

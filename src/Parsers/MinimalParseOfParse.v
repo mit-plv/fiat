@@ -444,7 +444,7 @@ Section cfg.
         destruct_head @MinimalParse.minimal_parse_of_nonterminal; try reflexivity.
         unfold False_rect.
         match goal with
-          | [ |- appcontext[match ?e with end] ] => destruct e
+          | [ |- context[match ?e with end] ] => destruct e
         end.
       Qed.
 

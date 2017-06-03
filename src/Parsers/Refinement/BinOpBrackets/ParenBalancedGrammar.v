@@ -194,7 +194,7 @@ Section specific.
                        | _ => progress cbv beta in *
                        | _ => progress split_and
                        | [ |- context[bool_of_sumbool ?e] ] => destruct e; simpl
-                       | [ |- appcontext[if ?e then _ else _] ]
+                       | [ |- context[if ?e then _ else _] ]
                          => destruct e eqn:?
                        | [ H : forall ch, is_true (?P ch) -> _ |- _ ]
                          => repeat match goal with

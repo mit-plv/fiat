@@ -181,7 +181,7 @@ Section specific.
           { unfold paren_balanced'_step in *.
             repeat match goal with
                      | _ => progress simpl in *
-                     | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                     | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
                      | [ IHlen : forall level : nat, _ -> _, H : is_true (paren_balanced' _ _) |- _ ]
                        => specialize (IHlen _ H)
                      | [ IHlen : forall level : nat, _ -> _, H : paren_balanced' _ _ = true |- _ ]
@@ -371,7 +371,7 @@ Section specific.
           { unfold paren_balanced_hiding'_step, paren_balanced'_step in *.
             repeat match goal with
                      | _ => progress simpl in *
-                     | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                     | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
                      | [ IHlen : forall level : nat, is_true (?f _ _) -> _, H : is_true (?f _ _) |- _ ]
                        => specialize (IHlen _ H)
                      | [ IHlen : forall level : nat, is_true (?f _ _) -> _, H : ?f _ _ = true |- _ ]

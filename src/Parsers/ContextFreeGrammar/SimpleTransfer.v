@@ -18,7 +18,7 @@ Section cfg.
   Local Ltac t' :=
     repeat match goal with
            | _ => assumption
-           | [ |- appcontext[match ?e with _ => _ end] ]
+           | [ |- context[match ?e with _ => _ end] ]
              => is_var e; destruct e
            | _ => tauto
            | _ => solve [ eauto with nocore ]

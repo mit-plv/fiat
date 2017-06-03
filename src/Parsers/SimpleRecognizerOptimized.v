@@ -54,7 +54,7 @@ Section recursive_descent_parser.
     evar (b' : T).
     sigL_transitivity b'; subst b'.
     Focus 2.
-    { let gendata := match goal with |- appcontext[@parse_nonterminal_opt _ _ _ _ _ ?gendata] => head gendata end in
+    { let gendata := match goal with |- context[@parse_nonterminal_opt _ _ _ _ _ ?gendata] => head gendata end in
       cbv [parse_nonterminal_opt gendata].
       cbv [GenericBaseTypes.parse_nt_T GenericBaseTypes.parse_item_T GenericBaseTypes.parse_production_T GenericBaseTypes.parse_productions_T GenericBaseTypes.ret_Terminal_false GenericBaseTypes.ret_Terminal_true GenericBaseTypes.ret_NonTerminal_false GenericBaseTypes.ret_NonTerminal_true GenericBaseTypes.ret_production_cons GenericBaseTypes.ret_orb_production GenericBaseTypes.ret_orb_production_base GenericBaseTypes.ret_production_nil_true GenericBaseTypes.ret_production_nil_false GenericBaseTypes.ret_orb_productions GenericBaseTypes.ret_orb_productions_base GenericBaseTypes.ret_nt GenericBaseTypes.ret_nt_invalid].
       reflexivity. }

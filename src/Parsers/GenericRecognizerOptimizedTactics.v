@@ -82,7 +82,7 @@ Ltac t_reduce_fix :=
          | [ |- (if ?e then _ else _) = (if ?e then _ else _) ]
            => destruct e eqn:?
          | _ => solve [ intuition ]
-         | [ H : appcontext[sub_nonterminals_listT] |- _ ]
+         | [ H : context[sub_nonterminals_listT] |- _ ]
            => solve [ apply H;
                       intuition;
                       (etransitivity; [ | eapply sub_nonterminals_listT_remove_2; eassumption ]); simpl;
@@ -170,7 +170,7 @@ Ltac refine_Fix2_5_Proper_eq_with_assumptions' HP HPpf :=
 Ltac refine_Fix2_5_Proper_eq_with_assumptions :=
   idtac;
   let HPHPpf := lazymatch goal with
-                | [ |- appcontext[Fix2 _ _ (fun (a0 : ?A0) (b0 :@?B a0) (c0 : @?C a0 b0) (d0 : @?D a0 b0) (e0 : @?E a0 b0 d0) (h0 : @?H a0 b0 d0 e0) (i0 : @?I a0 b0 d0 e0 h0) (j0 : @?J a0 b0 d0 e0 h0 i0) => _) ?a ?b ?d ?e ?h ?i ?j] ]
+                | [ |- context[Fix2 _ _ (fun (a0 : ?A0) (b0 :@?B a0) (c0 : @?C a0 b0) (d0 : @?D a0 b0) (e0 : @?E a0 b0 d0) (h0 : @?H a0 b0 d0 e0) (i0 : @?I a0 b0 d0 e0 h0) (j0 : @?J a0 b0 d0 e0 h0 i0) => _) ?a ?b ?d ?e ?h ?i ?j] ]
                   => let HP := constr:(fun a0 b0 d0 e0 h0 i0 (j0 : J a0 b0 d0 e0 h0 i0) => sub_nonterminals_listT d0 initial_nonterminals_data /\ (a0 <= h0 \/ is_valid_nonterminal initial_nonterminals_data j0)) in
                      let HPpfT := (eval cbv beta in (HP a b d e h i j)) in
                      let HPpf := constr:(fun pf => conj pf (or_introl (reflexivity _)) : HPpfT) in
@@ -208,7 +208,7 @@ Ltac fin_step_opt :=
          | [ |- _ = pregrammar_productions ?x ] => is_var x; reflexivity
          | [ |- _ = pregrammar_rproductions ?x ] => is_var x; reflexivity
          | [ |- context[(0 - _)%natr] ] => rewrite (minusr_minus 0); change (minus 0) with (fun x : nat => 0); cbv beta
-         | [ |- appcontext[minus 0] ] => change (minus 0) with (fun x : nat => 0); cbv beta
+         | [ |- context[minus 0] ] => change (minus 0) with (fun x : nat => 0); cbv beta
          | [ |- _ = (_, _) ] => apply f_equal2
          | _ => progress cbv beta
          | [ |- context[orb _ false] ] => rewrite Bool.orb_false_r
@@ -378,7 +378,7 @@ Ltac sigL_transitivity term :=
 
 Ltac fix_trans_helper RHS x y :=
   match RHS with
-  | appcontext G[y] => let RHS' := context G[x] in
+  | context G[y] => let RHS' := context G[x] in
                        fix_trans_helper RHS' x y
   | _ => constr:(RHS)
   end.
@@ -401,7 +401,7 @@ Ltac t_prereduce_list_evar :=
   idtac;
   let RHS := match goal with |- _ = ?RHS => RHS end in
   lazymatch RHS with
-  | appcontext RHS'[list_rect ?P ?f ?g]
+  | context RHS'[list_rect ?P ?f ?g]
     => let ft := type of f in
        let gt := type of g in
        let f' := fresh in
@@ -476,7 +476,7 @@ Ltac t_postreduce_list_with_hyp :=
        [ subst P0 N0 C0 N1 C1; intros; cbv beta
        | intros ? xs IH; intros; unfold C0 at 1, C1 at 1; cbv beta;
          match goal with
-         | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
+         | [ |- context[list_rect P0 N1 C1 ?ls'' ?a''] ]
            => specialize (IH a'')
          end;
          let T := match type of IH with ?T -> _ => T end in
@@ -516,7 +516,7 @@ Ltac t_postreduce_list_with_hyp_with_assumption :=
        [ subst P0 N0 C0 N1 C1; intros; cbv beta
        | intros ? xs IH pg; intros; unfold C0 at 1, C1 at 1; cbv beta;
          match goal with
-         | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
+         | [ |- context[list_rect P0 N1 C1 ?ls'' ?a''] ]
            => specialize (IH a'')
          end;
          let T := match type of IH with ?T1 -> ?T2 -> _ => constr:((T1 * T2)%type) end in
@@ -615,8 +615,8 @@ Ltac t_pull_nth :=
 Ltac t_after_pull_nth_fin :=
   idtac;
   match goal with
-  | [ |- appcontext[@nth] ] => fail 1
-  | [ |- appcontext[@nth'] ] => fail 1
+  | [ |- context[@nth] ] => fail 1
+  | [ |- context[@nth'] ] => fail 1
   | _ => repeat step_opt'
   end.
 
@@ -716,7 +716,7 @@ Ltac optsplit_t' :=
 Ltac change_char_at_matches :=
   idtac;
   lazymatch goal with
-  | [ |- appcontext G[@char_at_matches ?Char ?HSLM ?n ?str (@interp_RCharExpr _ ?data ?P)] ]
+  | [ |- context G[@char_at_matches ?Char ?HSLM ?n ?str (@interp_RCharExpr _ ?data ?P)] ]
     => idtac;
        let G' := context G[@char_at_matches_interp Char HSLM data n str P] in
        change G'

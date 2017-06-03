@@ -86,7 +86,7 @@ Section forall_reachable_productions.
     unfold forall_enumerable_by_beq_staged.
     unfold Equality.beq, prod_BoolDecR, dnc_BoolDecR, nat_BoolDecR, prod_beq.
     match goal with
-    | [ |- appcontext[combine ?ls' (map _ ?ls')] ]
+    | [ |- context[combine ?ls' (map _ ?ls')] ]
       => set (ls := ls')
     end.
     etransitivity_rev _.
@@ -96,7 +96,7 @@ Section forall_reachable_productions.
       subst ls.
       symmetry.
       repeat match goal with
-             | [ |- appcontext G[@enumerate ?T ?e] ]
+             | [ |- context G[@enumerate ?T ?e] ]
                => let e' := (eval hnf in e) in
                   let G' := context G[@enumerate T e'] in
                   progress change G'
@@ -769,7 +769,7 @@ Section IndexedImpl.
       | [ |- context[if Compare_dec.leb ?x ?y then _ else _] ]
         => destruct (Compare_dec.leb x y) eqn:?
       | [ H : context[option_beq _ None (Some _)] |- _ ] => unfold option_beq in H
-      | [ H : appcontext[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
+      | [ H : context[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
       | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
       | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
       | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
@@ -1019,8 +1019,8 @@ Section IndexedImpl.
 
 
     repeat match goal with
-             | [ H : appcontext[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
-             | [ H : appcontext[forall_reachable_productions_if_eq] |- _ ]
+             | [ H : context[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
+             | [ H : context[forall_reachable_productions_if_eq] |- _ ]
                => rewrite forall_reachable_productions_if_eq_correct_reachable in H by first [ assumption | exact _ ]
              | _ => progress simpl in *
              | _ => progress unfold rdp_list_to_production in *
@@ -1061,7 +1061,7 @@ Section IndexedImpl.
         clear -HSLP; intros;
           rewrite !drop_length, !substring_length, Min.min_r, Nat.add_sub by omega;
           repeat match goal with
-                 | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+                 | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
                  | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                  | [ H : ?x = 1 |- context[?x] ] => rewrite H
                  | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega

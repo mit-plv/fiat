@@ -174,7 +174,7 @@ Module opt.
   Definition premap_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list (nat * (nat * nat)).
   Proof.
     let term := match (eval cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq] in (fun HSLM HSL => @rindexed_spec HSLM HSL G)) with
-                | appcontext[List.map (fun x => (x, ?f x)) ?ls] => ls
+                | context[List.map (fun x => (x, ?f x)) ?ls] => ls
                 end in
     exact term.
   Defined.
@@ -193,67 +193,67 @@ Local Hint Extern 0 (do_idtac ?msg) => idtac "<infomsg>" msg "</infomsg>"; exact
 Local Ltac cidtac term := constr:(_ : do_idtac term).
 Local Ltac opt_of_context term :=
   match (eval cbv beta iota zeta in term) with
-  | appcontext G[map snd (opt.id ?ls)]
+  | context G[map snd (opt.id ?ls)]
     => let G' := context G[opt.id (opt.map opt.snd ls)] in
        opt_of_context G'
-  | appcontext G[List.length (opt.id ?ls)]
+  | context G[List.length (opt.id ?ls)]
     => let G' := context G[opt.id (opt.length ls)] in
        opt_of_context G'
-  | appcontext G[minus (opt.id ?x) (opt.id ?y)]
+  | context G[minus (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (opt.minus x y)] in
        opt_of_context G'
-  | appcontext G[Operations.List.up_to (opt.id ?n)]
+  | context G[Operations.List.up_to (opt.id ?n)]
     => let G' := context G[opt.id (opt.up_to n)] in
        opt_of_context G'
-  | appcontext G[S (opt.id ?n)]
+  | context G[S (opt.id ?n)]
     => let G' := context G[opt.id (S n)] in
        opt_of_context G'
-  | appcontext G[ret (opt.id ?n)]
+  | context G[ret (opt.id ?n)]
     => let G' := context G[opt.id (ret n)] in
        opt_of_context G'
-  | appcontext G[pair (opt.id ?x) (opt.id ?y)]
+  | context G[pair (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (pair x y)] in
        opt_of_context G'
-  | appcontext G[cons (opt.id ?x) (opt.id ?y)]
+  | context G[cons (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (cons x y)] in
        opt_of_context G'
-  | appcontext G[Operations.List.uniquize (opt.id ?beq) (opt.id ?ls)]
+  | context G[Operations.List.uniquize (opt.id ?beq) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.uniquize beq ls)] in
        opt_of_context G'
-  | appcontext G[nth (opt.id ?n) (opt.id ?ls) (opt.id ?d)]
+  | context G[nth (opt.id ?n) (opt.id ?ls) (opt.id ?d)]
     => let G' := context G[opt.id (opt.nth n ls d)] in
        opt_of_context G'
-  | appcontext G[List.combine (opt.id ?a) (opt.id ?b)]
+  | context G[List.combine (opt.id ?a) (opt.id ?b)]
     => let G' := context G[opt.id (opt.combine a b)] in
        opt_of_context G'
-  | appcontext G[map (opt.id ?f) (opt.id ?ls)]
+  | context G[map (opt.id ?f) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.map f ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[flat_map (opt.id ?f) (opt.id ?ls)]
+  | context G[flat_map (opt.id ?f) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.flat_map f ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[opt.flat_map (opt.id ?f) ?ls]
+  | context G[opt.flat_map (opt.id ?f) ?ls]
     => let G' := context G[opt.flat_map f ls] in
        opt_of_context G'
-  | appcontext G[opt.map (opt.id ?f) ?ls]
+  | context G[opt.map (opt.id ?f) ?ls]
     => let G' := context G[opt.map f ls] in
        opt_of_context G'
-  | appcontext G[fun x => opt.id (@?f x)]
+  | context G[fun x => opt.id (@?f x)]
     => let G' := context G[opt.id f] in
        opt_of_context G'
-  | appcontext G[flat_map ?f (opt.id ?ls)]
+  | context G[flat_map ?f (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.flat_map f' ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[map ?f (opt.id ?ls)]
+  | context G[map ?f (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.map f' ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[fold_right ?f (opt.id ?d) (opt.id ?ls)]
+  | context G[fold_right ?f (opt.id ?d) (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.fold_right f' d ls)] in
        let G' := (eval cbv beta in G') in
@@ -396,7 +396,7 @@ Section IndexedImpl_opt.
     simpl @production_carrierT.
     cbv [default_production_carrierT default_nonterminal_carrierT].
     lazymatch goal with
-    | [ |- appcontext g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
+    | [ |- context g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
       => idtac;
            let G' := context g[opt.id (opt.expanded_fallback_list_body G)] in
            change G'
@@ -581,7 +581,7 @@ Section IndexedImpl_opt.
   Proof.
     let c := (eval cbv [opt_rindexed_spec0] in opt_rindexed_spec0) in
     let c := lazymatch c with
-             | appcontext[fun r_n d d0 d1 => Bind (opt2.fold_right (@?f r_n d d0 d1) ?init ?ls) (fun a => @?retv r_n d d0 d1 a)]
+             | context[fun r_n d d0 d1 => Bind (opt2.fold_right (@?f r_n d d0 d1) ?init ?ls) (fun a => @?retv r_n d d0 d1 a)]
                => (eval cbv beta in (fun r_n d d0 d1 => Bind (opt2.fold_right (f r_n d d0 d1) init ls) (fun a => retv r_n d d0 d1 a)))
              end in
     exact c.
@@ -744,9 +744,9 @@ Section tower.
     { simpl in *.
       repeat match goal with
              | _ => assumption
-             | [ |- appcontext[If test ?x Then _ Else _] ] => destruct (test x) eqn:?
+             | [ |- context[If test ?x Then _ Else _] ] => destruct (test x) eqn:?
              | _ => progress simpl in *
-             | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+             | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
              | _ => apply make_tower_const; reflexivity
              | _ => apply make_tower_no_unif_const; first [ reflexivity | assumption ]
              | _ => progress intros
@@ -774,7 +774,7 @@ Section step_tower.
   Proof.
     intros r_o d d0 d1.
     lazymatch (eval cbv [opt_rindexed_spec_method_default] in (opt_rindexed_spec_method_default G' r_o d d0 d1)) with
-    | appcontext[opt2.fold_right
+    | context[opt2.fold_right
                    (fun a a0 => If @?test a Then @?test_true a Else a0)
                    ?base
                    ?ls]
