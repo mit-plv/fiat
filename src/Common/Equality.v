@@ -647,13 +647,13 @@ Section In.
   Lemma list_in_bl_false {A eq_A} (A_lb : forall x y : A, x = y -> eq_A x y = true) {a ls}
   : list_bin eq_A a ls = false -> ~List.In a ls.
   Proof.
-    intros H H'; eapply list_in_lb in H'; [ | eauto ]; congruence.
+    intros H H'; eapply list_in_lb in H'; [ | eauto ]; instantiate; congruence.
   Qed.
 
   Lemma list_inA_bl_false {A eq_A} {a ls}
   : list_bin eq_A a ls = false -> ~SetoidList.InA (fun x y : A => eq_A y x) a ls.
   Proof.
-    intros H H'; apply list_inA_lb in H'; congruence.
+    intros H H'; apply list_inA_lb in H'; instantiate; congruence.
   Qed.
 End In.
 
