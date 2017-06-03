@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.Refinement.DisjointRulesCommon.
 Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Common.List.DisjointFacts.
 Export DisjointLemmas.Exports.
 
 Set Implicit Arguments.
@@ -286,8 +287,11 @@ Ltac rewrite_disjoint_rev_search_for_with_alt alt_side_condition_tac :=
   let lem := fresh "lem" in
   rewrite_disjoint_rev_search_for_no_clear alt_side_condition_tac lem;
   clear lem.
+Ltac leave_side_conditions _ :=
+  try rewrite disjoint_uniquize by auto using Equality.ascii_bl, Equality.ascii_lb;
+  shelve.
 Ltac rewrite_disjoint_rev_search_for_leaving_side_conditions :=
-  unshelve rewrite_disjoint_rev_search_for_with_alt ltac:(fun _ => shelve).
+  unshelve rewrite_disjoint_rev_search_for_with_alt leave_side_conditions.
 Ltac rewrite_disjoint_rev_search_for :=
   rewrite_disjoint_rev_search_for_with_alt ltac:(fun _ => fail).
 Ltac refine_disjoint_rev_search_for_with_alt alt_side_condition_tac :=
@@ -298,6 +302,6 @@ Ltac refine_disjoint_rev_search_for_with_alt alt_side_condition_tac :=
   rewrite_once_disjoint_rev_search_for_specialize alt_side_condition_tac lem lem';
   refine lem'; clear lem'.
 Ltac refine_disjoint_rev_search_for_leaving_side_conditions :=
-  unshelve refine_disjoint_rev_search_for_with_alt ltac:(fun _ => shelve).
+  unshelve refine_disjoint_rev_search_for_with_alt leave_side_conditions.
 Ltac refine_disjoint_rev_search_for :=
   refine_disjoint_rev_search_for_with_alt ltac:(fun _ => fail).
