@@ -20,6 +20,8 @@ Section Word.
     | WS b s' w' => enqueue_opt b (encode_word' s' w' b')
     end.
 
+  Eval compute in (wordToNat (WS true (WS false (WS false (WS false (WO)))))).
+
   Definition encode_word_Impl (w : word sz) (ce : CacheEncode) : B * CacheEncode := (encode_word' sz w transform_id, addE ce sz).
 
   Definition encode_word_Spec (w : word sz) (ce : CacheEncode) : Comp (B * CacheEncode) :=

@@ -4,7 +4,7 @@ Require Import
 
 Require Import
         Fiat.Computation
-        Fiat.BinEncoders.Env.BinLib.Core
+        Fiat.BinEncoders.Env.BinLib.CharString
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.WordFacts
         Fiat.BinEncoders.Env.Common.ComposeCheckSum
@@ -37,7 +37,7 @@ Proof.
   normalize_compose transformer.
   repeat first [apply innt_decode_correct; auto
                | solve [ intros; apply intrange]
-               | intros; simpl; match goal with |- _ /\ _ => split; intuition eauto end 
+               | intros; simpl; match goal with |- _ /\ _ => split; intuition eauto end
                | decode_step idtac].
   synthesize_cache_invariant.
   cbv beta; optimize_decoder_impl.

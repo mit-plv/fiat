@@ -72,6 +72,7 @@ src/BinEncoders/Env/Lib/SteppingCacheList.v
 src/BinEncoders/Env/Lib2/Ascii.v
 src/BinEncoders/Env/Lib2/AsciiOpt.v
 src/BinEncoders/Env/Lib2/Bool.v
+src/BinEncoders/Env/Lib2/CInt.v
 src/BinEncoders/Env/Lib2/DomainNameOpt.v
 src/BinEncoders/Env/Lib2/Enum.v
 src/BinEncoders/Env/Lib2/EnumOpt.v
