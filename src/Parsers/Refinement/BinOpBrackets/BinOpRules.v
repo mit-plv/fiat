@@ -1,5 +1,6 @@
 (** Refinement rules for binary operations *)
 Require Import Coq.Lists.List.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Common.
 Require Import Fiat.Common.Equality.
@@ -306,8 +307,8 @@ Section refine_rules.
                  | _ => rewrite Min.min_idempotent
                  | [ |- _ \/ False ] => left
                  | [ H : 0 < ?x - ?y |- ?x = ?y ] => exfalso
-                 | [ H : appcontext[min] |- _ ] => rewrite Min.min_r in H by omega
-                 | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
+                 | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
+                 | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
                  | [ H : is_true (is_char (substring _ _ (substring _ _ _)) _) |- _ ]
                    => rewrite substring_substring in H;
                      apply take_n_1_singleton in H
@@ -513,7 +514,7 @@ Global Arguments list_of_next_bin_ops_opt_nor : simpl never.
 Local Ltac presimpl_after_refine_binop_table :=
   unfold correct_open_close;
   match goal with
-    | [ |- appcontext[@possible_valid_open_closes ?G ?nt ?ch] ]
+    | [ |- context[@possible_valid_open_closes ?G ?nt ?ch] ]
       => let c := constr:(@possible_valid_open_closes G nt ch) in
          let c' := (eval lazy in c) in
          let H := fresh in
@@ -615,7 +616,7 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
   pose proof lem as H; clear H0;
   unfold correct_open_close in H;
   let c := match type of H with
-           | appcontext[@possible_valid_open_closes ?G ?nt ?ch]
+           | context[@possible_valid_open_closes ?G ?nt ?ch]
              => constr:(@possible_valid_open_closes G nt ch)
            end in
   replace_with_vm_compute_in c H;
@@ -627,7 +628,7 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
            end in
   let c' := (eval cbv beta iota zeta delta [default_list_of_next_bin_ops_opt_data ParenBalanced.Core.is_open ParenBalanced.Core.is_close ParenBalanced.Core.is_bin_op bin_op_data_of_maybe List.hd List.map fst snd] in c) in
   let c' := match c' with
-            | appcontext[@StringLike.get _ ?HSLM ?HSL]
+            | context[@StringLike.get _ ?HSLM ?HSL]
               => let HSLM' := head HSLM in
                  let HSL' := head HSL in
                  (eval cbv beta iota zeta delta [String StringLike.length StringLike.unsafe_get StringLike.get HSLM' HSL'] in c')

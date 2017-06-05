@@ -62,6 +62,7 @@ src/BinEncoders/Env/Examples/EthernetHeader.v
 src/BinEncoders/Env/Examples/Fiat4Mirage.v
 src/BinEncoders/Env/Examples/ICMP_Packet.v
 src/BinEncoders/Env/Examples/IPv4Header.v
+src/BinEncoders/Env/Examples/IntExample.v
 src/BinEncoders/Env/Examples/TCP_Packet.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
@@ -248,6 +249,7 @@ src/Common/Enumerable/ReflectiveForallAggregate.v
 src/Common/Enumerable/ReflectiveForallStaged.v
 src/Common/FMapExtensions/LiftRelationInstances.v
 src/Common/FMapExtensions/Wf.v
+src/Common/List/DisjointFacts.v
 src/Common/List/FlattenList.v
 src/Common/List/ListFacts.v
 src/Common/List/ListMorphisms.v

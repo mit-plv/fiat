@@ -271,9 +271,9 @@ Proof.
   { simpl in *.
     rewrite IHlen; clear IHlen.
     repeat match goal with
-             | [ |- appcontext[get ?n'] ]
+             | [ |- context[get ?n'] ]
                => not constr_eq n' 0; rewrite (get_drop (n := n'))
-             | [ H : appcontext[get ?n'] |- _ ]
+             | [ H : context[get ?n'] |- _ ]
                => not constr_eq n' 0; setoid_rewrite (get_drop (n := n')) in H
            end.
     replace (get 0 (drop len (drop 1 str))) with (get 0 (drop (S len) str))

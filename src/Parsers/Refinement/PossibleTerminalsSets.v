@@ -161,11 +161,11 @@ Section correctness.
 
   Local Ltac pull_lattice_for_rect :=
     repeat lazymatch goal with
-           | [ |- appcontext G[match ?v with ⊤ => ?T | ⊥ => ?B | constant x => @?C x end] ]
+           | [ |- context G[match ?v with ⊤ => ?T | ⊥ => ?B | constant x => @?C x end] ]
              => let RT := type of T in
                 let G' := context G[lattice_for_rect (fun _ => RT) T C B v] in
                 change G'
-           | [ |- appcontext G[fun k : ?KT => match @?v k with ⊤ => @?T k | ⊥ => @?B k | constant x => @?C k x end] ]
+           | [ |- context G[fun k : ?KT => match @?v k with ⊤ => @?T k | ⊥ => @?B k | constant x => @?C k x end] ]
              => let RT := match type of T with forall k, @?RT k => RT end in
                 let G' := context G[fun k : KT => lattice_for_rect (fun _ => RT k) (T k) (C k) (B k) (v k)] in
                 change G'; cbv beta
@@ -191,7 +191,7 @@ Section correctness.
     repeat match goal with
            | [ x : T |- _ ]
              => lazymatch goal with
-                | [ |- appcontext[x] ] => fail
+                | [ |- context[x] ] => fail
                 | _ => clear dependent x
                 end
            end.
@@ -462,11 +462,11 @@ Section correctness_lemmas.
     | [ |- context[fold_production' _ (lookup_state fgd_fold_grammar) _] ]
       => setoid_rewrite fgd_fold_grammar_correct
     | _ => rewrite fgd_fold_grammar_correct
-    | [ p : parse_of_item _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
+    | [ p : parse_of_item _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _) in p
-    | [ p : parse_of_production _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
+    | [ p : parse_of_production _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct_production _ _ _ _ _ _ aidata _ _) in p
-    | [ p : parse_of _ _ _ |- appcontext[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
+    | [ p : parse_of _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
       => apply (@fold_grammar_correct _ _ _ _ _ _ aidata _ _) in p
     | [ |- context[lookup_state ?g ?nt] ]
       => destruct (lookup_state g nt) eqn:?

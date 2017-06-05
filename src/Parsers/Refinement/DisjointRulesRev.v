@@ -1,4 +1,5 @@
 (** Refinement rules for disjoint rules *)
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.Refinement.PreTactics.
 Require Import Fiat.Computation.Refinements.General.
 Require Import Fiat.Parsers.StringLike.LastCharSuchThat.
@@ -8,6 +9,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.Refinement.DisjointRulesCommon.
 Require Import Fiat.Parsers.ParserInterface.
+Require Import Fiat.Common.List.DisjointFacts.
 Export DisjointLemmas.Exports.
 
 Set Implicit Arguments.
@@ -245,7 +247,7 @@ Ltac replace_with_native_compute_in c H :=
   (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
   replace c with c' in H by (clear; native_cast_no_check (eq_refl c')).
 
-Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
+Ltac rewrite_once_disjoint_rev_search_for_specialize alt_side_condition_tac lem lem' :=
   idtac;
   let G := (lazymatch goal with
              | [ |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
@@ -259,7 +261,7 @@ Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
               end);
        let T := match type of lem' with forall a : ?T, _ => T end in
        let H' := fresh in
-       assert (H' : T) by solve_disjoint_side_conditions;
+       assert (H' : T) by solve [ solve_disjoint_side_conditions | alt_side_condition_tac () ];
        specialize (lem' H'); clear H';
        let x := match type of lem' with
                 | context[DisjointLemmas.actual_possible_last_terminals ?ls]
@@ -271,25 +273,36 @@ Ltac rewrite_once_disjoint_rev_search_for_specialize lem lem' :=
        cbv beta in lem';
        let T := match type of lem' with forall a : ?T, _ => T end in
        let H' := fresh in
-       assert (H' : T) by solve_disjoint_side_conditions;
+       assert (H' : T) by solve [ solve_disjoint_side_conditions | alt_side_condition_tac () ];
        specialize (lem' H'); clear H'
   end.
-Ltac rewrite_once_disjoint_rev_search_for lem :=
+Ltac rewrite_once_disjoint_rev_search_for alt_side_condition_tac lem :=
   let lem' := fresh "lem'" in
-  rewrite_once_disjoint_rev_search_for_specialize lem lem';
+  rewrite_once_disjoint_rev_search_for_specialize alt_side_condition_tac lem lem';
   setoid_rewrite lem'; clear lem'.
-Ltac rewrite_disjoint_rev_search_for_no_clear lem :=
+Ltac rewrite_disjoint_rev_search_for_no_clear alt_side_condition_tac lem :=
   pose_disjoint_rev_search_for lem;
-  progress repeat rewrite_once_disjoint_rev_search_for lem.
-Ltac rewrite_disjoint_rev_search_for :=
+  progress repeat rewrite_once_disjoint_rev_search_for alt_side_condition_tac lem.
+Ltac rewrite_disjoint_rev_search_for_with_alt alt_side_condition_tac :=
   idtac;
   let lem := fresh "lem" in
-  rewrite_disjoint_rev_search_for_no_clear lem;
+  rewrite_disjoint_rev_search_for_no_clear alt_side_condition_tac lem;
   clear lem.
-Ltac refine_disjoint_rev_search_for :=
+Ltac leave_side_conditions _ :=
+  try rewrite disjoint_uniquize by auto using Equality.ascii_bl, Equality.ascii_lb;
+  shelve.
+Ltac rewrite_disjoint_rev_search_for_leaving_side_conditions :=
+  unshelve rewrite_disjoint_rev_search_for_with_alt leave_side_conditions.
+Ltac rewrite_disjoint_rev_search_for :=
+  rewrite_disjoint_rev_search_for_with_alt ltac:(fun _ => fail).
+Ltac refine_disjoint_rev_search_for_with_alt alt_side_condition_tac :=
   idtac;
   let lem := fresh "lem" in
   pose_disjoint_rev_search_for lem;
   let lem' := fresh "lem'" in
-  rewrite_once_disjoint_rev_search_for_specialize lem lem';
+  rewrite_once_disjoint_rev_search_for_specialize alt_side_condition_tac lem lem';
   refine lem'; clear lem'.
+Ltac refine_disjoint_rev_search_for_leaving_side_conditions :=
+  unshelve refine_disjoint_rev_search_for_with_alt leave_side_conditions.
+Ltac refine_disjoint_rev_search_for :=
+  refine_disjoint_rev_search_for_with_alt ltac:(fun _ => fail).

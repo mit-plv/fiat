@@ -1,5 +1,6 @@
 (** * Build a table for the next binop at a given level *)
 Require Import Coq.Lists.List.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.List.ListFacts.
@@ -658,13 +659,13 @@ Section for_string.
         unfold list_of_next_bin_ops'_step.
         unfold list_of_next_bin_ops'_step'.
         repeat match goal with
-                 | [ |- appcontext[if ?e then _ else _] ] => destruct e eqn:?
+                 | [ |- context[if ?e then _ else _] ] => destruct e eqn:?
                  | _ => progress cbv beta
-                 | [ |- appcontext[fst (?x, ?y)] ] =>
+                 | [ |- context[fst (?x, ?y)] ] =>
                    change (fst (x, y)) with x
-                 | [ |- appcontext[snd (?x, ?y)] ] =>
+                 | [ |- context[snd (?x, ?y)] ] =>
                    change (snd (x, y)) with y
-                 | [ |- appcontext[nth 0 (?x::?xs) ?v] ]
+                 | [ |- context[nth 0 (?x::?xs) ?v] ]
                    => change (nth 0 (x::xs) v) with x
                  | [ |- (_, _) = (_, _) ] => apply f_equal2
                  | [ |- context[map ?f (?x::?xs)] ]

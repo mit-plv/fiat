@@ -62,11 +62,11 @@ End rel.
 
 Ltac simpl_size_of_parse :=
   repeat match goal with
-           | [ |- appcontext[@size_of_parse ?Char ?HSLM ?HSL ?G ?str ?pat ?p] ]
+           | [ |- context[@size_of_parse ?Char ?HSLM ?HSL ?G ?str ?pat ?p] ]
              => change (@size_of_parse Char HSLM HSL G str pat p)
                 with (@size_of_parse_step Char HSLM HSL G (@size_of_parse Char HSLM HSL G) (@size_of_parse_production Char HSLM HSL G) str pat p);
                simpl @size_of_parse_step
-           | [ |- appcontext[@size_of_parse_production ?Char ?HSLM ?HSL ?G ?str ?pat ?p] ]
+           | [ |- context[@size_of_parse_production ?Char ?HSLM ?HSL ?G ?str ?pat ?p] ]
              => change (@size_of_parse_production Char HSLM HSL G str pat p)
                 with (@size_of_parse_production_step Char HSLM HSL G (@size_of_parse Char HSLM HSL G) (@size_of_parse_production Char HSLM HSL G) str pat p);
                simpl @size_of_parse_production_step

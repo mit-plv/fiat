@@ -233,7 +233,7 @@ Section recursive_descent_parser.
                         | ?x = _ :> nat => not constr_eq e (eq_refl x)
                       end;
                       generalize e; intro
-                  | [ H : ?x = cons _ _ |- appcontext[match ?x with _ => _ end] ] => rewrite H
+                  | [ H : ?x = cons _ _ |- context[match ?x with _ => _ end] ] => rewrite H
                 end
               | rewrite fold_left_orb_true
               | rewrite bool_of_sum_dec_prod
@@ -300,25 +300,25 @@ Section recursive_descent_parser.
               | idtac;
                 let RHS := match goal with |- ?R _ ?RHS => RHS end in
                 match RHS with
-                  | appcontext[match ?it with Terminal _ => _ | _ => _ end]
+                  | context[match ?it with Terminal _ => _ | _ => _ end]
                     => destruct it eqn:?
                   | _ => progress subst
                   | _ => progress simpl @bool_of_sum
-                  | appcontext G[is_char ?x ?y]
+                  | context G[is_char ?x ?y]
                     => let H := fresh in
                        destruct (Utils.dec (is_char x y)) as [H|H];
                          [ let G' := context G[true] in
                            transitivity G'; [ | symmetry; exact H ]
                          | let G' := context G[false] in
                            transitivity G'; [ | symmetry; exact H ] ]
-                  | appcontext G[beq_nat ?x ?y]
+                  | context G[beq_nat ?x ?y]
                     => let H := fresh in
                        destruct (Utils.dec (beq_nat x y)) as [H|H];
                          [ let G' := context G[true] in
                            transitivity G'; [ | symmetry; exact H ]
                          | let G' := context G[false] in
                            transitivity G'; [ | symmetry; exact H ] ]
-                  | appcontext[match ?x with _ => _ end]
+                  | context[match ?x with _ => _ end]
                     => let H := match goal with
                                   | [ H : ?x = cons _ _ |- _ ] => H
                                 end in
@@ -330,7 +330,7 @@ Section recursive_descent_parser.
                 match LHS with
                 | match Utils.dec ?x with _ => _ end
                   => match RHS with
-                     | appcontext[x]
+                     | context[x]
                        => destruct (Utils.dec x)
                      end
                 end
@@ -350,7 +350,7 @@ Section recursive_descent_parser.
       Local Ltac curry_do_change HS :=
         idtac;
         match HS with
-          | appcontext HS'[list_rect ?P ?N ?C]
+          | context HS'[list_rect ?P ?N ?C]
             => (let P0 := fresh in
                 let N0 := fresh in
                 let C0 := fresh in
@@ -373,13 +373,13 @@ Section recursive_descent_parser.
         let LHS := match goal with |- bool_of_sum ?LHS = ?RHS => LHS end in
         let RHS := match goal with |- bool_of_sum ?LHS = ?RHS => RHS end in
         let ls := match LHS with
-                    | appcontext[list_rect ?P ?N ?C ?ls] => ls
+                    | context[list_rect ?P ?N ?C ?ls] => ls
                   end in
         let LRL := match LHS with
-                     | appcontext[list_rect ?P ?N ?C] => constr:(list_rect P N C)
+                     | context[list_rect ?P ?N ?C] => constr:(list_rect P N C)
                    end in
         let LRR := match RHS with
-                     | appcontext[list_rect ?P ?N ?C] => constr:(list_rect P N C)
+                     | context[list_rect ?P ?N ?C] => constr:(list_rect P N C)
                    end in
         let F := fresh "F" in
         let G := fresh "G" in
@@ -398,16 +398,16 @@ Section recursive_descent_parser.
         let LHS := match goal with |- bool_of_sum ?LHS = ?RHS => LHS end in
         let RHS := match goal with |- bool_of_sum ?LHS = ?RHS => RHS end in
         let ls := match LHS with
-                    | appcontext[F ?ls ?x0 ?x] => ls
+                    | context[F ?ls ?x0 ?x] => ls
                   end in
         let x0 := match LHS with
-                    | appcontext[F ?ls ?x0 ?x] => x0
+                    | context[F ?ls ?x0 ?x] => x0
                   end in
         let al := match LHS with
-                    | appcontext[F ?ls ?x0 ?x] => x
+                    | context[F ?ls ?x0 ?x] => x
                   end in
         let ar := match RHS with
-                    | appcontext[G ?ls ?x0 ?x] => x
+                    | context[G ?ls ?x0 ?x] => x
                   end in
         let T := (type of F) in
         let P := match (eval cbv beta in T) with
@@ -458,11 +458,11 @@ Section recursive_descent_parser.
                 let LHS := match goal with |- bool_of_sum ?LHS = ?RHS => LHS end in
                 let RHS := match goal with |- bool_of_sum ?LHS = ?RHS => RHS end in
                 match LHS with
-                  | appcontext[list_rect _ ?N ?C]
+                  | context[list_rect _ ?N ?C]
                     => subst N
                 end;
                   match RHS with
-                    | appcontext[list_rect _ ?N ?C]
+                    | context[list_rect _ ?N ?C]
                       => subst N
                   end;
                   simpl @list_rect;
@@ -470,8 +470,8 @@ Section recursive_descent_parser.
               | intros ?? IH y;
                 let LHS := match goal with |- bool_of_sum ?LHS = ?RHS => LHS end in
                 let RHS := match goal with |- bool_of_sum ?LHS = ?RHS => RHS end in
-                let C := match LHS with | appcontext[list_rect _ ?N ?C] => C end in
-                let C' := match RHS with | appcontext[list_rect _ ?N ?C] => C end in
+                let C := match LHS with | context[list_rect _ ?N ?C] => C end in
+                let C' := match RHS with | context[list_rect _ ?N ?C] => C end in
                 simpl @list_rect;
                   unfold C at 1, C' at 1;
                   revert y ];
@@ -795,8 +795,8 @@ Section recursive_descent_parser.
                             H'' : is_true (is_char (substring ?offset ?len ?str) _)
                    |- _ ]
                  => apply length_singleton in H''; rewrite substring_length in H''
-               | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
-               | [ H : appcontext[min] |- _ ] => rewrite Min.min_r in H by omega
+               | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
+               | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
                | [ H : _ |- _ ] => rewrite Nat.add_sub in H
                | [ H : andb (beq_nat _ 1) (char_at_matches _ _ _) = false |- False ] => contradict H
                | [ |- _ <> false ] => apply Bool.not_false_iff_true
@@ -1060,8 +1060,8 @@ Section recursive_descent_parser.
             | _ => omega
             | [ H : or _ _ |- _ ] => let H0 := fresh in destruct H as [H0|H0]; try clear H
             | [ H : length (substring _ _ _) = 0 |- _ ] => rewrite substring_length in H
-            | [ H : appcontext[min] |- _ ] => rewrite Min.min_l in H by omega
-            | [ H : appcontext[min] |- _ ] => rewrite Min.min_r in H by omega
+            | [ H : context[min] |- _ ] => rewrite Min.min_l in H by omega
+            | [ H : context[min] |- _ ] => rewrite Min.min_r in H by omega
             | [ H : _ |- _ ] => rewrite Nat.add_sub in H
           end.
         Local Ltac parse_production'_for_t := repeat parse_production'_for_t'.
@@ -1733,7 +1733,7 @@ Section recursive_descent_parser.
             expand_once.
             revert valid Hvalid_len offset len Hlen pf nt Hvalid.
             match goal with
-              | [ |- appcontext[Fix ?Wf _ _ ?p] ]
+              | [ |- context[Fix ?Wf _ _ ?p] ]
                 => induction (Wf p) as [?? IH]; intros
             end.
             match goal with

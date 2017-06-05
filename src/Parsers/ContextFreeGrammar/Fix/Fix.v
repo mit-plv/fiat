@@ -82,14 +82,14 @@ Section grammar_fixedpoint.
       => setoid_rewrite (@PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ f eq_refl) in H
     | [ |- context[PositiveMap.find _ (PositiveMap.map2 ?f _ _)] ]
       => setoid_rewrite (@PositiveMapExtensions.map2_1bis_for_rewrite _ _ _ f eq_refl)
-    | [ H : appcontext[PositiveMapExtensions.lift_brelation] |- _ ]
+    | [ H : context[PositiveMapExtensions.lift_brelation] |- _ ]
       => setoid_rewrite PositiveMapExtensions.lift_brelation_iff in H
-    | [ |- appcontext[PositiveMapExtensions.lift_brelation] ]
+    | [ |- context[PositiveMapExtensions.lift_brelation] ]
       => setoid_rewrite PositiveMapExtensions.lift_brelation_iff
     | [ H : ?x = _, H' : context[?x] |- _ ] => setoid_rewrite H in H'
     | [ H : ?x = _ |- context[?x] ] => setoid_rewrite H
     | [ H : and _ _ |- _ ] => destruct H
-    | [ H : pointwise_relation _ eq ?x ?y, H' : appcontext[step_constraints _ ?x] |- _ ]
+    | [ H : pointwise_relation _ eq ?x ?y, H' : context[step_constraints _ ?x] |- _ ]
       => rewrite H in H'
     | _ => progress autorewrite with aggregate_step_db in *
     | [ H : forall k : positive, _ |- _ ]

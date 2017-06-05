@@ -152,7 +152,7 @@ Section recursive_descent_parser.
     unfold Lookup_idx.
     symmetry; rewrite_map_nth_rhs; symmetry.
     repeat match goal with
-             | [ |- appcontext G[@Let_In ?A ?B ?k ?f] ]
+             | [ |- context G[@Let_In ?A ?B ?k ?f] ]
                => first [ let h := head k in constr_eq h @nil
                         | constr_eq k 0
                         | constr_eq k (snd (snd x)) ];
@@ -341,7 +341,7 @@ Section recursive_descent_parser.
                      [ subst P0 N0 C0; intros; cbv beta
                      | intros ? xs IH; intros; unfold C0 at 1 3; cbv beta;
                        match goal with
-                         | [ |- appcontext[list_rect P0 N0 C0 ?ls'' ?a''] ]
+                         | [ |- context[list_rect P0 N0 C0 ?ls'' ?a''] ]
                            => specialize (IH a'')
                        end;
                        let T := match type of IH with ?T -> _ => T end in
@@ -359,7 +359,7 @@ Section recursive_descent_parser.
             end. }
           { simpl.
             match goal with
-            | [ |- appcontext[EqNat.beq_nat (List.length ?ls) 0] ]
+            | [ |- context[EqNat.beq_nat (List.length ?ls) 0] ]
               => is_var ls; destruct ls; simpl; try reflexivity
             end; [].
             repeat match goal with
@@ -497,9 +497,9 @@ Section recursive_descent_parser.
       { repeat first [ rewrite uneta_bool
                      | idtac;
                        match goal with
-                       | [ |- appcontext[@rdp_list_of_nonterminal] ] => fail 1
-                       | [ |- appcontext[@Carriers.default_of_nonterminal] ] => fail 1
-                       | [ |- appcontext[@Carriers.default_production_tl] ] => fail 1
+                       | [ |- context[@rdp_list_of_nonterminal] ] => fail 1
+                       | [ |- context[@Carriers.default_of_nonterminal] ] => fail 1
+                       | [ |- context[@Carriers.default_production_tl] ] => fail 1
                        | _ => reflexivity
                        end
                      | step_opt'
@@ -535,7 +535,7 @@ Section recursive_descent_parser.
       { set_evars.
         repeat first [ idtac;
                        match goal with
-                         | [ |- appcontext[@rdp_list_to_production] ] => fail 1
+                         | [ |- context[@rdp_list_to_production] ] => fail 1
                          | _ => reflexivity
                        end
                      | rewrite rdp_list_to_production_opt_correct
@@ -567,7 +567,7 @@ Section recursive_descent_parser.
             unfold interp_rproductions, interp_rproduction, rproductions, rproduction, production.
             rewrite !map_length.
             progress repeat match goal with
-                            | [ |- appcontext[List.nth (?minus (@List.length ?B (@List.map ?A ?B ?f ?ls)) _)] ]
+                            | [ |- context[List.nth (?minus (@List.length ?B (@List.map ?A ?B ?f ?ls)) _)] ]
                               => rewrite (@map_length A B f ls)
                             end.
             rewrite_map_nth_rhs; simpl.
@@ -719,7 +719,7 @@ Section recursive_descent_parser.
                => is_var x; t_reduce_list_evar
              | [ |- _ = ?f (_, (_, _)) _ _ ]
                => is_var f; apply f_equal3
-             | [ |- appcontext[@nth'] ]
+             | [ |- context[@nth'] ]
                => step_opt' || fin_step_opt
              | _ => reflexivity
              end. }

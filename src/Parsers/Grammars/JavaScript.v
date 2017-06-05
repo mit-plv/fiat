@@ -981,7 +981,7 @@ Goal is_true (grammar_rvalid javascript'_pregrammar).
   cbv [List.map List.fold_right].
   set (z := productions_rvalid javascript'_pregrammar).
   repeat match goal with
-  | [ |- appcontext[y ?k] ]
+  | [ |- context[y ?k] ]
     => let y' := fresh in
        fast_set' y' (y k)
   end.

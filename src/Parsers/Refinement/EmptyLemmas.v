@@ -1,3 +1,4 @@
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.StringLike.Properties.

@@ -73,7 +73,7 @@ Ltac start_honing :=
   (*
   let p' := fresh "p'" in
   match goal with
-  | [ |- appcontext[pregrammar_productions ?G] ]
+  | [ |- context[pregrammar_productions ?G] ]
     => let p := constr:(pregrammar_productions G) in
        set (p' := p);
        hnf in p'

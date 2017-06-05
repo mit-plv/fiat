@@ -1,5 +1,6 @@
 (** Sharpened ADT for an expression grammar with parentheses *)
 Require Import Coq.Init.Wf Coq.Arith.Wf_nat.
+Require Import Coq.omega.Omega.
 Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
@@ -539,10 +540,10 @@ Section only_first_correctness.
       | _ => progress destruct_head or
       | [ |- _ <-> _ ] => split
       | [ |- _ /\ _ ] => split
-      | [ H : appcontext[if ?e then _ else _] |- _ ] => revert H; case_eq e
+      | [ H : context[if ?e then _ else _] |- _ ] => revert H; case_eq e
       | [ H : inhabited ?A -> ?B |- _ ] => specialize (fun a => H (inhabits a))
       | [ |- inhabited _ ] => constructor
-      | [ |- appcontext[if ?e then _ else _] ] => case_eq e
+      | [ |- context[if ?e then _ else _] ] => case_eq e
       | [ |- _ \/ False ] => left
       | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
       | [ |- context[In _ (filter _ _)] ] => rewrite filter_In
@@ -734,10 +735,10 @@ Section only_last_correctness.
       | _ => progress destruct_head or
       | [ |- _ <-> _ ] => split
       | [ |- _ /\ _ ] => split
-      | [ H : appcontext[if ?e then _ else _] |- _ ] => revert H; case_eq e
+      | [ H : context[if ?e then _ else _] |- _ ] => revert H; case_eq e
       | [ H : inhabited ?A -> ?B |- _ ] => specialize (fun a => H (inhabits a))
       | [ |- inhabited _ ] => constructor
-      | [ |- appcontext[if ?e then _ else _] ] => case_eq e
+      | [ |- context[if ?e then _ else _] ] => case_eq e
       | [ |- _ \/ False ] => left
       | [ H : In _ (filter _ _) |- _ ] => apply filter_In in H
       | [ |- context[In _ (filter _ _)] ] => rewrite filter_In

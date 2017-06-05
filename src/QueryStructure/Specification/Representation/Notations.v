@@ -1,4 +1,5 @@
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+Global Set Asymmetric Patterns.
 
 Reserved Notation "t ! r"
          (no associativity, at level 2,

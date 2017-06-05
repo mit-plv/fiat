@@ -4,6 +4,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Classes.Morphisms.
 
 Set Implicit Arguments.
+Global Set Asymmetric Patterns.
 
 Module Type BedrockWordT.
   Axiom W : Type.

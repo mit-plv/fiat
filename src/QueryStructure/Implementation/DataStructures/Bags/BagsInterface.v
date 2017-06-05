@@ -2,6 +2,7 @@ Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Export Coq.Program.Program Coq.Sorting.Permutation.
 
 Unset Implicit Arguments.
+Global Set Asymmetric Patterns.
 
 (* Enumerating the items of a Bag resulting from inserting
    an item [inserted] into a bag [container] is a permutation
