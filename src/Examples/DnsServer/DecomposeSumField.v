@@ -748,6 +748,28 @@ Section DecomposeEnumField.
       apply H1.
   Qed.
 
+  Corollary refineEquiv_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv'
+            {m : nat}
+            {qs_schema : RawQueryStructureSchema}
+            (schemaIdx : Fin.t _)
+            (attrIdx : Fin.t _)
+            (a : Vector.t Type m)
+            (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+            (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+            (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+            (r_o : UnConstrQueryStructure qs_schema)
+            (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+      -> forall Ridx,
+        refineEquiv {idx : nat | UnConstrFreshIdx (GetUnConstrRelation r_o Ridx) idx}
+               {idx : nat | UnConstrFreshIdx (GetUnConstrRelation (fst r_n) Ridx) idx}.
+  Proof.
+    intros; split; rewrite refine_UnConstrFreshIdx_Same_Set_Equiv;
+      try reflexivity.
+    apply (proj1 H).
+    unfold Same_set; split; apply (proj1 H).
+  Qed.
+
   Corollary refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv'
             {m : nat}
             {qs_schema : RawQueryStructureSchema}
@@ -1515,12 +1537,15 @@ Section DecomposeEnumField.
     }
     { (* Insert *)
       simpl in *; simplify with monad laws; cbv beta; simpl.
-      rewrite (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0 Fin.F1).
+      rewrite (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0).
       unfold H; eapply refine_under_bind; intros.
       apply refine_under_bind_both; intros.
       apply refine_pick_val.
       eapply (DecomposeRawQueryStructureSchema_Insert_AbsR_eq H0).
-      computes_to_inv; apply H1.
+      eapply refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv in H1;
+        eauto.
+      eapply refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv';
+        eauto.
       finish honing.
     }
     { (* Query *)

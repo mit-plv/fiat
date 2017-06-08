@@ -14,6 +14,7 @@ Require Import
         Fiat.QueryStructure.Automation.QSImplementation
         Fiat.Examples.DnsServer.Packet
         Fiat.Examples.DnsServer.DecomposeSumField
+        Fiat.Computation.FoldComp
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
 
 Open Scope list_scope.
@@ -2439,7 +2440,7 @@ Lemma refine_Process_Query_Imprecise_Match
                                                      (GetAttributeRaw rRec Fin.F1 = GetAttributeRaw a7 (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
                                                      Return rRec ));
                              ret (a5 ++ a6))
-                        [] a';
+                        nil a';
                        ret
                          (add_additionals a5
                                           (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p)))))
@@ -2459,7 +2460,7 @@ Lemma refine_Process_Query_Imprecise_Match
                     (GetAttributeRaw rRec Fin.F1 = GetAttributeRaw a7 (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
                     Return rRec ));
                     ret (a5 ++ a6))
-                    [] a';
+                    nil a';
                        ret
                          (add_additionals a5
                                           (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p))))).
