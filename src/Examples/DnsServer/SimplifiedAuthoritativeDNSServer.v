@@ -22,15 +22,14 @@ Require Import
         Bedrock.Word
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Examples.DnsOpt
+        Fiat.BinEncoders.Env.Examples.SimpleDnsOpt
         Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
 
-Require Import Fiat.Examples.DnsServer.Packet
+Require Import Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Examples.DnsServer.DnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
         Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
-
 
 Section BinaryDns.
 
@@ -56,10 +55,9 @@ Section BinaryDns.
       Local Opaque Query_For.
     Qed.
 
-
 Definition DnsSpec : ADT DnsSig :=
   Def ADT {
-    rep := QueryStructure DnsSchema,
+    rep := QueryStructure SimpleDnsSchema,
 
     Def Constructor "Init" : rep := empty,,
 
@@ -890,27 +888,14 @@ rewrite refine_decides_forall_and;
     refine pick val _; eauto; finish honing.
   }
   simpl.
-  pose {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(FindStringPrefixIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := {|
-                         prim_fst := [(EqualityIndex, @Fin.F1 3)];
-                         prim_snd := () |} |} |} |} |} |} |} |} |} |}.
+  pose {| prim_fst := [(EqualityIndex, @Fin.F1 3)];
+          prim_snd := {|
+          prim_fst := [(EqualityIndex, @Fin.F1 3)];
+          prim_snd := {|
+          prim_fst := [(FindStringPrefixIndex, @Fin.F1 3)];
+          prim_snd := {|
+          prim_fst := [(EqualityIndex, @Fin.F1 3)];
+          prim_snd := () |} |} |} |}.
 
   Time let p' := eval unfold p in p in
            make_simple_indexes p'

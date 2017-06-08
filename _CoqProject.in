@@ -64,6 +64,7 @@ src/BinEncoders/Env/Examples/Fiat4Mirage.v
 src/BinEncoders/Env/Examples/ICMP_Packet.v
 src/BinEncoders/Env/Examples/IPv4Header.v
 src/BinEncoders/Env/Examples/IntExample.v
+src/BinEncoders/Env/Examples/SimpleDnsOpt.v
 src/BinEncoders/Env/Examples/TCP_Packet.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
@@ -315,6 +316,9 @@ src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
 src/Examples/DnsServer/RecursiveDNSSchema.v
+src/Examples/DnsServer/SimplePacket.v
+src/Examples/DnsServer/SimpleRRecordTypes.v
+src/Examples/DnsServer/SimplifiedAuthoritativeDNSServer.v
 src/Examples/HACMSDemo/DuplicateFree.v
 src/Examples/HACMSDemo/HACMSDemo.v
 src/Examples/HACMSDemo/WheelSensor.v
