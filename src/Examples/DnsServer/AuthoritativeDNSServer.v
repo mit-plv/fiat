@@ -42,6 +42,20 @@ Section BinaryDns.
       Method "AddData" : rep * resourceRecord -> rep * bool,
       Method "Process" : rep * ByteString -> rep * (option ByteString)
     }.
+    Lemma refine_For_Map {resultT resultT'}
+      : forall comp
+               (f : resultT' -> resultT),
+        refine (For (results <- comp; ret (map f results)))
+               (results <- For comp; ret (map f results)).
+    Proof.
+      Local Transparent Query_For.
+      intros; unfold Query_For; autorewrite with monad laws.
+      f_equiv; intro.
+      intros ? ?; computes_to_inv; subst.
+      computes_to_econstructor; rewrite Permutation_map; eauto.
+      Local Opaque Query_For.
+    Qed.
+
 
 Definition DnsSpec : ADT DnsSig :=
   Def ADT {
@@ -85,9 +99,16 @@ Definition DnsSpec : ADT DnsSig :=
                 (* ask the authoritative servers *)
               (ns_results <- { ns_results | forall x : NS_Record, List.In x ns_results <-> List.In (A := resourceRecord) x results };
                  (* Append all the glue records to the additional section. *)
+                 glue_results <- (foldComp (fun glue_records (ns_result : NS_Record) =>
+                                              glue_records' <- (For (rRec in this!sRRecords)
+                                                               Where (rRec!sNAME = ns_result!sRDATA)
+                                                               Return rRec);
+                                                ret (glue_records' ++ glue_records)) [ ] ns_results);
+                 (* Would prefer this, but need to disallow duplicate NS records
+                    (which is probably a correct and reasonable constraint) for this to be equivalent.
                  glue_results <- For (rRec in this!sRRecords)
                                  Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
-                                 Return rRec;
+                                 Return rRec; *)
                  ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
         }};
        b' <- encode_packet_Spec p' list_CacheEncode_empty;
@@ -249,8 +270,6 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     rewrite refine_If_Opt_Then_Else_Bind.
     unfold H3. eapply refine_If_Opt_Then_Else'; intros; set_refine_evar.
     simplify with monad laws; simpl.
@@ -293,7 +312,12 @@ rewrite refine_decides_forall_and;
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     repeat econstructor.
-    clear; admit.
+    match type of H2 with
+    | context[ UnConstrQuery_In (qsSchema := ?schem) ?r_n ?R _] =>
+      pose proof (@For_UnConstrQuery_In_Where_Prop schem R r_n (fun r => RDataTypeToRRecordType r!sRDATA = CNAME /\ GetAttributeRaw r Fin.F1 = a1) _ _ H2);
+        destruct a2; simpl in H4; try discriminate; injections;
+          inversion H6; subst; intuition
+    end.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -339,8 +363,16 @@ rewrite refine_decides_forall_and;
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     rewrite refine_IfDec_false.
+    drop_constraints_drill.
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    drop_constraints_drill.
+    apply refine_foldComp; intros ? ?; set_refine_evar.
     repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+
     destruct a4; simpl in *; try discriminate.
     intro.
     apply (@MaxElements_UnConstrQuery_In_Where_Prop DnsSchema Fin.F1 r_n) in H7.
@@ -349,7 +381,6 @@ rewrite refine_decides_forall_and;
     apply DecideableEnsemble_And.
     simpl.
     setoid_rewrite refine_If_Else_Bind.
-
 
     rewrite refine_Process_Query_Imprecise_Match by eauto.
 
@@ -616,11 +647,9 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite refine_For_List.
     rewrite (refine_QueryIn_Where _ _ H0).
-
     rewrite (UnConstrQuery_In_Where_Map).
-    etransitivity.
+    rewrite refine_For_Map.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     drop_constraints_drill.
@@ -641,7 +670,17 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    elimtype False; clear; admit.
+    match type of H2 with
+    | context[ UnConstrQuery_In (qsSchema := ?schem) ?r_n ?R (fun r => Query_Where (@?P r) _)] =>
+      pose proof (@For_UnConstrQuery_In_Where_Prop schem R r_n P a2 _ H2); destruct a2;
+        simpl in *; try discriminate; inversion H7
+    end.
+    simpl in *; injection H4; intros; subst.
+    Local Transparent SumType.SumType_index.
+    Local Transparent SumType.inj_SumType.
+    compute in n; congruence.
+    Local Opaque SumType.SumType_index.
+    Local Opaque SumType.inj_SumType.
     refine pick val _; eauto.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
@@ -681,8 +720,6 @@ rewrite refine_decides_forall_and;
     finish honing.
     simplify with monad laws.
 
-
-
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     repeat doOne ltac:(drop_constraints)
@@ -695,6 +732,7 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    apply refine_foldComp; intros ? ?; set_refine_evar.
     rewrite (refine_Iterate_Equiv_QueryResultComp _ H0).
     Local Opaque Query_For.
     doOne ltac:(drop_constraints)
@@ -705,12 +743,16 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     rewrite (refine_QueryIn_Where _ _ H0).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     rewrite (refine_Iterate_Equiv_QueryResultComp _ H0).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -740,7 +782,12 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    apply refine_foldComp; intros ? ?; set_refine_evar.
     rewrite (refine_Iterate_Equiv_QueryResultComp _ H0).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -768,17 +815,18 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    apply refine_foldComp; intros ? ?; set_refine_evar.
     rewrite (refine_Iterate_Equiv_QueryResultComp _ H0).
+
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    repeat doOne ltac:(drop_constraints)
-                        drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     simpl.
-    finish honing.
     finish honing.
     repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).

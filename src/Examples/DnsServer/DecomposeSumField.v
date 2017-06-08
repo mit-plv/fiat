@@ -734,12 +734,18 @@ Section DecomposeEnumField.
             (r_o : UnConstrQueryStructure qs_schema)
             (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
     : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
-      -> forall Ridx,
-        refine {idx : nat | UnConstrFreshIdx (GetUnConstrRelation r_o Ridx) idx}
-               {idx : nat | UnConstrFreshIdx (GetUnConstrRelation (fst r_n) Ridx) idx}.
+      -> refine {idx : nat | UnConstrFreshIdx (GetUnConstrRelation r_o schemaIdx) idx}
+                {idx : nat | forall Ridx', UnConstrFreshIdx (GetUnConstrRelation (snd r_n) Ridx') idx}.
   Proof.
-    intros; apply refine_UnConstrFreshIdx_Same_Set_Equiv.
-    apply (proj1 H Ridx).
+    intros; etransitivity.
+    - apply refine_UnConstrFreshIdx_Same_Set_Equiv.
+      apply (proj1 H).
+    - eapply refineEquiv_pick_pick; unfold UnConstrFreshIdx; split; intros.
+      apply (proj1 (proj2 (proj2 H))) in H1.
+      apply H0 in H1; apply H1.
+      apply (proj1 (proj2 H)) in H1.
+      apply H0 in H1.
+      apply H1.
   Qed.
 
   Corollary refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv'

@@ -1287,7 +1287,7 @@ Qed.
 Lemma Permutation_filtered_List {A}
   : forall l l' P,
     Permutation (A := A) l l' ->
-    forall l'', 
+    forall l'',
     computes_to (⟦x in l | P x ⟧) l'' ->
     exists l''',
       computes_to (⟦x in l' | P x ⟧) l'''
@@ -1312,7 +1312,7 @@ Proof.
     simpl; eauto.
     simpl; eauto.
     simpl; eauto.
-    destruct v0; destruct v2; simpl in *; 
+    destruct v0; destruct v2; simpl in *;
       computes_to_inv; subst; eauto.
     constructor 3; subst.
     subst; eauto.
@@ -1322,7 +1322,7 @@ Proof.
     rewrite H3; assumption.
 Qed.
 
-Lemma UpperBound_Permutation {A} 
+Lemma UpperBound_Permutation {A}
   : forall op l l',
     Permutation l l'
     -> forall (a : A),
@@ -1381,7 +1381,7 @@ Proof.
     apply refine_bind_unit; eauto.
     destruct v0; simpl in *; computes_to_inv;
       subst; simpl; eauto.
-Qed.  
+Qed.
 
 Lemma refine_MaxElements_For {A}
   : forall (op : A -> A -> Prop) ens,
@@ -1404,7 +1404,7 @@ Proof.
   setoid_rewrite Heql at 1;
     rewrite Heql at 1; clear Heql.
   intros ? ?; computes_to_inv; subst.
-  revert l v v0 H H'; induction a; simpl; intros; 
+  revert l v v0 H H'; induction a; simpl; intros;
     computes_to_inv; subst.
   - repeat computes_to_econstructor; eauto.
     apply Permutation_nil in H'; subst; simpl; eauto.
@@ -1479,7 +1479,7 @@ Proof.
   f_equal.
   simpl in H; rewrite Equality.ascii_dec_refl in H; eauto.
 Qed.
-  
+
 Lemma MaxElementsUnConstrQuery_In {qs_schema}
   : forall idx f bound (r_o : UnConstrQueryStructure qs_schema),
     refine (MaxElements (fun r r' : RawTuple => prefix (f r) (f r'))
@@ -1528,14 +1528,14 @@ Proof.
     + computes_to_inv; subst; computes_to_econstructor; eauto.
   - apply prefix_refl .
   - apply prefix_trans.
-  - intro; apply DecideableEnsemble_bool. 
+  - intro; apply DecideableEnsemble_bool.
   - apply prefix_antisym.
 Qed.
 
 Lemma Permutation_flatten_CompList {A B}
   : forall (l l' : list A) (f : A -> Comp (list B)),
     Permutation l l'
-    -> forall x, 
+    -> forall x,
       FlattenCompList.flatten_CompList (map f l) ↝ x
       -> exists x',
         FlattenCompList.flatten_CompList (map f l') ↝ x'
@@ -1596,8 +1596,8 @@ Proof.
       eexists (a :: x1); rewrite H3; intuition eauto.
       simpl; computes_to_econstructor; eauto.
       subst.
-      
-      
+
+
     induction x; simpl; intros; computes_to_inv; subst.
 
 
@@ -1611,7 +1611,7 @@ Lemma Permutation_flatten_CompList' {A B}
         /\ FlattenCompList.flatten_CompList (map f x') ↝ l'.
 Proof.
 
-  
+
   induction x; simpl; intros; computes_to_inv; subst.
   - apply Permutation_nil in H0; subst;
       eexists nil; simpl; intuition eauto.
@@ -1634,7 +1634,7 @@ Proof.
       pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
         destruct_ex; intuition; subst; eauto.
       cut (Permutation v0 (x2 ++ x3)); clear H0.
-      revert H H3 x1 H1 v0 x2 x3 H4; clear; intros ? ? ? ?; induction H3; intros; 
+      revert H H3 x1 H1 v0 x2 x3 H4; clear; intros ? ? ? ?; induction H3; intros;
         simpl in H4; computes_to_inv; subst.
       * eapply Permutation_nil in H0; subst.
         apply app_eq_nil in H0; intuition subst.
@@ -1646,24 +1646,24 @@ Proof.
           destruct_ex; intuition; subst; eauto.
         rewrite H2 in H0.
         eapply (IHPermutation _ x4 x5) in H4'; destruct_ex; intuition.
-        
-        
+
+
         apply IHPermutation in H0; destruct_ex; intuition.
 
 
-        apply 
-        exists 
+        apply
+        exists
         rewrite perm_swap in H0.
         pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0);
           destruct_ex; intuition; subst; eauto.
-        
-        
+
+
         eapply IHPermutation in H4'.
-       
-        
+
+
         induction H3 .
         assert (exists x' x'' v' v'',
-                 x0 = x' ++ x'' 
+                 x0 = x' ++ x''
                  /\ FlattenCompList.flatten_CompList (map f x') ↝ v'
                  /\ FlattenCompList.flatten_CompList (map f x'') ↝ v''
                  /\ v0 = v' ++ v'').
@@ -1676,18 +1676,18 @@ Proof.
       apply Permutation_middle.
       rewrite map_app.
       apply FlattenCompList.flatten_CompList_app.
-      
+
       exists (a :: x0).
       simpl; rewrite H3; intuition.
       repeat computes_to_econstructor; eauto.
-      
-      
+
+
 Admitted. *)
 
 Lemma refine_flatten_CompList_filter {A}
   : forall v l P Q
            (P_dec : DecideableEnsemble P)
-           (Q_dec : DecideableEnsemble Q), 
+           (Q_dec : DecideableEnsemble Q),
 FlattenCompList.flatten_CompList (map (fun r : A => Where (Q r /\ P r)
                                                                  Return r ) v) ↝ l
 -> exists l',
@@ -1706,10 +1706,10 @@ Proof.
       repeat computes_to_econstructor; intuition eauto.
     + apply Decides_false in Heqb.
       repeat computes_to_econstructor; intuition eauto.
-  - destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?. 
+  - destruct (dec (DecideableEnsemble := P_dec) a) eqn: ?.
     + rewrite dec_decides_P in Heqb.
       simpl.
-      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?. 
+      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?.
       * rewrite dec_decides_P in Heqb0.
         intuition eauto.
         computes_to_inv; subst; simpl; eauto.
@@ -1717,7 +1717,7 @@ Proof.
         intuition eauto.
         subst; simpl; eauto.
     + apply Decides_false in Heqb.
-      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?. 
+      destruct (dec (DecideableEnsemble := Q_dec) a) eqn: ?.
       * rewrite dec_decides_P in Heqb0.
         intuition eauto.
         computes_to_inv; subst; simpl; eauto.
@@ -1748,16 +1748,16 @@ Proof.
       apply IHl in H0'; destruct_ex; intuition eauto; subst.
       eexists (_ :: _), _; simpl; intuition eauto.
 Qed.
-      
+
 Lemma refine_Split_Where {heading}
   : forall (R : Ensemble (@IndexedRawTuple heading)) P Q
            (P_dec : DecideableEnsemble P)
-           (Q_dec : DecideableEnsemble Q), 
+           (Q_dec : DecideableEnsemble Q),
     refine (QueryResultComp R (fun r : RawTuple => Where (P r) Return r ))
            (results <- QueryResultComp R (fun r : RawTuple => Where (Q r /\ P r) Return r );
               results' <- QueryResultComp R (fun r : RawTuple => Where (~Q r /\ P r) Return r );
               {results'' | Permutation (results ++ results') results''}).
-Proof.                       
+Proof.
   unfold QueryResultComp; intros. autorewrite with monad laws.
   intros ? ?; computes_to_inv.
   eapply refine_flatten_CompList_filter in H'; eauto.
@@ -1825,7 +1825,7 @@ Proof.
           reflexivity.
           apply Permutation_cons_inv with (a := a); eauto.
           rewrite H3.
-          apply Permutation_middle. 
+          apply Permutation_middle.
         * assert (exists v' v'', v = v' ++ a :: v'').
           { rewrite <- Permutation_middle in H''''.
             simpl in H''''.
@@ -1862,7 +1862,7 @@ Proof.
           reflexivity.
           apply Permutation_cons_inv with (a := a); eauto.
           rewrite H3.
-          apply Permutation_middle. 
+          apply Permutation_middle.
       + apply Decides_false in Heqb.
         pose proof (H0 Heqb); pose proof (H4 Heqb); computes_to_inv; subst.
         simpl in *; eapply IHv2 in H2'.
@@ -1881,9 +1881,9 @@ Proof.
   computes_to_econstructor; try eassumption.
   computes_to_econstructor.
   eapply Permutation_UnIndexedEnsembleListEquivalence; try symmetry; eauto.
-  eapply Permutation_UnIndexedEnsembleListEquivalence'; eauto.  
+  eapply Permutation_UnIndexedEnsembleListEquivalence'; eauto.
 Qed.
-  
+
 Lemma refine_Process_Query
   : forall (r_o : QueryStructure DnsSchema)
            (r_n : UnConstrQueryStructure DnsSchema)
@@ -1960,7 +1960,7 @@ Proof.
           apply refineEquiv_bind_bind.
           pose proof (PermutationFacts.PermutationConsSplit _ _ _ H0');
             destruct_ex; intuition; subst; eauto; subst.
-          
+
           eapply (IHv1 x _ x0) in H0'0'; computes_to_inv.
           computes_to_econstructor.
           eassumption.
@@ -1968,9 +1968,9 @@ Proof.
           computes_to_econstructor.
           rewrite H0'0''.
           revert H0; clear.
-          grever 
+          grever
           induction  *)
-Admitted.          
+Admitted.
 (*       rewrite refine_QueryResultComp_body_Where_False      . *)
 
 
@@ -2430,13 +2430,16 @@ Lemma refine_Process_Query_Imprecise_Match
                                             Return r ));
             a' <- {ns_results : list NS_Record | forall x : NS_Record, List.In x ns_results <-> List.In (A := resourceRecord) x a4};
             If is_empty a4 Then ret (buildempty true BStringId2 p)
-               Else (a5 <- For (UnConstrQuery_In r_n Fin.F1
-                                                 (fun rRec : RawTuple =>
-                                                    Where (List.In (GetAttributeRaw rRec Fin.F1)
-                                                                   (map
-                                                                      (fun r : NS_Record => GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
-                                                                      a'))
-                                                          Return rRec ));
+               Else (a5 <- foldComp
+                        (fun (a6 : list RawTuple) (a7 : NS_Record) =>
+                           a5 <- For
+                              (UnConstrQuery_In r_n Fin.F1
+                                                (fun rRec : RawTuple =>
+                                                   Where
+                                                     (GetAttributeRaw rRec Fin.F1 = GetAttributeRaw a7 (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
+                                                     Return rRec ));
+                             ret (a5 ++ a6))
+                        [] a';
                        ret
                          (add_additionals a5
                                           (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p)))))
@@ -2447,13 +2450,16 @@ Lemma refine_Process_Query_Imprecise_Match
                                             Return r ));
             a' <- {ns_results : list NS_Record | forall x : NS_Record, List.In x ns_results <-> List.In x (A := resourceRecord) a4};
             If is_empty a' Then ret (buildempty true BStringId2 p)
-               Else (a5 <- For (UnConstrQuery_In r_n Fin.F1
-                                                 (fun rRec : RawTuple =>
-                                                    Where (List.In (GetAttributeRaw rRec Fin.F1)
-                                                                   (map
-                                                                      (fun r : NS_Record => GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
-                                                                      a'))
-                                                          Return rRec ));
+               Else (a5 <- foldComp
+                    (fun (a6 : list RawTuple) (a7 : NS_Record) =>
+                    a5 <- For
+                    (UnConstrQuery_In r_n Fin.F1
+                    (fun rRec : RawTuple =>
+                    Where
+                    (GetAttributeRaw rRec Fin.F1 = GetAttributeRaw a7 (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
+                    Return rRec ));
+                    ret (a5 ++ a6))
+                    [] a';
                        ret
                          (add_additionals a5
                                           (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p))))).
