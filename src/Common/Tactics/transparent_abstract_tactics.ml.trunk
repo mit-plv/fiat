@@ -43,7 +43,8 @@ module TRANSPARENT_ABSTRACT =
     (* the [tacK] tactic with the result. *)
     let transparent_abstract_term id (term : EConstr.constr) tacK gk =
       Proofview.Goal.enter begin
-                fun gl -> let (_, termType) = Tacmach.New.pf_type_of gl term in
+       fun gl ->
+        let termType = Tacmach.New.pf_get_type_of gl term in
         Tactics.cache_term_by_tactic_then ~opaque:false
           ~goal_type:(Some termType) id
 	  gk
