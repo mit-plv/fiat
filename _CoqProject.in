@@ -316,6 +316,8 @@ src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
 src/Examples/DnsServer/RecursiveDNSSchema.v
+src/Examples/DnsServer/SimpleAuthoritativeDNSSchema.v
+src/Examples/DnsServer/SimpleDnsLemmas.v
 src/Examples/DnsServer/SimplePacket.v
 src/Examples/DnsServer/SimpleRRecordTypes.v
 src/Examples/DnsServer/SimplifiedAuthoritativeDNSServer.v

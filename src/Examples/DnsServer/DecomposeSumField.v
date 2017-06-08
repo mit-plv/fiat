@@ -1043,6 +1043,54 @@ Section DecomposeEnumField.
           ret (List.app res res')
     end headings Ensembles inj_Tuple.
 
+  Definition Iterate_Equiv_For_UnConstrQuery_In_body
+           {m : nat}
+           {qs_schema : RawQueryStructureSchema}
+           {ResultT}
+           (schemaIdx : Fin.t _)
+           (body : @RawTuple _ -> Comp (list ResultT))
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+           (r_n : UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : Comp (list ResultT) :=
+    (fix Iterate_Equiv_For_UnConstrQuery_In_body' (m : nat) :=
+    match m return (Fin.t m -> Comp (list ResultT)) -> _
+    with
+    | 0 => fun results => ret nil
+    | S n'' => fun results =>
+        res <- results Fin.F1;
+        res' <- Iterate_Equiv_For_UnConstrQuery_In_body' n'' (fun idx => results (Fin.FS idx));
+        ret (List.app res res')
+    end) _ (fun idx => For (UnConstrQuery_In r_n idx
+                                             (fun tup => body (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj idx tup)))).
+
+  Definition Iterate_Equiv_Count_For_UnConstrQuery_In_body
+           {m : nat}
+           {qs_schema : RawQueryStructureSchema}
+           {ResultT}
+           (schemaIdx : Fin.t _)
+           (body : @RawTuple _ -> Comp (list ResultT))
+           (attrIdx : Fin.t _)
+           (a : Vector.t Type m)
+           (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+           (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+           (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+           (r_n : UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : Comp nat :=
+    (fix Iterate_Equiv_For_UnConstrQuery_In_body' (m : nat) :=
+    match m return (Fin.t m -> Comp nat) -> _
+    with
+    | 0 => fun results => ret 0
+    | S n'' => fun results =>
+        res <- results Fin.F1;
+        res' <- Iterate_Equiv_For_UnConstrQuery_In_body' n'' (fun idx => results (Fin.FS idx));
+        ret (res + res')
+    end) _ (fun idx => Count (For (UnConstrQuery_In r_n idx
+                                             (fun tup => body (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj idx tup))))).
+
   Lemma refine_Iterate_Equiv_QueryResultComp_body
         m
         {ResultT : Type}
@@ -1233,6 +1281,142 @@ Section DecomposeEnumField.
       symmetry; eapply Tuple_DecomposeRawQueryStructure_inj_inverse.
       unfold In in *; apply H0 in H1; destruct_ex; intuition; subst.
       apply (proj1 (proj2 H)) in H4; eassumption.
+  Qed.
+
+    Lemma refine_Iterate_For_UnConstrQuery_In_QueryResultComp
+        {m : nat}
+        {qs_schema : RawQueryStructureSchema}
+        {ResultT}
+        (schemaIdx : Fin.t _)
+        (body : @RawTuple _ -> Comp (list ResultT))
+        (attrIdx : Fin.t _)
+        (a : Vector.t Type m)
+        (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+        (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+        (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+        (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : refine (For (Iterate_Equiv_QueryResultComp_body
+                _ _
+                (GetUnConstrRelation (snd r_n))
+                (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj) body))
+             (Iterate_Equiv_For_UnConstrQuery_In_body
+                schemaIdx body attrIdx a a_proj_index a_proj a_inj (snd r_n)).
+  Proof.
+    intros.
+    unfold Iterate_Equiv_For_UnConstrQuery_In_body.
+    destruct r_n as [ r_n' r_n].
+    unfold UnConstrQuery_In.
+    simpl.
+    generalize (GetUnConstrRelation r_n).
+    unfold DecomposeRawQueryStructureSchema; simpl.
+    generalize ((Tuple_DecomposeRawQueryStructure_inj' schemaIdx attrIdx a a_inj)).
+    simpl; clear.
+    generalize (DecomposeSchema (qschemaSchemas qs_schema)[@schemaIdx] attrIdx a); clear.
+    induction m; simpl; intros.
+    - rewrite refine_For_List; reflexivity.
+    - revert i i0 IHm.
+      pattern m, t; apply Vector.caseS; simpl; clear t; intros.
+      setoid_rewrite <- (IHm t (fun idx => i (Fin.FS idx)) (fun idx => i0 (Fin.FS idx))).
+      Local Transparent Query_For.
+      unfold Query_For.
+      autorewrite with monad laws.
+      clear; intros ? ?; computes_to_inv; subst.
+      repeat computes_to_econstructor; eauto using Permutation_app.
+      Local Opaque Query_For.
+  Qed.
+
+  Corollary refine_Iterate_For_UnConstrQuery_In
+          {m : nat}
+        {qs_schema : RawQueryStructureSchema}
+        {ResultT}
+        (schemaIdx : Fin.t _)
+        (body : @RawTuple _ -> Comp (list ResultT))
+        (attrIdx : Fin.t _)
+        (a : Vector.t Type m)
+        (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+        (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+        (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+        (r_o : UnConstrQueryStructure qs_schema)
+        (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+      ->
+      refine (For (UnConstrQuery_In r_o schemaIdx body))
+             (Iterate_Equiv_For_UnConstrQuery_In_body
+                schemaIdx body attrIdx a a_proj_index a_proj a_inj (snd r_n)).
+  Proof.
+    intros; rewrite <- refine_Iterate_For_UnConstrQuery_In_QueryResultComp.
+    rewrite (refine_Iterate_Equiv_QueryResultComp _ H); reflexivity.
+  Qed.
+
+  Lemma refine_Iterate_Count_For_UnConstrQuery_In_QueryResultComp
+        {m : nat}
+        {qs_schema : RawQueryStructureSchema}
+        {ResultT}
+        (schemaIdx : Fin.t _)
+        (body : @RawTuple _ -> Comp (list ResultT))
+        (attrIdx : Fin.t _)
+        (a : Vector.t Type m)
+        (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+        (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+        (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+        (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : refine (Count (For (Iterate_Equiv_QueryResultComp_body
+                _ _
+                (GetUnConstrRelation (snd r_n))
+                (Tuple_DecomposeRawQueryStructure_inj' _ _ a a_inj) body)))
+             (Iterate_Equiv_Count_For_UnConstrQuery_In_body
+                schemaIdx body attrIdx a a_proj_index a_proj a_inj (snd r_n)).
+  Proof.
+    intros.
+    unfold Iterate_Equiv_Count_For_UnConstrQuery_In_body.
+    destruct r_n as [ r_n' r_n].
+    unfold UnConstrQuery_In.
+    simpl.
+    generalize (GetUnConstrRelation r_n).
+    unfold DecomposeRawQueryStructureSchema; simpl.
+    generalize ((Tuple_DecomposeRawQueryStructure_inj' schemaIdx attrIdx a a_inj)).
+    simpl; clear.
+    generalize (DecomposeSchema (qschemaSchemas qs_schema)[@schemaIdx] attrIdx a); clear.
+    induction m; simpl; intros.
+    - rewrite refine_For_List; rewrite refine_Count; simplify with monad laws; reflexivity.
+    - revert i i0 IHm.
+      pattern m, t; apply Vector.caseS; simpl; clear t; intros.
+      setoid_rewrite <- (IHm t (fun idx => i (Fin.FS idx)) (fun idx => i0 (Fin.FS idx))).
+      Local Transparent Query_For.
+      Local Transparent Count.
+      unfold Query_For.
+      unfold Count.
+      autorewrite with monad laws.
+      clear; intros ? ?; computes_to_inv; subst.
+      repeat computes_to_econstructor; eauto using Permutation_app.
+      rewrite app_length.
+      erewrite (Permutation_length H''''), Permutation_length; eauto using Permutation_app.
+      Local Opaque Query_For.
+      Local Opaque Count.
+  Qed.
+
+  Corollary refine_Iterate_Count_For_UnConstrQuery_In
+          {m : nat}
+        {qs_schema : RawQueryStructureSchema}
+        {ResultT}
+        (schemaIdx : Fin.t _)
+        (body : @RawTuple _ -> Comp (list ResultT))
+        (attrIdx : Fin.t _)
+        (a : Vector.t Type m)
+        (a_proj_index : Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx -> Fin.t m)
+        (a_proj : forall (attr : Vector.nth _ attrIdx), a[@a_proj_index attr])
+        (a_inj : forall idx, Vector.nth a idx -> Vector.nth (AttrList (GetNRelSchemaHeading (qschemaSchemas qs_schema) schemaIdx)) attrIdx)
+        (r_o : UnConstrQueryStructure qs_schema)
+        (r_n : UnConstrQueryStructure qs_schema * UnConstrQueryStructure (DecomposeRawQueryStructureSchema qs_schema schemaIdx attrIdx a))
+    : DecomposeRawQueryStructureSchema_AbsR schemaIdx attrIdx a a_proj_index a_proj a_inj r_o r_n
+      ->
+      refine (Count (For (UnConstrQuery_In r_o schemaIdx body)))
+             (Iterate_Equiv_Count_For_UnConstrQuery_In_body
+                schemaIdx body attrIdx a a_proj_index a_proj a_inj (snd r_n)).
+  Proof.
+    intros; rewrite (refine_Iterate_Equiv_QueryResultComp _ H),
+            refine_Iterate_Count_For_UnConstrQuery_In_QueryResultComp;
+    reflexivity.
   Qed.
 
   Lemma refine_Query_Where_Cond :

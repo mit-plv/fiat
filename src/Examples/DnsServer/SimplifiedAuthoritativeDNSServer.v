@@ -27,9 +27,9 @@ Require Import
 
 Require Import Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField
-        Fiat.Examples.DnsServer.DnsLemmas
+        Fiat.Examples.DnsServer.SimpleDnsLemmas
         Fiat.Examples.DnsServer.DnsAutomation
-        Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
+        Fiat.Examples.DnsServer.SimpleAuthoritativeDNSSchema.
 
 Section BinaryDns.
 
@@ -41,19 +41,6 @@ Section BinaryDns.
       Method "AddData" : rep * resourceRecord -> rep * bool,
       Method "Process" : rep * ByteString -> rep * (option ByteString)
     }.
-    Lemma refine_For_Map {resultT resultT'}
-      : forall comp
-               (f : resultT' -> resultT),
-        refine (For (results <- comp; ret (map f results)))
-               (results <- For comp; ret (map f results)).
-    Proof.
-      Local Transparent Query_For.
-      intros; unfold Query_For; autorewrite with monad laws.
-      f_equiv; intro.
-      intros ? ?; computes_to_inv; subst.
-      computes_to_econstructor; rewrite Permutation_map; eauto.
-      Local Opaque Query_For.
-    Qed.
 
 Definition DnsSpec : ADT DnsSig :=
   Def ADT {
@@ -134,6 +121,22 @@ Ltac drop_constraints :=
       | let refine_bid := fresh in
         intros ? ? ? refine_bod; repeat setoid_rewrite refine_bod ]
     | implement_DropQSConstraints_AbsR ].
+
+  Lemma refine_For_Map {resultT resultT'}
+      : forall comp
+               (f : resultT' -> resultT),
+        refine (For (results <- comp; ret (map f results)))
+               (results <- For comp; ret (map f results)).
+    Proof.
+      Local Transparent Query_For.
+      intros; unfold Query_For; autorewrite with monad laws.
+      f_equiv; intro.
+      intros ? ?; computes_to_inv; subst.
+      computes_to_econstructor; rewrite Permutation_map; eauto.
+      Local Opaque Query_For.
+    Qed.
+
+
 
 Local Opaque MaxElements.
 Local Opaque encode_packet_Spec.

@@ -15,7 +15,7 @@ Require Import
         Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField
         Fiat.Computation.FoldComp
-        Fiat.Examples.DnsServer.AuthoritativeDNSSchema.
+        Fiat.Examples.DnsServer.SimpleAuthoritativeDNSSchema.
 
 Open Scope list_scope.
 
