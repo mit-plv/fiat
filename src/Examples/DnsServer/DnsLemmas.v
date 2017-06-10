@@ -2499,3 +2499,57 @@ Proof.
     + intro; eapply H1'; intros; eapply H2; eauto.
   - intro; apply H1; intros; eapply H2; eauto.
 Qed.
+
+Lemma RDataTypeToRRecordType_inj :
+  forall tag attr,
+    RDataTypeToRRecordType
+      (SumType.inj_SumType ResourceRecordTypeTypes tag attr) = tag.
+Proof.
+  intros; apply SumType.index_SumType_inj_inverse.
+Qed.
+
+Lemma resourceRecord_DecomposeRawQueryStructure_inj_inverse :
+  forall (tup : resourceRecord),
+    Tuple_DecomposeRawQueryStructure_inj'
+      (qs_schema := DnsSchema)
+      Fin.F1
+      (Fin.FS (Fin.FS (Fin.FS Fin.F1)))
+      ResourceRecordTypeTypes
+      (SumType.inj_SumType ResourceRecordTypeTypes)
+      (SumType.SumType_index ResourceRecordTypeTypes (GetAttributeRaw tup (Fin.FS (Fin.FS (Fin.FS Fin.F1)))))
+      (Tuple_DecomposeRawQueryStructure_proj'
+         (qs_schema := DnsSchema)
+         Fin.F1 (Fin.FS (Fin.FS (Fin.FS Fin.F1)))
+         ResourceRecordTypeTypes
+         (SumType.SumType_index ResourceRecordTypeTypes)
+         (SumType.SumType_proj ResourceRecordTypeTypes)
+         tup) = tup.
+Proof.
+  destruct tup as [? [? [? [? [ ] ] ] ] ]; simpl.
+  unfold Tuple_DecomposeRawQueryStructure_proj',
+  Tuple_DecomposeRawQueryStructure_inj'; simpl.
+  unfold GetAttributeRaw; simpl.
+  unfold ilist2_hd, ilist2_tl; simpl.
+  destruct prim_fst2 as [? | [? | [? | [? | [? | [? | [? | [? | [? | ?] ] ] ] ] ] ] ] ]; simpl;
+    try reflexivity.
+Qed.
+
+Ltac simplify_Query_Where :=
+  match goal with
+    |- context [UnConstrQuery_In ?r_n ?Ridx (fun tup =>  Query_Where (@?P tup) _)] =>
+    rewrite (fun ResultT =>
+               @refine_UnConstrQuery_In_Query_Where_Cond _ r_n Ridx ResultT P);
+    [ | intros; match goal with
+                  |- context [RDataTypeToRRecordType (SumType.inj_SumType ?y ?z ?x) <> ?q] =>
+                  case_eq (fin_eq_dec z q); simpl; intros ? ?; try discriminate;
+                  first [let H' := fresh in
+                         assert (RDataTypeToRRecordType (SumType.inj_SumType y z x) <> q <-> True) as H' by
+                               (rewrite RDataTypeToRRecordType_inj; intuition eauto);
+                         set_evars; rewrite ?H', ?and_True_l, ?and_True_r, ?and_False_r, ?and_False_l
+                        | let H' := fresh in
+                          assert (RDataTypeToRRecordType (SumType.inj_SumType y z x) <> q <-> False) as H' by
+                                (rewrite RDataTypeToRRecordType_inj; eauto; intuition eauto);
+                          set_evars; rewrite ?H', ?and_True_l, ?and_True_r, ?and_False_r, ?and_False_l];
+                  finish honing
+                end]
+  end.

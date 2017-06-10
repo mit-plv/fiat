@@ -1435,6 +1435,83 @@ Proof.
   intros; eapply refine_flatten_CompList_func; eauto.
 Qed.
 
+Definition CallBagCount {qs_schema BagIndexKeys}
+           idx (r_n : IndexedQueryStructure qs_schema BagIndexKeys) st :=
+  br <- CallBagMethod idx BagCount r_n st;
+    ret (UpdateIndexedRelation qs_schema _ r_n idx (fst br), snd br).
+
+Lemma refine_BagFindBagCount :
+  forall qs_schema BagIndexKeys idx r_o r_n search_term P
+         (P_dec : DecideableEnsemble P),
+    @DelegateToBag_AbsR qs_schema BagIndexKeys r_o r_n
+    -> ExtensionalEq dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
+    -> refine (Count For (UnConstrQuery_In r_o idx
+                                           (fun tup => Where (P tup) Return ())))
+              (r_n' <- CallBagCount idx r_n search_term;
+                 ret (snd r_n')).
+Proof.
+  intros.
+  Local Transparent CallBagMethod.
+  Local Transparent QueryResultComp.
+  unfold UnConstrQuery_In, QueryResultComp, CallBagCount, CallBagMethod; simpl.
+  autorewrite with monad laws; simpl.
+  rewrite refine_Count.
+  rewrite refine_For_List.
+  simplify with monad laws.
+  intros ? ?; computes_to_inv; subst.
+  destruct (H idx) as [l [? ?] ].
+  unfold EnsembleIndexedListEquivalence in *; intuition; destruct_ex.
+  pose proof (Permutation_UnIndexedEnsembleListEquivalence' H5 H7).
+  symmetry in H4.
+  pose proof (Permutation_UnIndexedEnsembleListEquivalence H6 H4).
+  repeat computes_to_econstructor; eauto.
+  eapply refine_flatten_CompList_func'.
+  intros.
+  apply refine_Query_Where_Cond.
+  set_evars. rewrite <- (@dec_decides_P _ _ P_dec).
+  rewrite H0.
+  unfold H10; reflexivity.
+  instantiate (1 := map (fun _ => ()) (filter (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term) v0)).
+  clear; induction v0; simpl; eauto.
+  unfold Query_Where.
+  find_if_inside; repeat computes_to_econstructor; eauto.
+  split; intros; try congruence; computes_to_econstructor.
+  simpl; computes_to_econstructor.
+  split; intros; try congruence; reflexivity.
+  simpl; computes_to_econstructor.
+  rewrite map_length; computes_to_econstructor.
+Qed.
+
+  Lemma exists_UnConstrFreshIdx_Max :
+    forall (qs_schema : RawQueryStructureSchema) (BagIndexKeys : ilist3 (qschemaSchemas qs_schema))
+           (r_o : UnConstrQueryStructure qs_schema) (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n ->
+      exists bnd : nat,
+      forall idx : Fin.t (numRawQSschemaSchemas qs_schema), UnConstrFreshIdx (GetUnConstrRelation r_o idx) bnd.
+  Proof.
+    unfold DelegateToBag_AbsR; intros.
+    assert (forall idx : Fin.t (numRawQSschemaSchemas qs_schema),
+               exists l : list RawTuple,
+                 EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l) by
+        (intros; destruct (H idx) as [ ? [? ?] ]; eauto).
+    destruct qs_schema; simpl in *;
+      revert H0 ; generalize (GetUnConstrRelation r_o); clear.
+    simpl; clear.
+    induction qschemaSchemas; simpl; intros.
+    - exists 0; intro; inversion idx.
+    - destruct (IHqschemaSchemas (fun idx => i (Fin.FS idx))
+                                 (fun idx => H0 (Fin.FS idx))).
+      destruct (H0 Fin.F1) as [l [ [bound' ?] ?] ].
+      exists (max bound' x); intros.
+      generalize qschemaSchemas i H1 H; clear; pattern n, idx.
+      apply Fin.caseS; intros;  unfold UnConstrFreshIdx in *; intros.
+      apply H1 in H0; destruct (Max.max_spec bound' x); intuition.
+      apply H in H0; destruct (Max.max_spec bound' x); intuition.
+      rewrite H4; eauto.
+      rewrite H4.
+      eapply lt_le_trans; eauto.
+  Qed.
+
 Arguments CallBagMethod : simpl never.
 Arguments CallBagMethod [_ _] _ _ _.
 
@@ -1444,6 +1521,9 @@ Arguments DelegateToBag_AbsR [_ _] _ _.
 
 Arguments CallBagFind : simpl never.
 Arguments CallBagFind [_ _] _ _ _ _.
+
+Arguments CallBagCount : simpl never.
+Arguments CallBagCount [_ _] _ _ _ _.
 
 Arguments CallBagInsert : simpl never.
 Arguments CallBagInsert [_ _] _ _ _ _.

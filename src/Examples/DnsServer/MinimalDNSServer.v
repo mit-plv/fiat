@@ -68,21 +68,6 @@ Definition DnsSpec : ADT DnsSig :=
 
 Local Opaque encode_packet_Spec.
 Local Opaque packetDecoderImpl.
-  Lemma refine_For_Map {resultT resultT'}
-      : forall comp
-               (f : resultT' -> resultT),
-        refine (For (results <- comp; ret (map f results)))
-               (results <- For comp; ret (map f results)).
-    Proof.
-      Local Transparent Query_For.
-      intros; unfold Query_For; autorewrite with monad laws.
-      f_equiv; intro.
-      intros ? ?; computes_to_inv; subst.
-      computes_to_econstructor; rewrite Permutation_map; eauto.
-      Local Opaque Query_For.
-    Qed.
-
-
 
 Local Opaque MaxElements.
 Local Opaque encode_packet_Spec.
@@ -131,6 +116,8 @@ Proof.
   unfold GoodCache; simpl; intuition; congruence.
 Qed.
 
+Local Opaque CallBagFind.
+
 Theorem DnsManual :
   {DnsImpl : _ & refineADT DnsSpec DnsImpl}.
 Proof.
@@ -138,54 +125,54 @@ Proof.
   pose_string_hyps; pose_heading_hyps.
   drop_constraintsfrom_DNS.
   { (* Add Data. *)
+    etransitivity.
     match goal with
       H : DropQSConstraints_AbsR ?r_o ?r_n
       |- refine (u <- QSInsert ?r_o ?Ridx ?tup;
                  @?k u) _ =>
-      eapply (@QSInsertSpec_refine_subgoals _ _ r_o r_n Ridx tup); try exact H
+      eapply (@QSInsertSpec_refine_subgoals_short_circuit _ _ r_o r_n Ridx tup); try exact H
     end; try set_refine_evar.
     - rewrite decides_True; finish honing.
     - simpl.
-
-rewrite refine_decides_forall_and;
-  [
-  | let a := fresh in
-   intro a; split; [let H' := fresh in intros H'; pattern (indexedElement a); exact H' | intuition]
-  | let a := fresh in
-    intro a; split; [let H' := fresh in intros H'; pattern (indexedElement a); exact H' | intuition] ].
+      rewrite refine_decides_forall_and;
+        [
+        | let a := fresh in
+          intro a; split; [let H' := fresh in intros H'; pattern (indexedElement a); exact H' | intuition]
+        | let a := fresh in
+          intro a; split; [let H' := fresh in intros H'; pattern (indexedElement a); exact H' | intuition] ].
       rewrite refine_noDup_CNAME_check_dns by eauto.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    match goal with
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      match goal with
       |- refine (If_Then_Else ?c _ _) _ =>
       subst_refine_evar; eapply refine_if with (b := c);
         let H := fresh in
         intro H; set_refine_evar; try rewrite H; simpl
     end.
-    doOne ltac:(drop_constraints)
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      rewrite refine_no_usurp_authority_check by eauto.
+      erewrite beq_RRecordType_trans by eauto.
+      simpl.
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite refine_no_usurp_authority_check by eauto.
-    erewrite beq_RRecordType_trans by eauto.
-    simpl.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite refine_no_usurp_authority_check_dns by eauto.
-    repeat doOne ltac:(drop_constraints)
-                        drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      rewrite refine_no_usurp_authority_check_dns by eauto.
+      repeat doOne ltac:(drop_constraints)
+                          drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+      doOne ltac:(drop_constraints)
+                   drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     - simpl; set_evars; intros.
       rewrite refine_decides_forall_and;
         [
@@ -213,6 +200,12 @@ rewrite refine_decides_forall_and;
       simpl; finish honing.
     - intros. refine pick val _; eauto; simplify with monad laws.
       simpl; finish honing.
+    - simpl.
+      repeat first [ progress simpl
+                   | setoid_rewrite refine_bind_unit
+                   | setoid_rewrite refine_bind_bind
+                   | setoid_rewrite refine_If_Then_Else_Bind].
+      finish honing.
   }
   { (* Process *)
     repeat doOne ltac:(drop_constraints)
@@ -240,7 +233,9 @@ rewrite refine_decides_forall_and;
     finish honing.
   }
   { destruct_ex; simplify with monad laws.
-    drop_constraints_drill.
+    simpl.
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     rewrite (refine_UnConstrFreshIdx_DecomposeRawQueryStructureSchema_AbsR_Equiv H0).
     simpl; finish honing.
     doOne ltac:(drop_constraints)
@@ -257,30 +252,22 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -293,9 +280,7 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     setoid_rewrite Query_Where_And_Sym.
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -325,18 +310,14 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 1; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite !refine_if_If.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -358,27 +339,8 @@ rewrite refine_decides_forall_and;
     repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     refine pick val _; eauto; finish honing.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    setoid_rewrite Query_Where_And_Sym.
-    setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
     repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    repeat doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    refine pick val _; eauto; finish honing.
-    setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 1; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
-    finish honing.
-    refine pick val _; eauto; finish honing.
     refine pick val _; eauto; finish honing.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
@@ -390,53 +352,49 @@ rewrite refine_decides_forall_and;
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
+    simplify_GetAttributeRaw_inj.
+    simpl; simplify_Query_Where.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
+    simplify_GetAttributeRaw_inj.
+    simpl; simplify_Query_Where.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
+    simplify_GetAttributeRaw_inj.
+    simplify_Query_Where.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl;
-      unfold GetAttribute, GetAttributeRaw at 2; simpl;
-        unfold ilist2_hd; simpl.
-
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    simplify_GetAttributeRaw_inj.
+    simplify_GetAttributeRaw_inj.
+    simplify_Query_Where.
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     setoid_rewrite Query_Where_And_Sym.
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite refine_if_If.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -448,26 +406,15 @@ rewrite refine_decides_forall_and;
                         try eauto;
                         simplify with monad laws; simpl; try finish honing;
                         unfold H8; instantiate (1 := fun z => ret (snd z, true)); reflexivity].
+    simpl.
     simpl; unfold UpdateUnConstrRelationInsertC at 1.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     repeat doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    repeat doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    refine pick val _; eauto; finish honing.
-    doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     setoid_rewrite Query_Where_And_Sym.
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 1; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
-    finish honing.
-    rewrite !refine_if_If.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -483,37 +430,27 @@ rewrite refine_decides_forall_and;
                         try eauto;
                         simplify with monad laws; simpl; try finish honing;
                         unfold H9; instantiate (1 := fun z => ret (snd z, true)); reflexivity].
-    simpl.
     simpl; unfold UpdateUnConstrRelationInsertC at 1.
-    doOne ltac:(drop_constraints)
+    repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     repeat doOne ltac:(drop_constraints)
                         drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    refine pick val _; eauto; finish honing.
     repeat doOne ltac:(drop_constraints)
                         drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     refine pick val _; eauto; finish honing.
     repeat doOne ltac:(drop_constraints)
                         drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     refine pick val _; eauto; finish honing.
-    doOne ltac:(drop_constraints)
-                        drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite !refine_if_If.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    repeat doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    refine pick val _; eauto; finish honing.
-    refine pick val _; eauto; finish honing.
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     setoid_rewrite Query_Where_And_Sym.
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
-    finish honing.
+    simplify_GetAttributeRaw_inj.
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -529,28 +466,25 @@ rewrite refine_decides_forall_and;
                         try eauto;
                         simplify with monad laws; simpl; try finish honing;
                         unfold H4; instantiate (1 := fun z => ret (snd z, true)); reflexivity].
-    simpl.
     simpl; unfold UpdateUnConstrRelationInsertC at 1.
     repeat doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    doOne ltac:(drop_constraints)
-                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    setoid_rewrite Query_Where_And_Sym.
     setoid_rewrite (refine_QueryIn_Where _ _ H0).
-    unfold Tuple_DecomposeRawQueryStructure_inj'; simpl.
-    unfold GetAttribute, GetAttributeRaw at 1; simpl.
-    unfold GetAttribute, GetAttributeRaw at 2; simpl.
-    unfold ilist2_hd; simpl.
-    finish honing.
-    rewrite !refine_if_If.
+    simplify_GetAttributeRaw_inj.
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-        erewrite (DecomposeRawQueryStructureSchema_UpdateUnConstrRelationInsertC_eq _ _ H0);
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    erewrite (DecomposeRawQueryStructureSchema_UpdateUnConstrRelationInsertC_eq _ _ H0);
       [ | eassumption | intros; set_refine_evar; refine pick val (snd r_n'); destruct r_n';
                         try eauto;
                         simplify with monad laws; simpl; try finish honing;
@@ -569,14 +503,17 @@ rewrite refine_decides_forall_and;
                         drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
   }
   simpl.
-
-  pose {| prim_fst := [(EqualityIndex, @Fin.F1 3)];
+  pose {| prim_fst := [(EqualityIndex, @Fin.F1 3);
+                       (FindStringPrefixIndex, @Fin.F1 3)];
           prim_snd := {|
-          prim_fst := [(EqualityIndex, @Fin.F1 3)];
+          prim_fst := [(EqualityIndex, @Fin.F1 3);
+                       (FindStringPrefixIndex, @Fin.F1 3)];
           prim_snd := {|
-          prim_fst := [(FindStringPrefixIndex, @Fin.F1 3)];
+          prim_fst := [(EqualityIndex, @Fin.F1 3);
+                       (FindStringPrefixIndex, @Fin.F1 3)];
           prim_snd := {|
-          prim_fst := [(EqualityIndex, @Fin.F1 3)];
+          prim_fst := [(EqualityIndex, @Fin.F1 3);
+                       (FindStringPrefixIndex, @Fin.F1 3)];
           prim_snd := () |} |} |} |}.
 
   Time let p' := eval unfold p in p in
@@ -585,15 +522,11 @@ rewrite refine_decides_forall_and;
                                       ltac:(CombineCase5 BuildLastStringFindPrefixIndex ltac:(LastCombineCase5 BuildLastEqualityIndex)).
 
   (* We should be doing automatic data structure selection here. *)
-  { (* Constructor *)
+   (* Constructor *)
       initializer.
-    }
-  { doOne implement_insert''
-            ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
+  
+   (* Add Data *)
+
     doOne implement_insert''
             ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
@@ -612,81 +545,34 @@ rewrite refine_decides_forall_and;
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
       set_evars) ltac:(finish honing).
-    refine pick val 0.
-    doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    admit.
-    doOne implement_insert''
-            ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
-            ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
+    match goal with
+      H : DelegateToBag_AbsR ?r_o ?r_n
+      |- refine (l <- {idx | forall Ridx', UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx }; _) _ =>
+      let idx' := fresh in
+      let idx_OK := fresh in
+      destruct (@exists_UnConstrFreshIdx_Max _ _ _ _ H) as [idx idx_OK];
+        refine pick val idx; [ | apply idx_OK]
+    end.
+    Local Opaque CallBagCount.
+    repeat doOne ltac:(first [
+                implement_Count
+                  ltac:(find_simple_search_term
+                          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+                                 ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+                                        ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm))
+              | implement_insert''])
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
-    repeat doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-                set_evars) ltac:(finish honing).
-    repeat doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    admit.
-    admit.
-    simpl; doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    repeat doOne implement_insert''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    admit.
-    admit.
-    admit.
-    admit.
-  }
+    eauto.
+    eauto.
+    eauto.
+    eauto.
+    eauto.
+    eauto.
+  
   { simplify with monad laws.
     rewrite  refine_decode_packet.
     doAny implement_insert''
@@ -694,6 +580,7 @@ rewrite refine_decides_forall_and;
   }
   + hone method "AddData".
     subst.
+    simpl.
     doAny ltac:(first [rewrite refine_bind_bind
                       | rewrite refine_bind_unit
                       | rewrite refineEquiv_pick_eq'

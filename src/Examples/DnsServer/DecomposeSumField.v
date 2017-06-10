@@ -1740,3 +1740,53 @@ Section DecomposeEnumField.
       (* More refinements here. *)
   Abort.
 End DecomposeEnumField.
+
+Ltac simplify_GetAttributeRaw_inj :=
+  match goal with
+    |- context [UnConstrQuery_In ?r_n ?Ridx (fun tup =>  Query_Where (@?P tup) _)] =>
+    rewrite (fun ResultT =>
+               @refine_UnConstrQuery_In_Query_Where_Cond _ r_n Ridx ResultT P);
+    [ | intros; simpl;
+        match goal with
+          |- context [GetAttribute (Tuple_DecomposeRawQueryStructure_inj'
+                                      (qs_schema := ?qs_schema)
+                                      ?schemaIdx ?attrIdx ?a ?a_inj ?tag ?tup) ?attrIdx'] =>
+          let eq := eval compute in (fin_eq_dec attrIdx (ibound (indexb attrIdx'))) in
+              match eq with
+              | left ?e =>
+                let H := fresh in
+                assert (GetAttribute (Tuple_DecomposeRawQueryStructure_inj'
+                                        (qs_schema := qs_schema)
+                                        schemaIdx attrIdx a a_inj tag tup) attrIdx'
+                        = a_inj tag (GetAttributeRaw tup (ibound (indexb attrIdx')))) as H by reflexivity;
+                simpl in H; rewrite H; clear H; finish honing
+              |right ?e =>
+               let H := fresh in
+               assert (GetAttribute (Tuple_DecomposeRawQueryStructure_inj'
+                                       (qs_schema := qs_schema)
+                                       schemaIdx attrIdx a a_inj tag tup) attrIdx'
+                       = GetAttributeRaw tup (ibound (indexb attrIdx'))) as H by reflexivity;
+               simpl in H; rewrite H; clear H; finish honing
+              end
+        | |- context [GetAttributeRaw (Tuple_DecomposeRawQueryStructure_inj'
+                                      (qs_schema := ?qs_schema)
+                                      ?schemaIdx ?attrIdx ?a ?a_inj ?tag ?tup) ?attrIdx'] =>
+          let eq := eval compute in (fin_eq_dec attrIdx attrIdx') in
+              match eq with
+              | left ?e =>
+                let H := fresh in
+                assert (GetAttributeRaw (Tuple_DecomposeRawQueryStructure_inj'
+                                        (qs_schema := qs_schema)
+                                        schemaIdx attrIdx a a_inj tag tup) attrIdx'
+                        = a_inj tag (GetAttributeRaw tup  attrIdx')) as H by reflexivity;
+                simpl in H; rewrite H; clear H; finish honing
+              |right ?e =>
+               let H := fresh in
+               assert (GetAttributeRaw (Tuple_DecomposeRawQueryStructure_inj'
+                                       (qs_schema := qs_schema)
+                                       schemaIdx attrIdx a a_inj tag tup) attrIdx'
+                       = GetAttributeRaw tup attrIdx') as H by reflexivity;
+               simpl in H; rewrite H; clear H; finish honing
+              end
+        end]
+  end.
