@@ -1,5 +1,6 @@
 module WITH_DB =
   struct
+    open API
     open Tacticals.New
     open Names
     open Ltac_plugin
@@ -8,11 +9,11 @@ module WITH_DB =
   (* [args] : tactic arguments *)
   (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
   let ltac_lcall tac args =
-    Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag @@ (Misctypes.ArgVar(Loc.tag @@ Names.id_of_string tac),args)))
+    Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag @@ (Misctypes.ArgVar(Loc.tag @@ Names.Id.of_string tac),args)))
 
   (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
   let ltac_letin (x, e1) e2 =
-    Tacexpr.TacLetIn(false,[(Loc.tag @@ Names.id_of_string x),e1],e2)
+    Tacexpr.TacLetIn(false,[(Loc.tag @@ Names.Id.of_string x),e1],e2)
 
   (* [ltac_apply] : Run a tactic with arguments... *)
   let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
