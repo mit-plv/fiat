@@ -63,8 +63,9 @@ Section BagADT.
                           indexedElement := element |}),
 
         Def Method1 sCount (r : rep) (f : SearchTermType) : rep * (nat : Type) :=
-          results <- {l | EnsembleIndexedListEquivalence r l};
-        ret (r, length (filter (MatchSearchTerm f) results)),
+          results <- {l | EnsembleIndexedListEquivalence
+                            (IndexedEnsemble_Intersection r (fun x => MatchSearchTerm f x = true)) l};
+          ret (r, length results),
 
         Def Method1 sDelete (r : rep) (f : SearchTermType)
         : rep * (list ElementType) :=

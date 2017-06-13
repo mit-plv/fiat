@@ -2308,7 +2308,7 @@ Lemma refine_Process_Query_Exact_Match
                                                                                      Where (RDataTypeToRRecordType (GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1)))) <> rType
                                                                                             /\ RDataTypeToRRecordType (GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1)))) <> CNAME
                                                                                             /\ GetAttributeRaw r Fin.F1 = a1)
-                                                                                           Return r ));
+                                                                                           Return () ));
                                                  If negb (is_empty a3) || (le_lt_dec count 0) Then ret (add_answers a3 (buildempty true s a0))
                                                     Else e)
                                               Else e)).

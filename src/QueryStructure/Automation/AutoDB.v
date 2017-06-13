@@ -544,10 +544,10 @@ Ltac implement_QSDeletedTuples find_search_term :=
                                         setoid_rewrite (H' eqv); clear H' eqv])
   end.
 
-Ltac implement_Count find_search_term :=
+    Ltac implement_Count find_search_term :=
   match goal with
     [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
-      |- refine (l <- Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return _));
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
                  _) _ ] =>
     let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
         let idx_search_update_term := eval simpl in (ith3 indices idx) in
@@ -561,12 +561,78 @@ Ltac implement_Count find_search_term :=
                                       |
                                       let H' := fresh in
                                       pose proof (@refine_BagFindBagCount
+                                                    _
                                                    qs_schema indices
-                                                   idx r_o r_n search_term P _ H eqv) as H';
+                                                   idx r_o r_n search_term P f H eqv) as H';
+                                      fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                      rewrite H'; clear H' eqv
+                                   ])
+  | [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (Count For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return _)))
+                 _) _ ] =>
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                      [ find_search_term qs_schema idx filter_dec search_term
+                                      |
+                                      let H' := fresh in
+                                      pose proof (@refine_BagFindBagCount unit
+                                                   qs_schema indices
+                                                   idx r_o r_n search_term P (fun _ => tt) _ H eqv) as H';
                                       fold_string_hyps_in H'; fold_heading_hyps_in H';
                                       rewrite H'; clear H' eqv
                                       ])
   end.
+
+Ltac implement_simple_For find_search_term :=
+         match goal with
+    [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+      |- refine (Bind (For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                 _) _ ] =>
+    let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                      [ find_search_term qs_schema idx filter_dec search_term
+                                      |
+                                      let H' := fresh in
+                                      pose proof (@refine_BagFindBag_single _
+                                                   qs_schema indices
+                                                   idx r_o r_n search_term P f _ H eqv) as H';
+                                      fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                      rewrite H'; clear H' eqv
+                                   ])
+         | [ H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n
+             |- refine (For (UnConstrQuery_In _ ?idx (fun tup => Where (@?P tup) Return (@?f tup))))
+                       _ ] =>
+           let filter_dec := eval simpl in (@DecideableEnsembles.dec _ P _) in
+        let idx_search_update_term := eval simpl in (ith3 indices idx) in
+            let search_term_type' := eval simpl in (BagSearchTermType idx_search_update_term) in
+                let search_term_matcher := eval simpl in (BagMatchSearchTerm idx_search_update_term) in
+                    makeEvar search_term_type'
+                             ltac: (fun search_term =>
+                                      let eqv := fresh in
+                                      assert (ExtensionalEq filter_dec (search_term_matcher search_term)) as eqv;
+                                      [ find_search_term qs_schema idx filter_dec search_term
+                                      |
+                                      let H' := fresh in
+                                      pose proof (@refine_BagFindBag_single _
+                                                   qs_schema indices
+                                                   idx r_o r_n search_term P f _ H eqv) as H';
+                                      fold_string_hyps_in H'; fold_heading_hyps_in H';
+                                      rewrite H'; clear H' eqv
+                                      ])
+  end.
+
 
 Ltac implement_EnsembleDelete_AbsR find_search_term :=
   match goal with
