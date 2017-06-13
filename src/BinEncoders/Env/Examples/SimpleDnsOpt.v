@@ -1,4 +1,4 @@
-vRequire Import
+Require Import
         Coq.Strings.String
         Coq.Arith.Mult
         Coq.Vectors.Vector.
@@ -14,6 +14,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.BinEncoders.Env.BinLib.Core
+        Fiat.BinEncoders.Env.BinLib.AlignWord
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose
         Fiat.BinEncoders.Env.Common.ComposeOpt
@@ -1001,6 +1002,18 @@ Section DnsPacket.
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 
+Ltac synthesize_decoder_ext
+     transformer
+     decode_step'
+     determineHooks
+     synthesize_cache_invariant' :=
+  (* Combines tactics into one-liner. *)
+  start_synthesizing_decoder;
+  [ normalize_compose transformer;
+    repeat first [decode_step' idtac | decode_step determineHooks]
+  | cbv beta; synthesize_cache_invariant' idtac
+  |  ].
+
   Definition packet_decoder
     : CorrectDecoderFor DNS_Packet_OK encode_packet_Spec.
   Proof.
@@ -1011,9 +1024,161 @@ Section DnsPacket.
     unfold resourceRecord_OK.
     clear; intros.
     apply (proj2 H).
+    simpl.
+    simpl; intros;
+      repeat (try rewrite !DecodeBindOpt2_assoc;
+              try rewrite !Bool.andb_true_r;
+              try rewrite !Bool.andb_true_l;
+              try rewrite !optimize_if_bind2;
+              try rewrite !optimize_if_bind2_bool).
+
+    first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+    Arguments word_indexed : simpl never.
+    unfold decode_enum at 1.
+    repeat (try rewrite !DecodeBindOpt2_assoc;
+            try rewrite !Bool.andb_true_r;
+            try rewrite !Bool.andb_true_l;
+            try rewrite !optimize_if_bind2;
+            try rewrite !optimize_if_bind2_bool).
+    etransitivity.
+    first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+    rewrite !DecodeBindOpt2_assoc.
+    first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+
+  Lemma If_Opt_Then_Else_DecodeBindOpt_swap {A B C ResultT : Type}
+    : forall (a_opt : option A)
+             (b : B)
+             (cd : CacheDecode)
+             (dec_c : B -> CacheDecode -> option (C * B * CacheDecode))
+             (k : A -> C -> B -> CacheDecode -> option (ResultT * B * CacheDecode)),
+             (`(a, b', cd') <- Ifopt a_opt as a Then Some (a, b, cd) Else None;
+              `(c, b', cd') <- dec_c b' cd';
+              k a c b' cd') =
+             (`(c, b', cd') <- dec_c b cd;
+              `(a, b', cd') <- Ifopt a_opt as a Then Some (a, b', cd') Else None;
+              k a c b' cd').
+  Proof.
+    destruct a_opt; simpl; intros; eauto.
+    destruct (dec_c b cd) as [ [ [? ?] [ ? ? ] ] | ]; reflexivity.
+  Qed.
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  etransitivity.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+            | eapply optimize_under_if_bool; simpl; intros
+            | eapply optimize_under_if; simpl; intros].
+  Lemma If_Then_Else_Bind {sz}  {B C ResultT : Type}
+  : forall (w w' : word sz)
+           (b : B)
+           (cd : CacheDecode)
+           (dec_c : B -> CacheDecode -> option (C * B * CacheDecode))
+           (k : C -> B -> CacheDecode -> option (ResultT * B * CacheDecode)),
+             (if weq w w' then
+                `(c, b', cd') <- dec_c b cd;
+                  k c b' cd'
+              else
+                None) =
+             (`(c, b', cd') <- dec_c b cd;
+                if weq w w' then
+                  k c b' cd'
+                else None).
+  Proof.
+    intros; find_if_inside; eauto.
+    destruct (dec_c b cd) as [ [ [? ?] [ ? ? ] ] | ]; reflexivity.
+  Qed.
+  rewrite If_Then_Else_Bind.
+  unfold decode_enum at 1.
+  repeat (try rewrite !DecodeBindOpt2_assoc;
+          try rewrite !Bool.andb_true_r;
+          try rewrite !Bool.andb_true_l;
+          try rewrite !optimize_if_bind2;
+          try rewrite !optimize_if_bind2_bool).
+  higher_order_reflexivity.
+  set_refine_evar.
+  Lemma  addD_addD_plus :
+    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
+    simpl; intros.
+    destruct (fst cd); simpl; eauto.
+    repeat (find_if_inside; simpl); eauto.
+    f_equal; f_equal.
+    rewrite !natToWord_plus.
+    rewrite !natToWord_wordToNat.
+    rewrite wplus_assoc; reflexivity.
+    rewrite !natToWord_plus in l0.
+    rewrite !natToWord_wordToNat in l0.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w) in l0.
+    rewrite <- natToWord_plus in l0.
+    rewrite wordToNat_natToWord_idempotent in l0.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w).
+    rewrite !natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    rewrite <- natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
+    omega.
+  Qed.
+
+  Ltac collapse_word :=
+      match goal with
+      | |- DecodeBindOpt2
+             (decode_word (sz := ?sz) ?b ?cd)
+             (fun w b' cd' =>
+                DecodeBindOpt2 (decode_word (sz := ?sz') b' cd')
+                               (fun w' b' cd' => @?k w w' b' cd')) = _ =>
+        etransitivity;
+        [let H := fresh in
+         pose proof (@CollapseWord _ _ _ _ _ addD_addD_plus _ sz sz' b cd k);
+         apply H | ]
+      end.
+  rewrite If_Opt_Then_Else_DecodeBindOpt_swap.
+  unfold H; higher_order_reflexivity.
+  collapse_word.
+  collapse_word.
+  collapse_word.
+  collapse_word.
+  first [ apply DecodeBindOpt2_under_bind; simpl; intros
+        | eapply optimize_under_if_bool; simpl; intros
+        | eapply optimize_under_if; simpl; intros].
+  collapse_word.
+  collapse_word.
+  higher_order_reflexivity.
   Defined.
 
   Definition packetDecoderImpl := Eval simpl in (projT1 packet_decoder).
+
+  Print packetDecoderImpl.
 
 End DnsPacket.
 
