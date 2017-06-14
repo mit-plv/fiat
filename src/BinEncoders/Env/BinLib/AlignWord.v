@@ -22,10 +22,10 @@ Section AlignWord.
              (e : option (ResultT * B * CacheDecode))
              (k : _ -> _ -> _ -> option (ResultT' * B * CacheDecode)),
       (`(w, b', cd') <- Ifopt a_opt as a Then t a Else e;
-        k w b' cd') =
-        (Ifopt a_opt as a Then
-                         (`(w, b', cd') <- t a; k w b' cd')
-                         Else (`(w, b', cd') <- e; k w b' cd')).
+         k w b' cd') =
+      (Ifopt a_opt as a Then
+                        (`(w, b', cd') <- t a; k w b' cd')
+                        Else (`(w, b', cd') <- e; k w b' cd')).
   Proof.
     destruct a_opt; simpl; intros; reflexivity.
   Qed.
@@ -48,8 +48,8 @@ Section AlignWord.
              (cd : CacheDecode)
              (k : _ -> _ -> _ -> _ -> option (ResultT * B * CacheDecode)),
       (`(w, b', cd') <- decode_word (sz:=sz) b cd;
-      `(w', b', cd') <- decode_word (sz:=sz') b' cd';
-      k w w' b' cd') =
+         `(w', b', cd') <- decode_word (sz:=sz') b' cd';
+         k w w' b' cd') =
       (`(w , b', cd') <- decode_word (sz:=sz + sz') b cd;
          k (split1' sz sz' w)
            (split2' sz sz' w) b' cd').
@@ -63,8 +63,8 @@ Section AlignWord.
       destruct (decode_word' sz b1) as [ [? ?] | ]; simpl in *.
       + rewrite !If_Opt_Then_Else_DecodeBindOpt;
           rewrite !If_Opt_Then_Else_DecodeBindOpt in H; simpl in *;
-        rewrite !addD_addD_plus in H;
-          rewrite !addD_addD_plus; simpl in *.
+            rewrite !addD_addD_plus in H;
+            rewrite !addD_addD_plus; simpl in *.
         rewrite H.
         destruct (decode_word' (sz + sz') b1) as [ [? ?] | ]; simpl; eauto.
         repeat f_equal; clear.
@@ -109,4 +109,54 @@ Section AlignWord.
             simpl; f_equal; eauto.
   Qed.
 
+  Lemma If_Opt_Then_Else_DecodeBindOpt_swap {A C ResultT : Type}
+    : forall (a_opt : option A)
+             (b : B)
+             (cd : CacheDecode)
+             (dec_c : B -> CacheDecode -> option (C * B * CacheDecode))
+             (k : A -> C -> B -> CacheDecode -> option (ResultT * B * CacheDecode)),
+      (`(a, b', cd') <- Ifopt a_opt as a Then Some (a, b, cd) Else None;
+         `(c, b', cd') <- dec_c b' cd';
+         k a c b' cd') =
+      (`(c, b', cd') <- dec_c b cd;
+         `(a, b', cd') <- Ifopt a_opt as a Then Some (a, b', cd') Else None;
+         k a c b' cd').
+  Proof.
+    destruct a_opt; simpl; intros; eauto.
+    destruct (dec_c b cd) as [ [ [? ?] ? ] | ]; reflexivity.
+  Qed.
+
+  Lemma If_Then_Else_Bind {sz} {C ResultT : Type}
+    : forall (w w' : word sz)
+             (b : B)
+             (cd : CacheDecode)
+             (dec_c : B -> CacheDecode -> option (C * B * CacheDecode))
+             (k : C -> B -> CacheDecode -> option (ResultT * B * CacheDecode)),
+      (if weq w w' then
+         `(c, b', cd') <- dec_c b cd;
+           k c b' cd'
+       else
+         None) =
+      (`(c, b', cd') <- dec_c b cd;
+         if weq w w' then
+           k c b' cd'
+         else None).
+  Proof.
+    intros; find_if_inside; eauto.
+    destruct (dec_c b cd) as [ [ [? ?] ? ] | ]; reflexivity.
+  Qed.
+
 End AlignWord.
+
+Ltac collapse_word addD_addD_plus :=
+  match goal with
+  | |- DecodeBindOpt2
+         (decode_word (sz := ?sz) ?b ?cd)
+         (fun w b' cd' =>
+            DecodeBindOpt2 (decode_word (sz := ?sz') b' cd')
+                           (fun w' b' cd' => @?k w w' b' cd')) = _ =>
+    etransitivity;
+    [let H := fresh in
+     pose proof (@CollapseWord _ _ _ _ _ addD_addD_plus _ sz sz' b cd k);
+     apply H | ]
+  end.

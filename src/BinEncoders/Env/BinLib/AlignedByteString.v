@@ -709,7 +709,7 @@ Definition LetIn {A B} (a : A) (k : A -> B) : B := let a' := a in k a'.
 
 Notation "'Let' a ':=' b 'in' k" := (LetIn b (fun a => k))
                                     (at level 81, right associativity,
-                                     format "'[v' 'Let'  a  ':=' b  'in' '/' k ']'").
+                                     format "'[v' 'Let'  a  ':='  b  'in' '/' k ']'").
 
 Lemma VectorByteToWord_cons :
   forall n v h H,

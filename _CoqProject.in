@@ -39,6 +39,7 @@ src/BinEncoders/Env/Automation/Solver.v
 src/BinEncoders/Env/Automation/SolverOpt.v
 src/BinEncoders/Env/Automation/Solver_8_5.v
 src/BinEncoders/Env/BinLib/AlignWord.v
+src/BinEncoders/Env/BinLib/AlignedByteString.v
 src/BinEncoders/Env/BinLib/Bool.v
 src/BinEncoders/Env/BinLib/Char.v
 src/BinEncoders/Env/BinLib/CharString.v
