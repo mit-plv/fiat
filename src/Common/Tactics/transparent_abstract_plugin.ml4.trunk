@@ -1,4 +1,5 @@
 open Transparent_abstract_tactics
+open API
 open Stdarg
 open Ltac_plugin
 open Tacarg
