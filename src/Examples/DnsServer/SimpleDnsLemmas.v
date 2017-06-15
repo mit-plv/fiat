@@ -2268,9 +2268,11 @@ Admitted.
 
 Definition QType_proj : QType -> option RRecordType. Admitted.
 
+Require Import  Fiat.BinEncoders.Env.Examples.SimpleDnsOpt.
+
 Lemma refine_Process_Query_Exact_Match
   : forall (r_o : UnConstrQueryStructure DnsSchema)
-           r_n e a1 qType a0 s,
+           r_n e a1 qType a0 s answers,
     DecomposeRawQueryStructureSchema_AbsR (qs_schema := DnsSchema) Fin.F1
                                           (Fin.FS (Fin.FS (Fin.FS Fin.F1))) ResourceRecordTypeTypes
                                           (SumType.SumType_index ResourceRecordTypeTypes)
@@ -2285,7 +2287,7 @@ Lemma refine_Process_Query_Exact_Match
             a' <- ⟦element in a3
                   | QType_match (RDataTypeToRRecordType (GetAttributeRaw element (Fin.FS (Fin.FS (Fin.FS Fin.F1)))))
                                 qType ⟧;
-            If negb (is_empty a3) Then ret (add_answers a' (buildempty true s a0))
+            If negb (is_empty a3) Then encode_packet_Spec (add_answers answers (add_answers a' (buildempty true s a0))) list_CacheEncode_empty
                Else e)
          (If (QType_dec qType (EnumType.BoundedIndex_inj_EnumType ``("STAR"))) Then
              (a3 <- For (UnConstrQuery_In r_o Fin.F1
@@ -2293,7 +2295,7 @@ Lemma refine_Process_Query_Exact_Match
                                              Where (RDataTypeToRRecordType (GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1)))) <> CNAME
                                                     /\ GetAttributeRaw r Fin.F1 = a1)
                                                    Return r ));
-                If negb (is_empty a3) Then ret (add_answers a3 (buildempty true s a0))
+                If negb (is_empty a3) Then (encode_packet_Spec (add_answers answers (add_answers a3 (buildempty true s a0))) list_CacheEncode_empty)
                    Else e)
              Else
              (Ifopt QType_proj qType as rType Then
@@ -2308,7 +2310,7 @@ Lemma refine_Process_Query_Exact_Match
                                                                                             /\ RDataTypeToRRecordType (GetAttributeRaw r (Fin.FS (Fin.FS (Fin.FS Fin.F1)))) <> CNAME
                                                                                             /\ GetAttributeRaw r Fin.F1 = a1)
                                                                                            Return () )));
-                                                 If negb (is_empty a3) || (le_lt_dec count 0) Then ret (add_answers a3 (buildempty true s a0))
+                                                 If negb (is_empty a3) || (le_lt_dec count 0) Then (encode_packet_Spec (add_answers answers (add_answers a3 (buildempty true s a0))) list_CacheEncode_empty)
                                                     Else e)
                                               Else e)).
 Admitted.
@@ -2420,7 +2422,7 @@ Qed.
 Lemma refine_Process_Query_Imprecise_Match
   : forall (r_o : QueryStructure DnsSchema)
            (r_n : UnConstrQueryStructure DnsSchema)
-           bound p BStringId2 BStringId7,
+           bound p BStringId2 BStringId7 answers,
     DropQSConstraints_AbsR r_o r_n
     -> refine
          (a4 <- MaxElements (fun r r' : resourceRecord => prefix (GetAttributeRaw r Fin.F1) (GetAttributeRaw r' Fin.F1))
@@ -2429,7 +2431,7 @@ Lemma refine_Process_Query_Imprecise_Match
                                       Where (prefix (GetAttributeRaw r Fin.F1) bound /\ GetAttributeRaw r Fin.F1 <> bound)
                                             Return r ));
             a' <- {ns_results : list NS_Record | forall x : NS_Record, List.In x ns_results <-> List.In (A := resourceRecord) x a4};
-            If is_empty a4 Then ret (buildempty true BStringId2 p)
+            If is_empty a4 Then (encode_packet_Spec (add_answers answers (buildempty true BStringId2 p)) list_CacheEncode_empty)
                Else (a5 <- foldComp
                         (fun (a6 : list RawTuple) (a7 : NS_Record) =>
                            a5 <- For
@@ -2440,16 +2442,16 @@ Lemma refine_Process_Query_Imprecise_Match
                                                      Return rRec ));
                              ret (a5 ++ a6))
                         nil a';
-                       ret
-                         (add_additionals a5
-                                          (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p)))))
+                       encode_packet_Spec
+                         (add_answers answers (add_additionals a5
+                                          (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p)))) list_CacheEncode_empty))
          (a4 <- MaxElements (fun r r' : resourceRecord => prefix (GetAttributeRaw r Fin.F1) (GetAttributeRaw r' Fin.F1))
              For (UnConstrQuery_In r_n Fin.F1
                                    (fun r : RawTuple =>
                                       Where (RDataTypeToRRecordType r!sRDATA = NS /\ prefix (GetAttributeRaw r Fin.F1) bound)
                                             Return r ));
             a' <- {ns_results : list NS_Record | forall x : NS_Record, List.In x ns_results <-> List.In x (A := resourceRecord) a4};
-            If is_empty a' Then ret (buildempty true BStringId2 p)
+            If is_empty a' Then (encode_packet_Spec (add_answers answers (buildempty true BStringId2 p)) list_CacheEncode_empty)
                Else (a5 <- foldComp
                     (fun (a6 : list RawTuple) (a7 : NS_Record) =>
                     a5 <- For
@@ -2460,9 +2462,9 @@ Lemma refine_Process_Query_Imprecise_Match
                     Return rRec ));
                     ret (a5 ++ a6))
                     nil a';
-                       ret
-                         (add_additionals a5
-                                          (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p))))).
+                       encode_packet_Spec
+                         (add_answers answers (add_additionals a5
+                                          (add_nses (map VariantResourceRecord2RRecord a') (buildempty true BStringId7 p)))) list_CacheEncode_empty)).
 Admitted.
 
 Lemma refine_decides_forall_and {A}

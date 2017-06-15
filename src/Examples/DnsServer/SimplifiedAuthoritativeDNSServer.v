@@ -23,7 +23,8 @@ Require Import
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.BinLib.Core
         Fiat.BinEncoders.Env.Examples.SimpleDnsOpt
-        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
+        Fiat.BinEncoders.Env.Lib2.DomainNameOpt
+        Fiat.BinEncoders.Env.BinLib.AlignedByteString.
 
 Require Import Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField
@@ -34,12 +35,13 @@ Require Import Fiat.Examples.DnsServer.SimplePacket
 Section BinaryDns.
 
   Variable recurseDepth : nat.
+  Variable buffSize : nat.
 
   Definition DnsSig : ADTSig :=
     ADTsignature {
       Constructor "Init" : rep,
       Method "AddData" : rep * resourceRecord -> rep * bool,
-      Method "Process" : rep * ByteString -> rep * (option ByteString)
+      Method "Process" : rep * (Vector.t (word 8) (12 + buffSize)) -> rep * (option ByteString)
     }.
 
 Definition DnsSpec : ADT DnsSig :=
@@ -54,31 +56,31 @@ Definition DnsSpec : ADT DnsSig :=
     Def Method1 "AddData" (this : rep) (t : resourceRecord) : rep * bool :=
       Insert t into this!sRRecords,
 
-    Def Method1 "Process" (this : rep) (b : ByteString) : rep * (option ByteString) :=
-        p' <- Pick_Decoder_For DNS_Packet_OK encode_packet_Spec b list_CacheEncode_empty;
+    Def Method1 "Process" (this : rep) (b : Vector.t (word 8) (12 + buffSize)) : rep * (option ByteString) :=
+        p' <- Pick_Decoder_For DNS_Packet_OK encode_packet_Spec (build_aligned_ByteString b) list_CacheEncode_empty;
        Ifopt p' as p Then
-        p' <- Repeat recurseDepth initializing n with p!"question"!"qname"
-               defaulting rec with (ret (buildempty true ``"ServFail" p)) (* Bottoming out w/o an answer signifies a server failure error. *)
+        p' <- Repeat recurseDepth initializing n with (p!"question"!"qname", @nil CNAME_Record)
+               defaulting rec with (encode_packet_Spec (buildempty true ``"ServFail" p) list_CacheEncode_empty) (* Bottoming out w/o an answer signifies a server failure error. *)
         {{ results <- MaxElements (fun r r' : resourceRecord => prefix r!sNAME r'!sNAME)
                    (For (r in this!sRRecords)      (* Bind a list of all the DNS entries *)
-                               Where (prefix r!sNAME n)   (* prefixed with [n] to [rs] *)
+                               Where (prefix r!sNAME (fst n))   (* prefixed with [n] to [rs] *)
                                Return r);
             If (is_empty results) (* Are there any matching records? *)
-            Then ret (buildempty true ``"NXDomain" p) (* No matching records, set name error *)
+            Then encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (buildempty true ``"NXDomain" p)) list_CacheEncode_empty(* No matching records, set name error *)
             Else
-            (IfDec (List.Forall (fun r : resourceRecord => r!sNAME = n) results) (* If the record's QNAME is an exact match  *)
+            (IfDec (List.Forall (fun r : resourceRecord => r!sNAME = (fst n)) results) (* If the record's QNAME is an exact match  *)
               Then
               b <- SingletonSet (fun b : CNAME_Record =>      (* If the record is a CNAME, *)
                                    List.In (A := resourceRecord) b results
                                    /\ p!"question"!"qtype" <> QType_inj CNAME); (* and a non-CNAME was requested*)
                 Ifopt b as b'
                 Then  (* only one matching CNAME record *)
-                  p' <- rec b'!sRDATA; (* Recursively find records matching the CNAME *)
-                  ret (add_answer p' b') (* Add the CNAME RR to the answer section *)
+                  rec (b'!sRDATA, b' :: snd n) (* Recursively find records matching the CNAME, *)
+                (* Adding the CNAME RR to the answer section *)
                 Else     (* Copy the records with the correct QTYPE into the answer *)
                          (* section of an empty response *)
                 (results <- ⟦ element in results | QType_match (RDataTypeToRRecordType element!sRDATA) (p!"question"!"qtype") ⟧;
-                  ret (add_answers results (buildempty true ``"NoError" p)))
+                  encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (add_answers results (buildempty true ``"NoError" p))) list_CacheEncode_empty)
               Else (* prefix but record's QNAME not an exact match *)
                 (* return all the prefix records that are nameserver records -- *)
                 (* ask the authoritative servers *)
@@ -94,10 +96,9 @@ Definition DnsSpec : ADT DnsSig :=
                  glue_results <- For (rRec in this!sRRecords)
                                  Where (List.In rRec!sNAME (map (fun r : NS_Record => r!sRDATA) ns_results))
                                  Return rRec; *)
-                 ret (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))))
+                 encode_packet_Spec (add_answers (map CNAME_Record2RRecord (snd n)) (add_additionals glue_results (add_nses (map VariantResourceRecord2RRecord ns_results) (buildempty true ``"NoError" p)))) list_CacheEncode_empty))
         }};
-       b' <- encode_packet_Spec p' list_CacheEncode_empty;
-       ret (this, Some (fst b'))
+       ret (this, Some (fst p'))
            Else ret (this, None)
            }.
 
@@ -137,17 +138,21 @@ Instance ARRecordType_eq : Query_eq RRecordType :=
 
 Lemma refine_decode_packet
   : forall b,
-    refine (Pick_Decoder_For DNS_Packet_OK encode_packet_Spec b list_CacheEncode_empty)
-           (ret match fst packetDecoderImpl b list_CacheDecode_empty
+    refine (Pick_Decoder_For DNS_Packet_OK encode_packet_Spec (build_aligned_ByteString b) list_CacheEncode_empty)
+           (ret match (ByteAligned_packetDecoderImpl' buffSize b list_CacheDecode_empty)
                 with
                 | Some (p, _, _) => Some p
                 | None => None
                 end).
 Proof.
-  intros; eapply refine_Pick_Decoder_For with (decoderImpl := packet_decoder); eauto.
-  apply list_cache_empty_Equiv.
-  simpl.
-  unfold GoodCache; simpl; intuition; congruence.
+  intros; setoid_rewrite refine_Pick_Decoder_For with (decoderImpl := packet_decoder); eauto using list_cache_empty_Equiv.
+  replace (projT1 packet_decoder) with packetDecoderImpl.
+  unfold list_CacheDecode_empty.
+  pose proof (ByteAligned_packetDecoderImpl'_OK _ b).
+  rewrite <- H.
+  reflexivity.
+  reflexivity.
+  simpl; unfold GoodCache; simpl; intuition; try congruence.
 Qed.
 
 Local Opaque CallBagFind.
@@ -511,7 +516,7 @@ Proof.
       finish honing.
   }
   { (* Process *)
-(* Process *)
+
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
@@ -540,7 +545,7 @@ Proof.
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
-    rewrite (@MaxElementsUnConstrQuery_In DnsSchema Fin.F1 (fun r : resourceRecord => GetAttributeRaw r Fin.F1) a1 r_n).
+    rewrite (@MaxElementsUnConstrQuery_In DnsSchema Fin.F1 (fun r : resourceRecord => GetAttributeRaw r Fin.F1) (fst a1) r_n).
     rewrite refine_Process_Query.
     simplify with monad laws.
     setoid_rewrite refine_If_Opt_Then_Else_Bind.
@@ -596,10 +601,24 @@ Proof.
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     doOne ltac:(drop_constraints)
                  drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
+    doOne ltac:(drop_constraints)
+                 drop_constraints_drill ltac:(repeat subst_refine_evar; cbv beta; simpl; try finish honing).
     repeat econstructor.
     match type of H2 with
     | context[ UnConstrQuery_In (qsSchema := ?schem) ?r_n ?R _] =>
-      pose proof (@For_UnConstrQuery_In_Where_Prop schem R r_n (fun r => RDataTypeToRRecordType r!sRDATA = CNAME /\ GetAttributeRaw r Fin.F1 = a1) _ _ H2);
+      pose proof (@For_UnConstrQuery_In_Where_Prop schem R r_n (fun r => RDataTypeToRRecordType r!sRDATA = CNAME /\ GetAttributeRaw r Fin.F1 = (fst a1)) _ _ H2);
         destruct a2; simpl in H4; try discriminate; injections;
           inversion H6; subst; intuition
     end.
@@ -1644,18 +1663,7 @@ Proof.
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
-    Time doOne implement_insert'''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-                set_evars) ltac:(finish honing).
-    Time doOne implement_insert'''
-          ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-                set_evars) ltac:(finish honing).
+    idtac.
     rewrite refine_MaxPrefix.
     Time doOne implement_insert'''
           ltac:(master_implement_drill
@@ -1832,17 +1840,13 @@ Proof.
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
-
-
     Time doOne implement_insert'''
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
-
     simplify_Query_Where'.
-
     Time doOne implement_insert'''
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
@@ -1895,8 +1899,6 @@ Proof.
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
                 set_evars) ltac:(finish honing).
     rewrite refine_unit_bind'.
-
-
     repeat doOne implement_insert'''
           ltac:(master_implement_drill
           ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
@@ -2081,6 +2083,20 @@ Proof.
   }
 
   simpl.
+
+  (* Need to inline parsed fields. 
+     hone method "Process".
+  { simpl in H2. 
+    rewrite H0.  
+    simplify with monad laws.
+    rewrite refine_decode_packet.
+    unfold ByteAligned_packetDecoderImpl'.
+    simpl.
+    simplify with monad laws.
+    drop_constraints_drill.
+    drop_constraints_drill.
+   *)
+
   apply reflexivityT.
   Time Defined.
 
