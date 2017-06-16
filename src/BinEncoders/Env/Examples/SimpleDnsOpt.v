@@ -2198,20 +2198,26 @@ Proof.
   Qed.
 
   Lemma optimize_Guarded_Decode {sz} {A C} n
-    : forall (a_opt : ByteString -> option (A * ByteString * C)) v,
+    : forall (a_opt : ByteString -> option (A * ByteString * C))
+             (a_opt' : ByteString -> option (A * ByteString * C)) v,
       (~ (n <= sz)%nat
-              -> a_opt (build_aligned_ByteString v) = None)
+       -> a_opt (build_aligned_ByteString v) = None)
+      -> (le n sz -> a_opt  (build_aligned_ByteString (Guarded_Vector_split n sz v))
+                     = a_opt'
+                         (build_aligned_ByteString (Guarded_Vector_split n sz v)))
       -> a_opt (build_aligned_ByteString v) =
          If NPeano.leb n sz Then
-            a_opt (build_aligned_ByteString (Guarded_Vector_split n sz v))
+            a_opt' (build_aligned_ByteString (Guarded_Vector_split n sz v))
             Else None.
   Proof.
     intros; destruct (NPeano.leb n sz) eqn: ?.
     - apply NPeano.leb_le in Heqb.
+      rewrite <- H0.
       simpl; rewrite <- build_aligned_ByteString_eq_split'; eauto.
+      eauto.
     - rewrite H; simpl; eauto.
       intro.
-      rewrite <- NPeano.leb_le in H0; congruence.
+      rewrite <- NPeano.leb_le in H1; congruence.
   Qed.
 
   Arguments Core.append_word : simpl never.
@@ -2256,170 +2262,1147 @@ Proof.
 
   Arguments Vector_split : simpl never.
 
+  Lemma AlignedDecode4Char {C}
+        {numBytes}
+    : forall (v : Vector.t (word 8) (S (S (S (S numBytes)))))
+             (k : (word 32) -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             cd,
+      (`(a, b0, d) <- decode_word
+        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd;
+         k a b0 d) =
+      Let n := Core.append_word (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
+                                (Core.append_word (Vector.nth v (Fin.FS (Fin.FS Fin.F1)))
+                                                  (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1))) in
+        k n (build_aligned_ByteString (snd (Vector_split 4 _ v))) (addD cd 32).
+  Proof.
+    unfold LetIn; intros.
+    unfold decode_word, WordOpt.decode_word.
+    match goal with
+      |- context[Ifopt ?Z as _ Then _ Else _] => replace Z with
+                                                 (let (v', v'') := Vector_split 4 numBytes v in Some (VectorByteToWord v', build_aligned_ByteString v'')) by (symmetry; apply (@aligned_decode_char_eq' _ 3 v))
+    end.
+    Local Transparent Vector_split.
+    unfold Vector_split, If_Opt_Then_Else, DecodeBindOpt2 at 1, If_Opt_Then_Else.
+    f_equal.
+    rewrite !Vector_nth_tl, !Vector_nth_hd.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    f_equal.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    erewrite VectorByteToWord_cons.
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    Grab Existential Variables.
+    omega.
+    omega.
+    omega.
+    omega.
+  Qed.
+
+
+
+  Fixpoint align_decode_list {A}
+           (A_decode_align : forall n,
+               Vector.t (word 8) n
+               -> CacheDecode
+               -> option (A * {n : _ & Vector.t _ n}
+                          * CacheDecode))
+           (n : nat)
+           {sz}
+           (v : Vector.t (word 8) sz)
+           (cd : CacheDecode)
+    : option (list A *  {n : _ & Vector.t _ n} * CacheDecode) :=
+    match n with
+    | 0 => Some (@nil _, existT _ _ v, cd)
+    | S s' => `(x, b1, e1) <- A_decode_align sz v cd;
+                `(xs, b2, e2) <- align_decode_list A_decode_align s' (projT2 b1) e1;
+                Some ((x :: xs)%list, b2, e2)
+    end.
+
+  Lemma optimize_align_decode_list
+        {A}
+        (A_decode :
+           ByteString
+           -> CacheDecode
+           -> option (A * ByteString * CacheDecode))
+        (A_decode_align : forall n,
+            Vector.t (word 8) n
+            -> CacheDecode
+            -> option (A * {n : _ & Vector.t _ n}
+                       * CacheDecode))
+        (A_decode_OK :
+           forall n (v : Vector.t _ n) cd,
+             A_decode (build_aligned_ByteString v) cd =
+             Ifopt A_decode_align n v cd as a Then
+                                              Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                                              Else
+                                              None)
+    : forall (n : nat)
+             {sz}
+             (v : Vector.t (word 8) sz)
+             (cd : CacheDecode),
+      decode_list A_decode n (build_aligned_ByteString v) cd =
+      Ifopt align_decode_list A_decode_align n v cd as a Then
+                                                         Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                                                         Else
+                                                         None.
+  Proof.
+    induction n; simpl; intros; eauto.
+    rewrite A_decode_OK.
+    rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+    destruct (A_decode_align sz v cd) as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
+    rewrite IHn.
+    rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+    destruct (align_decode_list A_decode_align n t c)
+      as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
+  Qed.
+
+  Lemma LetIn_If_Opt_Then_Else {A B C}
+    : forall (a : A)
+             (k : A -> option B)
+             (t : B -> C)
+             (e : C),
+      (Ifopt LetIn a k as b Then t b Else e)
+      = LetIn a (fun a => Ifopt k a as b Then t b Else e).
+  Proof.
+    reflexivity.
+  Qed.
+
+
+  Lemma decode_unused_word_aligned_ByteString_overflow
+        {sz}
+    : forall {sz'}
+             (b : t (word 8) sz')
+             (cd : CacheDecode),
+      lt sz' sz
+      -> decode_unused_word (8 * sz) (build_aligned_ByteString b) cd = None.
+  Proof.
+  Admitted.
+
+
+  Lemma aligned_decode_unused_char_eq
+        {numBytes}
+    : forall (v : Vector.t (word 8) (S numBytes)),
+      WordOpt.decode_unused_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
+      = Some ((), build_aligned_ByteString (Vector.tl v)).
+  Proof.
+  Admitted.
+
+  Lemma AlignedDecodeUnusedChars {C}
+        {numBytes numBytes'}
+    : forall (v : Vector.t (word 8) (numBytes' + numBytes))
+             (k : () -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             cd,
+      (`(a, b0, d) <- decode_unused_word
+        (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd;
+         k a b0 d) =
+      k () (build_aligned_ByteString (snd (Vector_split numBytes' _ v))) (addD cd (8 * numBytes')).
+  Proof.
+    induction numBytes'; simpl; intros.
+    - Local Transparent Vector_split.
+      unfold Vector_split; simpl.
+      reflexivity.
+      Local Opaque Vector_split.
+    - unfold decode_unused_word.
+      replace (S
+                 (numBytes' +
+                  S
+                    (numBytes' +
+                     S
+                       (numBytes' +
+                        S
+                          (numBytes' +
+                           S (numBytes' + S (numBytes' + S (numBytes' + S (numBytes' + 0))))))))) with (8 + 8 * numBytes') by omega.
+  Admitted.
+
+  Definition align_decode_sumtype
+             {m : nat}
+             {types : t Type m}
+             (decoders :
+                ilist (B := fun T =>
+                              forall n,
+                                Vector.t (word 8) n
+                                -> CacheDecode
+                                -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+             (idx : Fin.t m)
+             {n : nat}
+             (v : Vector.t (word 8) n)
+             (cd : CacheDecode)
+    := `(a, b', cd') <- ith (decoders) idx n v cd;
+         Some (inj_SumType types idx a, b', cd').
+
+  Lemma align_decode_sumtype_OK'
+        {m : nat}
+        {types : t Type m}
+        (align_decoders :
+           ilist (B := fun T =>
+                         forall n,
+                           Vector.t (word 8) n
+                           -> CacheDecode
+                           -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+
+        (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
+        (decoders_OK : forall n v cd idx',
+            ith decoders idx' (build_aligned_ByteString v) cd
+            = Ifopt ith align_decoders idx' n v cd as a Then
+                                                        Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                                                        Else
+                                                        None)
+    : forall
+      (idx : Fin.t m)
+      {n : nat}
+      (v : Vector.t (word 8) n)
+      (cd : CacheDecode),
+      decode_SumType types decoders idx (build_aligned_ByteString v) cd
+      =
+      Ifopt align_decode_sumtype align_decoders idx
+            v cd as a Then
+                      Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                      Else
+                      None.
+  Proof.
+    intros.
+    unfold decode_SumType, align_decode_sumtype.
+    rewrite decoders_OK.
+    destruct (ith align_decoders idx n v cd) as [ [ [? ?] ?] | ];
+      reflexivity.
+  Qed.
+
+  Corollary align_decode_sumtype_OK
+            {m : nat}
+            {types : t Type m}
+            (align_decoders :
+               ilist (B := fun T =>
+                             forall n,
+                               Vector.t (word 8) n
+                               -> CacheDecode
+                               -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode)) types)
+
+            (decoders : ilist (B := fun T => ByteString -> CacheDecode -> option (T * ByteString * CacheDecode)) types)
+            (decoders_OK : forall n v cd,
+                Iterate_Ensemble_BoundedIndex
+                  (fun idx' => ith decoders idx' (build_aligned_ByteString v) cd
+                               = Ifopt ith align_decoders idx' n v cd as a Then
+                                                                           Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                                                                           Else
+                                                                           None))
+    : forall
+      (idx : Fin.t m)
+      {n : nat}
+      (v : Vector.t (word 8) n)
+      (cd : CacheDecode),
+      decode_SumType types decoders idx (build_aligned_ByteString v) cd
+      =
+      Ifopt align_decode_sumtype align_decoders idx
+            v cd as a Then
+                      Some (fst (fst a), build_aligned_ByteString (projT2 (snd (fst a))), snd a)
+                      Else
+                      None.
+  Proof.
+    intros; eapply align_decode_sumtype_OK'; intros.
+    pose proof (decoders_OK n0 v0 cd0).
+    eapply Iterate_Ensemble_BoundedIndex_equiv in H.
+    apply H.
+  Qed.
+  Arguments NPeano.leb : simpl never.
+
   Definition ByteAligned_packetDecoderImpl n
-  : {impl : _ & forall (v : Vector.t _ (12 + n)),
-         fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
-         impl v (Some (wzero 17) , @nil (pointerT * string))%list}.
-Proof.
-  eexists _; intros.
-  etransitivity.
-  set_refine_evar; simpl.
-  rewrite (@AlignedDecode2Char _ ).
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  rewrite (@AlignedDecodeChar _ ).
-  rewrite !nth_Vector_split.
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  rewrite (@AlignedDecodeChar _ ).
-  rewrite !nth_Vector_split.
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  subst_refine_evar.
-  etransitivity;
-    [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
-    | ].
-  Global Opaque Vector_split.
-  simpl.
-  eapply optimize_under_if_opt; simpl; intros.
-  etransitivity;
-    [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
-    | ].
-  eapply optimize_under_if_opt; simpl; intros.
-  eapply optimize_under_if; simpl; intros.
-  rewrite (@AlignedDecode2Nat _).
-  repeat first  [rewrite <- !Vector_nth_tl
-                | rewrite !nth_Vector_split].
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  eapply optimize_under_if; simpl; intros.
-  rewrite (@AlignedDecode2Nat _).
-  rewrite !nth_Vector_split.
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  rewrite (@AlignedDecode2Nat _).
-  rewrite !nth_Vector_split.
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  rewrite (@AlignedDecode2Nat _).
-  rewrite !nth_Vector_split.
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  rewrite DecodeBindOpt2_assoc.
-  rewrite byte_align_decode_DomainName.
-  etransitivity;
-    [match goal with
-       |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-       pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-     end | ].
-  subst H0.
-  eapply optimize_under_if_opt; simpl; intros.
-  destruct a8 as [ [? [ ? ?] ] ? ]; simpl.
-  rewrite DecodeBindOpt2_assoc.
-  simpl.
-  etransitivity.
-  match goal with
-    |- ?b = _ =>
-    let b' := (eval pattern (build_aligned_ByteString t) in b) in
-    let b' := match b' with ?f _ => f end in
-    eapply (@optimize_Guarded_Decode x _ _ 4 b')
-  end.
-  intros.
-  unfold decode_enum.
-  rewrite DecodeBindOpt2_assoc.
-  destruct (Compare_dec.lt_dec x 2).
-  pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
-    simpl in H'; rewrite H'; try reflexivity; auto.
-  destruct x as [ | [ | [ | ?] ] ]; try omega.
-  rewrite AlignedDecode2Char; unfold LetIn; simpl.
-  etransitivity;
-    [match goal with
-       |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-       pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-     end | ].
-  simpl.
-  match goal with
-    |- If_Opt_Then_Else ?b _ _ = _ => destruct b; reflexivity
-  end.
-  rewrite AlignedDecode2Char; unfold LetIn; simpl.
-  etransitivity;
-    [match goal with
-       |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-       pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-     end | ].
-  simpl.
-  match goal with
-    |- If_Opt_Then_Else ?b _ _ = _ => destruct b; simpl; try eauto
-  end.
-  repeat rewrite DecodeBindOpt2_assoc.
-  pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
-    simpl in H'; rewrite H'; try reflexivity; auto.
-  omega.
-  etransitivity.
-  eapply optimize_under_if_bool; simpl; intros.
-  unfold decode_enum.
-  set_refine_evar; repeat rewrite DecodeBindOpt2_assoc.
-  rewrite (@AlignedDecode2Char _ ).
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  etransitivity;
-    [match goal with
-       |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-       pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-     end | ].
-  simpl.
-  subst_refine_evar;
-    eapply optimize_under_if_opt; simpl; intros;
+    : {impl : _ & forall (v : Vector.t _ (12 + n)),
+           fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
+           impl v (Some (wzero 17) , @nil (pointerT * string))%list}.
+  Proof.
+    eexists _; intros.
+    etransitivity.
+    set_refine_evar; simpl.
+    rewrite (@AlignedDecode2Char _ ).
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    rewrite (@AlignedDecodeChar _ ).
+    rewrite !nth_Vector_split.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    rewrite (@AlignedDecodeChar _ ).
+    rewrite !nth_Vector_split.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    subst_refine_evar.
+    etransitivity;
+      [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
+      | ].
+    Global Opaque Vector_split.
+    simpl.
+    eapply optimize_under_if_opt; simpl; intros.
+    etransitivity;
+      [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
+      | ].
+    eapply optimize_under_if_opt; simpl; intros.
+    eapply optimize_under_if; simpl; intros.
+    rewrite (@AlignedDecode2Nat _).
+    repeat first  [rewrite <- !Vector_nth_tl
+                  | rewrite !nth_Vector_split].
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    eapply optimize_under_if; simpl; intros.
+    rewrite (@AlignedDecode2Nat _).
+    rewrite !nth_Vector_split.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    rewrite (@AlignedDecode2Nat _).
+    rewrite !nth_Vector_split.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    rewrite (@AlignedDecode2Nat _).
+    rewrite !nth_Vector_split.
+    subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+    rewrite DecodeBindOpt2_assoc.
+    rewrite byte_align_decode_DomainName.
+    etransitivity;
+      [match goal with
+         |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+         pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+       end | ].
+    subst H0.
+    eapply optimize_under_if_opt; simpl; intros.
+    destruct a8 as [ [? [ ? ?] ] ? ]; simpl.
+    rewrite DecodeBindOpt2_assoc.
+    simpl.
+    etransitivity.
+    match goal with
+      |- ?b = _ =>
+      let b' := (eval pattern (build_aligned_ByteString t) in b) in
+      let b' := match b' with ?f _ => f end in
+      eapply (@optimize_Guarded_Decode x _ _ 4 b')
+    end.
+    { intros.
+      unfold decode_enum.
+      rewrite DecodeBindOpt2_assoc.
+      destruct (Compare_dec.lt_dec x 2).
+      pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        simpl in H'; rewrite H'; try reflexivity; auto.
+      destruct x as [ | [ | [ | ?] ] ]; try omega.
+      rewrite AlignedDecode2Char; unfold LetIn; simpl.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      match goal with
+        |- If_Opt_Then_Else ?b _ _ = _ => destruct b; reflexivity
+      end.
+      rewrite AlignedDecode2Char; unfold LetIn; simpl.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      match goal with
+        |- If_Opt_Then_Else ?b _ _ = _ => destruct b; simpl; try eauto
+      end.
+      repeat rewrite DecodeBindOpt2_assoc.
+      pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        simpl in H'; rewrite H'; try reflexivity; auto.
+      omega.
+    }
+    { intros; unfold decode_enum.
+      etransitivity.
+      set_refine_evar; repeat rewrite DecodeBindOpt2_assoc.
+      rewrite (AlignedDecode2Char (Guarded_Vector_split 4 x t)).
+      subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      subst_refine_evar;
+        eapply optimize_under_if_opt; simpl; intros;
+          set_refine_evar.
+      repeat rewrite DecodeBindOpt2_assoc.
+      rewrite (@AlignedDecode2Char _ ).
+      subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      subst_refine_evar;
+        eapply optimize_under_if_opt; simpl; intros;
+          set_refine_evar.
+      (* Still need to do byte-aligned lists. *)
+      erewrite optimize_align_decode_list.
+      rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+      simpl.
+      subst_refine_evar; higher_order_reflexivity.
+      etransitivity.
       set_refine_evar.
-  repeat rewrite DecodeBindOpt2_assoc.
-  rewrite (@AlignedDecode2Char _ ).
-  subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-  etransitivity;
-    [match goal with
-       |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-       pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-     end | ].
-  simpl.
-  subst_refine_evar;
-    eapply optimize_under_if_opt; simpl; intros;
-      set_refine_evar.
-  (* Still need to do byte-aligned lists. *)
-  higher_order_reflexivity.
-  unfold H0. higher_order_reflexivity.
-  unfold H0. higher_order_reflexivity.
-  higher_order_reflexivity.
-  match goal with
-    |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
-    let z' := (eval pattern d, x, t, p in z) in
-    let z' := match z' with ?f' _ _ _ _ => f' end in
-    unify f (fun a => z' (fst (fst a)) (projT1 (snd (fst a)))
-                         (projT2 (snd (fst a)))
-                         (snd a));
-      cbv beta; reflexivity
-  end.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  reflexivity.
-  simpl.
-  repeat (rewrite Vector_split_merge,
-          <- Eqdep_dec.eq_rect_eq_dec;
-          eauto using Peano_dec.eq_nat_dec ).
-  simpl.
-  higher_order_reflexivity.
-Defined.
+      clear H0.
+      rewrite byte_align_decode_DomainName.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      subst_evars.
+      eapply optimize_under_if_opt; simpl; intros.
+      destruct a12 as [ [? [ ? ?] ] ? ]; simpl.
+      rewrite DecodeBindOpt2_assoc.
+      simpl.
+      etransitivity.
+      match goal with
+        |- ?b = _ =>
+        let b' := (eval pattern (build_aligned_ByteString t0) in b) in
+        let b' := match b' with ?f _ => f end in
+        eapply (@optimize_Guarded_Decode x0 _ _ 8 b')
+      end.
+      { intros.
+        destruct x0 as [ | [ | x0] ].
+        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        etransitivity; set_refine_evar.
+        rewrite (@AlignedDecode2Char _ ).
+        subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+        rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        subst_evars.
+        eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+        subst_refine_evar.
+        instantiate (1 := fun _ => None).
+        rewrite DecodeBindOpt2_assoc.
+        destruct x0 as [ | [ | x0] ].
+        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+          simpl in H'; rewrite H'; try higher_order_reflexivity; auto.
+        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+          simpl in H'; rewrite H'; try higher_order_reflexivity; auto.
+        rewrite (@AlignedDecode2Char _ ).
+        etransitivity.
+        subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+        rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        subst_evars.
+        eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+        subst_refine_evar.
+        instantiate (1 := fun _ => None).
+        destruct x0 as [ | [| [ | [ | x0] ] ] ]; try omega.
+        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+          simpl in H'; rewrite H'; try reflexivity; auto.
+        subst_evars; reflexivity.
+        unfold LetIn; simpl; match goal with
+                               |- Ifopt ?b as _ Then _ Else _ = _ =>
+                               destruct b; reflexivity
+                             end.
+        subst_evars; reflexivity.
+        unfold LetIn; simpl; match goal with
+                               |- Ifopt ?b as _ Then _ Else _ = _ =>
+                               destruct b; reflexivity
+                             end.
+      }
+      intros; etransitivity.
+      simpl; rewrite (@AlignedDecode2Char _ ).
+      subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      subst_refine_evar;
+        eapply optimize_under_if_opt; simpl; intros;
+          set_refine_evar.
+      repeat rewrite DecodeBindOpt2_assoc.
+      rewrite (@AlignedDecode2Char _ ).
+      subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+      etransitivity;
+        [match goal with
+           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
+           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
+         end | ].
+      simpl.
+      subst_refine_evar;
+        eapply optimize_under_if_opt; simpl; intros;
+          set_refine_evar.
+      repeat rewrite DecodeBindOpt2_assoc.
+      rewrite AlignedDecode4Char.
+      repeat (rewrite Vector_split_merge,
+              <- Eqdep_dec.eq_rect_eq_dec;
+              eauto using Peano_dec.eq_nat_dec ).
+      clear H1.
+      subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
 
-Check ByteAligned_packetDecoderImpl.
-Definition ByteAligned_packetDecoderImpl' n :=
-  Eval simpl in (projT1 (ByteAligned_packetDecoderImpl n)).
+      idtac.
+      let types' := (eval unfold ResourceRecordTypeTypes in ResourceRecordTypeTypes)
+      in ilist_of_evar
+           (fun T : Type => forall n,
+                Vector.t (word 8) n
+                -> CacheDecode
+                -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode))
+           types'
+           ltac:(fun decoders' => rewrite (@align_decode_sumtype_OK _ ResourceRecordTypeTypes decoders'));
+           [ | simpl; intros; repeat (apply Build_prim_and; intros); try exact I].
+      set_evars.
+      rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+      subst_evars.
+      eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+      subst_evars; higher_order_reflexivity.
+      subst_evars; higher_order_reflexivity.
+      { etransitivity.
+        match goal with
+          |- ?b = _ =>
+          let b' := (eval pattern (build_aligned_ByteString v1) in b) in
+          let b' := match b' with ?f _ => f end in
+          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+        end.
+        { intros.
+          destruct n1 as [ | [ | n1] ]; try omega.
 
-Lemma ByteAligned_packetDecoderImpl'_OK
-  : forall n,
-    forall (v : Vector.t _ (12 + n)),
-      fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
-      ByteAligned_packetDecoderImpl' n v (Some (wzero 17) , @nil (pointerT * string))%list.
-Proof.
-  intros.
-  pose proof (projT2 (ByteAligned_packetDecoderImpl n));
-    cbv beta in H.
-  rewrite H.
-  set (H' := (Some (wzero 17), @nil (pointerT * string))).
-  simpl.
-  unfold ByteAligned_packetDecoderImpl'.
-  reflexivity.
-Qed.
+
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+        }
+        { intros; etransitivity.
+
+          idtac.
+          rewrite (@AlignedDecodeUnusedChars _ _ 2).
+          rewrite byte_align_decode_DomainName.
+          reflexivity.
+          higher_order_reflexivity.
+        }
+        simpl.
+        instantiate (1 := fun n1 v1 cd0 =>  If  NPeano.leb 2 n1
+                                                Then `(proj, rest, env') <- Ifopt byte_aligned_decode_DomainName
+                                                (snd (Vector_split 2 (n1 - 2) (Guarded_Vector_split 2 n1 v1)))
+                                                (addD cd0 16) as p1
+                                                                   Then let (p2, cd') := p1 in
+                                                                        let (a17, b') := p2 in Some (a17, b', cd')
+                                                                                                    Else None;
+                                                                                               Some (proj, rest, env') Else None); simpl.
+        find_if_inside; simpl; eauto.
+        repeat rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        match goal with
+          |- Ifopt ?b as _ Then _ Else _ = _ =>
+          destruct b as [ [ [? [? ?] ] ?] | ]; reflexivity
+        end.
+      }
+      { etransitivity.
+        match goal with
+          |- ?b = _ =>
+          let b' := (eval pattern (build_aligned_ByteString v1) in b) in
+          let b' := match b' with ?f _ => f end in
+          eapply (@optimize_Guarded_Decode n1 _ _ 6 b')
+        end.
+        { intros.
+          destruct n1 as [ | [ | n1] ]; try omega.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+          simpl.
+          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+            simpl in H'; rewrite H'; clear H'.
+          destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try omega;
+            try reflexivity.
+        }
+        { intros; etransitivity.
+          simpl.
+          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+            simpl in H'; rewrite H'; clear H'.
+          rewrite AlignedDecode4Char; simpl.
+          reflexivity.
+          higher_order_reflexivity.
+        }
+        simpl.
+        repeat (rewrite Vector_split_merge,
+                <- Eqdep_dec.eq_rect_eq_dec;
+                eauto using Peano_dec.eq_nat_dec ).
+
+        instantiate (1 :=
+                       fun n1 v1 cd0
+                       => If NPeano.leb 6 n1
+                             Then Let n2 := Core.append_word
+                                              (snd (Vector_split 2 (S (S (S (S (n1 - 6))))) (Guarded_Vector_split 6 n1 v1)))[@
+                                                                                                                               Fin.FS (Fin.FS (Fin.FS Fin.F1))]
+                                              (Core.append_word
+                                                 (snd (Vector_split 2 (S (S (S (S (n1 - 6))))) (Guarded_Vector_split 6 n1 v1)))[@
+                                                                                                                                  Fin.FS (Fin.FS Fin.F1)]
+                                                 (Core.append_word
+                                                    (snd (Vector_split 2 (S (S (S (S (n1 - 6))))) (Guarded_Vector_split 6 n1 v1)))[@
+                                                                                                                                     Fin.FS Fin.F1]
+                                                    (snd (Vector_split 2 (S (S (S (S (n1 - 6))))) (Guarded_Vector_split 6 n1 v1)))[@Fin.F1])) in
+                           Some
+                             (n2, existT _ _ (snd (Vector_split (2 + 4) (n1 - 6) (Guarded_Vector_split 6 n1 v1))),
+                              addD (addD cd0 16) 32) Else None).
+        simpl; find_if_inside; simpl; eauto.
+      }
+      { etransitivity.
+        match goal with
+          |- ?b = _ =>
+          let b' := (eval pattern (build_aligned_ByteString v1) in b) in
+          let b' := match b' with ?f _ => f end in
+          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+        end.
+        { intros.
+          destruct n1 as [ | [ | n1] ]; try omega.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+        }
+        { intros; etransitivity.
+          simpl.
+          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+            simpl in H'; rewrite H'; clear H'.
+          rewrite byte_align_decode_DomainName.
+          reflexivity.
+          higher_order_reflexivity.
+        }
+        simpl.
+        instantiate (1 :=
+                       fun n1 v1 cd0 =>
+                         If  NPeano.leb 2 n1
+                             Then `(proj, rest, env') <- Ifopt byte_aligned_decode_DomainName
+                             (snd (Vector_split 2 (n1 - 2) (Guarded_Vector_split 2 n1 v1)))
+                             (addD cd0 16) as p1
+                                                Then let (p2, cd') := p1 in
+                                                     let (a17, b') := p2 in Some (a17, b', cd')
+                                                                                 Else None;
+                                                                            Some (proj, rest, env') Else None).
+        simpl.
+        find_if_inside; simpl; eauto.
+        repeat rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        match goal with
+          |- Ifopt ?b as _ Then _ Else _ = _ =>
+          destruct b as [ [ [? [? ?] ] ?] | ]; reflexivity
+        end.
+      }
+      Arguments plus : simpl never.
+      { etransitivity.
+        match goal with
+          |- ?b = _ =>
+          let b' := (eval pattern (build_aligned_ByteString v1) in b) in
+          let b' := match b' with ?f _ => f end in
+          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+        end.
+        { intros.
+          destruct n1 as [ | [ | n1] ]; try omega.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+            simpl in H'; rewrite H'; try reflexivity; auto.
+        }
+        { intros; etransitivity.
+          simpl.
+          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+            simpl in H'; rewrite H'; clear H'.
+          rewrite byte_align_decode_DomainName.
+          rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache));
+            simpl.
+          eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+          destruct a17 as [ [? [ ? ?] ] ? ]; simpl.
+          rewrite byte_align_decode_DomainName.
+          rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache));
+            simpl.
+          etransitivity.
+          eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+          destruct a17 as [ [? [ ? ?] ] ? ]; simpl.
+          etransitivity.
+          match goal with
+            |- ?b = _ =>
+            let b' := (eval pattern (build_aligned_ByteString t2) in b) in
+            let b' := match b' with ?f _ => f end in
+            eapply (@optimize_Guarded_Decode x2 _ _ 20 b')
+          end.
+          { subst_evars.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            etransitivity; set_refine_evar.
+            rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            subst_evars.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
+            instantiate (1 := fun _ => None).
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            etransitivity; set_refine_evar.
+            rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            subst_evars.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
+            instantiate (1 := fun _ => None).
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            etransitivity; set_refine_evar.
+            rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            subst_evars.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
+            instantiate (1 := fun _ => None).
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            etransitivity; set_refine_evar.
+            rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            subst_evars.
+            intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try omega.
+            instantiate (1 := fun _ => None).
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+              simpl in H'; rewrite H'; try reflexivity; auto.
+            unfold LetIn; reflexivity.
+            unfold LetIn; reflexivity.
+            unfold LetIn; reflexivity.
+            unfold LetIn; reflexivity.
+          }
+          { intros.
+            etransitivity.
+            unfold plus.
+            simpl; rewrite (@AlignedDecode4Char _ ).
+            unfold plus.
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            simpl; rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            simpl; rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            simpl; rewrite (@AlignedDecode4Char _ ).
+            subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
+            simpl; rewrite (@AlignedDecode4Char _ ).
+            repeat (rewrite Vector_split_merge,
+                    <- Eqdep_dec.eq_rect_eq_dec;
+                    eauto using Peano_dec.eq_nat_dec ).
+            higher_order_reflexivity.
+            higher_order_reflexivity.
+          }
+          Opaque If_Opt_Then_Else.
+          Opaque If_Then_Else.
+          match goal with
+            |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
+            let z' := (eval pattern d, x, t, p in z) in
+            let z' := match z' with ?f' _ _ _ _ => f' end in
+            unify f (fun a => z' (fst (fst a)) (projT1 (snd (fst a)))
+                                 (projT2 (snd (fst a)))
+                                 (snd a));
+              cbv beta; reflexivity
+          end.
+          subst_evars; reflexivity.
+          simpl.
+
+          match goal with
+            |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
+            let z' := (eval pattern d, x, t, p in z) in
+            let z' := match z' with ?f' _ _ _ _ => f' end in
+            unify f (fun a => z' (fst (fst a)) (projT1 (snd (fst a)))
+                                 (projT2 (snd (fst a)))
+                                 (snd a));
+              cbv beta; reflexivity
+          end.
+          Transparent If_Opt_Then_Else.
+          Transparent If_Then_Else.
+          simpl.
+          subst_refine_evar; reflexivity.
+          simpl.
+          higher_order_reflexivity.
+        }
+        simpl.
+        fold (plus 20 (n1 - 20)).
+        fold (plus 16 (n1 - 16)).
+        fold (plus 12 (n1 - 12)).
+        fold (plus 8 (n1 - 8)).
+        fold (plus 4 (n1 - 4)).
+        match goal with
+          |- context [S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S ?n)))))))))))))))] => fold (plus 16 n)
+        end.
+        match goal with
+          |- If ?b Then ?t Else ?e =
+             Ifopt ?z ?n ?v ?cd as a Then _ Else _ =>
+          let b' := (eval pattern n, v, cd in b) in
+          let b' := match b' with ?f _ _ _ => f end in
+          let ZT := match type of z with _ -> _ -> _ -> option ?T => T end in
+          makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> option ZT)
+                   ltac:(fun zt =>
+                           makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> option ZT)
+                                    ltac:(fun et =>
+                                            unify z (fun n v cd => If (b' n v cd) Then (et n v cd) Else (zt n v cd)); cbv beta; simpl; find_if_inside; simpl)) end.
+        match goal with
+          |- If_Opt_Then_Else ?a ?t ?e =
+             Ifopt ?z ?n ?v ?cd as a Then _ Else _ =>
+          let a' := (eval pattern n, v, cd in a) in
+          let a' := match a' with ?f _ _ _ => f end in
+          let AT := match type of a with option ?T => T end in
+          let ZT := match type of z with _ -> _ -> _ -> option ?T => T end in
+          makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> AT -> option ZT)
+                   ltac:(fun zt =>
+                           makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> option ZT)
+                                    ltac:(fun et =>
+                                            unify z (fun n v cd => If_Opt_Then_Else (a' n v cd)
+                                                                                    (zt n v cd)
+                                                                                    (et n v cd));
+                                            cbv beta; simpl; destruct a; simpl)) end.
+        match goal with
+          |- If_Opt_Then_Else ?a ?t ?e =
+             Ifopt ?z ?n ?v ?cd ?a'' as a Then _ Else _ =>
+          let a' := (eval pattern n, v, cd, a'' in a) in
+          let a' := match a' with ?f _ _ _ _ => f end in
+          let AT := match type of a with option ?T => T end in
+          let AT'' := match type of a'' with ?T => T end in
+          let ZT := match type of z with _ -> _ -> _ -> _ -> option ?T => T end in
+          makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> AT'' -> AT -> option ZT)
+                   ltac:(fun zt =>
+                           makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> AT'' -> option ZT)
+                                    ltac:(fun et =>
+                                            unify z (fun n v cd a'' => If_Opt_Then_Else (a' n v cd a'')
+                                                                                        (zt n v cd a'')
+                                                                                        (et n v cd a''));
+                                            cbv beta; simpl; destruct a; simpl)) end.
+        match goal with
+          |- If ?b Then ?t Else ?e =
+             Ifopt ?z ?n ?v ?cd ?q ?q' as a Then _ Else _ =>
+          let b' := (eval pattern n, v, cd, q, q' in b) in
+          let b' := match b' with ?f _ _ _ _ _ => f end in
+          let QT := match type of q with ?T => T end in
+          let QT' := match type of q' with ?T => T end in
+          let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+          makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> option ZT)
+                   ltac:(fun zt =>
+                           makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> option ZT)
+                                    ltac:(fun et =>
+                                            unify z (fun n v cd q q' => If (b' n v cd q q') Then (et n v cd q q') Else (zt n v cd q q')); cbv beta; simpl; find_if_inside; simpl)) end.
+        clear H H1.
+        Opaque LetIn.
+        Unset Ltac Debug.
+        match goal with
+          |- _ =
+             Ifopt ?z ?n ?v ?cd ?q ?q' as a Then _ Else _ =>
+          let QT := match type of q with ?T => T end in
+          let QT' := match type of q' with ?T => T end in
+          let ZT1 := match type of z with _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T1 end in
+          let ZT2 := match type of z with _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T2 end in
+          let ZT3 := match type of z with _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T3 end in
+          makeEvar (forall n, Vector.t (word 8) n ->
+                              CacheDecode -> QT -> QT' ->
+                              word 32 -> word 32 ->
+                              word 32 -> word 32 -> ZT1)
+                   ltac:(fun zt1 =>
+                           makeEvar (forall n, Vector.t (word 8) n ->
+                                               CacheDecode -> QT -> QT' ->
+                                               word 32 -> word 32 ->
+                                               word 32 -> word 32 -> ZT2)
+                                    ltac:(fun zt2 =>
+                                            makeEvar (forall n, Vector.t (word 8) n ->
+                                                                CacheDecode -> QT -> QT' ->
+                                                                word 32 -> word 32 ->
+                                                                word 32 -> word 32 -> ZT3)
+                                                     ltac:(fun zt3 =>
+                                                             makeEvar (forall n, Vector.t (word 8) n ->
+                                                                                 CacheDecode -> QT -> QT' -> word 32)
+                                                                      ltac:(fun w1 =>
+                                                                              makeEvar (forall n, Vector.t (word 8) n ->
+                                                                                                  CacheDecode -> QT -> QT' -> word 32)
+                                                                                       ltac:(fun w2 =>
+                                                                                               makeEvar (forall n, Vector.t (word 8) n ->
+                                                                                                                   CacheDecode -> QT -> QT' -> word 32)
+                                                                                                        ltac:(fun w3 => makeEvar (forall n, Vector.t (word 8) n ->
+                                                                                                                                            CacheDecode -> QT -> QT' -> word 32)
+                                                                                                                                 ltac:(fun w4 =>
+                                                                                                                                         unify z (fun n v cd q q' => LetIn (w1 n v cd q q') (fun w => LetIn (w2 n v cd q q')  (fun w' => LetIn (w3  n v cd q q') (fun w'' => LetIn (w4 n v cd q q') (fun w''' => Some (zt1 n v cd q q' w w' w'' w''',
+                                                                                                                                                                                                                                                                                                                       zt2 n v cd q q' w w' w'' w''',
+                                                                                                                                                                                                                                                                                                                       zt3 n v cd q q' w w' w'' w'''
+                                                                                                                                                 )))))); simpl)))))))
+        end.
+        simpl.
+        rewrite LetIn_If_Opt_Then_Else.
+        f_equal.
+        higher_order_reflexivity.
+        apply functional_extensionality; intros.
+        simpl.
+        rewrite LetIn_If_Opt_Then_Else.
+        f_equal.
+        higher_order_reflexivity.
+        apply functional_extensionality; intros.
+        simpl.
+        rewrite LetIn_If_Opt_Then_Else.
+        f_equal.
+        higher_order_reflexivity.
+        apply functional_extensionality; intros.
+        simpl.
+        rewrite LetIn_If_Opt_Then_Else.
+        f_equal.
+        higher_order_reflexivity.
+        apply functional_extensionality; intros.
+        simpl.
+        repeat f_equal.
+        higher_order_reflexivity.
+        instantiate (1 := fun n1 v1 cd0 p1 p2 x1 x2 x3 x4 => existT _ _ _).
+        simpl; reflexivity.
+        higher_order_reflexivity.
+        instantiate (1 := fun _ _ _ _ _ => None); reflexivity.
+        instantiate (1 := fun _ _ _ _ => None); reflexivity.
+        instantiate (1 := fun _ _ _ => None); reflexivity.
+        instantiate (1 := fun _ _ _ => None); reflexivity.
+      }
+      subst_refine_evar; reflexivity.
+      subst_refine_evar; reflexivity.
+      higher_order_reflexivity.
+      match goal with
+        |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
+        let z' := (eval pattern d, x, t, p in z) in
+        let z' := match z' with ?f' _ _ _ _ => f' end in
+        unify f (fun a => z' (fst (fst a)) (projT1 (snd (fst a)))
+                             (projT2 (snd (fst a)))
+                             (snd a));
+          cbv beta; reflexivity
+      end.
+      higher_order_reflexivity.
+      simpl.
+      match goal with
+        |- If_Opt_Then_Else ?a ?t ?e =
+           Ifopt ?z ?n ?v ?cd as a Then _ Else _ =>
+        let a' := (eval pattern n, v, cd in a) in
+        let a' := match a' with ?f _ _ _ => f end in
+        let AT := match type of a with option ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> AT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd => If_Opt_Then_Else (a' n v cd)
+                                                                 (zt n v cd)
+                                                                 (@None ZT));
+                         cbv beta; simpl; destruct a; simpl) end.
+      match goal with
+        |- If ?b Then ?t Else ?e =
+           Ifopt ?z ?n ?v ?cd ?q as a Then _ Else _ =>
+        let b' := (eval pattern n, v, cd, q in b) in
+        let b' := match b' with ?f _ _ _ _ => f end in
+        let QT := match type of q with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q => If (b' n v cd q) Then (zt n v cd q) Else (@None ZT)); cbv beta; simpl; find_if_inside; simpl)
+      end.
+
+      match goal with
+        |- LetIn ?b ?k =
+           Ifopt ?z ?n ?v ?cd ?q as a Then _ Else _ =>
+        let b' := (eval pattern n, v, cd, q in b) in
+        let b' := match b' with ?f _ _ _ _ => f end in
+        let BT := match type of b with ?T => T end in
+        let QT := match type of q with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> BT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q => LetIn (b' n v cd q) (zt n v cd q)))
+      end.
+      simpl.
+      rewrite LetIn_If_Opt_Then_Else.
+      f_equal.
+      apply functional_extensionality; intros.
+      match goal with
+        |- If_Opt_Then_Else ?a ?t ?e =
+           Ifopt ?z ?n ?v ?cd ?q ?q' as a Then _ Else _ =>
+        let a' := (eval pattern n, v, cd, q, q' in a) in
+        let a' := match a' with ?f _ _ _ _ _ => f end in
+        let AT := match type of a with option ?T => T end in
+        let QT := match type of q with ?T => T end in
+        let QT' := match type of q' with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> AT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q q' => If_Opt_Then_Else (a' n v cd q q')
+                                                                      (zt n v cd q q')
+                                                                      (@None ZT));
+                         cbv beta; simpl; destruct a; simpl) end.
+
+      match goal with
+        |- LetIn ?b ?k =
+           Ifopt ?z ?n ?v ?cd ?q ?q' ?q'' as a Then _ Else _ =>
+        let b' := (eval pattern n, v, cd, q, q', q'' in b) in
+        let b' := match b' with ?f _ _ _ _ _ _ => f end in
+        let BT := match type of b with ?T => T end in
+        let QT := match type of q with ?T => T end in
+        let QT' := match type of q' with ?T => T end in
+        let QT'' := match type of q'' with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> QT'' -> BT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q q' q'' => LetIn (b' n v cd q q' q'') (zt n v cd q q' q'')))
+      end.
+      simpl.
+      rewrite LetIn_If_Opt_Then_Else.
+      f_equal.
+      apply functional_extensionality; intros.
+      match goal with
+        |- If_Opt_Then_Else ?a ?t ?e =
+           Ifopt ?z ?n ?v ?cd ?q ?q' ?q'' ?q''' as a Then _ Else _ =>
+        let a' := (eval pattern n, v, cd, q, q', q'', q''' in a) in
+        let a' := match a' with ?f _ _ _ _ _ _ _ => f end in
+        let AT := match type of a with option ?T => T end in
+        let QT := match type of q with ?T => T end in
+        let QT' := match type of q' with ?T => T end in
+        let QT'' := match type of q'' with ?T => T end in
+        let QT''' := match type of q''' with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> QT'' -> QT''' -> AT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q q' q'' q''' => If_Opt_Then_Else (a' n v cd q q' q'' q''')
+                                                                               (zt n v cd q q' q'' q''')
+                                                                               (@None ZT));
+                         cbv beta; simpl; destruct a; simpl) end.
+
+      match goal with
+        |- LetIn ?b ?k =
+           Ifopt ?z ?n ?v ?cd ?q ?q' ?q'' ?q''' ?r as a Then _ Else _ =>
+        let b' := (eval pattern n, v, cd, q, q', q'', q''', r in b) in
+        let b' := match b' with ?f _ _ _ _ _ _ _ _ => f end in
+        let BT := match type of b with ?T => T end in
+        let QT := match type of q with ?T => T end in
+        let QT' := match type of q' with ?T => T end in
+        let QT'' := match type of q'' with ?T => T end in
+        let QT''' := match type of q''' with ?T => T end in
+        let RT := match type of r with ?T => T end in
+        let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+        makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> QT'' -> QT''' -> RT -> BT -> option ZT)
+                 ltac:(fun zt =>
+                         unify z (fun n v cd q q' q'' q''' r => LetIn (b' n v cd q q' q'' q''' r) (zt n v cd q q' q'' q''' r)))
+      end.
+      simpl.
+      rewrite LetIn_If_Opt_Then_Else.
+      f_equal.
+      apply functional_extensionality; intros.
+      Time match goal with
+             |- If_Opt_Then_Else ?a ?t ?e =
+                Ifopt ?z ?n ?v ?cd ?q ?q' ?q'' ?q''' ?r ?r' as a Then _ Else _ =>
+             let a' := (eval pattern n, v, cd, q, q', q'', q''', r, r' in a) in
+             let a' := match a' with ?f _ _ _ _ _ _ _ _ _ => f end in
+             let AT := match type of a with option ?T => T end in
+             let QT := match type of q with ?T => T end in
+             let QT' := match type of q' with ?T => T end in
+             let QT'' := match type of q'' with ?T => T end in
+             let QT''' := match type of q''' with ?T => T end in
+             let RT := match type of r with ?T => T end in
+             let RT' := match type of r' with ?T => T end in
+             let ZT := match type of z with _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ -> option ?T => T end in
+             makeEvar (forall n, Vector.t (word 8) n -> CacheDecode -> QT -> QT' -> QT'' -> QT''' -> RT -> RT' -> AT -> option ZT)
+                      ltac:(fun zt =>
+                              unify z (fun n v cd q q' q'' q''' r r'=> If_Opt_Then_Else (a' n v cd q q' q'' q''' r r')
+                                                                                        (zt n v cd q q' q'' q''' r r')
+                                                                                        (@None ZT));
+                                cbv beta; simpl; destruct a; simpl) end.
+      (* This unification takes four minutes :p*)
+
+      match goal with
+        |- _ =
+           Ifopt ?z ?n ?v ?cd ?q ?q' ?q'' ?q''' ?r ?r' ?r'' as a Then _ Else _ =>
+        let QT := match type of q with ?T => T end in
+        let QT' := match type of q' with ?T => T end in
+        let QT'' := match type of q'' with ?T => T end in
+        let QT''' := match type of q''' with ?T => T end in
+        let RT := match type of r with ?T => T end in
+        let RT' := match type of r' with ?T => T end in
+        let RT'' := match type of r'' with ?T => T end in
+        let ZT1 := match type of z with _ -> _ -> _ -> _ -> _ ->
+                                        _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T1 end in
+        let ZT2 := match type of z with _ -> _ -> _ -> _ -> _ ->
+                                        _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T2 end in
+        let ZT3 := match type of z with _ -> _ -> _ -> _ -> _ ->
+                                        _ -> _ -> _ -> _ -> _ -> option (?T1 * ?T2 * ?T3) => T3 end in
+        makeEvar (forall n, Vector.t (word 8) n ->
+                            CacheDecode -> QT -> QT' ->
+                            QT'' -> QT''' -> RT -> RT' -> RT''
+                            -> ZT1)
+                 ltac:(fun zt1 =>
+                         makeEvar (forall n, Vector.t (word 8) n ->
+                                             CacheDecode -> QT -> QT' ->
+                                             QT'' -> QT''' -> RT -> RT' -> RT''
+                                             -> ZT2)
+                                  ltac:(fun zt2 =>
+                                          makeEvar (forall n, Vector.t (word 8) n ->
+                                                              CacheDecode -> QT -> QT' ->
+                                                              QT'' -> QT''' -> RT -> RT' -> RT''
+                                                              -> ZT3)
+                                                   ltac:(fun zt3 => unify z (fun n v cd q q' q'' q''' r r' r'' =>
+                                                                               Some (zt1 n v cd q q' q'' q''' r r' r'',
+                                                                                     zt2 n v cd q q' q'' q''' r r' r'',
+                                                                                     zt3 n v cd q q' q'' q''' r r' r''));
+                                                                    simpl))) end.
+      repeat f_equal; try higher_order_reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; reflexivity.
+      subst_evars; higher_order_reflexivity.
+    }
+    { match goal with
+        |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
+        let z' := (eval pattern d, x, t, p in z) in
+        let z' := match z' with ?f' _ _ _ _ => f' end in
+        unify f (fun a => z' (fst (fst a)) (projT1 (snd (fst a)))
+                             (projT2 (snd (fst a)))
+                             (snd a));
+          cbv beta; reflexivity
+      end.
+    }
+    subst_evars; reflexivity.
+    subst_evars; reflexivity.
+    subst_evars; reflexivity.
+    subst_evars; reflexivity.
+    subst_evars; reflexivity.
+    higher_order_reflexivity.
+    Time Defined.
+
+  Check ByteAligned_packetDecoderImpl.
+  Definition ByteAligned_packetDecoderImpl' n :=
+    Eval simpl in (projT1 (ByteAligned_packetDecoderImpl n)).
+
+  Lemma ByteAligned_packetDecoderImpl'_OK
+    : forall n,
+      forall (v : Vector.t _ (12 + n)),
+        fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
+        ByteAligned_packetDecoderImpl' n v (Some (wzero 17) , @nil (pointerT * string))%list.
+  Proof.
+    intros.
+    pose proof (projT2 (ByteAligned_packetDecoderImpl n));
+      cbv beta in H.
+    rewrite H.
+    set (H' := (Some (wzero 17), @nil (pointerT * string))).
+    simpl.
+    unfold ByteAligned_packetDecoderImpl'.
+    reflexivity.
+  Qed.
 
 End DnsPacket.

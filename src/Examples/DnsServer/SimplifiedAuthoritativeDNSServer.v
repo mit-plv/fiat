@@ -139,21 +139,38 @@ Instance ARRecordType_eq : Query_eq RRecordType :=
 Lemma refine_decode_packet
   : forall b,
     refine (Pick_Decoder_For DNS_Packet_OK encode_packet_Spec (build_aligned_ByteString b) list_CacheEncode_empty)
-           (ret match (ByteAligned_packetDecoderImpl' buffSize b list_CacheDecode_empty)
-                with
-                | Some (p, _, _) => Some p
-                | None => None
-                end).
+           (ret (Ifopt (ByteAligned_packetDecoderImpl' buffSize b list_CacheDecode_empty) as p Then Some (fst (fst p)) Else None)).
 Proof.
   intros; setoid_rewrite refine_Pick_Decoder_For with (decoderImpl := packet_decoder); eauto using list_cache_empty_Equiv.
   replace (projT1 packet_decoder) with packetDecoderImpl.
   unfold list_CacheDecode_empty.
   pose proof (ByteAligned_packetDecoderImpl'_OK _ b).
   rewrite <- H.
-  reflexivity.
+  unfold If_Opt_Then_Else.
+  f_equiv.
+  match goal with
+    |- context [match ?z with _ => _ end =
+                match ?z' with _ => _ end] =>
+    replace z with z' by reflexivity; destruct z' as [ [ [? ?] ?] | ];
+      reflexivity
+  end.
   reflexivity.
   simpl; unfold GoodCache; simpl; intuition; try congruence.
 Qed.
+
+Arguments natToWord : simpl never.
+  Arguments wordToNat : simpl never.
+  Arguments NPeano.div : simpl never.
+  Arguments AlignWord.split1' : simpl never.
+  Arguments AlignWord.split2' : simpl never.
+  Arguments weq : simpl never.
+  Arguments EnumOpt.word_indexed : simpl never.
+  Arguments Guarded_Vector_split : simpl never.
+  Arguments addD : simpl never.
+  Arguments Core.append_word : simpl never.
+  Arguments Vector_split : simpl never.
+  Local Opaque pow2.
+
 
 Local Opaque CallBagFind.
 
@@ -2084,10 +2101,10 @@ Proof.
 
   simpl.
 
-  (* Need to inline parsed fields. 
+  (* Need to inline parsed fields.
      hone method "Process".
-  { simpl in H2. 
-    rewrite H0.  
+  { simpl in H2.
+    rewrite H0.
     simplify with monad laws.
     rewrite refine_decode_packet.
     unfold ByteAligned_packetDecoderImpl'.
