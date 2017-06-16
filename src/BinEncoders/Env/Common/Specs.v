@@ -67,8 +67,25 @@ Section Specifications.
              (k : A -> B -> D -> option (C * E * D))
     : option (C * E * D) :=
     Ifopt a as a_opt Then
-      match a_opt with (a, bin', env') => k a bin' env' end
-      Else None.
+                     match a_opt with (a, bin', env') => k a bin' env' end
+                     Else None.
+
+  Definition DecodeOpt2_fmap
+             {D F G}
+             (f : A -> F)
+             (g : B -> G)
+             (a_opt : option (A * B * D))
+    : option (F * G * D) :=
+    Ifopt a_opt as a Then Some (f (fst (fst a)), g (snd (fst a)), snd a)
+                     Else None.
+
+  Definition DecodeOpt2_fmap_id
+             {D}
+    : forall (a_opt : option (A * B * D)),
+      DecodeOpt2_fmap id id a_opt = a_opt.
+  Proof.
+    destruct a_opt as [ [ [a' b'] d'] | ]; reflexivity.
+  Qed.
 
   Definition DecodeBindOpt
              {C}
@@ -76,8 +93,8 @@ Section Specifications.
              (k : A -> B -> option (C * B))
     : option (C * B) :=
     Ifopt a as a_opt Then
-      match a_opt with (a, bin') => k a bin' end
-    Else None.
+                     match a_opt with (a, bin') => k a bin' end
+                     Else None.
 
   Lemma DecodeBindOpt2_inv
         {C D E}
@@ -111,6 +128,20 @@ Section Specifications.
 
 End Specifications.
 
+Definition DecodeOpt2_fmap_compose
+           {A B D F G F' G'}
+  : forall
+    (f : A -> F)
+    (g : B -> G)
+    (f' : F -> F')
+    (g' : G -> G')
+    (a_opt : option (A * B * D)),
+    DecodeOpt2_fmap f' g' (DecodeOpt2_fmap f g a_opt) =
+    DecodeOpt2_fmap (compose f' f) (compose g' g) a_opt.
+Proof.
+  destruct a_opt as [ [ [a' b'] d'] | ]; reflexivity.
+Qed.
+
 Lemma DecodeBindOpt2_assoc {A B C D E F G} :
   forall (a_opt : option (A * B * D))
          (f : A -> B -> D -> option (C * E * D))
@@ -124,10 +155,68 @@ Qed.
 Lemma DecodeBindOpt2_under_bind {A B C D E} :
   forall (a_opt : option (A * B * D))
          (f f' : A -> B -> D -> option (C * E * D)),
-         (forall a b d, f a b d = f' a b d)
-         -> DecodeBindOpt2 a_opt f = DecodeBindOpt2 a_opt f'.
+    (forall a b d, f a b d = f' a b d)
+    -> DecodeBindOpt2 a_opt f = DecodeBindOpt2 a_opt f'.
 Proof.
   destruct a_opt as [ [ [? ?] ?] | ]; simpl; intros; eauto.
+Qed.
+
+Notation "`( a , b , env ) <- c ; k" :=
+  (DecodeBindOpt2 c%bencode (fun a b env => k%bencode)) : binencoders_scope.
+
+Notation "`( a , b ) <- c ; k" :=
+  (DecodeBindOpt c%bencode (fun a b => k%bencode)) : binencoders_scope.
+
+Open Scope binencoders_scope.
+
+Lemma optimize_If_bind2_bool {A A' B B' C}
+  : forall (c : bool)
+           (t e : option (A * B * C))
+           (k : A -> B -> C -> option (A' * B' * C)),
+    (`(a, b, env) <- (If c Then t Else e); k a b env) =
+    If c Then `(a, b, env) <- t; k a b env Else (`(a, b, env) <- e; k a b env).
+Proof.
+  destruct c; simpl; intros; reflexivity.
+Qed.
+
+Lemma If_sumbool_Then_Else_DecodeBindOpt {A B B' ResultT ResultT'} {c : Cache} {P}
+  : forall (a_eq_dec : forall a a' : A, {P a a'} + {~ P a a'})
+           a a'
+           (k : _ -> _ -> _ -> option (ResultT' * B' * CacheDecode))
+           (t : P a a' ->  option (ResultT * B * CacheDecode))
+           (e : ~ P a a' -> option (ResultT * B * CacheDecode)),
+    (`(w, b', cd') <- match a_eq_dec a a' with
+                      | left e => t e
+                      | right n => e n
+                      end;
+       k w b' cd') =
+    match a_eq_dec a a' with
+    | left e => `(w, b', cd') <- t e; k w b' cd'
+    | right n => `(w, b', cd') <- e n; k w b' cd'
+    end.
+Proof.
+  intros; destruct (a_eq_dec a a'); simpl; intros; reflexivity.
+Qed.
+
+Lemma optimize_under_DecodeBindOpt2_both {A B C D E} {B' }
+  : forall (a_opt : option (A * B * C))
+           (a_opt' : option (A * B' * C))
+           (g : B' -> B)
+           (a_opt_eq_Some : forall a' b' c,
+               a_opt' = Some (a', b', c) ->
+               a_opt = Some (a', g b', c))
+           (a_opt_eq_None : a_opt' = None -> a_opt = None)
+           (k : _ -> _ -> _ -> option (D * E * C))
+           (k' : _ -> _ -> _ -> _)
+           (k_eq_Some :
+              forall a' b' c,
+                a_opt' = Some (a', b', c) ->
+                k a' (g b') c = k' a' b' c),
+    DecodeBindOpt2 a_opt k = DecodeBindOpt2 a_opt' k'.
+Proof.
+  destruct a_opt' as [ [ [? ?] ?] | ]; simpl; intros.
+  erewrite a_opt_eq_Some; simpl; eauto.
+  erewrite a_opt_eq_None; simpl; eauto.
 Qed.
 
 Add Parametric Morphism
@@ -140,7 +229,7 @@ Add Parametric Morphism
     (decode_inv : CacheDecode -> Prop)
   : (fun encoder =>
        @encode_decode_correct_f A B cache transformer predicate
-                               rest_predicate encoder decode decode_inv)
+                                rest_predicate encoder decode decode_inv)
     with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
       as encode_decode_correct_refineEquiv.
 Proof.
@@ -163,21 +252,21 @@ Section DecodeWMeasure.
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
 
   Definition Decode_w_Measure_lt
-        (b : B)
-        (cd : CacheDecode)
-        (A_decode_lt
-         : forall  (b : B)
-                   (cd : CacheDecode)
-                   (a : A)
-                   (b' : B)
-                   (cd' : CacheDecode),
-            A_decode b cd = Some (a, b', cd')
-      -> lt_B b' b)
+             (b : B)
+             (cd : CacheDecode)
+             (A_decode_lt
+              : forall  (b : B)
+                        (cd : CacheDecode)
+                        (a : A)
+                        (b' : B)
+                        (cd' : CacheDecode),
+                 A_decode b cd = Some (a, b', cd')
+                 -> lt_B b' b)
     : option (A * {b' : B | lt_B b' b} * CacheDecode).
     generalize (A_decode_lt b cd); clear.
     destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
       [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
-        | exact None ].
+      | exact None ].
   Defined.
 
   Lemma Decode_w_Measure_lt_eq
@@ -239,7 +328,7 @@ Section DecodeWMeasure.
     generalize (A_decode_le b cd); clear.
     destruct (A_decode b cd) as [ [ [ a b' ] cd' ] | ]; intros;
       [ refine (Some (a, exist _ b' (H _ _ _ eq_refl), cd'))
-        | exact None ].
+      | exact None ].
   Defined.
 
   Lemma Decode_w_Measure_le_eq
@@ -286,27 +375,49 @@ Section DecodeWMeasure.
     discriminate.
   Qed.
 
+  Lemma Decode_w_Measure_le_eq'':
+    forall (b : B) (cd : CacheDecode)
+           (A_decode_le : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+               A_decode b0 cd0 = Some (a, b', cd') -> le_B b' b0),
+      Decode_w_Measure_le b cd A_decode_le = None ->
+      A_decode b cd = None.
+  Proof.
+    clear; intros ? ? ?; unfold Decode_w_Measure_le in *.
+    remember (A_decode_le b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    intros; discriminate.
+  Qed.
+
+  Lemma Decode_w_Measure_lt_eq'':
+    forall (b : B) (cd : CacheDecode)
+           (A_decode_lt : forall (b0 : B) (cd0 : CacheDecode) (a : A) (b' : B) (cd' : CacheDecode),
+               A_decode b0 cd0 = Some (a, b', cd') -> lt_B b' b0),
+      Decode_w_Measure_lt b cd A_decode_lt = None ->
+      A_decode b cd = None.
+  Proof.
+    clear; intros ? ? ?; unfold Decode_w_Measure_lt in *.
+    remember (A_decode_lt b cd); clear Heql.
+    destruct (A_decode b cd) as [ [ [? ?] ? ] | ]; eauto.
+    discriminate.
+  Qed.
+
+
+
 End DecodeWMeasure.
 
-Notation "`( a , b , env ) <- c ; k" :=
-  (DecodeBindOpt2 c%bencode (fun a b env => k%bencode)) : binencoders_scope.
 
-Notation "`( a , b ) <- c ; k" :=
-  (DecodeBindOpt c%bencode (fun a b => k%bencode)) : binencoders_scope.
-
-Open Scope binencoders_scope.
 Global Unset Implicit Arguments.
 
 Definition CorrectDecoderFor {A B} {cache : Cache}
            {transformer : Transformer B} Invariant FormatSpec :=
-{ decodePlusCacheInv |
-      exists P_inv,
-        (cache_inv_Property (snd decodePlusCacheInv) P_inv
-         -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
-                                    FormatSpec
-                                    (fst decodePlusCacheInv)
-                                    (snd decodePlusCacheInv))
-        /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
+  { decodePlusCacheInv |
+    exists P_inv,
+    (cache_inv_Property (snd decodePlusCacheInv) P_inv
+     -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+                                FormatSpec
+                                (fst decodePlusCacheInv)
+                                (snd decodePlusCacheInv))
+    /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 
 Lemma Start_CorrectDecoderFor
       {A B} {cache : Cache}
@@ -334,19 +445,19 @@ Defined.
 
 (* Shorthand for nondeterministically decoding a value. *)
 Definition Pick_Decoder_For
-      {A B} {cache : Cache}
-      {transformer : Transformer B}
-      Invariant
-      FormatSpec
-      (b : B)
-      (ce : CacheEncode)
+           {A B} {cache : Cache}
+           {transformer : Transformer B}
+           Invariant
+           FormatSpec
+           (b : B)
+           (ce : CacheEncode)
   := {a : option A |
-            forall a' : A,
-              a = Some a' <->
-              (exists b1 b2 (ce' : CacheEncode),
-                  computes_to (FormatSpec a' ce) (b1, ce')
-                  /\ b = transform b1 b2
-                  /\ Invariant a')}%comp.
+      forall a' : A,
+        a = Some a' <->
+        (exists b1 b2 (ce' : CacheEncode),
+            computes_to (FormatSpec a' ce) (b1, ce')
+            /\ b = transform b1 b2
+            /\ Invariant a')}%comp.
 
 Lemma refine_Pick_Decoder_For
       {A B} {cache : Cache}
@@ -357,11 +468,11 @@ Lemma refine_Pick_Decoder_For
     Equiv ce cd
     -> snd (projT1 decoderImpl) cd
     -> refine (Pick_Decoder_For Invariant FormatSpec b ce)
-           (ret match fst (projT1 decoderImpl) b cd
-                           with
-                           | Some (a, _, _) => Some a
-                           | None => None
-                           end).
+              (ret match fst (projT1 decoderImpl) b cd
+                   with
+                   | Some (a, _, _) => Some a
+                   | None => None
+                   end).
 Proof.
   intros.
   pose proof (projT2 (decoderImpl)).
