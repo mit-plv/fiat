@@ -4,21 +4,9 @@ Require Export Fiat.QueryStructure.Automation.AutoDB
 
 Export Lists.List.ListNotations.
 
-  Ltac finish_planning' PickIndex
-     BuildEarlyIndex BuildLastIndex
-     IndexUse createEarlyTerm createLastTerm
-     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-     BuildEarlyBag BuildLastBag :=
-  (* Automatically select indexes + data structure. *)
-
-    PickIndex ltac:(fun attrlist =>
-                      make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex);
-    match goal with
-    | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
-    | |- _ => (* Otherwise implement each method using the indexed data structure *)
-      plan IndexUse createEarlyTerm createLastTerm
-           IndexUse_dep createEarlyTerm_dep createLastTerm_dep
-    end;
+Ltac Implement_Bags BuildEarlyBag BuildLastBag :=
+  (* Implement bags using concrete data structures and *)
+  (* finish the derviation. *)
     eapply FullySharpened_Finish;
     [pose_headings_all;
       match goal with
@@ -40,6 +28,23 @@ Export Lists.List.ListNotations.
       GetIndexedQueryStructureRelation,
       GetAttributeRaw; simpl;
       higher_order_reflexivityT ].
+
+  Ltac finish_planning' PickIndex
+     BuildEarlyIndex BuildLastIndex
+     IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+     BuildEarlyBag BuildLastBag :=
+  (* Automatically select indexes + data structure. *)
+
+    PickIndex ltac:(fun attrlist =>
+                      make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex);
+    match goal with
+    | |- Sharpened _ => idtac (* Do nothing to the next Sharpened ADT goal. *)
+    | |- _ => (* Otherwise implement each method using the indexed data structure *)
+      plan IndexUse createEarlyTerm createLastTerm
+           IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+    end;
+    Implement_Bags BuildEarlyBag BuildLastBag.
 
   Ltac master_plan'
        FindAttributeUses

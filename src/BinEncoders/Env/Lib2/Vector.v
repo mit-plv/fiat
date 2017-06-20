@@ -101,7 +101,7 @@ Section Vector.
   Proof.
     split.
     {
-      intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
+      intros env env' xenv l l' ext env_OK Eeq Ppred Ppred_rest Penc.
       generalize dependent env. generalize dependent env'.
       generalize dependent xenv.
       generalize dependent l'. induction l.
@@ -114,12 +114,12 @@ Section Vector.
         unfold Bind2 in Penc; computes_to_inv; subst.
         destruct v; destruct v0; simpl in *.
         injections.
-        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) Eeq H H' Penc) as [ ? [? ?] ].
+        destruct (fun H' => proj1 A_decode_pf _ _ _ _ _ (transform b0 ext) env_OK Eeq H H' Penc) as [ ? [? [? xenv_OK] ] ].
         intuition; destruct_ex.
         eapply H0; eauto.
         setoid_rewrite <- transform_assoc; setoid_rewrite H0;
           simpl.
-        destruct (fun H' => IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) H' b0 xenv x c); intuition eauto.
+        destruct (fun H' => IHl (fun x H => Ppred x (Vector.In_cons_tl _ _ _ H)) H' b0 xenv x xenv_OK c); intuition eauto.
         setoid_rewrite H5; simpl.
         eexists; intuition.
       }

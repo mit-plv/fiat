@@ -66,7 +66,7 @@ Section helpers.
     induction_str_len str.
     { t. }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       intros ?????.
       rewrite paren_balanced_hiding'_recr, paren_balanced'_recr.
       unfold paren_balanced_hiding'_step, paren_balanced'_step.

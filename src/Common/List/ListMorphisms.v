@@ -468,3 +468,62 @@ Proof.
     try rewrite H0, H1;
     try assumption.
 Qed.
+
+Global Instance InA_Proper_iff_iff {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> iff) (@SetoidList.InA A) | 5.
+Proof.
+  unfold pointwise_relation.
+  intros eqA eqA' HeqA a a' ? ls ls' ?; subst a' ls'; split;
+    split_iff;
+    induction ls as [|x xs IHxs];
+    intro H'; inversion H'; intuition eauto.
+Qed.
+
+Global Instance InA_Proper_iff_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> impl) (@SetoidList.InA A) | 5.
+Proof. repeat intro; eapply InA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+Global Instance InA_Proper_iff_flip_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> eq ==> flip impl) (@SetoidList.InA A) | 5.
+Proof. repeat intro; eapply InA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+
+Global Instance NoDupA_Proper_iff_iff {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> iff) (@SetoidList.NoDupA A) | 5.
+Proof.
+  intros eqA eqA' HeqA ls ls' ?; subst ls'; split;
+    induction ls as [|x xs IHxs];
+    intro H'; inversion H'; clear H'; subst; constructor;
+      try solve [ auto
+                | setoid_rewrite <- HeqA; auto
+                | setoid_rewrite HeqA; auto ].
+Qed.
+Global Instance NoDupA_Proper_iff_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> impl) (@SetoidList.NoDupA A) | 5.
+Proof. repeat intro; eapply NoDupA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+Global Instance NoDupA_Proper_iff_flip_impl {A}
+  : Proper (pointwise_relation _ (pointwise_relation _ iff) ==> eq ==> flip impl) (@SetoidList.NoDupA A) | 5.
+Proof. repeat intro; eapply NoDupA_Proper_iff_iff; first [ eassumption | symmetry; eassumption ]. Qed.
+
+Global Instance Proper_fold_right_Prop_iff
+  : Proper ((iff ==> iff ==> iff) ==> iff ==> eq ==> iff) (fold_right (B:=Prop)) | 5.
+Proof.
+  unfold respectful; intros ?? H0 ?? H1 xs ys ?; subst ys.
+  induction xs; [ assumption | simpl; rewrite H0 by (eassumption || reflexivity); reflexivity ].
+Qed.
+
+Global Instance fold_right_Proper_rel {A B R}
+  : Proper (pointwise_relation _ (R ==> R) ==> R ==> eq ==> R) (@List.fold_right A B) | 10.
+Proof.
+  intros f g H a b H0 ls y ?; subst y.
+  induction ls as [|x xs IHxs]; [ exact H0 | ].
+  simpl; apply H, IHxs.
+Qed.
+
+Global Instance fold_right_Proper_rel_eqlistA {A B RA RB}
+  : Proper ((RB ==> RA ==> RA) ==> RA ==> SetoidList.eqlistA RB ==> RA) (@List.fold_right A B) | 10.
+Proof.
+  intros f g H a b H0 ls.
+  induction ls as [|x xs IHxs]; intros [|y ys] Hls;
+    inversion Hls; subst; simpl;
+      [ assumption
+      | apply H, IHxs; assumption ].
+Qed.

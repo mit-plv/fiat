@@ -30,68 +30,6 @@ Section BagsQueryStructureRefinements.
 
   Require Import Fiat.QueryStructure.Implementation.DataStructures.BagADT.IndexSearchTerms.
 
-  Definition fooT :=
-    forall
-      (sBOOKS := "Books")
-      (sAUTHOR := "Authors")
-      (sTITLE := "Title")
-      (sISBN := "ISBN")
-      (sORDERS := "Orders")
-      (sDATE := "Date")
-    (BookStoreSchema :=
-  Query Structure Schema
-    [ relation sBOOKS has
-              schema <sAUTHOR :: string,
-                      sTITLE :: string,
-                      sISBN :: nat>
-                      where attributes [sTITLE; sAUTHOR] depend on [sISBN];
-      relation sORDERS has
-              schema <sISBN :: nat,
-                      sDATE :: nat> ]
-    enforcing [attribute sISBN for sORDERS references sBOOKS])
-  (StringId := "Init" : string)
-    (StringId0 := "PlaceOrder" : string)
-    (StringId1 := "EqualityIndex" : string)
-    m n o mt mt'
-    (SearchTerm := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
-                  [{| KindIndexKind := StringId1; KindIndexIndex := m |};
-                  {|
-                  KindIndexKind := StringId1;
-                  KindIndexIndex := n |}] :
-            Type)
-    (SearchTerm0 := BuildIndexSearchTerm (BuildIndexSearchTermT := unit)
-                   [{|
-                    KindIndexKind := StringId1;
-                    KindIndexIndex := o |}] :
-             Type)
-    (SearchUpdateTerm := {|
-                      BagSearchTermType := SearchTerm;
-                      BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt);
-                      BagUpdateTermType := RawTuple -> RawTuple;
-                      BagApplyUpdateTerm := fun z : RawTuple -> RawTuple => z |}
-                   : SearchUpdateTerms
-                       {|
-                       NumAttr := 3;
-                       AttrList := Vector.cons Type string _ (Vector.cons Type string _ (Vector.cons Type nat _ (Vector.nil _)))|})
-    (SearchUpdateTerm0 := {|
-                       BagSearchTermType := SearchTerm0;
-                       BagMatchSearchTerm := MatchIndexSearchTerm (matcher := mt');
-                       BagUpdateTermType := RawTuple -> RawTuple;
-                       BagApplyUpdateTerm := fun z : RawTuple -> RawTuple =>
-                                             z |}
-                    : SearchUpdateTerms
-                        {|
-                        NumAttr := 2;
-                        AttrList := Vector.cons Type nat _ (Vector.cons Type nat _ (Vector.nil _)) |})
-    (Index := icons3 SearchUpdateTerm (icons3 SearchUpdateTerm0 inil3)
-        : ilist3 (qschemaSchemas BookStoreSchema))
-    (foo1 : constructorType (IndexedQueryStructure BookStoreSchema Index)
-                            (consDom (Constructor "Init" : rep)%consSig)),
-   refineConstructor (dom := []) (@DelegateToBag_AbsR _ _)
-     (or' <- empty;
-      ret (DropQSConstraints or')) (foo1).
-
-
   Import Vectors.VectorDef.VectorNotations.
 
   Variable qs_schema : RawQueryStructureSchema.
@@ -548,7 +486,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
     induction l1.
-    - simplify with monad laws; reflexivity.
+    - simpl; simplify with monad laws; reflexivity.
     - Local Transparent CallBagMethod.
       simpl.
         setoid_rewrite refineEquiv_bind_bind.
@@ -593,7 +531,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     unfold Join_Filtered_Comp_Lists, Join_Comp_Lists; intros; simpl.
     induction l1.
-    - simplify with monad laws; reflexivity.
+    - simpl; simplify with monad laws; reflexivity.
     - Local Transparent CallBagMethod.
       unfold CallBagMethod.
       simpl.
@@ -985,7 +923,7 @@ Section BagsQueryStructureRefinements.
   Proof.
     intros; destruct (H idx) as [l [l_eqv l_eqv'] ].
     Local Transparent CallBagMethod.
-    eexists l; unfold CallBagMethod; simpl; simplify with monad laws.
+    eexists l; unfold CallBagEnumerate, CallBagMethod; simpl; simplify with monad laws.
     computes_to_econstructor;  computes_to_inv; subst; eauto.
   Qed.
 
@@ -1370,8 +1308,30 @@ Lemma refine_BagADT_QSDelete' {ResultT}
            k' (fst r_n')).
 Proof.
   unfold refine; intros.
-Admitted.
-
+  unfold CallBagDelete, CallBagMethod in H2; simpl in H2;
+    computes_to_inv; subst; simpl in *.
+  unfold UpdateUnConstrRelationDeleteC; repeat computes_to_econstructor.
+  eapply H1; eauto.
+  unfold DelegateToBag_AbsR; intros.
+  intros; destruct (fin_eq_dec idx idx0); subst.
+  - rewrite get_update_unconstr_eq, get_update_indexed_eq.
+    destruct (H0 idx0) as
+        [l [ [ [bnd fresh_bnd] ? ]
+               [ [bnd' fresh_bnd'] ? ] ] ].
+    pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H3).
+    pose proof (UnIndexedEnsembleListEquivalence_Delete DT_Dec H4).
+    eexists (filter (fun a : RawTuple => negb (dec a)) l); split;
+      unfold EnsembleIndexedListEquivalence; split; eauto;
+        try solve [eexists _; eauto using UnConstrFreshIdx_Delete].
+    eapply UnIndexedEnsembleListEquivalence_Same_set; eauto.
+    split; unfold Included; intros; inversion H7; subst;
+      econstructor; eauto;
+        unfold Complement, In in *.
+    + eapply Decides_false in H9; rewrite H in H9; congruence.
+    + eapply Decides_false; rewrite <- H in H9; destruct (dec (indexedElement x));
+        congruence.
+  - rewrite get_update_unconstr_neq, get_update_indexed_neq; eauto.
+Qed.
 
 Corollary refine_Join_Comp_Lists_filter_filter_search_term_snd_dep'
           (ResultT : Type) :
@@ -1440,6 +1400,17 @@ Proof.
   destruct (fin_eq_dec idx idx0); subst.
   rewrite i3th_replace_Index_eq; reflexivity.
   rewrite i3th_replace_Index_neq; eauto.
+Qed.
+
+Lemma List_Query_In_Return' :
+  forall (n : nat) (ResultT : Type) (headings : Vector.t RawHeading n) (f f' : _ -> Comp (list ResultT))
+         (l : list (ilist2 (B := @RawTuple) headings)),
+    (forall tup, refine (f tup) (f' tup))
+    -> refine (List_Query_In l f)
+              (List_Query_In l f').
+Proof.
+  unfold List_Query_In.
+  intros; eapply refine_flatten_CompList_func; eauto.
 Qed.
 
 Arguments CallBagMethod : simpl never.

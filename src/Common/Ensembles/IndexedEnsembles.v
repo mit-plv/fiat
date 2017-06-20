@@ -304,6 +304,15 @@ Section IndexedEnsembles.
     eauto using UnIndexedEnsembleListEquivalence_filter.
   Qed.
 
+  Lemma UnConstrFreshIdx_Delete
+    : forall (P : IndexedEnsemble) DeletedTuples bnd,
+      UnConstrFreshIdx P bnd
+      -> UnConstrFreshIdx (EnsembleDelete P DeletedTuples) bnd.
+  Proof.
+    unfold EnsembleDelete, UnConstrFreshIdx; intros.
+    inversion H0; subst; eauto.
+  Qed.
+
   Lemma unindexed_OK_exists_index' :
     forall x lIndexed (t t' : _) n n',
       n <> n'

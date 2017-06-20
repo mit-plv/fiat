@@ -12,6 +12,7 @@ Require Import Coq.Strings.String Coq.omega.Omega Coq.Lists.List
         Fiat.Common.Tactics.CacheStringConstant
         Fiat.QueryStructure.Specification.Operations.Query
         Fiat.QueryStructure.Specification.Operations.Insert
+        Fiat.QueryStructure.Implementation.Constraints.ConstraintChecks.DuplicateFree
         Fiat.QueryStructure.Implementation.Constraints.ConstraintChecksRefinements
         Fiat.QueryStructure.Implementation.Operations.General.InsertRefinements
         Fiat.QueryStructure.Automation.Common
@@ -167,14 +168,17 @@ Ltac implement_QSInsertSpec :=
    | simpl;
      repeat first
             [ rewrite decides_2_True
-            | funDepToQuery];
+            | funDepToQuery
+            | implement_DuplicateFree];
      finish honing
    | simpl; intros; try set_refine_evar;
      repeat first [
               rewrite decides_2_True
             | setoid_rewrite FunctionalDependency_symmetry';
               [ | solve [ eauto ] ]
+            | implement_DuplicateFree_symmetry; [ | solve [ eauto ] ]
             | funDepToQuery
+            | implement_DuplicateFree
             ]; eauto;
      finish honing
    | simpl;

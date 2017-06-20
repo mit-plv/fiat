@@ -211,6 +211,17 @@ Section LogicFacts.
   Proof. firstorder. Qed.
   Lemma ex_True {T} : (exists x : T, True) <-> inhabited T.
   Proof. firstorder. Qed.
+
+  Lemma ex_ind_iff {T P} {Q : _ -> Prop}
+    : (forall pf : @ex T P, Q pf) <-> forall (x : T) (y : P x), Q (ex_intro P x y).
+  Proof.
+    intuition; destruct_all (ex P); auto.
+  Qed.
+
+  Lemma pull_forall_iff {A} (P Q : A -> Prop)
+    : (forall x : A, (P x <-> Q x))
+      -> ((forall x : A, P x) <-> (forall x : A, Q x)).
+  Proof. firstorder eauto. Qed.
 End LogicFacts.
 
 Create HintDb logic discriminated.

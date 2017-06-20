@@ -66,7 +66,7 @@ module WITH_DB =
     let open Proofview.Notations in
     Proofview.Goal.nf_enter { enter = begin
 	fun gl ->
-	let _ = Hints.add_hints true db (Hints.HintsResolveEntry [(Some 1,false,true,Hints.PathAny,lem)]) in
+	let _ = Hints.add_hints true db (Hints.HintsResolveEntry [({ Vernacexpr.hint_priority = Some 1 ; Vernacexpr.hint_pattern = None },false,true,Hints.PathAny,lem)]) in
 	tclIDTAC
       end }
 

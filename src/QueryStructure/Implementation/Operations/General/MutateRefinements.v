@@ -584,7 +584,7 @@ Section MutateRefinements.
               | _, _, _, _ => ret (DropQSConstraints or, [])
             end).
   Proof.
-    intros; simplify with monad laws.
+    intros; unfold QSMutate; simplify with monad laws.
     setoid_rewrite (@QSMutateSpec_UnConstr_refine' _ qs Ridx); eauto.
     setoid_rewrite <- H0; setoid_rewrite <- H1.
     setoid_rewrite <- H2; setoid_rewrite <- H3.

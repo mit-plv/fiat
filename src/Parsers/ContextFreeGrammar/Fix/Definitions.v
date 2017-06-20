@@ -2,6 +2,7 @@ Require Import Coq.PArith.BinPos Coq.PArith.Pnat.
 Require Import Coq.Arith.Arith.
 Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Import Fiat.Common.Tactics.SplitInContext.
 Require Import Fiat.Common.Notations.
 
 Set Implicit Arguments.
@@ -199,6 +200,12 @@ Record grammar_fixedpoint_data :=
     step_constraints : (default_nonterminal_carrierT -> state) -> (default_nonterminal_carrierT -> state -> state);
     step_constraints_ext : Proper (pointwise_relation _ state_beq ==> eq ==> state_beq ==> state_beq) step_constraints }.
 
+Record grammar_fixedpoint_lattice_data_relation
+       {xT yT} (x : grammar_fixedpoint_lattice_data xT) (y : grammar_fixedpoint_lattice_data yT) :=
+  { state_relation :> @state _ x -> @state _ y -> Prop;
+    top_state_related : state_relation ⊤ ⊤;
+    state_relation_Proper : Proper (state_beq ==> state_beq ==> iff) state_relation }.
+
 Global Existing Instance lattice_data.
 Global Existing Instance step_constraints_ext.
 Global Existing Instance state_lt_Transitive.
@@ -208,6 +215,7 @@ Global Existing Instance state_lt_Proper.
 Global Existing Instance prestate_lt_Proper.
 Global Existing Instance least_upper_bound_Proper.
 Global Existing Instance preleast_upper_bound_Proper.
+Global Existing Instance state_relation_Proper.
 
 Global Arguments state_lt_Transitive {_ _} [_ _ _] _ _.
 Global Arguments state_le _ _ !_ !_ / .
@@ -256,3 +264,19 @@ Lemma lattice_for_rect_pull {A B C} f t c b v
   : f (@lattice_for_rect A (fun _ => B) t c b v)
     = @lattice_for_rect A (fun _ => C) (f t) (fun x => f (c x)) (f b) v.
 Proof. destruct v; reflexivity. Qed.
+
+
+Global Instance state_relation_Proper_impl
+       {xT yT x y} (R : @grammar_fixedpoint_lattice_data_relation xT yT x y)
+  : Proper (state_beq ==> state_beq ==> Basics.impl) R | 2.
+Proof.
+  pose proof (state_relation_Proper R) as H.
+  unfold Proper, respectful in *; split_iff; eauto.
+Qed.
+Global Instance state_relation_Proper_flip_impl
+       {xT yT x y} (R : @grammar_fixedpoint_lattice_data_relation xT yT x y)
+  : Proper (state_beq ==> state_beq ==> Basics.flip Basics.impl) R | 2.
+Proof.
+  pose proof (state_relation_Proper R) as H.
+  unfold Proper, respectful in *; split_iff; eauto.
+Qed.

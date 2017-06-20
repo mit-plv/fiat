@@ -53,10 +53,10 @@ Section String.
         encode_string_Spec (decode_string sz) P.
   Proof.
     split.
-    { intros env env' xenv l l' ext Eeq Ppred Ppred_rest Penc.
+    { intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.
       subst.
       generalize dependent env.
-      revert env' xenv l'.
+      revert env' xenv l' env_OK.
       induction l.
       { intros.
         inversion Penc; subst; clear Penc.
@@ -66,9 +66,9 @@ Section String.
         unfold Bind2 in *; computes_to_inv; subst.
         injection Penc''; intros; subst.
         destruct v; destruct v0.
-        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (transform b0 ext) Eeq I I Penc) as [? [? ?] ].
+        destruct (proj1 (Ascii_decode_correct P_OK) _ _ _ _ _ (transform b0 ext) env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
       simpl. rewrite <- transform_assoc, H; simpl.
-      destruct (IHl _ _ _ _ H0 Penc') as [? [? ?] ].
+      destruct (IHl _ _ _ xenv_OK _ H0 Penc') as [? [? ?] ].
       rewrite H1; simpl; eexists; eauto.
       }
     }
@@ -92,9 +92,12 @@ Section String.
   Qed.
 
   Theorem decode_string_lt
-    : forall len (b3 : B) (cd0 : CacheDecode) (a : string) (b' : B) (cd' : CacheDecode),
-      lt 0 len
-      -> decode_string len b3 cd0 = Some (a, b', cd') -> lt_B b' b3.
+    : forall len (lt_len : lt 0 len)
+             (b3 : B)
+             (cd0 : CacheDecode)
+             (a : string) (b' : B)
+             (cd' : CacheDecode),
+      decode_string len b3 cd0 = Some (a, b', cd') -> lt_B b' b3.
   Proof.
     induction len; simpl; intros; try omega.
     destruct (decode_ascii b3 cd0) as [ [ [? ?] ?] | ] eqn: ? ;
@@ -103,7 +106,7 @@ Section String.
     destruct (decode_string len b c) as [ [ [? ?] ?] | ] eqn: ? ;
       simpl in *; try discriminate.
     injections.
-    inversion H; subst; simpl in *.
+    inversion lt_len; subst; simpl in *.
     - injections; eauto.
     - eapply IHlen in Heqo0; eauto; unfold lt_B in *; omega.
   Qed.

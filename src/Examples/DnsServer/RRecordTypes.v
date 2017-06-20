@@ -54,7 +54,7 @@ Section RRecordTypes.
     fin_beq rr rr'.
 
   Definition OurRRecordType_dec (rr rr' : OurRRecordType) :=
-    fin_beq rr rr'.
+    fin_eq_dec rr rr'.
 
   Lemma beq_OurRRecordType_sym :
     forall rr rr', beq_OurRRecordType rr rr' = beq_OurRRecordType rr' rr.
@@ -115,7 +115,7 @@ Section RRecordTypes.
        "CSYNC" (* Child-To-Parent Synchronization 	[RFC7477] 		2015-01-27 *)
     ].
 
-  Definition RRecordType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes).
+  Definition RRecordType := EnumType (OurRRecordTypes) (* ++ ExtraRRecordTypes*).
 
   (* Aliases for common resource record types. *)
   Definition CNAME : RRecordType := ```"CNAME".
@@ -147,9 +147,9 @@ Section RData.
   (* types, such as words, strings and domain names. We only define *)
   (* types here for non-obsolete record types from RFC 1035. *)
 
-  (* A label is a list of ascii characters (string) *)
+  (* A label is a non-empty list of ascii characters (string) *)
   Definition Label := string.
-  Definition ValidLabel label := index 0 "." label = None.
+  Definition ValidLabel label := index 0 "." label = None /\ lt 0 (String.length label).
 
   (* A domain name is a sequence of labels separated by '.' *)
   Definition DomainName : Type := Label.
@@ -159,7 +159,13 @@ Section RData.
   Definition ValidDomainName s :=
     (forall pre label post, s = pre ++ label ++ post
                             -> ValidLabel label
-                            -> String.length label <= 63)%string%nat.
+                            -> String.length label <= 63)%string%nat
+    /\ (forall pre post,
+           s = pre ++ "." ++ post
+           -> post <> EmptyString
+              /\ pre <> EmptyString
+              /\ (~ exists s', post = String "." s')
+              /\ (~ exists s', pre = s' ++ ".")).
 
   Definition beq_name (a b : DomainName) : bool :=
     if (string_dec a b) then true else false.
@@ -229,5 +235,19 @@ Section RData.
 
   (* The RDATA field is a variant type built from these building blocks. *)
   Definition RDataType := SumType ResourceRecordTypeTypes.
+
+  Definition RRecordType_Ws : t (word 16) 10 :=
+    Eval simpl in Vector.map (natToWord 16)
+                             [1; (* "A" *)
+                                2; (* "NS" *)
+                                5; (* "CNAME" *)
+                                6; (* "SOA"*)
+                                11; (* "WKS" *)
+                                12; (* "PTR" *)
+                                13; (* "HINFO" *)
+                                14; (* "MINFO" *)
+                                15; (* "MX" *)
+                                16]. (* "TXT" *)
+
 
 End RData.

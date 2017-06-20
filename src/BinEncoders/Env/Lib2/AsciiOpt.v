@@ -37,8 +37,8 @@ Section Ascii.
   Proof.
     unfold decode_ascii; split.
     {
-      intros env env' xenv c c' ext Eeq Ppred Ppred_rest Penc.
-      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext Eeq I I Penc) as [? [? ?] ].
+      intros env env' xenv c c' ext env_OK Eeq Ppred Ppred_rest Penc.
+      destruct (proj1 (Word_decode_correct (sz := 8) P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
       rewrite H; simpl.
       eexists; intuition eauto.
       repeat f_equal.
@@ -91,6 +91,16 @@ Section Ascii.
       simpl in *; try discriminate.
     apply WordOpt.decode_word_lt in Heqo.
     injections; eauto.
+  Qed.
+
+  Lemma ascii_decode_le :
+    forall (b : B) (cd : CacheDecode) (a : ascii) (b' : B) (cd' : CacheDecode),
+      decode_ascii b cd = Some (a, b', cd') -> le_B b' b.
+  Proof.
+    unfold decode_ascii, DecodeBindOpt2; intros.
+    destruct (decode_word b cd) as [ [ [? ? ] ?] | ] eqn: decode_b; simpl in H;
+      try discriminate; injections.
+    eauto using decode_word_le.
   Qed.
 
 End Ascii.

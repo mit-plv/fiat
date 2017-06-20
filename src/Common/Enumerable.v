@@ -195,9 +195,9 @@ Proof.
   repeat match goal with
          | [ H : _ \/ False -> _ |- _ ] => specialize (fun k => H (or_introl k))
          | [ H : _ /\ _ -> _ |- _ ] => specialize (fun a b => H (conj a b))
-         | _ => progress specialize_by ltac:(apply enumerate_correct)
+         | _ => progress specialize_by (apply enumerate_correct)
          | _ => progress specialize_by assumption
-         | _ => progress specialize_by ltac:(exact eq_refl)
+         | _ => progress specialize_by (exact eq_refl)
          | _ => progress destruct_head or
          | _ => progress destruct_head False
          | _ => assumption

@@ -30,19 +30,19 @@ Notation "'ParametricExtraction' '#vars' x .. y '#program' post '#arguments' pre
     (at level 200,
      x binder,
      y binder,
-     format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'        env '//'    '#carrier'    carrier").
+     format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'        env '//'    '#carrier'    carrier") : microbenchmarks_scope.
 
 Notation "'ParametricExtraction' '#vars' x .. y '#program' post '#arguments' pre '#env' env" :=
   (sigT (fun prog => (forall x, .. (forall y, {{ pre }} prog {{ [[`"out" ~~> post as _]]::Nil }} ∪ {{ ∅ }} // env) ..)))
     (at level 200,
      x binder,
      y binder,
-     format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'         env").
+     format "'ParametricExtraction' '//'    '#vars'       x .. y '//'    '#program'     post '//'    '#arguments'  pre '//'    '#env'         env") : microbenchmarks_scope.
 
 Notation "'ParametricExtraction' '#program' post '#env' env" :=
   (sigT (fun prog => {{ Nil }} prog {{ [[`"out" ~~> post as _]]::Nil }} ∪ {{ ∅ }} // env))
     (at level 200,
-     format "'ParametricExtraction' '//'    '#program'  post '//'    '#env'      env").
+     format "'ParametricExtraction' '//'    '#program'  post '//'    '#env'      env") : microbenchmarks_scope.
 
 (* Notation "'FacadeMethod' '#prog' prog '#requires' pre '#ensures' post '#ext' ext '#env' env" := *)
 (*   ({{ pre }} prog {{ post }} ∪ {{ ext }} // env) *)
@@ -91,3 +91,5 @@ Definition Microbenchmarks_Env : Env Microbenchmarks_Carrier :=
     ### ("list[list[W]]", "pop") ->> (Axiomatic (List_pop (list W)))
     ### ("list[list[W]]", "delete") ->> (Axiomatic (FacadeImplementationOfDestructor (list (list W))))
     ### ("list[list[W]]", "empty?") ->> (Axiomatic (List_empty (list W))).
+
+Global Open Scope microbenchmarks_scope.

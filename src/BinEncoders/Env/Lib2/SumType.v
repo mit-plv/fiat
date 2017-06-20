@@ -80,8 +80,8 @@ Section SumType.
             (data' := fst (fst (prim_fst decoders (transform bin ext) env'))); intuition eauto; apply tri_proj_eq; eauto.
       + (* Second element *)
         destruct types; try discriminate.
-        destruct data; try discriminate.
-        destruct data'; try discriminate.
+        destruct data as [s | s]; try discriminate.
+        destruct data' as [s' | s']; try discriminate.
         assert (p = SumType_index (Vector.cons Type h0 n types) s) by
             (apply Fin.FS_inj in H0;
              rewrite <- H0; reflexivity).
@@ -93,7 +93,7 @@ Section SumType.
                     (Fin.FS (SumType_index (Vector.cons Type h0 n types) s))
                     (SumType_proj (Vector.cons Type h0 n types) s) env =
                 (bin, xenv)) as H1' by apply H1; clear H1.
-        assert (Equiv xenv xenv' /\ s = s0 /\ ext = ext').
+        assert (Equiv xenv xenv' /\ s = s' /\ ext = ext').
         eapply IHtypes; eauto.
         intros; eapply (fun idx => encoders_decoders_correct (Fin.FS idx));
           eauto.

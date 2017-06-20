@@ -452,7 +452,7 @@ pb = pb' '+' 0
       rewrite compute_next_bin_op'_nil, list_of_next_bin_ops'_nil by (rewrite ?drop_length; omega).
       destruct offset; reflexivity. }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       setoid_rewrite drop_drop in IHlen.
       t_eq.
       rewrite list_of_next_bin_ops'_recr.
@@ -502,7 +502,7 @@ pb = pb' '+' 0
       { congruence. }
       { apply index_not_points_to_binop_nil; omega. } }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       setoid_rewrite drop_drop in IHlen; t_eq.
       destruct offset as [|offset];
         [
@@ -616,11 +616,11 @@ Section for_string.
          str.
 
   Section no_fold.
-    Local Arguments fold / .
-    Local Arguments fold' / .
-    Local Arguments list_of_next_bin_ops'_opt0 / .
-    Local Arguments list_of_next_bin_ops'_step_opt / .
-    Local Arguments list_of_next_bin_ops'_step'_opt / .
+    Local Arguments fold / _ _ _ _ _ _ _.
+    Local Arguments fold' / _ _ _ _ _ _ _ _.
+    Local Arguments list_of_next_bin_ops'_opt0 / _.
+    Local Arguments list_of_next_bin_ops'_step_opt / _ _.
+    Local Arguments list_of_next_bin_ops'_step'_opt / _ _.
     Definition list_of_next_bin_ops'_opt (str : String)
     : option (list (option nat)) * list (option nat)
       := Eval simpl in list_of_next_bin_ops'_opt0 str.
@@ -647,7 +647,7 @@ Section for_string.
     induction len; intros str H'.
     { rewrite !fold_nil by assumption; reflexivity. }
     { specialize (IHlen (drop 1 str)).
-      specialize_by ltac:(rewrite drop_length; omega).
+      specialize_by (rewrite drop_length; omega).
       rewrite !(fold_recr _ _ str).
       destruct (get 0 str) eqn:H''.
       { unfold list_of_next_bin_ops'_step_opt at 1.
@@ -734,7 +734,7 @@ Section no_records.
              get := get;
              bool_eq := bool_eq }.
 
-      Local Arguments list_of_next_bin_ops'_opt / .
+      Local Arguments list_of_next_bin_ops'_opt / _ _ _ _.
       Definition list_of_next_bin_ops'_opt_nor' (str : String)
       : option (list (option nat)) * list (option nat)
         := Eval simpl in list_of_next_bin_ops'_opt (str : @StringLike.String _ temp_hslm).

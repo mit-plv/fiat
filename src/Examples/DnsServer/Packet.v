@@ -41,7 +41,17 @@ Section QTypes.
      "STAR" (*A request for all records the server/cache has available 	[RFC1035][RFC6895] *)
     ].
 
-  Definition QType := EnumType (OurRRecordTypes ++ ExtraRRecordTypes ++ QTypes).
+  Definition QType_Ws : t (word 16) 17 :=
+    Eval simpl in RRecordType_Ws ++ Vector.map (natToWord 16)
+                             [249; (*"TKEY" *)
+                                250; (*"TSIG" *)
+                                251; (*"IXFR" *)
+                                252; (*"AXFR" *)
+                                253;(*"MAILB" *)
+                                254;(*"MAILA" *)
+                                255 (* "STAR" *)].
+
+  Definition QType := EnumType ((OurRRecordTypes(* ++ ExtraRRecordTypes) *) ++ QTypes)).
 
   Definition QType_inj (rr : RRecordType) : QType :=
     Fin.L _ rr.
@@ -73,6 +83,12 @@ Section RRecordClass.
         "Hesiod" (* (HS) 	[Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.] *)
     ].
 
+  Definition RRecordClass_Ws : t (word 16) 3 :=
+    Eval simpl in Vector.map (natToWord 16)
+                             [1; (* "IN" *)
+                                3; (* "CH" *)
+                                4 (* "Hesiod" *)].
+
   Definition RRecordClass := EnumType RRecordClasses.
 
   Definition beq_RRecordClass (a b : RRecordClass) : bool
@@ -83,6 +99,11 @@ Section RRecordClass.
 
   (* DNS Packet Question Classes *)
   Definition QClass := EnumType (RRecordClasses ++ ["Any"]).
+
+  Definition QClass_Ws : t (word 16) 4 :=
+    Eval simpl in Vector.append
+                    RRecordClass_Ws
+                    [natToWord 16 255 (* "Any"*)].
 
   Definition QClass_inj (qclass : RRecordClass) : QClass :=
     Fin.L _ qclass.
@@ -97,7 +118,7 @@ End RRecordClass.
 
 Section ResponseCode.
 
-  Definition ResponseCodes :=
+    Definition ResponseCodes :=
     ["NoError";  (* No Error [RFC1035] *)
        "FormErr";  (* Format Error [RFC1035] *)
        "ServFail"; (* Server Failure [RFC1035] *)
@@ -108,8 +129,24 @@ Section ResponseCode.
        "YXRRSet";  (* RR Set Exists when it should not 	[RFC2136] *)
        "NXRRSet";  (* RR Set that should exist does not 	[RFC2136] *)
        "NotAuth";  (* Server Not Authoritative for zone 	[RFC2136] *)
-       "NotAuth";  (* Not Authorized [RFC2845] *)
+                   (* and Not Authorized [RFC2845] *)
        "NotZone" 	 (* Name not  contained in zone 	[RFC2136] *)
+    ].
+
+  Definition RCODE_Ws : t (word 4) 11 :=
+    Eval simpl in Vector.map (natToWord 4)
+    [0;  (* No Error [RFC1035] *)
+     1;  (* Format Error [RFC1035] *)
+     2; (* Server Failure [RFC1035] *)
+     3; (* Non-Existent  Domain 	[RFC1035] *)
+     4;   (* Not Implemented [RFC1035] *)
+     5;  (* Query Refused [RFC1035] *)
+     6; (* Name Exists when it should not [RFC2136][RFC6672] *)
+     7;  (* RR Set Exists when it should not 	[RFC2136] *)
+     8;  (* RR Set that should exist does not 	[RFC2136] *)
+     9;  (* Server Not Authoritative for zone 	[RFC2136] *)
+         (* and Not Authorized [RFC2845] *)
+     10 	 (* Name not  contained in zone 	[RFC2136] *)
     ].
 
   Definition ResponseCode := EnumType ResponseCodes.
@@ -131,6 +168,13 @@ Section OpCode.
     ].
 
   Definition OpCode := EnumType OpCodes.
+
+  Definition Opcode_Ws : t (word 4) 4 :=
+    Eval simpl in Vector.map (natToWord 4)
+                             [0;    (* RFC1035] *)
+                              1; (* Inverse Query  OBSOLETE) [RFC3425] *)
+                              2; (* [RFC1035] *)
+                              4  (* [RFC1996] [RFC2136] *)].
 
   Definition beq_OpCode (a b : OpCode) : bool
     := fin_beq a b.
@@ -277,14 +321,14 @@ Definition ID : Type := word 16.
   Definition packet := @Tuple packetHeading.
 
   Definition buildempty (is_authority : bool)
-             (rcode : ResponseCode)
+             (rcode : BoundedIndex ResponseCodes)
              (p : packet) :=
     p ○ [ "AA" ::= is_authority; (* Update Authority field *)
-            "QR" ::= true; (* Set response flag to true *)
-            "RCODE" ::= rcode;
-            "answers" ::= nil;
-            "authority"  ::= nil;
-            "additional" ::= nil ].
+          "QR" ::= true; (* Set response flag to true *)
+          "RCODE" ::= ibound (indexb rcode);
+          "answers" ::= nil;
+          "authority"  ::= nil;
+          "additional" ::= nil ].
 
   (* add a resource record to a packet's answers *)
   Definition add_answer (p : packet) (t : resourceRecord) :=

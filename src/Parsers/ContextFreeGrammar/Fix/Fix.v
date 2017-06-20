@@ -7,14 +7,14 @@ Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
 Require Export Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Properties.
-Require Import Fiat.Common.FMapExtensionsWf.
+Require Import Fiat.Common.FMapExtensions.Wf.
 Require Import Fiat.Common.
 Require Import Fiat.Common.OptionFacts.
+Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
+Require Import Fiat.Common.SetoidInstances. (* must come after the above for instance priority *)
 
 Set Implicit Arguments.
 Local Open Scope grammar_fixedpoint_scope.
-
-Module PositiveMapExtensions := FMapExtensionsWf PositiveMap.
 
 Section grammar_fixedpoint.
   Context {Char : Type}.
@@ -121,11 +121,11 @@ Section grammar_fixedpoint.
     end.
   Local Ltac fold_andb_t := repeat fold_andb_t_step.
 
-  Global Instance aggregate_state_eq_Reflexive : Reflexive aggregate_state_eq := _.
-  Global Instance aggregate_state_eq_Symmetric : Symmetric aggregate_state_eq := _.
-  Global Instance aggregate_state_eq_Transitive : Transitive aggregate_state_eq := _.
-  Global Instance aggregate_state_le_Reflexive : Reflexive aggregate_state_le := _.
-  Global Instance aggregate_state_le_Transitive : Transitive aggregate_state_le := _.
+  Global Instance aggregate_state_eq_Reflexive : Reflexive aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_eq_Symmetric : Symmetric aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_eq_Transitive : Transitive aggregate_state_eq | 1 := _.
+  Global Instance aggregate_state_le_Reflexive : Reflexive aggregate_state_le | 1 := _.
+  Global Instance aggregate_state_le_Transitive : Transitive aggregate_state_le | 1 := _.
   Global Instance aggregate_state_eq_Proper_Equal
     : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_eq | 100
     := _.
@@ -136,10 +136,10 @@ Section grammar_fixedpoint.
     : Proper (@PositiveMap.Equal _ ==> @PositiveMap.Equal _ ==> eq) aggregate_state_lt | 100
     := _.
   Global Instance aggregate_state_le_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_le
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_le | 1
     := _.
   Global Instance aggregate_state_lt_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_lt
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> eq) aggregate_state_lt | 1
     := _.
 
   Definition aggregate_state_lub_f : option (state gdata) -> option (state gdata) -> option (state gdata)
@@ -249,20 +249,20 @@ Section grammar_fixedpoint.
   Defined.
 
   Global Instance aggregate_state_lub_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> aggregate_state_eq) aggregate_state_lub.
+    : Proper (aggregate_state_eq ==> aggregate_state_eq ==> aggregate_state_eq) aggregate_state_lub | 1.
   Proof.
     unfold aggregate_state_eq, aggregate_state_lub, aggregate_state_lub_f.
     refine PositiveMapExtensions.map2_defaulted_Proper_lift_brelation.
   Qed.
 
   Global Instance from_aggregate_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> state_beq) from_aggregate_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) from_aggregate_state | 1.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, from_aggregate_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
 
   Global Instance aggregate_step_Proper
-    : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step.
+    : Proper (aggregate_state_eq ==> aggregate_state_eq) aggregate_step | 1.
   Proof.
     intros x y H.
     assert (H' : pointwise_relation _ state_beq (from_aggregate_state x) (from_aggregate_state y)) by (intro; setoid_rewrite H; reflexivity).
@@ -290,7 +290,7 @@ Section grammar_fixedpoint.
   Qed.
 
   Global Instance lookup_state_Proper
-    : Proper (aggregate_state_eq ==> eq ==> state_beq) lookup_state.
+    : Proper (aggregate_state_eq ==> eq ==> state_beq) lookup_state | 1.
   Proof.
     unfold aggregate_state_eq, PositiveMapExtensions.lift_eqb, lookup_state, PositiveMapExtensions.find_default, option_rect; repeat intro; fold_andb_t.
   Qed.
@@ -393,7 +393,8 @@ Section grammar_fixedpoint.
         repeat match goal with
                | [ H : ?x = true |- _ ] => change (is_true x) in H
                end.
-      { rewrite <- pre_Fix_grammar_helper_fixed by assumption.
+      { fold @pre_Fix_grammar_helper in *.
+        rewrite <- pre_Fix_grammar_helper_fixed by assumption.
         assumption. }
       { match goal with
         | [ H : is_true (aggregate_state_eq ?x ?y), H' : context[?x] |- _ ]
@@ -438,20 +439,13 @@ Section grammar_fixedpoint.
           unfold aggregate_step in *.
           edestruct H'; eassumption. } }
     Qed.
-  End with_initial.
 
-  Section with_grammar.
-    Context (G : pregrammar' Char).
-
-    Let predata := @rdp_list_predata _ G.
-    Local Existing Instance predata.
-
-    Lemma find_aggregate_state_max_spec k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
+    Lemma find_aggregate_state_max_rdp_spec k v
+      : PositiveMap.find k aggregate_state_max = Some v
+        <-> (v = ⊥ /\ rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)).
     Proof.
       unfold aggregate_state_max in *.
-      generalize dependent (@initial_nonterminals_data _ _); intros ls.
+      generalize dependent initial_nonterminals_data; intros ls.
       induction ls as [|x xs IHxs].
       { simpl in *.
         autorewrite with aggregate_step_db in *.
@@ -472,12 +466,38 @@ Section grammar_fixedpoint.
     Qed.
 
     Lemma find_aggregate_state_max k v
-      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
-        -> PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some ⊥.
+      : PositiveMap.find k aggregate_state_max = Some v
+        -> PositiveMap.find k aggregate_state_max = Some ⊥.
     Proof.
-      setoid_rewrite find_aggregate_state_max_spec.
+      setoid_rewrite find_aggregate_state_max_rdp_spec.
       tauto.
     Qed.
+
+    Lemma find_aggregate_state_max_exact k
+      : PositiveMap.find k aggregate_state_max
+        = if rdp_list_is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k)
+          then Some ⊥
+          else None.
+    Proof.
+      pose proof (find_aggregate_state_max_rdp_spec k) as H;
+        unfold is_true in *; split_iff; break_match.
+      { intuition eauto. }
+      { edestruct PositiveMap.find; [ | reflexivity ].
+        specialize_all_ways; specialize_by (exact eq_refl).
+        intuition congruence. }
+    Qed.
+  End with_initial.
+
+  Section with_grammar.
+    Context (G : pregrammar' Char).
+
+    Let predata := @rdp_list_predata _ G.
+    Local Existing Instance predata.
+
+    Definition find_aggregate_state_max_spec k v
+      : PositiveMap.find k (aggregate_state_max initial_nonterminals_data) = Some v
+        <-> (v = ⊥ /\ is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal k))
+      := find_aggregate_state_max_rdp_spec initial_nonterminals_data k v.
 
     Hint Rewrite find_aggregate_state_max_spec : aggregate_step_db.
 
@@ -541,6 +561,16 @@ Section grammar_fixedpoint.
           [ reflexivity | congruence ]. }
       { destruct (PositiveMap.find (nonterminal_to_positive nt) (pre_Fix_grammar (@initial_nonterminals_data _ predata))) eqn:H; [ | reflexivity ].
         rewrite (proj2 (find_pre_Fix_grammar _)) in Hvalid; congruence. }
+    Qed.
+
+    Lemma find_pre_Fix_grammar_to_lookup_state' nt
+      : PositiveMap.find nt (pre_Fix_grammar initial_nonterminals_data)
+        = if is_valid_nonterminal initial_nonterminals_data (positive_to_nonterminal nt)
+          then Some (lookup_state (pre_Fix_grammar initial_nonterminals_data) (positive_to_nonterminal nt))
+          else None.
+    Proof.
+      rewrite <- find_pre_Fix_grammar_to_lookup_state, positive_to_nonterminal_to_positive.
+      reflexivity.
     Qed.
 
     Lemma lookup_state_invalid_pre_Fix_grammar (nt : default_nonterminal_carrierT)

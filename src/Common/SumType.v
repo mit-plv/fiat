@@ -55,7 +55,7 @@ Fixpoint SumType_index {n}
   generalize (SumType_index _ v'); clear SumType_index; intros.
   destruct v'; simpl.
   - exact Fin.F1.
-  - destruct el'.
+  - destruct el' as [|s].
     + exact Fin.F1.
     + exact (Fin.FS (X s)).
 Defined.
@@ -73,7 +73,7 @@ Fixpoint SumType_proj {n}
   generalize (SumType_proj _ v'); clear SumType_proj; intros.
   destruct v'; simpl.
   - exact el'.
-  - destruct el'.
+  - destruct el' as [|s].
     + exact t.
     + exact (X s).
 Defined.

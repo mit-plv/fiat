@@ -295,3 +295,55 @@ Global Instance computes_to_to_refine_Proper_fun {T} {A B RA RB f} {v : T}
 Proof.
   unfold Proper, impl, flip, respectful, refine in *; eauto with nocore.
 Qed.
+
+Local Ltac refine_refineEquiv_t A :=
+  unfold flip, Proper, respectful, impl; intros;
+  setoid_subst_rel (@refineEquiv A);
+  setoid_subst_rel (@refine A);
+  reflexivity.
+
+Global Instance refine_refineEquiv000_Proper {A}
+  : Proper (refineEquiv ==> refineEquiv ==> impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv001_Proper {A}
+  : Proper (refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv010_Proper {A}
+  : Proper (refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv011_Proper {A}
+  : Proper (refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv100_Proper {A}
+  : Proper (flip refineEquiv ==> refineEquiv ==> impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv101_Proper {A}
+  : Proper (flip refineEquiv ==> refineEquiv ==> flip impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv110_Proper {A}
+  : Proper (flip refineEquiv ==> flip refineEquiv ==> impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+Global Instance refine_refineEquiv111_Proper {A}
+  : Proper (flip refineEquiv ==> flip refineEquiv ==> flip impl) (@refine A) | 5.
+Proof. refine_refineEquiv_t A. Qed.
+
+Global Instance Bind_eq_Proper {A B}
+  : Proper (eq ==> pointwise_relation _ eq ==> refineEquiv) (@Bind A B).
+Proof.
+  intros ????? H; subst; hnf in H.
+  apply refineEquiv_bind; try reflexivity.
+  intro; rewrite H; reflexivity.
+Qed.
+
+Global Instance ret_Proper_eq {A}
+  : Proper (eq ==> eq) (ret (A:=A)).
+Proof. repeat intro; subst; reflexivity. Qed.
+Global Instance refine_Proper_eq_iff {A}
+  : Proper (eq ==> eq ==> iff) (@refine A).
+Proof. repeat intro; subst; reflexivity. Qed.
+Global Instance refine_Proper_eq_impl {A}
+  : Proper (eq ==> eq ==> impl) (@refine A) | 1.
+Proof. repeat (assumption || subst || intro). Qed.
+Global Instance refine_Proper_eq_flip_impl {A}
+  : Proper (eq ==> eq ==> flip impl) (@refine A) | 1.
+Proof. repeat (assumption || subst || intro). Qed.

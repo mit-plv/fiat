@@ -34,7 +34,7 @@ Module MSetBoundedLatticeOn (E: OrderedType) (Import M: SetsOn E).
       intros; destruct_head and;
         simplify_sets;
         unfold not in *;
-        specialize_by ltac:(reflexivity);
+        specialize_by reflexivity;
         try tauto.
     split; try congruence.
     etransitivity; eassumption.

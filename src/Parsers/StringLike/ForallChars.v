@@ -54,6 +54,37 @@ Section forall_chars.
     end.
   Qed.
 
+  Global Instance forall_chars_Proper_eq
+  : Proper (beq ==> pointwise_relation _ eq ==> impl) forall_chars.
+  Proof.
+    unfold pointwise_relation, respectful, forall_chars, impl.
+    intros ?? H' ?? H'' H''' ?? H.
+    rewrite <- H' in H.
+    rewrite <- H''; eauto.
+  Qed.
+
+  Global Instance forall_chars_Proper_eq_flip
+  : Proper (beq ==> pointwise_relation _ eq ==> flip impl) forall_chars.
+  Proof.
+    unfold pointwise_relation, respectful, forall_chars, flip, impl.
+    intros ?? H' ?? H'' H''' ?? H.
+    rewrite H' in H.
+    rewrite H''; eauto.
+  Qed.
+
+  Global Instance forall_chars_Proper_eq_iff
+  : Proper (beq ==> pointwise_relation _ eq ==> iff) forall_chars.
+  Proof.
+    unfold pointwise_relation, respectful.
+    repeat intro; split;
+    apply forall_chars_Proper; try assumption; repeat intro;
+      match goal with
+      | [ H : _ |- _ ] => apply H; assumption
+      | [ H : _ |- _ ] => rewrite H; assumption
+      | [ H : _ |- _ ] => rewrite <- H; assumption
+      end.
+  Qed.
+
   Lemma forall_chars_nil (str : String) P
   : length str = 0 -> forall_chars str P.
   Proof.

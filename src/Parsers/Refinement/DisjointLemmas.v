@@ -221,9 +221,9 @@ Section maybe_empty_correctness.
       | _ => progress simpl in *
       | _ => intro
       | _ => progress bool_congr
-      | _ => progress specialize_by ltac:(exact eq_refl)
+      | _ => progress specialize_by (exact eq_refl)
       | _ => progress specialize_by assumption
-      | _ => progress specialize_by ltac:(constructor; assumption)
+      | _ => progress specialize_by (constructor; assumption)
       | _ => progress destruct_head iff
       | _ => progress destruct_head and
       | _ => progress destruct_head inhabited

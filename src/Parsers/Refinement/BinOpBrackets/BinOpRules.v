@@ -484,15 +484,15 @@ Section refine_rules.
   End derive_pbhd.
 End refine_rules.
 
-Global Arguments bin_op_data_of / .
-Global Arguments possible_open_closes_pre / .
-Global Arguments possible_open_closes / .
-Global Arguments maybe_open_closes / .
-Global Arguments correct_open_close / .
-Global Arguments possible_open_closes / .
-Global Arguments possible_valid_open_closes / .
-Global Arguments bin_op_data_of_maybe / .
-Global Arguments default_list_of_next_bin_ops_opt_data / .
+Global Arguments bin_op_data_of / _ _ _.
+Global Arguments possible_open_closes_pre / _.
+Global Arguments possible_open_closes / _.
+Global Arguments maybe_open_closes / _ _ _.
+Global Arguments correct_open_close / _ _ _.
+Global Arguments possible_open_closes / _.
+Global Arguments possible_valid_open_closes / _ _ _.
+Global Arguments bin_op_data_of_maybe / _ _.
+Global Arguments default_list_of_next_bin_ops_opt_data / _ _ _.
 Global Arguments take : simpl never.
 Global Arguments drop : simpl never.
 Global Arguments list_of_next_bin_ops_opt_nor : simpl never.

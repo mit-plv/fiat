@@ -8,6 +8,7 @@ Require Export Fiat.Parsers.StringLike.FirstCharSuchThat.
 Require Export Coq.Strings.Ascii.
 Require Export Coq.extraction.ExtrOcamlBasic.
 Require Export Coq.extraction.ExtrOcamlNatInt.
+Require Export Coq.extraction.ExtrOcamlZInt.
 Require Export Coq.extraction.ExtrOcamlString.
 Require Export Coq.extraction.ExtrOcamlIntConv.
 Require Export Fiat.Parsers.ExtrOcamlPrimitives.
@@ -15,6 +16,7 @@ Require Export Fiat.Parsers.ExtrOcamlPrimitives.
 Import ExtrOcamlPrimitives.Ocaml.
 
 Extract Inlined Constant Compare_dec.lt_dec => "(<)".
+Extract Inlined Constant BinNat.N.ltb => "(<)".
 Extract Inlined Constant Sumbool.sumbool_of_bool => "(fun x -> x)".
 Extract Inlined Constant Equality.ascii_beq => "(=)".
 Extract Inlined Constant ascii_eq_dec => "(=)".
@@ -25,27 +27,27 @@ Extract Constant minus => "fun (n : int) (m : int) -> let v = n - m in if v < 0 
 Extract Constant pred => "fun (n : int) -> if n < 1 then 0 else n - 1".
 Extract Constant max => "fun (n : int) (m : int) -> if n >= m then n else m".
 Extract Constant min => "fun (n : int) (m : int) -> if n <= m then n else m".
-Extract Inlined Constant Ascii.nat_of_ascii => "Char.code".
-Extract Inlined Constant ContextFreeGrammar.Reflective.opt.nat_of_ascii => "Char.code".
+Extract Inlined Constant Ascii.N_of_ascii => "Char.code".
+Extract Inlined Constant ContextFreeGrammar.Reflective.opt.N_of_ascii => "Char.code".
 
 Global Arguments string_dec : simpl never.
 Global Arguments Equality.string_beq : simpl never.
-Global Arguments SplitterFromParserADT.msplits / .
-Global Arguments splits_for / .
+Global Arguments SplitterFromParserADT.msplits / _ _ _ _ _ _ _ _.
+Global Arguments splits_for / _ _ _ _ _ _ _.
 Global Arguments Equality.ascii_beq !_ !_ / .
-Global Arguments SplitterFromParserADT.mlength / .
-Global Arguments SplitterFromParserADT.mis_char / .
-Global Arguments SplitterFromParserADT.mtake / .
-Global Arguments SplitterFromParserADT.mdrop / .
-Global Arguments SplitterFromParserADT.mto_string / .
-Global Arguments new_string_of_string / .
-Global Arguments ComputationalADT.cRep / .
-Global Arguments new_string_of_base_string / .
-Global Arguments ComputationalADT.cConstructors / .
-Global Arguments Wf.prod_relation / .
-Global Arguments Wf_nat.ltof / .
-Global Arguments find_first_char_such_that / .
-Global Arguments find_first_char_such_that' / .
+Global Arguments SplitterFromParserADT.mlength / _ _ _ _ _.
+Global Arguments SplitterFromParserADT.mis_char / _ _ _ _ _ _.
+Global Arguments SplitterFromParserADT.mtake / _ _ _ _ _ _.
+Global Arguments SplitterFromParserADT.mdrop / _ _ _ _ _ _.
+Global Arguments SplitterFromParserADT.mto_string / _ _ _ _ _.
+Global Arguments new_string_of_string / _ _ _ _ _ _.
+Global Arguments ComputationalADT.cRep / _ _.
+Global Arguments new_string_of_base_string / _ _ _ _ _.
+Global Arguments ComputationalADT.cConstructors / _ _ _.
+Global Arguments Wf.prod_relation / _ _ _ _ _ _.
+Global Arguments Wf_nat.ltof / _ _ _ _.
+Global Arguments find_first_char_such_that / _ _ _ _ _.
+Global Arguments find_first_char_such_that' / _ _ _ _ _ _.
 
 Module HideProofs.
   Notation hex := (ex _).

@@ -1,37 +1,5 @@
 Require Import Fiat.QueryStructure.Automation.MasterPlan.
-
-Definition verifyPointsS := "verifyPoints".
-
- Definition MonitorSpec := ADTRep (list nat) {
-   Def Constructor0 "new" : rep := ret nil,
-   Def Method2 "verifyPoints" (r : rep) (p p' : bool) : rep * bool :=
-     ret (r, true),
-   Def Method1 "reportError" (r : rep) (e : nat) : rep * unit :=
-     ret (e :: r, tt),
-   Def Method0 "getErrors" (r : rep) : rep * list nat :=
-     ret (r, r)
- }%ADTParsing.
-
- Module Type MonitorImpl.
-   Variable MonitorImpl' : FullySharpened MonitorSpec.
-   Definition MonitorImpl := projT1 MonitorImpl'.
-   Definition MonitorRep := ComputationalADT.cRep MonitorImpl.
-End MonitorImpl.
-
- Module MonitorClient (impl : MonitorImpl).
-   Import impl.
-
-   Definition MonitorClient' r' p p' :=
-     res <- ret (CallMethod MonitorImpl verifyPointsS r' p p');
-     ret (fst res, snd res).
- End MonitorClient.
-
- Variable z : MonitorImpl.
-
- Module MonitorClient' := MonitorClient .
-
- Definition MonitorClient
-
+Require Import Fiat.QueryStructure.Specification.Constraints.DuplicateFree.
 
 Definition int := nat.
 Definition ERROR := 2. (* should have been defined as -1 *)
@@ -59,94 +27,6 @@ Definition sPARAMSUBSCRIPTIONS := "ParamSubscriptions".
 (* what happen if the same tuple is repeatedly inserted in sNODES? *)
 (* want drop it when the same thing comes in *)
 
-Definition DuplicateFree {heading} (tup1 tup2 : @RawTuple heading) := tup1 <> tup2.
-
-Fixpoint BuildFinUpTo (n : nat) {struct n} : list (Fin.t n) :=
-  match n return list (Fin.t n) with
-  | 0  => nil
-  | S n' => cons (@Fin.F1 _) (map (@Fin.FS _) (BuildFinUpTo n'))
-  end.
-
-Definition allAttributes heading
-  : list (Attributes heading) :=
-  BuildFinUpTo (NumAttr heading).
-
-Lemma refine_DuplicateFree
-      {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema) Ridx tup',
-    refine
-      {b : bool |
-       decides b
-               (forall tup : IndexedElement,
-                   GetUnConstrRelation qs Ridx tup ->
-                   DuplicateFree tup' (indexedElement tup))}
-      (xs <- For (UnConstrQuery_In qs Ridx
-                           (fun tup => Where (tupleAgree_computational tup' tup (allAttributes _) )
-                                             Return ()));
-       ret (if hd_error xs then true else false)).
-Proof.
-Admitted.
-
-Lemma DeleteDuplicateFreeOK {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema)
-           (Ridx :Fin.t _)
-           DeletedTuples,
-      refine {b | (forall tup tup',
-                      elementIndex tup <> elementIndex tup'
-                      -> GetUnConstrRelation qs Ridx tup
-                      -> GetUnConstrRelation qs Ridx tup'
-                      -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
-                  -> decides b (Mutate.MutationPreservesTupleConstraints
-                                  (EnsembleDelete (GetUnConstrRelation qs Ridx) DeletedTuples)
-                                  DuplicateFree
-             )}
-             (ret true).
-Proof.
-  unfold Mutate.MutationPreservesTupleConstraints, DuplicateFree;
-  intros * v Comp_v;  computes_to_inv; subst.
-  computes_to_constructor; simpl.
-  intros.
-  unfold EnsembleDelete in *; destruct H1; destruct H2; eauto.
-Qed.
-
-Lemma refine_DuplicateFree_symmetry
-      {qsSchema}
-  : forall (qs : UnConstrQueryStructure qsSchema) Ridx tup' b',
-    computes_to {b : bool | decides b
-                                     (forall tup : IndexedElement,
-                                         GetUnConstrRelation qs Ridx tup ->
-                                         DuplicateFree tup' (indexedElement tup)  )} b'
-    -> refine
-         {b : bool |
-          decides b
-                  (forall tup : IndexedElement,
-                      GetUnConstrRelation qs Ridx tup ->
-                      DuplicateFree (indexedElement tup) tup')}
-         (ret b').
-Proof.
-Admitted.
-
-Ltac implement_DuplicateFree :=
-  match goal with
-    |- context [{b : bool |
-                 decides b
-                         (forall tup' : IndexedElement,
-                             GetUnConstrRelation ?r ?Ridx tup' ->
-                                 DuplicateFree ?tup (indexedElement tup'))}] =>
-    rewrite (@refine_DuplicateFree _ r Ridx)
-  end.
-
-Ltac implement_DuplicateFree_symmetry :=
-  match goal with
-    |- context [{b : bool |
-                 decides b
-                         (forall tup' : IndexedElement,
-                             GetUnConstrRelation ?r ?Ridx tup' ->
-                                 DuplicateFree  (indexedElement tup') ?tup)}] =>
-    rewrite (@refine_DuplicateFree_symmetry _ r Ridx)
-  end.
-
-
 Definition stringPrefix str str' : Prop :=
   prefix str str' = true.
 
@@ -164,30 +44,11 @@ Instance prefixDecideable' {B} (f : B -> _) str'
   unfold stringPrefix. destruct (prefix str' (f a)); simpl; split; eauto.
 Defined.
 
-Ltac RemoveDeleteDuplicateFreeCheck :=
-    match goal with
-        |- context[{b | (forall tup tup',
-                           elementIndex tup <> elementIndex tup'
-                           -> GetUnConstrRelation ?qs ?Ridx tup
-                           -> GetUnConstrRelation ?qs ?Ridx tup'
-                           -> (DuplicateFree (indexedElement tup) (indexedElement tup')))
-                        -> decides b (Mutate.MutationPreservesTupleConstraints
-                                        (EnsembleDelete (GetUnConstrRelation ?qs ?Ridx) ?DeletedTuples)
-                                        DuplicateFree
-                                     )}] =>
-        let refinePK := fresh in
-        pose proof (DeleteDuplicateFreeOK qs Ridx DeletedTuples) as refinePK;
-          simpl in refinePK; pose_string_hyps_in refinePK; pose_heading_hyps_in refinePK;
-          setoid_rewrite refinePK; clear refinePK;
-          try setoid_rewrite refineEquiv_bind_unit
-    end.
-
 Ltac PickIndexes BuildEarlyIndex BuildLastIndex :=
 GenerateIndexesForAll
    EqExpressionAttributeCounter
    ltac:(fun attrlist =>
            let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in make_simple_indexes attrlist' BuildEarlyIndex BuildLastIndex).
-
 
 Ltac implement_nested_Query
          CreateTerm EarlyIndex LastIndex
@@ -209,54 +70,44 @@ Ltac implement_nested_Query
 
     end | ].
 
-
-    Lemma List_Query_In_Return' :
-      forall (n : nat) (ResultT : Type) (headings : Vector.t RawHeading n) (f f' : _ -> Comp (list ResultT))
-             (l : list (ilist2 (B := @RawTuple) headings)),
-        (forall tup, refine (f tup) (f' tup))
-        -> refine (List_Query_In l f)
-                  (List_Query_In l f').
-    Admitted.
-
-    Ltac Implement_Nested_Query_In :=
-      let r_o' := fresh "r_o'" in
-      let AbsR_r_o' := fresh "AbsR_r_o'" in
-      let refines_r_o' := fresh "refines_r_o'" in
-      match goal with
-      | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
-                                                   ?ValidImpls _ _
-        |- refine (Bind (List_Query_In ?l ?f) ?k) _ =>
-        setoid_rewrite (@List_Query_In_Return' _ _ _ f _ l);
+Ltac Implement_Nested_Query_In :=
+  let r_o' := fresh "r_o'" in
+  let AbsR_r_o' := fresh "AbsR_r_o'" in
+  let refines_r_o' := fresh "refines_r_o'" in
+  match goal with
+  | H : @Build_IndexedQueryStructure_Impl_AbsR ?qs_schema ?Index ?DelegateReps ?DelegateImpls
+                                               ?ValidImpls _ _
+    |- refine (Bind (List_Query_In ?l ?f) ?k) _ =>
+    setoid_rewrite (@List_Query_In_Return' _ _ _ f _ l);
           [ | intros; repeat Implement_Bound_Bag_Call; finish honing];
           setoid_rewrite List_Query_In_Return
-      end.
+  end.
 
-    Ltac implement_bag_methods :=
-      etransitivity;
-      [ repeat (first [
-                    simpl; simplify with monad laws
-                  | remove_spurious_Dep_Type_BoundedIndex_nth_eq
-                  | Implement_If_Then_Else
-                  | Implement_If_Opt_Then_Else
-                  | Implement_Bound_Bag_Call
-                  | Implement_Bound_Join_Comp_Lists
-                  | Implement_Bound_Join_Comp_Lists'
-                  | Implement_AbsR_Relation
-                  | match goal with
-                      |- context[CallBagImplMethod _ _ _ _ _] =>
-                      unfold CallBagImplMethod; cbv beta; simpl
-                    end
-                  | Implement_Nested_Query_In
-                  | higher_order_reflexivity ]; simpl) |];
-      (* Clean up any leftover CallBagImplMethods *)
-      repeat (cbv beta; simpl;
-              match goal with
+Ltac implement_bag_methods :=
+  etransitivity;
+  [ repeat (first [
+                simpl; simplify with monad laws
+              | remove_spurious_Dep_Type_BoundedIndex_nth_eq
+              | Implement_If_Then_Else
+              | Implement_If_Opt_Then_Else
+              | Implement_Bound_Bag_Call
+              | Implement_Bound_Join_Comp_Lists
+              | Implement_Bound_Join_Comp_Lists'
+              | Implement_AbsR_Relation
+              | match goal with
+                  |- context[CallBagImplMethod _ _ _ _ _] =>
+                  unfold CallBagImplMethod; cbv beta; simpl
+                end
+              | Implement_Nested_Query_In
+              | higher_order_reflexivity ]; simpl) |];
+  (* Clean up any leftover CallBagImplMethods *)
+  repeat (cbv beta; simpl;
+          match goal with
                 |- appcontext[CallBagImplMethod] =>
                 unfold CallBagImplMethod; cbv beta; simpl;
                 try remove_spurious_Dep_Type_BoundedIndex_nth_eq
-              end);
-      higher_order_reflexivity.
-
+          end);
+  higher_order_reflexivity.
 
 Ltac FullySharpenQueryStructure'' qs_schema Index :=
   let DelegateSigs := constr:(@Build_IndexedQueryStructure_Impl_Sigs _ (qschemaSchemas qs_schema) Index) in
@@ -1036,30 +887,6 @@ Ltac implement_TopMost_Query CreateTerm EarlyIndex LastIndex
   implement_TopMost_Query'
     ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
            ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep).
-
-Lemma refine_BagADT_QSDelete' {ResultT} {qs_schema} {BagIndexKeys}
-  : forall
-    (r_o : UnConstrQueryStructure qs_schema)
-    (r_n : IndexedQueryStructure qs_schema BagIndexKeys)
-    idx
-    DeletedTuples
-    (k  : _ -> Comp ResultT) (k' : _ -> Comp ResultT)
-    (DT_Dec : DecideableEnsemble DeletedTuples)
-    search_pattern,
-    ExtensionalEq (@dec _ _ DT_Dec)
-                  (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_pattern)
-    -> DelegateToBag_AbsR r_o r_n
-    -> (forall r_o r_n,
-           DelegateToBag_AbsR r_o r_n ->
-           refine (k r_o) (k' r_n))
-    ->  refine
-          (r_o' <- UpdateUnConstrRelationDeleteC r_o idx DeletedTuples;
-           k r_o')
-          (r_n' <- CallBagDelete idx r_n search_pattern;
-           k' (fst r_n')).
-Proof.
-  unfold refine; intros.
-Admitted.
 
 Ltac implement_UpdateUnConstrRelationDeleteC find_search_term :=
   match goal with

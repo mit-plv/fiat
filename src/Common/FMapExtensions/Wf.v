@@ -1,11 +1,12 @@
 Require Export Coq.FSets.FMapInterface.
 Require Import Fiat.Common.Wf.
 Require Export Fiat.Common.FMapExtensions.
+Require Export Fiat.Common.FMapExtensions.LiftRelationInstances.
 Require Import Fiat.Common.
 
 Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
-  Module BasicExtensions := FMapExtensions_fun E M.
-  Include BasicExtensions.
+  Module LiftRelationInstancesExtensions := FMapExtensionsLiftRelationInstances_fun E M.
+  Include LiftRelationInstancesExtensions.
 
   Section rel.
     Context {A} (eqb leb : A -> A -> bool).
@@ -45,6 +46,18 @@ Module FMapExtensionsWf_fun (E: DecidableType) (Import M: WSfun E).
       intros ?? H ?? H'.
       rewrite H, H'.
       reflexivity.
+    Qed.
+
+    Global Instance lift_ltb_Irreflexive : Irreflexive lift_ltb | 5.
+    Proof.
+      unfold lift_ltb; intro x; hnf.
+      rewrite (reflexivity (R:=lift_eqb) x).
+      edestruct lift_leb; simpl; congruence.
+    Qed.
+    Lemma lift_ltb_Irreflexiveb : forall x y, lift_eqb x y -> lift_ltb x y = false.
+    Proof.
+      unfold is_true, lift_ltb; intros x y H; rewrite H.
+      edestruct lift_leb; simpl; congruence.
     Qed.
 
     Lemma empty_ltb_nothing v : lift_ltb (empty _) v = false.

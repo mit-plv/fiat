@@ -17,6 +17,7 @@ Proof.
 Defined.
 
 Section eval.
+  Local Open Scope N_scope.
   Fixpoint evalT_productions {str ps} (pt : parse_of plus_expr_grammar str ps) : Type
   with evalT_production {str p} (pt : parse_of_production plus_expr_grammar str p) : Type
   with evalT_item {str it} (pt : parse_of_item plus_expr_grammar str it) : Type.
@@ -46,8 +47,8 @@ Section eval.
       try match type of eval_production with
           | ({ ch' : ascii | ch' = ?ch } * unit)%type (* [0-9] *)
             => match goal with
-               | [ Hcheck : is_true (?P ch), Hp : ?P = (fun ch0 => (Compare_dec.leb 48 (?f ch0) && Compare_dec.leb (?f ch0) 57)%bool) |- _ ]
-                 => exact (f (proj1_sig (fst eval_production)) - 48 (* "0" *))
+               | [ Hcheck : is_true (?P ch), Hp : ?P = (fun ch0 => (BinNat.N.leb 48 (?f ch0) && BinNat.N.leb (?f ch0) 57)%bool) |- _ ]
+                 => exact (BinNat.N.to_nat (f (proj1_sig (fst eval_production)) - 48 (* "0" *)))
                end
           | (nat * unit)%type
             => match goal with
@@ -60,9 +61,9 @@ Section eval.
       try match type of eval_productions with
           | ({ ch' : ascii | ch' = ?ch } * (nat * unit))%type (* [0-9] "number" *)
             => match goal with
-               | [ Hcheck : is_true (?P ch), Hp : ?P = (fun ch0 => (Compare_dec.leb 48 (?f ch0) && Compare_dec.leb (?f ch0) 57)%bool) |- _ ]
-                 => exact (10 * (f (proj1_sig (fst eval_productions)) - 48 (* "0" *))
-                           + fst (snd eval_productions))
+               | [ Hcheck : is_true (?P ch), Hp : ?P = (fun ch0 => (BinNat.N.leb 48 (?f ch0) && BinNat.N.leb (?f ch0) 57)%bool) |- _ ]
+                 => exact (N.to_nat (10 * (f (proj1_sig (fst eval_productions)) - 48 (* "0" *)))
+                           + fst (snd eval_productions))%nat
                end
           | ({ch1 : ascii | ch1 = ?l} * (nat * ({ch2 : ascii | ch2 = ?r} * ())))%type (* "(" "expr" ")" *)
             => match goal with
@@ -73,7 +74,7 @@ Section eval.
           | (nat * ({ch1 : ascii | ch1 = ?ch} * (nat * ())))%type (* "pexpr" "+" "expr" *)
             => match goal with
                | [ Hcheck : is_true (?P ch), HP : ?P = Equality.ascii_beq "+"%char |- _ ]
-                 => exact (fst eval_productions + fst (snd (snd eval_productions)))
+                 => exact (fst eval_productions + fst (snd (snd eval_productions)))%nat
                end
           end. }
   Defined.
@@ -145,13 +146,13 @@ Section evals.
                    | SimpleParseHead
                        (SimpleParseTerminal ch::[])
                      (* [0-9] *)
-                     => fun _ => opt.nat_of_ascii ch - 48 (* opt.nat_of_ascii "0" is 48 *)
+                     => fun _ => N.to_nat (opt.N_of_ascii ch - 48) (* opt.nat_of_ascii "0" is 48 *)
                    | SimpleParseTail
                        (SimpleParseHead
                           (SimpleParseTerminal ch::SimpleParseNonTerminal number pt'::[]))
                      (* [0-9] "number" *)
                      => fun v
-                        => ((opt.nat_of_ascii ch - 48 (* opt.nat_of_ascii "0" is 48 *))
+                        => (N.to_nat (opt.N_of_ascii ch - 48 (* opt.nat_of_ascii "0" is 48 *))
                             * 10
                             + fst (snd v))%nat
                    | _ => impossible
