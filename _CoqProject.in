@@ -30,6 +30,7 @@ src/ADTRefinement/BuildADTRefinements/AddCache.v
 src/ADTRefinement/BuildADTRefinements/HoneRepresentation.v
 src/ADTRefinement/BuildADTRefinements/RefineAllMethods.v
 src/ADTRefinement/BuildADTRefinements/SimplifyRep.v
+src/ADTRefinement/BuildADTRefinements/sHoneRepresentation.v
 src/ADTRefinement/Refinements/ADTCache.v
 src/ADTRefinement/Refinements/ADTRepInv.v
 src/ADTRefinement/Refinements/DelegateMethods.v
