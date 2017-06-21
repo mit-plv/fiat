@@ -670,7 +670,7 @@ Proof.
     simpl.
     rewrite IHnumBytes'; simpl.
     destruct (Vector_split n numBytes (Vector.tl v)); simpl; repeat f_equal; clear.
-    unfold DecodeBindOpt at 1; unfold If_Opt_Then_Else.
+    unfold DecodeBindOpt at 1; unfold BindOpt, If_Opt_Then_Else.
     assert (8 + 8 * n = 8 * S n) by omega.
     rewrite <- eq_rect_decode_word with (H := H).
     assert (8 * n + 8 = 8 + 8 * n) by omega.
@@ -681,9 +681,9 @@ Proof.
             `(w', v'') <- decode_word' (8 * n) v';
             Some (eq_rect _ word (append_word w' w) _ H0, v''))
     end.
-    unfold DecodeBindOpt at 2; unfold If_Opt_Then_Else.
+    unfold DecodeBindOpt at 2; unfold BindOpt, If_Opt_Then_Else.
     destruct (decode_word' (8 * n) (build_aligned_ByteString (tl v))) as [ [? ?] | ]; try reflexivity.
-    unfold DecodeBindOpt; unfold If_Opt_Then_Else.
+    unfold DecodeBindOpt, If_Opt_Then_Else, BindOpt; simpl.
     rewrite Some_eq_rect_eq.
     rewrite <- transport_pp.
     repeat f_equal.

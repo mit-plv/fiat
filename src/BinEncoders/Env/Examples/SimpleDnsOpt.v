@@ -15,6 +15,7 @@ Require Import
         Fiat.QueryStructure.Specification.Representation.Tuple
         Fiat.BinEncoders.Env.BinLib.AlignedByteString
         Fiat.BinEncoders.Env.BinLib.AlignWord
+        Fiat.BinEncoders.Env.BinLib.AlignedDecoders
         Fiat.BinEncoders.Env.Common.Specs
         Fiat.BinEncoders.Env.Common.Compose
         Fiat.BinEncoders.Env.Common.ComposeOpt
@@ -775,6 +776,37 @@ Section DnsPacket.
       rewrite Heqo; simpl; reflexivity.
   Qed.
 
+  Lemma addD_addD_plus :
+    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
+    simpl; intros.
+    destruct (fst cd); simpl; eauto.
+    repeat (find_if_inside; simpl); eauto.
+    f_equal; f_equal.
+    rewrite !natToWord_plus.
+    rewrite !natToWord_wordToNat.
+    rewrite wplus_assoc; reflexivity.
+    rewrite !natToWord_plus in l0.
+    rewrite !natToWord_wordToNat in l0.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w) in l0.
+    rewrite <- natToWord_plus in l0.
+    rewrite wordToNat_natToWord_idempotent in l0.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w).
+    rewrite !natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    rewrite <- natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
+    omega.
+  Qed.
+
   Ltac solve_GoodCache_inv foo :=
     lazymatch goal with
       |- cache_inv_Property ?Z _ =>
@@ -997,41 +1029,10 @@ Section DnsPacket.
                 getDistinct getDistinct' addPeekSome
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
-                addPeekENone addPeekENone' addZeroPeekE)
+                addPeekENone addPeekENone')
     | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec encode_resource_Spec) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
-
-  Lemma addD_addD_plus :
-    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
-    simpl; intros.
-    destruct (fst cd); simpl; eauto.
-    repeat (find_if_inside; simpl); eauto.
-    f_equal; f_equal.
-    rewrite !natToWord_plus.
-    rewrite !natToWord_wordToNat.
-    rewrite wplus_assoc; reflexivity.
-    rewrite !natToWord_plus in l0.
-    rewrite !natToWord_wordToNat in l0.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w) in l0.
-    rewrite <- natToWord_plus in l0.
-    rewrite wordToNat_natToWord_idempotent in l0.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    elimtype False.
-    apply n0.
-    rewrite <- (natToWord_wordToNat w).
-    rewrite !natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    rewrite <- natToWord_plus.
-    rewrite !wordToNat_natToWord_idempotent.
-    omega.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
-    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
-    omega.
-  Qed.
 
   Ltac synthesize_decoder_ext
        transformer
@@ -1071,14 +1072,12 @@ Section DnsPacket.
     unfold resourceRecord_OK.
     clear; intros.
     apply (proj2 H).
-    simpl.
     simpl; intros;
       repeat (try rewrite !DecodeBindOpt2_assoc;
               try rewrite !Bool.andb_true_r;
               try rewrite !Bool.andb_true_l;
               try rewrite !optimize_if_bind2;
               try rewrite !optimize_if_bind2_bool).
-
     first [ apply DecodeBindOpt2_under_bind; simpl; intros
           | eapply optimize_under_if_bool; simpl; intros
           | eapply optimize_under_if; simpl; intros].
@@ -1149,16 +1148,7 @@ Section DnsPacket.
 
   Arguments Guarded_Vector_split : simpl never.
 
-  Fixpoint BytesToString {sz}
-           (b : Vector.t (word 8) sz)
-    : string :=
-    match b with
-    | Vector.nil => EmptyString
-    | Vector.cons a _ b' => String (Ascii.ascii_of_N (wordToN a)) (BytesToString b')
-    end.
-
   Arguments addD : simpl never.
-
 
   Lemma rec_aligned_decode_DomainName_OK
     : forall (x : nat) (x0 : t (word 8) x),
@@ -1304,7 +1294,7 @@ Section DnsPacket.
   Proof.
     unfold If_Opt_Then_Else,decode_DomainName,
     byte_aligned_decode_DomainName; simpl; intros.
-    eapply optimize_Fix.
+    eapply (@optimize_Fix dns_list_cache).
     Focus 3.
     etransitivity.
     simpl; intros.
@@ -1319,7 +1309,7 @@ Section DnsPacket.
     apply case0; reflexivity.
     set_refine_evar.
     etransitivity;
-      [eapply If_sumbool_Then_Else_DecodeBindOpt | ]; simpl.
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
     apply optimize_under_match; intros.
     simpl.
 
@@ -1337,7 +1327,7 @@ Section DnsPacket.
     set_refine_evar.
     simpl.
     etransitivity;
-      [eapply If_sumbool_Then_Else_DecodeBindOpt | ]; simpl.
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
     apply optimize_under_match; intros.
     simpl.
     reflexivity.
@@ -1360,9 +1350,9 @@ Section DnsPacket.
     repeat f_equal.
     higher_order_reflexivity.
     higher_order_reflexivity.
-
+    apply addD_addD_plus.
     etransitivity;
-      [eapply If_sumbool_Then_Else_DecodeBindOpt | ]; simpl.
+      [eapply (@If_sumbool_Then_Else_DecodeBindOpt _ _ _ _ _ dns_list_cache) | ]; simpl.
     etransitivity.
     apply optimize_under_match; intros.
     subst_refine_evar; simpl; higher_order_reflexivity.
@@ -1454,139 +1444,199 @@ Section DnsPacket.
     eauto.
   Qed.
 
-
   Arguments Core.append_word : simpl never.
-
   Arguments Vector_split : simpl never.
-
   Arguments NPeano.leb : simpl never.
 
+  Definition If_Opt_Then_Else_map
+             {A B B'} :
+    forall (f : option B -> B')
+           (a_opt : option A)
+           (t : A -> option B)
+           c,
+      f (Ifopt a_opt as a Then t a Else c) =
+      Ifopt a_opt as a Then f (t a) Else (f c).
+  Proof.
+    destruct a_opt as [ a' | ]; reflexivity.
+  Qed.
 
+  Ltac rewrite_DecodeOpt2_fmap :=
+    set_refine_evar;
+    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
+    ?DecodeOpt2_fmap_if_bool;
+    subst_refine_evar.
 
-  Definition ByteAligned_packetDecoderImpl n
+  Lemma Ifopt_Ifopt {A A' B}
+    : forall (a_opt : option A)
+             (t : A -> option A')
+             (e : option A')
+             (t' : A' -> B)
+             (e' :  B),
+      Ifopt (Ifopt a_opt as a Then t a Else e) as a' Then t' a' Else e' =
+      Ifopt a_opt as a Then (Ifopt (t a) as a' Then t' a' Else e') Else (Ifopt e as a' Then t' a' Else e').
+  Proof.
+    destruct a_opt; simpl; reflexivity.
+  Qed.
+
+  Definition ByteAligned_packetDecoderImpl {A}
+             (f : _ -> A)
+             n
     : {impl : _ & forall (v : Vector.t _ (12 + n)),
-           fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
+           f (fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string))) =
            impl v (Some (wzero 17) , @nil (pointerT * string))%list}.
   Proof.
     eexists _; intros.
     etransitivity.
     set_refine_evar; simpl.
-    rewrite (@AlignedDecode2Char _ ).
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite (@AlignedDecode2Char dns_list_cache).
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    rewrite (@AlignedDecodeChar _ ).
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite (@AlignedDecodeChar dns_list_cache ).
     rewrite !nth_Vector_split.
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    rewrite (@AlignedDecodeChar _ ).
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite (@AlignedDecodeChar dns_list_cache ).
     rewrite !nth_Vector_split.
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    subst_refine_evar.
-    etransitivity;
-      [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
-      | ].
-    Global Opaque Vector_split.
-    simpl.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite Ifopt_Ifopt; simpl.
+    subst_refine_evar; eapply optimize_under_if_opt; simpl; intros.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite Ifopt_Ifopt; simpl.
     eapply optimize_under_if_opt; simpl; intros.
-    etransitivity;
-      [eapply (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache))
-      | ].
-    eapply optimize_under_if_opt; simpl; intros.
-    eapply optimize_under_if; simpl; intros.
-    rewrite (@AlignedDecode2Nat _).
+    rewrite BindOpt_map_if.
+    subst_refine_evar; eapply optimize_under_if; simpl; intros.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite (@AlignedDecode2Nat dns_list_cache).
     repeat first  [rewrite <- !Vector_nth_tl
                   | rewrite !nth_Vector_split].
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    eapply optimize_under_if; simpl; intros.
-    rewrite (@AlignedDecode2Nat _).
-    rewrite !nth_Vector_split.
+    rewrite BindOpt_map_if; unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    subst_refine_evar; eapply optimize_under_if; simpl; intros.
+    rewrite (@AlignedDecode2Nat dns_list_cache).
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    rewrite (@AlignedDecode2Nat _).
-    rewrite !nth_Vector_split.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    repeat first  [rewrite <- !Vector_nth_tl
+                  | rewrite !nth_Vector_split
+                  | rewrite Vector_split_merge,
+                    <- Eqdep_dec.eq_rect_eq_dec;
+                    eauto using Peano_dec.eq_nat_dec].
+    rewrite (@AlignedDecode2Nat dns_list_cache).
+    repeat first  [rewrite <- !Vector_nth_tl
+                  | rewrite !nth_Vector_split
+                  | rewrite Vector_split_merge,
+                    <- Eqdep_dec.eq_rect_eq_dec;
+                    eauto using Peano_dec.eq_nat_dec].
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    rewrite (@AlignedDecode2Nat _).
-    rewrite !nth_Vector_split.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+    rewrite (@AlignedDecode2Nat dns_list_cache).
+    repeat first  [rewrite <- !Vector_nth_tl
+                  | rewrite !nth_Vector_split
+                  | rewrite Vector_split_merge,
+                    <- Eqdep_dec.eq_rect_eq_dec;
+                    eauto using Peano_dec.eq_nat_dec].
     subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-    rewrite DecodeBindOpt2_assoc.
+    rewrite !DecodeBindOpt2_assoc.
+    repeat first  [rewrite <- !Vector_nth_tl
+                  | rewrite !nth_Vector_split
+                  | rewrite Vector_split_merge,
+                    <- Eqdep_dec.eq_rect_eq_dec;
+                    eauto using Peano_dec.eq_nat_dec].
+    simpl.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
     rewrite byte_align_decode_DomainName.
-    etransitivity;
-      [match goal with
-         |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-         pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-       end | ].
-    subst H0.
-    eapply optimize_under_if_opt; simpl; intros.
+    rewrite Ifopt_Ifopt; simpl.
+    subst_refine_evar; eapply optimize_under_if_opt; simpl; intros.
     destruct a8 as [ [? [ ? ?] ] ? ]; simpl.
     rewrite DecodeBindOpt2_assoc.
-    simpl.
     etransitivity.
+    unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+
+  Lemma optimize_Guarded_Decode {sz} {C} n
+    : forall (a_opt : ByteString -> C)
+             (a_opt' : ByteString -> C) v c,
+      (~ (n <= sz)%nat
+       -> a_opt (build_aligned_ByteString v) = c)
+      -> (le n sz -> a_opt  (build_aligned_ByteString (Guarded_Vector_split n sz v))
+                     = a_opt'
+                         (build_aligned_ByteString (Guarded_Vector_split n sz v)))
+      -> a_opt (build_aligned_ByteString v) =
+         If NPeano.leb n sz Then
+            a_opt' (build_aligned_ByteString (Guarded_Vector_split n sz v))
+            Else c.
+  Proof.
+    intros; destruct (NPeano.leb n sz) eqn: ?.
+    - apply NPeano.leb_le in Heqb.
+      rewrite <- H0.
+      simpl; rewrite <- build_aligned_ByteString_eq_split'; eauto.
+      eauto.
+    - rewrite H; simpl; eauto.
+      intro.
+      rewrite <- NPeano.leb_le in H1; congruence.
+  Qed.
+
     match goal with
       |- ?b = _ =>
       let b' := (eval pattern (build_aligned_ByteString t) in b) in
       let b' := match b' with ?f _ => f end in
-      eapply (@optimize_Guarded_Decode x _ _ 4 b')
+      eapply (@optimize_Guarded_Decode x _ 4 b')
     end.
     { intros.
       unfold decode_enum.
-      rewrite DecodeBindOpt2_assoc.
+      unfold DecodeBindOpt2 at 1, BindOpt.
+      rewrite Ifopt_Ifopt.
       destruct (Compare_dec.lt_dec x 2).
-      pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+      pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
         simpl in H'; rewrite H'; try reflexivity; auto.
       destruct x as [ | [ | [ | ?] ] ]; try omega.
       rewrite AlignedDecode2Char; unfold LetIn; simpl.
-      etransitivity;
-        [match goal with
-           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-         end | ].
-      simpl.
+      rewrite Ifopt_Ifopt.
       match goal with
         |- If_Opt_Then_Else ?b _ _ = _ => destruct b; reflexivity
       end.
       rewrite AlignedDecode2Char; unfold LetIn; simpl.
-      etransitivity;
-        [match goal with
-           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-         end | ].
+      rewrite Ifopt_Ifopt.
       simpl.
       match goal with
         |- If_Opt_Then_Else ?b _ _ = _ => destruct b; simpl; try eauto
       end.
       repeat rewrite DecodeBindOpt2_assoc.
-      pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+      pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
         simpl in H'; rewrite H'; try reflexivity; auto.
       omega.
     }
     { intros; unfold decode_enum.
       etransitivity.
-      set_refine_evar; repeat rewrite DecodeBindOpt2_assoc.
+      set_refine_evar; repeat rewrite BindOpt_assoc.
+      unfold DecodeBindOpt2 at 1, BindOpt.
+      rewrite Ifopt_Ifopt.
       rewrite (AlignedDecode2Char (Guarded_Vector_split 4 x t)).
       subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-      etransitivity;
-        [match goal with
-           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-         end | ].
+      rewrite Ifopt_Ifopt.
       simpl.
       subst_refine_evar;
         eapply optimize_under_if_opt; simpl; intros;
           set_refine_evar.
       repeat rewrite DecodeBindOpt2_assoc.
-      rewrite (@AlignedDecode2Char _ ).
+      unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
+      rewrite (@AlignedDecode2Char dns_list_cache ).
       subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-      etransitivity;
-        [match goal with
-           |- DecodeBindOpt2 (If_Opt_Then_Else ?a_opt ?t ?e) ?k = _ =>
-           pose proof (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache) a_opt t e k) as H'; apply H'; clear H'
-         end | ].
-      simpl.
+      rewrite (@If_Opt_Then_Else_DecodeBindOpt _ dns_list_cache); simpl.
+      rewrite If_Opt_Then_Else_map.
       subst_refine_evar;
         eapply optimize_under_if_opt; simpl; intros;
           set_refine_evar.
-      (* Still need to do byte-aligned lists. *)
+      unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
       erewrite optimize_align_decode_list.
-      rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+      rewrite Ifopt_Ifopt.
       simpl.
-      subst_refine_evar; higher_order_reflexivity.
+      etransitivity.
+      eapply optimize_under_if_opt; simpl; intros.
+      rewrite BindOpt_map_if_bool.
+      higher_order_reflexivity.
+      higher_order_reflexivity.
+      higher_order_reflexivity.
       etransitivity.
       set_refine_evar.
       clear H0.
@@ -1605,45 +1655,44 @@ Section DnsPacket.
       match goal with
         |- ?b = _ =>
         let b' := (eval pattern (build_aligned_ByteString t0) in b) in
-        let b' := match b' with ?f _ => f end in
-        eapply (@optimize_Guarded_Decode x0 _ _ 8 b')
+        let b' := match b' with ?f _ => f end in 
+        eapply (@AlignedDecoders.optimize_Guarded_Decode x0 _ 8 b')
       end.
       { intros.
         destruct x0 as [ | [ | x0] ].
-        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
-        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
         etransitivity; set_refine_evar.
-        rewrite (@AlignedDecode2Char _ ).
+        unfold DecodeBindOpt2, BindOpt at 1; rewrite (@AlignedDecode2Char dns_list_cache ).
         subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-        rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
-        subst_evars.
-        eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+        rewrite (If_Opt_Then_Else_BindOpt).
+        subst_refine_evar; eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
         subst_refine_evar.
         instantiate (1 := fun _ => None).
-        rewrite DecodeBindOpt2_assoc.
+        rewrite BindOpt_assoc.
         destruct x0 as [ | [ | x0] ].
-        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
           simpl in H'; rewrite H'; try higher_order_reflexivity; auto.
-        pose proof (@decode_word_aligned_ByteString_overflow 2) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
           simpl in H'; rewrite H'; try higher_order_reflexivity; auto.
-        rewrite (@AlignedDecode2Char _ ).
+        unfold BindOpt at 1; rewrite (@AlignedDecode2Char dns_list_cache ).
         etransitivity.
         subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-        rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        rewrite (If_Opt_Then_Else_BindOpt).
         subst_evars.
         eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
         subst_refine_evar.
         instantiate (1 := fun _ => None).
         destruct x0 as [ | [| [ | [ | x0] ] ] ]; try omega.
-        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
-        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
-        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
-        pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+        pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
           simpl in H'; rewrite H'; try reflexivity; auto.
         subst_evars; reflexivity.
         unfold LetIn; simpl; match goal with
@@ -1657,7 +1706,7 @@ Section DnsPacket.
                              end.
       }
       intros; etransitivity.
-      simpl; rewrite (@AlignedDecode2Char _ ).
+      simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode2Char dns_list_cache ).
       subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
       etransitivity;
         [match goal with
@@ -1669,7 +1718,7 @@ Section DnsPacket.
         eapply optimize_under_if_opt; simpl; intros;
           set_refine_evar.
       repeat rewrite DecodeBindOpt2_assoc.
-      rewrite (@AlignedDecode2Char _ ).
+      unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode2Char dns_list_cache ).
       subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
       etransitivity;
         [match goal with
@@ -1681,14 +1730,11 @@ Section DnsPacket.
         eapply optimize_under_if_opt; simpl; intros;
           set_refine_evar.
       repeat rewrite DecodeBindOpt2_assoc.
-      rewrite AlignedDecode4Char.
+      unfold DecodeBindOpt2 at 1, BindOpt;rewrite (@AlignedDecode4Char dns_list_cache).
       repeat (rewrite Vector_split_merge,
               <- Eqdep_dec.eq_rect_eq_dec;
               eauto using Peano_dec.eq_nat_dec ).
-      clear H1.
       subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-
-      idtac.
       let types' := (eval unfold ResourceRecordTypeTypes in ResourceRecordTypeTypes)
       in ilist_of_evar
            (fun T : Type => forall n,
@@ -1696,12 +1742,13 @@ Section DnsPacket.
                 -> CacheDecode
                 -> option (T * {n : _ & Vector.t (word 8) n} * CacheDecode))
            types'
-           ltac:(fun decoders' => rewrite (@align_decode_sumtype_OK _ ResourceRecordTypeTypes decoders'));
+           ltac:(fun decoders' => rewrite (@align_decode_sumtype_OK dns_list_cache _ ResourceRecordTypeTypes decoders'));
            [ | simpl; intros; repeat (apply Build_prim_and; intros); try exact I].
-      set_evars.
+      set_refine_evar.
       rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
-      subst_evars.
-      eapply optimize_under_if_opt; simpl; intros; set_refine_evar.
+      simpl.
+      subst_refine_evar.
+      etransitivity.
       subst_evars; higher_order_reflexivity.
       subst_evars; higher_order_reflexivity.
       { etransitivity.
@@ -1709,21 +1756,19 @@ Section DnsPacket.
           |- ?b = _ =>
           let b' := (eval pattern (build_aligned_ByteString v1) in b) in
           let b' := match b' with ?f _ => f end in
-          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+          eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
           destruct n1 as [ | [ | n1] ]; try omega.
-
-
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
         }
         { intros; etransitivity.
 
           idtac.
-          rewrite (@AlignedDecodeUnusedChars _ _ 2).
+          unfold DecodeBindOpt2 at 1;rewrite (@AlignedDecodeUnusedChars dns_list_cache _ _ _ 2).
           rewrite byte_align_decode_DomainName.
           reflexivity.
           higher_order_reflexivity.
@@ -1749,25 +1794,26 @@ Section DnsPacket.
           |- ?b = _ =>
           let b' := (eval pattern (build_aligned_ByteString v1) in b) in
           let b' := match b' with ?f _ => f end in
-          eapply (@optimize_Guarded_Decode n1 _ _ 6 b')
+          eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 6 b')
         end.
         { intros.
           destruct n1 as [ | [ | n1] ]; try omega.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
           simpl.
-          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+          unfold DecodeBindOpt2 at 1;
+          pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
           destruct n1 as [ | [ | [ | [ | n1] ] ] ] ; try omega;
             try reflexivity.
         }
         { intros; etransitivity.
           simpl.
-          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+          unfold DecodeBindOpt2 at 1; pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
-          rewrite AlignedDecode4Char; simpl.
+          unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache); simpl.
           reflexivity.
           higher_order_reflexivity.
         }
@@ -1799,18 +1845,18 @@ Section DnsPacket.
           |- ?b = _ =>
           let b' := (eval pattern (build_aligned_ByteString v1) in b) in
           let b' := match b' with ?f _ => f end in
-          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+          eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
           destruct n1 as [ | [ | n1] ]; try omega.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
         }
         { intros; etransitivity.
           simpl.
-          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+          unfold DecodeBindOpt2 at 1; pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
           rewrite byte_align_decode_DomainName.
           reflexivity.
@@ -1841,18 +1887,18 @@ Section DnsPacket.
           |- ?b = _ =>
           let b' := (eval pattern (build_aligned_ByteString v1) in b) in
           let b' := match b' with ?f _ => f end in
-          eapply (@optimize_Guarded_Decode n1 _ _ 2 b')
+          eapply (@AlignedDecoders.optimize_Guarded_Decode n1 _ 2 b')
         end.
         { intros.
           destruct n1 as [ | [ | n1] ]; try omega.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
-          pose proof (@decode_unused_word_aligned_ByteString_overflow 2) as H';
+          pose proof (@decode_unused_word_aligned_ByteString_overflow dns_list_cache _ 2) as H';
             simpl in H'; rewrite H'; try reflexivity; auto.
         }
         { intros; etransitivity.
           simpl.
-          pose proof (fun C B => @AlignedDecodeUnusedChars C B 2) as H';
+          unfold DecodeBindOpt2 at 1;pose proof (fun C B => @AlignedDecodeUnusedChars dns_list_cache _ C B 2) as H';
             simpl in H'; rewrite H'; clear H'.
           rewrite byte_align_decode_DomainName.
           rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache));
@@ -1870,73 +1916,73 @@ Section DnsPacket.
             |- ?b = _ =>
             let b' := (eval pattern (build_aligned_ByteString t2) in b) in
             let b' := match b' with ?f _ => f end in
-            eapply (@optimize_Guarded_Decode x2 _ _ 20 b')
+            eapply (@AlignedDecoders.optimize_Guarded_Decode x2 _ 20 b')
           end.
           { subst_evars.
             intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
             etransitivity; set_refine_evar.
-            rewrite (@AlignedDecode4Char _ ).
+            unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
             intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
             instantiate (1 := fun _ => None).
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
             etransitivity; set_refine_evar.
-            rewrite (@AlignedDecode4Char _ ).
+            unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
             intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
             instantiate (1 := fun _ => None).
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
             etransitivity; set_refine_evar.
-            rewrite (@AlignedDecode4Char _ ).
+            unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
             intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ].
             instantiate (1 := fun _ => None).
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
             etransitivity; set_refine_evar.
-            rewrite (@AlignedDecode4Char _ ).
+            unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
             subst_evars.
             intros; destruct x2 as [ | [ | [ | [ | x2] ] ] ]; try omega.
             instantiate (1 := fun _ => None).
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
-            pose proof (@decode_word_aligned_ByteString_overflow 4) as H';
+            pose proof (@decode_word_aligned_ByteString_overflow dns_list_cache _ 4) as H';
               simpl in H'; rewrite H'; try reflexivity; auto.
             unfold LetIn; reflexivity.
             unfold LetIn; reflexivity.
@@ -1946,16 +1992,16 @@ Section DnsPacket.
           { intros.
             etransitivity.
             unfold plus.
-            simpl; rewrite (@AlignedDecode4Char _ ).
+            simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             unfold plus.
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-            simpl; rewrite (@AlignedDecode4Char _ ).
+            simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-            simpl; rewrite (@AlignedDecode4Char _ ).
+            simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-            simpl; rewrite (@AlignedDecode4Char _ ).
+            simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
-            simpl; rewrite (@AlignedDecode4Char _ ).
+            simpl; unfold DecodeBindOpt2 at 1, BindOpt; rewrite (@AlignedDecode4Char dns_list_cache ).
             repeat (rewrite Vector_split_merge,
                     <- Eqdep_dec.eq_rect_eq_dec;
                     eauto using Peano_dec.eq_nat_dec ).
@@ -1974,8 +2020,11 @@ Section DnsPacket.
               cbv beta; reflexivity
           end.
           subst_evars; reflexivity.
+          Opaque Core.append_word.
+          Opaque Guarded_Vector_split.
+          Opaque Vector.tl.
           simpl.
-
+          
           match goal with
             |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
             let z' := (eval pattern d, x, t, p in z) in
@@ -1989,7 +2038,6 @@ Section DnsPacket.
           Transparent If_Then_Else.
           simpl.
           subst_refine_evar; reflexivity.
-          simpl.
           higher_order_reflexivity.
         }
         simpl.
@@ -2058,7 +2106,6 @@ Section DnsPacket.
                                             unify z (fun n v cd q q' => If (b' n v cd q q') Then (et n v cd q q') Else (zt n v cd q q')); cbv beta; simpl; find_if_inside; simpl)) end.
         clear H H1.
         Opaque LetIn.
-        Unset Ltac Debug.
         match goal with
           |- _ =
              Ifopt ?z ?n ?v ?cd ?q ?q' as a Then _ Else _ =>
@@ -2337,21 +2384,21 @@ Section DnsPacket.
     subst_evars; reflexivity.
     subst_evars; reflexivity.
     subst_evars; reflexivity.
+    simpl.
     higher_order_reflexivity.
     Time Defined.
 
   Check ByteAligned_packetDecoderImpl.
-  Definition ByteAligned_packetDecoderImpl' n :=
-    Eval simpl in (projT1 (ByteAligned_packetDecoderImpl n)).
+  Definition ByteAligned_packetDecoderImpl' {A} (k : _ -> A) n :=
+    Eval simpl in (projT1 (ByteAligned_packetDecoderImpl k n)).
 
-  Lemma ByteAligned_packetDecoderImpl'_OK
-    : forall n,
-      forall (v : Vector.t _ (12 + n)),
-        fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string)) =
-        ByteAligned_packetDecoderImpl' n v (Some (wzero 17) , @nil (pointerT * string))%list.
+  Lemma ByteAligned_packetDecoderImpl'_OK {A}
+    : forall (f : _ -> A) n (v : Vector.t _ (12 + n)),
+        f (fst packetDecoderImpl (build_aligned_ByteString v) (Some (wzero 17), @nil (pointerT * string))) =
+        ByteAligned_packetDecoderImpl' f n v (Some (wzero 17) , @nil (pointerT * string))%list.
   Proof.
     intros.
-    pose proof (projT2 (ByteAligned_packetDecoderImpl n));
+    pose proof (projT2 (ByteAligned_packetDecoderImpl f n));
       cbv beta in H.
     rewrite H.
     set (H' := (Some (wzero 17), @nil (pointerT * string))).

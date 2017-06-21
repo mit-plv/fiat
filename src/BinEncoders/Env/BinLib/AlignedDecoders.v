@@ -40,14 +40,15 @@ Section AlignedDecoders.
 Lemma AlignedDecodeChar {C}
         {numBytes}
     : forall (v : Vector.t (word 8) (S numBytes))
-             (k : (word 8) -> ByteString
-                  -> CacheDecode -> option (C * ByteString * CacheDecode))
+             (t : (word 8 * ByteString * CacheDecode) -> C)
+             (e : C)
              cd,
-      (`(a, b0, d) <- decode_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 8) (build_aligned_ByteString v) cd;
-         k a b0 d) =
-      LetIn(Vector.nth v Fin.F1)
-           (fun n => k n (build_aligned_ByteString (snd (Vector_split 1 _ v))) (addD cd 8)).
+      Ifopt (decode_word
+               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 8) (build_aligned_ByteString v) cd)
+            as w Then t w Else e
+            =
+       LetIn (Vector.nth v Fin.F1)
+             (fun w => t (w, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
   Proof.
     unfold LetIn; intros.
     unfold decode_word, WordOpt.decode_word.
@@ -60,13 +61,14 @@ Lemma AlignedDecodeChar {C}
   Lemma AlignedDecode2Char {C}
         {numBytes}
     : forall (v : Vector.t (word 8) (S (S numBytes)))
-             (k : (word 16) -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             (t : (word 16 * ByteString * CacheDecode) -> C)
+             (e : C)
              cd,
-      (`(a, b0, d) <- decode_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 16) (build_aligned_ByteString v) cd;
-         k a b0 d) =
+      Ifopt (decode_word
+               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
+      Then t w Else e=
       Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
-        k n (build_aligned_ByteString (snd (Vector_split 2 _ v))) (addD cd 16).
+        t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
   Proof.
     unfold LetIn; intros.
     unfold decode_word, WordOpt.decode_word.
@@ -74,7 +76,7 @@ Lemma AlignedDecodeChar {C}
       |- context[Ifopt ?Z as _ Then _ Else _] => replace Z with
                                                  (let (v', v'') := Vector_split 2 numBytes v in Some (VectorByteToWord v', build_aligned_ByteString v'')) by (symmetry; apply (@aligned_decode_char_eq' _ 1 v))
     end.
-    unfold Vector_split, If_Opt_Then_Else, DecodeBindOpt2 at 1, If_Opt_Then_Else.
+    unfold Vector_split, If_Opt_Then_Else, If_Opt_Then_Else.
     f_equal.
     rewrite !Vector_nth_tl, !Vector_nth_hd.
     erewrite VectorByteToWord_cons.
@@ -87,21 +89,31 @@ Lemma AlignedDecodeChar {C}
     omega.
   Qed.
 
+Lemma BindOpt_assoc {A A' A''} :
+  forall (a_opt : option A)
+         (f : A -> option A')
+         (g : A' -> option A''),
+    BindOpt (BindOpt a_opt f) g =
+    BindOpt a_opt (fun a => BindOpt (f a) g).
+Proof.
+  destruct a_opt as [ ? | ]; simpl; intros; eauto.
+Qed.
+
   Corollary AlignedDecode2Nat {C}
             {numBytes}
     : forall (v : Vector.t (word 8) (S (S numBytes)))
-             (k : nat -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             (t : _ -> C)
+             e
              cd,
-      (`(a, b0, d) <- decode_nat
-        (transformerUnit := ByteString_QueueTransformerOpt) 16 (build_aligned_ByteString v) cd;
-         k a b0 d) =
+    Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 16 (build_aligned_ByteString v) cd) as w
+    Then t w Else e
+     =
       Let n := wordToNat (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1)) in
-        k n (build_aligned_ByteString (snd (Vector_split 2 _ v))) (addD cd 16).
+        t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
   Proof.
     unfold CacheDecode.
-    unfold decode_nat; intros.
-    rewrite DecodeBindOpt2_assoc.
-    unfold DecodeBindOpt2 at 2, If_Opt_Then_Else.
+    unfold decode_nat, DecodeBindOpt2; intros.
+    unfold BindOpt at 1.
     rewrite AlignedDecode2Char.
     reflexivity.
   Qed.
@@ -150,7 +162,6 @@ Lemma AlignedDecodeChar {C}
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
     abstract (unfold build_aligned_ByteString, le_B; simpl; omega).
   Defined.
-
 
   Lemma build_aligned_ByteString_eq_split
     : forall m n b H0,
@@ -278,6 +289,17 @@ Lemma AlignedDecodeChar {C}
     apply n0.
   Qed.
 
+  Lemma If_Opt_Then_Else_BindOpt {A B C}
+    : forall (a_opt : option A)
+             (t : A -> option B)
+             (e : option B)
+             (k : _ -> option C),
+        BindOpt (Ifopt a_opt as a Then t a Else e) k
+        = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
+  Proof.
+    destruct a_opt; simpl; intros; reflexivity.
+  Qed.
+
   Lemma lt_B_Guarded_Vector_split
         {n}
         (b : Vector.t _ n)
@@ -290,6 +312,17 @@ Lemma AlignedDecodeChar {C}
     abstract (unfold build_aligned_ByteString, lt_B; simpl; omega).
   Defined.
 
+  Fixpoint BytesToString {sz}
+           (b : Vector.t (word 8) sz)
+    : string :=
+    match b with
+    | Vector.nil => EmptyString
+    | Vector.cons a _ b' => String (Ascii.ascii_of_N (wordToN a)) (BytesToString b')
+    end.
+
+  Variable addD_addD_plus :
+    forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
+
   Lemma decode_string_aligned_ByteString
         {sz sz'}
     : forall (b : t (word 8) (sz + sz'))
@@ -301,17 +334,14 @@ Lemma AlignedDecodeChar {C}
   Proof.
     induction sz; intros.
     - simpl; repeat f_equal.
-      destruct cd as [ [? | ] ? ]; unfold addD; simpl.
-      pose proof (wordToNat_bound w); find_if_inside; try omega.
-      rewrite plus_comm; simpl; rewrite natToWord_wordToNat; reflexivity.
-      reflexivity.
     - simpl.
       assert (forall A n b, exists a b', b = Vector.cons A a n b')
         by (clear; intros; pattern n, b; apply caseS; eauto).
       destruct (H _ _ b) as [? [? ?] ]; subst; simpl.
-      unfold AsciiOpt.decode_ascii.
-      rewrite DecodeBindOpt2_assoc; simpl.
+      unfold AsciiOpt.decode_ascii, DecodeBindOpt2.
+      rewrite BindOpt_assoc; simpl.
       etransitivity.
+      unfold BindOpt at 1.
       rewrite AlignedDecodeChar; simpl.
       rewrite IHsz. higher_order_reflexivity.
       simpl.
@@ -338,9 +368,10 @@ Lemma AlignedDecodeChar {C}
       destruct sz'.
       + reflexivity.
       + destruct (H0 _ _ b) as [? [? ?] ]; subst; simpl.
-        unfold AsciiOpt.decode_ascii.
-        rewrite DecodeBindOpt2_assoc; simpl.
+        unfold AsciiOpt.decode_ascii, DecodeBindOpt2.
+        rewrite BindOpt_assoc; simpl.
         etransitivity.
+        unfold BindOpt.
         rewrite AlignedDecodeChar; simpl.
         rewrite IHsz. higher_order_reflexivity.
         omega.
@@ -704,9 +735,9 @@ Lemma AlignedDecodeChar {C}
     omega.
   Qed.
 
-  Lemma optimize_Guarded_Decode {sz} {A C} n
-    : forall (a_opt : ByteString -> option (A * ByteString * C))
-             (a_opt' : ByteString -> option (A * ByteString * C)) v,
+  Lemma optimize_Guarded_Decode {sz} {C} n
+    : forall (a_opt : ByteString -> option C)
+             (a_opt' : ByteString -> option C) v,
       (~ (n <= sz)%nat
        -> a_opt (build_aligned_ByteString v) = None)
       -> (le n sz -> a_opt  (build_aligned_ByteString (Guarded_Vector_split n sz v))
@@ -730,15 +761,16 @@ Lemma AlignedDecodeChar {C}
   Lemma AlignedDecode4Char {C}
         {numBytes}
     : forall (v : Vector.t (word 8) (S (S (S (S numBytes)))))
-             (k : (word 32) -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             (t : _ -> C)
+             (e : C)
              cd,
-      (`(a, b0, d) <- decode_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd;
-         k a b0 d) =
+      Ifopt (decode_word
+        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd) as w
+      Then t w Else e  =
       Let n := Core.append_word (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
                                 (Core.append_word (Vector.nth v (Fin.FS (Fin.FS Fin.F1)))
                                                   (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1))) in
-        k n (build_aligned_ByteString (snd (Vector_split 4 _ v))) (addD cd 32).
+        t (n, build_aligned_ByteString (snd (Vector_split 4 _ v)), addD cd 32).
   Proof.
     unfold LetIn; intros.
     unfold decode_word, WordOpt.decode_word.
@@ -747,7 +779,7 @@ Lemma AlignedDecodeChar {C}
                                                  (let (v', v'') := Vector_split 4 numBytes v in Some (VectorByteToWord v', build_aligned_ByteString v'')) by (symmetry; apply (@aligned_decode_char_eq' _ 3 v))
     end.
     Local Transparent Vector_split.
-    unfold Vector_split, If_Opt_Then_Else, DecodeBindOpt2 at 1, If_Opt_Then_Else.
+    unfold Vector_split, If_Opt_Then_Else, If_Opt_Then_Else.
     f_equal.
     rewrite !Vector_nth_tl, !Vector_nth_hd.
     erewrite VectorByteToWord_cons.
@@ -765,8 +797,6 @@ Lemma AlignedDecodeChar {C}
     omega.
     omega.
   Qed.
-
-
 
   Fixpoint align_decode_list {A}
            (A_decode_align : forall n,
@@ -816,10 +846,10 @@ Lemma AlignedDecodeChar {C}
   Proof.
     induction n; simpl; intros; eauto.
     rewrite A_decode_OK.
-    rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+    rewrite (If_Opt_Then_Else_DecodeBindOpt).
     destruct (A_decode_align sz v cd) as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
     rewrite IHn.
-    rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+    rewrite (If_Opt_Then_Else_DecodeBindOpt).
     destruct (align_decode_list A_decode_align n t c)
       as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
   Qed.
@@ -858,18 +888,16 @@ Lemma AlignedDecodeChar {C}
   Lemma AlignedDecodeUnusedChars {C}
         {numBytes numBytes'}
     : forall (v : Vector.t (word 8) (numBytes' + numBytes))
-             (k : () -> ByteString -> CacheDecode -> option (C * ByteString * CacheDecode))
+             (k : _ -> option C)
              cd,
-      (`(a, b0, d) <- decode_unused_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd;
-         k a b0 d) =
-      k () (build_aligned_ByteString (snd (Vector_split numBytes' _ v))) (addD cd (8 * numBytes')).
+      BindOpt (decode_unused_word
+        (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
+      k ((), build_aligned_ByteString (snd (Vector_split numBytes' _ v)), addD cd (8 * numBytes')).
   Proof.
     induction numBytes'; simpl; intros.
     - Local Transparent Vector_split.
       unfold Vector_split; simpl.
       reflexivity.
-      Local Opaque Vector_split.
     - unfold decode_unused_word.
       replace (S
                  (numBytes' +
@@ -974,8 +1002,8 @@ Lemma AlignedDecodeChar {C}
 
   Lemma nth_Vector_split {A}
     : forall {sz} n v idx,
-      (snd (Vector_split (A := A) n sz v))[@idx]
-      = v[@(Fin.R n idx)].
+      Vector.nth (snd (Vector_split (A := A) n sz v)) idx
+      = Vector.nth v (Fin.R n idx).
   Proof.
     induction n; simpl; intros; eauto.
     assert (forall A n b, exists a b', b = Vector.cons A a n b')
@@ -1010,4 +1038,4 @@ Lemma AlignedDecodeChar {C}
     -
   Admitted.
 
-End
+End AlignedDecoders.

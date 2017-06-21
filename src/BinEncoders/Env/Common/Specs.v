@@ -61,40 +61,24 @@ Section Specifications.
              (P_inv : (CacheDecode -> Prop) -> Prop) :=
     P_inv P.
 
+  Definition BindOpt {A' A''}
+             (a_opt : option A')
+             (k : A' -> option A'') :=
+    Ifopt a_opt as a Then k a Else None.
+
   Definition DecodeBindOpt2
              {C D E}
              (a : option (A * B * D))
              (k : A -> B -> D -> option (C * E * D))
     : option (C * E * D) :=
-    Ifopt a as a_opt Then
-                     match a_opt with (a, bin', env') => k a bin' env' end
-                     Else None.
-
-  Definition DecodeOpt2_fmap
-             {D F G}
-             (f : A -> F)
-             (g : B -> G)
-             (a_opt : option (A * B * D))
-    : option (F * G * D) :=
-    Ifopt a_opt as a Then Some (f (fst (fst a)), g (snd (fst a)), snd a)
-                     Else None.
-
-  Definition DecodeOpt2_fmap_id
-             {D}
-    : forall (a_opt : option (A * B * D)),
-      DecodeOpt2_fmap id id a_opt = a_opt.
-  Proof.
-    destruct a_opt as [ [ [a' b'] d'] | ]; reflexivity.
-  Qed.
+    BindOpt a (fun a => match a with (a, b, d) => k a b d end).
 
   Definition DecodeBindOpt
              {C}
              (a : option (A * B))
              (k : A -> B -> option (C * B))
     : option (C * B) :=
-    Ifopt a as a_opt Then
-                     match a_opt with (a, bin') => k a bin' end
-                     Else None.
+    BindOpt a (fun a => let (a, b) := a in k a b).
 
   Lemma DecodeBindOpt2_inv
         {C D E}
@@ -128,18 +112,103 @@ Section Specifications.
 
 End Specifications.
 
-Definition DecodeOpt2_fmap_compose
-           {A B D F G F' G'}
-  : forall
-    (f : A -> F)
-    (g : B -> G)
-    (f' : F -> F')
-    (g' : G -> G')
-    (a_opt : option (A * B * D)),
-    DecodeOpt2_fmap f' g' (DecodeOpt2_fmap f g a_opt) =
-    DecodeOpt2_fmap (compose f' f) (compose g' g) a_opt.
+Definition DecodeOpt2_fmap
+           {A A'}
+           (f : A -> A')
+           (a_opt : option A)
+  : option A' := Ifopt a_opt as a Then Some (f a) Else None.
+
+Definition DecodeOpt2_fmap_id {A}
+  : forall (a_opt : option A),
+    DecodeOpt2_fmap id a_opt = a_opt.
 Proof.
-  destruct a_opt as [ [ [a' b'] d'] | ]; reflexivity.
+  destruct a_opt as [ a' | ]; reflexivity.
+Qed.
+
+Definition DecodeOpt2_fmap_compose
+           {A A' A''}
+  : forall
+    (f : A -> A')
+    (f' : A' -> A'')
+    (a_opt : option A),
+    DecodeOpt2_fmap f' (DecodeOpt2_fmap f a_opt) =
+    DecodeOpt2_fmap (compose f' f) a_opt.
+Proof.
+  destruct a_opt as [ a' | ]; reflexivity.
+Qed.
+
+Definition DecodeBindOpt2_fmap
+           {A B B'} :
+  forall (f : B -> B')
+         (a_opt : option A)
+         (k : A -> option B),
+    DecodeOpt2_fmap f (BindOpt a_opt k) =
+    BindOpt a_opt (fun a => DecodeOpt2_fmap f (k a)).
+Proof.
+  destruct a_opt as [ a' | ]; reflexivity.
+Qed.
+
+Definition BindOpt_map
+           {A B B'} :
+  forall (f : option B -> B')
+         (a_opt : option A)
+         (k : A -> option B),
+    f (BindOpt a_opt k) =
+    Ifopt a_opt as a Then f (k a) Else f None.
+Proof.
+  destruct a_opt as [ a' | ]; reflexivity.
+Qed.
+
+Lemma DecodeOpt2_fmap_if_bool
+      {A A' }
+  : forall
+    (f : A -> A')
+    (b : bool)
+    (a_opt a_opt' : option A),
+    DecodeOpt2_fmap f (if b then a_opt else a_opt') =
+    if b then (DecodeOpt2_fmap f a_opt)
+    else (DecodeOpt2_fmap f a_opt').
+Proof.
+  intros; find_if_inside; reflexivity.
+Qed.
+
+Lemma BindOpt_map_if_bool
+      {A A' }
+  : forall
+    (f : option A -> A')
+    (b : bool)
+    (a_opt a_opt' : option A),
+    f (if b then a_opt else a_opt') =
+    if b then (f a_opt)
+    else (f a_opt').
+Proof.
+  intros; find_if_inside; reflexivity.
+Qed.
+
+Lemma DecodeOpt2_fmap_if
+      {A A' P P'}
+  : forall
+    (f : A -> A')
+    (b : {P} + {P'})
+    (a_opt a_opt' : option A),
+    DecodeOpt2_fmap f (if b then a_opt else a_opt') =
+    if b then (DecodeOpt2_fmap f a_opt)
+    else (DecodeOpt2_fmap f a_opt').
+Proof.
+  intros; find_if_inside; reflexivity.
+Qed.
+
+Lemma BindOpt_map_if
+      {A A' P P'}
+  : forall
+    (f : option A -> A')
+    (b : {P} + {P'})
+    (a_opt a_opt' : option A),
+    f (if b then a_opt else a_opt') =
+    if b then (f a_opt)
+    else (f a_opt').
+Proof.
+  intros; find_if_inside; reflexivity.
 Qed.
 
 Lemma DecodeBindOpt2_assoc {A B C D E F G} :

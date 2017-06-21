@@ -140,19 +140,19 @@ Section Word.
         simpl.
         rewrite transform_id_left; auto.
       + rewrite dequeue_opt_Some'.
-        unfold DecodeBindOpt at 1; unfold If_Opt_Then_Else.
+        unfold DecodeBindOpt, BindOpt at 1; unfold If_Opt_Then_Else.
         assert (decode_word' (S n)
                    (transform (encode_word' n (word_split_tl x0) transform_id)
                               (transform (enqueue_opt x transform_id) ext))
                 = Some (WS x (word_split_tl x0), ext)).
-        * simpl.
+        { simpl.
           pose proof (IHn (WS x (word_split_tl x0)) ext).
           simpl in H.
           rewrite enqueue_opt_encode_word in H.
           rewrite <- transform_assoc in H.
           rewrite H.
-          eauto.
-        * rewrite H; simpl; rewrite <- (word_split_SW x0); auto.
+          eauto. }
+        unfold BindOpt. rewrite H; simpl; rewrite <- (word_split_SW x0); auto.
   Qed.
 
   Lemma decode_encode_word'_Some
