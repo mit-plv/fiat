@@ -908,7 +908,7 @@ Ltac finish_SharpeningADT_WithoutDelegation :=
     (* Guard setoid rewriting with [refine_if_If] to only occur when there's
     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from
     uselessly descending into folded definitions. *)
-    repeat match goal with
+    repeat lazymatch goal with
              | [ |- context [ if _ then _ else _ ] ] =>
                setoid_rewrite refine_if_If at 1
            end;
