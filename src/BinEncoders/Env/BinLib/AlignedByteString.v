@@ -17,6 +17,18 @@ Record ByteString :=
 
 Definition length_ByteString (bs : ByteString) := numBytes bs.
 
+Definition ByteString_enqueue_full_word
+           (b : bool)
+           (bs : ByteString)
+           (H_eq : padding bs = 7)
+  : word 7.
+Proof.
+  pose proof (front bs) as w; generalize dependent (padding bs);
+    intros ?? w; subst; exact w.
+Defined.
+
+Global Opaque ByteString_enqueue_word.
+
 Definition ByteString_enqueue
          (b : bool)
          (bs : ByteString)
@@ -30,10 +42,11 @@ Definition ByteString_enqueue
        padding := S (padding bs);
        byteString := byteString bs |}).
   abstract omega.
-  abstract (pose proof (front bs) as w; generalize dependent (padding bs);
-            intros ?? w; subst; exact w).
+  exact (ByteString_enqueue_full_word b bs _H).
   abstract (pose proof (paddingOK bs); omega).
 Defined.
+
+Print ByteString_enqueue.
 
 Fixpoint word_dequeue {sz}
            (w : word (S sz))
@@ -523,6 +536,8 @@ Proof.
   repeat f_equal; apply Core.le_uniqueness_proof.
   apply (@transform_id_left _ ByteStringQueueTransformer).
 Qed.
+
+
 
 Fixpoint Vector_split {A} (n m : nat) (v : Vector.t A (n + m)) :
   Vector.t A n * Vector.t A m :=

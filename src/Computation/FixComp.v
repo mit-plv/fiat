@@ -699,6 +699,7 @@ Module LeastFixedPointFun.
   Proof.
     unfold LeastFixedPoint, respectful_hetero; intros.
     simpl.
+    simpl in H.
     intros; pattern t; eapply (well_founded_ind wf_P).
     simpl; intros; rewrite Fix_eq.
     pose proof (proj1 (Is_GreatestFixedPoint (O := @funDefOps (recT :: fDom) fCod) _ (fDef_monotone))); etransitivity.

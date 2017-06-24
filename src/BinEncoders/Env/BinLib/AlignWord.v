@@ -1,5 +1,8 @@
 Require Import
+        Fiat.Computation
         Fiat.BinEncoders.Env.Common.Specs
+        Fiat.BinEncoders.Env.Common.Compose
+        Fiat.BinEncoders.Env.Common.ComposeOpt
         Fiat.BinEncoders.Env.Lib2.WordOpt.
 Require Import
         Coq.Vectors.Vector
@@ -109,6 +112,101 @@ Section AlignWord.
             simpl; f_equal; eauto.
   Qed.
 
+  Variable addE_addE_plus :
+    forall (ce : CacheEncode) (n m : nat), addE (addE ce n) m = addE ce (n + m).
+
+  Lemma encode_word_S {n}
+    : forall (w : word (S n)) (bs : B),
+      encode_word' (S n) w bs =
+      encode_word' n (word_split_tl w) (enqueue_opt (word_split_hd w) bs).
+  Proof.
+    intros; pose proof (shatter_word_S w); destruct_ex; subst.
+    simpl.
+    clear; revert x; induction x0; simpl; intros.
+    - simpl; reflexivity.
+    - rewrite IHx0.
+      reflexivity.
+  Qed.
+
+  Lemma word_split_hd_SW_word {n}
+    : forall b (w : word n), 
+      word_split_hd (SW_word b w) = b.
+  Proof.
+    induction w; simpl; intros; eauto.
+  Qed.
+
+  Lemma word_split_tl_SW_word {n}
+    : forall b (w : word n), 
+      word_split_tl (SW_word b w) = w.
+  Proof.
+    induction w; simpl; intros; eauto.
+    f_equal; eauto.
+  Qed.
+  
+  Lemma CollapseEncodeWord
+    : forall {sz sz'} (w : word sz) (w' : word sz') k ce,
+      refine (((encode_word_Spec w)
+                ThenC (encode_word_Spec w')
+                ThenC k) ce)
+             (((encode_word_Spec (combine w' w))
+                 ThenC k) ce).
+  Proof.
+    intros; unfold compose, encode_word_Spec, Bind2.
+    autorewrite with monad laws.
+    simpl; rewrite addE_addE_plus.
+    rewrite Plus.plus_comm; f_equiv; intro.
+    rewrite transform_assoc.
+    destruct a; simpl.
+    f_equiv; f_equiv; f_equiv.
+    revert sz' w'; induction w; simpl; intros.
+    - rewrite transform_id_left.
+      generalize transform_id; clear; induction w'; intros.
+      + reflexivity.
+      + simpl; rewrite IHw'; reflexivity.
+    - rewrite !enqueue_opt_encode_word.
+      replace (encode_word' (sz' + S n) (combine w' (WS b0 w)) transform_id)
+      with (encode_word' (S sz' + n) (combine (SW_word b0 w') w) transform_id).
+      + rewrite <- IHw.
+        simpl; rewrite encode_word_S.
+        rewrite <- transform_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
+        f_equal. 
+        clear; induction w'.
+        * simpl; rewrite transform_id_right; reflexivity.
+        * simpl; rewrite !enqueue_opt_encode_word.
+          rewrite <- IHw'.
+          rewrite transform_assoc; reflexivity.
+      + clear; revert n w; induction w'; intros.
+        * simpl; eauto.
+        * simpl; rewrite <- IHw'; reflexivity.
+  Qed.
+
+  Lemma encode_SW_word {n}
+    : forall b (w : word n) ce,
+          refine (encode_word_Spec (SW_word b w) ce)
+                 (`(bs, ce') <- encode_word_Spec w (addE ce 1);
+                    ret (transform (enqueue_opt b transform_id) bs, ce')).
+  Proof.
+    induction n; simpl; intros.
+    - shatter_word w; simpl.
+      unfold encode_word_Spec; simpl.
+      autorewrite with monad laws.
+      simpl; rewrite addE_addE_plus; rewrite transform_id_right; reflexivity.
+    - pose proof (shatter_word_S w); destruct_ex; subst.
+      simpl.
+      unfold encode_word_Spec; simpl.
+      autorewrite with monad laws; simpl.
+      assert (computes_to (`(bs, ce') <- ret (encode_word' n x0 transform_id, addE (addE ce 1) n);
+                           ret (transform (enqueue_opt b transform_id) bs, ce'))
+                          (transform (enqueue_opt b transform_id) (encode_word' n x0 transform_id), addE (addE ce 1) n)) by repeat computes_to_econstructor.
+      pose proof (IHn b x0 ce _ H).
+      unfold encode_word_Spec in H0.
+      computes_to_inv; inversion H0; subst.
+      rewrite H2.
+      rewrite enqueue_transform_opt.
+      rewrite addE_addE_plus.
+      reflexivity.
+  Qed.
+  
   Lemma If_Opt_Then_Else_DecodeBindOpt_swap {A C ResultT : Type}
     : forall (a_opt : option A)
              (b : B)

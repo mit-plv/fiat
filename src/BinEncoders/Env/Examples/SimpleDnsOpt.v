@@ -778,6 +778,39 @@ Section DnsPacket.
 
   Lemma addD_addD_plus :
     forall (cd : CacheDecode) (n m : nat), addD (addD cd n) m = addD cd (n + m).
+  Proof.
+    simpl; intros.
+    destruct (fst cd); simpl; eauto.
+    repeat (find_if_inside; simpl); eauto.
+    f_equal; f_equal.
+    rewrite !natToWord_plus.
+    rewrite !natToWord_wordToNat.
+    rewrite wplus_assoc; reflexivity.
+    rewrite !natToWord_plus in l0.
+    rewrite !natToWord_wordToNat in l0.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w) in l0.
+    rewrite <- natToWord_plus in l0.
+    rewrite wordToNat_natToWord_idempotent in l0.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    elimtype False.
+    apply n0.
+    rewrite <- (natToWord_wordToNat w).
+    rewrite !natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    rewrite <- natToWord_plus.
+    rewrite !wordToNat_natToWord_idempotent.
+    omega.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; assumption.
+    apply Nomega.Nlt_in; rewrite Nnat.Nat2N.id, Npow2_nat; omega.
+    omega.
+  Qed.
+
+  Lemma addE_addE_plus :
+    forall (cd : CacheEncode) (n m : nat), addE (addE cd n) m = addE cd (n + m).
+  Proof.
     simpl; intros.
     destruct (fst cd); simpl; eauto.
     repeat (find_if_inside; simpl); eauto.
@@ -1046,6 +1079,895 @@ Section DnsPacket.
     | cbv beta; synthesize_cache_invariant' idtac
     |  ].
 
+  Print encode_DomainName_Spec.
+
+  Lemma byte_align_Fix_encoder {A}
+        (lt_A : A -> A -> Prop)
+        (wf_lt_A : well_founded lt_A)
+    : forall
+      (body : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode)
+              -> FixComp.funType [A; CacheEncode] (ByteString * CacheEncode))
+      (body' : forall r : A,
+          (forall r' : A, lt_A r' r -> FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode))
+
+      (refine_body_OK : forall (r : A)
+                               (x : A -> CacheEncode  ->
+                                    Comp (ByteString * CacheEncode))
+                               (y : forall r' : A,
+                                   lt_A r' r ->
+                                   CacheEncode ->
+                                   {n : _ & Vector.t (word 8) n} * CacheEncode),
+          (forall (a' : A) (wf_r : lt_A a' r) (ce : CacheEncode),
+              refine (x a' ce)
+                     (ret (let (v, ce') := y a' wf_r ce in
+                           (build_aligned_ByteString (projT2 v), ce'))))
+          -> forall ce, refine (body x r ce) (ret (let (v, ce') := body' r y ce in
+                                                   (build_aligned_ByteString (projT2 v), ce'))))
+
+      (body_monotone : forall rec rec' : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode),
+          FixComp.refineFun rec rec' -> FixComp.refineFun (body rec) (body rec'))
+      (body'_monotone : forall (x0 : A)
+                               (f
+                                  g : {y : A | lt_A y x0} ->
+                                      option (word 17) * association_list string pointerT ->
+                                      {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT)),
+          (forall y : {y : A | lt_A y x0}, f y = g y) ->
+          body' x0 (fun (a' : A) (lt_a' : lt_A a' x0) => f (exist (fun a'0 : A => lt_A a'0 x0) a' lt_a')) =
+          body' x0 (fun (a' : A) (lt_a' : lt_A a' x0) => g (exist (fun a'0 : A => lt_A a'0 x0) a' lt_a')))
+      (a : A) (ce : CacheEncode),
+      refine (FixComp.LeastFixedPointFun.LeastFixedPoint body a ce)
+                (ret (let (v, ce') := Fix wf_lt_A _ body' a ce in
+                      (build_aligned_ByteString (projT2 v), ce'))).
+  Proof.
+    intros.
+    unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
+    simpl.
+    revert ce; pattern a; eapply (well_founded_ind wf_lt_A).
+    simpl; intros.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    eapply H0; eauto.
+    destruct (Fix wf_lt_A
+             (fun _ : A =>
+              option (word 17) * association_list string pointerT ->
+              {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT)) body' x ce) eqn: ?.
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
+    rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
+    etransitivity.
+    eapply refine_body_OK.
+    instantiate (1 := (fun (a' : A) (_ : lt_A a' x) =>
+            (fix Fix_F_sub (x0 : A) (r : Acc lt_A x0) {struct r} :
+               option (word 17) * association_list string pointerT ->
+               {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT) :=
+               body' x0 (fun (a'0 : A) (lt_a'0 : lt_A a'0 x0) => Fix_F_sub a'0 (Acc_inv r lt_a'0))) a'
+              (wf_lt_A a'))).
+    eapply H; eauto.
+    rewrite Heqp; reflexivity.
+  Qed.
+
+  Lemma byte_align_Fix_encoder_inv {A}
+        (A_OK : A -> Prop)
+        (lt_A : _ -> _ -> Prop)
+        (wf_lt_A : well_founded lt_A)
+    : forall
+      (body : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode)
+              -> FixComp.funType [A; CacheEncode] (ByteString * CacheEncode))
+      (body' : forall r : { a : _ & A_OK a},
+          (forall r' : { a : _ & A_OK a},
+              lt_A r' r
+              -> FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode)) ->
+          FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : _ & Vector.t (word 8) n} * CacheEncode))
+      (refine_body_OK : forall (r : { a : _ & A_OK a})
+                               (x : A -> CacheEncode ->
+                                    Comp (ByteString * CacheEncode))
+                               (y : forall r' : { a : _ & A_OK a},
+                                   lt_A r' r ->
+                                   CacheEncode ->
+                                   {n : _ & Vector.t (word 8) n} * CacheEncode),
+          (forall (a' : { a : _ & A_OK a}) (wf_r : lt_A a' r) (ce : CacheEncode),
+              refine (x (projT1 a') ce)
+                     (ret (let (v, ce') := y a' wf_r ce in
+                           (build_aligned_ByteString (projT2 v), ce'))))
+          -> forall ce, refine (body x (projT1 r) ce) (ret (let (v, ce') := body' r y ce in
+                                                            (build_aligned_ByteString (projT2 v), ce'))))
+
+      (body_monotone : forall rec rec' : FixComp.funType [A; CacheEncode] (ByteString * CacheEncode),
+          FixComp.refineFun rec rec' -> FixComp.refineFun (body rec) (body rec'))
+      (body'_monotone : forall (x0 : { a : _ & A_OK a})
+                               (f
+                                  g : {y : { a : _ & A_OK a} | lt_A y x0} ->
+                                      option (word 17) * association_list string pointerT ->
+                                      {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT)),
+          (forall y : {y : { a : _ & A_OK a} | lt_A y x0}, f y = g y) ->
+          body' x0 (fun (a' : { a : _ & A_OK a}) (lt_a' : lt_A a' x0) => f (exist (fun a'0 : { a : _ & A_OK a} => lt_A a'0 x0) a' lt_a')) =
+          body' x0 (fun (a' : { a : _ & A_OK a}) (lt_a' : lt_A a' x0) => g (exist (fun a'0 : { a : _ & A_OK a} => lt_A a'0 x0) a' lt_a')))
+      (a : A) (ce : CacheEncode) (a_OK : A_OK a),
+      refine (FixComp.LeastFixedPointFun.LeastFixedPoint body a ce)
+                (ret (let (v, ce') := Fix wf_lt_A _ body' (existT _ _ a_OK) ce in
+                      (build_aligned_ByteString (projT2 v), ce'))).
+  Proof.
+    intros.
+    unfold FixComp.LeastFixedPointFun.LeastFixedPoint, respectful_hetero; intros.
+    simpl.
+    replace a with (projT1 (existT _ a a_OK)) at 1.
+    revert ce; pattern (existT _ a a_OK); eapply (well_founded_ind wf_lt_A).
+    simpl; intros.
+    pose proof (proj1 (Frame.Is_GreatestFixedPoint (O := @FixComp.LeastFixedPointFun.funDefOps [A; CacheEncode] (ByteString * CacheEncode)) _ (body_monotone))); etransitivity.
+    eapply H0; eauto.
+    destruct ( Fix wf_lt_A
+               (fun _ : {a0 : A & A_OK a0} =>
+                option (word 17) * association_list string pointerT ->
+                {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT)) body' x ce) eqn: ?.
+    pose proof (Fix_eq _ _ wf_lt_A _ (fun a rec => body' a (fun a' lt_a' => rec (existT (fun a' => lt_A a' a) a' lt_a')))).
+    simpl in H1; unfold Fix_sub, Fix_F_sub in H1; unfold Fix, Fix_F in Heqp.
+    rewrite H1 in Heqp; simpl in Heqp; clear H1; eauto.
+    etransitivity.
+    eapply refine_body_OK.
+    instantiate (1 := fun (a' : {a0 : A & A_OK a0}) (_ : lt_A a' x) =>
+            (fix Fix_F_sub (x0 : {a0 : A & A_OK a0}) (r : Acc lt_A x0) {struct r} :
+               option (word 17) * association_list string pointerT ->
+               {n : nat & t (word 8) n} * (option (word 17) * association_list string pointerT) :=
+               body' x0 (fun (a'0 : {a0 : A & A_OK a0}) (lt_a'0 : lt_A a'0 x0) => Fix_F_sub a'0 (Acc_inv r lt_a'0))) a'
+              (wf_lt_A a')).
+    eapply H; eauto.
+    rewrite Heqp; reflexivity.
+    reflexivity.
+  Qed.
+
+  Fixpoint split_string (s : string) : (string * string) :=
+    match s with
+    | EmptyString => ("", "")
+    | String a s' => If Ascii.ascii_dec a "." Then ("", s')
+                        Else let (s1, s2) := split_string s' in
+                             (String a s1, s2)
+    end%string.
+
+  Lemma split_string_ValidDomainName :
+    forall d,
+      ValidDomainName d ->
+      ValidDomainName (snd (split_string d)).
+  Proof.
+  Admitted.
+
+  Lemma split_string_ValidDomainName_length :
+    forall d,
+      d <> ""%string
+      -> lt (String.length (snd (split_string d))) (String.length d).
+  Proof.
+    induction d; simpl; intros; try congruence.
+    find_if_inside; simpl; eauto.
+    destruct d; simpl in *; eauto.
+    destruct (If Ascii.ascii_dec a0 "." Then (""%string, d)
+               Else (let (s1, s2) := split_string d in (String a0 s1, s2))).
+    simpl in *.
+    etransitivity.
+    apply IHd.
+    congruence.
+    eauto with arith.
+  Qed.
+
+  Lemma split_string_OK
+    : forall d,
+      ValidDomainName d ->
+      (d = (fst (split_string (d)) ++ String "." (snd (split_string (d))))%string \/
+       split_string (d) = (d, ""%string)) /\
+      RRecordTypes.ValidLabel (fst (split_string (d))) /\
+      (forall label' post' : string,
+          d = (label' ++ post')%string ->
+          RRecordTypes.ValidLabel label' -> (String.length label' <= String.length (fst (split_string (d))))%nat).
+  Proof.
+  Admitted.
+
+  Lemma well_founded_string_length
+    : well_founded (fun y r : string => lt (String.length y) (String.length r)%nat).
+  Proof.
+  Admitted.
+
+  Lemma well_founded_string_length'
+    : well_founded (fun y r : {a : string & ValidDomainName a} => lt (String.length (projT1 y)) (String.length (projT1 r))%nat).
+  Proof.
+  Admitted.
+
+  Definition aligned_encode_DomainName :=
+             Fix well_founded_string_length
+                  (fun _ : string  =>
+                   FixComp.LeastFixedPointFun.cfunType [CacheEncode] ({n : nat & t (word 8) n} * CacheEncode))
+                  (fun (r : string)
+                     (y : forall r' : string,
+                          lt (String.length r') (String.length r)%nat ->
+                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
+                     (ce : CacheEncode) =>
+                     match string_dec r "" with
+                     | left e =>
+                       (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
+                     | right e => (existT (fun n : nat => t (word 8) n)
+                           (1 + String.length (fst (split_string r)) +
+                            projT1
+                              (fst
+                                 (y
+                                    ((snd (split_string r)))
+                                    (split_string_ValidDomainName_length r e)
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string r)))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string r))))
+                                          else None Else None,
+                                    snd ce))))
+                           (([natToWord 8 (String.length (let (x0, _) := split_string r in x0))] ++
+                             StringToBytes (fst (split_string r))) ++
+                            projT2
+                              (fst
+                                 (y
+                                    (snd (split_string r))
+                                    (split_string_ValidDomainName_length r e)
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string r)))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string r))))
+                                          else None Else None,
+                                    snd ce)))),
+                        Ifopt Ifopt fst ce as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None as curPtr
+                        Then (fst
+                                (snd
+                                   (y
+                                      (snd (split_string r))
+                                      (split_string_ValidDomainName_length r e)
+                                      (Ifopt Ifopt
+                                             fst ce as m
+                                             Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                  then Some (natToWord 17 (wordToNat m + 8))
+                                                  else None Else None as m
+                                       Then if Compare_dec.lt_dec
+                                                 (wordToNat m + 8 * String.length (fst (split_string r)))
+                                                 (pow2 17)
+                                            then
+                                             Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string r))))
+                                            else None Else None,
+                                      snd ce))),
+                             ((r, curPtr)
+                              :: snd
+                                   (snd
+                                      (y (snd (split_string r))
+                                         (split_string_ValidDomainName_length r e)
+                                         (Ifopt Ifopt
+                                                fst ce as m
+                                                Then
+                                                if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                          Then if Compare_dec.lt_dec
+                                                  (wordToNat m + 8 * String.length (fst (split_string r)))
+                                                  (pow2 17)
+                                               then
+                                                Some
+                                                  (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string r))))
+                                               else None Else None,
+                                         snd ce))))%list)
+                        Else snd
+                               (y
+                                  (snd (split_string r))
+                                  (split_string_ValidDomainName_length r e)
+                                  (Ifopt Ifopt fst ce as m
+                                         Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                              then Some (natToWord 17 (wordToNat m + 8))
+                                              else None Else None as m
+                                   Then if Compare_dec.lt_dec
+                                             (wordToNat m + 8 * String.length (fst (split_string r)))
+                                             (pow2 17)
+                                        then Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string r))))
+                                        else None Else None,
+                                                                     snd ce)))
+                     end).
+
+  Lemma refine_If_string_dec {A}
+    : forall s s' (t e : Comp A)
+             (t' : s = s' -> Comp A)
+             (e' : s <> s' -> Comp A),
+      (forall e'', refine t (t' e''))
+      -> (forall n, refine e (e' n))
+      -> refine (If string_dec s s' Then t Else e)
+             (match string_dec s s' with
+              | left e'' => t' e''
+              | right n => e' n
+              end).
+  Proof.
+    intros; destruct (string_dec s s'); auto.
+  Qed.
+
+  Lemma align_encode_DomainName
+    : forall d ce
+      (d_OK : ValidDomainName d),
+      refine (encode_DomainName_Spec d ce)
+             (ret (build_aligned_ByteString (projT2 (fst (aligned_encode_DomainName d ce))),
+                   (snd (aligned_encode_DomainName d ce)))).
+  Proof.
+    intros.
+    etransitivity.
+    eapply (byte_align_Fix_encoder_inv ValidDomainName) with
+    (lt_A := fun a a' => lt (String.length (projT1 a)) (String.length (projT1 a')));
+      eauto using encode_body_monotone.
+    intros.
+    etransitivity.
+    match goal with
+      |- refine (If_Then_Else (bool_of_sumbool (string_dec ?s ?s')) _ _) _ =>
+      subst_refine_evar; eapply (refine_If_string_dec s s');
+        let H := fresh in
+        intro H; set_refine_evar; try rewrite H; simpl
+    end.
+    unfold AsciiOpt.encode_ascii_Spec; rewrite aligned_encode_char_eq.
+    subst_refine_evar; higher_order_reflexivity.
+    refine pick val None; try congruence.
+    simplify with monad laws; simpl.
+    unfold Bind2.
+    refine pick val (split_string (projT1 r)).
+    simplify with monad laws.
+    unfold encode_nat_Spec.
+    rewrite aligned_encode_char_eq.
+    simplify with monad laws.
+    rewrite encode_string_ByteString.
+    simplify with monad laws.
+    unfold snd at 2; unfold snd at 2.
+    unfold fst at 2; unfold fst at 2.
+    unfold fst at 2.
+    rewrite (H (exist _ _ (split_string_ValidDomainName _ (projT2 r)))
+                   (split_string_ValidDomainName_length _ H0)).
+    simplify with monad laws.
+    Arguments mult : simpl never.
+    simpl.
+    subst_refine_evar; higher_order_reflexivity.
+    auto using addE_addE_plus.
+    destruct r; apply split_string_OK.
+    simpl; eauto.
+    instantiate (1 := (fun (r : {a : string & ValidDomainName a})
+                     (y : forall r' : {a : string & ValidDomainName a},
+                          lt (String.length (projT1 r')) (String.length (projT1 r))%nat ->
+                          CacheEncode -> {n : nat & t (word 8) n} * CacheEncode)
+                     (ce : CacheEncode) =>
+                   match string_dec (projT1 r) "" with
+                   | left _ =>  (existT (fun n : nat => t (word 8) n) 1 [NToWord 8 (Ascii.N_of_ascii terminal_char)], addE ce 8)
+                   | right n' =>  (existT (fun n : nat => t (word 8) n)
+                           (1 + String.length (fst (split_string (projT1 r))) +
+                            projT1
+                              (fst
+                                 (y
+                                    (existT ValidDomainName
+                                       (snd (split_string (projT1 r)))
+                                       (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                          else None Else None,
+                                    snd ce))))
+                           (([natToWord 8 (String.length (let (x0, _) := split_string (projT1 r) in x0))] ++
+                             StringToBytes (fst (split_string (projT1 r)))) ++
+                            projT2
+                              (fst
+                                 (y
+                                    (existT ValidDomainName
+                                       (snd (split_string (projT1 r)))
+                                       (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (Ifopt Ifopt fst ce as m
+                                           Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                     Then if Compare_dec.lt_dec
+                                               (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                               (pow2 17)
+                                          then
+                                           Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                          else None Else None,
+                                    snd ce)))),
+                        Ifopt Ifopt fst ce as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None as curPtr
+                        Then (fst
+                                (snd
+                                   (y
+                                      (existT ValidDomainName
+                                         (snd (split_string (projT1 r)))
+                                         (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                      (split_string_ValidDomainName_length (projT1 r) n')
+                                      (Ifopt Ifopt
+                                             fst ce as m
+                                             Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                  then Some (natToWord 17 (wordToNat m + 8))
+                                                  else None Else None as m
+                                       Then if Compare_dec.lt_dec
+                                                 (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                                 (pow2 17)
+                                            then
+                                             Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                            else None Else None,
+                                      snd ce))),
+                             ((projT1 r, curPtr)
+                              :: snd
+                                   (snd
+                                      (y
+                                         (existT ValidDomainName
+                                            (snd (split_string (projT1 r)))
+                                            (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                         (split_string_ValidDomainName_length (projT1 r) n')
+                                         (Ifopt Ifopt
+                                                fst ce as m
+                                                Then
+                                                if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                                then Some (natToWord 17 (wordToNat m + 8))
+                                                else None Else None as m
+                                          Then if Compare_dec.lt_dec
+                                                  (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                                  (pow2 17)
+                                               then
+                                                Some
+                                                  (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                               else None Else None,
+                                         snd ce))))%list)
+                        Else snd
+                               (y
+                                  (existT ValidDomainName
+                                     (snd (split_string (projT1 r)))
+                                     (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                                  (split_string_ValidDomainName_length (projT1 r) n')
+                                  (Ifopt Ifopt fst ce as m
+                                         Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
+                                              then Some (natToWord 17 (wordToNat m + 8))
+                                              else None Else None as m
+                                   Then if Compare_dec.lt_dec
+                                             (wordToNat m + 8 * String.length (fst (split_string (projT1 r))))
+                                             (pow2 17)
+                                        then Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                                        else None Else None,
+                                  snd ce))) end)).
+    simpl.
+    destruct (string_dec (projT1 r) ""); simpl.
+    reflexivity.
+    rewrite <- !build_aligned_ByteString_append.
+    destruct (y (existT ValidDomainName (snd (split_string (projT1 r))) (split_string_ValidDomainName (projT1 r) (projT2 r)))
+                (split_string_ValidDomainName_length (projT1 r) n)
+                (Ifopt Ifopt fst ce0 as m
+                       Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17) then Some (natToWord 17 (wordToNat m + 8)) else None
+                       Else None as m
+                 Then if Compare_dec.lt_dec (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))) (pow2 17)
+                      then Some (natToWord 17 (wordToNat m + 8 * String.length (fst (split_string (projT1 r)))))
+                      else None Else None, snd ce0)); simpl.
+    rewrite <- !build_aligned_ByteString_append.
+    reflexivity.
+    intros; apply functional_extensionality; intros.
+    destruct (string_dec (projT1 x0) ""); simpl; try rewrite H; reflexivity.
+    instantiate (2 := well_founded_string_length').
+    instantiate (1 := d_OK).
+    match goal with
+      |- context [let (_,_) := ?z in _] =>
+      replace z with
+      (aligned_encode_DomainName d ce)
+    end.
+    destruct (aligned_encode_DomainName d ce); reflexivity.
+    simpl. admit.
+  Qed.
+
+    Lemma optimize_align_encode_list
+          {A}
+          (A_OK : A -> Prop)
+          (A_encode_Spec : A -> CacheEncode -> Comp (ByteString * CacheEncode))
+          (A_encode_align :
+             A
+             ->  CacheEncode
+             -> {n : _ & Vector.t (word 8) n} * CacheEncode)
+          (A_encode_OK :
+             forall a ce,
+               A_OK a
+               -> refine (A_encode_Spec a ce)
+                      (ret (let (v', ce') := A_encode_align a ce in
+                            (build_aligned_ByteString (projT2 v'), ce'))))
+      : forall (As : list A)
+               (ce : CacheEncode),
+      (forall a, In a As -> A_OK a)
+      -> refine (encode_list_Spec A_encode_Spec As ce)
+               (let (v', ce') := (align_encode_list A_encode_align As ce) in
+                ret (build_aligned_ByteString (projT2 v'), ce')).
+  Proof.
+    induction As; simpl; intros; simpl.
+    - simpl.
+      repeat f_equiv.
+      eapply ByteString_f_equal.
+      instantiate (1 := eq_refl _); reflexivity.
+      instantiate (1 := eq_refl _); reflexivity.
+    - unfold Bind2.
+      rewrite A_encode_OK.
+      simplify with monad laws.
+      rewrite IHAs.
+      destruct (A_encode_align a ce); simpl.
+      destruct (align_encode_list A_encode_align As c);
+        simplify with monad laws.
+      simpl.
+      rewrite <- build_aligned_ByteString_append.
+      reflexivity.
+      eauto.
+      eauto.
+  Qed.
+
+  Lemma align_encode_sumtype_OK_inv'
+        {m : nat}
+        {types : t Type m}
+        (A_OKs : SumType types -> Prop)
+        (align_encoders :
+                ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+        (encoders :
+           ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> Comp (ByteString * (CacheEncode)))) types)
+        (encoders_OK : forall idx t (ce : CacheEncode),
+            A_OKs (inj_SumType _ idx t)
+            -> refine (ith encoders idx t ce)
+                   (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
+                         snd (ith align_encoders idx t ce))))
+    : forall (st : SumType types)
+             (ce : CacheEncode),
+      A_OKs st
+      -> refine (encode_SumType_Spec types encoders st ce)
+             (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
+                   (snd (align_encode_sumtype align_encoders st ce)))).
+  Proof.
+    intros; unfold encode_SumType_Spec, align_encode_sumtype.
+    rewrite encoders_OK; eauto.
+    reflexivity.
+    rewrite inj_SumType_proj_inverse; eauto.
+  Qed.
+
+  Corollary align_encode_sumtype_OK
+        {m : nat}
+        {types : t Type m}
+        (A_OKs : SumType types -> Prop)
+        (align_encoders :
+                ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+        (encoders :
+           ilist (B := (fun T : Type => T -> @CacheEncode dns_list_cache -> Comp (ByteString * (CacheEncode)))) types)
+        (encoders_OK : Iterate_Ensemble_BoundedIndex
+                         (fun idx => forall t (ce : CacheEncode),
+                              A_OKs (inj_SumType _ idx t)
+                              -> refine (ith encoders idx t ce)
+                                        (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
+                                              snd (ith align_encoders idx t ce)))))
+    : forall (st : SumType types)
+             (ce : CacheEncode),
+      A_OKs st
+      -> refine (encode_SumType_Spec types encoders st ce)
+                (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
+                      (snd (align_encode_sumtype align_encoders st ce)))).
+  Proof.
+    intros; eapply align_encode_sumtype_OK_inv'; intros.
+    eapply Iterate_Ensemble_BoundedIndex_equiv in encoders_OK.
+    apply encoders_OK; eauto.
+    eauto.
+  Qed.
+
+  Arguments split1' : simpl never.
+  Arguments split2' : simpl never.
+  Arguments fin_eq_dec m !n !n' /.
+
+  Lemma zeta_to_fst {A B C}
+    : forall (ab : A * B) (k : A -> B -> C),
+      (let (a, b) := ab in (k a b)) =
+      k (fst ab) (snd ab).
+  Proof.
+    destruct ab; reflexivity.
+  Qed.
+
+  Lemma zeta_inside_ret {A B C}
+    : forall (ab : A * B) (k : A -> B -> C),
+      refine (let (a, b) := ab in ret (k a b))
+             (ret (let (a, b) := ab in k a b)).
+  Proof.
+    destruct ab; reflexivity.
+  Qed.
+
+  Arguments addE : simpl never.
+
+  Ltac pose_string_hyps :=
+  fold_string_hyps;
+   repeat
+    match goal with
+    | |- context [String ?R ?R'] =>
+      let str := fresh "StringId" in
+      assert True as H' by
+          (clear;
+           (cache_term (String R R') as str run (fun id => fold id in *; add id to stringCache));
+           exact I); clear H'; fold_string_hyps
+    | |- context [{| bindex := ?bindex'; indexb := ?indexb' |}] =>
+      let str := fresh "BStringId" in
+      cache_term ``(bindex') as str run fun id => fold id in *; add id to stringCache
+    end.
+
+  Create HintDb encoderCache.
+
+  Ltac fold_encoders :=
+    (repeat foreach [ encodeCache ] run (fun id => progress fold id in *)).
+     
+  Ltac cache_encoders :=
+    repeat match goal with
+           | |- context [icons (fun (a : ?z) => @?f a) _] =>
+             let p' := fresh "encoder" in
+             let H'' := fresh in
+             assert True as H'' by
+                   (clear;
+                    (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
+             fold_encoders; clear H''
+           | |- context [align_encode_list (fun (a : ?z) => @?f a) _ _] =>
+             let p' := fresh "encoder" in
+             let H'' := fresh in
+             assert True as H'' by
+                   (clear;
+                    (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
+             fold_encoders; clear H''
+           end.
+
+  Arguments Vector.nth A !m !v' !p /.
+
+  Definition refine_encode_packet
+    : { b : _ & forall (p : packet)
+                       (p_OK : DNS_Packet_OK p),
+            refine (encode_packet_Spec p list_CacheEncode_empty)
+                   (ret (b p)) }.
+  Proof.
+    unfold encode_packet_Spec.
+    pose_string_hyps.
+    eexists; intros.
+    eapply refine_refineEquiv_Proper;
+      [ unfold flip;
+        repeat first
+               [ etransitivity; [ apply refineEquiv_compose_compose with (transformer := transformer) | idtac ]
+               | etransitivity; [ apply refineEquiv_compose_Done with (transformer := transformer) | idtac ]
+               | apply refineEquiv_under_compose with (transformer := transformer) ];
+        intros; higher_order_reflexivity
+      | reflexivity | ].
+    pose_string_hyps.
+    etransitivity.
+    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    unfold encode_enum_Spec.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    eapply AlignedEncodeChar; eauto using addE_addE_plus.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    eapply AlignedEncodeChar; eauto using addE_addE_plus.
+    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
+    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
+    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
+    eapply AlignedEncode2Nat; eauto using addE_addE_plus.
+    unfold compose at 1, Bind2.
+    rewrite align_encode_DomainName.
+    simplify with monad laws.
+    etransitivity.
+    apply refine_under_bind_both.
+    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    unfold compose, Bind2.
+    etransitivity.
+    apply refine_under_bind_both.
+    pose proof (proj2 (proj2 (proj2 (proj2 p_OK)))).
+    apply optimize_align_encode_list with (A_OK := resourceRecord_OK).
+    unfold encode_resource_Spec; intros.
+    unfold compose at 1, Bind2.
+    rewrite align_encode_DomainName.
+    simplify with monad laws.
+    etransitivity.
+    apply refine_under_bind_both.
+    unfold encode_enum_Spec.
+    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    eapply AlignedEncode32Char; eauto using addE_addE_plus.
+    unfold encode_rdata_Spec.
+    etransitivity.
+    apply refine_under_bind_both.
+    unfold resourceRecord_OK in H0.
+    let types' := (eval unfold ResourceRecordTypeTypes in ResourceRecordTypeTypes)
+      in ilist_of_evar
+           (fun T : Type => T -> @CacheEncode dns_list_cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))
+           types'
+           ltac:(fun encoders' => eapply (@align_encode_sumtype_OK _ ResourceRecordTypeTypes _ encoders'));
+           [simpl; intros; repeat (apply Build_prim_and; intros); try exact I |
+           ].
+    5 : instantiate (1 := fun a => ith
+      (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+             (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
+                    (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+                           (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
+                                                               (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))
+      (SumType_index
+         (DomainName
+            :: (Memory.W : Type)
+            :: DomainName
+            :: [SOA_RDATA])
+         a)
+      (SumType_proj
+         (DomainName
+            :: (Memory.W : Type)
+            :: DomainName
+            :: [SOA_RDATA])
+         a)); apply H0.
+    { unfold encode_CNAME_Spec.
+      etransitivity.
+      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      etransitivity.
+      apply refine_under_bind_both.
+      apply align_encode_DomainName.
+      apply H1.
+      intros; unfold Bind2; simplify with monad laws.
+      simpl; higher_order_reflexivity.
+      simplify with monad laws.
+      simpl.
+      replace ByteString_id
+      with (build_aligned_ByteString (Vector.nil _)).
+      erewrite <- build_aligned_ByteString_append.
+      reflexivity.
+      eapply ByteString_f_equal;
+        instantiate (1 := eq_refl _); reflexivity.
+      simpl in H1.
+      instantiate (1 := fun t ce0 => (existT _ _ _, _)).
+      simpl; reflexivity.
+    }
+    { unfold encode_A_Spec.
+      etransitivity.
+      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      replace transform_id
+      with (build_aligned_ByteString (Vector.nil _)).
+      reflexivity.
+      eapply ByteString_f_equal;
+        instantiate (1 := eq_refl _); reflexivity.
+      instantiate (1 := fun t ce0 => (existT _ _ _, _)).
+      simpl; reflexivity.
+    }
+    { unfold encode_NS_Spec.
+      etransitivity.
+      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      etransitivity.
+      apply refine_under_bind_both.
+      apply align_encode_DomainName.
+      apply H1.
+      intros; unfold Bind2; simplify with monad laws.
+      simpl; higher_order_reflexivity.
+      simplify with monad laws.
+      simpl.
+      replace ByteString_id
+      with (build_aligned_ByteString (Vector.nil _)).
+      erewrite <- build_aligned_ByteString_append.
+      reflexivity.
+      eapply ByteString_f_equal;
+        instantiate (1 := eq_refl _); reflexivity.
+      instantiate (1 := fun t ce0 => (existT _ _ _, _)).
+      simpl; reflexivity.
+    }
+    { unfold encode_SOA_RDATA_Spec.
+      pose_string_hyps.
+      etransitivity.
+      apply (@AlignedEncode2UnusedChar dns_list_cache).
+      etransitivity.
+      apply refine_under_bind_both.
+      apply align_encode_DomainName.
+      apply H1.
+      intros; unfold Bind2.
+      etransitivity.
+      apply refine_under_bind_both.
+      etransitivity.
+      apply refine_under_bind_both.
+      apply align_encode_DomainName.
+      apply H1.
+      intros; unfold Bind2.
+      apply refine_under_bind_both.
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      apply (@AlignedEncode32Char dns_list_cache); auto using addE_addE_plus.
+      replace transform_id
+      with (build_aligned_ByteString (Vector.nil _)).
+      reflexivity.
+      eapply ByteString_f_equal;
+        instantiate (1 := eq_refl _); reflexivity.
+      intros; higher_order_reflexivity.
+      simpl.
+      simplify with monad laws.
+      reflexivity.
+      intros; higher_order_reflexivity.
+      simplify with monad laws.
+      higher_order_reflexivity.
+      simplify with monad laws.
+      simpl.
+      rewrite <- !build_aligned_ByteString_append.
+      reflexivity.
+      instantiate (1 := fun t ce0 => (existT _ _ _, _)).
+      simpl; reflexivity.
+    }
+    intros.
+    intros; unfold Bind2; simplify with monad laws.
+    simpl; higher_order_reflexivity.
+
+       cache_encoders.
+       simplify with monad laws.
+       simpl.
+       replace ByteString_id
+       with (build_aligned_ByteString (Vector.nil _)).
+       rewrite <- build_aligned_ByteString_append.
+       reflexivity.
+       eapply ByteString_f_equal;
+         instantiate (1 := eq_refl _); reflexivity.
+       intros; higher_order_reflexivity.
+       match goal with
+         |- context [ @align_encode_sumtype ?cache ?m ?types ?encoders ?p ?ce] =>
+         pose (@align_encode_sumtype cache m types encoders) as H'; fold H'
+       end.
+
+       simpl.
+       simplify with monad laws.
+       simpl.
+       rewrite <- build_aligned_ByteString_append.
+       instantiate (1 := fun t ce0 =>
+                           (existT _ _ _, _)).
+       simpl.
+       reflexivity.
+       apply H0.
+       apply H.
+       intros; unfold Bind2; simplify with monad laws.
+       simpl; higher_order_reflexivity.
+       cache_encoders.
+       simpl.
+       Time match goal with
+              |- context [let (v, c) := ?z in ret (@?b v c)] =>
+              rewrite (zeta_inside_ret z b)
+            end.
+       simplify with monad laws.
+       replace ByteString_id
+       with (build_aligned_ByteString (Vector.nil _)).
+       Time match goal with
+              |- context [let (v, c) := ?z in (@?b v c)] =>
+              pose proof (zeta_to_fst z b)
+            end.
+       simpl in H.
+       simpl; rewrite H; clear H.
+       simpl; rewrite <- build_aligned_ByteString_append.
+       reflexivity.
+       eapply ByteString_f_equal;
+         instantiate (1 := eq_refl _); reflexivity.
+       intros; higher_order_reflexivity.
+       simplify with monad laws.
+       simpl; rewrite <- build_aligned_ByteString_append.
+       rewrite !addE_addE_plus.
+       simpl.
+       reflexivity.
+       apply p_OK.
+       simpl.
+       higher_order_reflexivity.
+       Time Defined.
+
+Definition refine_encode_packet_Impl
+             (p : packet)
+  := Eval simpl in (projT1 refine_encode_packet p).
+
+Lemma refine_encode_packet_Impl_OK
+  : forall p (p_OK : DNS_Packet_OK p),
+    refine (encode_packet_Spec p list_CacheEncode_empty)
+           (ret (refine_encode_packet_Impl p)).
+Proof.
+  intros; apply (projT2 refine_encode_packet); eauto.
+Qed.
+  
   Definition ByteAlignedCorrectDecoderFor {A} {cache : Cache}
              Invariant FormatSpec :=
     { decodePlusCacheInv |
@@ -1655,7 +2577,7 @@ Section DnsPacket.
       match goal with
         |- ?b = _ =>
         let b' := (eval pattern (build_aligned_ByteString t0) in b) in
-        let b' := match b' with ?f _ => f end in 
+        let b' := match b' with ?f _ => f end in
         eapply (@AlignedDecoders.optimize_Guarded_Decode x0 _ 8 b')
       end.
       { intros.
@@ -1784,6 +2706,8 @@ Section DnsPacket.
                                                                                                Some (proj, rest, env') Else None); simpl.
         find_if_inside; simpl; eauto.
         repeat rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        simpl.
+        unfold mult; simpl.
         match goal with
           |- Ifopt ?b as _ Then _ Else _ = _ =>
           destruct b as [ [ [? [? ?] ] ?] | ]; reflexivity
@@ -1821,7 +2745,7 @@ Section DnsPacket.
         repeat (rewrite Vector_split_merge,
                 <- Eqdep_dec.eq_rect_eq_dec;
                 eauto using Peano_dec.eq_nat_dec ).
-
+        unfold mult; simpl.
         instantiate (1 :=
                        fun n1 v1 cd0
                        => If NPeano.leb 6 n1
@@ -1876,6 +2800,7 @@ Section DnsPacket.
         simpl.
         find_if_inside; simpl; eauto.
         repeat rewrite (If_Opt_Then_Else_DecodeBindOpt (cache := dns_list_cache)).
+        unfold mult; simpl.
         match goal with
           |- Ifopt ?b as _ Then _ Else _ = _ =>
           destruct b as [ [ [? [? ?] ] ?] | ]; reflexivity
@@ -2024,7 +2949,7 @@ Section DnsPacket.
           Opaque Guarded_Vector_split.
           Opaque Vector.tl.
           simpl.
-          
+
           match goal with
             |- ?z = ?f (?d, existT _ ?x ?t, ?p) =>
             let z' := (eval pattern d, x, t, p in z) in

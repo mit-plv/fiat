@@ -38,13 +38,13 @@ Section Enum.
     clear; induction 1; eauto.
   Qed.
 
-  Definition encode_enum_Spec (idx : Fin.t _) (ce : CacheEncode) :
-    Comp (B * CacheEncode) :=
-    encode_word_Spec (nth tb idx) ce.
+  Definition encode_enum_Spec (idx : Fin.t _) :
+    CacheEncode -> Comp (B * CacheEncode) :=
+    encode_word_Spec (nth tb idx).
 
-  Definition encode_enum_Impl (idx : Fin.t _) (ce : CacheEncode) :
-    B * CacheEncode :=
-    encode_word_Impl (nth tb idx) ce.
+  Definition encode_enum_Impl (idx : Fin.t _) :
+    CacheEncode -> B * CacheEncode :=
+    encode_word_Impl (nth tb idx).
 
   Lemma refine_encode_enum :
     forall idx ce,
