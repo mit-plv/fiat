@@ -6,7 +6,7 @@ Require Import Fiat.Common.Tactics.Head.
    as [if]s), and finally matches in general. *)
 Ltac set_match_refl v' only_when :=
   lazymatch goal with
-  | [ |- context G[match ?e with _ => _ end eq_refl] ]
+  | [ |- appcontext G[match ?e with _ => _ end eq_refl] ]
     => only_when e;
        let T := fresh in
        evar (T : Type); evar (v' : T);
@@ -19,7 +19,7 @@ Ltac set_match_refl v' only_when :=
   end.
 Ltac set_match_refl_hyp v' only_when :=
   lazymatch goal with
-  | [ H : context G[match ?e with _ => _ end eq_refl] |- _ ]
+  | [ H : appcontext G[match ?e with _ => _ end eq_refl] |- _ ]
     => only_when e;
        let T := fresh in
        evar (T : Type); evar (v' : T);
@@ -53,12 +53,12 @@ Ltac destruct_rewrite_sumbool e :=
   try lazymatch type of H with
       | ?LHS = ?RHS
         => lazymatch RHS with
-           | context[LHS] => fail
+           | appcontext[LHS] => fail
            | _ => idtac
            end;
            rewrite ?H; rewrite ?H in *;
            repeat match goal with
-                  | [ |- context G[LHS] ]
+                  | [ |- appcontext G[LHS] ]
                     => let LHS' := fresh in
                        pose LHS as LHS';
                        let G' := context G[LHS'] in
@@ -116,4 +116,10 @@ Ltac break_innermost_match_step :=
                                   | appcontext[match _ with _ => _ end] => fail
                                   | _ => idtac
                                   end).
+Ltac break_innermost_match_hyps_step :=
+  break_match_hyps_step ltac:(fun v => lazymatch v with
+                                       | appcontext[match _ with _ => _ end] => fail
+                                       | _ => idtac
+                                       end).
 Ltac break_innermost_match := repeat break_innermost_match_step.
+Ltac break_innermost_match_hyps := repeat break_innermost_match_hyps_step.
