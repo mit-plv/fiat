@@ -2054,13 +2054,22 @@ Section ListFacts.
     intros; apply (filter_In f x xs) in H; tauto.
   Qed.
 
+  Lemma nth_error_map'_strong {A B}
+    : forall (f : A -> B) l m b,
+      nth_error (map f l) m = Some b ->
+      { a | nth_error l m = Some a /\ f a = b }.
+  Proof.
+    induction l; destruct m; simpl; intros; try discriminate;
+      injections; eauto.
+  Qed.
+
   Lemma nth_error_map' {A B}
     : forall (f : A -> B) l m b,
       nth_error (map f l) m = Some b ->
       exists a, nth_error l m = Some a /\ f a = b.
   Proof.
-    induction l; destruct m; simpl; intros; try discriminate;
-      injections; eauto.
+    intros f l m b H; apply nth_error_map'_strong in H; destruct H.
+    eexists; eassumption.
   Qed.
 
   Lemma first_index_helper_default_map {A' A B}
