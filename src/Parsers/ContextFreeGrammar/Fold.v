@@ -10,6 +10,7 @@ Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Common.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Equality.
+Require Import Fiat.Common.OptionFacts.
 
 Set Implicit Arguments.
 
@@ -166,6 +167,10 @@ Section general_fold.
 
     Fixpoint fold_cnt' initial : nonterminals_listT -> String.string -> default_nonterminal_carrierT -> T
       := @fold_nt_step initial (@fold_cnt').
+
+    Lemma unfold_fold_cnt' initial
+      : @fold_cnt' initial = @fold_nt_step initial (@fold_cnt').
+    Proof. destruct initial; reflexivity. Qed.
 
     Definition fold_cnt : String.string -> default_nonterminal_carrierT -> T
       := let predata := @rdp_list_predata _ G in
@@ -371,3 +376,107 @@ Section fold_correctness.
     reflexivity.
   Qed.
 End fold_correctness.
+
+Module compile.
+  Section semantics.
+    Context {Char : Type} {T : Type}.
+    Context `{@fold_grammar_data Char T} (G : pregrammar' Char).
+
+    Local Notation productions_def precompiled_productions
+      := (List.map (fun nt_idx_nt => fold_cnt G precompiled_productions (snd nt_idx_nt) (fst nt_idx_nt)) (enumerate (List.map fst (pregrammar_productions G)) 0)).
+
+    Definition productions : list T
+      := productions_def (compiled_productions G).
+
+    Section with_compiled_productions.
+      Context (precompiled_productions : list (opt.productions T))
+              (Hprecompiled_productions : List.map opt.compile_productions (List.map snd (pregrammar_productions G)) = precompiled_productions).
+      Context (compiled_productions : list T)
+              (Hcompiled_productions : productions_def precompiled_productions = compiled_productions).
+
+      Definition fold_cnt : String.string -> default_nonterminal_carrierT -> T
+        := fun nt nt_idx => List.nth nt_idx compiled_productions (on_redundant_nonterminal nt).
+      Definition fold_nt : String.string -> T
+        := fun nt => fold_cnt nt (opt.compile_nonterminal nt).
+      Definition fold_production (pat : Core.production Char) : T
+        := fold_production' fold_cnt (opt.compile_production pat).
+      Definition fold_productions (pats : Core.productions Char) : T
+        := fold_productions' fold_cnt (opt.compile_productions pats).
+    End with_compiled_productions.
+
+  End semantics.
+
+  Section fold_correctness.
+    Context {Char : Type} {T : Type}.
+    Context {FGD : fold_grammar_data Char T}
+            (G : pregrammar' Char)
+            {FGCD : fold_grammar_correctness_data G}.
+
+    Let predata := @rdp_list_predata _ G.
+    Local Existing Instance predata.
+
+    Lemma fold_cnt_correct
+          nt nt_idx
+          (Hnt : of_nonterminal nt = nt_idx)
+      : Pnt initial_nonterminals_data nt (fold_cnt (productions G) nt nt_idx).
+    Proof.
+      unfold fold_cnt, productions.
+      repeat match goal with
+             | _ => progress subst
+             | _ => rewrite ListFacts.nth_error_nth
+             | _ => progress unfold option_map in *
+             | _ => progress break_innermost_match_step
+             | _ => progress break_innermost_match_hyps_step
+             | _ => progress inversion_option
+             | _ => progress destruct_head' sig
+             | _ => progress destruct_head' and
+             | _ => progress cbn [fst snd plus] in *
+             | [ H : nth_error (map _ _) _ = Some _ |- _ ] => apply ListFacts.nth_error_map'_strong in H
+             | [ H : nth_error (enumerate _ _) _ = _ |- _ ]
+               => rewrite ListFacts.nth_error_enumerate in H
+             | [ H : nth_error (map ?f ?ls) ?idx = None |- _ ]
+               => let H' := fresh in
+                  destruct (nth_error ls idx) eqn:H';
+                    [ eapply map_nth_error in H'; rewrite H in H'; congruence
+                    | clear H ]
+             end.
+      { match goal with
+        | [ H : nth_error _ (of_nonterminal ?nt) = Some ?x |- _ ]
+          => assert (fst x = nt);
+               [ pose proof H as H'; rewrite nth_error_default_to_nonterminal in H'
+               | subst nt ]
+        end.
+        { break_innermost_match_hyps; try congruence; inversion_option; subst.
+          cbn [fst].
+          change default_to_nonterminal with (rdp_list_to_nonterminal (G:=G)).
+          unfold of_nonterminal, predata, rdp_list_predata.
+          rewrite rdp_list_to_of_nonterminal; [ reflexivity | ].
+          apply initial_nonterminals_correct, rdp_list_is_valid_nonterminal_nth_error.
+          congruence. }
+        { apply fold_cnt_correct; reflexivity. } }
+      { apply Pnt_redundant; [ reflexivity | ].
+        match goal with |- ?x = false => destruct x eqn:Hb end;
+          [ | reflexivity ].
+        exfalso.
+        eapply rdp_list_is_valid_nonterminal_nth_error; try eassumption; assumption. }
+    Qed.
+
+    Lemma fold_nt_correct nt
+      : Pnt initial_nonterminals_data nt (fold_nt G (productions G) nt).
+    Proof. unfold fold_nt; apply fold_cnt_correct; reflexivity. Qed.
+
+    Lemma fold_production_correct pat
+      : Ppat initial_nonterminals_data pat (fold_production G (productions G) pat).
+    Proof.
+      unfold fold_production.
+      apply fold_production'_correct; [ reflexivity | apply fold_cnt_correct ].
+    Qed.
+
+    Lemma fold_productions_correct pats
+      : Ppats initial_nonterminals_data pats (fold_productions G (productions G) pats).
+    Proof.
+      unfold fold_productions.
+      apply fold_productions'_correct; [ reflexivity | apply fold_cnt_correct ].
+    Qed.
+  End fold_correctness.
+End compile.
