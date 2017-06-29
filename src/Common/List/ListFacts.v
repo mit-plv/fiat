@@ -2367,4 +2367,40 @@ Section ListFacts.
              | _ => solve [ eauto ]
              end.
   Qed.
+
+  Lemma nth_error_enumerate A ls start idx
+    : nth_error (@enumerate A ls start) idx
+      = option_map (fun v => (start + idx, v)) (nth_error ls idx).
+  Proof.
+    revert start idx; induction ls as [|l ls IHls], idx as [|idx]; try reflexivity.
+    { simpl; rewrite Nat.add_0_r; reflexivity. }
+    { simpl; rewrite <- plus_n_Sm, IHls; reflexivity. }
+  Qed.
+
+  Lemma nth_enumerate A ls start idx default
+    : nth idx (@enumerate A ls start) (start + idx, default)
+      = (start + idx, nth idx ls default).
+  Proof.
+    rewrite !nth_error_nth, nth_error_enumerate.
+    unfold option_map; break_innermost_match; reflexivity.
+  Qed.
+
+  Lemma snd_nth_enumerate A ls start idx default
+    : snd (nth idx (@enumerate A ls start) default)
+      = nth idx ls (snd default).
+  Proof.
+    rewrite !nth_error_nth, nth_error_enumerate.
+    unfold option_map; break_innermost_match; reflexivity.
+  Qed.
+
+  Lemma nth_default_enumerate A ls start idx default
+    : nth_default (start + idx, default) (@enumerate A ls start) idx
+      = (start + idx, nth_default default ls idx).
+  Proof. rewrite !nth_default_eq; apply nth_enumerate. Qed.
+
+  Lemma snd_nth_default_enumerate A ls start idx default
+    : snd (nth_default default (@enumerate A ls start) idx)
+      = nth_default (snd default) ls idx.
+  Proof. rewrite !nth_default_eq; apply snd_nth_enumerate. Qed.
+
 End ListFacts.
