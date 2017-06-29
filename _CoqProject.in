@@ -58,6 +58,7 @@ src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Common/WordFacts.v
 src/BinEncoders/Env/Examples/ARPPacket.v
+src/BinEncoders/Env/Examples/ByteAlignedExample.v
 src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v

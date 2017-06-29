@@ -41,27 +41,27 @@ Section AlignedDecoders.
     : forall (w : word 8) cd,
       refine (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w cd)
              (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
-    Proof.
-      intros; shatter_word w; simpl.
-      unfold encode_word_Spec; simpl.
-      compute.
-      intros.
-      computes_to_inv; subst.
-      match goal with
-        |- computes_to (ret ?c) ?v => replace c with v
-      end.
-      computes_to_econstructor.
-      f_equal.
-      eapply ByteString_f_equal; simpl.
-      instantiate (1 := eq_refl _).
-      rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
-      erewrite eq_rect_Vector_cons; repeat f_equal.
-      instantiate (1 := eq_refl _); reflexivity.
-      Grab Existential Variables.
-      reflexivity.
-    Qed.
+  Proof.
+    intros; shatter_word w; simpl.
+    unfold encode_word_Spec; simpl.
+    compute.
+    intros.
+    computes_to_inv; subst.
+    match goal with
+      |- computes_to (ret ?c) ?v => replace c with v
+    end.
+    computes_to_econstructor.
+    f_equal.
+    eapply ByteString_f_equal; simpl.
+    instantiate (1 := eq_refl _).
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    erewrite eq_rect_Vector_cons; repeat f_equal.
+    instantiate (1 := eq_refl _); reflexivity.
+    Grab Existential Variables.
+    reflexivity.
+  Qed.
 
-    Lemma AlignedDecodeChar {C}
+  Lemma AlignedDecodeChar {C}
         {numBytes}
     : forall (v : Vector.t (word 8) (S numBytes))
              (t : (word 8 * ByteString * CacheDecode) -> C)
@@ -69,10 +69,10 @@ Section AlignedDecoders.
              cd,
       Ifopt (decode_word
                (transformerUnit := ByteString_QueueTransformerOpt) (sz := 8) (build_aligned_ByteString v) cd)
-            as w Then t w Else e
-            =
-       LetIn (Vector.nth v Fin.F1)
-             (fun w => t (w, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
+      as w Then t w Else e
+         =
+         LetIn (Vector.nth v Fin.F1)
+               (fun w => t (w, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
   Proof.
     unfold LetIn; intros.
     unfold decode_word, WordOpt.decode_word.
@@ -86,7 +86,7 @@ Section AlignedDecoders.
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
-                   ThenC c) ce)
+                    ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ w _ v), ce')).
   Proof.
     unfold compose; intros.
@@ -107,8 +107,8 @@ Section AlignedDecoders.
              cd,
       Ifopt (decode_word
                (transformerUnit := ByteString_QueueTransformerOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
-      Then t w Else e=
-      Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
+                                                                                                                    Then t w Else e=
+                                                                                                                  Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
         t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
   Proof.
     unfold LetIn; intros.
@@ -137,8 +137,8 @@ Section AlignedDecoders.
     : forall (w : word (n + m)) ce,
       refine (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w ce)
              ((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) (split1' _ _ w)
-              ThenC (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) (split2' _ _ w)))
-              ce).
+                                ThenC (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) (split2' _ _ w)))
+                ce).
   Proof.
     induction n.
     - unfold compose; simpl; intros.
@@ -180,7 +180,7 @@ Section AlignedDecoders.
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
-                   ThenC c) ce)
+                    ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 w) _
                                                   (Vector.cons _ (split2' 8 8 w) _ v)), ce')).
@@ -204,8 +204,8 @@ Section AlignedDecoders.
     forall (a_opt : option A)
            (f : A -> option A')
            (g : A' -> option A''),
-    BindOpt (BindOpt a_opt f) g =
-    BindOpt a_opt (fun a => BindOpt (f a) g).
+      BindOpt (BindOpt a_opt f) g =
+      BindOpt a_opt (fun a => BindOpt (f a) g).
   Proof.
     destruct a_opt as [ ? | ]; simpl; intros; eauto.
   Qed.
@@ -216,10 +216,10 @@ Section AlignedDecoders.
              (t : _ -> C)
              e
              cd,
-    Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 16 (build_aligned_ByteString v) cd) as w
-    Then t w Else e
-     =
-      Let n := wordToNat (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1)) in
+      Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 16 (build_aligned_ByteString v) cd) as w
+                                                                                                                     Then t w Else e
+                                                                                                                   =
+                                                                                                                   Let n := wordToNat (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1)) in
         t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
   Proof.
     unfold CacheDecode.
@@ -286,7 +286,8 @@ Section AlignedDecoders.
     : {b' : ByteString | le_B b' (build_aligned_ByteString b)}.
     eexists (build_aligned_ByteString
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
-    abstract (unfold build_aligned_ByteString, le_B; simpl; omega).
+    abstract (unfold build_aligned_ByteString, le_B; simpl; 
+              unfold length_ByteString; simpl; omega).
   Defined.
 
   Lemma build_aligned_ByteString_eq_split
@@ -420,8 +421,8 @@ Section AlignedDecoders.
              (t : A -> option B)
              (e : option B)
              (k : _ -> option C),
-        BindOpt (Ifopt a_opt as a Then t a Else e) k
-        = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
+      BindOpt (Ifopt a_opt as a Then t a Else e) k
+      = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
   Proof.
     destruct a_opt; simpl; intros; reflexivity.
   Qed.
@@ -435,7 +436,8 @@ Section AlignedDecoders.
     : {b' : ByteString | lt_B b' (build_aligned_ByteString b)}.
     eexists (build_aligned_ByteString
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
-    abstract (unfold build_aligned_ByteString, lt_B; simpl; omega).
+    abstract (unfold build_aligned_ByteString, lt_B; simpl;
+              unfold length_ByteString; simpl; omega).
   Defined.
 
   Fixpoint BytesToString {sz}
@@ -941,11 +943,11 @@ Section AlignedDecoders.
              (e : C)
              cd,
       Ifopt (decode_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd) as w
-      Then t w Else e  =
-      Let n := Core.append_word (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
-                                (Core.append_word (Vector.nth v (Fin.FS (Fin.FS Fin.F1)))
-                                                  (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1))) in
+               (transformerUnit := ByteString_QueueTransformerOpt) (sz := 32) (build_aligned_ByteString v) cd) as w
+                                                                                                                    Then t w Else e  =
+                                                                                                                  Let n := Core.append_word (Vector.nth v (Fin.FS (Fin.FS (Fin.FS Fin.F1))))
+                                                                                                                                            (Core.append_word (Vector.nth v (Fin.FS (Fin.FS Fin.F1)))
+                                                                                                                                                              (Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1))) in
         t (n, build_aligned_ByteString (snd (Vector_split 4 _ v)), addD cd 32).
   Proof.
     unfold LetIn; intros.
@@ -993,7 +995,7 @@ Section AlignedDecoders.
     : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
-                   ThenC c) ce)
+                    ThenC c) ce)
                 (ret (build_aligned_ByteString
                         (Vector.cons
                            _ (split1' 8 24 w) _
@@ -1015,7 +1017,8 @@ Section AlignedDecoders.
     rewrite H.
     simplify with monad laws.
     unfold fst.
-    simpl transform.
+    unfold transform.
+    unfold ByteStringQueueTransformer.
     rewrite <- build_aligned_ByteString_append.
     instantiate (1 := Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.cons _ _ _ (Vector.nil _)))).
     unfold append.
@@ -1088,39 +1091,39 @@ Section AlignedDecoders.
       as [ [ [? [? ?] ] ?]  | ]; simpl; eauto.
   Qed.
 
-    Fixpoint align_encode_list {A}
-             (A_encode_align :
-                A
-                ->  CacheEncode
-                -> {n : _ & Vector.t (word 8) n} * CacheEncode)
-             (As : list A)
-             (ce : CacheEncode)
-      : {n : _ & Vector.t (word 8) n} * CacheEncode :=
-      match As with
-             | nil => (existT _ _ (Vector.nil _), ce)
-             | a :: As' =>
-               let (b, ce') := A_encode_align a ce in
-               let (b', ce'') := align_encode_list A_encode_align As' ce' in
-               (existT _ _ (append (projT2 b) (projT2 b')), ce'')
-      end.
+  Fixpoint align_encode_list {A}
+           (A_encode_align :
+              A
+              ->  CacheEncode
+              -> {n : _ & Vector.t (word 8) n} * CacheEncode)
+           (As : list A)
+           (ce : CacheEncode)
+    : {n : _ & Vector.t (word 8) n} * CacheEncode :=
+    match As with
+    | nil => (existT _ _ (Vector.nil _), ce)
+    | a :: As' =>
+      let (b, ce') := A_encode_align a ce in
+      let (b', ce'') := align_encode_list A_encode_align As' ce' in
+      (existT _ _ (append (projT2 b) (projT2 b')), ce'')
+    end.
 
-    Lemma optimize_align_encode_list
-          {A}
-          (A_encode_Spec : A -> CacheEncode -> Comp (ByteString * CacheEncode))
-          (A_encode_align :
-             A
-             ->  CacheEncode
-             -> {n : _ & Vector.t (word 8) n} * CacheEncode)
-          (A_encode_OK :
-             forall a ce,
-               refine (A_encode_Spec a ce)
-                      (ret (let (v', ce') := A_encode_align a ce in
-                            (build_aligned_ByteString (projT2 v'), ce'))))
-      : forall (As : list A)
-               (ce : CacheEncode),
-        refine (encode_list_Spec A_encode_Spec As ce)
-               (let (v', ce') := (align_encode_list A_encode_align As ce) in
-                ret (build_aligned_ByteString (projT2 v'), ce')).
+  Lemma optimize_align_encode_list
+        {A}
+        (A_encode_Spec : A -> CacheEncode -> Comp (ByteString * CacheEncode))
+        (A_encode_align :
+           A
+           ->  CacheEncode
+           -> {n : _ & Vector.t (word 8) n} * CacheEncode)
+        (A_encode_OK :
+           forall a ce,
+             refine (A_encode_Spec a ce)
+                    (ret (let (v', ce') := A_encode_align a ce in
+                          (build_aligned_ByteString (projT2 v'), ce'))))
+    : forall (As : list A)
+             (ce : CacheEncode),
+      refine (encode_list_Spec A_encode_Spec As ce)
+             (let (v', ce') := (align_encode_list A_encode_align As ce) in
+              ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
     induction As; simpl; intros; simpl.
     - simpl.
@@ -1176,7 +1179,7 @@ Section AlignedDecoders.
              (k : _ -> option C)
              cd,
       BindOpt (decode_unused_word
-        (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
+                 (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
       k ((), build_aligned_ByteString (snd (Vector_split numBytes' _ v)), addD cd (8 * numBytes')).
   Proof.
     induction numBytes'; simpl; intros.
@@ -1199,7 +1202,7 @@ Section AlignedDecoders.
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 8)
-                   ThenC c) ce)
+                    ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ v), ce')).
   Proof.
   Admitted.
@@ -1208,7 +1211,7 @@ Section AlignedDecoders.
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
       -> refine (((encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 16)
-                   ThenC c) ce)
+                    ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ (wzero 8) _ v)), ce')).
   Proof.
   Admitted.
@@ -1316,7 +1319,7 @@ Section AlignedDecoders.
         {m : nat}
         {types : t Type m}
         (align_encoders :
-                ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+           ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
         (encoders :
            ilist (B := (fun T : Type => T -> @CacheEncode cache -> Comp (ByteString * (CacheEncode)))) types)
         (encoders_OK : forall idx t (ce : CacheEncode),
@@ -1334,16 +1337,16 @@ Section AlignedDecoders.
   Qed.
 
   Corollary align_encode_sumtype_OK
-        {m : nat}
-        {types : t Type m}
-        (align_encoders :
-                ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
-        (encoders :
-           ilist (B := (fun T : Type => T -> @CacheEncode cache -> Comp (ByteString * (CacheEncode)))) types)
-        (encoders_OK : Iterate_Ensemble_BoundedIndex (fun idx => forall t (ce : CacheEncode),
-            refine (ith encoders idx t ce)
-                   (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
-                         snd (ith align_encoders idx t ce)))))
+            {m : nat}
+            {types : t Type m}
+            (align_encoders :
+               ilist (B := (fun T : Type => T -> @CacheEncode cache -> ({n : _ & Vector.t (word 8) n} * (CacheEncode)))) types)
+            (encoders :
+               ilist (B := (fun T : Type => T -> @CacheEncode cache -> Comp (ByteString * (CacheEncode)))) types)
+            (encoders_OK : Iterate_Ensemble_BoundedIndex (fun idx => forall t (ce : CacheEncode),
+                                                              refine (ith encoders idx t ce)
+                                                                     (ret (build_aligned_ByteString (projT2 (fst (ith align_encoders idx t ce))),
+                                                                           snd (ith align_encoders idx t ce)))))
     : forall (st : SumType types)
              (ce : CacheEncode),
       refine (encode_SumType_Spec types encoders st ce)
@@ -1392,5 +1395,82 @@ Section AlignedDecoders.
         destruct (Vector_split (n + 0) sz (eq_rect (n + sz) (Vector.t A) x0 (n + 0 + sz) (plus_assoc n 0 sz))); reflexivity.
     -
   Admitted.
+
+  Lemma zeta_to_fst {A B C}
+    : forall (ab : A * B) (k : A -> B -> C),
+      (let (a, b) := ab in (k a b)) =
+      k (fst ab) (snd ab).
+  Proof.
+    destruct ab; reflexivity.
+  Qed.
+
+  Lemma zeta_inside_ret {A B C}
+    : forall (ab : A * B) (k : A -> B -> C),
+      refine (let (a, b) := ab in ret (k a b))
+             (ret (let (a, b) := ab in k a b)).
+  Proof.
+    destruct ab; reflexivity.
+  Qed.
+
+  Ltac rewrite_DecodeOpt2_fmap :=
+    set_refine_evar;
+    progress rewrite ?BindOpt_map, ?DecodeOpt2_fmap_if,
+    ?DecodeOpt2_fmap_if_bool;
+    subst_refine_evar.
+
+
+  Lemma Ifopt_Ifopt {A A' B}
+    : forall (a_opt : option A)
+             (t : A -> option A')
+             (e : option A')
+             (t' : A' -> B)
+             (e' :  B),
+      Ifopt (Ifopt a_opt as a Then t a Else e) as a' Then t' a' Else e' =
+                                                  Ifopt a_opt as a Then (Ifopt (t a) as a' Then t' a' Else e') Else (Ifopt e as a' Then t' a' Else e').
+  Proof.
+    destruct a_opt; simpl; reflexivity.
+  Qed.
+
+  Corollary AlignedDecodeNat {C}
+            {numBytes}
+    : forall (v : Vector.t (word 8) (S numBytes))
+             (t : _ -> C)
+             e
+             cd,
+      Ifopt (decode_nat (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) cd) as w
+                                                                                                                    Then t w Else e
+                                                                                                                  =
+                                                                                                                  Let n := wordToNat (Vector.nth v Fin.F1) in
+        t (n, build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8).
+  Proof.
+    unfold CacheDecode.
+    unfold decode_nat, DecodeBindOpt2; intros.
+    unfold BindOpt at 1.
+    rewrite AlignedDecodeChar.
+    reflexivity.
+  Qed.
+
+  Lemma optimize_Guarded_Decode' {sz} {C} n
+    : forall (a_opt : ByteString -> C)
+             (a_opt' : ByteString -> C) v c,
+      (~ (n <= sz)%nat
+       -> a_opt (build_aligned_ByteString v) = c)
+      -> (le n sz -> a_opt  (build_aligned_ByteString (Guarded_Vector_split n sz v))
+                     = a_opt'
+                         (build_aligned_ByteString (Guarded_Vector_split n sz v)))
+      -> a_opt (build_aligned_ByteString v) =
+         If NPeano.leb n sz Then
+            a_opt' (build_aligned_ByteString (Guarded_Vector_split n sz v))
+            Else c.
+  Proof.
+    intros; destruct (NPeano.leb n sz) eqn: ?.
+    - apply NPeano.leb_le in Heqb.
+      rewrite <- H0.
+      simpl; rewrite <- build_aligned_ByteString_eq_split'; eauto.
+      eauto.
+    - rewrite H; simpl; eauto.
+      intro.
+      rewrite <- NPeano.leb_le in H1; congruence.
+  Qed.
 
 End AlignedDecoders.

@@ -15,7 +15,7 @@ Record ByteString :=
     byteString : Vector.t char numBytes (* The bytestring. *)
   }.
 
-Definition length_ByteString (bs : ByteString) := numBytes bs.
+Definition length_ByteString (bs : ByteString) := padding bs + 8 * numBytes bs.
 
 Definition ByteString_enqueue_full_word
            (b : bool)
@@ -33,20 +33,19 @@ Definition ByteString_enqueue
          (b : bool)
          (bs : ByteString)
   : ByteString.
-  refine (if (eq_nat_dec (padding bs) 7) then
+  refine (match (eq_nat_dec (padding bs) 7) with
+          | left e =>
             {| front := WO;
                byteString := Vector.append (byteString bs)
                                            (Vector.cons _ ((WS b _)) _ (@Vector.nil _)) |}
-  else
-    {| front := WS b (front bs);
-       padding := S (padding bs);
-       byteString := byteString bs |}).
+          | _ => {| front := WS b (front bs);
+                          padding := S (padding bs);
+                          byteString := byteString bs |}
+          end).
   abstract omega.
-  exact (ByteString_enqueue_full_word b bs _H).
+  exact (ByteString_enqueue_full_word b bs e).
   abstract (pose proof (paddingOK bs); omega).
 Defined.
-
-Print ByteString_enqueue.
 
 Fixpoint word_dequeue {sz}
            (w : word (S sz))
@@ -227,25 +226,127 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma byteString_f_equal
+  : forall bs bs'
+           (padding_eq : padding bs' = padding bs)
+           (numBytes_eq : numBytes bs' = numBytes bs),
+    front bs = (@eq_rect nat (padding bs') (fun t => word t) (front bs') _ padding_eq)
+    -> byteString bs = @eq_rect nat (numBytes bs') (Vector.t char) (byteString bs') _ numBytes_eq
+    -> bs = bs'.
+Proof.
+  destruct bs; destruct bs'; simpl; intros.
+  subst.
+  f_equal.
+  apply Core.le_uniqueness_proof.
+Qed.
+
+Lemma ByteString_enqueue_ByteStringToBoundedByteString_eq
+  : forall (b : bool) (b' : Core.ByteString),
+    ByteString_enqueue b (ByteStringToBoundedByteString b') =
+    ByteStringToBoundedByteString (Core.ByteString_enqueue b b').
+Proof.
+  destruct b'; simpl.
+  unfold Core.ByteString_enqueue; simpl.
+  match goal with
+  |- context [match ?z with _ => _ end] => destruct z; simpl
+  end.
+  - unfold ByteStringToBoundedByteString; simpl.
+    unfold ByteString_enqueue; simpl.
+    match goal with
+      |- context [match ?z with _ => _ end] => destruct z; try omega
+    end.
+    eapply byteString_f_equal; simpl.
+    + instantiate (1 := eq_refl _); reflexivity.
+    + unfold ByteString_enqueue_full_word; simpl.
+      instantiate (1 := app_length _ _ ); simpl.
+      subst; clear.
+      unfold eq_rec_r, eq_rec; simpl.
+      replace e0 with (eq_refl 7); simpl.
+      generalize (app_length byteString0 [WS b front0]).
+      induction byteString0; simpl; intros.
+      * replace e with (eq_refl 1); auto.
+        eapply UIP_dec; eauto with arith.
+      * injection e; intros.
+        rewrite (IHbyteString0 H); clear.
+        erewrite eq_rect_Vector_cons.
+        reflexivity.
+      * eapply UIP_dec; eauto with arith.
+  - unfold ByteStringToBoundedByteString; simpl.
+    unfold ByteString_enqueue; simpl.
+    match goal with
+      |- context [match ?z with _ => _ end] => destruct z; try omega
+    end.
+    eapply byteString_f_equal; simpl.
+    + instantiate (1 := eq_refl); reflexivity.
+    + instantiate (1 := eq_refl); reflexivity.
+Qed.
+
+Lemma ByteStringToBoundedByteString_enqueue_word
+  : forall n (front : word n) bs,
+    ByteStringToBoundedByteString (Core.ByteString_enqueue_word front bs)
+    = ByteString_enqueue_word front (ByteStringToBoundedByteString bs).
+Proof.
+  Local Transparent Core.ByteString_enqueue_word.
+  induction front0; simpl.
+  - reflexivity.
+  - intros.
+    rewrite <- ByteString_enqueue_ByteStringToBoundedByteString_eq.
+    rewrite IHfront0; reflexivity.
+  Opaque Core.ByteString_enqueue_word.
+Qed.
+
+Lemma fold_left_cons {A B}
+  : forall (f : B -> A -> B)
+           (l : list A)
+           (b : B)
+           (a : A),
+    fold_left f l (f b a) = fold_left f (a :: l) b.
+Proof.
+  reflexivity.
+Qed.
+
 Lemma ByteString_enqueue_ByteString_ByteStringToBoundedByteString
   : forall bs bs',
     ByteString_enqueue_ByteString (ByteStringToBoundedByteString bs)
                                   (ByteStringToBoundedByteString bs')
     = ByteStringToBoundedByteString (Core.ByteString_enqueue_ByteString bs bs').
 Proof.
-Admitted.
+  intros; revert bs; destruct bs'; revert padding0 front0 paddingOK0.
+  unfold ByteStringToBoundedByteString at 2; simpl; intros.
+  unfold ByteString_enqueue_ByteString; simpl.
+  unfold Core.ByteString_enqueue_ByteString; simpl.
+  rewrite ByteStringToBoundedByteString_enqueue_word.
+  f_equal; clear.
+  symmetry; revert bs; induction byteString0.
+  - reflexivity.
+  - intros.
+    pose proof (IHbyteString0 (Core.ByteString_enqueue_char bs a)).
+    replace
+      (fold_left Core.ByteString_enqueue_char (a :: byteString0) bs) with
+      (fold_left Core.ByteString_enqueue_char byteString0 (Core.ByteString_enqueue_char bs a)).
+    rewrite IHbyteString0; simpl.
+    f_equal.
+    apply ByteStringToBoundedByteString_enqueue_word.
+    apply fold_left_cons.
+Qed.
 
 Lemma length_ByteString_ByteStringToBoundedByteString_eq
   : forall bs,
     length_ByteString (ByteStringToBoundedByteString bs) =
     Core.length_ByteString bs.
 Proof.
-Admitted.
+  destruct bs; simpl.
+  reflexivity.
+Qed.
 
 Lemma BoundedByteStringToByteString_ByteString_id_eq
   : BoundedByteStringToByteString ByteString_id = Core.ByteString_id.
 Proof.
-Admitted.
+  unfold ByteString_id, Core.ByteString_id; simpl.
+  unfold BoundedByteStringToByteString; simpl.
+  f_equal.
+  apply le_uniqueness_proof.
+Qed.
 
 Instance ByteStringQueueTransformer : Transformer ByteString.
 Proof.
@@ -275,19 +376,43 @@ Proof.
                      ByteString_enqueue_ByteString_assoc; reflexivity).
 Defined.
 
-Lemma ByteString_enqueue_ByteStringToBoundedByteString_eq
-  : forall (b : bool) (b' : Core.ByteString),
-    ByteString_enqueue b (ByteStringToBoundedByteString b') =
-    ByteStringToBoundedByteString (Core.ByteString_enqueue b b').
-Proof.
-Admitted.
 
 Lemma ByteString_enqueue_ByteStringToBoundedByteString_eq'
   : forall (b : bool) (b' : ByteString),
     Core.ByteString_enqueue b (BoundedByteStringToByteString b') =
     BoundedByteStringToByteString (ByteString_enqueue b b').
 Proof.
-Admitted.
+  destruct b'; simpl.
+  unfold Core.ByteString_enqueue; simpl.
+  match goal with
+    |- context [match ?z with _ => _ end] => destruct z; try omega
+  end.
+  - unfold ByteStringToBoundedByteString; simpl.
+    unfold ByteString_enqueue; simpl.
+    match goal with
+      |- context [match ?z with _ => _ end] => destruct z; try omega
+    end.
+    unfold  BoundedByteStringToByteString; simpl.
+    f_equal.
+    + apply le_uniqueness_proof.
+    + unfold ByteString_enqueue_full_word; simpl.
+      subst; clear.
+      unfold eq_rec_r, eq_rec; simpl.
+      replace e0 with (eq_refl 7); simpl.
+      induction byteString0; simpl; intros.
+      * reflexivity.
+      * unfold Vector.to_list.
+        f_equal.
+        apply IHbyteString0.
+      * eapply UIP_dec; eauto with arith.
+  - unfold BoundedByteStringToByteString; simpl.
+    unfold ByteString_enqueue; simpl.
+    match goal with
+      |- context [match ?z with _ => _ end] => destruct z; try omega
+    end.
+    f_equal.
+    + apply le_uniqueness_proof.
+Qed.
 
 Lemma ByteString_dequeue_ByteStringToBoundedByteString_eq
   : forall (b' : Core.ByteString),
@@ -328,9 +453,9 @@ refine {| B_measure f := 1;
               destruct p; apply ByteString_measure_dequeue_Some in Heqo;
               simpl in Heqo;
               rewrite length_ByteString_ByteStringToBoundedByteString_eq; simpl in *;
-              rewrite <- Heqo;
-              rewrite <- length_Vector_to_list, <- length_ByteString_ByteStringToBoundedByteString_eq,
-              ByteStringToBoundedByteString_BoundedByteStringToByteString_eq; reflexivity).
+              first [ rewrite Heqo; reflexivity
+                    | rewrite <- Heqo; rewrite <- length_Vector_to_list, <- length_ByteString_ByteStringToBoundedByteString_eq,
+                                       ByteStringToBoundedByteString_BoundedByteStringToByteString_eq; reflexivity]).
   - simpl; intros; rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b),
                    <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b') in *;
     rewrite <- (ByteStringToBoundedByteString_BoundedByteStringToByteString_eq b'').
@@ -412,20 +537,6 @@ Lemma DecodeBindOpt_under_bind:
                                                               f' a b).
 Proof.
   destruct a_opt as [ [? ?] | ]; simpl; intros; eauto.
-Qed.
-
-Lemma byteString_f_equal
-  : forall bs bs'
-           (padding_eq : padding bs' = padding bs)
-           (numBytes_eq : numBytes bs' = numBytes bs),
-    front bs = (@eq_rect nat (padding bs') (fun t => word t) (front bs') _ padding_eq)
-    -> byteString bs = @eq_rect nat (numBytes bs') (Vector.t char) (byteString bs') _ numBytes_eq
-    -> bs = bs'.
-Proof.
-  destruct bs; destruct bs'; simpl; intros.
-  subst.
-  f_equal.
-  apply Core.le_uniqueness_proof.
 Qed.
 
 Require Import
