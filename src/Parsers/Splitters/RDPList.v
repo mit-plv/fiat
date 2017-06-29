@@ -486,6 +486,21 @@ Section recursive_descent_parser_list.
     destruct ls; simpl; trivial; intro; exfalso; omega.
   Qed.
 
+  Lemma rdp_list_is_valid_nonterminal_nth_error
+        nt_idx
+    : rdp_list_is_valid_nonterminal rdp_list_initial_nonterminals_data nt_idx
+      <-> nth_error (pregrammar_productions G) nt_idx <> None.
+  Proof.
+    unfold rdp_list_is_valid_nonterminal; fix_eqs.
+    transitivity (List.In nt_idx rdp_list_initial_nonterminals_data).
+    { split; intro H.
+      { apply list_in_bl in H; [ assumption | apply Nat.eqb_eq ]. }
+      { apply list_in_lb; [ apply Nat.eqb_eq | assumption ]. } }
+    unfold rdp_list_initial_nonterminals_data.
+    rewrite <- in_up_to_iff, map_length.
+    rewrite nth_error_Some; reflexivity.
+  Qed.
+
   Global Instance rdp_list_predata : @parser_computational_predataT Char
     := { nonterminals_listT := rdp_list_nonterminals_listT;
          initial_nonterminals_data := rdp_list_initial_nonterminals_data;
