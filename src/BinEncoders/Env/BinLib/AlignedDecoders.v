@@ -875,15 +875,84 @@ Section AlignedDecoders.
     intros; destruct b; eauto; rewrite <- H; simpl; eauto.
   Qed.
 
-  Lemma decode_word_aligned_ByteString_overflow
-        {sz}
-    : forall {sz'}
-             (b : t (word 8) sz')
+  Lemma SW_word_append :
+    forall b sz (w : word sz) sz' (w' : word sz'),
+      SW_word b (Core.append_word w w')
+      = eq_rect _ word (Core.append_word w (SW_word b w')) _ (sym_eq (plus_n_Sm _ _)).
+  Proof.
+    induction w; simpl; intros.
+    - apply Eqdep_dec.eq_rect_eq_dec; auto with arith.
+    - erewrite <- !WS_eq_rect_eq.
+      rewrite IHw; reflexivity.
+  Qed.
+      
+  Lemma decode_word_plus':
+    forall (n m : nat) (v : ByteString),
+      decode_word' (n + m) v =
+      (`(w, v') <- decode_word' n v;
+       `(w', v'') <- decode_word' m v';
+         Some (eq_rect _ _ (Core.append_word w' w) _ (plus_comm _ _), v'')).
+  Proof.
+    induction n.
+    - simpl; intros.
+      destruct (decode_word' m v) as [ [? ?] | ]; simpl; repeat f_equal.
+      revert w; clear.
+      induction w; simpl; eauto.
+      rewrite IHw at 1.
+      rewrite Core.succ_eq_rect; f_equal.
+      apply Eqdep_dec.UIP_dec; auto with arith.
+    - simpl; intros.
+      simpl; rewrite !DecodeBindOpt_assoc;
+      destruct (ByteString_dequeue v) as [ [? ?] | ]; try reflexivity.
+      simpl; rewrite !DecodeBindOpt_assoc.
+      rewrite IHn.
+      simpl; rewrite !DecodeBindOpt_assoc.
+      destruct (decode_word' n b0)  as [ [? ?] | ]; try reflexivity.
+      simpl; rewrite !DecodeBindOpt_assoc.
+      destruct (decode_word' m b1)  as [ [? ?] | ]; try reflexivity.
+      simpl; f_equal; f_equal; clear.
+      revert b n w; induction w0; simpl; intros.
+      + apply SW_word_eq_rect_eq.
+      + erewrite !SW_word_eq_rect_eq; simpl.
+        erewrite <- !WS_eq_rect_eq.
+        f_equal.
+        rewrite SW_word_append.
+        rewrite <- Equality.transport_pp.
+        f_equal.
+        Grab Existential Variables.
+        omega.
+        omega.
+  Qed.
+      
+    Lemma decode_word_aligned_ByteString_overflow
+        {sz'}
+    : forall (b : t (word 8) sz')
+             {sz : nat}
              (cd : CacheDecode),
       lt sz' sz
       -> decode_word (sz := 8 * sz) (build_aligned_ByteString b) cd = None.
   Proof.
-  Admitted.
+    induction b; intros.
+    - unfold build_aligned_ByteString; simpl.
+      inversion H; subst; reflexivity.
+    - destruct sz; try omega.
+      apply lt_S_n in H.
+      pose proof (IHb _ cd H).
+      unfold decode_word, WordOpt.decode_word.
+      rewrite <- mult_n_Sm, plus_comm.
+      rewrite decode_word_plus'.
+      rewrite (@aligned_decode_char_eq' _ 0). 
+      simpl.
+      unfold build_aligned_ByteString, decode_word in *.
+      simpl in H0.
+      destruct (decode_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
+                {|
+                padding := 0;
+                front := WO;
+                paddingOK := build_aligned_ByteString_subproof n b;
+                numBytes := n;
+                byteString := b |}) as [ [? ?] | ]; simpl in *; try congruence.
+  Qed.
 
   Lemma build_aligned_ByteString_eq_split'
     : forall n sz v,
@@ -988,7 +1057,12 @@ Section AlignedDecoders.
       pose proof (shatter_word_S w); destruct_ex; subst.
       clear.
       rewrite <- WS_eq_rect_eq with (H := plus_assoc n m o).
-      admit.
+      revert m o x0 x; induction n; simpl; intros.
+      + rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+      + erewrite <- WS_eq_rect_eq; fold plus; pose proof (shatter_word_S x0);
+          destruct_ex; subst; f_equal.
+        rewrite IHn; f_equal.
+        erewrite <- WS_eq_rect_eq; reflexivity.
   Qed.
 
   Lemma AlignedEncode32Char {numBytes}
@@ -1153,26 +1227,136 @@ Section AlignedDecoders.
     reflexivity.
   Qed.
 
+  Lemma decode_unused_word_plus':
+    forall (n m : nat) (v : ByteString),
+      decode_unused_word' (n + m) v =
+      (`(w, v') <- decode_unused_word' n v;
+       `(w', v'') <- decode_unused_word' m v';
+         Some ((), v'')).
+  Proof.
+    induction n.
+    - simpl; intros.
+      destruct (decode_unused_word' m v) as [ [? ?] | ]; simpl; repeat f_equal.
+      destruct u; eauto.
+    - simpl; intros.
+      unfold decode_unused_word' in *; simpl.
+      destruct (ByteString_dequeue v) as [ [? ?] | ]; try reflexivity.
+      simpl.
+      pose proof (IHn m b0).
+      destruct (transformer_dequeue_word (n + m) b0) as [ [? ?] | ];
+        simpl in *; try congruence.
+      simpl in *.
+      destruct (transformer_dequeue_word n b0) as [ [? ?] | ];
+        simpl in *; try congruence.
+      destruct (transformer_dequeue_word n b0) as [ [? ?] | ];
+        simpl in *; try congruence.
+  Qed.
 
-  Lemma decode_unused_word_aligned_ByteString_overflow
-        {sz}
+Lemma aligned_decode_unused_char_eq
+      {numBytes}
+  : forall (v : Vector.t _ (S numBytes)),
+    WordOpt.decode_unused_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
+    = Some ((), build_aligned_ByteString (Vector.tl v)).
+Proof.
+  unfold decode_unused_word'; simpl; intros.
+  etransitivity.
+  apply f_equal with (f := fun z => If_Opt_Then_Else z _ _ ).
+  eapply DecodeBindOpt_under_bind; intros; set_evars; rewrite !DecodeBindOpt_assoc.
+  repeat (unfold H; apply DecodeBindOpt_under_bind; intros; set_evars; rewrite !DecodeBindOpt_assoc).
+  unfold H5; higher_order_reflexivity.
+  simpl.
+  pattern numBytes, v; eapply Vector.caseS; intros; simpl; clear v numBytes.
+  replace (build_aligned_ByteString t) with (ByteString_enqueue_ByteString ByteString_id (build_aligned_ByteString t)).
+  unfold Core.char in h.
+  shatter_word h.
+  pose proof (@dequeue_transform_opt _ _ _ ByteString_QueueTransformerOpt).
+  rewrite build_aligned_ByteString_cons; simpl.
+  simpl in H7.
+  erewrite H7 with (t := x6)
+                     (b' := {| front := WS x (WS x0 (WS x1 (WS x2 (WS x3 (WS x4 (WS x5 WO))))));
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x5)
+                     (b' := {| front := WS x (WS x0 (WS x1 (WS x2 (WS x3 (WS x4 WO)))));
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x4)
+                     (b' := {| front := WS x (WS x0 (WS x1 (WS x2 (WS x3 WO))));
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x3)
+                     (b' := {| front := WS x (WS x0 (WS x1 (WS x2 WO)));
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x2)
+                     (b' := {| front := WS x (WS x0 (WS x1 WO));
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x1)
+                     (b' := {| front := WS x (WS x0 WO);
+                               byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x0)
+                     (b' := {| front := WS x WO;
+                            byteString := Vector.nil _ |}); simpl.
+  erewrite H7 with (t := x)
+                     (b' := {| front := WO;
+                            byteString := Vector.nil _ |}); simpl.
+  reflexivity.
+  unfold dequeue_opt.
+  simpl.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  compute; repeat f_equal; apply Core.le_uniqueness_proof.
+  unfold build_aligned_ByteString.
+  unfold ByteString_dequeue; simpl.
+  repeat f_equal; apply Core.le_uniqueness_proof.
+  apply (@transform_id_left _ ByteStringQueueTransformer).
+Qed.
+  
+Lemma decode_unused_word_aligned_ByteString_overflow
     : forall {sz'}
              (b : t (word 8) sz')
+             {sz}
              (cd : CacheDecode),
       lt sz' sz
       -> decode_unused_word (8 * sz) (build_aligned_ByteString b) cd = None.
   Proof.
-  Admitted.
+    induction b; intros.
+    - unfold build_aligned_ByteString; simpl.
+      inversion H; subst; reflexivity.
+    - destruct sz; try omega.
+      apply lt_S_n in H.
+      pose proof (IHb _ cd H).
+      unfold decode_unused_word, WordOpt.decode_word.
+      rewrite <- mult_n_Sm, plus_comm.
+      rewrite decode_unused_word_plus'.
+      rewrite (@aligned_decode_unused_char_eq ). 
+      simpl.
+      unfold decode_unused_word in H0.
+      simpl in H0.
+      destruct (decode_unused_word' (sz + (sz + (sz + (sz + (sz + (sz + (sz + (sz + 0))))))))
+                                    (build_aligned_ByteString b));
+        simpl in *; try congruence.
+  Qed.
 
-
-  Lemma aligned_decode_unused_char_eq
+  Lemma AlignedDecodeUnusedChar {C}
         {numBytes}
-    : forall (v : Vector.t (word 8) (S numBytes)),
-      WordOpt.decode_unused_word' (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v)
-      = Some ((), build_aligned_ByteString (Vector.tl v)).
-  Proof.
-  Admitted.
+    : forall (v : Vector.t (word 8) (S numBytes))
+             (t : (() * ByteString * CacheDecode) -> C)
+             (e : C)
+             cd,
+      Ifopt (decode_unused_word
+               (transformerUnit := ByteString_QueueTransformerOpt) 8 (build_aligned_ByteString v) cd)
+      as w Then t w Else e
+         =
 
+               (t ((), build_aligned_ByteString (snd (Vector_split 1 _ v)), addD cd 8)).
+  Proof.
+    unfold LetIn; intros.
+    unfold decode_unused_word, WordOpt.decode_word.
+    rewrite aligned_decode_unused_char_eq; simpl.
+    f_equal.
+  Qed.
+  
   Lemma AlignedDecodeUnusedChars {C}
         {numBytes numBytes'}
     : forall (v : Vector.t (word 8) (numBytes' + numBytes))
@@ -1182,11 +1366,11 @@ Section AlignedDecoders.
                  (transformerUnit := ByteString_QueueTransformerOpt) (8 * numBytes') (build_aligned_ByteString v) cd) k =
       k ((), build_aligned_ByteString (snd (Vector_split numBytes' _ v)), addD cd (8 * numBytes')).
   Proof.
-    induction numBytes'; simpl; intros.
+    induction numBytes'.
     - Local Transparent Vector_split.
-      unfold Vector_split; simpl.
+      simpl; intros; unfold Vector_split; simpl.
       reflexivity.
-    - unfold decode_unused_word.
+    - simpl.
       replace (S
                  (numBytes' +
                   S
@@ -1196,8 +1380,52 @@ Section AlignedDecoders.
                         S
                           (numBytes' +
                            S (numBytes' + S (numBytes' + S (numBytes' + S (numBytes' + 0))))))))) with (8 + 8 * numBytes') by omega.
-  Admitted.
+      unfold decode_unused_word; intros.
+      rewrite decode_unused_word_plus'.
+      rewrite (@aligned_decode_unused_char_eq ). 
+      simpl BindOpt.
+      pose proof (IHnumBytes' (Vector.tl v) k (addD cd 8)).
+      simpl in H.
+      unfold decode_unused_word in H.
+      simpl in *.
+      fold plus in *. unfold Core.char in *.
+      revert H;
+        repeat match goal with
+                 |- context [decode_unused_word' ?z ?b] =>
+                 destruct (decode_unused_word' z b) as [ [? ?] | ] eqn: ?; simpl in *
+               end; intros.
+      destruct u.
+      rewrite addD_addD_plus in H; simpl in H; rewrite H.
+      destruct ((Vector_split numBytes' numBytes (Vector.tl v))); simpl.
+      reflexivity.
+      rewrite addD_addD_plus in H; simpl in H; rewrite H.
+      destruct ((Vector_split numBytes' numBytes (Vector.tl v))); simpl.
+      reflexivity.
+  Qed.
 
+  Lemma aligned_encode_unused_char_eq
+    : forall cd,
+      refine (encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 8 cd)
+             (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.nil _)), addE cd 8)).
+  Proof.
+    unfold encode_unused_word_Spec, encode_unused_word_Spec'; simpl.
+    intros; refine pick val (wzero 8); eauto; simplify with monad laws.
+    compute; intros.
+    computes_to_inv; subst.
+    match goal with
+      |- computes_to (ret ?c) ?v => replace c with v
+    end.
+    computes_to_econstructor.
+    f_equal.
+    eapply ByteString_f_equal; simpl.
+    instantiate (1 := eq_refl _).
+    rewrite <- !Eqdep_dec.eq_rect_eq_dec; eauto using Peano_dec.eq_nat_dec.
+    erewrite eq_rect_Vector_cons; repeat f_equal.
+    instantiate (1 := eq_refl _); reflexivity.
+    Grab Existential Variables.
+    reflexivity.
+  Qed.
+  
   Lemma AlignedEncodeUnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
@@ -1205,8 +1433,15 @@ Section AlignedDecoders.
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ v), ce')).
   Proof.
-  Admitted.
-
+    unfold compose, Bind2; simpl; intros.
+    rewrite aligned_encode_unused_char_eq.
+    simplify with monad laws.
+    simpl snd; rewrite H; simplify with monad laws.
+    simpl.
+    rewrite <- build_aligned_ByteString_append.
+    reflexivity.
+  Qed.
+  
   Lemma AlignedEncode2UnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
@@ -1214,7 +1449,16 @@ Section AlignedDecoders.
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ (wzero 8) _ v)), ce')).
   Proof.
-  Admitted.
+    unfold compose, Bind2; intros.
+    rewrite <- (AlignedEncode2Char (wzero 16)); eauto.
+    unfold encode_unused_word_Spec, encode_word_Spec, compose, Bind2.
+    simpl.
+    unfold encode_unused_word_Spec'; simpl.
+    intros; refine pick val (wzero 16); eauto; simpl.
+    simplify with monad laws.
+    rewrite refineEquiv_bind_unit; simpl.
+    reflexivity.
+  Qed.
 
   Definition align_decode_sumtype
              {m : nat}
@@ -1373,6 +1617,15 @@ Section AlignedDecoders.
     rewrite Heqp; reflexivity.
   Qed.
 
+  Lemma eq_rect_Vector_tl {A}
+    : forall n (v : Vector.t A (S n)) m H H',  
+      Vector.tl (eq_rect (S n) (t A) v (S m) H)
+      = eq_rect _ (Vector.t A) (Vector.tl v) _ H'.
+  Proof.
+    intros n v; pattern n, v; apply Vector.caseS; simpl; intros.
+    erewrite eq_rect_Vector_cons; simpl; eauto.
+  Qed.
+    
   Lemma Vector_split_merge {A}
     : forall sz m n (v : Vector.t A _),
       snd (Vector_split m _ (snd (Vector_split n (m + sz) v))) =
@@ -1393,8 +1646,53 @@ Section AlignedDecoders.
         rewrite H0.
         erewrite eq_rect_Vector_cons with (H' := (plus_assoc n 0 sz)); eauto; simpl.
         destruct (Vector_split (n + 0) sz (eq_rect (n + sz) (Vector.t A) x0 (n + 0 + sz) (plus_assoc n 0 sz))); reflexivity.
-    -
-  Admitted.
+    - assert (n + (S m + sz) = S n + (m + sz)) by omega.
+      fold plus in *; unfold Core.char in *.
+      replace (Vector.tl (snd (Vector_split n (S (m + sz)) v)))
+              with ((snd (Vector_split n (m + sz) (Vector.tl  (eq_rect _ _ v _ H))))).
+      + pose proof (IHm n ((Vector.tl (eq_rect (n + (S m + sz)) (t A) v (S n + (m + sz)) H)))).
+        destruct (Vector_split m sz (snd (Vector_split n (m + sz) (Vector.tl (eq_rect (n + (S m + sz)) (t A) v (S n + (m + sz)) H))))) eqn: ?; simpl in *.
+        fold plus in *; rewrite Heqp.
+        simpl; rewrite H0.
+        clear.
+        assert ( S (n + (m + sz)) = S (n + m + sz)) by omega.
+        rewrite <- eq_rect_Vector_tl with (H1 := H0).
+        rewrite <- Equality.transport_pp; simpl; clear.
+        generalize (eq_trans H H0);
+          generalize (PeanoNat.Nat.add_assoc n (S m) sz); clear H H0.
+        revert sz m v; induction n; simpl.
+        * intros.
+          rewrite <- !Eqdep_dec.eq_rect_eq_dec; auto with arith.
+          destruct (Vector_split m sz (Vector.tl v)) eqn: ?.
+          simpl in *; fold plus in *; rewrite Heqp; reflexivity.
+        * intros.
+          assert (n + S (m + sz) = S (n + m + sz)) by omega.
+          assert (n + S (m + sz) = n + S m + sz) by omega.
+          erewrite eq_rect_Vector_tl with (H' := H).
+          erewrite eq_rect_Vector_tl with (H' := H0).
+          pose proof (IHn _ _ (Vector.tl v) H0 H).
+          destruct ((Vector_split (n + m) sz (Vector.tl (eq_rect (n + S (m + sz)) (t A) (Vector.tl v) (S (n + m + sz)) H)))) eqn: ?.
+          simpl in *; fold plus in *; rewrite Heqp, H1; simpl.
+          destruct (Vector_split (n + S m) sz (eq_rect (n + S (m + sz)) (Vector.t A) (Vector.tl v) (n + S m + sz) H0)) eqn: ?.
+          reflexivity.
+      + clear.
+        revert H v.
+        assert (forall q (v : t A (n + (S q))) H,
+                   snd (Vector_split n q (Vector.tl (eq_rect (n + (S q)) (t A) v (S n + (q)) H))) =
+                   Vector.tl (snd (Vector_split n (S (q)) v))).
+        { induction n; simpl; intros.
+          rewrite <- Eqdep_dec.eq_rect_eq_dec; auto with arith.
+          assert (n + S q = S (n + q)) by omega.
+          rewrite eq_rect_Vector_tl with (H' := H0).
+          pose proof (IHn q (Vector.tl v) H0).
+          destruct ((Vector_split n q (Vector.tl (eq_rect (n + S q) (t A) (Vector.tl v) (S n + q) H0))))
+                   eqn: ?.
+          fold plus in *; simpl in *; rewrite Heqp; simpl.
+          rewrite H1.
+          destruct (Vector_split n (S q) (Vector.tl v)); reflexivity.
+        }
+        intros; rewrite H; reflexivity.
+  Qed.
 
   Lemma zeta_to_fst {A B C}
     : forall (ab : A * B) (k : A -> B -> C),

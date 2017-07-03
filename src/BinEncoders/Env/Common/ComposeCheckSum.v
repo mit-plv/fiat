@@ -516,7 +516,6 @@ End ComposeComposeChecksum.
   (*          else None) *)
   (*       P. *)
   (* Proof. *)
-  (* Admitted. *)
   (*unfold cache_inv_Property in *; split.
     { intros env env' xenv data bin ext env_pm pred_pm pred_pm_rest com_pf.
       eapply composeChecksum_encode_correct in com_pf.
