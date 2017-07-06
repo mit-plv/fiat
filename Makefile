@@ -229,9 +229,19 @@ EXPECTED_EXT:=.v86
 ML_DESCRIPTION := "Coq v8.6"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 else
+ifneq (,$(filter 8.7%,$(COQ_VERSION)))
+EXPECTED_EXT:=.v87
+ML_DESCRIPTION := "Coq v8.7"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+else
 ifneq (,$(filter trunk,$(COQ_VERSION)))
 EXPECTED_EXT:=.trunk
 ML_DESCRIPTION := "Coq trunk"
+OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+else
+ifneq (,$(filter master,$(COQ_VERSION)))
+EXPECTED_EXT:=.master
+ML_DESCRIPTION := "Coq master"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
 else
 ifeq ($(NOT_EXISTS_LOC_DUMMY_LOC),1) # <= 8.4
@@ -241,6 +251,8 @@ else
 EXPECTED_EXT:=.trunk
 ML_DESCRIPTION := "Coq trunk"
 OTHERFLAGS += -w "-deprecated-appcontext -notation-overridden"
+endif
+endif
 endif
 endif
 endif
