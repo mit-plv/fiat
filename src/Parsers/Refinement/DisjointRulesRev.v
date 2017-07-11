@@ -8,6 +8,7 @@ Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Parsers.ContextFreeGrammar.ValidReflective.
 Require Import Fiat.Parsers.Refinement.DisjointLemmas.
 Require Import Fiat.Parsers.Refinement.DisjointRulesCommon.
+Require Import Fiat.Parsers.Refinement.PossibleTerminalsSets.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Common.List.DisjointFacts.
 Export DisjointLemmas.Exports.
@@ -56,21 +57,21 @@ Section with_grammar.
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringIsoProperties Ascii.ascii}
           {G : pregrammar' Ascii.ascii}
-          (Hvalid : grammar_rvalid G)
-          (search_data : disjoint_search_data G).
+          (apdata : all_possible_data G)
+          (pdata : possible_data G).
 
-  Local Notation possible_terminals_of := (possible_terminals_of G compiled_productions_possible_terminals).
-  Local Notation possible_first_terminals_of_production :=
-    (possible_first_terminals_of_production G compiled_productions_maybe_empty_of compiled_productions_possible_first_terminals).
-  Local Notation possible_terminals_of_production :=
-    (possible_terminals_of_production G compiled_productions_possible_terminals).
-  Local Notation possible_last_terminals_of :=
-    (possible_last_terminals_of G compiled_productions_maybe_empty_of compiled_productions_possible_last_terminals).
+  Local Notation possible_terminals_of nt
+    := (@all_possible_ascii_of_nt G apdata nt).
+  Local Notation possible_terminals_of_production its
+    := (@all_possible_ascii_of_production G apdata its).
+  Local Notation possible_first_terminals_of_production its
+    := (@possible_first_ascii_of_production G pdata its).
+  Local Notation possible_last_terminals_of nt
+    := (@possible_last_ascii_of_nt G pdata nt).
 
   Definition rev_search_for_condition
              str nt (n : nat)
     := is_after_last_char_such_that
-         (*(might_be_empty (possible_first_terminals_of_production G its))*)
          str
          n
          (fun ch => list_bin ascii_beq ch (possible_last_terminals_of nt)).
@@ -97,7 +98,7 @@ Section with_grammar.
     intros Hlen it' its' Heq n ? H_reachable pit pits.
     inversion Heq; subst it' its'; clear Heq.
     left.
-    pose proof (terminals_disjoint_rev_search_for _ Hvalid _ H_disjoint pit pits H_reachable) as H'.
+    pose proof (terminals_disjoint_rev_search_for _ _ _ H_disjoint pit pits H_reachable) as H'.
     specialize (H1 (ex_intro _ n H')).
     unfold rev_search_for_condition in H1.
     pose proof (is_after_last_char_such_that_eq_nat_iff H1 H') as H''.
@@ -109,7 +110,6 @@ Section with_grammar.
   Definition rev_search_for_not_condition
              str its n
     := is_after_last_char_such_that
-         (*(might_be_empty (possible_first_terminals_of_production G its))*)
          str
          n
          (fun ch => negb (list_bin ascii_beq ch (possible_terminals_of_production its))).
@@ -137,7 +137,7 @@ Section with_grammar.
     intros Hlen it' its' Heq n ? H_reachable pit pits.
     inversion Heq; subst it' its'; clear Heq.
     left.
-    pose proof (terminals_disjoint_rev_search_for_not _ Hvalid _ H_disjoint pit pits H_reachable) as H'.
+    pose proof (terminals_disjoint_rev_search_for_not _ _ _ H_disjoint pit pits H_reachable) as H'.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_after_last_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
@@ -234,9 +234,9 @@ Ltac pose_disjoint_rev_search_for lem :=
   let G := match goal with |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
   let HSLM := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSLM end in
   let HSL := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSL end in
-  let H' := get_hyp_of_shape (is_true (grammar_rvalid G)) in
-  let search_data := get_hyp_of_shape (disjoint_search_data G) in
-  let lem' := constr:(@refine_disjoint_rev_search_for_idx HSLM HSL _ G H' search_data) in
+  let apdata := get_hyp_of_shape (all_possible_data G) in
+  let pdata := get_hyp_of_shape (possible_data G) in
+  let lem' := constr:(@refine_disjoint_rev_search_for_idx HSLM HSL _ G apdata pdata) in
   let lem' := match goal with
               | [ |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                 => constr:(fun idx' nt its => lem' str offset len nt its idx')
@@ -263,11 +263,15 @@ Ltac rewrite_once_disjoint_rev_search_for_specialize alt_side_condition_tac lem 
        let H' := fresh in
        assert (H' : T) by solve [ solve_disjoint_side_conditions | alt_side_condition_tac () ];
        specialize (lem' H'); clear H';
-       let x := match type of lem' with
-                | context[DisjointLemmas.actual_possible_last_terminals ?ls]
-                  => constr:(DisjointLemmas.actual_possible_last_terminals ls)
-                end in
-       replace_with_vm_compute_in x lem';
+       cbv beta delta [id
+                         all_possible_ascii_of_nt all_possible_ascii_of_production
+                         possible_first_ascii_of_nt possible_first_ascii_of_production
+                         possible_last_ascii_of_nt possible_last_ascii_of_production] in lem';
+       do 2 (let x := match type of lem' with
+                      | context[characters_set_to_ascii_list ?ls]
+                        => constr:(characters_set_to_ascii_list ls)
+                      end in
+             replace_with_vm_compute_in x lem');
        unfold Equality.list_bin in lem';
        change (orb false) with (fun bv : bool => bv) in lem';
        cbv beta in lem';

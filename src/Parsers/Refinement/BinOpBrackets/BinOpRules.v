@@ -13,6 +13,7 @@ Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalanced.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.MakeBinOpTable.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedLemmas.
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.ParenBalancedGrammar.
+Require Import Fiat.Parsers.Refinement.PossibleTerminalsSets.
 Require Import Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.ContextFreeGrammar.Valid.
@@ -83,12 +84,11 @@ Section refine_rules.
           {HSL : StringLike Ascii.ascii} {HSLP : StringLikeProperties Ascii.ascii}
           {HSI : StringIso Ascii.ascii} {HSIP : StringIsoProperties Ascii.ascii}.
   Context {G : pregrammar' Ascii.ascii}
-          (Hvalid : grammar_rvalid G)
-          (search_data : disjoint_search_data G)
+          (ptdata : possible_data G)
           {str : StringLike.String} {n m : nat} {nt : string} {ch : Ascii.ascii} {its : production Ascii.ascii}.
-  Local Notation possible_first_terminals_of_production :=
-    (possible_first_terminals_of_production G compiled_productions_maybe_empty_of compiled_productions_possible_first_terminals).
-  Context {pf : match (possible_first_terminals_of_production its).(actual_possible_first_terminals) return Prop with
+  Local Notation possible_first_terminals_of_production its
+    := (@possible_first_ascii_of_production G ptdata its).
+  Context {pf : match possible_first_terminals_of_production its return Prop with
                   | nil => False
                   | ls => fold_right and True (map (eq ch) ls)
                 end}
@@ -194,21 +194,16 @@ Section refine_rules.
 
       assert (take 1 (drop idx' (substring n m str)) ~= [ch]).
       {
-        destruct ((possible_first_terminals_of_production its).(actual_possible_first_terminals)) eqn:terminals.
+        destruct (possible_first_terminals_of_production its) eqn:terminals.
         {
           simpl in *.
           tauto.
         }
         {
-          pose Hvalid as Hvalid0.
-          rewrite grammar_rvalid_correct in Hvalid0.
-          pose (ValidProperties.reachable_production_valid Hvalid0 Hreachable) as Hits_valid.
-          apply production_valid_cons in Hits_valid.
-          pose proof (DisjointLemmas.possible_first_terminals_of_production_correct Hvalid pits Hits_valid) as H_first_char.
+          pose proof (possible_first_ascii_parse_of_production pits) as H_first_char.
           apply FirstChar.first_char_in_exists in H_first_char.
           {
             destruct H_first_char as [ch0 [take_equals in_list] ].
-            subst_disjoint_search_data.
             rewrite terminals in in_list.
             clear terminals.
             set (ls := (a :: l)) in *.
@@ -597,9 +592,8 @@ Ltac setoid_rewrite_refine_binop_table_idx args :=
   end;
   let nt := match p with NonTerminal ?nt => nt end in
   let its := (eval simpl in (List.tl ps)) in
-  let Hvalid := get_hyp_of_shape (is_true (grammar_rvalid G)) in
-  let search_data := get_hyp_of_shape (disjoint_search_data G) in
-  let lem := constr:(fun its' H' ch H0 H1 => lem G Hvalid search_data str offset len nt ch its' H0 H1 idx H') in
+  let ptdata := get_hyp_of_shape (possible_data G) in
+  let lem := constr:(fun its' H' ch H0 H1 => lem G ptdata str offset len nt ch its' H0 H1 idx H') in
   let lem := constr:(lem its eq_refl) in
   let chT := match type of lem with forall ch : ?chT, _ => chT end in
   let chE := fresh "ch" in

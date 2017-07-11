@@ -710,12 +710,14 @@ Ltac pose_all_possible_data_for G :=
   | [ H : all_possible_data G |- _ ] => idtac
   | _ => let Hall_possible_data := fresh "Hall_possible_terminals_data" in
          let val := make_all_possible_data G in
-         pose val as Hall_possible_data
+         pose val as Hall_possible_data;
+         cbv beta in Hall_possible_data
   end.
 Ltac pose_possible_data_for G :=
   lazymatch goal with
   | [ H : possible_data G |- _ ] => idtac
   | _ => let Hpossible_data := fresh "Hpossible_terminals_data" in
          let val := make_possible_data G in
-         pose val as Hpossible_data
+         pose val as Hpossible_data;
+         cbv beta in Hpossible_data
   end.
