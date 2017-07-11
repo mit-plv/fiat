@@ -85,7 +85,7 @@ Section InsertRefinements.
     - rewrite ilist2.ith_replace2_Index_eq; simpl.
       rewrite ilist2.ith_replace2_Index_neq in H1; eauto using string_dec.
       generalize (qsConstr' idx H0 _ H1); rewrite H; eauto.
-    - rewrite ilist2.ith_replace2_Index_neq in *; eauto using string_dec.
+    - rewrite ilist2.ith_replace2_Index_neq; eauto using string_dec.
       destruct (fin_eq_dec Ridx idx); subst.
       + rewrite ilist2.ith_replace2_Index_eq in H1; simpl in *; eauto.
         unfold EnsembleInsert in H1; destruct H1; subst; eauto.
