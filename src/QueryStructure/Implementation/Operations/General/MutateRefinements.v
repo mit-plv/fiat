@@ -126,7 +126,7 @@ Section MutateRefinements.
       rewrite GetRelDropConstraints in H3.
       destruct (BuildQueryStructureConstraints qsSchema idx0 idx');
         eauto.
-    - rewrite ith_replace2_Index_neq in *; eauto using string_dec.
+    - rewrite ith_replace2_Index_neq; eauto using string_dec.
       destruct (fin_eq_dec Ridx idx); subst.
       + rewrite ith_replace2_Index_eq in H1; simpl in *; eauto.
       generalize (fun c => CrossConstr c idx' (not_eq_sym n) _ H1).
@@ -438,7 +438,6 @@ Section MutateRefinements.
     intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
                           _
                           (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
-    rewrite GetRelDropConstraints; eauto.
   Qed.
 
   Lemma refine_Iterate_MutationPreservesCrossConstraints'
