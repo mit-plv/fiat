@@ -395,9 +395,17 @@ Section defs.
           {apdata : all_possible_data G}
           {pdata : possible_data G}.
 
+  Definition characters_set_to_ascii_list (s : PositiveSet.t)
+    : list Ascii.ascii
+    := List.map Ascii.ascii_of_pos (PositiveSet.elements s).
+
   Definition all_possible_characters_of_nt
     : String.string -> all_possible_result
     := fun nt => make_all_possible_result (lookup_state apdata (@of_nonterminal _ (@rdp_list_predata _ G) nt)).
+
+  Definition all_possible_ascii_of_nt (nt : String.string)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (all_possible_characters_of_nt nt).
 
   Definition might_be_empty_of_pr_nt
     : String.string -> bool
@@ -407,13 +415,25 @@ Section defs.
     : String.string -> possible_characters_result
     := fun nt => possible_first_characters_of_pr (collapse_to_possible_result (lookup_state pdata (@of_nonterminal _ (@rdp_list_predata _ G) nt))).
 
+  Definition possible_first_ascii_of_nt (nt : String.string)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (possible_first_characters_of_nt nt).
+
   Definition possible_last_characters_of_nt
     : String.string -> possible_characters_result
     := fun nt => possible_last_characters_of_pr (collapse_to_possible_result (lookup_state pdata (@of_nonterminal _ (@rdp_list_predata _ G) nt))).
 
+  Definition possible_last_ascii_of_nt (nt : String.string)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (possible_last_characters_of_nt nt).
+
   Definition all_possible_characters_of_production
     : production Ascii.ascii -> all_possible_result
     := fun ps => make_all_possible_result (fold_production' G (lookup_state apdata) ps).
+
+  Definition all_possible_ascii_of_production (ps : production Ascii.ascii)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (all_possible_characters_of_production ps).
 
   Definition might_be_empty_of_pr_production
     : production Ascii.ascii -> bool
@@ -423,18 +443,32 @@ Section defs.
     : production Ascii.ascii -> possible_characters_result
     := fun ps => possible_first_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 
+  Definition possible_first_ascii_of_production (ps : production Ascii.ascii)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (possible_first_characters_of_production ps).
+
   Definition possible_last_characters_of_production
     : production Ascii.ascii -> possible_characters_result
     := fun ps => possible_last_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
+
+  Definition possible_last_ascii_of_production (ps : production Ascii.ascii)
+    : list Ascii.ascii
+    := characters_set_to_ascii_list (possible_last_characters_of_production ps).
 End defs.
 Global Arguments all_possible_characters_of_nt G {_} _.
+Global Arguments all_possible_ascii_of_nt G {_} _.
 Global Arguments might_be_empty_of_pr_nt G {_} _.
 Global Arguments possible_first_characters_of_nt G {_} _.
+Global Arguments possible_first_ascii_of_nt G {_} _.
 Global Arguments possible_last_characters_of_nt G {_} _.
+Global Arguments possible_last_ascii_of_nt G {_} _.
 Global Arguments all_possible_characters_of_production G {_} _.
+Global Arguments all_possible_ascii_of_production G {_} _.
 Global Arguments might_be_empty_of_pr_production G {_} _.
 Global Arguments possible_first_characters_of_production G {_} _.
+Global Arguments possible_first_ascii_of_production G {_} _.
 Global Arguments possible_last_characters_of_production G {_} _.
+Global Arguments possible_last_ascii_of_production G {_} _.
 
 Section correctness_lemmas.
   Context {HSLM : StringLikeMin Ascii.ascii}
@@ -492,6 +526,29 @@ Section correctness_lemmas.
     end.
   Local Ltac correct_t := try pre_correct_t; repeat correct_t_step.
 
+  Local Ltac t_ascii lem :=
+    lazymatch goal with
+    | [ |- forall_chars__char_in _ ?s ]
+      => let s' := head s in
+         unfold s';
+         eapply forall_chars__impl__forall_chars__char_in
+    | [ |- for_first_char _ (fun ch => List.In ch ?s) ]
+      => let s' := head s in
+         unfold s';
+           eapply for_first_char_Proper;
+           [ reflexivity | unfold impl | ]
+    | [ |- for_last_char _ (fun ch => List.In ch ?s) ]
+      => let s' := head s in
+         unfold s';
+           eapply for_last_char_Proper;
+           [ reflexivity | unfold impl | ]
+    end;
+    [ intro | apply lem; assumption ];
+    unfold characters_set_to_ascii_list;
+    rewrite PositiveSetExtensions.BasicProperties.FM.elements_iff, InA_In_eq, List.in_map_iff;
+    eexists; split; [ | eassumption ];
+    rewrite ascii_of_pos_of_ascii; reflexivity.
+
   Lemma all_possible_characters_of_item_nt
         (p : parse_of_item G str (NonTerminal nt))
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_nt G nt)).
@@ -509,6 +566,16 @@ Section correctness_lemmas.
     eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
     correct_t.
   Qed.
+
+  Lemma all_possible_ascii_of_item_nt
+        (p : parse_of_item G str (NonTerminal nt))
+    : forall_chars__char_in str (all_possible_ascii_of_nt G nt).
+  Proof. t_ascii @all_possible_characters_of_item_nt. Qed.
+
+  Lemma all_possible_ascii_of
+        (p : parse_of G str (Lookup G nt))
+    : forall_chars__char_in str (all_possible_ascii_of_nt G nt).
+  Proof. t_ascii @all_possible_characters_of. Qed.
 
   Lemma might_be_empty_pr_parse_of_item_nt
         (Hlen : length str = 0)
@@ -558,6 +625,26 @@ Section correctness_lemmas.
     correct_t.
   Qed.
 
+  Lemma possible_first_ascii_parse_of_item_nt
+        (p : parse_of_item G str (NonTerminal nt))
+    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_nt G nt)).
+  Proof. t_ascii possible_first_characters_parse_of_item_nt. Qed.
+
+  Lemma possible_first_ascii_parse_of
+        (p : parse_of G str (Lookup G nt))
+    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_nt G nt)).
+  Proof. t_ascii possible_first_characters_parse_of. Qed.
+
+  Lemma possible_last_ascii_parse_of_item_nt
+        (p : parse_of_item G str (NonTerminal nt))
+    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_nt G nt)).
+  Proof. t_ascii possible_last_characters_parse_of_item_nt. Qed.
+
+  Lemma possible_last_ascii_parse_of
+        (p : parse_of G str (Lookup G nt))
+    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_nt G nt)).
+  Proof. t_ascii possible_last_characters_parse_of. Qed.
+
   Lemma all_possible_characters_of_parse_of_production
         (p : parse_of_production G str ps)
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_production G ps)).
@@ -566,6 +653,11 @@ Section correctness_lemmas.
     eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
     correct_t.
   Qed.
+
+  Lemma all_possible_ascii_of_parse_of_production
+        (p : parse_of_production G str ps)
+    : forall_chars__char_in str (all_possible_ascii_of_production G ps).
+  Proof. t_ascii all_possible_characters_of_parse_of_production. Qed.
 
   Lemma might_be_empty_pr_parse_of_production
         (Hlen : length str = 0)
@@ -591,6 +683,16 @@ Section correctness_lemmas.
     eapply for_last_char_Proper; [ reflexivity | intros ?? | eassumption ].
     correct_t.
   Qed.
+
+  Lemma possible_first_ascii_parse_of_production
+        (p : parse_of_production G str ps)
+    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_production G ps)).
+  Proof. t_ascii possible_first_characters_parse_of_production. Qed.
+
+  Lemma possible_last_ascii_parse_of_production
+        (p : parse_of_production G str ps)
+    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_production G ps)).
+  Proof. t_ascii possible_last_characters_parse_of_production. Qed.
 End correctness_lemmas.
 
 Ltac make_all_possible_data G :=
