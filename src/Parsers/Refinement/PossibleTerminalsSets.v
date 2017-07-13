@@ -532,16 +532,14 @@ Section correctness_lemmas.
       => let s' := head s in
          unfold s';
          eapply forall_chars__impl__forall_chars__char_in
-    | [ |- for_first_char _ (fun ch => List.In ch ?s) ]
+    | [ |- first_char_in _ ?s ]
       => let s' := head s in
          unfold s';
-           eapply for_first_char_Proper;
-           [ reflexivity | unfold impl | ]
-    | [ |- for_last_char _ (fun ch => List.In ch ?s) ]
+           eapply for_first_char__impl__first_char_in
+    | [ |- last_char_in _ ?s ]
       => let s' := head s in
          unfold s';
-           eapply for_last_char_Proper;
-           [ reflexivity | unfold impl | ]
+           eapply for_last_char__impl__last_char_in
     end;
     [ intro | apply lem; assumption ];
     unfold characters_set_to_ascii_list;
@@ -627,22 +625,22 @@ Section correctness_lemmas.
 
   Lemma possible_first_ascii_parse_of_item_nt
         (p : parse_of_item G str (NonTerminal nt))
-    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_nt G nt)).
+    : first_char_in str (possible_first_ascii_of_nt G nt).
   Proof. t_ascii possible_first_characters_parse_of_item_nt. Qed.
 
   Lemma possible_first_ascii_parse_of
         (p : parse_of G str (Lookup G nt))
-    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_nt G nt)).
+    : first_char_in str (possible_first_ascii_of_nt G nt).
   Proof. t_ascii possible_first_characters_parse_of. Qed.
 
   Lemma possible_last_ascii_parse_of_item_nt
         (p : parse_of_item G str (NonTerminal nt))
-    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_nt G nt)).
+    : last_char_in str (possible_last_ascii_of_nt G nt).
   Proof. t_ascii possible_last_characters_parse_of_item_nt. Qed.
 
   Lemma possible_last_ascii_parse_of
         (p : parse_of G str (Lookup G nt))
-    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_nt G nt)).
+    : last_char_in str (possible_last_ascii_of_nt G nt).
   Proof. t_ascii possible_last_characters_parse_of. Qed.
 
   Lemma all_possible_characters_of_parse_of_production
@@ -686,12 +684,12 @@ Section correctness_lemmas.
 
   Lemma possible_first_ascii_parse_of_production
         (p : parse_of_production G str ps)
-    : for_first_char str (fun ch => List.In ch (possible_first_ascii_of_production G ps)).
+    : first_char_in str (possible_first_ascii_of_production G ps).
   Proof. t_ascii possible_first_characters_parse_of_production. Qed.
 
   Lemma possible_last_ascii_parse_of_production
         (p : parse_of_production G str ps)
-    : for_last_char str (fun ch => List.In ch (possible_last_ascii_of_production G ps)).
+    : last_char_in str (possible_last_ascii_of_production G ps).
   Proof. t_ascii possible_last_characters_parse_of_production. Qed.
 End correctness_lemmas.
 
