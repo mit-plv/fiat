@@ -30,15 +30,22 @@ Section general_fold.
                     => combine_production x' y'
                   end.
 
+  Global Instance lattice_for_combine_production_Proper_gen
+         {prestate_beq : T -> T -> bool}
+    : Proper ((prestate_beq ==> prestate_beq ==> lattice_for_beq prestate_beq) ==> lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq) lattice_for_combine_production.
+  Proof.
+    intros ?? Hfg [|?|] [|?|] H0 [|?|] [|?|] H1; simpl in *;
+      try congruence.
+    apply Hfg; assumption.
+  Defined.
+
   Global Instance lattice_for_combine_production_Proper
          {prestate_beq : T -> T -> bool}
          {precombine_production}
          {H : Proper (prestate_beq ==> prestate_beq ==> lattice_for_beq prestate_beq) precombine_production}
     : Proper (lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq ==> lattice_for_beq prestate_beq) (lattice_for_combine_production precombine_production).
   Proof.
-    intros [|?|] [|?|] H0 [|?|] [|?|] H1; simpl in *;
-      try congruence.
-    apply H; assumption.
+    apply lattice_for_combine_production_Proper_gen, H.
   Defined.
 
   Context {fpdata : @grammar_fixedpoint_lattice_data T}.
