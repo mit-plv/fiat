@@ -248,6 +248,7 @@ Section correctness.
     | _ => eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ];
            cbv beta in *; tauto
     | _ => progress destruct_head or
+    | _ => progress destruct_head nonemptyT
     | [ |- ~(or _ _) ] => intro
     | _ => setoid_rewrite not_In_all_but
     | [ H : forall v, ~?P v |- context[?P _] ]

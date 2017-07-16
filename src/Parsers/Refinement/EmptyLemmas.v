@@ -13,43 +13,74 @@ Set Implicit Arguments.
 
 Local Open Scope grammar_fixedpoint_scope.
 
-(** no_parses < nonempty < anything *)
+(** no_parses < nonempty, only empty < anything *)
 
-Local Notation pnonempty := tt.
+Inductive nonemptyT := nonempty | only_empty.
+Scheme Equality for nonemptyT.
+Ltac nonemptyT_beq_to_eq :=
+  repeat match goal with
+         | [ |- is_true (nonemptyT_beq _ _) ] => apply internal_nonemptyT_dec_lb
+         | [ H : is_true (nonemptyT_beq _ _) |- _ ]
+           => apply internal_nonemptyT_dec_bl in H
+         | [ |- nonemptyT_beq _ _ = true ] => apply internal_nonemptyT_dec_lb
+         | [ H : nonemptyT_beq _ _ = true |- _ ]
+           => apply internal_nonemptyT_dec_bl in H
+         end.
 
-Global Instance might_be_empty_lattice : grammar_fixedpoint_lattice_data unit.
+Global Instance nonemptyT_beq_Reflexive : Reflexive nonemptyT_beq.
+Proof. repeat intro; nonemptyT_beq_to_eq; reflexivity. Qed.
+Global Instance nonemptyT_beq_Symmetric : Symmetric nonemptyT_beq.
+Proof. repeat intro; nonemptyT_beq_to_eq; symmetry; assumption. Qed.
+Global Instance nonemptyT_beq_Transitive : Transitive nonemptyT_beq.
+Proof. repeat intro; nonemptyT_beq_to_eq; etransitivity; eassumption. Qed.
+Global Instance nonemptyT_beq_Antisymmetric : Antisymmetric _ eq nonemptyT_beq.
+Proof. repeat intro; nonemptyT_beq_to_eq; assumption. Qed.
+
+Global Instance might_be_empty_lattice : grammar_fixedpoint_lattice_data nonemptyT.
 Proof.
   refine {| prestate_lt x y := false;
-            prestate_beq x y := true;
-            preleast_upper_bound x y := constant tt |};
+            prestate_beq := nonemptyT_beq;
+            preleast_upper_bound x y := if nonemptyT_beq x y
+                                        then constant x
+                                        else ⊤ |};
     repeat match goal with
          | [ |- is_true true ] => reflexivity
          | [ |- ?x = ?x ] => reflexivity
          | _ => assumption
          | [ H : is_true false |- _ ] => exfalso; clear -H; abstract congruence
+         | _ => progress nonemptyT_beq_to_eq
+         | _ => progress subst
          | _ => progress simpl in *
          | [ |- RelationClasses.Equivalence _ ] => split
          | _ => intro
          | [ x : bool |- _ ] => destruct x
+         | [ x : nonemptyT |- _ ] => destruct x
          | _ => progress unfold Basics.flip
          | [ |- Acc _ _ ] => do 2 constructor; intros; exfalso
          end.
 Defined.
 
-Global Instance might_be_empty_aidata {Char} : @AbstractInterpretation Char unit _.
+Global Instance might_be_empty_aidata {Char} : @AbstractInterpretation Char nonemptyT _.
 Proof.
-  refine {| on_terminal t := constant pnonempty;
-            on_nil_production := ⊤;
-            precombine_production x y := constant pnonempty |}.
+  refine {| on_terminal t := constant nonempty;
+            on_nil_production := constant only_empty;
+            precombine_production x y
+            := match x, y with
+               | nonempty, _
+               | _, nonempty
+                 => constant nonempty
+               | only_empty, only_empty => constant only_empty
+               end |}.
+  clear; abstract (intros [] [] ? [] [] ?; simpl in *; (reflexivity || assumption)).
 Defined.
 
 Section correctness.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition might_be_empty_accurate
-             (P : String -> Prop) (nonempty : unit)
+             (P : String -> Prop) (nonempty : nonemptyT)
     : Prop
-    := forall str, P str -> length str <> 0.
+    := forall str, P str -> if nonempty then length str <> 0 else length str = 0.
 
   Local Ltac t_Proper_step :=
     idtac;
@@ -65,6 +96,8 @@ Section correctness.
     | [ x : lattice_for _ |- _ ] => destruct x
     | [ x : ex _ |- _ ] => destruct x
     | [ x : and _ _ |- _ ] => destruct x
+    | _ => progress nonemptyT_beq_to_eq
+    | _ => progress subst
     | _ => solve [ eauto
                  | exfalso; unfold not in *; eauto ]
     | [ H : ?A -> ?B |- _ ]
@@ -74,13 +107,18 @@ Section correctness.
     | [ H : _ |- _ ]
       => setoid_rewrite is_char_parts in H
     | [ x : or _ _ |- _ ] => destruct x
+    | [ x : nonemptyT |- _ ] => destruct x
     | [ x : bool |- _ ] => destruct x
     | [ |- and _ _ ] => split
-    | _ => progress rewrite ?take_length, ?drop_length
-    | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length in H
+    | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l
+    | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l in H
     | _ => omega
     | [ H : ?P ?v, H' : forall str, ?P str -> length str <> 0 |- _ ]
       => apply H' in H
+    | [ H : ?P ?v, H' : forall str, ?P str -> length str = 0 |- _ ]
+      => apply H' in H
+    | [ H : ?x = 0, H' : context[?x] |- _ ] => rewrite H in H'
+    | [ H : min _ _ = 0 |- _ ] => revert H; apply Min.min_case_strong
     end.
 
   Local Ltac t_Proper := repeat t_Proper_step.
@@ -93,19 +131,23 @@ Section correctness.
   Qed.
 End correctness.
 
-Definition might_be_emptyT := lattice_for unit.
+Definition might_be_emptyT := lattice_for nonemptyT.
 Coercion collapse_might_be_empty (x : might_be_emptyT) : bool
   := match x with
      | ⊤ => true
-     | constant _ => false
+     | constant only_empty => true
+     | constant nonempty => false
      | ⊥ => false
      end.
 
 
-Global Instance collapse_might_be_empty_ProperR {R}
+Global Instance collapse_might_be_empty_ProperR {R : nonemptyT -> _ -> bool}
+       {R_S : Symmetric R}
+       {R_AS : Antisymmetric _ eq R}
   : Proper (lattice_for_beq R ==> eq) collapse_might_be_empty.
 Proof.
-  intros [|?|] [|?|]; simpl; trivial; congruence.
+  intros [|[]|] [|[]|]; simpl; trivial; try congruence;
+    intro H; specialize (R_S _ _ H); specialize (R_AS _ _ H R_S); congruence.
 Qed.
 Global Instance collapse_might_be_empty_Proper
   : Proper (state_beq ==> eq) collapse_might_be_empty
@@ -136,13 +178,13 @@ Section might_be_empty.
         (str : String)
         (Hlen : length str = 0)
         (p : parse_of_item G str (NonTerminal nt))
-    : might_be_empty_nt G nt = ⊤.
+    : collapse_might_be_empty (might_be_empty_nt G nt) = true.
   Proof.
     unfold might_be_empty_nt.
     apply fold_grammar_correct_item in p.
     destruct p as [P [Hp0 p]].
     rewrite fgd_fold_grammar_correct.
-    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
+    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       specialize (p _ Hp0); (congruence || tauto).
   Qed.
@@ -152,13 +194,13 @@ Section might_be_empty.
         (str : String)
         (Hlen : length str = 0)
         (p : parse_of G str (Lookup G nt))
-    : might_be_empty_nt G nt = ⊤.
+    : collapse_might_be_empty (might_be_empty_nt G nt) = true.
   Proof.
     unfold might_be_empty_nt.
     rewrite fgd_fold_grammar_correct.
     apply fold_grammar_correct in p.
     destruct p as [P [Hp0 p]].
-    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) eqn:H; [ reflexivity | | ];
+    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       specialize (p _ Hp0); (congruence || tauto).
   Qed.
