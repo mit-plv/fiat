@@ -13,9 +13,9 @@ Set Implicit Arguments.
 
 Local Open Scope grammar_fixedpoint_scope.
 
-(** no_parses < nonempty, only empty < anything *)
+(** no_parses < nonempty < could be empty < anything *)
 
-Inductive nonemptyT := nonempty | only_empty.
+Inductive nonemptyT := nonempty | could_be_empty.
 Scheme Equality for nonemptyT.
 Ltac nonemptyT_beq_to_eq :=
   repeat match goal with
@@ -26,6 +26,13 @@ Ltac nonemptyT_beq_to_eq :=
          | [ H : nonemptyT_beq _ _ = true |- _ ]
            => apply internal_nonemptyT_dec_bl in H
          end.
+Definition nonemptyT_lt (x y : nonemptyT) : bool
+  := match x, y with
+     | nonempty, nonempty => false
+     | nonempty, _ => true
+     | _, nonempty => false
+     | could_be_empty, could_be_empty => false
+     end.
 
 Global Instance nonemptyT_beq_Reflexive : Reflexive nonemptyT_beq.
 Proof. repeat intro; nonemptyT_beq_to_eq; reflexivity. Qed.
@@ -38,11 +45,11 @@ Proof. repeat intro; nonemptyT_beq_to_eq; assumption. Qed.
 
 Global Instance might_be_empty_lattice : grammar_fixedpoint_lattice_data nonemptyT.
 Proof.
-  refine {| prestate_lt x y := false;
+  refine {| prestate_lt := nonemptyT_lt;
             prestate_beq := nonemptyT_beq;
             preleast_upper_bound x y := if nonemptyT_beq x y
                                         then constant x
-                                        else ⊤ |};
+                                        else constant could_be_empty |};
     repeat match goal with
          | [ |- is_true true ] => reflexivity
          | [ |- ?x = ?x ] => reflexivity
@@ -63,13 +70,13 @@ Defined.
 Global Instance might_be_empty_aidata {Char} : @AbstractInterpretation Char nonemptyT _.
 Proof.
   refine {| on_terminal t := constant nonempty;
-            on_nil_production := constant only_empty;
+            on_nil_production := constant could_be_empty;
             precombine_production x y
             := match x, y with
                | nonempty, _
                | _, nonempty
                  => constant nonempty
-               | only_empty, only_empty => constant only_empty
+               | could_be_empty, could_be_empty => constant could_be_empty
                end |}.
   clear; abstract (intros [] [] ? [] [] ?; simpl in *; (reflexivity || assumption)).
 Defined.
@@ -78,9 +85,9 @@ Section correctness.
   Context {Char} {HSLM : StringLikeMin Char} {HSL : StringLike Char} {HSLP : StringLikeProperties Char}.
 
   Definition might_be_empty_accurate
-             (P : String -> Prop) (nonempty : nonemptyT)
+             (P : String -> Prop) (nonemptyv : nonemptyT)
     : Prop
-    := forall str, P str -> if nonempty then length str <> 0 else length str = 0.
+    := nonemptyv = nonempty -> forall str, P str -> length str <> 0.
 
   Local Ltac t_Proper_step :=
     idtac;
@@ -113,6 +120,7 @@ Section correctness.
     | _ => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l
     | [ H : _ |- _ ] => progress rewrite ?take_length, ?drop_length, ?Min.min_0_r, ?Min.min_0_l in H
     | _ => omega
+    | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
     | [ H : ?P ?v, H' : forall str, ?P str -> length str <> 0 |- _ ]
       => apply H' in H
     | [ H : ?P ?v, H' : forall str, ?P str -> length str = 0 |- _ ]
@@ -135,7 +143,7 @@ Definition might_be_emptyT := lattice_for nonemptyT.
 Coercion collapse_might_be_empty (x : might_be_emptyT) : bool
   := match x with
      | ⊤ => true
-     | constant only_empty => true
+     | constant could_be_empty => true
      | constant nonempty => false
      | ⊥ => false
      end.
@@ -186,7 +194,8 @@ Section might_be_empty.
     rewrite fgd_fold_grammar_correct.
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
-      specialize (p _ Hp0); (congruence || tauto).
+      try specialize (p eq_refl);
+      try specialize (p _ Hp0); (congruence || tauto).
   Qed.
 
   Lemma might_be_empty_parse_of
@@ -202,6 +211,7 @@ Section might_be_empty.
     destruct p as [P [Hp0 p]].
     destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
-      specialize (p _ Hp0); (congruence || tauto).
+      try specialize (p eq_refl);
+      try specialize (p _ Hp0); (congruence || tauto).
   Qed.
 End might_be_empty.

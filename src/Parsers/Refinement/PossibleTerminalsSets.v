@@ -216,6 +216,7 @@ Section correctness.
          clear f H
     | [ H : lattice_for_related _ _ ?x |- _ ] => is_var x; destruct x
     | [ |- lattice_for_related _ _ ?x ] => is_var x; destruct x
+    | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
     | _ => progress destruct_head ex
     | _ => progress destruct_head and
     | _ => progress subst
@@ -494,6 +495,7 @@ Section correctness_lemmas.
     | _ => assumption
     | _ => tauto
     | [ |- ?R ?x ?x ] => reflexivity
+    | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
     | [ |- context[fold_production' _ (lookup_state fgd_fold_grammar) _] ]
       => setoid_rewrite fgd_fold_grammar_correct
     | _ => rewrite fgd_fold_grammar_correct
