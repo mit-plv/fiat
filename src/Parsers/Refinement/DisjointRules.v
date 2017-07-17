@@ -307,9 +307,10 @@ Ltac pose_disjoint_search_for lem :=
   let G := match goal with |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] => G end in
   let HSLM := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSLM end in
   let HSL := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSL end in
+  let HSLP := match goal with HSLP : @StringLikeProperties _ HSLM HSL |- _ => HSLP end in
   let apdata := get_hyp_of_shape (all_possible_data G) in
   let pdata := get_hyp_of_shape (possible_data G) in
-  let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL ltac:(typeclasses eauto) G apdata pdata) in
+  let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL HSLP G apdata pdata) in
   let lem' := match goal with
               | [ |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                 => constr:(fun idx' nt its => lem' str offset len nt its idx')

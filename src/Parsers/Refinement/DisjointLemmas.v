@@ -394,6 +394,10 @@ Module Export Exports.
 
   Ltac do_disjoint_precomputations _ ::=
     let G := get_grammar in
+    lazymatch goal with
+    | [ |- context[@ParserInterface.split_list_is_complete_idx _ G ?HSLM ?HSL] ]
+      => pose (_ : @StringLikeProperties _ HSLM HSL)
+    end;
     pose_all_possible_data_for G;
     pose_possible_data_for G.
 End Exports.
