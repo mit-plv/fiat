@@ -290,8 +290,7 @@ Ltac solve_disjoint_side_conditions :=
   idtac;
   lazymatch goal with
   | [ |- Carriers.default_to_production (G := ?G) ?k = ?e ]
-    => try cbv delta [G];
-       cbv beta iota zeta delta [Carriers.default_to_production Lookup_idx fst snd List.map pregrammar_productions pregrammar_rproductions List.length List.nth minus Operations.List.drop];
+    => cbv -[Equality.ascii_beq orb andb BinNat.N.leb Reflective.opt.N_of_ascii];
        try reflexivity
   | [ |- is_true (Operations.List.disjoint _ _ _) ]
     => vm_compute; try reflexivity
