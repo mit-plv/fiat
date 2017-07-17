@@ -33,9 +33,9 @@ Section IndexedImpl.
       Time simplify parser splitter.
       Show Ltac Profile.
       { Time refine_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
       { Time rewrite_disjoint_search_for. }
       { Time rewrite_disjoint_search_for. }
       { Time rewrite_disjoint_rev_search_for. }
