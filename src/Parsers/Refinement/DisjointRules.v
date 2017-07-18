@@ -116,13 +116,12 @@ Section with_grammar.
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringIsoProperties Ascii.ascii}
           (G : pregrammar' Ascii.ascii)
-          (apdata : all_possible_data G)
           (pdata : possible_data G).
 
   Local Notation possible_terminals_of nt
-    := (@all_possible_ascii_of_nt G apdata nt).
+    := (@all_possible_ascii_of_nt G pdata nt).
   Local Notation possible_terminals_of_production its
-    := (@all_possible_ascii_of_production G apdata its).
+    := (@all_possible_ascii_of_production G pdata its).
   Local Notation possible_first_terminals_of nt
     := (@possible_first_ascii_of_nt G pdata nt).
   Local Notation possible_last_terminals_of nt
@@ -166,7 +165,7 @@ Section with_grammar.
     intros Hlen it' its' Heq n ? H_reachable pit pits.
     inversion Heq; subst it' its'; clear Heq.
     left.
-    pose proof (terminals_disjoint_search_for _ _ _ H_disjoint pit pits H_reachable) as H'.
+    pose proof (terminals_disjoint_search_for _ _ H_disjoint pit pits H_reachable) as H'.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
@@ -205,7 +204,7 @@ Section with_grammar.
     intros Hlen it' its' Heq n ? H_reachable pit pits.
     inversion Heq; subst it' its'; clear Heq.
     left.
-    pose proof (terminals_disjoint_search_for_not _ _ _ H_disjoint pit pits H_reachable) as H'.
+    pose proof (terminals_disjoint_search_for_not _ _ H_disjoint pit pits H_reachable) as H'.
     specialize (H1 (ex_intro _ n H')).
     pose proof (is_first_char_such_that_eq_nat_iff H1 H') as H''.
     destruct_head or; destruct_head and; subst;
@@ -307,9 +306,8 @@ Ltac pose_disjoint_search_for lem :=
   let HSLM := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSLM end in
   let HSL := match goal with |- context[@ParserInterface.split_list_is_complete_idx ?Char ?G ?HSLM ?HSL] => HSL end in
   let HSLP := match goal with HSLP : @StringLikeProperties _ HSLM HSL |- _ => HSLP end in
-  let apdata := get_hyp_of_shape (all_possible_data G) in
   let pdata := get_hyp_of_shape (possible_data G) in
-  let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL HSLP G apdata pdata) in
+  let lem' := constr:(@refine_disjoint_search_for_idx HSLM HSL HSLP G pdata) in
   let lem' := match goal with
               | [ |- context[ParserInterface.split_list_is_complete_idx ?G ?str ?offset ?len ?idx] ]
                 => constr:(fun idx' nt its => lem' str offset len nt its idx')

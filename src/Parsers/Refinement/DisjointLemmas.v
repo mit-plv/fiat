@@ -64,11 +64,10 @@ Section search_forward.
           {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringIsoProperties Ascii.ascii}
-          (apdata : all_possible_data G)
           (pdata : possible_data G).
 
   Local Notation possible_terminals_of nt
-    := (@all_possible_ascii_of_nt G apdata nt).
+    := (@all_possible_ascii_of_nt G pdata nt).
   Local Notation possible_first_terminals_of_production its
     := (@possible_first_ascii_of_production G pdata its).
   Local Notation might_be_empty_of_production its
@@ -222,11 +221,10 @@ Section search_backward.
           {HSI : StringIso Ascii.ascii}
           {HSLP : StringLikeProperties Ascii.ascii}
           {HSIP : StringIsoProperties Ascii.ascii}
-          (apdata : all_possible_data G)
           (pdata : possible_data G).
 
   Local Notation possible_terminals_of_production its
-    := (@all_possible_ascii_of_production G apdata its).
+    := (@all_possible_ascii_of_production G pdata its).
   Local Notation possible_last_terminals_of nt
     := (@possible_last_ascii_of_nt G pdata nt).
   Local Notation might_be_empty_of nt
@@ -398,6 +396,5 @@ Module Export Exports.
     | [ |- context[@ParserInterface.split_list_is_complete_idx _ G ?HSLM ?HSL] ]
       => pose (_ : @StringLikeProperties _ HSLM HSL)
     end;
-    pose_all_possible_data_for G;
     pose_possible_data_for G.
 End Exports.
