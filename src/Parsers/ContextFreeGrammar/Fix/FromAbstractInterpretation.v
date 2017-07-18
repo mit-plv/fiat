@@ -213,7 +213,7 @@ Ltac make_fold_grammar_data_from v :=
                => constr:(@Build_fold_grammar_data' Char T fpdata aidata G)
              end in
   let v' := (eval vm_compute in v) in
-  constr:(lem v' (_ : eq_refl_vm_cast_l v' v)).
+  constr:(lem v' ltac:(vm_cast_no_check (eq_refl v'))).
 
 Ltac make_fold_grammar_data G :=
   let v := constr:(fold_grammar G) in
