@@ -205,6 +205,7 @@ src/Common/Gensym.v
 src/Common/Instances.v
 src/Common/IterateBoundedIndex.v
 src/Common/Le.v
+src/Common/LetIn.v
 src/Common/LogicFacts.v
 src/Common/LogicMorphisms.v
 src/Common/MSetBoundedLattice.v
@@ -270,6 +271,7 @@ src/Common/Tactics/DestructHyps.v
 src/Common/Tactics/DestructSig.v
 src/Common/Tactics/FoldIsTrue.v
 src/Common/Tactics/FreeIn.v
+src/Common/Tactics/GetGoal.v
 src/Common/Tactics/Head.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/IsClosed.v
