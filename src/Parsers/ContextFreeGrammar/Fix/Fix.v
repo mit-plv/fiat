@@ -362,9 +362,10 @@ Section grammar_fixedpoint.
            (aggregate_state_lt_wf_idx (10 * List.length initial_nonterminals_data))
            (fun _ => aggregate_state)
            (fun st Fix_grammar_internal
-            => match Sumbool.sumbool_of_bool (aggregate_state_eq st (aggregate_step st)) with
+            => let st' := aggregate_step st in
+               match Sumbool.sumbool_of_bool (aggregate_state_eq st st') with
                | left pf => st
-               | right pf => Fix_grammar_internal (aggregate_step st) (step_lt pf)
+               | right pf => Fix_grammar_internal st' (step_lt pf)
                end).
 
     Definition pre_Fix_grammar : aggregate_state
