@@ -53,6 +53,12 @@ ML_COMPATIBILITY_FILES = src/Common/Tactics/hint_db_extra_tactics.ml src/Common/
 
 -include etc/coq-scripts/compatibility/Makefile.coq.compat_84_85
 
+ifeq ($(filter printdeps printreversedeps,$(MAKECMDGOALS)),)
+-include etc/coq-scripts/Makefile.vo_closure
+else
+include etc/coq-scripts/Makefile.vo_closure
+endif
+
 .DEFAULT_GOAL := fiat
 
 clean::
@@ -309,3 +315,9 @@ src/Examples/HACMSDemo/wheelSensorEncoder.cmxa: src/examples/hacmsdemo/WheelSens
 
 encoder_repl: src/Examples/HACMSDemo/encoder_repl.ml src/Examples/HACMSDemo/wheelSensorEncoder.cmxa
 	cd src/Examples/HACMSDemo && ocamlopt -w -a -o encoder_repl unix.cmxa str.cmxa wheelSensorEncoder.cmxa encoder_repl.ml
+
+printdeps::
+	$(HIDE)$(foreach vo,$(filter %.vo,$(MAKECMDGOALS)),echo '$(vo): $(call vo_closure,$(vo))'; )
+
+printreversedeps::
+	$(HIDE)$(foreach vo,$(filter %.vo,$(MAKECMDGOALS)),echo '$(vo): $(call vo_reverse_closure,$(VOFILES),$(vo))'; )
