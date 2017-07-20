@@ -1,5 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.List.Operations.
 Require Import Fiat.Common.Equality.
 
@@ -41,7 +43,18 @@ Module opt.
 
     Definition compile_productions (expr : Core.productions Char) : opt.productions T
       := List.map compile_production expr.
+
+    Definition compile_grammar (G : pregrammar' Char) : list (productions T)
+      := List.map compile_productions (List.map snd (pregrammar_productions G)).
   End semantics.
 
   Global Arguments compile_item_data : clear implicits.
+
+  Lemma eq_compile_nonterminal {Char T} (G : pregrammar' Char)
+        {cidata : @compile_item_data Char T}
+        (Hci : nonterminal_names = pregrammar_nonterminals G)
+    : forall nt, compile_nonterminal nt = default_of_nonterminal (G:=G) nt.
+  Proof.
+    destruct cidata; simpl in *; subst; reflexivity.
+  Qed.
 End opt.
