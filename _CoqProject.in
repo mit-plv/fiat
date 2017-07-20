@@ -446,6 +446,7 @@ src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
 src/Parsers/ContextFreeGrammar/PreNotationsLemmas.v
+src/Parsers/ContextFreeGrammar/Precompute.v
 src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/Reflective.v
 src/Parsers/ContextFreeGrammar/ReflectiveLemmas.v
