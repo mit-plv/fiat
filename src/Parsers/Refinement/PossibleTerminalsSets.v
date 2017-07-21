@@ -3,7 +3,6 @@ Require Import Coq.Classes.Morphisms.
 Require Import Fiat.Parsers.StringLike.FirstChar Fiat.Parsers.StringLike.LastChar Fiat.Parsers.StringLike.ForallChars.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
-Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.BaseTypes.
@@ -428,7 +427,6 @@ Coercion is_possible_character_of : possible_characters_result >-> Funclass.
 Section defs.
   Context (G : pregrammar' Ascii.ascii)
           {pdata : possible_data G}.
-  Local Hint Immediate (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
 
   Definition characters_set_to_ascii_list (s : PositiveSet.t)
     : list Ascii.ascii
@@ -464,7 +462,7 @@ Section defs.
 
   Definition all_possible_characters_of_production
     : production Ascii.ascii -> possible_characters_result
-    := fun ps => all_possible_characters_of_pr (collapse_to_possible_result (fold_production' (lookup_state pdata) (opt.compile_production ps))).
+    := fun ps => all_possible_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 
   Definition all_possible_ascii_of_production (ps : production Ascii.ascii)
     : list Ascii.ascii
@@ -472,11 +470,11 @@ Section defs.
 
   Definition might_be_empty_of_pr_production
     : production Ascii.ascii -> bool
-    := fun ps => might_be_empty_of_pr (collapse_to_possible_result (fold_production' (lookup_state pdata) (opt.compile_production ps))).
+    := fun ps => might_be_empty_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 
   Definition possible_first_characters_of_production
     : production Ascii.ascii -> possible_characters_result
-    := fun ps => possible_first_characters_of_pr (collapse_to_possible_result (fold_production' (lookup_state pdata) (opt.compile_production ps))).
+    := fun ps => possible_first_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 
   Definition possible_first_ascii_of_production (ps : production Ascii.ascii)
     : list Ascii.ascii
@@ -484,7 +482,7 @@ Section defs.
 
   Definition possible_last_characters_of_production
     : production Ascii.ascii -> possible_characters_result
-    := fun ps => possible_last_characters_of_pr (collapse_to_possible_result (fold_production' (lookup_state pdata) (opt.compile_production ps))).
+    := fun ps => possible_last_characters_of_pr (collapse_to_possible_result (fold_production' G (lookup_state pdata) ps)).
 
   Definition possible_last_ascii_of_production (ps : production Ascii.ascii)
     : list Ascii.ascii
@@ -528,28 +526,19 @@ Section correctness_lemmas.
     | _ => tauto
     | [ |- ?R ?x ?x ] => reflexivity
     | [ H : ?x = ?x -> _ |- _ ] => specialize (H eq_refl)
-    | [ |- context[fold_production' (lookup_state fgd_fold_grammar) _] ]
+    | [ |- context[fold_production' _ (lookup_state fgd_fold_grammar) _] ]
       => setoid_rewrite fgd_fold_grammar_correct
     | _ => rewrite fgd_fold_grammar_correct
-    | _ => rewrite fgd_compiled_productions_correct
     | [ p : parse_of_item _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
-      => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _ _ _ eq_refl) in p
+      => apply (@fold_grammar_correct_item _ _ _ _ _ _ aidata _ _) in p
     | [ p : parse_of_production _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
-      => apply (@fold_grammar_correct_production _ _ _ _ _ _ aidata _ _ _ _ eq_refl) in p
+      => apply (@fold_grammar_correct_production _ _ _ _ _ _ aidata _ _) in p
     | [ p : parse_of _ _ _ |- context[@fixedpoint_by_abstract_interpretation _ _ _ ?aidata ?G] ]
-      => apply (@fold_grammar_correct _ _ _ _ _ _ aidata _ _ _ _ eq_refl) in p
-    | [ H : context[lookup_state _ ?nt] |- context[lookup_state _ ?nt'] ]
-      => lazymatch constr:((nt, nt')) with
-         | (opt.compile_nonterminal _, of_nonterminal _)
-           => change nt with nt' in *
-         end
-    | [ |- context G[lookup_state ?g ?nt] ]
-      => (* fix implicits *)
-      let G' := context G[lookup_state g nt] in
-      change G';
-      destruct (lookup_state g nt) eqn:?
-    | [ |- context[fold_production' ?f ?ps] ]
-      => destruct (fold_production' f ps) eqn:?
+      => apply (@fold_grammar_correct _ _ _ _ _ _ aidata _ _) in p
+    | [ |- context[lookup_state ?g ?nt] ]
+      => destruct (lookup_state g nt) eqn:?
+    | [ |- context[fold_production' ?G ?f ?ps] ]
+      => destruct (fold_production' G f ps) eqn:?
     | _ => progress simpl in *
     | _ => progress destruct_head ex
     | _ => progress destruct_head and
@@ -596,7 +585,7 @@ Section correctness_lemmas.
     : forall_chars str (fun ch => PositiveSet.In (pos_of_ascii ch) (all_possible_characters_of_nt G nt)).
   Proof.
     unfold all_possible_characters_of_nt; correct_t.
-    eapply forall_chars_Proper; [ reflexivity | intros ?? | try eassumption ].
+    eapply forall_chars_Proper; [ reflexivity | intros ?? | eassumption ].
     correct_t.
   Qed.
 

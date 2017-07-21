@@ -2,7 +2,6 @@ Require Import Coq.Sets.Ensembles.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
@@ -23,14 +22,11 @@ Section fold_correctness.
           (prerelated : Ensemble String -> T -> Prop)
           {aicdata : AbstractInterpretationCorrectness prerelated}.
   Context (G : pregrammar' Char).
-  Local Hint Immediate (compile_item_data_of_abstract_interpretation G) : typeclass_instances.
-  Context (compiled_productions : list (opt.productions state))
-          (Hcompiled_productions : List.map opt.compile_productions (List.map snd (pregrammar_productions G)) = compiled_productions).
 
   Let predata := @rdp_list_predata _ G.
   Local Existing Instance predata.
 
-  Definition fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G compiled_productions)
+  Definition fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G)
     := pre_Fix_grammar _ initial_nonterminals_data.
 
   Record ensemble_result (str : String) (fold_state : state) :=
@@ -59,7 +55,7 @@ Section fold_correctness.
           er_state_le := combine_production_Proper_le (er_state_le it) (er_state_le its) |}.
 
   Lemma fold_le nt st
-        (H : st <= fold_productions' (lookup_state fold_grammar) (opt.compile_productions (Lookup_string G nt)))
+        (H : st <= fold_productions' G (lookup_state fold_grammar) (Lookup_string G nt))
     : st <= lookup_state fold_grammar (of_nonterminal nt).
   Proof.
     unfold fold_grammar.
@@ -72,7 +68,6 @@ Section fold_correctness.
     unfold step_constraints.
     unfold fixedpoint_by_abstract_interpretation at 3.
     unfold fold_constraints.
-    erewrite eq_opt_Lookup_idx by (eassumption || reflexivity).
     rewrite <- list_to_productions_to_nonterminal.
     change (default_to_nonterminal ?nt) with (to_nonterminal nt).
     rewrite to_of_nonterminal by (eapply initial_nonterminals_correct; assumption).
@@ -80,7 +75,7 @@ Section fold_correctness.
   Qed.
 
   Definition lift_ensemble_result {str nt}
-             (res : ensemble_result str (fold_productions' (lookup_state fold_grammar) (opt.compile_productions (G nt))))
+             (res : ensemble_result str (fold_productions' G (lookup_state fold_grammar) (G nt)))
     : ensemble_result str (lookup_state fold_grammar (of_nonterminal nt))
     := {| er_ensemble := er_ensemble res;
           er_state := er_state res;
@@ -89,14 +84,14 @@ Section fold_correctness.
           er_state_le := fold_le _ _ (er_state_le res) |}.
 
   Section step.
-    Context (state_of_parse : forall str pats, parse_of G str pats -> ensemble_result str (fold_productions' (lookup_state fold_grammar) (opt.compile_productions pats)))
-            (state_of_parse_production : forall str pat, parse_of_production G str pat -> ensemble_result str (fold_production' (lookup_state fold_grammar) (opt.compile_production pat)))
-            (state_of_parse_item : forall str it, parse_of_item G str it -> ensemble_result str (fold_item' (lookup_state fold_grammar) (opt.compile_item it))).
+    Context (state_of_parse : forall str pats, parse_of G str pats -> ensemble_result str (fold_productions' G (lookup_state fold_grammar) pats))
+            (state_of_parse_production : forall str pat, parse_of_production G str pat -> ensemble_result str (fold_production' G (lookup_state fold_grammar) pat))
+            (state_of_parse_item : forall str it, parse_of_item G str it -> ensemble_result str (fold_item' G (lookup_state fold_grammar) it)).
 
     Definition state_of_parse_item'
                str it (p : parse_of_item G str it)
-      : ensemble_result str (fold_item' (lookup_state fold_grammar) (opt.compile_item it))
-      := match p in parse_of_item _ _ it return ensemble_result _ (fold_item' _ (opt.compile_item it)) with
+      : ensemble_result str (fold_item' G (lookup_state fold_grammar) it)
+      := match p in parse_of_item _ _ it return ensemble_result _ (fold_item' _ _ it) with
          | ParseTerminal ch P Hch Hstr
            => {| er_state := on_terminal P;
                  er_ensemble := ensemble_on_terminal P;
@@ -108,7 +103,7 @@ Section fold_correctness.
 
     Definition state_of_parse_production'
                str pat (p : parse_of_production G str pat)
-      : ensemble_result str (fold_production' (lookup_state fold_grammar) (opt.compile_production pat))
+      : ensemble_result str (fold_production' G (lookup_state fold_grammar) pat)
       := match p with
          | ParseProductionNil Hlen
            => {| er_state := on_nil_production;
@@ -126,8 +121,8 @@ Section fold_correctness.
 
     Definition state_of_parse'
                str pats (p : parse_of G str pats)
-      : ensemble_result str (fold_productions' (lookup_state fold_grammar) (opt.compile_productions pats))
-      := match p in parse_of _ _ pats return ensemble_result _ (fold_productions' _ (opt.compile_productions pats)) with
+      : ensemble_result str (fold_productions' G (lookup_state fold_grammar) pats)
+      := match p in parse_of _ _ pats return ensemble_result _ (fold_productions' _ _ pats) with
          | ParseHead pat pats p' => er_lift (state_of_parse_production p') (least_upper_bound_correct_l _ _)
          | ParseTail pat pats p' => er_lift (state_of_parse p') (least_upper_bound_correct_r _ _)
          end.
@@ -142,7 +137,7 @@ Section fold_correctness.
 
   Lemma fold_grammar_correct_item str nt
         (p : parse_of_item G str (NonTerminal nt))
-    : exists P, P str /\ related P (lookup_state fold_grammar (opt.compile_nonterminal nt)).
+    : exists P, P str /\ related P (lookup_state fold_grammar (of_nonterminal nt)).
   Proof.
     pose proof (@state_of_parse_item _ _ p) as p'.
     unfold fold_item' in p'.
@@ -153,7 +148,7 @@ Section fold_correctness.
 
   Lemma fold_grammar_correct_item' str it
         (p : parse_of_item G str it)
-    : exists P, P str /\ related P (fold_item' (lookup_state fold_grammar) (opt.compile_item it)).
+    : exists P, P str /\ related P (fold_item' G (lookup_state fold_grammar) it).
   Proof.
     destruct p as [ch P Ppf Hch|] eqn:Hp.
     { simpl.
@@ -164,7 +159,7 @@ Section fold_correctness.
 
   Lemma fold_grammar_correct_production str ps
         (p : parse_of_production G str ps)
-    : exists P, P str /\ related P (fold_production' (lookup_state fold_grammar) (opt.compile_production ps)).
+    : exists P, P str /\ related P (fold_production' G (lookup_state fold_grammar) ps).
   Proof.
     unfold fold_production'.
     induction p as [|str n pat pats p ps IHps].
@@ -191,50 +186,34 @@ Section fold_correctness.
   Qed.
 End fold_correctness.
 
-Global Arguments fold_grammar_correct {_ HSLM HSL HSLP _ _ _ _ _} [_] {_} _ [_ _] _.
-Global Arguments fold_grammar_correct_item {_ HSLM HSL HSLP _ _ _ _ _} [_] {_} _ [_ _] _.
-
-Local Hint Immediate compile_item_data_of_abstract_interpretation : typeclass_instances.
-Local Notation compiled_productions G
-  := (List.map opt.compile_productions (List.map snd (pregrammar_productions G))).
+Global Arguments fold_grammar_correct {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.
+Global Arguments fold_grammar_correct_item {_ HSLM HSL HSLP _ _ _ _ _} [_ _ _] _.
 
 Class fold_grammar_data {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
       {aidata : AbstractInterpretation}
       (G : pregrammar' Char) :=
-  { fgd_compiled_productions : list (opt.productions state);
-    fgd_compiled_productions_correct : fgd_compiled_productions = compiled_productions G;
-    fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G fgd_compiled_productions);
-    fgd_fold_grammar_correct : pointwise_relation _ eq (lookup_state fgd_fold_grammar) (lookup_state (fold_grammar G fgd_compiled_productions)) }.
+  { fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G);
+    fgd_fold_grammar_correct : pointwise_relation _ eq (lookup_state fgd_fold_grammar) (lookup_state (fold_grammar G)) }.
 Coercion fgd_fold_grammar : fold_grammar_data >-> aggregate_state.
 
 Definition Build_fold_grammar_data' {Char T} {fpdata : grammar_fixedpoint_lattice_data T}
            {aidata : AbstractInterpretation}
            (G : pregrammar' Char)
-           (fgd_compiled_productions : list (opt.productions state))
-           (fgd_compiled_productions_correct : fgd_compiled_productions = compiled_productions G)
-           (fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G fgd_compiled_productions))
-           (fgd_fold_grammar_correct : fgd_fold_grammar = fold_grammar G _)
+           (fgd_fold_grammar : aggregate_state (fixedpoint_by_abstract_interpretation G))
+           (fgd_fold_grammar_correct : fgd_fold_grammar = fold_grammar G)
   : @fold_grammar_data Char T fpdata aidata G
   := @Build_fold_grammar_data
        Char T fpdata aidata G
-       fgd_compiled_productions
-       fgd_compiled_productions_correct
        fgd_fold_grammar
        (fun nt => f_equal (fun g => lookup_state g nt) fgd_fold_grammar_correct).
 
 Ltac make_fold_grammar_data_from v :=
-  let lem := lazymatch v with
+  let lem := match v with
              | @fold_grammar ?Char ?T ?fpdata ?aidata ?G
                => constr:(@Build_fold_grammar_data' Char T fpdata aidata G)
              end in
-  let compiled_ps := lazymatch v with
-                     | @fold_grammar ?Char ?T ?fpdata ?aidata ?G
-                       => constr:(@opt.compile_grammar _ _ (@compile_item_data_of_abstract_interpretation _ _ fpdata aidata G) G)
-                     end in
-  let compiled_ps' := (eval vm_compute in compiled_ps) in
-  let v := constr:(v compiled_ps') in
   let v' := (eval vm_compute in v) in
-  constr:(lem compiled_ps' ltac:(vm_cast_no_check (eq_refl compiled_ps')) v' ltac:(vm_cast_no_check (eq_refl v'))).
+  constr:(lem v' ltac:(vm_cast_no_check (eq_refl v'))).
 
 Ltac make_fold_grammar_data G :=
   let v := constr:(fold_grammar G) in

@@ -388,7 +388,7 @@ Module Export Exports.
   Export DisjointLemmasEarlyDeclarations.
   (** hide the arguments to Build_disjoint_search_data *)
   Notation precomputed_search_data
-    := (FromAbstractInterpretation.Build_fold_grammar_data' _ _).
+    := (FromAbstractInterpretation.Build_fold_grammar_data' _).
 
   Ltac do_disjoint_precomputations _ ::=
     let G := get_grammar in

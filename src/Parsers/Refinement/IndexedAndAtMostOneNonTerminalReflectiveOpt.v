@@ -8,7 +8,6 @@ Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Import Fiat.Parsers.StringLike.Core.
-Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
@@ -82,13 +81,12 @@ Module opt.
   Definition has_only_terminals {Char} := Eval compute in @has_only_terminals Char.
   Definition sumbool_of_bool := Eval compute in Sumbool.sumbool_of_bool.
   Local Declare Reduction red_fp := cbv [FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation Fix.aggregate_state Definitions.prestate Definitions.lattice_data Definitions.state FromAbstractInterpretation.fold_grammar initial_nonterminals_data rdp_list_predata rdp_list_initial_nonterminals_data pregrammar_productions FromAbstractInterpretationDefinitions.fold_constraints FromAbstractInterpretationDefinitions.fold_productions' FromAbstractInterpretationDefinitions.fold_production' FromAbstractInterpretationDefinitions.fold_item' of_nonterminal rdp_list_of_nonterminal default_of_nonterminal Lookup_idx FromAbstractInterpretationDefinitions.fold_constraints_Proper FromAbstractInterpretationDefinitions.fold_constraints_ext FromAbstractInterpretationDefinitions.fold_productions'_ext FromAbstractInterpretationDefinitions.fold_production'_ext FromAbstractInterpretationDefinitions.fold_item'_ext FromAbstractInterpretationDefinitions.fold_constraints_extR FromAbstractInterpretationDefinitions.fold_productions'_extR FromAbstractInterpretationDefinitions.fold_production'_extR FromAbstractInterpretationDefinitions.fold_item'_extR Fix.lookup_state FromAbstractInterpretationDefinitions.fold_constraints_Proper_state_beq FromAbstractInterpretationDefinitions.fold_constraints_ProperR].
-  Definition lookup_state' {G} compiled_productions :=
+  Definition lookup_state' {G} :=
     Eval red_fp in
       @Fix.lookup_state
         (@FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation
            Ascii.ascii nat FixedLengthLemmas.length_result_lattice
-           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G
-           compiled_productions).
+           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G).
   Definition fold_grammar' pp unix
     := Eval red_fp in
         let G := {| pregrammar_productions := pp ; nonterminals_unique := unix |} in
@@ -99,11 +97,11 @@ Module opt.
   Definition lookup_state : FMapPositive.PositiveMap.tree (Definitions.lattice_for nat) -> nat -> Definitions.lattice_for nat.
   Proof.
     let term := match (eval cbv [lookup_state'] in @lookup_state') with
-                | fun _ _ => ?term => term
+                | fun _ => ?term => term
                 end in
     exact term.
   Defined.
-  Definition fold_grammar (pp : list (string * Core.productions Ascii.ascii)) : list (opt.productions (Definitions.lattice_for nat)) -> FMapPositive.PositiveMap.t (Definitions.lattice_for nat).
+  Definition fold_grammar (pp : list (string * Core.productions Ascii.ascii)) : FMapPositive.PositiveMap.t (Definitions.lattice_for nat).
   Proof.
     let term := match (eval cbv [fold_grammar'] in (@fold_grammar' pp)) with
                 | fun _ => ?term => term
@@ -114,11 +112,7 @@ Module opt.
   Definition expanded_fallback_list'_body_sig {G} : { b : _ | b = @expanded_fallback_list'_body G }.
   Proof.
     eexists.
-    cbv [id
-           expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal default_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else
-           opt.compile_productions opt.compile_production opt.compile_item opt.compile_nonterminal opt.nonterminal_names FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation opt.compile_grammar
-           pregrammar_nonterminals
-           opt.on_terminal FromAbstractInterpretationDefinitions.on_terminal FixedLengthLemmas.length_result_aidata].
+    cbv [expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal default_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else].
     change (@Fix.lookup_state ?v) with (@lookup_state).
     change (FromAbstractInterpretation.fold_grammar G) with (fold_grammar (pregrammar_productions G)).
     change @fst with @opt.fst.
@@ -156,8 +150,7 @@ Module opt.
     : FMapPositive.PositiveMap.t (Definitions.lattice_for nat) -> default_production_carrierT -> ret_cases.
   Proof.
     let term := (eval cbv [expanded_fallback_list'_body'] in (@expanded_fallback_list'_body' ps)) in
-    let fg := lazymatch term with context[fold_grammar ps ?v] => constr:(fold_grammar ps v) end in
-    let term := match (eval pattern fg in term) with
+    let term := match (eval pattern (fold_grammar ps) in term) with
                 | ?term _ => term
                 end in
     exact term.
@@ -188,13 +181,10 @@ Module opt.
   Definition Let_In {A B} (x : A) (f : A -> B) := let y := x in f y.
   Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ((nat * (nat * nat)) * ret_cases)
     := map (fun x => (x, @expanded_fallback_list'_body G fg x)) (premap_expanded_fallback_list'_body G).
-  Local Hint Immediate FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation : typeclass_instances.
   Definition expanded_fallback_list_body (G : pregrammar' Ascii.ascii) : list ((nat * (nat * nat)) * ret_cases)
-    := Let_In (opt.compile_grammar G)
-              (fun compiled_productions
-               => Let_In
-                    (fold_grammar G compiled_productions)
-                    (map_expanded_fallback_list'_body G)).
+    := Let_In
+         (fold_grammar G)
+         (map_expanded_fallback_list'_body G).
 End opt.
 
 Class opt_of {T} (term : T) := mk_opt_of : T.
