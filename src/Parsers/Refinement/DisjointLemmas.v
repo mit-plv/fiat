@@ -387,8 +387,9 @@ Ltac pose_rvalid := let G := get_grammar in pose_rvalid_for G.*)
 Module Export Exports.
   Export DisjointLemmasEarlyDeclarations.
   (** hide the arguments to Build_disjoint_search_data *)
+  Local Arguments FromAbstractInterpretation.Build_fold_grammar_data' {_ _ _ _ _} _ _ : assert.
   Notation precomputed_search_data
-    := (FromAbstractInterpretation.Build_fold_grammar_data' _).
+    := (FromAbstractInterpretation.Build_fold_grammar_data' _ _).
 
   Ltac do_disjoint_precomputations _ ::=
     let G := get_grammar in

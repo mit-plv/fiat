@@ -6,6 +6,7 @@ Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.Definitions.
+Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.ContextFreeGrammar.Fix.FromAbstractInterpretationDefinitions.
 Require Import Fiat.Common.List.ListMorphisms.
 
@@ -34,8 +35,8 @@ Section general_fold.
           (R_combine_production : Proper (R ==> R ==> R) combine_production)
           (R_lub : Proper (R ==> R ==> R) least_upper_bound).
 
-  Lemma fold_item'_Proper_hetero
-    : Proper (pointwise_relation _ R ==> eq ==> R) (fold_item' G).
+  (*Lemma fold_item'_Proper_hetero
+    : Proper (pointwise_relation _ R ==>  ==> R) (@fold_item').
   Proof.
     intros ?? H [?|?] ??; subst; simpl; trivial.
   Qed.
@@ -66,5 +67,5 @@ Section general_fold.
     : Proper (pointwise_relation _ R ==> eq ==> R) (fold_constraints G).
   Proof.
     repeat intro; apply fold_productions'_Proper_hetero; repeat (trivial || subst).
-  Qed.
+  Qed.*)
 End general_fold.

@@ -189,10 +189,14 @@ Section might_be_empty.
     : collapse_might_be_empty (might_be_empty_nt G nt) = true.
   Proof.
     unfold might_be_empty_nt.
-    apply fold_grammar_correct_item in p.
+    apply (fold_grammar_correct_item eq_refl) in p.
     destruct p as [P [Hp0 p]].
     rewrite fgd_fold_grammar_correct.
-    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
+    lazymatch goal with
+    | [ p : related _ (lookup_state ?st ?nt) |- collapse_might_be_empty (lookup_state ?st ?nt') = true ]
+      => change nt' with nt;
+           destruct (lookup_state st nt) as [|[]|] eqn:H
+    end; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       try specialize (p eq_refl);
       try specialize (p _ Hp0); (congruence || tauto).
@@ -207,9 +211,13 @@ Section might_be_empty.
   Proof.
     unfold might_be_empty_nt.
     rewrite fgd_fold_grammar_correct.
-    apply fold_grammar_correct in p.
+    apply (fold_grammar_correct eq_refl) in p.
     destruct p as [P [Hp0 p]].
-    destruct (lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt)) as [|[]|] eqn:H; [ reflexivity | | | ];
+    lazymatch goal with
+    | [ p : related _ (lookup_state ?st ?nt) |- collapse_might_be_empty (lookup_state ?st ?nt') = true ]
+      => change nt' with nt;
+           destruct (lookup_state st nt) as [|[]|] eqn:H
+    end; [ reflexivity | | | ];
     simpl in p; unfold might_be_empty_accurate in p;
       try specialize (p eq_refl);
       try specialize (p _ Hp0); (congruence || tauto).

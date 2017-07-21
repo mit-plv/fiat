@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
@@ -354,6 +355,8 @@ Section IndexedImpl.
 
     Global Arguments ret_cases_to_comp / _ _.
 
+    Local Hint Immediate FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation : typeclass_instances.
+
     Definition expanded_fallback_list'_body
       := (fun p
           => if production_carrier_valid p
@@ -369,7 +372,7 @@ Section IndexedImpl.
                              (fun _ => ret_cases)
                              (fun (n : nat) => ret_nat n)
                              (ret_pick p)
-                             (length_of_any G nt))
+                             (length_of_any G (opt.compile_grammar G) nt))
                   end
              else invalid).
 
@@ -1083,9 +1086,9 @@ Section IndexedImpl.
              | [ H : collapse_length_result ?e = Some _ |- _ ]
                => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
              | _ => intro
-             | [ H : length_of_any ?G ?nt = _,
+             | [ H : length_of_any ?G _ ?nt = _,
                      p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+               => (pose proof (has_only_terminals_parse_of_item_length eq_refl H p); clear H)
              end;
         fin2. }
     { repeat match goal with
@@ -1110,9 +1113,9 @@ Section IndexedImpl.
              | [ H : collapse_length_result ?e = Some _ |- _ ]
                => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
              | _ => intro
-             | [ H : length_of_any ?G ?nt = _,
+             | [ H : length_of_any ?G _ ?nt = _,
                      p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+               => (pose proof (has_only_terminals_parse_of_item_length eq_refl H p); clear H)
              end;
         fin2. }
     { repeat match goal with

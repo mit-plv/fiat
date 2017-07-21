@@ -3,6 +3,7 @@ Require Import Coq.Lists.List Coq.Strings.String.
 Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common.
 Require Import Fiat.Common.NatFacts.
@@ -154,18 +155,24 @@ Definition length_result := lattice_for nat.
 Coercion collapse_length_result (v : length_result) : option nat
   := Eval cbv [collapse_lattice_for] in collapse_lattice_for v.
 
+Local Hint Immediate compile_item_data_of_abstract_interpretation : typeclass_instances.
+
 Definition length_of_any {Char} (G : pregrammar' Char)
+           (compiled_productions : list (opt.productions state))
 : String.string -> length_result
-  := fun nt => lookup_state (fold_grammar G) (@of_nonterminal _ (@rdp_list_predata _ G) nt).
+  := fun nt => lookup_state (fold_grammar G compiled_productions) (opt.compile_nonterminal nt).
 
 Section has_only_terminals.
   Context {Char}
           {HSLM : StringLikeMin Char}
           {HSL : StringLike Char}
           {HSLP : StringLikeProperties Char}
-          (G : pregrammar' Char) {n}
+          (G : pregrammar' Char)
+          compiled_productions
+          (compiled_productions_correct : List.map opt.compile_productions (List.map snd (pregrammar_productions G)) = compiled_productions)
+          {n}
           nt
-          (H : length_of_any G nt = constant n)
+          (H : length_of_any G compiled_productions nt = constant n)
           (str : String).
 
   Lemma has_only_terminals_parse_of_item_length
@@ -173,7 +180,7 @@ Section has_only_terminals.
     : length str = n.
   Proof.
     unfold length_of_any in H.
-    apply fold_grammar_correct_item in p.
+    eapply fold_grammar_correct_item in p; [ | eassumption ].
     rewrite H in p.
     destruct p; intuition.
   Qed.
@@ -183,7 +190,7 @@ Section has_only_terminals.
     : length str = n.
   Proof.
     unfold length_of_any in H.
-    apply fold_grammar_correct in p.
+    eapply fold_grammar_correct in p; [ | eassumption ].
     rewrite H in p.
     destruct p; intuition.
   Qed.
