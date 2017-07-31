@@ -35,29 +35,159 @@ Section IndexedImpl.
       { Time refine_disjoint_search_for. }
       { Time refine_disjoint_search_for. }
       { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
       { Time refine_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_rev_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time refine_binop_table. }
-      { Time rewrite_disjoint_search_for. }
-      { Time refine_binop_table. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_rev_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
-      { Time refine_binop_table. }
-      { Time rewrite_disjoint_search_for. }
-      { Time refine_binop_table. }
-      { Time rewrite_disjoint_search_for. }
-      { Time rewrite_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* need to handle ??? \s* '++', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { exfalso; admit. (* need to handle ??? \s* '++', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* reversed binop search? *) }
+      { exfalso; admit. (* need to handle ??? \s* ')', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* need to handle ??? \s* ']', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* reversed binop search for whitespace? *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* reversed binop search for whitespace? *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? *) }
+      { exfalso; admit. (* need to handle ??? \s* ']', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? <stuff> \s* , \s* ident \s* : \s* expr *) }
+      { exfalso; admit. (* need to handle ??? \s* '}', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      { exfalso; admit. (* need to handle ??? \s* ')', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
+      { Time refine_disjoint_search_for. }
+      (*{ Require Import ExplorationUtil.
+        print_production javascript_assignment_expression_pregrammar (4, (0, 2)).
+print_productions javascript_assignment_expression_pregrammar "LiteralField". (*"MemberOperator". *)
+        pose javascript_assignment_expression_pregrammar as G.
+        print_productions javascript_assignment_expression_pregrammar "LeftSideExpression normal".
+        print_productions javascript_assignment_expression_pregrammar "AssignmentExpression normal,allowIn".
+        print_productions G "CompoundAssignment".*)
 
       simplify parser splitter.
       Show Ltac Profile.
