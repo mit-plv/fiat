@@ -41,7 +41,7 @@ Ltac lookup_production g idx :=
   let v := constr:(default_to_rproduction g idx) in
   eval vm_compute in v.
 Ltac lookup_productions g nt :=
-  let v := constr:(RLookup_idx g idx) in
+  let v := constr:(RLookup_idx g nt) in
   eval vm_compute in v.
 Ltac print_production g idx :=
   let v := lookup_production g idx in
