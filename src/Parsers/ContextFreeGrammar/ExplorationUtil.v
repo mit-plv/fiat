@@ -12,8 +12,8 @@ Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Parsers.Refinement.PossibleTerminalsSets.
 Export ListNotations.
 Global Open Scope list_scope.
-Global Open Scope string_scope.
 Global Open Scope char_scope.
+Global Open Scope string_scope.
 Notation NT s := (RNonTerminal s%string).
 Notation t e := (RTerminal e).
 Notation "=? v" := (rbeq v%char) (at level 30).
@@ -77,7 +77,7 @@ Ltac get_possible lem_nt lem_prod v :=
        let v := (eval vm_compute in v) in
        lazymatch type of v with
        | list ascii
-         => (eval vm_compute in (sort v))
+         => (eval vm_compute in (List.map (fun c => String.String c String.EmptyString) (sort v)))
        | _ => v
        end
   end.
