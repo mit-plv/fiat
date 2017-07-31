@@ -138,16 +138,8 @@ Ltac apply_splitter_tower_lemma :=
   eapply lem; clear lem;
   intros.
 
-Ltac simplify_parser_splitter' :=
-  first [ idtac;
-          match goal with
-          | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
-                        ?v ]
-            => apply (@simplify_monad_laws_first_step _ _ _ c f v)
-          end;
-          do_disjoint_precomputations ();
-          apply_splitter_tower_lemma
-        | progress autounfold with parser_sharpen_db;
+Ltac simplify_parser_splitter'' :=
+  first [ progress autounfold with parser_sharpen_db;
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
@@ -184,6 +176,19 @@ Ltac simplify_parser_splitter' :=
         | rewrite !if_aggregate3 by solve_prod_beq
         | progress parser_pull_tac
         | progress (simpl @fst; simpl @snd)*) ].
+
+Ltac simplify_parser_splitter' :=
+  lazymatch goal with
+  | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+                ?v ]
+    => apply (@simplify_monad_laws_first_step _ _ _ c f v);
+       do_disjoint_precomputations ();
+       apply_splitter_tower_lemma
+  | [ |- refine { splits : list nat | _ } ?e ]
+    => first [ is_evar e
+             | simplify_parser_splitter'' ]
+  | _ => simplify_parser_splitter''
+  end.
 
 Tactic Notation "simplify" "parser" "splitter" :=
   repeat simplify_parser_splitter'.
