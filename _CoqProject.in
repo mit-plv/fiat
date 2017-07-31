@@ -442,6 +442,7 @@ src/Parsers/AbstractInterpretation/NonTerminalMapWf.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
+src/Parsers/ContextFreeGrammar/ExplorationUtil.v
 src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
