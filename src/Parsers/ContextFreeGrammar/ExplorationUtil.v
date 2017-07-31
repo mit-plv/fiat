@@ -40,8 +40,14 @@ Definition default_to_rproduction {Char} (G : pregrammar Char) (idx : Carriers.d
 Ltac lookup_production g idx :=
   let v := constr:(default_to_rproduction g idx) in
   eval vm_compute in v.
+Ltac lookup_productions g nt :=
+  let v := constr:(RLookup_idx g idx) in
+  eval vm_compute in v.
 Ltac print_production g idx :=
   let v := lookup_production g idx in
+  idtac v.
+Ltac print_productions g idx :=
+  let v := lookup_productions g idx in
   idtac v.
 Ltac norm_pregrammar G :=
   lazymatch G with
