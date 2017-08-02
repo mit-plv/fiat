@@ -168,32 +168,32 @@ Section IndexedImpl.
       { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
       { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse binop search for , \s* ... *) }
       { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ] *) }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse binop search for , \s* ... (hopefully?) *) }
       { exfalso; admit. (* reverse disjoint + fixed length for ... \s* } *) }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ) *) }
-      { Time idtac; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
       (*{ Time Import ExplorationUtil.
         pose javascript_assignment_expression_pregrammar as G.
         print_production javascript_assignment_expression_pregrammar (4, (0, 1)).
