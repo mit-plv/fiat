@@ -6,6 +6,19 @@ Require Import Fiat.Parsers.ExtrOcamlParsers. (* for simpl rules for [find_first
 Require Import Fiat.Parsers.Refinement.BinOpBrackets.BinOpRules.
 Require Import Fiat.Parsers.StringLike.String.
 
+(*Require Coq.micromega.Lia.
+Require Coq.PArith.BinPos.
+Require Coq.Lists.List.
+Require Coq.Sorting.Mergesort.
+Require Coq.Structures.OrdersEx.
+Require Coq.Strings.Ascii.
+Require Coq.Strings.String.
+Require Fiat.Parsers.ContextFreeGrammar.Core.
+Require Fiat.Parsers.ContextFreeGrammar.Carriers.
+Require Fiat.Parsers.ContextFreeGrammar.Reflective.
+Require Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Fiat.Parsers.Refinement.PossibleTerminalsSets.*)
+Require ExplorationUtil.
 Set Ltac Profiling.
 Section IndexedImpl.
   (*Context {HSLM : StringLikeMin Ascii.ascii}
@@ -32,155 +45,195 @@ Section IndexedImpl.
       Reset Ltac Profile.
       Time simplify parser splitter.
       Show Ltac Profile.
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* need to handle ??? \s* '++', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { exfalso; admit. (* need to handle ??? \s* '++', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* reversed binop search? *) }
-      { exfalso; admit. (* need to handle ??? \s* ')', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* need to handle ??? \s* ']', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* reversed binop search for whitespace? *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* reversed binop search for whitespace? *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? *) }
-      { exfalso; admit. (* need to handle ??? \s* ']', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* ??? <stuff> \s* , \s* ident \s* : \s* expr *) }
-      { exfalso; admit. (* need to handle ??? \s* '}', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
-      { exfalso; admit. (* need to handle ??? \s* ')', presumably by reverse-searching with a combination of fixed-length and possible characters... *) }
-      { Time refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* = *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for *= \s* ... N.B. This is different, requires 2-char binop *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* = *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for *= \s* ... N.B. This is different, requires 2-char binop *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* = *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for *= \s* ... N.B. This is different, requires 2-char binop *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* = *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for *= \s* ... N.B. This is different, requires 2-char binop *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* & *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* & *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* & *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* binop search for ... \s* & *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for = \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for = \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for = \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for = \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for < \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true instanceof Boolean instanceof new "instanceof"] and [true instanceof Boolean instanceof new instanceof] *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for < \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true instanceof Boolean instanceof new "instanceof"] and [true instanceof Boolean instanceof new instanceof] *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for < \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true instanceof Boolean instanceof new "instanceof"] and [true instanceof Boolean instanceof new instanceof] *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true in Object in new "in"] and [true in Object in new in] (invalid parse) *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for < \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true instanceof Boolean instanceof new "instanceof"] and [true instanceof Boolean instanceof new instanceof] *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ??? wtf [true in Object in new "in"] and [true in Object in new in] (invalid parse) *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for + \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for + \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for * \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for * \s* ... *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ++ *) }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ++ *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ) *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ] *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
+      { Time shelve; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* ???  "[]. a . a", "[]. a [ [] + [] ]" *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse paren search for \s* (...) N.B. this requires 0-char binops *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... *) }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ] *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse binop search for , \s* ... (hopefully?) *) }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* } *) }
+      { Time idtac; refine_disjoint_search_for. }
+      { exfalso; admit. (* reverse disjoint + fixed length for ... \s* ) *) }
+      { Time idtac; refine_disjoint_search_for. }
+      (*{ Time Import ExplorationUtil.
+        pose javascript_assignment_expression_pregrammar as G.
+        print_production javascript_assignment_expression_pregrammar (4, (0, 1)).
+        print_productions G "LiteralField".
+        print_productions G "LiteralElement".
+        print_productions G "AssignmentExpression normal,allowIn".
+        print_productions G "MemberOperator".
+        print_productions G "CallExpression initial".
+        print_productions G "ShortNewSubexpression".
+        print_productions G "Arguments".
+        print_productions G "FullNewSubexpression".
+        print_productions G "FullNewSubexpression".
+        print_productions G "PrimaryExpression normal".
+        print_productions G "MemberOperator".
+        print_chars "MemberOperator".
+        print_productions G "ArgumentList".
+        print_last_chars "PostfixExpression normal".
+        print_productions G "RelationalExpression initial,noIn".
+        print_productions G "AdditiveExpression normal".
+        print_productions G "MultiplicativeExpression normal".
+        print_productions G "UnaryExpression normal".
+        print_productions G "PostfixExpression normal".
+        print_productions G "LeftSideExpression normal".
+        print_productions G "ShortNewExpression".
+        print_productions G "Arguments".
+        print_productions G "ShortNewSubexpression".
+        print_productions G "FullNewSubexpression".
+        print_productions G "PrimaryExpression normal".
+        print_productions G "SimpleExpression".
+        print_productions G "ObjectLiteral".
+        print_productions G "Identifier".
+        print_productions G "CallExpression normal"
+        print_productions G "SimpleExpression".
+        print_productions G "AssignmentExpression normal,noIn".
+        print_chars "CompoundAssignment".
+        print_productions javascript_assignment_expression_pregrammar "Expression initial,noIn".
+        print_productions G "AssignmentExpression normal,noIn".
+        print_productions javascript_assignment_expression_pregrammar "LeftSideExpression normal".
+        print_productions javascript_assignment_expression_pregrammar "AssignmentExpression normal,allowIn".
+        print_productions G "CompoundAssignment".*)
       (*{ Require Import ExplorationUtil.
         print_production javascript_assignment_expression_pregrammar (4, (0, 2)).
 print_productions javascript_assignment_expression_pregrammar "LiteralField". (*"MemberOperator". *)
