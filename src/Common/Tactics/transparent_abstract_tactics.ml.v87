@@ -1,6 +1,5 @@
 module TRANSPARENT_ABSTRACT =
   struct
-    open API
     open Environ
     open Context
     open Termops

@@ -1,6 +1,5 @@
 module WITH_DB =
   struct
-    open API
     open Tacticals.New
     open Names
     open Ltac_plugin
