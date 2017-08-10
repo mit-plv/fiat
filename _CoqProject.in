@@ -527,6 +527,8 @@ src/Parsers/Refinement/DisjointRulesCommon.v
 src/Parsers/Refinement/DisjointRulesRev.v
 src/Parsers/Refinement/EmptyLemmas.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
+src/Parsers/Refinement/ExtractSharpenedJSComment.v
+src/Parsers/Refinement/ExtractSharpenedJSON.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v

@@ -100,10 +100,6 @@ Proof.
   Time make_parser (@ComputationalSplitter _ Ocaml.string_stringlike _ _). (* 0.82 s *)
 Defined.
 
-Print js_comment_parser_ocaml.
-
-Recursive Extraction js_comment_parser_ocaml.
-
 Definition main_js_comment := premain js_comment_parser.
 Definition main_js_comment_ocaml := premain_ocaml js_comment_parser_ocaml.
 (*

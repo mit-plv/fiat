@@ -145,8 +145,6 @@ Proof.
   Time make_parser (@ComputationalSplitter _ Ocaml.string_stringlike _ _). (* 0.82 s *)
 Defined.*)
 
-Print json_parser(*_ocaml*).
-
 (*Recursive Extraction json_parser(*_ocaml*).*)
 (*
 Definition main_json := premain json_parser.

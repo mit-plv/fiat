@@ -1,9 +1,9 @@
 COMPATIBILITY_FILE=src/Common/Coq__8_4__8_5__Compat.v
 STDTIME?=/usr/bin/time -f "$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 
-.PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-all finitesets dns compiler facade-test ics fiat4monitors examples binencoders \
-	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-examples-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick binencoders-quick \
-	install install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-all install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-binencoders \
+.PHONY: fiat fiat-core querystructures parsers parsers-examples parsers-examples-verbose parsers-all finitesets dns compiler facade-test ics fiat4monitors examples binencoders \
+	fiat-quick fiat-core-quick querystructures-quick parsers-quick parsers-examples-quick parsers-examples-verbose-quick parsers-all-quick finitesets-quick dns-quick compiler-quick facade-test-quick ics-quick fiat4monitors-quick examples-quick binencoders-quick \
+	install install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-ics install-fiat4monitors install-examples install-binencoders \
 	pdf doc clean-doc \
 	test-parsers test-parsers-profile test-parsers-profile-graph
 
@@ -93,12 +93,16 @@ QUERYSTRUCTURES_UNMADE_VO := \
 	src/QueryStructure/Implementation/DataStructures/Bags/ProductBags.vo \
 	src/QueryStructure/Implementation/DataStructures/Bags/InvertedIndexBags.vo
 
-PARSERS_EXAMPLES_UNMADE_VO := \
+PARSERS_EXAMPLES_VERBOSE_UNMADE_VO := \
 	src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.vo
+
+PARSERS_EXAMPLES_UNMADE_VO := \
+	src/Parsers/Refinement/ExtractSharpenedJSComment.vo \
+	src/Parsers/Refinement/ExtractSharpenedJSON.vo \
+	$(PARSERS_EXAMPLES_VERBOSE_UNMADE_VO)
 
 PARSERS_UNMADE_VO := \
 	src/Parsers/Grammars/SimpleRecognizerOptimized.vo \
-	src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.vo \
 	src/Parsers/Refinement/SharpenedJSON.vo \
 	$(PARSERS_EXAMPLES_UNMADE_VO)
 
@@ -153,6 +157,7 @@ FIAT_CORE_VO := $(filter-out $(CORE_UNMADE_VO),$(filter src/Computation.vo src/A
 QUERYSTRUCTURES_VO := $(filter-out $(QUERYSTRUCTURES_UNMADE_VO),$(filter src/QueryStructure/%.vo,$(VOFILES)))
 PARSERS_VO := $(filter-out $(PARSERS_UNMADE_VO),$(filter src/Parsers/%.vo,$(VOFILES)))
 PARSERS_EXAMPLES_VO := $(filter-out $(PARSERS_EXAMPLES_UNMADE_VO),$(filter src/Parsers/Refinement/Sharpened%.vo,$(VOFILES)))
+PARSERS_EXAMPLES_VERBOSE_VO := $(filter-out $(PARSERS_EXAMPLES_VERBOSE_UNMADE_VO),$(filter src/Parsers/Refinement/ExtractSharpened%.vo,$(VOFILES)))
 PARSERS_ALL_VO := $(filter src/Parsers/%.vo,$(VOFILES))
 FINITESET_VO := $(filter src/FiniteSetADTs.vo src/FiniteSetADTs/%.vo,$(VOFILES))
 DNS_VO := $(filter src/Examples/DnsServer/%.vo,$(VOFILES))
@@ -172,6 +177,7 @@ fiat-core: $(FIAT_CORE_VO) $(TACTICS_TARGETS)
 querystructures: $(QUERYSTRUCTURES_VO)
 parsers: $(PARSERS_VO)
 parsers-examples: $(PARSERS_EXAMPLES_VO)
+parsers-examples-verbose: $(PARSERS_EXAMPLES_VERBOSE_VO)
 parsers-all: $(PARSERS_ALL_VO)
 finitesets: $(FINITESETS_VO)
 dns: $(DNS_VO)
@@ -189,6 +195,7 @@ fiat-core-quick: $(addsuffix .vio,$(basename $(FIAT_CORE_VO))) $(TACTICS_TARGETS
 querystructures-quick: $(addsuffix .vio,$(basename $(QUERYSTRUCTURES_VO)))
 parsers-quick: $(addsuffix .vio,$(basename $(PARSERS_VO)))
 parsers-examples-quick: $(addsuffix .vio,$(basename $(PARSERS_EXAMPLES_VO)))
+parsers-examples-verbose-quick: $(addsuffix .vio,$(basename $(PARSERS_EXAMPLES_VERBOSE_VO)))
 parsers-all-quick: $(addsuffix .vio,$(basename $(PARSERS_ALL_VO)))
 finitesets-quick: $(addsuffix .vio,$(basename $(FINITESETS_VO)))
 dns-quick: $(addsuffix .vio,$(basename $(DNS_VO)))
@@ -203,6 +210,7 @@ install-fiat-core: T = $(FIAT_CORE_VO)
 install-querystructures: T = $(QUERYSTRUCTURES_VO)
 install-parsers: T = $(PARSERS_VO)
 install-parsers-examples: T = $(PARSERS_EXAMPLES_VO)
+install-parsers-examples-verbose: T = $(PARSERS_EXAMPLES_VERBOSE_VO)
 install-parsers-all: T = $(PARSERS_ALL_VO)
 install-finitesets: T = $(FINITESETS_VO)
 install-dns: T = $(DNS_VO)
@@ -211,7 +219,7 @@ install-fiat4monitors: T = $(FIAT4MONITORS_VO)
 install-examples: T = $(EXAMPLES_VO)
 install-binencoders: T = $(BINENCODERS_VO)
 
-install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
+install-fiat install-fiat-core install-querystructures install-parsers install-parsers-examples install-parsers-examples-verbose install-parsers-all install-finitesets install-dns install-compiler install-fiat4monitors install-examples install-binencoders:
 	$(SHOW)'MAKE -f Makefile.coq INSTALL'
 	$(HIDE)$(MAKE) -f Makefile.coq VFILES="$(call vo_to_installv,$(T))" install
 
