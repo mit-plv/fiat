@@ -437,7 +437,8 @@ Section MutateRefinements.
     intros; rewrite GetRelDropConstraints in *.
     intros; eapply (proj1 (Iterate_Ensemble_BoundedIndex_filter_equiv
                           _
-                          (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); eauto.
+                          (Build_DecideableEnsemble _ _ (ibound_check_dec _) )) H1); 
+    try rewrite GetRelDropConstraints; eauto.
   Qed.
 
   Lemma refine_Iterate_MutationPreservesCrossConstraints'
