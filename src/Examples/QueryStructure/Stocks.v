@@ -89,10 +89,64 @@ Definition StocksSpec : ADT StocksSig :=
      ret (r, max)
 }%methDefParsing.
 
+Ltac drop_constraints_from_insert ::=
+  remove trivial insertion checks; rewrite refine_bind;
+   [ 
+   | reflexivity
+   | unfold pointwise_relation; intros * *;
+     set_refine_evar;
+     repeat (first
+       [ drop_symmetric_functional_dependencies
+       | remove_trivial_fundep_insertion_constraints
+       | fundepToQuery; try simplify with monad laws
+       | foreignToQuery; try simplify with monad laws
+       | setoid_rewrite refine_trivial_if_then_else; simplify with monad laws ]); pose_string_hyps;
+     pose_heading_hyps; finish honing ]; pose_string_hyps; pose_heading_hyps; finish honing.
+
+    Ltac finish_planning' PickIndex
+     BuildEarlyIndex BuildLastIndex
+     IndexUse createEarlyTerm createLastTerm
+     IndexUse_dep createEarlyTerm_dep createLastTerm_dep
+     BuildEarlyBag BuildLastBag ::=
+  (* Automatically select indexes + data structure. *)
+
+    PickIndex ltac:(fun attrlist =>
+                      make_simple_indexes attrlist BuildEarlyIndex BuildLastIndex).
+  
 
 Definition SharpenedStocks :
   FullySharpened StocksSpec.
 Proof.
+
+  master_plan EqIndexTactics.
+  plan
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  plan
+    EqIndexUse createEarlyEqualityTerm createLastEqualityTerm
+    EqIndexUse_dep createEarlyEqualityTerm_dep createLastEqualityTerm_dep.
+  Focus 5.
+  Focused_refine_Query.
+  Time implement_In_opt. (* 13.076s *)
+  (* This is the optimized version of the first step of refining queries. It takes 13.076s on my machine. *)
+  Undo 1.
+  Time repeat first 
+       [setoid_rewrite (@refine_Filtered_Query_In_Enumerate); try eassumption
+       | setoid_rewrite refine_Filtered_Join_Query_In_Enumerate'; try eassumption
+       | setoid_rewrite (refine_List_Query_In_Where _ _ _); try eassumption; simpl
+       | setoid_rewrite <- filter_and
+       | setoid_rewrite andb_true_r].
+  (* The setoid_rewrite version takes 177.104s but is much simpler. *)
+  (* I haven't patched up the rest. *)
+
+
+  
+  implement_In_opt.
+  setoid_rewrite refine_Filtered_Join_Query_In_Enumerate'.
+  
+  start sharpening ADT.
+  start_honing_QueryStructure'.
+  pose_string_hyps.
 
   master_plan EqIndexTactics.
 

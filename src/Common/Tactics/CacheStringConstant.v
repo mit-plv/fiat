@@ -23,7 +23,7 @@ Ltac pose_string_hyps :=
                   (cache_term (String R R') as str
                                                 run (fun id => fold id in *;
                                                                add id to stringCache));
-                  exact I); clear H'
+                  exact I); clear H'; fold_string_hyps
          | |- context [ @Build_BoundedIndex ?A ?n ?Bound ?bindex' ?indexb' ] =>
            let str := fresh "BStringId" in
            let H' := fresh in
@@ -32,7 +32,7 @@ Ltac pose_string_hyps :=
            (cache_term (@Build_BoundedIndex A n Bound bindex' indexb') as str
                                          run (fun id => fold id in *;
                                                         add id to stringCache));
-           exact I); clear H'
+           exact I); clear H'; fold_string_hyps
          end.
 
 Ltac pose_string_hyps_in H :=
@@ -48,7 +48,7 @@ Ltac pose_string_hyps_in H :=
            (cache_term (String R R') as str
                                          run (fun id => fold id in *;
                                                         add id to stringCache));
-           exact I); clear H'
+           exact I); clear H'; fold_string_hyps_in H
          | context [ @Build_BoundedIndex ?A ?n ?Bound ?bindex' ?indexb' ] =>
            let str := fresh "BStringId" in
            let H' := fresh in
@@ -57,5 +57,5 @@ Ltac pose_string_hyps_in H :=
            (cache_term (@Build_BoundedIndex A n Bound bindex' indexb') as str
                                          run (fun id => fold id in *;
                                                         add id to stringCache));
-           exact I); clear H'
+           exact I); clear H'; fold_string_hyps_in H
          end).
