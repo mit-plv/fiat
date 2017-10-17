@@ -85,7 +85,7 @@ Lemma compose_encode_correct
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate'
               predicate_rest
               encode1 decode1 P)
@@ -103,12 +103,12 @@ Lemma compose_encode_correct
       (decode2_pf : forall proj,
           predicate' proj ->
           cache_inv_Property P P_inv2 ->
-          encode_decode_correct_f cache transformer
+          CorrectDecoder cache transformer
                                   (fun data => predicate data /\ project data = proj)
                                   predicate_rest'
                                   encode2
                                   (decode2 proj) P)
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       (fun a => predicate a)
       predicate_rest'
@@ -173,7 +173,7 @@ Lemma compose_encode_correct_no_dep
       (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
-         -> encode_decode_correct_f cache transformer predicate' predicate_rest
+         -> CorrectDecoder cache transformer predicate' predicate_rest
                                     encode1 decode1 P)
       (predicate_a' : predicate' a')
       (predicate_rest_impl :
@@ -188,12 +188,12 @@ Lemma compose_encode_correct_no_dep
       (decode2_pf :
          predicate' a' ->
          cache_inv_Property P P_inv2 ->
-         encode_decode_correct_f cache transformer
+         CorrectDecoder cache transformer
                                  (fun data => predicate data)
                                  predicate_rest'
                                  encode2
                                  decode2 P)
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       (fun a => predicate a)
       predicate_rest'
@@ -234,7 +234,7 @@ Proof.
   }
 Qed.
 
-Lemma encode_decode_correct_finish {A B}
+Lemma CorrectDecoderinish {A B}
   : forall (cache : Cache)
            (transformer : Transformer B)
            (predicate : A -> Prop)
@@ -244,7 +244,7 @@ Lemma encode_decode_correct_finish {A B}
            (b : bool),
     (forall a', predicate a' -> a' = a)
     -> decides b (predicate a)
-    -> encode_decode_correct_f
+    -> CorrectDecoder
          cache
          transformer
          predicate
@@ -253,7 +253,7 @@ Lemma encode_decode_correct_finish {A B}
          (fun b' ctxD => if b then Some (a, b', ctxD) else None)
          decode_inv.
 Proof.
-  unfold encode_decode_correct_f; split; intros.
+  unfold CorrectDecoder; split; intros.
   - eexists env'; pose proof (H _ H2); subst; find_if_inside;
       simpl in *; intuition eauto; computes_to_inv; injections.
     rewrite transform_id_left; eauto.

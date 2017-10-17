@@ -69,11 +69,11 @@ Ltac shelve_inv :=
 Definition transformer : Transformer ByteString := ByteStringQueueTransformer.
 
 Theorem decode_list_all_correct_ComposeOpt
-  : encode_decode_correct_f
+  : CorrectDecoder
       _ transformer
       (fun a => True)
       (fun _ b => b = transform_id)
-      (encode_list_Spec encode_word_Spec)
+      (format_list format_word)
       (fun (bin : ByteString) (env : CacheDecode) =>
          Some (byteString bin, ByteString_id, tt))
       (fun a => True).
@@ -86,7 +86,7 @@ Ltac solve_data_inv data_inv_hints :=
         | shelve_inv ].
 
 Ltac finalize_decoder P_inv :=
-  (unfold encode_decode_correct_f; intuition eauto);
+  (unfold CorrectDecoder; intuition eauto);
   [ computes_to_inv; injections; subst; simpl;
     match goal with
       H : Equiv _ ?env |- _ =>
@@ -123,19 +123,19 @@ Definition EtherTypeCodes : Vector.t (word 16) 3 :=
   ].
 
 Definition encode_EthernetFrame_Spec (eth : EthernetFrame) :=
-          encode_Vector_Spec encode_word_Spec eth!"Destination"
-    ThenC (encode_Vector_Spec encode_word_Spec eth!"Source")
+          format_Vector format_word eth!"Destination"
+    ThenC (format_Vector format_word eth!"Source")
     ThenC Either
-          encode_nat_Spec 16 (|eth!"Data"|)
-          ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-          ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-          ThenC encode_word_Spec (WO~1~1~0~0~0~0~0~0)
-          ThenC encode_word_Spec (wzero 24)
-          ThenC encode_enum_Spec EtherTypeCodes eth!"Type"
-          ThenC encode_list_Spec encode_word_Spec eth!"Data"
+          format_nat 16 (|eth!"Data"|)
+          ThenC format_word (WO~0~1~0~1~0~1~0~1)
+          ThenC format_word (WO~0~1~0~1~0~1~0~1)
+          ThenC format_word (WO~1~1~0~0~0~0~0~0)
+          ThenC format_word (wzero 24)
+          ThenC format_enum EtherTypeCodes eth!"Type"
+          ThenC format_list format_word eth!"Data"
           DoneC
-       Or encode_enum_Spec EtherTypeCodes eth!"Type"
-          ThenC encode_list_Spec encode_word_Spec eth!"Data"
+       Or format_enum EtherTypeCodes eth!"Type"
+          ThenC format_list format_word eth!"Data"
           DoneC.
 
 Definition ethernet_Frame_OK (e : EthernetFrame) := lt (|e!"Data"|) 1501.
@@ -163,22 +163,22 @@ Definition v1042_test (b : ByteString) : bool :=
 Lemma v1042_OKT
   : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
    ethernet_Frame_OK data ->
-   (encode_nat_Spec 16 (|data!"Data" |)
-    ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-          ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-                ThenC encode_word_Spec WO~1~1~0~0~0~0~0~0
-                      ThenC encode_word_Spec (wzero 24) ThenC encode_enum_Spec EtherTypeCodes data!"Type" ThenC encode_list_Spec encode_word_Spec data!"Data" DoneC) env
+   (format_nat 16 (|data!"Data" |)
+    ThenC format_word WO~0~1~0~1~0~1~0~1
+          ThenC format_word WO~0~1~0~1~0~1~0~1
+                ThenC format_word WO~1~1~0~0~0~0~0~0
+                      ThenC format_word (wzero 24) ThenC format_enum EtherTypeCodes data!"Type" ThenC format_list format_word data!"Data" DoneC) env
    ↝ (bin, xenv) -> v1042_test (transform bin ext) = true.
 Proof.
   unfold ethernet_Frame_OK; intros.
   unfold compose at 1 in H0; unfold Bind2 in H0;
     computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
-  unfold encode_nat_Spec, encode_word_Spec in H0; computes_to_inv.
+  unfold format_nat, format_word in H0; computes_to_inv.
   pose proof (f_equal fst H0) as H'; simpl in H'; rewrite <- H'.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
   destruct n.
   eapply natToWord_wlt; eauto; try reflexivity.
   etransitivity.
@@ -192,18 +192,18 @@ Hint Resolve v1042_OKT : bin_split_hints.
 Lemma v1042_OKE
   : forall (data : EthernetFrame) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
     ethernet_Frame_OK data
-    -> (encode_enum_Spec EtherTypeCodes data!"Type" ThenC encode_list_Spec encode_word_Spec data!"Data" DoneC) env ↝ (bin, xenv)
+    -> (format_enum EtherTypeCodes data!"Type" ThenC format_list format_word data!"Data" DoneC) env ↝ (bin, xenv)
     -> v1042_test (transform bin ext) = false.
 Proof.
   unfold ethernet_Frame_OK; intros.
   unfold compose at 1 in H0; unfold Bind2 in H0;
     computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
-  unfold encode_enum_Spec, encode_word_Spec in H0; computes_to_inv.
+  unfold format_enum, format_word in H0; computes_to_inv.
   pose proof (f_equal fst H0) as H'; unfold fst in H'; rewrite <- H'.
   pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
   unfold v1042_test.
-  pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
+  pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
   revert w; clear.
   match goal with
     |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear
@@ -219,7 +219,7 @@ Ltac start_synthesizing_decoder :=
   (* Unfold encoder specification and the data and packet invariants *)
   repeat
     match goal with
-      |- appcontext [encode_decode_correct_f _ _ ?dataInv ?restInv ?encodeSpec] =>
+      |- appcontext [CorrectDecoder _ _ ?dataInv ?restInv ?encodeSpec] =>
       first [unfold dataInv
             | unfold restInv
             | unfold encodeSpec ]
@@ -232,16 +232,16 @@ Ltac start_synthesizing_decoder :=
 Ltac decode_step :=
   match goal with
   | |- _ => apply_compose
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_Vector_Spec _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ _ (format_Vector _) _ _] =>
     intros; eapply Vector_decode_correct
   | H : cache_inv_Property _ _
-    |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+    |- appcontext [CorrectDecoder _ _ _ _ format_word _ _] =>
     intros; revert H; eapply Word_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ encode_word_Spec _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ _ format_word _ _] =>
     eapply Word_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_nat_Spec _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ _ (format_nat _) _ _] =>
     eapply Nat_decode_correct
-  | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_enum_Spec _) _ _] =>
+  | |- appcontext [CorrectDecoder _ _ _ _ (format_enum _) _ _] =>
     eapply Enum_decode_correct
   | |- NoDupVector _ => Discharge_NoDupVector
   | |- context[Vector_predicate_rest (fun _ _ => True) _ _ _ _] =>
@@ -253,7 +253,7 @@ Definition EthernetFrame_decoder
   : { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> encode_decode_correct_f _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
+       -> CorrectDecoder _ transformer ethernet_Frame_OK (fun _ b => b = ByteString_id) encode_EthernetFrame_Spec (fst decodePlusCacheInv) (snd decodePlusCacheInv))
       /\ cache_inv_Property (snd decodePlusCacheInv) P_inv}.
 Proof.
   start_synthesizing_decoder.
@@ -300,7 +300,7 @@ Proof.
   computes_to_inv; injections.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros;
-    eapply encode_decode_correct_finish.
+    eapply CorrectDecoderinish.
   destruct a' as [? [? [? [? [ ] ] ] ] ] ;
   unfold GetAttribute, GetAttributeRaw in *;
     simpl in *; intros; intuition.
@@ -327,7 +327,7 @@ Proof.
   pose proof transform_id_left as H'; simpl in H'; rewrite H'; reflexivity.
   simpl; intros.
   simpl; intros;
-    eapply encode_decode_correct_finish.
+    eapply CorrectDecoderinish.
   destruct a' as [? [? [? [? [ ] ] ] ] ] ;
   unfold GetAttribute, GetAttributeRaw in *;
     simpl in *; intros; intuition.

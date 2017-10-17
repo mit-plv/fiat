@@ -1002,86 +1002,86 @@ Section DnsPacket.
   (* Resource Record <character-string>s are a byte, *)
   (* followed by that many characters. *)
   Definition encode_characterString_Spec (s : string) :=
-    encode_nat_Spec 8 (String.length s)
-                    ThenC encode_string_Spec s
+    format_nat 8 (String.length s)
+                    ThenC format_string s
                     DoneC.
 
   Definition encode_question_Spec (q : question) :=
-    encode_DomainName_Spec q!"qname"
-                           ThenC encode_enum_Spec QType_Ws q!"qtype"
-                           ThenC encode_enum_Spec QClass_Ws q!"qclass"
+    format_DomainName q!"qname"
+                           ThenC format_enum QType_Ws q!"qtype"
+                           ThenC format_enum QClass_Ws q!"qclass"
                            DoneC.
 
   Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec soa!"sourcehost"
-                            ThenC encode_DomainName_Spec soa!"contact_email"
-                            ThenC encode_word_Spec soa!"serial"
-                            ThenC encode_word_Spec soa!"refresh"
-                            ThenC encode_word_Spec soa!"retry"
-                            ThenC encode_word_Spec soa!"expire"
-                            ThenC encode_word_Spec soa!"minTTL"
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
+                            ThenC format_DomainName soa!"sourcehost"
+                            ThenC format_DomainName soa!"contact_email"
+                            ThenC format_word soa!"serial"
+                            ThenC format_word soa!"refresh"
+                            ThenC format_word soa!"retry"
+                            ThenC format_word soa!"expire"
+                            ThenC format_word soa!"minTTL"
                             DoneC.
 
   Definition encode_A_Spec (a : Memory.W) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_word_Spec a
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_word a
                             DoneC.
 
   Definition encode_NS_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec domain
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_DomainName domain
                             DoneC.
 
   Definition encode_CNAME_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec domain
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_DomainName domain
                             DoneC.
 
   Definition encode_rdata_Spec :=
-    encode_SumType_Spec ResourceRecordTypeTypes
+    format_SumType ResourceRecordTypeTypes
                         (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
                                (icons encode_A_Spec (* A; host address 	[RFC1035] *)
                                       (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
                                              (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *) inil)))).
 
   Definition encode_resource_Spec(r : resourceRecord) :=
-    encode_DomainName_Spec r!sNAME
-                           ThenC encode_enum_Spec RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
-                           ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
-                           ThenC encode_word_Spec r!sTTL
+    format_DomainName r!sNAME
+                           ThenC format_enum RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
+                           ThenC format_enum RRecordClass_Ws r!sCLASS
+                           ThenC format_word r!sTTL
                            ThenC encode_rdata_Spec r!sRDATA
                            DoneC.
 
   Definition encode_packet_Spec (p : packet) :=
-    encode_word_Spec p!"id"
-                     ThenC encode_word_Spec (WS p!"QR" WO)
-                     ThenC encode_enum_Spec Opcode_Ws p!"Opcode"
-                     ThenC encode_word_Spec (WS p!"AA" WO)
-                     ThenC encode_word_Spec (WS p!"TC" WO)
-                     ThenC encode_word_Spec (WS p!"RD" WO)
-                     ThenC encode_word_Spec (WS p!"RA" WO)
-                     ThenC encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-                     ThenC encode_enum_Spec RCODE_Ws p!"RCODE"
-                     ThenC encode_nat_Spec 16 1 (* length of question field *)
-                     ThenC encode_nat_Spec 16 (|p!"answers"|)
-                     ThenC encode_nat_Spec 16 (|p!"authority"|)
-                     ThenC encode_nat_Spec 16 (|p!"additional"|)
+    format_word p!"id"
+                     ThenC format_word (WS p!"QR" WO)
+                     ThenC format_enum Opcode_Ws p!"Opcode"
+                     ThenC format_word (WS p!"AA" WO)
+                     ThenC format_word (WS p!"TC" WO)
+                     ThenC format_word (WS p!"RD" WO)
+                     ThenC format_word (WS p!"RA" WO)
+                     ThenC format_word (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
+                     ThenC format_enum RCODE_Ws p!"RCODE"
+                     ThenC format_nat 16 1 (* length of question field *)
+                     ThenC format_nat 16 (|p!"answers"|)
+                     ThenC format_nat 16 (|p!"authority"|)
+                     ThenC format_nat 16 (|p!"additional"|)
                      ThenC encode_question_Spec p!"question"
-                     ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+                     ThenC (format_list encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
   Ltac decode_DNS_rules g :=
     (* Processes the goal by either: *)
     lazymatch goal with
-    | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
+    | |- appcontext[CorrectDecoder _ _ _ _ format_DomainName _ _ ] =>
       eapply (DomainName_decode_correct
                 IndependentCaches IndependentCaches' IndependentCaches'''
                 getDistinct getDistinct' addPeekSome
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
                 addPeekENone addPeekENone')
-    | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec encode_resource_Spec) _ _] =>
+    | |- appcontext [CorrectDecoder _ _ _ _ (format_list encode_resource_Spec) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 
@@ -1097,7 +1097,7 @@ Section DnsPacket.
     | cbv beta; synthesize_cache_invariant' idtac
     |  ].
 
-  Print encode_DomainName_Spec.
+  Print format_DomainName.
 
   Lemma byte_align_Fix_encoder {A}
         (lt_A : A -> A -> Prop)
@@ -1406,7 +1406,7 @@ Section DnsPacket.
   Lemma align_encode_DomainName
     : forall d ce
       (d_OK : ValidDomainName d),
-      refine (encode_DomainName_Spec d ce)
+      refine (format_DomainName d ce)
              (ret (build_aligned_ByteString (projT2 (fst (aligned_encode_DomainName d ce))),
                    (snd (aligned_encode_DomainName d ce)))).
   Proof.
@@ -1423,14 +1423,14 @@ Section DnsPacket.
         let H := fresh in
         intro H; set_refine_evar; try rewrite H; simpl
     end.
-    unfold AsciiOpt.encode_ascii_Spec; rewrite aligned_encode_char_eq.
+    unfold AsciiOpt.format_ascii; rewrite aligned_encode_char_eq.
     subst_refine_evar; higher_order_reflexivity.
     refine pick val None; try congruence.
     simplify with monad laws; simpl.
     unfold Bind2.
     refine pick val (split_string (projT1 r)).
     simplify with monad laws.
-    unfold encode_nat_Spec.
+    unfold format_nat.
     rewrite aligned_encode_char_eq.
     simplify with monad laws.
     rewrite encode_string_ByteString.
@@ -1582,7 +1582,7 @@ Section DnsPacket.
     Lemma optimize_align_encode_list
           {A}
           (A_OK : A -> Prop)
-          (A_encode_Spec : A -> CacheEncode -> Comp (ByteString * CacheEncode))
+          (format_A : A -> CacheEncode -> Comp (ByteString * CacheEncode))
           (A_encode_align :
              A
              ->  CacheEncode
@@ -1590,13 +1590,13 @@ Section DnsPacket.
           (A_encode_OK :
              forall a ce,
                A_OK a
-               -> refine (A_encode_Spec a ce)
+               -> refine (format_A a ce)
                       (ret (let (v', ce') := A_encode_align a ce in
                             (build_aligned_ByteString (projT2 v'), ce'))))
       : forall (As : list A)
                (ce : CacheEncode),
       (forall a, In a As -> A_OK a)
-      -> refine (encode_list_Spec A_encode_Spec As ce)
+      -> refine (format_list format_A As ce)
                (let (v', ce') := (align_encode_list A_encode_align As ce) in
                 ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
@@ -1636,11 +1636,11 @@ Section DnsPacket.
     : forall (st : SumType types)
              (ce : CacheEncode),
       A_OKs st
-      -> refine (encode_SumType_Spec types encoders st ce)
+      -> refine (format_SumType types encoders st ce)
              (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
                    (snd (align_encode_sumtype align_encoders st ce)))).
   Proof.
-    intros; unfold encode_SumType_Spec, align_encode_sumtype.
+    intros; unfold format_SumType, align_encode_sumtype.
     rewrite encoders_OK; eauto.
     reflexivity.
     rewrite inj_SumType_proj_inverse; eauto.
@@ -1663,7 +1663,7 @@ Section DnsPacket.
     : forall (st : SumType types)
              (ce : CacheEncode),
       A_OKs st
-      -> refine (encode_SumType_Spec types encoders st ce)
+      -> refine (format_SumType types encoders st ce)
                 (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
                       (snd (align_encode_sumtype align_encoders st ce)))).
   Proof.
@@ -1755,7 +1755,7 @@ Section DnsPacket.
     pose_string_hyps.
     etransitivity.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
-    unfold encode_enum_Spec.
+    unfold format_enum.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
@@ -1786,7 +1786,7 @@ Section DnsPacket.
     simplify with monad laws.
     etransitivity.
     apply refine_under_bind_both.
-    unfold encode_enum_Spec.
+    unfold format_enum.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     eapply AlignedEncode32Char; eauto using addE_addE_plus.
@@ -1995,7 +1995,7 @@ Qed.
     { decodePlusCacheInv |
       exists P_inv,
       (cache_inv_Property (snd decodePlusCacheInv) P_inv
-       -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+       -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
                                   FormatSpec
                                   (fst decodePlusCacheInv)
                                   (snd decodePlusCacheInv))
@@ -2016,7 +2016,7 @@ Qed.
     unfold resourceRecord_OK.
     clear; intros.
     apply (proj2 H).
-    simpl; intros; eapply encode_decode_correct_finish.
+    simpl; intros; eapply CorrectDecoderinish.
     unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;
    (let a' := fresh in
     intros a'; repeat destruct a' as (?, a'); unfold Domain, GetAttribute, GetAttributeRaw in *; simpl in *;

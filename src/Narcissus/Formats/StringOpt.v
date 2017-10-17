@@ -15,20 +15,20 @@ Section String.
   Context {transformer : Transformer B}.
   Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
-  Fixpoint encode_string_Spec (xs : string) (ce : CacheEncode)
+  Fixpoint format_string (xs : string) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
     | EmptyString => ret (transform_id, ce)
-    | String x xs' => `(b1, env1) <- encode_ascii_Spec x ce;
-                      `(b2, env2) <- encode_string_Spec xs' env1;
+    | String x xs' => `(b1, env1) <- format_ascii x ce;
+                      `(b2, env2) <- format_string xs' env1;
                       ret (transform b1 b2, env2)
     end%comp.
 
-    Fixpoint encode_string_Impl (xs : string) (ce : CacheEncode) : B * CacheEncode :=
+    Fixpoint encode_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
     | EmptyString => (transform_id, ce)
     | String x xs' => let (b1, env1) := encode_ascii_Impl x ce in
-                      let (b2, env2) := encode_string_Impl xs' env1 in
+                      let (b2, env2) := encode_string xs' env1 in
                           (transform b1 b2, env2)
     end.
 
@@ -40,18 +40,18 @@ Section String.
               Some (String x xs, b2, e2)
     end.
 
-  Local Opaque encode_ascii_Spec.
+  Local Opaque format_ascii.
   Local Opaque encode_ascii_Impl.
 
   Theorem String_decode_correct
           {P : CacheDecode -> Prop}
     : forall sz
              (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b))),
-      encode_decode_correct_f
+      CorrectDecoder
         cache transformer
         (fun ls => length ls = sz)
         (fun _ _ => True)
-        encode_string_Spec (decode_string sz) P.
+        format_string (decode_string sz) P.
   Proof.
     split.
     { intros env env' xenv l l' ext ? Eeq Ppred Ppred_rest Penc.

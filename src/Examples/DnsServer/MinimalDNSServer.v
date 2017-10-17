@@ -20,10 +20,10 @@ Require Import
 
 Require Import
         Bedrock.Word
-        Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Examples.SimpleDnsOpt
-        Fiat.BinEncoders.Env.Lib2.DomainNameOpt.
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.BinLib.Core
+        Fiat.Narcissus.Examples.SimpleDnsOpt
+        Fiat.Narcissus.Lib2.DomainNameOpt.
 
 Require Import Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField

@@ -20,13 +20,13 @@ Require Import
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.NoCache
-        Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.Bool
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum.
+        Fiat.Narcissus.Formats.IPChecksum
+        Fiat.Narcissus.Formats.WordOpt.
 
 Require Import Bedrock.Word.
 
@@ -58,22 +58,22 @@ Definition ProtocolTypeCodes : Vector.t char 3 :=
 Definition IPv4_Packet_Header_Len (ip4 : IPv4_Packet) := 5 + |ip4!"Options"|.
 
 Definition encode_IPv4_Packet_Spec (ip4 : IPv4_Packet)  :=
-          (encode_word_Spec (natToWord 4 4)
-    ThenC encode_nat_Spec 4 (IPv4_Packet_Header_Len ip4)
-    ThenC encode_unused_word_Spec 8 (* TOS Field! *)
-    ThenC encode_word_Spec ip4!"TotalLength"
-    ThenC encode_word_Spec ip4!"ID"
-    ThenC encode_unused_word_Spec 1 (* Unused flag! *)
-    ThenC encode_bool_Spec ip4!"DF"
-    ThenC encode_bool_Spec ip4!"MF"
-    ThenC encode_word_Spec ip4!"FragmentOffset"
-    ThenC encode_word_Spec ip4!"TTL"
-    ThenC encode_enum_Spec ProtocolTypeCodes ip4!"Protocol"
+          (format_word (natToWord 4 4)
+    ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
+    ThenC format_unused_word 8 (* TOS Field! *)
+    ThenC format_word ip4!"TotalLength"
+    ThenC format_word ip4!"ID"
+    ThenC format_unused_word 1 (* Unused flag! *)
+    ThenC format_bool ip4!"DF"
+    ThenC format_bool ip4!"MF"
+    ThenC format_word ip4!"FragmentOffset"
+    ThenC format_word ip4!"TTL"
+    ThenC format_enum ProtocolTypeCodes ip4!"Protocol"
     DoneC)
     ThenChecksum IPChecksum_Valid OfSize 16
-    ThenCarryOn (encode_word_Spec ip4!"SourceAddress"
-    ThenC encode_word_Spec ip4!"DestAddress"
-    ThenC encode_list_Spec encode_word_Spec ip4!"Options"
+    ThenCarryOn (format_word ip4!"SourceAddress"
+    ThenC format_word ip4!"DestAddress"
+    ThenC format_list format_word ip4!"Options"
     DoneC).
 
 Definition IPv4_Packet_OK (ipv4 : IPv4_Packet) :=
@@ -119,21 +119,21 @@ Qed.
 
 Lemma IPv4_Packet_Header_Len_OK
   : forall ip4 (ctx ctx' ctx'' : CacheEncode) c b b'' ext,
-    (encode_word_Spec (natToWord 4 4)
-    ThenC encode_nat_Spec 4 (IPv4_Packet_Header_Len ip4)
-    ThenC encode_unused_word_Spec 8 (* TOS Field! *)
-    ThenC encode_word_Spec ip4!"TotalLength"
-    ThenC encode_word_Spec ip4!"ID"
-    ThenC encode_unused_word_Spec 1 (* Unused flag! *)
-    ThenC encode_bool_Spec ip4!"DF"
-    ThenC encode_bool_Spec ip4!"MF"
-    ThenC encode_word_Spec ip4!"FragmentOffset"
-    ThenC encode_word_Spec ip4!"TTL"
-    ThenC encode_enum_Spec ProtocolTypeCodes ip4!"Protocol"
+    (format_word (natToWord 4 4)
+    ThenC format_nat 4 (IPv4_Packet_Header_Len ip4)
+    ThenC format_unused_word 8 (* TOS Field! *)
+    ThenC format_word ip4!"TotalLength"
+    ThenC format_word ip4!"ID"
+    ThenC format_unused_word 1 (* Unused flag! *)
+    ThenC format_bool ip4!"DF"
+    ThenC format_bool ip4!"MF"
+    ThenC format_word ip4!"FragmentOffset"
+    ThenC format_word ip4!"TTL"
+    ThenC format_enum ProtocolTypeCodes ip4!"Protocol"
     DoneC) ctx ↝ (b, ctx') ->
-    (encode_word_Spec ip4!"SourceAddress"
-    ThenC encode_word_Spec ip4!"DestAddress"
-    ThenC encode_list_Spec encode_word_Spec ip4!"Options"
+    (format_word ip4!"SourceAddress"
+    ThenC format_word ip4!"DestAddress"
+    ThenC format_list format_word ip4!"Options"
     DoneC) ctx' ↝ (b'', ctx'') ->
     IPv4_Packet_OK ip4 ->
     (fun _ => 128) ip4 + (fun a => 16 + |ip4!"Options"| * 32) ip4 + (bin_measure transform_id) + 16 = IPv4_Packet_encoded_measure (transform (transform b (transform (encode_checksum _ _ _ 16 c) b'')) ext).
@@ -148,7 +148,7 @@ Proof.
   eapply computes_to_compose_decode_unused_word in H;
     let H' := fresh in
     destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold DecodeBindOpt, If_Opt_Then_Else.
+  unfold DecodeBindOpt, BindOpt, If_Opt_Then_Else.
   eapply computes_to_compose_decode_word in H;
     let H' := fresh in
     destruct H as [? [? [? H'] ] ]; rewrite H'.

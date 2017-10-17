@@ -24,9 +24,9 @@ Instance ByteStringQueueTransformer : Transformer ByteString := ByteStringQueueT
 
 Definition Simple_Format_Spec
            (p : int * list int) :=
-        encode_nat_Spec 8 (|snd p|)
-  ThenC encode_int_Spec Int.wordsize (fst p)
-  ThenC encode_list_Spec (encode_int_Spec Int.wordsize) (snd p)
+        format_nat 8 (|snd p|)
+  ThenC format_int Int.wordsize (fst p)
+  ThenC format_list (format_int Int.wordsize) (snd p)
   DoneC.
 
 Definition Simply_OK (p : int * list int) :=

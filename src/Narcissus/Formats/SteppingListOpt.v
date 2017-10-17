@@ -18,9 +18,9 @@ Require Export
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
   Variable A_predicate_halt : A_predicate A_halt.
-  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
-  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_encode_Spec A_decode cache_inv.
+  Variable A_decode_pf : CorrectDecoder cache transformer A_predicate format_A A_decode cache_inv.
   Variable A_decode_lt
     : forall  (b : B)
               (cd : CacheDecode)
@@ -34,7 +34,7 @@ Require Export
   Variable P_predicate_dec : forall p, {P_predicate p} + {~ P_predicate p}.
   Variable P_encode_Spec : P -> CacheEncode -> Comp (B * CacheEncode).
   Variable P_decode : B -> CacheDecode -> option (P * B * CacheDecode).
-  Variable P_decode_pf : encode_decode_correct_f cache transformer P_predicate P_encode_Spec P_decode cache_inv.
+  Variable P_decode_pf : CorrectDecoder cache transformer P_predicate P_encode_Spec P_decode cache_inv.
   Variable P_decode_le :
     forall (b1 : B)
            (cd1 : CacheDecode)
@@ -45,7 +45,7 @@ Require Export
 
   Variable X_encode_Spec : bool -> CacheEncode -> Comp (B * CacheEncode).
   Variable X_decode : B -> CacheDecode -> option (bool * B * CacheDecode).
-  Variable X_decode_pf : encode_decode_correct_f cache transformer (fun _ => True) X_encode_Spec X_decode cache_inv.
+  Variable X_decode_pf : CorrectDecoder cache transformer (fun _ => True) X_encode_Spec X_decode cache_inv.
   Variable X_decode_le :
     forall (b1 : B)
            (cd1 : CacheDecode)
@@ -74,11 +74,11 @@ Require Export
              -> A_predicate x /\ ~ x = A_halt)
         -> cache_inv (addD env (l, p)).
 
-  Fixpoint encode_list_step_Spec (l : list A ) (ce : CacheEncode)
+  Fixpoint format_list_step (l : list A ) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match l with
     | nil => `(b1, e1) <- X_encode_Spec false ce;
-             `(b2, e2) <- A_encode_Spec A_halt e1;
+             `(b2, e2) <- format_A A_halt e1;
              ret (transform b1 b2, e2)
     | cons x l' =>
       match getE ce l with
@@ -90,17 +90,17 @@ Require Export
                 `(b2, e2) <- P_encode_Spec position e1;
                   ret (transform b1 b2, e2))
            Else (`(b1, e1) <- X_encode_Spec false ce;
-             `(b2, e2) <- A_encode_Spec x e1;
-             `(b3, e3) <- encode_list_step_Spec l' e2;
+             `(b2, e2) <- format_A x e1;
+             `(b3, e3) <- format_list_step l' e2;
              ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
            Else
            (`(b1, e1) <- X_encode_Spec false ce;
-              `(b2, e2) <- A_encode_Spec x e1;
-              `(b3, e3) <- encode_list_step_Spec l' e2;
+              `(b2, e2) <- format_A x e1;
+              `(b3, e3) <- format_list_step l' e2;
               ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce)))
       | None => `(b1, e1) <- X_encode_Spec false ce;
-                     `(b2, e2) <- A_encode_Spec x e1;
-                     `(b3, e3) <- encode_list_step_Spec l' e2;
+                     `(b2, e2) <- format_A x e1;
+                     `(b3, e3) <- format_list_step l' e2;
                      ret (transform (transform b1 b2) b3, addE e3 (l, peekE ce))
       end
     end%comp.
@@ -139,12 +139,12 @@ Require Export
                  Some (a :: l, b3, addD e3 (a :: l, peekD cd))))) b cd.
 
   Theorem SteppingList_decode_correct :
-    encode_decode_correct_f
+    CorrectDecoder
       cache transformer
       (fun ls => (forall x, In x ls -> A_predicate x /\ ~ x = A_halt))
-      encode_list_step_Spec decode_list_step cache_inv.
+      format_list_step decode_list_step cache_inv.
   Proof.
-    unfold encode_decode_correct_f; split.
+    unfold CorrectDecoder; split.
     { intros env xenv xenv' l l' ext Eeq Ppredh Penc;
       subst.
       unfold decode_list_step in *; simpl in *.
@@ -274,7 +274,7 @@ Require Export
         apply functional_extensionality; intros.
         repeat (f_equal; repeat (apply functional_extensionality; intros)).
     }
-    { unfold decode_list_step, encode_list_step_Spec.
+    { unfold decode_list_step, format_list_step.
       intros env env' xenv' data bin;
         revert env env' xenv' data.
       eapply (@well_founded_induction _ _ well_founded_lt_b) with

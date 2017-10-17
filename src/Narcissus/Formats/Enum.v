@@ -38,9 +38,9 @@ Section Enum.
     clear; induction 1; eauto.
   Qed.
 
-  Definition encode_enum (i : BoundedIndex ta) (ce : CacheEncode) : B * CacheEncode :=
+  Definition format_enum (i : BoundedIndex ta) (ce : CacheEncode) : B * CacheEncode :=
     let fin := i.(indexb).(ibound)
-    in  encode_word (nth tb fin) ce.
+    in  format_word (nth tb fin) ce.
 
   Fixpoint word_indexed {n : nat}
            (w : word sz)
@@ -99,9 +99,9 @@ Section Enum.
 
   Theorem Enum_decode_correct :
     NoDupVector tb
-    -> encode_decode_correct cache transformer (fun _ => True) encode_enum decode_enum.
+    -> encode_decode_correct cache transformer (fun _ => True) format_enum decode_enum.
   Proof.
-    unfold encode_decode_correct, encode_enum, decode_enum.
+    unfold encode_decode_correct, format_enum, decode_enum.
     intros ? env env' xenv xenv' data data' bin' ext ext' Eeq PPred Penc Pdec.
     destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
     pose proof (Word_decode_correct _ _ _ _ _ _ _ _ _ Eeq I Penc Heqp).

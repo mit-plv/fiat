@@ -58,15 +58,15 @@ Section EncodeWord.
 
   (* Extracting words as Int64 prevents us from recursing on them directly *)
 
-  Fixpoint encode_word'_recurse_on_size (sz : nat) (w : word sz) (b' : B) {struct sz} : B.
+  Fixpoint format_word'_recurse_on_size (sz : nat) (w : word sz) (b' : B) {struct sz} : B.
   Proof.
     destruct sz.
     - apply b'.
-    - apply (enqueue_opt (whd w) (encode_word'_recurse_on_size sz (wtl w) b')).
+    - apply (enqueue_opt (whd w) (format_word'_recurse_on_size sz (wtl w) b')).
   Defined.
 
   Lemma encode'_on_size_correct :
-    forall sz w b', encode_word' sz w b' = encode_word'_recurse_on_size sz w b'.
+    forall sz w b', format_word' sz w b' = format_word'_recurse_on_size sz w b'.
   Proof.
     induction sz; dependent destruction w; intros; simpl.
     - reflexivity.
@@ -283,7 +283,7 @@ int64 ["Int64.zero" "(fun (b, _, w') -> Int64.add (if b then Int64.one else Int6
       "failwith ""Destructing an int64""".
 
 (** * Don't recurse on int64 *)
-Extract Constant encode_word' => "encode_word'_recurse_on_size".
+Extract Constant format_word' => "format_word'_recurse_on_size".
 
 (** * Special case of internet checksum *)
 Extract Constant InternetChecksum.add_bytes_into_checksum =>
@@ -321,4 +321,4 @@ Extraction "Fiat4Mirage"
            fiat_tcp_destruct_packet
            fiat_udp_decode
            fiat_udp_destruct_packet
-           encode_word'_recurse_on_size.
+           format_word'_recurse_on_size.

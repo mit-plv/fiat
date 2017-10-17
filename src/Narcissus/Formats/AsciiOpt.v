@@ -14,13 +14,13 @@ Section Ascii.
   Context {transformer : Transformer B}.
   Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
-  Definition encode_ascii_Spec (c : ascii) (ce : CacheEncode)
+  Definition format_ascii (c : ascii) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
-    encode_word_Spec (NToWord 8 (N_of_ascii c)) ce.
+    format_word (NToWord 8 (N_of_ascii c)) ce.
 
   Definition encode_ascii_Impl (c : ascii) (ce : CacheEncode)
     : B * CacheEncode :=
-    encode_word_Impl (NToWord 8 (N_of_ascii c)) ce.
+    encode_word (NToWord 8 (N_of_ascii c)) ce.
 
   Definition decode_ascii (b : B) (cd : CacheDecode) : option (ascii * B * CacheDecode) :=
     `(n, b, cd) <- decode_word (sz:=8) b cd;
@@ -31,9 +31,9 @@ Section Ascii.
           {P : CacheDecode -> Prop}
           (P_OK : forall b cd, P cd -> P (addD cd b))
     :
-      encode_decode_correct_f cache transformer (fun n => True)
+      CorrectDecoder cache transformer (fun n => True)
                               (fun _ _ => True)
-                              encode_ascii_Spec decode_ascii P.
+                              format_ascii decode_ascii P.
   Proof.
     unfold decode_ascii; split.
     {
@@ -66,7 +66,7 @@ Section Ascii.
       injections.
       eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
         destruct Heqo as [? [? ?] ]; destruct_ex; intuition; subst; eauto.
-      unfold encode_word_Spec in *; computes_to_inv; injections.
+      unfold format_word in *; computes_to_inv; injections.
       repeat eexists; eauto.
       repeat f_equal.
       rewrite N_ascii_embedding.

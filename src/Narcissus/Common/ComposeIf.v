@@ -33,12 +33,12 @@ Lemma composeIf_encode_correct
       (decodeE : B -> CacheDecode -> option (A * B * CacheDecode))
       (decodeT_pf :
          cache_inv_Property P P_invT
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate predicate_rest
               encodeT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate predicate_rest
               encodeE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
@@ -49,7 +49,7 @@ Lemma composeIf_encode_correct
           predicate data
           -> encodeE data env ↝ (bin, xenv)
           -> ICompb (transform bin ext) = false)
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       (fun a => predicate a)
       predicate_rest
@@ -127,14 +127,14 @@ Lemma composeIf'_encode_correct
       (decodeE : A' -> B -> CacheDecode -> option (A * B * CacheDecode))
       (decode1_pf :
          cache_inv_Property P P_inv1
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate' predicate_rest
               encode1 decode1 P)
       (decodeT_pf : forall proj,
           ICompb proj = true ->
           predicate' proj ->
           cache_inv_Property P P_invT ->
-          encode_decode_correct_f
+          CorrectDecoder
             cache transformer
             (fun data => predicate data /\ projectT data = proj)
             predicate_rest'
@@ -144,7 +144,7 @@ Lemma composeIf'_encode_correct
           ICompb proj = false ->
           predicate' proj ->
           cache_inv_Property P P_invE ->
-          encode_decode_correct_f
+          CorrectDecoder
             cache transformer
             (fun data => predicate data /\ projectE data = proj)
             predicate_rest'
@@ -172,7 +172,7 @@ Lemma composeIf'_encode_correct
       (pred_pf' : forall data, predicate data -> predicate' (projectE data))
       (ICombT_OK : forall data, ICompb (projectT data) = true)
       (ICombE_OK : forall data, ICompb (projectE data) = false)
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       (fun a => predicate a)
       predicate_rest'

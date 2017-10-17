@@ -15,11 +15,11 @@ Section String.
   Context {transformer : Transformer B}.
   Context {transformerUnit : TransformerUnit transformer bool}.
 
-  Fixpoint encode_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
+  Fixpoint format_string (xs : string) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
     | EmptyString => (transform_id, ce)
-    | String x xs' => let (b1, env1) := encode_ascii x ce in
-                      let (b2, env2) := encode_string xs' env1 in
+    | String x xs' => let (b1, env1) := format_ascii x ce in
+                      let (b2, env2) := format_string xs' env1 in
                           (transform b1 b2, env2)
     end.
 
@@ -33,13 +33,13 @@ Section String.
               (String x xs, b2, e2)
     end.
 
-  Local Opaque encode_ascii.
+  Local Opaque format_ascii.
   Theorem String_decode_correct :
     forall sz,
       encode_decode_correct
         cache transformer
         (fun ls => length ls = sz)
-        encode_string (decode_string sz).
+        format_string (decode_string sz).
   Proof.
     unfold encode_decode_correct.
     intros sz env env' xenv xenv' l l' bin' ext ext' Eeq Ppred Penc Pdec.
@@ -53,8 +53,8 @@ Section String.
     { intros.
       destruct sz. inversion Ppred.
       simpl in *.
-      destruct (encode_ascii a env) eqn: ?.
-      destruct (encode_string l c) eqn: ?.
+      destruct (format_ascii a env) eqn: ?.
+      destruct (format_string l c) eqn: ?.
       inversion Penc; subst; clear Penc.
       inversion Ppred; subst; clear Ppred.
       rewrite <- transform_assoc in Pdec.

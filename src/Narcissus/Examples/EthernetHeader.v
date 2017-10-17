@@ -55,17 +55,17 @@ Section EthernetPacketDecoder.
   Variable packet_len_OK : lt packet_len 1501.
 
   Definition encode_EthernetHeader_Spec (eth : EthernetHeader) :=
-    encode_Vector_Spec encode_word_Spec eth!"Destination"
-                       ThenC (encode_Vector_Spec encode_word_Spec eth!"Source")
+    format_Vector format_word eth!"Destination"
+                       ThenC (format_Vector format_word eth!"Source")
                        ThenC Either
-                       encode_nat_Spec 16 packet_len
-                       ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-                       ThenC encode_word_Spec (WO~0~1~0~1~0~1~0~1)
-                       ThenC encode_word_Spec (WO~1~1~0~0~0~0~0~0)
-                       ThenC encode_word_Spec (wzero 24)
-                       ThenC encode_enum_Spec EtherTypeCodes eth!"Type"
+                       format_nat 16 packet_len
+                       ThenC format_word (WO~0~1~0~1~0~1~0~1)
+                       ThenC format_word (WO~0~1~0~1~0~1~0~1)
+                       ThenC format_word (WO~1~1~0~0~0~0~0~0)
+                       ThenC format_word (wzero 24)
+                       ThenC format_enum EtherTypeCodes eth!"Type"
                        DoneC
-                       Or encode_enum_Spec EtherTypeCodes eth!"Type"
+                       Or format_enum EtherTypeCodes eth!"Type"
                        DoneC.
 
   Definition ethernet_Header_OK (e : EthernetHeader) := True.
@@ -78,22 +78,22 @@ Section EthernetPacketDecoder.
 
   Lemma v1042_OKT
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
-      (encode_nat_Spec 16 packet_len
-                       ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-                       ThenC encode_word_Spec WO~0~1~0~1~0~1~0~1
-                       ThenC encode_word_Spec WO~1~1~0~0~0~0~0~0
-                       ThenC encode_word_Spec (wzero 24) ThenC encode_enum_Spec EtherTypeCodes data!"Type" DoneC) env
+      (format_nat 16 packet_len
+                       ThenC format_word WO~0~1~0~1~0~1~0~1
+                       ThenC format_word WO~0~1~0~1~0~1~0~1
+                       ThenC format_word WO~1~1~0~0~0~0~0~0
+                       ThenC format_word (wzero 24) ThenC format_enum EtherTypeCodes data!"Type" DoneC) env
                                                                                                                   ↝ (bin, xenv) -> v1042_test (transform bin ext) = true.
   Proof.
     intros.
     unfold compose at 1 in H; unfold Bind2 in H;
       computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
-    unfold encode_nat_Spec, encode_word_Spec in H; computes_to_inv.
+    unfold format_nat, format_word in H; computes_to_inv.
     pose proof (f_equal fst H) as H''; simpl in H''; rewrite <- H''.
     pose proof transform_assoc as H'''; simpl in H'''; rewrite <- H'''.
     unfold v1042_test.
-    pose transformer_get_encode_word' as H''''; rewrite H''''; find_if_inside; eauto.
+    pose transformer_get_format_word' as H''''; rewrite H''''; find_if_inside; eauto.
     destruct n.
     eapply natToWord_wlt; eauto; try reflexivity.
     etransitivity.
@@ -106,17 +106,17 @@ Section EthernetPacketDecoder.
 
   Lemma v1042_OKE
     : forall (data : EthernetHeader) (bin : ByteString) (env xenv : CacheEncode) (ext : ByteString),
-      (encode_enum_Spec EtherTypeCodes data!"Type" DoneC) env ↝ (bin, xenv)
+      (format_enum EtherTypeCodes data!"Type" DoneC) env ↝ (bin, xenv)
       -> v1042_test (transform bin ext) = false.
   Proof.
     intros; unfold compose at 1 in H; unfold Bind2 in H;
       computes_to_inv; destruct v; destruct v0; simpl in *;
         injections.
-    unfold encode_enum_Spec, encode_word_Spec in H; computes_to_inv.
+    unfold format_enum, format_word in H; computes_to_inv.
     pose proof (f_equal fst H) as H'; unfold fst in H'; rewrite <- H'.
     pose proof transform_assoc as H''; simpl in H''; rewrite <- H''.
     unfold v1042_test.
-    pose transformer_get_encode_word' as H'''; rewrite H'''; find_if_inside; eauto.
+    pose transformer_get_format_word' as H'''; rewrite H'''; find_if_inside; eauto.
     revert w; clear.
     match goal with
       |- context [Vector.nth (m := ?n) ?w ?idx] => remember idx; clear

@@ -113,77 +113,77 @@ Definition transformer : Transformer ByteString := ByteStringTransformer.
 
 Definition encode_ICMP_Echo_Spec
            (icmp : ICMP_Echo) :=
-        encode_word_Spec icmp!"ID"
-  ThenC encode_word_Spec icmp!"SeqNum"
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word icmp!"ID"
+  ThenC format_word icmp!"SeqNum"
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_Unreachable_Spec
            (icmp : ICMP_Unreachable) :=
-        encode_word_Spec (wzero 32)
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word (wzero 32)
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_SourceQuench_Spec
            (icmp : ICMP_SourceQuench) :=
-        encode_word_Spec (wzero 32)
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word (wzero 32)
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_Redirect_Spec
            (icmp : ICMP_Redirect) :=
-        encode_word_Spec icmp!"RouterIP"
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word icmp!"RouterIP"
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_RouterAdvertisement_Spec
            (icmp : ICMP_RouterAdvertisement) :=
-        encode_nat_Spec 8 (|icmp!"RoutersPlusPreferences"|)
-  ThenC encode_nat_Spec 8 2
-  ThenC encode_word_Spec icmp!"TTL"
-  ThenC encode_list_Spec (fun p => encode_word_Spec (fst p) ThenC encode_word_Spec (snd p)) icmp!"RoutersPlusPreferences"
+        format_nat 8 (|icmp!"RoutersPlusPreferences"|)
+  ThenC format_nat 8 2
+  ThenC format_word icmp!"TTL"
+  ThenC format_list (fun p => format_word (fst p) ThenC format_word (snd p)) icmp!"RoutersPlusPreferences"
   DoneC.
 
 Definition encode_ICMP_RouterSolicitation_Spec
            (icmp : unit) :=
-  encode_word_Spec (wzero 32)
+  format_word (wzero 32)
   DoneC.
 
 Definition encode_ICMP_TimeExceeded_Spec
            (icmp : ICMP_TimeExceeded) :=
-        encode_word_Spec (wzero 32)
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word (wzero 32)
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_ParameterProblem_Spec
            (icmp : ICMP_ParameterProblem) :=
-        encode_word_Spec icmp!"Pointer"
-  ThenC encode_word_Spec (wzero 24)
-  ThenC encode_list_Spec encode_word_Spec icmp!"Payload"
+        format_word icmp!"Pointer"
+  ThenC format_word (wzero 24)
+  ThenC format_list format_word icmp!"Payload"
   DoneC.
 
 Definition encode_ICMP_Timestamp_Spec
            (icmp : ICMP_Timestamp) :=
-        encode_word_Spec icmp!"ID"
-  ThenC encode_word_Spec icmp!"SeqNum"
-  ThenC encode_word_Spec icmp!"Originate"
-  ThenC encode_word_Spec icmp!"Received"
-  ThenC encode_word_Spec icmp!"Transmit"
+        format_word icmp!"ID"
+  ThenC format_word icmp!"SeqNum"
+  ThenC format_word icmp!"Originate"
+  ThenC format_word icmp!"Received"
+  ThenC format_word icmp!"Transmit"
   DoneC.
 
 Definition encode_ICMP_AddressMask_Spec
            (icmp : ICMP_AddressMask) :=
-        encode_word_Spec icmp!"ID"
-  ThenC encode_word_Spec icmp!"SeqNum"
-  ThenC encode_word_Spec icmp!"SubnetMask".
+        format_word icmp!"ID"
+  ThenC format_word icmp!"SeqNum"
+  ThenC format_word icmp!"SubnetMask".
 
 Definition encode_ICMP_Message_Spec
            (icmp : ICMP_Message) :=
-          encode_enum_Spec ICMP_Message_Codes (SumType_index ICMP_Message_Types icmp!"Message")
-    ThenC encode_word_Spec (icmp!"Code")
+          format_enum ICMP_Message_Codes (SumType_index ICMP_Message_Types icmp!"Message")
+    ThenC format_word (icmp!"Code")
     ThenChecksum IPChecksum_Valid OfSize 16
     ThenCarryOn
-    encode_SumType_Spec ICMP_Message_Types
+    format_SumType ICMP_Message_Types
                         (icons encode_ICMP_Echo_Spec
                         (icons encode_ICMP_Unreachable_Spec
                         (icons encode_ICMP_SourceQuench_Spec

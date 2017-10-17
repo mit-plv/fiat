@@ -13,7 +13,7 @@ Section Bool.
   Context {transformer : Transformer B}.
   Context {transformerUnit : QueueTransformerOpt transformer bool}.
 
-  Definition encode_bool_Spec (b : bool) (ctx : CacheEncode) :=
+  Definition format_bool (b : bool) (ctx : CacheEncode) :=
     ret (enqueue_opt b transform_id, addE ctx 1).
 
   Definition decode_bool (b : B) (ctx : CacheDecode) : option (bool * B * CacheDecode) :=
@@ -23,11 +23,11 @@ Section Bool.
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
     :
-      encode_decode_correct_f cache transformer (fun _ => True)
+      CorrectDecoder cache transformer (fun _ => True)
                               (fun _ _ => True)
-                              encode_bool_Spec decode_bool P.
+                              format_bool decode_bool P.
   Proof.
-    unfold encode_decode_correct_f, encode_bool_Spec, decode_bool; split.
+    unfold CorrectDecoder, format_bool, decode_bool; split.
     - intros env env' xenv w w' ext ? Eeq _ _ Penc.
       computes_to_inv; injections.
       unfold If_Opt_Then_Else.

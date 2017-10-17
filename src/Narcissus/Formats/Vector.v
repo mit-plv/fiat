@@ -15,20 +15,20 @@ Section Vector.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
-  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
   Variable A_decode_pf
-    : encode_decode_correct_f cache transformer A_predicate
+    : CorrectDecoder cache transformer A_predicate
                               A_predicate_rest
-                              A_encode_Spec A_decode A_cache_inv.
+                              format_A A_decode A_cache_inv.
 
-  Fixpoint encode_Vector_Spec {n} (xs : Vector.t A n) (ce : CacheEncode)
+  Fixpoint format_Vector {n} (xs : Vector.t A n) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
     | Vector.nil => ret (transform_id, ce)
-    | Vector.cons x _ xs' => `(b1, env1) <- A_encode_Spec x ce;
-                    `(b2, env2) <- encode_Vector_Spec xs' env1;
+    | Vector.cons x _ xs' => `(b1, env1) <- format_A x ce;
+                    `(b2, env2) <- format_Vector xs' env1;
                     ret (transform b1 b2, env2)
     end%comp.
 
@@ -58,7 +58,7 @@ Section Vector.
              (l : Vector.t A sz)
              (ext : B)
              (env xenv : CacheEncode) (l' : B) a a',
-      encode_Vector_Spec l env ↝ (l', xenv) ->
+      format_Vector l env ↝ (l', xenv) ->
       (forall x : A, Vector.In x l -> A_predicate x) ->
       A_predicate_rest a ext ->
       A_predicate_rest a' (transform l' ext).
@@ -85,7 +85,7 @@ Section Vector.
     | Vector.nil => True
     | Vector.cons a _ As' =>
       (forall b' ce ce',
-          computes_to (encode_Vector_Spec As' ce) (b', ce')
+          computes_to (format_Vector As' ce) (b', ce')
           -> A_predicate_rest a (transform b' b))
       /\ Vector_predicate_rest _ As' b
     end.
@@ -93,11 +93,11 @@ Section Vector.
   Theorem Vector_decode_correct
     :
     forall sz,
-      encode_decode_correct_f
+      CorrectDecoder
         cache transformer
         (fun ls => forall x, Vector.In x ls -> A_predicate x)
         (Vector_predicate_rest sz)
-        encode_Vector_Spec (decode_Vector sz) A_cache_inv.
+        format_Vector (decode_Vector sz) A_cache_inv.
   Proof.
     split.
     {
@@ -151,9 +151,9 @@ End Vector.
 Lemma Vector_predicate_rest_True {A B}
       {cache : Cache}
       {transformer : Transformer B}
-      (A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
   : forall {n} (v : Vector.t A n) (b : B),
-    Vector_predicate_rest (fun a b => True) A_encode_Spec n v b.
+    Vector_predicate_rest (fun a b => True) format_A n v b.
 Proof.
   induction v; simpl; eauto.
 Qed.

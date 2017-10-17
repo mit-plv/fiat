@@ -19,12 +19,12 @@ Require Import
         Fiat.Narcissus.Automation.Solver
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.NoCache
-        Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum.
+        Fiat.Narcissus.Formats.IPChecksum
+        Fiat.Narcissus.Formats.WordOpt.
 
 Require Import Bedrock.Word.
 
@@ -53,20 +53,20 @@ Definition UDP_Checksum_Valid
            (n : nat)
            (b : ByteString)
   := IPChecksum_Valid (96 + n)
-                (transform (transform (encode_word srcAddr)
-                (transform (encode_word destAddr)
-                (transform (encode_word (wzero 8))
-                (transform (encode_word (natToWord 8 17))
-                           (encode_word udpLength)))))
+                (transform (transform (IPChecksum.format_word srcAddr)
+                (transform (IPChecksum.format_word destAddr)
+                (transform (IPChecksum.format_word (wzero 8))
+                (transform (IPChecksum.format_word (natToWord 8 17))
+                           (IPChecksum.format_word udpLength)))))
                 b).
 
 Definition encode_UDP_Packet_Spec
            (udp : UDP_Packet) :=
-          (encode_word_Spec (udp!"SourcePort")
-    ThenC encode_word_Spec (udp!"DestPort")
-    ThenC encode_nat_Spec 16 (8 + |udp!"Payload"|) DoneC)
+          (format_word (udp!"SourcePort")
+    ThenC format_word (udp!"DestPort")
+    ThenC format_nat 16 (8 + |udp!"Payload"|) DoneC)
     ThenChecksum (UDP_Checksum_Valid srcAddr destAddr udpLength) OfSize 16
-    ThenCarryOn (encode_list_Spec encode_word_Spec udp!"Payload" DoneC).
+    ThenCarryOn (format_list format_word udp!"Payload" DoneC).
 
 Definition UDP_Packet_OK (udp : UDP_Packet) :=
 lt (|udp!"Payload"|) (pow2 16 - 8).
@@ -86,11 +86,11 @@ Opaque pow2.
 
 Lemma UDP_Packet_Header_Len_OK
   : forall (a : UDP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
-    (encode_word_Spec (a!"SourcePort")
-                      ThenC encode_word_Spec (a!"DestPort")
-                      ThenC encode_nat_Spec 16 (8 + |a!"Payload"|) DoneC) ctx ↝
+    (format_word (a!"SourcePort")
+                      ThenC format_word (a!"DestPort")
+                      ThenC format_nat 16 (8 + |a!"Payload"|) DoneC) ctx ↝
                                                                             (b, ctx') ->
-    (encode_list_Spec encode_word_Spec a!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
+    (format_list format_word a!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
     (lt (|a!"Payload"|) (pow2 16 - 8))%nat ->
     (fun _ : UDP_Packet => 16 + (16 + (16 + length_ByteString ByteString_id))) a +
     (fun a0 : UDP_Packet => (|a0!"Payload" |) * 8 + length_ByteString ByteString_id) a + 16 =
@@ -103,11 +103,11 @@ Proof.
   eapply computes_to_compose_decode_unused_word in H;
     let H' := fresh in
     destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold DecodeBindOpt, If_Opt_Then_Else.
+  unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
   eapply computes_to_compose_decode_unused_word in H;
     let H' := fresh in
     destruct H as [? [? [? H'] ] ]; rewrite H'.
-  unfold DecodeBindOpt, If_Opt_Then_Else.
+  unfold DecodeBindOpt; unfold BindOpt at 1; unfold If_Opt_Then_Else.
   eapply computes_to_compose_decode_word in H;
     let H' := fresh in
     destruct H as [? [? [? H'] ] ]; rewrite H'.

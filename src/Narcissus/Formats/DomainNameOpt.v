@@ -176,18 +176,18 @@ Section DomainName.
 
   Import FixComp.LeastFixedPointFun.
 
-  Definition encode_DomainName_Spec (domain : DomainName) (env : CacheEncode)
+  Definition format_DomainName (domain : DomainName) (env : CacheEncode)
     : Comp (B * CacheEncode) :=
     LeastFixedPoint
       (fDom := [DomainName; CacheEncode])
-      (fun encode_DomainName_Spec domain env =>
+      (fun format_DomainName domain env =>
     If (string_dec domain "") Then
-         encode_ascii_Spec terminal_char env
+         format_ascii terminal_char env
     Else
     (position <- { position | forall p, position = Some p -> In p (getE env domain)};
     Ifopt position as position Then (* Nondeterministically pick whether to use a cached value. *)
-             (`(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env;
-              `(ptr2b, env') <- encode_word_Spec (snd position) env';
+             (`(ptr1b, env') <- format_word (proj1_sig (fst position)) env;
+              `(ptr2b, env') <- format_word (snd position) env';
               ret (transform ptr1b ptr2b, env'))
     Else
     (`(label, domain') <- { labeldomain' |
@@ -197,9 +197,9 @@ Section DomainName.
                                    domain = label' ++ post'
                                    -> ValidLabel label'
                                    -> String.length label' <= String.length (fst labeldomain'))}%string%nat;
-       `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
-       `(labelb, env') <- encode_string_Spec label env';
-       `(domainb, env') <- encode_DomainName_Spec domain' env';
+       `(lenb, env') <- format_nat 8 (String.length label) env;
+       `(labelb, env') <- format_string label env';
+       `(domainb, env') <- format_DomainName domain' env';
        ret (transform (transform lenb labelb) domainb,
             (* If the pointer would overflow, don't record *)
             Ifopt peekE env as curPtr Then addE_G env' (domain, curPtr)
@@ -579,12 +579,12 @@ Section DomainName.
  refineFun rec rec' ->
  refineFun (fDom := [DomainName; CacheEncode])
    (fun (domain : DomainName) (env0 : CacheEncode) =>
-    If string_dec domain "" Then encode_ascii_Spec terminal_char env0
+    If string_dec domain "" Then format_ascii terminal_char env0
     Else (
       position <- { position | forall p, position = Some p -> In p (getE env0 domain)};
         Ifopt position as position
-          Then `(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env0;
-                    `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
+          Then `(ptr1b, env') <- format_word (proj1_sig (fst position)) env0;
+                    `(ptr2b, env'0) <- format_word (snd position) env';
                     ret (transform ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
                                           string * string |
@@ -597,20 +597,20 @@ Section DomainName.
                                            ValidLabel label' ->
                                            (String.length label' <=
                                             String.length (fst labeldomain'))%nat)};
-                     `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                     `(labelb, env'0) <- encode_string_Spec label env';
+                     `(lenb, env') <- format_nat 8 (String.length label) env0;
+                     `(labelb, env'0) <- format_string label env';
                      `(domainb, env'1) <- rec domain' env'0;
                      ret
                        (transform (transform lenb labelb) domainb,
                         Ifopt peekE env0 as curPtr Then addE_G env'1 (domain, curPtr)
                                       Else env'1))))
    (fun (domain : DomainName) (env0 : CacheEncode) =>
-    If string_dec domain "" Then encode_ascii_Spec terminal_char env0
+    If string_dec domain "" Then format_ascii terminal_char env0
     Else (
       position <- { position | forall p, position = Some p -> In p (getE env0 domain)};
         Ifopt position as position
-               Then `(ptr1b, env') <- encode_word_Spec (proj1_sig (fst position)) env0;
-                    `(ptr2b, env'0) <- encode_word_Spec (snd position) env';
+               Then `(ptr1b, env') <- format_word (proj1_sig (fst position)) env0;
+                    `(ptr2b, env'0) <- format_word (snd position) env';
                     ret (transform ptr1b ptr2b, env'0)
                Else (`(label, domain') <- {labeldomain' :
                                           string * string |
@@ -623,8 +623,8 @@ Section DomainName.
                                            ValidLabel label' ->
                                            (String.length label' <=
                                             String.length (fst labeldomain'))%nat)};
-                     `(lenb, env') <- encode_nat_Spec 8 (String.length label) env0;
-                     `(labelb, env'0) <- encode_string_Spec label env';
+                     `(lenb, env') <- format_nat 8 (String.length label) env0;
+                     `(labelb, env'0) <- format_string label env';
                      `(domainb, env'1) <- rec' domain' env'0;
                      ret
                        (transform (transform lenb labelb) domainb,
@@ -881,10 +881,10 @@ Section DomainName.
   Lemma encode_nat_add_ptr_OK
     : forall n env b b' env' p z,
       ~ In p (getE env z)
-      -> computes_to (encode_nat_Spec n b env) (b', env')
+      -> computes_to (format_nat n b env) (b', env')
       -> ~ In p (getE env' z).
   Proof.
-    unfold encode_nat_Spec, encode_word_Spec; intros; computes_to_inv;
+    unfold format_nat, format_word; intros; computes_to_inv;
       injections; intro.
     rewrite IndependentCaches' in H0; eauto.
   Qed.
@@ -892,10 +892,10 @@ Section DomainName.
   Lemma encode_string_add_ptr_OK
     : forall s env b' env' p z,
       ~ In p (getE env z)
-      -> computes_to (encode_string_Spec s env) (b', env')
+      -> computes_to (format_string s env) (b', env')
       -> ~ In p (getE env' z).
   Proof.
-    induction s; simpl; unfold encode_ascii_Spec, encode_word_Spec;
+    induction s; simpl; unfold format_ascii, format_word;
       intros; computes_to_inv; injections; try rewrite IndependentCaches'; eauto.
     unfold Bind2 in *; computes_to_inv; injections; simpl in *; eauto.
     destruct v0; simpl in *; eauto.
@@ -944,19 +944,19 @@ Section DomainName.
 
   Lemma encode_nat_peekE
     : forall n env b b' env',
-      computes_to (encode_nat_Spec n b env) (b', env')
+      computes_to (format_nat n b env) (b', env')
       -> peekE env' = peekE (addE env n).
   Proof.
-    unfold encode_nat_Spec, encode_word_Spec; intros; computes_to_inv;
+    unfold format_nat, format_word; intros; computes_to_inv;
     injections; reflexivity.
   Qed.
 
   Lemma encode_string_peekE
     : forall l env b' env',
-      computes_to (encode_string_Spec l env) (b', env')
+      computes_to (format_string l env) (b', env')
       -> peekE env' = peekE (addE env (String.length l * 8)).
   Proof.
-    induction l; simpl; unfold encode_ascii_Spec, encode_word_Spec;
+    induction l; simpl; unfold format_ascii, format_word;
       intros; computes_to_inv; injections; eauto.
     unfold Bind2 in *; computes_to_inv; injections; simpl in *; eauto.
     destruct v0; simpl in *; eauto.
@@ -1011,15 +1011,15 @@ Section DomainName.
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
              (domain : DomainName) (env : CacheEncode) =>
-           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+           If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
                           position = Some p -> In p (getE env domain)};
             Ifopt position as position0
-                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
-            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+                                Then `(ptr1b, env') <- format_word (` (fst position0)) env;
+            `(ptr2b, env'0) <- format_word (snd position0) env';
             ret (transform ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
@@ -1030,9 +1030,9 @@ Section DomainName.
                                                 domain = (label' ++ post')%string ->
                                                 ValidLabel label' ->
                                                 (String.length label' <= String.length (fst labeldomain'))%nat)};
-                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
-                        `(labelb, env'0) <- encode_string_Spec label env';
-                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        `(lenb, env') <- format_nat 8 (String.length label) env;
+                        `(labelb, env'0) <- format_string label env';
+                        `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
                           (transform (transform lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
@@ -1046,18 +1046,18 @@ Section DomainName.
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
-      unfold encode_ascii_Spec, encode_word_Spec in H2;
+      unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       eapply addPeekENone; eauto.
       elimtype False; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
-        unfold encode_ascii_Spec, encode_word_Spec in H2;
+        unfold format_ascii, format_word in H2;
           computes_to_inv; subst; simpl in *; injections.
         eapply addPeekENone; eauto.
       + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
-        * unfold encode_word_Spec in *;
+        * unfold format_word in *;
             computes_to_inv; subst; simpl in *; injections.
           eapply addPeekENone; eauto.
         * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
@@ -1092,15 +1092,15 @@ Section DomainName.
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
              (domain : DomainName) (env : CacheEncode) =>
-           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+           If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
                           position = Some p -> In p (getE env domain)};
             Ifopt position as position0
-                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
-            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+                                Then `(ptr1b, env') <- format_word (` (fst position0)) env;
+            `(ptr2b, env'0) <- format_word (snd position0) env';
             ret (transform ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
@@ -1111,9 +1111,9 @@ Section DomainName.
                                                 domain = (label' ++ post')%string ->
                                                 ValidLabel label' ->
                                                 (String.length label' <= String.length (fst labeldomain'))%nat)};
-                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
-                        `(labelb, env'0) <- encode_string_Spec label env';
-                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        `(lenb, env') <- format_nat 8 (String.length label) env;
+                        `(labelb, env'0) <- format_string label env';
+                        `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
                           (transform (transform lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
@@ -1128,18 +1128,18 @@ Section DomainName.
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
-      unfold encode_ascii_Spec, encode_word_Spec in H2;
+      unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       rewrite H in H4; intuition.
       elimtype False; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
-        unfold encode_ascii_Spec, encode_word_Spec in H2;
+        unfold format_ascii, format_word in H2;
           computes_to_inv; subst; simpl in *; injections.
         rewrite H in H4; intuition.
       + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
-        * unfold encode_word_Spec in *;
+        * unfold format_word in *;
             computes_to_inv; subst; simpl in *; injections.
           rewrite !H in H4; eauto.
         * destruct v as [label1 label2]; destruct v0 as [b' xenv'''];
@@ -1180,15 +1180,15 @@ Section DomainName.
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
              (domain : DomainName) (env : CacheEncode) =>
-           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+           If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
                           position = Some p -> In p (getE env domain)};
             Ifopt position as position0
-                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
-            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+                                Then `(ptr1b, env') <- format_word (` (fst position0)) env;
+            `(ptr2b, env'0) <- format_word (snd position0) env';
             ret (transform ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
@@ -1199,9 +1199,9 @@ Section DomainName.
                                                 domain = (label' ++ post')%string ->
                                                 ValidLabel label' ->
                                                 (String.length label' <= String.length (fst labeldomain'))%nat)};
-                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
-                        `(labelb, env'0) <- encode_string_Spec label env';
-                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        `(lenb, env') <- format_nat 8 (String.length label) env;
+                        `(labelb, env'0) <- format_string label env';
+                        `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
                           (transform (transform lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
@@ -1216,7 +1216,7 @@ Section DomainName.
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
-      unfold encode_ascii_Spec, encode_word_Spec in H2;
+      unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
         simpl in *; rewrite H2 in H4; try discriminate.
@@ -1225,7 +1225,7 @@ Section DomainName.
       elimtype False; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
-        unfold encode_ascii_Spec, encode_word_Spec in H2;
+        unfold format_ascii, format_word in H2;
           computes_to_inv; subst; simpl in *; injections.
         apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
           simpl in *; rewrite H2 in H4; try discriminate.
@@ -1233,7 +1233,7 @@ Section DomainName.
         rewrite pointerT2Nat_Nat2pointerT; eauto.
       + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
-        * unfold encode_word_Spec in *;
+        * unfold format_word in *;
             computes_to_inv; subst; simpl in *; injections.
           apply (addPeekE _ 1) in H3; destruct H3 as [ [? ?] | ? ];
             simpl in *.
@@ -1286,15 +1286,15 @@ Section DomainName.
           In p (getE (addE_G env (l', p')) l) -> p = p' \/ In p (getE env l)) ->
       (String.length x6 <= n)%nat ->
       LeastFixedPoint
-        (fun (encode_DomainName_Spec : funType [DomainName; CacheEncode] (B * CacheEncode))
+        (fun (format_DomainName : funType [DomainName; CacheEncode] (B * CacheEncode))
              (domain : DomainName) (env : CacheEncode) =>
-           If string_dec domain "" Then encode_ascii_Spec terminal_char env
+           If string_dec domain "" Then format_ascii terminal_char env
               Else (position <- {position : option ({x | WO~1~0~1~1~1~1~1~1 < x} * word 8) |
                         forall p : {x | WO~1~0~1~1~1~1~1~1 < x} * word 8,
                           position = Some p -> In p (getE env domain)};
             Ifopt position as position0
-                                Then `(ptr1b, env') <- encode_word_Spec (` (fst position0)) env;
-            `(ptr2b, env'0) <- encode_word_Spec (snd position0) env';
+                                Then `(ptr1b, env') <- format_word (` (fst position0)) env;
+            `(ptr2b, env'0) <- format_word (snd position0) env';
             ret (transform ptr1b ptr2b, env'0)
                 Else (`(label, domain') <- {labeldomain' :
                                               string * string |
@@ -1305,9 +1305,9 @@ Section DomainName.
                                                 domain = (label' ++ post')%string ->
                                                 ValidLabel label' ->
                                                 (String.length label' <= String.length (fst labeldomain'))%nat)};
-                        `(lenb, env') <- encode_nat_Spec 8 (String.length label) env;
-                        `(labelb, env'0) <- encode_string_Spec label env';
-                        `(domainb, env'1) <- encode_DomainName_Spec domain' env'0;
+                        `(lenb, env') <- format_nat 8 (String.length label) env;
+                        `(labelb, env'0) <- format_string label env';
+                        `(domainb, env'1) <- format_DomainName domain' env'0;
                         ret
                           (transform (transform lenb labelb) domainb,
                            Ifopt peekE env as curPtr Then addE_G env'1 (domain, curPtr) Else env'1)))) x6 xenv''
@@ -1325,18 +1325,18 @@ Section DomainName.
       simpl in H2.
     - destruct x6; simpl in *.
       simpl in H2; computes_to_inv.
-      unfold encode_ascii_Spec, encode_word_Spec in H2;
+      unfold format_ascii, format_word in H2;
         computes_to_inv; subst; simpl in *; injections.
       rewrite H in H3; intuition.
       elimtype False; omega.
     - destruct x6; simpl in *.
       + simpl in H2; computes_to_inv.
-        unfold encode_ascii_Spec, encode_word_Spec in H2;
+        unfold format_ascii, format_word in H2;
           computes_to_inv; subst; simpl in *; injections.
         rewrite H in H3; intuition.
       + simpl in H2; computes_to_inv.
         destruct v; simpl in H2'; unfold Bind2 in *; computes_to_inv.
-        * unfold encode_word_Spec in *;
+        * unfold format_word in *;
             computes_to_inv; subst; simpl in *; injections.
           rewrite !H in H3; eauto.
           intuition.
@@ -1501,17 +1501,17 @@ Section DomainName.
                              -> lt (pointerT2Nat p) (pointerT2Nat p'))
           ))
     :
-    encode_decode_correct_f
+    CorrectDecoder
       cache transformer
       (fun domain => ValidDomainName domain)
       (fun s b => True)
-      encode_DomainName_Spec decode_DomainName cache_inv.
+      format_DomainName decode_DomainName cache_inv.
   Proof.
-    unfold encode_decode_correct_f; split.
+    unfold CorrectDecoder; split.
     { intros env xenv xenv' l l' ext ? Eeq Valid_data
              Ppred_rest Penc.
       unfold decode_DomainName in *; simpl in *.
-      unfold encode_DomainName_Spec in Penc.
+      unfold format_DomainName in Penc.
       assert (exists xenv'0 : CacheDecode,
      Fix well_founded_lt_b (fun _ : B => CacheDecode -> option (DomainName * B * CacheDecode))
        (fun (b0 : B) (rec : forall y : B, lt_B y b0 -> CacheDecode -> option (DomainName * B * CacheDecode)) (cd : CacheDecode) =>
@@ -1563,7 +1563,7 @@ Section DomainName.
         apply DecodeBindOpt2_inv in H0;
           destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
         eexists; repeat split.
-        + unfold encode_ascii_Spec, encode_word_Spec in Penc;
+        + unfold format_ascii, format_word in Penc;
           computes_to_inv; subst; simpl in *; injections.
           rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
           match goal with
@@ -1594,7 +1594,7 @@ Section DomainName.
             apply DecodeBindOpt2_inv in H0;
               destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
             eexists; repeat split.
-            + unfold encode_ascii_Spec, encode_word_Spec in Penc;
+            + unfold format_ascii, format_word in Penc;
                 computes_to_inv; subst; simpl in *; injections.
               rewrite Init.Wf.Fix_eq; auto using decode_body_monotone; simpl.
               match goal with
@@ -1612,7 +1612,7 @@ Section DomainName.
               simpl in Penc'; unfold Bind2 in Penc'; computes_to_inv.
               destruct v as [b xenv'']; destruct v0 as [b' xenv'''];
                 simpl in *; injections.
-              unfold encode_word_Spec in Penc', Penc'';
+              unfold format_word in Penc', Penc'';
                   computes_to_inv; subst; simpl in *; injections.
                 eexists; repeat split.
                 rewrite Init.Wf.Fix_eq; simpl.
@@ -1624,7 +1624,7 @@ Section DomainName.
                   unfold decode_word at 1 in H0;
                   rewrite <- transform_assoc,
                   <- transformer_dequeue_word_eq_decode_word',
-                  transformer_dequeue_encode_word' in H0;
+                  transformer_dequeue_format_word' in H0;
                   simpl in H0;
                   destruct (H0 _ _ _ (eq_refl _)) as [? H']; clear H0.
                 rewrite <- transform_assoc, H'; simpl.
@@ -1635,7 +1635,7 @@ Section DomainName.
                   end.
                   simpl in H0; unfold decode_word at 1 in H0;
                     rewrite <- transformer_dequeue_word_eq_decode_word' in H0.
-                  rewrite transformer_dequeue_encode_word' in H0.
+                  rewrite transformer_dequeue_format_word' in H0.
                   simpl in H0;
                     destruct (H0 _ _ _ (eq_refl _)) as [? H'']; clear H0;
                       rewrite H''; clear H''; simpl.
@@ -2140,7 +2140,7 @@ Section DomainName.
       }
       destruct_ex; intuition; eauto. }
     {
-      unfold decode_DomainName, encode_DomainName_Spec;
+      unfold decode_DomainName, format_DomainName;
         intros env env' xenv' data bin;
         revert env env' xenv' data.
 
@@ -2206,7 +2206,7 @@ Section DomainName.
             intros; eapply encode_body_monotone; assumption.
           simpl.
           econstructor.
-          unfold encode_word_Spec in enc_x0; computes_to_inv;
+          unfold format_word in enc_x0; computes_to_inv;
             injection enc_x0; intros.
           rewrite <- H5 in x_eq.
           rewrite H4.
@@ -2274,7 +2274,7 @@ Section DomainName.
             apply pointerT_eq_dec.
             elimtype False.
             eapply encode_string_add_ptr_OK; eauto.
-            unfold encode_word_Spec in enc_x0; computes_to_inv;
+            unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
             rewrite IndependentCaches'.
             intro.
@@ -2351,7 +2351,7 @@ Section DomainName.
             apply pointerT_eq_dec .
             elimtype False.
             eapply encode_string_add_ptr_OK; eauto.
-            unfold encode_word_Spec in enc_x0; computes_to_inv;
+            unfold format_word in enc_x0; computes_to_inv;
               injection enc_x0; intros H' H''; rewrite <- H', H'' in *.
             rewrite IndependentCaches'.
             intro.
@@ -2442,7 +2442,7 @@ Section DomainName.
             omega.
             rewrite H16, length_append; omega.
             computes_to_econstructor; simpl.
-            unfold encode_nat_Spec;
+            unfold format_nat;
               rewrite H9, natToWord_wordToNat; eauto.
             computes_to_econstructor; simpl; eauto.
             computes_to_econstructor; simpl; eauto.
@@ -2461,7 +2461,7 @@ Section DomainName.
             simpl; omega.
             eapply (ValidLabel_split_char (String a x3)); simpl; eauto.
             computes_to_econstructor; simpl.
-            unfold encode_nat_Spec.
+            unfold format_nat.
             simpl in H9; rewrite H9, natToWord_wordToNat; eauto.
             computes_to_econstructor; simpl; eauto.
             computes_to_econstructor; simpl; eauto.

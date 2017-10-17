@@ -52,7 +52,7 @@ Definition ASN1_Simple_denote (desc : ASN1_Simple) : Set :=
   | ASN_Boolean => bool
   | ASN_Null => unit
   | ASN_Integer => Z
-  | ASN_Enum n => Fin.t (length n)
+  | ASN_Enum n => Fin.t (List.length n)
   | ASN_BitString => list bool
   | ASN_OctetString => list (word 8)
   | ASN_NumericString => string
@@ -150,24 +150,24 @@ Section ASN1_Format.
            (primitive : bool)
            (identifier : nat)
     : CacheEncode -> Comp (B * CacheEncode) :=
-          encode_enum_Spec Tag_Class_Codes (ibound (indexb tag))
-    ThenC encode_word_Spec (WS primitive WO)
+          format_enum Tag_Class_Codes (ibound (indexb tag))
+    ThenC format_word (WS primitive WO)
     ThenC (If (NPeano.ltb identifier 31) Then
-              encode_nat_Spec 5 identifier
-              Else (encode_nat_Spec 31 identifier
+              format_nat 5 identifier
+              Else (format_nat 31 identifier
               ThenC (* TODO: Put actual high-tag formating rule here. *)
-              encode_nat_Spec 5 identifier))
+              format_nat 5 identifier))
     DoneC.
 
   Definition ASN1_Format_Definite_Length
              (length : nat)
     : CacheEncode -> Comp (B * CacheEncode) :=
     If (NPeano.ltb length 127) Then
-       encode_nat_Spec 8 length
+       format_nat 8 length
     Else
-       (encode_word_Spec WO~1 (* Set highest bit to 1 *)
-       ThenC encode_nat_Spec (S (NPeano.div (NPeano.log2 length) 8)) 7
-       ThenC encode_nat_Spec length (S (NPeano.div (NPeano.log2 length) 8) * 8))
+       (format_word WO~1 (* Set highest bit to 1 *)
+       ThenC format_nat (S (NPeano.div (NPeano.log2 length) 8)) 7
+       ThenC format_nat length (S (NPeano.div (NPeano.log2 length) 8) * 8))
        DoneC.
 
   Fixpoint ASN1_Format_Simple_DER
@@ -182,7 +182,7 @@ Section ASN1_Format.
     fun data =>
           ASN1_Format_Tag ``"Universal" false 1
     ThenC ASN1_Format_Definite_Length 1
-    ThenC encode_word_Spec (if data then natToWord 8 255 else natToWord 8 0)
+    ThenC format_word (if data then natToWord 8 255 else natToWord 8 0)
     DoneC
 
   | ASN_Null =>
@@ -191,17 +191,17 @@ Section ASN1_Format.
     ThenC ASN1_Format_Definite_Length 0
     DoneC
 
-  | ASN_Integer => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
-  | ASN_Enum n => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
-  | ASN_BitString => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
-  | ASN_OctetString => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
-  | ASN_NumericString => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
-  | ASN_PrintableString => fun data => encode_word_Spec (natToWord 1 10) (* TODO *)
+  | ASN_Integer => fun data => format_word (natToWord 1 10) (* TODO *)
+  | ASN_Enum n => fun data => format_word (natToWord 1 10) (* TODO *)
+  | ASN_BitString => fun data => format_word (natToWord 1 10) (* TODO *)
+  | ASN_OctetString => fun data => format_word (natToWord 1 10) (* TODO *)
+  | ASN_NumericString => fun data => format_word (natToWord 1 10) (* TODO *)
+  | ASN_PrintableString => fun data => format_word (natToWord 1 10) (* TODO *)
   | ASN_IA5String =>
     fun data =>
           ASN1_Format_Tag ``"Universal" false 22
     ThenC ASN1_Format_Definite_Length (String.length data)
-    ThenC encode_string_Spec data
+    ThenC format_string data
     DoneC
   end.
 
@@ -278,11 +278,11 @@ Section ASN1_Decoder_Example.
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_nat_Spec 8 (transformerUnit := ByteString_QueueTransformerOpt) n)
+      -> refine (((format_nat 8 (transformerUnit := ByteString_QueueTransformerOpt) n)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (natToWord 8 n) _ v), ce')).
   Proof.
-    unfold encode_nat_Spec; cbv beta; intros.
+    unfold format_nat; cbv beta; intros.
     rewrite <- AlignedEncodeChar; eauto.
     reflexivity.
   Qed.
@@ -352,12 +352,12 @@ Section ASN1_Decoder_Example.
       (decodeE : B -> CacheDecode -> option (A * B * CacheDecode))
       (decodeT_pf :
          cache_inv_Property P P_invT
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicateT predicate_rest
               encodeT decodeT P)
       (decodeE_pf :
          cache_inv_Property P P_invE
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicateE predicate_rest
               encodeE decodeE P)
       (ICompb_OKT : forall data bin env xenv ext,
@@ -382,7 +382,7 @@ Section ASN1_Decoder_Example.
       (predicateE_OK : forall a, proj a = false
                                  -> (predicate a
                                  <-> predicateE a))
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       (fun a => predicate a)
       predicate_rest
@@ -436,7 +436,7 @@ Qed.
                      (ret (simple_encoder t)) }.
   Proof.
     simpl; eexists; intros.
-    unfold encode_nat_Spec at 1, encode_enum_Spec; simpl.
+    unfold format_nat at 1, format_enum; simpl.
     eapply SetoidMorphisms.refine_refineEquiv_Proper;
       [ unfold flip;
         repeat first

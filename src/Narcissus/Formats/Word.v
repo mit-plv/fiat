@@ -12,14 +12,14 @@ Section Word.
   Context {transformer : Transformer B}.
   Context {transformerUnit : TransformerUnit transformer bool}.
 
-  Fixpoint encode_word' (s : nat) (w : word s) : B :=
+  Fixpoint format_word' (s : nat) (w : word s) : B :=
     match w with
     | WO => transform_id
-    | WS b s' w' => transform_push b (encode_word' s' w')
+    | WS b s' w' => transform_push b (format_word' s' w')
     end.
 
-  Definition encode_word (w : word sz) (ce : CacheEncode) : B * CacheEncode :=
-    (encode_word' sz w, addE ce sz).
+  Definition format_word (w : word sz) (ce : CacheEncode) : B * CacheEncode :=
+    (format_word' sz w, addE ce sz).
 
   Fixpoint decode_word' (s : nat) (b : B) : word s * B :=
     match s with
@@ -34,9 +34,9 @@ Section Word.
     (decode_word' sz b, addD cd sz).
 
   Theorem Word_decode_correct :
-    encode_decode_correct cache transformer (fun _ => True) encode_word decode_word.
+    encode_decode_correct cache transformer (fun _ => True) format_word decode_word.
   Proof.
-    unfold encode_decode_correct, encode_word, decode_word.
+    unfold encode_decode_correct, format_word, decode_word.
     intros env env' xenv xenv' w w' bin' ext ext' Eeq _ Penc Pdec.
     inversion Penc; subst; clear Penc; inversion Pdec; subst; clear Pdec.
     generalize dependent sz.
@@ -47,7 +47,7 @@ Section Word.
       rewrite transform_push_pop.
       intro. destruct (shatter_word_S w') as [? [? ?]].
       rewrite H. specialize (IHw x0).
-      destruct (decode_word' n (transform (encode_word' n w) ext)) eqn: ?.
+      destruct (decode_word' n (transform (format_word' n w) ext)) eqn: ?.
       intro. inversion H0; subst; clear H0.
       apply Eqdep_dec.inj_pair2_eq_dec in H3. subst.
       intuition eauto. eapply add_correct. eauto. subst. eauto. eapply Peano_dec.eq_nat_dec. }

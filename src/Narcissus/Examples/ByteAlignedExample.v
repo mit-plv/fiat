@@ -22,9 +22,9 @@ Definition simple_record := ((word 16) * list (word 8))%type.
 
 Definition Simple_Format_Spec
            (p : simple_record) :=
-        encode_nat_Spec 8 (|snd p|)
-  ThenC encode_word_Spec (fst p)
-  ThenC encode_list_Spec encode_word_Spec (snd p)
+        format_nat 8 (|snd p|)
+  ThenC format_word (fst p)
+  ThenC format_list format_word (snd p)
   DoneC.
 
 Definition Simply_OK (p : simple_record) :=

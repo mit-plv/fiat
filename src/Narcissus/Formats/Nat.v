@@ -13,8 +13,8 @@ Section Nat.
   Context {transformer : Transformer B}.
   Context {transformerUnit : TransformerUnit transformer bool}.
 
-  Definition encode_nat (n : nat) (ce : CacheEncode) : B * CacheEncode :=
-    encode_word (natToWord sz n) ce.
+  Definition format_nat (n : nat) (ce : CacheEncode) : B * CacheEncode :=
+    format_word (natToWord sz n) ce.
 
   Definition decode_nat (b : B) (cd : CacheDecode) : nat * B * CacheDecode :=
     let (bundle, cd) := decode_word (sz:=sz) b cd in
@@ -22,10 +22,11 @@ Section Nat.
         (wordToNat w, b, cd).
 
   Local Open Scope nat.
+
   Theorem Nat_decode_correct :
-    encode_decode_correct cache transformer (fun n => n < pow2 sz) encode_nat decode_nat.
+    encode_decode_correct cache transformer (fun n => n < pow2 sz) format_nat decode_nat.
   Proof.
-    unfold encode_decode_correct, encode_nat, decode_nat.
+    unfold encode_decode_correct, format_nat, decode_nat.
     intros env env' xenv xenv' n n' bin' ext ext' Eeq Ppred Penc Pdec.
     destruct (decode_word (transform bin' ext) env') as [[? ?] ?] eqn: ?.
     inversion Pdec; subst; clear Pdec.

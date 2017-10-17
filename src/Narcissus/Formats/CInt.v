@@ -87,7 +87,7 @@ Module Make (WS : WORDSIZE).
             rewrite BinPos.Pos.add_diag; auto.
     Qed.
 
-    Definition encode_int_Spec (sz : nat) (i : int) (ce : CacheEncode) : Comp (B * CacheEncode) := encode_word_Spec (intToWord sz i) ce.
+    Definition format_int (sz : nat) (i : int) (ce : CacheEncode) : Comp (B * CacheEncode) := format_word (intToWord sz i) ce.
 
     Definition decode_int (sz : nat) (b : B) (cd : CacheDecode) : option (int * B * CacheDecode) :=
       `(w, b, cd) <- decode_word (sz:=sz) b cd;
@@ -98,10 +98,10 @@ Module Make (WS : WORDSIZE).
             (sz_OK : le sz wordsize)
             {P : CacheDecode -> Prop}
             (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-      : encode_decode_correct_f cache transformer (fun i : int => BinInt.Z.lt (intval i) (BinInt.Z.of_N (Npow2 sz)))
-                                (fun _ _ => True) (encode_int_Spec sz) (decode_int sz) P.
+      : CorrectDecoder cache transformer (fun i : int => BinInt.Z.lt (intval i) (BinInt.Z.of_N (Npow2 sz)))
+                                (fun _ _ => True) (format_int sz) (decode_int sz) P.
   Proof.
-    unfold encode_decode_correct_f, encode_int_Spec, decode_int.
+    unfold CorrectDecoder, format_int, decode_int.
     split.
     { intros env xenv xenv' n n' ext ? Eeq Ppred Ppred_rest Penc.
       destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? [? xenv_OK] ] ].
@@ -129,7 +129,7 @@ Module Make (WS : WORDSIZE).
       injections.
       eapply (proj2 (Word_decode_correct P_OK)) in Heqo;
         destruct Heqo; destruct_ex; intuition; subst; eauto.
-      unfold encode_word_Spec in *; computes_to_inv; injections.
+      unfold format_word in *; computes_to_inv; injections.
       rewrite intToWord_wordToInt by eauto.
       - repeat eexists; eauto.
         unfold wordToInt; simpl.

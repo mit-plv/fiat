@@ -26,7 +26,7 @@ Section Specifications.
       decode (transform bin ext) env' = (data', ext', xenv') ->
       Equiv xenv xenv' /\ data = data' /\ ext = ext'.
 
-  Definition encode_decode_correct_f
+  Definition CorrectDecoder
              (cache : Cache)
              (transformer : Transformer B)
              (predicate : A -> Prop)
@@ -71,7 +71,7 @@ Section Specifications.
            (decode_inv : CacheDecode -> Prop)
            (predicate_dec : forall a, {predicate a} + {~ predicate a})
            (rest_predicate_dec : forall data, {rest_predicate data transform_id} + {~rest_predicate data transform_id}),
-      encode_decode_correct_f cache transformer predicate rest_predicate encode decode decode_inv
+      CorrectDecoder cache transformer predicate rest_predicate encode decode decode_inv
       -> forall b env' env,
         Equiv env env'
         -> decode b env' = None
@@ -327,12 +327,12 @@ Add Parametric Morphism
     (decode : B -> CacheDecode -> option (A * B * CacheDecode))
     (decode_inv : CacheDecode -> Prop)
   : (fun encoder =>
-       @encode_decode_correct_f A B cache transformer predicate
+       @CorrectDecoder A B cache transformer predicate
                                 rest_predicate encoder decode decode_inv)
     with signature (pointwise_relation _ (pointwise_relation _ refineEquiv) ==> impl)
       as encode_decode_correct_refineEquiv.
 Proof.
-  unfold impl, pointwise_relation, encode_decode_correct_f;
+  unfold impl, pointwise_relation, CorrectDecoder;
     intuition eauto; intros.
   - eapply H1; eauto; apply H; eauto.
   - eapply H2; eauto.
@@ -347,7 +347,7 @@ Section DecodeWMeasure.
   Context {cache : Cache}.
   Context {transformer : Transformer B}.
 
-  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
 
   Definition Decode_w_Measure_lt
@@ -512,7 +512,7 @@ Definition CorrectDecoderFor {A B} {cache : Cache}
   { decodePlusCacheInv |
     exists P_inv,
     (cache_inv_Property (snd decodePlusCacheInv) P_inv
-     -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+     -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
                                 FormatSpec
                                 (fst decodePlusCacheInv)
                                 (snd decodePlusCacheInv))
@@ -528,14 +528,14 @@ Lemma Start_CorrectDecoderFor
       (P_inv : (CacheDecode -> Prop) -> Prop)
       (decoder_OK :
          cache_inv_Property cache_inv P_inv
-         -> encode_decode_correct_f (A := A) cache transformer Invariant (fun _ _ => True)
+         -> CorrectDecoder (A := A) cache transformer Invariant (fun _ _ => True)
                                     FormatSpec decoder cache_inv)
       (cache_inv_OK : cache_inv_Property cache_inv P_inv)
       (decoder_opt_OK : forall b cd, decoder b cd = decoder_opt b cd)
   : @CorrectDecoderFor A B cache transformer Invariant FormatSpec.
 Proof.
   exists (decoder_opt, cache_inv); exists P_inv; split; simpl; eauto.
-  unfold encode_decode_correct_f in *; intuition; intros.
+  unfold CorrectDecoder in *; intuition; intros.
   - destruct (H1 _ _ _ _ _ ext env_OK H0 H3 H4 H5).
     rewrite decoder_opt_OK in H6; eauto.
   - rewrite <- decoder_opt_OK in H4; destruct (H2 _ _ _ _ _ _ H0 H3 H4); eauto.

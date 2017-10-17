@@ -2268,7 +2268,7 @@ Admitted.
 
 Definition QType_proj : QType -> option RRecordType. Admitted.
 
-Require Import  Fiat.BinEncoders.Env.Examples.SimpleDnsOpt.
+Require Import  Fiat.Narcissus.Examples.SimpleDnsOpt.
 
 Lemma refine_Process_Query_Exact_Match
   : forall (r_o : UnConstrQueryStructure DnsSchema)

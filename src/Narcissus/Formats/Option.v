@@ -15,7 +15,7 @@ Section Option.
   Context {cacheAddNat : CacheAdd cache nat}.
   Context {transformer : Transformer B}.
 
-  Definition encode_option_Spec
+  Definition format_option
              (encode_Some : A -> CacheEncode -> Comp (B * CacheEncode))
              (encode_None : () -> CacheEncode -> Comp (B * CacheEncode))
              (a_opt : option A)
@@ -49,19 +49,19 @@ Section Option.
       (decode_None : B -> CacheDecode -> option (() * B * CacheDecode))
       (decode_Some_pf :
          cache_inv_Property P P_invT
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate_Some predicate_rest_Some
               encode_Some decode_Some P)
       (decode_None_pf :
          cache_inv_Property P P_invE
-         -> encode_decode_correct_f
+         -> CorrectDecoder
               cache transformer predicate_None predicate_rest_None
               encode_None decode_None P)
-  : encode_decode_correct_f
+  : CorrectDecoder
       cache transformer
       predicate
       predicate_rest
-      (encode_option_Spec encode_Some encode_None)%comp
+      (format_option encode_Some encode_None)%comp
       (fun (b : B) (env : CacheDecode) =>
          If b' Then
             match decode_Some b env with
@@ -77,7 +77,7 @@ Section Option.
 Proof.
   unfold cache_inv_Property in *; split.
   { intros env env' xenv data bin ext ? env_pm pred_pm pred_pm_rest com_pf.
-    unfold encode_option_Spec in com_pf; computes_to_inv;
+    unfold format_option in com_pf; computes_to_inv;
       destruct data;
       find_if_inside; unfold predicate in *; simpl in *;
         intuition; try discriminate.

@@ -79,15 +79,15 @@ Definition OperationCodes : Vector.t (word 16) 4 :=
   ].
 
 Definition encode_ARPPacket_Spec (arp : ARPPacket) :=
-          encode_enum_Spec HardTypeCodes arp!"HardType"
-    ThenC encode_enum_Spec EtherTypeCodes arp!"ProtType"
-    ThenC encode_word_Spec HardSizeCodes[@arp!"HardType"]
-    ThenC encode_word_Spec ProtSizeCodes[@arp!"ProtType"]
-    ThenC encode_enum_Spec OperationCodes arp!"Operation"
-    ThenC encode_list_Spec encode_word_Spec arp!"SenderHardAddress"
-    ThenC encode_list_Spec encode_word_Spec arp!"SenderProtAddress"
-    ThenC encode_list_Spec encode_word_Spec arp!"TargetHardAddress"
-    ThenC encode_list_Spec encode_word_Spec arp!"TargetProtAddress"
+          format_enum HardTypeCodes arp!"HardType"
+    ThenC format_enum EtherTypeCodes arp!"ProtType"
+    ThenC format_word HardSizeCodes[@arp!"HardType"]
+    ThenC format_word ProtSizeCodes[@arp!"ProtType"]
+    ThenC format_enum OperationCodes arp!"Operation"
+    ThenC format_list format_word arp!"SenderHardAddress"
+    ThenC format_list format_word arp!"SenderProtAddress"
+    ThenC format_list format_word arp!"TargetHardAddress"
+    ThenC format_list format_word arp!"TargetProtAddress"
     DoneC.
 
 Definition ARP_Packet_OK (arp : ARPPacket) :=

@@ -15,18 +15,18 @@ Section FixList.
 
   Variable A_predicate : A -> Prop.
   Variable A_predicate_rest : A -> B -> Prop.
-  Variable A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode).
+  Variable format_A : A -> CacheEncode -> Comp (B * CacheEncode).
   Variable A_decode : B -> CacheDecode -> option (A * B * CacheDecode).
   Variable A_cache_inv : CacheDecode -> Prop.
-  Variable A_decode_pf : encode_decode_correct_f cache transformer A_predicate A_predicate_rest A_encode_Spec A_decode A_cache_inv.
+  Variable A_decode_pf : CorrectDecoder cache transformer A_predicate A_predicate_rest format_A A_decode A_cache_inv.
 
   (* Ben: Should we do this with a FixComp instead? *)
-  Fixpoint encode_list_Spec (xs : list A) (ce : CacheEncode)
+  Fixpoint format_list (xs : list A) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
     | nil => ret (transform_id, ce)
-    | x :: xs' => `(b1, env1) <- A_encode_Spec x ce;
-                  `(b2, env2) <- encode_list_Spec xs' env1;
+    | x :: xs' => `(b1, env1) <- format_A x ce;
+                  `(b2, env2) <- format_list xs' env1;
                   ret (transform b1 b2, env2)
     end%comp.
 
@@ -57,7 +57,7 @@ Section FixList.
     | nil => True
     | cons a As' =>
       (forall b' ce ce',
-          computes_to (encode_list_Spec As' ce) (b', ce')
+          computes_to (format_list As' ce) (b', ce')
           -> A_predicate_rest a (transform b' b))
       /\ FixList_predicate_rest As' b
     end.
@@ -65,11 +65,11 @@ Section FixList.
   Theorem FixList_decode_correct
     :
     forall sz ,
-      encode_decode_correct_f
+      CorrectDecoder
         cache transformer
         (fun ls => |ls| = sz /\ forall x, In x ls -> A_predicate x)
         FixList_predicate_rest
-        encode_list_Spec (decode_list sz) A_cache_inv.
+        format_list (decode_list sz) A_cache_inv.
   Proof.
     split.
     {
@@ -154,10 +154,10 @@ Section FixList.
 
   Lemma measure_encode_length_Spec n :
     (forall (a : A) b ctx ctx',
-        computes_to (A_encode_Spec a ctx) (b, ctx')
+        computes_to (format_A a ctx) (b, ctx')
         -> bin_measure b = n)
     -> forall l b ctx ctx',
-      computes_to (encode_list_Spec l ctx) (b, ctx') ->
+      computes_to (format_list l ctx) (b, ctx') ->
       bin_measure b = n * (length l).
   Proof.
     induction l; simpl; intros.
@@ -179,9 +179,9 @@ End FixList.
 Lemma FixedList_predicate_rest_True {A B}
       {cache : Cache}
       {transformer : Transformer B}
-      (A_encode_Spec : A -> CacheEncode -> Comp (B * CacheEncode))
+      (format_A : A -> CacheEncode -> Comp (B * CacheEncode))
   : forall (l : list A) (b : B),
-    FixList_predicate_rest (fun a b => True) A_encode_Spec l b.
+    FixList_predicate_rest (fun a b => True) format_A l b.
 Proof.
   induction l; simpl; eauto.
 Qed.

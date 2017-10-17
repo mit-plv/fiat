@@ -945,80 +945,80 @@ Section DnsPacket.
   (* Resource Record <character-string>s are a byte, *)
   (* followed by that many characters. *)
   Definition encode_characterString_Spec (s : string) :=
-    encode_nat_Spec 8 (String.length s)
-                    ThenC encode_string_Spec s
+    format_nat 8 (String.length s)
+                    ThenC format_string s
                     DoneC.
 
   Definition encode_question_Spec (q : question) :=
-    encode_DomainName_Spec q!"qname"
-                           ThenC encode_enum_Spec QType_Ws q!"qtype"
-                           ThenC encode_enum_Spec QClass_Ws q!"qclass"
+    format_DomainName q!"qname"
+                           ThenC format_enum QType_Ws q!"qtype"
+                           ThenC format_enum QClass_Ws q!"qclass"
                            DoneC.
 
 
   Definition encode_TXT_Spec (s : string) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC encode_characterString_Spec s
                             DoneC.
 
   Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec soa!"sourcehost"
-                            ThenC encode_DomainName_Spec soa!"contact_email"
-                            ThenC encode_word_Spec soa!"serial"
-                            ThenC encode_word_Spec soa!"refresh"
-                            ThenC encode_word_Spec soa!"retry"
-                            ThenC encode_word_Spec soa!"expire"
-                            ThenC encode_word_Spec soa!"minTTL"
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
+                            ThenC format_DomainName soa!"sourcehost"
+                            ThenC format_DomainName soa!"contact_email"
+                            ThenC format_word soa!"serial"
+                            ThenC format_word soa!"refresh"
+                            ThenC format_word soa!"retry"
+                            ThenC format_word soa!"expire"
+                            ThenC format_word soa!"minTTL"
                             DoneC.
 
   Definition encode_WKS_RDATA_Spec (wks : WKS_RDATA) :=
-    encode_nat_Spec 16 (length (wks!"Bit-Map"))
-                    ThenC encode_word_Spec wks!"Address"
-                    ThenC encode_word_Spec wks!"Protocol"
-                    ThenC (encode_list_Spec encode_word_Spec wks!"Bit-Map")
+    format_nat 16 (length (wks!"Bit-Map"))
+                    ThenC format_word wks!"Address"
+                    ThenC format_word wks!"Protocol"
+                    ThenC (format_list format_word wks!"Bit-Map")
                     DoneC.
 
   Definition encode_HINFO_RDATA_Spec (hinfo : HINFO_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC encode_characterString_Spec hinfo!"CPU"
                             ThenC encode_characterString_Spec hinfo!"OS"
                             DoneC.
 
   Definition encode_MX_RDATA_Spec (mx : MX_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_word_Spec mx!"Preference"
-                            ThenC encode_DomainName_Spec mx!"Exchange"
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
+                            ThenC format_word mx!"Preference"
+                            ThenC format_DomainName mx!"Exchange"
                             DoneC.
 
   Definition encode_MINFO_RDATA_Spec (minfo : MINFO_RDATA) :=
-    encode_unused_word_Spec 16 (* Unusued RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec minfo!"rMailBx"
-                            ThenC encode_DomainName_Spec minfo!"eMailBx"
+    format_unused_word 16 (* Unusued RDLENGTH Field *)
+                            ThenC format_DomainName minfo!"rMailBx"
+                            ThenC format_DomainName minfo!"eMailBx"
                             DoneC.
 
   Definition encode_A_Spec (a : Memory.W) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_word_Spec a
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_word a
                             DoneC.
 
   Definition encode_NS_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec domain
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_DomainName domain
                             DoneC.
 
   Definition encode_CNAME_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec domain
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_DomainName domain
                             DoneC.
 
   Definition encode_PTR_Spec (domain : DomainName) :=
-    encode_unused_word_Spec 16 (* Unused RDLENGTH Field *)
-                            ThenC encode_DomainName_Spec domain
+    format_unused_word 16 (* Unused RDLENGTH Field *)
+                            ThenC format_DomainName domain
                             DoneC.
 
   Definition encode_rdata_Spec :=
-    encode_SumType_Spec ResourceRecordTypeTypes
+    format_SumType ResourceRecordTypeTypes
                         (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
                         (icons encode_A_Spec (* A; host address 	[RFC1035] *)
                         (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
@@ -1031,42 +1031,42 @@ Section DnsPacket.
                         (icons encode_TXT_Spec inil)))))))))). (*TXT text strings 	[RFC1035] *)
 
   Definition encode_resource_Spec(r : resourceRecord) :=
-    encode_DomainName_Spec r!sNAME
-                           ThenC encode_enum_Spec RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
-                           ThenC encode_enum_Spec RRecordClass_Ws r!sCLASS
-                           ThenC encode_word_Spec r!sTTL
+    format_DomainName r!sNAME
+                           ThenC format_enum RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
+                           ThenC format_enum RRecordClass_Ws r!sCLASS
+                           ThenC format_word r!sTTL
                            ThenC encode_rdata_Spec r!sRDATA
                            DoneC.
 
   Definition encode_packet_Spec (p : packet) :=
-    encode_word_Spec p!"id"
-                     ThenC encode_word_Spec (WS p!"QR" WO)
-                     ThenC encode_enum_Spec Opcode_Ws p!"Opcode"
-                     ThenC encode_word_Spec (WS p!"AA" WO)
-                     ThenC encode_word_Spec (WS p!"TC" WO)
-                     ThenC encode_word_Spec (WS p!"RD" WO)
-                     ThenC encode_word_Spec (WS p!"RA" WO)
-                     ThenC encode_word_Spec (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
-                     ThenC encode_enum_Spec RCODE_Ws p!"RCODE"
-                     ThenC encode_nat_Spec 16 1 (* length of question field *)
-                     ThenC encode_nat_Spec 16 (|p!"answers"|)
-                     ThenC encode_nat_Spec 16 (|p!"authority"|)
-                     ThenC encode_nat_Spec 16 (|p!"additional"|)
+    format_word p!"id"
+                     ThenC format_word (WS p!"QR" WO)
+                     ThenC format_enum Opcode_Ws p!"Opcode"
+                     ThenC format_word (WS p!"AA" WO)
+                     ThenC format_word (WS p!"TC" WO)
+                     ThenC format_word (WS p!"RD" WO)
+                     ThenC format_word (WS p!"RA" WO)
+                     ThenC format_word (WS false (WS false (WS false WO))) (* 3 bits reserved for future use *)
+                     ThenC format_enum RCODE_Ws p!"RCODE"
+                     ThenC format_nat 16 1 (* length of question field *)
+                     ThenC format_nat 16 (|p!"answers"|)
+                     ThenC format_nat 16 (|p!"authority"|)
+                     ThenC format_nat 16 (|p!"additional"|)
                      ThenC encode_question_Spec p!"question"
-                     ThenC (encode_list_Spec encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+                     ThenC (format_list encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
   Ltac decode_DNS_rules g :=
     (* Processes the goal by either: *)
     lazymatch goal with
-    | |- appcontext[encode_decode_correct_f _ _ _ _ encode_DomainName_Spec _ _ ] =>
+    | |- appcontext[CorrectDecoder _ _ _ _ format_DomainName _ _ ] =>
       eapply (DomainName_decode_correct
                 IndependentCaches IndependentCaches' IndependentCaches'''
                 getDistinct getDistinct' addPeekSome
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
                 addPeekENone addPeekENone' addZeroPeekE)
-    | |- appcontext [encode_decode_correct_f _ _ _ _ (encode_list_Spec encode_resource_Spec) _ _] =>
+    | |- appcontext [CorrectDecoder _ _ _ _ (format_list encode_resource_Spec) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 

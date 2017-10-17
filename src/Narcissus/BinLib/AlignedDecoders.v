@@ -39,11 +39,11 @@ Section AlignedDecoders.
 
   Lemma aligned_encode_char_eq
     : forall (w : word 8) cd,
-      refine (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w cd)
+      refine (format_word (transformerUnit := ByteString_QueueTransformerOpt) w cd)
              (ret (build_aligned_ByteString (Vector.cons _ w _ (Vector.nil _)), addE cd 8)).
   Proof.
     intros; shatter_word w; simpl.
-    unfold encode_word_Spec; simpl.
+    unfold format_word; simpl.
     compute.
     intros.
     computes_to_inv; subst.
@@ -85,7 +85,7 @@ Section AlignedDecoders.
   Lemma AlignedEncodeChar {numBytes}
     : forall (w : word 8) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ w _ v), ce')).
   Proof.
@@ -135,14 +135,14 @@ Section AlignedDecoders.
 
   Lemma encode_words {n m}
     : forall (w : word (n + m)) ce,
-      refine (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w ce)
-             ((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) (split1' _ _ w)
-                                ThenC (encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) (split2' _ _ w)))
+      refine (format_word (transformerUnit := ByteString_QueueTransformerOpt) w ce)
+             ((format_word (transformerUnit := ByteString_QueueTransformerOpt) (split1' _ _ w)
+                                ThenC (format_word (transformerUnit := ByteString_QueueTransformerOpt) (split2' _ _ w)))
                 ce).
   Proof.
     induction n.
     - unfold compose; simpl; intros.
-      unfold encode_word_Spec at 2; simpl.
+      unfold format_word at 2; simpl.
       autorewrite with monad laws.
       simpl; rewrite addE_addE_plus.
       pose proof transform_id_left as H'; simpl in H'; rewrite H'.
@@ -153,9 +153,9 @@ Section AlignedDecoders.
       unfold compose, Bind2.
       rewrite (IHn (word_split_tl w) (addE ce 1)).
       unfold compose, Bind2.
-      unfold encode_word_Spec; autorewrite with monad laws.
+      unfold format_word; autorewrite with monad laws.
       simpl.
-      rewrite encode_word_S.
+      rewrite format_word_S.
       pose proof transform_assoc as H'; simpl in H'.
       rewrite !H'.
       rewrite !addE_addE_plus; simpl.
@@ -179,7 +179,7 @@ Section AlignedDecoders.
   Lemma AlignedEncode2Char {numBytes}
     : forall (w : word 16) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 w) _
@@ -233,13 +233,13 @@ Section AlignedDecoders.
             {numBytes}
     : forall (n : nat) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_nat_Spec 16 (transformerUnit := ByteString_QueueTransformerOpt) n)
+      -> refine (((format_nat 16 (transformerUnit := ByteString_QueueTransformerOpt) n)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons
                                                   _ (split1' 8 8 (natToWord 16 n)) _
                                                   (Vector.cons _ (split2' 8 8 (natToWord 16 n)) _ v)), ce')).
   Proof.
-    unfold encode_nat_Spec; cbv beta; intros.
+    unfold format_nat; cbv beta; intros.
     rewrite <- AlignedEncode2Char; eauto.
     reflexivity.
   Qed.
@@ -286,7 +286,7 @@ Section AlignedDecoders.
     : {b' : ByteString | le_B b' (build_aligned_ByteString b)}.
     eexists (build_aligned_ByteString
                (snd (Vector_split _ _ (Guarded_Vector_split m n b)))).
-    abstract (unfold build_aligned_ByteString, le_B; simpl; 
+    abstract (unfold build_aligned_ByteString, le_B; simpl;
               unfold length_ByteString; simpl; omega).
   Defined.
 
@@ -491,7 +491,7 @@ Section AlignedDecoders.
   Lemma encode_string_ByteString
     : forall (s : string)
              (ce : CacheEncode),
-      refine (FixStringOpt.encode_string_Spec s ce)
+      refine (FixStringOpt.format_string s ce)
              (ret (build_aligned_ByteString (StringToBytes s), addE ce (8 * String.length s))).
   Proof.
     induction s; intros; simpl.
@@ -499,7 +499,7 @@ Section AlignedDecoders.
       eapply ByteString_f_equal.
       instantiate (1 := eq_refl _); reflexivity.
       instantiate (1 := eq_refl _); reflexivity.
-    - unfold AsciiOpt.encode_ascii_Spec.
+    - unfold AsciiOpt.format_ascii.
       unfold Bind2;  setoid_rewrite aligned_encode_char_eq.
       simplify with monad laws.
       rewrite IHs.
@@ -516,7 +516,7 @@ Section AlignedDecoders.
              (ce' : CacheEncode)
              (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce (8 * String.length s))) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((FixStringOpt.encode_string_Spec s) ThenC c) ce)
+      -> refine (((FixStringOpt.format_string s) ThenC c) ce)
                 (ret (build_aligned_ByteString (append (StringToBytes s) v), ce')).
   Proof.
     unfold compose, Bind2; autorewrite with monad laws; intros.
@@ -885,7 +885,7 @@ Section AlignedDecoders.
     - erewrite <- !WS_eq_rect_eq.
       rewrite IHw; reflexivity.
   Qed.
-      
+
   Lemma decode_word_plus':
     forall (n m : nat) (v : ByteString),
       decode_word' (n + m) v =
@@ -923,7 +923,7 @@ Section AlignedDecoders.
         omega.
         omega.
   Qed.
-      
+
     Lemma decode_word_aligned_ByteString_overflow
         {sz'}
     : forall (b : t (word 8) sz')
@@ -941,7 +941,7 @@ Section AlignedDecoders.
       unfold decode_word, WordOpt.decode_word.
       rewrite <- mult_n_Sm, plus_comm.
       rewrite decode_word_plus'.
-      rewrite (@aligned_decode_char_eq' _ 0). 
+      rewrite (@aligned_decode_char_eq' _ 0).
       simpl.
       unfold build_aligned_ByteString, decode_word in *.
       simpl in H0.
@@ -1068,7 +1068,7 @@ Section AlignedDecoders.
   Lemma AlignedEncode32Char {numBytes}
     : forall (w : word 32) ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 32)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) w)
+      -> refine (((format_word (transformerUnit := ByteString_QueueTransformerOpt) w)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString
                         (Vector.cons
@@ -1183,19 +1183,19 @@ Section AlignedDecoders.
 
   Lemma optimize_align_encode_list
         {A}
-        (A_encode_Spec : A -> CacheEncode -> Comp (ByteString * CacheEncode))
+        (format_A : A -> CacheEncode -> Comp (ByteString * CacheEncode))
         (A_encode_align :
            A
            ->  CacheEncode
            -> {n : _ & Vector.t (word 8) n} * CacheEncode)
         (A_encode_OK :
            forall a ce,
-             refine (A_encode_Spec a ce)
+             refine (format_A a ce)
                     (ret (let (v', ce') := A_encode_align a ce in
                           (build_aligned_ByteString (projT2 v'), ce'))))
     : forall (As : list A)
              (ce : CacheEncode),
-      refine (encode_list_Spec A_encode_Spec As ce)
+      refine (format_list format_A As ce)
              (let (v', ce') := (align_encode_list A_encode_align As ce) in
               ret (build_aligned_ByteString (projT2 v'), ce')).
   Proof.
@@ -1311,7 +1311,7 @@ Proof.
   repeat f_equal; apply Core.le_uniqueness_proof.
   apply (@transform_id_left _ ByteStringQueueTransformer).
 Qed.
-  
+
 Lemma decode_unused_word_aligned_ByteString_overflow
     : forall {sz'}
              (b : t (word 8) sz')
@@ -1329,7 +1329,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
       unfold decode_unused_word, WordOpt.decode_word.
       rewrite <- mult_n_Sm, plus_comm.
       rewrite decode_unused_word_plus'.
-      rewrite (@aligned_decode_unused_char_eq ). 
+      rewrite (@aligned_decode_unused_char_eq ).
       simpl.
       unfold decode_unused_word in H0.
       simpl in H0.
@@ -1356,7 +1356,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     rewrite aligned_decode_unused_char_eq; simpl.
     f_equal.
   Qed.
-  
+
   Lemma AlignedDecodeUnusedChars {C}
         {numBytes numBytes'}
     : forall (v : Vector.t (word 8) (numBytes' + numBytes))
@@ -1382,7 +1382,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
                            S (numBytes' + S (numBytes' + S (numBytes' + S (numBytes' + 0))))))))) with (8 + 8 * numBytes') by omega.
       unfold decode_unused_word; intros.
       rewrite decode_unused_word_plus'.
-      rewrite (@aligned_decode_unused_char_eq ). 
+      rewrite (@aligned_decode_unused_char_eq ).
       simpl BindOpt.
       pose proof (IHnumBytes' (Vector.tl v) k (addD cd 8)).
       simpl in H.
@@ -1405,10 +1405,10 @@ Lemma decode_unused_word_aligned_ByteString_overflow
 
   Lemma aligned_encode_unused_char_eq
     : forall cd,
-      refine (encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 8 cd)
+      refine (format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 8 cd)
              (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.nil _)), addE cd 8)).
   Proof.
-    unfold encode_unused_word_Spec, encode_unused_word_Spec'; simpl.
+    unfold format_unused_word, format_unused_word'; simpl.
     intros; refine pick val (wzero 8); eauto; simplify with monad laws.
     compute; intros.
     computes_to_inv; subst.
@@ -1425,11 +1425,11 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     Grab Existential Variables.
     reflexivity.
   Qed.
-  
+
   Lemma AlignedEncodeUnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 8)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 8)
+      -> refine (((format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 8)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ v), ce')).
   Proof.
@@ -1441,19 +1441,19 @@ Lemma decode_unused_word_aligned_ByteString_overflow
     rewrite <- build_aligned_ByteString_append.
     reflexivity.
   Qed.
-  
+
   Lemma AlignedEncode2UnusedChar {numBytes}
     : forall ce ce' (c : _ -> Comp _) (v : Vector.t _ numBytes),
       refine (c (addE ce 16)) (ret (build_aligned_ByteString v, ce'))
-      -> refine (((encode_unused_word_Spec (transformerUnit := ByteString_QueueTransformerOpt) 16)
+      -> refine (((format_unused_word (transformerUnit := ByteString_QueueTransformerOpt) 16)
                     ThenC c) ce)
                 (ret (build_aligned_ByteString (Vector.cons _ (wzero 8) _ (Vector.cons _ (wzero 8) _ v)), ce')).
   Proof.
     unfold compose, Bind2; intros.
     rewrite <- (AlignedEncode2Char (wzero 16)); eauto.
-    unfold encode_unused_word_Spec, encode_word_Spec, compose, Bind2.
+    unfold format_unused_word, format_word, compose, Bind2.
     simpl.
-    unfold encode_unused_word_Spec'; simpl.
+    unfold format_unused_word'; simpl.
     intros; refine pick val (wzero 16); eauto; simpl.
     simplify with monad laws.
     rewrite refineEquiv_bind_unit; simpl.
@@ -1572,11 +1572,11 @@ Lemma decode_unused_word_aligned_ByteString_overflow
                          snd (ith align_encoders idx t ce))))
     : forall (st : SumType types)
              (ce : CacheEncode),
-      refine (encode_SumType_Spec types encoders st ce)
+      refine (format_SumType types encoders st ce)
              (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
                    (snd (align_encode_sumtype align_encoders st ce)))).
   Proof.
-    intros; unfold encode_SumType_Spec, align_encode_sumtype.
+    intros; unfold format_SumType, align_encode_sumtype.
     rewrite encoders_OK; reflexivity.
   Qed.
 
@@ -1593,7 +1593,7 @@ Lemma decode_unused_word_aligned_ByteString_overflow
                                                                            snd (ith align_encoders idx t ce)))))
     : forall (st : SumType types)
              (ce : CacheEncode),
-      refine (encode_SumType_Spec types encoders st ce)
+      refine (format_SumType types encoders st ce)
              (ret (build_aligned_ByteString (projT2 (fst (align_encode_sumtype align_encoders st ce))),
                    (snd (align_encode_sumtype align_encoders st ce)))).
   Proof.
@@ -1618,14 +1618,14 @@ Lemma decode_unused_word_aligned_ByteString_overflow
   Qed.
 
   Lemma eq_rect_Vector_tl {A}
-    : forall n (v : Vector.t A (S n)) m H H',  
+    : forall n (v : Vector.t A (S n)) m H H',
       Vector.tl (eq_rect (S n) (t A) v (S m) H)
       = eq_rect _ (Vector.t A) (Vector.tl v) _ H'.
   Proof.
     intros n v; pattern n, v; apply Vector.caseS; simpl; intros.
     erewrite eq_rect_Vector_cons; simpl; eauto.
   Qed.
-    
+
   Lemma Vector_split_merge {A}
     : forall sz m n (v : Vector.t A _),
       snd (Vector_split m _ (snd (Vector_split n (m + sz) v))) =

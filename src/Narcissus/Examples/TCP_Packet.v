@@ -21,12 +21,12 @@ Require Import
         Fiat.Narcissus.Formats.Option
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.NoCache
-        Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
         Fiat.Narcissus.Formats.Vector
         Fiat.Narcissus.Formats.EnumOpt
         Fiat.Narcissus.Formats.SumTypeOpt
-        Fiat.Narcissus.Formats.IPChecksum.
+        Fiat.Narcissus.Formats.IPChecksum
+        Fiat.Narcissus.Formats.WordOpt.
 
 Require Import Bedrock.Word.
 
@@ -66,38 +66,38 @@ Section TCPPacketDecoder.
              (n : nat)
              (b : ByteString)
     := IPChecksum_Valid (96 + n)
-       (transform (transform (encode_word srcAddr)
-                  (transform (encode_word destAddr)
-                  (transform (encode_word (wzero 8))
-                  (transform (encode_word (natToWord 8 6))
-                  (encode_word tcpLength)))))
+       (transform (transform (IPChecksum.format_word srcAddr)
+                  (transform (IPChecksum.format_word destAddr)
+                  (transform (IPChecksum.format_word (wzero 8))
+                  (transform (IPChecksum.format_word (natToWord 8 6))
+                  (IPChecksum.format_word tcpLength)))))
                   b).
 
   Definition encode_TCP_Packet_Spec
              (tcp : TCP_Packet) :=
-         (      encode_word_Spec (tcp!"SourcePort")
-          ThenC encode_word_Spec (tcp!"DestPort")
-          ThenC encode_word_Spec (tcp!"SeqNumber")
-          ThenC encode_word_Spec (tcp!"AckNumber")
-          ThenC encode_nat_Spec 4 (5 + |tcp!"Options"|)
-          ThenC encode_unused_word_Spec 3 (* These bits are reserved for future use. *)
-          ThenC encode_bool_Spec tcp!"NS"
-          ThenC encode_bool_Spec tcp!"CWR"
-          ThenC encode_bool_Spec tcp!"ECE"
-          ThenC encode_bool_Spec (match tcp!"UrgentPointer" with
+         (      format_word (tcp!"SourcePort")
+          ThenC format_word (tcp!"DestPort")
+          ThenC format_word (tcp!"SeqNumber")
+          ThenC format_word (tcp!"AckNumber")
+          ThenC format_nat 4 (5 + |tcp!"Options"|)
+          ThenC format_unused_word 3 (* These bits are reserved for future use. *)
+          ThenC format_bool tcp!"NS"
+          ThenC format_bool tcp!"CWR"
+          ThenC format_bool tcp!"ECE"
+          ThenC format_bool (match tcp!"UrgentPointer" with
                                   | Some _ => true
                                   | _ => false
                                   end)
-          ThenC encode_bool_Spec tcp!"ACK"
-          ThenC encode_bool_Spec tcp!"PSH"
-          ThenC encode_bool_Spec tcp!"RST"
-          ThenC encode_bool_Spec tcp!"SYN"
-          ThenC encode_bool_Spec tcp!"FIN"
-          ThenC encode_word_Spec tcp!"WindowSize" DoneC)
+          ThenC format_bool tcp!"ACK"
+          ThenC format_bool tcp!"PSH"
+          ThenC format_bool tcp!"RST"
+          ThenC format_bool tcp!"SYN"
+          ThenC format_bool tcp!"FIN"
+          ThenC format_word tcp!"WindowSize" DoneC)
 ThenChecksum (TCP_Checksum_Valid) OfSize 16
-ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 ByteString_id) tcp!"UrgentPointer"
-       ThenC encode_list_Spec encode_word_Spec tcp!"Options"
-       ThenC encode_list_Spec encode_word_Spec tcp!"Payload" DoneC).
+ThenCarryOn (format_option format_word (format_unused_word' 16 ByteString_id) tcp!"UrgentPointer"
+       ThenC format_list format_word tcp!"Options"
+       ThenC format_list format_word tcp!"Payload" DoneC).
 
   Definition TCP_Packet_OK (tcp : TCP_Packet) :=
     lt (|tcp!"Options"|) 11
@@ -112,28 +112,28 @@ ThenCarryOn (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 By
 
   Lemma TCP_Packet_Header_Len_OK
     : forall (tcp : TCP_Packet) (ctx ctx' ctx'' : CacheEncode) (c : word 16) (b b'' ext : ByteString),
-      (      encode_word_Spec (tcp!"SourcePort")
-          ThenC encode_word_Spec (tcp!"DestPort")
-          ThenC encode_word_Spec (tcp!"SeqNumber")
-          ThenC encode_word_Spec (tcp!"AckNumber")
-          ThenC encode_nat_Spec 4 (5 + |tcp!"Options"|)
-          ThenC encode_unused_word_Spec 3 (* These bits are reserved for future use. *)
-          ThenC encode_bool_Spec tcp!"NS"
-          ThenC encode_bool_Spec tcp!"CWR"
-          ThenC encode_bool_Spec tcp!"ECE"
-          ThenC encode_bool_Spec (match tcp!"UrgentPointer" with
+      (      format_word (tcp!"SourcePort")
+          ThenC format_word (tcp!"DestPort")
+          ThenC format_word (tcp!"SeqNumber")
+          ThenC format_word (tcp!"AckNumber")
+          ThenC format_nat 4 (5 + |tcp!"Options"|)
+          ThenC format_unused_word 3 (* These bits are reserved for future use. *)
+          ThenC format_bool tcp!"NS"
+          ThenC format_bool tcp!"CWR"
+          ThenC format_bool tcp!"ECE"
+          ThenC format_bool (match tcp!"UrgentPointer" with
                                   | Some _ => true
                                   | _ => false
                                   end)
-          ThenC encode_bool_Spec tcp!"ACK"
-          ThenC encode_bool_Spec tcp!"PSH"
-          ThenC encode_bool_Spec tcp!"RST"
-          ThenC encode_bool_Spec tcp!"SYN"
-          ThenC encode_bool_Spec tcp!"FIN"
-          ThenC encode_word_Spec tcp!"WindowSize" DoneC) ctx ↝ (b, ctx') ->
-      (encode_option_Spec encode_word_Spec (encode_unused_word_Spec' 16 ByteString_id) tcp!"UrgentPointer"
-       ThenC encode_list_Spec encode_word_Spec tcp!"Options"
-       ThenC encode_list_Spec encode_word_Spec tcp!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
+          ThenC format_bool tcp!"ACK"
+          ThenC format_bool tcp!"PSH"
+          ThenC format_bool tcp!"RST"
+          ThenC format_bool tcp!"SYN"
+          ThenC format_bool tcp!"FIN"
+          ThenC format_word tcp!"WindowSize" DoneC) ctx ↝ (b, ctx') ->
+      (format_option format_word (format_unused_word' 16 ByteString_id) tcp!"UrgentPointer"
+       ThenC format_list format_word tcp!"Options"
+       ThenC format_list format_word tcp!"Payload" DoneC) ctx' ↝ (b'', ctx'') ->
       (lt (|tcp!"Options"|) 11
        /\ wordToNat tcpLength = 20 (* length of packet header *)
                                 + (4 * |tcp!"Options"|) (* length of option field *)
@@ -179,7 +179,7 @@ Proof.
 
     simpl in *. intros; split_and; decompose_pair_hyp.
     instantiate (1 := fst (snd (snd (snd (snd (snd (snd (snd (snd proj))))))))).
-    
+
     first [ rewrite <- H12
           | rewrite <- H13 ].
     match goal with

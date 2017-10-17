@@ -20,11 +20,11 @@ Require Import
 
 Require Import
         Bedrock.Word
-        Fiat.BinEncoders.Env.Common.Specs
-        Fiat.BinEncoders.Env.BinLib.Core
-        Fiat.BinEncoders.Env.Examples.SimpleDnsOpt
-        Fiat.BinEncoders.Env.Lib2.DomainNameOpt
-        Fiat.BinEncoders.Env.BinLib.AlignedByteString.
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.BinLib.Core
+        Fiat.Narcissus.Examples.SimpleDnsOpt
+        Fiat.Narcissus.Lib2.DomainNameOpt
+        Fiat.Narcissus.BinLib.AlignedByteString.
 
 Require Import Fiat.Examples.DnsServer.SimplePacket
         Fiat.Examples.DnsServer.DecomposeSumField
@@ -1063,7 +1063,7 @@ Proof.
   unfold DecomposeRawQueryStructureSchema, DecomposeSchema in *; simpl in *.
   pose_heading_hyps; auto.
   clear H.
-  hone representation using (fun r_o (r_n : UnConstrQueryStructure qs_schema) =>
+  hone representation using (fun r_o (r_n : UnConstrQueryStructure (DecomposeRawQueryStructureSchema DnsSchema Fin.F1 (Fin.FS (Fin.FS (Fin.FS Fin.F1))) ResourceRecordTypeTypes)) =>
                                exists r_n',
                                @DecomposeRawQueryStructureSchema_AbsR
                                  _ DnsSchema Fin.F1 (Fin.FS (Fin.FS (Fin.FS (Fin.F1)))) _
@@ -1882,7 +1882,7 @@ simpl.
           prim_fst := [(EqualityIndex, @Fin.F1 3);
                        (FindStringPrefixIndex, @Fin.F1 3)];
           prim_snd := () |} |} |} |}.
-
+  Arguments DecomposeSchema _ _ _ _ /.
   Time let p' := eval unfold p in p in
            make_simple_indexes p'
                                ltac:(CombineCase6 BuildEarlyFindStringPrefixIndex ltac:(LastCombineCase6 BuildEarlyEqualityIndex))
@@ -1901,26 +1901,54 @@ simpl.
           ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
           ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
       set_evars) ltac:(finish honing).
-    doOne implement_insert''
-            ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    doOne implement_insert''
-            ltac:(master_implement_drill
-          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
-          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
-          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
-      set_evars) ltac:(finish honing).
-    match goal with
+
+Ltac implement_insert' CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep ::=
+  first
+  [ simplify with monad laws; simpl
+  | simpl; rewrite !map_app
+  | simpl; rewrite !map_length
+  | simpl; rewrite !app_nil_r
+  | simpl; rewrite !map_map
+  | simpl; rewrite !filter_map
+  | simpl; rewrite refine_if_Then_Else_Duplicate
+  | simpl; rewrite refine_If_Then_Else_Bind
+  | simpl; rewrite refine_If_Opt_Then_Else_Bind
+  | match goal with
       H : DelegateToBag_AbsR ?r_o ?r_n
       |- refine (l <- {idx | forall Ridx', UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx }; _) _ =>
       let idx' := fresh in
       let idx_OK := fresh in
       destruct (@exists_UnConstrFreshIdx_Max _ _ _ _ H) as [idx idx_OK];
         refine pick val idx; [ | apply idx_OK]
-    end.
+    end
+  | match goal with
+    | H:DelegateToBag_AbsR ?r_o ?r_n
+      |- context [{idx : _ | UnConstrFreshIdx (GetUnConstrRelation ?r_o ?Ridx) idx}] =>
+          let freshIdx := fresh in
+          destruct (exists_UnConstrFreshIdx H Ridx) as (?, freshIdx);
+           setoid_rewrite (refine_Pick_UnConstrFreshIdx H Ridx freshIdx)
+    end
+  | implement_QSDeletedTuples ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
+  | implement_TopMost_Query CreateTerm EarlyIndex LastIndex makeClause_dep EarlyIndex_dep LastIndex_dep
+  | implement_Pick_DelegateToBag_AbsR ].
+doOne implement_insert''
+            ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+doOne implement_insert''
+            ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
+    doOne implement_insert''
+            ltac:(master_implement_drill
+          ltac:(CombineCase5 StringPrefixIndexUse EqIndexUse)
+          ltac:(CombineCase10 createEarlyStringPrefixTerm createEarlyEqualityTerm)
+          ltac:(CombineCase7 createLastStringPrefixTerm createLastEqualityTerm);
+      set_evars) ltac:(finish honing).
     Local Opaque CallBagCount.
     repeat doOne ltac:(first [
                 implement_Count

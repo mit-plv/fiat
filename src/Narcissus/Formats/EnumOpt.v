@@ -38,17 +38,17 @@ Section Enum.
     clear; induction 1; eauto.
   Qed.
 
-  Definition encode_enum_Spec (idx : Fin.t _) :
+  Definition format_enum (idx : Fin.t _) :
     CacheEncode -> Comp (B * CacheEncode) :=
-    encode_word_Spec (nth tb idx).
+    format_word (nth tb idx).
 
   Definition encode_enum_Impl (idx : Fin.t _) :
     CacheEncode -> B * CacheEncode :=
-    encode_word_Impl (nth tb idx).
+    encode_word (nth tb idx).
 
   Lemma refine_encode_enum :
     forall idx ce,
-      refine (encode_enum_Spec idx ce)
+      refine (format_enum idx ce)
              (ret (encode_enum_Impl idx ce)).
   Proof.
     intros; reflexivity.
@@ -109,9 +109,9 @@ Section Enum.
           (tb_OK : NoDupVector tb)
           {P : CacheDecode -> Prop}
           (P_OK : cache_inv_Property P (fun P => forall b cd, P cd -> P (addD cd b)))
-    : encode_decode_correct_f cache transformer (fun _ => True) (fun _ _ => True) encode_enum_Spec decode_enum P.
+    : CorrectDecoder cache transformer (fun _ => True) (fun _ _ => True) format_enum decode_enum P.
   Proof.
-    split; unfold encode_enum_Spec, decode_enum.
+    split; unfold format_enum, decode_enum.
     { intros env env' xenv c c' ext ? Eeq Ppred Ppred_rest Penc.
       destruct (proj1 (Word_decode_correct P_OK) _ _ _ _ _ ext env_OK Eeq I I Penc) as [? [? ?] ].
       rewrite H; simpl.
@@ -133,8 +133,8 @@ Section Enum.
       eapply (proj2 (Word_decode_correct P_OK)) in Heqo; eauto;
         destruct Heqo; destruct_ex; intuition; subst.
       simpl.
-      unfold encode_word_Spec in *; computes_to_inv; injections.
-      unfold encode_word_Spec; repeat eexists; eauto.
+      unfold format_word in *; computes_to_inv; injections.
+      unfold format_word; repeat eexists; eauto.
       repeat f_equal.
       revert Heqo0; clear.
       remember (S len) as n'; clear len Heqn'.

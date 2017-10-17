@@ -754,9 +754,10 @@ Proof.
             `(w', v'') <- decode_word' (8 * n) v';
             Some (eq_rect _ word (append_word w' w) _ H0, v''))
     end.
-    unfold DecodeBindOpt at 2; unfold If_Opt_Then_Else.
+    unfold DecodeBindOpt at 2; unfold BindOpt; unfold If_Opt_Then_Else.
     destruct (decode_word' (8 * n) (build_aligned_ByteString (tl v))) as [ [? ?] | ]; try reflexivity.
     unfold DecodeBindOpt; unfold If_Opt_Then_Else.
+    simpl.
     rewrite Some_eq_rect_eq.
     rewrite <- transport_pp.
     repeat f_equal.

@@ -17,14 +17,14 @@ Section SumType.
   Context {transformer : Transformer B}.
   Context {transformerUnit : TransformerUnitOpt transformer bool}.
 
-  Definition encode_SumType_Spec {m}
+  Definition format_SumType {m}
              (types : Vector.t Type m)
              (encoders : ilist (B := fun T => T -> CacheEncode -> Comp (B * CacheEncode)) types)
              (st : SumType types)
     : CacheEncode -> Comp (B * CacheEncode) :=
     ith encoders (SumType_index types st) (SumType_proj types st).
 
-  Definition encode_SumType_Impl {m}
+  Definition encode_SumType {m}
              (types : Vector.t Type m)
              (encoders : ilist (B := fun T => T -> CacheEncode -> (B * CacheEncode)) types)
              (st : SumType types)
@@ -42,10 +42,10 @@ Section SumType.
         (fun idx => forall a ce,
              refine (ith encoder_Specs idx a ce)
                     (ret (ith encoder_Impls idx a ce)))
-      -> refine (encode_SumType_Spec types encoder_Specs st ce) (ret (encode_SumType_Impl types encoder_Impls st ce)).
+      -> refine (format_SumType types encoder_Specs st ce) (ret (encode_SumType types encoder_Impls st ce)).
   Proof.
     intros.
-    unfold encode_SumType_Impl, encode_SumType_Spec; simpl.
+    unfold encode_SumType, format_SumType; simpl.
     remember (SumType_proj types st); clear Heqn.
     revert n ce; pattern (SumType_index types st).
     eapply Iterate_Ensemble_equiv'.
@@ -82,7 +82,7 @@ Section SumType.
           (cache_invariants : forall idx, (CacheDecode -> Prop) -> Prop)
           (encoders_decoders_correct : forall idx,
               cache_inv_Property P (cache_invariants idx)
-              -> encode_decode_correct_f
+              -> CorrectDecoder
                 cache transformer
                 (fun st => invariants idx st)
                 (invariants_rest idx)
@@ -92,15 +92,15 @@ Section SumType.
           idx
     :
       cache_inv_Property P (fun P => forall idx, cache_invariants idx P)
-      -> encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
+      -> CorrectDecoder cache transformer (fun st => SumType_index types st = idx /\ invariants _ (SumType_proj types st))
                                  (fun st b => invariants_rest _ (SumType_proj _ st) b)
-                          (encode_SumType_Spec types encoders)
+                          (format_SumType types encoders)
                           (decode_SumType types decoders idx)
                           P.
   Proof.
     split;
       revert types encoders decoders invariants invariants_rest encoders_decoders_correct;
-      unfold encode_decode_correct_f, encode_SumType_Spec, decode_SumType.
+      unfold CorrectDecoder, format_SumType, decode_SumType.
     { intros; intuition.
       eapply (proj1 (encoders_decoders_correct _ (H _))) in H2; eauto;
         destruct_ex; intuition.
@@ -137,7 +137,7 @@ Section SumType.
           (encoders_decoders_correct :
              Iterate_Ensemble_BoundedIndex (fun idx =>
               cache_inv_Property P (Vector.nth cache_invariants idx)
-              -> encode_decode_correct_f
+              -> CorrectDecoder
                 cache transformer
                 (ith invariants idx)
                 (ith invariants_rest idx)
@@ -147,9 +147,9 @@ Section SumType.
           idx
     :
       cache_inv_Property P (fun P => Iterate_Ensemble_BoundedIndex (fun idx => Vector.nth cache_invariants idx P))
-      -> encode_decode_correct_f cache transformer (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
+      -> CorrectDecoder cache transformer (fun st => SumType_index types st = idx /\ (ith invariants) _ (SumType_proj types st))
                                  (fun st b => (ith invariants_rest) _ (SumType_proj _ st) b)
-                          (encode_SumType_Spec types encoders)
+                          (format_SumType types encoders)
                           (decode_SumType types decoders idx)
                           P.
   Proof.

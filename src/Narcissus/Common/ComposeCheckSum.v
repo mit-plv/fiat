@@ -31,7 +31,7 @@ Section Checksum.
 
   Open Scope comp_scope.
 
-  Definition encode_checksum c := encode_word' checksum_sz c transform_id.
+  Definition encode_checksum c := format_word' checksum_sz c transform_id.
 
   Definition composeChecksum {Env}
              (encode1 : Env -> Comp (B * Env))
@@ -83,7 +83,7 @@ Section Checksum.
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
-           -> encode_decode_correct_f
+           -> CorrectDecoder
                 cache transformer predicate'
                 predicate_rest
                 encode1 decode1 P)
@@ -125,7 +125,7 @@ Section Checksum.
         (decode2_pf : forall proj,
             predicate' proj ->
             cache_inv_Property P P_inv2 ->
-            encode_decode_correct_f cache transformer
+            CorrectDecoder cache transformer
                                     (fun data => predicate data /\ project data = proj)
                                     predicate_rest'
                                     encode2
@@ -149,7 +149,7 @@ Section Checksum.
              -> decode2 (project data) (transform x1 ext) c1 = Some (data, ext, xenv')
              -> encode2 data (snd (x, x0)) ↝ (x1, x2)
              -> transform x (transform x3 (transform x1 ext)) = transform x (transform (calculate_checksum x x1) (transform x1 ext))*)
-    : encode_decode_correct_f
+    : CorrectDecoder
         cache transformer
         predicate
         predicate_rest'
@@ -249,7 +249,7 @@ Lemma composeChecksum_compose_encode_correct
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
-           -> encode_decode_correct_f
+           -> CorrectDecoder
                 cache transformer predicate'
                 predicate_rest
                 encode1 decode1 P)
@@ -270,7 +270,7 @@ Lemma composeChecksum_compose_encode_correct
              predicate' proj
              -> encode1 proj ce ↝ (b', ce')
              -> cache_inv_Property P P_inv2
-             -> encode_decode_correct_f
+             -> CorrectDecoder
                   cache transformer
                   (fun data => predicate data /\ project data = proj)
                predicate_rest'
@@ -278,7 +278,7 @@ Lemma composeChecksum_compose_encode_correct
                   composeChecksum _ _ (fun b => calculate_checksum (transform b' b)) (encode2 data) (encode3 data)
                )%comp
                (decode23 proj) P)
-    : encode_decode_correct_f
+    : CorrectDecoder
         cache transformer
         predicate
         predicate_rest'
@@ -340,7 +340,7 @@ Lemma composeChecksum_compose_encode_correct
         (decode1 : B -> CacheDecode -> option (A' * B * CacheDecode))
         (decode1_pf :
            cache_inv_Property P P_inv1
-           -> encode_decode_correct_f
+           -> CorrectDecoder
                 cache transformer predicate'
                 predicate_rest
                 encode1 decode1 P)
@@ -359,7 +359,7 @@ Lemma composeChecksum_compose_encode_correct
            forall b' ce ce',
              encode1 a' ce ↝ (b', ce')
              -> cache_inv_Property P P_inv2
-             -> encode_decode_correct_f
+             -> CorrectDecoder
                   cache transformer
                   predicate
                predicate_rest'
@@ -367,7 +367,7 @@ Lemma composeChecksum_compose_encode_correct
                   composeChecksum _ _ (fun b => calculate_checksum (transform b' b)) (encode2 data) (encode3 data)
                )%comp
                decode23 P)
-    : encode_decode_correct_f
+    : CorrectDecoder
         cache transformer
         predicate
         predicate_rest'
@@ -448,7 +448,7 @@ End ComposeComposeChecksum.
   (*       (decode_fst : B -> CacheDecode -> option (A_fst * B * CacheDecode)) *)
   (*       (decode_fst_pf : *)
   (*          cache_inv_Property P P_inv_fst *)
-  (*          -> encode_decode_correct_f *)
+  (*          -> CorrectDecoder *)
   (*               cache transformer predicate_fst *)
   (*               predicate_rest_fst *)
   (*               encode_fst decode_fst P) *)
@@ -477,7 +477,7 @@ End ComposeComposeChecksum.
   (*           predicate_fst proj_fst -> *)
   (*           predicate_snd proj_snd -> *)
   (*           cache_inv_Property P P_inv2 -> *)
-  (*           encode_decode_correct_f cache transformer *)
+  (*           CorrectDecoder cache transformer *)
   (*                                   (fun data => predicate data *)
   (*                                                /\ project_fst data = proj_fst *)
   (*                                                /\ project_snd data = proj_snd) *)
@@ -492,7 +492,7 @@ End ComposeComposeChecksum.
   (*            P xenv' -> *)
   (*            Equiv x2 xenv' -> *)
   (*            predicate data -> *)
-  (*            encode_decode_correct_f cache transformer predicate' predicate_rest encode1 decode1 P -> *)
+  (*            CorrectDecoder cache transformer predicate' predicate_rest encode1 decode1 P -> *)
   (*            encode1 (project data) env ↝ (x, x0) -> *)
   (*            predicate' (project data) -> *)
   (*            decode2 (project_fst data) (transform x1 ext) c1 = Some (data, ext, xenv') -> *)
@@ -500,7 +500,7 @@ End ComposeComposeChecksum.
   (*            Equiv x0 c1 -> *)
   (*            checksum_Valid (encoded_A_measure (transform x (transform x3 (transform x1 ext)))) (transform x (transform x3 (transform x1 ext))) -> *)
   (*            x3 = calculate_checksum (transform x x1)*) *)
-  (*   : encode_decode_correct_f *)
+  (*   : CorrectDecoder *)
   (*       cache transformer *)
   (*       (fun a => predicate a) *)
   (*       predicate_rest' *)
