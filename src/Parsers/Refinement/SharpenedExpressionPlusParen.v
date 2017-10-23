@@ -75,7 +75,7 @@ total time:      0.531s
  │└induction H -------------------------   2.9%   2.9%       1    0.016s
  └─pose proof lem as H -----------------   2.9%   2.9%       1    0.016s
  *)
-      reflexivity. }
+    }
     { finish honing parser method. }
 
     finish_Sharpening_SplitterADT.
@@ -115,7 +115,7 @@ Definition Let_In {A P} (x : A) (f : forall x : A, P x) := let a := x in f a.
 Strategy expand [Let_In].
   Timeout 50 let pbody := (eval unfold p in p) in
   lazymatch pbody with
-  | appcontext [@split_string_for_production ?Char ?HSL ?pdata ?it (Terminal "+"%char::?ps) (?str, _)]
+  | context [@split_string_for_production ?Char ?HSL ?pdata ?it (Terminal "+"%char::?ps) (?str, _)]
     => idtac;
       let c1 := constr:(@split_string_for_production Char HSL pdata it (Terminal "+"%char::ps)) in
       let T := type of str in
@@ -129,7 +129,7 @@ end.
   Timeout 5 simpl in splitsv.
   About list_of_next_bin_ops_opt.
   Timeout 30 let splitsv' := (eval unfold splitsv in splitsv) in
-            let c1 := match splitsv' with appcontext[@list_of_next_bin_ops_opt ?a ?b] => constr:(@list_of_next_bin_ops_opt a b) end in
+            let c1 := match splitsv' with context[@list_of_next_bin_ops_opt ?a ?b] => constr:(@list_of_next_bin_ops_opt a b) end in
             lazymatch eval pattern c1 in splitsv' with
               | ?splitsv'' _ => idtac;
                                change splitsv with (Let_In c1 splitsv'') in p

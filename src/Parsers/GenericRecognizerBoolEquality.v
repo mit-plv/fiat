@@ -86,7 +86,7 @@ Section eq.
     Proof.
       t I.
       repeat match goal with
-             | [ |- appcontext[list_rect ?P ?N ?C] ]
+             | [ |- context[list_rect ?P ?N ?C] ]
                => not is_var C;
                     let P' := fresh "P'" in
                     let N' := fresh "N'" in

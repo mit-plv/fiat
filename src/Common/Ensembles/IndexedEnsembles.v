@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List
         Coq.Strings.String
+        Coq.omega.Omega
         Coq.Logic.FunctionalExtensionality
         Coq.Sorting.Permutation Coq.Sets.Ensembles
         Fiat.Common.DecideableEnsembles

@@ -1,0 +1,21 @@
+open Transparent_abstract_tactics
+open Stdarg
+open Ltac_plugin
+open Tacarg
+
+DECLARE PLUGIN "transparent_abstract_plugin"
+
+TACTIC EXTEND transparentabstract
+| [ "cache" tactic(tac) "as" ident(name)]
+-> [ TRANSPARENT_ABSTRACT.tclTRABSTRACT (Some name) (Tacinterp.tactic_of_value ist tac) ]
+END
+
+TACTIC EXTEND abstracttermas
+| [ "cache_term" constr(term) "as" ident(name) "run" tactic(tacK)]  ->
+[ TRANSPARENT_ABSTRACT.tclABSTRACTTERM (Some name) term tacK  ]
+END
+
+TACTIC EXTEND abstractterm
+| [ "cache_term" constr(term) "run" tactic(tacK) ]  ->
+[ TRANSPARENT_ABSTRACT.tclABSTRACTTERM None term tacK ]
+END;;

@@ -72,7 +72,7 @@ Section ListComprehension.
 End ListComprehension.
 
 Notation "⟦ x 'in' xs | P ⟧" :=
-  (FilteredList xs (fun x => P)) : comp_scope.
+  (build_FilteredList xs (fun x => P)) : comp_scope.
 
 Section UpperBound.
 
@@ -82,7 +82,7 @@ Section UpperBound.
   Definition UpperBound
              (rs : list A)
              (r : A) :=
-    forall r' : A, List.In r' rs -> op r r'.
+    forall r' : A, List.In r' rs -> op r' r.
 
   Definition SingletonSet (P : Ensemble A) :=
     {b' | forall b : A, b' = Some b <-> P b}.
@@ -124,7 +124,7 @@ End UpperBound.
 Instance DecideableEnsembleUpperBound {A}
          (f : A -> nat)
          (ns : list A)
-  : DecideableEnsemble (UpperBound (fun a a' => f a >= f a') ns) :=
+  : DecideableEnsemble (UpperBound (fun a a' => f a <= f a') ns) :=
   {| dec n := NPeano.Nat.leb (fold_right (fun n acc => max (f n) acc) O ns) (f n) |}.
 Proof.
   unfold UpperBound, ge; intros; rewrite NPeano.Nat.leb_le; intuition.
@@ -135,11 +135,54 @@ Defined.
 
 Corollary refine_find_UpperBound {A}
   : forall (f : A -> nat) ns,
-    refine (⟦ n in ns | UpperBound (fun a a' => f a >= f a') ns n ⟧)
+    refine (⟦ n in ns | UpperBound (fun a a' => f a <= f a') ns n ⟧)
            (ret (find_UpperBound f ns)).
 Proof.
   intros.
-  setoid_rewrite refine_ListComprehension_filtered_list.
   setoid_rewrite refine_filtered_list with (P_dec := DecideableEnsembleUpperBound f ns).
   reflexivity.
+Qed.
+
+Lemma refine_ListComprehension_Equiv {A}
+  : forall (As : list A)
+           (P Q : A -> Prop),
+    (forall a, P a <-> Q a)
+    -> refine (⟦element in As | P element ⟧)
+              (⟦element in As | Q element ⟧).
+Proof.
+  induction As; simpl; intros; eauto.
+  - reflexivity.
+  - rewrite IHAs; eauto.
+    apply refine_bind.
+    reflexivity.
+    intros ? ? ?.
+    computes_to_inv; destruct v0; simpl in *.
+    + apply (@BindComputes _ _ _ _ true); eauto.
+      computes_to_econstructor; simpl; eauto.
+      apply H; assumption.
+    + apply (@BindComputes _ _ _ _ false); eauto.
+    computes_to_econstructor;
+      simpl; intros.
+    intro; apply H0.
+    apply H; eassumption.
+Qed.
+
+
+Lemma refine_FindUpperBound {A B}
+  : forall (op : B -> B -> Prop)
+           (op_trans : forall b b' b'', op b b' -> op b' b'' -> op b b'')
+           (bound : B)
+           (As As' : list A)
+           (f : A -> B),
+    (forall a, List.In a As' -> op (f a) bound)
+    -> (exists a, List.In a As' /\ f a = bound)
+    -> refine (⟦element in As | UpperBound (fun a a' => op (f a) (f a')) As' element ⟧)
+              (⟦element in As | op bound (f element) ⟧).
+Proof.
+  intros.
+  unfold UpperBound.
+  apply refine_ListComprehension_Equiv.
+  split; intros.
+  - destruct H0; intuition eauto; subst; eauto.
+  - eapply op_trans; eauto.
 Qed.

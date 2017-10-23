@@ -127,17 +127,17 @@ Class reif_Term_of {T T' T''} (var : T) (term : T') := Build_reif_Term_of : T''.
 
 Ltac reify_Term var term
   := match eval cbv beta iota zeta in term with
-     | appcontext G[bool_rect (fun _ => ?T)]
+     | context G[bool_rect (fun _ => ?T)]
        => let term' := context G[@bool_rect_nodep T] in reify_Term var term'
-     | appcontext G[@Reflective.ritem_rect ?A (fun _ => ?T)]
+     | context G[@Reflective.ritem_rect ?A (fun _ => ?T)]
        => let term' := context G[@Reflective.ritem_rect_nodep A T] in reify_Term var term'
-     | appcontext G[@list_rect ?A (fun _ => ?T)]
+     | context G[@list_rect ?A (fun _ => ?T)]
        => let term' := context G[@list_rect_nodep A T] in reify_Term var term'
-     | appcontext G[@list_caset ?A (fun _ => ?T)]
+     | context G[@list_caset ?A (fun _ => ?T)]
        => let term' := context G[@list_caset_nodep A T] in reify_Term var term'
      | context G[if ?b then ?t else ?f]
        => let term' := context G[@bool_rect_nodep _ t f b] in reify_Term var term'
-     | appcontext G[?f ?v]
+     | context G[?f ?v]
        => let test := match v with
                       | @fst _ _ => constr:(I)
                       | @snd _ _ => constr:(I)
@@ -146,7 +146,7 @@ Ltac reify_Term var term
                       | @List.length _ => constr:(I)
                       end in
           let term' := context G[f (fun x => v x)] in reify_Term var term'
-     | appcontext G[?f ?v]
+     | context G[?f ?v]
        => let test := match v with
                       | orb => constr:(I)
                       | orbr => constr:(I)

@@ -1,6 +1,7 @@
 (** * Mapping predicates over [StringLike] things *)
 
 Require Import Coq.Numbers.Natural.Peano.NPeano.
+Require Import Coq.omega.Omega.
 Require Import Fiat.Parsers.StringLike.Core.
 Require Import Fiat.Parsers.StringLike.Properties.
 Require Import Fiat.Common.
@@ -151,7 +152,7 @@ Section forall_chars.
                | [ H : _ |- _ ] => rewrite drop_length in H
                | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                | _ => erewrite singleton_unique; eassumption
-               | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+               | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
              end. }
     { match goal with
         | [ H : _ |- _ ] => apply (H 0)

@@ -40,23 +40,39 @@ Ltac pose_heading_hyps :=
     match goal with
     | |- context[@Build_RawHeading ?n ?attrlist] =>
       let heading := fresh "heading" in
-      cache_term (@Build_RawHeading n attrlist) as heading
+      let H' := fresh in
+      assert True as H' by
+            (clear;
+             (cache_term (@Build_RawHeading n attrlist) as heading
                  run (fun id => fold id in *;
-                        add id to headingCache)
+                                add id to headingCache));
+      exact I); clear H'
     | |- context[ @BuildHeading ?n ?attrlist ] =>
       let heading := fresh "heading" in
-      cache_term (@BuildHeading n attrlist) as heading
+      let H' := fresh in
+      assert True as H' by
+            (clear;
+             (cache_term (@BuildHeading n attrlist) as heading
                  run (fun id => fold id in *;
-                        add id to headingCache)
+                                add id to headingCache));
+      exact I); clear H'
     | |- context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
       let str := fresh "schema" in
-      cache_term (@Build_RawSchema heading TupleConstr RelConstr) as str
+      let H' := fresh in
+      assert True as H' by
+            (clear;
+             (cache_term (@Build_RawSchema heading TupleConstr RelConstr) as str
                  run (fun id => fold id in *;
-                        add id to headingCache)
+                                add id to headingCache));
+      exact I); clear H'
     | |- context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
       let str := fresh "qs_schema" in
-      cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as str run (fun id => fold id in *;
-                                                                                 add id to headingCache)
+      let H' := fresh in
+      assert True as H' by
+            (clear;
+             (cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as str run (fun id => fold id in *);
+                                                                                                add id to headingCache);
+      exact I); clear H'
     end.
 
 Ltac pose_heading_hyps_in H :=
@@ -66,19 +82,31 @@ Ltac pose_heading_hyps_in H :=
          match H' with
          | context[@Build_RawHeading ?n ?attrlist] =>
            let heading := fresh "heading" in
-           cache_term (@Build_RawHeading n attrlist) as heading
+           let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+           (cache_term (@Build_RawHeading n attrlist) as heading
                       run (fun id => fold id in *;
-                             add id to headingCache)
+                                     add id to headingCache));
+           exact I); clear H''
          | context [@Build_RawSchema ?heading ?TupleConstr ?RelConstr] =>
            let str := fresh "schema" in
-           cache_term (@Build_RawSchema heading TupleConstr RelConstr) as str
+           let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+           (cache_term (@Build_RawSchema heading TupleConstr RelConstr) as str
                       run (fun id => fold id in *;
-                             add id to headingCache)
+                                     add id to headingCache));
+           exact I); clear H''
          | context [@Build_RawQueryStructureSchema ?n ?qs_schema ?CrossConstr] =>
            let str := fresh "qs_schema" in
-           cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as str
+           let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+           (cache_term (@Build_RawQueryStructureSchema n qs_schema CrossConstr) as str
                       run (fun id => fold id in *;
-                             add id to headingCache)
+                                     add id to headingCache));
+           exact I);  clear H''
          end).
 
 Ltac pose_headings_all := pose_heading_hyps.
@@ -91,9 +119,13 @@ Ltac pose_search_term_in H :=
          match H' with
          | context[BuildIndexSearchTerm ?Indexes] =>
            let search_term := fresh "SearchTerm" in
-           cache_term (BuildIndexSearchTerm Indexes) as search_term
+           let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+           (cache_term (BuildIndexSearchTerm Indexes) as search_term
                       run (fun id => fold id in *;
-                        add id to search_term_Cache)
+                                     add id to search_term_Cache));
+           exact I); clear H''
          end).
 
 Ltac pose_search_term :=
@@ -101,9 +133,14 @@ Ltac pose_search_term :=
     ( match goal with
         |- context[BuildIndexSearchTerm ?Indexes] =>
         let search_term := fresh "SearchTerm" in
-        cache_term (BuildIndexSearchTerm Indexes) as search_term
+        let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+        (cache_term (BuildIndexSearchTerm Indexes) as search_term
                       run (fun id => fold id in *;
-                        add id to search_term_Cache)
+                                     add id to search_term_Cache));
+        exact I);
+        clear H''
       end).
 
 Create HintDb SearchUpdateTermCache.
@@ -117,12 +154,16 @@ Ltac pose_SearchUpdateTerms_in H :=
                       ?search_term ?matcher
                       ?update_term ?applier] =>
            let search_update_term := fresh "SearchUpdateTerm" in
-           cache_term (@Build_SearchUpdateTerms
+           let H'' := fresh in
+           assert True as H'' by
+                 (clear;
+           (cache_term (@Build_SearchUpdateTerms
                          heading search_term
                          matcher update_term applier)
                       as search_update_term
                       run (fun id => fold id in *;
-                             add id to SearchUpdateTermCache)
+                                     add id to SearchUpdateTermCache));
+           exact I); clear H''
          end).
 
 Ltac pose_SearchUpdateTerms :=
@@ -133,12 +174,16 @@ Ltac pose_SearchUpdateTerms :=
                      ?search_term ?matcher
                      ?update_term ?applier] =>
        let search_update_term := fresh "SearchUpdateTerm" in
-       cache_term (@Build_SearchUpdateTerms
+       let H'' := fresh in
+       assert True as H'' by
+             (clear;
+       (cache_term (@Build_SearchUpdateTerms
                      heading search_term
                      matcher update_term applier)
                   as search_update_term
                   run (fun id => fold id in *;
-                         add id to SearchUpdateTermCache)
+                                 add id to SearchUpdateTermCache));
+       exact I); clear H''
      end).
 
 Ltac subst_all := idtac.

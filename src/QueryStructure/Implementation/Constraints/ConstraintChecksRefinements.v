@@ -795,9 +795,8 @@ Proof.
   apply H2 in H0.
   apply in_split in H0.
   destruct H0 as [ x1_before [ x1_after _eq ] ]; subst.
-
   rewrite map_map in H'0.
-  eapply flatten_CompList_nil; unfold boxed_option; eauto; intuition.
+  eapply (@FlattenCompList.flatten_CompList_nil _ P); unfold boxed_option; eauto; intuition.
 Qed.
 
 Lemma decidable_excl :
@@ -876,6 +875,40 @@ Proof.
   setoid_rewrite refine_constraint_check_into_query'; eauto.
   reflexivity.
   unfold Same_set, Included; intuition.
+Qed.
+
+Lemma refine_constraint_check_into_query'' :
+  forall heading R P' P
+         (P_dec : DecideableEnsemble P),
+    Same_set _ (fun tup => P (indexedElement tup)) P'
+    -> refine
+         (Pick (fun (b : bool) =>
+                  decides b
+                          (exists tup2: @IndexedRawTuple heading,
+                              (R tup2 /\ P' tup2))))
+         (Bind
+            (Count (For (QueryResultComp R (fun tup => Where (P tup) Return tup))))
+            (fun count => ret (negb (beq_nat count 0)))).
+Proof.
+  Local Transparent Count.
+  unfold refine, Count, UnConstrQuery_In;
+    intros * excl * P_iff_P' pick_comp ** .
+  computes_to_inv; subst.
+
+  computes_to_constructor.
+
+  destruct (Datatypes.length v0) eqn:eq_length;
+    destruct v0 as [ | head tail ]; simpl in *; try discriminate; simpl.
+
+  pose proof (For_computes_to_nil _ R H).
+  rewrite not_exists_forall; intro a; rewrite not_and_implication; intros.
+  unfold not; intros; eapply H0; eauto; apply P_iff_P'; eauto.
+
+  apply For_computes_to_In with (x := head) in H; try solve [intuition].
+  destruct H as ( p & [ x0 ( in_ens & _eq ) ] ); subst.
+  eexists; split; eauto; apply P_iff_P'; eauto.
+
+  apply decidable_excl; assumption.
 Qed.
 
 Definition refine_foreign_key_check_into_query {schm tbl} :=

@@ -524,15 +524,21 @@ Section SharpenedBagImplementation.
     (* sCount. *)
     {
       simplify with monad laws.
-      refine pick val (benumerate r_n); intuition;
-      simplify with monad laws; simpl.
-      refine pick val r_n.
-      simplify with monad laws; simpl.
-      erewrite Permutation_length
-        by (rewrite bfind_correct; eauto; reflexivity).
-      rewrite bcount_correct by eauto.
-      finish honing.
       intuition.
+      destruct (permutation_filter _ _ _ (bfind_correct r_n d H2)) as [l [l_eq Perm_l] ].
+      refine pick val (bfind r_n d).
+      simplify with monad laws; simpl.
+      refine pick val r_n; eauto.
+      simplify with monad laws; simpl.
+      finish honing.
+      rewrite <- l_eq.
+      destruct H1; constructor.
+      - destruct H0 as [idx H0]; eexists idx.
+        unfold UnConstrFreshIdx; intros; eapply H0.
+        unfold IndexedEnsemble_Intersection in *; intuition.
+      - eapply UnIndexedEnsembleListEquivalence_filter with
+        (P_dec := DecideableEnsemble_bool (bfind_matcher d)); eauto.
+        eapply Permutation_UnIndexedEnsembleListEquivalence; simpl in *; eauto.
     }
 
     (* sDelete *)

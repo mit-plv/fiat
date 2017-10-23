@@ -1,4 +1,5 @@
 (** * Implementation of simply-typed interface of the parser *)
+Require Import Coq.omega.Omega.
 Require Export Fiat.Parsers.ParserInterface.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
@@ -143,7 +144,7 @@ Section implementation.
            | _ => progress simpl in *
            end.
     unfold SimpleRecognizer.parse_nonterminal', SimpleRecognizer.parse_nonterminal_or_abort, GenericRecognizer.parse_nonterminal', GenericRecognizer.parse_nonterminal_or_abort in *.
-    let H := match goal with H : appcontext[Fix] |- _ => H end in
+    let H := match goal with H : context[Fix] |- _ => H end in
     rewrite Common.Wf1.Fix5_eq
       in H
       by (intros; eapply SimpleRecognizerExt.parse_nonterminal_step_ext; assumption);

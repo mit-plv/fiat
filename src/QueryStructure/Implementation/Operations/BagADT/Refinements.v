@@ -190,9 +190,12 @@ Section BagsQueryStructureRefinements.
     symmetry in H1.
     eapply NoDup_Permutation_rewrite; eauto.
     rewrite map_map.
-    repeat setoid_rewrite map_app in Comp_v'';
-      repeat setoid_rewrite map_map in Comp_v''; simpl in *;
-      rewrite app_nil_r in Comp_v''; eauto.
+    first [ rewrite !map_app, !map_map, !app_nil_r in Comp_v'';
+            simpl in *; rewrite map_map in Comp_v''; eauto
+          | repeat setoid_rewrite map_app in Comp_v'';
+            repeat setoid_rewrite map_map in Comp_v''; simpl in *;
+            rewrite app_nil_r in Comp_v''; eauto
+          ].
   Qed.
 
   Local Opaque IndexedQueryStructure.
@@ -899,14 +902,33 @@ Section BagsQueryStructureRefinements.
     repeat setoid_rewrite (refineEquiv_bind_bind);
       repeat setoid_rewrite refineEquiv_bind_unit; simpl.
     match goal with
-      |- refine (l' <- Join_Comp_Lists ?l ?c; (@?f l')) _ =>
-      setoid_rewrite (Join_Comp_Lists_apply_f l c) with (c' := fun l => List_Query_In l _)
+      |- refine (l' <- @Join_Comp_Lists ?n ?A ?f ?As ?a ?l ?c ; _) _ =>
+      pose proof (fun B C => @Join_Comp_Lists_apply_f n A B C f As a l c) as H'';
+        setoid_rewrite H''
     end.
     setoid_rewrite refineEquiv_unit_bind.
-    rewrite filter_and_join_ilist2_hd_dep with
+    etransitivity.
+    Focus 2.
+    unfold List_Query_In.
+    etransitivity.
+    Focus 2.
+    apply refine_under_bind.
+    intros.
+    set_evars.
+    rewrite <- refineEquiv_bind_unit with (f := fun x => flatten_CompList (map resultComp x))
+                                            (x := filter filter_rest a).
+    unfold H1; finish honing.
+    simpl.
+    rewrite <- refine_bind_bind.
+    rewrite <- filter_and_join_ilist2_hd_dep with
     (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
-                                          (search_pattern tup))).
-    simplify with monad laws; f_equiv.
+                                          (search_pattern tup)))
+    (filter_rest0 := filter_rest).
+    finish honing.
+    simplify with monad laws.
+    rewrite refineEquiv_bind_bind.
+    setoid_rewrite refineEquiv_bind_unit.
+    f_equiv.
   Qed.
 
   Lemma realizeable_Enumerate
@@ -1413,6 +1435,123 @@ Proof.
   intros; eapply refine_flatten_CompList_func; eauto.
 Qed.
 
+Definition CallBagCount {qs_schema BagIndexKeys}
+           idx (r_n : IndexedQueryStructure qs_schema BagIndexKeys) st :=
+  br <- CallBagMethod idx BagCount r_n st;
+    ret (UpdateIndexedRelation qs_schema _ r_n idx (fst br), snd br).
+
+Lemma refine_BagFindBag_single {ResultT} :
+  forall qs_schema BagIndexKeys idx r_o r_n search_term P
+         (f : _ -> ResultT)
+         (P_dec : DecideableEnsemble P),
+    @DelegateToBag_AbsR qs_schema BagIndexKeys r_o r_n
+    -> ExtensionalEq dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
+    -> refine (For (UnConstrQuery_In r_o idx
+                                     (fun tup => Where (P tup) Return (f tup))))
+              (r_n' <- CallBagFind qs_schema BagIndexKeys idx r_n search_term;
+                 ret (map f (snd r_n'))).
+Proof.
+    intros.
+  rewrite refine_For.
+  etransitivity.
+  apply refine_under_bind_both.
+  etransitivity.
+  apply refine_Filtered_Query_In_Enumerate; eauto.
+  apply refine_under_bind; intros.
+  match goal with
+  | [H : @DelegateToBag_AbsR ?qs_schema ?indexes ?r_o ?r_n
+     |- refine (List_Query_In ?b (fun b : ?QueryT => Where (@?P b) (@?resultComp b))) _ ] =>
+    etransitivity;
+      [ let H' := eval simpl in (@refine_List_Query_In_Where QueryT _ b P resultComp) in
+            pose proof H'
+      | ]
+  end.
+  eapply (H2 {| dec := fun tup => dec (prim_fst tup) |}).
+  simpl.
+  finish honing.
+  intros; finish honing.
+  simpl.
+  etransitivity.
+  apply refine_under_bind_both.
+  apply (fun heading => @refine_Join_Filtered_Comp_Lists_filter_tail _ heading [ ]%vector); intros.
+  intros; finish honing.
+  simpl.
+  setoid_rewrite Join_Filtered_Comp_Lists_ExtensionalEq_filters;
+    [ | unfold ExtensionalEq in *; intros [? ?]; simpl; rewrite H0;
+        instantiate (1 := fun tup => BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term (ilist2_hd tup) && true); simpl; rewrite andb_true_r; eauto ].
+  rewrite (@refine_Join_Comp_Lists_To_Find _ _ 0 _ _ H [ ]%vector).
+  simplify with monad laws.
+  unfold Join_Comp_Lists; simpl.
+  unfold CallBagFind, CallBagCount; autorewrite with monad laws.
+  f_equiv; intro.
+  simpl.
+  rewrite app_nil_r.
+  rewrite (List_Query_In_Return _
+                                (map (fun fa : RawTuple => icons2 fa inil2) a)
+                                (fun tup => f (prim_fst tup))).
+  simplify with monad laws.
+  refine pick val _.
+  reflexivity.
+  simpl.
+  rewrite Permutation_map.
+  2: reflexivity.
+  rewrite map_map; simpl.
+  induction a; simpl; eauto.
+  Grab Existential Variables.
+  simpl.
+  intro; rewrite dec_decides_P; reflexivity.
+Qed.
+
+Lemma refine_BagFindBagCount {ResultT} :
+  forall qs_schema BagIndexKeys idx r_o r_n search_term P
+         (f : _ -> ResultT)
+         (P_dec : DecideableEnsemble P),
+    @DelegateToBag_AbsR qs_schema BagIndexKeys r_o r_n
+    -> ExtensionalEq dec (BagMatchSearchTerm (ith3 BagIndexKeys idx) search_term)
+    -> refine (Count For (UnConstrQuery_In r_o idx
+                                           (fun tup => Where (P tup) Return (f tup))))
+              (r_n' <- CallBagCount idx r_n search_term;
+                 ret (snd r_n')).
+Proof.
+  intros.
+  rewrite refine_Count, refine_BagFindBag_single; eauto.
+  rewrite !refine_bind_bind.
+  unfold CallBagFind, CallBagCount; autorewrite with monad laws.
+  f_equiv; intro.
+  simpl.
+  rewrite !map_length; reflexivity.
+Qed.
+
+Lemma exists_UnConstrFreshIdx_Max :
+    forall (qs_schema : RawQueryStructureSchema) (BagIndexKeys : ilist3 (qschemaSchemas qs_schema))
+           (r_o : UnConstrQueryStructure qs_schema) (r_n : IndexedQueryStructure qs_schema BagIndexKeys),
+      DelegateToBag_AbsR r_o r_n ->
+      exists bnd : nat,
+      forall idx : Fin.t (numRawQSschemaSchemas qs_schema), UnConstrFreshIdx (GetUnConstrRelation r_o idx) bnd.
+  Proof.
+    unfold DelegateToBag_AbsR; intros.
+    assert (forall idx : Fin.t (numRawQSschemaSchemas qs_schema),
+               exists l : list RawTuple,
+                 EnsembleIndexedListEquivalence (GetUnConstrRelation r_o idx) l) by
+        (intros; destruct (H idx) as [ ? [? ?] ]; eauto).
+    destruct qs_schema; simpl in *;
+      revert H0 ; generalize (GetUnConstrRelation r_o); clear.
+    simpl; clear.
+    induction qschemaSchemas; simpl; intros.
+    - exists 0; intro; inversion idx.
+    - destruct (IHqschemaSchemas (fun idx => i (Fin.FS idx))
+                                 (fun idx => H0 (Fin.FS idx))).
+      destruct (H0 Fin.F1) as [l [ [bound' ?] ?] ].
+      exists (max bound' x); intros.
+      generalize qschemaSchemas i H1 H; clear; pattern n, idx.
+      apply Fin.caseS; intros;  unfold UnConstrFreshIdx in *; intros.
+      apply H1 in H0; destruct (Max.max_spec bound' x); intuition.
+      apply H in H0; destruct (Max.max_spec bound' x); intuition.
+      rewrite H4; eauto.
+      rewrite H4.
+      eapply lt_le_trans; eauto.
+  Qed.
+
 Arguments CallBagMethod : simpl never.
 Arguments CallBagMethod [_ _] _ _ _.
 
@@ -1422,6 +1561,9 @@ Arguments DelegateToBag_AbsR [_ _] _ _.
 
 Arguments CallBagFind : simpl never.
 Arguments CallBagFind [_ _] _ _ _ _.
+
+Arguments CallBagCount : simpl never.
+Arguments CallBagCount [_ _] _ _ _ _.
 
 Arguments CallBagInsert : simpl never.
 Arguments CallBagInsert [_ _] _ _ _ _.

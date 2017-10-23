@@ -29,16 +29,16 @@ Section RRecordTypes.
 
   (* Enumeration of the Resource Record Types that we support. *)
   Definition OurRRecordTypes :=
-    ["A"; 	(* host address 	[RFC1035] *)
-       "NS"; (*  authoritative name server 	[RFC1035] *)
-       "CNAME"; (* e canonical name for an alias 	[RFC1035] *)
-       "SOA"; (* rks the start of a zone of authority 	[RFC1035] *)
-       "WKS"; (* well known service description 	[RFC1035] *)
-       "PTR"; (* domain name pointer 	[RFC1035] *)
-       "HINFO"; (* host information 	[RFC1035] *)
-       "MINFO"; (* mailbox or mail list information 	[RFC1035] *)
-       "MX"; (* mail exchange 	[RFC1035] *)
-       "TXT" (* text strings 	[RFC1035] *)
+    [ "CNAME"; (* e canonical name for an alias 	[RFC1035] *)
+      "A"; 	(* host address 	[RFC1035] *)
+      "NS"; (*  authoritative name server 	[RFC1035] *)
+      "SOA"; (* rks the start of a zone of authority 	[RFC1035] *)
+      "WKS"; (* well known service description 	[RFC1035] *)
+      "PTR"; (* domain name pointer 	[RFC1035] *)
+      "HINFO"; (* host information 	[RFC1035] *)
+      "MINFO"; (* mailbox or mail list information 	[RFC1035] *)
+      "MX"; (* mail exchange 	[RFC1035] *)
+      "TXT" (* text strings 	[RFC1035] *)
     ].
 
   Definition OurRRecordType := EnumType OurRRecordTypes.
@@ -221,16 +221,16 @@ Section RData.
   Definition MINFO_RDATA : Type := @Tuple MINFOHeading.
 
   Definition ResourceRecordTypeTypes :=
-    [ (W : Type); (* A *)
-       DomainName; (* NS *)
-       DomainName; (* CNAME *)
-       SOA_RDATA; (* SOA *)
-       WKS_RDATA; (* WKS *)
-       DomainName; (* PTR *)
-       HINFO_RDATA; (* HINFO *)
-       MINFO_RDATA; (* MINFO *)
-       MX_RDATA; (* MX *)
-       (string : Type) (* TXT *)
+    [ DomainName; (* CNAME *)
+      (W : Type); (* A *)
+      DomainName; (* NS *)
+      SOA_RDATA; (* SOA *)
+      WKS_RDATA; (* WKS *)
+      DomainName; (* PTR *)
+      HINFO_RDATA; (* HINFO *)
+      MINFO_RDATA; (* MINFO *)
+      MX_RDATA; (* MX *)
+      (string : Type) (* TXT *)
     ].
 
   (* The RDATA field is a variant type built from these building blocks. *)
@@ -238,16 +238,20 @@ Section RData.
 
   Definition RRecordType_Ws : t (word 16) 10 :=
     Eval simpl in Vector.map (natToWord 16)
-                             [1; (* "A" *)
-                                2; (* "NS" *)
-                                5; (* "CNAME" *)
-                                6; (* "SOA"*)
-                                11; (* "WKS" *)
-                                12; (* "PTR" *)
-                                13; (* "HINFO" *)
-                                14; (* "MINFO" *)
-                                15; (* "MX" *)
-                                16]. (* "TXT" *)
+                             [
+                               5; (* "CNAME" *)
+                               1; (* "A" *)
+                               2; (* "NS" *)
+                               6; (* "SOA"*)
+                               11; (* "WKS" *)
+                               12; (* "PTR" *)
+                               13; (* "HINFO" *)
+                               14; (* "MINFO" *)
+                               15; (* "MX" *)
+                               16]. (* "TXT" *)
 
+
+  Definition RDataTypeToRRecordType (r : RDataType) : RRecordType :=
+    SumType_index _ r.
 
 End RData.

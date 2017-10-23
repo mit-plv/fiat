@@ -1,3 +1,4 @@
+Require Import Coq.omega.Omega.
 Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.List.Operations.
@@ -6,6 +7,8 @@ Require Import Fiat.Common.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Core.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
 Require Import Fiat.Common.Gensym.
+Require Import Fiat.Common.Tactics.BreakMatch.
+Require Import Fiat.Common.Tactics.DestructHead.
 
 Local Open Scope type_scope.
 
@@ -58,6 +61,13 @@ Section grammar.
   Definition default_to_nonterminal
   : default_nonterminal_carrierT -> String.string
     := fun nt => List.nth nt valid_nonterminals some_invalid_nonterminal.
+
+  Definition default_of_nonterminal
+  : String.string -> default_nonterminal_carrierT
+    := fun nt => List.first_index_default
+                   (string_beq nt)
+                   (List.length valid_nonterminals)
+                   valid_nonterminals.
 
   Lemma default_find_to_nonterminal idx
   : List.first_index_error
@@ -146,6 +156,43 @@ Section grammar.
     destruct nt; simpl; trivial;
     rewrite <- IHxs; clear IHxs.
     edestruct @Compare_dec.leb; simpl; reflexivity.
+  Qed.
+
+  Lemma nth_error_default_to_nonterminal nt_idx
+    : List.nth_error (pregrammar_productions G) nt_idx
+      = if nt_idx <? List.length (pregrammar_productions G)
+        then Some (default_to_nonterminal nt_idx, Lookup_idx G nt_idx)
+        else None.
+  Proof.
+    destruct (nt_idx <? List.length (pregrammar_productions G)) eqn:Hlt.
+    { apply Nat.ltb_lt in Hlt.
+      unfold Lookup_idx, default_to_nonterminal.
+      rewrite !nth_error_nth.
+      repeat match goal with
+             | _ => reflexivity
+             | _ => discriminate
+             | _ => omega
+             | _ => break_innermost_match_step
+             | _ => progress subst
+             | _ => progress destruct_head' sig
+             | _ => progress destruct_head' and
+             | [ H : ?x = Some ?y, H' : ?x = Some ?z |- _ ]
+               => assert (y = z) by congruence; (subst y || subst z)
+             | [ H : ?x = Some _ |- ?x = _ ] => rewrite H
+             | [ H : List.nth_error (List.map _ _) _ = Some _ |- _ ]
+               => apply ListFacts.nth_error_map'_strong in H
+             | [ H : List.nth_error (List.map ?f ?ls) ?idx = None |- _ ]
+               => let H' := fresh in
+                  destruct (List.nth_error ls idx) eqn:H';
+                    [ eapply List.map_nth_error in H'; rewrite H in H'; congruence
+                    | clear H ]
+             | _ => progress destruct_head' prod
+             | [ |- None = Some _ ] => exfalso
+             | [ H : List.nth_error _ _ = None |- False ]
+               => apply List.nth_error_None in H
+             end. }
+    { apply List.nth_error_None.
+      apply Nat.ltb_ge in Hlt; assumption. }
   Qed.
 
   Section index.

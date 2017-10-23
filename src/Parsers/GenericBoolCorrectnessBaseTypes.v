@@ -47,7 +47,7 @@ Section correctness.
       : forall rv1 rv2, parse_productions_T_to_bool (ret_orb_productions rv1 rv2)
                         = orb (parse_production_T_to_bool rv1) (parse_productions_T_to_bool rv2);
       ret_nt_to_bool
-      : forall v, parse_nt_T_to_bool (ret_nt v) = parse_productions_T_to_bool v;
+      : forall nt v, parse_nt_T_to_bool (ret_nt nt v) = parse_productions_T_to_bool v;
       ret_nt_invalid_to_bool
       : parse_nt_T_to_bool ret_nt_invalid = false
     }.

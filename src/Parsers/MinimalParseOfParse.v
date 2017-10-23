@@ -388,7 +388,7 @@ Section cfg.
     : minimal_parse_of_nonterminal (G := G) len0 valid' str nonterminal.
     Proof.
       destruct p.
-      { constructor (assumption). }
+      { constructor; assumption. }
       { exfalso; clear_not_beq; setoid_subst_rel beq; omega. }
     Defined.
 
@@ -400,7 +400,7 @@ Section cfg.
     Proof.
       destruct p as [p|p].
       { econstructor; trivial; eassumption. }
-      { constructor (eapply contract_minimal_parse_of_nonterminal_lt; eassumption). }
+      { constructor; eapply contract_minimal_parse_of_nonterminal_lt; eassumption. }
     Defined.
 
     Definition contract_minimal_parse_of_production_lt
@@ -426,8 +426,8 @@ Section cfg.
     : minimal_parse_of (G := G) len0 valid' str pats.
     Proof.
       induction p.
-      { constructor (eapply contract_minimal_parse_of_production_lt; eassumption). }
-      { constructor (eapply IHp; assumption). }
+      { constructor; eapply contract_minimal_parse_of_production_lt; eassumption. }
+      { constructor; eapply IHp; assumption. }
     Defined.
 
     Section contract_eq.
@@ -444,7 +444,7 @@ Section cfg.
         destruct_head @MinimalParse.minimal_parse_of_nonterminal; try reflexivity.
         unfold False_rect.
         match goal with
-          | [ |- appcontext[match ?e with end] ] => destruct e
+          | [ |- context[match ?e with end] ] => destruct e
         end.
       Qed.
 

@@ -40,7 +40,7 @@ Qed.
 
 Ltac prove_decidability_for_functional_dependencies :=
   simpl; econstructor; intros;
-  repeat setoid_rewrite <- (@query_eq_true_iff _ _);
+  (*repeat setoid_rewrite <- (@query_eq_true_iff _ _); *)
   try setoid_rewrite <- eq_nat_dec_bool_true_iff;
   try setoid_rewrite <- eq_N_dec_bool_true_iff;
   try setoid_rewrite <- eq_Z_dec_bool_true_iff;

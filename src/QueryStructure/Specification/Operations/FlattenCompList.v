@@ -1,8 +1,11 @@
-Require Import Coq.Lists.List Coq.Program.Program.
+Require Import Coq.Lists.List
+        Coq.Program.Program
+        Coq.Sets.Ensembles.
 Require Import Fiat.Common
         Fiat.Common.List.ListFacts
         Fiat.Common.List.ListMorphisms
         Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.DecideableEnsembles
         Fiat.Computation.
 
 Unset Implicit Arguments.
@@ -10,8 +13,8 @@ Unset Implicit Arguments.
 Definition flatten_CompList {A} (c : list (Comp (list A))) :=
   fold_right (fun (b : Comp (list A)) (a : Comp (list A)) =>
                 l <- b;
-              l' <- a;
-              ret (l ++ l')) (ret []) c.
+                  l' <- a;
+                  ret (l ++ l')) (ret []) c.
 
 Definition boxed_option {A}
            (P: A -> Prop)
@@ -25,10 +28,10 @@ Lemma flatten_CompList_app :
     @flatten_CompList A (x1 ++ x2) ↝ (x1' ++ x2').
 Proof.
   induction x1; simpl; intros.
-   computes_to_inv; subst.
+  computes_to_inv; subst.
 
   rewrite !app_nil_l; assumption.
-   computes_to_inv.
+  computes_to_inv.
   specialize (IHx1 x2 _ _ H' H0).
   repeat (computes_to_econstructor; eauto).
   subst; rewrite app_assoc; constructor.
@@ -55,7 +58,7 @@ Proof.
   - exfalso; assumption.
   - computes_to_inv; subst.
     symmetry in flatten_comp''; rewrite app_eq_nil_iff in flatten_comp'';
-    destruct flatten_comp''; subst.
+      destruct flatten_comp''; subst.
     destruct in_seq; subst.
     + apply boxed_option_nil; assumption.
     + apply IHseq; assumption.
@@ -75,43 +78,43 @@ Proof.
   intros * excl; induction x1; simpl; intros.
 
   -  computes_to_inv.
-    rewrite app_eq_nil_iff in H.
-    setoid_rewrite app_eq_nil_iff.
-    eexists; eexists; intuition; subst; intuition constructor.
+     rewrite app_eq_nil_iff in H.
+     setoid_rewrite app_eq_nil_iff.
+     eexists; eexists; intuition; subst; intuition constructor.
   -  computes_to_inv.
-    pose proof H; unfold boxed_option in H0.
-    computes_to_inv; destruct H0 as (spec1 & spec2).
-    destruct (excl (indexedElement a)) as [ Ptrue | Pfalse ];
-      [ specialize (spec1 Ptrue); computes_to_inv
-      | specialize (spec2 Pfalse) ]; subst.
-    + rewrite app_singleton in H''.
-      destruct x0_before as [ | a' x0_before' ] eqn:eq_before; subst.
-      * rewrite app_nil_l in H''.
-        destruct x0_after as [ | a' x0_after]; try discriminate.
-        injection H''; intros; subst.
-        exists (@nil (@IndexedElement A)).
-        eexists; repeat split; eauto; simpl; repeat econstructor; eauto.
-      * rewrite <- app_comm_cons in H''.
-        injection H''; intros; subst.
-        destruct (IHx1 x0_before' x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
-          subst.
-        exists (a :: x1_before); exists x1_after.
-        simpl; repeat split; repeat (first [eassumption | econstructor]).
-    + rewrite app_nil_l in H''; subst.
-      destruct (IHx1 x0_before x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
-        subst.
-      exists (a :: x1_before); exists x1_after.
-      simpl; repeat split; repeat (first [eassumption | econstructor]).
+     pose proof H; unfold boxed_option in H0.
+     computes_to_inv; destruct H0 as (spec1 & spec2).
+     destruct (excl (indexedElement a)) as [ Ptrue | Pfalse ];
+       [ specialize (spec1 Ptrue); computes_to_inv
+       | specialize (spec2 Pfalse) ]; subst.
+     + rewrite app_singleton in H''.
+       destruct x0_before as [ | a' x0_before' ] eqn:eq_before; subst.
+       * rewrite app_nil_l in H''.
+         destruct x0_after as [ | a' x0_after]; try discriminate.
+         injection H''; intros; subst.
+         exists (@nil (@IndexedElement A)).
+         eexists; repeat split; eauto; simpl; repeat econstructor; eauto.
+       * rewrite <- app_comm_cons in H''.
+         injection H''; intros; subst.
+         destruct (IHx1 x0_before' x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
+           subst.
+         exists (a :: x1_before); exists x1_after.
+         simpl; repeat split; repeat (first [eassumption | econstructor]).
+     + rewrite app_nil_l in H''; subst.
+       destruct (IHx1 x0_before x0_after H') as [ x1_before [ x1_after (_eq & comp1 & comp2) ] ];
+         subst.
+       exists (a :: x1_before); exists x1_after.
+       simpl; repeat split; repeat (first [eassumption | econstructor]).
 Qed.
 
 Lemma flatten_CompList_app_inv'
       {A : Type}
-: forall (l l' : list (Comp (list A))) v,
+  : forall (l l' : list (Comp (list A))) v,
     flatten_CompList (l ++ l') ↝ v
     -> exists e e',
-         v = app e e'
-         /\ flatten_CompList l ↝ e
-         /\ flatten_CompList l' ↝ e'.
+      v = app e e'
+      /\ flatten_CompList l ↝ e
+      /\ flatten_CompList l' ↝ e'.
 Proof.
   induction l; simpl; intros.
   - eexists []; exists v; simpl; intuition.
@@ -133,13 +136,13 @@ Proof.
   induction middle; unfold flatten_CompList; simpl; intros.
   -  computes_to_inv; discriminate.
   -  computes_to_inv.
-    destruct v.
-    + rewrite app_nil_l in H''; subst.
-      destruct (IHmiddle _ H') as [ x (x_in & flat_comp) ].
-      eexists; eauto.
-    + rewrite <- app_comm_cons in H''; injection H''; intros.
-      symmetry in H0; rewrite app_eq_nil_iff in H0; destruct H0; subst.
-      exists a; repeat (econstructor; eauto).
+     destruct v.
+     + rewrite app_nil_l in H''; subst.
+       destruct (IHmiddle _ H') as [ x (x_in & flat_comp) ].
+       eexists; eauto.
+     + rewrite <- app_comm_cons in H''; injection H''; intros.
+       symmetry in H0; rewrite app_eq_nil_iff in H0; destruct H0; subst.
+       exists a; repeat (econstructor; eauto).
 Qed.
 
 Lemma flatten_CompList_app_cons_inv {A}:
@@ -164,4 +167,25 @@ Proof.
   destruct comp2 as [ head' (in_middle & comp2) ].
   repeat setoid_rewrite in_app_iff.
   eexists _, _ ,_ ,_; repeat split; intuition; try eassumption; intuition.
+Qed.
+
+
+Lemma refine_flatten_CompList_func' :
+  forall (A B : Type) (l : list A) (f f' : A -> Comp (list B)),
+    (forall v, List.In v l -> refine (f v) (f' v))
+    -> refine (flatten_CompList (map f l)) (flatten_CompList (map f' l)).
+Proof.
+  induction l; simpl; intros.
+  - reflexivity.
+  - rewrite H by eauto.
+    f_equiv; intro.
+    rewrite IHl by eauto.
+    reflexivity.
+Qed.
+
+Lemma flatten_CompList_nil':
+  forall (A B : Type)(seq : list A),
+    refine (flatten_CompList (map (fun _ => ret nil) seq)) (ret (@nil B)).
+Proof.
+  induction seq; simpl; unfold refine; intros; computes_to_inv; subst; eauto.
 Qed.

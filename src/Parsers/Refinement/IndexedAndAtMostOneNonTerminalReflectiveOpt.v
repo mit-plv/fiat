@@ -8,6 +8,7 @@ Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
 Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.
 Require Import Fiat.Parsers.StringLike.Core.
+Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.BaseTypes.
 Require Import Fiat.Parsers.Splitters.RDPList.
 Require Import Fiat.Parsers.ContextFreeGrammar.Carriers.
@@ -80,13 +81,14 @@ Module opt.
   Definition option_rect {A} := Eval compute in @option_rect A.
   Definition has_only_terminals {Char} := Eval compute in @has_only_terminals Char.
   Definition sumbool_of_bool := Eval compute in Sumbool.sumbool_of_bool.
-  Local Declare Reduction red_fp := cbv [FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation Fix.aggregate_state Definitions.prestate Definitions.lattice_data Definitions.state FromAbstractInterpretation.fold_grammar initial_nonterminals_data rdp_list_predata rdp_list_initial_nonterminals_data pregrammar_productions FromAbstractInterpretationDefinitions.fold_constraints FromAbstractInterpretationDefinitions.fold_productions' FromAbstractInterpretationDefinitions.fold_production' FromAbstractInterpretationDefinitions.fold_item' of_nonterminal rdp_list_of_nonterminal Lookup_idx FromAbstractInterpretationDefinitions.fold_constraints_Proper FromAbstractInterpretationDefinitions.fold_constraints_ext FromAbstractInterpretationDefinitions.fold_productions'_ext FromAbstractInterpretationDefinitions.fold_production'_ext FromAbstractInterpretationDefinitions.fold_item'_ext FromAbstractInterpretationDefinitions.fold_constraints_extR FromAbstractInterpretationDefinitions.fold_productions'_extR FromAbstractInterpretationDefinitions.fold_production'_extR FromAbstractInterpretationDefinitions.fold_item'_extR Fix.lookup_state FromAbstractInterpretationDefinitions.fold_constraints_Proper_state_beq FromAbstractInterpretationDefinitions.fold_constraints_ProperR].
-  Definition lookup_state' {G} :=
+  Local Declare Reduction red_fp := cbv [FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation Fix.aggregate_state Definitions.prestate Definitions.lattice_data Definitions.state FromAbstractInterpretation.fold_grammar initial_nonterminals_data rdp_list_predata rdp_list_initial_nonterminals_data pregrammar_productions FromAbstractInterpretationDefinitions.fold_constraints FromAbstractInterpretationDefinitions.fold_productions' FromAbstractInterpretationDefinitions.fold_production' FromAbstractInterpretationDefinitions.fold_item' of_nonterminal rdp_list_of_nonterminal default_of_nonterminal Lookup_idx FromAbstractInterpretationDefinitions.fold_constraints_Proper FromAbstractInterpretationDefinitions.fold_constraints_ext FromAbstractInterpretationDefinitions.fold_productions'_ext FromAbstractInterpretationDefinitions.fold_production'_ext FromAbstractInterpretationDefinitions.fold_item'_ext FromAbstractInterpretationDefinitions.fold_constraints_extR FromAbstractInterpretationDefinitions.fold_productions'_extR FromAbstractInterpretationDefinitions.fold_production'_extR FromAbstractInterpretationDefinitions.fold_item'_extR Fix.lookup_state FromAbstractInterpretationDefinitions.fold_constraints_Proper_state_beq FromAbstractInterpretationDefinitions.fold_constraints_ProperR].
+  Definition lookup_state' {G} compiled_productions :=
     Eval red_fp in
       @Fix.lookup_state
         (@FromAbstractInterpretationDefinitions.fixedpoint_by_abstract_interpretation
            Ascii.ascii nat FixedLengthLemmas.length_result_lattice
-           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G).
+           (@FixedLengthLemmas.length_result_aidata Ascii.ascii) G
+           compiled_productions).
   Definition fold_grammar' pp unix
     := Eval red_fp in
         let G := {| pregrammar_productions := pp ; nonterminals_unique := unix |} in
@@ -97,11 +99,11 @@ Module opt.
   Definition lookup_state : FMapPositive.PositiveMap.tree (Definitions.lattice_for nat) -> nat -> Definitions.lattice_for nat.
   Proof.
     let term := match (eval cbv [lookup_state'] in @lookup_state') with
-                | fun _ => ?term => term
+                | fun _ _ => ?term => term
                 end in
     exact term.
   Defined.
-  Definition fold_grammar (pp : list (string * Core.productions Ascii.ascii)) : FMapPositive.PositiveMap.t (Definitions.lattice_for nat).
+  Definition fold_grammar (pp : list (string * Core.productions Ascii.ascii)) : list (opt.productions (Definitions.lattice_for nat)) -> FMapPositive.PositiveMap.t (Definitions.lattice_for nat).
   Proof.
     let term := match (eval cbv [fold_grammar'] in (@fold_grammar' pp)) with
                 | fun _ => ?term => term
@@ -112,7 +114,11 @@ Module opt.
   Definition expanded_fallback_list'_body_sig {G} : { b : _ | b = @expanded_fallback_list'_body G }.
   Proof.
     eexists.
-    cbv [expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else].
+    cbv [id
+           expanded_fallback_list'_body to_production_opt production_carrier_valid production_carrierT rdp_list_predata default_production_carrierT default_nonterminal_carrierT rdp_list_production_carrier_valid default_production_carrier_valid Lookup_idx FixedLengthLemmas.length_of_any FixedLengthLemmas.length_of_any nonterminals_listT rdp_list_nonterminals_listT nonterminals_length initial_nonterminals_data rdp_list_initial_nonterminals_data is_valid_nonterminal of_nonterminal remove_nonterminal ContextFreeGrammar.Core.Lookup rdp_list_of_nonterminal default_of_nonterminal grammar_of_pregrammar rdp_list_remove_nonterminal Lookup_string list_to_productions rdp_list_is_valid_nonterminal If_Then_Else
+           opt.compile_productions opt.compile_production opt.compile_item opt.compile_nonterminal opt.nonterminal_names FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation opt.compile_grammar
+           pregrammar_nonterminals
+           opt.on_terminal FromAbstractInterpretationDefinitions.on_terminal FixedLengthLemmas.length_result_aidata].
     change (@Fix.lookup_state ?v) with (@lookup_state).
     change (FromAbstractInterpretation.fold_grammar G) with (fold_grammar (pregrammar_productions G)).
     change @fst with @opt.fst.
@@ -150,7 +156,8 @@ Module opt.
     : FMapPositive.PositiveMap.t (Definitions.lattice_for nat) -> default_production_carrierT -> ret_cases.
   Proof.
     let term := (eval cbv [expanded_fallback_list'_body'] in (@expanded_fallback_list'_body' ps)) in
-    let term := match (eval pattern (fold_grammar ps) in term) with
+    let fg := lazymatch term with context[fold_grammar ps ?v] => constr:(fold_grammar ps v) end in
+    let term := match (eval pattern fg in term) with
                 | ?term _ => term
                 end in
     exact term.
@@ -174,17 +181,20 @@ Module opt.
   Definition premap_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) : list (nat * (nat * nat)).
   Proof.
     let term := match (eval cbv [rindexed_spec rindexed_spec' default_production_carrierT default_nonterminal_carrierT expanded_fallback_list' forall_reachable_productions_if_eq] in (fun HSLM HSL => @rindexed_spec HSLM HSL G)) with
-                | appcontext[List.map (fun x => (x, ?f x)) ?ls] => ls
+                | context[List.map (fun x => (x, ?f x)) ?ls] => ls
                 end in
     exact term.
   Defined.
   Definition Let_In {A B} (x : A) (f : A -> B) := let y := x in f y.
   Definition map_expanded_fallback_list'_body (G : pregrammar' Ascii.ascii) fg : list ((nat * (nat * nat)) * ret_cases)
     := map (fun x => (x, @expanded_fallback_list'_body G fg x)) (premap_expanded_fallback_list'_body G).
+  Local Hint Immediate FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation : typeclass_instances.
   Definition expanded_fallback_list_body (G : pregrammar' Ascii.ascii) : list ((nat * (nat * nat)) * ret_cases)
-    := Let_In
-         (fold_grammar G)
-         (map_expanded_fallback_list'_body G).
+    := Let_In (opt.compile_grammar G)
+              (fun compiled_productions
+               => Let_In
+                    (fold_grammar G compiled_productions)
+                    (map_expanded_fallback_list'_body G)).
 End opt.
 
 Class opt_of {T} (term : T) := mk_opt_of : T.
@@ -193,67 +203,67 @@ Local Hint Extern 0 (do_idtac ?msg) => idtac "<infomsg>" msg "</infomsg>"; exact
 Local Ltac cidtac term := constr:(_ : do_idtac term).
 Local Ltac opt_of_context term :=
   match (eval cbv beta iota zeta in term) with
-  | appcontext G[map snd (opt.id ?ls)]
+  | context G[map snd (opt.id ?ls)]
     => let G' := context G[opt.id (opt.map opt.snd ls)] in
        opt_of_context G'
-  | appcontext G[List.length (opt.id ?ls)]
+  | context G[List.length (opt.id ?ls)]
     => let G' := context G[opt.id (opt.length ls)] in
        opt_of_context G'
-  | appcontext G[minus (opt.id ?x) (opt.id ?y)]
+  | context G[minus (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (opt.minus x y)] in
        opt_of_context G'
-  | appcontext G[Operations.List.up_to (opt.id ?n)]
+  | context G[Operations.List.up_to (opt.id ?n)]
     => let G' := context G[opt.id (opt.up_to n)] in
        opt_of_context G'
-  | appcontext G[S (opt.id ?n)]
+  | context G[S (opt.id ?n)]
     => let G' := context G[opt.id (S n)] in
        opt_of_context G'
-  | appcontext G[ret (opt.id ?n)]
+  | context G[ret (opt.id ?n)]
     => let G' := context G[opt.id (ret n)] in
        opt_of_context G'
-  | appcontext G[pair (opt.id ?x) (opt.id ?y)]
+  | context G[pair (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (pair x y)] in
        opt_of_context G'
-  | appcontext G[cons (opt.id ?x) (opt.id ?y)]
+  | context G[cons (opt.id ?x) (opt.id ?y)]
     => let G' := context G[opt.id (cons x y)] in
        opt_of_context G'
-  | appcontext G[Operations.List.uniquize (opt.id ?beq) (opt.id ?ls)]
+  | context G[Operations.List.uniquize (opt.id ?beq) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.uniquize beq ls)] in
        opt_of_context G'
-  | appcontext G[nth (opt.id ?n) (opt.id ?ls) (opt.id ?d)]
+  | context G[nth (opt.id ?n) (opt.id ?ls) (opt.id ?d)]
     => let G' := context G[opt.id (opt.nth n ls d)] in
        opt_of_context G'
-  | appcontext G[List.combine (opt.id ?a) (opt.id ?b)]
+  | context G[List.combine (opt.id ?a) (opt.id ?b)]
     => let G' := context G[opt.id (opt.combine a b)] in
        opt_of_context G'
-  | appcontext G[map (opt.id ?f) (opt.id ?ls)]
+  | context G[map (opt.id ?f) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.map f ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[flat_map (opt.id ?f) (opt.id ?ls)]
+  | context G[flat_map (opt.id ?f) (opt.id ?ls)]
     => let G' := context G[opt.id (opt.flat_map f ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[opt.flat_map (opt.id ?f) ?ls]
+  | context G[opt.flat_map (opt.id ?f) ?ls]
     => let G' := context G[opt.flat_map f ls] in
        opt_of_context G'
-  | appcontext G[opt.map (opt.id ?f) ?ls]
+  | context G[opt.map (opt.id ?f) ?ls]
     => let G' := context G[opt.map f ls] in
        opt_of_context G'
-  | appcontext G[fun x => opt.id (@?f x)]
+  | context G[fun x => opt.id (@?f x)]
     => let G' := context G[opt.id f] in
        opt_of_context G'
-  | appcontext G[flat_map ?f (opt.id ?ls)]
+  | context G[flat_map ?f (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.flat_map f' ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[map ?f (opt.id ?ls)]
+  | context G[map ?f (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.map f' ls)] in
        let G' := (eval cbv beta in G') in
        opt_of_context G'
-  | appcontext G[fold_right ?f (opt.id ?d) (opt.id ?ls)]
+  | context G[fold_right ?f (opt.id ?d) (opt.id ?ls)]
     => let f' := constr:(fun x => _ : opt_of (f (opt.id x))) in
        let G' := context G[opt.id (opt.fold_right f' d ls)] in
        let G' := (eval cbv beta in G') in
@@ -396,7 +406,7 @@ Section IndexedImpl_opt.
     simpl @production_carrierT.
     cbv [default_production_carrierT default_nonterminal_carrierT].
     lazymatch goal with
-    | [ |- appcontext g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
+    | [ |- context g[List.map (fun x => (x, expanded_fallback_list'_body x))?ls] ]
       => idtac;
            let G' := context g[opt.id (opt.expanded_fallback_list_body G)] in
            change G'
@@ -581,7 +591,7 @@ Section IndexedImpl_opt.
   Proof.
     let c := (eval cbv [opt_rindexed_spec0] in opt_rindexed_spec0) in
     let c := lazymatch c with
-             | appcontext[fun r_n d d0 d1 => Bind (opt2.fold_right (@?f r_n d d0 d1) ?init ?ls) (fun a => @?retv r_n d d0 d1 a)]
+             | context[fun r_n d d0 d1 => Bind (opt2.fold_right (@?f r_n d d0 d1) ?init ?ls) (fun a => @?retv r_n d d0 d1 a)]
                => (eval cbv beta in (fun r_n d d0 d1 => Bind (opt2.fold_right (f r_n d d0 d1) init ls) (fun a => retv r_n d d0 d1 a)))
              end in
     exact c.
@@ -744,9 +754,9 @@ Section tower.
     { simpl in *.
       repeat match goal with
              | _ => assumption
-             | [ |- appcontext[If test ?x Then _ Else _] ] => destruct (test x) eqn:?
+             | [ |- context[If test ?x Then _ Else _] ] => destruct (test x) eqn:?
              | _ => progress simpl in *
-             | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+             | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
              | _ => apply make_tower_const; reflexivity
              | _ => apply make_tower_no_unif_const; first [ reflexivity | assumption ]
              | _ => progress intros
@@ -774,7 +784,7 @@ Section step_tower.
   Proof.
     intros r_o d d0 d1.
     lazymatch (eval cbv [opt_rindexed_spec_method_default] in (opt_rindexed_spec_method_default G' r_o d d0 d1)) with
-    | appcontext[opt2.fold_right
+    | context[opt2.fold_right
                    (fun a a0 => If @?test a Then @?test_true a Else a0)
                    ?base
                    ?ls]

@@ -42,6 +42,54 @@ Record pregrammar Char :=
 
 Global Existing Instance pregrammar_idata.
 
+Section with_actions.
+  Context (Char T : Type).
+
+  Definition action_of_ritem (it : ritem Char) : Type
+    := match it with
+       | RTerminal _ => Char
+       | RNonTerminal _ => T
+       end.
+
+  Fixpoint action_of_rproduction (pat : rproduction Char) : Type
+    := match pat with
+       | nil => T
+       | cons it pat'
+         => action_of_ritem it -> action_of_rproduction pat'
+       end.
+
+  Definition ritem_with_action := { it : ritem Char & action_of_ritem it }.
+  Definition rproduction_with_action := { pat : rproduction Char & action_of_rproduction pat }.
+  Definition rproductions_with_actions := list rproduction_with_action.
+
+  Record pregrammar_with_actions :=
+    {
+      pregrammar_arproductions : list (string * rproductions_with_actions);
+      pregrammar_aidata : interp_RCharExpr_data Char;
+      pregrammar_arnonterminals : list string
+      := map fst pregrammar_arproductions;
+      pregrammar_a_only_rproductions : list (rproductions Char)
+      := map (map (@projT1 _ _)) (map snd pregrammar_arproductions);
+      arnonterminals_unique
+      : NoDupR string_beq pregrammar_arnonterminals
+    }.
+
+  Definition pregrammar_of_pregrammar_with_actions (g : pregrammar_with_actions) : pregrammar Char.
+  Proof.
+    eapply {| pregrammar_rproductions := List.map (fun xy => (fst xy, List.map (@projT1 _ _) (snd xy)))
+                                                  (pregrammar_arproductions g) |}.
+    Grab Existential Variables.
+    2:eapply (pregrammar_aidata g). (* wheee, dependent subgoals in Coq 8.4 *)
+    abstract (
+        rewrite map_map; simpl;
+        apply (arnonterminals_unique g)
+      ).
+  Defined.
+End with_actions.
+
+Global Existing Instance pregrammar_aidata.
+Global Coercion pregrammar_of_pregrammar_with_actions : pregrammar_with_actions >-> pregrammar.
+
 Record pregrammar' (Char : Type) :=
   {
     pregrammar_productions :> list (string * productions Char);

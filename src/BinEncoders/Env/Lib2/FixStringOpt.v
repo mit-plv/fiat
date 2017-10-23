@@ -17,7 +17,7 @@ Section String.
   Fixpoint encode_string_Spec (xs : string) (ce : CacheEncode)
     : Comp (B * CacheEncode) :=
     match xs with
-    | EmptyString => ret (transform_id, ce)
+    | EmptyString => ret (transform_id, addE ce 0)
     | String x xs' => `(b1, env1) <- encode_ascii_Spec x ce;
                       `(b2, env2) <- encode_string_Spec xs' env1;
                       ret (transform b1 b2, env2)
@@ -25,7 +25,7 @@ Section String.
 
     Fixpoint encode_string_Impl (xs : string) (ce : CacheEncode) : B * CacheEncode :=
     match xs with
-    | EmptyString => (transform_id, ce)
+    | EmptyString => (transform_id, addE ce 0)
     | String x xs' => let (b1, env1) := encode_ascii_Impl x ce in
                       let (b2, env2) := encode_string_Impl xs' env1 in
                           (transform b1 b2, env2)
@@ -33,7 +33,7 @@ Section String.
 
   Fixpoint decode_string (s : nat) (b : B) (cd : CacheDecode) : option (string * B * CacheDecode) :=
     match s with
-    | O => Some (EmptyString, b, cd)
+    | O => Some (EmptyString, b, addD cd 0)
     | S s' => `(x, b1, e1) <- decode_ascii b cd;
               `(xs, b2, e2) <- decode_string s' b1 e1;
               Some (String x xs, b2, e2)
@@ -60,7 +60,9 @@ Section String.
       induction l.
       { intros.
         inversion Penc; subst; clear Penc.
-        rewrite transform_id_left; eexists; intuition eauto.  }
+        rewrite transform_id_left; eexists; intuition eauto.
+        apply add_correct; eauto.
+      }
       { intros.
         simpl in *.
         unfold Bind2 in *; computes_to_inv; subst.
@@ -73,7 +75,9 @@ Section String.
       }
     }
     { induction sz; simpl; intros.
-      { injections; repeat eexists; eauto using transform_id_left. }
+      { injections; repeat eexists; eauto using transform_id_left.
+        apply add_correct; eauto.
+      }
       { destruct (decode_ascii bin env') as [ [ [? ?] ?] | ] eqn: ? ;
           simpl in *; try discriminate.
         destruct (decode_string sz b c) as [ [ [? ?] ?] | ] eqn: ? ;

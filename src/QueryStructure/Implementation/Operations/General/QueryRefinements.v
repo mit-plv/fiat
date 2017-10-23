@@ -1414,3 +1414,190 @@ Global Instance IndexedDecideableEnsemble
 Proof.
   intuition; eapply dec_decides_P; simpl in *; eauto.
 Defined.
+
+  Lemma refine_Query_Where_Cond :
+    forall (ResultT : Type) (P Q : Prop)
+           (body : Comp (list ResultT)),
+      (P <-> Q)
+      -> refine (Query_Where P body)
+                (Query_Where Q body).
+  Proof.
+    unfold pointwise_relation, Query_Where; intros.
+    intros ? ?; intuition; computes_to_inv; computes_to_econstructor.
+    intuition; intros.
+  Qed.
+
+  Lemma refine_Query_Where_True_Cond :
+    forall (ResultT : Type) (P : Prop )
+           (body : Comp (list ResultT)),
+      P
+      -> refine (Query_Where P body) body.
+  Proof.
+    intros.
+    etransitivity; intro.
+    apply refine_Query_Where_Cond with (Q := True).
+    intuition; intros.
+    intros; computes_to_econstructor; intuition.
+  Qed.
+
+  Lemma refine_Query_Where_False_Cond :
+    forall (ResultT : Type) (P : Prop )
+           (body : Comp (list ResultT)),
+      ~ P
+      -> refine (Query_Where P body) (ret nil).
+  Proof.
+    intros.
+    etransitivity; intro.
+    apply refine_Query_Where_Cond with (Q := False).
+    intuition; intros.
+    intros; computes_to_econstructor; intuition;
+      computes_to_inv; eauto.
+  Qed.
+
+  Lemma refine_QueryResultComp_body_Where_False
+        {ResultT : Type}
+        {heading}
+        (body : @RawTuple heading -> Comp (list ResultT))
+        P R
+    :
+      (forall tup, In _ R tup -> ~ P (indexedElement tup))
+      -> FiniteEnsemble R
+      -> refine (QueryResultComp R (fun tup => Query_Where (P tup) (body tup)))
+                (ret nil).
+  Proof.
+    intros; unfold QueryResultComp.
+    destruct H0.
+    refine pick val _; eauto.
+    simplify with monad laws.
+    rewrite refine_flatten_CompList_func' with (f' := fun _ => ret nil).
+    apply flatten_CompList_nil'.
+    intros; computes_to_econstructor; computes_to_inv; subst;
+      intuition.
+    unfold UnIndexedEnsembleListEquivalence in H0; destruct_ex;
+      intuition; subst.
+    apply in_map_iff in H1; destruct_ex; intuition; subst.
+    apply H in H2; intuition.
+    apply H0; eauto.
+  Qed.
+
+
+  Lemma Query_Where_And_Sym {ResultT}
+    : forall (P Q : Prop)
+             (body : Comp (list ResultT)),
+      refine (Query_Where (P /\ Q) body)
+             (Query_Where (Q /\ P) body).
+  Proof.
+    intros; rewrite refine_Query_Where_Cond;
+      try reflexivity; intuition.
+  Qed.
+
+  Lemma flatten_CompList_Prop {A}
+    : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As As' : list A),
+      FlattenCompList.flatten_CompList (map (fun a : A => Query_Where (P a)
+                                                                      (Query_Return a) ) As) ↝ As'
+      -> forall a, List.In a As' -> P a.
+  Proof.
+    induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+    unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+    destruct (dec a) eqn: ?.
+    - rewrite dec_decides_P in Heqb.
+      pose proof (H1 Heqb); computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+      subst; eauto.
+    - apply Decides_false in Heqb; apply H2 in Heqb; subst; simpl in *;
+        eauto.
+  Qed.
+
+  Lemma flatten_CompList_Subset {A}
+    : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As As' : list A),
+      FlattenCompList.flatten_CompList (map (fun a : A => Query_Where (P a)
+                                                                      (Query_Return a) ) As) ↝ As'
+      -> forall a, List.In a As' -> List.In a As.
+  Proof.
+    induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+    unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+    destruct (dec a) eqn: ?.
+    - rewrite dec_decides_P in Heqb.
+      pose proof (H1 Heqb); computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+    - apply Decides_false in Heqb; apply H2 in Heqb; subst; simpl in *;
+        eauto.
+  Qed.
+
+  Lemma flatten_CompList_nil {A}
+    : forall (P : Ensemble A) (P_dec : DecideableEnsemble P) (As : list A),
+      FlattenCompList.flatten_CompList
+        (map (fun a : A => Query_Where (P a)
+                                       (Query_Return a)) As) ↝ nil
+      -> forall a, List.In a As -> ~ P a.
+  Proof.
+    induction As; simpl; intros; computes_to_inv; subst; simpl in *; intuition.
+    unfold Query_Where, Query_Return in H; computes_to_inv; intuition.
+    destruct (dec a) eqn: ?.
+    - rewrite dec_decides_P in Heqb.
+      apply H0 in Heqb; computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+      discriminate.
+    - subst; apply H0 in H1; computes_to_inv;
+        subst; simpl in *; subst; intuition eauto.
+      discriminate.
+    - eapply IHAs; eauto.
+      apply app_eq_nil in H''; intuition; subst; eauto.
+  Qed.
+
+  Corollary For_In_Where_Prop {qs_schema}
+    : forall idx r_o P l,
+      DecideableEnsemble P
+      -> Query_For (Query_In (qs_schema := qs_schema)
+                             r_o idx (fun r : RawTuple => Query_Where (P r)
+                                                                      (Query_Return r) )) ↝ l
+      -> Forall P l.
+  Proof.
+    unfold Query_In, Query_For, QueryResultComp; intros; computes_to_inv.
+    apply Forall_forall; intros.
+    eapply flatten_CompList_Prop in H'0; eauto.
+    symmetry in H'.
+    eapply Permutation_in; eauto.
+  Qed.
+
+  Corollary For_UnConstrQuery_In_Where_Prop {qs_schema}
+    : forall idx r_o P l,
+      DecideableEnsemble P
+      -> Query_For (UnConstrQuery_In (qsSchema := qs_schema)
+                                     r_o idx (fun r : RawTuple => Query_Where (P r)
+                                                                              (Query_Return r) )) ↝ l
+      -> Forall P l.
+  Proof.
+    unfold UnConstrQuery_In, Query_For, QueryResultComp; intros; computes_to_inv.
+    apply Forall_forall; intros.
+    eapply flatten_CompList_Prop in H'0; eauto.
+    symmetry in H'.
+    eapply Permutation_in; eauto.
+  Qed.
+
+  Lemma refine_For_Map {resultT resultT'}
+    : forall comp
+             (f : resultT' -> resultT),
+      refine (Query_For (results <- comp; ret (map f results)))
+             (results <- Query_For comp; ret (map f results)).
+  Proof.
+    intros; unfold Query_For; autorewrite with monad laws.
+    f_equiv; intro.
+    intros ? ?; computes_to_inv; subst.
+    computes_to_econstructor; rewrite Permutation_map; eauto.
+  Qed.
+
+  Corollary refine_UnConstrQuery_In_Query_Where_Cond
+            {qs_schema}
+    : forall (r_n : UnConstrQueryStructure qs_schema)
+             Ridx
+             (ResultT : Type)
+             (P Q : _ -> Prop)
+             (body : _ -> Comp (list ResultT)),
+      (forall tup, P tup <-> Q tup) ->
+      refine (UnConstrQuery_In r_n Ridx (fun tup => Query_Where (P tup) (body tup)))
+             (UnConstrQuery_In r_n Ridx (fun tup => Query_Where (Q tup) (body tup))).
+  Proof.
+    intros; apply refine_UnConstrQuery_In; intro.
+    apply refine_Query_Where_Cond; eauto.
+  Qed.

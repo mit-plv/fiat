@@ -235,7 +235,17 @@ Section Term_equiv.
       | pose proof (@Term_requiv G _ _ f f'); pose proof (@Term_requiv G _ _ x x'); clear Term_requiv
       | pose proof (@args_for_requiv (@Term_requivT (duplicate_type G)) (@Term_equiv _ _ G) (fun var t => @unnatize_Term var t (List.length G)) (@Term_requiv G)); clear Term_requiv ];
       t.
-  Admitted.
+  Abort.
+
+  Context (Term_requiv : forall (G : ctxt)
+           {t1 t2}
+           (e1 : Term fnvar1 t1) (e2 : Term fnvar2 t2),
+              match Term_requivT (duplicate_type G) e1 e2, TypeCode_eq_semidec_transparent t1 t2 with
+              | Some reflective_obligation, Some p
+                => to_prop reflective_obligation
+                   -> @Term_equiv var1 var2 G t2 (eq_rect _ (@Term _) (unnatize_Term (List.length G) e1) _ p) (unnatize_Term (List.length G) e2)
+              | _, _ => True
+              end).
 
   Lemma Term_requiv_onetype (G : ctxt) {t}
         (e1 : Term fnvar1 t) (e2 : Term fnvar2 t)

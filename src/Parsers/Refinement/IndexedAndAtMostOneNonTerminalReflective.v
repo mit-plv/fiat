@@ -8,6 +8,7 @@ Require Import Fiat.Parsers.ParserADTSpecification.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Parsers.ContextFreeGrammar.Properties.
 Require Import Fiat.Parsers.ContextFreeGrammar.PreNotations.
+Require Import Fiat.Parsers.ContextFreeGrammar.Precompute.
 Require Import Fiat.Parsers.Refinement.FixedLengthLemmas.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
@@ -34,7 +35,6 @@ Require Import Fiat.Common.Enumerable.
 Require Import Fiat.Common.Enumerable.BoolProp.
 Require Import Fiat.Common.Enumerable.ReflectiveForall.
 Require Import Fiat.Common.Enumerable.ReflectiveForallStaged.
-Require Import Fiat.Common.Coq__8_4__8_5__Compat.
 
 Set Implicit Arguments.
 
@@ -86,7 +86,7 @@ Section forall_reachable_productions.
     unfold forall_enumerable_by_beq_staged.
     unfold Equality.beq, prod_BoolDecR, dnc_BoolDecR, nat_BoolDecR, prod_beq.
     match goal with
-    | [ |- appcontext[combine ?ls' (map _ ?ls')] ]
+    | [ |- context[combine ?ls' (map _ ?ls')] ]
       => set (ls := ls')
     end.
     etransitivity_rev _.
@@ -96,7 +96,7 @@ Section forall_reachable_productions.
       subst ls.
       symmetry.
       repeat match goal with
-             | [ |- appcontext G[@enumerate ?T ?e] ]
+             | [ |- context G[@enumerate ?T ?e] ]
                => let e' := (eval hnf in e) in
                   let G' := context G[@enumerate T e'] in
                   progress change G'
@@ -355,6 +355,8 @@ Section IndexedImpl.
 
     Global Arguments ret_cases_to_comp / _ _.
 
+    Local Hint Immediate FromAbstractInterpretationDefinitions.compile_item_data_of_abstract_interpretation : typeclass_instances.
+
     Definition expanded_fallback_list'_body
       := (fun p
           => if production_carrier_valid p
@@ -370,7 +372,7 @@ Section IndexedImpl.
                              (fun _ => ret_cases)
                              (fun (n : nat) => ret_nat n)
                              (ret_pick p)
-                             (length_of_any G nt))
+                             (length_of_any G (opt.compile_grammar G) nt))
                   end
              else invalid).
 
@@ -769,7 +771,7 @@ Section IndexedImpl.
       | [ |- context[if Compare_dec.leb ?x ?y then _ else _] ]
         => destruct (Compare_dec.leb x y) eqn:?
       | [ H : context[option_beq _ None (Some _)] |- _ ] => unfold option_beq in H
-      | [ H : appcontext[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
+      | [ H : context[unsafe_get] |- _ ] => erewrite unsafe_get_correct in H by eassumption
       | [ H : andb _ _ = true |- _ ] => apply Bool.andb_true_iff in H
       | [ H : andb _ _ = false |- _ ] => apply Bool.andb_false_iff in H
       | [ H : EqNat.beq_nat _ _ = true |- _ ] => apply EqNat.beq_nat_true in H
@@ -1019,8 +1021,8 @@ Section IndexedImpl.
 
 
     repeat match goal with
-             | [ H : appcontext[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
-             | [ H : appcontext[forall_reachable_productions_if_eq] |- _ ]
+             | [ H : context[to_production_opt] |- _ ] => rewrite to_production_opt_correct in H
+             | [ H : context[forall_reachable_productions_if_eq] |- _ ]
                => rewrite forall_reachable_productions_if_eq_correct_reachable in H by first [ assumption | exact _ ]
              | _ => progress simpl in *
              | _ => progress unfold rdp_list_to_production in *
@@ -1061,7 +1063,7 @@ Section IndexedImpl.
         clear -HSLP; intros;
           rewrite !drop_length, !substring_length, Min.min_r, Nat.add_sub by omega;
           repeat match goal with
-                 | [ H : appcontext[min] |- _ ] => revert H; apply Min.min_case_strong
+                 | [ H : context[min] |- _ ] => revert H; apply Min.min_case_strong
                  | [ H : ?x = 1, H' : context[?x] |- _ ] => rewrite H in H'
                  | [ H : ?x = 1 |- context[?x] ] => rewrite H
                  | [ H : ?x <= ?y |- context[?x - ?y] ] => replace (x - y) with 0 by omega
@@ -1084,9 +1086,9 @@ Section IndexedImpl.
              | [ H : collapse_length_result ?e = Some _ |- _ ]
                => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
              | _ => intro
-             | [ H : length_of_any ?G ?nt = _,
+             | [ H : length_of_any ?G _ ?nt = _,
                      p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+               => (pose proof (has_only_terminals_parse_of_item_length eq_refl H p); clear H)
              end;
         fin2. }
     { repeat match goal with
@@ -1111,9 +1113,9 @@ Section IndexedImpl.
              | [ H : collapse_length_result ?e = Some _ |- _ ]
                => (revert H; case_eq e; simpl; [ try (intros; congruence).. ]; [])
              | _ => intro
-             | [ H : length_of_any ?G ?nt = _,
+             | [ H : length_of_any ?G _ ?nt = _,
                      p : parse_of_item _ ?str (NonTerminal ?nt) |- _ ]
-               => (pose proof (has_only_terminals_parse_of_item_length H p); clear H)
+               => (pose proof (has_only_terminals_parse_of_item_length eq_refl H p); clear H)
              end;
         fin2. }
     { repeat match goal with

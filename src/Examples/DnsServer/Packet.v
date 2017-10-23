@@ -207,7 +207,6 @@ Section Packet.
     < sNAME :: DomainName,
       sTTL :: timeT,
       sCLASS :: RRecordClass,
-      sTYPE :: RRecordType,
       sRDATA :: RDataType>%Heading.
 
   Definition resourceRecord := @Tuple resourceRecordHeading.
@@ -217,7 +216,6 @@ Section Packet.
     < sNAME :: DomainName,
       sTTL :: timeT,
       sCLASS :: RRecordClass,
-      sTYPE :: RRecordType,
       sRDATA :: RDATAT >%Heading.
 
   Definition VariantResourceRecord RDATAT := @Tuple (VariantResourceRecordHeading RDATAT).
@@ -240,7 +238,6 @@ Section Packet.
     < sNAME :: rr!sNAME,
       sTTL :: rr!sTTL,
       sCLASS :: rr!sCLASS,
-      sTYPE :: rr!sTYPE,
       sRDATA :: SumType_proj _ (rr!sRDATA)>.
 
   Definition VariantResourceRecord2RRecord
@@ -250,7 +247,6 @@ Section Packet.
     < sNAME :: vrr!sNAME,
       sTTL :: vrr!sTTL,
       sCLASS :: vrr!sCLASS,
-      sTYPE :: vrr!sTYPE,
       sRDATA :: inj_SumType _ idx (vrr!sRDATA)>.
 
   Definition CNAME_Record2RRecord
@@ -362,6 +358,13 @@ Definition ID : Type := word 16.
     | nil => true
     | _ => false
     end.
+
+  Lemma is_empty_app {A} :
+    forall (l l' : list A),
+      is_empty (l ++ l') = andb (is_empty l) (is_empty l').
+  Proof.
+    induction l; simpl; eauto.
+  Qed.
 
   Definition isAnswer (p : packet) := negb (is_empty (p!"answers")).
 

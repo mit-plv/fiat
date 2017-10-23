@@ -864,6 +864,7 @@ Section DomainName.
   Proof.
     unfold add_ptr_OK in *; induction n; simpl; intros.
     - injections; eauto.
+      rewrite IndependentCaches; eauto.
     - apply DecodeBindOpt2_inv in H0;
         destruct H0 as [? [? [? [? ?] ] ] ]; injections; subst.
       destruct (decode_string n x0 x1) eqn: ?; simpl in *; try discriminate.
@@ -895,7 +896,7 @@ Section DomainName.
       -> ~ In p (getE env' z).
   Proof.
     induction s; simpl; unfold encode_ascii_Spec, encode_word_Spec;
-      intros; computes_to_inv; injections; eauto.
+      intros; computes_to_inv; injections; try rewrite IndependentCaches'; eauto.
     unfold Bind2 in *; computes_to_inv; injections; simpl in *; eauto.
     destruct v0; simpl in *; eauto.
     eapply IHs in H0'.

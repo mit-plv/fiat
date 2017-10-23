@@ -128,7 +128,7 @@ Section num_plus.
 
   Local Ltac fin :=
     repeat first [ progress fin'0 fin
-                 | solve [ constructor (solve [ fin ]) ] ].
+                 | solve [ constructor; solve [ fin ] ] ].
 
   Example plus_expr_parses_1 : parse_of_grammar "1+2+3+4+5"%string plus_expr_grammar.
   Proof.
@@ -173,7 +173,7 @@ Section num_plus_paren.
                    simpl; erewrite ?Equality.ascii_lb by reflexivity; reflexivity
                  | refine (ParseNonTerminal _ _)
                  | progress simpl
-                 | solve [ constructor (solve [ fin ]) ] ].
+                 | solve [ constructor; solve [ fin ] ] ].
 
   Example plus_paren_expr_parses_1 : parse_of_grammar "1+(2+3)+4+5"%string plus_expr_grammar.
   Proof.

@@ -1,11 +1,12 @@
 (** * Definition of the string-like type *)
+Require Coq.Lists.List.
 Require Import Coq.Relations.Relation_Definitions (* for [relation] *).
 Require Import Coq.Classes.Morphisms (* for [==>] / [respectful] *).
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 
 Local Coercion is_true : bool >-> Sortclass.
 
 Global Set Keyed Unification. (* Makes [rewrite] faster in 8.5 / 8.6; we put it hear to not have to deal with compatibility issues in other files *)
+Global Set Asymmetric Patterns.
 
 Set Implicit Arguments.
 Generalizable All Variables.

@@ -313,7 +313,7 @@ Qed. *)
                paddingOK := Lt.lt_0_Sn _;
                byteString := [lo8 w; hi8 w] |}.
 Proof.
-Admitted.
+Defined.
   intros; rewrite (encode_char 8).
   intros; rewrite (encode_char 0).
   simpl.
@@ -413,7 +413,7 @@ Definition decode_IPChecksum
           paddingOK := Lt.lt_0_Sn _;
           byteString := byteString b ++ byteString b' |}.
 Proof.
-Admitted. *)
+Defined. *)
 
 Lemma ByteString2ListOfChar_Over :
   forall (b ext : ByteString),
@@ -449,7 +449,7 @@ Qed.
                        (if Peano_dec.eq_nat_dec (padding b) 0 then transform_id
                        else encode_word (wzero (8 - (padding b))))) = 0.
 Proof.
-Admitted. *)
+Defined. *)
 (*  intros; rewrite transform_padding_eq.
   find_if_inside; subst; simpl.
   - rewrite e; simpl; eauto.
@@ -485,7 +485,7 @@ Qed. *)
   : forall b b',
     padding (transform b b') = padding (transform b' b).
 Proof.
-Admitted. *)
+Defined. *)
 (*  intros; rewrite !transform_padding_eq.
   rewrite Plus.plus_comm; eauto.
 Qed. *)
@@ -955,7 +955,7 @@ Qed.
     -> decode_IPChecksum (ByteString_transformer x3 (ByteString_transformer x1 ext)) ctx = Some (u, (ByteString_transformer x1 ext), ctx')
     -> x3 = IPChecksum x x1.
 Proof.
-Admitted. *)
+Defined. *)
 
 Lemma compose_IPChecksum_encode_correct
   : forall (A : Type)

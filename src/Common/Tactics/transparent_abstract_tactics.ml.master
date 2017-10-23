@@ -1,0 +1,75 @@
+module TRANSPARENT_ABSTRACT =
+  struct
+    open Environ
+    open Context
+    open Termops
+    open Evarutil
+    open CErrors
+    open Decl_kinds
+    open Pfedit
+    open Names
+    open Nameops
+    open Tacticals.New
+    open Ltac_plugin
+    open Tacmach.New
+    open Proofview.Notations
+    open Safe_typing
+    open Proof_global
+    (* [tac] : string representing identifier *)
+    (* [args] : tactic arguments *)
+    (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+    let ltac_lcall tac args =
+      Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag (Misctypes.ArgVar(Loc.tag @@ Names.Id.of_string tac),args)))
+
+    (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+    let ltac_letin (x, e1) e2 =
+      Tacexpr.TacLetIn(false,[(Loc.tag @@ Names.Id.of_string x),e1],e2)
+
+    (* [ltac_apply] : Run a tactic with arguments... *)
+    let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
+      let open Geninterp in
+      let ist = Tacinterp.default_ist () in
+      let id = Id.of_string "X" in
+      let idf = Id.of_string "F" in
+      let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
+      let arg = Tacexpr.Reference (Misctypes.ArgVar (Loc.tag id)) in
+      Tacinterp.eval_tactic_ist ist
+        (ltac_lcall "F" [arg])
+
+    (* Lift a constr to an ltac value. *)
+    let to_ltac_val c = Tacinterp.Value.of_constr c
+
+    (* Build a new definition for [term] with identifier [id] and call *)
+    (* the [tacK] tactic with the result. *)
+    let transparent_abstract_term id (term : EConstr.constr) tacK gk =
+      Proofview.Goal.enter begin
+       fun gl ->
+        let termType = Tacmach.New.pf_get_type_of gl term in
+        Tactics.cache_term_by_tactic_then ~opaque:false
+          ~goal_type:(Some termType) id
+	  gk
+          (Eauto.e_give_exact term)
+          (fun lem args -> ltac_apply tacK (to_ltac_val (EConstr.applist (lem, args))))
+      end
+
+    (* Default identifier *)
+    let anon_id = Id.of_string "anonymous"
+
+    let tclTRABSTRACT name_op tac = Tactics.tclABSTRACT ~opaque:false name_op tac
+
+    let tclABSTRACTTERM name_op term tacK =
+      (* What's the right default goal kind?*)
+      let default_gk = (Global, false, Proof Theorem) in
+      let s, gk = match name_op with
+        | Some s ->
+           (try let _, gk, _ = current_proof_statement () in s, gk
+            with NoCurrentProof -> s, default_gk)
+        | None   ->
+           let name, gk =
+             try let name, gk, _ = current_proof_statement () in name, gk
+             with NoCurrentProof -> anon_id, default_gk in
+           add_suffix name "_term", gk
+      in
+      transparent_abstract_term s term tacK gk
+
+  end

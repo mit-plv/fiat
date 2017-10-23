@@ -85,7 +85,7 @@ Section InsertRefinements.
     - rewrite ilist2.ith_replace2_Index_eq; simpl.
       rewrite ilist2.ith_replace2_Index_neq in H1; eauto using string_dec.
       generalize (qsConstr' idx H0 _ H1); rewrite H; eauto.
-    - rewrite ilist2.ith_replace2_Index_neq in *; eauto using string_dec.
+    - rewrite ilist2.ith_replace2_Index_neq; eauto using string_dec.
       destruct (fin_eq_dec Ridx idx); subst.
       + rewrite ilist2.ith_replace2_Index_eq in H1; simpl in *; eauto.
         unfold EnsembleInsert in H1; destruct H1; subst; eauto.
@@ -271,7 +271,6 @@ Section InsertRefinements.
     rewrite refineEquiv_bind_bind.
     setoid_rewrite refineEquiv_bind_unit; f_equiv.
   Qed.
-
 
   Lemma QSInsertSpec_refine_opt :
   forall qsSchema (qs : QueryStructure qsSchema) Ridx tup,
@@ -867,15 +866,15 @@ Section InsertRefinements.
            (k : _ -> Comp ResultT),
       DropQSConstraints_AbsR qs qs'
       -> refine {b | decides b
-                          (SatisfiesAttributeConstraints Ridx tup)}
-             refined_schConstr_self
+                             (SatisfiesAttributeConstraints Ridx tup)}
+                refined_schConstr_self
       -> refine {b |
-                       decides
-                         b
-                         (forall tup',
-                            GetUnConstrRelation qs' Ridx tup'
-                            -> SatisfiesTupleConstraints Ridx tup (indexedElement tup'))}
-           refined_schConstr
+                 decides
+                   b
+                   (forall tup',
+                       GetUnConstrRelation qs' Ridx tup'
+                       -> SatisfiesTupleConstraints Ridx tup (indexedElement tup'))}
+                refined_schConstr
       -> (forall b',
              decides b'
                      (forall tup',
@@ -891,33 +890,33 @@ Section InsertRefinements.
                   (refined_schConstr' b'))
       -> refine
            (@Iterate_Decide_Comp_opt _
-                                   (fun Ridx' =>
-                                      match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
+                                     (fun Ridx' =>
+                                        match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
                                         | Some CrossConstr =>
                                           Some (CrossConstr tup (GetUnConstrRelation qs' Ridx'))
                                         | None => None
-                                      end))
+                                        end))
            refined_qsConstr
       -> (forall idx,
              UnConstrFreshIdx (GetUnConstrRelation qs' Ridx) idx
              -> refine
                   (@Iterate_Decide_Comp_opt _
-                                        (fun Ridx' =>
-                                           if (fin_eq_dec Ridx Ridx') then
-                                             None
-                                           else
-                                             match (BuildQueryStructureConstraints qsSchema Ridx' Ridx) with
-                                               | Some CrossConstr =>
-                                                 Some (
-                                                     forall tup',
-                                                       (GetUnConstrRelation qs' Ridx') tup'
-                                                       -> CrossConstr (indexedElement tup') (
-                                                                        (EnsembleInsert
-                                                                           {| elementIndex := idx;
-                                                                              indexedElement := tup |}
-                                                                           (GetUnConstrRelation qs' Ridx))))
-                                               | None => None
-                                      end))
+                                            (fun Ridx' =>
+                                               if (fin_eq_dec Ridx Ridx') then
+                                                 None
+                                               else
+                                                 match (BuildQueryStructureConstraints qsSchema Ridx' Ridx) with
+                                                 | Some CrossConstr =>
+                                                   Some (
+                                                       forall tup',
+                                                         (GetUnConstrRelation qs' Ridx') tup'
+                                                         -> CrossConstr (indexedElement tup') (
+                                                                          (EnsembleInsert
+                                                                             {| elementIndex := idx;
+                                                                                indexedElement := tup |}
+                                                                             (GetUnConstrRelation qs' Ridx))))
+                                                 | None => None
+                                                 end))
                   (refined_qsConstr' idx))
       -> (forall idx qs' qs'',
              DropQSConstraints_AbsR qs' qs''
@@ -927,29 +926,29 @@ Section InsertRefinements.
                     GetRelation qs Ridx' =
                     GetRelation qs' Ridx')
              -> (forall t,
-                 GetRelation qs' Ridx t <->
-                 (EnsembleInsert
-                    {| elementIndex := idx;
-                       indexedElement := tup |}
-                    (GetRelation qs Ridx) t))
+                    GetRelation qs' Ridx t <->
+                    (EnsembleInsert
+                       {| elementIndex := idx;
+                          indexedElement := tup |}
+                       (GetRelation qs Ridx) t))
              -> refine (k (qs', true))
                        (success qs''))
       -> refine (k (qs, false)) default
       -> refine
            (qs' <- QSInsert qs Ridx tup; k qs')
            (idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs' Ridx) idx} ;
-             schConstr_self <- refined_schConstr_self;
-             schConstr <- refined_schConstr;
-             schConstr' <- refined_schConstr' schConstr;
-             qsConstr <- refined_qsConstr;
-             qsConstr' <- refined_qsConstr' idx;
-             match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
-             | true, true, true, true, true =>
-               qs'' <- UpdateUnConstrRelationInsertC qs' Ridx {| elementIndex := idx;
-                                                           indexedElement := tup |};
-             success qs''
-             | _, _, _, _, _ => default
-             end).
+              schConstr_self <- refined_schConstr_self;
+              schConstr <- refined_schConstr;
+              schConstr' <- refined_schConstr' schConstr;
+              qsConstr <- refined_qsConstr;
+              qsConstr' <- refined_qsConstr' idx;
+              match schConstr_self, schConstr, schConstr', qsConstr, qsConstr' with
+              | true, true, true, true, true =>
+                qs'' <- UpdateUnConstrRelationInsertC qs' Ridx {| elementIndex := idx;
+                                                                  indexedElement := tup |};
+                  success qs''
+              | _, _, _, _, _ => default
+              end).
   Proof.
     intros.
     unfold QSInsert.
@@ -966,14 +965,14 @@ Section InsertRefinements.
     computes_to_inv; eauto.
     rewrite refine_SatisfiesCrossConstraints_Constr; etransitivity; try eassumption.
     simpl; f_equiv; apply functional_extensionality; intros;
-    rewrite <- H, GetRelDropConstraints; reflexivity.
+      rewrite <- H, GetRelDropConstraints; reflexivity.
     rewrite <- H, GetRelDropConstraints, refine_SatisfiesCrossConstraints'_Constr.
     etransitivity; try eapply H4.
     simpl; f_equiv; apply functional_extensionality; intros.
     rewrite <- H; rewrite !(GetRelDropConstraints qs); eauto.
     rewrite <- H, GetRelDropConstraints; computes_to_inv; eauto.
     repeat find_if_inside; try simplify with monad laws;
-    try solve [rewrite refine_SuccessfulInsert_Bind; eauto].
+      try solve [rewrite refine_SuccessfulInsert_Bind; eauto].
     apply Iterate_Decide_Comp_BoundedIndex in H11.
     apply Iterate_Decide_Comp_BoundedIndex in H12.
     computes_to_inv; simpl in *.
@@ -982,7 +981,7 @@ Section InsertRefinements.
                SatisfiesTupleConstraints (qsSchema := qsSchema) Ridx
                                          (indexedElement {| elementIndex := a; indexedElement := tup |})
                                          (indexedElement tup')) as H9'
-    by (intros; apply H9; rewrite <- H, GetRelDropConstraints; eassumption).
+        by (intros; apply H9; rewrite <- H, GetRelDropConstraints; eassumption).
     assert (forall Ridx' : Fin.t (numRawQSschemaSchemas qsSchema),
                Ridx' <> Ridx ->
                forall tup' : IndexedElement,
@@ -1023,6 +1022,395 @@ Section InsertRefinements.
     rewrite <- H; rewrite GetRelDropConstraints.
     unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
     rewrite ilist2.ith_replace2_Index_eq; simpl; reflexivity.
+  Qed.
+
+  Lemma QSInsertSpec_refine_short_circuit' :
+    forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
+      refine
+           (Pick (QSInsertSpec qs Ridx tup))
+           (schConstr_self <-
+                           {b |
+                            decides b
+                                    (SatisfiesAttributeConstraints Ridx (indexedElement tup))};
+              If schConstr_self Then
+             schConstr <-
+                      {b |
+                       decides
+                         b
+                         (forall tup',
+                            GetRelation qs Ridx tup'
+                            -> SatisfiesTupleConstraints Ridx (indexedElement tup) (indexedElement tup'))};
+               If schConstr Then
+            schConstr' <-
+                      {b |
+                       decides
+                         b
+                         (forall tup',
+                            GetRelation qs Ridx tup'
+                            -> SatisfiesTupleConstraints Ridx (indexedElement tup') (indexedElement tup))};
+               If schConstr' Then
+            qsConstr <- {b | decides b
+                                     (forall Ridx', SatisfiesCrossRelationConstraints Ridx Ridx' (indexedElement tup) (GetRelation qs Ridx'))};
+               If qsConstr Then
+            qsConstr' <- {b | decides
+                                b
+                                (forall Ridx',
+                                   Ridx' <> Ridx ->
+                                   forall tup',
+                                     (GetRelation qs Ridx') tup'
+                                     -> SatisfiesCrossRelationConstraints
+                                       Ridx' Ridx (indexedElement tup')
+                                       (EnsembleInsert tup (GetRelation qs Ridx)))};
+               If qsConstr' Then
+                {qs' |
+                 (forall Ridx',
+                    Ridx <> Ridx' ->
+                    GetRelation qs Ridx' =
+                    GetRelation qs' Ridx')
+                 /\ forall t,
+                      GetRelation qs' Ridx t <->
+                      (EnsembleInsert tup (GetRelation qs Ridx) t)
+                }
+                Else default
+                Else default
+                Else default
+                Else default
+                Else default).
+  Proof.
+    intros qsSchema qs Ridx tup default v Comp_v;
+    computes_to_inv.
+      destruct v0;
+      [ simpl in *; computes_to_inv; destruct v0;
+        [ simpl in *; computes_to_inv;  destruct v0;
+          [simpl in *; computes_to_inv;  destruct v0;
+            [ simpl in *; computes_to_inv;  destruct v0;
+              [ repeat (computes_to_inv; destruct_ex; split_and); simpl in *;
+                computes_to_econstructor; unfold QSInsertSpec; eauto |
+              ]
+            | ]
+          | ]
+        |  ]
+      |  ];
+      cbv delta [decides] beta in *; simpl in *;
+      repeat (computes_to_inv; destruct_ex); eauto.
+      intuition.
+      unfold QSInsertSpec; intros; intuition.
+      unfold QSInsertSpec; intros; intuition.
+      unfold QSInsertSpec; intros; intuition.
+      unfold QSInsertSpec; intros; intuition.
+      unfold QSInsertSpec; intros; intuition.
+      computes_to_econstructor; unfold QSInsertSpec; intros;
+        intros.
+      solve [elimtype False; intuition].
+  Qed.
+
+  Lemma QSInsertSpec_refine_short_circuit :
+    forall qsSchema (qs : QueryStructure qsSchema) Ridx tup default,
+      refine
+           (Pick (QSInsertSpec qs Ridx tup))
+           (schConstr_self <- {b | decides b
+                                           (SatisfiesAttributeConstraints Ridx (indexedElement tup))};
+              If schConstr_self Then
+             schConstr <-
+                      {b |
+                       decides
+                         b
+                         (forall tup',
+                            GetRelation qs Ridx tup'
+                            -> SatisfiesTupleConstraints Ridx (indexedElement tup) (indexedElement tup'))};
+              If schConstr Then
+            schConstr' <-
+                      {b |
+                       decides
+                         b
+                         (forall tup',
+                            GetRelation qs Ridx tup'
+                            -> SatisfiesTupleConstraints Ridx (indexedElement tup') (indexedElement tup))};
+              If schConstr' Then
+            qsConstr <- (@Iterate_Decide_Comp _
+                                (fun Ridx' =>
+                                   SatisfiesCrossRelationConstraints
+                                     Ridx Ridx' (indexedElement tup)
+                                     (GetRelation qs Ridx')));
+              If qsConstr Then
+            qsConstr' <- (@Iterate_Decide_Comp _
+                                (fun Ridx' =>
+                                   Ridx' <> Ridx
+                                   -> forall tup',
+                                        (GetRelation qs Ridx') tup'
+                                        -> SatisfiesCrossRelationConstraints
+                                       Ridx' Ridx (indexedElement tup')
+                                       (EnsembleInsert tup (GetRelation qs Ridx))));
+              If qsConstr' Then
+                {qs' |
+                 (forall Ridx',
+                    Ridx <> Ridx' ->
+                    GetRelation qs Ridx' =
+                    GetRelation qs' Ridx')
+                 /\ forall t,
+                      GetRelation qs' Ridx t <->
+                      (EnsembleInsert tup (GetRelation qs Ridx) t)
+                } Else default
+                Else default
+                Else default
+                Else default
+                Else default).
+  Proof.
+    intros.
+    rewrite QSInsertSpec_refine_short_circuit'; f_equiv.
+    unfold pointwise_relation; intros.
+    apply refine_If_Then_Else; f_equiv; unfold pointwise_relation; intros.
+    apply refine_If_Then_Else; f_equiv; unfold pointwise_relation; intros.
+    apply refine_If_Then_Else; f_equiv; unfold pointwise_relation; intros.
+    setoid_rewrite Iterate_Decide_Comp_BoundedIndex; f_equiv; eauto.
+    apply refine_If_Then_Else; f_equiv; unfold pointwise_relation; intros.
+    setoid_rewrite Iterate_Decide_Comp_BoundedIndex; f_equiv; eauto.
+  Qed.
+
+  Lemma QSInsertSpec_refine_subgoals_short_circuit ResultT :
+    forall qsSchema (qs : QueryStructure qsSchema) qs' Ridx
+           tup default success refined_schConstr_self
+           refined_schConstr refined_schConstr'
+           refined_qsConstr refined_qsConstr'
+           (k : _ -> Comp ResultT),
+      DropQSConstraints_AbsR qs qs'
+      -> refine {b | decides b
+                             (SatisfiesAttributeConstraints Ridx tup)}
+                refined_schConstr_self
+      -> refine {b |
+                 decides
+                   b
+                   (forall tup',
+                       GetUnConstrRelation qs' Ridx tup'
+                       -> SatisfiesTupleConstraints Ridx tup (indexedElement tup'))}
+                refined_schConstr
+      -> (forall b',
+             decides b'
+                     (forall tup',
+                         GetUnConstrRelation qs' Ridx tup'
+                         -> SatisfiesTupleConstraints Ridx tup (indexedElement tup'))
+             -> refine
+                  {b |
+                   decides
+                     b
+                     (forall tup',
+                         GetUnConstrRelation qs' Ridx tup'
+                         -> SatisfiesTupleConstraints Ridx (indexedElement tup') tup)}
+                  (refined_schConstr' b'))
+      -> refine
+           (@Iterate_Decide_Comp.Iterate_Decide_Comp_opt _
+                                                         (fun Ridx' =>
+                                                            match (BuildQueryStructureConstraints qsSchema Ridx Ridx') with
+                                                            | Some CrossConstr =>
+                                                              Some (CrossConstr tup (GetUnConstrRelation qs' Ridx'))
+                                                            | None => None
+                                                            end))
+           refined_qsConstr
+      -> (forall idx,
+             UnConstrFreshIdx (GetUnConstrRelation qs' Ridx) idx
+             -> refine
+                  (@Iterate_Decide_Comp.Iterate_Decide_Comp_opt _
+                                                                (fun Ridx' =>
+                                                                   if (fin_eq_dec Ridx Ridx') then
+                                                                     None
+                                                                   else
+                                                                     match (BuildQueryStructureConstraints qsSchema Ridx' Ridx) with
+                                                                     | Some CrossConstr =>
+                                                                       Some (
+                                                                           forall tup',
+                                                                             (GetUnConstrRelation qs' Ridx') tup'
+                                                                             -> CrossConstr (indexedElement tup') (
+                                                                                              (EnsembleInsert
+                                                                                                 {| elementIndex := idx;
+                                                                                                    indexedElement := tup |}
+                                                                                                 (GetUnConstrRelation qs' Ridx))))
+                                                                     | None => None
+                                                                     end))
+                  (refined_qsConstr' idx))
+      -> (forall idx qs' qs'',
+             DropQSConstraints_AbsR qs' qs''
+             -> UnConstrFreshIdx (GetRelation qs Ridx) idx
+             -> (forall Ridx',
+                    Ridx <> Ridx' ->
+                    GetRelation qs Ridx' =
+                    GetRelation qs' Ridx')
+             -> (forall t,
+                    GetRelation qs' Ridx t <->
+                    (EnsembleInsert
+                       {| elementIndex := idx;
+                          indexedElement := tup |}
+                       (GetRelation qs Ridx) t))
+             -> refine (k (qs', true))
+                       (success qs''))
+      -> refine (k (qs, false)) default
+      -> refine
+           (qs' <- QSInsert qs Ridx tup; k qs')
+           (idx <- {idx | UnConstrFreshIdx (GetUnConstrRelation qs' Ridx) idx} ;
+              schConstr_self <- refined_schConstr_self;
+              If schConstr_self Then
+                 schConstr <- refined_schConstr;
+              If schConstr Then
+                 schConstr' <- refined_schConstr' schConstr;
+              If schConstr' Then
+                 qsConstr <- refined_qsConstr;
+              If qsConstr Then
+                 qsConstr' <- refined_qsConstr' idx;
+              If qsConstr' Then
+                 qs'' <- UpdateUnConstrRelationInsertC qs' Ridx {| elementIndex := idx;
+                                                                   indexedElement := tup |};
+              success qs''
+                      Else default
+                      Else default
+                      Else default
+                      Else default
+                      Else default
+           ).
+  Proof.
+    intros; unfold QSInsert.
+    simplify with monad laws.
+    setoid_rewrite QSInsertSpec_refine_short_circuit with (default := ret qs).
+    rewrite freshIdx_UnConstrFreshIdx_Equiv.
+    simplify with monad laws.
+    rewrite <- !H, (GetRelDropConstraints qs).
+    apply refine_under_bind_both; [reflexivity | intros].
+    apply refine_under_bind_both; [eassumption | intros].
+    rewrite refine_If_Then_Else_Bind.
+    eapply refine_if; intros; subst; simpl; try simplify with monad laws.
+    apply refine_under_bind_both; [eauto | intros].
+    rewrite <- H1; simpl.
+    rewrite <- (GetRelDropConstraints qs), H; reflexivity.
+    rewrite refine_If_Then_Else_Bind.
+    eapply refine_if; intros; subst; simpl; try simplify with monad laws.
+    apply refine_under_bind_both; [eauto | intros].
+    rewrite <- H2; simpl.
+    rewrite <- (GetRelDropConstraints qs), H; reflexivity.
+    computes_to_inv; simpl in *; eauto.
+    rewrite <- !GetRelDropConstraints in H9; rewrite !H in H9.
+    eauto.
+    rewrite refine_If_Then_Else_Bind.
+    eapply refine_if; intros; subst; simpl; try simplify with monad laws.
+    apply refine_under_bind_both; [eauto | intros].
+    rewrite <- H3; simpl.
+    etransitivity.
+    apply refine_SatisfiesCrossConstraints_Constr.
+    f_equiv.
+    apply functional_extensionality; intro.
+    destruct (BuildQueryStructureConstraints qsSchema Ridx x).
+    rewrite <- (GetRelDropConstraints qs), H; reflexivity.
+    reflexivity.
+    rewrite refine_If_Then_Else_Bind.
+    eapply refine_if; intros; subst; simpl; try simplify with monad laws.
+    apply refine_under_bind_both; [eauto | intros].
+    rewrite <- H4; simpl.
+    etransitivity.
+    apply refine_SatisfiesCrossConstraints'_Constr.
+    f_equiv.
+    apply functional_extensionality; intro.
+    simpl.
+    find_if_inside; eauto.
+    destruct (BuildQueryStructureConstraints qsSchema x Ridx).
+    rewrite <- (GetRelDropConstraints qs), H.
+    rewrite <- (GetRelDropConstraints qs), H.
+    reflexivity.
+    reflexivity.
+    computes_to_inv; simpl in *; subst.
+    rewrite <- H, (GetRelDropConstraints qs); eauto.
+    rewrite refine_If_Then_Else_Bind.
+    eapply refine_if.
+    simpl in *; intros; subst; simpl; computes_to_inv; simpl in *.
+    assert (forall tup' : IndexedElement,
+               GetRelation qs Ridx tup' ->
+               SatisfiesTupleConstraints (qsSchema := qsSchema) Ridx
+                                         (indexedElement {| elementIndex := a; indexedElement := tup |})
+                                         (indexedElement tup')) as H9'
+        by (intros; apply H9; try rewrite <- H, GetRelDropConstraints; eassumption).
+    assert (forall Ridx' : Fin.t (numRawQSschemaSchemas qsSchema),
+               Ridx' <> Ridx ->
+               forall tup' : IndexedElement,
+                 GetRelation qs Ridx' tup' ->
+                 SatisfiesCrossRelationConstraints Ridx' Ridx (indexedElement tup')
+                                                   (EnsembleInsert {| elementIndex := a; indexedElement := tup |}
+                                                                   (GetRelation qs Ridx)))
+      as H12' by 
+          (apply Iterate_Decide_Comp_BoundedIndex in H12;
+           computes_to_inv; subst; simpl in *; apply H12).
+    assert (forall tup' : IndexedElement,
+               GetRelation qs Ridx tup' ->
+               SatisfiesTupleConstraints (qsSchema := qsSchema) Ridx (indexedElement tup')
+                                         (indexedElement {| elementIndex := a; indexedElement := tup |})) as H10'
+        by (intros; apply H10; try rewrite <- H, GetRelDropConstraints; eassumption).
+    assert (forall Ridx' : Fin.t (numRawQSschemaSchemas qsSchema),
+               SatisfiesCrossRelationConstraints (qsSchema := qsSchema) Ridx Ridx' (indexedElement {| elementIndex := a; indexedElement := tup |})
+                                                 (GetRelation qs Ridx'))
+      as H11'.
+    (apply Iterate_Decide_Comp_BoundedIndex in H11;
+           computes_to_inv; subst; simpl in *; apply H11).
+    refine pick val (Insert_Valid qs {| elementIndex := a;
+                                        indexedElement := tup |} H9' H10' H8 H11' H12').
+    simplify with monad laws.
+    refine pick val true.
+    unfold UpdateUnConstrRelationInsertC.
+    simplify with monad laws.
+    setoid_rewrite refineEquiv_bind_unit.
+    eapply H5.
+    rewrite H.
+    unfold DropQSConstraints_AbsR, DropQSConstraints, Insert_Valid; simpl.
+    unfold UpdateRelation.
+    rewrite ilist2.imap_replace2_Index; try reflexivity.
+    simpl.
+    unfold UpdateUnConstrRelation; simpl.
+    rewrite <- H.
+    rewrite GetRelDropConstraints; reflexivity.
+    apply H7.
+    intros.
+    intros; unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
+    simpl.
+    rewrite ilist2.ith_replace2_Index_neq; simpl; eauto.
+    intros; unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
+    rewrite ilist2.ith_replace2_Index_eq; simpl; reflexivity.
+    unfold SuccessfulInsertSpec; simpl.
+    unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
+    rewrite ilist2.ith_replace2_Index_eq; simpl; reflexivity.
+    split; intros.
+    unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
+    rewrite ilist2.ith_replace2_Index_neq; simpl; eauto.
+    rewrite <- GetRelDropConstraints.
+    unfold Insert_Valid, GetRelation, UpdateRelation; simpl.
+    unfold DropQSConstraints, GetUnConstrRelation; simpl.
+    rewrite ilist2.imap_replace2_Index; simpl.
+    rewrite ilist2.ith_replace2_Index_eq; simpl; reflexivity.
+    intros; subst; computes_to_inv; simpl.
+    simplify with monad laws.
+    refine pick val _; try simplify with monad laws; eauto.
+    unfold SuccessfulInsertSpec.
+    computes_to_inv; simpl in *; subst.
+    intro.
+    pose proof (proj2 (H13 _) (or_introl (eq_refl _))).
+    apply H7 in H14; simpl in H14; omega.
+    refine pick val _; try simplify with monad laws; eauto.
+    unfold SuccessfulInsertSpec.
+    computes_to_inv; simpl in *; subst.
+    intro.
+    pose proof (proj2 (H12 _) (or_introl (eq_refl _))).
+    apply H7 in H13; simpl in H13; omega.
+    refine pick val _; try simplify with monad laws; eauto.
+    unfold SuccessfulInsertSpec.
+    computes_to_inv; simpl in *; subst.
+    intro.
+    pose proof (proj2 (H11 _) (or_introl (eq_refl _))).
+    apply H7 in H12; simpl in H12; omega.
+    refine pick val _; try simplify with monad laws; eauto.
+    unfold SuccessfulInsertSpec.
+    computes_to_inv; simpl in *; subst.
+    intro.
+    pose proof (proj2 (H10 _) (or_introl (eq_refl _))).
+    apply H7 in H11; simpl in H11; omega.
+    refine pick val _; try simplify with monad laws; eauto.
+    unfold SuccessfulInsertSpec.
+    computes_to_inv; simpl in *; subst.
+    intro.
+    pose proof (proj2 (H9 _) (or_introl (eq_refl _))).
+    apply H7 in H10; simpl in H10; omega.
   Qed.
 
   Lemma QSInsertSpec_UnConstr_refine_opt :

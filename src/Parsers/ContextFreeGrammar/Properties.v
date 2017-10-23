@@ -257,11 +257,11 @@ End cfg.
 
 Ltac simpl_parse_of_respectful :=
   repeat match goal with
-           | [ |- appcontext[@parse_of_respectful ?Char ?HSLM ?HSL ?HSLP ?G ?str1 ?str2 ?H ?pat ?pat' ?Hpat ?p] ]
+           | [ |- context[@parse_of_respectful ?Char ?HSLM ?HSL ?HSLP ?G ?str1 ?str2 ?H ?pat ?pat' ?Hpat ?p] ]
              => change (@parse_of_respectful Char HSLM HSL HSLP G str1 str2 H pat pat' Hpat p)
                 with (@parse_of_respectful_step Char HSLM HSL G (@parse_of_respectful Char HSLM HSL HSLP G) (@parse_of_production_respectful Char HSLM HSL HSLP G) str1 str2 H pat pat' Hpat p);
                simpl @parse_of_respectful_step
-           | [ |- appcontext[@parse_of_production_respectful ?Char ?HSLM ?HSL ?HSLP ?G ?str1 ?str2 ?H ?pat ?pat' ?Hpat ?p] ]
+           | [ |- context[@parse_of_production_respectful ?Char ?HSLM ?HSL ?HSLP ?G ?str1 ?str2 ?H ?pat ?pat' ?Hpat ?p] ]
              => change (@parse_of_production_respectful Char HSLM HSL HSLP G str1 str2 H pat pat' Hpat p)
                 with (@parse_of_production_respectful_step Char HSLM HSL G (@parse_of_respectful Char HSLM HSL HSLP G) (@parse_of_production_respectful Char HSLM HSL HSLP G) str1 str2 H pat pat' Hpat p);
                simpl @parse_of_production_respectful_step

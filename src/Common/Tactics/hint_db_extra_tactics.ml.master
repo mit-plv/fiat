@@ -1,0 +1,74 @@
+module WITH_DB =
+  struct
+    open Tacticals.New
+    open Names
+    open Ltac_plugin
+
+  (* [tac] : string representing identifier *)
+  (* [args] : tactic arguments *)
+  (* [ltac_lcall] : Build a tactic expression calling a variable let-bound to a tactic == [F] args *)
+  let ltac_lcall tac args =
+    Tacexpr.TacArg(Loc.tag @@ Tacexpr.TacCall(Loc.tag @@ (Misctypes.ArgVar(Loc.tag @@ Names.Id.of_string tac),args)))
+
+  (* [ltac_letin] : Build a let tactic expression. let x := e1 in e2 *)
+  let ltac_letin (x, e1) e2 =
+    Tacexpr.TacLetIn(false,[(Loc.tag @@ Names.Id.of_string x),e1],e2)
+
+  (* [ltac_apply] : Run a tactic with arguments... *)
+  let ltac_apply (f: Tacinterp.Value.t) (arg:Tacinterp.Value.t) =
+    let open Geninterp in
+    let ist = Tacinterp.default_ist () in
+    let id = Id.of_string "X" in
+    let idf = Id.of_string "F" in
+    let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
+    let arg = Tacexpr.Reference (Misctypes.ArgVar (Loc.tag id)) in
+    Tacinterp.eval_tactic_ist ist
+      (ltac_lcall "F" [arg])
+
+  (* Lift a constructor to an ltac value. *)
+  let to_ltac_val c = Tacinterp.Value.of_constr c
+
+  let with_hint_db dbs tacK =
+    let open Proofview.Notations in
+    (* [dbs] : list of hint databases *)
+    (* [tacK] : tactic to run on a hint *)
+    Proofview.Goal.nf_enter begin
+	fun gl ->
+	let syms = ref [] in
+	let _ =
+	  List.iter (fun l ->
+		     (* Fetch the searchtable from the database*)
+		     let db = Hints.searchtable_map l in
+		     (* iterate over the hint database, pulling the hint *)
+		     (* list out for each. *)
+		     Hints.Hint_db.iter (fun _ _ hintlist ->
+					 syms := hintlist::!syms) db) dbs in
+	(* Now iterate over the list of list of hints, *)
+	List.fold_left
+	  (fun tac hints ->
+	   List.fold_left
+	     (fun tac (hint : Hints.full_hint) ->
+	      let hint1 = hint.Hints.code in
+	      Hints.run_hint hint1
+		       (fun hint2 ->
+			      (* match the type of the hint to pull out the lemma *)
+			      match hint2 with
+				Hints.Give_exact ((lem, _, _) , _)
+			      | Hints.Res_pf ((lem, _, _) , _)
+			      | Hints.ERes_pf ((lem, _, _) , _) ->
+				 let this_tac = ltac_apply tacK (Tacinterp.Value.of_constr lem) in
+				 tclORELSE this_tac tac
+			      | _ -> tac))
+	     tac hints)
+	  (tclFAIL 0 (Pp.str "No applicable tactic!")) !syms
+      end
+
+  let add_resolve_to_db lem db =
+    let open Proofview.Notations in
+    Proofview.Goal.nf_enter begin
+	fun gl ->
+	let _ = Hints.add_hints true db (Hints.HintsResolveEntry [({ Vernacexpr.hint_priority = Some 1 ; Vernacexpr.hint_pattern = None },false,true,Hints.PathAny,lem)]) in
+	tclIDTAC
+      end
+
+end

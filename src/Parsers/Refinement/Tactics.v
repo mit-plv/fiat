@@ -14,6 +14,7 @@ Require Export Fiat.Parsers.StringLike.String.
 
 Export Fiat.Parsers.Refinement.IndexedAndAtMostOneNonTerminalReflective.PrettyNotations.
 
+Require Import Fiat.Parsers.Refinement.DisjointLemmasEarlyDeclarations.
 Require Import Fiat.Parsers.ContextFreeGrammar.Equality.
 Require Import Fiat.Common.Equality.
 Require Import Fiat.Computation.Refinements.General.
@@ -72,30 +73,33 @@ Ltac start_honing :=
   (*
   let p' := fresh "p'" in
   match goal with
-  | [ |- appcontext[pregrammar_productions ?G] ]
+  | [ |- context[pregrammar_productions ?G] ]
     => let p := constr:(pregrammar_productions G) in
        set (p' := p);
        hnf in p'
   end; *)
   lazymatch goal with
   | [ |- context[opt2.fold_right _ _ ?ls] ]
-    => replace_with_vm_compute ls
-  end(*;
+    => replace_with_vm_compute_by_set ls
+  end;
+  do_disjoint_precomputations ()(*;
   cbv [opt2.fold_right opt.map opt2.ret_cases_BoolDecR opt.fst opt.snd];
   change (orb false) with (fun x : bool => x); cbv beta*).
 
 Tactic Notation "start" "honing" "parser" "representation" "using" open_constr(repInv)
-  := (lazymatch goal with
-     | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing_ri repInv | | ])
-     | _ => start_honing_ri repInv
+  := (idtac;
+      lazymatch goal with
+      | [ |- FullySharpened _ ]
+        => (eapply FullySharpened_Start; [ start_honing_ri repInv | | ])
+      | _ => start_honing_ri repInv
       end).
 
 Tactic Notation "start" "honing" "parser" "using" "indexed" "representation"
-  := (lazymatch goal with
-     | [ |- FullySharpened _ ]
-       => (eapply FullySharpened_Start; [ start_honing | | ])
-     | _ => start_honing
+  := (idtac;
+      lazymatch goal with
+      | [ |- FullySharpened _ ]
+        => (eapply FullySharpened_Start; [ start_honing | | ])
+      | _ => start_honing
       end).
 
 Tactic Notation "finish" "honing" "parser" "method"
@@ -134,15 +138,8 @@ Ltac apply_splitter_tower_lemma :=
   eapply lem; clear lem;
   intros.
 
-Ltac simplify_parser_splitter' :=
-  first [ idtac;
-          match goal with
-          | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
-                        ?v ]
-            => apply (@simplify_monad_laws_first_step _ _ _ c f v)
-          end;
-          apply_splitter_tower_lemma
-        | progress autounfold with parser_sharpen_db;
+Ltac simplify_parser_splitter'' :=
+  first [ progress autounfold with parser_sharpen_db;
           cbv beta iota zeta;
           simpl @Operations.List.uniquize;
           simpl @List.fold_right
@@ -180,10 +177,24 @@ Ltac simplify_parser_splitter' :=
         | progress parser_pull_tac
         | progress (simpl @fst; simpl @snd)*) ].
 
+Ltac simplify_parser_splitter' :=
+  lazymatch goal with
+  | [ |- refine (r_o' <- a <- ?c; ret (@?f a); r_n' <- { r_n0 | fst r_o' = r_n0 }; ret (r_n', snd r_o'))
+                ?v ]
+    => apply (@simplify_monad_laws_first_step _ _ _ c f v);
+       do_disjoint_precomputations ();
+       apply_splitter_tower_lemma
+  | [ |- refine { splits : list nat | _ } ?e ]
+    => first [ is_evar e
+             | simplify_parser_splitter'' ]
+  | _ => simplify_parser_splitter''
+  end.
+
 Tactic Notation "simplify" "parser" "splitter" :=
   repeat simplify_parser_splitter'.
 
 Ltac splitter_start :=
+  idtac;
   let lem := match goal with
              | [ |- FullySharpened (@string_spec _ ?G _ ?HSLM ?HSL) ]
                => constr:(@FirstStep_splits G HSLM HSL)
@@ -199,8 +210,9 @@ Ltac splitter_start :=
     set (e := ev);
     lazymatch goal with
     | [ |- context[opt2.fold_right _ _ ?ls] ]
-      => replace_with_vm_compute ls
+      => replace_with_vm_compute_by_set ls
     end;
+    do_disjoint_precomputations ();
     apply_splitter_tower_lemma
   | ];
   instantiate; cbv beta.

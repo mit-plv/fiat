@@ -1,5 +1,6 @@
 (*Reference implementation of a splitter and parser based on that splitter *)
 Require Import Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Import Fiat.ADTNotation.BuildADT Fiat.ADTNotation.BuildADTSig.
 Require Import Fiat.ADT.ComputationalADT.
 Require Import Fiat.ADTRefinement.GeneralRefinements.
@@ -351,10 +352,10 @@ Section parser.
     (* work around bug https://coq.inria.fr/bugs/show_bug.cgi?id=4388 *)
     progress (
         try match goal with
-              | [ |- appcontext[match_term ?x] ] => erewrite !lem by tac
+              | [ |- context[match_term ?x] ] => erewrite !lem by tac
             end;
         try match goal with
-              | [ H : appcontext[match_term ?x] |- _ ] => erewrite !lem in H by tac
+              | [ H : context[match_term ?x] |- _ ] => erewrite !lem in H by tac
             end
       ).
 
@@ -477,14 +478,14 @@ Section parser.
            end.
     match goal with
       | [ H : AbsR ?Ok ?str ?st
-          |- appcontext[msplits ?arg1 ?arg2 ?arg3 ?st] ]
+          |- context[msplits ?arg1 ?arg2 ?arg3 ?st] ]
         => let T := type of Ok in
            let impl := (match eval cbv beta in T with refineADT _ (LiftcADT ?impl) => constr:(impl) end) in
            let H' := fresh in
            pose proof (ADTRefinementPreservesMethods Ok splits _ _ H arg1 arg2 arg3 ((cMethods impl splits st arg1 arg2 arg3)) (ReturnComputes _)) as H';
              change (msplits arg1 arg2 arg3 st) with (snd (premsplits st arg1 arg2 arg3));
              match type of H' with
-               | appcontext G[cMethods _ splits]
+               | context G[cMethods _ splits]
                  => let G' := context G[premsplits] in
                     change G' in H'
              end

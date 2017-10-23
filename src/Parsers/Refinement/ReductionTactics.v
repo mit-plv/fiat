@@ -35,22 +35,22 @@ Ltac splitter_red term :=
 (*(** Coq is stupid and doesn't have a version of [simpl]/[cbv] which unfolds *only* the given list of constants but *does not* unfold them if there's not a constructor in the head position of specified arguments.  See https://coq.inria.fr/bugs/show_bug.cgi?id=4639.  So we write a tactic that works in a specific case. *)
 Ltac eval_change_bool term :=
   match eval cbv beta in term with
-  | appcontext T[andb true]
+  | context T[andb true]
     => let term' := context T[fun x : bool => x] in
        eval_change_bool term'
-  | appcontext T[andb false]
+  | context T[andb false]
     => let term' := context T[fun x : bool => false] in
        eval_change_bool term'
-  | appcontext T[orb true]
+  | context T[orb true]
     => let term' := context T[fun x : bool => true] in
        eval_change_bool term'
-  | appcontext T[orb false]
+  | context T[orb false]
     => let term' := context T[fun x : bool => x] in
        eval_change_bool term'
-  | appcontext T[@If_Then_Else ?A true]
+  | context T[@If_Then_Else ?A true]
     => let term' := context T[fun x y : A => x] in
        eval_change_bool term'
-  | appcontext T[@If_Then_Else ?A false]
+  | context T[@If_Then_Else ?A false]
     => let term' := context T[fun x y : A => y] in
        eval_change_bool term'
   | ?term' => term'

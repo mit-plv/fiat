@@ -114,6 +114,139 @@ End HoneRepresentation.
 (* Honing tactic for refining the ADT representation which provides
    default method and constructor implementations. *)
 
+Tactic Notation "hone" "representation" "using" open_constr(AbsR') "with" "defaults" :=
+  eapply SharpenStep;
+  [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
+   compute [imap absConsDef absMethDef]; simpl ].
+
+Ltac set_rhs_head_evar _ :=
+  let H := fresh in
+  let G := match goal with |- ?G => G end in
+  match G with
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f ?g ?h )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f g h))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f ?g )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f g))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e ?f )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e f))
+  | refine ?lhs (?E ?a ?b ?c ?d ?e )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d e))
+  | refine ?lhs (?E ?a ?b ?c ?d )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c d))
+  | refine ?lhs (?E ?a ?b ?c )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b c))
+  | refine ?lhs (?E ?a ?b )
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a b))
+  | refine ?lhs (?E ?a)
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs (H a))
+  | refine ?lhs ?E
+    => is_evar E; let H := fresh in pose E as H; change (refine lhs H)
+  | _ => idtac
+  end.
+
+(* Honing Tactics for working on a single constructor at a time*)
+Tactic Notation "hone" "constructor" constr(consIdx) :=
+  let A :=
+      match goal with
+          |- Sharpened ?A => constr:(A) end in
+  let ASig := match type of A with
+                  ADT ?Sig => Sig
+              end in
+  let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
+  let MethodIndex' := eval compute in (MethodIndex ASig) in
+  let ConstructorDom' := eval compute in (ConstructorDom ASig) in
+  let consIdxB := eval compute in
+  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
+      eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
+               Rep'  _ _ consDefs methDefs consIdxB
+               (@Build_consDef Rep'
+                              {| consID := consIdx;
+                                 consDom := ConstructorDom' consIdxB
+                              |}
+                              _
+             ));
+    [ intros; simpl in *;
+      set_rhs_head_evar ();
+      match goal with
+        |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
+                     (?H ?d) =>
+           eapply (@refine_AbsConstructor _ _ AbsR _ oldConstructor)
+        | _ => cbv [absConstructor]
+      end
+    |  cbv beta in *; simpl in *;
+       cbv beta delta [replace_BoundedIndex replace_Index] in *;
+       simpl in *].
+
+(* Honing Tactics for working on a single method at a time*)
+Arguments DecADTSig : simpl never.
+ Tactic Notation "hone" "method" constr(methIdx) :=
+   let A :=
+       match goal with
+         |- Sharpened ?A => constr:(A) end in
+   let DSig :=
+       match goal with
+         |- @refineADT ?DSig _ _ => constr:(DSig)
+       end in
+   let ASig := match type of A with
+                 DecoratedADT ?Sig => Sig
+               end in
+   let consSigs :=
+      match ASig with
+          BuildADTSig ?consSigs _ => constr:(consSigs) end in
+  let methSigs :=
+      match ASig with
+          BuildADTSig _ ?methSigs => constr:(methSigs) end in
+  let consDefs :=
+      match A with
+          BuildADT ?consDefs _  => constr:(consDefs) end in
+  let methDefs :=
+      match A with
+          BuildADT _ ?methDefs  => constr:(methDefs) end in
+  let Rep' :=
+      match A with
+          @BuildADT ?Rep _ _ _ _ _ _ => constr:(Rep) end in
+  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
+  let MethodIndex' := eval compute in (MethodIndex ASig) in
+  let MethodDomCod' := eval compute in (MethodDomCod ASig) in
+  let methIdxB := eval compute in
+  (ibound (indexb (@Build_BoundedIndex _ _ (Vector.map methID methSigs) methIdx _))) in
+      eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
+                Rep' _ _ _ _ consDefs methDefs methIdxB
+                (@Build_methDef Rep'
+                               {| methID := methIdx;
+                                  methDom := fst (MethodDomCod' methIdxB);
+                                  methCod := snd (MethodDomCod' methIdxB)
+                               |}
+                               _
+                              ));
+    [ simpl refineMethod; intros; simpl in *;
+      set_rhs_head_evar ();
+      match goal with
+        |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
+                     (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)
+        | _ => cbv [absMethod]
+      end; intros
+    |
+    cbv beta in *|-;
+    cbv delta [replace_BoundedIndex replace_Index] in *;
+    simpl in *
+    ].
+
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)
 Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=

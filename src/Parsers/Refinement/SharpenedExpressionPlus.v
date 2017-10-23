@@ -17,9 +17,9 @@ Section IndexedImpl.
     hone method "splits".
     {
       Time simplify parser splitter.
-      { (*Start Profiling.*)
-        rewrite_disjoint_search_for.
-        reflexivity.
+      { (*Set Ltac Profiling.*)
+        Time refine_disjoint_search_for.
+        (*Show Ltac Profile.*)
         (*Show Profile.*)
         (*
 total time:      0.496s

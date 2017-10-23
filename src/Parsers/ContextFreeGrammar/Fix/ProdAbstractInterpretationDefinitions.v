@@ -67,11 +67,11 @@ Section aidata.
     | _ => progress destruct_head and
     | _ => progress destruct_head prod
     | [ |- and _ _ ] => split
-    | [ H : is_true (?R ?x ?y) |- appcontext[lattice_for_combine_production _ ?x] ]
+    | [ H : is_true (?R ?x ?y) |- context[lattice_for_combine_production _ ?x] ]
       => is_var x; is_var y; destruct x, y; simpl in H; try congruence
     | [ |- context[match ?x with _ => _ end] ]
       => is_var x; destruct x
-    | [ H : Proper _ ?f |- appcontext[?f] ] => apply H; assumption
+    | [ H : Proper _ ?f |- context[?f] ] => apply H; assumption
     | _ => rewrite simplify_bool_expr
           in *
           by (clear; unfold state_le, state_beq, state_lt; bool_congr_setoid; tauto)
@@ -206,9 +206,9 @@ Section aicdata.
       => apply and_iff_iff_iff_Proper
     | [ H : is_true (state_beq ?x ?y) |- _ ]
       => lazymatch goal with
-         | [ |- appcontext[x] ]
+         | [ |- context[x] ]
            => fail
-         | [ |- appcontext[y] ]
+         | [ |- context[y] ]
            => fail
          | _ => clear dependent x
          end
@@ -229,9 +229,9 @@ Section aicdata.
     | _ => tauto
     | [ H : (_ ==> _)%signature (?f _) (?g _) |- _ ]
       => lazymatch goal with
-         | [ |- appcontext[f] ]
+         | [ |- context[f] ]
            => fail
-         | [ |- appcontext[g] ]
+         | [ |- context[g] ]
            => fail
          | _ => clear dependent f
          end

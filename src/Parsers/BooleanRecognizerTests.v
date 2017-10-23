@@ -61,7 +61,7 @@ Section examples.
         subst c'.
     Tactic Notation "do_compute" open_constr(c) "in" ident(H) :=
       match type of H with
-        | appcontext[?c0] => unify c c0
+        | context[?c0] => unify c c0
       end;
       do_compute_in c H.
     cbv beta zeta delta [parse_nonterminal_step] in s.

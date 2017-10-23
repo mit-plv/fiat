@@ -22,7 +22,7 @@ Section recursive_descent_parser.
       ret_production_nil_false : parse_production_T;
       ret_orb_productions : parse_production_T -> parse_productions_T -> parse_productions_T;
       ret_orb_productions_base : parse_productions_T;
-      ret_nt : parse_productions_T -> parse_nt_T;
+      ret_nt : String.string -> parse_productions_T -> parse_nt_T;
       ret_nt_invalid : parse_nt_T }.
 End recursive_descent_parser.
 

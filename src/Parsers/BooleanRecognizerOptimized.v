@@ -288,7 +288,7 @@ Section recursive_descent_parser.
              | [ |- (if ?e then _ else _) = (if ?e then _ else _) ]
                => destruct e eqn:?
              | _ => solve [ intuition ]
-             | [ H : appcontext[sub_nonterminals_listT] |- _ ]
+             | [ H : context[sub_nonterminals_listT] |- _ ]
                => solve [ apply H;
                           intuition;
                           (etransitivity; [ | eapply sub_nonterminals_listT_remove_2; eassumption ]); simpl;
@@ -399,7 +399,7 @@ Section recursive_descent_parser.
   Local Ltac refine_Fix2_5_Proper_eq_with_assumptions :=
     idtac;
     let HPHPpf := lazymatch goal with
-        | [ |- appcontext[Fix2 _ _ (fun (a0 : ?A0) (b0 :@?B a0) (c0 : @?C a0 b0) (d0 : @?D a0 b0) (e0 : @?E a0 b0 d0) (h0 : @?H a0 b0 d0 e0) (i0 : @?I a0 b0 d0 e0 h0) (j0 : @?J a0 b0 d0 e0 h0 i0) => _) ?a ?b ?d ?e ?h ?i ?j] ]
+        | [ |- context[Fix2 _ _ (fun (a0 : ?A0) (b0 :@?B a0) (c0 : @?C a0 b0) (d0 : @?D a0 b0) (e0 : @?E a0 b0 d0) (h0 : @?H a0 b0 d0 e0) (i0 : @?I a0 b0 d0 e0 h0) (j0 : @?J a0 b0 d0 e0 h0 i0) => _) ?a ?b ?d ?e ?h ?i ?j] ]
           => let HP := constr:(fun a0 b0 d0 e0 h0 i0 (j0 : J a0 b0 d0 e0 h0 i0) => sub_nonterminals_listT d0 initial_nonterminals_data /\ (a0 <= h0 \/ is_valid_nonterminal initial_nonterminals_data j0)) in
              let HPpfT := (eval cbv beta in (HP a b d e h i j)) in
              let HPpf := constr:(fun pf => conj pf (or_introl (reflexivity _)) : HPpfT) in
@@ -580,7 +580,7 @@ Section recursive_descent_parser.
 
   Local Ltac fix_trans_helper RHS x y :=
     match RHS with
-      | appcontext G[y] => let RHS' := context G[x] in
+      | context G[y] => let RHS' := context G[x] in
                            fix_trans_helper RHS' x y
       | _ => constr:(RHS)
     end.
@@ -603,7 +603,7 @@ Section recursive_descent_parser.
     idtac;
     let RHS := match goal with |- _ = ?RHS => RHS end in
     lazymatch RHS with
-    | appcontext RHS'[list_rect ?P ?f ?g]
+    | context RHS'[list_rect ?P ?f ?g]
       => let ft := type of f in
          let gt := type of g in
          let f' := fresh in
@@ -676,7 +676,7 @@ Section recursive_descent_parser.
                [ subst P0 N0 C0 N1 C1; intros; cbv beta
                | intros ? xs IH; intros; unfold C0 at 1, C1 at 1; cbv beta;
                  match goal with
-                   | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
+                   | [ |- context[list_rect P0 N1 C1 ?ls'' ?a''] ]
                      => specialize (IH a'')
                  end;
                  let T := match type of IH with ?T -> _ => T end in
@@ -716,7 +716,7 @@ Section recursive_descent_parser.
                [ subst P0 N0 C0 N1 C1; intros; cbv beta
                | intros ? xs IH pg; intros; unfold C0 at 1, C1 at 1; cbv beta;
                  match goal with
-                   | [ |- appcontext[list_rect P0 N1 C1 ?ls'' ?a''] ]
+                   | [ |- context[list_rect P0 N1 C1 ?ls'' ?a''] ]
                      => specialize (IH a'')
                  end;
                  let T := match type of IH with ?T1 -> ?T2 -> _ => constr:((T1 * T2)%type) end in
@@ -825,8 +825,8 @@ Section recursive_descent_parser.
   Local Ltac t_after_pull_nth_fin :=
     idtac;
     match goal with
-      | [ |- appcontext[@nth] ] => fail 1
-      | [ |- appcontext[@nth'] ] => fail 1
+      | [ |- context[@nth] ] => fail 1
+      | [ |- context[@nth'] ] => fail 1
       | _ => repeat step_opt'
     end.
 
@@ -881,7 +881,7 @@ Section recursive_descent_parser.
     unfold Lookup_idx.
     symmetry; rewrite_map_nth_rhs; symmetry.
     repeat match goal with
-             | [ |- appcontext G[@Let_In ?A ?B ?k ?f] ]
+             | [ |- context G[@Let_In ?A ?B ?k ?f] ]
                => first [ let h := head k in constr_eq h @nil
                         | constr_eq k 0
                         | constr_eq k (snd (snd x)) ];
@@ -1168,7 +1168,7 @@ Section recursive_descent_parser.
                      [ subst P0 N0 C0; intros; cbv beta
                      | intros ? xs IH; intros; unfold C0 at 1 3; cbv beta;
                        match goal with
-                         | [ |- appcontext[list_rect P0 N0 C0 ?ls'' ?a''] ]
+                         | [ |- context[list_rect P0 N0 C0 ?ls'' ?a''] ]
                            => specialize (IH a'')
                        end;
                        let T := match type of IH with ?T -> _ => T end in
@@ -1328,8 +1328,9 @@ Section recursive_descent_parser.
       { repeat first [ rewrite uneta_bool
                      | idtac;
                        match goal with
-                       | [ |- appcontext[@rdp_list_of_nonterminal] ] => fail 1
-                       | [ |- appcontext[@Carriers.default_production_tl] ] => fail 1
+                       | [ |- context[@rdp_list_of_nonterminal] ] => fail 1
+                       | [ |- context[@Carriers.default_of_nonterminal] ] => fail 1
+                       | [ |- context[@Carriers.default_production_tl] ] => fail 1
                        | _ => reflexivity
                        end
                      | step_opt'
@@ -1337,7 +1338,7 @@ Section recursive_descent_parser.
                      | apply (f_equal2 andb)
                      | apply (f_equal2 (@cons _))
                      | t_refine_item_match ];
-        first [ progress unfold rdp_list_of_nonterminal, Valid_nonterminals, grammar_of_pregrammar, pregrammar_nonterminals; simpl;
+        first [ progress unfold rdp_list_of_nonterminal, default_of_nonterminal, Valid_nonterminals, grammar_of_pregrammar, pregrammar_nonterminals; simpl;
                 rewrite !map_length;
                 reflexivity
               | idtac;
@@ -1364,7 +1365,7 @@ Section recursive_descent_parser.
       { set_evars.
         repeat first [ idtac;
                        match goal with
-                         | [ |- appcontext[@rdp_list_to_production] ] => fail 1
+                         | [ |- context[@rdp_list_to_production] ] => fail 1
                          | _ => reflexivity
                        end
                      | rewrite rdp_list_to_production_opt_correct
@@ -1395,7 +1396,7 @@ Section recursive_descent_parser.
             unfold interp_rproductions, interp_rproduction, rproductions, rproduction, production.
             rewrite !map_length.
             progress repeat match goal with
-                            | [ |- appcontext[List.nth (@List.length ?B (@List.map ?A ?B ?f ?ls) - _)] ]
+                            | [ |- context[List.nth (@List.length ?B (@List.map ?A ?B ?f ?ls) - _)] ]
                               => rewrite (@map_length A B f ls)
                             end.
             rewrite_map_nth_rhs; simpl.
@@ -1529,7 +1530,7 @@ Section recursive_descent_parser.
   Local Ltac change_char_at_matches :=
     idtac;
     lazymatch goal with
-    | [ |- appcontext G[@char_at_matches ?Char ?HSLM ?n ?str (@interp_RCharExpr _ ?data ?P)] ]
+    | [ |- context G[@char_at_matches ?Char ?HSLM ?n ?str (@interp_RCharExpr _ ?data ?P)] ]
       => idtac;
          let G' := context G[@char_at_matches_interp Char HSLM data n str P] in
          change G'
@@ -1651,7 +1652,7 @@ Section recursive_descent_parser.
         reflexivity. } }
     change @nth' with @inner_nth' at 1.
     match goal with
-      | [ |- appcontext[@nth'] ] => fail 1
+      | [ |- context[@nth'] ] => fail 1
       | _ => change @inner_nth' with @nth'
     end.
     etransitivity_rev _.
@@ -1685,7 +1686,7 @@ Section recursive_descent_parser.
     | [ |- context G[snd (opt2.id ?x)] ]
       => let G' := context G[opt2.id (opt2.snd x)] in
          change G'
-    | [ |- appcontext G[nth (opt2.id ?x) ?ls ?d] ]
+    | [ |- context G[nth (opt2.id ?x) ?ls ?d] ]
       => let G' := context G[opt2.id (opt2.nth x ls d)] in
          change G'
     | [ |- context G[StringLike.length (opt.id ?str)] ]
@@ -1700,7 +1701,7 @@ Section recursive_descent_parser.
     | [ |- context G[map snd (opt.id ?x)] ]
       => let G' := context G[opt.id (opt.map opt.snd x)] in
          change G'
-    (*| [ |- appcontext G[snd (of_string (opt.id ?x))] ]
+    (*| [ |- context G[snd (of_string (opt.id ?x))] ]
                => let G' := context G[opt.snd (of_string x)] in
                   change G'*)
     | [ |- context G[string_beq (opt.id ?x)] ]
@@ -1786,9 +1787,9 @@ Section recursive_descent_parser.
     | _ => progress safe_change_opt'
     | [ |- ?LHS = _ ]
       => match LHS with
-         | appcontext[opt.id] => unfold opt.id at 1
-         | appcontext[opt2.id] => unfold opt2.id at 1
-         | appcontext[opt3.id] => unfold opt3.id at 1
+         | context[opt.id] => unfold opt.id at 1
+         | context[opt2.id] => unfold opt2.id at 1
+         | context[opt3.id] => unfold opt3.id at 1
          end
     | [ |- ?e = opt.id ?x ]
       => progress change (e = x)
@@ -1929,8 +1930,8 @@ Section recursive_descent_parser.
   Local Ltac do_flip_map ls :=
     idtac;
     progress
-      (repeat let A := match goal with |- appcontext[@List.map ?A ?B] => A end in
-              let B := match goal with |- appcontext[@List.map A ?B] => B end in
+      (repeat let A := match goal with |- context[@List.map ?A ?B] => A end in
+              let B := match goal with |- context[@List.map A ?B] => B end in
               let flip_map := fresh "flip_map" in
               pose (flip_map ls' f := @List.map A B f ls');
                 progress change (@List.map A B) with (fun f ls' => @flip_map ls' f);
@@ -1945,8 +1946,8 @@ Section recursive_descent_parser.
   Local Ltac do_flip_combine ls :=
     idtac;
     progress
-      (repeat let A := match goal with |- appcontext[@List.combine ?A ?B] => A end in
-              let B := match goal with |- appcontext[@List.combine A ?B] => B end in
+      (repeat let A := match goal with |- context[@List.combine ?A ?B] => A end in
+              let B := match goal with |- context[@List.combine A ?B] => B end in
               let flip_combine := fresh "flip_combine" in
               pose (flip_combine ls' f := @List.combine A B f ls');
                 progress change (@List.combine A B) with (fun f ls' => @flip_combine ls' f);
@@ -1970,7 +1971,7 @@ Section recursive_descent_parser.
     evar (b' : bool).
     sigL_transitivity b'; subst b'.
     Focus 2.
-    { progress unfold rdp_list_of_nonterminal; simpl.
+    { progress unfold rdp_list_of_nonterminal, default_of_nonterminal; simpl.
       unfold pregrammar_nonterminals; simpl.
       match goal with
         | [ |- _ = ?f ?x ]

@@ -94,13 +94,13 @@ Section parser.
         split;
         unfold flip, length, take, drop, is_char, adt_based_splitter, string_type, adt_based_StringLikeMin, adt_based_StringLike, string_type_min, proj1_sig, String;
         (lazymatch goal with
-        | [ |- appcontext[mis_char] ]
+        | [ |- context[mis_char] ]
           => ((intros ????); erewrite mis_char_eq; intros; eassumption)
-        | [ |- appcontext[mlength] ]
+        | [ |- context[mlength] ]
           => ((intros ???); erewrite mlength_eq; intros; eassumption)
-        | [ |- appcontext[mtake] ]
+        | [ |- context[mtake] ]
           => (intros; refine (mtake_R _ _); assumption)
-        | [ |- appcontext[mdrop] ]
+        | [ |- context[mdrop] ]
           => (intros; refine (mdrop_R _ _); assumption)
          end)
       ).
@@ -174,7 +174,7 @@ Hint Extern 0 (change_snd _) => change @snd with @Common.opt.snd; match goal wit
 Local Ltac do_change_snd h impl :=
   idtac;
   let term := match goal with
-                | [ |- appcontext[h ?x ?y impl] ]
+                | [ |- context[h ?x ?y impl] ]
                   => constr:(h x y impl)
               end in
   let v := (eval cbv beta iota zeta delta [h BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep] in term) in
@@ -227,7 +227,7 @@ Proof.
   refine (term _ _ _ _);
     cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser];
     cbv [BaseTypes.split_string_for_production char_at_matches msplits mchar_at_matches new_string_of_string BuildComputationalADT.callcADTMethod cMethods adt_based_StringLikeMin_lite ibound indexb proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length mlength newS Fin.R];
-    cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar pregrammar'_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string pregrammar_productions];
+    cbv [split_dataProj' has_parse parse parser' pdata' ParserImplementation.parser_data parser' parser transfer_parser RDPList.rdp_list_predata new_string_of_string proj adtProj proj1_sig new_string_of_base_string cConstructors StringLike.length adt_based_StringLikeMin adt_based_StringLikeMin_lite adt_based_StringLike_lite pdata BaseTypes.split_string_for_production split_dataProj adt_based_splitter BuildComputationalADT.callcADTMethod ibound indexb cMethods cRep BaseTypes.predata ParserImplementation.parser_data adt_based_StringLike RDPList.rdp_list_predata RDPList.rdp_list_nonterminals_listT list_to_grammar Valid_nonterminals RDPList.rdp_list_is_valid_nonterminal RDPList.rdp_list_remove_nonterminal string_type_min list_to_productions newS Fin.R mto_string msplits drop take is_char String length get bool_eq beq mlength mchar_at_matches mdrop mtake mget RDPList.rdp_list_initial_nonterminals_data default_nonterminal_carrierT production_carrierT default_production_carrierT char_at_matches unsafe_get RDPList.rdp_list_of_nonterminal Carriers.default_of_nonterminal production_tl split_data to_production RDPList.rdp_list_nonterminal_to_production ParserImplementation.parser_split_data RecognizerPreOptimized.optsplitdata RDPList.rdp_list_production_tl default_production_tl split_string_for_production RDPList.rdp_list_to_production RDPList.rdp_list_to_nonterminal Lookup grammar_of_pregrammar pregrammar'_of_pregrammar default_to_nonterminal default_to_production splits_for Lookup_idx Lookup_string pregrammar_productions];
     change_opt (pregrammar_rproductions G) nt str;
     [ cbv [snd] (* [snd] only appears applied to [pcMethods] *)
     | ].

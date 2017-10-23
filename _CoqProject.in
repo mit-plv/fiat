@@ -40,8 +40,12 @@ src/ADTRefinement/Refinements/SimplifyRep.v
 src/BinEncoders/Env/Automation/Solver.v
 src/BinEncoders/Env/Automation/SolverOpt.v
 src/BinEncoders/Env/Automation/Solver_8_5.v
+src/BinEncoders/Env/BinLib/AlignWord.v
+src/BinEncoders/Env/BinLib/AlignedByteString.v
+src/BinEncoders/Env/BinLib/AlignedDecoders.v
 src/BinEncoders/Env/BinLib/Bool.v
 src/BinEncoders/Env/BinLib/Char.v
+src/BinEncoders/Env/BinLib/CharString.v
 src/BinEncoders/Env/BinLib/Core.v
 src/BinEncoders/Env/BinLib/Enum.v
 src/BinEncoders/Env/BinLib/FixInt.v
@@ -56,6 +60,7 @@ src/BinEncoders/Env/Common/Specs.v
 src/BinEncoders/Env/Common/Transformer.v
 src/BinEncoders/Env/Common/WordFacts.v
 src/BinEncoders/Env/Examples/ARPPacket.v
+src/BinEncoders/Env/Examples/ByteAlignedExample.v
 src/BinEncoders/Env/Examples/Dns.v
 src/BinEncoders/Env/Examples/DnsMap.v
 src/BinEncoders/Env/Examples/DnsOpt.v
@@ -64,6 +69,8 @@ src/BinEncoders/Env/Examples/EthernetHeader.v
 src/BinEncoders/Env/Examples/Fiat4Mirage.v
 src/BinEncoders/Env/Examples/ICMP_Packet.v
 src/BinEncoders/Env/Examples/IPv4Header.v
+src/BinEncoders/Env/Examples/IntExample.v
+src/BinEncoders/Env/Examples/SimpleDnsOpt.v
 src/BinEncoders/Env/Examples/TCP_Packet.v
 src/BinEncoders/Env/Examples/Toy.v
 src/BinEncoders/Env/Examples/Toy2.v
@@ -74,6 +81,7 @@ src/BinEncoders/Env/Lib/SteppingCacheList.v
 src/BinEncoders/Env/Lib2/Ascii.v
 src/BinEncoders/Env/Lib2/AsciiOpt.v
 src/BinEncoders/Env/Lib2/Bool.v
+src/BinEncoders/Env/Lib2/CInt.v
 src/BinEncoders/Env/Lib2/DomainNameOpt.v
 src/BinEncoders/Env/Lib2/Enum.v
 src/BinEncoders/Env/Lib2/EnumOpt.v
@@ -199,6 +207,7 @@ src/Common/Gensym.v
 src/Common/Instances.v
 src/Common/IterateBoundedIndex.v
 src/Common/Le.v
+src/Common/LetIn.v
 src/Common/LogicFacts.v
 src/Common/LogicMorphisms.v
 src/Common/MSetBoundedLattice.v
@@ -249,6 +258,7 @@ src/Common/Enumerable/ReflectiveForallAggregate.v
 src/Common/Enumerable/ReflectiveForallStaged.v
 src/Common/FMapExtensions/LiftRelationInstances.v
 src/Common/FMapExtensions/Wf.v
+src/Common/List/DisjointFacts.v
 src/Common/List/FlattenList.v
 src/Common/List/ListFacts.v
 src/Common/List/ListMorphisms.v
@@ -263,9 +273,11 @@ src/Common/Tactics/DestructHyps.v
 src/Common/Tactics/DestructSig.v
 src/Common/Tactics/FoldIsTrue.v
 src/Common/Tactics/FreeIn.v
+src/Common/Tactics/GetGoal.v
 src/Common/Tactics/Head.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/IsClosed.v
+src/Common/Tactics/PrintContext.v
 src/Common/Tactics/SetoidSubst.v
 src/Common/Tactics/SpecializeBy.v
 src/Common/Tactics/SplitInContext.v
@@ -307,10 +319,16 @@ src/Examples/DnsServer/DecomposeEnumField.v
 src/Examples/DnsServer/DecomposeSumField.v
 src/Examples/DnsServer/DnsAutomation.v
 src/Examples/DnsServer/DnsLemmas.v
+src/Examples/DnsServer/MinimalDNSServer.v
 src/Examples/DnsServer/Packet.v
 src/Examples/DnsServer/RRecordTypes.v
 src/Examples/DnsServer/RecursiveDNSResolver.v
 src/Examples/DnsServer/RecursiveDNSSchema.v
+src/Examples/DnsServer/SimpleAuthoritativeDNSSchema.v
+src/Examples/DnsServer/SimpleDnsLemmas.v
+src/Examples/DnsServer/SimplePacket.v
+src/Examples/DnsServer/SimpleRRecordTypes.v
+src/Examples/DnsServer/SimplifiedAuthoritativeDNSServer.v
 src/Examples/HACMSDemo/DuplicateFree.v
 src/Examples/HACMSDemo/HACMSDemo.v
 src/Examples/HACMSDemo/WheelSensor.v
@@ -375,6 +393,7 @@ src/FiniteSetADTs/FiniteSetADTMethodLaws.v
 src/FiniteSetADTs/FiniteSetRefinement.v
 src/FiniteSetADTs/NatWord.v
 src/FiniteSetADTs/WordInterface.v
+src/Parsers/ActionEvaluator.v
 src/Parsers/BaseTypes.v
 src/Parsers/BaseTypesLemmas.v
 src/Parsers/BooleanRecognizer.v
@@ -425,9 +444,12 @@ src/Parsers/AbstractInterpretation/NonTerminalMapWf.v
 src/Parsers/ContextFreeGrammar/Carriers.v
 src/Parsers/ContextFreeGrammar/Core.v
 src/Parsers/ContextFreeGrammar/Equality.v
+src/Parsers/ContextFreeGrammar/ExplorationUtil.v
 src/Parsers/ContextFreeGrammar/Fold.v
 src/Parsers/ContextFreeGrammar/Notations.v
 src/Parsers/ContextFreeGrammar/PreNotations.v
+src/Parsers/ContextFreeGrammar/PreNotationsLemmas.v
+src/Parsers/ContextFreeGrammar/Precompute.v
 src/Parsers/ContextFreeGrammar/Properties.v
 src/Parsers/ContextFreeGrammar/Reflective.v
 src/Parsers/ContextFreeGrammar/ReflectiveLemmas.v
@@ -501,10 +523,14 @@ src/Parsers/Reachable/ParenBalancedHiding/Core.v
 src/Parsers/Reachable/ParenBalancedHiding/MinimalOfCore.v
 src/Parsers/Reachable/ParenBalancedHiding/WellFounded.v
 src/Parsers/Refinement/DisjointLemmas.v
+src/Parsers/Refinement/DisjointLemmasEarlyDeclarations.v
 src/Parsers/Refinement/DisjointRules.v
+src/Parsers/Refinement/DisjointRulesCommon.v
 src/Parsers/Refinement/DisjointRulesRev.v
 src/Parsers/Refinement/EmptyLemmas.v
 src/Parsers/Refinement/ExtractSharpenedABStar.v
+src/Parsers/Refinement/ExtractSharpenedJSComment.v
+src/Parsers/Refinement/ExtractSharpenedJSON.v
 src/Parsers/Refinement/FinishingLemma.v
 src/Parsers/Refinement/FixedLengthLemmas.v
 src/Parsers/Refinement/IndexedAndAtMostOneNonTerminalReflective.v
@@ -572,6 +598,7 @@ src/QueryStructure/Automation/General/InsertAutomation.v
 src/QueryStructure/Automation/General/QueryAutomation.v
 src/QueryStructure/Automation/General/QueryStructureAutomation.v
 src/QueryStructure/Automation/SearchTerms/FindPrefixSearchTerms.v
+src/QueryStructure/Automation/SearchTerms/FindStringPrefixSearchTerms.v
 src/QueryStructure/Automation/SearchTerms/InclusionSearchTerms.v
 src/QueryStructure/Automation/SearchTerms/RangeSearchTerms.v
 src/QueryStructure/Implementation/BagImplementation.v

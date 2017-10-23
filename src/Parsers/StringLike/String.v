@@ -1,6 +1,7 @@
 (** * Definitions of some specific string-like types *)
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
+Require Import Coq.omega.Omega.
 Require Import Coq.Numbers.Natural.Peano.NPeano.
 Require Import Fiat.Common Fiat.Common.Equality.
 Require Import Fiat.Common.StringOperations Fiat.Common.StringFacts.
@@ -98,9 +99,9 @@ Local Ltac t :=
                | rewrite substring_correct2 by omega ]
            | _ => rewrite <- substring_correct3'; apply substring_correct2; omega
            | [ H : forall n, String.get n _ = String.get n _ |- _ ] => apply get_correct in H
-           | [ H : appcontext[match ?e with _ => _ end], H' : ?e = Some _ |- _ ]
+           | [ H : context[match ?e with _ => _ end], H' : ?e = Some _ |- _ ]
              => rewrite H' in H
-           | [ |- appcontext[match ?e with _ => _ end] ] => destruct e eqn:?
+           | [ |- context[match ?e with _ => _ end] ] => destruct e eqn:?
            | [ H : forall x, Some x = Some _ -> _ |- _ ] => specialize (H _ eq_refl)
            | [ H : forall x, Some _ = Some x -> _ |- _ ] => specialize (H _ eq_refl)
          end.
