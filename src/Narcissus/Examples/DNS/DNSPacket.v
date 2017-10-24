@@ -11,6 +11,7 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.SumType
         Fiat.Common.EnumType
+        Fiat.Narcissus.Formats.DomainNameOpt
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
         Fiat.QueryStructure.Specification.Representation.Tuple.

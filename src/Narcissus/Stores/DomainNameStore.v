@@ -6,7 +6,8 @@ Require Import
 Require Import
         Fiat.Common
         Fiat.Common.DecideableEnsembles
-        Fiat.Narcissus.Common.Cache
+        Fiat.Narcissus.Common.Specs
+        Fiat.Narcissus.Stores.Cache
         Fiat.Narcissus.Formats.DomainNameOpt.
 
 Require Import Bedrock.Word.
@@ -26,14 +27,14 @@ Section DomainNameCache.
     | _ => None
     end.
 
-Fixpoint association_list_find_all {K V}
-         {K_eq : Query_eq K}
-         (l : association_list K V)
-         (k : K) : list V :=
-  match l with
-  | (k', v) :: l' => if A_eq_dec k k' then v :: association_list_find_all l' k
-                     else association_list_find_all l' k
-  | _ => nil
+  Fixpoint association_list_find_all {K V}
+           {K_eq : Query_eq K}
+           (l : association_list K V)
+           (k : K) : list V :=
+    match l with
+    | (k', v) :: l' => if A_eq_dec k k' then v :: association_list_find_all l' k
+                       else association_list_find_all l' k
+    | _ => nil
     end.
 
   Fixpoint association_list_add {K V}
@@ -42,7 +43,7 @@ Fixpoint association_list_find_all {K V}
            (k : K) (v : V) : list (K * V)  :=
     (k, v) :: l.
 
-  Instance dns_list_cache : Cache :=
+  Global Instance dns_list_cache : Cache :=
     {| CacheEncode := option (word 17) * association_list string pointerT;
        CacheDecode := option (word 17) * association_list pointerT string;
        Equiv ce cd := fst ce = fst cd
@@ -64,7 +65,7 @@ Fixpoint association_list_find_all {K V}
 
   (* pointerT2Nat (Nat2pointerT (NPeano.div (wordToNat w) 8)) *)
 
-  Instance cacheAddNat : CacheAdd _ nat :=
+  Global Instance cacheAddNat : CacheAdd _ nat :=
     {| addE ce n := (Ifopt (fst ce) as m Then
                                          let n' := (wordToNat m) + n in
                                          if Compare_dec.lt_dec n' (pow2 17)
@@ -84,13 +85,13 @@ Fixpoint association_list_find_all {K V}
     find_if_inside; eauto.
   Defined.
 
-  Instance Query_eq_string : Query_eq string :=
+  Global Instance Query_eq_string : Query_eq string :=
     {| A_eq_dec := string_dec |}.
 
-  Instance : Query_eq pointerT :=
+  Global Instance : Query_eq pointerT :=
     {| A_eq_dec := pointerT_eq_dec |}.
 
-  Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
+  Global Instance cachePeekDNPointer : CachePeek _ (option pointerT) :=
     {| peekE ce := Ifopt (fst ce) as m Then Some (Nat2pointerT (wordToNat (wtl (wtl (wtl m))))) Else None;
        peekD cd := Ifopt (fst cd) as m Then Some
                                        (Nat2pointerT (wordToNat (wtl (wtl (wtl m)))))
@@ -126,7 +127,7 @@ Fixpoint association_list_find_all {K V}
         congruence.
   Qed.
 
-  Instance cacheGetDNPointer : CacheGet dns_list_cache string pointerT :=
+  Global Instance cacheGetDNPointer : CacheGet dns_list_cache string pointerT :=
     {| getE ce p := @association_list_find_all string _ _ (snd ce) p;
        getD ce p := association_list_find_first (snd ce) p;
        get_correct := cacheGetDNPointer_pf |}.
@@ -148,7 +149,7 @@ Fixpoint association_list_find_all {K V}
       intuition.
   Qed.
 
-  Instance cacheAddDNPointer
+  Global Instance cacheAddDNPointer
     : CacheAdd_Guarded _ add_ptr_OK :=
     {| addE_G ce sp := (fst ce, association_list_add (snd ce) (fst sp) (snd sp));
        addD_G cd sp := (fst cd, association_list_add (snd cd) (snd sp) (fst sp));
@@ -818,7 +819,7 @@ Fixpoint association_list_find_all {K V}
     omega.
   Qed.
 
-  Ltac solve_GoodCache_inv foo :=
+  Ltac solve_GoodCache_inv _ :=
     lazymatch goal with
       |- cache_inv_Property ?Z _ =>
       unify Z GoodCache;
@@ -833,4 +834,4 @@ Fixpoint association_list_find_all {K V}
       try solve [instantiate (1 := fun _ => True); exact I]
     end.
 
-End DNSCache.
+End DomainNameCache.

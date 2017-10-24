@@ -8,6 +8,8 @@ Require Import
         Fiat.Computation.Core
         Fiat.Computation.FixComp
         Fiat.Computation.Notations
+        Fiat.Computation.Refinements.General
+        Fiat.Common.DecideableEnsembles
         Fiat.Narcissus.Common.Specs
         Fiat.Narcissus.Formats.FixStringOpt
         Fiat.Narcissus.Formats.NatOpt
@@ -37,6 +39,32 @@ Section DomainName.
               /\ pre <> EmptyString
               /\ (~ exists s', post = String "." s')
               /\ (~ exists s', pre = s' ++ ".")).
+
+  Lemma validDomainName_proj1_OK
+    : forall domain,
+      ValidDomainName domain
+      -> decides true
+                 (forall pre label post : string,
+                     domain = (pre ++ label ++ post)%string ->
+                     ValidLabel label -> (String.length label <= 63)%nat).
+  Proof.
+    simpl; intros; eapply H; eauto.
+  Qed.
+
+  Lemma validDomainName_proj2_OK
+    : forall domain,
+      ValidDomainName domain
+      ->
+      decides true
+              (forall pre post : string,
+                  domain = (pre ++ "." ++ post)%string ->
+                  post <> ""%string /\
+                  pre <> ""%string /\
+                  ~ (exists s' : string, post = String "." s') /\
+                  ~ (exists s' : string, pre = (s' ++ ".")%string)).
+  Proof.
+    simpl; intros; apply H; eauto.
+  Qed.
 
   Definition beq_name (a b : DomainName) : bool :=
     if (string_dec a b) then true else false.

@@ -8,6 +8,8 @@ Require Import
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
         Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListFacts
+        Fiat.Common.StringFacts
         Fiat.Computation
         Fiat.QueryStructure.Specification.Representation.Notations
         Fiat.QueryStructure.Specification.Representation.Heading
@@ -26,45 +28,28 @@ Require Import
         Fiat.Narcissus.Formats.FixListOpt
         Fiat.Narcissus.Formats.SumTypeOpt
         Fiat.Narcissus.Formats.DomainNameOpt
+        Fiat.Narcissus.Examples.DNS.SimpleDNSPacket
         Fiat.Common.IterateBoundedIndex
         Fiat.Common.Tactics.HintDbExtra
         Fiat.Common.Tactics.TransparentAbstract
-        Fiat.Common.Tactics.CacheStringConstant.
+        Fiat.Common.Tactics.CacheStringConstant
+        Fiat.Narcissus.Stores.DomainNameStore
+        Fiat.Narcissus.Automation.CacheEncoders.
 
 Require Import
         Bedrock.Word.
 
 Section DnsPacket.
 
+  Local Open Scope Tuple_scope.
+  Import Vectors.VectorDef.VectorNotations.
+
   Definition monoid : Monoid ByteString := ByteStringQueueMonoid.
 
+  Arguments natToWord : simpl never.
+  Arguments wordToNat : simpl never.
+  Arguments NPeano.div : simpl never.
   Opaque pow2. (* Don't want to be evaluating this. *)
-
-  Lemma validDomainName_proj1_OK
-    : forall domain,
-      ValidDomainName domain
-      -> decides true
-                 (forall pre label post : string,
-                     domain = (pre ++ label ++ post)%string ->
-                     ValidLabel label -> (String.length label <= 63)%nat).
-  Proof.
-    simpl; intros; eapply H; eauto.
-  Qed.
-
-  Lemma validDomainName_proj2_OK
-    : forall domain,
-      ValidDomainName domain
-      ->
-      decides true
-              (forall pre post : string,
-                  domain = (pre ++ "." ++ post)%string ->
-                  post <> ""%string /\
-                  pre <> ""%string /\
-                  ~ (exists s' : string, post = String "." s') /\
-                  ~ (exists s' : string, pre = (s' ++ ".")%string)).
-  Proof.
-    simpl; intros; apply H; eauto.
-  Qed.
 
   Hint Resolve validDomainName_proj1_OK : decide_data_invariant_db.
   Hint Resolve validDomainName_proj2_OK : decide_data_invariant_db.
@@ -73,10 +58,10 @@ Section DnsPacket.
   Definition resourceRecord_OK (rr : resourceRecord) :=
     ith
       (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-             (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
-                    (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
-                           (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
-                                                               (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))
+      (icons (B := fun T => T -> Prop) (fun _ : Memory.W => True)
+      (icons (B := fun T => T -> Prop) (fun a : DomainName => ValidDomainName a)
+      (icons (B := fun T => T -> Prop) (fun a : SOA_RDATA =>
+      (True /\ ValidDomainName a!"contact_email") /\ ValidDomainName a!"sourcehost") inil))))
       (SumType_index
          (DomainName
             :: (Memory.W : Type)
@@ -113,15 +98,6 @@ Section DnsPacket.
   Qed.
   Hint Resolve resourceRecordOK_3 : data_inv_hints.
 
-  Lemma length_app_3 {A}
-    : forall n1 n2 n3 (l1 l2 l3 : list A),
-      length l1 = n1
-      -> length l2 = n2
-      -> length l3 = n3
-      -> length (l1 ++ l2 ++ l3) = n1 + n2 + n3.
-  Proof.
-    intros; rewrite !app_length; subst; omega.
-  Qed.
   Hint Resolve length_app_3 : data_inv_hints .
 
   Definition DNS_Packet_OK (data : packet) :=
@@ -164,18 +140,18 @@ Section DnsPacket.
 
   (* Resource Record <character-string>s are a byte, *)
   (* followed by that many characters. *)
-  Definition encode_characterString_Spec (s : string) :=
+  Definition format_characterString (s : string) :=
     format_nat 8 (String.length s)
                     ThenC format_string s
                     DoneC.
 
-  Definition encode_question_Spec (q : question) :=
+  Definition format_question (q : question) :=
     format_DomainName q!"qname"
                            ThenC format_enum QType_Ws q!"qtype"
                            ThenC format_enum QClass_Ws q!"qclass"
                            DoneC.
 
-  Definition encode_SOA_RDATA_Spec (soa : SOA_RDATA) :=
+  Definition format_SOA_RDATA (soa : SOA_RDATA) :=
     format_unused_word 16 (* Unusued RDLENGTH Field *)
                             ThenC format_DomainName soa!"sourcehost"
                             ThenC format_DomainName soa!"contact_email"
@@ -186,37 +162,37 @@ Section DnsPacket.
                             ThenC format_word soa!"minTTL"
                             DoneC.
 
-  Definition encode_A_Spec (a : Memory.W) :=
+  Definition format_A (a : Memory.W) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_word a
                             DoneC.
 
-  Definition encode_NS_Spec (domain : DomainName) :=
+  Definition format_NS (domain : DomainName) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_DomainName domain
                             DoneC.
 
-  Definition encode_CNAME_Spec (domain : DomainName) :=
+  Definition format_CNAME (domain : DomainName) :=
     format_unused_word 16 (* Unused RDLENGTH Field *)
                             ThenC format_DomainName domain
                             DoneC.
 
-  Definition encode_rdata_Spec :=
+  Definition format_rdata :=
     format_SumType ResourceRecordTypeTypes
-                        (icons (encode_CNAME_Spec)  (* CNAME; canonical name for an alias 	[RFC1035] *)
-                               (icons encode_A_Spec (* A; host address 	[RFC1035] *)
-                                      (icons (encode_NS_Spec) (* NS; authoritative name server 	[RFC1035] *)
-                                             (icons encode_SOA_RDATA_Spec  (* SOA rks the start of a zone of authority 	[RFC1035] *) inil)))).
+                        (icons (format_CNAME)  (* CNAME; canonical name for an alias 	[RFC1035] *)
+                               (icons format_A (* A; host address 	[RFC1035] *)
+                                      (icons (format_NS) (* NS; authoritative name server 	[RFC1035] *)
+                                             (icons format_SOA_RDATA  (* SOA rks the start of a zone of authority 	[RFC1035] *) inil)))).
 
-  Definition encode_resource_Spec(r : resourceRecord) :=
+  Definition format_resource (r : resourceRecord) :=
     format_DomainName r!sNAME
                            ThenC format_enum RRecordType_Ws (RDataTypeToRRecordType r!sRDATA)
                            ThenC format_enum RRecordClass_Ws r!sCLASS
                            ThenC format_word r!sTTL
-                           ThenC encode_rdata_Spec r!sRDATA
+                           ThenC format_rdata r!sRDATA
                            DoneC.
 
-  Definition encode_packet_Spec (p : packet) :=
+  Definition format_packet (p : packet) :=
     format_word p!"id"
                      ThenC format_word (WS p!"QR" WO)
                      ThenC format_enum Opcode_Ws p!"Opcode"
@@ -230,8 +206,8 @@ Section DnsPacket.
                      ThenC format_nat 16 (|p!"answers"|)
                      ThenC format_nat 16 (|p!"authority"|)
                      ThenC format_nat 16 (|p!"additional"|)
-                     ThenC encode_question_Spec p!"question"
-                     ThenC (format_list encode_resource_Spec (p!"answers" ++ p!"additional" ++ p!"authority"))
+                     ThenC format_question p!"question"
+                     ThenC (format_list format_resource (p!"answers" ++ p!"additional" ++ p!"authority"))
                      DoneC.
 
   Ltac decode_DNS_rules g :=
@@ -244,7 +220,7 @@ Section DnsPacket.
                 boundPeekSome addPeekNone addPeekNone'
                 addZeroPeek addPeekESome boundPeekESome
                 addPeekENone addPeekENone')
-    | |- appcontext [CorrectDecoder _ _ _ _ (format_list encode_resource_Spec) _ _] =>
+    | |- appcontext [CorrectDecoder _ _ _ _ (format_list format_resource) _ _] =>
       intros; apply FixList_decode_correct with (A_predicate := resourceRecord_OK)
     end.
 
@@ -259,8 +235,6 @@ Section DnsPacket.
       repeat first [decode_step' idtac | decode_step determineHooks]
     | cbv beta; synthesize_cache_invariant' idtac
     |  ].
-
-  Print format_DomainName.
 
   Lemma byte_align_Fix_encoder {A}
         (lt_A : A -> A -> Prop)
@@ -422,52 +396,22 @@ Qed.
     rewrite Heqp; try reflexivity. *)
   (*Qed. *)
 
-  Fixpoint split_string (s : string) : (string * string) :=
-    match s with
-    | EmptyString => ("", "")
-    | String a s' => If Ascii.ascii_dec a "." Then ("", s')
-                        Else let (s1, s2) := split_string s' in
-                             (String a s1, s2)
-    end%string.
-
-  Lemma split_string_ValidDomainName :
-    forall d,
-      ValidDomainName d ->
-      ValidDomainName (snd (split_string d)).
-  Proof.
-  Admitted.
-
-  Lemma split_string_ValidDomainName_length :
-    forall d,
-      d <> ""%string
-      -> lt (String.length (snd (split_string d))) (String.length d).
-  Proof.
-    induction d; simpl; intros; try congruence.
-    find_if_inside; simpl; eauto.
-    destruct d; simpl in *; eauto.
-    destruct (If Ascii.ascii_dec a0 "." Then (""%string, d)
-               Else (let (s1, s2) := split_string d in (String a0 s1, s2))).
-    simpl in *.
-    etransitivity.
-    apply IHd.
-    congruence.
-    eauto with arith.
-  Qed.
-
   Lemma split_string_OK
     : forall d,
       ValidDomainName d ->
       (d = (fst (split_string (d)) ++ String "." (snd (split_string (d))))%string \/
        split_string (d) = (d, ""%string)) /\
-      RRecordTypes.ValidLabel (fst (split_string (d))) /\
+      ValidLabel (fst (split_string (d))) /\
       (forall label' post' : string,
           d = (label' ++ post')%string ->
-          RRecordTypes.ValidLabel label' -> (String.length label' <= String.length (fst (split_string (d))))%nat).
+          ValidLabel label' -> (String.length label' <= String.length (fst (split_string (d))))%nat).
   Proof.
   Admitted.
 
-  Lemma well_founded_string_length
-    : well_founded (fun y r : string => lt (String.length y) (String.length r)%nat).
+  Lemma split_string_ValidDomainName :
+    forall d,
+      ValidDomainName d ->
+      ValidDomainName (snd (split_string d)).
   Proof.
   Admitted.
 
@@ -494,7 +438,7 @@ Qed.
                               (fst
                                  (y
                                     ((snd (split_string r)))
-                                    (split_string_ValidDomainName_length r e)
+                                    (@split_string_ValidDomainName_length r e)
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -512,7 +456,7 @@ Qed.
                               (fst
                                  (y
                                     (snd (split_string r))
-                                    (split_string_ValidDomainName_length r e)
+                                    (@split_string_ValidDomainName_length r e)
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -529,7 +473,7 @@ Qed.
                                 (snd
                                    (y
                                       (snd (split_string r))
-                                      (split_string_ValidDomainName_length r e)
+                                      (@split_string_ValidDomainName_length r e)
                                       (Ifopt Ifopt
                                              fst ce as m
                                              Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
@@ -546,7 +490,7 @@ Qed.
                               :: snd
                                    (snd
                                       (y (snd (split_string r))
-                                         (split_string_ValidDomainName_length r e)
+                                         (@split_string_ValidDomainName_length r e)
                                          (Ifopt Ifopt
                                                 fst ce as m
                                                 Then
@@ -564,7 +508,7 @@ Qed.
                         Else snd
                                (y
                                   (snd (split_string r))
-                                  (split_string_ValidDomainName_length r e)
+                                  (@split_string_ValidDomainName_length r e)
                                   (Ifopt Ifopt fst ce as m
                                          Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                               then Some (natToWord 17 (wordToNat m + 8))
@@ -628,7 +572,7 @@ Lemma align_encode_DomainName
     unfold fst at 2; unfold fst at 2.
     unfold fst at 2.
     rewrite (H (exist _ _ (split_string_ValidDomainName _ (projT2 r)))
-                   (split_string_ValidDomainName_length _ H0)).
+                   (@split_string_ValidDomainName_length _ H0)).
     simplify with monad laws.
     Arguments mult : simpl never.
     simpl.
@@ -651,7 +595,7 @@ Lemma align_encode_DomainName
                                     (existT ValidDomainName
                                        (snd (split_string (projT1 r)))
                                        (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (@split_string_ValidDomainName_length (projT1 r) n')
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -671,7 +615,7 @@ Lemma align_encode_DomainName
                                     (existT ValidDomainName
                                        (snd (split_string (projT1 r)))
                                        (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (@split_string_ValidDomainName_length (projT1 r) n')
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -690,7 +634,7 @@ Lemma align_encode_DomainName
                                       (existT ValidDomainName
                                          (snd (split_string (projT1 r)))
                                          (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                      (split_string_ValidDomainName_length (projT1 r) n')
+                                      (@split_string_ValidDomainName_length (projT1 r) n')
                                       (Ifopt Ifopt
                                              fst ce as m
                                              Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
@@ -710,7 +654,7 @@ Lemma align_encode_DomainName
                                          (existT ValidDomainName
                                             (snd (split_string (projT1 r)))
                                             (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                         (split_string_ValidDomainName_length (projT1 r) n')
+                                         (@split_string_ValidDomainName_length (projT1 r) n')
                                          (Ifopt Ifopt
                                                 fst ce as m
                                                 Then
@@ -730,7 +674,7 @@ Lemma align_encode_DomainName
                                   (existT ValidDomainName
                                      (snd (split_string (projT1 r)))
                                      (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                  (split_string_ValidDomainName_length (projT1 r) n')
+                                  (@split_string_ValidDomainName_length (projT1 r) n')
                                   (Ifopt Ifopt fst ce as m
                                          Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                               then Some (natToWord 17 (wordToNat m + 8))
@@ -746,7 +690,7 @@ Lemma align_encode_DomainName
     reflexivity.
     rewrite <- !build_aligned_ByteString_append.
     destruct (y (existT ValidDomainName (snd (split_string (projT1 r))) (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                (split_string_ValidDomainName_length (projT1 r) n)
+                (@split_string_ValidDomainName_length (projT1 r) n)
                 (Ifopt Ifopt fst ce0 as m
                        Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17) then Some (natToWord 17 (wordToNat m + 8)) else None
                        Else None as m
@@ -804,7 +748,7 @@ Qed.
     unfold fst at 2; unfold fst at 2.
     unfold fst at 2.
     rewrite (H (exist _ _ (split_string_ValidDomainName _ (projT2 r)))
-                   (split_string_ValidDomainName_length _ H0)).
+                   (@split_string_ValidDomainName_length _ H0)).
     simplify with monad laws.
     Arguments mult : simpl never.
     simpl.
@@ -827,7 +771,7 @@ Qed.
                                     (existT ValidDomainName
                                        (snd (split_string (projT1 r)))
                                        (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (@split_string_ValidDomainName_length (projT1 r) n')
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -847,7 +791,7 @@ Qed.
                                     (existT ValidDomainName
                                        (snd (split_string (projT1 r)))
                                        (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                    (split_string_ValidDomainName_length (projT1 r) n')
+                                    (@split_string_ValidDomainName_length (projT1 r) n')
                                     (Ifopt Ifopt fst ce as m
                                            Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                                 then Some (natToWord 17 (wordToNat m + 8))
@@ -866,7 +810,7 @@ Qed.
                                       (existT ValidDomainName
                                          (snd (split_string (projT1 r)))
                                          (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                      (split_string_ValidDomainName_length (projT1 r) n')
+                                      (@split_string_ValidDomainName_length (projT1 r) n')
                                       (Ifopt Ifopt
                                              fst ce as m
                                              Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
@@ -886,7 +830,7 @@ Qed.
                                          (existT ValidDomainName
                                             (snd (split_string (projT1 r)))
                                             (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                         (split_string_ValidDomainName_length (projT1 r) n')
+                                         (@split_string_ValidDomainName_length (projT1 r) n')
                                          (Ifopt Ifopt
                                                 fst ce as m
                                                 Then
@@ -906,7 +850,7 @@ Qed.
                                   (existT ValidDomainName
                                      (snd (split_string (projT1 r)))
                                      (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                                  (split_string_ValidDomainName_length (projT1 r) n')
+                                  (@split_string_ValidDomainName_length (projT1 r) n')
                                   (Ifopt Ifopt fst ce as m
                                          Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17)
                                               then Some (natToWord 17 (wordToNat m + 8))
@@ -922,7 +866,7 @@ Qed.
     reflexivity.
     rewrite <- !build_aligned_ByteString_append.
     progress destruct (y (existT ValidDomainName (snd (split_string (projT1 r))) (split_string_ValidDomainName (projT1 r) (projT2 r)))
-                (split_string_ValidDomainName_length (projT1 r) n)
+                (@split_string_ValidDomainName_length (projT1 r) n)
                 (Ifopt Ifopt fst ce0 as m
                        Then if Compare_dec.lt_dec (wordToNat m + 8) (pow2 17) then Some (natToWord 17 (wordToNat m + 8)) else None
                        Else None as m
@@ -949,7 +893,7 @@ Qed.
     simpl. admit.
   Qed. *) *)
 
-    Lemma optimize_align_encode_list
+  Lemma optimize_align_encode_list
           {A}
           (A_OK : A -> Prop)
           (format_A : A -> CacheEncode -> Comp (ByteString * CacheEncode))
@@ -1080,42 +1024,45 @@ Qed.
       cache_term ``(bindex') as str run fun id => fold id in *; add id to stringCache
     end. *)
 
-  Create HintDb encodeCache.
-
-  Print Ltac fold_string_hyps.
-
-  Ltac fold_encoders :=
-    (repeat foreach [ encodeCache ] run (fun id => progress fold id in *)).
-
-  Ltac cache_encoders :=
-    repeat match goal with
-           | |- context [icons (fun (a : ?z) => @?f a) _] =>
-             let p' := fresh "encoder" in
-             let H'' := fresh in
-             assert True as H'' by
-                   (clear;
-                    (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
-             fold_encoders; clear H''
-           | |- context [align_encode_list (fun (a : ?z) => @?f a) _ _] =>
-             let p' := fresh "encoder" in
-             let H'' := fresh in
-             assert True as H'' by
-                   (clear;
-                    (cache_term (fun a : z => f a) as p' run (fun id => fold id in *; add id to encodeCache)) ; exact I);
-             fold_encoders; clear H''
-           end.
 
   Arguments Vector.nth A !m !v' !p /.
 
-  Definition refine_encode_packet
-    : { b : _ & forall (p : packet)
-                       (p_OK : DNS_Packet_OK p),
-            refine (encode_packet_Spec p list_CacheEncode_empty)
-                   (ret (b p)) }.
+  Check align_encode_DomainName.
+
+  Lemma AlignedEncodeDomainName
+     : (forall (ce : CacheEncode) (n m : nat), addE (addE ce n) m = addE ce (n + m)) ->
+       forall (numBytes : nat)
+              (d : DomainName)
+              (ce ce' : CacheEncode)
+              (c : CacheEncode -> Comp (ByteString * CacheEncode))
+              (v : t Core.char numBytes),
+         ValidDomainName d ->
+         refine (c (snd (aligned_encode_DomainName d ce))) (ret (build_aligned_ByteString v, ce')) ->
+         refine ((format_DomainName d ThenC c) ce)
+                (ret (build_aligned_ByteString ((projT2 (fst (aligned_encode_DomainName d ce))) ++ v), ce')).
   Proof.
-    unfold encode_packet_Spec.
+    unfold compose at 1, Bind2; intros.
+    rewrite align_encode_DomainName; eauto.
+    simplify with monad laws.
+    simpl; rewrite H1.
+    simplify with monad laws; simpl.
+    rewrite build_aligned_ByteString_append; reflexivity.
+  Qed.
+
+  Definition refine_encode_packet
+    : { numBytes : _ &
+      { v : _ &
+      { c : _ & forall (p : packet)
+                       (p_OK : DNS_Packet_OK p),
+            refine (format_packet p list_CacheEncode_empty)
+                   (ret (@build_aligned_ByteString (numBytes p) (v p), c p)) } } }.
+  Proof.
+    unfold format_packet.
+    (* Step 1: Cache any string constants *)
     pose_string_hyps.
-    eexists; intros.
+    eexists _, _, _; intros.
+    (* Step 2: simplification with monad laws so that any complex
+       subformats are inlined properly. *)
     eapply refine_refineEquiv_Proper;
       [ unfold flip;
         repeat first
@@ -1124,15 +1071,21 @@ Qed.
                | apply refineEquiv_under_compose with (monoid := monoid) ];
         intros; higher_order_reflexivity
       | reflexivity | ].
+    (* Cache string constants again *)
     pose_string_hyps.
     etransitivity.
+    (* Replace formats with byte-aligned versions. *)
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
+    (* Not in a byte-aligned state, so we need to try to
+       combine/collapse formats until we are. *)
     unfold format_enum.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
+    (* Woo hoo! We're formating an 8-bit word now! *)
     eapply AlignedEncodeChar; eauto using addE_addE_plus.
+    (* But now we need to do it again. *)
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     rewrite CollapseEncodeWord; eauto using addE_addE_plus.
     eapply AlignedEncodeChar; eauto using addE_addE_plus.
@@ -1140,11 +1093,9 @@ Qed.
     eapply AlignedEncode2Nat; eauto using addE_addE_plus.
     eapply AlignedEncode2Nat; eauto using addE_addE_plus.
     eapply AlignedEncode2Nat; eauto using addE_addE_plus.
-    unfold compose at 1, Bind2.
-    rewrite align_encode_DomainName.
-    simplify with monad laws.
-    etransitivity.
-    apply refine_under_bind_both.
+    (* Should replace this with an AlignedEncodeDomainName. *)
+    eapply AlignedEncodeDomainName; eauto using addE_addE_plus.
+    eapply p_OK.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     unfold compose, Bind2.
@@ -1152,7 +1103,7 @@ Qed.
     apply refine_under_bind_both.
     pose proof (proj2 (proj2 (proj2 (proj2 p_OK)))).
     apply optimize_align_encode_list with (A_OK := resourceRecord_OK).
-    unfold encode_resource_Spec; intros.
+    unfold format_resource; intros.
     unfold compose at 1, Bind2.
     rewrite align_encode_DomainName.
     simplify with monad laws.
@@ -1162,7 +1113,7 @@ Qed.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     eapply AlignedEncode2Char; eauto using addE_addE_plus.
     eapply AlignedEncode32Char; eauto using addE_addE_plus.
-    unfold encode_rdata_Spec.
+    unfold format_rdata.
     etransitivity.
     apply refine_under_bind_both.
     unfold resourceRecord_OK in H0.
@@ -1191,7 +1142,7 @@ Qed.
             :: DomainName
             :: [SOA_RDATA])
          a)); apply H0.
-    { unfold encode_CNAME_Spec.
+    { unfold format_CNAME.
       etransitivity.
       apply (@AlignedEncode2UnusedChar dns_list_cache).
       try eapply addE_addE_plus.
@@ -1213,7 +1164,7 @@ Qed.
       instantiate (1 := fun t ce0 => (existT _ _ _, _)).
       simpl; reflexivity.
     }
-    { unfold encode_A_Spec.
+    { unfold format_A.
       etransitivity.
       apply (@AlignedEncode2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
@@ -1226,7 +1177,7 @@ Qed.
       instantiate (1 := fun t ce0 => (existT _ _ _, _)).
       simpl; reflexivity.
     }
-    { unfold encode_NS_Spec.
+    { unfold format_NS.
       etransitivity.
       apply (@AlignedEncode2UnusedChar dns_list_cache).
       eauto using addE_addE_plus.
@@ -1247,7 +1198,7 @@ Qed.
       instantiate (1 := fun t ce0 => (existT _ _ _, _)).
       simpl; reflexivity.
     }
-    { unfold encode_SOA_RDATA_Spec.
+    { unfold format_SOA_RDATA.
       pose_string_hyps.
       etransitivity.
       apply (@AlignedEncode2UnusedChar dns_list_cache).

@@ -2373,7 +2373,7 @@ Section ListFacts.
       = option_map (fun v => (start + idx, v)) (nth_error ls idx).
   Proof.
     revert start idx; induction ls as [|l ls IHls], idx as [|idx]; try reflexivity.
-    { simpl; rewrite Nat.add_0_r; reflexivity. }
+    { simpl; rewrite NPeano.Nat.add_0_r; reflexivity. }
     { simpl; rewrite <- plus_n_Sm, IHls; reflexivity. }
   Qed.
 
@@ -2402,5 +2402,15 @@ Section ListFacts.
     : snd (nth_default default (@enumerate A ls start) idx)
       = nth_default (snd default) ls idx.
   Proof. rewrite !nth_default_eq; apply snd_nth_enumerate. Qed.
+
+  Lemma length_app_3 {A}
+    : forall n1 n2 n3 (l1 l2 l3 : list A),
+      length l1 = n1
+      -> length l2 = n2
+      -> length l3 = n3
+      -> length (l1 ++ l2 ++ l3) = n1 + n2 + n3.
+  Proof.
+    intros; rewrite !app_length; subst; omega.
+  Qed.
 
 End ListFacts.

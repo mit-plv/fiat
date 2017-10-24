@@ -14,7 +14,8 @@ Require Import
         Fiat.Narcissus.BinLib.AlignedDecoders
         Fiat.Narcissus.Formats.WordOpt
         Fiat.Narcissus.Formats.NatOpt
-        Fiat.Narcissus.Formats.FixListOpt.
+        Fiat.Narcissus.Formats.FixListOpt
+        Fiat.Narcissus.Stores.EmptyStore.
 
 Instance ByteStringQueueMonoid : Monoid ByteString := ByteStringQueueMonoid.
 
@@ -108,10 +109,10 @@ Proof.
   etransitivity.
   set_refine_evar; simpl.
   unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
-  rewrite (@AlignedDecodeNat NoCache.test_cache).
+  rewrite (@AlignedDecodeNat test_cache).
   subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
   unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
-  rewrite (@AlignedDecode2Char NoCache.test_cache).
+  rewrite (@AlignedDecode2Char test_cache).
   subst_refine_evar; apply rewrite_under_LetIn; intros; set_refine_evar.
   unfold DecodeBindOpt2 at 1; rewrite_DecodeOpt2_fmap.
   erewrite optimize_align_decode_list.
@@ -130,7 +131,7 @@ Proof.
       eapply (@optimize_Guarded_Decode n0 _ 1 b')
   end.
   destruct n0 as [ | [ | ?] ]; intros; try omega.
-  apply (@decode_word_aligned_ByteString_overflow NoCache.test_cache) with (sz := 1); auto.
+  apply (@decode_word_aligned_ByteString_overflow test_cache) with (sz := 1); auto.
   destruct n0 as [ | ?]; intros; try omega.
   higher_order_reflexivity.
   instantiate (1 := fun n1 v1 (cd0 : CacheDecode) =>

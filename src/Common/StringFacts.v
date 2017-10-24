@@ -240,3 +240,39 @@ Lemma string_copy_length n ch
 Proof.
   induction n; simpl; eauto.
 Qed.
+
+Fixpoint split_string (s : string) : (string * string) :=
+  match s with
+  | EmptyString => ("", "")
+  | String a s' => if Ascii.ascii_dec a "." then ("", s')
+                   else (let (s1, s2) := split_string s' in
+                         (String a s1, s2))
+  end%string.
+
+Lemma split_string_ValidDomainName_length :
+  forall d,
+    d <> ""%string
+    -> lt (String.length (snd (split_string d))) (String.length d).
+Proof.
+  induction d; simpl; intros; try congruence.
+  destruct (Ascii.ascii_dec a "."); simpl; eauto.
+  destruct d; simpl in *; eauto.
+  destruct (if Ascii.ascii_dec a0 "." then (""%string, d)
+               else (let (s1, s2) := split_string d in (String a0 s1, s2))).
+  simpl in *.
+  etransitivity.
+  apply IHd.
+  congruence.
+  eauto with arith.
+Qed.
+
+Lemma well_founded_string_length
+  : well_founded (fun y r : string => lt (String.length y) (String.length r)%nat).
+Proof.
+  unfold well_founded; intro; induction a; econstructor.
+  - destruct y; simpl; omega.
+  - intros; destruct y; simpl; intros.
+    + econstructor; destruct y; simpl; omega.
+    + econstructor; intros.
+      eapply IHa; simpl in *; omega.
+Qed.

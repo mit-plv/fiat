@@ -4,7 +4,6 @@ Require Import
         Coq.Vectors.Vector.
 
 Require Import
-        Fiat.Examples.DnsServer.SimplePacket
         Fiat.Common.SumType
         Fiat.Common.BoundedLookup
         Fiat.Common.ilist
@@ -105,10 +104,11 @@ Section AlignedDecoders.
              (t : (word 16 * ByteString * CacheDecode) -> C)
              (e : C)
              cd,
-      Ifopt (decode_word
+      (Ifopt (decode_word
                (monoidUnit := ByteString_QueueMonoidOpt) (sz := 16) (build_aligned_ByteString v) cd) as w
-                                                                                                                    Then t w Else e=
-                                                                                                                  Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
+       Then t w
+       Else e)
+      = Let n := Core.append_word (Vector.nth v (Fin.FS Fin.F1)) (Vector.nth v Fin.F1) in
         t (n, build_aligned_ByteString (snd (Vector_split 2 _ v)), addD cd 16).
   Proof.
     unfold LetIn; intros.
@@ -197,17 +197,6 @@ Section AlignedDecoders.
     rewrite <- build_aligned_ByteString_append.
     unfold append.
     reflexivity.
-  Qed.
-
-
-  Lemma BindOpt_assoc {A A' A''} :
-    forall (a_opt : option A)
-           (f : A -> option A')
-           (g : A' -> option A''),
-      BindOpt (BindOpt a_opt f) g =
-      BindOpt a_opt (fun a => BindOpt (f a) g).
-  Proof.
-    destruct a_opt as [ ? | ]; simpl; intros; eauto.
   Qed.
 
   Corollary AlignedDecode2Nat {C}
@@ -414,17 +403,6 @@ Section AlignedDecoders.
     eapply dec_fail in n0; simpl.
     eapply Specs.Decode_w_Measure_le_eq' in n0.
     apply n0.
-  Qed.
-
-  Lemma If_Opt_Then_Else_BindOpt {A B C}
-    : forall (a_opt : option A)
-             (t : A -> option B)
-             (e : option B)
-             (k : _ -> option C),
-      BindOpt (Ifopt a_opt as a Then t a Else e) k
-      = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
-  Proof.
-    destruct a_opt; simpl; intros; reflexivity.
   Qed.
 
   Lemma lt_B_Guarded_Vector_split

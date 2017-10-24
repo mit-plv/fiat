@@ -91,10 +91,21 @@ Section Specifications.
     rewrite mempty_right in H5; congruence.
   Qed.
 
-    Definition BindOpt {A' A''}
+  Definition BindOpt {A' A''}
              (a_opt : option A')
              (k : A' -> option A'') :=
     Ifopt a_opt as a Then k a Else None.
+
+  Lemma BindOpt_assoc {A''' A' A''} :
+    forall (a_opt : option A''')
+           (f : A''' -> option A')
+           (g : A' -> option A''),
+      BindOpt (BindOpt a_opt f) g =
+      BindOpt a_opt (fun a => BindOpt (f a) g).
+  Proof.
+    destruct a_opt as [ ? | ]; simpl; intros; eauto.
+  Qed.
+
 
   Definition DecodeBindOpt2
              {C D E}
@@ -187,6 +198,17 @@ Definition BindOpt_map
     Ifopt a_opt as a Then f (k a) Else f None.
 Proof.
   destruct a_opt as [ a' | ]; reflexivity.
+Qed.
+
+Lemma If_Opt_Then_Else_BindOpt {A B C}
+  : forall (a_opt : option A)
+           (t : A -> option B)
+           (e : option B)
+           (k : _ -> option C),
+    BindOpt (Ifopt a_opt as a Then t a Else e) k
+    = Ifopt a_opt as a Then (BindOpt (t a) k) Else (BindOpt e k).
+Proof.
+  destruct a_opt; simpl; intros; reflexivity.
 Qed.
 
 Lemma DecodeOpt2_fmap_if_bool

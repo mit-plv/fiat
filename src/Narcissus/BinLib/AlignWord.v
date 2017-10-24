@@ -129,20 +129,20 @@ Section AlignWord.
   Qed.
 
   Lemma word_split_hd_SW_word {n}
-    : forall b (w : word n), 
+    : forall b (w : word n),
       word_split_hd (SW_word b w) = b.
   Proof.
     induction w; simpl; intros; eauto.
   Qed.
 
   Lemma word_split_tl_SW_word {n}
-    : forall b (w : word n), 
+    : forall b (w : word n),
       word_split_tl (SW_word b w) = w.
   Proof.
     induction w; simpl; intros; eauto.
     f_equal; eauto.
   Qed.
-  
+
   Lemma CollapseEncodeWord
     : forall {sz sz'} (w : word sz) (w' : word sz') k ce,
       refine (((format_word w)
@@ -169,7 +169,7 @@ Section AlignWord.
       + rewrite <- IHw.
         simpl; rewrite format_word_S.
         rewrite <- mappend_assoc, word_split_tl_SW_word, word_split_hd_SW_word.
-        f_equal. 
+        f_equal.
         clear; induction w'.
         * simpl; rewrite mempty_right; reflexivity.
         * simpl; rewrite !enqueue_opt_format_word.
@@ -206,7 +206,7 @@ Section AlignWord.
       rewrite addE_addE_plus.
       reflexivity.
   Qed.
-  
+
   Lemma If_Opt_Then_Else_DecodeBindOpt_swap {A C ResultT : Type}
     : forall (a_opt : option A)
              (b : B)
